@@ -1,0 +1,73 @@
+# /etc/zshenv: user specific .zshenv file for zsh(1).
+#
+# Sourced on all invocations of the shell.
+#
+# Global Order: zshenv, zprofile, zshrc, zlogin
+
+export OS=`uname -s`
+
+export EDITOR="vim"
+export PATH="/sbin:/usr/sbin:/usr/local/bin:/usr/bin:/bin:/usr/bin/X11:/usr/games:/usr/sbin:/usr/local/adm/bin:/usr/ccs/bin"
+
+export PAGER="less"
+export LESS="-RMin"
+
+export TMP="$HOME/tmp"
+export TMPDIR="$HOME/tmp"
+
+export EMAIL=jhansen@xmission.com
+export NNTPSERVER=news.xmission.com
+export ARCH=`uname -m`
+
+export IRCNICK='slack'
+export IRCNAME='Helicopters and stone tablets.'
+export IRCSERVER='irc.xmission.com'
+
+export PILOTRATE=115200
+
+export SAVEHIST=2000
+export HISTSIZE=2000
+export HISTFILE=$HOME/.history
+export HIST_EXPIRE_DUPS_FIRST=true
+
+export FPATH="/usr/lib/zsh/functions"
+
+export CVSROOT=$HOME/cvs
+unset CVSREAD
+
+export LOGCHECK=300
+export WATCHFMT='%n %a %l from %M at %t.'
+
+#export TERMINFO=$HOME/.terminfo/$OS
+export LANGUAGE="en_US"
+export LC_ALL="en_US"
+
+export LSOPTS="--color=auto -F"
+
+export DISTCC_HOSTS="moebius slack satyr.vegcrew.net orbit localhost"
+
+if [ `hostname` = 'subgenius' ]; then
+	#if [ -e "$HOME/.ssh/subgenius/identity" ]; then
+	#	export SSH_IDENTITY="$HOME/.ssh/subgenius/identity"
+	#else;
+		unset SSH_IDENTITY
+	#fi
+else;
+	if [ -a '$HOME/.xmission' ]; then
+		export SSH_IDENTITY="$HOME/.ssh/xmission/id_dsa"
+	else;
+		unset SSH_IDENTITY
+	fi
+fi
+
+if [ -x /usr/bin/lesspipe ] ; then
+	export LESSOPEN="|/usr/bin/lesspipe %s"
+fi
+
+if [ "$OS" = "SunOS" ]; then
+	if [ "$TERM" = "xterm" ]; then
+        	export TERM=xtermc
+	fi
+	unset LESS
+	export LSOPTS="-F"
+fi

@@ -1,0 +1,168 @@
+# /etc/zshrc: system-wide .zshrc file for zsh(1).
+#
+# This file is sourced only for interactive shells. It
+# should contain commands to set up aliases, functions,
+# options, key bindings, etc.
+#
+# Global Order: zshenv, zprofile, zshrc, zlogin
+
+autoload run-help
+
+#
+# UMASK
+#
+umask 077
+
+case $TERM in
+        xterm*)
+                precmd () {print -Pn "\e]0;%n@%m: %~\a"}
+	;;
+        rxvt*)
+                export TERM=rxvt-unicode
+                precmd () {print -Pn "\e]0;%n@%m: %~\a"}
+        ;;
+esac
+
+#
+# LIMITS
+#
+
+limit coredumpsize 0
+
+#
+# PROMPT
+#
+export PS1="%m:%B%c%b %!$ "
+
+#
+# WATCH
+#
+watch=($(cat ~/.friends))
+
+#
+# FUNCTIONS
+#
+cd() { builtin cd $*; print -D $PWD; }
+rc() {
+	if [ ! $1 ]; then
+		echo -n "Reloading .zshenv:"
+		source $HOME/.zshenv;
+		echo "\tDone."
+		echo -n "Reloading .zshrc:"
+		source $HOME/.zshrc;
+		echo "\tDone."
+	elif [ $1 = -e ]; then
+		echo -n "Reloading .zshenv:"
+		source $HOME/.zshenv;
+		echo "\tDone."
+	elif [ $1 = -r ]; then
+		echo -n "Reloading .zshrc:"
+		source $HOME/.zshrc;
+		echo "\tDone."
+	fi
+}
+
+fpw() {
+	if [ ! $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/cookie.gpg | more
+	elif [ $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/cookie.gpg | egrep -i "$1"
+	fi
+}
+
+fpo() {
+	if [ ! $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/cookie-old.gpg | more
+	elif [ $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/cookie-old.gpg | egrep -i "$1"
+	fi
+}
+
+
+pass() {
+	if [ ! $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/passwords.gpg | more
+	elif [ $1 ]; then
+		gpg -t --quiet --decrypt ~/vault/passwords.gpg | egrep -i "$1"
+	fi
+}
+
+function _revtime { perl -e 'print scalar localtime $1 . "\n";' }
+
+#
+# ALIASES
+#
+alias  ..='cd ..'
+alias ...='cd ../..'
+
+#alias rc='source $HOME/.zshrc'
+alias hist='history'
+
+alias sr='screen -r'
+alias screen='screen -T $TERM'
+
+alias ls="ls $LSOPTS"
+alias lsd="ls $LSOPTS -ld *(-/DN)"
+alias lsa="ls $LSOPTS -ld .*"
+
+alias cm='cat $HOME/.procmail/log'
+alias dm='cp /dev/null $HOME/.procmail/log'
+alias ms='mailstat -l -s -k $HOME/.procmail/log'
+
+alias news='slrn -h news.xmission.com'
+
+alias slogin='ssh'
+
+alias apg16='apg -a 1 -n 10 -m 16 -x 16 -E l -E l0OI -M CNL | grep -v "[l0OI]"'
+alias apg8='apg -a 1 -n 10 -m 8 -x 8 -E l -E l0OI -M CNL | grep -v "[l0OI]"'
+alias apg128='apg -a 1 -n 10 -m 128 -x 128 -E l -E l0OI -M CNL'
+
+if [ $SSH_IDENTITY ]; then
+	alias ssh='ssh -C -i $SSH_IDENTITY'
+	alias ssh-add='ssh-add $SSH_IDENTITY'
+fi
+
+if [ "$OS" = "SunOS" ]; then
+	if [ "$TERM" = "xtermc" ]; then
+		alias su='export TERM=vt100; su '
+	fi
+fi
+
+
+#
+# BINDINGS
+#
+bindkey -e
+bindkey "[3~" delete-char
+
+#
+# COMPLETION
+#
+hosts=( `cat $HOME/.host_list` )
+
+compctl -z -P '%' bg
+compctl -j -P '%' fg jobs disown
+
+compctl -a unalias
+
+compctl -e disable
+compctl -d enable
+
+compctl -k hosts telnet ftp slogin ssh ping traceroute
+
+compctl -k hosts -S ':' + -f -x 'n[1,:]' -f - \
+         'n[1,@]' -k hosts -S ':' -- scp
+
+#
+# SHELL OPTS
+#
+setopt AUTO_LIST AUTO_MENU
+setopt nohup
+#setopt list_packed
+#setopt bash_auto_list
+
+#stty erase 
+#
+
+## RVM
+if [[ -s /home/users/j/jhansen/.rvm/scripts/rvm ]] ; then source /home/users/j/jhansen/.rvm/scripts/rvm ; fi

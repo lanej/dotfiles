@@ -1,0 +1,7 @@
+[user]
+	name = Jason Hansen
+	email = jason@stackable.com
+[color]
+	diff = auto
+	status = auto
+	branch = auto
