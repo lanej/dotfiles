@@ -1,0 +1,20 @@
+## .bashrc for non-login shells
+echo "** executing .bashrc"
+
+## RVM
+if [[ -s "$HOME/.rvm/scripts/rvm" ]]  ; then source "$HOME/.rvm/scripts/rvm" ; fi
+
+## set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+## PATH
+PATH=$PATH:/usr/local/git/bin/
+
+## aliases
+alias lft='lft -TeA'
+alias ls='ls -Gp'
+
+PS1="[\u@\h \W]\$ "
+PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
