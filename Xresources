@@ -59,6 +59,7 @@ XTerm*color13:     #cf9ebe
 XTerm*color14:     #71bebe
 XTerm*color15:     #ffffff
 
+URxvt*termName: rxvt
 URxvt*background:  #000000
 URxvt*foreground:  #7f7f7f
 URxvt*color0:      #000000
