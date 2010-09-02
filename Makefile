@@ -4,6 +4,7 @@ shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
+	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
 	ln -fs $(DOTFILES)/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zshenv ${HOME}/.zshenv
