@@ -9,7 +9,7 @@ shell:
 	ln -fs $(DOTFILES)/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
-	ln -fs $(DOTFILES)/gpg.conf ${HOME}/.gnupg/gpg.conf
+	#ln -fs $(DOTFILES)/gpg.conf ${HOME}/.gnupg/gpg.conf
 screen:
 	ln -fs $(DOTFILES)/screenrc ${HOME}/.screenrc
 perl:
