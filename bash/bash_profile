@@ -1,5 +1,5 @@
 ## run for login shells
-echo "** executing .bash_profile"
+#echo "** executing .bash_profile"
 
 # if running bash
 if [ -n "$BASH_VERSION" ]; then
