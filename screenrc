@@ -18,12 +18,13 @@ crlf			off
 deflogin		off
 hardcopy_append	on
 startup_message	off
-vbell			on
 defscrollback		2000
 silencewait		15
 
 vbell on
 vbell_msg "   Pass ouf!  ----  Pass ouf!!  "
+bell "%C -> %n%f %t bell!~"
+bell_msg ' *BELL* in window %n'
 
 windows
 
@@ -32,4 +33,9 @@ bind k focus up
 bind t focus top
 bind t focus down
 
-caption always "%?%F%{-b bc}%:%{-b bb}%?%C|%D|%M %d|%H%?%F%{+u wb}%? %L=%-Lw%45>%{+b by}%n%f* %t%{-}%+Lw%-0<"
+## My old default
+#caption always "%?%F%{-b bc}%:%{-b bb}%?%C|%D|%M %d|%H%?%F%{+u wb}%? %L=%-Lw%45>%{+b by}%n%f* %t%{-}%+Lw%-0<"
+## From EY
+caption always "%?%F%{...}%?%3n %t%? [%h]%?"
+hardstatus alwayslastline "%{= kW}[%Y-%0m-%0d %0c:%s]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
+activity "%C -> %n%f %t activity!"

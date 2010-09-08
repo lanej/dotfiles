@@ -15,6 +15,9 @@ PATH=$PATH:/usr/local/git/bin/
 ## aliases
 alias lft='lft -TeA'
 alias ls='ls -Gp'
+alias nerd='vim +NERDTree'
+
+alias sr='screen -r'
 
 PS1="[\u@\h \W]\$ "
 PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
