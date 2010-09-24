@@ -11,8 +11,8 @@ set hlsearch
 " Text Handling
 set nowrap
 set nocompatible
-set ts=4
-set sw=4
+set ts=2
+set sw=2
 set expandtab
 set ai
 
@@ -35,3 +35,8 @@ map ntm :NERDTreeMirror<CR>
 map ntc :NERDTreeClose<CR>
 
 nnoremap <F2> :set nonumber!<CR>:set foldcolumn=0<CR>
+
+" markdown
+augroup mkd
+    autocmd BufRead *.mkd  set ai formatoptions=tcroqn2 comments=n:&gt;
+augroup END
