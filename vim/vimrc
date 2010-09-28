@@ -1,9 +1,13 @@
+" vim ftw
 set nocompatible
 
+" pathogen.vim ftw
 filetype off
-
 call pathogen#runtime_append_all_bundles()
 call pathogen#helptags()
+
+" set the title in xterm
+set title
 
 " better buffer management
 set hidden
@@ -20,6 +24,8 @@ set incsearch
 " Make <C-L> clear highlight and redraw
 nnoremap <C-L> :nohls<CR><C-L>
 inoremap <C-L> <C-O>:nohls<CR>
+
+nnoremap <C-B> :BufExplorer<cr>
 
 " ignore case only if there are no upcase letters in the search
 set ignorecase 
@@ -39,9 +45,8 @@ colorscheme wombat256
 set vb t_vb=
 " set background=dark
 
-set ruler
-
 filetype plugin indent on
+set ruler
 set tabstop=2
 set smarttab
 set shiftwidth=2
