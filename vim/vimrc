@@ -1,11 +1,65 @@
+set nocompatible
+
 filetype off
 
 call pathogen#runtime_append_all_bundles()
+call pathogen#helptags()
 
+" better buffer management
+set hidden
+
+" fixup backspace behavior
+set backspace=indent,eol,start
+
+let mapleader = ",""
+set history=1000
+
+" searching stuff
+set hlsearch
+set incsearch 
+" Make <C-L> clear highlight and redraw
+nnoremap <C-L> :nohls<CR><C-L>
+inoremap <C-L> <C-O>:nohls<CR>
+
+" ignore case only if there are no upcase letters in the search
+set ignorecase 
+set smartcase
+
+" <tab> completion for filenames
+set wildmenu
+set wildmode=list:longest
+
+" turn syntax highlighting on
 syntax on
+
+" 256 colors, colorscheme
+set t_Co=256
+colorscheme wombat256
+
+set vb t_vb=
+" set background=dark
+
+set ruler
+
 filetype plugin indent on
 set tabstop=2
 set smarttab
 set shiftwidth=2
 set autoindent
 set expandtab
+
+" Trailling spaces and tabs
+set list
+set listchars=tab:>-,trail:*,nbsp:*
+
+set fileformat=unix
+set nobackup
+
+" Status Line
+set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04v][%p%%]\ [LEN=%L]
+set laststatus=2
+
+" NT bindings
+map nt :NERDTree<CR>
+map ntm :NERDTreeMirror<CR>
+map ntc :NERDTreeClose<CR>
