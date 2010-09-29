@@ -68,3 +68,7 @@ set laststatus=2
 map nt :NERDTree<CR>
 map ntm :NERDTreeMirror<CR>
 map ntc :NERDTreeClose<CR>
+
+" Align bindings
+" map <leader>a= to :Align = (rather than :Align := )
+map <leader>a= :Align =<CR>
