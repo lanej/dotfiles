@@ -9,6 +9,8 @@ if [ -d "$HOME/bin" ] ; then
     PATH="$HOME/bin:$PATH"
 fi
 
+export EDITOR=vim
+
 ## PATH
 PATH=$PATH:/usr/local/git/bin/
 
