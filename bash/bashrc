@@ -9,18 +9,26 @@ if [ -d "$HOME/bin" ] ; then
     PATH="$HOME/bin:$PATH"
 fi
 
+## Editor
 export EDITOR=vim
 
 ## PATH
 PATH=$PATH:/usr/local/git/bin/
 
-## aliases
+## Aliases
 alias lft='lft -TeA'
-alias ls='ls -Gp --color'
 alias nerd='vim +NERDTree'
-
 alias sr='screen -r'
 
+## Set ls options per platform
+if [[ $OSTYPE == 'linux-gnu' ]]; then
+  alias ls='ls -p --color=auto'
+elif [[ $OSTYPE == 'darwin10.0' ]]; then
+  alias ls='ls -Gp'
+fi
+
+
+## Functions
 function parse_git_dirty {
   [[ $(git status 2> /dev/null | tail -n1) != "nothing to commit (working directory clean)" ]] && echo "*"
 }
@@ -28,5 +36,6 @@ function parse_git_branch {
   git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/[\1$(parse_git_dirty)]/"
 }
 
+## Prompt
 export PS1="[\u@\h \W] \$(parse_git_branch)\$ "
 export PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
