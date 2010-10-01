@@ -14,7 +14,7 @@ PATH=$PATH:/usr/local/git/bin/
 
 ## aliases
 alias lft='lft -TeA'
-alias ls='ls -Gp'
+alias ls='ls -Gp --color'
 alias nerd='vim +NERDTree'
 
 alias sr='screen -r'
