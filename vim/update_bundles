@@ -16,7 +16,8 @@ git_bundles = [
   "git://github.com/tpope/vim-repeat.git",
   "git://github.com/tpope/vim-surround.git",
   "git://github.com/tpope/vim-vividchalk.git",
-  "git://github.com/vim-ruby/vim-ruby.git"
+  "git://github.com/vim-ruby/vim-ruby.git",
+  "git://github.com/hallison/vim-rdoc.git"
 ]
 
 vim_org_scripts = [
