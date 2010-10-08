@@ -1,0 +1,30 @@
+[user]
+  name = Jason Hansen
+  email = jhansen@engineyard.com
+[color]
+  diff = auto
+  status = auto
+  branch = auto
+[alias]
+  st = status
+  ci = commit
+  co = checkout
+  br = branch
+  ls = branch
+  s  = status
+  a = add
+  b  = branch
+  d = diff
+  dc = diff --cached
+  v = show
+  l = log --pretty=oneline
+  ll = log
+  cp = cherry-pick
+  c  = checkout
+  cc = commit
+  ri = rebase -i HEAD~10
+  sh = !git-sh
+  ro = !git fetch origin && git reset --hard origin/master
+  ro2 = !git fetch origin && git reset --hard origin/`git symbolic-ref HEAD | cut -d"/" -f3`
+[core]
+  excludesfile = ~/.gitignore
