@@ -1,5 +1,5 @@
 DOTFILES := $(shell pwd)
-all: shell screen perl X mail vimfiles
+all: shell screen perl ruby X mail vimfiles
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -23,3 +23,6 @@ X:
 	ln -fs $(DOTFILES)/Xresources ${HOME}/.Xdefaults
 mail:
 	ln -fs $(DOTFILES)/muttrc ${HOME}/.muttrc
+ruby:
+	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
+	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
