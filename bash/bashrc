@@ -38,4 +38,6 @@ function parse_git_branch {
 
 ## Prompt
 export PS1="[\u@\h \W] \$(parse_git_branch)\$ "
-export PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
+if [[ -s "$HOME/.rvm/bin/rvm-prompt" ]]; then
+  export PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
+fi
