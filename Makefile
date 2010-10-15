@@ -5,6 +5,7 @@ shell:
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
+	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
 	ln -fs $(DOTFILES)/bash/git_completion.sh ${HOME}/.git_completion.sh
 	ln -fs $(DOTFILES)/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zlogout ${HOME}/.zlogout

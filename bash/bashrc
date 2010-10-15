@@ -27,6 +27,10 @@ elif [[ $OSTYPE == 'darwin10.0' ]]; then
   alias ls='ls -Gp'
 fi
 
+## Bootstrap cinderella
+if [ -d "~/.cinderella" ]; then
+  source ~/.cinderella.profile
+fi
 
 ## Functions
 function parse_git_dirty {

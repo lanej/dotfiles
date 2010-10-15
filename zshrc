@@ -166,3 +166,4 @@ setopt nohup
 
 ## RVM
 if [[ -s /home/users/j/jhansen/.rvm/scripts/rvm ]] ; then source /home/users/j/jhansen/.rvm/scripts/rvm ; fi
+source ~/.cinderella.profile
