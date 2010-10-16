@@ -72,3 +72,6 @@ map ntc :NERDTreeClose<CR>
 " Align bindings
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
+
+" Set minimum window height
+set winheight=10

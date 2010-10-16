@@ -22,6 +22,7 @@ git_bundles = [
 
 vim_org_scripts = [
   ["gist",          "12732", "plugin"],
+  ["tagexplorer",   "1584",  "plugin"]
 ]
 
 require 'fileutils'
