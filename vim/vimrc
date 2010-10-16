@@ -20,7 +20,8 @@ set history=1000
 
 " searching stuff
 set hlsearch
-set incsearch 
+set incsearch
+
 " Make <C-L> clear highlight and redraw
 nnoremap <C-L> :nohls<CR><C-L>
 inoremap <C-L> <C-O>:nohls<CR>
@@ -75,3 +76,6 @@ map <leader>a= :Align =<CR>
 
 " Set minimum window height
 set winheight=10
+
+" ctags stuff
+set tags=./tags,tags,./TAGS,TAGS
