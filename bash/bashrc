@@ -5,8 +5,12 @@
 if [[ -s "$HOME/.rvm/scripts/rvm" ]]  ; then source "$HOME/.rvm/scripts/rvm" ; fi
 
 ## set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/bin" ] ; then
+if [[ -d "$HOME/bin" ]] ; then
     PATH="$HOME/bin:$PATH"
+fi
+
+if [[ -d "$HOME/Developer/bin" ]] ; then
+    PATH="$HOME/Developer/bin:$PATH"
 fi
 
 ## Editor
@@ -19,6 +23,8 @@ PATH=$PATH:/usr/local/git/bin/
 alias lft='lft -TeA'
 alias nerd='vim +NERDTree'
 alias sr='screen -r'
+alias g='git'
+alias v='vagrant'
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
@@ -28,7 +34,7 @@ elif [[ $OSTYPE == 'darwin10.0' ]]; then
 fi
 
 ## Bootstrap cinderella
-if [ -d "~/.cinderella" ]; then
+if [[ -d "~/.cinderella" ]]; then
   source ~/.cinderella.profile
 fi
 
