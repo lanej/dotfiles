@@ -9,6 +9,10 @@ if [[ -d "$HOME/bin" ]] ; then
     PATH="$HOME/bin:$PATH"
 fi
 
+if [[ -d "$HOME/.files/bin" ]] ; then
+    PATH="$HOME/.files/bin:$PATH"
+fi
+
 if [[ -d "$HOME/Developer/bin" ]] ; then
     PATH="$HOME/Developer/bin:$PATH"
 fi
