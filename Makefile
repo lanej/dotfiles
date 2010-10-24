@@ -12,6 +12,7 @@ shell:
 	ln -fs $(DOTFILES)/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
 	#ln -fs $(DOTFILES)/gpg.conf ${HOME}/.gnupg/gpg.conf
+	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
 screen:
 	ln -fs $(DOTFILES)/screenrc ${HOME}/.screenrc
 perl:

@@ -1,0 +1,2 @@
+--pager=less -R
+--type-set=haml=.haml
