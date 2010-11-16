@@ -19,6 +19,7 @@ perl:
 vimfiles:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
+	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
 X:
 	ln -fns $(DOTFILES)/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/Xresources ${HOME}/.Xdefaults
