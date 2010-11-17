@@ -80,6 +80,9 @@ set winheight=10
 " ctags stuff
 set tags=./tags,tags,./TAGS,TAGS
 
+" numbers
+set number
+
 " gui stuff
 set guioptions-=T
 set guioptions-=r
