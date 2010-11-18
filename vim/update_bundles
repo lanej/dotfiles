@@ -3,13 +3,14 @@
 # Pulled from Tammer Saleh: http://tammersaleh.com/posts/the-modern-vim-config-with-pathogen
 #
 
-git_bundles = [ 
-  "git://github.com/bronson/vim-bufexplorer.git",
+git_bundles = [
   "git://github.com/lcc/vim-matchit.git",
+  "git://github.com/mileszs/ack.vim.git",
   "git://github.com/msanders/snipmate.vim.git",
   "git://github.com/scrooloose/nerdcommenter.git",
   "git://github.com/scrooloose/nerdtree.git",
   "git://github.com/slack/vim-align.git",
+  "git://github.com/slack/vim-bufexplorer.git",
   "git://github.com/tpope/vim-endwise.git",
   "git://github.com/tpope/vim-markdown.git",
   "git://github.com/tpope/vim-rails.git",
