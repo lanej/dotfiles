@@ -66,13 +66,19 @@ set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04
 set laststatus=2
 
 " NT bindings
-map nt :NERDTree<CR>
-map ntm :NERDTreeMirror<CR>
-map ntc :NERDTreeClose<CR>
+map <leader>nt :NERDTreeToggle<CR>
+map <leader>ntm :NERDTreeMirror<CR>
+map <leader>ntc :NERDTreeClose<CR>
 
 " Align bindings
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
+
+" FuzzyFinder
+let g:fuzzy_ignore = "*.log"
+let g:fuzzy_matching_limit = 70
+map <leader>t :FufFile **/<CR>
+map <leader>b :FufBuffer<CR>
 
 " Set minimum window height
 set winheight=10
@@ -87,3 +93,7 @@ set number
 set guioptions-=T
 set guioptions-=r
 set guioptions-=L
+
+" grep
+set grepprg=ack
+set grepformat=%f:%l:%m
