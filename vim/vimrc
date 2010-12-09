@@ -29,7 +29,7 @@ inoremap <C-L> <C-O>:nohls<CR>
 nnoremap <C-B> :BufExplorer<cr>
 
 " ignore case only if there are no upcase letters in the search
-set ignorecase 
+set ignorecase
 set smartcase
 
 " <tab> completion for filenames

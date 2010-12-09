@@ -14,6 +14,7 @@ git_bundles = [
   "git://github.com/slack/vim-l9.git",
   "git://github.com/slack/vim-fuzzyfinder.git",
   "git://github.com/tpope/vim-endwise.git",
+  "git://github.com/tpope/vim-fugitive.git",
   "git://github.com/tpope/vim-markdown.git",
   "git://github.com/tpope/vim-rails.git",
   "git://github.com/tpope/vim-repeat.git",
