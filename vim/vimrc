@@ -62,7 +62,7 @@ set fileformat=unix
 set nobackup
 
 " Status Line
-set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04v][%p%%]\ [LEN=%L]
+set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04v][%p%%]\ [LEN=%L]\ %{fugitive#statusline()}
 set laststatus=2
 
 " NT bindings
