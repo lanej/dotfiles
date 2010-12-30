@@ -1,12 +1,11 @@
 DOTFILES := $(shell pwd)
-all: shell screen perl ruby X mail vimfiles
+all: shell screen perl ruby X mail vimfiles _git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
-	ln -fs $(DOTFILES)/bash/git_completion.sh ${HOME}/.git_completion.sh
 	ln -fs $(DOTFILES)/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zshenv ${HOME}/.zshenv
@@ -29,3 +28,6 @@ mail:
 ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
+_git:
+	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
+	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
