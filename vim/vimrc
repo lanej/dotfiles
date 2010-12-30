@@ -41,7 +41,7 @@ syntax on
 
 " 256 colors, colorscheme
 set t_Co=256
-colorscheme wombat256
+colorscheme jellybeans
 
 set vb t_vb=
 " set background=dark
