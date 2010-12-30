@@ -17,6 +17,11 @@ if [[ -d "$HOME/Developer/bin" ]] ; then
     PATH="$HOME/Developer/bin:$PATH"
 fi
 
+## source cinderella bash completions
+if [[ -d "$HOME/Developer/etc/bash_completion.d" ]] ; then
+    source $HOME/Developer/etc/bash_completion.d/*.bash
+fi
+
 ## Editor
 export EDITOR=vim
 
