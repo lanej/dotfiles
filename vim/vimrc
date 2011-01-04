@@ -15,7 +15,7 @@ set hidden
 " fixup backspace behavior
 set backspace=indent,eol,start
 
-let mapleader = ",""
+let mapleader = ","
 set history=1000
 
 " searching stuff

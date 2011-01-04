@@ -1,2 +1,16 @@
---pager=less -R
---type-set=haml=.haml
+--color
+--color
+--follow
+--ignore-dir=coverage
+--ignore-dirs=gems
+--ignore-dirs=log
+--ignore-dirs=tmp
+--sort-files
+--type-add=css=.rake
+--type-add=css=.sass
+--type-add=ruby=Rakefile
+--type-add=ruby=.feature
+--type-add=ruby=.gemspec
+--type-add=ruby=.haml
+--type-add=ruby=.ru
+--type-set=cucumber=.feature
