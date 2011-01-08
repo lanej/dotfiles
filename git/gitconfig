@@ -17,7 +17,7 @@
   d = diff
   dc = diff --cached
   v = show
-  l = log --pretty=oneline
+  l = log --decorate --oneline --graph
   ll = log
   cp = cherry-pick
   c  = checkout

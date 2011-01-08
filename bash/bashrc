@@ -35,6 +35,20 @@ alias sr='screen -r'
 alias g='git'
 alias v='vagrant'
 
+## git
+alias gap='git add -p'
+alias gb='git branch'
+alias gc='git commit'
+alias gca='git commit -a'
+alias gco='git checkout'
+alias gd='git diff'
+alias gdc='git diff --cached'
+alias gl='git log --oneline --decorate --graph'
+alias gpl='git pull'
+alias gpu='git push'
+alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
+alias gs='git status'
+
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
   alias ls='ls -p --color=auto'
