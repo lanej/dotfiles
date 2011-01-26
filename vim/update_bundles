@@ -4,7 +4,8 @@
 #
 
 git_bundles = [
-  "git://github.com/lcc/vim-matchit.git",
+  "git://github.com/hallison/vim-rdoc.git",
+  "git://github.com/mhz/vim-matchit.git",
   "git://github.com/mileszs/ack.vim.git",
   "git://github.com/msanders/snipmate.vim.git",
   "git://github.com/scrooloose/nerdcommenter.git",
@@ -21,8 +22,7 @@ git_bundles = [
   "git://github.com/tpope/vim-repeat.git",
   "git://github.com/tpope/vim-surround.git",
   "git://github.com/tpope/vim-vividchalk.git",
-  "git://github.com/vim-ruby/vim-ruby.git",
-  "git://github.com/hallison/vim-rdoc.git"
+  "git://github.com/vim-ruby/vim-ruby.git"
 ]
 
 vim_org_scripts = [
