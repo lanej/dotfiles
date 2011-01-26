@@ -35,6 +35,7 @@ set smartcase
 " <tab> completion for filenames
 set wildmenu
 set wildmode=list:longest
+set complete-=i
 
 " turn syntax highlighting on
 syntax on
