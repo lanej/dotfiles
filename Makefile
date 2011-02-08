@@ -24,7 +24,7 @@ X:
 	ln -fns $(DOTFILES)/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/Xresources ${HOME}/.Xdefaults
 mail:
-	ln -fs $(DOTFILES)/muttrc ${HOME}/.muttrc
+	ln -fs $(DOTFILES)/mutt/muttrc ${HOME}/.muttrc
 _ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
