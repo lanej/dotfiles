@@ -10,19 +10,19 @@ shell:
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
-	#ln -fs $(DOTFILES)/gpg.conf ${HOME}/.gnupg/gpg.conf
+	#ln -fs $(DOTFILES)/rc/gpg.conf ${HOME}/.gnupg/gpg.conf
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
 screen:
-	ln -fs $(DOTFILES)/screenrc ${HOME}/.screenrc
+	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 perl:
-	ln -fs $(DOTFILES)/perltidyrc ${HOME}/.perltidyrc
+	ln -fs $(DOTFILES)/rc/perltidyrc ${HOME}/.perltidyrc
 vimfiles:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
 	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
 X:
-	ln -fns $(DOTFILES)/Xresources ${HOME}/.Xresources
-	ln -fs $(DOTFILES)/Xresources ${HOME}/.Xdefaults
+	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
+	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
 mail:
 	ln -fs $(DOTFILES)/mutt/muttrc ${HOME}/.muttrc
 _ruby:
