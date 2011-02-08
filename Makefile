@@ -6,9 +6,9 @@ shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
-	ln -fs $(DOTFILES)/zshrc ${HOME}/.zshrc
-	ln -fs $(DOTFILES)/zlogout ${HOME}/.zlogout
-	ln -fs $(DOTFILES)/zshenv ${HOME}/.zshenv
+	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
+	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
+	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
 	#ln -fs $(DOTFILES)/gpg.conf ${HOME}/.gnupg/gpg.conf
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
