@@ -35,6 +35,15 @@ alias sr='screen -r'
 alias g='git'
 alias v='vagrant'
 
+## Bundler
+alias b='bundle exec'
+alias sporkit='RELOADS=true bundle exec spork'
+alias ss='bundle exec spec -X -cfs'
+alias s='bundle exec spec -cfs'
+
+## Rails
+alias r='rails'
+
 ## git
 alias gap='git add -p'
 alias gb='git branch'
