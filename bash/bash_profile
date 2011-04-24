@@ -8,6 +8,10 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 
-if [ -d "~/.cinderalla" ]; then
-  source ~/.cinderella.profile
+if [ -d "$HOME/.cinderalla" ]; then
+  source $HOME/.cinderella.profile
+fi
+
+if [ -f "$HOME/.homebrew.profile" ]; then
+  source $HOME/.homebrew.profile
 fi

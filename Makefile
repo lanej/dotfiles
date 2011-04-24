@@ -6,6 +6,7 @@ shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
+	ln -fs $(DOTFILES)/bash/homebrew_profile ${HOME}/.homebrew.profile
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
