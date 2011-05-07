@@ -67,7 +67,7 @@ set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04
 set laststatus=2
 
 " NT bindings
-map <leader>nt :NERDTreeToggle<CR>
+map <leader>n :NERDTreeToggle<CR>
 map <leader>ntm :NERDTreeMirror<CR>
 map <leader>ntc :NERDTreeClose<CR>
 
@@ -96,5 +96,10 @@ set guioptions-=r
 set guioptions-=L
 
 " grep
+map <leader>a :Ack<space>
 set grepprg=ack
 set grepformat=%f:%l:%m
+
+" backup files
+set backupdir=~/.vim/backup
+set directory=~/.vim/backup
