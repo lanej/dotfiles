@@ -7,6 +7,7 @@ git_bundles = [
   "git://github.com/altercation/vim-colors-solarized.git",
   "git://github.com/hallison/vim-rdoc.git",
   "git://github.com/juvenn/mustache.vim.git",
+  "git://github.com/mattn/gist-vim.git",
   "git://github.com/mhz/vim-matchit.git",
   "git://github.com/mileszs/ack.vim.git",
   "git://github.com/msanders/snipmate.vim.git",
@@ -28,7 +29,6 @@ git_bundles = [
 ]
 
 vim_org_scripts = [
-  ["gist",          "12732", "plugin"],
   ["tagexplorer",   "1584",  "plugin"]
 ]
 
