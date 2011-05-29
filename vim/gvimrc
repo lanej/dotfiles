@@ -1,6 +1,7 @@
 set guifont=Inconsolata:h14.00
-colorscheme jellybeans
+colorscheme solarized
 set autoread
+set gcr=n:blinkon0
 
 if has("gui_macvim")
   " Fullscreen takes up entire screen
@@ -12,4 +13,8 @@ if has("gui_macvim")
 
   " Command-/ to toggle comments
   map <D-/> <plug>NERDCommenterToggle<CR>
+
+  " tab navigation
+  map <M-D-Right> :tabnext<CR>
+  map <M-D-Left> :tabprev<CR>
 endif

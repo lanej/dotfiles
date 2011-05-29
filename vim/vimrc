@@ -26,8 +26,6 @@ set incsearch
 nnoremap <C-L> :nohls<CR><C-L>
 inoremap <C-L> <C-O>:nohls<CR>
 
-nnoremap <C-B> :BufExplorer<cr>
-
 " ignore case only if there are no upcase letters in the search
 set ignorecase
 set smartcase
@@ -42,10 +40,10 @@ syntax on
 
 " 256 colors, colorscheme
 set t_Co=256
-colorscheme jellybeans
+colorscheme solarized
+set background=dark
 
 set vb t_vb=
-" set background=dark
 
 filetype plugin indent on
 set ruler
