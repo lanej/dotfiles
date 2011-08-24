@@ -52,6 +52,7 @@ set smarttab
 set shiftwidth=2
 set autoindent
 set expandtab
+set cursorline
 
 " Trailling spaces and tabs
 set list
