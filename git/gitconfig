@@ -32,3 +32,5 @@
   whitespace = trailing-space,space-before-tab
 [apply]
   whitespace = fix
+[url "git@github.com:engineyard/"]
+       insteadOf = ey:

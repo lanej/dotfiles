@@ -28,6 +28,8 @@ export EDITOR=vim
 PATH=$PATH:/usr/local/git/bin/
 
 ## Aliases
+alias eytools='rvm use 1.8.7@ey'
+
 alias lft='lft -TeA'
 alias nerd='vim +NERDTree'
 alias sr='screen -r'
