@@ -15,13 +15,12 @@ export LESS="-RMin"
 export TMP="$HOME/tmp"
 export TMPDIR="$HOME/tmp"
 
-export EMAIL=jhansen@xmission.com
-export NNTPSERVER=news.xmission.com
+export EMAIL=lane.joshlane@gmail.com
 export ARCH=`uname -m`
 
-export IRCNICK='slack'
-export IRCNAME='Helicopters and stone tablets.'
-export IRCSERVER='irc.xmission.com'
+export IRCNICK='lanej'
+#export IRCNAME='Helicopters and stone tablets.'
+export IRCSERVER='irc.freenode.net'
 
 export PILOTRATE=115200
 

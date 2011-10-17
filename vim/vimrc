@@ -40,7 +40,7 @@ syntax on
 
 " 256 colors, colorscheme
 set t_Co=256
-colorscheme solarized
+colorscheme xorium
 set background=dark
 
 set vb t_vb=
