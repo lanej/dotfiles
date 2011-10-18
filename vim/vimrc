@@ -41,8 +41,6 @@ syntax on
 " 256 colors, colorscheme
 set t_Co=256
 colorscheme xorium
-set background=dark
-
 set vb t_vb=
 
 filetype plugin indent on

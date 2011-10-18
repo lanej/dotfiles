@@ -12,13 +12,11 @@ if [[ -d "$HOME/.files/bin" ]] ; then
     PATH="$HOME/.files/bin:$PATH"
 fi
 
-if [[ -d "$HOME/Developer" ]] ; then
-    PATH="$HOME/Developer/sbin:$HOME/Developer/bin:$PATH"
-fi
+PATH="$HOME/sbin:$HOME/bin:$PATH"
 
 ## source cinderella bash completions
-if [[ -d "$HOME/Developer/etc/bash_completion.d" ]] ; then
-    source $HOME/Developer/etc/bash_completion.d/*.bash
+if [[ -d "$HOME/etc/bash_completion.d" ]] ; then
+    source $HOME/etc/bash_completion.d/*.bash
 fi
 
 ## Editor

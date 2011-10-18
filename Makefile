@@ -13,6 +13,8 @@ shell:
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
 	#ln -fs $(DOTFILES)/rc/gpg.conf ${HOME}/.gnupg/gpg.conf
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
+	mkdir -p ${HOME}/etc/bash_completion.d/
+	ln -fs $(DOTFILES)/bash/git-completion.bash ${HOME}/etc/bash_completion.d/git-completion.bash
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
