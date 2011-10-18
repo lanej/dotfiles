@@ -1,5 +1,5 @@
 set guifont=Inconsolata:h14.00
-colorscheme solarized
+colorscheme xorium
 set autoread
 set gcr=n:blinkon0
 
