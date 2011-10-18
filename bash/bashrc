@@ -25,43 +25,17 @@ export EDITOR=vim
 ## PATH
 PATH=$PATH:/usr/local/git/bin/
 
-## Aliases
-alias eytools='rvm use 1.8.7@ey'
-
-alias lft='lft -TeA'
-alias nerd='vim +NERDTree'
-alias sr='screen -r'
-alias g='git'
-alias v='vagrant'
-
-## Bundler
-alias b='bundle exec'
-alias sporkit='RELOADS=true bundle exec spork'
-alias ss='bundle exec spec -X -cfs'
-alias s='bundle exec spec -cfs'
-
-## Rails
-alias r='rails'
-
-## git
-alias gap='git add -p'
-alias gb='git branch'
-alias gc='git commit'
-alias gca='git commit -a'
-alias gco='git checkout'
-alias gd='git diff'
-alias gdc='git diff --cached'
-alias gl='git log --oneline --decorate --graph'
-alias gpl='git pull'
-alias gpu='git push'
-alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
-alias gs='git status'
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
   alias ls='ls -p --color=auto'
 elif [[ $OSTYPE == 'darwin10.0' ]]; then
   alias ls='ls -Gp'
+fi
+
+## alias
+if [[ -s "$HOME/.alias" ]]; then
+  source "$HOME/.alias"
 fi
 
 ## Functions

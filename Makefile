@@ -15,6 +15,7 @@ shell:
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
 	mkdir -p ${HOME}/etc/bash_completion.d/
 	ln -fs $(DOTFILES)/bash/git-completion.bash ${HOME}/etc/bash_completion.d/git-completion.bash
+	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
