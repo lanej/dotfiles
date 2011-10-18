@@ -80,6 +80,7 @@ if [[ -n "${SSH_CONNECTION+x}" ]]; then
 else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
-if [[ -s "$HOME/.rvm/bin/rvm-prompt" ]]; then
-  export PS1="\$(~/.rvm/bin/rvm-prompt v g) $PS1"
+RVM_PROMPT=$(which rvm-prompt);
+if [[ -s $RVM_PROMPT ]]; then
+  export PS1="\$($RVM_PROMPT v g) $PS1"
 fi
