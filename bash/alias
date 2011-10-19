@@ -59,4 +59,4 @@ alias gsd='git stash save && git svn dcommit'
 
 alias enw='emacs -nw'
 alias gi='gem install'
-alias b='(bundle check || bundle install) && bundle exec'
+alias b='bundle-hack'

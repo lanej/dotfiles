@@ -7,14 +7,13 @@ shell:
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
 	ln -fs $(DOTFILES)/bash/homebrew_profile ${HOME}/.homebrew.profile
+	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
-	#ln -fs $(DOTFILES)/rc/gpg.conf ${HOME}/.gnupg/gpg.conf
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
-	mkdir -p ${HOME}/etc/bash_completion.d/
-	ln -fs $(DOTFILES)/bash/git-completion.bash ${HOME}/etc/bash_completion.d/git-completion.bash
+	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
