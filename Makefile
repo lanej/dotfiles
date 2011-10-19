@@ -1,5 +1,5 @@
 DOTFILES := $(shell pwd)
-all: shell tmux screen perl _ruby X mail vimfiles _git
+all: shell tmux screen _ruby X mail vimfiles _git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -19,8 +19,6 @@ screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
-perl:
-	ln -fs $(DOTFILES)/rc/perltidyrc ${HOME}/.perltidyrc
 vimfiles:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
