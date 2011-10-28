@@ -1,4 +1,5 @@
 DOTFILES := $(shell pwd)
+# TODO: https://github.com/scrooloose/syntastic.git
 all: shell tmux screen _ruby X mail vimfiles _git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
