@@ -23,7 +23,7 @@ fi
 export EDITOR=vim
 
 ## PATH
-PATH=$PATH:/usr/local/git/bin/
+PATH=$PATH:/usr/local/git/bin/:/usr/local/sbin
 
 
 ## Set ls options per platform
