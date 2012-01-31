@@ -32,6 +32,7 @@ mail:
 _ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
+	ln -fs ${DOTFILES}/ruby/gemrc ${HOME}/.gemrc
 _git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
