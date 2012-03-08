@@ -1,3 +1,4 @@
 # vim swap files
 .*.sw*
 vim/.netrwhist
+bin/mate

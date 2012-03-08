@@ -57,3 +57,5 @@ if [[ -s $RVM_PROMPT ]]; then
   export PS1="\$($RVM_PROMPT v g) $PS1"
 fi
 export rvm_project_rvmrc=1
+
+PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
