@@ -58,4 +58,8 @@ if [[ -s $RVM_PROMPT ]]; then
 fi
 export rvm_project_rvmrc=1
 
+if [[ -s $(which keychain) ]]; then
+  keychain ~/.ssh/id_rsa
+fi
+
 PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
