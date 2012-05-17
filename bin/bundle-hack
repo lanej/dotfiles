@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-
-(bundle check || bundle install) && bundle exec "$@"
+(bundle check || bundle install)
