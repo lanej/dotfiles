@@ -72,12 +72,6 @@ map <leader>ntc :NERDTreeClose<CR>
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
 
-" FuzzyFinder
-let g:fuzzy_ignore = "*.log"
-let g:fuzzy_matching_limit = 70
-map <leader>t :FufFile **/<CR>
-map <leader>b :FufBuffer<CR>
-
 " Set minimum window height
 set winheight=10
 
@@ -100,3 +94,6 @@ set grepformat=%f:%l:%m
 " backup files
 set backupdir=~/.vim/backup
 set directory=~/.vim/backup
+
+" ctrlp
+set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log

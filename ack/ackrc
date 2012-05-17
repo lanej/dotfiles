@@ -1,5 +1,4 @@
 --color
---color
 --follow
 --ignore-dir=coverage
 --ignore-dirs=gems
