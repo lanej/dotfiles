@@ -15,7 +15,6 @@ git_bundles = [
   "git://github.com/scrooloose/nerdtree.git",
   "git://github.com/slack/vim-align.git",
   "git://github.com/slack/vim-bufexplorer.git",
-  "git://github.com/slack/vim-fuzzyfinder.git",
   "git://github.com/slack/vim-l9.git",
   "git://github.com/tpope/vim-endwise.git",
   "git://github.com/tpope/vim-fugitive.git",
@@ -25,7 +24,8 @@ git_bundles = [
   "git://github.com/tpope/vim-repeat.git",
   "git://github.com/tpope/vim-surround.git",
   "git://github.com/tpope/vim-vividchalk.git",
-  "git://github.com/vim-ruby/vim-ruby.git"
+  "git://github.com/vim-ruby/vim-ruby.git",
+  "git://github.com/kien/ctrlp.vim.git"
 ]
 
 vim_org_scripts = [
