@@ -11,16 +11,12 @@ function svndif() {
 function find_in() {
     find . -iname $1 | xargs grep $2 -sl
 }
-function gsfr () {
-  git svn find-rev $1 | xargs git show
-}
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
 alias apt-get='sudo apt-get'
 alias root='sudo su -'
 alias sp='source ~/.bash_profile'
-alias svndif='svn diff --diff-cmd=colordiff'
 alias nerd='vim +NERDTree'
 
 # git
@@ -45,17 +41,12 @@ alias gb='git branch'
 alias gs='git status -s'
 alias grh='git reset --hard'
 alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
-alias pull='git pull origin master'
 alias gf='git fetch'
 alias gcav='git commit -av'
 alias gcam='git commit -am'
-#alias gsp="stashed=$(git stash save | test); git svn fetch && git svn rebase; test $stashed && git stash pop"
-
-# git svn
-alias gsf='git svn fetch'
-alias gsr='git svn rebase'
-alias gsp='git svn fetch; git stash save &> /dev/null; git svn rebase && git stash pop'
-alias gsd='git stash save && git svn dcommit'
+alias gap='git add -p'
+alias grc='git rebase --continue'
+alias gra='git rebase --abort'
 
 alias enw='emacs -nw'
 alias gi='gem install'
