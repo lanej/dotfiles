@@ -11,6 +11,7 @@ function svndif() {
 function find_in() {
     find . -iname $1 | xargs grep $2 -sl
 }
+alias be='bundle-hack'
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
@@ -50,8 +51,5 @@ alias gra='git rebase --abort'
 
 alias enw='emacs -nw'
 alias gi='gem install'
-alias b='bundle-hack'
-alias be='b && bundle exec'
-alias bo='b && bundle open'
 alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start'
 alias pg-stop='pg_ctl -D /usr/local/var/postgres stop -s -m fast'
