@@ -4,11 +4,9 @@
 #
 
 git_bundles = [
-  "git://github.com/altercation/vim-colors-solarized.git",
-  "git://github.com/hallison/vim-rdoc.git",
-  "git://github.com/juvenn/mustache.vim.git",
+  "git://github.com/vim-scripts/xorium.vim.git",
+  "git://github.com/depuracao/vim-rdoc.git",
   "git://github.com/mattn/gist-vim.git",
-  "git://github.com/mhz/vim-matchit.git",
   "git://github.com/mileszs/ack.vim.git",
   "git://github.com/msanders/snipmate.vim.git",
   "git://github.com/scrooloose/nerdcommenter.git",
