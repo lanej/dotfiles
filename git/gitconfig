@@ -1,6 +1,6 @@
 [user]
-  name = Josh Lane
-  email = lane.joshlane@gmail.com
+	name = Josh Lane
+	email = me@joshualane.com
 [color]
   diff = auto
   status = auto
@@ -36,3 +36,5 @@
 	default = current
 [branch]
 	autosetuprebase = always
+[github]
+	user = lane.joshlane@gmail.com

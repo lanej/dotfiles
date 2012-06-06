@@ -97,4 +97,4 @@ set directory=~/.vim/backup
 
 " ctrlp
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log
-map <leader>t :CtrlP<CR>
+map <leader>f :CtrlP<CR>
