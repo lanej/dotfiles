@@ -98,5 +98,7 @@ set backupdir=~/.vim/backup
 set directory=~/.vim/backup
 
 " ctrlp
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log
+set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
+let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
+map <leader>cf :CtrlPClearCache<CR>
