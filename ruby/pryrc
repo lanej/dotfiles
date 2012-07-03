@@ -1,0 +1,6 @@
+require 'rubygems'
+begin
+  require 'awesome_print'
+rescue LoadError
+  Pry.print = proc { |output, value| output.puts value.ai }
+end
