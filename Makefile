@@ -34,6 +34,7 @@ _ruby:
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
 	ln -fs ${DOTFILES}/ruby/gemrc ${HOME}/.gemrc
+	ruby ${DOTFILES}/vim/update_bundles
 _git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
