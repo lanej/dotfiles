@@ -24,7 +24,7 @@ alias gs='git status -s'
 alias gb='git branch'
 alias grh="git reset --hard"
 alias untar='tar xvfz'
-alias gpl='git pull'
+alias gpl='git pull --rebase'
 alias gl="git log --oneline --decorate --graph"
 alias gsl="GIT_PAGER=cat git log -30 --oneline --decorate --graph"
 alias gph='git push'
