@@ -1,3 +1,4 @@
 .DS\_Store
 .*.sw?
 .bundle
+.hold
