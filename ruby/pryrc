@@ -1,10 +1,11 @@
-#require 'rubygems'
-#begin
-  #require 'awesome_print'
-  #Pry.print = proc { |output, value| output.puts value.ai }
-#rescue LoadError
-#end
+#!/usr/bin/env ruby
+require 'rubygems'
+begin
+ require 'awesome_print'
+ Pry.print = proc { |output, value| output.puts value.ai }
+rescue LoadError
+end
 
-#Pry.commands.alias_command 'c', 'continue'
-#Pry.commands.alias_command 's', 'step'
-#Pry.commands.alias_command 'n', 'next'
+Pry.commands.alias_command 'c', 'continue'
+Pry.commands.alias_command 's', 'step'
+Pry.commands.alias_command 'n', 'next'
