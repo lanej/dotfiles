@@ -1,9 +1,9 @@
 --color
 --follow
 --ignore-dir=coverage
---ignore-dirs=gems
 --ignore-dirs=log
 --ignore-dirs=tmp
+--ignore-dirs=gems
 --sort-files
 --type-add=css=.rake
 --type-add=css=.sass
