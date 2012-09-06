@@ -22,7 +22,8 @@ git_bundles = [
   "git://github.com/tpope/vim-surround.git",
   "git://github.com/tpope/vim-vividchalk.git",
   "git://github.com/vim-ruby/vim-ruby.git",
-  "git://github.com/kien/ctrlp.vim.git"
+  "git://github.com/kien/ctrlp.vim.git",
+  "git://github.com/vim-scripts/YankRing.vim.git",
 ]
 
 vim_org_scripts = [
