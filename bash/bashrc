@@ -20,11 +20,14 @@ if [[ -d "$HOME/etc/bash_completion.d" ]] ; then
 fi
 
 ## Editor
-export EDITOR=vim
+if [[ -s $(which mvim) ]]; then
+  export EDITOR=mvim
+else
+  export EDITOR=vim
+fi
 
 ## PATH
 PATH=$PATH:/usr/local/git/bin/:/usr/local/sbin
-
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
