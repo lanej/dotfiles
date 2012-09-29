@@ -96,10 +96,6 @@ map <leader>a* :Ack<space><cword><CR>
 set grepprg=ack
 set grepformat=%f:%l:%m
 
-" backup files
-set backupdir=~/.vim/backup
-set directory=~/.vim/backup
-
 " ctrlp
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
