@@ -92,6 +92,7 @@ set guioptions-=L
 
 " grep
 map <leader>a :Ack<space>
+map <leader>a* :Ack<space><cword><CR>
 set grepprg=ack
 set grepformat=%f:%l:%m
 
