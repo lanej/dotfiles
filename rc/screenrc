@@ -18,7 +18,7 @@ autodetach		on
 crlf			off
 hardcopy_append	on
 startup_message	off
-defscrollback		2000
+defscrollback		5000
 silencewait		15
 
 vbell on
@@ -39,3 +39,6 @@ bind t focus down
 caption always "%?%F%{...}%?%3n %t%? [%h]%?"
 hardstatus alwayslastline "%{= kW}[%Y-%0m-%0d %0c:%s]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
 activity "%C -> %n%f %t activity!"
+
+# mouse scrolling
+termcapinfo xterm* ti@:te@
