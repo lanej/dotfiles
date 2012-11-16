@@ -75,6 +75,7 @@ map <leader>a= :Align =<CR>
 map <leader>ah :Align =><CR>
 map <leader>= ggVG=<CR>
 map <leader>ct :set et <bar> retab<CR>
+map <leader>rts %s/\v\s+$//g<CR>
 
 " Set minimum window height
 set winheight=10
@@ -101,3 +102,8 @@ set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
 map <leader>cf :CtrlPClearCache<CR>
+
+
+" fuckups
+cnoreabbrev <expr> W ((getcmdtype() is# ':' && getcmdline() is# 'W')?('w'):('W'))
+cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E'))
