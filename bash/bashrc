@@ -66,3 +66,6 @@ if [[ -s $(which keychain) ]]; then
 fi
 
 PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
+
+# homebrew git
+PATH="/usr/local/bin:$PATH"
