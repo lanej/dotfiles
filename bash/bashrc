@@ -55,13 +55,13 @@ if [[ -n "${SSH_CONNECTION+x}" ]]; then
 else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
-RVM_PROMPT=$(which rvm-prompt);
+RVM_PROMPT=$(which rvm-prompt 2>/dev/null);
 if [[ -s $RVM_PROMPT ]]; then
   export PS1="\$($RVM_PROMPT v g) $PS1"
 fi
 export rvm_project_rvmrc=1
 
-if [[ -s $(which keychain) ]]; then
+if [[ -s $(which keychain 2>/dev/null) ]]; then
   keychain ~/.ssh/id_rsa
 fi
 
