@@ -109,8 +109,6 @@ alias cm='cat $HOME/.procmail/log'
 alias dm='cp /dev/null $HOME/.procmail/log'
 alias ms='mailstat -l -s -k $HOME/.procmail/log'
 
-alias news='slrn -h news.xmission.com'
-
 alias slogin='ssh'
 
 alias apg16='apg -a 1 -n 10 -m 16 -x 16 -E l -E l0OI -M CNL | grep -v "[l0OI]"'
