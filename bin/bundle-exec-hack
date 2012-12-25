@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
+(bundle check 1>/dev/null || bundle install --local 1>/dev/null || bundle install) && bundle exec "$@"
 
-(bundle check || bundle install --local || bundle install) && bundle exec "$@"
