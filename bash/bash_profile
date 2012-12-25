@@ -1,4 +1,4 @@
-## run for login shells
+#!/usr/bin/env sh
 
 # if running bash
 if [ -n "$BASH_VERSION" ]; then
@@ -15,6 +15,11 @@ fi
 if [ -f "$HOME/.homebrew.profile" ]; then
   source $HOME/.homebrew.profile
 fi
+
+# Ruby tweaks
 export RUBY_GC_MALLOC_LIMIT=1000000000
 export RUBY_FREE_MIN=500000
 export RUBY_HEAP_MIN_SLOTS=40000
+
+# Git tweaks
+export GIT_PAGER=$(which cat 2>/dev/null)
