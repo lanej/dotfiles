@@ -75,7 +75,13 @@ map <leader>a= :Align =<CR>
 map <leader>ah :Align =><CR>
 map <leader>= ggVG=<CR>
 map <leader>ct :set et <bar> retab<CR>
+
+" Helpers
 map <leader>rts %s/\v\s+$//g<CR>
+map <leader>srt :!sort<CR>
+
+" Ruby
+map <leader>rs :!ruby -c %:p<CR>
 
 " Set minimum window height
 set winheight=10
