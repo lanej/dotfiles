@@ -37,6 +37,6 @@
 [branch]
 	autosetuprebase = always
 [github]
-	user = lane.joshlane@gmail.com
+	user = me@joshualane.com
 [rerere]
 	enabled = true

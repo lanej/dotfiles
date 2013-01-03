@@ -25,7 +25,7 @@ alias gb='git branch'
 alias grh="git reset --hard"
 alias untar='tar xvfz'
 alias gpl='git pull --rebase'
-alias gl="git log --oneline --decorate --graph"
+alias gl="git log --decorate --graph"
 alias gsl="GIT_PAGER=cat git log -30 --oneline --decorate --graph"
 alias gph='git push'
 alias gpom='git push origin master'
@@ -47,18 +47,20 @@ alias gcam='git commit -am'
 alias gap='git add -p'
 alias grc='git rebase --continue'
 alias gra='git rebase --abort'
+alias gfa='git fetch --all'
+alias gcah='git commit --amend -CHEAD'
+alias gmf='git merge --ff-only'
+
+# ruby
 alias b='bundle-hack'
 alias be='bundle-exec-hack'
+alias r='be rspec'
+alias g='be guard'
+alias bl='bundle install --local'
 
 alias enw='emacs -nw'
 alias gi='gem install'
 alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start'
 alias pg-stop='pg_ctl -D /usr/local/var/postgres stop -s -m fast'
-alias gfa='git fetch --all'
-alias bl='bundle install --local'
 alias v='vagrant'
-alias gcah='git commit --amend -CHEAD'
-alias r='be rspec'
-alias g='be guard'
 alias tfl='tail -Fn30 log/*.log'
-alias gmf='git merge --ff-only'
