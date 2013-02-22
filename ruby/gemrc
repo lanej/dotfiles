@@ -1,3 +1,4 @@
+#!/usr/bin/env yaml
 ---
 :backtrace: false
 :benchmark: false
