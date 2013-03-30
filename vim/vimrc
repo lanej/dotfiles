@@ -82,8 +82,8 @@ map <leader>srt :!sort<CR>
 
 " Ruby
 map <leader>rs :!ruby -c %:p<CR>
-map <leader>r18 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
-map <leader>r19 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
+map <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
+map <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
 
 " Set minimum window height
 set winheight=10
