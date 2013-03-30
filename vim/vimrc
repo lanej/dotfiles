@@ -99,6 +99,10 @@ set guioptions-=T
 set guioptions-=r
 set guioptions-=L
 
+" Movement
+nnoremap <C-j> 25j
+nnoremap <C-k> 25k
+
 " grep
 map <leader>a :Ack<space>
 map <leader>a* :Ack<space><cword><CR>
