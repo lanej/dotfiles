@@ -1,0 +1,9 @@
+#! /usr/bin/env /bin/sh
+set -ex
+
+if [ -d '.ssh_config' ]; then
+  cd .ssh_config && git pull origin master;
+  cd -
+else
+  git clone git@github.com:engineyard/ssh-config .ssh_config
+fi

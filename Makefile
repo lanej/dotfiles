@@ -16,6 +16,8 @@ shell:
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
+	sh ${DOTFILES}/bash/update_ssh_config
+	ln -fs ${DOTFILES}/.ssh_config/ssh_config ${HOME}/.ssh/config
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
