@@ -8,16 +8,11 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 
-if [ -d "$HOME/.cinderalla" ]; then
-  source $HOME/.cinderella.profile
-fi
-
-if [ -f "$HOME/.homebrew.profile" ]; then
-  source $HOME/.homebrew.profile
-fi
-
 # Ruby tweaks
 export RUBY_GC_MALLOC_LIMIT=1000000000
 export RUBY_FREE_MIN=500000
 export RUBY_HEAP_MIN_SLOTS=40000
-export HISTFILESIZE=999999
+export HISTFILESIZE=9999
+export HISTSIZE=9999
+
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*

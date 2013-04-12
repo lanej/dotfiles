@@ -26,6 +26,8 @@
   sh = !git-sh
   ro = !git fetch origin && git reset --hard origin/master
   ro2 = !git fetch origin && git reset --hard origin/`git symbolic-ref HEAD | cut -d"/" -f3`
+	ct = checkout -t
+	mf = merge --ff-only
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
