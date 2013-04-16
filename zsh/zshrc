@@ -41,6 +41,6 @@ source $ZSH/oh-my-zsh.sh
 setopt inc_append_history
 setopt share_history
 
-PATH=/Users/jlane/bin:/usr/local/bin:/Users/jlane/.rvm/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin
+PATH=/Users/jlane/bin:/usr/local/bin:/Users/jlane/.rvm/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:$PATH
 
 source ~/.alias
