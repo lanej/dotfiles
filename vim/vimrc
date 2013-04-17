@@ -1,6 +1,9 @@
 " vim ftw
 set nocompatible
 
+" modelines
+set modelines=5
+
 " pathogen.vim ftw
 filetype off
 call pathogen#runtime_append_all_bundles()
