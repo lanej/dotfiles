@@ -66,6 +66,9 @@ set nobackup
 set statusline=%F%m%r%h%w\ [f:%{&ff}\ t:%Y]\ [A:\%03.3b\ H:\%02.2B]\ [P:%04l,%04v][%p%%]\ [LEN=%L]\ %{fugitive#statusline()}
 set laststatus=2
 
+" use bash so that rvm works
+set shell=bash
+
 " NT bindings
 map <leader>n :NERDTreeToggle<CR>
 map <leader>ntm :NERDTreeMirror<CR>
@@ -76,6 +79,8 @@ map <leader>ntf :NERDTreeFind<CR>
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
 map <leader>ah :Align =><CR>
+map <leader>a# :Align #<CR>
+map <leader>A :Align [A-Z].*<CR>:'<,'>s/\s*$//<CR><C-l>
 map <leader>= ggVG=<CR>
 map <leader>ct :set et <bar> retab<CR>
 
@@ -103,8 +108,12 @@ set guioptions-=r
 set guioptions-=L
 
 " Movement
-nnoremap <C-j> 25j
-nnoremap <C-k> 25k
+nnoremap <A-h> <C-w>h
+nnoremap <A-j> <C-w>j
+nnoremap <A-k> <C-w>k
+nnoremap <A-l> <C-w>l
+nnoremap <A-s> <C-w>s
+nnoremap <A-q> <C-w>q
 
 " grep
 map <leader>a :Ack<space>
@@ -113,9 +122,10 @@ set grepprg=ack
 set grepformat=%f:%l:%m
 
 " ctrlp
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
+set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
+map <leader>g :CtrlPBuffer<CR>
 map <leader>cf :CtrlPClearCache<CR>
 
 " fuckups
@@ -128,4 +138,3 @@ set shell=bash
 
 " Save files when vim loses focus
 au FocusLost * :wa
-

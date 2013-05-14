@@ -1,12 +1,14 @@
 --color
 --follow
 --ignore-dir=coverage
---ignore-dirs=log
---ignore-dirs=tmp
---ignore-dirs=gems
+--ignore-dir=log
+--ignore-dir=tmp
+--ignore-dir=gems
+--ignore-dir=bundle
 --sort-files
 --type-add=css=.rake
 --type-add=css=.sass
+--type-add=css=.scss
 --type-add=ruby=Rakefile
 --type-add=ruby=.feature
 --type-add=ruby=.gemspec
