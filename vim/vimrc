@@ -125,3 +125,7 @@ cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E')
 
 " zsh and vim don't get along
 set shell=bash
+
+" Save files when vim loses focus
+au FocusLost * :wa
+
