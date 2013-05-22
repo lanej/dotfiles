@@ -24,6 +24,8 @@
   sh = !git-sh
   st = status
   v = show
+	fa = fetch --all
+	ms = merge --squash
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
