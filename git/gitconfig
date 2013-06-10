@@ -26,6 +26,8 @@
   v = show
 	fa = fetch --all
 	ms = merge --squash
+	ra = rebase --abort
+	pl = pull --rebase
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
