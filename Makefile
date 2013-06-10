@@ -9,6 +9,7 @@ shell:
 	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
 	ln -fs $(DOTFILES)/bash/homebrew_profile ${HOME}/.homebrew.profile
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
+	sh ${DOTFILES}/zsh/oh_my_zsh ${DOTFILES}
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
@@ -16,7 +17,6 @@ shell:
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
-	sh ${DOTFILES}/zsh/oh_my_zsh ${DOTFILES}
 	sh ${DOTFILES}/bash/ssh-config ${DOTFILES}
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
