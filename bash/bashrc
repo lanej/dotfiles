@@ -1,43 +1,14 @@
 #!/usr/bin/env sh
-## RVM
-if [[ -s "$HOME/.rvm/scripts/rvm" ]]  ; then source "$HOME/.rvm/scripts/rvm" ; fi
-
-## set PATH so it includes user's private bin if it exists
-if [[ -d "$HOME/bin" ]] ; then
-    PATH="$HOME/bin:$PATH"
-fi
-
-if [[ -d "$HOME/.files/bin" ]] ; then
-    PATH="$HOME/.files/bin:$PATH"
-fi
-
-PATH="$HOME/sbin:$HOME/bin:$PATH"
-
 ## source cinderella bash completions
 if [[ -d "$HOME/etc/bash_completion.d" ]] ; then
     source $HOME/etc/bash_completion.d/*.bash
 fi
-
-## Editor
-if [[ -s $(which mvim) ]]; then
-  export EDITOR=mvim
-else
-  export EDITOR=vim
-fi
-
-## PATH
-PATH=/usr/local/bin:$PATH:/usr/local/git/bin/:/usr/local/sbin
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
   alias ls='ls -p --color=auto'
 elif [[ $OSTYPE == 'darwin10.0' ]]; then
   alias ls='ls -Gp'
-fi
-
-## alias
-if [[ -s "$HOME/.alias" ]]; then
-  source "$HOME/.alias"
 fi
 
 ## Functions
@@ -54,17 +25,15 @@ if [[ -n "${SSH_CONNECTION+x}" ]]; then
 else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
+
 RVM_PROMPT=$(which rvm-prompt 2>/dev/null);
+
 if [[ -s $RVM_PROMPT ]]; then
   export PS1="\$($RVM_PROMPT v g) $PS1"
 fi
-export rvm_project_rvmrc=1
 
 if [[ -s $(which keychain 2>/dev/null) ]]; then
   keychain ~/.ssh/id_rsa
 fi
 
 PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
-
-# homebrew git
-PATH="/usr/local/bin:$PATH"
