@@ -5,8 +5,8 @@ shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
-	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.profile
-	ln -fs $(DOTFILES)/bash/bash_profile ${HOME}/.bash_profile
+	ln -fs $(DOTFILES)/profile ${HOME}/.bash_profile
+	ln -fs $(DOTFILES)/profile ${HOME}/.zprofile
 	ln -fs $(DOTFILES)/bash/homebrew_profile ${HOME}/.homebrew.profile
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
 	sh ${DOTFILES}/zsh/oh_my_zsh ${DOTFILES}
