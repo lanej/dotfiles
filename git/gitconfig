@@ -14,24 +14,26 @@
   ct = checkout -t
   d = diff
   dc = diff --cached
+  fa = fetch --all
   l = log --decorate --oneline --graph
   ll = log
   ls = branch
   mf = merge --ff-only
+  ms = merge --squash
+  pl = pull --rebase
+  ra = rebase --abort
+  rc = rebase --continue
+  recent = "for-each-ref --format='%(committerdate:relative) %(refname:short)' --sort=-committerdate refs/heads/ --count 25"
   ri = rebase -i
   ro = !git fetch origin && git reset --hard origin/master
   s = status -s
   sh = !git-sh
   st = status
   v = show
-	fa = fetch --all
-	ms = merge --squash
-	ra = rebase --abort
-	pl = pull --rebase
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
-  whitespace = trailing-space,space-before-tab
+  whitespace = trailing-space,space-before-tab,blank-at-eol
 [apply]
   whitespace = fix
 [push]
