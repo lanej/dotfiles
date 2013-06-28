@@ -38,6 +38,8 @@ source $ZSH/oh-my-zsh.sh
 
 setopt inc_append_history
 setopt share_history
+setopt extended_history
 
 unsetopt correct
 unsetopt correct_all
+source ~/.alias

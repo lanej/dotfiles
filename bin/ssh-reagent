@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+
+require 'timeout'
+require 'fileutils'
+
+socks = Dir.glob("/tmp/ssh-*/agent.*").select {|x| File.owned?(x)}
+
+def user_for(filename)
+  Timeout.timeout(10) do
+    output = `SSH_AUTH_SOCK=#{filename} ssh git@github.com 2>&1`
+    (output =~ /Hi (.*)!/ && $1)
+  end
+rescue Timeout::Error
+  :timeout
+end
+
+user = ARGV.first
+case user
+when "cleanup"
+  socks.each do |filename|
+    puts "trying #{filename}"
+    case user_for(filename)
+    when :timeout
+      puts "removing #{filename}"
+      FileUtils.rm(filename)
+    end
+  end
+
+  abort "All socks are good"
+when nil
+  sock = socks.sort_by { rand }.first
+else
+  user = "halorgium" if user == "halo"
+  sock = socks.find do |filename|
+    user == user_for(filename)
+  end
+end
+
+if sock
+  puts("export SSH_AUTH_SOCK=#{sock}")
+else
+  $stderr.puts "No socket found"
+end
