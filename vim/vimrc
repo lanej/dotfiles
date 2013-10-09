@@ -48,12 +48,6 @@ set vb t_vb=
 
 filetype plugin indent on
 set ruler
-set tabstop=2
-set smarttab
-set shiftwidth=2
-set autoindent
-set expandtab
-set cursorline
 
 " Trailling spaces and tabs
 set list
@@ -75,11 +69,18 @@ map <leader>ntm :NERDTreeMirror<CR>
 map <leader>ntc :NERDTreeClose<CR>
 map <leader>ntf :NERDTreeFind<CR>
 
+" disable ex mode
+:map Q <Nop>
+
+" disable ri check
+:map K <Nop>
+
 " Align bindings
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
 map <leader>ah :Align =><CR>
 map <leader>a# :Align #<CR>
+map <leader>a{ :Align {<CR>
 map <leader>A :Align [A-Z].*<CR>:'<,'>s/\s*$//<CR><C-l>
 map <leader>= ggVG=<CR>
 map <leader>ct :set et <bar> retab<CR>
@@ -138,3 +139,11 @@ set shell=bash
 
 " Save files when vim loses focus
 au FocusLost * :wa
+
+" tabs are spaces
+set tabstop=2
+set smarttab
+set shiftwidth=2
+set autoindent
+set expandtab
+set cursorline
