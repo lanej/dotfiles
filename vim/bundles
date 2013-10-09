@@ -20,3 +20,4 @@ git://github.com/kien/ctrlp.vim.git
 git://github.com/juvenn/mustache.vim.git
 git://github.com/noprompt/vim-yardoc.git
 git://github.com/AndrewRadev/splitjoin.vim.git
+git@github.com:derekwyatt/vim-scala.git
