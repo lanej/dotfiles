@@ -20,36 +20,33 @@ alias sp='source ~/.bash_profile'
 alias nerd='vim +NERDTree'
 
 # git
-alias gs='git status -s'
-alias gb='git branch'
-alias grh="git reset --hard"
-alias untar='tar xvfz'
-alias gpl='git pull --rebase'
-alias gl="git log --decorate --graph"
-alias gsl="GIT_PAGER=cat git log -30 --oneline --decorate --graph"
-alias gph='git push'
-alias gpom='git push origin master'
-alias gd='git diff'
-alias gds='GIT_PAGER=cat git diff --stat'
-alias gc='git commit'
-alias gcv='git commit -v'
-alias gca='git commit -av'
 alias gaa='git add -A'
-alias gco='git checkout'
-alias gcl='git clone'
 alias gb='git branch'
-alias gs='git status -s'
-alias grh='git reset --hard'
-alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
-alias gf='git fetch'
-alias gcav='git commit -av'
-alias gcam='git commit -am'
-alias gap='git add -p'
-alias grc='git rebase --continue'
-alias gra='git rebase --abort'
-alias gfa='git fetch --all'
+alias gc='git commit'
+alias gca='git commit -a'
 alias gcah='git commit --amend -CHEAD'
+alias gcam='git commit -am'
+alias gcav='git commit -av'
+alias gcl='git clone'
+alias gco='git checkout'
+alias gcv='git commit -v'
+alias gd='git diff'
+alias gdc='git diff --cached'
+alias gds='GIT_PAGER=cat git diff --stat'
+alias gf='git fetch'
+alias gfa='git fetch --all'
+alias gl="git log --decorate --graph"
 alias gmf='git merge --ff-only'
+alias gph='git push'
+alias gpl='git pull --rebase'
+alias gpom='git push origin master'
+alias gra='git rebase --abort'
+alias grc='git rebase --continue'
+alias grh="git reset --hard"
+alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
+alias gs='git status -s'
+alias gsl="GIT_PAGER=cat git log -30 --oneline --decorate --graph"
+alias gslp='git log --stat -p'
 
 # ruby
 alias b='bundle-hack'
@@ -66,8 +63,7 @@ alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/ser
 alias pg-stop='pg_ctl -D /usr/local/var/postgres stop -s -m fast'
 alias v='vagrant'
 
+alias untar='tar xvfz'
 alias tfl='tail -Fn30 log/*.log'
-alias gmf='git merge --ff-only'
-alias gslp='git log --stat -p'
-alias gdc='git diff --cached'
 alias c="clear"
+alias retab="find . -iname '*.rb' | xargs sed -Ei '' 's/	/  /g'"
