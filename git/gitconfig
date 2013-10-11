@@ -7,6 +7,7 @@
   branch = auto
 [alias]
   a = add
+  ap = add -p
   br = branch
   ci = commit
   co = checkout
