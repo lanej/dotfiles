@@ -67,3 +67,4 @@ alias untar='tar xvfz'
 alias tfl='tail -Fn30 log/*.log'
 alias c="clear"
 alias retab="find . -iname '*.rb' | xargs sed -Ei '' 's/	/  /g'"
+alias ey-meta='CLOUD_URL=https://cloud-meta.engineyard.com ey'
