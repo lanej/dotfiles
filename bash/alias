@@ -21,6 +21,7 @@ alias nerd='vim +NERDTree'
 
 # git
 alias gaa='git add -A'
+alias gap='git add -p'
 alias gb='git branch'
 alias gc='git commit'
 alias gca='git commit -a'
@@ -56,9 +57,7 @@ alias g='be guard'
 alias r='be rspec'
 alias reado="\`~/bin/ssh-reagent\`"
 
-
 alias enw='emacs -nw'
-alias gi='gem install'
 alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start'
 alias pg-stop='pg_ctl -D /usr/local/var/postgres stop -s -m fast'
 alias v='vagrant'
