@@ -147,3 +147,7 @@ set shiftwidth=2
 set autoindent
 set expandtab
 set cursorline
+
+
+" remove trailing whitespace automatically
+autocmd BufWritePre * :%s/\s\+$//e
