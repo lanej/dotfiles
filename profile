@@ -17,7 +17,7 @@ if [[ -d "$HOME/.files/bin" ]] ; then
     PATH="$HOME/.files/bin:$PATH"
 fi
 
-export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin/:/usr/local/sbin"
+export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin:/usr/local/sbin"
 
 # Ruby tweaks
 export RUBY_GC_MALLOC_LIMIT=1000000000
