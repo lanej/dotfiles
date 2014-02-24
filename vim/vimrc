@@ -94,6 +94,9 @@ map <leader>rs :!ruby -c %:p<CR>
 map <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
 map <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
 
+" Haml
+map <leader>hs :!haml -c %:p<CR>
+
 " Set minimum window height
 set winheight=10
 
@@ -132,6 +135,7 @@ map <leader>cf :CtrlPClearCache<CR>
 " fuckups
 cnoreabbrev <expr> W ((getcmdtype() is# ':' && getcmdline() is# 'W')?('w'):('W'))
 cnoreabbrev <expr> Wa ((getcmdtype() is# ':' && getcmdline() is# 'Wa')?('wa'):('Wa'))
+cnoreabbrev <expr> Wqa ((getcmdtype() is# ':' && getcmdline() is# 'Wqa')?('wqa'):('Wqa'))
 cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E'))
 
 " zsh and vim don't get along
@@ -147,3 +151,9 @@ set shiftwidth=2
 set autoindent
 set expandtab
 set cursorline
+
+" remove trailing whitespace automatically
+autocmd BufWritePre * :%s/\s\+$//e
+
+" retab on write
+autocmd BufWritePre * :set et | retab
