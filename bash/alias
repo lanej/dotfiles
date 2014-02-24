@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 function fhr () {
-	find . -iname "*$**"
+  find . -iname "*$**"
 }
 function rd() {
     rdesktop -g 1400x900 $*
@@ -51,10 +51,12 @@ alias gslp='git log --stat -p'
 
 # ruby
 alias b='bundle-hack'
+alias bi='bundle-hack install'
 alias be='bundle-exec-hack'
 alias bl='bundle install --local'
 alias g='be guard'
 alias r='be rspec'
+alias rff='r --fail-fast'
 alias reado="\`~/bin/ssh-reagent\`"
 
 alias enw='emacs -nw'
