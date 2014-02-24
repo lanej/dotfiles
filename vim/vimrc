@@ -6,8 +6,9 @@ set modelines=5
 
 " pathogen.vim ftw
 filetype off
-call pathogen#runtime_append_all_bundles()
+call pathogen#incubate()
 call pathogen#helptags()
+execute pathogen#infect()
 
 " set the title in xterm
 set title
