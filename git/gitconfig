@@ -31,6 +31,8 @@
   sh = !git-sh
   st = status
   v = show
+	ds = diff --stat
+	cahr = commit --amend -CHEAD --reset-author
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
