@@ -45,3 +45,6 @@ unsetopt correct_all
 source ~/.alias
 
 PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
+
+# added by travis gem
+[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
