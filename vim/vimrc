@@ -153,7 +153,7 @@ set expandtab
 set cursorline
 
 " remove trailing whitespace automatically
-autocmd BufWritePre * :%s/\s\+$//e
+autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " retab on write
-autocmd BufWritePre * :set et | retab
+autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
