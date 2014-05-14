@@ -6,7 +6,7 @@ git://github.com/msanders/snipmate.vim.git
 git://github.com/scrooloose/nerdcommenter.git
 git://github.com/scrooloose/nerdtree.git
 git://github.com/slack/vim-align.git
-git://github.com/slack/vim-bufexplorer.git
+git://github.com/jlanzarotta/bufexplorer.git
 git://github.com/slack/vim-l9.git
 git://github.com/tpope/vim-fugitive.git
 git://github.com/tpope/vim-haml.git
