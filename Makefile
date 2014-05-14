@@ -1,6 +1,6 @@
 DOTFILES := $(shell pwd)
 # TODO: https://github.com/scrooloose/syntastic.git
-all: shell tmux screen _ruby X mail vimfiles _git
+all: shell tmux screen _ruby X mail _vim _git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -22,10 +22,11 @@ screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
-vimfiles:
+_vim:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
 	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
+	ruby ${DOTFILES}/vim/update_bundles
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
@@ -36,7 +37,6 @@ _ruby:
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
 	ln -fs ${DOTFILES}/ruby/gemrc ${HOME}/.gemrc
-	ruby ${DOTFILES}/vim/update_bundles
 _git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
