@@ -123,8 +123,7 @@ nnoremap <A-q> <C-w>q
 " grep
 map <leader>a :Ack<space>
 map <leader>a* :Ack<space><cword><CR>
-set grepprg=ack
-set grepformat=%f:%l:%m
+
 
 " ctrlp
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
