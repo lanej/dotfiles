@@ -37,3 +37,6 @@ if [[ -s $(which keychain 2>/dev/null) ]]; then
 fi
 
 PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
+
+# added by travis gem
+[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
