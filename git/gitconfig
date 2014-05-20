@@ -13,10 +13,10 @@
   co = checkout
   cp = cherry-pick
   ct = checkout -t
-  d = diff
-  dc = diff --cached
+	d = diff
+	dc = diff
   fa = fetch --all
-  l = log --decorate --oneline --graph
+	l = log --decorate --graph
   ll = log
   ls = branch
   mf = merge --ff-only
@@ -31,8 +31,20 @@
   sh = !git-sh
   st = status
   v = show
-	ds = diff --stat
+	ds = diff
 	cahr = commit --amend -CHEAD --reset-author
+	aa = add -A
+	b = branch
+	c = commit
+	a = commit
+	ca = commit
+	cl = clone
+	cv = commit -v
+	f = fetch
+	ph = push
+	rh = reset --hard
+	slp = log --stat -p
+	cah = commit --amend -CHEAD
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
