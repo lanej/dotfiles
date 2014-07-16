@@ -14,8 +14,8 @@
   cp = cherry-pick
   ct = checkout -t
 	d = diff
-	dc = diff
-  fa = fetch --all
+	dc = diff --cached
+	fa = fetch --all --tags
 	l = log --decorate --graph
   ll = log
   ls = branch
@@ -45,6 +45,9 @@
 	rh = reset --hard
 	slp = log --stat -p
 	cah = commit --amend -CHEAD
+	cav = commit -av
+	sl = log --oneline --graph
+	cm = commit
 [core]
   editor = /usr/bin/vim
   excludesfile = ~/.gitignore
