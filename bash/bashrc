@@ -26,17 +26,12 @@ else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-RVM_PROMPT=$(which rvm-prompt 2>/dev/null);
-
-if [[ -s $RVM_PROMPT ]]; then
-  export PS1="\$($RVM_PROMPT v g) $PS1"
-fi
-
 if [[ -s $(which keychain 2>/dev/null) ]]; then
   keychain ~/.ssh/id_rsa
 fi
 
-PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
-
 # added by travis gem
 [ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
+
+source /usr/local/opt/chruby/share/chruby/chruby.sh
+source /usr/local/opt/chruby/share/chruby/auto.sh
