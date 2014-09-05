@@ -32,7 +32,7 @@ alias bl='bundle install --local'
 alias guard='be guard'
 alias r='be rspec'
 alias rff='r --fail-fast'
-alias reado="\`~/bin/ssh-reagent\`"
+alias reado="ssh-reagent $*"
 
 alias enw='emacs -nw'
 alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start'
