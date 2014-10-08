@@ -14,6 +14,9 @@ if has("gui_macvim")
   " Command-/ to toggle comments
   map <D-/> <plug>NERDCommenterToggle<CR>
 
+  " \-\ to toggle comments
+  map <Bslash><Bslash> <plug>NERDCommenterToggle<CR>
+
   " tab navigation
   map <M-D-Right> :tabnext<CR>
   map <M-D-Left> :tabprev<CR>
