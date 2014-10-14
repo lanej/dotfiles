@@ -119,6 +119,10 @@ nnoremap <A-k> <C-w>k
 nnoremap <A-l> <C-w>l
 nnoremap <A-s> <C-w>s
 nnoremap <A-q> <C-w>q
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-h> <C-w>h
+nnoremap <C-l> <C-w>l
 
 " grep
 map <leader>a :Ack<space>
@@ -157,3 +161,13 @@ autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
 
 " retab on write
 autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+
+" vim rspec mappings
+let g:rspec_runner = "os_x_iterm"
+let g:rspec_command = "r {spec}"
+map <Bslash>t :call RunCurrentSpecFile()<CR>
+map <Bslash>s :call RunNearestSpec()<CR>
+map <Bslash>l :call RunLastSpec()<CR>
+map <Bslash>a :call RunAllSpecs()<CR>
+
+nnoremap <silent> <esc> :noh<cr><esc>
