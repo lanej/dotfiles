@@ -26,3 +26,4 @@ git://github.com/othree/javascript-libraries-syntax.vim.git
 https://github.com/Lokaltog/vim-easymotion
 git@github.com:craigemery/vim-autotag.git
 git@github.com:thoughtbot/vim-rspec.git
+git@github.com:junegunn/vim-easy-align.git
