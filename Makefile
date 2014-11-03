@@ -15,6 +15,7 @@ shell:
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	ln -fs $(DOTFILES)/friends ${HOME}/.friends
 	ln -fs $(DOTFILES)/ack/ackrc ${HOME}/.ackrc
+	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 	sh ${DOTFILES}/bash/ssh-config ${DOTFILES}
