@@ -1,6 +1,6 @@
 DOTFILES := $(shell pwd)
 # TODO: https://github.com/scrooloose/syntastic.git
-all: shell tmux screen _ruby X mail _vim _git
+all: shell tmux screen _ruby X _vim _git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -31,8 +31,6 @@ _vim:
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
-mail:
-	ln -fs $(DOTFILES)/mutt/muttrc ${HOME}/.muttrc
 _ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
