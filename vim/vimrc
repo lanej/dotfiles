@@ -122,7 +122,7 @@ nnoremap <A-q> <C-w>q
 nnoremap <C-j> <C-w>j
 nnoremap <C-k> <C-w>k
 nnoremap <C-h> <C-w>h
-nnoremap <C-l> <C-w>l
+"nnoremap <C-l> <C-w>l
 
 " grep
 map <leader>a :Ack<space>
@@ -170,7 +170,7 @@ map <Bslash>s :call RunNearestSpec()<CR>
 map <Bslash>l :call RunLastSpec()<CR>
 map <Bslash>a :call RunAllSpecs()<CR>
 
-nnoremap <silent> <esc> :noh<cr><esc>
+"nnoremap <silent> <esc> :noh<cr><esc>
 
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
 vmap <Enter> <Plug>(EasyAlign)

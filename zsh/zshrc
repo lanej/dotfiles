@@ -37,8 +37,8 @@ plugins=(git rails ruby battery brew history-substring-search osx pow powder rak
 source $ZSH/oh-my-zsh.sh
 
 setopt inc_append_history
-setopt share_history
 setopt extended_history
+unsetopt share_history
 
 unsetopt correct
 unsetopt correct_all
@@ -49,4 +49,5 @@ source ~/.alias
 
 source /usr/local/opt/chruby/share/chruby/chruby.sh
 source /usr/local/opt/chruby/share/chruby/auto.sh
-chruby 2.1.2
+
+chruby 2.1.5
