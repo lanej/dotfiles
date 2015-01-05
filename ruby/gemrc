@@ -1,10 +1,9 @@
-#!/usr/bin/env yaml
 ---
 :backtrace: false
-:benchmark: false
 :bulk_threshold: 1000
 :sources:
 - https://rubygems.org/
 :update_sources: true
 :verbose: true
-gem: --no-ri --no-rdoc
+benchmark: false
+gem: "--no-ri --no-rdoc"
