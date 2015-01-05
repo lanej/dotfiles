@@ -28,7 +28,6 @@ git@github.com:craigemery/vim-autotag.git
 git@github.com:thoughtbot/vim-rspec.git
 git@github.com:junegunn/vim-easy-align.git
 https://github.com/wting/rust.vim.git
-git@github.com:rorymckinley/vim-rubyhash.git
-git@github.com:vim-scripts/ConflictMotions.git
-git@github.com:vim-scripts/CountJump.git
-git@github.com:vim-scripts/ingo-library.git
+git@github.com:rhysd/vim-clang-format.git
+git@github.com:justmao945/vim-clang.git
+git@github.com:jimenezrick/vimerl.git
