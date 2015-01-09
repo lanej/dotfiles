@@ -67,5 +67,6 @@
 [help]
 	autocorrect = 5
 [filter "media"]
-	clean = git-media-clean %f
-	smudge = git-media-smudge %f
+	required = true
+	clean = git media clean %f
+	smudge = git media smudge %f
