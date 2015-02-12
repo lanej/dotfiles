@@ -150,7 +150,7 @@ cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E')
 set shell=bash
 
 " Save files when vim loses focus
-au FocusLost * :wa
+au FocusLost * silent! wa
 
 " tabs are spaces
 set tabstop=2
