@@ -46,7 +46,7 @@
 	slp = log --stat -p
 	cah = commit --amend -CHEAD
 	cav = commit -av
-	sl = log --oneline --graph
+	sl = log --oneline --graph --decorate
 	cm = commit
 [core]
   editor = /usr/bin/vim
