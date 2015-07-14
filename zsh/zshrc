@@ -51,7 +51,7 @@ source ~/.alias
 source /usr/local/opt/chruby/share/chruby/chruby.sh
 source /usr/local/opt/chruby/share/chruby/auto.sh
 
-chruby 2.1.5
+chruby 2.2
 
 export VISUAL=mvim
 export EDITOR=vim
