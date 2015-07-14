@@ -32,3 +32,8 @@ git@github.com:rhysd/vim-clang-format.git
 git@github.com:justmao945/vim-clang.git
 git@github.com:jimenezrick/vimerl.git
 https://github.com/bling/vim-airline.git
+git@github.com:elixir-lang/vim-elixir.git
+https://github.com/fatih/vim-go.git
+git://github.com/groenewege/vim-less.git
+https://github.com/tpope/vim-dotenv.git
+git@github.com:kchmck/vim-coffee-script.git
