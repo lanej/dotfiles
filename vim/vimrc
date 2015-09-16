@@ -166,6 +166,20 @@ autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
 " retab on write
 autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
 
+" create parent directories on write
+function s:MkNonExDir(file, buf)
+    if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
+        let dir=fnamemodify(a:file, ':h')
+        if !isdirectory(dir)
+            call mkdir(dir, 'p')
+        endif
+    endif
+endfunction
+augroup BWCCreateDir
+    autocmd!
+    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+augroup END
+
 " vim rspec mappings
 let g:rspec_runner = "os_x_iterm"
 let g:rspec_command = "r {spec}"
