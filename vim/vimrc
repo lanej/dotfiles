@@ -182,7 +182,7 @@ augroup END
 
 " vim rspec mappings
 let g:rspec_runner = "os_x_iterm"
-let g:rspec_command = "r {spec}"
+let g:rspec_command = "rff {spec}"
 map <Bslash>t :call RunCurrentSpecFile()<CR>
 map <Bslash>s :call RunNearestSpec()<CR>
 map <Bslash>l :call RunLastSpec()<CR>
