@@ -3,3 +3,5 @@
 vim/.netrwhist
 bin/mate
 .ssh_config
+bin/*
+vim/spell
