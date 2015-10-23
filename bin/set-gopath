@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+echo "export GOPATH=$PWD; export PATH=$GOPATH/bin:$PATH"
