@@ -47,3 +47,6 @@ alias ey-meta='CLOUD_URL=https://cloud-meta.engineyard.com ey'
 alias pt=papertrail
 alias fucking='sudo'
 alias k='kubectl'
+
+alias ds="DEIS_PROFILE=staging deis"
+alias dp="DEIS_PROFILE=production deis"
