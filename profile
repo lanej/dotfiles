@@ -43,3 +43,5 @@ export HISTFILESIZE=9999
 export HISTSIZE=9999
 
 source "$HOME/.alias"
+
+export GO15VENDOREXPERIMENT=1

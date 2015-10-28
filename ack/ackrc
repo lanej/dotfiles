@@ -11,8 +11,10 @@
 --type-add=css=.scss
 --type-add=ruby=Rakefile
 --type-add=ruby=.feature
+--type-add=go=.a
 --type-add=ruby=.gemspec
 --type-add=ruby=.haml
 --type-add=ruby=.ru
 --type-set=cucumber=.feature
 --ignore-dir=.git
+--ignore-dir=vendor

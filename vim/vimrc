@@ -160,12 +160,6 @@ set autoindent
 set expandtab
 set cursorline
 
-" remove trailing whitespace automatically
-autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
-
-" retab on write
-autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
-
 " create parent directories on write
 function s:MkNonExDir(file, buf)
     if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
@@ -218,6 +212,11 @@ nnoremap <Leader>M :make!<CR>
 
 " airline
 let g:airline#extensions#tabline#enabled = 0
+let g:airline#extensions#branch#enabled = 1
+let g:airline_left_sep=''
+let g:airline_left_alt_sep=''
+let g:airline_right_sep=''
+let g:airline_right_alt_sep=''
 
 let g:tagbar_type_go = {
     \ 'ctagstype' : 'go',
@@ -254,10 +253,52 @@ let g:go_highlight_methods = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_build_constraints = 1
+
 " Tagbar
 map <leader>tt :TagbarToggle<cr>
 
-au FileType go nmap <leader>r <Plug>(go-run)
-au FileType go nmap <leader>b <Plug>(go-build)
-au FileType go nmap <leader>t <Plug>(go-test)
-au FileType go nmap <leader>c <Plug>(go-coverage)
+if has("autocmd")
+augroup filetype_ruby
+  autocmd!
+  autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+augroup END
+
+augroup straggelers
+  " remove trailing spaces
+  autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
+  " remove trailing whitespace automatically
+  autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+
+augroup filetype_haml
+  autocmd!
+  autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+augroup END
+
+augroup filetype_yaml
+  autocmd!
+  autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+augroup END
+
+augroup filetype_perl
+  autocmd!
+  autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+augroup END
+
+augroup filetype_go
+  autocmd!
+
+  autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
+
+  autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
+  autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
+  autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
+  autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
+  autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
+  autocmd FileType go nmap <Leader>in  <Plug>(go-info)
+  autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
+  autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
+  autocmd FileType go nmap <Leader>f   :GoImports<CR>
+
+
+augroup END
+endif
