@@ -5,3 +5,4 @@ bin/mate
 .ssh_config
 bin/*
 vim/spell
+vim/plugged

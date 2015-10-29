@@ -26,8 +26,9 @@ tmux:
 _vim:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
+	ln -fs $(DOTFILES)/vim/vimrc.bundles ${HOME}/.vimrc.bundles
+	ln -fs $(DOTFILES)/vim/vimrc.neocomplete ${HOME}/.vimrc.neocomplete
 	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
-	ruby ${DOTFILES}/vim/update_bundles
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
