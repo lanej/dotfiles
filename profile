@@ -25,6 +25,7 @@ if [[ -s $(which mvim) ]]; then
 else
   export EDITOR=vim
 fi
+export VISUAL=mvim
 
 export HISTFILESIZE=9999
 export HISTSIZE=9999
@@ -38,3 +39,14 @@ export PATH=$HOME/bin:$PATH # shift in custom bins
 export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
 export GIT_SSH="$HOME/bin/git-ssh"
 export GO15VENDOREXPERIMENT=1
+
+# added by travis gem
+[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
+
+# chruby
+source /usr/local/opt/chruby/share/chruby/chruby.sh
+source /usr/local/opt/chruby/share/chruby/auto.sh
+
+chruby 2.2
+
+export GPG_TTY=`tty`

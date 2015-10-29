@@ -42,17 +42,3 @@ unsetopt share_history
 
 unsetopt correct
 unsetopt correct_all
-source ~/.alias
-
-# added by travis gem
-[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
-
-# chruby
-source /usr/local/opt/chruby/share/chruby/chruby.sh
-source /usr/local/opt/chruby/share/chruby/auto.sh
-
-chruby 2.2
-
-export VISUAL=mvim
-export EDITOR=vim
-export GPG_TTY=`tty`
