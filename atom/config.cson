@@ -1,0 +1,24 @@
+"*":
+  "exception-reporting":
+    userId: "c141f735-ebf0-4522-4185-982b368094dd"
+  welcome:
+    showOnStartup: false
+  core:
+    audioBeep: false
+    themes: [
+      "atom-dark-ui"
+      "atom-dark-syntax"
+    ]
+  editor:
+    invisibles: {}
+    zoomFontWhenCtrlScrolling: true
+    fontSize: 13
+    showInvisibles: true
+    showIndentGuide: true
+    softWrap: true
+  minimap: {}
+  "atom-alignment": {}
+  "go-plus":
+    runCoverageOnSave: true
+  "highlight-selected":
+    onlyHighlightWholeWords: true
