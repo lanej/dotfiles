@@ -193,20 +193,6 @@ cnoreabbrev <expr> Wa ((getcmdtype() is# ':' && getcmdline() is# 'Wa')?('wa'):('
 cnoreabbrev <expr> Wqa ((getcmdtype() is# ':' && getcmdline() is# 'Wqa')?('wqa'):('Wqa'))
 cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E'))
 
-" create parent directories on write
-function s:MkNonExDir(file, buf)
-  if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
-    let dir=fnamemodify(a:file, ':h')
-    if !isdirectory(dir)
-      call mkdir(dir, 'p')
-    endif
-  endif
-endfunction
-augroup BWCCreateDir
-  autocmd!
-  autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
-augroup END
-
 " vim rspec mappings
 let g:rspec_runner = "os_x_iterm"
 let g:rspec_command = "rff {spec}"
@@ -222,7 +208,6 @@ vmap <Enter> <Plug>(EasyAlign)
 nmap <Leader>l <Plug>(EasyAlign)
 
 set shortmess=a
-set cmdheight=2
 
 let g:clang_format#style_options = {
       \ "AccessModifierOffset" : -4,
@@ -280,6 +265,18 @@ let g:go_highlight_build_constraints = 1
 " Tagbar
 map <leader>tt :TagbarToggle<cr>
 
+if !exists("*s:MkNonExDir")
+  " create parent directories on write
+  function s:MkNonExDir(file, buf)
+    if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
+      let dir=fnamemodify(a:file, ':h')
+      if !isdirectory(dir)
+        call mkdir(dir, 'p')
+      endif
+    endif
+  endfunction
+endif
+
 if has("autocmd")
   augroup filetype_ruby
     autocmd!
@@ -287,6 +284,7 @@ if has("autocmd")
   augroup END
 
   augroup straggelers
+    autocmd!
     " remove trailing spaces
     autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
     " remove trailing whitespace automatically
@@ -309,6 +307,7 @@ if has("autocmd")
   augroup END
 
   augroup filetype_c
+    autocmd!
     " map to <Leader>cf in C++ code
     autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
     autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
@@ -321,7 +320,7 @@ if has("autocmd")
   augroup filetype_go
     autocmd!
 
-    autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
+    autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
 
     autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
     autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
@@ -331,7 +330,12 @@ if has("autocmd")
     autocmd FileType go nmap <Leader>in  <Plug>(go-info)
     autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
     autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
-    autocmd FileType go nmap <Leader>f   :GoImports<CR>
+    autocmd FileType go nmap <Leader>i   :GoImports<CR>
 
+  augroup END
+
+  augroup BWCCreateDir
+    autocmd!
+    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
   augroup END
 endif
