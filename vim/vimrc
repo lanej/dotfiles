@@ -56,11 +56,11 @@ filetype plugin indent on
 
 " =============== vim-plug Initialization ===============
 if filereadable(expand("~/.vimrc.bundles"))
-    source ~/.vimrc.bundles
+  source ~/.vimrc.bundles
 endif
 
 if filereadable(expand("~/.vimrc.neocomplete"))
-    source ~/.vimrc.neocomplete
+  source ~/.vimrc.neocomplete
 endif
 
 " =============== UI ================
@@ -97,7 +97,7 @@ let g:ag_prg="ag --vimgrep --smart-case --nogroup --nocolor --skip-vcs-ignores"
 
 set grepprg=ag\ --nogroup\ --nocolor
 if &grepformat !~# '%c'
-    set grepformat^=%f:%l:%c:%m
+  set grepformat^=%f:%l:%c:%m
 endif
 
 " ================ Scrolling ========================
@@ -107,8 +107,8 @@ set sidescroll=1
 
 " ================ Status Line ======================
 if has('cmdline_info')
-    set showcmd                 " Show partial commands in status line and
-    " Selected characters/lines in visual mode
+  set showcmd                 " Show partial commands in status line and
+  " Selected characters/lines in visual mode
 endif
 
 " NT bindings
@@ -193,11 +193,6 @@ cnoreabbrev <expr> Wa ((getcmdtype() is# ':' && getcmdline() is# 'Wa')?('wa'):('
 cnoreabbrev <expr> Wqa ((getcmdtype() is# ':' && getcmdline() is# 'Wqa')?('wqa'):('Wqa'))
 cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E'))
 
-augroup BWCCreateDir
-    autocmd!
-    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
-augroup END
-
 " vim rspec mappings
 let g:rspec_runner = "os_x_iterm"
 let g:rspec_command = "rff {spec}"
@@ -215,10 +210,10 @@ nmap <Leader>l <Plug>(EasyAlign)
 set shortmess=a
 
 let g:clang_format#style_options = {
-            \ "AccessModifierOffset" : -4,
-            \ "AllowShortIfStatementsOnASingleLine" : "true",
-            \ "AlwaysBreakTemplateDeclarations" : "true",
-            \ "Standard" : "C++11"}
+      \ "AccessModifierOffset" : -4,
+      \ "AllowShortIfStatementsOnASingleLine" : "true",
+      \ "AlwaysBreakTemplateDeclarations" : "true",
+      \ "Standard" : "C++11"}
 
 set makeprg="make -j9"
 nnoremap <Leader>M :make!<CR>
@@ -232,32 +227,32 @@ let g:airline_right_sep=''
 let g:airline_right_alt_sep=''
 
 let g:tagbar_type_go = {
-            \ 'ctagstype' : 'go',
-            \ 'kinds'     : [
-            \ 'p:package',
-            \ 'i:imports:1',
-            \ 'c:constants',
-            \ 'v:variables',
-            \ 't:types',
-            \ 'n:interfaces',
-            \ 'w:fields',
-            \ 'e:embedded',
-            \ 'm:methods',
-            \ 'r:constructor',
-            \ 'f:functions'
-            \ ],
-            \ 'sro' : '.',
-            \ 'kind2scope' : {
-            \ 't' : 'ctype',
-            \ 'n' : 'ntype'
-            \ },
-            \ 'scope2kind' : {
-            \ 'ctype' : 't',
-            \ 'ntype' : 'n'
-            \ },
-            \ 'ctagsbin'  : 'gotags',
-            \ 'ctagsargs' : '-sort -silent'
-            \ }
+      \ 'ctagstype' : 'go',
+      \ 'kinds'     : [
+      \ 'p:package',
+      \ 'i:imports:1',
+      \ 'c:constants',
+      \ 'v:variables',
+      \ 't:types',
+      \ 'n:interfaces',
+      \ 'w:fields',
+      \ 'e:embedded',
+      \ 'm:methods',
+      \ 'r:constructor',
+      \ 'f:functions'
+      \ ],
+      \ 'sro' : '.',
+      \ 'kind2scope' : {
+      \ 't' : 'ctype',
+      \ 'n' : 'ntype'
+      \ },
+      \ 'scope2kind' : {
+      \ 'ctype' : 't',
+      \ 'ntype' : 'n'
+      \ },
+      \ 'ctagsbin'  : 'gotags',
+      \ 'ctagsargs' : '-sort -silent'
+      \ }
 
 
 " go
@@ -270,72 +265,77 @@ let g:go_highlight_build_constraints = 1
 " Tagbar
 map <leader>tt :TagbarToggle<cr>
 
-if has("autocmd")
-    augroup filetype_ruby
-        autocmd!
-        autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    augroup END
-
-    augroup straggelers
-        autocmd!
-        " remove trailing spaces
-        autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
-        " remove trailing whitespace automatically
-        autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
-    augroup END
-
-    augroup filetype_haml
-        autocmd!
-        autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    augroup END
-
-    augroup filetype_yaml
-        autocmd!
-        autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    augroup END
-
-    augroup filetype_perl
-        autocmd!
-        autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
-    augroup END
-
-    augroup filetype_c
-        autocmd!
-        " map to <Leader>cf in C++ code
-        autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
-        autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
-        " if you install vim-operator-user
-        autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
-        " Toggle auto formatting:
-        nmap <Leader>C :ClangFormatAutoToggle<CR>
-    augroup END
-
-    augroup filetype_go
-        autocmd!
-
-        "autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
-
-        autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
-        autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
-        autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
-        autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
-        autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
-        autocmd FileType go nmap <Leader>in  <Plug>(go-info)
-        autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
-        autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
-        autocmd FileType go nmap <Leader>i   :GoImports<CR>
-
-    augroup END
+if !exists("*s:MkNonExDir")
+  " create parent directories on write
+  function s:MkNonExDir(file, buf)
+    if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
+      let dir=fnamemodify(a:file, ':h')
+      if !isdirectory(dir)
+        call mkdir(dir, 'p')
+      endif
+    endif
+  endfunction
 endif
 
-if !exists("*s:MkNonExDir")
-    " create parent directories on write
-    function s:MkNonExDir(file, buf)
-        if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
-            let dir=fnamemodify(a:file, ':h')
-            if !isdirectory(dir)
-                call mkdir(dir, 'p')
-            endif
-        endif
-    endfunction
+if has("autocmd")
+  augroup filetype_ruby
+    autocmd!
+    autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup straggelers
+    autocmd!
+    " remove trailing spaces
+    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
+    " remove trailing whitespace automatically
+    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+  augroup END
+
+  augroup filetype_haml
+    autocmd!
+    autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_yaml
+    autocmd!
+    autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_perl
+    autocmd!
+    autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+  augroup END
+
+  augroup filetype_c
+    autocmd!
+    " map to <Leader>cf in C++ code
+    autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
+    autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
+    " if you install vim-operator-user
+    autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
+    " Toggle auto formatting:
+    nmap <Leader>C :ClangFormatAutoToggle<CR>
+  augroup END
+
+  augroup filetype_go
+    autocmd!
+
+    autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
+
+    autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
+    autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
+    autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
+    autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
+    autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
+    autocmd FileType go nmap <Leader>in  <Plug>(go-info)
+    autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
+    autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
+    autocmd FileType go nmap <Leader>i   :GoImports<CR>
+
+  augroup END
+
+  augroup BWCCreateDir
+    autocmd!
+    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+  augroup END
 endif
