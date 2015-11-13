@@ -23,6 +23,8 @@
 # This file uses CoffeeScript Object Notation (CSON).
 # If you are unfamiliar with CSON, you can read more about it here:
 # https://github.com/bevry/cson#what-is-cson
+'.platform-darwin':
+  'ctrl-p': 'fuzzy-finder:toggle-file-finder'
 '.platform-darwin atom-text-editor':
   'ctrl-shift-a': 'aligner:align'
 'atom-workspace':
