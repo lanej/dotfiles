@@ -6,8 +6,8 @@
   core:
     audioBeep: false
     themes: [
-      "atom-dark-ui"
-      "atom-dark-syntax"
+      "nucleus-dark-ui"
+      "one-dark-syntax"
     ]
   editor:
     invisibles: {}

@@ -1,6 +1,5 @@
 DOTFILES := $(shell pwd)
-# TODO: https://github.com/scrooloose/syntastic.git
-all: shell tmux screen _ruby X _vim _git
+all: shell tmux screen ruby X vim git _atom
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -23,7 +22,7 @@ screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
-_vim:
+vim:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
 	ln -fs $(DOTFILES)/vim/vimrc.bundles ${HOME}/.vimrc.bundles
@@ -32,12 +31,19 @@ _vim:
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
-_ruby:
+ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
 	ln -fs $(DOTFILES)/ruby/rdebugrc ${HOME}/.rdebugrc
 	ln -fs ${DOTFILES}/ruby/gemrc ${HOME}/.gemrc
 	ln -fs ${DOTFILES}/ruby/rspec ${HOME}/.rspec
-_git:
+git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
+_atom:
+	mkdir -p $(HOME)/.atom
+	ln -fs $(DOTFILES)/atom/keymap.cson ${HOME}/.atom/keymap.cson
+	ln -fs $(DOTFILES)/atom/config.cson ${HOME}/.atom/config.cson
+	apm install --packages-file $(DOTFILES)/atom/package-list.txt
+atom_freeze:
+	apm list --installed --bare > $(DOTFILES)/atom/package-list.txt
