@@ -30,3 +30,5 @@
 'atom-workspace':
   'ctrl-o': 'last-cursor-position:previous'
   'ctrl-i': 'last-cursor-position:next'
+'atom-text-editor[data-grammar~="ruby"]':
+  'ctrl-=': 'rubocop-auto-correct:current-file'

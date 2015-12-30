@@ -54,3 +54,4 @@ alias dpctl="DEISCTL_TUNNEL='ec2-52-32-106-252.us-west-2.compute.amazonaws.com' 
 alias dsctl="DEISCTL_TUNNEL='ec2-52-89-167-129.us-west-2.compute.amazonaws.com' deisctl"
 alias fpctl="FLEETCTL_TUNNEL='ec2-52-32-106-252.us-west-2.compute.amazonaws.com' fleetctl"
 alias fsctl="FLEETCTL_TUNNEL='ec2-52-89-167-129.us-west-2.compute.amazonaws.com' fleetctl"
+alias dm="docker-machine"

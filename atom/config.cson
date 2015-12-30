@@ -6,13 +6,20 @@
   core:
     audioBeep: false
     themes: [
-      "nucleus-dark-ui"
-      "one-dark-syntax"
+      "seti-ui"
+      "seti-syntax"
+    ]
+    disabledPackages: [
+      "linter-markdown"
+    ]
+    packagesWithKeymapsDisabled: [
+      "linter-ruby"
+      "rubo-format"
     ]
   editor:
     invisibles: {}
     zoomFontWhenCtrlScrolling: true
-    fontSize: 13
+    fontSize: 11
     showInvisibles: true
     showIndentGuide: true
     softWrap: true
@@ -20,5 +27,21 @@
   "atom-alignment": {}
   "go-plus":
     runCoverageOnSave: true
+    goPath: "~/go"
   "highlight-selected":
     onlyHighlightWholeWords: true
+  "rubocop-auto-correct":
+    autoRun: true
+    correctFile: true
+    notification: false
+  "linter-ruby": {}
+  "rubo-format": {}
+  "atom-beautify":
+    _analyticsUserId: "284d65e8-ab44-4842-9d54-372b3ec557ba"
+  "my-github-profile":
+    githubUsername: "lanej"
+    githubToken: "7e7ad2ddf62b63cd424038410320ecea3e440cdc"
+    statusbarNumber: "notifications"
+  aligner:
+    ":-alignment": "left"
+  "aligner-ruby": {}
