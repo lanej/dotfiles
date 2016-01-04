@@ -1,5 +1,6 @@
 DOTFILES := $(shell pwd)
 all: shell tmux screen ruby X vim git _atom
+.PHONY: shell tmux screen ruby X vim git _atom
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
