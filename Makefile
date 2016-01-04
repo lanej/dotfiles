@@ -18,7 +18,6 @@ shell:
 	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
-	sh ${DOTFILES}/bash/ssh-config ${DOTFILES}
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
