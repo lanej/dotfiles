@@ -22,10 +22,11 @@ export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin:/usr/local/sbin"
 ## Editor
 if [[ -s $(which mvim) ]]; then
   export EDITOR=mvim
+  export VISUAL=mvim
 else
   export EDITOR=vim
+  export VISUAL=vim
 fi
-export VISUAL=mvim
 
 export HISTFILESIZE=9999
 export HISTSIZE=9999
