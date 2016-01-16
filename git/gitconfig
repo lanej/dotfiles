@@ -77,3 +77,4 @@
 	required = true
 [rebase]
 	autoStash = true
+	stat = true
