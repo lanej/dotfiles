@@ -187,11 +187,15 @@ let g:ctrlp_use_caching = 0
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
 noremap k gk
-" fuckups
-cnoreabbrev <expr> W ((getcmdtype() is# ':' && getcmdline() is# 'W')?('w'):('W'))
-cnoreabbrev <expr> Wa ((getcmdtype() is# ':' && getcmdline() is# 'Wa')?('wa'):('Wa'))
-cnoreabbrev <expr> Wqa ((getcmdtype() is# ':' && getcmdline() is# 'Wqa')?('wqa'):('Wqa'))
-cnoreabbrev <expr> E ((getcmdtype() is# ':' && getcmdline() is# 'E')?('e'):('E'))
+
+" fuckups - If I don't let off the shift key quick enough
+command! Q :q
+command! W :w
+command! Wa :wa
+command! Wqa :wqa
+command! E :e
+command! X :x
+
 
 " vim rspec mappings
 let g:rspec_runner = "os_x_iterm"
