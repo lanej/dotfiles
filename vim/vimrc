@@ -194,7 +194,6 @@ command! W :w
 command! Wa :wa
 command! Wqa :wqa
 command! E :e
-command! X :x
 
 
 " vim rspec mappings
