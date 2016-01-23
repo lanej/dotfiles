@@ -138,10 +138,6 @@ map <leader>ct :set et <bar> retab<CR>
 map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
-" Ruby
-map <leader>rs :!ruby -c %:p<CR>
-map <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
-map <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
 
 " Haml
 map <leader>hs :!haml -c %:p<CR>
@@ -290,6 +286,10 @@ if has("autocmd")
   augroup filetype_ruby
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd FileType ruby nmap <leader>rs :!ruby -c %:p<CR>
+    autocmd FileType ruby nmap <leader>rb :!rubocop -ad %:p<CR>
+    autocmd FileType ruby nmap <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
+    autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
   augroup END
 
   augroup straggelers
