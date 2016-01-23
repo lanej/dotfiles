@@ -48,6 +48,6 @@ export GO15VENDOREXPERIMENT=1
 source /usr/local/opt/chruby/share/chruby/chruby.sh
 source /usr/local/opt/chruby/share/chruby/auto.sh
 
-chruby 2.2
+chruby 2.3
 
 export GPG_TTY=`tty`
