@@ -3,11 +3,12 @@ set -x
 
 DOTFILES=$1
 
-pushd ~
+cd ~
 
 if [ -d '.oh-my-zsh' ]; then
   cd .oh-my-zsh && git pull origin master;
 else
   git clone git://github.com/lanej/oh-my-zsh.git .oh-my-zsh
 fi
-popd
+
+cd ~
