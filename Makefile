@@ -44,6 +44,6 @@ _atom:
 	mkdir -p $(HOME)/.atom
 	ln -fs $(DOTFILES)/atom/keymap.cson ${HOME}/.atom/keymap.cson
 	ln -fs $(DOTFILES)/atom/config.cson ${HOME}/.atom/config.cson
-	apm install --packages-file $(DOTFILES)/atom/package-list.txt
+	which apm && apm install --packages-file $(DOTFILES)/atom/package-list.txt
 atom_freeze:
-	apm list --installed --bare > $(DOTFILES)/atom/package-list.txt
+	which apm && apm list --installed --bare > $(DOTFILES)/atom/package-list.txt
