@@ -1,36 +1,36 @@
 [user]
-  name = Josh Lane
-  email = me@joshualane.com
+	name = Joshua Lane
+	email = me@joshualane.com
 [color]
-  diff = auto
-  status = auto
-  branch = auto
+	diff = auto
+	status = auto
+	branch = auto
 [alias]
-  a = add
-  ap = add -p
-  br = branch
-  ci = commit
-  co = checkout
-  cp = cherry-pick
-  ct = checkout -t
+	a = add
+	ap = add -p
+	br = branch
+	ci = commit
+	co = checkout
+	cp = cherry-pick
+	ct = checkout -t
 	d = diff
 	dc = diff --cached
 	fa = fetch --all --tags
 	l = log --decorate --graph
-  ll = log
-  ls = branch
-  mf = merge --ff-only
-  ms = merge --squash
-  pl = pull --rebase
-  ra = rebase --abort
-  rc = rebase --continue
-  recent = "for-each-ref --format='%(committerdate:relative) %(refname:short)' --sort=-committerdate refs/heads/ --count 25"
-  ri = rebase -i
-  ro = !git fetch origin && git reset --hard origin/master
-  s = status -s
-  sh = !git-sh
-  st = status
-  v = show
+	ll = log
+	ls = branch
+	mf = merge --ff-only
+	ms = merge --squash
+	pl = pull --rebase
+	ra = rebase --abort
+	rc = rebase --continue
+	recent = "for-each-ref --format='%(committerdate:relative) %(refname:short)' --sort=-committerdate refs/heads/ --count 25"
+	ri = rebase -i
+	ro = !git fetch origin && git reset --hard origin/master
+	s = status -s
+	sh = !git-sh
+	st = status
+	v = show
 	ds = diff
 	cahr = commit --amend -CHEAD --reset-author
 	aa = add -A
@@ -50,21 +50,21 @@
 	cm = commit
 	pr = pull-request
 [core]
-  editor = /usr/bin/vim
-  excludesfile = ~/.gitignore
-  whitespace = trailing-space,space-before-tab,blank-at-eol
+	editor = /usr/bin/vim
+	excludesfile = ~/.gitignore
+	whitespace = trailing-space,space-before-tab,blank-at-eol
 [apply]
-  whitespace = fix
+	whitespace = fix
 [push]
-  default = current
+	default = current
 [branch]
-  autosetuprebase = always
+	autosetuprebase = always
 [github]
-  user = lanej
+	user = lanej
   ;password = !security find-generic-password -gs github.password 2>&1 | grep "^password" | awk '{print $2}'
-  password = !security 2>&1 >/dev/null find-generic-password -gs github.password | ruby -e 'print $1 if STDIN.gets =~ /^password: \\\"(.*)\\\"$/'
+	password = !security 2>&1 >/dev/null find-generic-password -gs github.password | ruby -e 'print $1 if STDIN.gets =~ /^password: \\\"(.*)\\\"$/'
 [rerere]
-  enabled = true
+	enabled = true
 [help]
 	autocorrect = 5
 [filter "media"]
