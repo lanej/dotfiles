@@ -160,6 +160,10 @@ set guioptions-=T
 set guioptions-=r
 set guioptions-=L
 
+" wrap indicator
+set colorcolumn=120
+highlight ColorColumn ctermbg=darkgrey guibg=darkgrey
+
 " Movement
 nnoremap <A-h> <C-w>h
 nnoremap <A-j> <C-w>j
