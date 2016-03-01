@@ -222,6 +222,7 @@ set makeprg="make -j9"
 nnoremap <Leader>M :make!<CR>
 
 " airline
+set laststatus=2
 let g:airline#extensions#tabline#enabled = 0
 let g:airline#extensions#branch#enabled = 1
 let g:airline_left_sep=''
