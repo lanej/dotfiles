@@ -50,7 +50,7 @@
 	cm = commit
 	pr = pull-request
 [core]
-	editor = /usr/bin/vim
+	editor = vim
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 [apply]
