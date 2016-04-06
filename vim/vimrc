@@ -138,6 +138,8 @@ map <leader>ct :set et <bar> retab<CR>
 map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
+" Ruby
+let g:vimrubocop_rubocop_cmd = 'bundle exec rubocop '
 
 " Haml
 map <leader>hs :!haml -c %:p<CR>

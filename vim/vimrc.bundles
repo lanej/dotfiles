@@ -38,6 +38,7 @@ Plug 'tpope/vim-surround'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/xorium.vim'
 Plug 'wting/rust.vim'
+Plug 'ngmy/vim-rubocop'
 
 " Add plugins to &runtimepath
 call plug#end()
