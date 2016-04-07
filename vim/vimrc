@@ -291,6 +291,7 @@ if has("autocmd")
     autocmd FileType ruby nmap <leader>rb :!rubocop -ad %:p<CR>
     autocmd FileType ruby nmap <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
     autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
+    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
   augroup END
 
   augroup straggelers
