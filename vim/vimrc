@@ -158,10 +158,6 @@ set guioptions-=T
 set guioptions-=r
 set guioptions-=L
 
-" wrap indicator
-set colorcolumn=120
-highlight ColorColumn ctermbg=darkgrey guibg=darkgrey
-
 " Movement
 nnoremap <A-h> <C-w>h
 nnoremap <A-j> <C-w>j
@@ -294,6 +290,7 @@ if has("autocmd")
     autocmd FileType ruby nmap <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
     autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
+    autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
   augroup END
 
   augroup straggelers
