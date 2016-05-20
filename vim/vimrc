@@ -175,7 +175,7 @@ set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
 map <leader>g :CtrlPBuffer<CR>
-map <leader>cf :CtrlPClearCache<CR>
+"map <leader>cf :CtrlPClearCache<CR>
 " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
 let g:ctrlp_user_command = 'ag %s -l --nocolor -g "" --skip-vcs-ignores'
 "let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
