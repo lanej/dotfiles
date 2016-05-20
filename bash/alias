@@ -11,6 +11,16 @@ function svndif() {
 function find_in() {
     find . -iname $1 | xargs grep $2 -sl
 }
+
+function git-release() {
+	git fetch origin -q
+	local current_release=$(git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1)
+	echo "Current release: v$current_release"
+	local next_release=v$(( $current_release + 1 ))
+	echo "Releasing: $next_release"
+	git tag $next_release && git push origin $next_release
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
