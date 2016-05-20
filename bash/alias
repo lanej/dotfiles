@@ -21,6 +21,13 @@ function git-release() {
 	git tag $next_release && git push origin $next_release
 }
 
+function vm() {
+	local regex=$2
+	local cmd=$1
+	local vagrant_id=$(vagrant global-status | grep $2 | awk '{print $1}')
+	vagrant $1 $vagrant_id
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
