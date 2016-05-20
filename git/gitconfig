@@ -50,6 +50,7 @@
 	cm = commit
 	pr = pull-request
 	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1; }; _git_pr"
 [core]
 	editor = vim
 	excludesfile = ~/.gitignore
