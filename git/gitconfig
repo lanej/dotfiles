@@ -47,7 +47,7 @@
 	rh = reset --hard
 	ri = rebase -i
 	ro = !git fetch origin && git reset --hard origin/master
-	rsl = "!_git_rsl() { local max=$1; GIT_PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
+	rsl = "!_git_rsl() { local max=$1; PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
 	sh = !git-sh
 	sl = log --oneline --graph --decorate
