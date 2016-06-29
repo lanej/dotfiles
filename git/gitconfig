@@ -8,50 +8,52 @@
 	branch = auto
 [alias]
 	a = add
+	a = commit
+	aa = add -A
 	ap = add -p
+	b = branch
 	br = branch
+	c = commit
+	ca = commit
+	cah = commit --amend -CHEAD
+	cahr = commit --amend -CHEAD --reset-author
+	cav = commit -av
+	ccah = commit --amend -cHEAD
 	ci = commit
+	cl = clone
+	cm = commit
 	co = checkout
 	cp = cherry-pick
 	ct = checkout -t
+	cv = commit -v
 	d = diff
 	dc = diff --cached
+	ds = diff
+	f = fetch
 	fa = fetch --all --tags
 	l = log --decorate --graph
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 	ll = log
 	ls = branch
 	mf = merge --ff-only
 	ms = merge --squash
+	ph = push
 	pl = pull --rebase
+	pr = pull-request
+	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1 && git branch --set-upstream-to=refs/pull/$1/head pr-$1; }; _git_pr"
 	ra = rebase --abort
 	rc = rebase --continue
 	recent = "for-each-ref --format='%(committerdate:relative) %(refname:short)' --sort=-committerdate refs/heads/ --count 25"
+	rh = reset --hard
 	ri = rebase -i
 	ro = !git fetch origin && git reset --hard origin/master
+	rsl = "!_git_rsl() { local max=$1; GIT_PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
 	sh = !git-sh
+	sl = log --oneline --graph --decorate
+	slp = log --stat -p
 	st = status
 	v = show
-	ds = diff
-	cahr = commit --amend -CHEAD --reset-author
-	aa = add -A
-	b = branch
-	c = commit
-	a = commit
-	ca = commit
-	cl = clone
-	cv = commit -v
-	f = fetch
-	ph = push
-	rh = reset --hard
-	slp = log --stat -p
-	cah = commit --amend -CHEAD
-	cav = commit -av
-	sl = log --oneline --graph --decorate
-	cm = commit
-	pr = pull-request
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1; }; _git_pr"
 [core]
 	editor = vim
 	excludesfile = ~/.gitignore
