@@ -86,9 +86,9 @@
 [interactive]
 	diffFilter = diff-highlight
 [pager]
-	log = diff-highlight | less
-	show = diff-highlight | less
-	diff = diff-highlight | less
+	log = diff-highlight | ${GIT_PAGER:-less}
+	show = diff-highlight | ${GIT_PAGER:-less}
+	diff = diff-highlight | ${GIT_PAGER:-less}
 [transfer]
 	fsckObjects = true
 [recieve]
