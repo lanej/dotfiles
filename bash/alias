@@ -32,6 +32,12 @@ function vm() {
 	vagrant $1 $vagrant_id
 }
 
+function pauper() {
+	chruby 2.0 && source ~/devel/activate
+	~/devel/Pauper/bin/pauper $*
+	chruby .
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
@@ -70,4 +76,3 @@ alias fucking='sudo'
 alias k='kubectl'
 
 alias rba='bundle exec rubocop -a'
-alias pauper-start='chruby 2.0 && source ~/devel/activate && pauper start; chruby .'
