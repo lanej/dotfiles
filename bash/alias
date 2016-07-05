@@ -76,3 +76,4 @@ alias fucking='sudo'
 alias k='kubectl'
 
 alias rba='bundle exec rubocop -a'
+alias minitest='(gem which testrbl || gem install testrbl) && testrbl'
