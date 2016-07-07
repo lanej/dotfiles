@@ -87,3 +87,9 @@
 	log = diff-highlight | less
 	show = diff-highlight | less
 	diff = diff-highlight | less
+[transfer]
+	fsckObjects = true
+[recieve]
+	fsckObjects = true
+[fetch]
+	fsckObjects = true
