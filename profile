@@ -2,30 +2,30 @@
 
 # if running bash
 if [ -n "$BASH_VERSION" ]; then
-    # include .bashrc if it exists
-    if [ -f "$HOME/.bashrc" ]; then
-        . "$HOME/.bashrc"
-    fi
+	# include .bashrc if it exists
+	if [ -f "$HOME/.bashrc" ]; then
+		. "$HOME/.bashrc"
+	fi
 fi
 
 ## set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]] ; then
-    PATH="$HOME/bin:$PATH"
+	PATH="$HOME/bin:$PATH"
 fi
 
 if [[ -d "$HOME/.files/bin" ]] ; then
-    PATH="$HOME/.files/bin:$PATH"
+	PATH="$HOME/.files/bin:$PATH"
 fi
 
 export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin:/usr/local/sbin"
 
 ## Editor
 if [[ -s $(which mvim) ]]; then
-  export EDITOR=mvim
-  export VISUAL=mvim
+	export EDITOR=mvim
+	export VISUAL=mvim
 else
-  export EDITOR=vim
-  export VISUAL=vim
+	export EDITOR=vim
+	export VISUAL=vim
 fi
 
 export HISTFILESIZE=9999
@@ -38,6 +38,7 @@ export PATH=/usr/local/redis/bin:$PATH
 export GOPATH=$HOME/go
 export PATH=$HOME/bin:$PATH # shift in custom bins
 export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
+export PATH=$PATH:/usr/local/m-cli
 export GIT_SSH="$HOME/bin/git-ssh"
 export GO15VENDOREXPERIMENT=1
 
