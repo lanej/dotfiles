@@ -53,3 +53,8 @@ export GO15VENDOREXPERIMENT=1
 chruby 2.3
 
 export GPG_TTY=`tty`
+
+# alias hub to git
+if [[ -s $(which hub) ]]; then
+	eval "$(hub alias -s)"
+fi
