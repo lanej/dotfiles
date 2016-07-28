@@ -55,12 +55,21 @@ nmap <leader>evr :source $MYVIMRC<CR>
 filetype plugin indent on
 
 " =============== vim-plug Initialization ===============
-if filereadable(expand("~/.vimrc.bundles"))
-  source ~/.vimrc.bundles
-endif
 
-if filereadable(expand("~/.vimrc.neocomplete"))
-  source ~/.vimrc.neocomplete
+if has('nvim')
+        if filereadable(expand("~/.vimrc.nvimbundles"))
+                source ~/.vimrc.nvimbundles
+        endif
+        if filereadable(expand("~/.vimrc.deocomplete"))
+                source ~/.vimrc.deocomplete
+        endif
+else
+        if filereadable(expand("~/.vimrc.bundles"))
+                source ~/.vimrc.bundles
+        endif
+        if filereadable(expand("~/.vimrc.neocomplete"))
+                source ~/.vimrc.neocomplete
+        endif
 endif
 
 " =============== UI ================

@@ -27,6 +27,8 @@ vim:
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
 	ln -fs $(DOTFILES)/vim/vimrc.bundles ${HOME}/.vimrc.bundles
 	ln -fs $(DOTFILES)/vim/vimrc.neocomplete ${HOME}/.vimrc.neocomplete
+	ln -fs $(DOTFILES)/vim/vimrc.nvimbundles ${HOME}/.vimrc.nvimbundles
+	ln -fs $(DOTFILES)/vim/vimrc.deocomplete ${HOME}/.vimrc.deocomplete
 	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
