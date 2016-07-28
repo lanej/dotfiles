@@ -24,6 +24,7 @@ tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
 vim:
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
+	ln -fns $(DOTFILES)/vim ${HOME}/.nvim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
 	ln -fs $(DOTFILES)/vim/vimrc.bundles ${HOME}/.vimrc.bundles
 	ln -fs $(DOTFILES)/vim/vimrc.neocomplete ${HOME}/.vimrc.neocomplete
