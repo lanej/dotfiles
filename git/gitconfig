@@ -1,7 +1,7 @@
 [user]
 	name = Joshua Lane
 	email = me@joshualane.com
-	signingkey = E5DE9AFD
+	signingkey = 4267876A
 [color]
 	diff = auto
 	status = auto
