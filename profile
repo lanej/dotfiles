@@ -55,7 +55,8 @@ chruby 2.3
 
 export GPG_TTY=`tty`
 
-# alias hub to git
-if [[ -s $(which hub) ]]; then
-	eval "$(hub alias -s)"
+if [[ -s $(which keychain) ]]; then
+	eval `keychain --eval --agents ssh,gpg --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa`
+	source ~/.keychain/$HOST-sh
+	source ~/.keychain/$HOST-sh-gpg
 fi
