@@ -53,6 +53,12 @@ export GO15VENDOREXPERIMENT=1
 
 chruby 2.3
 
+if [ -f "${HOME}/.gpg-agent-info" ]; then
+	. "${HOME}/.gpg-agent-info"
+	export GPG_AGENT_INFO
+	export SSH_AUTH_SOCK
+fi
+
 export GPG_TTY=`tty`
 
 if [[ -s $(which keychain) ]]; then

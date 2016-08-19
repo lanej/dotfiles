@@ -26,9 +26,8 @@ else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-if [[ -s $(which keychain 2>/dev/null) ]]; then
-  keychain ~/.ssh/id_rsa
-fi
+gpg-agent --daemon --enable-ssh-support \
+	--write-env-file "${HOME}/.gpg-agent-info"
 
 # added by travis gem
 [ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
