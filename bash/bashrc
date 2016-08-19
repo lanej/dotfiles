@@ -26,8 +26,10 @@ else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-gpg-agent --daemon --enable-ssh-support \
-	--write-env-file "${HOME}/.gpg-agent-info"
+if [[ -s $(which gpg-agent) ]]; then
+	gpg-agent --daemon --enable-ssh-support \
+		--write-env-file "${HOME}/.gpg-agent-info"
+fi
 
 # added by travis gem
 [ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
