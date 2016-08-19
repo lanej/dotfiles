@@ -17,7 +17,11 @@ if [[ -d "$HOME/.files/bin" ]] ; then
 	PATH="$HOME/.files/bin:$PATH"
 fi
 
+source "$HOME/.alias"
+
+# git
 export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin:/usr/local/sbin"
+export GIT_SSH="$HOME/bin/git-ssh"
 
 ## Editor
 if [[ -s $(which mvim) ]]; then
@@ -31,15 +35,12 @@ fi
 export HISTFILESIZE=9999
 export HISTSIZE=9999
 
-source "$HOME/.alias"
-
+# java
 export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home"
-export PATH=/usr/local/redis/bin:$PATH
-export GOPATH=$HOME/go
-export PATH=$HOME/bin:$PATH # shift in custom bins
+
+# go
 export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
-export PATH=$PATH:/usr/local/m-cli
-export GIT_SSH="$HOME/bin/git-ssh"
+export GOPATH=$HOME/go
 export GO15VENDOREXPERIMENT=1
 
 # added by travis gem
