@@ -26,9 +26,13 @@ else
   export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-if [[ -s $(which gpg-agent) ]]; then
-	gpg-agent --daemon --enable-ssh-support \
-		--write-env-file "${HOME}/.gpg-agent-info"
+if test -f $HOME/.gpg-agent-info && \
+	kill -0 `cut -d: -f 2 $HOME/.gpg-agent-info` 2>/dev/null; then
+
+	GPG_AGENT_INFO=`cat $HOME/.gpg-agent-info`
+	export GPG_AGENT_INFO
+else
+	eval `/usr/local/bin/gpg-agent --daemon --write-env-file`
 fi
 
 # added by travis gem
