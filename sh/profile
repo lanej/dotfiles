@@ -1,14 +1,5 @@
 #!/usr/bin/env sh
-
-# if running bash
-if [ -n "$BASH_VERSION" ]; then
-	# include .bashrc if it exists
-	if [ -f "$HOME/.bashrc" ]; then
-		. "$HOME/.bashrc"
-	fi
-fi
-
-## set PATH so it includes user's private bin if it exists
+# set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]] ; then
 	PATH="$HOME/bin:$PATH"
 fi
@@ -32,16 +23,13 @@ else
 	export VISUAL=vim
 fi
 
-export HISTFILESIZE=9999
-export HISTSIZE=9999
-
 # java
 export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home"
 
 # go
 export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
 export GOPATH=$HOME/go
-export GO15VENDOREXPERIMENT=1
+
 
 # added by travis gem
 [ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
@@ -51,19 +39,15 @@ export GO15VENDOREXPERIMENT=1
 [ -f /usr/local/share/chruby/auto.sh ] && source /usr/local/share/chruby/auto.sh
 [ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && source /usr/local/opt/chruby/share/chruby/chruby.sh
 [ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && source /usr/local/opt/chruby/share/chruby/auto.sh
+[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && source /usr/local/opt/chruby/share/chruby/auto.sh
 
-chruby 2.3
-
-if [ -f "${HOME}/.gpg-agent-info" ]; then
-	. "${HOME}/.gpg-agent-info"
-	export GPG_AGENT_INFO
-	export SSH_AUTH_SOCK
+if [[ -s $(which chruby) ]]; then
+	chruby 2.3
 fi
 
-export GPG_TTY=`tty`
-
 if [[ -s $(which keychain) ]]; then
-	eval `keychain -q --eval --agents ssh,gpg --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa`
+	eval `keychain -q --eval --agents ssh --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa`
 	source ~/.keychain/$HOST-sh
 	source ~/.keychain/$HOST-sh-gpg
 fi
+
