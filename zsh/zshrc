@@ -33,7 +33,7 @@ COMPLETION_WAITING_DOTS="true"
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
-plugins=(git rails ruby battery brew history-substring-search osx pow powder rake go)
+plugins=(git rails ruby battery brew history-substring-search osx pow powder rake golang gpg-agent)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -43,3 +43,5 @@ unsetopt share_history
 
 unsetopt correct
 unsetopt correct_all
+
+source ~/.profile

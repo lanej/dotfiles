@@ -79,3 +79,10 @@ alias k='kubectl'
 
 alias rba='bundle exec rubocop -a'
 alias minitest='(gem which testrbl || gem install testrbl) && testrbl'
+
+## Set ls options per platform
+if [[ $OSTYPE == 'linux-gnu' ]]; then
+	alias ls='ls -p --color=auto'
+elif [[ $OSTYPE =~ 'darwin' ]]; then
+	alias ls='ls -Gp'
+fi

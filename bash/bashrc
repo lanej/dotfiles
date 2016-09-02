@@ -1,42 +1,22 @@
 #!/usr/bin/env sh
 ## source cinderella bash completions
 if [[ -d "$HOME/etc/bash_completion.d" ]] ; then
-    source $HOME/etc/bash_completion.d/*.bash
-fi
-
-## Set ls options per platform
-if [[ $OSTYPE == 'linux-gnu' ]]; then
-  alias ls='ls -p --color=auto'
-elif [[ $OSTYPE == 'darwin10.0' ]]; then
-  alias ls='ls -Gp'
+	source $HOME/etc/bash_completion.d/*.bash
 fi
 
 ## Functions
 function parse_git_dirty {
-  [[ $(git status 2> /dev/null | tail -n1) != *"nothing to commit"* ]] && echo "*"
+	[[ $(git status 2> /dev/null | tail -n1) != *"nothing to commit"* ]] && echo "*"
 }
 function parse_git_branch {
-  git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/[\1$(parse_git_dirty)]/"
+	git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/[\1$(parse_git_dirty)]/"
 }
 
 ## Prompt
 if [[ -n "${SSH_CONNECTION+x}" ]]; then
-  export PS1="\H:\W \$(parse_git_branch)\$ "
+	export PS1="\H:\W \$(parse_git_branch)\$ "
 else
-  export PS1="\W \$(parse_git_branch)\$ "
+	export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-if test -f $HOME/.gpg-agent-info && \
-	kill -0 `cut -d: -f 2 $HOME/.gpg-agent-info` 2>/dev/null; then
-
-	GPG_AGENT_INFO=`cat $HOME/.gpg-agent-info`
-	export GPG_AGENT_INFO
-else
-	eval `/usr/local/bin/gpg-agent --daemon --write-env-file`
-fi
-
-# added by travis gem
-[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
-
-source /usr/local/opt/chruby/share/chruby/chruby.sh
-source /usr/local/opt/chruby/share/chruby/auto.sh
+source ~/.rc
