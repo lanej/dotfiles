@@ -287,9 +287,9 @@ let g:go_highlight_build_constraints = 1
 set completeopt=menu
 
 " Signify
-highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=119
-highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=167
-highlight SignifySignChange cterm=bold ctermbg=237  ctermfg=227
+highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
+highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
+highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " Tagbar
 map <leader>tt :TagbarToggle<cr>
