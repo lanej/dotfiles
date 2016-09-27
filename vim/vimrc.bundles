@@ -2,6 +2,8 @@ call plug#begin('~/.vim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
+Plug 'aliou/moriarty.vim'
+Plug 'aliou/sql-heredoc.vim'
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'mhinz/vim-signify'
 Plug 'Lokaltog/vim-easymotion'
@@ -32,7 +34,7 @@ Plug 'thoughtbot/vim-rspec'
 Plug 'tpope/vim-dotenv'
 Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-haml'
-Plug 'tpope/vim-markdown'
+Plug 'gabrielelana/vim-markdown'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-surround'
