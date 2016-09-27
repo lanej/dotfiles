@@ -44,9 +44,12 @@ if [[ -s $(which chruby) ]]; then
 	chruby 2.3
 fi
 
+# keys
 if [[ -s $(which keychain) ]]; then
 	eval `keychain -q --eval --agents ssh --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa`
 	source ~/.keychain/$HOST-sh
 	source ~/.keychain/$HOST-sh-gpg
+else
+	ssh-add -A ~/.ssh/id_rsa &>/dev/null
 fi
 
