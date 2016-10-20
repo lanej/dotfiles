@@ -4,3 +4,4 @@
 .hold
 tags
 .agignore
+.remote-sync.json

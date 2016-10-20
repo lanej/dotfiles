@@ -1,24 +1,62 @@
 "*":
-  "exception-reporting":
-    userId: "c141f735-ebf0-4522-4185-982b368094dd"
-  welcome:
-    showOnStartup: false
+  "Remote-FTP": {}
+  "atom-alignment": {}
+  "atom-beautify":
+    general:
+      _analyticsUserId: "9916bd6f-639e-4dab-8387-453bd57c2133"
+    ruby:
+      rubocop_path: "/usr/local/bin/rubocop"
   core:
     audioBeep: false
-    themes: [
-      "nucleus-dark-ui"
-      "one-dark-syntax"
+    disabledPackages: [
+      "Remote-FTP"
+      "language-gfm"
+      "linter-rubocop"
     ]
+    telemetryConsent: "limited"
+    themes: [
+      "one-dark-ui"
+      "atom-material-syntax-dark"
+    ]
+    useCustomTitleBar: true
   editor:
+    fontSize: 12
     invisibles: {}
-    zoomFontWhenCtrlScrolling: true
-    fontSize: 13
-    showInvisibles: true
+    preferredLineLength: 120
+    scrollPastEnd: true
     showIndentGuide: true
+    showInvisibles: true
     softWrap: true
-  minimap: {}
-  "atom-alignment": {}
+    zoomFontWhenCtrlScrolling: true
+  "exception-reporting":
+    userId: "c141f735-ebf0-4522-4185-982b368094dd"
   "go-plus":
+    panelDisplayMode: "closed"
     runCoverageOnSave: true
   "highlight-selected":
     onlyHighlightWholeWords: true
+  "linter-rubocop":
+    disableWhenNoConfigFile: true
+  minimap: {}
+  "remote-sync":
+    foldLogPanel: true
+  "rubocop-auto-correct":
+    autoRun: true
+    correctFile: true
+    notification: false
+    onlyFixesNotification: false
+    rubocopCommandPath: "bundle exec rubocop"
+  "travis-ci-status":
+    personalAccessToken: "d6400007a92d1dea548968f3a868e1518165ec21"
+    useTravisCiPro: true
+  welcome:
+    showOnStartup: false
+".erb.html.text":
+  editor:
+    preferredLineLength: 120
+    scrollPastEnd: true
+    softWrapHangingIndent: 120
+".ruby.source":
+  editor:
+    preferredLineLength: 120
+    softWrapHangingIndent: 120
