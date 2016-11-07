@@ -43,6 +43,7 @@ ruby:
 git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
+	ln -fs $(DOTFILES)/git/gitcommit ${HOME}/.gitcommit
 _atom:
 	mkdir -p $(HOME)/.atom
 	ln -fs $(DOTFILES)/atom/keymap.cson ${HOME}/.atom/keymap.cson
