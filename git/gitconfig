@@ -54,6 +54,7 @@
 	slp = log --stat -p
 	st = status
 	v = show
+	rrecent = !git branch --sort=-committerdate -r | head
 [core]
 	editor = vim
 	excludesfile = ~/.gitignore
