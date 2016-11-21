@@ -43,7 +43,7 @@
 	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1 && git branch --set-upstream-to=refs/pull/$1/head pr-$1; }; _git_pr"
 	ra = rebase --abort
 	rc = rebase --continue
-	recent = "for-each-ref --format='%(committerdate:relative) %(refname:short)' --sort=-committerdate refs/heads/ --count 25"
+	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
 	rh = reset --hard
 	ri = rebase -i
 	ro = !git fetch origin && git reset --hard origin/master
@@ -54,7 +54,7 @@
 	slp = log --stat -p
 	st = status
 	v = show
-	rrecent = !git branch --sort=-committerdate -r | head
+	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
 [core]
 	editor = vim
 	excludesfile = ~/.gitignore
