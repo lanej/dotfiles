@@ -345,6 +345,11 @@ if has("autocmd")
     autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
+  augroup filetype_json
+    autocmd!
+    autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
   augroup filetype_yaml
     autocmd!
     autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
