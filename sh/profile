@@ -40,7 +40,7 @@ export GOPATH=$HOME/go
 [ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && source /usr/local/opt/chruby/share/chruby/chruby.sh
 [ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && source /usr/local/opt/chruby/share/chruby/auto.sh
 
-if [[ -s $(which chruby) ]]; then
+if type chruby > /dev/null; then
 	chruby 2.3
 fi
 
