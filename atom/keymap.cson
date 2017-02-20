@@ -28,5 +28,10 @@
 '.platform-darwin atom-text-editor':
   'ctrl-shift-a': 'aligner:align'
 'atom-workspace':
-  'ctrl-o': 'last-cursor-position:previous'
-  'ctrl-i': 'last-cursor-position:next'
+  'ctrl-i':     'cursor-history:next'
+  'ctrl-o':     'cursor-history:prev'
+  'ctrl-cmd-i': 'cursor-history:next-within-editor'
+  'ctrl-cmd-o': 'cursor-history:prev-within-editor'
+'body atom-text-editor.autocomplete-active':
+  'ctrl-p': 'autocomplete-plus:move-up'
+  'ctrl-n': 'autocomplete-plus:move-down'
