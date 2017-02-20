@@ -12,6 +12,10 @@ function find_in() {
     find . -iname $1 | xargs grep $2 -sl
 }
 
+function myip() {
+    echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+}
+
 function git-rebase-style() {
 	git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
 }
