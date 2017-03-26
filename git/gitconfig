@@ -97,5 +97,3 @@
 	fsckObjects = true
 [fetch]
 	fsckObjects = true
-[commit]
-	template = ~/.gitcommit
