@@ -1,19 +1,19 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 function fhr () {
-  find . -iname "*$**"
+	find . -iname "*$**"
 }
 function rd() {
-    rdesktop -g 1400x900 $*
+	rdesktop -g 1400x900 $*
 }
 function svndif() {
-    svn diff  --diff-cmd colordiff $* | less;
+	svn diff  --diff-cmd colordiff $* | less;
 }
 function find_in() {
-    find . -iname $1 | xargs grep $2 -sl
+	find . -iname $1 | xargs grep $2 -sl
 }
 
 function myip() {
-    echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+	echo $(dig +short myip.opendns.com @resolver1.opendns.com)
 }
 
 function git-rebase-style() {
