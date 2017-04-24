@@ -4,6 +4,7 @@ set gcr=n:blinkon0
 if has("gui_macvim")
   " Fullscreen takes up entire screen
   set fuoptions=maxhorz,maxvert
+  set guifont=Menlo\ Regular:h13
 
   " tab navigation
   map <M-D-Right> :tabnext<CR>
