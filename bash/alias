@@ -101,7 +101,9 @@ alias k='kubectl'
 alias rba='bundle exec rubocop -a'
 alias minitest='(gem which testrbl || gem install testrbl) && testrbl'
 
+alias curlb='curl -s'
 alias curls='curl -svo /dev/null'
+alias curlsd='curl -svo /dev/null -H "Fastly-Debug: 1"'
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
@@ -109,3 +111,4 @@ if [[ $OSTYPE == 'linux-gnu' ]]; then
 elif [[ $OSTYPE =~ 'darwin' ]]; then
 	alias ls='ls -Gp'
 fi
+alias cpr='copy -r'
