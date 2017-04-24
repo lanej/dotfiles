@@ -44,6 +44,23 @@ function pauper() {
 	chruby .
 }
 
+function devel() {
+	local cmd=$1
+	if [[ "$#" -ne 1 ]]; then
+		cmd="start"
+	fi
+
+	if [[ "$cmd" == 'start' ]]; then
+		echo 'Booting devel'
+		vm resume devel && ssh devel -t 'bash -l -lc "dev-mode"' && ssh devel
+	elif [[ "$cmd" == 'stop' ]]; then
+		echo 'Terminating devel'
+		diskutil unmount force ~/vmf; vm halt devel
+	else
+		echo "unknown command: $cmd"
+	fi
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
