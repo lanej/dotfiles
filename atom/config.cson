@@ -2,17 +2,31 @@
   "Remote-FTP": {}
   "atom-alignment": {}
   "atom-beautify":
+    c:
+      default_beautifier: "clang-format"
+    cpp:
+      default_beautifier: "clang-format"
     general:
       _analyticsUserId: "9916bd6f-639e-4dab-8387-453bd57c2133"
     ruby:
+      disabled: true
+      indent_size: 2
       rubocop_path: "/usr/local/bin/rubocop"
+  "autocomplete-plus":
+    backspaceTriggersAutocomplete: true
+    confirmCompletion: "tab always, enter when suggestion explicitly selected"
+    defaultProvider: "Fuzzy"
+    useCoreMovementCommands: false
   core:
     audioBeep: false
+    closeEmptyWindows: false
     disabledPackages: [
-      "Remote-FTP"
-      "language-gfm"
       "linter-rubocop"
+      "welcome"
+      "language-gfm"
+      "autocomplete-ruby"
     ]
+    projectHome: "/Users/jlane/p"
     telemetryConsent: "limited"
     themes: [
       "one-dark-ui"
@@ -20,32 +34,46 @@
     ]
     useCustomTitleBar: true
   editor:
-    fontSize: 12
+    fontSize: 10
     invisibles: {}
     preferredLineLength: 120
     scrollPastEnd: true
     showIndentGuide: true
     showInvisibles: true
     softWrap: true
+    softWrapAtPreferredLineLength: true
     zoomFontWhenCtrlScrolling: true
+  "ever-notedown":
+    openPreviewInSplitPane: false
+    pulledContentInSplitPane: true
   "exception-reporting":
     userId: "c141f735-ebf0-4522-4185-982b368094dd"
+  "git-plus":
+    general:
+      _analyticsUserId: "03349266-b204-404b-ba3a-4c2b7c08a8f9"
   "go-plus":
     panelDisplayMode: "closed"
     runCoverageOnSave: true
+    test:
+      focusPanelIfTestsFail: false
+      runTestsOnSave: false
   "highlight-selected":
     onlyHighlightWholeWords: true
   "linter-rubocop":
     disableWhenNoConfigFile: true
-  minimap: {}
+  "linter-ui-default": {}
+  minimap:
+    adjustAbsoluteModeHeight: true
+    displayCodeHighlights: false
   "remote-sync":
     foldLogPanel: true
   "rubocop-auto-correct":
-    autoRun: true
     correctFile: true
     notification: false
     onlyFixesNotification: false
     rubocopCommandPath: "bundle exec rubocop"
+  "tester-go":
+    focusPanelIfTestsFail: false
   "travis-ci-status":
     personalAccessToken: "d6400007a92d1dea548968f3a868e1518165ec21"
     useTravisCiPro: true
@@ -56,6 +84,12 @@
     preferredLineLength: 120
     scrollPastEnd: true
     softWrapHangingIndent: 120
+".evnd.gfm.html.inline.markdown.mathjax.source.text":
+  editor:
+    preferredLineLength: 120
+".evnd.html.inline":
+  editor:
+    preferredLineLength: 120
 ".ruby.source":
   editor:
     preferredLineLength: 120
