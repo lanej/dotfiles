@@ -39,7 +39,7 @@ function vm() {
 }
 
 function pauper() {
-	chruby 2.0 && source ~/devel/activate
+	source ~/devel/activate
 	~/devel/Pauper/bin/pauper $*
 	chruby .
 }
