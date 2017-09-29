@@ -113,3 +113,4 @@ elif [[ $OSTYPE =~ 'darwin' ]]; then
 	alias ls='ls -Gp'
 fi
 alias cpr='copy -r'
+alias rake='noglob rake'
