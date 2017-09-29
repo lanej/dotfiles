@@ -42,6 +42,7 @@ source $ZSH/oh-my-zsh.sh
 
 setopt inc_append_history
 setopt extended_history
+unsetopt nomatch
 unsetopt share_history
 
 unsetopt correct
