@@ -103,7 +103,8 @@ set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 " grep
 map <leader>a :Ag<space>
 map <leader>a* :Ag<space><cword><CR>
-let g:ag_prg="ag --column --smart-case --nogroup --nocolor"
+
+let g:ackprg = 'ag --vimgrep --smart-case --nogroup --column'
 
 set grepprg=ag\ --nogroup\ --nocolor
 if &grepformat !~# '%c'
