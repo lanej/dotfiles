@@ -1,6 +1,6 @@
 DOTFILES := $(shell pwd)
-all: shell tmux screen ruby X vim git _atom
-.PHONY: shell tmux screen ruby X vim git _atom
+all: shell tmux screen ruby X vim git
+.PHONY: shell tmux screen ruby X vim git
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
@@ -44,10 +44,3 @@ git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
 	ln -fs $(DOTFILES)/git/gitcommit ${HOME}/.gitcommit
-_atom:
-	mkdir -p $(HOME)/.atom
-	ln -fs $(DOTFILES)/atom/keymap.cson ${HOME}/.atom/keymap.cson
-	ln -fs $(DOTFILES)/atom/config.cson ${HOME}/.atom/config.cson
-	which apm && apm install --packages-file $(DOTFILES)/atom/package-list.txt
-atom_freeze:
-	which apm && apm list --installed --bare > $(DOTFILES)/atom/package-list.txt
