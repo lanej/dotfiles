@@ -2,37 +2,45 @@ call plug#begin('~/.vim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
-function! DoRemote(arg)
-	UpdateRemotePlugins
-endfunction
-Plug 'Shougo/deoplete.nvim', { 'do': function('DoRemote') }
+Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+Plug 'zchee/deoplete-go', { 'do': 'make' }
 
-Plug 'aliou/moriarty.vim'
 Plug 'AndrewRadev/splitjoin.vim'
-Plug 'Lokaltog/vim-easymotion'
+Plug 'Xuyuanp/nerdtree-git-plugin'
+Plug 'airblade/vim-gitgutter'
+Plug 'aliou/moriarty.vim'
 Plug 'bling/vim-airline'
+Plug 'ctrlpvim/ctrlp.vim'
 Plug 'depuracao/vim-rdoc'
 Plug 'derekwyatt/vim-scala'
+Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go'
+Plug 'fishbullet/deoplete-ruby'
+Plug 'gabrielelana/vim-markdown'
 Plug 'groenewege/vim-less'
+Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
 Plug 'junegunn/vim-easy-align'
 Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
-Plug 'kien/ctrlp.vim'
 Plug 'majutsushi/tagbar'
 Plug 'mattn/gist-vim'
+Plug 'mileszs/ack.vim'
+Plug 'ngmy/vim-rubocop'
 Plug 'noprompt/vim-yardoc'
 Plug 'rhysd/vim-clang-format'
-Plug 'rking/ag.vim'
+Plug 'rhysd/vim-crystal.git'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
-Plug 'scrooloose/syntastic'
+Plug 'w0rp/ale'
 Plug 'slack/vim-align'
 Plug 'thoughtbot/vim-rspec'
+Plug 'tpope/vim-bundler'
+Plug 'tpope/vim-dispatch'
 Plug 'tpope/vim-dotenv'
 Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-haml'
@@ -43,8 +51,6 @@ Plug 'tpope/vim-surround'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/xorium.vim'
 Plug 'wting/rust.vim'
-Plug 'ngmy/vim-rubocop'
-Plug 'rhysd/vim-crystal.git'
 
 " Add plugins to &runtimepath
 call plug#end()

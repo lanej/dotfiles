@@ -394,3 +394,5 @@ if has("autocmd")
     autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
   augroup END
 endif
+
+let g:ale_emit_conflict_warnings = 1
