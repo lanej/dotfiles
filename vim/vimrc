@@ -101,14 +101,19 @@ set complete-=i             "do not scan included files
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 
 " grep
-map <leader>a :Ag<space>
-map <leader>a* :Ag<space><cword><CR>
+nnoremap <Leader>a :Ack!<Space>
+map <leader>a* :Ack!<space><cword><CR>
 
-let g:ackprg = 'ag --vimgrep --smart-case --nogroup --column'
+if executable('ag')
+  let g:ackprg = 'ag --vimgrep'
+  " Use ag over grep
+  set grepprg=ag\ --nogroup\ --nocolor
 
-set grepprg=ag\ --nogroup\ --nocolor
-if &grepformat !~# '%c'
-  set grepformat^=%f:%l:%c:%m
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+
+  " ag is fast enough that CtrlP doesn't need to cache
+  let g:ctrlp_use_caching = 0
 endif
 
 " ================ Scrolling ========================
@@ -193,13 +198,6 @@ set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
 map <leader>g :CtrlPBuffer<CR>
-"map <leader>cf :CtrlPClearCache<CR>
-" Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
-let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
-"let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
-" ag is fast enough that CtrlP doesn't need to cache
-let g:ctrlp_use_caching = 0
-
 
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
