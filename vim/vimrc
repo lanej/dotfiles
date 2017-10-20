@@ -134,6 +134,8 @@ map <leader>ntc :NERDTreeClose<CR>
 map <leader>ntf :NERDTreeFind<CR>
 
 let NERDTreeShowHidden=1
+let NERDTreeChDirMode=2
+let NERDTreeQuitOnOpen=1
 
 " disable ex mode
 :map Q <Nop>
