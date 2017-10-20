@@ -15,12 +15,18 @@ export PATH="$HOME/sbin:/usr/local/bin:$PATH:/usr/local/git/bin:/usr/local/sbin"
 export GIT_SSH="$HOME/bin/git-ssh"
 
 ## Editor
-if [[ -s $(which mvim) ]]; then
-	export EDITOR=mvim
+if [[ -s $(which vimr) ]]; then
+	export VISUAL=vimr
+elif [[ -s $(which gnvim) ]]; then
+	export VISUAL=gnvim
+elif [[ -s $(which mvim) ]]; then
 	export VISUAL=mvim
+fi
+
+if [[ -s $(which nvim) ]]; then
+	export EDITOR=nvim
 else
 	export EDITOR=vim
-	export VISUAL=vim
 fi
 
 # java
