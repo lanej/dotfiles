@@ -56,10 +56,10 @@
 	v = show
 	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
 [core]
-	editor = vim
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	commentChar = '
+	editor = "$EDITOR"
 [apply]
 	whitespace = fix
 [push]
