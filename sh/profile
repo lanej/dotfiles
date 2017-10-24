@@ -16,7 +16,7 @@ export GIT_SSH="$HOME/bin/git-ssh"
 
 ## Editor
 if [[ -s $(which vimr) ]]; then
-	export VISUAL=vimr
+	export VISUAL='vimr -s'
 elif [[ -s $(which gnvim) ]]; then
 	export VISUAL=gnvim
 elif [[ -s $(which mvim) ]]; then
