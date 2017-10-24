@@ -136,12 +136,6 @@ if executable('ag')
   let g:ackprg = 'ag --vimgrep'
   " Use ag over grep
   set grepprg=ag\ --nogroup\ --nocolor
-
-  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
-  let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
-
-  " ag is fast enough that CtrlP doesn't need to cache
-  let g:ctrlp_use_caching = 0
 endif
 
 " ================ Scrolling ========================
@@ -226,8 +220,6 @@ nnoremap <C-h> <C-w>h
 " ctrlp
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
 let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
-map <leader>f :CtrlP<CR>
-map <leader>g :CtrlPBuffer<CR>
 
 " fzf
 noremap <leader>f :Files<CR>
@@ -247,19 +239,8 @@ command! Wqa :wqa
 command! E :e
 
 
-" vim rspec mappings
-let g:rspec_runner = "os_x_iterm"
-let g:rspec_command = "rff {spec}"
-map <Bslash>t :call RunCurrentSpecFile()<CR>
-map <Bslash>s :call RunNearestSpec()<CR>
-map <Bslash>l :call RunLastSpec()<CR>
-map <Bslash>a :call RunAllSpecs()<CR>
-
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
 vmap <Enter> <Plug>(EasyAlign)
-
-" Start interactive EasyAlign for a motion/text object (e.g. <Leader>aip)
-nmap <Leader>l <Plug>(EasyAlign)
 
 set shortmess=a
 
