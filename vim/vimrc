@@ -201,6 +201,12 @@ let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 map <leader>f :CtrlP<CR>
 map <leader>g :CtrlPBuffer<CR>
 
+" fzf
+noremap <leader>f :Files<CR>
+noremap <leader>gg :Buffers<CR>
+noremap <leader>t :Tags<CR>
+noremap <leader>l :Lines<CR>
+
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
 noremap k gk
