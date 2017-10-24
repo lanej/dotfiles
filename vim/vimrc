@@ -10,7 +10,7 @@ set gcr=a:blinkon0             "Disable cursor blink
 set hidden                     "Better buffer management
 set history=1000               "Store lots of :cmdline history
 set number                     "Line numbers are good
-set shell=/bin/bash
+set shell=$SHELL
 set showcmd                    "Show incomplete cmds down the bottom
 set showmode                   "Show current mode down the bottom
 set scrolloff=7                "Set 7 lines to the cursor - when moving vertically using j/k
