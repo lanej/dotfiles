@@ -301,16 +301,7 @@ let g:go_highlight_methods = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_build_constraints = 1
-
-let g:syntastic_go_checkers = ['golint', 'govet', 'errcheck']
-let g:syntastic_mode_map = { 'mode': 'active', 'passive_filetypes': ['go'] }
-let g:go_list_type = "quickfix"
-let g:go_highlight_functions = 1
-let g:go_highlight_methods = 1
-let g:go_highlight_fields = 1
-let g:go_highlight_types = 1
-let g:go_highlight_operators = 1
-let g:go_highlight_build_constraints = 1
+let g:go_fmt_command = "goimports"
 
 set completeopt=menu
 
@@ -334,13 +325,25 @@ if !exists("*s:MkNonExDir")
   endfunction
 endif
 
+" vim-go config
+let g:go_auto_sameids = 1
+let g:go_highlight_build_constraints = 1
+let g:go_highlight_extra_types = 1
+let g:go_highlight_fields = 1
+let g:go_highlight_fields = 1
+let g:go_highlight_functions = 1
+let g:go_highlight_methods = 1
+let g:go_highlight_operators = 1
+let g:go_highlight_structs = 1
+let g:go_highlight_types = 1
+let g:go_list_type = "quickfix"
+
 if has("autocmd")
   augroup filetype_ruby
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd FileType ruby set wrapscan|set textwidth=120
     autocmd FileType ruby nmap <leader>rs :!ruby -c %:p<CR>
-    autocmd FileType ruby nmap <leader>rb :RuboCop -a<CR>
     autocmd FileType ruby nmap <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
     autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
@@ -414,4 +417,29 @@ if has("autocmd")
   augroup END
 endif
 
+" vim-test configuration
+
+let test#strategy = "neovim"
+map <Bslash>t :TestFile<CR>
+map <Bslash>s :call RunNearestSpec()<CR>
+map <Bslash>l :call RunLastSpec()<CR>
+map <Bslash>a :call RunAllSpecs()<CR>
+
+
+" ALE config
+
 let g:ale_emit_conflict_warnings = 1
+let g:airline#extensions#ale#enabled = 1
+let g:ale_enabled = 1
+"let g:ale_fix_on_save = 1
+let g:ale_fixers = { 'ruby': [ 'rubocop' ], 'go': [ 'gofmt'] }
+let g:ale_linters = {'go': ['gofmt']}
+let g:ale_go_gometalinter_options = '--fast --tests'
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_open_list = 0
+"let g:ale_sign_error = '⤫'
+"let g:ale_sign_warning = '⚠'
+map <leader>rb :ALEFix<CR>
+nmap <silent> <C-k> <Plug>(ale_previous_wrap)
+nmap <silent> <C-j> <Plug>(ale_next_wrap)
