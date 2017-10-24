@@ -5,3 +5,6 @@
 tags
 .agignore
 .remote-sync.json
+.sandbox/
+.vscode/
+.byebug_history
