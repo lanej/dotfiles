@@ -20,3 +20,5 @@ else
 fi
 
 source ~/.rc
+
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash

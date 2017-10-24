@@ -5,6 +5,8 @@ let g:plug_url_format="git://github.com/%s"
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'zchee/deoplete-go', { 'do': 'make' }
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf.vim'
 
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'Xuyuanp/nerdtree-git-plugin'
