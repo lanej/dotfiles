@@ -52,6 +52,34 @@ nmap <leader>evb :tabedit ~/.vimrc.bundles<CR>
 nmap <leader>evn :tabedit ~/.vimrc.neocomplete<CR>
 nmap <leader>evr :source $MYVIMRC<CR>
 
+" Tab navigation like Chrome
+nnoremap <D-[> :tabprevious<CR>
+nnoremap <D-]> :tabnext<CR>
+nnoremap <D-t> :tabnew<CR>
+inoremap <D-[> <Esc>:tabprevious<CR>i
+inoremap <D-]> <Esc>:tabnext<CR>i
+inoremap <D-t> <Esc>:tabnew<CR>i
+nnoremap <D-1> 1gt<CR>
+inoremap <D-1> <Esc>1gt<CR>i
+nnoremap <D-2> 2gt<CR>
+inoremap <D-2> <Esc>2gt<CR>i
+nnoremap <D-3> 3gt<CR>
+inoremap <D-3> <Esc>3gt<CR>i
+nnoremap <D-4> 4gt<CR>
+inoremap <D-4> <Esc>4gt<CR>i
+nnoremap <D-5> 5gt<CR>
+inoremap <D-5> <Esc>5gt<CR>i
+nnoremap <D-6> 6gt<CR>
+inoremap <D-6> <Esc>6gt<CR>i
+nnoremap <D-7> 7gt<CR>
+inoremap <D-7> <Esc>7gt<CR>i
+nnoremap <D-8> 8gt<CR>
+inoremap <D-8> <Esc>8gt<CR>i
+nnoremap <D-9> 9gt<CR>
+inoremap <D-9> <Esc>9gt<CR>i
+nnoremap <D-w> :tabclose<CR>
+inoremap <D-w> <Esc>:tabclose<CR>
+
 filetype plugin indent on
 
 " =============== vim-plug Initialization ===============
