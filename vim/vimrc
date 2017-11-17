@@ -310,9 +310,6 @@ highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
 highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
 highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
-" Tagbar
-map <leader>tt :TagbarToggle<cr>
-
 if !exists("*s:MkNonExDir")
   " create parent directories on write
   function s:MkNonExDir(file, buf)
