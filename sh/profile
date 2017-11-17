@@ -59,3 +59,4 @@ else
 	ssh-add -A ~/.ssh/id_rsa &>/dev/null
 fi
 
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
