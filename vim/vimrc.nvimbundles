@@ -2,18 +2,13 @@ call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
-Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-Plug 'zchee/deoplete-go', { 'do': 'make' }
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
-Plug 'junegunn/fzf.vim'
-Plug 'alexgenco/neovim-ruby'
-Plug 'Shougo/deoplete-rct'
-
 Plug 'AndrewRadev/splitjoin.vim'
+Plug 'Shougo/deoplete-rct'
+Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'airblade/vim-gitgutter'
 Plug 'aklt/plantuml-syntax'
+Plug 'alexgenco/neovim-ruby'
 Plug 'aliou/moriarty.vim'
 Plug 'bling/vim-airline'
 Plug 'dag/vim-fish'
@@ -21,12 +16,14 @@ Plug 'depuracao/vim-rdoc'
 Plug 'derekwyatt/vim-scala'
 Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
-Plug 'fatih/vim-go'
+Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 Plug 'gabrielelana/vim-markdown'
 Plug 'groenewege/vim-less'
 Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-easy-align'
 Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
@@ -58,6 +55,7 @@ Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/xorium.vim'
 Plug 'w0rp/ale'
 Plug 'wting/rust.vim'
+Plug 'zchee/deoplete-go', { 'do': 'make' }
 
 " Add plugins to &runtimepath
 call plug#end()
