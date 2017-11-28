@@ -5,7 +5,7 @@ source /usr/local/share/chruby/chruby.fish
 source /usr/local/share/chruby/auto.fish
 
 # git
-set GIT_SSH "$HOME/bin/git-ssh"
+set -gx GIT_SSH "$HOME/bin/git-ssh"
 
 ## editor
 if which vimr > /dev/null
