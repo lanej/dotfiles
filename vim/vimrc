@@ -372,9 +372,19 @@ if has("autocmd")
     autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
+  augroup filetype_fish
+    autocmd!
+    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
   augroup filetype_perl
     autocmd!
     autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+  augroup END
+
+  augroup filetype_python
+    autocmd!
+    autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
   augroup END
 
   augroup filetype_c
