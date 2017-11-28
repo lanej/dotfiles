@@ -7,6 +7,8 @@ Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'zchee/deoplete-go', { 'do': 'make' }
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
+Plug 'alexgenco/neovim-ruby'
+Plug 'Shougo/deoplete-rct'
 
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'Xuyuanp/nerdtree-git-plugin'
@@ -14,13 +16,12 @@ Plug 'airblade/vim-gitgutter'
 Plug 'aklt/plantuml-syntax'
 Plug 'aliou/moriarty.vim'
 Plug 'bling/vim-airline'
-Plug 'ctrlpvim/ctrlp.vim'
+Plug 'dag/vim-fish'
 Plug 'depuracao/vim-rdoc'
 Plug 'derekwyatt/vim-scala'
 Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go'
-Plug 'fishbullet/deoplete-ruby'
 Plug 'gabrielelana/vim-markdown'
 Plug 'groenewege/vim-less'
 Plug 'janko-m/vim-test'
