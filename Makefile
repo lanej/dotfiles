@@ -1,6 +1,10 @@
 DOTFILES := $(shell pwd)
 all: shell tmux screen ruby X vim git
-.PHONY: shell tmux screen ruby X vim git
+.PHONY: shell tmux screen ruby X vim git fish
+fishfns := $(wildcard $(DOTFILES)/fish/functions/*)
+fish:
+	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
+	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv

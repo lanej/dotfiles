@@ -1,0 +1,35 @@
+#!/usr/bin/env fish
+set -gx PATH /usr/local/bin /usr/sbin $HOME/bin $HOME/go/bin $HOME/google-cloud-sdk/bin $PATH
+
+source /usr/local/share/chruby/chruby.fish
+source /usr/local/share/chruby/auto.fish
+
+# git
+set GIT_SSH "$HOME/bin/git-ssh"
+
+## editor
+if which vimr > /dev/null
+	set -Ux VISUAL 'vimr -s'
+else if which gnvim > /dev/null
+	set -Ux VISUAL gnvim
+else if which mvim > /dev/null
+	set -Ux VISUAL mvim
+end
+
+if which nvim > /dev/null
+	set -Ux EDITOR nvim
+else
+	set -Ux EDITOR vim
+end
+
+# fundle
+if not functions -q fundle; eval (curl -sfL https://git.io/fundle-install); end
+
+fundle plugin 'tuvistavie/fish-ssh-agent'
+fundle plugin 'tuvistavie/oh-my-fish-core'
+fundle plugin 'oh-my-fish/theme-bobthefish'
+fundle plugin 'oh-my-fish/plugin-vi-mode'
+
+fundle init
+
+set fish_key_bindings fish_vi_key_bindings
