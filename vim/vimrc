@@ -429,6 +429,7 @@ map <Bslash>s :call RunNearestSpec()<CR>
 map <Bslash>l :call RunLastSpec()<CR>
 map <Bslash>a :call RunAllSpecs()<CR>
 
+set shortmess+=c
 
 " ALE config
 
