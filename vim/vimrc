@@ -53,6 +53,7 @@ inoremap <C-L> <C-O>:nohls<CR>
 " Edit the vimrc file
 nmap <leader>ev :tabedit $MYVIMRC<CR>
 nmap <leader>evb :tabedit ~/.vimrc.bundles<CR>
+nmap <leader>evv :tabedit ~/.vimrc.nvimbundles<CR>
 nmap <leader>evn :tabedit ~/.vimrc.neocomplete<CR>
 nmap <leader>evr :source $MYVIMRC<CR>
 
