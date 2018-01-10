@@ -338,6 +338,10 @@ let g:go_highlight_types = 1
 let g:go_list_type = "quickfix"
 
 if has("autocmd")
+  augroup filetypedetect
+    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=gitpullrequest
+  augroup END
+
   augroup filetype_ruby
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
@@ -347,6 +351,11 @@ if has("autocmd")
     autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+
+  augroup END
+
+  augroup filetype_gitpullrequest
+    autocmd FileType gitpullrequest set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_gitcommit
