@@ -25,6 +25,7 @@ set title                      "Set the title in xterm
 set hidden                     "Better buffer management
 set hlsearch
 set incsearch
+set cmdheight=2
 
 " ================ Turn Off Swap Files ==============
 set noswapfile
