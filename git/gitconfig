@@ -18,7 +18,7 @@
 	cah = commit --amend -CHEAD
 	cahr = commit --amend -CHEAD --reset-author
 	cav = commit -av
-	ccah = commit --amend -cHEAD
+	ccah = commit --amend -cHEAD -v
 	ci = commit
 	cl = clone
 	cm = commit
