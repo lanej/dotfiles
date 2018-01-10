@@ -41,6 +41,9 @@ let mapleader = ","
 " Save files when vim loses focus
 au FocusLost * silent! wa
 
+" Reload files when vim gains focus
+au FocusGained,BufEnter * :checktime
+
 " searching stuff
 
 " Make <C-L> clear highlight and redraw
