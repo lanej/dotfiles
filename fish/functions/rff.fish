@@ -1,2 +1,2 @@
 #!/usr/bin/env fish
-alias rff 'rspec --fail-fast'
+alias rff 'be rspec --fail-fast'
