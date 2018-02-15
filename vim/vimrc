@@ -164,6 +164,8 @@ let NERDTreeShowHidden=1
 let NERDTreeChDirMode=2
 let NERDTreeQuitOnOpen=1
 
+let g:NERDSpaceDelims = 1
+
 " disable ex mode
 :map Q <Nop>
 
@@ -194,7 +196,7 @@ map <leader>hs :!haml -c %:p<CR>
 set winheight=10
 
 " ctags stuff
-set tags=./tags,tags,./TAGS,TAGS
+set tags=tags
 
 " numbers
 set number
@@ -336,10 +338,15 @@ let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
 let g:go_list_type = "quickfix"
+let g:go_auto_type_info = 0
+let g:go_fmt_command = "goimports"
+
+" vim-rufo
+let g:rufo_auto_formatting = 0
 
 if has("autocmd")
   augroup filetypedetect
-    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=gitpullrequest
+    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
   augroup END
 
   augroup filetype_ruby
@@ -352,10 +359,6 @@ if has("autocmd")
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
 
-  augroup END
-
-  augroup filetype_gitpullrequest
-    autocmd FileType gitpullrequest set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_gitcommit
@@ -437,11 +440,13 @@ endif
 
 " vim-test configuration
 
-let test#strategy = "neovim"
+" make test commands execute using dispatch.vim
 map <Bslash>t :TestFile<CR>
 map <Bslash>s :call RunNearestSpec()<CR>
 map <Bslash>l :call RunLastSpec()<CR>
 map <Bslash>a :call RunAllSpecs()<CR>
+let test#ruby#bundle_exec = 0
+let test#ruby#rspec#executable = 'chruby .; ruby -v; be rspec'
 
 set shortmess+=c
 
@@ -451,9 +456,9 @@ let g:ale_emit_conflict_warnings = 1
 let g:airline#extensions#ale#enabled = 1
 let g:ale_enabled = 1
 "let g:ale_fix_on_save = 1
-let g:ale_fixers = { 'ruby': [ 'rubocop' ], 'go': [ 'gofmt'] }
-let g:ale_linters = {'go': ['gometalinter', 'gofmt']}
-let g:ale_go_gometalinter_options = '--fast --tests'
+let g:ale_fixers = { 'ruby': [ 'rubocop' ], 'go': [ 'gofmt'], 'yaml': [ 'yamllint'] }
+let g:ale_linters = {'go': ['gofmt']}
+let g:ale_go_gometalinter_options = '--tests'
 let g:ale_set_loclist = 1
 let g:ale_set_quickfix = 0
 let g:ale_open_list = 0
@@ -463,3 +468,6 @@ map <leader>rb :ALEFix<CR>
 nmap <silent> <C-k> <Plug>(ale_previous_wrap)
 nmap <silent> <C-j> <Plug>(ale_next_wrap)
 map <leader>re :Rename
+
+
+let g:terraform_fmt_on_save = 1

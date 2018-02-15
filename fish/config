@@ -22,6 +22,8 @@ else
 	set -Ux EDITOR vim
 end
 
+set -Ux BUNDLER_EDITOR $VISUAL
+
 set -Ux RI_PAGER 'less -RSX'
 
 # fundle
@@ -35,3 +37,5 @@ fundle plugin 'oh-my-fish/plugin-vi-mode'
 fundle init
 
 set fish_key_bindings fish_vi_key_bindings
+
+posix-source ~/.keys.env

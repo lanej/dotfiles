@@ -6,6 +6,6 @@ function git-release
 	echo "Releasing: $next_release"
 	git tag $next_release; and git push origin $next_release
   if ls Capfile > /dev/null
-	  printf "deploy with:\n\tREVISION=$next_release bundle exec cap production deploy"
+	  printf "deploy with:\nenv REVISION=$next_release bundle exec cap production deploy"
   end
 end
