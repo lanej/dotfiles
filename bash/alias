@@ -84,3 +84,8 @@ elif [[ $OSTYPE =~ 'darwin' ]]; then
 fi
 alias cpr='copy -r'
 alias rake='noglob rake'
+alias mt='testrbl -Itest/ '
+alias rn='r --next-failure'
+alias copy="tr -d '\n' | pbcopy"
+alias vvim="vimr"
+alias vvimd="vimr --cwd $1"
