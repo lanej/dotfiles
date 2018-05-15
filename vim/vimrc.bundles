@@ -12,7 +12,7 @@ Plug 'bling/vim-airline'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'depuracao/vim-rdoc'
 Plug 'fatih/vim-go'
-Plug 'gabrielelana/vim-markdown'
+" Plug 'gabrielelana/vim-markdown'
 Plug 'jlanzarotta/bufexplorer'
 Plug 'junegunn/vim-easy-align'
 Plug 'justmao945/vim-clang'
@@ -38,6 +38,7 @@ Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/xorium.vim'
+Plug 'SidOfc/mkdx'
 
 
 " Add plugins to &runtimepath

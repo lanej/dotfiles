@@ -349,6 +349,10 @@ if has("autocmd")
     autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
   augroup END
 
+  augroup filetype_markdown
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
   augroup filetype_ruby
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
