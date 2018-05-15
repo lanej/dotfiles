@@ -58,6 +58,7 @@
 	slb = log --oneline --graph --decorate origin/master..HEAD
 	r = rebase
 	sls = log --oneline --graph --decorate --stat
+	au = ls-files -o --exclude-standard
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
