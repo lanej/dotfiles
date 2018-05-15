@@ -1,9 +1,6 @@
 #!/usr/bin/env fish
 set -gx PATH /usr/local/bin /usr/sbin $HOME/bin $HOME/go/bin $HOME/google-cloud-sdk/bin $PATH
 
-source /usr/local/share/chruby/chruby.fish
-source /usr/local/share/chruby/auto.fish
-
 # git
 set -gx GIT_SSH "$HOME/bin/git-ssh"
 
