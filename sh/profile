@@ -35,19 +35,8 @@ export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Ho
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
 
-
 # added by travis gem
 [ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
-
-# chruby
-[ -f /usr/local/share/chruby/chruby.sh ] && source /usr/local/share/chruby/chruby.sh
-[ -f /usr/local/share/chruby/auto.sh ] && source /usr/local/share/chruby/auto.sh
-[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && source /usr/local/opt/chruby/share/chruby/chruby.sh
-[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && source /usr/local/opt/chruby/share/chruby/auto.sh
-
-if type chruby > /dev/null; then
-	chruby 2.4.2 2>/dev/null
-fi
 
 # keys
 if [[ -s $(which keychain) ]]; then
@@ -59,3 +48,4 @@ else
 fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+eval "$(rbenv init -)"
