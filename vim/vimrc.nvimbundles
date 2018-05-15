@@ -2,9 +2,12 @@ call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
+" Plug 'gabrielelana/vim-markdown'
+" Plug 'tpope/vim-markdown'
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'Shougo/deoplete-rct'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+Plug 'SidOfc/mkdx'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'airblade/vim-gitgutter'
 Plug 'aklt/plantuml-syntax'
@@ -19,7 +22,6 @@ Plug 'derekwyatt/vim-scala'
 Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
-Plug 'gabrielelana/vim-markdown'
 Plug 'groenewege/vim-less'
 Plug 'hashivim/vim-terraform'
 Plug 'janko-m/vim-test'
