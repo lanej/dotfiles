@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
-function fhr () {
+function fhr() {
 	find . -iname "*$**"
 }
 function rd() {
 	rdesktop -g 1400x900 $*
 }
 function svndif() {
-	svn diff  --diff-cmd colordiff $* | less;
+	svn diff --diff-cmd colordiff $* | less
 }
 function find_in() {
 	find . -iname $1 | xargs grep $2 -sl
@@ -24,7 +24,7 @@ function git-release() {
 	git fetch origin -q
 	local current_release=$(git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1)
 	echo "Current release: v$current_release"
-	local next_release=v$(( $current_release + 1 ))
+	local next_release=v$(($current_release + 1))
 	echo "Releasing: $next_release"
 	git tag $next_release && git push origin $next_release
 	echo 'deploy with: '
@@ -62,14 +62,12 @@ alias v='vagrant'
 alias untar='tar xvfz'
 alias tfl='tail -Fn30 log/*.log'
 alias c="clear"
-alias retab="find . -iname '*.rb' | xargs sed -Ei '' 's/  /  /g'"
-alias ey-meta='CLOUD_URL=https://cloud-meta.engineyard.com ey'
 alias pt=papertrail
 alias fucking='sudo'
 alias k='kubectl'
 
 alias rba='bundle exec rubocop -a'
-alias minitest='(gem which testrbl || gem install testrbl) && testrbl'
+alias minitest='(gem which testrbl 1>/dev/null || gem install testrbl) && testrbl'
 
 alias curlb='curl -s'
 alias curls='curl -svo /dev/null'
@@ -84,7 +82,7 @@ elif [[ $OSTYPE =~ 'darwin' ]]; then
 fi
 alias cpr='copy -r'
 alias rake='noglob rake'
-alias mt='testrbl -Itest/ '
+alias mt='minitest -Itest/ '
 alias rn='r --next-failure'
 alias copy="tr -d '\n' | pbcopy"
 alias vvim="vimr"
