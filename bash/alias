@@ -31,6 +31,14 @@ function git-release() {
 	echo "REVISION=$next_release bundle exec cap production deploy"
 }
 
+function cookbooks-release() {
+	local version=$(egrep "version '([0-9\.]+)'" metadata.rb | cut -d" " -f2 | cut -d "'" -f2)
+	local tag="v$version"
+	echo "Releasing: $tag"
+	sleep 1
+	git tag $tag && git push origin $tag
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
