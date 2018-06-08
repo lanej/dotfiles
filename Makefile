@@ -1,6 +1,6 @@
 DOTFILES := $(shell pwd)
 all: shell tmux screen ruby X vim git
-.PHONY: shell tmux screen ruby X vim git fish
+.PHONY: shell tmux screen ruby X vim git fish chunk
 fishfns := $(wildcard $(DOTFILES)/fish/functions/*)
 fish:
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
@@ -48,3 +48,6 @@ git:
 	ln -fs $(DOTFILES)/git/gitconfig ${HOME}/.gitconfig
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
 	ln -fs $(DOTFILES)/git/gitcommit ${HOME}/.gitcommit
+chunk:
+	ln -fs $(DOTFILES)/chunk/skhdrc ${HOME}/.skhdrc
+	ln -fs $(DOTFILES)/chunk/chunkwmrc ${HOME}/.chunkwmrc
