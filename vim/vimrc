@@ -444,13 +444,13 @@ if has("autocmd")
 endif
 
 " vim-test configuration
-
-" make test commands execute using dispatch.vim
+let test#strategy = "neovim"
+let test#ruby#rspec#executable = 'rbenv exec bundle exec rspec'
+let test#ruby#minitest#executable = 'rbenv exec bundle exec ruby -Itest/'
+let g:test#preserve_screen = 1
 map <Bslash>t :TestFile<CR>
-map <Bslash>s :call RunNearestSpec()<CR>
-map <Bslash>l :call RunLastSpec()<CR>
-map <Bslash>a :call RunAllSpecs()<CR>
-let test#ruby#bundle_exec = 0
+
+" neovim specific
 let g:ruby_host_prog = '~/.rbenv/versions/2.5.1/bin/neovim-ruby-host'
 
 set shortmess+=c
