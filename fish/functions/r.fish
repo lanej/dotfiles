@@ -1,2 +1,2 @@
 #!/usr/bin/env fish
-alias r 'bundle exec rspec'
+alias r 'be rspec'
