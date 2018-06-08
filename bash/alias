@@ -32,7 +32,7 @@ function git-release() {
 }
 
 function cookbooks-release() {
-	local version=$(egrep "version '([0-9\.]+)'" metadata.rb | cut -d" " -f2 | cut -d "'" -f2)
+	local version=$(egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2)
 	local tag="v$version"
 	echo "Releasing: $tag"
 	sleep 1
