@@ -249,13 +249,12 @@ noremap <leader>go :Gbrowse<CR>
 noremap j gj
 noremap k gk
 
-" fuckups - If I don't let off the shift key quick enough
+" If I don't let off the shift key quick enough
 command! Q :q
 command! W :w
 command! Wa :wa
 command! Wqa :wqa
 command! E :e
-
 
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
 vmap <Enter> <Plug>(EasyAlign)
@@ -316,8 +315,8 @@ highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
 highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
 highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
+" create parent directories on write
 if !exists("*s:MkNonExDir")
-  " create parent directories on write
   function s:MkNonExDir(file, buf)
     if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
       let dir=fnamemodify(a:file, ':h')
@@ -493,9 +492,11 @@ let g:ale_warn_about_trailing_whitespace = 1
 map <leader>rb :ALEFix<CR>
 nmap <silent> <C-k> <Plug>(ale_previous_wrap)
 nmap <silent> <C-j> <Plug>(ale_next_wrap)
-map <leader>re :Rename
 
+" rename
+map <leader>re :Rename 
 
+" random terraform setting
 let g:terraform_fmt_on_save = 1
 
 " markdown
