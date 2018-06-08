@@ -361,9 +361,6 @@ if has("autocmd")
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd FileType ruby set wrapscan|set textwidth=120
-    autocmd FileType ruby nmap <leader>rs :!ruby -c %:p<CR>
-    autocmd FileType ruby nmap <leader>r19 :s/\v:([0-9a-z_]+)\s+\=\>\s+/\1: /g<CR>
-    autocmd FileType ruby nmap <leader>r18 :s/\v([0-9a-z_"']+):\s+(.*)/:\1 => \2/g<CR>
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
 
