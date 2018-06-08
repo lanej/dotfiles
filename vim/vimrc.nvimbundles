@@ -2,8 +2,6 @@ call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
-" Plug 'gabrielelana/vim-markdown'
-" Plug 'tpope/vim-markdown'
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'Shougo/deoplete-rct'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
@@ -40,7 +38,7 @@ Plug 'ngmy/vim-rubocop'
 Plug 'noprompt/vim-yardoc'
 Plug 'rhysd/vim-clang-format'
 Plug 'rhysd/vim-crystal.git'
-Plug 'ruby-formatter/rufo-vim'
+Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
 Plug 'scrooloose/vim-slumlord'
