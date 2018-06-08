@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 # set PATH so it includes user's private bin if it exists
-if [[ -d "$HOME/bin" ]] ; then
+if [[ -d "$HOME/bin" ]]; then
 	PATH="$HOME/bin:$PATH"
 fi
 
-if [[ -d "$HOME/.files/bin" ]] ; then
+if [[ -d "$HOME/.files/bin" ]]; then
 	PATH="$HOME/.files/bin:$PATH"
 fi
 
@@ -15,7 +15,7 @@ export GIT_SSH="$HOME/bin/git-ssh"
 
 ## Editor
 if [[ -s $(which vimr) ]]; then
-	export VISUAL='vimr -s'
+	export VISUAL='vimr -s '
 elif [[ -s $(which gnvim) ]]; then
 	export VISUAL=gnvim
 elif [[ -s $(which mvim) ]]; then
@@ -40,7 +40,7 @@ export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
 
 # keys
 if [[ -s $(which keychain) ]]; then
-	eval `keychain -q --eval --agents ssh --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa`
+	eval $(keychain -q --eval --agents ssh --inherit any ~/.ssh/id_rsa ~/.ssh/fastly.id_rsa)
 	source ~/.keychain/$HOST-sh
 	source ~/.keychain/$HOST-sh-gpg
 else
@@ -48,4 +48,7 @@ else
 fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
-eval "$(rbenv init -)"
+[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+
+source ~/.keys.env
+eval "$(rbenv init - --no-rehash)"
