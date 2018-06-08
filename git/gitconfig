@@ -59,6 +59,8 @@
 	r = rebase
 	sls = log --oneline --graph --decorate --stat
 	au = ls-files -o --exclude-standard
+	rbo = rebase origin/master
+	rba = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion' origin/master
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
