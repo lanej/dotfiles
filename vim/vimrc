@@ -351,7 +351,10 @@ if has("autocmd")
   augroup END
 
   augroup filetype_markdown
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd!
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
+    autocmd FileType markdown imap <S-Tab> <C-d>
+    autocmd FileType markdown imap <Tab> <C-t>
   augroup END
 
   augroup filetype_ruby
