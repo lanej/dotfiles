@@ -95,3 +95,4 @@ alias rn='r --next-failure'
 alias copy="tr -d '\n' | pbcopy"
 alias vvim="vimr"
 alias vvimd="vimr --cwd $1"
+alias gpr="hub pull-request"
