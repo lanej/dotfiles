@@ -49,6 +49,8 @@ fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+[ -f ~/.keys.env ] && source ~/.keys.env
 
-source ~/.keys.env
-eval "$(rbenv init - --no-rehash)"
+if [[ -s $(which rbenv) ]]; then
+	eval "$(rbenv init - --no-rehash)"
+fi
