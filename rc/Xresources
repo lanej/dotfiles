@@ -27,7 +27,7 @@ rxvt.utmpInhibit:               true
 rxvt.scrollBar:			false
 
 URxvt.geometry:                  80x35
-URxvt.font:                      shine
+URxvt.font:                      xft:Hack
 URxvt.foreground:                lightgray
 URxvt.background:                black
 URxvt.savelines:                 20000
