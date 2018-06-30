@@ -1,6 +1,8 @@
+.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar
+
 DOTFILES := $(shell pwd)
-.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3
 fishfns := $(wildcard $(DOTFILES)/fish/functions/*)
+
 fish:
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
@@ -58,3 +60,7 @@ chunk:
 i3:
 	mkdir -p ${HOME}/.config/i3
 	ln -fs $(DOTFILES)/i3/config ${HOME}/.config/i3/config
+polybar:
+	mkdir -p ${HOME}/.config/polybar
+	ln -fs $(DOTFILES)/polybar/config ${HOME}/.config/polybar/config
+	ln -fs $(DOTFILES)/polybar/launch.sh ${HOME}/.config/polybar/launch.sh
