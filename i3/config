@@ -46,13 +46,20 @@ bindsym $mod+Return exec urxvt
 bindsym $mod+Shift+q kill
 
 # start dmenu (a program launcher)
-bindsym $mod+d exec dmenu_run
+# bindsym $mod+d exec dmenu_run
+# start rofi
+bindsym $mod+d exec --no-startup-id  rofi -combi-modi window#drun -show combi -modi combi -show-icons -theme "gruvbox-dark-hard" -font "mono 24"
+bindsym $mod+g exec --no-startup-id rofi -show window
+
 # There also is the (new) i3-dmenu-desktop which only displays applications
 # shipping a .desktop file. It is a wrapper around dmenu, so you need that
 # installed.
 # bindsym $mod+d exec --no-startup-id i3-dmenu-desktop
 
-# change focus
+# screenshot
+bindsym --release $mod+p exec  maim -s --format=png /dev/stdout | xclip -selection clipboard -t image/png -i
+
+# change focus, vim-ish bindings
 bindsym $mod+h focus left
 bindsym $mod+j focus down
 bindsym $mod+k focus up
