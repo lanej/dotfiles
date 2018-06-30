@@ -1,6 +1,5 @@
 DOTFILES := $(shell pwd)
-all: shell tmux screen ruby X vim git
-.PHONY: shell tmux screen ruby X vim git fish chunk
+.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3
 fishfns := $(wildcard $(DOTFILES)/fish/functions/*)
 fish:
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
@@ -51,3 +50,6 @@ git:
 chunk:
 	ln -fs $(DOTFILES)/chunk/skhdrc ${HOME}/.skhdrc
 	ln -fs $(DOTFILES)/chunk/chunkwmrc ${HOME}/.chunkwmrc
+i3:
+	mkdir -p ${HOME}/.config/i3
+	ln -fs $(DOTFILES)/i3/config ${HOME}/.config/i3/config
