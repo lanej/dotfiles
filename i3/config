@@ -15,8 +15,10 @@ set $mod Mod4
 exec --no-startup-id feh --bg-scale ~/.files/wallpaper/boards_wood_texture_118306_3840x2400.jpg
 
 # remove title bars
-for_window [class="^.*"] border pixel 1
+for_window [class="^.*"] border pixel 2
 new_window 1pixel
+
+client.focused #555555 #555555 #ffffff #2e9ef4 #e1f246
 
 # Lauch polybar
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
@@ -48,7 +50,7 @@ bindsym $mod+Shift+q kill
 # start dmenu (a program launcher)
 # bindsym $mod+d exec dmenu_run
 # start rofi
-bindsym $mod+d exec --no-startup-id  rofi -combi-modi window#drun -show combi -modi combi -show-icons -theme "gruvbox-dark-hard" -font "mono 24"
+bindsym $mod+d exec --no-startup-id rofi -combi-modi window#drun -show combi -modi combi -show-icons -theme "gruvbox-dark-hard" -font "mono 24"
 bindsym $mod+g exec --no-startup-id rofi -show window
 
 # There also is the (new) i3-dmenu-desktop which only displays applications
