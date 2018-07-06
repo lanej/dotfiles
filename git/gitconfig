@@ -75,8 +75,7 @@
 	autosetuprebase = always
 [github]
 	user = lanej
-  ;password = !security find-generic-password -gs github.password 2>&1 | grep "^password" | awk '{print $2}'
-	password = !security 2>&1 >/dev/null find-generic-password -gs github.password | ruby -e 'print $1 if STDIN.gets =~ /^password: \\\"(.*)\\\"$/'
+	password = "!cat ~/.github_changelog_generator"
 [rerere]
 	enabled = true
 [help]
@@ -106,3 +105,5 @@
 	fsckObjects = true
 [url "git@github.com:"]
 	insteadOf = https://github.com/
+[credential]
+	helper = osxkeychain

@@ -6,4 +6,4 @@
 :update_sources: true
 :verbose: true
 benchmark: false
-gem: "--no-rdoc"
+gem: "--no-rdoc --document=yri"

@@ -1,4 +1,5 @@
 " ~/.vimrc
+
 set nocompatible
 
 " ================ General Config ====================
@@ -26,6 +27,7 @@ set hidden                     "Better buffer management
 set hlsearch
 set incsearch
 set cmdheight=2
+set termguicolors
 
 " ================ Turn Off Swap Files ==============
 set noswapfile
@@ -154,7 +156,6 @@ map <leader>ntf :NERDTreeFind<CR>
 let NERDTreeShowHidden=1
 let NERDTreeChDirMode=2
 let NERDTreeQuitOnOpen=1
-
 let g:NERDSpaceDelims = 1
 
 " disable ex mode
@@ -167,21 +168,17 @@ let g:NERDSpaceDelims = 1
 " map <leader>a= to :Align = (rather than :Align := )
 map <leader>a= :Align =<CR>
 map <leader>ah :Align =><CR>
-map <leader>a# :Align #<CR>
+map <leader>ac :Align #<CR>
 map <leader>a{ :Align {<CR>
 map <leader>A :Align [A-Z].*<CR>:'<,'>s/\s*$//<CR><C-l>
 map <leader>= ggVG=<CR>
 map <leader>ct :set et <bar> retab<CR>
 
 " Helpers
-map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
 " Allow saving of files as sudo when I forgot to start vim using sudo.
 cmap w!! w !sudo tee > /dev/null %
-
-" Haml
-map <leader>hs :!haml -c %:p<CR>
 
 " Set minimum window height
 set winheight=10
@@ -193,7 +190,12 @@ set tags=tags
 set number
 
 " git-gutter
-set updatetime=250
+set updatetime=100
+let g:gitgutter_override_sign_column_highlight = 0
+highlight GitGutterAdd          cterm=bold ctermbg=237 ctermfg=29
+highlight GitGutterDelete       cterm=bold ctermbg=237 ctermfg=124 guifg=#af0000
+highlight GitGutterChange       cterm=bold ctermbg=106 ctermfg=106
+highlight GitGutterChangeDelete cterm=bold ctermbg=106 ctermfg=106
 
 " gui stuff
 set guioptions-=T
@@ -201,15 +203,15 @@ set guioptions-=r
 set guioptions-=L
 
 " Movement
-nnoremap <A-h> <C-w>h
-nnoremap <A-j> <C-w>j
-nnoremap <A-k> <C-w>k
-nnoremap <A-l> <C-w>l
-nnoremap <A-s> <C-w>s
-nnoremap <A-q> <C-w>q
-nnoremap <C-j> <C-w>j
-nnoremap <C-k> <C-w>k
-nnoremap <C-h> <C-w>h
+" nnoremap <A-h> <C-w>h
+" nnoremap <A-j> <C-w>j
+" nnoremap <A-k> <C-w>k
+" nnoremap <A-l> <C-w>l
+" nnoremap <A-s> <C-w>s
+" nnoremap <A-q> <C-w>q
+" nnoremap <C-j> <C-w>j
+" nnoremap <C-k> <C-w>k
+" nnoremap <C-h> <C-w>h
 "nnoremap <C-l> <C-w>l
 
 " ctrlp
@@ -300,11 +302,6 @@ let g:tagbar_type_go = {
 
 
 set completeopt=menu
-
-" Signify
-highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
-highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
-highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " create parent directories on write
 if !exists("*s:MkNonExDir")

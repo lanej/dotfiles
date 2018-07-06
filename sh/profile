@@ -16,17 +16,26 @@ export GIT_SSH="$HOME/bin/git-ssh"
 ## Editor
 if [[ -s $(which vimr) ]]; then
 	export VISUAL='vimr -s '
-elif [[ -s $(which gnvim) ]]; then
-	export VISUAL=gnvim
+  export VISUALD='vimr --cwd '
+elif [[ -s $(which oni) ]]; then
+	export VISUAL=oni
+elif [[ -s $(which gvim) ]]; then
+	export VISUAL=gvim
 elif [[ -s $(which mvim) ]]; then
 	export VISUAL=mvim
 fi
 
+export VISUALD=${VISUALD:-$VISUAL}
+
 if [[ -s $(which nvim) ]]; then
 	export EDITOR=nvim
-else
+elif [[ -s $(which vim) ]]; then
 	export EDITOR=vim
+else
+	export EDITOR=vi
 fi
+
+export EDITORD=${EDITORD:-$EDITOR}
 
 # java
 export JAVA_HOME="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home"
