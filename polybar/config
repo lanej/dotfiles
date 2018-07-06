@@ -19,7 +19,7 @@ font-2 = Termsynu:size=12;-2
 font-3 = FontAwesome:size=12;0
 
 modules-left = mpd bspwm i3 
-modules-right = cpu memory temperature filesystem volume backlight wireless-network battery date
+modules-right = github cpu memory temperature filesystem wireless-network date
 
 tray-position = right 
 tray-padding = 2
@@ -466,5 +466,29 @@ format = <label>
 
 
 format-underline = #1db954
+
+[module/github]
+type = internal/github
+
+; Accessing an access token stored in file
+token = ${file:/home/jlane/.github}
+
+; Accessing an access token stored in an environment variable
+; token = ${env:GITHUB_ACCESS_TOKEN}
+
+; Whether empty notifications should be displayed or not
+empty-notifications = false
+
+; Number of seconds in between requests
+interval = 10
+
+; Available tags:
+;   <label> (default)
+format = <label>
+
+; Available tokens:
+;   %notifications% (default)
+; Default: Notifications: %notifications%
+label = ⎇ %notifications%
 
 ; vim:ft=dosini
