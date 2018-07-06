@@ -7,6 +7,7 @@ fish:
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
+	touch ${HOME}/.keys.env
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
