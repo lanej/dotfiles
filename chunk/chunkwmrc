@@ -56,14 +56,14 @@ chunkc set preselect_border_radius       0
 chunkc set focused_border_color          0xfff4e242
 chunkc set focused_border_width          5
 chunkc set focused_border_radius         5
-chunkc set focused_border_skip_floating  0
+chunkc set focused_border_skip_floating  1
 
 
 chunkc set global_desktop_offset_top     30
 chunkc set global_desktop_offset_bottom  30
 chunkc set global_desktop_offset_left    30
 chunkc set global_desktop_offset_right   30
-chunkc set global_desktop_offset_gap     30
+chunkc set global_desktop_offset_gap     20
 
 #
 # NOTE: specify plugins to load when chunkwm starts.

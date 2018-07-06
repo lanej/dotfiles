@@ -22,3 +22,4 @@ fi
 source ~/.rc
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
+source ~/.bash_profile

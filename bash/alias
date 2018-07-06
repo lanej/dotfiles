@@ -1,4 +1,5 @@
-#!/usr/bin/env sh
+#!/bin/sh
+
 function fhr() {
 	find . -iname "*$**"
 }
@@ -14,6 +15,14 @@ function find_in() {
 
 function myip() {
 	echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+}
+
+function minitest() {
+	if [[ ! -s $(rbenv which testrbl 2>/dev/null) ]]; then
+		gem install testrbl --no-document -qq
+	fi
+
+	testrbl "$@"
 }
 
 function git-rebase-style() {
@@ -75,7 +84,6 @@ alias fucking='sudo'
 alias k='kubectl'
 
 alias rba='bundle exec rubocop -a'
-alias minitest='(gem which testrbl 1>/dev/null || gem install testrbl) && testrbl'
 
 alias curlb='curl -s'
 alias curls='curl -svo /dev/null'
@@ -88,11 +96,17 @@ if [[ $OSTYPE == 'linux-gnu' ]]; then
 elif [[ $OSTYPE =~ 'darwin' ]]; then
 	alias ls='ls -Gp'
 fi
+
 alias cpr='copy -r'
 alias rake='noglob rake'
-alias mt='minitest -Itest/ '
+alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
 alias rn='r --next-failure'
 alias copy="tr -d '\n' | pbcopy"
-alias vvim="vimr"
-alias vvimd="vimr --cwd $1"
 alias gpr="hub pull-request"
+alias f=fzf
+alias e='$EDITOR '
+alias ed='eval $EDITORD ${1-"."}'
+alias v='eval $VISUAL '
+alias vd='eval $VISUALD ${1-"."}'
+alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
+alias rmr='rm -r'

@@ -1,12 +1,9 @@
-" ~/.config/nvim/init.vim
-set nocompatible
-
 " ================ General Config ====================
 set autoread                   "Reload files changed outside vim
 set backspace=indent,eol,start "Allow backspace in insert mode
 set encoding=utf-8
 set fileformats+=mac
-set gcr=a:blinkon0             "Disable cursor blink
+set guicursor=a:blinkon0       "Disable cursor blink
 set hidden                     "Better buffer management
 set history=1000               "Store lots of :cmdline history
 set number                     "Line numbers are good
@@ -19,7 +16,6 @@ set ttimeoutlen=100
 set visualbell                 "No sounds
 set exrc
 set secure
-set nocompatible
 set modelines=5
 set title                      "Set the title in xterm
 set hidden                     "Better buffer management
@@ -30,19 +26,13 @@ set cmdheight=2
 " ================ Turn Off Swap Files ==============
 set noswapfile
 set nobackup
-set nowb
+set nowritebackup
 
 " Trailing spaces and tabs
 set list
 set listchars=tab:>-,trail:*,nbsp:*
 
-let mapleader = ","
-
-" Save files when vim loses focus
-au FocusLost * silent! wa
-
-" Reload files when vim gains focus
-au FocusGained,BufEnter * :checktime
+let mapleader = ','
 
 " searching stuff
 
@@ -51,50 +41,36 @@ nnoremap <C-L> :nohls<CR><C-L>
 inoremap <C-L> <C-O>:nohls<CR>
 
 " Edit the vimrc file
-nmap <leader>ev :tabedit $MYVIMRC<CR>
-nmap <leader>evb :tabedit ~/.vimrc.bundles<CR>
-nmap <leader>evv :tabedit ~/.vimrc.nvimbundles<CR>
-nmap <leader>evn :tabedit ~/.vimrc.neocomplete<CR>
-nmap <leader>evr :source $MYVIMRC<CR>
+nnoremap ev  :tabedit $MYVIMRC<CR>
+nnoremap evr :source  $MYVIMRC<CR>
+nnoremap tk  :tabnext<CR>
+nnoremap th  :tabprev<CR>
+nnoremap tl  :tablast<CR>
+nnoremap tt  :tabedit<Space>
+nnoremap tn  :tabnext<Space>
+nnoremap tm  :tabm<Space>
+nnoremap td  :tabclose<CR>
+nnoremap t1  1gt<CR>
+nnoremap t2  2gt<CR>
+nnoremap t3  3gt<CR>
+nnoremap t4  4gt<CR>
+nnoremap t5  5gt<CR>
+nnoremap t6  6gt<CR>
 
-" Tab navigation like Chrome
-nnoremap <D-[> :tabprevious<CR>
-nnoremap <D-]> :tabnext<CR>
-nnoremap <D-t> :tabnew<CR>
-inoremap <D-[> <Esc>:tabprevious<CR>i
-inoremap <D-]> <Esc>:tabnext<CR>i
-inoremap <D-t> <Esc>:tabnew<CR>i
-nnoremap <D-1> 1gt<CR>
-inoremap <D-1> <Esc>1gt<CR>i
-nnoremap <D-2> 2gt<CR>
-inoremap <D-2> <Esc>2gt<CR>i
-nnoremap <D-3> 3gt<CR>
-inoremap <D-3> <Esc>3gt<CR>i
-nnoremap <D-4> 4gt<CR>
-inoremap <D-4> <Esc>4gt<CR>i
-nnoremap <D-5> 5gt<CR>
-inoremap <D-5> <Esc>5gt<CR>i
-nnoremap <D-6> 6gt<CR>
-inoremap <D-6> <Esc>6gt<CR>i
-nnoremap <D-7> 7gt<CR>
-inoremap <D-7> <Esc>7gt<CR>i
-nnoremap <D-8> 8gt<CR>
-inoremap <D-8> <Esc>8gt<CR>i
-nnoremap <D-9> 9gt<CR>
-inoremap <D-9> <Esc>9gt<CR>i
-nnoremap <D-w> :tabclose<CR>
-inoremap <D-w> <Esc>:tabclose<CR>
-
+" Enable filetype plugins to handle indents
 filetype plugin indent on
 
-
+" plugins:begin
 call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
 Plug 'AndrewRadev/splitjoin.vim'
+Plug 'SevereOverfl0w/deoplete-github'
 Plug 'Shougo/deoplete-rct'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+Plug 'Shougo/neosnippet-snippets'
+Plug 'Shougo/neosnippet.vim'
 Plug 'SidOfc/mkdx'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'airblade/vim-gitgutter'
@@ -102,11 +78,11 @@ Plug 'aklt/plantuml-syntax'
 Plug 'alexgenco/neovim-ruby'
 Plug 'aliou/moriarty.vim'
 Plug 'bling/vim-airline'
+Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 Plug 'dag/vim-fish'
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
 Plug 'depuracao/vim-rdoc'
-Plug 'derekwyatt/vim-scala'
 Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
@@ -115,26 +91,35 @@ Plug 'hashivim/vim-terraform'
 Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
+Plug 'joshdick/onedark.vim'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-easy-align'
+Plug 'junegunn/vim-github-dashboard'
 Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
 Plug 'majutsushi/tagbar'
 Plug 'mattn/gist-vim'
+Plug 'mattn/webapi-vim'
+Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
 Plug 'mileszs/ack.vim'
+Plug 'mxw/vim-jsx'
 Plug 'ngmy/vim-rubocop'
 Plug 'noprompt/vim-yardoc'
+Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
+Plug 'pangloss/vim-javascript'
 Plug 'rhysd/vim-clang-format'
 Plug 'rhysd/vim-crystal.git'
 Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
 Plug 'scrooloose/vim-slumlord'
+Plug 'sheerun/vim-polyglot'
 Plug 'skywind3000/asyncrun.vim'
 Plug 'slack/vim-align'
 Plug 'szw/vim-tags'
+Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'thoughtbot/vim-rspec'
 Plug 'tpope/vim-bundler'
 Plug 'tpope/vim-dotenv'
@@ -146,7 +131,7 @@ Plug 'tpope/vim-rbenv'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
-Plug 'vim-ruby/vim-ruby'
+Plug 'uplus/deoplete-solargraph'
 Plug 'vim-scripts/xorium.vim'
 Plug 'w0rp/ale'
 Plug 'wting/rust.vim'
@@ -156,42 +141,41 @@ Plug 'zchee/deoplete-jedi'
 " Add plugins to &runtimepath
 call plug#end()
 
+" plugins:end
+
 " =============== UI ================
 " turn syntax highlighting on
 syntax enable
-colorscheme moriarty
+colorscheme onedark
 
 highlight clear LineNr     " Current line number row will have same background color in relative mode
 highlight clear SignColumn " SignColumn should match background
-set nocursorline           " Highlight current line !!! disabled, runs slow
-set hlsearch               " Highlight search results
-set ignorecase             " Ignore case when searching
-set incsearch              " Makes search act like search in modern browsers
-set lazyredraw             " Don't redraw while executing macros (good performance config)
-set magic                  " For regular expressions turn magic on
-set mat=2                  " How many tenths of a second to blink when matching brackets
-set showmatch              " Show matching brackets when text indicator is over them
-set showmode               " Display the current mode
-set smartcase              " When searching try to be smart about cases
-set tabpagemax=15          " Only show 15 tabs
+
+set nocursorline  " Highlight current line !!! disabled, runs slow
+set hlsearch      " Highlight search results
+set ignorecase    " Ignore case when searching
+set incsearch     " Makes search act like search in modern browsers
+set lazyredraw    " Don't redraw while executing macros (good performance config)
+set magic         " For regular expressions turn magic on
+set matchtime=2   " How many tenths of a second to blink when matching brackets
+set showmatch     " Show matching brackets when text indicator is over them
+set showmode      " Display the current mode
+set smartcase     " When searching try to be smart about cases
+set tabpagemax=15 " Only show 15 tabs
 set nobackup
 set smarttab
 set cursorline
-
-" ================ Completion =======================
-set wildmode=list:longest
-set wildmenu                "enable ctrl-n and ctrl-p to scroll thru matches
-set complete-=i             "do not scan included files
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 
 " grep
 nnoremap <Leader>a :Ack!<Space>
 map <leader>a* :Ack!<space><cword><CR>
 
+set completeopt=menu,preview,noselect
+
 if executable('ag')
-  let g:ackprg = 'ag --vimgrep'
-  " Use ag over grep
-  set grepprg=ag\ --nogroup\ --nocolor
+	let g:ackprg = 'ag --vimgrep'
+	" Use ag over grep
+	set grepprg=ag\ --nogroup\ --nocolor
 endif
 
 " ================ Scrolling ========================
@@ -201,21 +185,24 @@ set sidescroll=1
 
 " ================ Status Line ======================
 if has('cmdline_info')
-  set showcmd                 " Show partial commands in status line and
-  " Selected characters/lines in visual mode
+	set showcmd                 " Show partial commands in status line and
+	" Selected characters/lines in visual mode
 endif
 
-" NT bindings
+" NerdTREE
 map <leader>n :NERDTreeToggle<CR>
 map <leader>ntm :NERDTreeMirror<CR>
 map <leader>ntc :NERDTreeClose<CR>
 map <leader>ntf :NERDTreeFind<CR>
 
-let NERDTreeShowHidden=1
-let NERDTreeChDirMode=2
-let NERDTreeQuitOnOpen=1
-
+let g:NERDTreeShowHidden=1
+let g:NERDTreeChDirMode=2
+let g:NERDTreeQuitOnOpen=1
 let g:NERDSpaceDelims = 1
+
+" other cwd configs
+map <leader>ct :cd %:p:h<CR>
+map <leader>cg :cd !git rev-parse --show-toplevel<CR>
 
 " disable ex mode
 :map Q <Nop>
@@ -231,14 +218,13 @@ map <leader>a# :Align #<CR>
 map <leader>a{ :Align {<CR>
 map <leader>A :Align [A-Z].*<CR>:'<,'>s/\s*$//<CR><C-l>
 map <leader>= ggVG=<CR>
-map <leader>ct :set et <bar> retab<CR>
 
 " Helpers
 map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
 " Allow saving of files as sudo when I forgot to start vim using sudo.
-cmap w!! w !sudo tee > /dev/null %
+cmap w! w !sudo tee > /dev/null %<CR>
 
 " Haml
 map <leader>hs :!haml -c %:p<CR>
@@ -259,18 +245,6 @@ set updatetime=250
 set guioptions-=T
 set guioptions-=r
 set guioptions-=L
-
-" Movement
-nnoremap <A-h> <C-w>h
-nnoremap <A-j> <C-w>j
-nnoremap <A-k> <C-w>k
-nnoremap <A-l> <C-w>l
-nnoremap <A-s> <C-w>s
-nnoremap <A-q> <C-w>q
-nnoremap <C-j> <C-w>j
-nnoremap <C-k> <C-w>k
-nnoremap <C-h> <C-w>h
-"nnoremap <C-l> <C-w>l
 
 " ctrlp
 set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
@@ -313,10 +287,10 @@ vmap <Enter> <Plug>(EasyAlign)
 set shortmess=a
 
 let g:clang_format#style_options = {
-      \ "AccessModifierOffset" : -4,
-      \ "AllowShortIfStatementsOnASingleLine" : "true",
-      \ "AlwaysBreakTemplateDeclarations" : "true",
-      \ "Standard" : "C++11"}
+			\ "AccessModifierOffset" : -4,
+			\ "AllowShortIfStatementsOnASingleLine" : "true",
+			\ "AlwaysBreakTemplateDeclarations" : "true",
+			\ "Standard" : "C++11"}
 
 set makeprg="make -j9"
 nnoremap <Leader>M :make!<CR>
@@ -325,41 +299,40 @@ nnoremap <Leader>M :make!<CR>
 set laststatus=2
 let g:airline#extensions#tabline#enabled = 0
 let g:airline#extensions#branch#enabled = 1
+let g:airline_theme='onedark'
 let g:airline_left_sep=''
 let g:airline_left_alt_sep=''
 let g:airline_right_sep=''
 let g:airline_right_alt_sep=''
 
 let g:tagbar_type_go = {
-      \ 'ctagstype' : 'go',
-      \ 'kinds'     : [
-      \ 'p:package',
-      \ 'i:imports:1',
-      \ 'c:constants',
-      \ 'v:variables',
-      \ 't:types',
-      \ 'n:interfaces',
-      \ 'w:fields',
-      \ 'e:embedded',
-      \ 'm:methods',
-      \ 'r:constructor',
-      \ 'f:functions'
-      \ ],
-      \ 'sro' : '.',
-      \ 'kind2scope' : {
-      \ 't' : 'ctype',
-      \ 'n' : 'ntype'
-      \ },
-      \ 'scope2kind' : {
-      \ 'ctype' : 't',
-      \ 'ntype' : 'n'
-      \ },
-      \ 'ctagsbin'  : 'gotags',
-      \ 'ctagsargs' : '-sort -silent'
-      \ }
+			\ 'ctagstype' : 'go',
+			\ 'kinds'     : [
+			\ 'p:package',
+			\ 'i:imports:1',
+			\ 'c:constants',
+			\ 'v:variables',
+			\ 't:types',
+			\ 'n:interfaces',
+			\ 'w:fields',
+			\ 'e:embedded',
+			\ 'm:methods',
+			\ 'r:constructor',
+			\ 'f:functions'
+			\ ],
+			\ 'sro' : '.',
+			\ 'kind2scope' : {
+			\ 't' : 'ctype',
+			\ 'n' : 'ntype'
+			\ },
+			\ 'scope2kind' : {
+			\ 'ctype' : 't',
+			\ 'ntype' : 'n'
+			\ },
+			\ 'ctagsbin'  : 'gotags',
+			\ 'ctagsargs' : '-sort -silent'
+			\ }
 
-
-set completeopt=menu
 
 " Signify
 highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
@@ -368,20 +341,20 @@ highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " create parent directories on write
 if !exists("*s:MkNonExDir")
-  function s:MkNonExDir(file, buf)
-    if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
-      let dir=fnamemodify(a:file, ':h')
-      if !isdirectory(dir)
-        call mkdir(dir, 'p')
-      endif
-    endif
-  endfunction
+	function s:MkNonExDir(file, buf)
+		if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
+			let dir=fnamemodify(a:file, ':h')
+			if !isdirectory(dir)
+				call mkdir(dir, 'p')
+			endif
+		endif
+	endfunction
 endif
 
 " vim-go config
 let g:go_auto_sameids = 1
 let g:go_auto_type_info = 0
-let g:go_fmt_command = "goimports"
+let g:go_fmt_command = 'goimports'
 let g:go_highlight_build_constraints = 1
 let g:go_highlight_extra_types = 1
 let g:go_highlight_fields = 1
@@ -390,107 +363,120 @@ let g:go_highlight_methods = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
-let g:go_list_type = "quickfix"
+let g:go_list_type = 'quickfix'
 
 " vim-rufo
 let g:rufo_auto_formatting = 0
 
-if has("autocmd")
-  augroup filetypedetect
-    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
-  augroup END
+if has('autocmd')
 
-  augroup filetype_markdown
-    autocmd!
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
-    autocmd FileType markdown imap <S-Tab> <C-d>
-    autocmd FileType markdown imap <Tab> <C-t>
-  augroup END
+	augroup FiletypeGroup
+		autocmd!
+		" hub pull-request accepts markdown
+		autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
+		" jsx is both javascript and jsx
+		autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
+		" Save files when vim loses focus
+		autocmd FocusLost * silent! wa
 
-  augroup filetype_ruby
-    autocmd!
-    autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    autocmd FileType ruby set wrapscan|set textwidth=120
-    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
-  augroup END
+		" Reload files when vim gains focus
+		autocmd FocusGained,BufEnter * :checktime
+	augroup END
 
-  augroup filetype_gitcommit
-    autocmd!
-    autocmd FileType gitcommit set colorcolumn=72|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
-    autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
-  augroup END
+	augroup filetype_markdown
+		autocmd!
+		autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
+		autocmd FileType markdown imap <S-Tab> <C-d>
+		autocmd FileType markdown imap <Tab> <C-t>
+	augroup END
 
-  augroup straggelers
-    autocmd!
-    " remove trailing spaces
-    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
-    " remove trailing whitespace automatically
-    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
-  augroup END
+	augroup filetype_ruby
+		autocmd!
+		autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+		autocmd FileType ruby set wrapscan|set textwidth=120
+		autocmd BufNewFile,BufRead Berksfile set filetype=ruby
+		autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+	augroup END
 
-  augroup filetype_haml
-    autocmd!
-    autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
+	augroup filetype_gitcommit
+		autocmd!
+		autocmd FileType gitcommit set colorcolumn=72|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+		autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+		autocmd FileType gitcommit set filetype=gitcommit.markdown
+	augroup END
 
-  augroup filetype_json
-    autocmd!
-    autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
+	augroup straggelers
+		autocmd!
+		" remove trailing spaces
+		autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
+		" remove trailing whitespace automatically
+		autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+	augroup END
 
-  augroup filetype_yaml
-    autocmd!
-    autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
+	augroup filetype_haml
+		autocmd!
+		autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+	augroup END
 
-  augroup filetype_fish
-    autocmd!
-    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
+	augroup filetype_json
+		autocmd!
+		autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+	augroup END
 
-  augroup filetype_perl
-    autocmd!
-    autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
-  augroup END
+	augroup filetype_yaml
+		autocmd!
+		autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+	augroup END
 
-  augroup filetype_python
-    autocmd!
-    autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
-  augroup END
+	augroup filetype_fish
+		autocmd!
+		autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+	augroup END
 
-  augroup filetype_c
-    autocmd!
-    " map to <Leader>cf in C++ code
-    autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
-    autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
-    " if you install vim-operator-user
-    autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
-    " Toggle auto formatting:
-    nmap <Leader>C :ClangFormatAutoToggle<CR>
-  augroup END
+	augroup filetype_perl
+		autocmd!
+		autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+	augroup END
 
-  augroup filetype_go
-    autocmd!
+	augroup filetype_python
+		autocmd!
+		autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
+	augroup END
 
-    autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
+	augroup filetype_c
+		autocmd!
+		" map to <Leader>cf in C++ code
+		autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
+		autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
+		" if you install vim-operator-user
+		autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
+		" Toggle auto formatting:
+		nmap <Leader>C :ClangFormatAutoToggle<CR>
+	augroup END
 
-    autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
-    autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
-    autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
-    autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
-    autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
-    autocmd FileType go nmap <Leader>in  <Plug>(go-info)
-    autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
-    autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
-    autocmd FileType go nmap <Leader>i   :GoImports<CR>
+	augroup filetype_go
+		autocmd!
 
-  augroup END
+		autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
 
-  augroup BWCCreateDir
-    autocmd!
-    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
-  augroup END
+		autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
+		autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
+		autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
+		autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
+		autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
+		autocmd FileType go nmap <Leader>in  <Plug>(go-info)
+		autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
+		autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
+		autocmd FileType go nmap <Leader>i   :GoImports<CR>
+
+	augroup END
+
+	augroup BWCCreateDir
+		autocmd!
+
+		autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+
+	augroup END
 endif
 
 " vim-test configuration
@@ -506,7 +492,6 @@ let g:ruby_host_prog = '~/.rbenv/versions/2.5.1/bin/neovim-ruby-host'
 set shortmess+=c
 
 " ALE config
-" let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'] }
 let g:airline#extensions#ale#enabled = 1
 let g:ale_completion_enabled = 1
 let g:ale_echo_cursor = 1
@@ -516,16 +501,28 @@ let g:ale_echo_msg_warning_str = 'Warning'
 let g:ale_emit_conflict_warnings = 1
 let g:ale_enabled = 1
 let g:ale_fix_on_save = 0
-let g:ale_fixers = { 'ruby': [ 'rufo', 'rubocop' ], 'go': [ 'gofmt'], 'sh': ['shfmt'], 'markdown': ['prettier']}
+let g:ale_fixers = {
+			\ 'go': [ 'gofmt'],
+			\ 'javascript.jsx': ['eslint'],
+			\ 'javscript': ['eslint'],
+			\ 'json': 'prettier',
+			\ 'jsx': ['eslint'],
+			\ 'markdown': ['prettier'],
+			\ 'ruby': [ 'rufo', 'rubocop' ],
+			\ 'sh': ['shfmt'],
+			\ 'python': ['autopep8'],
+			\ }
+
+" let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'] }
+let g:ale_linters = {'jsx': ['stylelint', 'eslint']}
+let g:ale_javascript_eslint_executable = 'npm run list eslint'
+let g:ale_linter_aliases = {'jsx': 'css'}
 let g:ale_go_gometalinter_options = '--tests'
 let g:ale_keep_list_window_open = 0
 let g:ale_lint_delay = 200
 let g:ale_lint_on_enter = 1
 let g:ale_lint_on_save = 1
 let g:ale_lint_on_text_changed = 'always'
-let g:ale_linter_aliases = {}
-let g:ale_linters = {}
-let g:ale_open_list = 0
 let g:ale_open_list = 0
 let g:ale_ruby_bundler_executable = '/Users/jlane/.rbenv/shims/bundle'
 let g:ale_ruby_rubocop_executable = '/Users/jlane/.rbenv/shims/rubocop'
@@ -540,7 +537,7 @@ let g:ale_sign_warning = '--'
 let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
 let g:ale_warn_about_trailing_whitespace = 1
 
-map <leader>rb :ALEFix<CR>
+map <leader>d :ALEFix<CR>
 nmap <silent> <C-k> <Plug>(ale_previous_wrap)
 nmap <silent> <C-j> <Plug>(ale_next_wrap)
 
@@ -556,27 +553,105 @@ let g:mkdx#settings = { 'links': { 'fragment': { 'complete': 0 } } }
 "terminal
 tnoremap <C-o> <C-\><C-n>
 
-
-" Disable AutoComplPop.
-let g:acp_enableAtStartup = 0
+let g:deoplete#enable_profile = 1
 " Use deoplete.
 let g:deoplete#enable_at_startup = 1
 " Use smartcase.
 let g:deoplete#enable_smart_case = 1
+" debug logging
+" call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
 
-" <C-h>, <BS>: close popup and delete backword char.
-inoremap <expr><C-h> deoplete#smart_close_popup()."\<C-h>"
-inoremap <expr><BS>  deoplete#smart_close_popup()."\<C-h>"
+let g:deoplete#omni#functions = {}
+let g:deoplete#omni#functions.javascript = [
+			\ 'tern#Complete',
+			\ 'jspc#omni'
+			\]
 
-" <CR>: close popup and save indent.
-inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
-function! s:my_cr_function() abort
-  return deoplete#close_popup() . "\<CR>"
-endfunction
-inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
-" Close popup by <Space>.
-inoremap <expr> <Space> (pumvisible() ? "\<c-y>\<space>" : "\<space>")
+let g:deoplete#sources = {}
 
-" Plugin key-mappings.
-inoremap <expr><C-g> deoplete#undo_completion()
-inoremap <expr><C-l> deoplete#complete_common_string()
+
+let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
+
+let g:tern#command = ['tern']
+let g:tern#arguments = ['--persistent']
+let g:deoplete#sources#ternjs#timeout = 1
+
+" Consistent solargraph binary location
+let g:deoplete#sources#solargraph#command = 'solargraph'
+let g:deoplete#sources#solargraph#args = ['socket']
+
+" Whether to include the types of the completions in the result data. Default: 0
+let g:deoplete#sources#ternjs#types = 1
+
+" Whether to include the distance (in scopes for variables, in prototypes for
+" properties) between the completions and the origin position in the result
+" data. Default: 0
+let g:deoplete#sources#ternjs#depths = 1
+
+" Whether to include documentation strings (if found) in the result data.
+" Default: 0
+let g:deoplete#sources#ternjs#docs = 1
+
+" When on, only completions that match the current word at the given point will
+" be returned. Turn this off to get all results, so that you can filter on the
+" client side. Default: 1
+let g:deoplete#sources#ternjs#filter = 0
+
+" Whether to use a case-insensitive compare between the current word and
+" potential completions. Default 0
+let g:deoplete#sources#ternjs#case_insensitive = 1
+
+" When completing a property and no completions are found, Tern will use some
+" heuristics to try and return some properties anyway. Set this to 0 to
+" turn that off. Default: 1
+let g:deoplete#sources#ternjs#guess = 0
+
+" Determines whether the result set will be sorted. Default: 1
+let g:deoplete#sources#ternjs#sort = 0
+
+" When disabled, only the text before the given position is considered part of
+" the word. When enabled (the default), the whole variable name that the cursor
+" is on will be included. Default: 1
+let g:deoplete#sources#ternjs#expand_word_forward = 0
+
+" Whether to ignore the properties of Object.prototype unless they have been
+" spelled out by at least two characters. Default: 1
+let g:deoplete#sources#ternjs#omit_object_prototype = 0
+
+" Whether to include JavaScript keywords when completing something that is not
+" a property. Default: 0
+let g:deoplete#sources#ternjs#include_keywords = 1
+
+" If completions should be returned when inside a literal. Default: 1
+let g:deoplete#sources#ternjs#in_literal = 0
+
+"Add extra filetypes
+let g:deoplete#sources#ternjs#filetypes = [
+			\ 'jsx',
+			\ 'javascript.jsx',
+			\ 'vue',
+			\ ]
+
+
+let g:deoplete#sources.gitcommit=['github']
+let g:deoplete#keyword_patterns = {}
+let g:deoplete#keyword_patterns.gitcommit = '.+'
+
+let g:github_dashboard = { 'username': 'lanej', 'password': $GITHUB_TOKEN }
+" let g:github_user = 'lanej'
+" let g:github_password = $GITHUB_TOKEN
+
+" call deoplete#util#set_pattern(
+" \ g:deoplete#omni#input_patterns,
+" \ 'gitcommit', [g:deoplete#keyword_patterns.gitcommit])
+
+
+let g:deoplete#max_abbr_width = 35
+let g:deoplete#max_menu_width = 20
+let g:deoplete#skip_chars = ['(', ')', '<', '>']
+let g:deoplete#tag#cache_limit_size = 800000
+let g:deoplete#file#enable_buffer_path = 1
+
+let g:deoplete#sources#jedi#statement_length = 30
+let g:deoplete#sources#jedi#show_docstring = 1
+let g:deoplete#sources#jedi#short_types = 1
