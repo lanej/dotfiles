@@ -551,7 +551,7 @@ map <leader>re :Rename
 let g:terraform_fmt_on_save = 1
 
 " markdown
-let g:mkdx#settings = { 'links': { 'fragment': { 'complete': 0 } } }
+let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { 'complete': 0 } } }
 
 "terminal
 tnoremap <C-o> <C-\><C-n>
