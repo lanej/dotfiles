@@ -351,7 +351,7 @@ if !exists("*s:MkNonExDir")
 	endfunction
 endif
 
-" persistent undo
+set undofile " Maintain undo history between sessions
 set undodir=~/.cache/nvim/undo
 
 " vim-go config
