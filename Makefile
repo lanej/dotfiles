@@ -43,6 +43,7 @@ nvim:
 	mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	ln -fs $(DOTFILES)/vim/autoload/plug.vim ${HOME}/.local/share/nvim/site/autoload/plug.vim
 	mkdir -p $(HOME)/.local/share/nvim/plugged
+	nvim --headless +PlugInstall +qa || echo 'no nvim installed'
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
