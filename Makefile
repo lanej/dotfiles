@@ -1,9 +1,9 @@
 .PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar
 
 DOTFILES := $(shell pwd)
-fishfns := $(wildcard $(DOTFILES)/fish/functions/*)
 
 fish:
+	mkdir -p ${HOME}/.config/fish/functions
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
