@@ -351,6 +351,9 @@ if !exists("*s:MkNonExDir")
 	endfunction
 endif
 
+" persistent undo
+set undodir=~/.cache/nvim/undo
+
 " vim-go config
 let g:go_auto_sameids = 1
 let g:go_auto_type_info = 0

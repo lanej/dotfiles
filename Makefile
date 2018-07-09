@@ -37,6 +37,7 @@ vim:
 	ln -fs $(DOTFILES)/vim/vimrc.neocomplete ${HOME}/.vimrc.neocomplete
 	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
 nvim:
+	mkdir -p ${HOME}/.cache/nvim/undo
 	mkdir -p ${HOME}/.config/nvim/
 	ln -fs $(DOTFILES)/nvim/init.vim ${HOME}/.config/nvim/init.vim
 	mkdir -p $(HOME)/.local/share/nvim/site/autoload
