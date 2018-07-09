@@ -1,4 +1,5 @@
 .PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar
+all: .PHONY
 
 DOTFILES := $(shell pwd)
 
