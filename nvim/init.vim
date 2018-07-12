@@ -239,7 +239,18 @@ set tags=tags
 set number
 
 " git-gutter
-set updatetime=250
+set updatetime=100
+set signcolumn=yes
+let g:gitgutter_override_sign_column_highlight = 0
+highlight GitGutterAdd ctermbg=114 guibg=#98C379
+highlight GitGutterChange ctermbg=173 guibg=#D19A66
+highlight GitGutterDelete ctermbg=204 guibg=#E06C75
+highlight GitGutterChangeDelete ctermbg=196 guibg=#BE5046
+let g:gitgutter_sign_added = '++'
+let g:gitgutter_sign_modified = '~~'
+let g:gitgutter_sign_removed = '--'
+let g:gitgutter_sign_removed_first_line = '^^'
+let g:gitgutter_sign_modified_removed = 'ww'
 
 " gui stuff
 set guioptions-=T
