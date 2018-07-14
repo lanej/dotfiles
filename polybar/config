@@ -2,7 +2,7 @@
 width = 100%
 height = 20
 
-background = #00000000
+background = #3E4452ff
 foreground = #ccffffff
 
 line-color = ${bar/bottom.background}
@@ -192,28 +192,28 @@ label = CPU
 
 ramp-coreload-0 = ▁
 ramp-coreload-0-font = 2
-ramp-coreload-0-foreground = #aaff77
+ramp-coreload-0-foreground = #87c38a
 ramp-coreload-1 = ▂
 ramp-coreload-1-font = 2
-ramp-coreload-1-foreground = #aaff77
+ramp-coreload-1-foreground = #87c38a
 ramp-coreload-2 = ▃
 ramp-coreload-2-font = 2
-ramp-coreload-2-foreground = #aaff77
+ramp-coreload-2-foreground = #87c38a
 ramp-coreload-3 = ▄
 ramp-coreload-3-font = 2
-ramp-coreload-3-foreground = #aaff77
+ramp-coreload-3-foreground = #87c38a
 ramp-coreload-4 = ▅
 ramp-coreload-4-font = 2
-ramp-coreload-4-foreground = #fba922
+ramp-coreload-4-foreground = #f5ffa8
 ramp-coreload-5 = ▆
 ramp-coreload-5-font = 2
-ramp-coreload-5-foreground = #fba922
+ramp-coreload-5-foreground = #f5ffa8
 ramp-coreload-6 = ▇
 ramp-coreload-6-font = 2
-ramp-coreload-6-foreground = #ff5555
+ramp-coreload-6-foreground = #fd5ff1
 ramp-coreload-7 = █
 ramp-coreload-7-font = 2
-ramp-coreload-7-foreground = #ff5555
+ramp-coreload-7-foreground = #fd5ff1
 
 [module/date]
 type = internal/date
@@ -225,7 +225,7 @@ type = internal/memory
 format = <label> <bar-used>
 label = RAM
 
-bar-used-width = 30
+bar-used-width = 20
 bar-used-foreground-0 = #aaff77
 bar-used-foreground-1 = #aaff77
 bar-used-foreground-2 = #fba922
@@ -356,7 +356,6 @@ interval = 2
 date = %%{F#999}%Y-%m-%d%%{F-}  %%{F#fff}%H:%M%%{F-}
 
 
-
 [module/temperature]
 type = internal/temperature
 thermal-zone = 5
@@ -417,9 +416,9 @@ label-mode-background = #e60053
 ;   %output%
 ; Default: %icon%  %name%
 label-focused =  %index%
-label-focused-foreground = #ffffff
-label-focused-background = #3f3f3f
-label-focused-underline = #fba922
+label-focused-foreground = #ABB2BF
+label-focused-background = #282C34
+label-focused-underline = #C678DD
 label-focused-padding = 4
 
 ; Available tokens:
