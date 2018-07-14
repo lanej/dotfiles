@@ -30,6 +30,7 @@ screen:
 tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
 vim:
+	touch ${HOME}/.netrc
 	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fns $(DOTFILES)/vim ${HOME}/.nvim
 	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
