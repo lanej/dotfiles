@@ -8,3 +8,4 @@ tags
 .sandbox/
 .vscode/
 .byebug_history
+.solargraph.yml
