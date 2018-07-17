@@ -202,6 +202,13 @@ let g:NERDTreeChDirMode=2
 let g:NERDTreeQuitOnOpen=1
 let g:NERDSpaceDelims = 1
 
+" NERDCommenter
+" Enable trimming of trailing whitespace when uncommenting
+let g:NERDTrimTrailingWhitespace = 1
+
+" Align line-wise comment delimiters flush left instead of following code indentation
+let g:NERDDefaultAlign = 'left'
+
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
 map <leader>cg :cd !git rev-parse --show-toplevel<CR>
