@@ -175,9 +175,9 @@ map <leader>a* :Ack!<space><cword><CR>
 set completeopt=menu,preview,noselect
 
 if executable('ag')
-	let g:ackprg = 'ag --vimgrep'
-	" Use ag over grep
-	set grepprg=ag\ --nogroup\ --nocolor
+  let g:ackprg = 'ag --vimgrep'
+  " Use ag over grep
+  set grepprg=ag\ --nogroup\ --nocolor
 endif
 
 " ================ Scrolling ========================
@@ -187,8 +187,8 @@ set sidescroll=1
 
 " ================ Status Line ======================
 if has('cmdline_info')
-	set showcmd                 " Show partial commands in status line and
-	" Selected characters/lines in visual mode
+  set showcmd                 " Show partial commands in status line and
+  " Selected characters/lines in visual mode
 endif
 
 " NerdTREE
@@ -307,10 +307,10 @@ vmap <Enter> <Plug>(EasyAlign)
 set shortmess=a
 
 let g:clang_format#style_options = {
-			\ "AccessModifierOffset" : -4,
-			\ "AllowShortIfStatementsOnASingleLine" : "true",
-			\ "AlwaysBreakTemplateDeclarations" : "true",
-			\ "Standard" : "C++11"}
+      \ "AccessModifierOffset" : -4,
+      \ "AllowShortIfStatementsOnASingleLine" : "true",
+      \ "AlwaysBreakTemplateDeclarations" : "true",
+      \ "Standard" : "C++11"}
 
 set makeprg="make -j9"
 nnoremap <Leader>M :make!<CR>
@@ -326,32 +326,32 @@ let g:airline_right_sep=''
 let g:airline_right_alt_sep=''
 
 let g:tagbar_type_go = {
-			\ 'ctagstype' : 'go',
-			\ 'kinds'     : [
-			\ 'p:package',
-			\ 'i:imports:1',
-			\ 'c:constants',
-			\ 'v:variables',
-			\ 't:types',
-			\ 'n:interfaces',
-			\ 'w:fields',
-			\ 'e:embedded',
-			\ 'm:methods',
-			\ 'r:constructor',
-			\ 'f:functions'
-			\ ],
-			\ 'sro' : '.',
-			\ 'kind2scope' : {
-			\ 't' : 'ctype',
-			\ 'n' : 'ntype'
-			\ },
-			\ 'scope2kind' : {
-			\ 'ctype' : 't',
-			\ 'ntype' : 'n'
-			\ },
-			\ 'ctagsbin'  : 'gotags',
-			\ 'ctagsargs' : '-sort -silent'
-			\ }
+      \ 'ctagstype' : 'go',
+      \ 'kinds'     : [
+      \ 'p:package',
+      \ 'i:imports:1',
+      \ 'c:constants',
+      \ 'v:variables',
+      \ 't:types',
+      \ 'n:interfaces',
+      \ 'w:fields',
+      \ 'e:embedded',
+      \ 'm:methods',
+      \ 'r:constructor',
+      \ 'f:functions'
+      \ ],
+      \ 'sro' : '.',
+      \ 'kind2scope' : {
+      \ 't' : 'ctype',
+      \ 'n' : 'ntype'
+      \ },
+      \ 'scope2kind' : {
+      \ 'ctype' : 't',
+      \ 'ntype' : 'n'
+      \ },
+      \ 'ctagsbin'  : 'gotags',
+      \ 'ctagsargs' : '-sort -silent'
+      \ }
 
 
 " Signify
@@ -361,14 +361,14 @@ highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " create parent directories on write
 if !exists("*s:MkNonExDir")
-	function s:MkNonExDir(file, buf)
-		if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
-			let dir=fnamemodify(a:file, ':h')
-			if !isdirectory(dir)
-				call mkdir(dir, 'p')
-			endif
-		endif
-	endfunction
+  function s:MkNonExDir(file, buf)
+    if empty(getbufvar(a:buf, '&buftype')) && a:file!~#'\v^\w+\:\/'
+      let dir=fnamemodify(a:file, ':h')
+      if !isdirectory(dir)
+        call mkdir(dir, 'p')
+      endif
+    endif
+  endfunction
 endif
 
 set undofile " Maintain undo history between sessions
@@ -393,33 +393,33 @@ let g:rufo_auto_formatting = 0
 
 if has('autocmd')
 
-	augroup FiletypeGroup
-		autocmd!
-		" hub pull-request accepts markdown
-		autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
-		" jsx is both javascript and jsx
-		autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
-		" Save files when vim loses focus
-		autocmd FocusLost * silent! wa
+  augroup FiletypeGroup
+    autocmd!
+    " hub pull-request accepts markdown
+    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
+    " jsx is both javascript and jsx
+    autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
+    " Save files when vim loses focus
+    autocmd FocusLost * silent! wa
 
-		" Reload files when vim gains focus
-		autocmd FocusGained,BufEnter * :checktime
-	augroup END
+    " Reload files when vim gains focus
+    autocmd FocusGained,BufEnter * :checktime
+  augroup END
 
-	augroup filetype_markdown
-		autocmd!
-		autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
-		autocmd FileType markdown imap <S-Tab> <C-d>
-		autocmd FileType markdown imap <Tab> <C-t>
-	augroup END
+  augroup filetype_markdown
+    autocmd!
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
+    autocmd FileType markdown imap <S-Tab> <C-d>
+    autocmd FileType markdown imap <Tab> <C-t>
+  augroup END
 
-	augroup filetype_ruby
-		autocmd!
-		autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-		autocmd FileType ruby set wrapscan|set textwidth=120
-		autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-		autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
-	augroup END
+  augroup filetype_ruby
+    autocmd!
+    autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd FileType ruby set wrapscan|set textwidth=120
+    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
+    autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+  augroup END
 
   augroup filetype_gitcommit
     autocmd!
@@ -427,78 +427,78 @@ if has('autocmd')
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
-	augroup straggelers
-		autocmd!
-		" remove trailing spaces
-		autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
-		" remove trailing whitespace automatically
-		autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
-	augroup END
+  augroup straggelers
+    autocmd!
+    " remove trailing spaces
+    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
+    " remove trailing whitespace automatically
+    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+  augroup END
 
-	augroup filetype_haml
-		autocmd!
-		autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-	augroup END
+  augroup filetype_haml
+    autocmd!
+    autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
 
-	augroup filetype_json
-		autocmd!
-		autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-	augroup END
+  augroup filetype_json
+    autocmd!
+    autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
 
-	augroup filetype_yaml
-		autocmd!
-		autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-	augroup END
+  augroup filetype_yaml
+    autocmd!
+    autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
 
-	augroup filetype_fish
-		autocmd!
-		autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-	augroup END
+  augroup filetype_fish
+    autocmd!
+    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
 
-	augroup filetype_perl
-		autocmd!
-		autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
-	augroup END
+  augroup filetype_perl
+    autocmd!
+    autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+  augroup END
 
-	augroup filetype_python
-		autocmd!
-		autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
-	augroup END
+  augroup filetype_python
+    autocmd!
+    autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
+  augroup END
 
-	augroup filetype_c
-		autocmd!
-		" map to <Leader>cf in C++ code
-		autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
-		autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
-		" if you install vim-operator-user
-		autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
-		" Toggle auto formatting:
-		nmap <Leader>C :ClangFormatAutoToggle<CR>
-	augroup END
+  augroup filetype_c
+    autocmd!
+    " map to <Leader>cf in C++ code
+    autocmd FileType c,cpp,objc nnoremap <buffer><Leader>cf :<C-u>ClangFormat<CR>
+    autocmd FileType c,cpp,objc vnoremap <buffer><Leader>cf :ClangFormat<CR>
+    " if you install vim-operator-user
+    autocmd FileType c,cpp,objc map <buffer><Leader>x <Plug>(operator-clang-format)
+    " Toggle auto formatting:
+    nmap <Leader>C :ClangFormatAutoToggle<CR>
+  augroup END
 
-	augroup filetype_go
-		autocmd!
+  augroup filetype_go
+    autocmd!
 
-		autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
+    autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
 
-		autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
-		autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
-		autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
-		autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
-		autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
-		autocmd FileType go nmap <Leader>in  <Plug>(go-info)
-		autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
-		autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
-		autocmd FileType go nmap <Leader>i   :GoImports<CR>
+    autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
+    autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
+    autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
+    autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
+    autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
+    autocmd FileType go nmap <Leader>in  <Plug>(go-info)
+    autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
+    autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
+    autocmd FileType go nmap <Leader>i   :GoImports<CR>
 
-	augroup END
+  augroup END
 
-	augroup BWCCreateDir
-		autocmd!
+  augroup BWCCreateDir
+    autocmd!
 
-		autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
 
-	augroup END
+  augroup END
 endif
 
 " vim-test configuration
@@ -524,16 +524,16 @@ let g:ale_emit_conflict_warnings = 1
 let g:ale_enabled = 1
 let g:ale_fix_on_save = 0
 let g:ale_fixers = {
-			\ 'go': [ 'gofmt'],
-			\ 'javascript.jsx': ['eslint'],
-			\ 'javscript': ['eslint'],
-			\ 'json': 'prettier',
-			\ 'jsx': ['eslint'],
-			\ 'markdown': ['prettier'],
-			\ 'ruby': [ 'rufo', 'rubocop' ],
-			\ 'sh': ['shfmt'],
-			\ 'python': ['autopep8'],
-			\ }
+      \ 'go': [ 'gofmt'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javscript': ['eslint'],
+      \ 'json': 'prettier',
+      \ 'jsx': ['eslint'],
+      \ 'markdown': ['prettier'],
+      \ 'ruby': [ 'rufo', 'rubocop' ],
+      \ 'sh': ['shfmt'],
+      \ 'python': ['autopep8'],
+      \ }
 
 " let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'] }
 let g:ale_linters = {'jsx': ['stylelint', 'eslint']}
@@ -585,9 +585,9 @@ let g:deoplete#enable_smart_case = 1
 
 let g:deoplete#omni#functions = {}
 let g:deoplete#omni#functions.javascript = [
-			\ 'tern#Complete',
-			\ 'jspc#omni'
-			\]
+      \ 'tern#Complete',
+      \ 'jspc#omni'
+      \]
 
 let g:deoplete#sources = {}
 
@@ -649,10 +649,10 @@ let g:deoplete#sources#ternjs#in_literal = 0
 
 "Add extra filetypes
 let g:deoplete#sources#ternjs#filetypes = [
-			\ 'jsx',
-			\ 'javascript.jsx',
-			\ 'vue',
-			\ ]
+      \ 'jsx',
+      \ 'javascript.jsx',
+      \ 'vue',
+      \ ]
 
 
 let g:deoplete#sources.gitcommit=['github']
