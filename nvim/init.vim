@@ -100,6 +100,8 @@ Plug 'junegunn/vim-github-dashboard'
 Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
+Plug 'lanej/deoplete-solargraph'
+Plug 'machakann/vim-highlightedyank'
 Plug 'majutsushi/tagbar'
 Plug 'mattn/gist-vim'
 Plug 'mattn/webapi-vim'
@@ -132,7 +134,6 @@ Plug 'tpope/vim-rbenv'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
-Plug 'lanej/deoplete-solargraph'
 Plug 'vim-scripts/xorium.vim'
 Plug 'w0rp/ale'
 Plug 'wting/rust.vim'
@@ -592,8 +593,8 @@ let g:tern#arguments = ['--persistent']
 let g:deoplete#sources#ternjs#timeout = 1
 
 " Consistent solargraph binary location
-let g:deoplete#sources#solargraph#command = 'solargraph'
-let g:deoplete#sources#solargraph#args = ['socket']
+let g:deoplete#sources#solargraph#command = '/Users/jlane/.rbenv/versions/2.5.1/bin/solargraph'
+let g:deoplete#sources#solargraph#args = ['socket', '--port=0']
 
 " Whether to include the types of the completions in the result data. Default: 0
 let g:deoplete#sources#ternjs#types = 1
