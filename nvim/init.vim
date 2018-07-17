@@ -22,6 +22,7 @@ set hidden                     "Better buffer management
 set hlsearch
 set incsearch
 set cmdheight=2
+set inccommand=nosplit         " live replace
 
 " ================ Turn Off Swap Files ==============
 set noswapfile
