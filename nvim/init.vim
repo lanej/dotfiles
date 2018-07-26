@@ -226,7 +226,7 @@ let g:NERDDefaultAlign = 'left'
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
-map <leader>cg :cd !git rev-parse --show-toplevel<CR>
+map <leader>cg :Gcd<CR>
 
 " disable ex mode
 :map Q <Nop>
