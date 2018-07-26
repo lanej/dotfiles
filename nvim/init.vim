@@ -152,7 +152,7 @@ Plug 'tpope/vim-surround'
 Plug 'vim-scripts/xorium.vim'
 Plug 'w0rp/ale'
 Plug 'wting/rust.vim'
-Plug 'zchee/deoplete-go', { 'do': 'make' }
+Plug 'zchee/deoplete-go', { 'do': 'make && gocode set autobuild true' }
 Plug 'zchee/deoplete-jedi'
 
 " Add plugins to &runtimepath
@@ -503,15 +503,10 @@ if has('autocmd')
 
     autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
 
-    autocmd FileType go nmap <Leader>dc  <Plug>(go-doc)
-    autocmd FileType go nmap <Leader>ce  <Plug>(go-callees)
-    autocmd FileType go nmap <Leader>cl  <Plug>(go-callers)
-    autocmd FileType go nmap <Leader>cs  <Plug>(go-callstack)
-    autocmd FileType go nmap <Leader>d   <Plug>(go-describe)
-    autocmd FileType go nmap <Leader>in  <Plug>(go-info)
-    autocmd FileType go nmap <Leader>ii  <Plug>(go-implements)
-    autocmd FileType go nmap <Leader>r   <Plug>(go-referrers)
-    autocmd FileType go nmap <Leader>i   :GoImports<CR>
+    autocmd FileType go nmap <Leader>gi :GoImports<CR>
+    autocmd FileType go nmap <Leader>gr :GoRename<CR>
+    autocmd FileType go nmap <Leader>gd :GoDef<CR>
+    autocmd FileType go nmap <Leader>gp :GoDefPop<CR>
 
   augroup END
 
@@ -597,7 +592,7 @@ let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { '
 "terminal
 tnoremap <C-o> <C-\><C-n>
 
-let g:deoplete#enable_profile = 1
+" let g:deoplete#enable_profile = 1
 " Use deoplete.
 let g:deoplete#enable_at_startup = 1
 " Use smartcase.
@@ -606,6 +601,8 @@ let g:deoplete#enable_smart_case = 1
 " call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
 
 let g:deoplete#omni#functions = {}
+let g:deoplete#omni_patterns = {}
+
 let g:deoplete#omni#functions.javascript = [
       \ 'tern#Complete',
       \ 'jspc#omni'
@@ -613,6 +610,9 @@ let g:deoplete#omni#functions.javascript = [
 
 let g:deoplete#sources = {}
 
+" deoplete-go settings
+let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
+let g:deoplete#sources#go#sort_class = ['package', 'func', 'type', 'var', 'const']
 
 let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
 
