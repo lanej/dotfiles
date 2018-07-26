@@ -80,7 +80,6 @@ let g:plug_url_format="git://github.com/%s"
 
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'SevereOverfl0w/deoplete-github'
-Plug 'Shougo/deoplete-rct'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'Shougo/neosnippet-snippets'
 Plug 'Shougo/neosnippet.vim'
