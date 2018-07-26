@@ -32,6 +32,10 @@ set incsearch
 set cmdheight=2
 set inccommand=nosplit         " live replace
 
+if (has("termguicolors"))
+ set termguicolors
+endif
+
 " ================ Turn Off Swap Files ==============
 set noswapfile
 set nobackup
