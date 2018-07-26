@@ -101,6 +101,7 @@ Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 Plug 'groenewege/vim-less'
 Plug 'hashivim/vim-terraform'
+Plug 'jacoborus/tender.vim'
 Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
@@ -162,7 +163,7 @@ call plug#end()
 " =============== UI ================
 " turn syntax highlighting on
 syntax enable
-colorscheme onedark
+colorscheme tender
 
 highlight clear LineNr     " Current line number row will have same background color in relative mode
 highlight clear SignColumn " SignColumn should match background
@@ -265,10 +266,10 @@ set number
 set updatetime=100
 set signcolumn=yes
 let g:gitgutter_override_sign_column_highlight = 0
-highlight GitGutterAdd ctermbg=114 guibg=#98C379
-highlight GitGutterChange ctermbg=173 guibg=#D19A66
-highlight GitGutterDelete ctermbg=204 guibg=#E06C75
-highlight GitGutterChangeDelete ctermbg=196 guibg=#BE5046
+" highlight GitGutterAdd ctermbg=114 guibg=lightgreen
+" highlight GitGutterChange ctermbg=173 guibg=yellow
+" highlight GitGutterDelete ctermbg=204 guibg=lightred
+" highlight GitGutterChangeDelete ctermbg=196 guibg=darkred
 let g:gitgutter_sign_added = '++'
 let g:gitgutter_sign_modified = '~~'
 let g:gitgutter_sign_removed = '--'
@@ -327,17 +328,24 @@ let g:clang_format#style_options = {
       \ "Standard" : "C++11"}
 
 set makeprg="make -j9"
-nnoremap <Leader>M :make!<CR>
+nnoremap <Leader>m :make!<CR>
 
 " airline
 set laststatus=2
+
+let g:airline#extensions#branch#enabled = 0
+let g:airline#extensions#bufferline#enabled = 0
+let g:airline#extensions#tabline#buffer_nr_show = 1
 let g:airline#extensions#tabline#enabled = 0
-let g:airline#extensions#branch#enabled = 1
-let g:airline_theme='onedark'
-let g:airline_left_sep=''
-let g:airline_left_alt_sep=''
-let g:airline_right_sep=''
-let g:airline_right_alt_sep=''
+let g:airline#extensions#tabline#tab_nr_type = 2
+let g:airline#extensions#whitespace#enabled = 0
+" let g:airline_left_alt_sep=''
+" let g:airline_left_sep=''
+let g:airline_powerline_fonts = 1
+" let g:airline_right_alt_sep=''
+" let g:airline_right_sep=''
+" let g:airline_theme='onedark'
+let g:airline_theme = 'tender'
 
 let g:tagbar_type_go = {
       \ 'ctagstype' : 'go',
@@ -369,9 +377,9 @@ let g:tagbar_type_go = {
 
 
 " Signify
-highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
-highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
-highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
+" highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
+" highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
+" highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " create parent directories on write
 if !exists("*s:MkNonExDir")
