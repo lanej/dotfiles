@@ -105,6 +105,7 @@ Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
 Plug 'joshdick/onedark.vim'
+Plug 'juliosueiras/vim-terraform-completion'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-easy-align'
@@ -690,3 +691,5 @@ let g:deoplete#file#enable_buffer_path = 1
 let g:deoplete#sources#jedi#statement_length = 30
 let g:deoplete#sources#jedi#show_docstring = 1
 let g:deoplete#sources#jedi#short_types = 1
+
+let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
