@@ -41,12 +41,35 @@ function git-release() {
 	echo "REVISION=$next_release bundle exec cap production deploy"
 }
 
+function cookbooks-version() {
+	egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2
+}
+
 function cookbooks-release() {
-	local version=$(egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2)
+	local version=$(cookbooks-version)
 	local tag="v$version"
 	echo "Releasing: $tag"
 	sleep 1
 	git tag $tag && git push origin $tag
+}
+
+function next-version() {
+	ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
+}
+
+function bump-cookbooks() {
+	local version=$(cookbooks-version)
+	local next_version=$(next-version $version $@)
+	echo "Bumping to $next_version"
+	sed -E -i '' "s/^version[[:blank:]]'[0-9\.]+'/version '$next_version'/" metadata.rb
+	local actual_version=$(cookbooks-version)
+
+	if [ "$actual_version" = "$next_version" ]; then
+		git add metadata.rb && \
+			git commit -m "chore(version): $actual_version"
+	else
+		echo "Failed to bump cookbooks version. Now " $actual_version
+	fi
 }
 
 # bash
