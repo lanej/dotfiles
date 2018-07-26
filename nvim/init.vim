@@ -78,6 +78,7 @@ call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
+" Plug 'szw/vim-tags'
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'SevereOverfl0w/deoplete-github'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
@@ -112,6 +113,7 @@ Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
 Plug 'lanej/deoplete-solargraph'
+Plug 'ludovicchabant/vim-gutentags'
 Plug 'machakann/vim-highlightedyank'
 Plug 'majutsushi/tagbar'
 Plug 'mattn/gist-vim'
@@ -132,7 +134,6 @@ Plug 'scrooloose/vim-slumlord'
 Plug 'sheerun/vim-polyglot'
 Plug 'skywind3000/asyncrun.vim'
 Plug 'slack/vim-align'
-Plug 'szw/vim-tags'
 Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'thoughtbot/vim-rspec'
 Plug 'tpope/vim-bundler'
@@ -295,7 +296,7 @@ let g:fzf_buffers_jump = 1
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " [Tags] Command to generate tags file
-let g:fzf_tags_command = 'ctags -R'
+" let g:fzf_tags_command = 'ctags -R'
 
 " fugitive
 noremap <leader>gb :Gblame<CR>
