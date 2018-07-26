@@ -9,3 +9,7 @@ tags
 .vscode/
 .byebug_history
 .solargraph.yml
+Gemfile.local
+Gemfile.local.lock
+.tern-port
+.terraform
