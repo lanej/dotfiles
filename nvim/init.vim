@@ -112,6 +112,7 @@ Plug 'junegunn/vim-github-dashboard'
 Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
+Plug 'lambdalisue/suda.vim'
 Plug 'lanej/deoplete-solargraph'
 Plug 'ludovicchabant/vim-gutentags'
 Plug 'machakann/vim-highlightedyank'
@@ -245,7 +246,7 @@ map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
 " Allow saving of files as sudo when I forgot to start vim using sudo.
-cmap w! w !sudo tee > /dev/null %<CR>
+cmap w! w suda://%<CR>
 
 " Haml
 map <leader>hs :!haml -c %:p<CR>
