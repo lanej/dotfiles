@@ -57,7 +57,7 @@ function next-version() {
 	ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
 }
 
-function bump-cookbooks() {
+function cookbooks-bump() {
 	local version=$(cookbooks-version)
 	local next_version=$(next-version $version $@)
 	echo "Bumping to $next_version"
