@@ -61,7 +61,7 @@ function bump-cookbooks() {
 	local version=$(cookbooks-version)
 	local next_version=$(next-version $version $@)
 	echo "Bumping to $next_version"
-	sed -E -i '' "s/^version[[:blank:]]'[0-9\.]+'/version '$next_version'/" metadata.rb
+	sed -E -i '' "s/^version[[:blank:]]+'[0-9\.]+'/version '$next_version'/" metadata.rb
 	local actual_version=$(cookbooks-version)
 
 	if [ "$actual_version" = "$next_version" ]; then
