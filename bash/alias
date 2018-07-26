@@ -134,3 +134,5 @@ alias v='eval $VISUAL '
 alias vd='eval $VISUALD ${1-"."}'
 alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
 alias rmr='rm -r'
+alias lal='ls -alh'
+alias t=terraform
