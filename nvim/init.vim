@@ -187,7 +187,7 @@ set cursorline
 nnoremap <Leader>a :Ack!<Space>
 map <leader>a* :Ack!<space><cword><CR>
 
-set completeopt=menu,preview,noselect
+set completeopt=longest,menuone,noselect
 
 if executable('ag')
   let g:ackprg = 'ag --vimgrep'
