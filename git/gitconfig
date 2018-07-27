@@ -64,6 +64,7 @@
 	rio = rebase -i origin/master
 	rho = reset --hard origin/master
 	cfd = clean -fd
+	slx = log --oneline -5
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
