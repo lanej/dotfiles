@@ -17,7 +17,7 @@ export GIT_SSH="$HOME/bin/git-ssh"
 ## Editor
 if [[ -s $(which vimr) ]]; then
 	export VISUAL='vimr -s '
-  export VISUALD='vimr --cwd '
+	export VISUALD='vimr -s --cwd '
 elif [[ -s $(which oni) ]]; then
 	export VISUAL=oni
 elif [[ -s $(which gvim) ]]; then
