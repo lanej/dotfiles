@@ -78,7 +78,6 @@ call plug#begin('~/.local/share/nvim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
-" Plug 'szw/vim-tags'
 Plug 'AndrewRadev/splitjoin.vim'
 Plug 'SevereOverfl0w/deoplete-github'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
@@ -111,7 +110,6 @@ Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-easy-align'
 Plug 'junegunn/vim-github-dashboard'
-Plug 'justmao945/vim-clang'
 Plug 'juvenn/mustache.vim'
 Plug 'kchmck/vim-coffee-script'
 Plug 'lambdalisue/suda.vim'
@@ -128,8 +126,6 @@ Plug 'ngmy/vim-rubocop'
 Plug 'noprompt/vim-yardoc'
 Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'pangloss/vim-javascript'
-Plug 'rhysd/vim-clang-format'
-Plug 'rhysd/vim-crystal.git'
 Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
