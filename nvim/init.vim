@@ -407,6 +407,9 @@ let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
 let g:go_list_type = 'quickfix'
+let g:go_highlight_generate_tags = 1
+let g:go_highlight_build_constraints = 1
+" let g:go_fmt_fail_silently = 1
 
 " vim-rufo
 let g:rufo_auto_formatting = 0
@@ -499,12 +502,22 @@ if has('autocmd')
   augroup filetype_go
     autocmd!
 
-    autocmd FileType go set tabstop=4|set shiftwidth=2|set expandtab|set autoindent|set nolist
+    autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
+    autocmd FileType qf wincmd J
+    autocmd FileType go,cpp nested :TagbarOpen
+
+    map <C-n> :cnext<CR>
+    map <C-p> :cprevious<CR>
+    " nnoremap <leader>a :cclose<CR>
+    autocmd FileType go nmap <leader>b  <Plug>(go-build)
+    autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
     autocmd FileType go nmap <Leader>gi :GoImports<CR>
     autocmd FileType go nmap <Leader>gr :GoRename<CR>
     autocmd FileType go nmap <Leader>gd :GoDef<CR>
     autocmd FileType go nmap <Leader>gp :GoDefPop<CR>
+    autocmd FileType go nmap <Leader>gc :GoCallers<CR>
+    autocmd FileType go nmap <Leader>gf :GoCallees<CR>
 
   augroup END
 
