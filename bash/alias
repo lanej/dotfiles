@@ -136,3 +136,4 @@ alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
 alias rmr='rm -r'
 alias lal='ls -alh'
 alias t=terraform
+alias gpro='hub pull-request -o'
