@@ -525,6 +525,7 @@ let test#ruby#rspec#executable = 'rbenv exec bundle exec rspec'
 let test#ruby#minitest#executable = 'rbenv exec bundle exec ruby -Itest/'
 let g:test#preserve_screen = 1
 map <Bslash>t :TestFile<CR>
+map <Bslash>u :TestNearest<CR>
 
 " neovim specific
 let g:ruby_host_prog = '~/.rbenv/versions/2.5.1/bin/neovim-ruby-host'
