@@ -263,16 +263,6 @@ set number
 " git-gutter
 set updatetime=100
 set signcolumn=yes
-let g:gitgutter_override_sign_column_highlight = 0
-" highlight GitGutterAdd ctermbg=114 guibg=lightgreen
-" highlight GitGutterChange ctermbg=173 guibg=yellow
-" highlight GitGutterDelete ctermbg=204 guibg=lightred
-" highlight GitGutterChangeDelete ctermbg=196 guibg=darkred
-let g:gitgutter_sign_added = '++'
-let g:gitgutter_sign_modified = '~~'
-let g:gitgutter_sign_removed = '--'
-let g:gitgutter_sign_removed_first_line = '^^'
-let g:gitgutter_sign_modified_removed = 'ww'
 
 " gui stuff
 set guioptions-=T
