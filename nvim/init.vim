@@ -705,6 +705,10 @@ let g:deoplete#sources#jedi#show_docstring = 1
 let g:deoplete#sources#jedi#short_types = 1
 
 let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
+let g:terraform_completion_keys = 1
+let g:terraform_fmt_on_save = 1
+let g:terraform_align=1
+let g:terraform_remap_spacebar=0
 
 " Plugin key-mappings.
 " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
