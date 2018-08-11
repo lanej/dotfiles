@@ -83,7 +83,6 @@ Plug 'SevereOverfl0w/deoplete-github'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'Shougo/neosnippet-snippets'
 Plug 'Shougo/neosnippet.vim'
-Plug 'SidOfc/mkdx'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'airblade/vim-gitgutter'
 Plug 'aklt/plantuml-syntax'
@@ -128,6 +127,7 @@ Plug 'ngmy/vim-rubocop'
 Plug 'noprompt/vim-yardoc'
 Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'pangloss/vim-javascript'
+Plug 'plasticboy/vim-markdown'
 Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
@@ -420,10 +420,10 @@ if has('autocmd')
   augroup END
 
   augroup filetype_markdown
-    autocmd!
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
-    autocmd FileType markdown imap <S-Tab> <C-d>
-    autocmd FileType markdown imap <Tab> <C-t>
+    " autocmd!
+    " autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap|set textwidth=0|set wrapmargin=0
+    " autocmd FileType markdown imap <S-Tab> <C-d>
+    " autocmd FileType markdown imap <Tab> <C-t>
   augroup END
 
   augroup filetype_ruby
@@ -585,11 +585,8 @@ nmap <silent> <C-j> <Plug>(ale_next_wrap)
 " rename
 map <leader>re :Rename 
 
-" random terraform setting
-let g:terraform_fmt_on_save = 1
-
 " markdown
-let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { 'complete': 0 } } }
+" let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { 'complete': 0 } } }
 
 "terminal
 tnoremap <C-o> <C-\><C-n>
