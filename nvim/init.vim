@@ -33,7 +33,7 @@ set cmdheight=2
 set inccommand=nosplit         " live replace
 
 if (has("termguicolors"))
- set termguicolors
+  set termguicolors
 endif
 
 " ================ Turn Off Swap Files ==============
@@ -97,8 +97,10 @@ Plug 'depuracao/vim-rdoc'
 Plug 'easymotion/vim-easymotion'
 Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+Plug 'godlygeek/tabular'
 Plug 'groenewege/vim-less'
 Plug 'hashivim/vim-terraform'
+Plug 'honza/vim-snippets'
 Plug 'jacoborus/tender.vim'
 Plug 'janko-m/vim-test'
 Plug 'jimenezrick/vimerl'
@@ -714,9 +716,15 @@ xmap <C-k> <Plug>(neosnippet_expand_target)
 " \ neosnippet#expandable_or_jumpable() ?
 " \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
 smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
+      \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
 
 " For conceal markers.
 if has('conceal')
   set conceallevel=2 concealcursor=niv
 endif
+
+"" Enable snipMate compatibility feature.
+let g:neosnippet#enable_snipmate_compatibility = 1
+
+
+call deoplete#initialize()
