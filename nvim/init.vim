@@ -328,13 +328,14 @@ set laststatus=2
 
 let g:airline#extensions#branch#enabled = 0
 let g:airline#extensions#bufferline#enabled = 0
-let g:airline#extensions#tabline#buffer_nr_show = 1
-let g:airline#extensions#tabline#enabled = 0
+let g:airline#extensions#tabline#buffer_nr_show = 0
+let g:airline#extensions#tabline#enabled = 1
+" let g:airline#extensions#tabline#formatter = 'jsformatter'
 let g:airline#extensions#tabline#tab_nr_type = 2
 let g:airline#extensions#whitespace#enabled = 0
 " let g:airline_left_alt_sep=''
 " let g:airline_left_sep=''
-let g:airline_powerline_fonts = 1
+" let g:airline_powerline_fonts = 1
 " let g:airline_right_alt_sep=''
 " let g:airline_right_sep=''
 " let g:airline_theme='onedark'
