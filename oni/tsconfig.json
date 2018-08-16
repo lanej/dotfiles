@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "baseUrl": "/opt/Oni/resources/app/node_modules"
+  }
+}
