@@ -1,19 +1,26 @@
+[colors]
+background = ${xrdb:color0:#222}
+foreground = ${xrdb:color7:#222}
+foreground-alt = ${xrdb:color7:#222}
+primary = ${xrdb:color1:#222}
+secondary = ${xrdb:color2:#222}
+alert = ${xrdb:color3:#222}
+
 [bar/top]
 width = 100%
 height = 20
 
-background = #3E4452ff
-foreground = #ccffffff
+background = ${colors.background}
+foreground = ${colors.foreground}
 
-line-color = ${bar/bottom.background}
+line-color = ${colors.background}
 line-size = 1
 
 spacing = 1
 padding-right = 5
 module-margin = 2
-;font-0 = NotoSans-Regular:size=19;-1
 
-font-0 = Termsynu:size=12;3
+font-0 = Hack Nerd Font:size=12;3
 font-1 = MaterialIcons:size=12;0
 font-2 = Termsynu:size=12;-2
 font-3 = FontAwesome:size=12;0
@@ -29,37 +36,6 @@ tray-maxsize=1000
 
 scroll-up = bspwm-desknext
 scroll-down = bspwm-deskprev
-
-
-[bar/bottom]
-bottom = true
-width = 100%
-height = 30
-
-scroll-up = i3wm-wsnext
-scroll-down = i3wm-wsprev
-
-background = ${bar/top.background}
-foreground = ${bar/top.foreground}
-
-line-color = ${bar/top.background}
-line-size = 2
-
-spacing = 3
-padding-right = 4
-module-margin-left = 0 
-module-margin-right = 6
-
-;font-0 = NotoSans-Regular:size=10;0
-font-0 = Termsynu:size=10;3
-font-1 = unifont:size=8;2
-font-2 = FontAwesome:size=10;3
-font-3 = NotoSans-Regular:size=10;0
-font-4 = MaterialIcons:size=10;3
-font-5 = Termsynu:size=10:antialias=false;0
-
-modules-left = i3
-modules-right = filesystem volume backlight   battery date
 
 [module/backlight]
 type = internal/backlight
@@ -129,8 +105,8 @@ format = <label-state> <label-mode>
 label-dimmed-underline = ${BAR.background}
 
 label-active = %icon%
-label-active-foreground = #fff
-label-active-background = #773f3f3f
+label-active-foreground = ${colors.foreground-alt}
+label-active-background = ${colors.primary}
 label-active-underline = #c9665e
 label-active-font = 4
 label-active-padding = 4
@@ -358,7 +334,7 @@ date = %%{F#999}%Y-%m-%d%%{F-}  %%{F#fff}%H:%M%%{F-}
 
 [module/temperature]
 type = internal/temperature
-thermal-zone = 5
+thermal-zone = 1
 warn-temperature = 65
 
 format = <ramp> <label>
@@ -366,15 +342,14 @@ format = <ramp> <label>
 format-warn = <ramp> <label-warn>
 ;format-warn-underline = ${self.format-underline}
 
-label = %temperature%
-label-warn = HOT! %temperature%
-label-warn-foreground = #f00
+label = %temperature-f%
+label-warn = HOT! %temperature-f%
+label-warn-foreground = ${colors.foreground-alt}
 
-ramp-0 = 
+ramp-0 = A
 ramp-1 = 
-ramp-2 = 
+ramp-2 = C
 ramp-foreground = #66
-
 
 [module/i3]
 type = internal/i3
