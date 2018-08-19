@@ -43,9 +43,9 @@ set ttimeout
 set ttimeoutlen=100
 set visualbell                 " No sounds
 
-if (has("termguicolors"))
-  set termguicolors
-endif
+" if (has("termguicolors"))
+"   set termguicolors
+" endif
 
 " ================ Turn Off Swap Files ==============
 set noswapfile

@@ -1,5 +1,4 @@
 " ~/.vimrc
-
 set nocompatible
 
 " ================ General Config ====================
@@ -27,7 +26,6 @@ set hidden                     "Better buffer management
 set hlsearch
 set incsearch
 set cmdheight=2
-set termguicolors
 
 " ================ Turn Off Swap Files ==============
 set noswapfile
