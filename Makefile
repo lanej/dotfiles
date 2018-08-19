@@ -1,4 +1,4 @@
-.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar oni
+.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar oni bspwm
 all: .PHONY
 
 DOTFILES := $(shell pwd)
@@ -72,3 +72,8 @@ oni:
 	mkdir -p ${HOME}/.config/oni
 	ln -fs $(DOTFILES)/oni/config.js ${HOME}/.config/oni/config.js
 	ln -fs $(DOTFILES)/oni/config.tsx ${HOME}/.config/oni/config.tsx
+bspwm:
+	mkdir -p ${HOME}/.config/bspwm
+	mkdir -p ${HOME}/.config/sxhkd
+	ln -fs $(DOTFILES)/bspwm/bspwmrc ${HOME}/.config/bspwm/bspwmrc
+	ln -fs $(DOTFILES)/bspwm/sxhkdrc ${HOME}/.config/sxhkd/sxhkdrc
