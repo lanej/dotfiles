@@ -15,19 +15,41 @@ exports.deactivate = function (oni) {
     console.log("config deactivated");
 };
 exports.configuration = {
-    //add custom config here, such as
-    "ui.colorscheme": "tender",
-    "sidebar.enabled": false,
-    // "oni.useDefaultConfig": true,
-    //"oni.bookmarks": ["~/Documents"],
-    //"oni.loadInitVim": false,
-    "editor.fontSize": "16px",
     "editor.fontFamily": "Hack",
-    "ui.fontSize": "16px",
-    "ui.fontFamily": "Hack",
-    // UI customizations
+    "editor.fontSize": "13px",
     "editor.scrollBar.visible": false,
+    "oni.loadInitVim": true,
+    "oni.useDefaultConfig": false,
+    "sidebar.enabled": false,
     "statusbar.enabled": false,
+    "tabs.mode": "native",
+    "oni.hideMenu": true,
+    "terminal.shellCommand": "/bin/zsh",
     "ui.animations.enabled": true,
-    "ui.fontSmoothing": "auto"
+    "ui.colorscheme": "tender",
+    "ui.fontFamily": "Hack",
+    "ui.fontSize": "13px",
+    "ui.fontSmoothing": "auto",
+    "autoClosingPairs.enabled": false,
+    "environment.additionalPaths": [
+        "/usr/bin",
+        "/Users/jlane/go/bin",
+        "/usr/local/bin",
+    ],
+    "experimental.indentLines.filetypes": [
+        ".tsx",
+        ".ts",
+        ".jsx",
+        ".js",
+        ".go",
+        ".re",
+        ".py",
+        ".c",
+        ".cc",
+        ".lua",
+        ".java",
+        ".tf",
+        ".json",
+    ],
+    "experimental.indentLines.enabled": true
 };
