@@ -91,7 +91,6 @@ call plug#begin('~/.local/share/nvim/plugged')
 let g:plug_url_format="git://github.com/%s"
 
 Plug 'AndrewRadev/splitjoin.vim'
-Plug 'SevereOverfl0w/deoplete-github'
 Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
 Plug 'Shougo/neosnippet-snippets'
 Plug 'Shougo/neosnippet.vim'
@@ -674,18 +673,7 @@ let g:deoplete#sources#ternjs#filetypes = [
       \ ]
 
 
-let g:deoplete#sources.gitcommit=['github']
-let g:deoplete#keyword_patterns = {}
-let g:deoplete#keyword_patterns.gitcommit = '.+'
-
 let g:github_dashboard = { 'username': 'lanej', 'password': $GITHUB_TOKEN }
-" let g:github_user = 'lanej'
-" let g:github_password = $GITHUB_TOKEN
-
-" call deoplete#util#set_pattern(
-" \ g:deoplete#omni#input_patterns,
-" \ 'gitcommit', [g:deoplete#keyword_patterns.gitcommit])
-
 
 let g:deoplete#max_abbr_width = 35
 let g:deoplete#max_menu_width = 20
