@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+export XDG_CONFIG_HOME="$HOME/.config"
+
 [ -f ~/.keys.env ] && source ~/.keys.env
 # set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]]; then
