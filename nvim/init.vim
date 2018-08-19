@@ -71,9 +71,10 @@ nnoremap tk  :tabnext<CR>
 nnoremap th  :tabprev<CR>
 nnoremap tl  :tablast<CR>
 nnoremap tt  :tabedit<Space>
-nnoremap tn  :tabnext<Space>
+nnoremap tn  :tabnext<CR>
+nnoremap tc  :tabnew<CR>
 nnoremap tm  :tabm<Space>
-nnoremap td  :tabclose<CR>
+nnoremap tx  :tabclose<CR>
 nnoremap t1  1gt<CR>
 nnoremap t2  2gt<CR>
 nnoremap t3  3gt<CR>
@@ -183,7 +184,7 @@ highlight clear LineNr     " Current line number row will have same background c
 highlight clear SignColumn " SignColumn should match background
 
 " grep
-nnoremap <Leader>a :Ack!<Space>
+nnoremap <Leader>ap :Ack!<Space>
 map <leader>a* :Ack!<space><cword><CR>
 
 set completeopt=longest,menuone,noselect
@@ -280,6 +281,7 @@ noremap <leader>gf :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
 noremap <leader>t :Tags<CR>
 noremap <leader>l :Lines<CR>
+noremap <leader>gc :Commits<CR>
 
 " [Buffers] Jump to the existing window if possible
 let g:fzf_buffers_jump = 1
@@ -508,8 +510,8 @@ if has('autocmd')
     autocmd FileType go nmap <Leader>gr :GoRename<CR>
     autocmd FileType go nmap <Leader>gd :GoDef<CR>
     autocmd FileType go nmap <Leader>gp :GoDefPop<CR>
-    autocmd FileType go nmap <Leader>gc :GoCallers<CR>
-    autocmd FileType go nmap <Leader>gf :GoCallees<CR>
+    autocmd FileType go nmap <Leader>gs :GoCallers<CR>
+    autocmd FileType go nmap <Leader>ge :GoCallees<CR>
 
   augroup END
 
@@ -581,8 +583,8 @@ let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
 let g:ale_warn_about_trailing_whitespace = 1
 
 map <leader>d :ALEFix<CR>
-nmap <silent> <C-k> <Plug>(ale_previous_wrap)
-nmap <silent> <C-j> <Plug>(ale_next_wrap)
+nmap <silent> <C-p> <Plug>(ale_previous_wrap)
+nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
 " rename
 map <leader>re :Rename 
