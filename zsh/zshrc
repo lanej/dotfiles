@@ -139,3 +139,4 @@ bindkey '^I' $fzf_default_completion
 # Wow the world is not ready for this
 # bindkey '^I' fzf-completion
 fi
+source ~/.rc
