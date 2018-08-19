@@ -1,0 +1,68 @@
+#!/usr/bin/env sh
+
+# set PATH so it includes user's private bin if it exists
+if [[ -d "$HOME/bin" ]]; then
+      PATH="$HOME/bin:$PATH"
+fi
+
+if [[ -d "$HOME/.files/bin" ]]; then
+      PATH="$HOME/.files/bin:$PATH"
+fi
+
+source "$HOME/.alias"
+
+# git
+export GIT_SSH="$HOME/bin/git-ssh"
+
+unset VISUAL
+unset VISUALD
+## Editor
+if [[ -s $(which oni) ]]; then
+      export VISUAL=oni
+elif [[ -s $(which vimr) ]]; then
+      export VISUAL='vimr -s '
+      export VISUALD='vimr -s --cwd '
+elif [[ -s $(which gvim) ]]; then
+      export VISUAL=gvim
+elif [[ -s $(which mvim) ]]; then
+      export VISUAL=mvim
+fi
+
+export VISUALD=${VISUALD:-$VISUAL}
+
+unset EDITOR
+unset EDITORD
+
+if [[ -s $(which nvim) ]]; then
+      export EDITOR=nvim
+elif [[ -s $(which vim) ]]; then
+      export EDITOR=vim
+else
+      export EDITOR=vi
+fi
+
+export EDITORD=${EDITORD:-$EDITOR}
+
+# go
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
+
+# added by travis gem
+[ -f /Users/jlane/.travis/travis.sh ] && source /Users/jlane/.travis/travis.sh
+
+# keys
+KEYCHAIN=${SSH_KEYS:-"${HOME}/.ssh/id_rsa"}
+if [[ -s $(which keychain) ]]; then
+      eval $(keychain -q --eval --agents ssh --inherit any $KEYCHAIN)
+      [ -f ~/.keychain/$HOST-sh ] && source ~/.keychain/$HOST-sh
+      [ -f ~/.keychain/$HOST-sh-gpg ] && source ~/.keychain/$HOST-sh-gpg
+else
+      ssh-add -A ~/.ssh/id_rsa &>/dev/null
+fi
+
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+
+if [[ -s $(which rbenv) ]]; then
+      eval "$(rbenv init - --no-rehash)"
+fi
