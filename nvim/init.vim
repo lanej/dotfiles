@@ -7,30 +7,41 @@
 "   ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝╚═╝  ╚═══╝  ╚═╝╚═╝     ╚═╝
 
 " ================ General Config ====================
-set autoread                   "Reload files changed outside vim
-set backspace=indent,eol,start "Allow backspace in insert mode
+set autoread                   " Reload files changed outside vim
+set backspace=indent,eol,start " Allow backspace in insert mode
+set cmdheight=2
+set cursorline
 set encoding=utf-8
+set exrc
 set fileformats+=mac
-set guicursor=a:blinkon0       "Disable cursor blink
-set hidden                     "Better buffer management
-set history=1000               "Store lots of :cmdline history
-set number                     "Line numbers are good
+set guicursor=a:blinkon0       " Disable cursor blink
+set hidden                     " Better buffer management
+set hidden                     " Better buffer management
+set history=1000               " Store lots of :cmdline history
+set hlsearch
+set ignorecase                 " Ignore case when searching
+set inccommand=nosplit         " live replace
+set incsearch                  " Makes search act like search in modern browsers
+set lazyredraw                 " Don't redraw while executing macros (good performance config)
+set magic                      " For regular expressions turn magic on
+set matchtime=2                " How many tenths of a second to blink when matching brackets
+set modelines=5
+set nobackup
+set nocursorline               " Highlight current line !!! disabled, runs slow
+set number                     " Line numbers are good
+set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
+set secure
 set shell=$SHELL
-set showcmd                    "Show incomplete cmds down the bottom
-set showmode                   "Show current mode down the bottom
-set scrolloff=7                "Set 7 lines to the cursor - when moving vertically using j/k
+set showcmd                    " Show incomplete cmds down the bottom
+set showmatch                  " Show matching brackets when text indicator is over them
+set showmode                   " Show current mode down the bottom
+set smartcase                  " When searching try to be smart about cases
+set smarttab
+set tabpagemax=15              " Only show 15 tabs
+set title                      " Set the title in xterm
 set ttimeout
 set ttimeoutlen=100
-set visualbell                 "No sounds
-set exrc
-set secure
-set modelines=5
-set title                      "Set the title in xterm
-set hidden                     "Better buffer management
-set hlsearch
-set incsearch
-set cmdheight=2
-set inccommand=nosplit         " live replace
+set visualbell                 " No sounds
 
 if (has("termguicolors"))
   set termguicolors
@@ -170,21 +181,6 @@ colorscheme tender
 
 highlight clear LineNr     " Current line number row will have same background color in relative mode
 highlight clear SignColumn " SignColumn should match background
-
-set nocursorline  " Highlight current line !!! disabled, runs slow
-set hlsearch      " Highlight search results
-set ignorecase    " Ignore case when searching
-set incsearch     " Makes search act like search in modern browsers
-set lazyredraw    " Don't redraw while executing macros (good performance config)
-set magic         " For regular expressions turn magic on
-set matchtime=2   " How many tenths of a second to blink when matching brackets
-set showmatch     " Show matching brackets when text indicator is over them
-set showmode      " Display the current mode
-set smartcase     " When searching try to be smart about cases
-set tabpagemax=15 " Only show 15 tabs
-set nobackup
-set smarttab
-set cursorline
 
 " grep
 nnoremap <Leader>a :Ack!<Space>
