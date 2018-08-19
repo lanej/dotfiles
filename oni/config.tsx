@@ -3,42 +3,62 @@ import * as React from "react"
 import * as Oni from "oni-api"
 
 export const activate = (oni: Oni.Plugin.Api) => {
-    console.log("config activated")
+  console.log("config activated")
 
-    // Input
-    //
-    // Add input bindings here:
-    //
+  // Input
+  //
+  // Add input bindings here:
+  //
 
-    //
-    // Or remove the default bindings here by uncommenting the below line:
-    //
-    // oni.input.unbind("<c-p>")
+  //
+  // Or remove the default bindings here by uncommenting the below line:
+  //
+  // oni.input.unbind("<c-p>")
 
 }
 
 export const deactivate = (oni: Oni.Plugin.Api) => {
-    console.log("config deactivated")
+  console.log("config deactivated")
 }
 
 export const configuration = {
-    //add custom config here, such as
+  "editor.fontFamily": "Hack",
+  "editor.fontSize": "13px",
+  "editor.scrollBar.visible": false,
+  "oni.loadInitVim": true,
+  "oni.useDefaultConfig": false,
+  "sidebar.enabled": false,
+  "statusbar.enabled": false,
+  "tabs.mode": "native",
+  "oni.hideMenu": true,
+  "terminal.shellCommand": "/bin/zsh",
+  "ui.animations.enabled": true,
+  "ui.colorscheme": "tender",
+  "ui.fontFamily": "Hack",
+  "ui.fontSize": "13px",
+  "ui.fontSmoothing": "auto",
+  "autoClosingPairs.enabled": false,
 
-    "ui.colorscheme": "tender",
-    "sidebar.enabled": false,
+  "environment.additionalPaths": [ 
+    "/usr/bin", 
+    "/Users/jlane/go/bin", 
+    "/usr/local/bin", 
+  ],
 
-    // "oni.useDefaultConfig": true,
-    //"oni.bookmarks": ["~/Documents"],
-    //"oni.loadInitVim": false,
-    "editor.fontSize": "16px",
-    "editor.fontFamily": "Hack",
-
-    "ui.fontSize": "16px",
-    "ui.fontFamily": "Hack",
-
-    // UI customizations
-    "editor.scrollBar.visible": false,
-    "statusbar.enabled": false,
-    "ui.animations.enabled": true,
-    "ui.fontSmoothing": "auto",
+  "experimental.indentLines.filetypes": [
+    ".tsx",
+    ".ts",
+    ".jsx",
+    ".js",
+    ".go",
+    ".re",
+    ".py",
+    ".c",
+    ".cc",
+    ".lua",
+    ".java",
+    ".tf",
+    ".json",
+  ],
+  "experimental.indentLines.enabled": true,
 }
