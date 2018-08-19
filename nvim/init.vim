@@ -61,8 +61,8 @@ let mapleader = ','
 " searching stuff
 
 " Make <C-L> clear highlight and redraw
-nnoremap <C-L> :nohls<CR><C-L>
-inoremap <C-L> <C-O>:nohls<CR>
+nnoremap <C-\> :nohls<CR>
+inoremap <C-\> <C-O>:nohls<CR>
 
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
