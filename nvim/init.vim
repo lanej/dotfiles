@@ -718,6 +718,7 @@ xmap <C-k> <Plug>(neosnippet_expand_target)
 smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
       \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
 
+let g:vim_markdown_conceal = 0
 " For conceal markers.
 if has('conceal')
   set conceallevel=2 concealcursor=niv
