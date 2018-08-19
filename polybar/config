@@ -18,7 +18,7 @@ font-1 = MaterialIcons:size=12;0
 font-2 = Termsynu:size=12;-2
 font-3 = FontAwesome:size=12;0
 
-modules-left = mpd bspwm i3 
+modules-left = bspwm
 modules-right = github cpu memory temperature filesystem wireless-network date
 
 tray-position = right 
@@ -27,8 +27,8 @@ tray-transparent = true
 tray-background = #0063ff
 tray-maxsize=1000
 
-scroll-up = i3wm-wsnext
-scroll-down = i3wm-wsprev
+scroll-up = bspwm-desknext
+scroll-down = bspwm-deskprev
 
 
 [bar/bottom]
