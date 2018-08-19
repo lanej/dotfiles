@@ -1,15 +1,22 @@
 # Path to your oh-my-zsh configuration.
-ZSH=$HOME/.oh-my-zsh
 export TERM='xterm-256color'
+# Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
+# Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
+# Example format: plugins=(rails git textmate ruby lighthouse)
+plugins=(git osx zsh-autosuggestions vi-mode)
 
-# Set name of the theme to load.
-# Look in ~/.oh-my-zsh/themes/
-# Optionally, if you set this to "random", it'll load a random theme each
-# time that oh-my-zsh is loaded.
 DEFAULT_USER='jlane'
-# ZSH_THEME="lanej"
-# ZSH_THEME="agnoster"
-# ZSH_THEME="powerlevel9k"
+
+# Example aliases
+alias zshconfig="e ~/.zshrc"
+
+# Comment this out to disable bi-weekly auto-update checks
+DISABLE_AUTO_UPDATE="true"
+
+HIST_FIND_NO_DUPS="true"
+HIST_IGNORE_ALL_DUPS="true"
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='standout'
 ZSH_THEME="powerlevel9k/powerlevel9k"
 
 POWERLEVEL9K_MODE='nerdfont-complete'
@@ -37,39 +44,8 @@ POWERLEVEL9K_SHORTEN_STRATEGY="truncate_from_right"
 POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(context dir rbenv vcs)
 POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status vi_mode background_jobs_joined)
 
-# Example aliases
-alias zshconfig="vim ~/.zshrc"
-# alias ohmyzsh="mate ~/.oh-my-zsh"
-
-# Set to this to use case-sensitive completion
-# CASE_SENSITIVE="true"
-
-# Comment this out to disable bi-weekly auto-update checks
-DISABLE_AUTO_UPDATE="true"
-
-HIST_FIND_NO_DUPS="true"
-HIST_IGNORE_ALL_DUPS="true"
-
-# Uncomment to change how many often would you like to wait before auto-updates occur? (in days)
-# export UPDATE_ZSH_DAYS=13
-
-# Uncomment following line if you want to disable colors in ls
-# DISABLE_LS_COLORS="true"
-
-# Uncomment following line if you want to disable autosetting terminal title.
-# DISABLE_AUTO_TITLE="true"
-
-# Uncomment following line if you want red dots to be displayed while waiting for completion
-# COMPLETION_WAITING_DOTS="true"
-
-# Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
-# Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
-# Example format: plugins=(rails git textmate ruby lighthouse)
-plugins=(git osx zsh-autosuggestions vi-mode)
-
+ZSH=$HOME/.oh-my-zsh
 source $ZSH/oh-my-zsh.sh
-
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='standout'
 
 setopt inc_append_history
 setopt correct
@@ -79,8 +55,6 @@ unsetopt nomatch
 unsetopt share_history
 unsetopt correct
 unsetopt correct_all
-
-source ~/.profile
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/Users/jlane/google-cloud-sdk/path.zsh.inc' ]; then source '/Users/jlane/google-cloud-sdk/path.zsh.inc'; fi
@@ -102,65 +76,66 @@ bindkey '^s' history-incremental-search-forward
 
 export KEYTIMEOUT=1
 
-if [ -f $HOME/.keys.env ]; then source $HOME/.keys.env; fi
+[[ -r "$HOME/.keys.env" ]] && source $HOME/.keys.env
+[[ -r "/usr/share/z/z.sh" ]] && source /usr/share/z/z.sh
 
 if [ -f ~/.fzf.zsh ]; then
 	source ~/.fzf.zsh
 
 	zz() {
-	  cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf -q "$_last_z_args")"
+		cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf -q "$_last_z_args")"
 	}
 
 	# fkill - kill process
 	fkill() {
-	  local pid
-	  pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
+		local pid
+		pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
 
-	  if [ "x$pid" != "x" ]
-	  then
-	    echo $pid | xargs kill -${1:-9}
-	  fi
+		if [ "x$pid" != "x" ]
+		then
+			echo $pid | xargs kill -${1:-9}
+		fi
 	}
 
 	# CTRL-R - Paste the selected command from history into the command line
 	fzf-history-widget() {
-	  local selected num
-	  setopt localoptions noglobsubst noposixbuiltins pipefail 2> /dev/null
-	  selected=( $(fc -rl 1 |
-	    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS -n2..,.. --tiebreak=index --bind=ctrl-r:toggle-sort $FZF_CTRL_R_OPTS --query=${(qqq)LBUFFER} +m" $(__fzfcmd)) )
-	  local ret=$?
-	  if [ -n "$selected" ]; then
-	    num=$selected[1]
-	    if [ -n "$num" ]; then
-	      zle vi-fetch-history -n $num
-	    fi
-	  fi
-	  zle redisplay
-	  typeset -f zle-line-init >/dev/null && zle zle-line-init
-	  return $ret
-	}
-	zle     -N   fzf-history-widget
-	bindkey '^R' fzf-history-widget
+	local selected num
+	setopt localoptions noglobsubst noposixbuiltins pipefail 2> /dev/null
+	selected=( $(fc -rl 1 |
+		FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS -n2..,.. --tiebreak=index --bind=ctrl-r:toggle-sort $FZF_CTRL_R_OPTS --query=${(qqq)LBUFFER} +m" $(__fzfcmd)) )
+	local ret=$?
+	if [ -n "$selected" ]; then
+		num=$selected[1]
+		if [ -n "$num" ]; then
+			zle vi-fetch-history -n $num
+		fi
+	fi
+	zle redisplay
+	typeset -f zle-line-init >/dev/null && zle zle-line-init
+	return $ret
+}
+zle     -N   fzf-history-widget
+bindkey '^R' fzf-history-widget
 
-  # fco_preview - checkout git branch/tag, with a preview showing the commits between the tag/branch and HEAD
-  fgco() {
-    local tags branches target
-    tags=$(
-    git tag | awk '{print "\x1b[31;1mtag\x1b[m\t" $1}') || return
-      branches=$(
-    git branch --all | grep -v HEAD |
-    sed "s/.* //" | sed "s#remotes/[^/]*/##" |
-    sort -u | awk '{print "\x1b[34;1mbranch\x1b[m\t" $1}') || return
-      target=$(
-    (echo "$tags"; echo "$branches") |
-        fzf --no-hscroll --no-multi --delimiter="\t" -n 2 \
-            --ansi --preview="git log -200 --pretty=format:%s $(echo {+2..} |  sed 's/$/../' )" ) || return
-      git checkout $(echo "$target" | awk '{print $2}')
-  }
+# fco_preview - checkout git branch/tag, with a preview showing the commits between the tag/branch and HEAD
+fgco() {
+	local tags branches target
+	tags=$(
+	git tag | awk '{print "\x1b[31;1mtag\x1b[m\t" $1}') || return
+	branches=$(
+	git branch --all | grep -v HEAD |
+		sed "s/.* //" | sed "s#remotes/[^/]*/##" |
+		sort -u | awk '{print "\x1b[34;1mbranch\x1b[m\t" $1}') || return
+	target=$(
+	(echo "$tags"; echo "$branches") |
+		fzf --no-hscroll --no-multi --delimiter="\t" -n 2 \
+		--ansi --preview="git log -200 --pretty=format:%s $(echo {+2..} |  sed 's/$/../' )" ) || return
+	git checkout $(echo "$target" | awk '{print $2}')
+}
 
-	export FZF_COMPLETION_TRIGGER=''
-	bindkey '^T' fzf-completion
-	bindkey '^I' $fzf_default_completion
-  # Wow the world is not ready for this
-  # bindkey '^I' fzf-completion
+export FZF_COMPLETION_TRIGGER=''
+bindkey '^T' fzf-completion
+bindkey '^I' $fzf_default_completion
+# Wow the world is not ready for this
+# bindkey '^I' fzf-completion
 fi
