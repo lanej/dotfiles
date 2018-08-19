@@ -2,11 +2,11 @@
 
 # set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]]; then
-      PATH="$HOME/bin:$PATH"
+	PATH="$HOME/bin:$PATH"
 fi
 
 if [[ -d "$HOME/.files/bin" ]]; then
-      PATH="$HOME/.files/bin:$PATH"
+	PATH="$HOME/.files/bin:$PATH"
 fi
 
 source "$HOME/.alias"
@@ -18,14 +18,14 @@ unset VISUAL
 unset VISUALD
 ## Editor
 if [[ -s $(which oni) ]]; then
-      export VISUAL=oni
+	export VISUAL=oni
 elif [[ -s $(which vimr) ]]; then
-      export VISUAL='vimr -s '
-      export VISUALD='vimr -s --cwd '
+	export VISUAL='vimr -s '
+	export VISUALD='vimr -s --cwd '
 elif [[ -s $(which gvim) ]]; then
-      export VISUAL=gvim
+	export VISUAL=gvim
 elif [[ -s $(which mvim) ]]; then
-      export VISUAL=mvim
+	export VISUAL=mvim
 fi
 
 export VISUALD=${VISUALD:-$VISUAL}
@@ -34,11 +34,11 @@ unset EDITOR
 unset EDITORD
 
 if [[ -s $(which nvim) ]]; then
-      export EDITOR=nvim
+	export EDITOR=nvim
 elif [[ -s $(which vim) ]]; then
-      export EDITOR=vim
+	export EDITOR=vim
 else
-      export EDITOR=vi
+	export EDITOR=vi
 fi
 
 export EDITORD=${EDITORD:-$EDITOR}
@@ -61,14 +61,14 @@ if [[ -s $(which keychain) ]]; then
 	[ -f ~/.keychain/$HOST-sh ] && source ~/.keychain/$HOST-sh
 	[ -f ~/.keychain/$HOST-sh-gpg ] && source ~/.keychain/$HOST-sh-gpg
 else
-      ssh-add -A ~/.ssh/id_rsa &>/dev/null
+	ssh-add -A ~/.ssh/id_rsa &>/dev/null
 fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
 
 if [[ -s $(which rbenv) ]]; then
-      eval "$(rbenv init - --no-rehash)"
+	eval "$(rbenv init - --no-rehash)"
 fi
 
 # vim: set ft=sh:
