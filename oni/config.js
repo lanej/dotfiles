@@ -33,7 +33,7 @@ exports.configuration = {
     "autoClosingPairs.enabled": false,
     "environment.additionalPaths": [
         "/usr/bin",
-        "/Users/jlane/go/bin",
+        "~/go/bin",
         "/usr/local/bin",
     ],
     "experimental.indentLines.filetypes": [
