@@ -69,6 +69,8 @@ plugins=(git osx zsh-autosuggestions vi-mode)
 
 source $ZSH/oh-my-zsh.sh
 
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='standout'
+
 setopt inc_append_history
 setopt correct
 setopt extended_history
