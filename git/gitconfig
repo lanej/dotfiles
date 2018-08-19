@@ -6,6 +6,7 @@
 	diff = auto
 	status = auto
 	branch = auto
+	ui = true
 [alias]
 	a = add
 	a = commit
@@ -71,6 +72,7 @@
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	commentChar = '
 	editor = $EDITOR
+	pager = diff-so-fancy | less --tabs=4 -RFX
 [apply]
 	whitespace = fix
 [push]
@@ -95,12 +97,6 @@
 [rebase]
 	autoStash = true
 	stat = true
-[interactive]
-	diffFilter = diff-highlight
-[pager]
-	log = diff-highlight | ${GIT_PAGER:-less -F -X}
-	show = diff-highlight | ${GIT_PAGER:-less -F -X}
-	diff = diff-highlight | ${GIT_PAGER:-less -F -X}
 [transfer]
 	fsckObjects = true
 [recieve]
@@ -111,3 +107,17 @@
 	insteadOf = https://github.com/
 [credential]
 	helper = osxkeychain
+[color "diff-so-fancy"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
+[color "diff"]
+	meta = yellow
+	frag = magenta bold
+	commit = yellow bold
+	old = red bold
+	new = green bold
+	whitespace = red reverse
+[diff-so-fancy]
+	markEmptyLines = false
