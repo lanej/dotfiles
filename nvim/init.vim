@@ -496,11 +496,7 @@ if has('autocmd')
 
     autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
     autocmd FileType qf wincmd J
-    autocmd FileType go,cpp nested :TagbarOpen
 
-    map <C-n> :cnext<CR>
-    map <C-p> :cprevious<CR>
-    " nnoremap <leader>a :cclose<CR>
     autocmd FileType go nmap <leader>b  <Plug>(go-build)
     autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
