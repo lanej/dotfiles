@@ -102,12 +102,9 @@ Plug 'alexgenco/neovim-ruby'
 Plug 'aliou/moriarty.vim'
 Plug 'bling/vim-airline'
 Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
-Plug 'dag/vim-fish'
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
-Plug 'depuracao/vim-rdoc'
 Plug 'easymotion/vim-easymotion'
-Plug 'elixir-lang/vim-elixir'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 Plug 'godlygeek/tabular'
 Plug 'groenewege/vim-less'
