@@ -1,6 +1,8 @@
 #! /bin/sh
 
 sxhkd &
+~/.config/polybar/launch.sh &
+feh --bg-scale ~/.files/wallpaper/boards_wood_texture_118306_3840x2400.jpg &
 
 bspc monitor -d I II III IV V VI VII VIII IX X
 
@@ -16,3 +18,5 @@ bspc rule -a Chromium desktop='^2'
 bspc rule -a mplayer2 state=floating
 bspc rule -a Kupfer.py focus=on
 bspc rule -a Screenkey manage=off
+
+bspc config active_border_color \#E84F4F
