@@ -335,7 +335,7 @@ let g:airline#extensions#whitespace#enabled = 0
 " let g:airline_right_alt_sep=''
 " let g:airline_right_sep=''
 " let g:airline_theme='onedark'
-let g:airline_theme = 'tender'
+let g:airline_theme = 'tenderplus'
 
 let g:tagbar_type_go = {
       \ 'ctagstype' : 'go',
