@@ -16,9 +16,7 @@ DISABLE_AUTO_UPDATE="true"
 HIST_FIND_NO_DUPS="true"
 HIST_IGNORE_ALL_DUPS="true"
 
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='standout'
 ZSH_THEME="powerlevel9k/powerlevel9k"
-
 POWERLEVEL9K_MODE='nerdfont-complete'
 POWERLEVEL9K_COLOR_SCHEME='dark'
 POWERLEVEL9K_HOST_TEMPLATE="%2m"
@@ -46,6 +44,8 @@ POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status vi_mode background_jobs_joined)
 
 ZSH=$HOME/.oh-my-zsh
 source $ZSH/oh-my-zsh.sh
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='standout'
 
 setopt inc_append_history
 setopt correct
