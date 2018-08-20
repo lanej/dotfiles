@@ -251,7 +251,7 @@ interval = 1.0
 ping-interval = 10
 
 format-connected = <ramp-signal> <label-connected>
-label-connected = %local_ip%    %downspeed%    %upspeed%
+label-connected =  %local_ip%    %downspeed%    %upspeed%
 label-disconnected =    not connected
 label-disconnected-foreground = #66
 
@@ -290,10 +290,9 @@ interval = 25
 
 mount-0 = /
 
-label-mounted =  %mountpoint%: %percentage_used%%
+label-mounted =   %mountpoint%: %percentage_used%%
 label-unmounted = %mountpoint% not mounted
 label-unmounted-foreground = #66
-
 
 [module/powermenu]
 type = custom/menu
@@ -345,13 +344,13 @@ format-warn = <ramp> <label-warn>
 ;format-warn-underline = ${self.format-underline}
 
 label = %temperature-f%
-label-warn = HOT! %temperature-f%
+label-warn = %temperature-f%
 label-warn-foreground = ${colors.alert}
 
-ramp-0 = A
-ramp-1 = 
-ramp-2 = C
-ramp-foreground = #66
+ramp-0 = 
+ramp-1 = 
+ramp-2 = 
+ramp-foreground = ${colors.foreground}
 
 [module/i3]
 type = internal/i3
