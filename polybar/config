@@ -4,7 +4,9 @@ foreground = ${xrdb:color7:#222}
 foreground-alt = ${xrdb:color7:#222}
 primary = ${xrdb:color1:#222}
 secondary = ${xrdb:color2:#222}
-alert = ${xrdb:color3:#222}
+debug = ${xrdb:color2:#222}
+info = ${xrdb:color4:#222}
+alert = ${xrdb:color3:#222}
 
 [bar/top]
 width = 100%
@@ -168,28 +170,28 @@ label = CPU
 
 ramp-coreload-0 = ▁
 ramp-coreload-0-font = 2
-ramp-coreload-0-foreground = #87c38a
+ramp-coreload-0-foreground = ${colors.debug}
 ramp-coreload-1 = ▂
 ramp-coreload-1-font = 2
-ramp-coreload-1-foreground = #87c38a
+ramp-coreload-1-foreground = ${colors.debug}
 ramp-coreload-2 = ▃
 ramp-coreload-2-font = 2
-ramp-coreload-2-foreground = #87c38a
+ramp-coreload-2-foreground = ${colors.debug}
 ramp-coreload-3 = ▄
 ramp-coreload-3-font = 2
-ramp-coreload-3-foreground = #87c38a
+ramp-coreload-3-foreground = ${colors.debug}
 ramp-coreload-4 = ▅
 ramp-coreload-4-font = 2
-ramp-coreload-4-foreground = #f5ffa8
+ramp-coreload-4-foreground = ${colors.info}
 ramp-coreload-5 = ▆
 ramp-coreload-5-font = 2
-ramp-coreload-5-foreground = #f5ffa8
+ramp-coreload-5-foreground = ${colors.info}
 ramp-coreload-6 = ▇
 ramp-coreload-6-font = 2
-ramp-coreload-6-foreground = #fd5ff1
+ramp-coreload-6-foreground = ${colors.alert}
 ramp-coreload-7 = █
 ramp-coreload-7-font = 2
-ramp-coreload-7-foreground = #fd5ff1
+ramp-coreload-7-foreground = ${colors.alert}
 
 [module/date]
 type = internal/date
@@ -202,10 +204,10 @@ format = <label> <bar-used>
 label = RAM
 
 bar-used-width = 20
-bar-used-foreground-0 = #aaff77
-bar-used-foreground-1 = #aaff77
-bar-used-foreground-2 = #fba922
-bar-used-foreground-3 = #ff5555
+bar-used-foreground-0 = ${colors.debug}
+bar-used-foreground-1 = ${colors.debug}
+bar-used-foreground-2 = ${colors.info}
+bar-used-foreground-3 = ${colors.alert}
 bar-used-indicator = |
 bar-used-indicator-font = 6
 bar-used-indicator-foreground = #ff
@@ -213,7 +215,7 @@ bar-used-fill = ─
 bar-used-fill-font = 6
 bar-used-empty = ─
 bar-used-empty-font = 6
-bar-used-empty-foreground = #444444
+bar-used-empty-foreground = ${colors.background}
 
 [module/mpd]
 type = internal/mpd
@@ -344,7 +346,7 @@ format-warn = <ramp> <label-warn>
 
 label = %temperature-f%
 label-warn = HOT! %temperature-f%
-label-warn-foreground = ${colors.foreground-alt}
+label-warn-foreground = ${colors.alert}
 
 ramp-0 = A
 ramp-1 = 
