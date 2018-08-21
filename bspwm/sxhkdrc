@@ -8,7 +8,7 @@ super + Return
 
 # program launcher
 super + @space
-	dmenu_run
+	rofi -show drun -font "Hack 16" -theme "glue_pro_blue"
 
 # make sxhkd reload its configuration files:
 super + Escape
