@@ -6,7 +6,8 @@ primary = ${xrdb:color1:#222}
 secondary = ${xrdb:color2:#222}
 debug = ${xrdb:color2:#222}
 info = ${xrdb:color4:#222}
-alert = ${xrdb:color3:#222}
+warn = ${xrdb:color3:#222}
+alert = ${xrdb:color1:#222}
 
 [bar/top]
 width = 100%
@@ -35,9 +36,6 @@ tray-padding = 2
 tray-transparent = true
 tray-background = #0063ff
 tray-maxsize=1000
-
-scroll-up = bspwm-desknext
-scroll-down = bspwm-deskprev
 
 [module/backlight]
 type = internal/backlight
@@ -95,61 +93,17 @@ animation-charging-framerate = 750
 [module/bspwm]
 type = internal/bspwm
 
-ws-icon-0 = term;
-ws-icon-1 = web;
-ws-icon-2 = code;
-ws-icon-3 = music;
-ws-icon-4 = irssi;
-ws-icon-default = 
+label-active = 
+label-active-padding = 1
+label-active-foreground = ${colors.foreground}
+label-active-background = ${colors.info}
 
-format = <label-state> <label-mode>
-
-label-dimmed-underline = ${BAR.background}
-
-label-active = %icon%
-label-active-foreground = ${colors.foreground-alt}
-label-active-background = ${colors.primary}
-label-active-underline = #c9665e
-label-active-font = 4
-label-active-padding = 4
-
-label-occupied = %icon%
-label-occupied-foreground = #dd
-label-occupied-underline = #666
-label-occupied-font = 4
-label-occupied-padding = 4
-
-label-urgent = %icon%
-label-urgent-foreground = #000000
-label-urgent-background = #bd2c40
-label-urgent-underline = #9b0a20
-label-urgent-font = 4
-label-urgent-padding = 4
-
-label-empty = %icon%
-label-empty-foreground = #55
-label-empty-font = 4
-label-empty-padding = 4
-
-label-monocle = 
-label-monocle-underline = ${module/bspwm.label-active-underline}
-label-monocle-background = #33ffffff
-label-monocle-padding = 2
-
-label-locked = 
-label-locked-foreground = #bd2c40
-label-locked-underline = ${module/bspwm.label-monocle-underline}
-label-locked-padding = ${module/bspwm.label-monocle-padding}
-
-label-sticky = 
-label-sticky-foreground = #fba922
-label-sticky-underline = ${module/bspwm.label-monocle-underline}
-label-sticky-padding = ${module/bspwm.label-monocle-padding}
-
-label-private = 
-label-private-foreground = #bd2c40
-label-private-underline = ${module/bspwm.label-monocle-underline}
-label-private-padding = ${module/bspwm.label-monocle-padding}
+label-occupied = 
+label-occupied-padding = 1
+label-occupied-foreground = ${colors.foreground}
+label-occupied-background = ${colors.debug}
+label-empty = 
+label-empty-padding = 1
 
 [module/bspwm-tmp]
 type = internal/bspwm
@@ -170,22 +124,22 @@ label = CPU
 
 ramp-coreload-0 = ▁
 ramp-coreload-0-font = 2
-ramp-coreload-0-foreground = ${colors.debug}
+ramp-coreload-0-foreground = ${colors.info}
 ramp-coreload-1 = ▂
 ramp-coreload-1-font = 2
-ramp-coreload-1-foreground = ${colors.debug}
+ramp-coreload-1-foreground = ${colors.info}
 ramp-coreload-2 = ▃
 ramp-coreload-2-font = 2
-ramp-coreload-2-foreground = ${colors.debug}
+ramp-coreload-2-foreground = ${colors.info}
 ramp-coreload-3 = ▄
 ramp-coreload-3-font = 2
-ramp-coreload-3-foreground = ${colors.debug}
+ramp-coreload-3-foreground = ${colors.info}
 ramp-coreload-4 = ▅
 ramp-coreload-4-font = 2
-ramp-coreload-4-foreground = ${colors.info}
+ramp-coreload-4-foreground = ${colors.warn}
 ramp-coreload-5 = ▆
 ramp-coreload-5-font = 2
-ramp-coreload-5-foreground = ${colors.info}
+ramp-coreload-5-foreground = ${colors.warn}
 ramp-coreload-6 = ▇
 ramp-coreload-6-font = 2
 ramp-coreload-6-foreground = ${colors.alert}
@@ -204,9 +158,9 @@ format = <label> <bar-used>
 label = RAM
 
 bar-used-width = 20
-bar-used-foreground-0 = ${colors.debug}
-bar-used-foreground-1 = ${colors.debug}
-bar-used-foreground-2 = ${colors.info}
+bar-used-foreground-0 = ${colors.info}
+bar-used-foreground-1 = ${colors.info}
+bar-used-foreground-2 = ${colors.warn}
 bar-used-foreground-3 = ${colors.alert}
 bar-used-indicator = |
 bar-used-indicator-font = 6
