@@ -431,12 +431,12 @@ if has('autocmd')
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd FileType ruby set wrapscan|set textwidth=120
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+    autocmd FileType ruby set colorcolumn=120|highlight ColorColumn ctermbg=Black guibg=LightGrey
   augroup END
 
   augroup filetype_gitcommit
     autocmd!
-    autocmd FileType gitcommit set colorcolumn=72|highlight ColorColumn ctermbg=DarkGrey guibg=DarkGrey
+    autocmd FileType gitcommit set colorcolumn=72|highlight ColorColumn ctermbg=Black guibg=LightGrey
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
