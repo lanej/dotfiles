@@ -176,6 +176,8 @@ call plug#end()
 syntax enable
 colorscheme tender
 
+hi Visual guifg=Black guibg=LightGrey gui=none
+
 highlight clear LineNr     " Current line number row will have same background color in relative mode
 highlight clear SignColumn " SignColumn should match background
 
