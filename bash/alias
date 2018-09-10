@@ -137,3 +137,4 @@ alias rmr='rm -r'
 alias lal='ls -alh'
 alias t=terraform
 alias gpro='hub pull-request -o'
+alias lt='tree -L 1 -C'
