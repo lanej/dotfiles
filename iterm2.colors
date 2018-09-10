@@ -82,11 +82,11 @@
   "Shortcut" : "",
   "Background Image Location" : "",
   "Bold Color" : {
-    "Red Component" : 0.63687096117064357,
+    "Red Component" : 0.7053070068359375,
     "Color Space" : "sRGB",
-    "Blue Component" : 0.976898193359375,
+    "Blue Component" : 1,
     "Alpha Component" : 1,
-    "Green Component" : 0.79248156156036209
+    "Green Component" : 0.92218982614576817
   },
   "Use Cursor Guide" : false,
   "Unlimited Scrollback" : true,
