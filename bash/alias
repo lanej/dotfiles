@@ -138,3 +138,8 @@ alias lal='ls -alh'
 alias t=terraform
 alias gpro='hub pull-request -o'
 alias lt='tree -L 1 -C'
+
+if hash xsel 2>/dev/null; then
+	alias pbcopy='xsel --clipboard --input'
+	alias pbpaste='xsel --clipboard --output'
+fi
