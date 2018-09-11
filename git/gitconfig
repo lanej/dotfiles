@@ -12,6 +12,7 @@
 	a = commit
 	aa = add -A
 	ap = add -p
+	at = add -u
 	b = branch
 	br = branch
 	c = commit
@@ -20,6 +21,8 @@
 	cahr = commit --amend -CHEAD --reset-author
 	cav = commit -av
 	ccah = commit --amend -cHEAD -v
+	cf = diff --name-only
+	cfd = clean -fd
 	ci = commit
 	cl = clone
 	cm = commit
@@ -42,31 +45,30 @@
 	pl = pull --rebase
 	pr = pull-request
 	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1 && git branch --set-upstream-to=refs/pull/$1/head pr-$1; }; _git_pr"
+	pu = push -u
+	r = rebase
 	ra = rebase --abort
+	rba = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion' origin/master
+	rbo = rebase origin/master
 	rc = rebase --continue
 	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
 	rh = reset --hard
+	rho = reset --hard origin/master
 	ri = rebase -i
+	rio = rebase -i origin/master
 	ro = !git fetch origin && git reset --hard origin/master
+	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
 	rsl = "!_git_rsl() { local max=$1; PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
 	sh = !git-sh
 	sl = log --oneline --graph --decorate
-	slp = log --stat -p
-	st = status
-	v = show
-	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
 	slb = log --oneline --graph --decorate origin/master..HEAD
-	r = rebase
+	slp = log --stat -p
 	sls = log --oneline --graph --decorate --stat
-	au = ls-files -o --exclude-standard
-	rbo = rebase origin/master
-	rba = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion' origin/master
-	rio = rebase -i origin/master
-	rho = reset --hard origin/master
-	cfd = clean -fd
 	slx = log --oneline -5
-	pu = push -u
+	st = status
+	uf = ls-files -o --exclude-standard
+	v = show
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
