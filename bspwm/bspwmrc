@@ -2,21 +2,25 @@
 
 sxhkd &
 ~/.config/polybar/launch.sh &
-feh --bg-scale ~/.files/wallpaper/boards_wood_texture_118306_3840x2400.jpg &
 
-bspc monitor -d I II III IV V VI VII VIII IX X
+xsetroot -solid "#262626"
 
-bspc config border_width         2
-bspc config window_gap          12
+bspc monitor -d I II
+
+bspc config border_width         1
+bspc config window_gap          20
 
 bspc config split_ratio          0.52
 bspc config borderless_monocle   true
 bspc config gapless_monocle      true
 
-bspc rule -a Gimp desktop='^8' state=floating follow=on
-bspc rule -a Chromium desktop='^2'
-bspc rule -a mplayer2 state=floating
-bspc rule -a Kupfer.py focus=on
-bspc rule -a Screenkey manage=off
+# Border colors
+bspc config normal_border_color "#484848"
+bspc config focused_border_color "#1F8999"
+bspc config urgent_border_color "#B58900"
+bspc config presel_border_color "#26E2FF"
+bspc config active_border_color "#E84F4F"
 
-bspc config active_border_color \#E84F4F
+# It looks like these options get overridden by Compton...
+bspc config normal_frame_opacity 0.75
+bspc config focused_frame_opacity 0.75
