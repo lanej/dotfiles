@@ -98,11 +98,11 @@
 	autoStash = true
 	stat = true
 [transfer]
-	fsckObjects = true
+	; fsckObjects = true
 [recieve]
-	fsckObjects = true
+	; fsckObjects = true
 [fetch]
-	fsckObjects = true
+	; fsckObjects = true
 [url "git@github.com:"]
 	insteadOf = https://github.com/
 [credential]
