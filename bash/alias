@@ -144,3 +144,4 @@ if hash xsel 2>/dev/null; then
 	alias pbpaste='xsel --clipboard --output'
 fi
 alias to_html="w3m -dump -T text/html"
+alias mytop="vtop -t monokai"
