@@ -56,3 +56,6 @@ URxvt.font:           xft:Hack Nerd Font Mono:size=13
 URxvt.savelines:      20000
 URxvt.utmpInhibit:    true
 URxvt.scrollBar:      false
+
+xscreensaver.newLoginCommand: lxdm -c USER_SWITCH
+xscreensaver.logFile:         /var/log/xscreensaver.log
