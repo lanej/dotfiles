@@ -476,6 +476,11 @@ if has('autocmd')
     autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
   augroup END
 
+  augroup filetype_sshconfig
+    autocmd!
+    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
   augroup filetype_python
     autocmd!
     autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
