@@ -1,7 +1,0 @@
-#!/usr/bin/ruby
-require 'rubygems'
-require 'json'
-
-unpretty_json = JSON.parse(File.read(File.expand_path(ARGV[0])))
-
-puts JSON.pretty_generate(unpretty_json)
