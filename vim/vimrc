@@ -1,40 +1,50 @@
-" ~/.vimrc
-set nocompatible
+"
 
-" ================ General Config ====================
+highlight clear LineNr     " Current line number row will have same background color in relative mode
+highlight clear SignColumn " SignColumn should match background
+set autochdir
 set autoread                   "Reload files changed outside vim
 set backspace=indent,eol,start "Allow backspace in insert mode
+set cmdheight=2
+set complete-=i             "do not scan included files
+set cursorline
 set encoding=utf-8
+set exrc
 set fileformats+=mac
 set gcr=a:blinkon0             "Disable cursor blink
 set hidden                     "Better buffer management
 set history=1000               "Store lots of :cmdline history
+set hlsearch               " Highlight search results
+set ignorecase             " Ignore case when searching
+set incsearch              " Makes search act like search in modern browsers
+set lazyredraw             " Don't redraw while executing macros (good performance config)
+set list
+set listchars=tab:>-,trail:*,nbsp:*
+set magic                  " For regular expressions turn magic on
+set mat=2                  " How many tenths of a second to blink when matching brackets
+set modelines=5
+set nobackup
+set nocompatible
+set nocursorline           " Highlight current line !!! disabled, runs slow
+set noswapfile
+set nowb
 set number                     "Line numbers are good
+set scrolloff=7                "Set 7 lines to the cursor - when moving vertically using j/k
+set secure
 set shell=$SHELL
 set showcmd                    "Show incomplete cmds down the bottom
-set showmode                   "Show current mode down the bottom
-set scrolloff=7                "Set 7 lines to the cursor - when moving vertically using j/k
+set showmatch              " Show matching brackets when text indicator is over them
+set showmode               " Display the current mode
+set smartcase              " When searching try to be smart about cases
+set smarttab
+set tabpagemax=15          " Only show 15 tabs
+set title                      "Set the title in xterm
 set ttimeout
 set ttimeoutlen=100
 set visualbell                 "No sounds
-set exrc
-set secure
-set nocompatible
-set modelines=5
-set title                      "Set the title in xterm
-set hidden                     "Better buffer management
-set hlsearch
-set incsearch
-set cmdheight=2
-
-" ================ Turn Off Swap Files ==============
-set noswapfile
-set nobackup
-set nowb
-
-" Trailing spaces and tabs
-set list
-set listchars=tab:>-,trail:*,nbsp:*
+set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
+set wildmenu                "enable ctrl-n and ctrl-p to scroll thru matches
+set wildmode=list:longest
 
 let mapleader = ","
 
@@ -95,34 +105,6 @@ endif
 if filereadable(expand("~/.vimrc.neocomplete"))
 	source ~/.vimrc.neocomplete
 endif
-
-" =============== UI ================
-" turn syntax highlighting on
-syntax enable
-colorscheme moriarty
-
-highlight clear LineNr     " Current line number row will have same background color in relative mode
-highlight clear SignColumn " SignColumn should match background
-set nocursorline           " Highlight current line !!! disabled, runs slow
-set hlsearch               " Highlight search results
-set ignorecase             " Ignore case when searching
-set incsearch              " Makes search act like search in modern browsers
-set lazyredraw             " Don't redraw while executing macros (good performance config)
-set magic                  " For regular expressions turn magic on
-set mat=2                  " How many tenths of a second to blink when matching brackets
-set showmatch              " Show matching brackets when text indicator is over them
-set showmode               " Display the current mode
-set smartcase              " When searching try to be smart about cases
-set tabpagemax=15          " Only show 15 tabs
-set nobackup
-set smarttab
-set cursorline
-
-" ================ Completion =======================
-set wildmode=list:longest
-set wildmenu                "enable ctrl-n and ctrl-p to scroll thru matches
-set complete-=i             "do not scan included files
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git
 
 " grep
 nnoremap <Leader>a :Ack!<Space>
@@ -489,4 +471,10 @@ let g:terraform_fmt_on_save = 1
 let g:mkdx#settings = { 'links': { 'fragment': { 'complete': 0 } } }
 
 "terminal
-tnoremap <C-o> <C-\><C-n>
+"
+if has('terminal')
+  tnoremap <C-o> <C-\><C-n>
+endif
+
+" disable too old vim warning
+let g:go_version_warning = 0

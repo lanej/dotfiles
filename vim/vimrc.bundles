@@ -2,21 +2,20 @@ call plug#begin('~/.vim/plugged')
 
 let g:plug_url_format="git://github.com/%s"
 
-Plug 'AndrewRadev/splitjoin.vim'
-Plug 'Lokaltog/powerline', {'rtp': 'powerline/bindings/vim/'}
-Plug 'Lokaltog/vim-easymotion'
-Plug 'Shougo/neocomplete.vim'
 Plug 'aliou/moriarty.vim'
 Plug 'aliou/sql-heredoc.vim'
-Plug 'bling/vim-airline'
-Plug 'ctrlpvim/ctrlp.vim'
-Plug 'depuracao/vim-rdoc'
+Plug 'AndrewRadev/splitjoin.vim'
+Plug 'vim-airline/vim-airline'
 Plug 'fatih/vim-go'
-" Plug 'gabrielelana/vim-markdown'
+Plug 'jacoborus/tender.vim'
 Plug 'jlanzarotta/bufexplorer'
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-easy-align'
 Plug 'justmao945/vim-clang'
 Plug 'kchmck/vim-coffee-script'
+Plug 'Lokaltog/powerline', {'rtp': 'powerline/bindings/vim/'}
+Plug 'Lokaltog/vim-easymotion'
 Plug 'majutsushi/tagbar'
 Plug 'mhinz/vim-signify'
 Plug 'mileszs/ack.vim'
@@ -25,21 +24,18 @@ Plug 'noprompt/vim-yardoc'
 Plug 'rhysd/vim-crystal.git'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
-Plug 'slack/vim-align'
+Plug 'sheerun/vim-polyglot'
+Plug 'Shougo/neocomplete.vim'
 Plug 'thoughtbot/vim-rspec'
 Plug 'tpope/vim-dotenv'
 Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-haml'
-Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rbenv'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-surround'
 Plug 'vim-ruby/vim-ruby'
-Plug 'vim-scripts/xorium.vim'
-Plug 'SidOfc/mkdx'
-
 
 " Add plugins to &runtimepath
 call plug#end()
