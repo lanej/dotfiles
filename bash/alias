@@ -38,9 +38,14 @@ function git-rebase-style() {
 	git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
 }
 
+
+function current-version() {
+	git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
+}
+
 function git-release() {
 	git fetch origin -q
-	local current_release=$(git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1)
+	local current_release=current-version
 	echo "Current release: v$current_release"
 	local next_release=v$(($current_release + 1))
 	echo "Releasing: $next_release"
