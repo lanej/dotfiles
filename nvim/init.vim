@@ -162,7 +162,8 @@ Plug 'tpope/vim-surround'
 Plug 'vim-scripts/xorium.vim'
 Plug 'w0rp/ale'
 Plug 'wting/rust.vim'
-Plug 'zchee/deoplete-go', { 'do': 'make && gocode set autobuild true' }
+Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
+Plug 'zchee/deoplete-go', { 'do': 'make' }
 Plug 'zchee/deoplete-jedi'
 
 " Add plugins to &runtimepath
