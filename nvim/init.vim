@@ -139,6 +139,7 @@ Plug 'noprompt/vim-yardoc'
 Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'pangloss/vim-javascript'
 Plug 'plasticboy/vim-markdown'
+Plug 'previm/previm'
 Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
@@ -170,6 +171,8 @@ Plug 'zchee/deoplete-jedi'
 call plug#end()
 
 " plugins:end
+"
+let g:previm_open_cmd = 'open -a Safari'
 
 " =============== UI ================
 " turn syntax highlighting on
