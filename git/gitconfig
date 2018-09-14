@@ -69,6 +69,7 @@
 	st = status
 	uf = ls-files -o --exclude-standard
 	v = show
+	prs = pr list -f \"%sC%<(3)%i%Creset %<(10)%au %Nc %<(40)%t %U %l%n\"
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
