@@ -1,8 +1,0 @@
-#!/usr/bin/env ruby
-
-require 'rubygems'
-require 'json'
-
-json = JSON.parse(STDIN.read)
-puts JSON.pretty_generate(json)
-
