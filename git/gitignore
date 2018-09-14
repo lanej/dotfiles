@@ -13,3 +13,6 @@ Gemfile.local
 Gemfile.local.lock
 .tern-port
 .terraform
+.wercker/
+.tfcompleterc
+*.auto.tfvars
