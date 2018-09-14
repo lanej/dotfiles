@@ -1,8 +1,10 @@
-.PHONY: fish shell screen tmux vim nvim X ruby git chunk awesome i3 polybar oni bspwm
+.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm
 all: .PHONY
 
 DOTFILES := $(shell pwd)
 
+dev:
+	mkdir -p $(HOME)/src
 fish:
 	mkdir -p ${HOME}/.config/fish/functions
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
