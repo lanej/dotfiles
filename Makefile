@@ -18,7 +18,12 @@ shell:
 	ln -fs $(DOTFILES)/sh/rc ${HOME}/.rc
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
-	sh ${DOTFILES}/zsh/oh_my_zsh ${DOTFILES}
+	git -C ${HOME}/.oh-my-zsh pull || \
+		git clone https://github.com/robbyrussell/oh-my-zsh.git ${HOME}/.oh-my-zsh
+	git -C ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k pull || \
+		git clone https://github.com/bhilburn/powerlevel9k.git ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k
+	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting pull || \
+		git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${HOME}/custom/plugins/zsh-syntax-highlighting
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
