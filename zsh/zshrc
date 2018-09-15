@@ -1,5 +1,3 @@
-# Path to your oh-my-zsh configuration.
-export TERM='xterm-256color'
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
@@ -142,3 +140,8 @@ bindkey '^I' $fzf_default_completion
 # bindkey '^I' fzf-completion
 fi
 source ~/.rc
+
+if [[ $TERM == xterm-termite ]]; then
+  . /etc/profile.d/vte.sh
+  __vte_osc7
+fi

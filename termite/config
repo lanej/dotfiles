@@ -1,0 +1,62 @@
+[options]
+allow_bold = true
+audible_bell = false
+browser = google-chrome
+clickable_url = true
+#cursor_blink = system
+cursor_shape = block
+dynamic_title = true
+filter_unmatched_urls = true
+font = Droid Sans Mono 12
+font = Hack 12
+font = Hack Nerd Font Mono 13
+#fullscreen = true
+geometry = 640x480
+hyperlinks = true
+icon_name = terminal
+#modify_other_keys = false
+#mouse_autohide = false
+scrollback_lines = 0
+scrollbar = off
+#scroll_on_keystroke = true
+#scroll_on_output = false
+search_wrap = false
+#size_hints = false
+#urgent_on_bell = true
+
+[colors]
+background = rgba(26, 26, 26, 0.8)
+color0 = #262626
+color10 = #90a959
+color11 = #f4bf75
+color12 = #6a9fb5
+color13 = #aa759f
+color14 = #75b5aa
+color15 = #ffffff
+color1 = #ac4142
+color2 = #90a959
+color3 = #f4bf75
+color4 = #6a9fb5
+color5 = #aa759f
+color6 = #75b5aa
+color7 = #ffffff
+color8 = #505050
+color9 = #ac4142
+cursor = #d0d0d0
+#cursor_foreground = #dcdccc
+#foreground_bold = #ffffff
+foreground = #ffffff
+highlight = #2f2f2f
+
+[hints]
+#font = Monospace 12
+#foreground = #dcdccc
+#background = #3f3f3f
+#active_foreground = #e68080
+#active_background = #3f3f3f
+#padding = 2
+#border = #3f3f3f
+#border_width = 0.5
+#roundness = 2.0
+
+# vim: ft=dosini
