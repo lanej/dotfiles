@@ -32,6 +32,8 @@ shell:
 	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
+	mkdir -p ${HOME}/.config/termite/
+	ln -fs $(DOTFILES)/termite/config ${HOME}/.config/termite/config
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
