@@ -16,11 +16,12 @@ set exrc
 set fileformats+=mac
 set guicursor=a:blinkon0       " Disable cursor blink
 set hidden                     " Better buffer management
-set hidden                     " Better buffer management
 set history=1000               " Store lots of :cmdline history
 set hlsearch
 set ignorecase                 " Ignore case when searching
-set inccommand=nosplit         " live replace
+if (has("nvim"))
+  set inccommand=nosplit       " live replace
+endif
 set incsearch                  " Makes search act like search in modern browsers
 set lazyredraw                 " Don't redraw while executing macros (good performance config)
 set magic                      " For regular expressions turn magic on
@@ -43,9 +44,9 @@ set ttimeout
 set ttimeoutlen=100
 set visualbell                 " No sounds
 
-" if (has("termguicolors"))
-"   set termguicolors
-" endif
+if $OS != "Linux"
+  set termguicolors
+endif
 
 " ================ Turn Off Swap Files ==============
 set noswapfile
@@ -86,34 +87,39 @@ nnoremap t6  6gt<CR>
 filetype plugin indent on
 
 " plugins:begin
-call plug#begin('~/.local/share/nvim/plugged')
-
 let g:plug_url_format="git://github.com/%s"
 
-Plug 'AndrewRadev/splitjoin.vim'
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-Plug 'Shougo/neosnippet-snippets'
-Plug 'Shougo/neosnippet.vim'
-Plug 'Xuyuanp/nerdtree-git-plugin'
+if has('nvim')
+  call plug#begin('~/.local/share/nvim/plugged')
+
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'sebdah/vim-delve'
+else
+  call plug#begin('~/.local/share/vim/plugged')
+
+  Plug 'rorymckinley/vim-rubyhash'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+  Plug 'Shougo/deoplete.nvim'
+  Plug 'Shougo/vimproc.vim'
+  Plug 'Shougo/vimshell.vim'
+endif
+
 Plug 'airblade/vim-gitgutter'
 Plug 'aklt/plantuml-syntax'
-Plug 'alexgenco/neovim-ruby'
-Plug 'aliou/moriarty.vim'
+Plug 'AndrewRadev/splitjoin.vim'
+Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
 Plug 'bling/vim-airline'
 Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
 Plug 'easymotion/vim-easymotion'
 Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
-Plug 'godlygeek/tabular'
-Plug 'groenewege/vim-less'
 Plug 'hashivim/vim-terraform'
 Plug 'honza/vim-snippets'
 Plug 'jacoborus/tender.vim'
 Plug 'janko-m/vim-test'
-Plug 'jimenezrick/vimerl'
 Plug 'jlanzarotta/bufexplorer'
-Plug 'joshdick/onedark.vim'
 Plug 'juliosueiras/vim-terraform-completion'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 Plug 'junegunn/fzf.vim'
@@ -121,38 +127,27 @@ Plug 'junegunn/gv.vim'
 Plug 'junegunn/vim-easy-align'
 Plug 'junegunn/vim-github-dashboard'
 Plug 'junegunn/vim-peekaboo'
-Plug 'juvenn/mustache.vim'
-Plug 'kchmck/vim-coffee-script'
 Plug 'lambdalisue/suda.vim'
-Plug 'lanej/deoplete-solargraph'
 Plug 'ludovicchabant/vim-gutentags'
 Plug 'machakann/vim-highlightedyank'
 Plug 'majutsushi/tagbar'
-Plug 'mattn/gist-vim'
-Plug 'mattn/webapi-vim'
+Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
 Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
 Plug 'mileszs/ack.vim'
 Plug 'mxw/vim-jsx'
 Plug 'neomake/neomake'
-Plug 'ngmy/vim-rubocop'
-Plug 'noprompt/vim-yardoc'
+Plug 'osyo-manga/vim-monster'
 Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
-Plug 'pangloss/vim-javascript'
 Plug 'plasticboy/vim-markdown'
 Plug 'previm/previm'
-Plug 'rorymckinley/vim-rubyhash'
 Plug 'scrooloose/nerdcommenter'
 Plug 'scrooloose/nerdtree'
-Plug 'sebdah/vim-delve'
 Plug 'sheerun/vim-polyglot'
-Plug 'skywind3000/asyncrun.vim'
-Plug 'slack/vim-align'
+Plug 'Shougo/neosnippet-snippets'
+Plug 'Shougo/neosnippet.vim'
 Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'thoughtbot/vim-rspec'
-Plug 'tpope/vim-bundler'
-Plug 'tpope/vim-dotenv'
 Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-haml'
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rbenv'
@@ -160,10 +155,9 @@ Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-speeddating'
 Plug 'tpope/vim-surround'
-Plug 'vim-scripts/xorium.vim'
+Plug 'uplus/deoplete-solargraph'
 Plug 'w0rp/ale'
-Plug 'wting/rust.vim'
-Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
+Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'zchee/deoplete-go', { 'do': 'make' }
 Plug 'zchee/deoplete-jedi'
 
@@ -179,7 +173,7 @@ let g:previm_open_cmd = 'open -a Safari'
 syntax enable
 colorscheme tender
 
-hi Visual guifg=DarkBlack guibg=DarkGrey gui=none
+hi Visual guifg=#ffffff guibg=DarkGrey gui=none
 hi Visual ctermfg=Black ctermbg=DarkGrey cterm=none
 
 highlight clear LineNr     " Current line number row will have same background color in relative mode
@@ -601,10 +595,32 @@ let g:deoplete#enable_at_startup = 1
 " Use smartcase.
 let g:deoplete#enable_smart_case = 1
 " debug logging
-" call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
+call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
 
 let g:deoplete#omni#functions = {}
 let g:deoplete#omni_patterns = {}
+
+" Automatically start language servers.
+let g:LanguageClient_autoStart = 1
+
+let g:LanguageClient_serverCommands = {}
+
+" Minimal LSP configuration for JavaScript
+if executable('javascript-typescript-stdio')
+  let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
+endif
+
+let g:LanguageClient_loggingLevel = 'INFO'
+let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
+let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
+
+let g:monster#completion#backend = 'solargraph'
+" With deoplete.nvim
+" let g:monster#completion#rcodetools#backend = "async_rct_complete"
+let g:monster#completion#solargraph#backend = "async_solargraph_suggest"
+let g:deoplete#sources#omni#input_patterns = {
+\   "ruby" : '[^. *\t]\.\w*\|\h\w*::',
+\}
 
 let g:deoplete#omni#functions.javascript = [
       \ 'tern#Complete',
@@ -624,8 +640,8 @@ let g:tern#arguments = ['--persistent']
 let g:deoplete#sources#ternjs#timeout = 1
 
 " Consistent solargraph binary location
-let g:deoplete#sources#solargraph#command = '/Users/jlane/.rbenv/versions/2.5.1/bin/solargraph'
-let g:deoplete#sources#solargraph#args = ['socket', '--port=0']
+let g:deoplete#sources#solargraph#command = $HOME.'/.rbenv/versions/2.5.1/bin/solargraph'
+let g:deoplete#sources#solargraph#args = ['stdio']
 
 " Whether to include the types of the completions in the result data. Default: 0
 let g:deoplete#sources#ternjs#types = 1
