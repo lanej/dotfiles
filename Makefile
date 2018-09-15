@@ -40,20 +40,18 @@ tmux:
 	ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
 vim:
 	touch ${HOME}/.netrc
-	ln -fns $(DOTFILES)/vim ${HOME}/.vim
-	ln -fns $(DOTFILES)/vim ${HOME}/.nvim
-	ln -fs $(DOTFILES)/vim/vimrc ${HOME}/.vimrc
-	ln -fs $(DOTFILES)/vim/vimrc.bundles ${HOME}/.vimrc.bundles
-	ln -fs $(DOTFILES)/vim/vimrc.neocomplete ${HOME}/.vimrc.neocomplete
-	ln -fs $(DOTFILES)/vim/gvimrc ${HOME}/.gvimrc
-nvim:
 	mkdir -p ${HOME}/.cache/nvim/undo
 	mkdir -p ${HOME}/.config/nvim/
+	ln -fns $(DOTFILES)/vim ${HOME}/.vim
 	ln -fs $(DOTFILES)/nvim/init.vim ${HOME}/.config/nvim/init.vim
+	ln -fs $(DOTFILES)/nvim/init.vim ${HOME}/.vimrc
 	mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	ln -fs $(DOTFILES)/vim/autoload/plug.vim ${HOME}/.local/share/nvim/site/autoload/plug.vim
 	mkdir -p $(HOME)/.local/share/nvim/plugged
-	nvim --headless +PlugInstall +qa || echo 'no nvim installed'
+	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
+	nvim --headless +AlignMapsClean +qa || echo 'no nvim installed or command failed'
+	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
+	vim -E -c "AlignMapsClean" -c "qa" || echo 'no vim installed or command failed'
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
