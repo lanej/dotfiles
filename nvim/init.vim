@@ -456,6 +456,11 @@ if has('autocmd')
     autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
+  augroup filetype_sshconfig
+    autocmd!
+    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
   augroup filetype_json
     autocmd!
     autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
@@ -513,6 +518,11 @@ if has('autocmd')
     autocmd FileType go nmap <Leader>gs :GoCallers<CR>
     autocmd FileType go nmap <Leader>ge :GoCallees<CR>
 
+  augroup END
+
+  augroup filetype_vim
+    autocmd!
+    autocmd FileType vim set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup BWCCreateDir
