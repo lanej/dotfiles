@@ -208,6 +208,12 @@ map <leader>ntm :NERDTreeMirror<CR>
 map <leader>ntc :NERDTreeClose<CR>
 map <leader>ntf :NERDTreeFind<CR>
 
+" vim-plug
+map <leader>pi :PlugInstall<CR>
+map <leader>pc :PlugClean<CR>
+map <leader>pu :PlugUpdate<CR>
+
+" NERDTree
 let g:NERDTreeShowHidden=1
 let g:NERDTreeChDirMode=2
 let g:NERDTreeQuitOnOpen=1
