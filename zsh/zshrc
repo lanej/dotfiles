@@ -5,9 +5,6 @@ plugins=(git osx zsh-autosuggestions vi-mode zsh-syntax-highlighting)
 
 DEFAULT_USER='jlane'
 
-# Example aliases
-alias zshconfig="e ~/.zshrc"
-
 # Comment this out to disable bi-weekly auto-update checks
 DISABLE_AUTO_UPDATE="true"
 
