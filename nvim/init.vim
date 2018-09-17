@@ -91,20 +91,8 @@ let g:plug_url_format="git://github.com/%s"
 
 if has('nvim')
   call plug#begin('~/.local/share/nvim/plugged')
-
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'sebdah/vim-delve'
 else
   call plug#begin('~/.local/share/vim/plugged')
-
-  Plug 'rorymckinley/vim-rubyhash'
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
-  if v:version > 8000
-    Plug 'Shougo/deoplete.nvim'
-    Plug 'Shougo/vimproc.vim'
-    Plug 'Shougo/vimshell.vim'
-  endif
 endif
 
 Plug 'airblade/vim-gitgutter'
@@ -116,12 +104,6 @@ Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
 Plug 'easymotion/vim-easymotion'
-if v:version > 70402009 || has('nvim')
-  Plug 'lambdalisue/suda.vim'
-  " Allow saving of files as sudo when I forgot to start vim using sudo.
-  cmap w! w suda://%<CR>
-  Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
-endif
 Plug 'hashivim/vim-terraform'
 Plug 'honza/vim-snippets'
 Plug 'jacoborus/tender.vim'
@@ -154,7 +136,6 @@ Plug 'Shougo/neosnippet.vim'
 Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'thoughtbot/vim-rspec'
 Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rbenv'
 Plug 'tpope/vim-repeat'
@@ -166,6 +147,27 @@ Plug 'w0rp/ale'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'zchee/deoplete-go', { 'do': 'make' }
 Plug 'zchee/deoplete-jedi'
+
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'sebdah/vim-delve'
+else
+  Plug 'rorymckinley/vim-rubyhash'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+  if v:version > 8000
+    Plug 'Shougo/deoplete.nvim'
+    Plug 'Shougo/vimproc.vim'
+    Plug 'Shougo/vimshell.vim'
+  endif
+endif
+
+if v:version > 70402009 || has('nvim')
+  Plug 'lambdalisue/suda.vim'
+  " Allow saving of files as sudo when I forgot to start vim using sudo.
+  cmap w! w suda://%<CR>
+  Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+endif
 
 " Add plugins to &runtimepath
 call plug#end()
