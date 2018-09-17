@@ -100,9 +100,11 @@ else
   Plug 'rorymckinley/vim-rubyhash'
   Plug 'roxma/nvim-yarp'
   Plug 'roxma/vim-hug-neovim-rpc'
-  Plug 'Shougo/deoplete.nvim'
-  Plug 'Shougo/vimproc.vim'
-  Plug 'Shougo/vimshell.vim'
+  if v:version > 8000
+    Plug 'Shougo/deoplete.nvim'
+    Plug 'Shougo/vimproc.vim'
+    Plug 'Shougo/vimshell.vim'
+  endif
 endif
 
 Plug 'airblade/vim-gitgutter'
@@ -114,7 +116,12 @@ Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
 Plug 'easymotion/vim-easymotion'
-Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+if v:version > 70402009 || has('nvim')
+  Plug 'lambdalisue/suda.vim'
+  " Allow saving of files as sudo when I forgot to start vim using sudo.
+  cmap w! w suda://%<CR>
+  Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+endif
 Plug 'hashivim/vim-terraform'
 Plug 'honza/vim-snippets'
 Plug 'jacoborus/tender.vim'
@@ -127,7 +134,6 @@ Plug 'junegunn/gv.vim'
 Plug 'junegunn/vim-easy-align'
 Plug 'junegunn/vim-github-dashboard'
 Plug 'junegunn/vim-peekaboo'
-Plug 'lambdalisue/suda.vim'
 Plug 'ludovicchabant/vim-gutentags'
 Plug 'machakann/vim-highlightedyank'
 Plug 'majutsushi/tagbar'
@@ -249,9 +255,6 @@ map <leader>= ggVG=<CR>
 map <leader>rts %s/\v\s+$//g<CR>
 map <leader>srt :!sort<CR>
 
-" Allow saving of files as sudo when I forgot to start vim using sudo.
-cmap w! w suda://%<CR>
-
 " Haml
 map <leader>hs :!haml -c %:p<CR>
 
@@ -266,7 +269,11 @@ set number
 
 " git-gutter
 set updatetime=100
-set signcolumn=yes
+if exists('&signcolumn')  " Vim 7.4.2201
+  set signcolumn=yes
+else
+  let g:gitgutter_sign_column_always = 1
+endif
 
 " gui stuff
 set guioptions-=T
@@ -602,157 +609,162 @@ map <leader>re :Rename
 " markdown
 " let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { 'complete': 0 } } }
 
+
 "terminal
-tnoremap <C-o> <C-\><C-n>
-
-" let g:deoplete#enable_profile = 1
-" Use deoplete.
-let g:deoplete#enable_at_startup = 1
-" Use smartcase.
-let g:deoplete#enable_smart_case = 1
-" debug logging
-call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
-
-let g:deoplete#omni#functions = {}
-let g:deoplete#omni_patterns = {}
-
-" Automatically start language servers.
-let g:LanguageClient_autoStart = 1
-
-let g:LanguageClient_serverCommands = {}
-
-" Minimal LSP configuration for JavaScript
-if executable('javascript-typescript-stdio')
-  let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
+if has("terminal")
+  tnoremap <C-o> <C-\><C-n>
 endif
 
-let g:LanguageClient_loggingLevel = 'INFO'
-let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
-let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
+if v:version > 8000
+  " let g:deoplete#enable_profile = 1
+  " Use deoplete.
+  let g:deoplete#enable_at_startup = 1
+  " Use smartcase.
+  let g:deoplete#enable_smart_case = 1
+  " debug logging
+  call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
 
-let g:monster#completion#backend = 'solargraph'
-" With deoplete.nvim
-" let g:monster#completion#rcodetools#backend = "async_rct_complete"
-let g:monster#completion#solargraph#backend = "async_solargraph_suggest"
-let g:deoplete#sources#omni#input_patterns = {
-\   "ruby" : '[^. *\t]\.\w*\|\h\w*::',
-\}
+  let g:deoplete#omni#functions = {}
+  let g:deoplete#omni_patterns = {}
 
-let g:deoplete#omni#functions.javascript = [
-      \ 'tern#Complete',
-      \ 'jspc#omni'
-      \]
+  " Automatically start language servers.
+  let g:LanguageClient_autoStart = 1
 
-let g:deoplete#sources = {}
+  let g:LanguageClient_serverCommands = {}
 
-" deoplete-go settings
-let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
-let g:deoplete#sources#go#sort_class = ['package', 'func', 'type', 'var', 'const']
+  " Minimal LSP configuration for JavaScript
+  if executable('javascript-typescript-stdio')
+    let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
+  endif
 
-let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
+  let g:LanguageClient_loggingLevel = 'INFO'
+  let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
+  let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
 
-let g:tern#command = ['tern']
-let g:tern#arguments = ['--persistent']
-let g:deoplete#sources#ternjs#timeout = 1
+  let g:monster#completion#backend = 'solargraph'
+  " With deoplete.nvim
+  " let g:monster#completion#rcodetools#backend = "async_rct_complete"
+  let g:monster#completion#solargraph#backend = "async_solargraph_suggest"
+  let g:deoplete#sources#omni#input_patterns = {
+        \   "ruby" : '[^. *\t]\.\w*\|\h\w*::',
+        \}
 
-" Consistent solargraph binary location
-let g:deoplete#sources#solargraph#command = $HOME.'/.rbenv/versions/2.5.1/bin/solargraph'
-let g:deoplete#sources#solargraph#args = ['stdio']
+  let g:deoplete#omni#functions.javascript = [
+        \ 'tern#Complete',
+        \ 'jspc#omni'
+        \]
 
-" Whether to include the types of the completions in the result data. Default: 0
-let g:deoplete#sources#ternjs#types = 1
+  let g:deoplete#sources = {}
 
-" Whether to include the distance (in scopes for variables, in prototypes for
-" properties) between the completions and the origin position in the result
-" data. Default: 0
-let g:deoplete#sources#ternjs#depths = 1
+  " deoplete-go settings
+  let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
+  let g:deoplete#sources#go#sort_class = ['package', 'func', 'type', 'var', 'const']
 
-" Whether to include documentation strings (if found) in the result data.
-" Default: 0
-let g:deoplete#sources#ternjs#docs = 1
+  let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
 
-" When on, only completions that match the current word at the given point will
-" be returned. Turn this off to get all results, so that you can filter on the
-" client side. Default: 1
-let g:deoplete#sources#ternjs#filter = 0
+  let g:tern#command = ['tern']
+  let g:tern#arguments = ['--persistent']
+  let g:deoplete#sources#ternjs#timeout = 1
 
-" Whether to use a case-insensitive compare between the current word and
-" potential completions. Default 0
-let g:deoplete#sources#ternjs#case_insensitive = 1
+  " Consistent solargraph binary location
+  let g:deoplete#sources#solargraph#command = $HOME.'/.rbenv/versions/2.5.1/bin/solargraph'
+  let g:deoplete#sources#solargraph#args = ['stdio']
 
-" When completing a property and no completions are found, Tern will use some
-" heuristics to try and return some properties anyway. Set this to 0 to
-" turn that off. Default: 1
-let g:deoplete#sources#ternjs#guess = 0
+  " Whether to include the types of the completions in the result data. Default: 0
+  let g:deoplete#sources#ternjs#types = 1
 
-" Determines whether the result set will be sorted. Default: 1
-let g:deoplete#sources#ternjs#sort = 0
+  " Whether to include the distance (in scopes for variables, in prototypes for
+  " properties) between the completions and the origin position in the result
+  " data. Default: 0
+  let g:deoplete#sources#ternjs#depths = 1
 
-" When disabled, only the text before the given position is considered part of
-" the word. When enabled (the default), the whole variable name that the cursor
-" is on will be included. Default: 1
-let g:deoplete#sources#ternjs#expand_word_forward = 0
+  " Whether to include documentation strings (if found) in the result data.
+  " Default: 0
+  let g:deoplete#sources#ternjs#docs = 1
 
-" Whether to ignore the properties of Object.prototype unless they have been
-" spelled out by at least two characters. Default: 1
-let g:deoplete#sources#ternjs#omit_object_prototype = 0
+  " When on, only completions that match the current word at the given point will
+  " be returned. Turn this off to get all results, so that you can filter on the
+  " client side. Default: 1
+  let g:deoplete#sources#ternjs#filter = 0
 
-" Whether to include JavaScript keywords when completing something that is not
-" a property. Default: 0
-let g:deoplete#sources#ternjs#include_keywords = 1
+  " Whether to use a case-insensitive compare between the current word and
+  " potential completions. Default 0
+  let g:deoplete#sources#ternjs#case_insensitive = 1
 
-" If completions should be returned when inside a literal. Default: 1
-let g:deoplete#sources#ternjs#in_literal = 0
+  " When completing a property and no completions are found, Tern will use some
+  " heuristics to try and return some properties anyway. Set this to 0 to
+  " turn that off. Default: 1
+  let g:deoplete#sources#ternjs#guess = 0
 
-"Add extra filetypes
-let g:deoplete#sources#ternjs#filetypes = [
-      \ 'jsx',
-      \ 'javascript.jsx',
-      \ 'vue',
-      \ ]
+  " Determines whether the result set will be sorted. Default: 1
+  let g:deoplete#sources#ternjs#sort = 0
+
+  " When disabled, only the text before the given position is considered part of
+  " the word. When enabled (the default), the whole variable name that the cursor
+  " is on will be included. Default: 1
+  let g:deoplete#sources#ternjs#expand_word_forward = 0
+
+  " Whether to ignore the properties of Object.prototype unless they have been
+  " spelled out by at least two characters. Default: 1
+  let g:deoplete#sources#ternjs#omit_object_prototype = 0
+
+  " Whether to include JavaScript keywords when completing something that is not
+  " a property. Default: 0
+  let g:deoplete#sources#ternjs#include_keywords = 1
+
+  " If completions should be returned when inside a literal. Default: 1
+  let g:deoplete#sources#ternjs#in_literal = 0
+
+  "Add extra filetypes
+  let g:deoplete#sources#ternjs#filetypes = [
+        \ 'jsx',
+        \ 'javascript.jsx',
+        \ 'vue',
+        \ ]
 
 
-let g:github_dashboard = { 'username': 'lanej', 'password': $GITHUB_TOKEN }
+  let g:github_dashboard = { 'username': 'lanej', 'password': $GITHUB_TOKEN }
 
-let g:deoplete#max_abbr_width = 35
-let g:deoplete#max_menu_width = 20
-let g:deoplete#skip_chars = ['(', ')', '<', '>']
-let g:deoplete#tag#cache_limit_size = 800000
-let g:deoplete#file#enable_buffer_path = 1
+  let g:deoplete#max_abbr_width = 35
+  let g:deoplete#max_menu_width = 20
+  let g:deoplete#skip_chars = ['(', ')', '<', '>']
+  let g:deoplete#tag#cache_limit_size = 800000
+  let g:deoplete#file#enable_buffer_path = 1
 
-let g:deoplete#sources#jedi#statement_length = 30
-let g:deoplete#sources#jedi#show_docstring = 1
-let g:deoplete#sources#jedi#short_types = 1
+  let g:deoplete#sources#jedi#statement_length = 30
+  let g:deoplete#sources#jedi#show_docstring = 1
+  let g:deoplete#sources#jedi#short_types = 1
 
-let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
-let g:terraform_completion_keys = 1
-let g:terraform_fmt_on_save = 1
-let g:terraform_align=1
-let g:terraform_remap_spacebar=0
+  let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
+  let g:terraform_completion_keys = 1
+  let g:terraform_fmt_on_save = 1
+  let g:terraform_align=1
+  let g:terraform_remap_spacebar=0
 
-" Plugin key-mappings.
-" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-imap <C-k> <Plug>(neosnippet_expand_or_jump)
-smap <C-k> <Plug>(neosnippet_expand_or_jump)
-xmap <C-k> <Plug>(neosnippet_expand_target)
+  " Plugin key-mappings.
+  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+  imap <C-k> <Plug>(neosnippet_expand_or_jump)
+  smap <C-k> <Plug>(neosnippet_expand_or_jump)
+  xmap <C-k> <Plug>(neosnippet_expand_target)
 
-" SuperTab like snippets behavior.
-" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-"imap <expr><TAB>
-" \ pumvisible() ? "\<C-n>" :
-" \ neosnippet#expandable_or_jumpable() ?
-" \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-      \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
+  " SuperTab like snippets behavior.
+  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+  "imap <expr><TAB>
+  " \ pumvisible() ? "\<C-n>" :
+  " \ neosnippet#expandable_or_jumpable() ?
+  " \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
+  smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+        \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
 
-let g:vim_markdown_conceal = 0
-" For conceal markers.
-if has('conceal')
-  set conceallevel=2 concealcursor=niv
+  let g:vim_markdown_conceal = 0
+  " For conceal markers.
+  if has('conceal')
+    set conceallevel=2 concealcursor=niv
+  endif
+
+  "" Enable snipMate compatibility feature.
+  let g:neosnippet#enable_snipmate_compatibility = 1
+
+
+  call deoplete#initialize()
 endif
-
-"" Enable snipMate compatibility feature.
-let g:neosnippet#enable_snipmate_compatibility = 1
-
-
-call deoplete#initialize()
