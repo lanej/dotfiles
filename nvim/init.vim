@@ -104,7 +104,6 @@ Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 Plug 'danro/rename.vim'
 Plug 'davidhalter/jedi'
 Plug 'easymotion/vim-easymotion'
-Plug 'hashivim/vim-terraform'
 Plug 'honza/vim-snippets'
 Plug 'jacoborus/tender.vim'
 Plug 'janko-m/vim-test'
@@ -166,6 +165,13 @@ if v:version > 70402009 || has('nvim')
   cmap w! w suda://%<CR>
   Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 endif
+
+" terraform
+Plug 'hashivim/vim-terraform'
+let g:terraform_completion_keys = 1
+let g:terraform_fmt_on_save = 1
+let g:terraform_align=1
+let g:terraform_remap_spacebar=0
 
 " Add plugins to &runtimepath
 call plug#end()
@@ -736,10 +742,6 @@ if v:version > 8000
   let g:deoplete#sources#jedi#short_types = 1
 
   let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
-  let g:terraform_completion_keys = 1
-  let g:terraform_fmt_on_save = 1
-  let g:terraform_align=1
-  let g:terraform_remap_spacebar=0
 
   " Plugin key-mappings.
   " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
