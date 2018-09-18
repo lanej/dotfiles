@@ -72,7 +72,7 @@ if [[ -s $(which rbenv) ]]; then
 fi
 
 if [[ -s $(which tmux) ]]; then
-  fixssh
+  # fixssh
 fi
 
 # vim: set ft=sh:
