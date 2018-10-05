@@ -89,147 +89,154 @@ filetype plugin indent on
 " plugins:begin
 let g:plug_url_format="git://github.com/%s"
 
+" allow separate plugins per editor
 if has('nvim')
   call plug#begin('~/.local/share/nvim/plugged')
 else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
-Plug 'airblade/vim-gitgutter'
-Plug 'aklt/plantuml-syntax'
+" split / join code blocks
 Plug 'AndrewRadev/splitjoin.vim'
+" show git diffs in left gutter
+Plug 'airblade/vim-gitgutter'
+" additional omnicompletion
 Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
+" fancy status line
 Plug 'bling/vim-airline'
-Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+" easily rename files
 Plug 'danro/rename.vim'
-Plug 'davidhalter/jedi'
+" quick in-buffer navigation
 Plug 'easymotion/vim-easymotion'
-Plug 'honza/vim-snippets'
+" colorscheme
 Plug 'jacoborus/tender.vim'
+" test integration
 Plug 'janko-m/vim-test'
+" buffer explorer
 Plug 'jlanzarotta/bufexplorer'
-Plug 'juliosueiras/vim-terraform-completion'
+" fzf install, fast fuzzy finder
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+" fzf integration
 Plug 'junegunn/fzf.vim'
-Plug 'junegunn/gv.vim'
+" easy alignment
 Plug 'junegunn/vim-easy-align'
+" vim github self / team activity
 Plug 'junegunn/vim-github-dashboard'
+" yank register browser
 Plug 'junegunn/vim-peekaboo'
+" automatically update tags
 Plug 'ludovicchabant/vim-gutentags'
+" show me what i just yanked
 Plug 'machakann/vim-highlightedyank'
+" browse tags
 Plug 'majutsushi/tagbar'
-Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
-Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
+" quick search, configured to use ag
 Plug 'mileszs/ack.vim'
-Plug 'mxw/vim-jsx'
-Plug 'neomake/neomake'
-Plug 'osyo-manga/vim-monster'
-Plug 'othree/jspc.vim', { 'for': ['javascript', 'javascript.jsx'] }
+" markdown preview with mermaid support
 Plug 'previm/previm'
+" code commenter
 Plug 'scrooloose/nerdcommenter'
+" file browser
 Plug 'scrooloose/nerdtree'
-Plug 'sheerun/vim-polyglot'
-Plug 'Shougo/neosnippet-snippets'
-Plug 'Shougo/neosnippet.vim'
-Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
-Plug 'thoughtbot/vim-rspec'
-Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-rails'
-Plug 'tpope/vim-rbenv'
-Plug 'tpope/vim-repeat'
-Plug 'tpope/vim-rhubarb'
-Plug 'tpope/vim-speeddating'
-Plug 'tpope/vim-surround'
-Plug 'w0rp/ale'
+" show changed files in file browser
 Plug 'Xuyuanp/nerdtree-git-plugin'
-Plug 'zchee/deoplete-go', { 'do': 'make' }
-Plug 'zchee/deoplete-jedi'
+" syntax highlighting
+Plug 'sheerun/vim-polyglot'
+" javascript
+Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
+" typescript
+Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
+" git integration
+Plug 'tpope/vim-fugitive'
+" git commit browser
+Plug 'junegunn/gv.vim'
+" additional editing commands
+Plug 'tpope/vim-surround'
+" linter / fixer
+Plug 'w0rp/ale'
+"python completion
+Plug 'davidhalter/jedi'
+" terraform
+Plug 'hashivim/vim-terraform'
 
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+if has('nvim') || v:version > 8000
+  " deoplete
+  Plug 'zchee/deoplete-jedi'
+  Plug 'zchee/deoplete-go', { 'do': 'make' }
+  Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+  " ruby completion
+  Plug 'lanej/deoplete-solargraph'
+  " go completion
+  Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
+  " go debugger
   Plug 'sebdah/vim-delve'
+  if !has('nvim')
+    Plug 'Shougo/deoplete.nvim'
+    Plug 'Shougo/vimproc.vim'
+    Plug 'Shougo/vimshell.vim'
+  else
+    Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  endif
 else
   Plug 'rorymckinley/vim-rubyhash'
   Plug 'roxma/nvim-yarp'
   Plug 'roxma/vim-hug-neovim-rpc'
-  if v:version > 8000
-    Plug 'Shougo/deoplete.nvim'
-    Plug 'Shougo/vimproc.vim'
-    Plug 'Shougo/vimshell.vim'
-  endif
 endif
 
 if v:version > 70402009 || has('nvim')
+  " sudo write
   Plug 'lambdalisue/suda.vim'
   " Allow saving of files as sudo when I forgot to start vim using sudo.
   cmap w! w suda://%<CR>
+  " additional go support
   Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 endif
-
-" terraform
-Plug 'hashivim/vim-terraform'
-let g:terraform_completion_keys = 1
-let g:terraform_fmt_on_save = 1
-let g:terraform_align=1
-let g:terraform_remap_spacebar=0
 
 " Add plugins to &runtimepath
 call plug#end()
 
 " plugins:end
-"
-let g:previm_open_cmd = 'open -a Safari'
 
-" =============== UI ================
-" turn syntax highlighting on
-syntax enable
-colorscheme tender
-
-hi Visual guifg=#ffffff guibg=DarkGrey gui=none
-hi Visual ctermfg=Black ctermbg=DarkGrey cterm=none
-
-highlight clear LineNr     " Current line number row will have same background color in relative mode
-highlight clear SignColumn " SignColumn should match background
-
-" grep
-nnoremap <Leader>ap :Ack!<Space>
-map <leader>a* :Ack!<space><cword><CR>
-
-set completeopt=longest,menuone,noselect
-
-if executable('ag')
-  let g:ackprg = 'ag --vimgrep'
-  " Use ag over grep
-  set grepprg=ag\ --nogroup\ --nocolor
-endif
-
-" ================ Scrolling ========================
-set scrolloff=8         "Start scrolling when we're 8 lines away from margins
-set sidescrolloff=15
-set sidescroll=1
-
-" ================ Status Line ======================
-if has('cmdline_info')
-  set showcmd                 " Show partial commands in status line and
-  " Selected characters/lines in visual mode
-endif
-
-" NerdTREE
-map <leader>n :NERDTreeToggle<CR>
-map <leader>ntm :NERDTreeMirror<CR>
-map <leader>ntc :NERDTreeClose<CR>
-map <leader>ntf :NERDTreeFind<CR>
+" plugin-config start
 
 " vim-plug
 map <leader>pi :PlugInstall<CR>
 map <leader>pc :PlugClean<CR>
 map <leader>pu :PlugUpdate<CR>
 
+"previm
+let g:previm_open_cmd = 'open -a Safari'
+
+" gutentag
+let g:gutentags_enabled = 1
+
+" terraform
+let g:terraform_completion_keys = 1
+let g:terraform_fmt_on_save     = 1
+let g:terraform_align           = 1
+let g:terraform_remap_spacebar  = 0
+
+" ack.vim
+nnoremap <Leader>ap :Ack!<Space>
+map <leader>a* :Ack!<space><cword><CR>
+
+" use silver-searcher if available
+if executable('ag')
+  let g:ackprg = 'ag --vimgrep'
+  " Use ag over grep
+  set grepprg=ag\ --nogroup\ --nocolor
+endif
+
 " NERDTree
-let g:NERDTreeShowHidden=1
-let g:NERDTreeChDirMode=2
-let g:NERDTreeQuitOnOpen=1
-let g:NERDSpaceDelims = 1
+let g:NERDTreeShowHidden = 1
+let g:NERDTreeChDirMode  = 2
+let g:NERDTreeQuitOnOpen = 1
+let g:NERDSpaceDelims    = 1
+
+map <leader>n :NERDTreeToggle<CR>
+map <leader>ntm :NERDTreeMirror<CR>
+map <leader>ntc :NERDTreeClose<CR>
+map <leader>ntf :NERDTreeFind<CR>
 
 " NERDCommenter
 " Enable trimming of trailing whitespace when uncommenting
@@ -238,40 +245,23 @@ let g:NERDTrimTrailingWhitespace = 1
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
 
-" other cwd configs
-map <leader>ct :cd %:p:h<CR>
-map <leader>cg :Gcd<CR>
-
-" disable ex mode
-:map Q <Nop>
-
-" disable ri check
-:map K <Nop>
-
-" Align bindings
-" map <leader>a= to :Align = (rather than :Align := )
-map <leader>a= :Align =<CR>
-map <leader>ah :Align =><CR>
-map <leader>a# :Align #<CR>
-map <leader>a{ :Align {<CR>
-map <leader>A :Align [A-Z].*<CR>:'<,'>s/\s*$//<CR><C-l>
-map <leader>= ggVG=<CR>
-
-" Helpers
-map <leader>rts %s/\v\s+$//g<CR>
-map <leader>srt :!sort<CR>
-
-" Haml
-map <leader>hs :!haml -c %:p<CR>
-
-" Set minimum window height
-set winheight=10
-
-" ctags stuff
+" gutentag
 set tags=tags
 
-" numbers
-set number
+" plugin-config end
+
+" airline
+
+let g:airline#extensions#ale#enabled = 1
+let g:airline#extensions#branch#enabled = 1
+let g:airline#extensions#bufferline#enabled = 0
+let g:airline#extensions#tabline#buffer_nr_show = 0
+let g:airline#extensions#tabline#enabled = 0
+let g:airline#extensions#tabline#formatter = 'jsformatter'
+let g:airline#extensions#tabline#tab_nr_type = 2
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline_powerline_fonts = 1
+let g:airline_theme = 'tenderplus'
 
 " git-gutter
 set updatetime=100
@@ -280,15 +270,6 @@ if exists('&signcolumn')  " Vim 7.4.2201
 else
   let g:gitgutter_sign_column_always = 1
 endif
-
-" gui stuff
-set guioptions-=T
-set guioptions-=r
-set guioptions-=L
-
-" ctrlp
-set wildignore+=*/tmp/*,*.so,*.swp,*.zip,*.log,.git,*/bundle/*
-let g:ctrlp_custom_ignore = '\.git$\|\.hg$\|\.svn$'
 
 " fzf
 noremap <leader>f :Files<CR>
@@ -305,11 +286,111 @@ let g:fzf_buffers_jump = 1
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " [Tags] Command to generate tags file
-" let g:fzf_tags_command = 'ctags -R'
+let g:fzf_tags_command = '/usr/local/bin/ctags -R'
 
 " fugitive
 noremap <leader>gb :Gblame<CR>
 noremap <leader>go :Gbrowse<CR>
+
+" ALE config
+let g:ale_completion_enabled = 1
+let g:ale_echo_cursor = 1
+let g:ale_echo_msg_error_str = 'Error'
+let g:ale_echo_msg_format = '%s'
+let g:ale_echo_msg_warning_str = 'Warning'
+let g:ale_emit_conflict_warnings = 1
+let g:ale_enabled = 1
+let g:ale_fix_on_save = 0
+let g:ale_fixers = {
+      \ 'go': [ 'gofmt'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javscript': ['eslint'],
+      \ 'json': 'prettier',
+      \ 'jsx': ['eslint'],
+      \ 'markdown': ['prettier'],
+      \ 'ruby': [ 'rufo', 'rubocop' ],
+      \ 'sh': ['shfmt'],
+      \ 'python': ['autopep8'],
+      \ }
+
+let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'], 'jsx': ['stylelint', 'eslint'] }
+let g:ale_javascript_eslint_executable = 'npm run list eslint'
+let g:ale_linter_aliases = {'jsx': 'css'}
+let g:ale_go_gometalinter_options = '--tests'
+let g:ale_keep_list_window_open = 0
+let g:ale_lint_delay = 200
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'always'
+let g:ale_open_list = 0
+let g:ale_ruby_bundler_executable = '/Users/jlane/.rbenv/shims/bundle'
+let g:ale_ruby_rubocop_executable = '/Users/jlane/.rbenv/shims/rubocop'
+let g:ale_set_highlights = 1
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_set_signs = 1
+let g:ale_sign_column_always = 0
+let g:ale_sign_error = '>>'
+let g:ale_sign_offset = 1000000
+let g:ale_sign_warning = '--'
+let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
+let g:ale_warn_about_trailing_whitespace = 0
+
+map <leader>d :ALEFix<CR>
+nmap <silent> <C-p> <Plug>(ale_previous_wrap)
+nmap <silent> <C-n> <Plug>(ale_next_wrap)
+
+" rename
+map <leader>re :Rename
+
+"terminal
+if has("terminal")
+  tnoremap <C-o> <C-\><C-n>
+endif
+
+" =============== UI ================
+syntax      enable " turn syntax highlighting on
+colorscheme tender " set that smooth smooth color scheme
+set         guioptions-=T " remove Toolbar
+set         guioptions-=r " remove right scrollbar
+set         guioptions-=L " remove left scrollbar
+set         number        " show line numbers
+set         laststatus=2  " Prevent the ENTER prompt more frequently
+
+" contrasting visual selection
+hi Visual guifg=#ffffff guibg=DarkGrey gui=none
+hi Visual ctermfg=LightGray ctermbg=DarkGrey cterm=none
+
+highlight clear LineNr     " Current line number row will have same background color in relative mode
+highlight clear SignColumn " SignColumn should match background
+
+set completeopt=longest,menuone,noinsert,noselect
+
+" ================ Scrolling ========================
+set scrolloff=8         "Start scrolling when we're 8 lines away from margins
+set sidescrolloff=15
+set sidescroll=1
+
+" ================ Status Line ======================
+if has('cmdline_info')
+  set showcmd " Show partial commands in status line and selected characters/lines in visual mode
+endif
+
+" other cwd configs
+map <leader>ct :cd %:p:h<CR>
+map <leader>cg :Gcd<CR>
+
+" disable ex mode
+:map Q <Nop>
+
+" disable ri check
+:map K <Nop>
+
+" Helpers
+map <leader>srt :!sort<CR>
+
+" Set minimum window height
+set winheight=10
 
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
@@ -324,6 +405,8 @@ command! E :e
 
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
 vmap <Enter> <Plug>(EasyAlign)
+" Realign the whole file
+map <leader>= ggVG=<CR>
 
 set shortmess=a
 
@@ -335,24 +418,6 @@ let g:clang_format#style_options = {
 
 set makeprg="make -j9"
 nnoremap <Leader>m :make!<CR>
-
-" airline
-set laststatus=2
-
-let g:airline#extensions#branch#enabled = 0
-let g:airline#extensions#bufferline#enabled = 0
-let g:airline#extensions#tabline#buffer_nr_show = 0
-let g:airline#extensions#tabline#enabled = 1
-" let g:airline#extensions#tabline#formatter = 'jsformatter'
-let g:airline#extensions#tabline#tab_nr_type = 2
-let g:airline#extensions#whitespace#enabled = 0
-" let g:airline_left_alt_sep=''
-" let g:airline_left_sep=''
-" let g:airline_powerline_fonts = 1
-" let g:airline_right_alt_sep=''
-" let g:airline_right_sep=''
-" let g:airline_theme='onedark'
-let g:airline_theme = 'tenderplus'
 
 let g:tagbar_type_go = {
       \ 'ctagstype' : 'go',
@@ -381,12 +446,6 @@ let g:tagbar_type_go = {
       \ 'ctagsbin'  : 'gotags',
       \ 'ctagsargs' : '-sort -silent'
       \ }
-
-
-" Signify
-" highlight SignifySignAdd    cterm=bold ctermbg=237  ctermfg=29
-" highlight SignifySignDelete cterm=bold ctermbg=237  ctermfg=124 guifg=#af0000
-" highlight SignifySignChange cterm=bold ctermbg=106  ctermfg=106
 
 " create parent directories on write
 if !exists("*s:MkNonExDir")
@@ -420,26 +479,23 @@ let g:go_highlight_generate_tags = 1
 let g:go_highlight_build_constraints = 1
 " let g:go_fmt_fail_silently = 1
 
-" vim-rufo
-let g:rufo_auto_formatting = 0
-
 if has('autocmd')
-
   augroup FiletypeGroup
     autocmd!
     " hub pull-request accepts markdown
-    autocmd BufRead,BufNewFile PULLREQ_EDITMSG set filetype=markdown
+    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
     " jsx is both javascript and jsx
     autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
     " Save files when vim loses focus
     autocmd FocusLost * silent! wa
-
     " Reload files when vim gains focus
     autocmd FocusGained,BufEnter * :checktime
   augroup END
 
   augroup filetype_markdown
-    " autocmd!
+    autocmd!
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    let g:gutentags_enabled = 0
   augroup END
 
   augroup filetype_ruby
@@ -558,67 +614,9 @@ map <Bslash>u :TestNearest<CR>
 let g:ruby_host_prog = '~/.rbenv/versions/2.5.1/bin/neovim-ruby-host'
 
 set shortmess+=c
-
-" ALE config
-let g:airline#extensions#ale#enabled = 1
-let g:ale_completion_enabled = 1
-let g:ale_echo_cursor = 1
-let g:ale_echo_msg_error_str = 'Error'
-let g:ale_echo_msg_format = '%s'
-let g:ale_echo_msg_warning_str = 'Warning'
-let g:ale_emit_conflict_warnings = 1
-let g:ale_enabled = 1
-let g:ale_fix_on_save = 0
-let g:ale_fixers = {
-      \ 'go': [ 'gofmt'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javscript': ['eslint'],
-      \ 'json': 'prettier',
-      \ 'jsx': ['eslint'],
-      \ 'markdown': ['prettier'],
-      \ 'ruby': [ 'rufo', 'rubocop' ],
-      \ 'sh': ['shfmt'],
-      \ 'python': ['autopep8'],
-      \ }
-
-" let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'] }
-let g:ale_linters = {'jsx': ['stylelint', 'eslint']}
-let g:ale_javascript_eslint_executable = 'npm run list eslint'
-let g:ale_linter_aliases = {'jsx': 'css'}
-let g:ale_go_gometalinter_options = '--tests'
-let g:ale_keep_list_window_open = 0
-let g:ale_lint_delay = 200
-let g:ale_lint_on_enter = 1
-let g:ale_lint_on_save = 1
-let g:ale_lint_on_text_changed = 'always'
-let g:ale_open_list = 0
-let g:ale_ruby_bundler_executable = '/Users/jlane/.rbenv/shims/bundle'
-let g:ale_ruby_rubocop_executable = '/Users/jlane/.rbenv/shims/rubocop'
-let g:ale_set_highlights = 1
-let g:ale_set_loclist = 1
-let g:ale_set_quickfix = 0
-let g:ale_set_signs = 1
-let g:ale_sign_column_always = 0
-let g:ale_sign_error = '>>'
-let g:ale_sign_offset = 1000000
-let g:ale_sign_warning = '--'
-let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
-let g:ale_warn_about_trailing_whitespace = 1
-
-map <leader>d :ALEFix<CR>
-nmap <silent> <C-p> <Plug>(ale_previous_wrap)
-nmap <silent> <C-n> <Plug>(ale_next_wrap)
-
-" rename
-map <leader>re :Rename 
-
-" markdown
-" let g:mkdx#settings = { 'highlight': { 'enable': 1 }, 'links': { 'fragment': { 'complete': 0 } } }
-
-
-"terminal
-if has("terminal")
-  tnoremap <C-o> <C-\><C-n>
+" For conceal markers.
+if has('conceal')
+  set conceallevel=2 concealcursor=niv
 endif
 
 if v:version > 8000
@@ -632,6 +630,7 @@ if v:version > 8000
 
   let g:deoplete#omni#functions = {}
   let g:deoplete#omni_patterns = {}
+  let g:deoplete#sources = {}
 
   " Automatically start language servers.
   let g:LanguageClient_autoStart = 1
@@ -647,20 +646,10 @@ if v:version > 8000
   let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
   let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
 
-  let g:monster#completion#backend = 'solargraph'
-  " With deoplete.nvim
-  " let g:monster#completion#rcodetools#backend = "async_rct_complete"
-  let g:monster#completion#solargraph#backend = "async_solargraph_suggest"
-  let g:deoplete#sources#omni#input_patterns = {
-        \   "ruby" : '[^. *\t]\.\w*\|\h\w*::',
-        \}
-
   let g:deoplete#omni#functions.javascript = [
         \ 'tern#Complete',
         \ 'jspc#omni'
         \]
-
-  let g:deoplete#sources = {}
 
   " deoplete-go settings
   let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
@@ -728,9 +717,6 @@ if v:version > 8000
         \ 'vue',
         \ ]
 
-
-  let g:github_dashboard = { 'username': 'lanej', 'password': $GITHUB_TOKEN }
-
   let g:deoplete#max_abbr_width = 35
   let g:deoplete#max_menu_width = 20
   let g:deoplete#skip_chars = ['(', ')', '<', '>']
@@ -741,31 +727,7 @@ if v:version > 8000
   let g:deoplete#sources#jedi#show_docstring = 1
   let g:deoplete#sources#jedi#short_types = 1
 
-  let g:deoplete#omni_patterns.terraform = '[^ *\t"{=$]\w*'
-
-  " Plugin key-mappings.
-  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-  imap <C-k> <Plug>(neosnippet_expand_or_jump)
-  smap <C-k> <Plug>(neosnippet_expand_or_jump)
-  xmap <C-k> <Plug>(neosnippet_expand_target)
-
-  " SuperTab like snippets behavior.
-  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-  "imap <expr><TAB>
-  " \ pumvisible() ? "\<C-n>" :
-  " \ neosnippet#expandable_or_jumpable() ?
-  " \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-  smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-        \ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-
   let g:vim_markdown_conceal = 0
-  " For conceal markers.
-  if has('conceal')
-    set conceallevel=2 concealcursor=niv
-  endif
-
-  "" Enable snipMate compatibility feature.
-  let g:neosnippet#enable_snipmate_compatibility = 1
 
 
   call deoplete#initialize()
