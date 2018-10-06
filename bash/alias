@@ -45,21 +45,21 @@ function current-version() {
 
 function git-release() {
 	git fetch origin -q
-	local current_release=current-version
+	local current_release=$(current-version)
 	echo "Current release: v$current_release"
 	local next_release=v$(($current_release + 1))
 	echo "Releasing: $next_release"
 	git tag $next_release && git push origin $next_release
-	tag_push=$?
-	if [ $tag_push -ne 0 ]; then
-		read -p "Force push? " -n 1 -r
-		echo # move to new line
-		if [[ $REPLY =~ ^[Yy]$ ]]; then
-			git push -f origin $next_release
-		else
-			exit 1
-		fi
-	fi
+	# tag_push=$?
+	# if [ $tag_push -ne 0 ]; then
+	#         read -p "Force push? " -n 1 -r
+	#         echo # move to new line
+	#         if [[ $REPLY =~ ^[Yy]$ ]]; then
+	#                 git push -f origin $next_release
+	#         else
+	#                 exit 1
+	#         fi
+	# fi
 
 	if [ -f .ruby-version ]; then
 		echo "deploy with:\nREVISION=$next_release bundle exec cap production deploy"
