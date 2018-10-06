@@ -48,7 +48,8 @@
 	pu = push -u
 	r = rebase
 	ra = rebase --abort
-	rba = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion' origin/master
+	rbom = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion' origin/master
+	rba = rebase -x 'git diff --name-only HEAD~1 | xargs ls | xargs bundle exec rubocop -aDES --force-exclusion'
 	rbo = rebase origin/master
 	rc = rebase --continue
 	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
