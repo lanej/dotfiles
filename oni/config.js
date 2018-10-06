@@ -15,7 +15,7 @@ exports.deactivate = function (oni) {
     console.log("config deactivated");
 };
 exports.configuration = {
-    "editor.fontFamily": "Hack",
+    "editor.fontFamily": "Hack Nerd Font",
     "editor.fontSize": "13px",
     "editor.scrollBar.visible": false,
     "oni.loadInitVim": true,
@@ -27,7 +27,7 @@ exports.configuration = {
     "terminal.shellCommand": "/bin/zsh",
     "ui.animations.enabled": true,
     "ui.colorscheme": "tender",
-    "ui.fontFamily": "Hack",
+    "ui.fontFamily": "Hack Nerd Font",
     "ui.fontSize": "13px",
     "ui.fontSmoothing": "auto",
     "autoClosingPairs.enabled": false,
