@@ -181,7 +181,6 @@ if has('nvim') || v:version > 8000
     Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
   endif
 else
-  Plug 'rorymckinley/vim-rubyhash'
   Plug 'roxma/nvim-yarp'
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
