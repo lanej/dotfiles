@@ -152,12 +152,15 @@ Plug 'tpope/vim-fugitive'
 Plug 'junegunn/gv.vim'
 " additional editing commands
 Plug 'tpope/vim-surround'
-" linter / fixer
+" linter / fixer 
 Plug 'w0rp/ale'
 "python completion
 Plug 'davidhalter/jedi'
 " terraform
 Plug 'hashivim/vim-terraform'
+" sessions
+Plug 'tpope/vim-obsession'
+Plug 'dhruvasagar/vim-prosession'
 
 if has('nvim') || v:version > 8000
   " deoplete
@@ -227,6 +230,9 @@ if executable('ag')
   set grepprg=ag\ --nogroup\ --nocolor
 endif
 
+" sessions
+map <leader>ps :Prosession 
+
 " NERDTree
 let g:NERDTreeShowHidden = 1
 let g:NERDTreeChDirMode  = 2
@@ -245,11 +251,6 @@ let g:NERDTrimTrailingWhitespace = 1
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
 
-" gutentag
-set tags=tags
-
-" plugin-config end
-
 " airline
 
 let g:airline#extensions#ale#enabled = 1
@@ -260,7 +261,7 @@ let g:airline#extensions#tabline#enabled = 0
 let g:airline#extensions#tabline#formatter = 'jsformatter'
 let g:airline#extensions#tabline#tab_nr_type = 2
 let g:airline#extensions#whitespace#enabled = 0
-let g:airline_powerline_fonts = 1
+let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 
 " git-gutter
@@ -286,7 +287,7 @@ let g:fzf_buffers_jump = 1
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " [Tags] Command to generate tags file
-let g:fzf_tags_command = '/usr/local/bin/ctags -R'
+let g:fzf_tags_command = 'ctags -R'
 
 " fugitive
 noremap <leader>gb :Gblame<CR>
@@ -341,21 +342,23 @@ nmap <silent> <C-p> <Plug>(ale_previous_wrap)
 nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
 " rename
-map <leader>re :Rename
+map <leader>re :Rename 
 
 "terminal
 if has("terminal")
   tnoremap <C-o> <C-\><C-n>
 endif
 
+" plugin-config end
+
 " =============== UI ================
-syntax      enable " turn syntax highlighting on
+syntax enable      " turn syntax highlighting on
 colorscheme tender " set that smooth smooth color scheme
-set         guioptions-=T " remove Toolbar
-set         guioptions-=r " remove right scrollbar
-set         guioptions-=L " remove left scrollbar
-set         number        " show line numbers
-set         laststatus=2  " Prevent the ENTER prompt more frequently
+set guioptions-=T  " remove Toolbar
+set guioptions-=r  " remove right scrollbar
+set guioptions-=L  " remove left scrollbar
+set number         " show line numbers
+set laststatus=2   " Prevent the ENTER prompt more frequently
 
 " contrasting visual selection
 hi Visual guifg=#ffffff guibg=DarkGrey gui=none
