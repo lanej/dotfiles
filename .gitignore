@@ -6,3 +6,4 @@ bin/mate
 bin/*
 vim/spell
 vim/plugged
+vim/session
