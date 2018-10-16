@@ -2,6 +2,7 @@
 
 sxhkd &
 ~/.config/polybar/launch.sh &
+source ~/.xsession
 
 xsetroot -solid "#262626"
 
