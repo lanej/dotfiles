@@ -734,7 +734,5 @@ if has('nvim') || v:version > 8000
   let g:deoplete#sources#jedi#show_docstring = 1
   let g:deoplete#sources#jedi#short_types = 1
 
-  let g:vim_markdown_conceal = 0
-
   call deoplete#initialize()
 endif
