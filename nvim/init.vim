@@ -170,7 +170,7 @@ if has('nvim') || v:version > 8000
   " ruby completion
   Plug 'lanej/deoplete-solargraph'
   " go completion
-  Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.config/nvim/plugged/gocode/nvim/symlink.sh' }
+  Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
   " go debugger
   Plug 'sebdah/vim-delve'
   if !has('nvim')
