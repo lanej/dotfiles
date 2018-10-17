@@ -71,8 +71,4 @@ if [[ -s $(which rbenv) ]]; then
 	eval "$(rbenv init - --no-rehash)"
 fi
 
-if [[ -s $(which tmux) ]]; then
-  # fixssh
-fi
-
 # vim: set ft=sh:
