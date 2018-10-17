@@ -625,7 +625,7 @@ if has('conceal')
   set conceallevel=2 concealcursor=niv
 endif
 
-if v:version > 8000
+if has('nvim') || v:version > 8000
   " let g:deoplete#enable_profile = 1
   " Use deoplete.
   let g:deoplete#enable_at_startup = 1
@@ -734,7 +734,6 @@ if v:version > 8000
   let g:deoplete#sources#jedi#short_types = 1
 
   let g:vim_markdown_conceal = 0
-
 
   call deoplete#initialize()
 endif
