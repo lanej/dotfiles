@@ -134,6 +134,7 @@ Plug 'majutsushi/tagbar'
 Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
 Plug 'previm/previm'
+Plug 'tyru/open-browser.vim'
 " code commenter
 Plug 'scrooloose/nerdcommenter'
 " file browser
@@ -207,7 +208,7 @@ map <leader>pc :PlugClean<CR>
 map <leader>pu :PlugUpdate<CR>
 
 "previm
-let g:previm_open_cmd = 'open -a Safari'
+" let g:previm_open_cmd = 'open -a Safari'
 
 " gutentag
 let g:gutentags_enabled = 1
