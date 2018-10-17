@@ -315,7 +315,7 @@ let g:ale_fixers = {
       \ 'python': ['autopep8'],
       \ }
 
-let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'], 'jsx': ['stylelint', 'eslint'] }
+" let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'], 'jsx': ['stylelint', 'eslint'] }
 let g:ale_javascript_eslint_executable = 'npm run list eslint'
 let g:ale_linter_aliases = {'jsx': 'css'}
 let g:ale_go_gometalinter_options = '--tests'
