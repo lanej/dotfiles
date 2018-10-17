@@ -494,6 +494,8 @@ if has('autocmd')
     autocmd FocusLost * silent! wa
     " Reload files when vim gains focus
     autocmd FocusGained,BufEnter * :checktime
+    " Default spellcheck off
+    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
   augroup END
 
   augroup filetype_markdown
