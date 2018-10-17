@@ -66,9 +66,17 @@ fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+
+if [[ -s $(type chruby) ]]; then
+	chruby 2.5.2
+fi
+
+[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
 
 if [[ -s $(which rbenv) ]]; then
 	eval "$(rbenv init - --no-rehash)"
 fi
+
 
 # vim: set ft=sh:
