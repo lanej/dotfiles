@@ -19,7 +19,7 @@ foreground = ${colors.foreground}
 line-color = ${colors.background}
 line-size = 1
 
-spacing = 1
+spacing = 0.5
 padding-right = 5
 module-margin = 2
 
@@ -29,7 +29,7 @@ font-2 = Termsynu:size=12;-2
 font-3 = FontAwesome:size=12;0
 
 modules-left = bspwm
-modules-right = github cpu memory temperature filesystem wireless-network date
+modules-right = github cpu memory temperature filesystem volume battery wireless-network date
 
 tray-position = right 
 tray-padding = 2
@@ -200,12 +200,12 @@ bar-progress-empty-foreground = #44
 
 [module/wireless-network]
 type = internal/network
-interface = wlp58s0
+interface = wlp60s0
 interval = 1.0
 ping-interval = 10
 
 format-connected = <ramp-signal> <label-connected>
-label-connected =  %local_ip%    %downspeed%    %upspeed%
+label-connected = %essid%  %signal%%    %downspeed%    %upspeed%
 label-disconnected =    not connected
 label-disconnected-foreground = #66
 
