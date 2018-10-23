@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ ! -s $(rbenv which bundle 2>/dev/null) ]]; then
+if [[ ! -s $(which bundle 2>/dev/null) ]]; then
   gem install bundler --no-document -qq
 fi
 

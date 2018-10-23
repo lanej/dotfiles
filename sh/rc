@@ -69,7 +69,7 @@ fi
 [ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
 
 if [[ -s $(type chruby) ]]; then
-	chruby 2.5.2
+	chruby 2.5.3
 fi
 
 [ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
