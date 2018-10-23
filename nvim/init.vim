@@ -149,6 +149,8 @@ Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
 " git integration
 Plug 'tpope/vim-fugitive'
+" github integration
+Plug 'tpope/vim-rhubarb'
 " git commit browser
 Plug 'junegunn/gv.vim'
 " additional editing commands
