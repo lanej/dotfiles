@@ -326,8 +326,8 @@ let g:ale_lint_on_enter = 1
 let g:ale_lint_on_save = 1
 let g:ale_lint_on_text_changed = 'always'
 let g:ale_open_list = 0
-" let g:ale_ruby_bundler_executable = '/Users/jlane/.rbenv/shims/bundle'
-" let g:ale_ruby_rubocop_executable = '/Users/jlane/.rbenv/shims/rubocop'
+let g:ale_ruby_bundler_executable = 'bundle'
+let g:ale_ruby_rubocop_executable = 'rubocop'
 let g:ale_set_highlights = 1
 let g:ale_set_loclist = 1
 let g:ale_set_quickfix = 0
@@ -611,8 +611,8 @@ endif
 
 " vim-test configuration
 let test#strategy = "neovim"
-let test#ruby#rspec#executable = 'rbenv exec bundle exec rspec'
-let test#ruby#minitest#executable = 'rbenv exec bundle exec ruby -Itest/'
+let test#ruby#rspec#executable = 'chruby $(cat .ruby-version); bundle exec rspec'
+let test#ruby#minitest#executable = 'chruby $(cat .ruby-version); bundle exec ruby -Itest/'
 let g:test#preserve_screen = 1
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>

@@ -27,7 +27,7 @@ function myip() {
 }
 
 function minitest() {
-	if [[ ! -s $(rbenv which testrbl 2>/dev/null) ]]; then
+	if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
 		gem install testrbl --no-document -qq
 	fi
 
