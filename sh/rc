@@ -66,13 +66,19 @@ fi
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+# macos
 [ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+# arch
+[ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
 
 if [[ -s $(type chruby) ]]; then
 	chruby 2.5.3
 fi
 
+# macos
 [ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
+# arch
+[ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
 if [[ -s $(which rbenv) ]]; then
 	eval "$(rbenv init - --no-rehash)"
