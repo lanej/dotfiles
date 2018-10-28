@@ -49,9 +49,7 @@ vim:
 	ln -fs $(DOTFILES)/vim/autoload/plug.vim ${HOME}/.local/share/nvim/site/autoload/plug.vim
 	mkdir -p $(HOME)/.local/share/nvim/plugged
 	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
-	nvim --headless +AlignMapsClean +qa || echo 'no nvim installed or command failed'
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
-	vim -E -c "AlignMapsClean" -c "qa" || echo 'no vim installed or command failed'
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
