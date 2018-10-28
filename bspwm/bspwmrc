@@ -1,7 +1,7 @@
 #! /bin/sh
 
 sxhkd &
-~/.config/polybar/launch.sh &
+~/.config/polybar/launch.sh 2>&1 1>~/.config/polybar/polybar.log &
 xscreensaver-command -exit
 xscreensaver &
 xss-lock -- /usr/bin/xscreensaver-command -lock &
