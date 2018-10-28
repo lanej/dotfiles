@@ -188,7 +188,7 @@ else
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
 
-if v:version > 70402009 || has('nvim')
+if v:version > 704 || has('nvim')
   " sudo write
   Plug 'lambdalisue/suda.vim'
   " Allow saving of files as sudo when I forgot to start vim using sudo.
