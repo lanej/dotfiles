@@ -57,6 +57,7 @@ X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
 	ln -fns $(DOTFILES)/rc/xinitrc ${HOME}/.xinitrc
 	ln -fns $(DOTFILES)/rc/xsessionrc ${HOME}/.xsessionrc
+	ln -fns $(DOTFILES)/rc/xscreensaver ${HOME}/.xscreensaver
 ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
