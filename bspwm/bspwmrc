@@ -2,6 +2,7 @@
 
 sxhkd &
 ~/.config/polybar/launch.sh &
+xss-lock i3lock &
 source ~/.xsession
 
 xsetroot -solid "#262626"
