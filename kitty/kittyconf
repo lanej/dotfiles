@@ -1,0 +1,24 @@
+foreground #ffffff
+background #262626
+
+cursor #d0d0d0
+
+font_family Hack Nerd Font Mono
+font_size 13
+
+color0     #262626
+color10    #90a959
+color11    #f4bf75
+color12    #6a9fb5
+color13    #aa759f
+color14    #75b5aa
+color15    #ffffff
+color1     #ac4142
+color2     #90a959
+color3     #f4bf75
+color4     #6a9fb5
+color5     #aa759f
+color6     #75b5aa
+color7     #ffffff
+color8     #505050
+color9     #ac4142
