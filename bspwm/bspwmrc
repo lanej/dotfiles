@@ -2,7 +2,9 @@
 
 sxhkd &
 ~/.config/polybar/launch.sh &
-xss-lock i3lock &
+xscreensaver-command -exit
+xscreensaver &
+xss-lock -- /usr/bin/xscreensaver-command -lock &
 source ~/.xsession
 
 xsetroot -solid "#262626"
