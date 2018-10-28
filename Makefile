@@ -1,4 +1,4 @@
-.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm
+.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty
 all: .PHONY
 
 DOTFILES := $(shell pwd)
@@ -85,3 +85,6 @@ bspwm:
 	mkdir -p ${HOME}/.config/sxhkd
 	ln -fs $(DOTFILES)/bspwm/bspwmrc ${HOME}/.config/bspwm/bspwmrc
 	ln -fs $(DOTFILES)/bspwm/sxhkdrc ${HOME}/.config/sxhkd/sxhkdrc
+kitty:
+	mkdir -p ${HOME}/.config/kitty
+	ln -fs $(DOTFILES)/kitty/kittyconf ${HOME}/.config/kitty/kitty.conf
