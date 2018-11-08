@@ -5,6 +5,7 @@ cursor #d0d0d0
 
 font_family Hack Nerd Font Mono
 font_size 13
+macos_hide_titlebar yes
 
 color0     #262626
 color10    #90a959
