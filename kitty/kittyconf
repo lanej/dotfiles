@@ -7,6 +7,10 @@ font_family Hack Nerd Font Mono
 font_size 13
 macos_hide_titlebar yes
 
+cursor_blink_interval      0.5
+cursor_stop_blinking_after 15.0
+window_alert_on_bell no
+
 color0     #262626
 color10    #90a959
 color11    #f4bf75
