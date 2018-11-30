@@ -20,26 +20,28 @@ line-color = ${colors.background}
 line-size = 1
 
 spacing = 0.5
-padding-right = 5
+padding-right = 1
+padding-left = 0
 module-margin = 2
 
 font-0 = Hack Nerd Font:size=12;3
 font-1 = MaterialIcons:size=12;0
 font-2 = Termsynu:size=12;-2
-font-3 = FontAwesome:size=12;0
+font-3 = FontAwesome:size=12;3
 
-modules-left = bspwm
-modules-right = github cpu memory temperature filesystem volume backlight battery wireless-network date
+modules-left = bspwm cpu temperature memory
+modules-center = date
+modules-right = backlight battery wireless-network volume
 
 tray-position = right 
-tray-padding = 2
+tray-padding = 10
 tray-transparent = true
-tray-background = #0063ff
-tray-maxsize=1000
+tray-background = ${colors.background}
+tray-maxsize = 20
 
 [module/backlight]
 type = internal/backlight
-format = <ramp> <bar>
+format =  <bar>
 
 card = intel_backlight
 
@@ -205,7 +207,8 @@ interval = 1.0
 ping-interval = 10
 
 format-connected = <ramp-signal> <label-connected>
-label-connected = %essid%  %signal%%    %downspeed%    %upspeed%
+; format-packetloss = <animation-packetloss> <label-connected>
+label-connected =  %signal%% %essid:12:12:...%  %downspeed:8:8:...%  %upspeed:8:8:...%
 label-disconnected =    not connected
 label-disconnected-foreground = #66
 
@@ -216,7 +219,7 @@ ramp-signal-3 = 
 ramp-signal-4 = 
 
 animation-packetloss-0 = 
-animation-packetloss-0-foreground = #ffa64c
+animation-packetloss-0-foreground = ${bar/top.warn}
 animation-packetloss-1 = 
 animation-packetloss-1-foreground = ${bar/top.foreground}
 animation-packetloss-framerate = 500
@@ -226,7 +229,7 @@ animation-packetloss-framerate = 500
 type = internal/pulseaudio
 sink = alsa_output.pci-0000_00_1f.3.analog-stereo
 
-format-volume = <ramp-volume> <label-volume>
+format-volume =  <label-volume>
 label-muted =   muted
 label-muted-foreground = #66
 
@@ -286,7 +289,7 @@ date = %%{F#999}%Y-%m-%d%%{F-}  %%{F#fff}%H:%M%%{F-}
 
 [module/temperature]
 type = internal/temperature
-thermal-zone = 1
+thermal-zone = 10
 warn-temperature = 65
 
 format = <ramp> <label>
