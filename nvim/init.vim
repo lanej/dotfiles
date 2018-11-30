@@ -212,6 +212,9 @@ map <leader>pu :PlugUpdate<CR>
 "previm
 " let g:previm_open_cmd = 'open -a Safari'
 
+" vim-polyglot
+let g:vim_markdown_conceal = 0
+
 " gutentag
 let g:gutentags_enabled = 1
 
