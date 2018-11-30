@@ -142,7 +142,7 @@ Plug 'scrooloose/nerdtree'
 " show changed files in file browser
 Plug 'Xuyuanp/nerdtree-git-plugin'
 " syntax highlighting
-Plug 'sheerun/vim-polyglot'
+Plug 'sheerun/vim-polyglot', { 'do': './build' }
 " javascript
 Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
 " typescript
