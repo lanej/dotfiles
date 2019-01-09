@@ -136,12 +136,8 @@ bindkey '^I' $fzf_default_completion
 # Wow the world is not ready for this
 # bindkey '^I' fzf-completion
 fi
-source ~/.rc
 
-if [[ $TERM == xterm-termite ]]; then
-  . /etc/profile.d/vte.sh
-  __vte_osc7
-fi
+source ~/.rc
 
 autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C $HOME/.files/bin/terraform terraform
