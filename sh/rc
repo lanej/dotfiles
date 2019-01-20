@@ -71,14 +71,14 @@ fi
 # arch
 [ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
 
-if [[ -s $(type chruby) ]]; then
-	chruby 2.5.3
-fi
-
 # macos
 [ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
 # arch
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
+
+if [[ -s $(type chruby) ]]; then
+	chruby 2.6.0
+fi
 
 if [[ -s $(which rbenv) ]]; then
 	eval "$(rbenv init - --no-rehash)"
