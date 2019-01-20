@@ -624,7 +624,7 @@ map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 
 " neovim specific
-let g:ruby_host_prog = '~/.rbenv/versions/2.5.1/bin/neovim-ruby-host'
+let g:ruby_host_prog = '~/.gem/ruby/2.6.0/bin/neovim-ruby-host'
 
 set shortmess+=c
 " For conceal markers.
