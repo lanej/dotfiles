@@ -597,6 +597,7 @@ if has('autocmd')
     autocmd FileType go nmap <Leader>gd :GoDef<CR>
     autocmd FileType go nmap <Leader>gp :GoDefPop<CR>
     autocmd FileType go nmap <Leader>gs :GoCallers<CR>
+    autocmd FileType go nmap <Leader>ga :GoReferrers<CR>
     autocmd FileType go nmap <Leader>ge :GoCallees<CR>
 
   augroup END
