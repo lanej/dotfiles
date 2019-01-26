@@ -1,11 +1,11 @@
 #! /bin/sh
 
 sxhkd &
+source ~/.xsession
 ~/.config/polybar/launch.sh 2>&1 1>~/.config/polybar/polybar.log &
 xscreensaver-command -exit
 xscreensaver &
 xss-lock -- /usr/bin/xscreensaver-command -lock &
-source ~/.xsession
 
 xsetroot -solid "#262626"
 
