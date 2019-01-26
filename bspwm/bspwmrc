@@ -9,7 +9,8 @@ xss-lock -- /usr/bin/xscreensaver-command -lock &
 
 xsetroot -solid "#262626"
 
-bspc monitor -d I II III
+bspc monitor eDP1 -d I II III
+bspc monitor DP1 -d I II III
 
 bspc config border_width         1
 bspc config window_gap          20
