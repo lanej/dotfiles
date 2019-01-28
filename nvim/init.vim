@@ -460,6 +460,8 @@ let g:tagbar_type_go = {
       \ 'ctagsargs' : '-sort -silent'
       \ }
 
+nnoremap tb :TagbarToggle<CR>
+
 " create parent directories on write
 if !exists("*s:MkNonExDir")
   function s:MkNonExDir(file, buf)
