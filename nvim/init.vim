@@ -188,6 +188,9 @@ else
   Plug 'roxma/vim-hug-neovim-rpc'
 endif
 
+Plug 'Shougo/neosnippet.vim'
+Plug 'Shougo/neosnippet-snippets'
+
 if v:version > 704 || has('nvim')
   " sudo write
   Plug 'lambdalisue/suda.vim'
@@ -474,20 +477,21 @@ set undodir=~/.cache/nvim/undo
 
 " vim-go config
 let g:go_auto_sameids = 1
-let g:go_auto_type_info = 0
+let g:go_auto_type_info = 1
 let g:go_fmt_command = 'goimports'
+let g:go_fmt_fail_silently = 1
 let g:go_highlight_build_constraints = 1
 let g:go_highlight_extra_types = 1
 let g:go_highlight_fields = 1
 let g:go_highlight_functions = 1
+let g:go_highlight_generate_tags = 1
 let g:go_highlight_methods = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
-let g:go_list_type = 'quickfix'
-let g:go_highlight_generate_tags = 1
-let g:go_highlight_build_constraints = 1
-let g:go_fmt_fail_silently = 1
+let g:go_addtags_transform = "snakecase"
+let g:go_snippet_engine = "neosnippet"
+" let g:go_list_type = 'quickfix'
 
 if has('autocmd')
   augroup FiletypeGroup
@@ -759,3 +763,18 @@ if has('nvim') || v:version > 8000
 
   call deoplete#initialize()
 endif
+
+" Plugin key-mappings.
+" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+xmap <C-k>     <Plug>(neosnippet_expand_target)
+
+" SuperTab like snippets behavior.
+" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+"imap <expr><TAB>
+" \ pumvisible() ? "\<C-n>" :
+" \ neosnippet#expandable_or_jumpable() ?
+" \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
+smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
