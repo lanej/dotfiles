@@ -751,6 +751,10 @@ if has('nvim') || v:version > 8000
 
   let g:deoplete#sources#jedi#statement_length = 30
   let g:deoplete#sources#jedi#show_docstring = 1
+
+  autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
+  inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
+
   let g:deoplete#sources#jedi#short_types = 1
 
   call deoplete#initialize()
