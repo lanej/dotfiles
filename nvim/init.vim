@@ -685,7 +685,7 @@ if has('nvim') || v:version > 8000
 
   " deoplete-go settings
   let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
-  let g:deoplete#sources#go#sort_class = ['package', 'func', 'type', 'var', 'const']
+  call deoplete#custom#option('max_list', 25)
 
   let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
 
