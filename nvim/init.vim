@@ -377,7 +377,7 @@ hi Visual ctermfg=LightGray ctermbg=DarkGrey cterm=none
 highlight clear LineNr     " Current line number row will have same background color in relative mode
 highlight clear SignColumn " SignColumn should match background
 
-set completeopt=longest,menuone,noinsert,noselect
+set completeopt=noinsert,noselect
 
 " ================ Scrolling ========================
 set scrolloff=8         "Start scrolling when we're 8 lines away from margins
@@ -478,6 +478,7 @@ set undofile " Maintain undo history between sessions
 set undodir=~/.cache/nvim/undo
 
 " vim-go config
+let g:go_addtags_transform = "snakecase"
 let g:go_auto_sameids = 1
 let g:go_auto_type_info = 1
 let g:go_fmt_command = 'goimports'
@@ -491,9 +492,8 @@ let g:go_highlight_methods = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
-let g:go_addtags_transform = "snakecase"
-let g:go_snippet_engine = "neosnippet"
 " let g:go_list_type = 'quickfix'
+let g:go_snippet_engine = "neosnippet"
 
 if has('autocmd')
   augroup FiletypeGroup
@@ -655,6 +655,14 @@ if has('nvim') || v:version > 8000
   " let g:deoplete#enable_profile = 1
   " Use deoplete.
   let g:deoplete#enable_at_startup = 1
+
+  " Plugin key-mappings.
+  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+  imap <C-k> <Plug>(neosnippet_expand_or_jump)
+  smap <C-k> <Plug>(neosnippet_expand_or_jump)
+  xmap <C-k> <Plug>(neosnippet_expand_target)
+  let g:neosnippet#enable_completed_snippet = 1
+
   " Use smartcase.
   let g:deoplete#enable_smart_case = 1
   " debug logging
@@ -758,25 +766,10 @@ if has('nvim') || v:version > 8000
   let g:deoplete#sources#jedi#statement_length = 30
   let g:deoplete#sources#jedi#show_docstring = 1
 
-  autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
-  inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
-
   let g:deoplete#sources#jedi#short_types = 1
+
+  " autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
+  " inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
 
   call deoplete#initialize()
 endif
-
-" Plugin key-mappings.
-" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-imap <C-k>     <Plug>(neosnippet_expand_or_jump)
-smap <C-k>     <Plug>(neosnippet_expand_or_jump)
-xmap <C-k>     <Plug>(neosnippet_expand_target)
-
-" SuperTab like snippets behavior.
-" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-"imap <expr><TAB>
-" \ pumvisible() ? "\<C-n>" :
-" \ neosnippet#expandable_or_jumpable() ?
-" \    "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
