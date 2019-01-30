@@ -2,14 +2,16 @@ foreground #ffffff
 background #262626
 
 cursor #d0d0d0
+scrollback_lines 100000
 
-font_family Hack Nerd Font Mono
+font_family Hack Nerd Font
 font_size 13
 macos_hide_titlebar yes
 
 cursor_blink_interval      0.5
+cursor_shape               beam
 cursor_stop_blinking_after 15.0
-window_alert_on_bell no
+window_alert_on_bell       no
 
 color0     #262626
 color10    #90a959
