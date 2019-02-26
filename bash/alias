@@ -166,3 +166,4 @@ if hash xsel 2>/dev/null; then
 fi
 alias to_html="w3m -dump -T text/html"
 alias mytop="vtop -t monokai"
+alias ssh="TERM=xterm-256color ssh"
