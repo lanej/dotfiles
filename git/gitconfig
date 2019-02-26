@@ -72,6 +72,8 @@
 	v = show
 	prs = pr list -f \"%sC%<(3)%i%Creset %<(10)%au %Nc %<(40)%t %U %l%n\"
 	af = log --pretty=format: --name-only --diff-filter=A
+	blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
+	bl = branch --list
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
