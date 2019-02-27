@@ -20,6 +20,5 @@ else
 fi
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
-source ~/.bash_profile
 
-[ -f ~/$HOME/.files/bin/terraform ] && complete -C ~/$HOME/.files/bin/terraform terraform
+source ~/.bash_profile
