@@ -23,7 +23,7 @@ export GO15VENDOREXPERIMENT=1
 export RI_PAGER='less -FX'
 
 # git
-export GIT_SSH="$HOME/bin/git-ssh"
+export GIT_SSH="$HOME/.files/bin/git-ssh"
 
 # set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]]; then
