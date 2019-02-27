@@ -1,4 +1,4 @@
-.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty
+.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh
 all: .PHONY
 
 DOTFILES := $(shell pwd)
@@ -11,29 +11,28 @@ fish:
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
 	touch ${HOME}/.keys.env
+	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
+	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
+	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
+	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
+	ln -fs $(DOTFILES)/sh/rc ${HOME}/.rc
+	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
+bash: shell
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashprofile ${HOME}/.bash_profile
+zsh:
 	ln -fs $(DOTFILES)/zsh/zprofile ${HOME}/.zprofile
-	ln -fs $(DOTFILES)/sh/homebrew.profile ${HOME}/.homebrew.profile
-	ln -fs $(DOTFILES)/sh/rc ${HOME}/.rc
-	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
-	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
+	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
+	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
+	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	git -C ${HOME}/.oh-my-zsh pull || \
 		git clone https://github.com/robbyrussell/oh-my-zsh.git ${HOME}/.oh-my-zsh
 	git -C ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k pull || \
 		git clone https://github.com/bhilburn/powerlevel9k.git ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k
 	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting pull || \
 		git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
-	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
-	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
-	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
-	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
-	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
-	mkdir -p ${HOME}/.config/termite/
-	ln -fs $(DOTFILES)/termite/config ${HOME}/.config/termite/config
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
