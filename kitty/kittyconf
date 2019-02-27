@@ -5,7 +5,7 @@ cursor #d0d0d0
 
 font_family Hack Nerd Font Mono
 font_size 13
-macos_hide_titlebar yes
+hide_window_decorations yes
 
 cursor_blink_interval      0.5
 cursor_stop_blinking_after 15.0
