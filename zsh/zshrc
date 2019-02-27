@@ -53,6 +53,8 @@ unsetopt share_history
 unsetopt correct
 unsetopt correct_all
 
+source "$HOME/.alias"
+
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/Users/jlane/google-cloud-sdk/path.zsh.inc' ]; then source '/Users/jlane/google-cloud-sdk/path.zsh.inc'; fi
 
@@ -137,7 +139,35 @@ bindkey '^I' $fzf_default_completion
 # bindkey '^I' fzf-completion
 fi
 
-source ~/.rc
-
 autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C $HOME/.files/bin/terraform terraform
+
+# keys
+KEYCHAIN=${SSH_KEYS:-"${HOME}/.ssh/id_rsa"}
+if [[ -s $(which keychain) ]]; then
+	if [[ $(uname) == 'Linux' ]]; then
+		eval $(keychain -q --eval --agents ssh $KEYCHAIN)
+	else
+		eval $(keychain -q --eval --agents ssh --inherit any $KEYCHAIN)
+	fi
+	[ -f ~/.keychain/$HOST-sh ] && source ~/.keychain/$HOST-sh
+	[ -f ~/.keychain/$HOST-sh-gpg ] && source ~/.keychain/$HOST-sh-gpg
+else
+	ssh-add -A ~/.ssh/id_rsa &>/dev/null
+fi
+
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+# arch
+[ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
+
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
+# arch
+[ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
+
+if [[ -s $(type chruby) ]]; then
+	chruby 2.6.0
+fi

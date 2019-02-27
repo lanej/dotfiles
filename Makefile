@@ -10,20 +10,18 @@ fish:
 	ln -fs $(DOTFILES)/fish/config ${HOME}/.config/fish/config.fish
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
-	touch ${HOME}/.keys.env
+	ln -fs ${DOTFILES}/env ${HOME}/.env
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
 	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
-	ln -fs $(DOTFILES)/sh/rc ${HOME}/.rc
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
 bash: shell
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashprofile ${HOME}/.bash_profile
-zsh:
-	ln -fs $(DOTFILES)/zsh/zprofile ${HOME}/.zprofile
+zsh: shell
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
