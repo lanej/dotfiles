@@ -1,1 +1,45 @@
 export TERMINFO=~/.terminfo
+export OS=`uname -s`
+
+export EDITOR="vim"
+export PAGER="less"
+export LESS="-RMin"
+export EMAIL="me@joshualane.com"
+export ARCH=`uname -m`
+export IRCNICK='lanej'
+export IRCSERVER='irc.freenode.net'
+export RI_PAGER='less -FX'
+
+# git
+export GIT_SSH="$HOME/bin/git-ssh"
+
+# set PATH so it includes user's private bin if it exists
+if [[ -d "$HOME/bin" ]]; then
+	PATH="$HOME/bin:$PATH"
+fi
+
+# xdg-derived, systemd file-hierarchy
+if [[ -d "$HOME/.local/bin" ]]; then
+	PATH="$HOME/.local/bin:$PATH"
+fi
+
+if [[ -d "$HOME/.files/bin" ]]; then
+	PATH="$HOME/.files/bin:$PATH"
+fi
+
+unset EDITOR
+unset EDITORD
+
+if [[ -s $(which nvim) ]]; then
+	export EDITOR=nvim
+elif [[ -s $(which vim) ]]; then
+	export EDITOR=vim
+else
+	export EDITOR=vi
+fi
+
+export EDITORD=${EDITORD:-$EDITOR}
+
+# go
+export GOPATH=$HOME/go
+export PATH=$GOPATH/bin:$PATH # shiftin GOPATH bins
