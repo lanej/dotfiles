@@ -1,3 +1,6 @@
+[settings]
+screenchange-reload = true
+
 [colors]
 background = ${xrdb:color0:#222}
 foreground = ${xrdb:color7:#222}
