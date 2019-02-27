@@ -19,22 +19,6 @@ source "$HOME/.alias"
 # git
 export GIT_SSH="$HOME/bin/git-ssh"
 
-unset VISUAL
-unset VISUALD
-## Editor
-if [[ -s $(which vimr) ]]; then
-	export VISUAL='vimr -s '
-	export VISUALD='vimr -s --cwd '
-elif [[ -s $(which oni) ]]; then
-	export VISUAL=oni
-elif [[ -s $(which gvim) ]]; then
-	export VISUAL=gvim
-elif [[ -s $(which mvim) ]]; then
-	export VISUAL=mvim
-fi
-
-export VISUALD=${VISUALD:-$VISUAL}
-
 unset EDITOR
 unset EDITORD
 
@@ -84,10 +68,5 @@ fi
 if [[ -s $(type chruby) ]]; then
 	chruby 2.6.0
 fi
-
-if [[ -s $(which rbenv) ]]; then
-	eval "$(rbenv init - --no-rehash)"
-fi
-
 
 # vim: set ft=sh:
