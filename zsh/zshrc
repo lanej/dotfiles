@@ -76,10 +76,11 @@ bindkey '^s' history-incremental-search-forward
 export KEYTIMEOUT=1
 
 [[ -r "$HOME/.keys.env" ]] && source $HOME/.keys.env
-[[ -r "/usr/share/z/z.sh" ]] && source /usr/share/z/z.sh
+[[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
 
 if [ -f ~/.fzf.zsh ]; then
-	source ~/.fzf.zsh
+	source ${HOME}/.fzf.zsh
+	source ${HOME}/.z.sh
 
 	zz() {
 		cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf -q "$_last_z_args")"
