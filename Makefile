@@ -16,6 +16,9 @@ shell:
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
+	mkdir -p ${HOME}/.local/share/z
+	ln -fs $(DOTFILES)/share/z.sh ${HOME}/.local/share/z/z.sh
+	ln -fs $(DOTFILES)/sh/z.sh ${HOME}/.z.sh
 bash: shell
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
