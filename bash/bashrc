@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 ## source cinderella bash completions
-if [[ -d "$HOME/etc/bash_completion.d" ]] ; then
-	source $HOME/etc/bash_completion.d/*.bash
+if [ -d "$HOME/etc/bash_completion.d" ] ; then
+	. $HOME/etc/bash_completion.d/*.bash
 fi
 
 ## Functions
@@ -19,6 +19,6 @@ else
 	export PS1="\W \$(parse_git_branch)\$ "
 fi
 
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
+[ -f "${HOME}/.fzf.bash" ] && . "${HOME}/.fzf.bash"
 
-source ~/.bash_profile
+. "${HOME}/.bash_profile"
