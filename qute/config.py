@@ -19,3 +19,6 @@ config.set('content.javascript.enabled', True, 'chrome://*/*')
 config.set('content.javascript.enabled', True, 'qute://*/*')
 
 config.set('editor.command', ['kitty', 'nvim', '{file}'])
+
+config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
+config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
