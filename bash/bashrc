@@ -12,5 +12,3 @@ else
 fi
 
 [ -f "${HOME}/.fzf.bash" ] && . "${HOME}/.fzf.bash"
-
-. "${HOME}/.bash_profile"

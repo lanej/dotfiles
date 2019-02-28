@@ -1,4 +1,3 @@
 #!/usr/bin/env sh
-
-
+source ${HOME}/.bashrc
 source ${HOME}/.alias
