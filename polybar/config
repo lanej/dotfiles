@@ -44,7 +44,7 @@ tray-maxsize = 20
 
 [module/backlight]
 type = internal/backlight
-format =  <bar>
+format =  <label>
 
 card = intel_backlight
 
