@@ -65,11 +65,7 @@ bar-empty-foreground = #44
 
 [module/battery]
 type = internal/battery
-full-at = 98
-
-format-charging = <animation-charging> <label-charging>
-format-discharging = <ramp-capacity> <label-discharging>
-format-full = <ramp-capacity> <label-full>
+full-at = 100
 
 ramp-capacity-0 = 
 ramp-capacity-0-foreground = #f53c3c
@@ -94,6 +90,13 @@ animation-charging-2 = 
 animation-charging-3 = 
 animation-charging-4 = 
 animation-charging-framerate = 750
+
+time-format = "%H:%M"
+format-charging = <animation-charging> <label-charging>
+format-discharging = <ramp-capacity> <label-discharging>
+format-full = <ramp-capacity> <label-full>
+label-discharging = [%time%] %consumption%W
+label-charging = (%time%) %consumption%W
 
 [module/bspwm]
 type = internal/bspwm
