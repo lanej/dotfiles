@@ -168,6 +168,7 @@ Plug 'dhruvasagar/vim-prosession'
 if has('nvim') || v:version > 8000
   " deoplete
   Plug 'zchee/deoplete-jedi'
+  Plug 'zchee/deoplete-clang'
   Plug 'zchee/deoplete-go', { 'do': 'make' }
   Plug 'sebastianmarkow/deoplete-rust'
   Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
