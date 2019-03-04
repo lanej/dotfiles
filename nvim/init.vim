@@ -613,6 +613,7 @@ if has('autocmd')
     autocmd FileType go nmap <Leader>gs :GoCallers<CR>
     autocmd FileType go nmap <Leader>ga :GoReferrers<CR>
     autocmd FileType go nmap <Leader>ge :GoCallees<CR>
+    autocmd FileType go map <Bslash>t :TestFile -v<CR>
 
   augroup END
 
