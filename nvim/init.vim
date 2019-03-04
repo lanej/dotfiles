@@ -169,13 +169,17 @@ if has('nvim') || v:version > 8000
   " deoplete
   Plug 'zchee/deoplete-jedi'
   Plug 'zchee/deoplete-go', { 'do': 'make' }
+  Plug 'sebastianmarkow/deoplete-rust'
   Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+
   " ruby completion
   Plug 'lanej/deoplete-solargraph'
   " go completion
   Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
   " go debugger
   Plug 'sebdah/vim-delve'
+
+  " vim
   if !has('nvim')
     Plug 'Shougo/deoplete.nvim'
     Plug 'Shougo/vimproc.vim'
@@ -768,8 +772,11 @@ if has('nvim') || v:version > 8000
 
   let g:deoplete#sources#jedi#short_types = 1
 
-  " autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
-  " inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
+  autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
+  inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
+
+  let g:deoplete#sources#rust#racer_binary=$HOME.'/bin/racer'
+  let g:deoplete#sources#rust#rust_source_path=$HOME.'/lang/rust/src'
 
   call deoplete#initialize()
 endif
