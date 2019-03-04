@@ -651,17 +651,34 @@ if has('conceal')
   set conceallevel=2 concealcursor=niv
 endif
 
+" Plugin key-mappings.
+" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+imap <C-k> <Plug>(neosnippet_expand_or_jump)
+smap <C-k> <Plug>(neosnippet_expand_or_jump)
+xmap <C-k> <Plug>(neosnippet_expand_target)
+let g:neosnippet#enable_completed_snippet = 1
+
+" Automatically start language servers.
+let g:LanguageClient_autoStart = 1
+
+let g:LanguageClient_serverCommands = {}
+
+" Minimal LSP configuration for JavaScript
+if executable('javascript-typescript-stdio')
+  let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
+endif
+
+let g:LanguageClient_loggingLevel = 'INFO'
+let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
+let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
+
+let g:tern#command = ['tern']
+let g:tern#arguments = ['--persistent']
+
 if has('nvim') || v:version > 8000
   " let g:deoplete#enable_profile = 1
   " Use deoplete.
   let g:deoplete#enable_at_startup = 1
-
-  " Plugin key-mappings.
-  " Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-  imap <C-k> <Plug>(neosnippet_expand_or_jump)
-  smap <C-k> <Plug>(neosnippet_expand_or_jump)
-  xmap <C-k> <Plug>(neosnippet_expand_target)
-  let g:neosnippet#enable_completed_snippet = 1
 
   " Use smartcase.
   let g:deoplete#enable_smart_case = 1
@@ -671,20 +688,6 @@ if has('nvim') || v:version > 8000
   let g:deoplete#omni#functions = {}
   let g:deoplete#omni_patterns = {}
   let g:deoplete#sources = {}
-
-  " Automatically start language servers.
-  let g:LanguageClient_autoStart = 1
-
-  let g:LanguageClient_serverCommands = {}
-
-  " Minimal LSP configuration for JavaScript
-  if executable('javascript-typescript-stdio')
-    let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
-  endif
-
-  let g:LanguageClient_loggingLevel = 'INFO'
-  let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
-  let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
 
   let g:deoplete#omni#functions.javascript = [
         \ 'tern#Complete',
@@ -696,9 +699,6 @@ if has('nvim') || v:version > 8000
   call deoplete#custom#option('max_list', 25)
 
   let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
-
-  let g:tern#command = ['tern']
-  let g:tern#arguments = ['--persistent']
   let g:deoplete#sources#ternjs#timeout = 1
 
   " Consistent solargraph binary location
