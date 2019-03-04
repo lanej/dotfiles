@@ -171,6 +171,7 @@ if has('nvim') || v:version > 8000
   Plug 'zchee/deoplete-clang'
   Plug 'zchee/deoplete-go', { 'do': 'make' }
   Plug 'sebastianmarkow/deoplete-rust'
+  Plug 'artur-shaik/vim-javacomplete2'
   Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
 
   " ruby completion
@@ -318,6 +319,8 @@ let g:ale_emit_conflict_warnings = 1
 let g:ale_enabled = 1
 let g:ale_fix_on_save = 0
 let g:ale_fixers = {
+      \ '*': ['remove_trailing_lines', 'trim_whitespace'],
+      \ 'java': ['google_java_format'],
       \ 'go': [ 'gofmt'],
       \ 'javascript.jsx': ['eslint'],
       \ 'javscript': ['eslint'],
@@ -535,12 +538,11 @@ if has('autocmd')
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
-  augroup straggelers
+  augroup filetype_java
     autocmd!
-    " remove trailing spaces
-    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :%s/\s\+$//e
-    " remove trailing whitespace automatically
-    autocmd FileType c,cpp,java,php,ruby autocmd BufWritePre <buffer> :set et | retab
+    autocmd FileType java setlocal omnifunc=javacomplete#Complete
+    autocmd FileType java let g:ale_fix_on_save = 0
+
   augroup END
 
   augroup filetype_haml
