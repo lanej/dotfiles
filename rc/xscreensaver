@@ -12,7 +12,7 @@ installColormap:    True
 verbose:	False
 timestamp:	True
 splash:		False
-splashDuration:	0:00:05
+splashDuration:	0:00:00
 demoCommand:	xscreensaver-demo
 prefsCommand:	xscreensaver-demo -prefs
 nice:		10
