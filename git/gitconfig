@@ -62,10 +62,10 @@
 	rsl = "!_git_rsl() { local max=$1; PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
 	sh = !git-sh
-	sl = log --oneline --graph --decorate
-	slb = log --oneline --graph --decorate origin/master..HEAD
+	sl = !git log --oneline --graph --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*"
+	slb = sl origin/master..HEAD
 	slp = log --stat -p
-	sls = log --oneline --graph --decorate --stat
+	sls = sl --stat
 	slx = log --oneline -5
 	st = status
 	uf = ls-files -o --exclude-standard
