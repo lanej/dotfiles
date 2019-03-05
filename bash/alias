@@ -9,24 +9,11 @@ fixssh() {
   done
 }
 
-function fhr() {
-	find . -iname "*$**"
-}
-function rd() {
-	rdesktop -g 1400x900 $*
-}
-function svndif() {
-	svn diff --diff-cmd colordiff $* | less
-}
-function find_in() {
-	find . -iname $1 | xargs grep $2 -sl
-}
-
-function myip() {
+myip() {
 	echo $(dig +short myip.opendns.com @resolver1.opendns.com)
 }
 
-function minitest() {
+minitest() {
 	if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
 		gem install testrbl --no-document -qq
 	fi
@@ -34,16 +21,16 @@ function minitest() {
 	testrbl "$@"
 }
 
-function git-rebase-style() {
+git-rebase-style() {
 	git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
 }
 
 
-function current-version() {
+current-version() {
 	git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
 }
 
-function git-release() {
+git-release() {
 	git fetch origin -q
 	local current_release=$(current-version)
 	echo "Current release: v$current_release"
@@ -66,11 +53,11 @@ function git-release() {
 	fi
 }
 
-function cookbooks-version() {
+cookbooks-version() {
 	egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2
 }
 
-function cookbooks-release() {
+cookbooks-release() {
 	local version=$(cookbooks-version)
 	local tag="v$version"
 	echo "Releasing: $tag"
@@ -78,11 +65,11 @@ function cookbooks-release() {
 	git tag $tag && git push origin $tag
 }
 
-function next-version() {
+next-version() {
 	ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
 }
 
-function cookbooks-bump() {
+cookbooks-bump() {
 	local version=$(cookbooks-version)
 	local next_version=$(next-version $version $@)
 	echo "Bumping to $next_version"
