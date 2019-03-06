@@ -320,17 +320,18 @@ let g:ale_enabled = 1
 let g:ale_fix_on_save = 0
 let g:ale_fixers = {
       \ '*': ['remove_trailing_lines', 'trim_whitespace'],
-      \ 'java': ['google_java_format'],
       \ 'go': [ 'gofmt'],
+      \ 'java': ['google_java_format'],
       \ 'javascript.jsx': ['eslint'],
       \ 'javscript': ['eslint'],
       \ 'json': 'prettier',
       \ 'jsx': ['eslint'],
       \ 'markdown': ['prettier'],
-      \ 'ruby': [ 'rufo', 'rubocop' ],
-      \ 'sh': ['shfmt'],
       \ 'python': ['autopep8'],
-      \ }
+      \ 'ruby': [ 'rufo', 'rubocop' ],
+      \ 'rust': [ 'rustfmt' ],
+      \ 'sh': ['shfmt'],
+    \ }
 
 " let g:ale_linters = { 'go': [ 'gofmt' ], 'ruby': [ 'ruby', 'rubocop' ], 'yaml': [ 'yamllint'], 'jsx': ['stylelint', 'eslint'] }
 let g:ale_javascript_eslint_executable = 'npm run list eslint'
@@ -537,6 +538,11 @@ if has('autocmd')
     autocmd!
     autocmd FileType gitcommit set colorcolumn=72|highlight ColorColumn ctermbg=Black guibg=LightGrey
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+  augroup END
+
+  augroup filetype_rust
+    autocmd!
+    autocmd FileType rust let g:ale_fix_on_save = 1
   augroup END
 
   augroup filetype_java
