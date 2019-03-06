@@ -239,9 +239,6 @@ map <leader>pi :PlugInstall<CR>
 map <leader>pc :PlugClean<CR>
 map <leader>pu :PlugUpdate<CR>
 
-"previm
-" let g:previm_open_cmd = 'open -a Safari'
-
 " vim-polyglot
 let g:vim_markdown_conceal = 0
 
