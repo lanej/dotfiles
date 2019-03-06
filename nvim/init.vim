@@ -164,7 +164,11 @@ Plug 'hashivim/vim-terraform'
 " sessions
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
+" snippets
+Plug 'Shougo/neosnippet.vim'
+Plug 'Shougo/neosnippet-snippets'
 
+" completion via deoplate
 if has('nvim') || v:version > 8000
   " deoplete
   if executable('python')
@@ -179,6 +183,9 @@ if has('nvim') || v:version > 8000
     " go completion
     Plug 'zchee/deoplete-go', { 'do': 'make' }
     Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
+
+    " additional go support
+    Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 
     " go debugger
     Plug 'sebdah/vim-delve'
@@ -201,29 +208,23 @@ if has('nvim') || v:version > 8000
     Plug 'lanej/deoplete-solargraph'
   end
 
-  " vim
-  if !has('nvim')
-    Plug 'Shougo/deoplete.nvim'
-    Plug 'Shougo/vimproc.vim'
-    Plug 'Shougo/vimshell.vim'
-  else
-    Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  endif
-else
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
+  if executable('python3')
+    " vim
+    if !has('nvim')
+      Plug 'Shougo/deoplete.nvim'
+      Plug 'Shougo/vimproc.vim'
+      Plug 'Shougo/vimshell.vim'
+    else
+      Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+    endif
+  end
 endif
-
-Plug 'Shougo/neosnippet.vim'
-Plug 'Shougo/neosnippet-snippets'
 
 if v:version > 704 || has('nvim')
   " sudo write
   Plug 'lambdalisue/suda.vim'
   " Allow saving of files as sudo when I forgot to start vim using sudo.
   cmap w! w suda://%<CR>
-  " additional go support
-  Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
 endif
 
 " Add plugins to &runtimepath
