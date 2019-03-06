@@ -140,7 +140,7 @@ complete -o nospace -C $HOME/.files/bin/terraform terraform
 
 # keys
 KEYCHAIN=${SSH_KEYS:-"${HOME}/.ssh/id_rsa"}
-if [[ -s $(hash keychain 2>/dev/null) ]]; then
+if command -v keychain >/dev/null; then
 	if [[ $(uname) == 'Linux' ]]; then
 		eval $(keychain -q --eval --agents ssh $KEYCHAIN)
 	else
@@ -164,6 +164,6 @@ fi
 # arch
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
-if [[ -s $(hash chruby 2>/dev/null) ]]; then
+if command -v chruby >/dev/null; then
 	chruby 2.6.0
 fi
