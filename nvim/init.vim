@@ -710,6 +710,10 @@ let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
 let g:tern#command = ['tern']
 let g:tern#arguments = ['--persistent']
 
+if has('nvim')
+  tmap <C-o> <C-\><C-n>
+endif
+
 if has('nvim') || v:version > 8000
   " let g:deoplete#enable_profile = 1
   " Use deoplete.
