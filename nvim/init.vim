@@ -167,19 +167,39 @@ Plug 'dhruvasagar/vim-prosession'
 
 if has('nvim') || v:version > 8000
   " deoplete
-  Plug 'zchee/deoplete-jedi'
-  Plug 'zchee/deoplete-clang'
-  Plug 'zchee/deoplete-go', { 'do': 'make' }
-  Plug 'sebastianmarkow/deoplete-rust'
-  Plug 'artur-shaik/vim-javacomplete2'
-  Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+  if executable('python')
+    Plug 'zchee/deoplete-jedi'
+  endif
 
-  " ruby completion
-  Plug 'lanej/deoplete-solargraph'
-  " go completion
-  Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
-  " go debugger
-  Plug 'sebdah/vim-delve'
+  if executable('clang')
+    Plug 'zchee/deoplete-clang'
+  endif
+
+  if executable('go')
+    " go completion
+    Plug 'zchee/deoplete-go', { 'do': 'make' }
+    Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
+
+    " go debugger
+    Plug 'sebdah/vim-delve'
+  endif
+
+  if executable('rustc')
+    Plug 'sebastianmarkow/deoplete-rust'
+  endif
+
+  if executable('rust')
+    Plug 'artur-shaik/vim-javacomplete2'
+  endif
+
+  if executable('tern')
+    Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+  endif
+
+  if executable('solargraph')
+    " ruby completion
+    Plug 'lanej/deoplete-solargraph'
+  end
 
   " vim
   if !has('nvim')
