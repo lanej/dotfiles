@@ -188,7 +188,7 @@ if has('nvim') || v:version > 8000
     Plug 'sebastianmarkow/deoplete-rust'
   endif
 
-  if executable('rust')
+  if executable('javac')
     Plug 'artur-shaik/vim-javacomplete2'
   endif
 
