@@ -1,1 +1,13 @@
-#!/usr/bin/env sh
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+# arch
+[ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
+
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
+# arch
+[ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
+
+if command -v chruby >/dev/null; then
+	chruby 2.6.0
+fi
