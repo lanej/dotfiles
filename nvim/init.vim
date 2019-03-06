@@ -568,7 +568,7 @@ if has('autocmd')
   augroup filetype_java
     autocmd!
     autocmd FileType java setlocal omnifunc=javacomplete#Complete
-    autocmd FileType java let g:ale_fix_on_save = 0
+    autocmd FileType java let g:ale_fix_on_save = 1
 
   augroup END
 
