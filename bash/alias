@@ -30,6 +30,10 @@ current-version() {
 	git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
 }
 
+current-semver() {
+	git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
+}
+
 git-release() {
 	git fetch origin -q
 	local current_release=$(current-version)
