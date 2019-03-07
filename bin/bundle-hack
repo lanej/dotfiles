@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-if [[ ! -s $(which bundle 2>/dev/null) ]]; then
-  gem install bundler --no-document -qq
+BUNDLE="bundle"
+if [[ -x "./vendor/bundle/bundle" ]]; then
+	BUNDLE="withenv ./vendor/bundle/bundle"
+elif [[ ! -s $(which bundle 2>/dev/null) ]]; then
+	gem install bundler --no-document -qq
 fi
 
-(bundle check 1>/dev/null || bundle install --local --jobs 5 || bundle install --jobs 5) && bundle "$@"
+($BUNDLE check 1>/dev/null || $BUNDLE install --local --jobs 5 || $BUNDLE install --jobs 5) && $BUNDLE "$@"
