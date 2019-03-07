@@ -115,7 +115,7 @@ if [ -f ~/.fzf.zsh ]; then
 	bindkey '^R' fzf-history-widget
 
 	# fco_preview - checkout git branch/tag, with a preview showing the commits between the tag/branch and HEAD
-	fgco() {
+	fgc() {
 		local tags branches target
 		tags=$(
 		git tag | awk '{print "\x1b[31;1mtag\x1b[m\t" $1}') || return
