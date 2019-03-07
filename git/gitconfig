@@ -74,6 +74,7 @@
 	af = log --pretty=format: --name-only --diff-filter=A
 	blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
 	bl = branch --list
+	cob = co -B
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
