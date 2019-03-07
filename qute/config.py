@@ -2,6 +2,7 @@
 # Documentation:
 #   qute://help/configuring.html
 #   qute://help/settings.html
+from subprocess import check_output
 
 # Uncomment this to still load settings configured via autoconfig.yml
 # config.load_autoconfig()
@@ -18,7 +19,77 @@ config.set('content.javascript.enabled', True, 'chrome://*/*')
 # Type: Bool
 config.set('content.javascript.enabled', True, 'qute://*/*')
 
-config.set('editor.command', ['kitty', 'nvim', '{file}'])
 
-config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
-config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
+kitty = check_output(['command', '-v', 'kitty'], shell=True).decode('ascii').strip()
+neovim = check_output(['command', '-v', 'nvim'], shell=True).decode('ascii').strip()
+
+# Editor (and arguments) to use for the `open-editor` command. The
+# following placeholders are defined: * `{file}`: Filename of the file
+# to be edited. * `{line}`: Line in which the caret is found in the
+# text. * `{column}`: Column in which the caret is found in the text. *
+# `{line0}`: Same as `{line}`, but starting from index 0. * `{column0}`:
+# Same as `{column}`, but starting from index 0.
+# Type: ShellCommand
+c.editor.command = [kitty, neovim, "+{line}", "{file}"]
+
+# Encoding to use for the editor.
+# Type: Encoding
+c.editor.encoding = 'utf-8'
+
+# Hide the window decoration.  This setting requires a restart on
+# Wayland.
+# Type: Bool
+c.window.hide_decoration = False
+
+# Default monospace fonts. Whenever "monospace" is used in a font
+# setting, it's replaced with the fonts listed here.
+# Type: Font
+c.fonts.monospace = 'Hack, "xos4 Terminus", Terminus, Monospace, "DejaVu Sans Mono", Monaco, "Bitstream Vera Sans Mono", "Andale Mono", "Courier New", Courier, "Liberation Mono", monospace, Fixed, Consolas, Terminal'
+
+# Font used in the completion widget.
+# Type: Font
+c.fonts.completion.entry = '13pt monospace'
+
+# Font used in the completion categories.
+# Type: Font
+c.fonts.completion.category = 'bold 13pt monospace'
+
+# Font used for the debugging console.
+# Type: QtFont
+c.fonts.debug_console = '13pt monospace'
+
+# Font used for the downloadbar.
+# Type: Font
+c.fonts.downloads = '13pt monospace'
+
+# Font used for the hints.
+# Type: Font
+c.fonts.hints = 'bold 13pt monospace'
+
+# Font used in the keyhint widget.
+# Type: Font
+c.fonts.keyhint = '13pt monospace'
+
+# Font used for error messages.
+# Type: Font
+c.fonts.messages.error = '13pt monospace'
+
+# Font used for info messages.
+# Type: Font
+c.fonts.messages.info = '13pt monospace'
+
+# Font used for warning messages.
+# Type: Font
+c.fonts.messages.warning = '13pt monospace'
+
+# Font used for prompts.
+# Type: Font
+c.fonts.prompts = '13pt sans-serif'
+
+# Font used in the statusbar.
+# Type: Font
+c.fonts.statusbar = '13pt monospace'
+
+# Font used in the tab bar.
+# Type: QtFont
+c.fonts.tabs = '13pt monospace'
