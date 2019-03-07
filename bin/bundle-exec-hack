@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-(bundle check 1>/dev/null || bundle install --local --jobs 5 || bundle install --jobs 5) && bundle exec "$@"
 
+bundle-hack exec "$@"
