@@ -51,7 +51,7 @@ vim:
 	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
 	gem install solargraph -v '0.18.0' || echo 'failed to install solargraph'
-	pip install solargraph-utils.py --user || echo 'failed to install solargraph'
+	pip3 install solargraph-utils.py --user || echo 'failed to install solargraph-utils'
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
