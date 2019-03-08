@@ -161,3 +161,4 @@ alias ssh="TERM=xterm-256color ssh"
 alias wip="git add -A && git commit -m \"wip\" && echo \"it good\""
 alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' | grep -o \"https://phab\\..*\" | head -n1 | xargs basename 2>/dev/null"
 alias arc-update="arc-revision | xargs arc diff --update"
+alias vcr='be env VCR_RECORD=all rspec'
