@@ -24,15 +24,6 @@ config.set('zoom.default', '150%')
 config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
 config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
 
-# Editor (and arguments) to use for the `open-editor` command. The
-# following placeholders are defined: * `{file}`: Filename of the file
-# to be edited. * `{line}`: Line in which the caret is found in the
-# text. * `{column}`: Column in which the caret is found in the text. *
-# `{line0}`: Same as `{line}`, but starting from index 0. * `{column0}`:
-# Same as `{column}`, but starting from index 0.
-# Type: ShellCommand
-c.editor.command = [kitty, neovim, "+{line}", "{file}"]
-
 # Encoding to use for the editor.
 # Type: Encoding
 c.editor.encoding = 'utf-8'
@@ -93,4 +84,17 @@ c.fonts.statusbar = '13pt monospace'
 
 # Font used in the tab bar.
 # Type: QtFont
+
 c.fonts.tabs = '13pt monospace'
+
+
+# Editor (and arguments) to use for the `open-editor` command. The
+# following placeholders are defined: * `{file}`: Filename of the file
+# to be edited. * `{line}`: Line in which the caret is found in the
+# text. * `{column}`: Column in which the caret is found in the text. *
+# `{line0}`: Same as `{line}`, but starting from index 0. * `{column0}`:
+# Same as `{column}`, but starting from index 0.
+# Type: ShellCommand
+kitty = check_output(['which kitty'], shell=True).decode('ascii').strip()
+neovim = check_output(['which nvim'], shell=True).decode('ascii').strip()
+c.editor.command = [kitty, neovim, "+{line}", "{file}"]
