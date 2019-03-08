@@ -19,9 +19,10 @@ config.set('content.javascript.enabled', True, 'chrome://*/*')
 # Type: Bool
 config.set('content.javascript.enabled', True, 'qute://*/*')
 
+config.set('zoom.default', '150%')
 
-kitty = check_output(['command', '-v', 'kitty'], shell=True).decode('ascii').strip()
-neovim = check_output(['command', '-v', 'nvim'], shell=True).decode('ascii').strip()
+config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
+config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
 
 # Editor (and arguments) to use for the `open-editor` command. The
 # following placeholders are defined: * `{file}`: Filename of the file
