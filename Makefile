@@ -53,11 +53,11 @@ vim:
 	pip3 install solargraph-utils.py --user || echo 'failed to install solargraph-utils'
 	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d/
 X:
-	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
-	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
-	ln -fns $(DOTFILES)/rc/xinitrc ${HOME}/.xinitrc
-	ln -fns $(DOTFILES)/rc/xsessionrc ${HOME}/.xsessionrc
-	ln -fns $(DOTFILES)/rc/xscreensaver ${HOME}/.xscreensaver
+	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
+	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
+	ln -fs $(DOTFILES)/rc/xinitrc ${HOME}/.xinitrc
+	ln -fs $(DOTFILES)/rc/xsessionrc ${HOME}/.xsessionrc
+	ln -fs $(DOTFILES)/rc/xscreensaver ${HOME}/.xscreensaver
 ruby:
 	ln -fs $(DOTFILES)/ruby/irbrc ${HOME}/.irbrc
 	ln -fs $(DOTFILES)/ruby/pryrc ${HOME}/.pryrc
