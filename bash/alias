@@ -92,6 +92,10 @@ f() {
 	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
+zd() {
+	cd $(find $1 -type d | f)
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
