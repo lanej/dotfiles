@@ -163,3 +163,4 @@ alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' |
 alias arc-update="arc-revision | xargs arc diff --update"
 alias vcr='be env VCR_RECORD=all rspec'
 alias port_kill='cat .env .env-override | grep PORT | tail -n 1 | egrep -o "[0-9]+" | xargs -i{} lsof -ti :{} | xargs kill -9'
+alias reshell="exec -l $SHELL"
