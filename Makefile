@@ -12,7 +12,6 @@ fish:
 shell:
 	ln -fs ${DOTFILES}/env ${HOME}/.env
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
-	ln -fs $(DOTFILES)/ctags ${HOME}/.ctags
 	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
 	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
@@ -52,6 +51,7 @@ vim:
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
 	gem install solargraph -v '0.18.0' || echo 'failed to install solargraph'
 	pip3 install solargraph-utils.py --user || echo 'failed to install solargraph-utils'
+	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d/
 X:
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fns $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
