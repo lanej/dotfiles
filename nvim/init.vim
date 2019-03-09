@@ -306,7 +306,7 @@ endif
 
 " fzf
 noremap <leader>f :Files<CR>
-noremap <leader>gf :GFiles<CR>
+noremap <leader>p :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
 noremap <leader>t :Tags<CR>
 noremap <leader>l :Lines<CR>
