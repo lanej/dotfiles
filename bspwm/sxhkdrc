@@ -6,6 +6,10 @@
 super + Return
 	kitty
 
+# browser
+super + shift + Return
+	qutebrowser
+
 # program launcher
 super + @space
 	rofi -show drun -font "Hack Nerd Font Mono 24" -theme "glue_pro_blue"
