@@ -14,6 +14,7 @@ cursor_blink_interval      0.5
 cursor_stop_blinking_after 15.0
 cursor_color_text #ffffff
 url_color #ffff00
+url_style double
 window_alert_on_bell no
 scrollback_pager_history_size 314572800
 scrollback_lines 1000000
