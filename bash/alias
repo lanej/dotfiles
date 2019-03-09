@@ -96,6 +96,10 @@ zd() {
 	cd $(find $1 -type d | f)
 }
 
+i() {
+	nvim -R -c Lines
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
