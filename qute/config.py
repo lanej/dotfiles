@@ -87,6 +87,9 @@ c.fonts.statusbar = '13pt monospace'
 
 c.fonts.tabs = '13pt monospace'
 
+## Always restore open sites when qutebrowser is reopened.
+## Type: Bool
+c.auto_save.session = True
 
 # Editor (and arguments) to use for the `open-editor` command. The
 # following placeholders are defined: * `{file}`: Filename of the file
