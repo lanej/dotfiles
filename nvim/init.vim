@@ -252,9 +252,7 @@ let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
 " ack.vim
-nnoremap <Leader>aa :Ack!<Space>
-nnoremap <Leader>ap :Ack!<Space>
-map <leader>a* :Ack!<space><cword><CR>
+nnoremap <Leader>aa :Ag!<CR>
 map <leader>as :Ack!<space><cword><CR>
 
 " use silver-searcher if available
@@ -313,6 +311,12 @@ noremap <leader>gg :Buffers<CR>
 noremap <leader>t :Tags<CR>
 noremap <leader>l :Lines<CR>
 noremap <leader>gc :Commits<CR>
+
+command! -bang -nargs=* Ag
+  \ call fzf#vim#ag(<q-args>,
+  \                 <bang>0 ? fzf#vim#with_preview('up:60%')
+  \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
+  \                 <bang>0)
 
 " [Buffers] Jump to the existing window if possible
 let g:fzf_buffers_jump = 1
