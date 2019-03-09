@@ -88,6 +88,10 @@ cookbooks-bump() {
 	fi
 }
 
+f() {
+	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+}
+
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
@@ -143,7 +147,6 @@ alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
 alias rn='r --next-failure'
 alias copy="tr -d '\n' | pbcopy"
 alias gpr="hub pull-request"
-alias f=fzf
 alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
 alias rmr='rm -r'
 alias lal='ls -alh'
