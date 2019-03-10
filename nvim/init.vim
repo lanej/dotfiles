@@ -307,8 +307,8 @@ else
 endif
 
 " fzf
-noremap <leader>f :Files<CR>
-noremap <leader>gf :GFiles<CR>
+noremap <leader>af :Files<CR>
+noremap <leader>f :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
 noremap <leader>t :Tags<CR>
 noremap <leader>l :Lines<CR>
