@@ -91,6 +91,15 @@ c.fonts.tabs = '13pt monospace'
 ## Type: Bool
 c.auto_save.session = True
 
+## How to behave when the last tab is closed.
+## Type: String
+## Valid values:
+##   - ignore: Don't do anything.
+##   - blank: Load a blank page.
+##   - startpage: Load the start page.
+##   - default-page: Load the default page.
+##   - close: Close the window.
+c.tabs.last_close = 'close'
 # Editor (and arguments) to use for the `open-editor` command. The
 # following placeholders are defined: * `{file}`: Filename of the file
 # to be edited. * `{line}`: Line in which the caret is found in the
