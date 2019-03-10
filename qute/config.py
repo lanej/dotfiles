@@ -19,7 +19,7 @@ config.set('content.javascript.enabled', True, 'chrome://*/*')
 # Type: Bool
 config.set('content.javascript.enabled', True, 'qute://*/*')
 
-config.set('zoom.default', '150%')
+config.set('zoom.default', '110%')
 
 config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
 config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
