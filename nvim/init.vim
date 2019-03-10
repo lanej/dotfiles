@@ -310,7 +310,9 @@ endif
 noremap <leader>af :Files<CR>
 noremap <leader>f :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
-noremap <leader>t :Tags<CR>
+noremap <leader>at :Tags<CR>
+noremap <leader>bt :BTags<CR>
+noremap <leader>ac :Commands<CR>
 noremap <leader>l :Lines<CR>
 noremap <leader>gc :Commits<CR>
 
