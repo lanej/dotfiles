@@ -252,7 +252,8 @@ let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
 " ack.vim
-nnoremap <Leader>aa :Ag!<CR>
+nnoremap <Leader>af :Ag!<CR>
+nnoremap <Leader>aa :Ack!<space>
 map <leader>as :Ack!<space><cword><CR>
 
 " use silver-searcher if available
