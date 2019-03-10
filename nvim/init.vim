@@ -264,7 +264,7 @@ if executable('ag')
 endif
 
 " sessions
-map <leader>ps :Prosession 
+map <leader>ps :Prosession<space>
 
 " NERDTree
 let g:NERDTreeShowHidden = 1
@@ -386,7 +386,7 @@ nmap <silent> <C-p> <Plug>(ale_previous_wrap)
 nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
 " rename
-map <leader>re :Rename 
+map <leader>re :Rename<space>
 
 "terminal
 if has("terminal")
