@@ -271,7 +271,7 @@ let g:NERDTreeChDirMode  = 2
 let g:NERDTreeQuitOnOpen = 1
 let g:NERDSpaceDelims    = 1
 
-map <leader>n :NERDTreeToggle<CR>
+map <leader>ntt :NERDTreeToggle<CR>
 map <leader>ntm :NERDTreeMirror<CR>
 map <leader>ntc :NERDTreeClose<CR>
 map <leader>ntf :NERDTreeFind<CR>
