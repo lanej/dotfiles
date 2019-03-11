@@ -572,6 +572,7 @@ if has('autocmd')
     autocmd!
     autocmd FileType rust let g:ale_fix_on_save = 1
     autocmd FileType rust set colorcolumn=100|highlight ColorColumn ctermbg=Black guibg=LightGrey
+    autocmd FileType rust set makeprg=cargo\ run
   augroup END
 
   augroup filetype_java
