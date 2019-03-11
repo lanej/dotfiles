@@ -305,16 +305,18 @@ else
 endif
 
 " fzf
-noremap <leader>af :Files<CR>
-noremap <leader>f :GFiles<CR>
-noremap <leader>gg :Buffers<CR>
-noremap <leader>at :Tags<CR>
-noremap <leader>bt :BTags<CR>
 noremap <leader>ac :Commands<CR>
+noremap <leader>ag :Commits<CR>
+noremap <leader>af :Files<CR>
 noremap <leader>ah :History:<CR>
+noremap <leader>al :Lines<CR>
 noremap <leader>as :History/<CR>
-noremap <leader>l :Lines<CR>
-noremap <leader>gc :Commits<CR>
+noremap <leader>at :Tags<CR>
+noremap <leader>l  :BLines<CR>
+noremap <leader>f  :GFiles<CR>
+noremap <leader>gc :BCommits<CR>
+noremap <leader>gg :Buffers<CR>
+noremap <leader>t  :BTags<CR>
 
 command! -bang -nargs=* Ag
   \ call fzf#vim#ag(<q-args>,
