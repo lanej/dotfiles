@@ -16,3 +16,4 @@ Gemfile.local.lock
 .wercker/
 .tfcompleterc
 *.auto.tfvars
+.ctags.d/

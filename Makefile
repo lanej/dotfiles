@@ -51,7 +51,7 @@ vim:
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
 	gem install solargraph -v '0.18.0' || echo 'failed to install solargraph'
 	pip3 install solargraph-utils.py --user || echo 'failed to install solargraph-utils'
-	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d/
+	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d
 X:
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xdefaults
