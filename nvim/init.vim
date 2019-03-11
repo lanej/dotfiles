@@ -16,7 +16,7 @@ set exrc
 set fileformats+=mac
 set guicursor=a:blinkon0       " Disable cursor blink
 set hidden                     " Better buffer management
-set history=1000               " Store lots of :cmdline history
+set history=10000              " Store lots of :cmdline history
 set hlsearch
 set ignorecase                 " Ignore case when searching
 if (has("nvim"))
@@ -313,6 +313,8 @@ noremap <leader>gg :Buffers<CR>
 noremap <leader>at :Tags<CR>
 noremap <leader>bt :BTags<CR>
 noremap <leader>ac :Commands<CR>
+noremap <leader>ah :History:<CR>
+noremap <leader>as :History/<CR>
 noremap <leader>l :Lines<CR>
 noremap <leader>gc :Commits<CR>
 
