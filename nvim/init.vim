@@ -112,8 +112,6 @@ Plug 'easymotion/vim-easymotion'
 Plug 'jacoborus/tender.vim'
 " test integration
 Plug 'janko-m/vim-test'
-" buffer explorer
-Plug 'jlanzarotta/bufexplorer'
 " fzf install, fast fuzzy finder
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 " fzf integration
