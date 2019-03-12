@@ -107,6 +107,17 @@ c.tabs.last_close = 'close'
 # `{line0}`: Same as `{line}`, but starting from index 0. * `{column0}`:
 # Same as `{column}`, but starting from index 0.
 # Type: ShellCommand
-kitty = check_output(['which kitty'], shell=True).decode('ascii').strip()
-neovim = check_output(['which nvim'], shell=True).decode('ascii').strip()
+
+from sys import platform
+
+kitty = "kitty"
+neovim = "nvim"
+
+if platform == "linux" or platform == "linux2":
+  kitty = check_output(['command -v kitty'], shell=True).decode('ascii').strip()
+  neovim = check_output(['command -v nvim'], shell=True).decode('ascii').strip()
+else:
+  kitty = "/Applications/kitty.app/Contents/MacOS/kitty"
+  neovim = "/usr/local/bin/nvim"
+
 c.editor.command = [kitty, neovim, "+{line}", "{file}"]
