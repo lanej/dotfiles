@@ -373,6 +373,7 @@ let g:ale_lint_on_text_changed = 'always'
 let g:ale_open_list = 0
 let g:ale_ruby_bundler_executable = 'bundle'
 let g:ale_ruby_rubocop_executable = 'bundle'
+let g:ale_ruby_rufo_executable = 'bundle'
 let g:ale_set_highlights = 1
 let g:ale_set_loclist = 1
 let g:ale_set_quickfix = 0
