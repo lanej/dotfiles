@@ -669,8 +669,8 @@ endif
 
 " vim-test configuration
 let test#strategy = "neovim"
-let test#ruby#rspec#executable = 'chruby $(cat .ruby-version); bundle exec rspec'
-let test#ruby#minitest#executable = 'chruby $(cat .ruby-version); bundle exec ruby -Itest/'
+let test#ruby#rspec#executable = 'bundle exec rspec'
+let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 let g:test#preserve_screen = 1
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
