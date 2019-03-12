@@ -263,7 +263,6 @@ endif
 
 " sessions
 map <leader>ps :Prosession<space>
-let g:prosession_per_branch = 1
 
 " NERDTree
 let g:NERDTreeShowHidden = 1
