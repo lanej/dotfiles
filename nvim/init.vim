@@ -574,6 +574,11 @@ if has('autocmd')
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
+  augroup filetype_git
+    autocmd!
+    autocmd FileType git set nofoldenable
+  augroup END
+
   augroup filetype_rust
     autocmd!
     autocmd FileType rust let g:ale_fix_on_save = 1
