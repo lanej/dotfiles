@@ -680,7 +680,13 @@ map <Bslash>u :TestNearest<CR>
 " neovim specific
 let g:ruby_host_prog = '~/.gem/ruby/2.6.0/bin/neovim-ruby-host'
 
+" c	don't give |ins-completion-menu| messages.  For example,
+" "-- XXX completion (YYY)", "match 1 of 2", "The only match",
 set shortmess+=c
+" T	truncate other messages in the middle if they are too long to
+set shortmess+=T
+" a	all of the above abbreviations
+set shortmess+=a
 
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
