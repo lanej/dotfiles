@@ -97,6 +97,8 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
+" unified diffs only
+Plug 'lambdalisue/vim-unified-diff'
 " split / join code blocks
 Plug 'AndrewRadev/splitjoin.vim'
 " show git diffs in left gutter
