@@ -82,6 +82,7 @@ nnoremap t3  3gt<CR>
 nnoremap t4  4gt<CR>
 nnoremap t5  5gt<CR>
 nnoremap t6  6gt<CR>
+nnoremap bd  :bdelete<CR>
 
 " Enable filetype plugins to handle indents
 filetype plugin indent on
