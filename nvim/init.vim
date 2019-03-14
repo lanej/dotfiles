@@ -97,6 +97,8 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
+" support dotenv
+Plug 'tpope/vim-dotenv'
 " unified diffs only
 Plug 'lambdalisue/vim-unified-diff'
 " split / join code blocks
