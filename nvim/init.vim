@@ -165,6 +165,8 @@ Plug 'dhruvasagar/vim-prosession'
 " snippets
 Plug 'Shougo/neosnippet.vim'
 Plug 'Shougo/neosnippet-snippets'
+" editorconfig
+Plug 'editorconfig/editorconfig-vim'
 
 " completion via deoplate
 if has('nvim') || v:version > 8000
