@@ -314,9 +314,9 @@ endif
 noremap <leader>ac :Commands<CR>
 noremap <leader>ag :Commits<CR>
 noremap <leader>af :Files<CR>
-noremap <leader>ah :History:<CR>
+noremap <leader>; :History:<CR>
 noremap <leader>al :Lines<CR>
-noremap <leader>as :History/<CR>
+noremap <leader>/ :History/<CR>
 noremap <leader>at :Tags<CR>
 noremap <leader>l  :BLines<CR>
 noremap <leader>f  :GFiles<CR>
