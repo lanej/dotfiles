@@ -171,7 +171,12 @@ Plug 'dhruvasagar/vim-prosession'
 Plug 'Shougo/neosnippet.vim'
 Plug 'Shougo/neosnippet-snippets'
 " editorconfig
-Plug 'editorconfig/editorconfig-vim'
+Plug 'sgur/vim-editorconfig'
+
+let g:editorconfig_blacklist = {
+    \ 'filetype': ['git.*', 'fugitive'],
+    \ 'pattern': ['\.un~$']}
+
 
 " completion via deoplate
 if has('nvim') || v:version > 8000
