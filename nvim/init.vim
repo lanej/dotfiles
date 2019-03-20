@@ -256,11 +256,6 @@ let g:terraform_fmt_on_save     = 1
 let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
-" ack.vim
-nnoremap <Leader>af :Ag!<CR>
-nnoremap <Leader>aa :Ack!<space>
-map <leader>as :Ack!<space><cword><CR>
-
 " use silver-searcher if available
 if executable('ag')
   let g:ackprg = 'ag --vimgrep'
@@ -311,18 +306,21 @@ else
 endif
 
 " fzf
-noremap <leader>ac :Commands<CR>
-noremap <leader>ag :Commits<CR>
-noremap <leader>af :Files<CR>
-noremap <leader>; :History:<CR>
-noremap <leader>al :Lines<CR>
-noremap <leader>/ :History/<CR>
-noremap <leader>at :Tags<CR>
-noremap <leader>l  :BLines<CR>
-noremap <leader>f  :GFiles<CR>
-noremap <leader>gc :BCommits<CR>
-noremap <leader>gg :Buffers<CR>
-noremap <leader>t  :BTags<CR>
+nnoremap <leader>aa :Ack!<space>
+nnoremap <leader>as :Ack!<space><cword><CR>
+nnoremap <leader>az :Ag!<CR>
+noremap  <leader>ac :Commands<CR>
+noremap  <leader>af :Files<CR>
+noremap  <leader>ag :Commits<CR>
+noremap  <leader>al :Lines<CR>
+noremap  <leader>at :Tags<CR>
+noremap  <leader>f  :GFiles<CR>
+noremap  <leader>gc :BCommits<CR>
+noremap  <leader>gg :Buffers<CR>
+noremap  <leader>;  :History:<CR>
+noremap  <leader>/  :History/<CR>
+noremap  <leader>l  :BLines<CR>
+noremap  <leader>t  :BTags<CR>
 
 command! -bang -nargs=* Ag
   \ call fzf#vim#ag(<q-args>,
