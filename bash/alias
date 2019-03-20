@@ -135,7 +135,7 @@ alias pt=papertrail
 alias fucking='sudo'
 alias k='kubectl'
 
-alias rba='bundle exec rubocop -a'
+alias rba='be rubocop -a'
 
 alias curlb='curl -s'
 alias curls='curl -svo /dev/null'
