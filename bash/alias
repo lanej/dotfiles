@@ -88,18 +88,6 @@ cookbooks-bump() {
 	fi
 }
 
-f() {
-	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
-}
-
-zd() {
-	cd $(find $1 -type d | f)
-}
-
-i() {
-	nvim -R -c Lines
-}
-
 # bash
 alias restart='sudo reboot'
 alias shutdown='sudo halt'
@@ -176,3 +164,15 @@ alias arc-land="arc land --merge"
 alias vcr='be env VCR_RECORD=all rspec'
 alias port_kill='cat .env .env-override | egrep "^PORT" | egrep -o "[0-9]+$" | xargs -i{} lsof -ti :{} | xargs kill -9'
 alias reshell="exec -l $SHELL"
+
+f() {
+	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+}
+
+zd() {
+	cd $(find $1 -type d | f)
+}
+
+i() {
+	nvim -R -c Lines
+}
