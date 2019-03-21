@@ -408,6 +408,7 @@ if has("terminal")
 endif
 
 noremap <leader>cc :terminal<cr>
+nmap cp :let @" = expand("%")<cr>
 " plugin-config end
 
 " =============== UI ================
