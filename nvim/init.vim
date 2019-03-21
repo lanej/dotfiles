@@ -407,6 +407,7 @@ if has("terminal")
   tnoremap <C-o> <C-\><C-n>
 endif
 
+noremap <leader>cc :terminal<cr>
 " plugin-config end
 
 " =============== UI ================
