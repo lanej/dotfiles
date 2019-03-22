@@ -214,8 +214,9 @@ ping-interval = 10
 
 format-connected = <ramp-signal> <label-connected>
 ; format-packetloss = <animation-packetloss> <label-connected>
-label-connected =  %signal%% %essid:12:12:...%  %downspeed:8:8:...%  %upspeed:8:8:...%
-label-disconnected =    not connected
+
+label-connected = %local_ip%  %signal%% %essid:12:12:...% %{F#9FF781} %downspeed:8:8:...% %{F-} %{F#F78181} %upspeed:8:8:...% %{F-}
+label-disconnected = not connected
 label-disconnected-foreground = #66
 
 ramp-signal-0 = 
