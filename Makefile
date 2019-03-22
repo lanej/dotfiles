@@ -33,6 +33,8 @@ zsh: shell
 		git clone https://github.com/bhilburn/powerlevel9k.git ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k
 	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting pull || \
 		git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions pull || \
+		git clone https://github.com/zsh-users/zsh-autosuggestions ${HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 screen:
 	ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
