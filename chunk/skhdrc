@@ -6,6 +6,7 @@
 # ]
 
 cmd - return : /Applications/Kitty.app/Contents/MacOS/kitty --single-instance -d ~
+cmd + shift - return : /Applications/qutebrowser.app/Contents/MacOS/qutebrowser
 
 # enter fullscreen mode for the focused container
 alt - f : chunkc tiling::window --toggle fullscreen
