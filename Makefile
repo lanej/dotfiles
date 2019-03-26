@@ -49,6 +49,8 @@ vim:
 	mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	ln -fs $(DOTFILES)/vim/autoload/plug.vim ${HOME}/.local/share/nvim/site/autoload/plug.vim
 	mkdir -p $(HOME)/.local/share/nvim/plugged
+	mkdir -p $(HOME)/.local/share/nvim/min
+	ln -fs $(DOTFILES)/nvim/min.vim ${HOME}/.config/nvim/min.vim
 	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
 	gem install solargraph --conservative -v '0.18.0' || echo 'failed to install solargraph'
