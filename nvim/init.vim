@@ -745,7 +745,7 @@ endif
 let g:tern#command = ['tern']
 let g:tern#arguments = ['--persistent']
 
-if has('nvim') || v:version > 8000
+if (has('nvim') || v:version > 8000) && exists('*deoplete#initialize')
   " let g:deoplete#enable_profile = 1
   " Use deoplete.
   let g:deoplete#enable_at_startup = 1
