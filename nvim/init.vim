@@ -460,6 +460,7 @@ noremap k gk
 
 " If I don't let off the shift key quick enough
 command! Q :q
+command! Qa :qa
 command! W :w
 command! Wa :wa
 command! Wqa :wqa
