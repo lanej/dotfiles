@@ -736,9 +736,11 @@ if executable('javascript-typescript-stdio')
   let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
 endif
 
-let g:LanguageClient_loggingLevel = 'INFO'
-let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
-let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
+if $DEBUG
+  let g:LanguageClient_loggingLevel = 'DEBUG'
+  let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
+  let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
+endif
 
 let g:tern#command = ['tern']
 let g:tern#arguments = ['--persistent']
@@ -755,7 +757,9 @@ if has('nvim') || v:version > 8000
   " Use smartcase.
   let g:deoplete#enable_smart_case = 1
   " debug logging
-  call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
+  if $DEBUG
+    call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
+  endif
 
   let g:deoplete#omni#functions = {}
   let g:deoplete#omni_patterns = {}
