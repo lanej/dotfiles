@@ -122,10 +122,6 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 " fzf integration
 Plug 'junegunn/fzf.vim'
-" easy alignment
-Plug 'junegunn/vim-easy-align'
-" vim github self / team activity
-Plug 'junegunn/vim-github-dashboard'
 " yank register browser
 Plug 'junegunn/vim-peekaboo'
 " automatically update tags
