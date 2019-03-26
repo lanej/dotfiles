@@ -143,24 +143,12 @@ Plug 'scrooloose/nerdtree'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 " syntax highlighting
 Plug 'sheerun/vim-polyglot', { 'do': './build' }
-" javascript
-Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
-" typescript
-Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
 " git integration
 Plug 'tpope/vim-fugitive'
-" github integration
-Plug 'tpope/vim-rhubarb'
-" git commit browser
-Plug 'junegunn/gv.vim'
 " additional editing commands
 Plug 'tpope/vim-surround'
-" linter / fixer 
+" linter / fixer
 Plug 'w0rp/ale'
-"python completion
-Plug 'davidhalter/jedi'
-" terraform
-Plug 'hashivim/vim-terraform'
 " sessions
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
@@ -168,15 +156,31 @@ Plug 'dhruvasagar/vim-prosession'
 Plug 'Shougo/neosnippet.vim'
 Plug 'Shougo/neosnippet-snippets'
 " editorconfig
-Plug 'sgur/vim-editorconfig'
+" Plug 'sgur/vim-editorconfig'
 
 let g:editorconfig_blacklist = {
-    \ 'filetype': ['git.*', 'fugitive'],
-    \ 'pattern': ['\.un~$']}
+      \ 'filetype': ['git.*', 'fugitive'],
+      \ 'pattern': ['\.un~$']}
+
+" language plugins
+if executable('node')
+  " javascript
+  Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
+  " typescript
+  Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
+end
+"python completion
+if executable('python')
+  Plug 'davidhalter/jedi'
+endif
+" terraform
+if executable('terraform')
+  Plug 'hashivim/vim-terraform'
+end
 
 
-" completion via deoplate
-if has('nvim') || v:version > 8000
+" completion via deoplete
+if (has('nvim') || v:version > 8000) && executable('python3')
   " deoplete
   if executable('python')
     Plug 'zchee/deoplete-jedi'
@@ -215,16 +219,14 @@ if has('nvim') || v:version > 8000
     Plug 'lanej/deoplete-solargraph'
   end
 
-  if executable('python3')
-    " vim
-    if !has('nvim')
-      Plug 'Shougo/deoplete.nvim'
-      Plug 'Shougo/vimproc.vim'
-      Plug 'Shougo/vimshell.vim'
-    else
-      Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-    endif
-  end
+  " vim
+  if !has('nvim')
+    Plug 'Shougo/deoplete.nvim'
+    Plug 'Shougo/vimproc.vim'
+    Plug 'Shougo/vimshell.vim'
+  else
+    Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  endif
 endif
 
 if v:version > 704 || has('nvim')
