@@ -420,7 +420,7 @@ set number         " show line numbers
 set laststatus=2   " Prevent the ENTER prompt more frequently
 
 " contrasting visual selection
-hi Visual guifg=#ffffff guibg=DarkGrey gui=none
+hi Visual guifg=White guibg=DarkGrey gui=none
 hi Visual ctermfg=LightGray ctermbg=DarkGrey cterm=none
 
 highlight clear LineNr     " Current line number row will have same background color in relative mode
@@ -570,13 +570,12 @@ if has('autocmd')
   augroup filetype_ruby
     autocmd!
     autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    autocmd FileType ruby set wrapscan|set textwidth=120
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
   augroup END
 
   augroup filetype_gitcommit
     autocmd!
-    autocmd FileType gitcommit set colorcolumn=73|highlight ColorColumn ctermbg=DarkGrey guibg=#2E2E2E
+    autocmd FileType gitcommit set colorcolumn=73|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
@@ -588,7 +587,7 @@ if has('autocmd')
   augroup filetype_rust
     autocmd!
     autocmd FileType rust let g:ale_fix_on_save = 1
-    autocmd FileType rust set colorcolumn=100|highlight ColorColumn ctermbg=Black guibg=LightGrey
+    autocmd FileType rust set colorcolumn=100|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
     autocmd FileType rust set makeprg=cargo\ run
   augroup END
 
