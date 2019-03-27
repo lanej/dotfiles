@@ -832,11 +832,11 @@ if (has('nvim') || v:version > 8000) && &runtimepath =~ 'deoplete.nvim'
 
   let g:deoplete#sources#jedi#short_types = 1
 
-  autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
-  inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
-
   let g:deoplete#sources#rust#racer_binary=$HOME.'/bin/racer'
   let g:deoplete#sources#rust#rust_source_path=$HOME.'/lang/rust/src'
 
   call deoplete#initialize()
 endif
+
+autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
+inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
