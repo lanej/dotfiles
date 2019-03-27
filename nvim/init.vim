@@ -690,9 +690,6 @@ let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 
-" neovim specific
-let g:ruby_host_prog = '~/.gem/ruby/2.6.0/bin/neovim-ruby-host'
-
 " c	don't give |ins-completion-menu| messages.  For example,
 " "-- XXX completion (YYY)", "match 1 of 2", "The only match",
 set shortmess+=c
@@ -771,10 +768,6 @@ if (has('nvim') || v:version > 8000) && &runtimepath =~ 'deoplete.nvim'
 
   let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
   let g:deoplete#sources#ternjs#timeout = 1
-
-  " Consistent solargraph binary location
-  let g:deoplete#sources#solargraph#command = $HOME.'/.rbenv/versions/2.5.1/bin/solargraph'
-  let g:deoplete#sources#solargraph#args = ['stdio']
 
   " Whether to include the types of the completions in the result data. Default: 0
   let g:deoplete#sources#ternjs#types = 1
