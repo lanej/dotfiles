@@ -450,6 +450,7 @@ map <leader>cg :Gcd<CR>
 
 " Helpers
 map <leader>srt :!sort<CR>
+map <leader>q :!uniq<CR>
 
 " Set minimum window height
 set winheight=10
