@@ -216,7 +216,7 @@ if (has('nvim') || v:version > 8000) && executable('python3')
 
   if executable('solargraph')
     " ruby completion
-    Plug 'lanej/deoplete-solargraph'
+    Plug 'uplus/deoplete-solargraph'
   end
 
   " vim
