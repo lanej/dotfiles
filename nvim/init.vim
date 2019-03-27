@@ -402,7 +402,7 @@ nmap <silent> <C-n> <Plug>(ale_next_wrap)
 map <leader>re :Rename<space>
 
 "terminal
-if has("terminal")
+if has("nvim")
   tnoremap <C-o> <C-\><C-n>
 endif
 
