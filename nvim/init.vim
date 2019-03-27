@@ -687,7 +687,6 @@ endif
 let test#strategy = "neovim"
 let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
-let g:test#preserve_screen = 1
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 
