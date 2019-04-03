@@ -23,6 +23,7 @@ config.set('zoom.default', '110%')
 
 config.bind('<Ctrl+n>', 'completion-item-focus next', 'command')
 config.bind('<Ctrl+p>', 'completion-item-focus prev', 'command')
+config.bind(',e', 'open-editor')
 
 # Encoding to use for the editor.
 # Type: Encoding
