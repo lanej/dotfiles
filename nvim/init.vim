@@ -564,7 +564,7 @@ if has('autocmd')
     autocmd!
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
     autocmd FileType markdown let g:gutentags_enabled = 0
-
+    autocmd FileType markdown set conceallevel=0
   augroup END
 
   augroup filetype_ruby
