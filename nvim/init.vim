@@ -170,10 +170,15 @@ if executable('node')
   " typescript
   Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
 end
-"python completion
+
 if executable('python')
   Plug 'davidhalter/jedi'
 endif
+
+if executable('ruby')
+  Plug 'vim-ruby/vim-ruby'
+endif
+
 " terraform
 if executable('terraform')
   Plug 'hashivim/vim-terraform'
@@ -214,11 +219,6 @@ if (has('nvim') || v:version > 8000) && executable('python3')
   if executable('tern')
     Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
   endif
-
-  if executable('solargraph')
-    " ruby completion
-    Plug 'uplus/deoplete-solargraph'
-  end
 
   " vim
   if !has('nvim')
