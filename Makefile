@@ -53,8 +53,6 @@ vim:
 	ln -fs $(DOTFILES)/nvim/min.vim ${HOME}/.config/nvim/min.vim
 	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
-	gem install solargraph --conservative -v '0.18.0' --user || echo 'failed to install solargraph'
-	pip3 install solargraph-utils.py --user || echo 'failed to install solargraph-utils'
 	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d
 X:
 	ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
