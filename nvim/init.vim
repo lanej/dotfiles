@@ -407,7 +407,7 @@ if has("nvim")
   tnoremap <C-o> <C-\><C-n>
 endif
 
-noremap <leader>cc :terminal<cr>
+noremap <leader>sh :terminal<cr>
 nmap cp :let @" = expand("%")<cr>
 " plugin-config end
 
