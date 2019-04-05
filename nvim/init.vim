@@ -544,6 +544,7 @@ let g:go_highlight_methods = 1
 let g:go_highlight_operators = 1
 let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
+let g:go_highlight_variable_declarations = 1
 " let g:go_list_type = 'quickfix'
 let g:go_snippet_engine = "neosnippet"
 
@@ -584,6 +585,11 @@ if has('autocmd')
   augroup filetype_git
     autocmd!
     autocmd FileType git set nofoldenable
+  augroup END
+
+  augroup filetype_go
+    autocmd!
+    autocmd FileType go let g:ale_fix_on_save = 1
   augroup END
 
   augroup filetype_rust
@@ -660,14 +666,14 @@ if has('autocmd')
     autocmd FileType go nmap <leader>b  <Plug>(go-build)
     autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
-    autocmd FileType go nmap <Leader>gi :GoImports<CR>
-    autocmd FileType go nmap <Leader>gr :GoRename<CR>
-    autocmd FileType go nmap <Leader>gd :GoDef<CR>
-    autocmd FileType go nmap <Leader>gp :GoDefPop<CR>
-    autocmd FileType go nmap <Leader>gs :GoCallers<CR>
-    autocmd FileType go nmap <Leader>ga :GoReferrers<CR>
-    autocmd FileType go nmap <Leader>ge :GoCallees<CR>
-    autocmd FileType go map <Bslash>t :TestFile -v<CR>
+    autocmd FileType go nmap <leader>gi :GoImports<CR>
+    autocmd FileType go nmap <leader>gr :GoRename<CR>
+    autocmd FileType go nmap <leader>gd :GoDef<CR>
+    autocmd FileType go nmap <leader>gp :GoDefPop<CR>
+    autocmd FileType go nmap <leader>gs :GoCallers<CR>
+    autocmd FileType go nmap <leader>ga :GoReferrers<CR>
+    autocmd FileType go nmap <leader>ge :GoCallees<CR>
+    autocmd FileType go nmap <leader>gt :TestFile -v<CR>
 
   augroup END
 
@@ -835,6 +841,10 @@ if (has('nvim') || v:version > 8000) && &runtimepath =~ 'deoplete.nvim'
 
   let g:deoplete#sources#rust#racer_binary=$HOME.'/bin/racer'
   let g:deoplete#sources#rust#rust_source_path=$HOME.'/lang/rust/src'
+
+  let g:deoplete#sources#go#auto_goos = 1
+  let g:deoplete#sources#go#builtin_objects = 1
+  let g:deoplete#sources#go#unimported_packages = 1
 
   call deoplete#initialize()
 endif
