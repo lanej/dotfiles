@@ -98,6 +98,7 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
+Plug 'junegunn/vim-easy-align'
 " support dotenv
 Plug 'tpope/vim-dotenv'
 " unified diffs only
