@@ -641,11 +641,6 @@ if has('autocmd')
     autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
-  augroup filetype_python
-    autocmd!
-    autocmd FileType python set tabstop=8|set shiftwidth=2|set expandtab
-  augroup END
-
   augroup filetype_c
     autocmd!
     " map to <Leader>cf in C++ code
@@ -694,6 +689,7 @@ endif
 let test#strategy = "neovim"
 let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
+let test#python#pytest#options = '-s'
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 
