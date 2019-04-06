@@ -253,7 +253,7 @@ map <leader>pu :PlugUpdate<CR>
 " vim-polyglot
 let g:vim_markdown_conceal = 0
 " ignore plugins that are installed directly
-let g:polyglot_disabled = ['go', 'ruby']
+let g:polyglot_disabled = ['ruby']
 
 " gutentag
 let g:gutentags_enabled = 1
@@ -534,26 +534,28 @@ set undofile " Maintain undo history between sessions
 set undodir=~/.cache/nvim/undo
 
 " vim-go config
-let g:go_addtags_transform = "snakecase"
-let g:go_auto_sameids = 1
-let g:go_auto_type_info = 0 " often overrides command window
-let g:go_decls_mode = 'fzf'
-let g:go_fmt_command = 'goimports'
-let g:go_fmt_fail_silently = 1
-let g:go_highlight_build_constraints = 1
-let g:go_highlight_extra_types = 1
-let g:go_highlight_fields = 1
-let g:go_highlight_functions = 1
-let g:go_highlight_function_calls = 1
-let g:go_highlight_generate_tags = 1
-let g:go_highlight_methods = 1
-let g:go_highlight_operators = 1
-let g:go_highlight_structs = 1
-let g:go_highlight_types = 1
-let g:go_highlight_variable_declarations = 1
-let g:go_highlight_variable_assignments = 1
-" let g:go_list_type = 'quickfix'
-let g:go_snippet_engine = "neosnippet"
+if &runtimepath =~ 'vim-go'
+  let g:go_addtags_transform = "snakecase"
+  let g:go_auto_sameids = 1
+  let g:go_auto_type_info = 0 " often overrides command window
+  let g:go_decls_mode = 'fzf'
+  let g:go_fmt_command = 'goimports'
+  let g:go_fmt_fail_silently = 1
+  let g:go_highlight_build_constraints = 1
+  let g:go_highlight_extra_types = 1
+  let g:go_highlight_fields = 1
+  let g:go_highlight_functions = 1
+  let g:go_highlight_function_calls = 1
+  let g:go_highlight_generate_tags = 1
+  let g:go_highlight_methods = 1
+  let g:go_highlight_operators = 1
+  let g:go_highlight_structs = 1
+  let g:go_highlight_types = 1
+  let g:go_highlight_variable_declarations = 1
+  let g:go_highlight_variable_assignments = 1
+  " let g:go_list_type = 'quickfix'
+  let g:go_snippet_engine = "neosnippet"
+end
 
 if has('autocmd')
   augroup FiletypeGroup
