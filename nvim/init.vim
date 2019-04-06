@@ -575,6 +575,8 @@ if has('autocmd')
   augroup filetype_ruby
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
+    autocmd BufNewFile,BufRead map <Bslash>f :TestFile --fail-fast<CR>
+    autocmd BufNewFile,BufRead map <Bslash>n :TestFile -n<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -693,6 +695,7 @@ let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 let test#python#pytest#options = '-s'
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
+map <Bslash>r :TestLast<CR>
 
 " c	don't give |ins-completion-menu| messages.  For example,
 " "-- XXX completion (YYY)", "match 1 of 2", "The only match",
