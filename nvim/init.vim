@@ -116,7 +116,7 @@ Plug 'danro/rename.vim'
 " quick in-buffer navigation
 Plug 'easymotion/vim-easymotion'
 " colorscheme
-Plug 'jacoborus/tender.vim'
+Plug 'lanej/tender.vim'
 " test integration
 Plug 'janko-m/vim-test'
 " fzf install, fast fuzzy finder
