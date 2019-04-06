@@ -574,7 +574,6 @@ if has('autocmd')
 
   augroup filetype_ruby
     autocmd!
-    autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
   augroup END
 
