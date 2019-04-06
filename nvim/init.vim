@@ -145,6 +145,7 @@ Plug 'Xuyuanp/nerdtree-git-plugin'
 " syntax highlighting
 Plug 'sheerun/vim-polyglot', { 'do': './build' }
 " git integration
+Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-fugitive'
 " additional editing commands
 Plug 'tpope/vim-surround'
@@ -347,6 +348,7 @@ let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %
 " fugitive
 noremap <leader>gb :Gblame<CR>
 noremap <leader>go :Gbrowse<CR>
+autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " ALE config
 let g:ale_completion_enabled = 1
