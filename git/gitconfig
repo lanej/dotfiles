@@ -78,7 +78,6 @@
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
-	commentChar = '
 	editor = $EDITOR
 	pager = diff-so-fancy | less --tabs=4 -RFX
 [apply]
