@@ -536,7 +536,7 @@ set undodir=~/.cache/nvim/undo
 " vim-go config
 if &runtimepath =~ 'vim-go'
   let g:go_addtags_transform = "snakecase"
-  let g:go_auto_sameids = 1
+  let g:go_auto_sameids = 0
   let g:go_auto_type_info = 0 " often overrides command window
   let g:go_decls_mode = 'fzf'
   let g:go_fmt_command = 'goimports'
