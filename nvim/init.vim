@@ -582,8 +582,8 @@ if has('autocmd')
   augroup filetype_ruby
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd BufNewFile,BufRead map <Bslash>f :TestFile --fail-fast<CR>
-    autocmd BufNewFile,BufRead map <Bslash>n :TestFile -n<CR>
+    autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
+    autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
   augroup END
 
   augroup filetype_gitcommit
