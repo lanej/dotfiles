@@ -18,3 +18,5 @@ Gemfile.local.lock
 *.auto.tfvars
 .ctags.d/
 .ignore
+tags.temp
+tags.lock
