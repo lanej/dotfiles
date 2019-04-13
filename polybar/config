@@ -108,8 +108,6 @@ label-active-background = ${colors.info}
 
 label-occupied = 
 label-occupied-padding = 1
-label-occupied-foreground = ${colors.foreground}
-label-occupied-background = ${colors.debug}
 label-empty = 
 label-empty-padding = 1
 
