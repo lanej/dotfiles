@@ -173,16 +173,16 @@ if executable('node')
 end
 
 if executable('python')
-  Plug 'davidhalter/jedi'
+  Plug 'davidhalter/jedi', { 'for': 'python' }
 endif
 
 if executable('ruby')
-  Plug 'vim-ruby/vim-ruby'
+  Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
 endif
 
 " terraform
 if executable('terraform')
-  Plug 'hashivim/vim-terraform'
+  Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
 end
 
 
@@ -190,7 +190,7 @@ end
 if (has('nvim') || v:version > 8000) && executable('python3')
   " deoplete
   if executable('python')
-    Plug 'zchee/deoplete-jedi'
+    Plug 'zchee/deoplete-jedi', { 'for': 'python' }
   endif
 
   if executable('clang')
@@ -199,26 +199,26 @@ if (has('nvim') || v:version > 8000) && executable('python3')
 
   if executable('go')
     " go completion
-    Plug 'zchee/deoplete-go', { 'do': 'make' }
-    Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh' }
+    Plug 'zchee/deoplete-go', { 'do': 'make', 'for': 'go' }
+    Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh', 'for': 'go'}
 
     " additional go support
-    Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries' }
+    Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries', 'for': 'go'}
 
     " go debugger
-    Plug 'sebdah/vim-delve'
+    Plug 'sebdah/vim-delve', { 'for': 'go' }
   endif
 
   if executable('rustc')
-    Plug 'sebastianmarkow/deoplete-rust'
+    Plug 'sebastianmarkow/deoplete-rust', { 'for': 'rust' }
   endif
 
   if executable('javac')
-    Plug 'artur-shaik/vim-javacomplete2'
+    Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
   endif
 
   if executable('tern')
-    Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+    Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern', 'for': 'javascript' }
   endif
 
   " vim
