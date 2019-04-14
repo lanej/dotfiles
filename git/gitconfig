@@ -76,6 +76,7 @@
 	bl = branch --list
 	cob = co -B
 	bp = !git recent | fzf | awk '{print $4}' | xargs git co
+	sa = !git diff --name-only | fzf -m --reverse --height 30% --preview \"git diff --color {}\" --preview-window=right:70% | xargs git add
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
