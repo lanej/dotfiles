@@ -9,9 +9,6 @@ DEFAULT_USER='jlane'
 # Comment this out to disable bi-weekly auto-update checks
 DISABLE_AUTO_UPDATE="true"
 
-HIST_FIND_NO_DUPS="true"
-HIST_IGNORE_ALL_DUPS="true"
-HIST_EXPIRE_DUPS_FIRST="true"
 HISTSIZE=99999999
 SAVEHIST=99999999
 
@@ -54,6 +51,10 @@ ZSH_AUTOSUGGEST_USE_ASYNC=1
 setopt inc_append_history
 setopt correct
 setopt extended_history
+setopt hist_find_no_dups
+setopt hist_ignore_all_dups
+setopt hist_expire_dups_first
+setopt hist_ignore_space
 
 unsetopt nomatch
 unsetopt share_history
