@@ -170,14 +170,13 @@ if command -v bat >/dev/null; then
 	alias cat='bat'
 fi
 
-
 f() {
-	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
 zd() {
   if command -v fd >/dev/null; then
-    target=$(fd --hidden --type d | f) || return
+    target=$(fd --type d --hidden --follow --exclude .git| fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview 'tree {}') || return
     cd $(echo "$target")
   else
     cd $(find $1 -type d | f)

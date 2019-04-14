@@ -89,10 +89,8 @@ if [ -f ~/.fzf.zsh ]; then
 	source ${HOME}/.z.sh
 
 	if command -v fd >/dev/null; then
-		export FZF_DEFAULT_COMMAND='fd --type f'
+		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 	fi
-
-	export FZF_DEFAULT_OPTS='--height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up'
 
 	zkp() {
 		local pid
