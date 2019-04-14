@@ -162,7 +162,7 @@ alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' |
 alias arc-update="arc-revision | xargs arc diff --update"
 alias arc-land="arc land --merge"
 alias vcr='be env VCR_RECORD=all rspec'
-alias port_kill='cat .env .env-override | egrep "^PORT" | egrep -o "[0-9]+$" | xargs -i{} lsof -ti :{} | xargs kill -9'
+alias port_kill='cat .env* | egrep "^PORT" | egrep -o "[0-9]+$" | xargs -i{} lsof -ti :{} | xargs kill -9'
 alias reshell="exec -l $SHELL"
 
 f() {
