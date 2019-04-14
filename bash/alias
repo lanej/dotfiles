@@ -164,6 +164,12 @@ alias arc-land="arc land --merge"
 alias vcr='be env VCR_RECORD=all rspec'
 alias port_kill='cat .env* | egrep "^PORT" | egrep -o "[0-9]+$" | xargs -i{} lsof -ti :{} | xargs kill -9'
 alias reshell="exec -l $SHELL"
+alias bat='bat -p --theme "Monokai Extended Origin"'
+
+if command -v bat >/dev/null; then
+	alias cat='bat'
+fi
+
 
 f() {
 	fzf --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
