@@ -700,6 +700,7 @@ let test#strategy = "neovim"
 let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 let test#python#pytest#options = '-s'
+let test#rust#cargotest#options = '-- --nocapture'
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 map <Bslash>r :TestLast<CR>
