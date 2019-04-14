@@ -176,7 +176,12 @@ f() {
 }
 
 zd() {
-	cd $(find $1 -type d | f)
+  if command -v fd >/dev/null; then
+    target=$(fd --type d | f) || return
+    cd $(echo "$target")
+  else
+    cd $(find $1 -type d | f)
+  fi
 }
 
 i() {
