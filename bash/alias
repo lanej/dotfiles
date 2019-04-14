@@ -177,7 +177,7 @@ f() {
 
 zd() {
   if command -v fd >/dev/null; then
-    target=$(fd --type d | f) || return
+    target=$(fd --hidden --type d | f) || return
     cd $(echo "$target")
   else
     cd $(find $1 -type d | f)
