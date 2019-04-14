@@ -158,7 +158,7 @@ Plug 'dhruvasagar/vim-prosession'
 Plug 'Shougo/neosnippet.vim'
 Plug 'Shougo/neosnippet-snippets'
 " editorconfig
-" Plug 'sgur/vim-editorconfig'
+Plug 'sgur/vim-editorconfig'
 
 let g:editorconfig_blacklist = {
       \ 'filetype': ['git.*', 'fugitive'],
