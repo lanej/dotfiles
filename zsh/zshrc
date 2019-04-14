@@ -92,6 +92,8 @@ if [ -f ~/.fzf.zsh ]; then
 		export FZF_DEFAULT_COMMAND='fd --type f'
 	fi
 
+	export FZF_DEFAULT_OPTS='--height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up'
+
 	zkp() {
 		local pid
 		pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
