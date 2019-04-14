@@ -457,9 +457,6 @@ map <leader>cg :Gcd<CR>
 map <leader>srt :!sort<CR>
 map <leader>q :!uniq<CR>
 
-" Set minimum window height
-set winheight=10
-
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
 noremap k gk
