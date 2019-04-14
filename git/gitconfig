@@ -75,7 +75,8 @@
 	blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
 	bl = branch --list
 	cob = co -B
-	bp = !git recent | fzf | awk '{print $4}' | xargs git co
+	bp = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
+	bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
 	sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=down:80% | xargs git add
 [core]
 	excludesfile = ~/.gitignore
