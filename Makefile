@@ -12,8 +12,7 @@ fish:
 shell:
 	ln -fs ${DOTFILES}/env ${HOME}/.env
 	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
-	ln -fs ${DOTFILES}/bash/alias ${HOME}/.alias
-	ln -fns $(DOTFILES)/etc/ ${HOME}/etc
+	ln -fs ${DOTFILES}/sh/alias ${HOME}/.alias
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
 	mkdir -p ${HOME}/.local/share/z
 	ln -fs $(DOTFILES)/share/z.sh ${HOME}/.local/share/z/z.sh
@@ -23,6 +22,7 @@ bash: shell
 	ln -fs $(DOTFILES)/bash/bashenv ${HOME}/.bashenv
 	ln -fs $(DOTFILES)/bash/bashrc ${HOME}/.bashrc
 	ln -fs $(DOTFILES)/bash/bashprofile ${HOME}/.bash_profile
+	ln -fs ${HOME}/.alias ${HOME}/.bashalias
 zsh: shell
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
