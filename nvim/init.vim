@@ -43,6 +43,7 @@ set title                      " Set the title in xterm
 set ttimeout
 set ttimeoutlen=100
 set visualbell                 " No sounds
+set equalalways                " Maintain consistent window sizes
 
 if $OS != "Linux"
   set termguicolors
