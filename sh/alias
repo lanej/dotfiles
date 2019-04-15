@@ -2,90 +2,89 @@
 
 fixssh() {
   for key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
-    if (tmux show-environment 2>/dev/null | grep "^${key}" > /dev/null); then
-      value=`tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//"`
+    if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
+      value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
       export ${key}="${value}"
     fi
   done
 }
 
 myip() {
-	echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+  echo $(dig +short myip.opendns.com @resolver1.opendns.com)
 }
 
 minitest() {
-	if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
-		gem install testrbl --no-document -qq
-	fi
+  if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
+    gem install testrbl --no-document -qq
+  fi
 
-	testrbl "$@"
+  testrbl "$@"
 }
 
 git-rebase-style() {
-	git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
+  git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
 }
 
-
 current-version() {
-	git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
+  git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
 }
 
 current-semver() {
-	git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
+  git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
 }
 
 git-release() {
-	git fetch origin -q
-	local current_release=$(current-version)
-	echo "Current release: v$current_release"
-	local next_release=v$(($current_release + 1))
-	echo "Releasing: $next_release"
-	git tag $next_release && git push origin $next_release
-	# tag_push=$?
-	# if [ $tag_push -ne 0 ]; then
-	#         read -p "Force push? " -n 1 -r
-	#         echo # move to new line
-	#         if [[ $REPLY =~ ^[Yy]$ ]]; then
-	#                 git push -f origin $next_release
-	#         else
-	#                 exit 1
-	#         fi
-	# fi
+  git fetch origin -q
+  local current_release=$(current-version)
+  echo "Current release: v$current_release"
+  local next_release=v$(($current_release + 1))
+  echo "Releasing: $next_release"
+  git tag $next_release && git push origin $next_release
+  # tag_push=$?
+  # if [ $tag_push -ne 0 ]; then
+  #         read -p "Force push? " -n 1 -r
+  #         echo # move to new line
+  #         if [[ $REPLY =~ ^[Yy]$ ]]; then
+  #                 git push -f origin $next_release
+  #         else
+  #                 exit 1
+  #         fi
+  # fi
 
-	if [ -f .ruby-version ]; then
-		echo "deploy with:\nREVISION=$next_release bundle exec cap production deploy"
-	fi
+  if [ -f .ruby-version ]; then
+    echo "deploy with:\nREVISION=$next_release bundle exec cap production deploy"
+  fi
 }
 
 cookbooks-version() {
-	egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2
+  egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2
 }
 
 cookbooks-release() {
-	local version=$(cookbooks-version)
-	local tag="v$version"
-	echo "Releasing: $tag"
-	sleep 1
-	git tag $tag && git push origin $tag
+  local version=$(cookbooks-version)
+  local tag="v$version"
+  echo "Releasing: $tag"
+  sleep 1
+  git tag $tag && git push origin $tag
 }
 
 next-version() {
-	ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
+  ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
 }
 
 cookbooks-bump() {
-	local version=$(cookbooks-version)
-	local next_version=$(next-version $version $@)
-	echo "Bumping to $next_version"
-	sed -E -i '' "s/^version([[:blank:]]+)'[0-9\.]+'/version\1'$next_version'/" metadata.rb
-	local actual_version=$(cookbooks-version)
+  local version=$(cookbooks-version)
+  local next_version=$(next-version $version $@)
+  echo "Bumping to $next_version"
+  sed -E -i '' "s/^version([[:blank:]]+)'[0-9\.]+'/version\1'$next_version'/" metadata.rb
+  local actual_version=$(cookbooks-version)
 
-	if [ "$actual_version" = "$next_version" ]; then
-		git add metadata.rb && \
-			git commit -m "chore(version): $actual_version"
-	else
-		echo "Failed to bump cookbooks version. Now " $actual_version
-	fi
+  if [ "$actual_version" = "$next_version" ]; then
+    git add metadata.rb &&
+      git commit -m "chore(version): $actual_version"
+  else
+    echo "Failed to bump cookbooks version. Now " $actual_version
+  fi
 }
 
 # bash
@@ -132,9 +131,9 @@ alias curl-ttfb='curls -w "Connect: %{time_connect} TTFB: %{time_starttransfer} 
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
-	alias ls='ls -p --color=auto'
+  alias ls='ls -p --color=auto'
 elif [[ $OSTYPE =~ 'darwin' ]]; then
-	alias ls='ls -Gp'
+  alias ls='ls -Gp'
 fi
 
 alias cpr='copy -r'
@@ -151,8 +150,8 @@ alias gpro='hub pull-request -o'
 alias lt='tree -L 1 -C'
 
 if hash xsel 2>/dev/null; then
-	alias pbcopy='xsel --clipboard --input'
-	alias pbpaste='xsel --clipboard --output'
+  alias pbcopy='xsel --clipboard --input'
+  alias pbpaste='xsel --clipboard --output'
 fi
 alias to_html="w3m -dump -T text/html"
 alias mytop="vtop -t monokai"
@@ -167,16 +166,16 @@ alias reshell="exec -l $SHELL"
 alias bat='bat -p --theme "Monokai Extended Origin"'
 
 if command -v bat >/dev/null; then
-	alias cat='bat'
+  alias cat='bat'
 fi
 
 f() {
-	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+  fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
 zd() {
   if command -v fd >/dev/null; then
-    target=$(fd --type d --hidden --follow --exclude .git| fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview 'tree {}') || return
+    target=$(fd --type d --hidden --follow --exclude .git | fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview 'tree {}') || return
     cd $(echo "$target")
   else
     cd $(find $1 -type d | f)
@@ -184,5 +183,5 @@ zd() {
 }
 
 i() {
-	nvim -R -c Lines
+  nvim -R -c Lines
 }
