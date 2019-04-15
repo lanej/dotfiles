@@ -652,6 +652,7 @@ if has('autocmd')
   augroup filetype_sh
     autocmd!
     autocmd FileType sh let g:ale_fix_on_save = 1
+    autocmd BufNewFile,BufRead .alias set filetype=sh
   augroup END
 
   augroup filetype_c
