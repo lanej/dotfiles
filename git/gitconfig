@@ -79,6 +79,7 @@
 	bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
 	sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=down:80% | xargs git add
 	cpa = cherry-pick --quit
+	rp = reset -p
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
