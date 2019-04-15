@@ -27,6 +27,9 @@ zsh: shell
 	ln -fs $(DOTFILES)/zsh/zshrc ${HOME}/.zshrc
 	ln -fs $(DOTFILES)/zsh/zlogout ${HOME}/.zlogout
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
+	mkdir -p ${HOME}/.config/zsh/
+	ln -fs $(DOTFILES)/zsh/fzf.zsh ${HOME}/.config/zsh/fzf.zsh
+	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	git -C ${HOME}/.oh-my-zsh pull || \
 		git clone https://github.com/robbyrussell/oh-my-zsh.git ${HOME}/.oh-my-zsh
 	git -C ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k pull || \
