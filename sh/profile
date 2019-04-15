@@ -1,2 +1,8 @@
-#!/usr/bin/env sh
+#!/bin/sh
 export XDG_CONFIG_HOME="$HOME/.config"
+
+if command -v fzf >/dev/null; then
+  if command -v fd >/dev/null; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+  fi
+fi

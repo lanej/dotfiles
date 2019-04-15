@@ -649,6 +649,11 @@ if has('autocmd')
     autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
+  augroup filetype_sh
+    autocmd!
+    autocmd FileType sh let g:ale_fix_on_save = 1
+  augroup END
+
   augroup filetype_c
     autocmd!
     " map to <Leader>cf in C++ code
