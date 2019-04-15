@@ -92,11 +92,12 @@ bspwm:
 kitty:
 	mkdir -p ${HOME}/.config/kitty
 	ln -fs $(DOTFILES)/kitty/kittyconf ${HOME}/.config/kitty/kitty.conf
-qute:
 ifeq (${OS},OSX)
+qute:
 	mkdir -p ${HOME}/.qutebrowser
 	ln -fs $(DOTFILES)/qute/config.py ${HOME}/.qutebrowser/config.py
 else
+qute:
 	mkdir -p ${HOME}/.config/qutebrowser
 	ln -fs $(DOTFILES)/qute/config.py ${HOME}/.config/qutebrowser/config.py
 endif
