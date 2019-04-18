@@ -572,6 +572,7 @@ if has('autocmd')
 
   augroup filetype_markdown
     autocmd!
+    autocmd BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
     autocmd FileType markdown let g:gutentags_enabled = 0
     autocmd FileType markdown set conceallevel=0
