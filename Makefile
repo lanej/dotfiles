@@ -90,6 +90,7 @@ oni:
 bspwm:
 	mkdir -p ${HOME}/.config/bspwm
 	mkdir -p ${HOME}/.config/sxhkd
+	touch ${HOME}/.xsession
 	ln -fs $(DOTFILES)/bspwm/bspwmrc ${HOME}/.config/bspwm/bspwmrc
 	ln -fs $(DOTFILES)/bspwm/sxhkdrc ${HOME}/.config/sxhkd/sxhkdrc
 kitty:
