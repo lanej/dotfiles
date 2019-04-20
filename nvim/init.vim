@@ -354,7 +354,7 @@ noremap <leader>go :Gbrowse<CR>
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " ALE config
-let g:ale_completion_enabled = 1
+let g:ale_completion_enabled = 0
 let g:ale_echo_cursor = 1
 let g:ale_echo_msg_error_str = 'Error'
 let g:ale_echo_msg_format = '%s'
