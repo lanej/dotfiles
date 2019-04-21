@@ -42,7 +42,8 @@ set tabpagemax=15              " Only show 15 tabs
 set title                      " Set the title in xterm
 set ttimeout
 set ttimeoutlen=100
-set visualbell                 " No sounds
+set novb
+set noeb
 set equalalways                " Maintain consistent window sizes
 
 if $OS != "Linux"
