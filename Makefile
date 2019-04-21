@@ -54,6 +54,7 @@ vim:
 	mkdir -p $(HOME)/.local/share/nvim/plugged
 	mkdir -p $(HOME)/.local/share/nvim/min
 	ln -fs $(DOTFILES)/nvim/min.vim ${HOME}/.config/nvim/min.vim
+	ln -fs $(DOTFILES)/nvim/coc-settings.json ${HOME}/.config/nvim/coc-settings.json
 	nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
 	vim -E -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
 	ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d
