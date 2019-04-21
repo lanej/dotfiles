@@ -32,7 +32,7 @@ set nocursorline               " Highlight current line !!! disabled, runs slow
 set number                     " Line numbers are good
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
 set secure
-set shell=$SHELL
+set shell=/bin/sh
 set showcmd                    " Show incomplete cmds down the bottom
 set showmatch                  " Show matching brackets when text indicator is over them
 set showmode                   " Show current mode down the bottom
@@ -161,6 +161,7 @@ Plug 'Shougo/neosnippet.vim'
 Plug 'Shougo/neosnippet-snippets'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
+Plug 'neoclide/coc.nvim', {'do': { -> coc#util#install()}}
 
 let g:editorconfig_blacklist = {
       \ 'filetype': ['git.*', 'fugitive'],
@@ -187,51 +188,7 @@ if executable('terraform')
   Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
 end
 
-
-" completion via deoplete
-if (has('nvim') || v:version > 8000) && executable('python3')
-  " deoplete
-  if executable('python')
-    Plug 'zchee/deoplete-jedi', { 'for': 'python' }
-  endif
-
-  if executable('clang')
-    Plug 'zchee/deoplete-clang'
-  endif
-
-  if executable('go')
-    " go completion
-    Plug 'zchee/deoplete-go', { 'do': 'make', 'for': 'go' }
-    Plug 'mdempsky/gocode', { 'rtp': 'nvim', 'do': '~/.local/share/nvim/plugged/gocode/nvim/symlink.sh', 'for': 'go'}
-
-    " additional go support
-    Plug 'fatih/vim-go', { 'do': ':GoInstallBinaries', 'for': 'go'}
-
-    " go debugger
-    Plug 'sebdah/vim-delve', { 'for': 'go' }
-  endif
-
-  if executable('rustc')
-    Plug 'sebastianmarkow/deoplete-rust', { 'for': 'rust' }
-  endif
-
-  if executable('javac')
-    Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
-  endif
-
-  if executable('tern')
-    Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern', 'for': 'javascript' }
-  endif
-
-  " vim
-  if !has('nvim')
-    Plug 'Shougo/deoplete.nvim'
-    Plug 'Shougo/vimproc.vim'
-    Plug 'Shougo/vimshell.vim'
-  else
-    Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  endif
-endif
+Plug 'vim-scripts/rubycomplete.vim'
 
 if v:version > 704 || has('nvim')
   " sudo write
@@ -295,20 +252,23 @@ let g:NERDTrimTrailingWhitespace = 1
 let g:NERDDefaultAlign = 'left'
 
 " airline
-
-let g:airline#extensions#ale#enabled = 1
+" if you want to disable auto detect, comment out those two lines
+"let g:airline#extensions#disable_rtp_load = 1
+" let g:airline_extensions = ['branch', 'hunks', 'coc']
+let g:airline_section_error = '%{airline#util#wrap(airline#extensions#coc#get_error(),0)}'
+let g:airline_section_warning = '%{airline#util#wrap(airline#extensions#coc#get_warning(),0)}'
 let g:airline#extensions#branch#enabled = 1
-let g:airline#extensions#bufferline#enabled = 0
+let g:airline#extensions#bufferline#enabled = 1
 let g:airline#extensions#tabline#buffer_nr_show = 0
-let g:airline#extensions#tabline#enabled = 0
-let g:airline#extensions#tabline#formatter = 'jsformatter'
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#formatter = 'unique_tail_improved'
 let g:airline#extensions#tabline#tab_nr_type = 2
 let g:airline#extensions#whitespace#enabled = 0
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 
 " git-gutter
-set updatetime=100
+set updatetime=300
 if exists('&signcolumn')  " Vim 7.4.2201
   set signcolumn=yes
 else
@@ -353,57 +313,6 @@ let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %
 noremap <leader>gb :Gblame<CR>
 noremap <leader>go :Gbrowse<CR>
 autocmd BufReadPost fugitive://* set bufhidden=delete
-
-" ALE config
-let g:ale_completion_enabled = 0
-let g:ale_echo_cursor = 1
-let g:ale_echo_msg_error_str = 'Error'
-let g:ale_echo_msg_format = '%s'
-let g:ale_echo_msg_warning_str = 'Warning'
-let g:ale_emit_conflict_warnings = 1
-let g:ale_enabled = 1
-let g:ale_fix_on_save = 0
-let g:ale_fixers = {
-      \ '*': ['remove_trailing_lines', 'trim_whitespace'],
-      \ 'go': [ 'gofmt'],
-      \ 'java': ['google_java_format'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javscript': ['eslint'],
-      \ 'json': 'prettier',
-      \ 'jsx': ['eslint'],
-      \ 'markdown': ['prettier'],
-      \ 'python': ['autopep8'],
-      \ 'ruby': [ 'rufo', 'rubocop' ],
-      \ 'rust': [ 'rustfmt' ],
-      \ 'sh': ['shfmt'],
-    \ }
-
-let g:ale_javascript_eslint_executable = 'npm run list eslint'
-let g:ale_linter_aliases = {'jsx': 'css'}
-let g:ale_go_gometalinter_options = '--tests'
-let g:ale_keep_list_window_open = 0
-let g:ale_lint_delay = 200
-let g:ale_lint_on_enter = 1
-let g:ale_lint_on_save = 1
-let g:ale_lint_on_text_changed = 'always'
-let g:ale_open_list = 0
-let g:ale_ruby_bundler_executable = 'bundle'
-let g:ale_ruby_rubocop_executable = 'bundle'
-let g:ale_ruby_rufo_executable = 'bundle'
-let g:ale_set_highlights = 1
-let g:ale_set_loclist = 1
-let g:ale_set_quickfix = 0
-let g:ale_set_signs = 1
-let g:ale_sign_column_always = 0
-let g:ale_sign_error = '>>'
-let g:ale_sign_offset = 1000000
-let g:ale_sign_warning = '--'
-let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
-let g:ale_warn_about_trailing_whitespace = 0
-
-map <leader>d :ALEFix<CR>
-nmap <silent> <C-p> <Plug>(ale_previous_wrap)
-nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
 " rename
 map <leader>re :Rename<space>
@@ -537,7 +446,7 @@ if &runtimepath =~ 'vim-go'
   let g:go_addtags_transform = "snakecase"
   let g:go_auto_sameids = 0
   let g:go_auto_type_info = 0 " often overrides command window
-  let g:go_decls_mode = 'fzf'
+  let g:go_decls_mode = 'gopls'
   let g:go_fmt_command = 'goimports'
   let g:go_fmt_fail_silently = 1
   let g:go_highlight_build_constraints = 1
@@ -731,137 +640,84 @@ nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
-" For conceal markers.
 if has('conceal')
   set conceallevel=2 concealcursor=niv
 endif
 
-" Plugin key-mappings.
-" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
-imap <C-k> <Plug>(neosnippet_expand_or_jump)
-smap <C-k> <Plug>(neosnippet_expand_or_jump)
-xmap <C-k> <Plug>(neosnippet_expand_target)
-let g:neosnippet#enable_completed_snippet = 1
+" coc
+nmap <silent> gd <Plug>(coc-definition)
+nmap <silent> gy <Plug>(coc-type-definition)
+nmap <silent> gi <Plug>(coc-implementation)
+nmap <silent> gr <Plug>(coc-references)
+" Highlight symbol under cursor on CursorHold
+autocmd CursorHold * silent call CocActionAsync('highlight')
 
-" Automatically start language servers.
-let g:LanguageClient_autoStart = 1
+" Remap for rename current word
+nmap <leader>rn <Plug>(coc-rename)
 
-let g:LanguageClient_serverCommands = {}
+" Remap for format selected region
+vmap <leader>d  <Plug>(coc-format-selected)
+nmap <leader>d  <Plug>(coc-format-selected)
 
-" Minimal LSP configuration for JavaScript
-if executable('javascript-typescript-stdio')
-  let g:LanguageClient_serverCommands.javascript = ['javascript-typescript-stdio']
-endif
+" Use K to show documentation in preview window
+nnoremap <silent> K :call <SID>show_documentation()<CR>
 
-if $DEBUG
-  let g:LanguageClient_loggingLevel = 'DEBUG'
-  let g:LanguageClient_loggingFile  = $HOME.'/LanguageClient.log'
-  let g:LanguageClient_serverStderr = $HOME.'/LanguageServer.log'
-endif
-
-let g:tern#command = ['tern']
-let g:tern#arguments = ['--persistent']
-
-if (has('nvim') || v:version > 8000) && &runtimepath =~ 'deoplete.nvim'
-  " let g:deoplete#enable_profile = 1
-  " Use deoplete.
-  let g:deoplete#enable_at_startup = 1
-
-  " Use smartcase.
-  let g:deoplete#enable_smart_case = 1
-  " debug logging
-  if $DEBUG
-    call deoplete#enable_logging('DEBUG', '/tmp/deoplete.log')
+function! s:show_documentation()
+  if &filetype == 'vim'
+    execute 'h '.expand('<cword>')
+  else
+    call CocAction('doHover')
   endif
+endfunction
 
-  let g:deoplete#omni#functions = {}
-  let g:deoplete#omni_patterns = {}
-  let g:deoplete#sources = {}
+" Remap for rename current word
+nmap <leader>rn <Plug>(coc-rename)
 
-  let g:deoplete#omni#functions.javascript = [
-        \ 'tern#Complete',
-        \ 'jspc#omni'
-        \]
+" ALE config
+let g:ale_completion_enabled = 0
+let g:ale_echo_cursor = 1
+let g:ale_echo_msg_error_str = 'Error'
+let g:ale_echo_msg_format = '%s'
+let g:ale_echo_msg_warning_str = 'Warning'
+let g:ale_emit_conflict_warnings = 1
+let g:ale_enabled = 1
+let g:ale_fix_on_save = 0
+let g:ale_fixers = {
+      \ '*': ['remove_trailing_lines', 'trim_whitespace'],
+      \ 'go': [ 'gofmt'],
+      \ 'java': ['google_java_format'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javscript': ['eslint'],
+      \ 'json': 'prettier',
+      \ 'jsx': ['eslint'],
+      \ 'markdown': ['prettier'],
+      \ 'python': ['autopep8'],
+      \ 'ruby': [ 'rufo', 'rubocop' ],
+      \ 'rust': [ 'rustfmt' ],
+      \ 'sh': ['shfmt'],
+    \ }
 
-  " deoplete-go settings
-  let g:deoplete#sources#go#gocode_binary = $GOPATH.'/bin/gocode'
-  call deoplete#custom#option('max_list', 25)
+let g:ale_go_gometalinter_options = '--tests'
+let g:ale_keep_list_window_open = 0
+let g:ale_lint_delay = 200
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'always'
+let g:ale_open_list = 0
+let g:ale_ruby_bundler_executable = 'bundle'
+let g:ale_ruby_rubocop_executable = 'bundle'
+let g:ale_ruby_rufo_executable = 'bundle'
+let g:ale_set_highlights = 1
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_set_signs = 1
+let g:ale_sign_column_always = 0
+let g:ale_sign_error = '>>'
+let g:ale_sign_offset = 1000000
+let g:ale_sign_warning = '--'
+let g:ale_statusline_format = ['%d error(s)', '%d warning(s)', 'OK']
+let g:ale_warn_about_trailing_whitespace = 0
 
-  let g:deoplete#sources['javascript.jsx'] = ['file', 'ultisnips', 'ternjs']
-  let g:deoplete#sources#ternjs#timeout = 1
-
-  " Whether to include the types of the completions in the result data. Default: 0
-  let g:deoplete#sources#ternjs#types = 1
-
-  " Whether to include the distance (in scopes for variables, in prototypes for
-  " properties) between the completions and the origin position in the result
-  " data. Default: 0
-  let g:deoplete#sources#ternjs#depths = 1
-
-  " Whether to include documentation strings (if found) in the result data.
-  " Default: 0
-  let g:deoplete#sources#ternjs#docs = 1
-
-  " When on, only completions that match the current word at the given point will
-  " be returned. Turn this off to get all results, so that you can filter on the
-  " client side. Default: 1
-  let g:deoplete#sources#ternjs#filter = 0
-
-  " Whether to use a case-insensitive compare between the current word and
-  " potential completions. Default 0
-  let g:deoplete#sources#ternjs#case_insensitive = 1
-
-  " When completing a property and no completions are found, Tern will use some
-  " heuristics to try and return some properties anyway. Set this to 0 to
-  " turn that off. Default: 1
-  let g:deoplete#sources#ternjs#guess = 0
-
-  " Determines whether the result set will be sorted. Default: 1
-  let g:deoplete#sources#ternjs#sort = 0
-
-  " When disabled, only the text before the given position is considered part of
-  " the word. When enabled (the default), the whole variable name that the cursor
-  " is on will be included. Default: 1
-  let g:deoplete#sources#ternjs#expand_word_forward = 0
-
-  " Whether to ignore the properties of Object.prototype unless they have been
-  " spelled out by at least two characters. Default: 1
-  let g:deoplete#sources#ternjs#omit_object_prototype = 0
-
-  " Whether to include JavaScript keywords when completing something that is not
-  " a property. Default: 0
-  let g:deoplete#sources#ternjs#include_keywords = 1
-
-  " If completions should be returned when inside a literal. Default: 1
-  let g:deoplete#sources#ternjs#in_literal = 0
-
-  "Add extra filetypes
-  let g:deoplete#sources#ternjs#filetypes = [
-        \ 'jsx',
-        \ 'javascript.jsx',
-        \ 'vue',
-        \ ]
-
-  let g:deoplete#max_abbr_width = 35
-  let g:deoplete#max_menu_width = 20
-  let g:deoplete#skip_chars = ['(', ')', '<', '>']
-  let g:deoplete#tag#cache_limit_size = 800000
-  let g:deoplete#file#enable_buffer_path = 1
-
-  let g:deoplete#sources#jedi#statement_length = 30
-  let g:deoplete#sources#jedi#show_docstring = 1
-
-  let g:deoplete#sources#jedi#short_types = 1
-
-  let g:deoplete#sources#rust#racer_binary=$HOME.'/bin/racer'
-  let g:deoplete#sources#rust#rust_source_path=$HOME.'/lang/rust/src'
-
-  let g:deoplete#sources#go#auto_goos = 1
-  let g:deoplete#sources#go#builtin_objects = 1
-  let g:deoplete#sources#go#unimported_packages = 1
-
-  call deoplete#initialize()
-endif
-
-autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
-inoremap <expr> <CR> (pumvisible() ? "\<c-y>\<cr>" : "\<CR>")
+map <leader>d :ALEFix<CR>
+nmap <silent> <C-p> <Plug>(ale_previous_wrap)
+nmap <silent> <C-n> <Plug>(ale_next_wrap)
