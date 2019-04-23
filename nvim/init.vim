@@ -32,7 +32,7 @@ set nocursorline               " Highlight current line !!! disabled, runs slow
 set number                     " Line numbers are good
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
 set secure
-set shell=/bin/sh
+set shell=$SHELL
 set showcmd                    " Show incomplete cmds down the bottom
 set showmatch                  " Show matching brackets when text indicator is over them
 set showmode                   " Show current mode down the bottom
