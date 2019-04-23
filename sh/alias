@@ -183,7 +183,7 @@ zd() {
 }
 
 git-checkout-branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --color origin/master...{}" --preview-window=down:70%) || return
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --color origin/master...{}" --preview-window=right:70%) || return
 	git co $(echo "$target")
 }
 
