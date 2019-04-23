@@ -488,7 +488,9 @@ if has('autocmd')
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
     " Source .env files and restart coc.nvim
-    autocmd DirChanged * call SourceEnv()
+    if as("nvim")
+      autocmd DirChanged * call SourceEnv()
+    endif
   augroup END
 
   augroup filetype_markdown
