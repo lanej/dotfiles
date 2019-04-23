@@ -508,6 +508,7 @@ if has('autocmd')
 
   augroup filetype_gitcommit
     autocmd!
+    autocmd BufNewFile,BufRead new-commit set filetype=markdown
     autocmd FileType gitcommit set colorcolumn=73|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
