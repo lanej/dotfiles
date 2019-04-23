@@ -465,6 +465,17 @@ if &runtimepath =~ 'vim-go'
   let g:go_snippet_engine = "neosnippet"
 end
 
+function! SourceEnv()
+   if filereadable(".env")
+     silent! Dotenv .env
+   endif
+
+   if filereadable(".env-overrides")
+     silent! Dotenv .env-overrides
+     silent! CocRestart
+   endif
+endfunction
+
 if has('autocmd')
   augroup FiletypeGroup
     autocmd!
@@ -478,6 +489,8 @@ if has('autocmd')
     autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
+    " Source .env files and restart coc.nvim
+    autocmd DirChanged * call SourceEnv()
   augroup END
 
   augroup filetype_markdown
@@ -659,9 +672,6 @@ nmap <leader>rn <Plug>(coc-rename)
 vmap <leader>d  <Plug>(coc-format-selected)
 nmap <leader>d  <Plug>(coc-format-selected)
 
-" Use K to show documentation in preview window
-nnoremap <silent> K :call <SID>show_documentation()<CR>
-
 function! s:show_documentation()
   if &filetype == 'vim'
     execute 'h '.expand('<cword>')
@@ -669,6 +679,9 @@ function! s:show_documentation()
     call CocAction('doHover')
   endif
 endfunction
+
+" Use K to show documentation in preview window
+nnoremap <silent> K :call <SID>show_documentation()<CR>
 
 " Remap for rename current word
 nmap <leader>rn <Plug>(coc-rename)
