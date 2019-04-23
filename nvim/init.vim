@@ -188,8 +188,6 @@ if executable('terraform')
   Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
 end
 
-Plug 'vim-scripts/rubycomplete.vim'
-
 if v:version > 704 || has('nvim')
   " sudo write
   Plug 'lambdalisue/suda.vim'
