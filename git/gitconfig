@@ -80,6 +80,7 @@
 	sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=right:80% | xargs git add
 	cpa = cherry-pick --quit
 	rp = reset -p
+	ma = merge --abort
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
