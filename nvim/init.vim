@@ -179,10 +179,6 @@ if executable('python')
   Plug 'davidhalter/jedi', { 'for': 'python' }
 endif
 
-if executable('ruby')
-  Plug 'vim-ruby/vim-ruby', { 'for': 'ruby' }
-endif
-
 " terraform
 if executable('terraform')
   Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
@@ -209,8 +205,6 @@ map <leader>pu :PlugUpdate<CR>
 
 " vim-polyglot
 let g:vim_markdown_conceal = 0
-" ignore plugins that are installed directly
-let g:polyglot_disabled = ['ruby']
 
 " gutentag
 let g:gutentags_enabled = 1
