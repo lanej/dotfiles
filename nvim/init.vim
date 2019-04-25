@@ -109,8 +109,6 @@ Plug 'lambdalisue/vim-unified-diff'
 Plug 'AndrewRadev/splitjoin.vim'
 " show git diffs in left gutter
 Plug 'airblade/vim-gitgutter'
-" additional omnicompletion
-Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
 " fancy status line
 Plug 'bling/vim-airline'
 " easily rename files
@@ -156,9 +154,6 @@ Plug 'w0rp/ale'
 " sessions
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
-" snippets
-Plug 'Shougo/neosnippet.vim'
-Plug 'Shougo/neosnippet-snippets'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
 Plug 'neoclide/coc.nvim', {'do': { -> coc#util#install()}}
@@ -454,7 +449,7 @@ if &runtimepath =~ 'vim-go'
   let g:go_highlight_variable_declarations = 1
   let g:go_highlight_variable_assignments = 1
   " let g:go_list_type = 'quickfix'
-  let g:go_snippet_engine = "neosnippet"
+  " let g:go_snippet_engine = "neosnippet"
 end
 
 function! SourceEnv()
