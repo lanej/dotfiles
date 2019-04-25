@@ -729,3 +729,19 @@ let g:ale_warn_about_trailing_whitespace = 0
 map <leader>d :ALEFix<CR>
 nmap <silent> <C-p> <Plug>(ale_previous_wrap)
 nmap <silent> <C-n> <Plug>(ale_next_wrap)
+
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? coc#_select_confirm() :
+      \ coc#expandableOrJumpable() ? coc#rpc#request('doKeymap', ['snippets-expand-jump','']) :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~# '\s'
+endfunction
+
+" Use <C-p> for jump to previous placeholder, it's default of coc.nvim
+let g:coc_snippet_prev = '<shift-tab>'
+
+let g:coc_snippet_next = '<tab>'
