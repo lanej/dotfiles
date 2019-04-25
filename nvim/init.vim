@@ -466,8 +466,6 @@ endfunction
 if has('autocmd')
   augroup FiletypeGroup
     autocmd!
-    " hub pull-request accepts markdown
-    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
     " jsx is both javascript and jsx
     autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
     " Save files when vim loses focus
@@ -484,7 +482,9 @@ if has('autocmd')
 
   augroup filetype_markdown
     autocmd!
-    autocmd BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
+    " hub pull-request accepts markdown
+    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
+    autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
     autocmd FileType markdown let g:gutentags_enabled = 0
     autocmd FileType markdown set conceallevel=0
@@ -500,6 +500,7 @@ if has('autocmd')
   augroup filetype_gitcommit
     autocmd!
     autocmd BufNewFile,BufRead new-commit set filetype=markdown
+    autocmd BufNewFile,BufRead differential* set filetype=markdown
     autocmd FileType gitcommit set colorcolumn=73|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
