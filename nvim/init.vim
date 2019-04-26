@@ -156,7 +156,10 @@ Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
-Plug 'neoclide/coc.nvim', {'do': { -> coc#util#install()}}
+
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+endif
 
 let g:editorconfig_blacklist = {
       \ 'filetype': ['git.*', 'fugitive'],
@@ -242,8 +245,6 @@ let g:NERDDefaultAlign = 'left'
 " if you want to disable auto detect, comment out those two lines
 "let g:airline#extensions#disable_rtp_load = 1
 " let g:airline_extensions = ['branch', 'hunks', 'coc']
-let g:airline_section_error = '%{airline#util#wrap(airline#extensions#coc#get_error(),0)}'
-let g:airline_section_warning = '%{airline#util#wrap(airline#extensions#coc#get_warning(),0)}'
 let g:airline#extensions#branch#enabled = 1
 let g:airline#extensions#bufferline#enabled = 1
 let g:airline#extensions#tabline#buffer_nr_show = 0
@@ -299,6 +300,7 @@ let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %
 " fugitive
 noremap <leader>gb :Gblame<CR>
 noremap <leader>go :Gbrowse<CR>
+noremap <leader>gm :Gmerge<CR>
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " rename
@@ -459,7 +461,6 @@ function! SourceEnv()
 
    if filereadable(".env-override")
      silent! Dotenv .env-override
-     silent! CocRestart
    endif
 endfunction
 
@@ -474,7 +475,7 @@ if has('autocmd')
     autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
-    " Source .env files and restart coc.nvim
+    " Source .env files
     if has('nvim')
       autocmd DirChanged * call SourceEnv()
     endif
@@ -648,29 +649,6 @@ if has('conceal')
   set conceallevel=2 concealcursor=niv
 endif
 
-" coc
-nmap <silent> gd <Plug>(coc-definition)
-nmap <silent> gy <Plug>(coc-type-definition)
-nmap <silent> gi <Plug>(coc-implementation)
-nmap <silent> gr <Plug>(coc-references)
-" Highlight symbol under cursor on CursorHold
-autocmd CursorHold * silent call CocActionAsync('highlight')
-
-" Remap for rename current word
-nmap <leader>rn <Plug>(coc-rename)
-
-" Remap for format selected region
-vmap <leader>d  <Plug>(coc-format-selected)
-nmap <leader>d  <Plug>(coc-format-selected)
-
-function! s:show_documentation()
-  if &filetype == 'vim'
-    execute 'h '.expand('<cword>')
-  else
-    call CocAction('doHover')
-  endif
-endfunction
-
 " Use K to show documentation in preview window
 nnoremap <silent> K :call <SID>show_documentation()<CR>
 
@@ -726,18 +704,5 @@ map <leader>d :ALEFix<CR>
 nmap <silent> <C-p> <Plug>(ale_previous_wrap)
 nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
-inoremap <silent><expr> <TAB>
-      \ pumvisible() ? coc#_select_confirm() :
-      \ coc#expandableOrJumpable() ? coc#rpc#request('doKeymap', ['snippets-expand-jump','']) :
-      \ <SID>check_back_space() ? "\<TAB>" :
-      \ coc#refresh()
-
-function! s:check_back_space() abort
-  let col = col('.') - 1
-  return !col || getline('.')[col - 1]  =~# '\s'
-endfunction
-
-" Use <C-p> for jump to previous placeholder, it's default of coc.nvim
-let g:coc_snippet_prev = '<shift-tab>'
-
-let g:coc_snippet_next = '<tab>'
+" Use deoplete.
+let g:deoplete#enable_at_startup = 1
