@@ -32,8 +32,8 @@ zsh: shell
 	ln -fs $(DOTFILES)/zsh/zshenv ${HOME}/.zshenv
 	git -C ${HOME}/.oh-my-zsh pull || \
 		git clone https://github.com/robbyrussell/oh-my-zsh.git ${HOME}/.oh-my-zsh
-	git -C ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k pull || \
-		git clone https://github.com/bhilburn/powerlevel9k.git ${HOME}/.oh-my-zsh/custom/themes/powerlevel9k
+	git -C ${HOME}/.oh-my-zsh/custom/themes/powerlevel10k pull || \
+		git clone https://github.com/romkatv/powerlevel10k.git ${HOME}/.oh-my-zsh/custom/themes/powerlevel10k
 	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting pull || \
 		git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${HOME}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
 	git -C ${HOME}/.oh-my-zsh/custom/plugins/zsh-autosuggestions pull || \
