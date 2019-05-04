@@ -136,6 +136,7 @@ Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
 Plug 'previm/previm'
 Plug 'tyru/open-browser.vim'
+Plug 'tpope/vim-markdown'
 " code commenter
 Plug 'scrooloose/nerdcommenter'
 " file browser
@@ -196,8 +197,8 @@ map <leader>pi :PlugInstall<CR>
 map <leader>pc :PlugClean<CR>
 map <leader>pu :PlugUpdate<CR>
 
-" vim-polyglot
 let g:vim_markdown_conceal = 0
+let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
 let g:gutentags_enabled = 1
