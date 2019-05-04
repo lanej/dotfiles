@@ -490,7 +490,7 @@ if has('autocmd')
   augroup filetype_ruby
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2
+    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
   augroup END
