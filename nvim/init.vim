@@ -617,14 +617,34 @@ if has('autocmd')
 endif
 
 " vim-test configuration
-let test#strategy = "neovim"
-let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
+if has('nvim')
+  let test#strategy = "neovim"
+endif
+" let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
-let test#python#pytest#options = '-s'
-let test#rust#cargotest#options = '-- --nocapture'
+" let test#python#pytest#options = '-s'
+" let test#rust#cargotest#options = '-- --nocapture'
+let test#python#cargotest#options = {
+  \ 'nearest': '-- --nocapture',
+  \ 'file':    '-- --nocapture',
+  \}
+let test#python#pytest#options = {
+  \ 'nearest': '-s',
+  \ 'file':    '-s',
+  \}
+
+let test#ruby#rspec#options = {
+  \ 'nearest': '--format documentation',
+  \ 'file':    '--format documentation',
+  \ 'suite':   '--tag ~slow',
+  \}
+
+let g:test#runner_commands = ['Minitest']
+
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
 map <Bslash>r :TestLast<CR>
+map <Bslash>s :TestSuite<CR>
 
 " c	don't give |ins-completion-menu| messages.  For example,
 " "-- XXX completion (YYY)", "match 1 of 2", "The only match",
