@@ -264,7 +264,7 @@ else
 endif
 
 " fzf
-nnoremap <leader>aa :Ack!<space>
+nnoremap <leader>aa :Ag!<space>
 nnoremap <leader>as :Ack!<space><cword><CR>
 nnoremap <leader>az :Ag!<CR>
 noremap  <leader>ac :Commands<CR>
