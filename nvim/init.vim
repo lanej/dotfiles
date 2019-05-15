@@ -158,8 +158,10 @@ Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
+  Plug 'Shougo/neosnippet.vim'
+  Plug 'Shougo/neosnippet-snippets'
 endif
-Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
 
 let g:editorconfig_blacklist = {
       \ 'filetype': ['git.*', 'fugitive'],
@@ -721,26 +723,10 @@ nmap <silent> <C-p> <Plug>(ale_previous_wrap)
 nmap <silent> <C-n> <Plug>(ale_next_wrap)
 
 let g:deoplete#enable_at_startup = 1
-
 let g:deoplete#enable_smart_case = 1
-let g:deoplete#max_list = 25
-let g:deoplete#refresh_always = v:false
-
-" disable autocomplete by default
-" let b:deoplete_disable_auto_complete=1
-
-if !exists('g:deoplete#omni#input_patterns')
-  let g:deoplete#omni#input_patterns = {}
-endif
-
-autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
-
-if (has('nvim') || v:version > 8000) && &runtimepath =~ 'deoplete.nvim'
-  " Disable the candidates in Comment/String syntaxes.
-  call deoplete#custom#source('_',
-              \ 'disabled_syntaxes', ['Comment', 'String'])
-endif
-
+let g:deoplete#max_list = 10
+let g:neosnippet#enable_completed_snippet = 1
+let g:neosnippet#enable_complete_done = 1
 
 let g:LanguageClient_serverCommands = {
     \ 'rust': ['~/.cargo/bin/rustup', 'run', 'stable', 'rls'],
@@ -755,3 +741,11 @@ nnoremap <F5> :call LanguageClient_contextMenu()<CR>
 nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
 nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
 nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
+
+" Plugin key-mappings.
+" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+imap <C-k> <Plug>(neosnippet_expand_or_jump)
+smap <C-k> <Plug>(neosnippet_expand_or_jump)
+xmap <C-k> <Plug>(neosnippet_expand_target)
+
+" autocmd InsertLeave,CompleteDone * if pumvisible() == 0 | pclose | endif
