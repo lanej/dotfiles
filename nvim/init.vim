@@ -326,14 +326,7 @@ set guioptions-=L  " remove left scrollbar
 set number         " show line numbers
 set laststatus=2   " Prevent the ENTER prompt more frequently
 
-" contrasting visual selection
-hi Visual guifg=White guibg=DarkGrey gui=none
-hi Visual ctermfg=LightGray ctermbg=DarkGrey cterm=none
-
-highlight clear LineNr     " Current line number row will have same background color in relative mode
-highlight clear SignColumn " SignColumn should match background
-
-set completeopt=noinsert,noselect
+set completeopt+=menu,noinsert,noselect
 
 " ================ Scrolling ========================
 set scrolloff=8         "Start scrolling when we're 8 lines away from margins
@@ -638,7 +631,7 @@ let test#python#pytest#options = {
 let test#ruby#rspec#options = {
   \ 'nearest': '--format documentation',
   \ 'file':    '--format documentation',
-  \ 'suite':   '--tag ~slow',
+  \ 'suite':   '--tag \~slow',
   \}
 
 let g:test#runner_commands = ['Minitest']
