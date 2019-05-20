@@ -177,7 +177,16 @@ if command -v fd >/dev/null; then
   export FZF_DEFAULT_COMMAND="fd --type f"
 fi
 
-zd() {
+fkp() {
+  local pid
+  pid=$(ps -ef | sed 1d | fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview 'echo {} | awk "{print \$2}" | xargs pstree {} || xargs ps {' | awk '{print $2}')
+
+  if [ "x$pid" != "x" ]; then
+    echo $pid | xargs kill -${1:-9}
+  fi
+}
+
+fcd() {
   if command -v fd >/dev/null; then
     target=$(fd --type d --hidden --follow --exclude .git | fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview 'tree {}') || return
     cd $(echo "$target")
