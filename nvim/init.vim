@@ -45,6 +45,7 @@ set ttimeoutlen=100
 set novb
 set noeb
 set equalalways                " Maintain consistent window sizes
+set updatetime=300
 
 if $OS != "Linux"
   set termguicolors
@@ -215,11 +216,18 @@ let g:terraform_fmt_on_save     = 1
 let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
-" use silver-searcher if available
-if executable('ag')
+if executable('rg')
+  " use ripgrep if available
+  let g:ackprg = 'rg --vimgrep'
+  set grepprg=rg\ --nogroup\ --nocolor
+  nnoremap <leader>aa :Rg!<space>
+  nnoremap <leader>az :Rg!<CR>
+elseif executable('ag')
+  " use silver-searcher if available
   let g:ackprg = 'ag --vimgrep'
-  " Use ag over grep
   set grepprg=ag\ --nogroup\ --nocolor
+  nnoremap <leader>aa :Ag!<space>
+  nnoremap <leader>az :Ag!<CR>
 endif
 
 " sessions
@@ -258,7 +266,6 @@ let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 
 " git-gutter
-set updatetime=300
 if exists('&signcolumn')  " Vim 7.4.2201
   set signcolumn=yes
 else
@@ -266,9 +273,7 @@ else
 endif
 
 " fzf
-nnoremap <leader>aa :Ag!<space>
 nnoremap <leader>as :Ack!<space><cword><CR>
-nnoremap <leader>az :Ag!<CR>
 noremap  <leader>ac :Commands<CR>
 noremap  <leader>af :Files<CR>
 noremap  <leader>ag :Commits<CR>
@@ -287,6 +292,13 @@ command! -bang -nargs=* Ag
   \                 <bang>0 ? fzf#vim#with_preview('up:60%')
   \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
   \                 <bang>0)
+
+command! -bang -nargs=* Rg
+  \ call fzf#vim#ag(<q-args>,
+  \                 <bang>0 ? fzf#vim#with_preview('up:60%')
+  \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
+  \                 <bang>0)
+
 
 command! -bang -nargs=? -complete=dir Files
   \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
