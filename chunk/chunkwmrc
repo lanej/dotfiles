@@ -21,49 +21,46 @@ chunkc core::unload border.so
 # NOTE: the following are config variables for the chunkwm-tiling plugin.
 #
 
-chunkc set global_desktop_mode           bsp
-chunkc set 2_desktop_mode                monocle
-chunkc set 5_desktop_mode                float
+chunkc set global_desktop_mode bsp
 
-chunkc set global_desktop_offset_top     2
-chunkc set global_desktop_offset_bottom  2
-chunkc set global_desktop_offset_left    2
-chunkc set global_desktop_offset_right   2
-chunkc set global_desktop_offset_gap     2
+chunkc set global_desktop_offset_top 2
+chunkc set global_desktop_offset_bottom 2
+chunkc set global_desktop_offset_left 2
+chunkc set global_desktop_offset_right 2
+chunkc set global_desktop_offset_gap 2
 
-chunkc set desktop_padding_step_size     5.0
-chunkc set desktop_gap_step_size         5.0
+chunkc set desktop_padding_step_size 5.0
+chunkc set desktop_gap_step_size 5.0
 
-chunkc set bsp_spawn_left                1
-chunkc set bsp_optimal_ratio             1.618
-chunkc set bsp_split_mode                optimal
-chunkc set bsp_split_ratio               0.5
+chunkc set bsp_spawn_left 1
+chunkc set bsp_optimal_ratio 1.618
+chunkc set bsp_split_mode optimal
+chunkc set bsp_split_ratio 0.5
 
-chunkc set monitor_focus_cycle           1
-chunkc set window_focus_cycle            monitor
+chunkc set monitor_focus_cycle 1
+chunkc set window_focus_cycle monitor
 
-chunkc set mouse_follows_focus           0
-chunkc set window_float_next             0
-chunkc set window_float_center           1
-chunkc set window_region_locked          1
+chunkc set mouse_follows_focus 0
+chunkc set window_float_next 0
+chunkc set window_float_center 1
+chunkc set window_region_locked 1
 
-chunkc set mouse_modifier                fn
+chunkc set mouse_modifier fn
 
-chunkc set preselect_border_color        0xffd75f5f
-chunkc set preselect_border_width        5
-chunkc set preselect_border_radius       0
+chunkc set preselect_border_color 0xffd75f5f
+chunkc set preselect_border_width 5
+chunkc set preselect_border_radius 0
 
-chunkc set focused_border_color          0xffb3ebff
-chunkc set focused_border_width          4
-chunkc set focused_border_radius         1
-chunkc set focused_border_skip_floating  1
+chunkc set focused_border_color 0xffb3ebff
+chunkc set focused_border_width 4
+chunkc set focused_border_radius 1
+chunkc set focused_border_skip_floating 1
 
-
-chunkc set global_desktop_offset_top     15
-chunkc set global_desktop_offset_bottom  15
-chunkc set global_desktop_offset_left    15
-chunkc set global_desktop_offset_right   15
-chunkc set global_desktop_offset_gap     15
+chunkc set global_desktop_offset_top 25
+chunkc set global_desktop_offset_bottom 25
+chunkc set global_desktop_offset_left 25
+chunkc set global_desktop_offset_right 25
+chunkc set global_desktop_offset_gap 50
 
 #
 # NOTE: specify plugins to load when chunkwm starts.
