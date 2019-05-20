@@ -275,11 +275,11 @@ endif
 " fzf
 nnoremap <leader>as :Ack!<space><cword><CR>
 noremap  <leader>ac :Commands<CR>
-noremap  <leader>af :Files<CR>
+noremap  <leader>gf :GFiles<CR>
 noremap  <leader>ag :Commits<CR>
 noremap  <leader>al :Lines<CR>
 noremap  <leader>at :Tags<CR>
-noremap  <leader>f  :GFiles<CR>
+noremap  <leader>f  :Files<CR>
 noremap  <leader>gc :BCommits<CR>
 noremap  <leader>gg :Buffers<CR>
 noremap  <leader>;  :History:<CR>
