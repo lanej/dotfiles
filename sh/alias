@@ -173,10 +173,6 @@ f() {
   fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
-if command -v fd >/dev/null; then
-  export FZF_DEFAULT_COMMAND="fd --type f"
-fi
-
 fkp() {
   local pid
   pid=$(ps -ef | sed 1d | fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview 'echo {} | awk "{print \$2}" | xargs pstree {} || xargs ps {' | awk '{print $2}')
