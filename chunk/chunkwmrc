@@ -21,7 +21,7 @@ chunkc core::unload border.so
 # NOTE: the following are config variables for the chunkwm-tiling plugin.
 #
 
-chunkc set global_desktop_mode float
+chunkc set global_desktop_mode bsp
 
 chunkc set global_desktop_offset_top 2
 chunkc set global_desktop_offset_bottom 2
