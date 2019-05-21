@@ -15,7 +15,10 @@ else
 fi
 
 [ -f "${HOME}/.fzf.bash" ] && . "${HOME}/.fzf.bash"
+
 if [ -f "${HOME}/.local/share/z/z.sh" ]; then
 	. "${HOME}/.local/share/z/z.sh"
 	. "${HOME}/.z.sh"
 fi
+
+source ${HOME}/.profile

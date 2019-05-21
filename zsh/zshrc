@@ -123,3 +123,5 @@ fi
 if command -v chruby >/dev/null; then
 	chruby 2.6.0
 fi
+
+source ${HOME}/.profile
