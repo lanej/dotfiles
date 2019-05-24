@@ -58,7 +58,7 @@ set nowritebackup
 
 " Trailing spaces and tabs
 set list
-set listchars=tab:>-,trail:*,nbsp:*
+set listchars=tab:→\ ,space:·,nbsp:␣,trail:•,precedes:«,extends:»
 
 let mapleader = ','
 
@@ -157,7 +157,9 @@ Plug 'dhruvasagar/vim-prosession'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
+
 if has('nvim')
+  Plug 'ryanoasis/vim-devicons'
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
   Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
   Plug 'Shougo/neosnippet.vim'
