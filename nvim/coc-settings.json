@@ -6,5 +6,10 @@
       "filetypes": ["go"]
     }
   },
-  "diagnostic.enable": false
+  "solargraph.diagnostics": true,
+  "solargraph.autoformat": true,
+  "solargraph.formatting": true,
+  "solargraph.hover": true,
+  "codeLens.enable": true,
+  "suggest.enablePreview": true
 }
