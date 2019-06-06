@@ -633,6 +633,10 @@ endif
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 " let test#python#pytest#options = '-s'
 " let test#rust#cargotest#options = '-- --nocapture'
+let test#go#gotest#options = {
+  \ 'nearest': '-v',
+  \ 'file': '-v',
+  \}
 let test#python#cargotest#options = {
   \ 'nearest': '-- --nocapture',
   \ 'file':    '-- --nocapture',
