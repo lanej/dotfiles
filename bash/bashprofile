@@ -14,8 +14,6 @@ else
 	export PS1="\[\033[38;5;11m\]\u\[$(tput sgr0)\]\[\033[38;5;6m\][\w]:\[$(tput sgr0)\]\[\033[38;5;15m\] \[$(tput sgr0)\]"
 fi
 
-[ -f "${HOME}/.fzf.bash" ] && . "${HOME}/.fzf.bash"
-
 if [ -f "${HOME}/.local/share/z/z.sh" ]; then
 	. "${HOME}/.local/share/z/z.sh"
 	. "${HOME}/.z.sh"
