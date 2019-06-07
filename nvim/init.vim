@@ -202,6 +202,8 @@ map <leader>pi :PlugInstall<CR>
 map <leader>pc :PlugClean<CR>
 map <leader>pu :PlugUpdate<CR>
 
+map <leader>rb :%s/<C-r><C-w>/
+
 let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
