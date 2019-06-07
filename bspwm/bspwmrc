@@ -13,16 +13,16 @@ bspc monitor eDP1 -d I II III
 bspc monitor DP1 -d I II III
 bspc monitor DP2 -d I II III
 
-bspc config border_width 2
-bspc config window_gap   20
+bspc config border_width 4
+bspc config window_gap 40
 
-bspc config split_ratio        0.52
+bspc config split_ratio 0.52
 bspc config borderless_monocle true
-bspc config gapless_monocle    true
+bspc config gapless_monocle true
 
 # Border colors
-bspc config normal_border_color  "#484848"
+bspc config normal_border_color "#484848"
 bspc config focused_border_color "#1F8999"
-bspc config urgent_border_color  "#B58900"
-bspc config presel_border_color  "#26E2FF"
-bspc config active_border_color  "#E84F4F"
+bspc config urgent_border_color "#B58900"
+bspc config presel_border_color "#26E2FF"
+bspc config active_border_color "#E84F4F"
