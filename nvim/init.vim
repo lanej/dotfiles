@@ -723,6 +723,7 @@ autocmd CursorHold * silent call CocActionAsync('highlight')
 
 " Remap for rename current word
 nmap <leader>rn <Plug>(coc-rename)
+nmap <silent> <leader>d :Format<cr>
 
 " Remap for format selected region
 xmap <leader>cf  <Plug>(coc-format-selected)
