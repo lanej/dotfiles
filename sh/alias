@@ -199,3 +199,4 @@ git_checkout_branch() {
 i() {
   nvim -R -c Lines
 }
+alias icat="kitty +kitten icat"
