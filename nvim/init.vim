@@ -160,6 +160,7 @@ Plug 'sheerun/vim-polyglot'
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'tag': '*', 'do': './install.sh'}
   Plug 'ryanoasis/vim-devicons'
+  Plug 'fatih/vim-go'
 endif
 
 let g:editorconfig_blacklist = {
@@ -444,6 +445,8 @@ if &runtimepath =~ 'vim-go'
   let g:go_auto_type_info = 0 " often overrides command window
   let g:go_decls_mode = 'gopls'
   let g:go_fmt_command = 'goimports'
+  let g:go_def_mode='gopls'
+  let g:go_info_mode='gopls'
   let g:go_fmt_fail_silently = 1
   let g:go_highlight_build_constraints = 1
   let g:go_highlight_extra_types = 1
@@ -584,7 +587,7 @@ if has('autocmd')
     autocmd FileType go nmap <leader>b  <Plug>(go-build)
     autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
-    autocmd FileType go nmap <leader>gi :GoImports<CR>
+    autocmd FileType go nmap <leader>d :GoImports<CR>
     autocmd FileType go nmap <leader>gr :GoRename<CR>
     autocmd FileType go nmap <leader>gd :GoDef<CR>
     autocmd FileType go nmap <leader>gp :GoDefPop<CR>
