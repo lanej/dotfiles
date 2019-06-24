@@ -471,6 +471,7 @@ function! SourceEnv()
 
    if filereadable(".env-override")
      silent! Dotenv .env-override
+     silent! CocRestart
    endif
 endfunction
 
