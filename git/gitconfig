@@ -81,7 +81,7 @@
 	cpa = cherry-pick --quit
 	rp = reset -p
 	ma = merge --abort
-	pop = git reset HEAD~1
+	pop = reset HEAD~1
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
