@@ -611,22 +611,22 @@ if has('autocmd')
   augroup END
 endif
 
-" vim-test configuration
+" vim-test
 if has('nvim')
   let test#strategy = "neovim"
 endif
-" let test#ruby#rspec#executable = 'bundle exec rspec -cfd'
+
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
-" let test#python#pytest#options = '-s'
-" let test#rust#cargotest#options = '-- --nocapture'
 let test#go#gotest#options = {
   \ 'nearest': '-v',
   \ 'file': '-v',
   \}
-let test#python#cargotest#options = {
+
+let test#rust#cargotest#options = {
   \ 'nearest': '-- --nocapture',
   \ 'file':    '-- --nocapture',
   \}
+
 let test#python#pytest#options = {
   \ 'nearest': '-s',
   \ 'file':    '-s',
@@ -637,8 +637,6 @@ let test#ruby#rspec#options = {
   \ 'file':    '--format documentation',
   \ 'suite':   '--tag \~slow',
   \}
-
-let g:test#runner_commands = ['Minitest']
 
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
