@@ -131,8 +131,6 @@ Plug 'junegunn/vim-peekaboo'
 Plug 'ludovicchabant/vim-gutentags'
 " show me what i just yanked
 Plug 'machakann/vim-highlightedyank'
-" browse tags
-Plug 'majutsushi/tagbar'
 " quick search, configured to use ag
 Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
@@ -176,7 +174,7 @@ if executable('node')
 end
 
 if executable('python')
-  Plug 'davidhalter/jedi', { 'for': 'python' }
+  Plug 'davidhalter/jedi-vim', { 'for': 'python' }
 endif
 
 " terraform
