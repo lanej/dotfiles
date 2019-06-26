@@ -774,3 +774,7 @@ if &runtimepath =~ 'ale'
   let g:ale_sign_warning = '--'
   let g:ale_completion_enabled = 0
 endif
+
+if &runtimepath =~ 'jedi'
+  let g:jedi#auto_initialization = 0
+endif
