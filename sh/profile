@@ -6,3 +6,31 @@ if command -v fzf >/dev/null; then
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
   fi
 fi
+
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+# arch
+[ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
+
+# macos
+[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
+# arch
+[ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
+
+if command -v chruby >/dev/null; then
+	chruby 2.6.0
+fi
+
+if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
+  export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
+fi
+
+if [ -d "$HOME/.yarn/bin" ]; then
+  export PATH="$HOME/.yarn/bin:$PATH"
+fi
+
+if [ -d "$HOME/.cargo/bin" ]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
