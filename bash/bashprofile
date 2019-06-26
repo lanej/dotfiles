@@ -1,8 +1,6 @@
 #!/usr/bin/env sh
 . ${HOME}/.bashrc
 
-source ${HOME}/.alias
-
 if [ -d "$HOME/etc/bash_completion.d" ] ; then
 	. $HOME/etc/bash_completion.d/*.bash
 fi
@@ -19,4 +17,5 @@ if [ -f "${HOME}/.local/share/z/z.sh" ]; then
 	. "${HOME}/.z.sh"
 fi
 
-source ${HOME}/.profile
+. ${HOME}/.profile
+. ${HOME}/.alias
