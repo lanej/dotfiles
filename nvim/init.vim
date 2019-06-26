@@ -154,6 +154,7 @@ Plug 'dhruvasagar/vim-prosession'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
+Plug 'w0rp/ale'
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'tag': '*', 'do': './install.sh'}
@@ -498,6 +499,9 @@ if has('autocmd')
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 
   augroup filetype_gitcommit
@@ -747,9 +751,6 @@ if &runtimepath =~ 'ale'
   let g:ale_linters = {'ruby': ['rubocop']}
   let g:ale_fixers = {'ruby': ['rubocop']}
 
-  map <leader>d :ALEFix<CR>
-  nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  nmap <silent><C-n> <Plug>(ale_next_wrap)
 
   let g:ale_keep_list_window_open = 0
   let g:ale_lint_delay = 200

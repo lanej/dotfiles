@@ -80,9 +80,9 @@
   "diagnostic.hintSign": "OO",
   "diagnostic.infoSign": "O-",
   "diagnostic.warningSign": "--",
-  "solargraph.autoformat": true,
+  "solargraph.autoformat": false,
   "solargraph.definitions": true,
-  "solargraph.diagnostics": true,
+  "solargraph.diagnostics": false,
   "solargraph.formatting": true,
   "solargraph.hover": true,
   "suggest.enablePreview": true
