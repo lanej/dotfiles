@@ -165,14 +165,6 @@ let g:editorconfig_blacklist = {
       \ 'filetype': ['git.*', 'fugitive'],
       \ 'pattern': ['\.un~$']}
 
-" language plugins
-if executable('node')
-  " javascript
-  Plug 'ternjs/tern_for_vim', { 'for': ['javascript', 'javascript.jsx'] }
-  " typescript
-  Plug 'mhartington/nvim-typescript', { 'do': './install.sh' }
-end
-
 if executable('python')
   Plug 'davidhalter/jedi-vim', { 'for': 'python' }
 endif
@@ -531,10 +523,9 @@ if has('autocmd')
     autocmd FileType rust set makeprg=cargo\ run
   augroup END
 
-  augroup filetype_java
+  augroup filetype_javascript
     autocmd!
-    autocmd FileType java setlocal omnifunc=javacomplete#Complete
-
+    autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_haml
