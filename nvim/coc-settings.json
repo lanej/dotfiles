@@ -16,11 +16,8 @@
     "python": {
       "command": "pyls",
       "args": [
-        "-vv",
-        "--log-file",
-        "/tmp/lsp_python.log"
+        "-vv"
       ],
-      "trace.server": "verbose",
       "filetypes": [
         "python"
       ],
