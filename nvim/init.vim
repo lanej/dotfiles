@@ -614,7 +614,6 @@ let test#go#gotest#options = {
 
 let test#rust#cargotest#options = {
   \ 'nearest': '-- --nocapture',
-  \ 'file':    '-- --nocapture',
   \}
 
 let test#python#pytest#options = {
