@@ -519,7 +519,6 @@ if has('autocmd')
 
   augroup filetype_rust
     autocmd!
-    autocmd FileType rust set colorcolumn=100|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
     autocmd FileType rust set makeprg=cargo\ run
     autocmd FileType rust nmap <leader>d :RustFmt<CR>
   augroup END
