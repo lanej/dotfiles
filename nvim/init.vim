@@ -526,6 +526,11 @@ if has('autocmd')
   augroup filetype_javascript
     autocmd!
     autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd BufNewFile,BufRead .eslintrc set filetype=json
+    if filereadable(".eslintrc")
+      autocmd FileType javascript nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
+      autocmd FileType javascript.jsx nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
+    endif
   augroup END
 
   augroup filetype_haml
