@@ -154,6 +154,7 @@ Plug 'dhruvasagar/vim-prosession'
 " editorconfig
 Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
+Plug 'christoomey/vim-tmux-navigator'
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'tag': '*', 'do': './install.sh'}
