@@ -155,7 +155,6 @@ Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale'
-Plug 'christoomey/vim-tmux-navigator'
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
