@@ -772,6 +772,4 @@ if &runtimepath =~ 'ale'
   let g:ale_completion_enabled = 0
 endif
 
-if &runtimepath =~ 'jedi-vim'
-  let g:jedi#auto_initialization = 0
-endif
+let g:jedi#auto_initialization = 0
