@@ -21,10 +21,6 @@ minitest() {
   testrbl "$@"
 }
 
-git-rebase-style() {
-  git rebase -x "git diff HEAD~1 --name-status | egrep -v '^D' | egrep '*.rb' | awk '{print \$2}' | xargs bundle exec rubocop -a --force-exclusion" $1
-}
-
 current-version() {
   git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
 }
