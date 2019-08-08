@@ -157,7 +157,9 @@ Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale'
 
 if has('nvim')
-  Plug 'neoclide/coc.nvim', {'branch':'release'}
+  " Plug 'neoclide/coc.nvim', {'branch':'release'}
+  Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
   Plug 'ryanoasis/vim-devicons'
   Plug 'fatih/vim-go'
 endif
@@ -201,6 +203,8 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
 let g:gutentags_enabled = 1
+" map <C-[> :pop<cr>
+
 
 " terraform
 let g:terraform_completion_keys = 1
@@ -462,7 +466,7 @@ function! SourceEnv()
 
    if filereadable(".env-override")
      silent! Dotenv .env-override
-     silent! CocRestart
+     " silent! CocRestart
    endif
 endfunction
 
@@ -772,3 +776,19 @@ if &runtimepath =~ 'ale'
 endif
 
 let g:jedi#auto_initialization = 0
+
+if &runtimepath =~ 'LanguageClient-neovim'
+  let g:LanguageClient_serverCommands = {
+    \ 'rust': ['rustup', 'run', 'stable', 'rls'],
+    \ 'javascript': ['/usr/local/bin/javascript-typescript-stdio'],
+    \ 'javascript.jsx': ['tcp://127.0.0.1:2089'],
+    \ 'python': ['pyls'],
+    \ 'ruby': ['./vendor/bundle/ruby/2.3.0/bin/solargraph', 'stdio'],
+    \ }
+
+  nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
+  nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
+  nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
+endif
+
+let g:deoplete#enable_at_startup = 1
