@@ -491,6 +491,10 @@ if has('autocmd')
     endif
   augroup END
 
+  augroup filetype_terminal
+    autocmd TermOpen * set nospell|set nonumber
+  augroup END
+
   augroup filetype_markdown
     autocmd!
     " hub pull-request accepts markdown
