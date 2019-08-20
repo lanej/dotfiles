@@ -160,6 +160,7 @@ if has('nvim')
   " Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'deoplete-plugins/deoplete-tag'
   Plug 'ryanoasis/vim-devicons'
   Plug 'fatih/vim-go'
 endif
