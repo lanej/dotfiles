@@ -787,11 +787,11 @@ if &runtimepath =~ 'LanguageClient-neovim'
     \ 'javascript': ['/usr/local/bin/javascript-typescript-stdio'],
     \ 'javascript.jsx': ['tcp://127.0.0.1:2089'],
     \ 'python': ['pyls'],
-    \ 'ruby': ['./vendor/bundle/ruby/2.3.0/bin/solargraph', 'stdio'],
     \ }
 
-  nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
   nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
+  nnoremap <silent> gr :call LanguageClient#textDocument_references()<CR>
+  nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
   nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
 endif
 
