@@ -795,4 +795,21 @@ if &runtimepath =~ 'LanguageClient-neovim'
   nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
 endif
 
-let g:deoplete#enable_at_startup = 1
+if &runtimepath =~ 'deoplete'
+  let g:deoplete#enable_at_startup = 0
+
+  inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
+  function! s:my_cr_function() abort
+    return deoplete#close_popup() . "\<CR>"
+  endfunction
+
+  call deoplete#custom#option({
+  \ 'auto_complete_delay': 200,
+  \ 'auto_refresh_delay': 200,
+  \ 'smart_case': v:true,
+  \ 'max_list': 25,
+  \ })
+
+  " Enable deoplete when InsertEnter.
+  autocmd InsertEnter * call deoplete#enable()
+end
