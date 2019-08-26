@@ -158,7 +158,7 @@ Plug 'w0rp/ale'
 
 if has('nvim')
   " Plug 'neoclide/coc.nvim', {'branch':'release'}
-  Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
+  " Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
   Plug 'deoplete-plugins/deoplete-tag'
   Plug 'ryanoasis/vim-devicons'
@@ -540,8 +540,8 @@ if has('autocmd')
     autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd BufNewFile,BufRead .eslintrc set filetype=json
     if filereadable(".eslintrc")
-      autocmd FileType javascript nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
-      autocmd FileType javascript.jsx nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
+      " autocmd FileType javascript nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
+      " autocmd FileType javascript.jsx nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
     endif
   augroup END
 
