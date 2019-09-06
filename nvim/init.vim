@@ -492,7 +492,9 @@ if has('autocmd')
   augroup END
 
   augroup filetype_terminal
-    autocmd TermOpen * set nospell|set nonumber
+    if has('nvim')
+      autocmd TermOpen * set nospell|set nonumber
+    endif
   augroup END
 
   augroup filetype_markdown
