@@ -160,6 +160,7 @@ if has('nvim')
   " Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'deoplete-plugins/deoplete-tag'
   Plug 'ryanoasis/vim-devicons'
   Plug 'fatih/vim-go'
 endif
@@ -512,6 +513,9 @@ if has('autocmd')
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 
   augroup filetype_gitcommit
