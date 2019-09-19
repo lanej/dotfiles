@@ -326,7 +326,7 @@ if has("nvim")
 endif
 
 noremap <leader>sh :terminal<cr>
-nmap cp :let @" = expand("%")<cr>
+nnoremap yd :let @" = expand("%")<cr>
 " plugin-config end
 
 " =============== UI ================
