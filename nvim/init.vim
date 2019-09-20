@@ -157,10 +157,7 @@ Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale'
 
 if has('nvim')
-  " Plug 'neoclide/coc.nvim', {'branch':'release'}
-  Plug 'autozimu/LanguageClient-neovim', { 'branch': 'next', 'do': 'bash install.sh' }
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'deoplete-plugins/deoplete-tag'
+  Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
   Plug 'fatih/vim-go'
 endif
@@ -464,14 +461,23 @@ if &runtimepath =~ 'vim-go'
 end
 
 function! SourceEnv()
-   if filereadable(".env")
-     silent! Dotenv .env
-   endif
+  if get(v:event, "cwd") == get(g:, "source_env_dir", "")
+    return
+  else
+    let g:source_env_dir = get(v:event, "cwd")
+  end
 
-   if filereadable(".env-override")
-     silent! Dotenv .env-override
-     " silent! CocRestart
-   endif
+  if filereadable(".env")
+    silent! Dotenv .env
+  endif
+
+  if filereadable(".env-override")
+    silent! Dotenv .env-override
+  endif
+
+  if &runtimepath =~ 'coc.nvim'
+    silent! CocRestart
+  endif
 endfunction
 
 if has('autocmd')
