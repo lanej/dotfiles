@@ -133,9 +133,9 @@ Plug 'machakann/vim-highlightedyank'
 " quick search, configured to use ag
 Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
-Plug 'previm/previm'
-Plug 'tyru/open-browser.vim'
-Plug 'tpope/vim-markdown'
+Plug 'previm/previm', { 'for': 'markdown' }
+Plug 'tyru/open-browser.vim', { 'for': 'markdown' }
+Plug 'tpope/vim-markdown', { 'for': 'markdown' }
 " code commenter
 Plug 'scrooloose/nerdcommenter'
 " file browser
@@ -200,6 +200,8 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
 let g:gutentags_enabled = 1
+" map <C-[> :pop<cr>
+
 
 " terraform
 let g:terraform_completion_keys = 1
@@ -320,7 +322,7 @@ if has("nvim")
 endif
 
 noremap <leader>sh :terminal<cr>
-nmap cp :let @" = expand("%")<cr>
+nnoremap yd :let @" = expand("%")<cr>
 " plugin-config end
 
 " =============== UI ================
@@ -386,36 +388,6 @@ let g:clang_format#style_options = {
 set makeprg="make -j9"
 nnoremap <Leader>m :make!<CR>
 
-let g:tagbar_type_go = {
-      \ 'ctagstype' : 'go',
-      \ 'kinds'     : [
-      \ 'p:package',
-      \ 'i:imports:1',
-      \ 'c:constants',
-      \ 'v:variables',
-      \ 't:types',
-      \ 'n:interfaces',
-      \ 'w:fields',
-      \ 'e:embedded',
-      \ 'm:methods',
-      \ 'r:constructor',
-      \ 'f:functions'
-      \ ],
-      \ 'sro' : '.',
-      \ 'kind2scope' : {
-      \ 't' : 'ctype',
-      \ 'n' : 'ntype'
-      \ },
-      \ 'scope2kind' : {
-      \ 'ctype' : 't',
-      \ 'ntype' : 'n'
-      \ },
-      \ 'ctagsbin'  : 'gotags',
-      \ 'ctagsargs' : '-sort -silent'
-      \ }
-
-nnoremap tb :TagbarToggle<CR>
-
 " create parent directories on write
 if !exists("*s:MkNonExDir")
   function s:MkNonExDir(file, buf)
@@ -458,14 +430,23 @@ if &runtimepath =~ 'vim-go'
 end
 
 function! SourceEnv()
-   if filereadable(".env")
-     silent! Dotenv .env
-   endif
+  if get(v:event, "cwd") == get(g:, "source_env_dir", "")
+    return
+  else
+    let g:source_env_dir = get(v:event, "cwd")
+  end
 
-   if filereadable(".env-override")
-     silent! Dotenv .env-override
-     silent! CocRestart
-   endif
+  if filereadable(".env")
+    silent! Dotenv .env
+  endif
+
+  if filereadable(".env-override")
+    silent! Dotenv .env-override
+  endif
+
+  if &runtimepath =~ 'coc.nvim'
+    silent! CocRestart
+  endif
 endfunction
 
 if has('autocmd')
@@ -486,7 +467,9 @@ if has('autocmd')
   augroup END
 
   augroup filetype_terminal
-    autocmd TermOpen * set nospell|set nonumber
+    if has('nvim')
+      autocmd TermOpen * set nospell|set nonumber
+    endif
   augroup END
 
   augroup filetype_markdown
@@ -681,10 +664,10 @@ if &runtimepath =~ 'coc.nvim'
   nmap <silent><C-n> <Plug>(coc-diagnostic-next)
 
   " Remap keys for gotos
-  nmap <silent> gd <Plug>(coc-definition)
-  nmap <silent> gy <Plug>(coc-type-definition)
-  nmap <silent> gi <Plug>(coc-implementation)
-  nmap <silent> gr <Plug>(coc-references)
+  nnoremap <silent> gd <Plug>(coc-definition)
+  nnoremap <silent> gy <Plug>(coc-type-definition)
+  nnoremap <silent> gi <Plug>(coc-implementation)
+  nnoremap <silent> gr <Plug>(coc-references)
 
   " Use K to show documentation in preview window
   nnoremap <silent> K :call <SID>show_documentation()<CR>
@@ -750,31 +733,81 @@ if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <space>p  :<C-u>CocListResume<CR>
 endif
 
-if &runtimepath =~ 'ale'
-  let g:ale_linters = {'ruby': ['rubocop']}
-  let g:ale_fixers = {'ruby': ['rubocop']}
+let g:ale_fixers = {
+      \ 'ruby': ['rubocop'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javascript': ['eslint'],
+      \ }
 
-  map <leader>d :ALEFix<CR>
+let g:ale_linters = {
+      \ 'ruby': ['rubocop'],
+      \ }
+
+let g:ale_keep_list_window_open = 0
+let g:ale_lint_delay = 200
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'always'
+let g:ale_open_list = 0
+let g:ale_ruby_bundler_executable = 'bundle'
+let g:ale_ruby_rubocop_executable = 'bundle'
+let g:ale_set_highlights = 1
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_set_signs = 1
+let g:ale_sign_column_always = 1
+let g:ale_sign_error = '>>'
+let g:ale_sign_offset = 1000000
+let g:ale_sign_warning = '--'
+let g:ale_completion_enabled = 0
+
+if &runtimepath =~ 'ale'
+  nmap <silent> <leader>d :ALEFix<CR>
   nmap <silent><C-p> <Plug>(ale_previous_wrap)
   nmap <silent><C-n> <Plug>(ale_next_wrap)
-
-  let g:ale_keep_list_window_open = 0
-  let g:ale_lint_delay = 200
-  let g:ale_lint_on_enter = 1
-  let g:ale_lint_on_save = 1
-  let g:ale_lint_on_text_changed = 'always'
-  let g:ale_open_list = 0
-  let g:ale_ruby_bundler_executable = 'bundle'
-  let g:ale_ruby_rubocop_executable = 'bundle'
-  let g:ale_set_highlights = 1
-  let g:ale_set_loclist = 1
-  let g:ale_set_quickfix = 0
-  let g:ale_set_signs = 1
-  let g:ale_sign_column_always = 1
-  let g:ale_sign_error = '>>'
-  let g:ale_sign_offset = 1000000
-  let g:ale_sign_warning = '--'
-  let g:ale_completion_enabled = 0
 endif
 
 let g:jedi#auto_initialization = 0
+
+if &runtimepath =~ 'LanguageClient-neovim'
+  let g:LanguageClient_serverCommands = {
+    \ 'javascript.jsx': ['typescript-language-server', '--stdio'],
+    \ 'javascript': ['typescript-language-server', '--stdio'],
+    \ 'python': ['pyls'],
+    \ 'ruby': ['./vendor/bundle/ruby/2.3.0/bin/solargraph', 'stdio'],
+    \ 'rust': ['rustup', 'run', 'stable', 'rls'],
+    \ 'typescript.jsx': ['typescript-language-server', '--stdio'],
+    \ 'typescript': ['typescript-language-server', '--stdio'],
+    \ }
+  let g:LanguageClient_diagnosticsList = 'Disabled'
+  let g:LanguageClient_autoStart = 0
+
+  nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
+  nnoremap <silent> gr :call LanguageClient#textDocument_references()<CR>
+  nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
+  nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
+  " nnoremap <silent> <leader>d :call LanguageClient#textDocument_formatting()<CR>
+endif
+
+if &runtimepath =~ 'deoplete'
+  let g:deoplete#enable_at_startup = 0
+
+  inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
+  function! s:my_cr_function() abort
+    return deoplete#close_popup() . "\<CR>"
+  endfunction
+
+  call deoplete#custom#source('LanguageClient',
+        \ 'min_pattern_length',
+        \ 3)
+
+  call deoplete#custom#option({
+  \ 'auto_complete_delay': 200,
+  \ 'auto_refresh_delay': 200,
+  \ 'smart_case': v:true,
+  \ 'max_list': 25,
+  \ })
+
+  " Enable deoplete when InsertEnter.
+  autocmd InsertEnter * call deoplete#enable()
+endif
