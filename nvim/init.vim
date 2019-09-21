@@ -739,6 +739,10 @@ let g:ale_fixers = {
       \ 'javascript': ['eslint'],
       \ }
 
+let g:ale_linters = {
+      \ 'ruby': ['rubocop'],
+      \ }
+
 let g:ale_keep_list_window_open = 0
 let g:ale_lint_delay = 200
 let g:ale_lint_on_enter = 1
