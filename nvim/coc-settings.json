@@ -76,10 +76,6 @@
     }
   },
   "codeLens.enable": false,
-  "diagnostic.errorSign": ">>",
-  "diagnostic.hintSign": "OO",
-  "diagnostic.infoSign": "O-",
-  "diagnostic.warningSign": "--",
   "solargraph.autoformat": false,
   "diagnostic.locationlist": false,
   "solargraph.definitions": true,
