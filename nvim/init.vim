@@ -133,9 +133,9 @@ Plug 'machakann/vim-highlightedyank'
 " quick search, configured to use ag
 Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
-Plug 'previm/previm'
-Plug 'tyru/open-browser.vim'
-Plug 'tpope/vim-markdown'
+Plug 'previm/previm', { 'for': 'markdown' }
+Plug 'tyru/open-browser.vim', { 'for': 'markdown' }
+Plug 'tpope/vim-markdown', { 'for': 'markdown' }
 " code commenter
 Plug 'scrooloose/nerdcommenter'
 " file browser
