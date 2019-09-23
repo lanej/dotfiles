@@ -151,7 +151,6 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
 " editorconfig
-Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale'
@@ -161,10 +160,6 @@ if has('nvim')
   Plug 'ryanoasis/vim-devicons'
   Plug 'fatih/vim-go'
 endif
-
-let g:editorconfig_blacklist = {
-      \ 'filetype': ['git.*', 'fugitive'],
-      \ 'pattern': ['\.un~$']}
 
 if executable('python')
   Plug 'davidhalter/jedi-vim', { 'for': 'python' }
