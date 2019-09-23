@@ -467,6 +467,7 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermOpen * set nospell|set nonumber
+      autocmd TermOpen * setlocal wrap
     endif
   augroup END
 
