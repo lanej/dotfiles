@@ -150,8 +150,6 @@ Plug 'tpope/vim-surround'
 " sessions
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
-" editorconfig
-Plug 'sgur/vim-editorconfig'
 Plug 'sheerun/vim-polyglot'
 Plug 'christoomey/vim-tmux-navigator'
 
@@ -481,6 +479,12 @@ if has('autocmd')
     autocmd FileType markdown let g:gutentags_enabled = 0
     autocmd FileType markdown set conceallevel=0
   augroup END
+
+  function! s:vcr_failures_only()
+    let $VCR_RECORD="all"
+    TestFile -n
+    unlet $VCR_RECORD
+  endfunction
 
   augroup filetype_ruby
     autocmd!
