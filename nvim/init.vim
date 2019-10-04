@@ -101,6 +101,7 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
+Plug 'tpope/vim-eunuch'
 Plug 'junegunn/vim-easy-align'
 " support dotenv
 Plug 'tpope/vim-dotenv'
@@ -112,8 +113,6 @@ Plug 'AndrewRadev/splitjoin.vim'
 Plug 'airblade/vim-gitgutter'
 " fancy status line
 Plug 'bling/vim-airline'
-" easily rename files
-Plug 'danro/rename.vim'
 " quick in-buffer navigation
 Plug 'easymotion/vim-easymotion'
 " colorscheme
