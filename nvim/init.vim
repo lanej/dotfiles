@@ -64,8 +64,8 @@ let mapleader = ','
 " searching stuff
 
 " Make <C-L> clear highlight and redraw
-nmap <C-\> :nohls<CR>
-imap <C-\> <C-O>:nohls<CR>
+nnoremap <C-\> :nohls<CR>
+inoremap <C-\> <C-O>:nohls<CR>
 
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
@@ -178,6 +178,14 @@ endif
 call plug#end()
 
 " plugins:end
+
+let g:tmux_navigator_no_mappings = 1
+let g:tmux_navigator_save_on_switch = 1
+
+nnoremap <silent> <C-h> :TmuxNavigateLeft<cr>
+nnoremap <silent> <C-j> :TmuxNavigateDown<cr>
+nnoremap <silent> <C-k> :TmuxNavigateUp<cr>
+nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 
 " plugin-config start
 
