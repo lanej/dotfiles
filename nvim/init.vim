@@ -372,6 +372,7 @@ command! Qa :qa
 command! W :w
 command! Wa :wa
 command! Wqa :wqa
+command! Qwa :wqa
 command! E :e
 
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
