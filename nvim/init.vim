@@ -190,9 +190,9 @@ nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 " plugin-config start
 
 " vim-plug
-map <leader>pi :PlugInstall<CR>
-map <leader>pc :PlugClean<CR>
-map <leader>pu :PlugUpdate<CR>
+map <leader>vpi :PlugInstall<CR>
+map <leader>vpc :PlugClean<CR>
+map <leader>vpu :PlugUpdate<CR>
 
 map <leader>rb :%s/<C-r><C-w>/
 
