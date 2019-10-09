@@ -24,7 +24,6 @@ set lazyredraw                 " Don't redraw while executing macros (good perfo
 set magic                      " For regular expressions turn magic on
 set modelines=5
 set nobackup
-set number                     " Line numbers are good
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
 set secure
 set shell=$SHELL
