@@ -150,7 +150,7 @@ Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
 Plug 'sheerun/vim-polyglot'
 Plug 'christoomey/vim-tmux-navigator'
-Plug 'w0rp/ale'
+Plug 'w0rp/ale' ", { 'for': ['ruby' }
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
@@ -495,12 +495,14 @@ if has('autocmd')
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
+    autocmd FileType ruby set colorcolumn=100
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby map <leader>d :ALEFix<CR>
     autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
     autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+    autocmd FileType ruby vnoremap <Bslash>s :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
   augroup filetype_gitcommit
