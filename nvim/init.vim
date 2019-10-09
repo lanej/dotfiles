@@ -24,7 +24,6 @@ set lazyredraw                 " Don't redraw while executing macros (good perfo
 set magic                      " For regular expressions turn magic on
 set modelines=5
 set nobackup
-set number                     " Line numbers are good
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
 set secure
 set shell=$SHELL
@@ -101,6 +100,7 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
+Plug 'tpope/vim-eunuch'
 Plug 'junegunn/vim-easy-align'
 " support dotenv
 Plug 'tpope/vim-dotenv'
@@ -112,8 +112,6 @@ Plug 'AndrewRadev/splitjoin.vim'
 Plug 'airblade/vim-gitgutter'
 " fancy status line
 Plug 'bling/vim-airline'
-" easily rename files
-Plug 'danro/rename.vim'
 " quick in-buffer navigation
 Plug 'easymotion/vim-easymotion'
 " colorscheme
@@ -159,10 +157,6 @@ if has('nvim')
   Plug 'fatih/vim-go'
 endif
 
-let g:editorconfig_blacklist = {
-      \ 'filetype': ['git.*', 'fugitive'],
-      \ 'pattern': ['\.un~$']}
-
 if executable('python')
   Plug 'davidhalter/jedi-vim', { 'for': 'python' }
 endif
@@ -184,12 +178,20 @@ call plug#end()
 
 " plugins:end
 
+let g:tmux_navigator_no_mappings = 1
+let g:tmux_navigator_save_on_switch = 1
+
+nnoremap <silent> <C-h> :TmuxNavigateLeft<cr>
+nnoremap <silent> <C-j> :TmuxNavigateDown<cr>
+nnoremap <silent> <C-k> :TmuxNavigateUp<cr>
+nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
+
 " plugin-config start
 
 " vim-plug
-map <leader>pi :PlugInstall<CR>
-map <leader>pc :PlugClean<CR>
-map <leader>pu :PlugUpdate<CR>
+map <leader>vpi :PlugInstall<CR>
+map <leader>vpc :PlugClean<CR>
+map <leader>vpu :PlugUpdate<CR>
 
 map <leader>rb :%s/<C-r><C-w>/
 
@@ -198,8 +200,10 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
 let g:gutentags_enabled = 1
-" map <C-[> :pop<cr>
 
+" quckfix movement
+nnoremap <Tab> :cnext<CR>
+nnoremap <S-Tab> :cprev<CR>
 
 " terraform
 let g:terraform_completion_keys = 1
@@ -368,6 +372,7 @@ command! Qa :qa
 command! W :w
 command! Wa :wa
 command! Wqa :wqa
+command! Qwa :wqa
 command! E :e
 
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
@@ -466,8 +471,7 @@ if has('autocmd')
 
   augroup filetype_terminal
     if has('nvim')
-      autocmd TermOpen * set nospell|set nonumber
-      autocmd TermOpen * setlocal wrap
+      autocmd TermEnter * set nospell|set nonumber|setlocal wrap
     endif
   augroup END
 
@@ -491,8 +495,11 @@ if has('autocmd')
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
+    autocmd FileType ruby set colorcolumn=100
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
+    autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
+    autocmd FileType ruby vnoremap <Bslash>s :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
   augroup filetype_gitcommit
