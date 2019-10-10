@@ -20,7 +20,7 @@ fi
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
 if command -v chruby >/dev/null; then
-	chruby 2.6.0
+	chruby 2.6.3
 fi
 
 if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
