@@ -9,6 +9,7 @@ hide_window_decorations yes
 enable_audio_bell no
 window_alert_on_bell no
 draw_minimal_borders yes
+macos_quit_when_last_window_closed yes
 
 cursor_blink_interval      0.5
 cursor_stop_blinking_after 15.0
