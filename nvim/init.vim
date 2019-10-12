@@ -742,35 +742,35 @@ if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <space>p  :<C-u>CocListResume<CR>
 endif
 
-let g:ale_fixers = {
-      \ 'ruby': ['rubocop'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javascript': ['eslint'],
-      \ }
-
-let g:ale_linters = {
-      \ 'ruby': ['rubocop'],
-      \ }
-
-let g:ale_keep_list_window_open = 0
-let g:ale_lint_delay = 200
-let g:ale_lint_on_enter = 1
-let g:ale_lint_on_save = 1
-let g:ale_lint_on_text_changed = 'always'
-let g:ale_open_list = 0
-let g:ale_ruby_bundler_executable = 'bundle'
-let g:ale_ruby_rubocop_executable = 'bundle'
-let g:ale_set_highlights = 1
-let g:ale_set_loclist = 1
-let g:ale_set_quickfix = 0
-let g:ale_set_signs = 1
-let g:ale_sign_column_always = 1
-let g:ale_sign_error = '>>'
-let g:ale_sign_offset = 1000000
-let g:ale_sign_warning = '--'
-let g:ale_completion_enabled = 0
-
 if &runtimepath =~ 'ale'
+  let g:ale_fixers = {
+        \ 'ruby': ['rubocop'],
+        \ 'javascript.jsx': ['eslint'],
+        \ 'javascript': ['eslint'],
+        \ }
+
+  let g:ale_linters = {
+        \ 'ruby': ['rubocop'],
+        \ }
+
+  let g:ale_keep_list_window_open = 0
+  let g:ale_lint_delay = 200
+  let g:ale_lint_on_enter = 1
+  let g:ale_lint_on_save = 1
+  let g:ale_lint_on_text_changed = 'always'
+  let g:ale_open_list = 0
+  let g:ale_ruby_bundler_executable = 'bundle'
+  let g:ale_ruby_rubocop_executable = 'bundle'
+  let g:ale_set_highlights = 1
+  let g:ale_set_loclist = 1
+  let g:ale_set_quickfix = 0
+  let g:ale_set_signs = 1
+  let g:ale_sign_column_always = 1
+  let g:ale_sign_error = '>>'
+  let g:ale_sign_offset = 1000000
+  let g:ale_sign_warning = '--'
+  let g:ale_completion_enabled = 0
+
   nmap <silent> <leader>d :ALEFix<CR>
   nmap <silent><C-p> <Plug>(ale_previous_wrap)
   nmap <silent><C-n> <Plug>(ale_next_wrap)
