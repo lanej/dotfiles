@@ -201,9 +201,10 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
 let g:gutentags_enabled = 1
-" map <C-[> :pop<cr>
-nnoremap <Tab> :cnext<CR>
-nnoremap <S-Tab> :cprev<CR>
+
+" quickfix nav
+nnoremap [q :cnext<CR>
+nnoremap ]q :cprev<CR>
 
 " terraform
 let g:terraform_completion_keys = 1
