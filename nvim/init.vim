@@ -503,7 +503,7 @@ if has('autocmd')
     autocmd FileType ruby map <leader>d :ALEFix<CR>
     autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
     autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
-    autocmd FileType ruby vnoremap <Bslash>s :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
   augroup filetype_gitcommit
