@@ -203,8 +203,8 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 let g:gutentags_enabled = 1
 
 " quickfix nav
-nnoremap [q :cnext<CR>
-nnoremap ]q :cprev<CR>
+nnoremap ]q :cnext<CR>
+nnoremap [q :cprev<CR>
 
 " terraform
 let g:terraform_completion_keys = 1
