@@ -82,6 +82,7 @@
 	rp = reset -p
 	ma = merge --abort
 	pop = reset HEAD~1
+	do = diff origin/master
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
@@ -135,3 +136,5 @@
 	whitespace = red reverse
 [diff-so-fancy]
 	markEmptyLines = false
+[diff]
+	noprefix = true

@@ -201,9 +201,9 @@ let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 " gutentag
 let g:gutentags_enabled = 1
 
-" quckfix movement
-nnoremap <Tab> :cnext<CR>
-nnoremap <S-Tab> :cprev<CR>
+" quickfix nav
+nnoremap ]q :cnext<CR>
+nnoremap [q :cprev<CR>
 
 " terraform
 let g:terraform_completion_keys = 1
@@ -500,7 +500,7 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
-    autocmd FileType ruby vnoremap <Bslash>s :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
   augroup filetype_gitcommit
