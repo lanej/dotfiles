@@ -260,6 +260,10 @@ let g:airline#extensions#tabline#tab_nr_type = 0
 let g:airline#extensions#tabline#show_buffers = 0
 let g:airline#extensions#whitespace#enabled = 0
 let g:airline#extensions#tabline#tab_min_count = 2
+let g:airline#extensions#obsession#enabled = 0
+let g:airline#extensions#ale#show_line_numbers = 0
+let g:airline#extensions#wordcount#enabled = 0
+let g:airline#extensions#hunks#enabled = 0
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 
