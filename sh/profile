@@ -19,7 +19,9 @@ fi
 # arch
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
-if command -v chruby >/dev/null; then
+if command -v rbenv >/dev/null; then
+	eval "$(rbenv init -)"
+elif command -v chruby >/dev/null; then
 	chruby 2.6.3
 fi
 
