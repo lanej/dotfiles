@@ -695,12 +695,6 @@ if &runtimepath =~ 'coc.nvim'
   nmap <silent><C-p> <Plug>(coc-diagnostic-prev)
   nmap <silent><C-n> <Plug>(coc-diagnostic-next)
 
-  " Remap keys for gotos
-  nnoremap <silent> gd <Plug>(coc-definition)
-  nnoremap <silent> gy <Plug>(coc-type-definition)
-  nnoremap <silent> gi <Plug>(coc-implementation)
-  nnoremap <silent> gr <Plug>(coc-references)
-
   " Use K to show documentation in preview window
   nnoremap <silent> K :call <SID>show_documentation()<CR>
 
@@ -722,6 +716,15 @@ if &runtimepath =~ 'coc.nvim'
   " Remap for format selected region
   xmap <leader>cf  <Plug>(coc-format-selected)
   nmap <leader>cf  <Plug>(coc-format-selected)
+  " Remap keys for gotos
+  xmap <leader>cd <Plug>(coc-definition)
+  nmap <leader>cd <Plug>(coc-definition)
+  xmap <leader>cy <Plug>(coc-type-definition)
+  nmap <leader>cy <Plug>(coc-type-definition)
+  xmap <leader>ci <Plug>(coc-implementation)
+  nmap <leader>ci <Plug>(coc-implementation)
+  xmap <leader>cr <Plug>(coc-references)
+  nmap <leader>cr <Plug>(coc-references)
 
   augroup mygroup
     autocmd!
@@ -736,7 +739,7 @@ if &runtimepath =~ 'coc.nvim'
   nmap <leader>a  <Plug>(coc-codeaction-selected)
 
   " Remap for do codeAction of current line
-  nmap <leader>ac  <Plug>(coc-codeaction)
+  " nmap <leader>ac  <Plug>(coc-codeaction)
   " Fix autofix problem of current line
   nmap <leader>qf  <Plug>(coc-fix-current)
 
