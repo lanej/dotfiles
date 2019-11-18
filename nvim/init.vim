@@ -375,9 +375,6 @@ map <leader>cg :Gcd<CR>
 " disable ex mode
 :map Q <Nop>
 
-" disable ri check
-:map K <Nop>
-
 " Helpers
 map <leader>srt :!sort<CR>
 map <leader>q :!uniq<CR>
