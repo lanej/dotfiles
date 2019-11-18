@@ -200,7 +200,25 @@ let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
+let g:gutentags_define_advanced_commands = 1
+let g:gutentags_ctags_executable_ruby = 'rtags'
+
 let g:gutentags_enabled = 1
+let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
+let g:gutentags_generate_on_empty_buffer = 0
+let g:gutentags_ctags_exclude = [
+  \ '.eggs',
+  \ '.mypy_cache',
+  \ 'venv',
+  \ 'tags',
+  \ 'tags.temp',
+  \ '.ijwb',
+  \ 'bazel-*',
+\ ]
+let g:gutentags_project_info = []
+call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
+
+nnoremap <silent> [t :pop<cr>
 
 " quickfix nav
 nnoremap ]q :cnext<CR>
