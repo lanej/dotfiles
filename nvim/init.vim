@@ -119,7 +119,7 @@ Plug 'lanej/tender.vim'
 " test integration
 Plug 'janko-m/vim-test'
 " fzf install, fast fuzzy finder
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
 " fzf integration
 Plug 'junegunn/fzf.vim'
 " yank register browser
