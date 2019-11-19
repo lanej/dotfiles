@@ -54,12 +54,12 @@ cmd + ctrl + alt + shift - m : chunkc core::load ffm.so
 cmd + ctrl + alt - m : chunkc core::unload ffm.so
 
 # resize
-cmd + shift - h : chunkc tiling::window --use-temporary-ratio 0.1  --adjust-window-edge west
-cmd + shift - k : chunkc tiling::window --use-temporary-ratio 0.1  --adjust-window-edge south
-cmd + shift - j : chunkc tiling::window --use-temporary-ratio 0.1  --adjust-window-edge north
-cmd + shift - l : chunkc tiling::window --use-temporary-ratio 0.1  --adjust-window-edge east
+cmd + shift - h : chunkc tiling::window --use-temporary-ratio 0.05  --adjust-window-edge west
+cmd + shift - k : chunkc tiling::window --use-temporary-ratio 0.05  --adjust-window-edge south
+cmd + shift - j : chunkc tiling::window --use-temporary-ratio 0.05  --adjust-window-edge north
+cmd + shift - l : chunkc tiling::window --use-temporary-ratio 0.05  --adjust-window-edge east
 
-lalt + shift - h : chunkc tiling::window --use-temporary-ratio -0.1 --adjust-window-edge west
-lalt + shift - k : chunkc tiling::window --use-temporary-ratio -0.1 --adjust-window-edge south
-lalt + shift - j : chunkc tiling::window --use-temporary-ratio -0.1 --adjust-window-edge north
-lalt + shift - l : chunkc tiling::window --use-temporary-ratio -0.1 --adjust-window-edge east
+lalt + shift - h : chunkc tiling::window --use-temporary-ratio -0.05 --adjust-window-edge west
+lalt + shift - k : chunkc tiling::window --use-temporary-ratio -0.05 --adjust-window-edge south
+lalt + shift - j : chunkc tiling::window --use-temporary-ratio -0.05 --adjust-window-edge north
+lalt + shift - l : chunkc tiling::window --use-temporary-ratio -0.05 --adjust-window-edge east
