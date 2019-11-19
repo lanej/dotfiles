@@ -119,7 +119,7 @@ Plug 'lanej/tender.vim'
 " test integration
 Plug 'janko-m/vim-test'
 " fzf install, fast fuzzy finder
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
 " fzf integration
 Plug 'junegunn/fzf.vim'
 " yank register browser
@@ -199,7 +199,29 @@ let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
+let g:gutentags_define_advanced_commands = 1
+let g:gutentags_ctags_executable_ruby = 'rtags'
+
 let g:gutentags_enabled = 1
+let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
+let g:gutentags_generate_on_empty_buffer = 0
+let g:gutentags_ctags_exclude = [
+  \ '.eggs',
+  \ '.mypy_cache',
+  \ 'venv',
+  \ 'tags',
+  \ 'tags.temp',
+  \ '.ijwb',
+  \ 'bazel-*',
+\ ]
+let g:gutentags_project_info = []
+call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
+
+nnoremap <silent> [t :pop<cr>
+
+" quickfix nav
+nnoremap ]q :cnext<CR>
+nnoremap [q :cprev<CR>
 
 " quickfix nav
 nnoremap ]q :cnext<CR>
@@ -227,6 +249,7 @@ endif
 
 " sessions
 map <leader>ps :Prosession<space>
+let g:prosession_per_branch = 1
 
 " NERDTree
 let g:NERDTreeShowHidden = 1
@@ -358,9 +381,6 @@ map <leader>cg :Gcd<CR>
 
 " disable ex mode
 :map Q <Nop>
-
-" disable ri check
-:map K <Nop>
 
 " Helpers
 map <leader>srt :!sort<CR>
@@ -501,7 +521,8 @@ if has('autocmd')
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
     autocmd FileType ruby set colorcolumn=100
-    autocmd FileType ruby map <Bslash>f :TestFile --fail-fast<CR>
+    autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
+    autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
@@ -530,10 +551,6 @@ if has('autocmd')
     autocmd!
     autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd BufNewFile,BufRead .eslintrc set filetype=json
-    if filereadable(".eslintrc")
-      autocmd FileType javascript nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
-      autocmd FileType javascript.jsx nmap <silent> <leader>d :CocCommand eslint.executeAutofix<CR>
-    endif
   augroup END
 
   augroup filetype_haml
@@ -676,12 +693,6 @@ if &runtimepath =~ 'coc.nvim'
   nmap <silent><C-p> <Plug>(coc-diagnostic-prev)
   nmap <silent><C-n> <Plug>(coc-diagnostic-next)
 
-  " Remap keys for gotos
-  nnoremap <silent> gd <Plug>(coc-definition)
-  nnoremap <silent> gy <Plug>(coc-type-definition)
-  nnoremap <silent> gi <Plug>(coc-implementation)
-  nnoremap <silent> gr <Plug>(coc-references)
-
   " Use K to show documentation in preview window
   nnoremap <silent> K :call <SID>show_documentation()<CR>
 
@@ -703,6 +714,15 @@ if &runtimepath =~ 'coc.nvim'
   " Remap for format selected region
   xmap <leader>cf  <Plug>(coc-format-selected)
   nmap <leader>cf  <Plug>(coc-format-selected)
+  " Remap keys for gotos
+  xmap <leader>cd <Plug>(coc-definition)
+  nmap <leader>cd <Plug>(coc-definition)
+  xmap <leader>cy <Plug>(coc-type-definition)
+  nmap <leader>cy <Plug>(coc-type-definition)
+  xmap <leader>ci <Plug>(coc-implementation)
+  nmap <leader>ci <Plug>(coc-implementation)
+  xmap <leader>cr <Plug>(coc-references)
+  nmap <leader>cr <Plug>(coc-references)
 
   augroup mygroup
     autocmd!
@@ -717,7 +737,7 @@ if &runtimepath =~ 'coc.nvim'
   nmap <leader>a  <Plug>(coc-codeaction-selected)
 
   " Remap for do codeAction of current line
-  nmap <leader>ac  <Plug>(coc-codeaction)
+  " nmap <leader>ac  <Plug>(coc-codeaction)
   " Fix autofix problem of current line
   nmap <leader>qf  <Plug>(coc-fix-current)
 
