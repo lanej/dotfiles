@@ -451,9 +451,11 @@ if &runtimepath =~ 'vim-go'
   let g:go_highlight_types = 1
   let g:go_highlight_variable_assignments = 1
   let g:go_highlight_variable_declarations = 1
+  let g:go_fmt_autosave = 0
   let g:go_info_mode='gopls'
   let g:go_list_type = 'quickfix'
   let g:go_doc_popup_window = 1
+  let g:go_doc_keywordprg_enabled = 0
   " let g:go_snippet_engine = "neosnippet"
 end
 
@@ -597,19 +599,19 @@ if has('autocmd')
     autocmd!
 
     autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent
-    autocmd FileType qf wincmd J
+    " autocmd FileType qf wincmd J
 
-    autocmd FileType go nmap <leader>b  <Plug>(go-build)
-    autocmd FileType go nmap <leader>r  <Plug>(go-run)
+    " autocmd FileType go nmap <leader>b  <Plug>(go-build)
+    " autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
-    autocmd FileType go nmap <leader>d :GoImports<CR>
-    autocmd FileType go nmap <leader>gr :GoRename<CR>
+    " autocmd FileType go nmap <leader>d :GoImports<CR>
+    " autocmd FileType go nmap <leader>gr :GoRename<CR>
     autocmd FileType go nmap <leader>gd :GoDef<CR>
     autocmd FileType go nmap <leader>gp :GoDefPop<CR>
     autocmd FileType go nmap <leader>gs :GoCallers<CR>
     autocmd FileType go nmap <leader>ga :GoReferrers<CR>
     autocmd FileType go nmap <leader>ge :GoCallees<CR>
-    autocmd FileType go nmap <leader>gt :TestFile -v<CR>
+    " autocmd FileType go nmap <leader>gt :TestFile -v<CR>
 
   augroup END
 
