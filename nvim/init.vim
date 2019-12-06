@@ -375,6 +375,11 @@ if has('cmdline_info')
   set showcmd " Show partial commands in status line and selected characters/lines in visual mode
 endif
 
+" polyglot syntax cues
+let ruby_operators=1
+let ruby_space_errors=1
+let ruby_line_continuation_error=1
+
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
 map <leader>cg :Gcd<CR>
