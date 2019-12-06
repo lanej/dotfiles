@@ -70,11 +70,10 @@ inoremap <C-\> <C-O>:nohls<CR>
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap tk  :tabnext<CR>
-nnoremap th  :tabprev<CR>
 nnoremap tl  :tablast<CR>
 nnoremap tt  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
+nnoremap tp  :tabprev<CR>
 nnoremap tc  :tabnew<CR>
 nnoremap tm  :tabm<Space>
 nnoremap tx  :tabclose<CR>
