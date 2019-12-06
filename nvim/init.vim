@@ -280,6 +280,10 @@ let g:airline#extensions#tabline#tab_nr_type = 0
 let g:airline#extensions#tabline#show_buffers = 0
 let g:airline#extensions#whitespace#enabled = 0
 let g:airline#extensions#tabline#tab_min_count = 2
+let g:airline#extensions#obsession#enabled = 0
+let g:airline#extensions#ale#show_line_numbers = 0
+let g:airline#extensions#wordcount#enabled = 0
+let g:airline#extensions#hunks#enabled = 0
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 
@@ -368,6 +372,11 @@ if has('cmdline_info')
   set showcmd " Show partial commands in status line and selected characters/lines in visual mode
 endif
 
+" polyglot syntax cues
+let ruby_operators=1
+let ruby_space_errors=1
+let ruby_line_continuation_error=1
+
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
 map <leader>cg :Gcd<CR>
@@ -429,23 +438,26 @@ if &runtimepath =~ 'vim-go'
   let g:go_auto_sameids = 0
   let g:go_auto_type_info = 0 " often overrides command window
   let g:go_decls_mode = 'gopls'
-  let g:go_fmt_command = 'goimports'
   let g:go_def_mode='gopls'
-  let g:go_info_mode='gopls'
+  let g:go_fmt_command = 'goimports'
   let g:go_fmt_fail_silently = 1
   let g:go_highlight_build_constraints = 1
   let g:go_highlight_extra_types = 1
   let g:go_highlight_fields = 1
-  let g:go_highlight_functions = 1
   let g:go_highlight_function_calls = 1
+  let g:go_highlight_functions = 1
   let g:go_highlight_generate_tags = 1
   let g:go_highlight_methods = 1
   let g:go_highlight_operators = 1
   let g:go_highlight_structs = 1
   let g:go_highlight_types = 1
-  let g:go_highlight_variable_declarations = 1
   let g:go_highlight_variable_assignments = 1
-  " let g:go_list_type = 'quickfix'
+  let g:go_highlight_variable_declarations = 1
+  let g:go_fmt_autosave = 0
+  let g:go_info_mode='gopls'
+  let g:go_list_type = 'quickfix'
+  let g:go_doc_popup_window = 1
+  let g:go_doc_keywordprg_enabled = 0
   " let g:go_snippet_engine = "neosnippet"
 end
 
@@ -517,10 +529,10 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
+    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
     autocmd FileType ruby map <leader>d :ALEFix<CR>
     autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
     autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
-    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -534,10 +546,6 @@ if has('autocmd')
   augroup filetype_git
     autocmd!
     autocmd FileType git set nofoldenable
-  augroup END
-
-  augroup filetype_go
-    autocmd!
   augroup END
 
   augroup filetype_rust
@@ -595,20 +603,20 @@ if has('autocmd')
   augroup filetype_go
     autocmd!
 
-    autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent|set nolist
-    autocmd FileType qf wincmd J
+    autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent
+    " autocmd FileType qf wincmd J
 
-    autocmd FileType go nmap <leader>b  <Plug>(go-build)
-    autocmd FileType go nmap <leader>r  <Plug>(go-run)
+    " autocmd FileType go nmap <leader>b  <Plug>(go-build)
+    " autocmd FileType go nmap <leader>r  <Plug>(go-run)
 
-    autocmd FileType go nmap <leader>d :GoImports<CR>
-    autocmd FileType go nmap <leader>gr :GoRename<CR>
+    " autocmd FileType go nmap <leader>d :GoImports<CR>
+    " autocmd FileType go nmap <leader>gr :GoRename<CR>
     autocmd FileType go nmap <leader>gd :GoDef<CR>
     autocmd FileType go nmap <leader>gp :GoDefPop<CR>
     autocmd FileType go nmap <leader>gs :GoCallers<CR>
     autocmd FileType go nmap <leader>ga :GoReferrers<CR>
     autocmd FileType go nmap <leader>ge :GoCallees<CR>
-    autocmd FileType go nmap <leader>gt :TestFile -v<CR>
+    " autocmd FileType go nmap <leader>gt :TestFile -v<CR>
 
   augroup END
 

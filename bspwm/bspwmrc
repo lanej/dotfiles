@@ -20,6 +20,10 @@ bspc config split_ratio 0.52
 bspc config borderless_monocle true
 bspc config gapless_monocle true
 
+bspc monitor DP1 --rectangle 3840x2160+0+0
+bspc monitor DP2 --rectangle 3840x2160+0+0
+bspc config merge_overlapping_monitors false
+
 # Border colors
 bspc config normal_border_color "#484848"
 bspc config focused_border_color "#1F8999"
