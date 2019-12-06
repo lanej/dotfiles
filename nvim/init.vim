@@ -66,6 +66,8 @@ let mapleader = ','
 " Make <C-L> clear highlight and redraw
 nnoremap <C-\> :nohls<CR>
 inoremap <C-\> <C-O>:nohls<CR>
+" nnoremap * :keepjumps normal *``<cr>
+nnoremap * *``
 
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
