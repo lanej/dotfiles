@@ -325,6 +325,10 @@ command! -bang -nargs=? -complete=dir Files
 command! -bang -nargs=? -complete=dir GFiles
   \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
 
+command! -bang -nargs=? -complete=dir DFiles
+  \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
+
+noremap <leader>af :DFiles<CR>
 " [Buffers] Jump to the existing window if possible
 let g:fzf_buffers_jump = 1
 
