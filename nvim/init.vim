@@ -222,10 +222,6 @@ nnoremap <silent> [t :pop<cr>
 nnoremap ]q :cnext<CR>
 nnoremap [q :cprev<CR>
 
-" quickfix nav
-nnoremap ]q :cnext<CR>
-nnoremap [q :cprev<CR>
-
 " terraform
 let g:terraform_completion_keys = 1
 let g:terraform_fmt_on_save     = 1
