@@ -46,7 +46,7 @@ if (has("nvim"))
   set inccommand=nosplit       " live replace
 endif
 
-if $OS != "Linux"
+if (has("termguicolors"))
   set termguicolors
 endif
 
@@ -504,6 +504,9 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
+      if (has("termguicolors"))
+        autocmd TermEnter,TermOpen * set notermguicolors
+      endif
     endif
   augroup END
 
