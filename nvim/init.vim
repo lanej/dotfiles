@@ -46,7 +46,7 @@ if (has("nvim"))
   set inccommand=nosplit       " live replace
 endif
 
-if $OS != "Linux"
+if (has("termguicolors"))
   set termguicolors
 endif
 
@@ -70,11 +70,10 @@ inoremap <C-\> <C-O>:nohls<CR>
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap tk  :tabnext<CR>
-nnoremap th  :tabprev<CR>
 nnoremap tl  :tablast<CR>
 nnoremap tt  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
+nnoremap tp  :tabprev<CR>
 nnoremap tc  :tabnew<CR>
 nnoremap tm  :tabm<Space>
 nnoremap tx  :tabclose<CR>
@@ -327,6 +326,10 @@ command! -bang -nargs=? -complete=dir Files
 command! -bang -nargs=? -complete=dir GFiles
   \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
 
+command! -bang -nargs=? -complete=dir DFiles
+  \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
+
+noremap <leader>af :DFiles<CR>
 " [Buffers] Jump to the existing window if possible
 let g:fzf_buffers_jump = 1
 
@@ -501,6 +504,9 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
+      if (has("termguicolors"))
+        autocmd TermEnter,TermOpen * set notermguicolors
+      endif
     endif
   augroup END
 
@@ -691,6 +697,14 @@ endif
 if &runtimepath =~ 'coc.nvim'
   " Use <c-space> to trigger completion.
   inoremap <silent><expr> <c-space> coc#refresh()
+
+  " Use tab for trigger completion with characters ahead and navigate.
+  " Use command ':verbose imap <tab>' to make sure tab is not mapped by other plugin.
+  inoremap <silent><expr> <TAB>
+        \ pumvisible() ? "\<C-n>" :
+        \ <SID>check_back_space() ? "\<TAB>" :
+        \ coc#refresh()
+  inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
 
   " Use <cr> to confirm completion, `<C-g>u` means break undo chain at current position.
   " Coc only does snippet and additional edit on confirm.
