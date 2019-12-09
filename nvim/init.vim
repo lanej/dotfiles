@@ -264,6 +264,9 @@ let g:NERDTrimTrailingWhitespace = 1
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
 
+" splitjoin
+let g:splitjoin_ruby_curly_braces = 0
+
 " airline
 " if you want to disable auto detect, comment out those two lines
 "let g:airline#extensions#disable_rtp_load = 1
