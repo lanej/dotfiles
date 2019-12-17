@@ -5,8 +5,8 @@
 #         "google chrome"
 # ]
 
-cmd - return : /Applications/Kitty.app/Contents/MacOS/kitty --single-instance -d ~
-cmd + shift - return : /Applications/qutebrowser.app/Contents/MacOS/qutebrowser
+cmd - return : /Applications/Alacritty.app/Contents/MacOS/alacritty
+cmd + shift - return : /Applications/Brave Browser.app/Contents/MacOS/Brave\ Browser
 
 # enter fullscreen mode for the focused container
 alt - f : chunkc tiling::window --toggle fullscreen
