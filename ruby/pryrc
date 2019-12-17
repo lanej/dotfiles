@@ -6,3 +6,10 @@ if defined?(PryNav)
   Pry.commands.alias_command 's', 'step'
   Pry.commands.alias_command 'n', 'next'
 end
+
+begin
+  require 'awesome_print'
+rescue LoadError
+else
+  AwesomePrint.pry!
+end
