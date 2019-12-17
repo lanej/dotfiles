@@ -384,8 +384,9 @@ endif
 let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
-let ruby_pseudo_operators=1
-let ruby_operators=1
+let ruby_no_expensive = 1
+" let ruby_pseudo_operators=1
+" let ruby_operators=1
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
