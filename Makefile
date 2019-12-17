@@ -1,4 +1,4 @@
-.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh qute
+.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh qute alacritty
 all: .PHONY
 
 DOTFILES := $(shell pwd)
@@ -97,6 +97,9 @@ bspwm:
 kitty:
 	mkdir -p ${HOME}/.config/kitty
 	ln -fs $(DOTFILES)/kitty/kittyconf ${HOME}/.config/kitty/kitty.conf
+alacritty:
+	mkdir -p ${HOME}/.config/alacritty
+	ln -fs $(DOTFILES)/alacritty/alacritty.yml ${HOME}/.config/alacritty
 ifeq (${OS},OSX)
 qute:
 	mkdir -p ${HOME}/.qutebrowser
