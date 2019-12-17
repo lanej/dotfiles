@@ -315,7 +315,7 @@ cursor:
   unfocused_hollow: true
 
 # Live config reload (changes require restart)
-#live_config_reload: true
+live_config_reload: true
 
 # Shell
 #
@@ -532,6 +532,12 @@ mouse:
 # a no-op if you do not wish to receive input characters for that binding.
 key_bindings:
   - { key: N, mods: Command, action: SpawnNewInstance }
+  - { key: J, mods: Control|Shift, action: ScrollPageUp }
+  - { key: K, mods: Control|Shift, action: ScrollPageDown }
+  - { key: N, mods: Control|Shift, action: ScrollLineDown }
+  - { key: P, mods: Control|Shift, action: ScrollLineUp }
+  - { key: L, mods: Control, action: None }
+  - { key: L, mods: Control|Shift, action: ClearLogNotice }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
