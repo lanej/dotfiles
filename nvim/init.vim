@@ -66,6 +66,8 @@ let mapleader = ','
 " Make <C-L> clear highlight and redraw
 nnoremap <C-\> :nohls<CR>
 inoremap <C-\> <C-O>:nohls<CR>
+" nnoremap * :keepjumps normal *``<cr>
+nnoremap * *``
 
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
@@ -147,8 +149,11 @@ Plug 'tpope/vim-surround'
 " sessions
 Plug 'tpope/vim-obsession'
 Plug 'dhruvasagar/vim-prosession'
+" language pack
 Plug 'sheerun/vim-polyglot'
+" buffer navi
 Plug 'christoomey/vim-tmux-navigator'
+" Plug 'w0rp/ale' ", { 'for': ['ruby' }
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
@@ -331,6 +336,13 @@ command! -bang -nargs=? -complete=dir GFiles
 command! -bang -nargs=? -complete=dir DFiles
   \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
 
+
+function! s:vcr_failures_only()
+  let $VCR_RECORD="all"
+  TestFile -n
+  unlet $VCR_RECORD
+endfunction
+
 noremap <leader>af :DFiles<CR>
 " [Buffers] Jump to the existing window if possible
 let g:fzf_buffers_jump = 1
@@ -381,6 +393,9 @@ endif
 let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
+" let ruby_no_expensive = 1
+let ruby_pseudo_operators=1
+let ruby_operators=1
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -412,6 +427,7 @@ vmap <Enter> <Plug>(EasyAlign)
 map <leader>= ggVG=<CR>
 
 set shortmess=a
+set nospell
 
 let g:clang_format#style_options = {
       \ "AccessModifierOffset" : -4,
@@ -538,6 +554,9 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 
   augroup filetype_gitcommit
@@ -556,7 +575,7 @@ if has('autocmd')
   augroup filetype_rust
     autocmd!
     autocmd FileType rust set makeprg=cargo\ run
-    autocmd FileType rust nmap <leader>d :RustFmt<CR>
+    " autocmd FileType rust nmap <leader>d :RustFmt<CR>
   augroup END
 
   augroup filetype_javascript
@@ -677,6 +696,8 @@ set shortmess+=T
 " a	all of the above abbreviations
 set shortmess+=a
 
+let g:loaded_clipboard_provider='xsel'
+
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
 nnoremap  <leader>Y  "+yg_
@@ -786,81 +807,38 @@ if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <space>p  :<C-u>CocListResume<CR>
 endif
 
+let g:ale_fixers = {
+      \ 'ruby': ['rubocop'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javascript': ['eslint'],
+      \ }
+
+let g:ale_linters = {
+      \ 'ruby': ['rubocop'],
+      \ }
+
+let g:ale_keep_list_window_open = 0
+let g:ale_lint_delay = 200
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'always'
+let g:ale_open_list = 0
+let g:ale_ruby_bundler_executable = 'bundle'
+let g:ale_ruby_rubocop_executable = 'bundle'
+let g:ale_set_highlights = 1
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_set_signs = 1
+let g:ale_sign_column_always = 1
+let g:ale_sign_error = '>>'
+let g:ale_sign_offset = 1000000
+let g:ale_sign_warning = '--'
+let g:ale_completion_enabled = 0
+
 if &runtimepath =~ 'ale'
-  let g:ale_fixers = {
-        \ 'ruby': ['rubocop'],
-        \ 'javascript.jsx': ['eslint'],
-        \ 'javascript': ['eslint'],
-        \ }
-
-  let g:ale_linters = {
-        \ 'ruby': ['rubocop'],
-        \ }
-
-  let g:ale_keep_list_window_open = 0
-  let g:ale_lint_delay = 200
-  let g:ale_lint_on_enter = 1
-  let g:ale_lint_on_save = 1
-  let g:ale_lint_on_text_changed = 'always'
-  let g:ale_open_list = 0
-  let g:ale_ruby_bundler_executable = 'bundle'
-  let g:ale_ruby_rubocop_executable = 'bundle'
-  let g:ale_set_highlights = 1
-  let g:ale_set_loclist = 1
-  let g:ale_set_quickfix = 0
-  let g:ale_set_signs = 1
-  let g:ale_sign_column_always = 1
-  let g:ale_sign_error = '>>'
-  let g:ale_sign_offset = 1000000
-  let g:ale_sign_warning = '--'
-  let g:ale_completion_enabled = 0
-
   nmap <silent> <leader>d :ALEFix<CR>
   nmap <silent><C-p> <Plug>(ale_previous_wrap)
   nmap <silent><C-n> <Plug>(ale_next_wrap)
 endif
 
 let g:jedi#auto_initialization = 0
-
-if &runtimepath =~ 'LanguageClient-neovim'
-  let g:LanguageClient_serverCommands = {
-    \ 'javascript.jsx': ['typescript-language-server', '--stdio'],
-    \ 'javascript': ['typescript-language-server', '--stdio'],
-    \ 'python': ['pyls'],
-    \ 'ruby': ['./vendor/bundle/ruby/2.3.0/bin/solargraph', 'stdio'],
-    \ 'rust': ['rustup', 'run', 'stable', 'rls'],
-    \ 'typescript.jsx': ['typescript-language-server', '--stdio'],
-    \ 'typescript': ['typescript-language-server', '--stdio'],
-    \ }
-  let g:LanguageClient_diagnosticsList = 'Disabled'
-  let g:LanguageClient_autoStart = 0
-
-  nnoremap <silent> gd :call LanguageClient#textDocument_definition()<CR>
-  nnoremap <silent> gr :call LanguageClient#textDocument_references()<CR>
-  nnoremap <silent> K :call LanguageClient#textDocument_hover()<CR>
-  nnoremap <silent> rn :call LanguageClient#textDocument_rename()<CR>
-  " nnoremap <silent> <leader>d :call LanguageClient#textDocument_formatting()<CR>
-endif
-
-if &runtimepath =~ 'deoplete'
-  let g:deoplete#enable_at_startup = 0
-
-  inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
-  function! s:my_cr_function() abort
-    return deoplete#close_popup() . "\<CR>"
-  endfunction
-
-  call deoplete#custom#source('LanguageClient',
-        \ 'min_pattern_length',
-        \ 3)
-
-  call deoplete#custom#option({
-  \ 'auto_complete_delay': 200,
-  \ 'auto_refresh_delay': 200,
-  \ 'smart_case': v:true,
-  \ 'max_list': 25,
-  \ })
-
-  " Enable deoplete when InsertEnter.
-  autocmd InsertEnter * call deoplete#enable()
-endif
