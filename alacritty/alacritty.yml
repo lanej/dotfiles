@@ -88,7 +88,7 @@ window:
   #multiplier: 3
 
   # Scroll to the bottom when new text is written to the terminal.
-  auto_scroll: false
+  auto_scroll: true
 
 # Spaces per Tab (changes require restart)
 #
@@ -229,9 +229,9 @@ colors:
   bright:
    black:   '0x505050'
    red:     '0xc0595a'
-   green:   '0xa5ba78'
+   green:   '0x92bd7b'
    yellow:  '0xf7d3a1'
-   blue:    '0x2659f2'
+   blue:    '0x3c7f9c'
    magenta: '0xcfb0c8'
    cyan:    '0x9cc9c2'
    white:   '0xffffff'
@@ -532,6 +532,12 @@ mouse:
 # a no-op if you do not wish to receive input characters for that binding.
 key_bindings:
   - { key: N, mods: Command, action: SpawnNewInstance }
+  - { key: J, mods: Control|Shift, action: ScrollPageUp }
+  - { key: K, mods: Control|Shift, action: ScrollPageDown }
+  - { key: N, mods: Control|Shift, action: ScrollLineDown }
+  - { key: P, mods: Control|Shift, action: ScrollLineUp }
+  - { key: L, mods: Control, action: ReceiveChar }
+  - { key: L, mods: Control|Shift, action: ClearLogNotice }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }

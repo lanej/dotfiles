@@ -11,7 +11,8 @@ fish:
 	$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
 	ln -fs ${DOTFILES}/env ${HOME}/.env
-	ln -fns $(DOTFILES)/bin/ ${HOME}/bin
+	mkdir -p ${HOME}/.local/bin
+	ln -fs $(DOTFILES)/bin/* ${HOME}/.local/bin/
 	ln -fs ${DOTFILES}/sh/alias ${HOME}/.alias
 	ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
 	mkdir -p ${HOME}/.local/share/z

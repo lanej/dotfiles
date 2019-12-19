@@ -40,3 +40,5 @@ export EDITORD=${EDITORD:-$EDITOR}
 if command -v chruby >/dev/null; then
 	chruby 2.6.0
 fi
+
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash

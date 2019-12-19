@@ -8,7 +8,6 @@
         ".git/",
         ".hg/"
       ],
-      "disableDiagnostics": true,
       "filetypes": [
         "go"
       ]
@@ -83,6 +82,7 @@
   "solargraph.diagnostics": false,
   "solargraph.formatting": true,
   "solargraph.hover": true,
+  "rust.clippy_preference": "on",
   "suggest.enablePreview": true,
   "suggest.maxCompleteItemCount": 25
 }

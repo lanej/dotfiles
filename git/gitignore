@@ -21,3 +21,4 @@ Gemfile.local.lock
 tags.temp
 tags.lock
 coc-settings.json
+~tags
