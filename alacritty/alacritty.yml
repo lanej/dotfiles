@@ -88,7 +88,7 @@ window:
   #multiplier: 3
 
   # Scroll to the bottom when new text is written to the terminal.
-  #auto_scroll: false
+  auto_scroll: false
 
 # Spaces per Tab (changes require restart)
 #
@@ -148,7 +148,7 @@ font:
     style: Bold Italic
 
   # Point size
-  size: 13.0
+  size: 6.0
 
   # Offset is the extra space around each character. `offset.y` can be thought of
   # as modifying the line spacing, and `offset.x` as modifying the letter spacing.
@@ -202,8 +202,8 @@ colors:
   # Colors which should be used to draw the terminal cursor. If these are unset,
   # the cursor color will be the inverse of the cell color.
   # cursor:
-   # text: '0x000000'
-   # cursor: '0xd0d0d0'
+   # text: '0xffffff'
+   # cursor: '0x6a9fb5'
 
   # Selection colors
   #
@@ -308,14 +308,14 @@ cursor:
   #   - ▇ Block
   #   - _ Underline
   #   - | Beam
-  style: Underline
+  style: Block
 
   # If this is `true`, the cursor will be rendered as a hollow box when the
   # window is not focused.
   unfocused_hollow: true
 
 # Live config reload (changes require restart)
-#live_config_reload: true
+live_config_reload: true
 
 # Shell
 #
@@ -326,10 +326,10 @@ cursor:
 #   - (macOS) /bin/bash --login
 #   - (Linux) user login shell
 #   - (Windows) powershell
-shell:
- program: /bin/zsh
- args:
-   - -l
+# shell:
+#  program: /bin/zsh
+#  args:
+#    - -l
 
 # Startup directory
 #
