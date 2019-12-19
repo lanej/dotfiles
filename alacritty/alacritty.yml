@@ -536,7 +536,7 @@ key_bindings:
   - { key: K, mods: Control|Shift, action: ScrollPageDown }
   - { key: N, mods: Control|Shift, action: ScrollLineDown }
   - { key: P, mods: Control|Shift, action: ScrollLineUp }
-  - { key: L, mods: Control, action: None }
+  - { key: L, mods: Control, action: ReceiveChar }
   - { key: L, mods: Control|Shift, action: ClearLogNotice }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
