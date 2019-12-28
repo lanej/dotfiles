@@ -552,9 +552,6 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
-    autocmd FileType ruby map <leader>d :ALEFix<CR>
-    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
-    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 
   augroup filetype_gitcommit
@@ -834,9 +831,12 @@ let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
 
 if &runtimepath =~ 'ale'
-  nmap <silent> <leader>d :ALEFix<CR>
-  nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  nmap <silent><C-n> <Plug>(ale_next_wrap)
+  augroup filetype_ruby_ale
+    autocmd!
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+  augroup END
 endif
 
 let g:jedi#auto_initialization = 0
