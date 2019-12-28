@@ -88,7 +88,7 @@ window:
   #multiplier: 3
 
   # Scroll to the bottom when new text is written to the terminal.
-  #auto_scroll: false
+  auto_scroll: true
 
 # Spaces per Tab (changes require restart)
 #
@@ -308,7 +308,7 @@ cursor:
   #   - ▇ Block
   #   - _ Underline
   #   - | Beam
-  style: Underline
+  style: Block
 
   # If this is `true`, the cursor will be rendered as a hollow box when the
   # window is not focused.
