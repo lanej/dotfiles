@@ -332,6 +332,21 @@ command! -bang -nargs=? -complete=dir GFiles
 command! -bang -nargs=? -complete=dir DFiles
   \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
 
+let g:fzf_colors = {
+      \ 'fg':      ['fg', 'Normal'],
+      \ 'bg':      ['bg', 'Normal'],
+      \ 'hl':      ['fg', 'Function'],
+      \ 'fg+':     ['fg', 'ColorColumn', 'CursorColumn', 'Normal'],
+      \ 'bg+':     ['bg', 'ColorColumn', 'CursorColumn'],
+      \ 'hl+':     ['fg', 'Special'],
+      \ 'info':    ['fg', 'Function'],
+      \ 'border':  ['fg', 'Ignore'],
+      \ 'prompt':  ['fg', 'Function'],
+      \ 'pointer': ['fg', 'Function'],
+      \ 'marker':  ['fg', 'Function'],
+      \ 'spinner': ['fg', 'Function'],
+      \ 'header':  ['fg', 'Function']}
+
 
 function! s:vcr_failures_only()
   let $VCR_RECORD="all"
