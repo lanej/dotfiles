@@ -41,6 +41,7 @@ set novb
 set noeb
 set equalalways                " Maintain consistent window sizes
 set updatetime=300
+set nospell
 
 if (has("nvim"))
   set inccommand=nosplit       " live replace
