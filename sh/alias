@@ -188,7 +188,7 @@ fcd() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --color origin/master...{}" --preview-window=right:70%) || return
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --summary --color origin/master...{}" --preview-window=right:70%) || return
 	git co $(echo "$target")
 }
 
