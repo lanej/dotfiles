@@ -11,67 +11,6 @@
       "filetypes": [
         "go"
       ]
-    },
-    "python": {
-      "command": "pyls",
-      "args": [
-        "-vv"
-      ],
-      "filetypes": [
-        "python"
-      ],
-      "settings": {
-        "pyls": {
-          "enable": true,
-          "commandPath": "",
-          "configurationSources": [
-            "flake8",
-            "pycodestyle"
-          ],
-          "plugins": {
-            "jedi_completion": {
-              "enabled": false
-            },
-            "jedi_hover": {
-              "enabled": true
-            },
-            "jedi_references": {
-              "enabled": true
-            },
-            "jedi_signature_help": {
-              "enabled": true
-            },
-            "jedi_symbols": {
-              "enabled": true,
-              "all_scopes": true
-            },
-            "mccabe": {
-              "enabled": true,
-              "threshold": 15
-            },
-            "preload": {
-              "enabled": true
-            },
-            "pycodestyle": {
-              "enabled": true
-            },
-            "pydocstyle": {
-              "enabled": false,
-              "match": "(?!test_).*\\.py",
-              "matchDir": "[^\\.].*"
-            },
-            "pyflakes": {
-              "enabled": true
-            },
-            "rope_completion": {
-              "enabled": true
-            },
-            "yapf": {
-              "enabled": true
-            }
-          }
-        }
-      }
     }
   },
   "codeLens.enable": false,
