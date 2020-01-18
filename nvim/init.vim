@@ -159,7 +159,6 @@ Plug 'w0rp/ale' ", { 'for': ['ruby' }
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
-  Plug 'fatih/vim-go'
 endif
 
 if executable('python')
