@@ -303,13 +303,9 @@ endif
 " fzf
 nnoremap <leader>as :Ack!<space><cword><CR>
 noremap  <leader>ac :Commands<CR>
-noremap  <leader>gf :GFiles<CR>
-noremap  <leader>ag :Commits<CR>
 noremap  <leader>al :Lines<CR>
 noremap  <leader>at :Tags<CR>
 noremap  <leader>f  :Files<CR>
-noremap  <leader>gc :BCommits<CR>
-noremap  <leader>gg :Buffers<CR>
 noremap  <leader>;  :History:<CR>
 noremap  <leader>/  :History/<CR>
 noremap  <leader>l  :BLines<CR>
@@ -350,10 +346,20 @@ let g:fzf_buffers_jump = 1
 " [[B]Commits] Customize the options used by 'git log':
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
-" fugitive
+" fugitive and fzf git integrations
+noremap <leader>gal :BCommits<CR>
 noremap <leader>gb :Gblame<CR>
-noremap <leader>go :Gbrowse<CR>
+noremap <leader>gf :GFiles<CR>
+noremap <leader>gg :Buffers<CR>
+noremap <leader>gl :Commits<CR>
 noremap <leader>gm :Gmerge<CR>
+noremap <leader>go :Gbrowse<CR>
+noremap <leader>gcv :Gcommit -v<CR>
+noremap <leader>gc :Gcommit<CR>
+noremap <leader>gr :Gread<CR>
+noremap <leader>gs :Gstatus<CR>
+noremap <leader>gw :Gwrite<CR>
+noremap <leader>gd :Gdiffsplit
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " rename
