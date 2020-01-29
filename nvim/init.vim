@@ -14,7 +14,9 @@ set cursorline
 set encoding=utf-8
 set exrc
 set fileformats+=mac
-set guicursor=a:blinkon0       " Disable cursor blink
+set guicursor=n-v-c:block-Cursor
+set guicursor+=i:ver100-iCursor
+set guicursor+=n-v-c:blinkon0
 set hidden                     " Better buffer management
 set history=10000              " Store lots of :cmdline history
 set hlsearch
