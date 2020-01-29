@@ -155,7 +155,7 @@ ramp-coreload-7-foreground = ${colors.alert}
 
 [module/date]
 type = internal/date
-date =    %%{F#99}%A, %Y-%m-%d%%{F-}  %%{F#fff}%H:%M:%S%%{F-}
+date = %%{F#99}%A, %Y-%m-%d%%{F-}  %%{F#fff}%H:%M:%S%%{F-}
 date-alt = %%{F#fff}%A, %d %B %Y  %%{F#fff}%H:%M%%{F#666}:%%{F#fba922}%S%%{F-}
 
 [module/memory]
@@ -210,23 +210,24 @@ interface = wlp60s0
 interval = 1.0
 ping-interval = 10
 
-format-connected = <ramp-signal> <label-connected>
-; format-packetloss = <animation-packetloss> <label-connected>
+format-connected = <label-connected>
+format-packetloss = <label-packetloss> <label-connected>
 
-label-connected = %local_ip%  %signal%% %essid:12:12:...% %{F#9FF781} %downspeed:8:8:...% %{F-} %{F#F78181} %upspeed:8:8:...% %{F-}
-label-disconnected = not connected
+label-connected = %local_ip%  %signal%% %essid:12:12:...% %{F#6a9fb5} %downspeed:8:8:...% %{F-} %{F#f4bf75} %upspeed:8:8:...% %{F-}
+label-disconnected = ---.---.---.---  --% ------------   --------   --------
+
 label-disconnected-foreground = #66
 
-ramp-signal-0 = 
-ramp-signal-1 = 
-ramp-signal-2 = 
-ramp-signal-3 = 
-ramp-signal-4 = 
+ramp-signal-0 = 1
+ramp-signal-1 = 2
+ramp-signal-2 = 3
+ramp-signal-3 = 4
+ramp-signal-4 = 5
 
 animation-packetloss-0 = 
-animation-packetloss-0-foreground = ${bar/top.warn}
-animation-packetloss-1 = 
-animation-packetloss-1-foreground = ${bar/top.foreground}
+animation-packetloss-0-foreground = ${colors.warn}
+animation-packetloss-1 = x
+animation-packetloss-1-foreground = ${colors.alert}
 animation-packetloss-framerate = 500
 
 
@@ -235,7 +236,7 @@ type = internal/pulseaudio
 sink = alsa_output.pci-0000_00_1f.3.analog-stereo
 
 format-volume =  <label-volume>
-label-muted =   muted
+label-muted = -----
 label-muted-foreground = #66
 
 ramp-volume-0 = 
