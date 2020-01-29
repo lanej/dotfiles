@@ -305,13 +305,9 @@ endif
 " fzf
 nnoremap <leader>as :Ack!<space><cword><CR>
 noremap  <leader>ac :Commands<CR>
-noremap  <leader>gf :GFiles<CR>
-noremap  <leader>ag :Commits<CR>
 noremap  <leader>al :Lines<CR>
 noremap  <leader>at :Tags<CR>
 noremap  <leader>f  :Files<CR>
-noremap  <leader>gc :BCommits<CR>
-noremap  <leader>gg :Buffers<CR>
 noremap  <leader>;  :History:<CR>
 noremap  <leader>/  :History/<CR>
 noremap  <leader>l  :BLines<CR>
@@ -338,6 +334,21 @@ command! -bang -nargs=? -complete=dir GFiles
 command! -bang -nargs=? -complete=dir DFiles
   \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
 
+let g:fzf_colors = {
+      \ 'fg':      ['fg', 'Normal'],
+      \ 'bg':      ['bg', 'Normal'],
+      \ 'hl':      ['fg', 'Function'],
+      \ 'fg+':     ['fg', 'ColorColumn', 'CursorColumn', 'Normal'],
+      \ 'bg+':     ['bg', 'ColorColumn', 'CursorColumn'],
+      \ 'hl+':     ['fg', 'Special'],
+      \ 'info':    ['fg', 'Function'],
+      \ 'border':  ['fg', 'Ignore'],
+      \ 'prompt':  ['fg', 'Function'],
+      \ 'pointer': ['fg', 'Function'],
+      \ 'marker':  ['fg', 'Function'],
+      \ 'spinner': ['fg', 'Function'],
+      \ 'header':  ['fg', 'Function']}
+
 
 function! s:vcr_failures_only()
   let $VCR_RECORD="all"
@@ -352,10 +363,20 @@ let g:fzf_buffers_jump = 1
 " [[B]Commits] Customize the options used by 'git log':
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
-" fugitive
+" fugitive and fzf git integrations
+noremap <leader>gal :BCommits<CR>
 noremap <leader>gb :Gblame<CR>
-noremap <leader>go :Gbrowse<CR>
+noremap <leader>gf :GFiles<CR>
+noremap <leader>gg :Buffers<CR>
+noremap <leader>gl :Commits<CR>
 noremap <leader>gm :Gmerge<CR>
+noremap <leader>go :Gbrowse<CR>
+noremap <leader>gcv :Gcommit -v<CR>
+noremap <leader>gc :Gcommit<CR>
+noremap <leader>gr :Gread<CR>
+noremap <leader>gs :Gstatus<CR>
+noremap <leader>gw :Gwrite<CR>
+noremap <leader>gd :Gdiffsplit
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " rename
@@ -395,9 +416,7 @@ endif
 let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
-" let ruby_no_expensive = 1
-let ruby_pseudo_operators=1
-let ruby_operators=1
+let ruby_no_expensive=1
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -554,9 +573,6 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
-    autocmd FileType ruby map <leader>d :ALEFix<CR>
-    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
-    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 
   augroup filetype_gitcommit
@@ -825,9 +841,12 @@ let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
 
 if &runtimepath =~ 'ale'
-  nmap <silent> <leader>d :ALEFix<CR>
-  nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  nmap <silent><C-n> <Plug>(ale_next_wrap)
+  augroup filetype_ruby_ale
+    autocmd!
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+  augroup END
 endif
 
 let g:jedi#auto_initialization = 0

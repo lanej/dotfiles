@@ -9,8 +9,8 @@ if command -v fzf >/dev/null; then
 	--prompt=\
 	--cycle
 	--no-info
-	--color fg:#D8DEE9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
-	--color pointer:#48a4ff,info:#ffffff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
+	--color fg:#d8dee9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
+	--color pointer:#48a4ff,info:#48a4ff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
 	'
 fi
 
