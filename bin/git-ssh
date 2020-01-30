@@ -1,2 +1,5 @@
 #!/bin/sh
+if [ -n "$TMUX" ] && [ -r "$HOME/.local/bin/fix-ssh" ]; then
+	. "$HOME/.local/bin/fix-ssh"
+fi
 exec /usr/bin/ssh $GIT_SSH_ARGS "$@"
