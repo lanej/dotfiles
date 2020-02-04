@@ -531,13 +531,14 @@ mouse:
 # be mapped to the `ReceiveChar` action. Alternatively, you can use `None` for
 # a no-op if you do not wish to receive input characters for that binding.
 key_bindings:
-  - { key: N, mods: Command, action: SpawnNewInstance }
-  - { key: J, mods: Control|Shift, action: ScrollPageUp }
-  - { key: K, mods: Control|Shift, action: ScrollPageDown }
-  - { key: N, mods: Control|Shift, action: ScrollLineDown }
-  - { key: P, mods: Control|Shift, action: ScrollLineUp }
-  - { key: L, mods: Control, action: ReceiveChar }
-  - { key: L, mods: Control|Shift, action: ClearLogNotice }
+  - { key: N,      mods: Command,       action: SpawnNewInstance }
+  - { key: J,      mods: Control|Shift, action: ScrollPageUp     }
+  - { key: K,      mods: Control|Shift, action: ScrollPageDown   }
+  - { key: N,      mods: Control|Shift, action: ScrollLineDown   }
+  - { key: P,      mods: Control|Shift, action: ScrollLineUp     }
+  - { key: L,      mods: Control,       action: ReceiveChar      }
+  - { key: L,      mods: Control|Shift, action: ClearLogNotice   }
+  - { key: Equals, mods: Command,       action: ResetFontSize    }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
