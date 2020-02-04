@@ -531,7 +531,7 @@ if has('autocmd')
     " Reload files when vim gains focus
     autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
-    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
+    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
     if has('nvim')
       autocmd DirChanged * call SourceEnv()
