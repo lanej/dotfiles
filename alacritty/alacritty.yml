@@ -538,7 +538,9 @@ key_bindings:
   - { key: P,      mods: Control|Shift, action: ScrollLineUp     }
   - { key: L,      mods: Control,       action: ReceiveChar      }
   - { key: L,      mods: Control|Shift, action: ClearLogNotice   }
-  - { key: Equals, mods: Command,       action: ResetFontSize    }
+  - { key: Equals, mods: Command|Shift, action: ResetFontSize    }
+  - { key: Equals, mods: Command,       action: IncreaseFontSize }
+  - { key: Minus,  mods: Command,       action: DecreaseFontSize }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
@@ -553,8 +555,6 @@ key_bindings:
   # (macOS only)
   #- { key: Key0,   mods: Command,         action: ResetFontSize    }
   #- { key: Equals, mods: Command,         action: IncreaseFontSize }
-  #- { key: Add,    mods: Command,         action: IncreaseFontSize }
-  #- { key: Minus,  mods: Command,         action: DecreaseFontSize }
   #- { key: K,      mods: Command,         action: ClearHistory     }
   #- { key: K,      mods: Command,         chars: "\x0c"            }
   #- { key: V,      mods: Command,         action: Paste            }
