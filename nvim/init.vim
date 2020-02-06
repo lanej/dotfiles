@@ -125,12 +125,8 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
 " fzf integration
 Plug 'junegunn/fzf.vim'
-" yank register browser
-Plug 'junegunn/vim-peekaboo'
 " automatically update tags
 Plug 'ludovicchabant/vim-gutentags'
-" show me what i just yanked
-Plug 'machakann/vim-highlightedyank'
 " quick search, configured to use ag
 Plug 'mileszs/ack.vim'
 " markdown preview with mermaid support
@@ -348,7 +344,6 @@ let g:fzf_colors = {
       \ 'marker':  ['fg', 'Function'],
       \ 'spinner': ['fg', 'Function'],
       \ 'header':  ['fg', 'Function']}
-
 
 function! s:vcr_failures_only()
   let $VCR_RECORD="all"
@@ -731,6 +726,7 @@ if has('conceal')
 endif
 
 if &runtimepath =~ 'coc.nvim'
+  nnoremap <silent> <leader>"  :<C-u>CocList -A --normal yank<cr>
   " Use <c-space> to trigger completion.
   inoremap <silent><expr> <c-space> coc#refresh()
   inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
