@@ -99,6 +99,7 @@
   "solargraph.diagnostics": false,
   "solargraph.formatting": true,
   "solargraph.hover": true,
+  "yank.enableCompletion": false,
   "rust.clippy_preference": "on",
   "suggest.enablePreview": true,
   "suggest.maxCompleteItemCount": 25
