@@ -45,3 +45,4 @@ if [ -d "$HOME/.cargo/bin" ]; then
 fi
 
 export PATH="${HOME}/.local/bin:$PATH"
+export BAT_THEME="1337"

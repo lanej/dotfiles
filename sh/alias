@@ -162,7 +162,7 @@ alias reshell="exec -l $SHELL"
 
 if command -v bat >/dev/null; then
   alias cat='bat'
-  alias bat='bat -p --theme "Monokai Extended Origin"'
+  alias bat='bat -p'
 fi
 
 f() {
