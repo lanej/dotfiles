@@ -227,14 +227,14 @@ colors:
 
   # Bright colors
   bright:
-   black:   '0x505050'
+   black:   '0xa4a4a4'
    red:     '0xc0595a'
    green:   '0x87d75f'
    yellow:  '0xf7d3a1'
    blue:    '0x3c7f9c'
    magenta: '0xcfb0c8'
    cyan:    '0x9cc9c2'
-   white:   '0xffffff'
+   white:   '0xf2f2f2'
 
   # Dim colors
   #
