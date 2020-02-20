@@ -153,6 +153,7 @@ Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale' ", { 'for': ['ruby' }
+Plug 'editorconfig/editorconfig-vim'
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
@@ -562,7 +563,6 @@ if has('autocmd')
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
-    autocmd FileType ruby set colorcolumn=100
     autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
