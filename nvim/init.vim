@@ -365,7 +365,7 @@ noremap <leader>gb :Gblame<CR>
 noremap <leader>gf :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
 noremap <leader>gl :Commits<CR>
-noremap <leader>gm :Gmerge<CR>
+noremap <leader>gm :Git mergetool<CR>
 noremap <leader>go :Gbrowse<CR>
 noremap <leader>gcv :Gcommit -v<CR>
 noremap <leader>gc :Gcommit<CR>
