@@ -34,8 +34,8 @@ window:
   # Blank space added around the window in pixels. This padding is scaled
   # by DPI and the specified value is always added at both opposing sides.
   padding:
-   x: 0
-   y: 0
+   x: 1
+   y: 1
 
   # Spread additional padding evenly around the terminal content.
   dynamic_padding: true
@@ -202,8 +202,8 @@ colors:
   # Colors which should be used to draw the terminal cursor. If these are unset,
   # the cursor color will be the inverse of the cell color.
   # cursor:
-   # text: '0xffffff'
-   # cursor: '0x6a9fb5'
+   # text: '0x000000'
+   # cursor: '0xd0d0d0'
 
   # Selection colors
   #
@@ -223,11 +223,11 @@ colors:
    blue:    '0x6a9fb5'
    magenta: '0xaa759f'
    cyan:    '0x75b5aa'
-   white:   '0xffffff'
+   white:   '0xf2f2f2'
 
   # Bright colors
   bright:
-   black:   '0xa4a4a4'
+   black:   '0x595959'
    red:     '0xc0595a'
    green:   '0x87d75f'
    yellow:  '0xf7d3a1'
@@ -531,13 +531,16 @@ mouse:
 # be mapped to the `ReceiveChar` action. Alternatively, you can use `None` for
 # a no-op if you do not wish to receive input characters for that binding.
 key_bindings:
-  - { key: N, mods: Command, action: SpawnNewInstance }
-  - { key: J, mods: Control|Shift, action: ScrollPageUp }
-  - { key: K, mods: Control|Shift, action: ScrollPageDown }
-  - { key: N, mods: Control|Shift, action: ScrollLineDown }
-  - { key: P, mods: Control|Shift, action: ScrollLineUp }
-  - { key: L, mods: Control, action: ReceiveChar }
-  - { key: L, mods: Control|Shift, action: ClearLogNotice }
+  - { key: N,      mods: Command,       action: SpawnNewInstance }
+  - { key: J,      mods: Control|Shift, action: ScrollPageUp     }
+  - { key: K,      mods: Control|Shift, action: ScrollPageDown   }
+  - { key: N,      mods: Control|Shift, action: ScrollLineDown   }
+  - { key: P,      mods: Control|Shift, action: ScrollLineUp     }
+  - { key: L,      mods: Control,       action: ReceiveChar      }
+  - { key: L,      mods: Control|Shift, action: ClearLogNotice   }
+  - { key: Equals, mods: Command|Shift, action: ResetFontSize    }
+  - { key: Equals, mods: Command,       action: IncreaseFontSize }
+  - { key: Minus,  mods: Command,       action: DecreaseFontSize }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
@@ -552,8 +555,6 @@ key_bindings:
   # (macOS only)
   #- { key: Key0,   mods: Command,         action: ResetFontSize    }
   #- { key: Equals, mods: Command,         action: IncreaseFontSize }
-  #- { key: Add,    mods: Command,         action: IncreaseFontSize }
-  #- { key: Minus,  mods: Command,         action: DecreaseFontSize }
   #- { key: K,      mods: Command,         action: ClearHistory     }
   #- { key: K,      mods: Command,         chars: "\x0c"            }
   #- { key: V,      mods: Command,         action: Paste            }
