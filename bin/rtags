@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Wrapper script to make the "ripper-tags" gem (https://github.com/tmm1/ripper-tags)
+# work with vim-gutentags (https://github.com/ludovicchabant/vim-gutentags)
+#
+# Put this script in your $PATH, make it executable and configure vim-gutentags like this:
+#
+# "let g:gutentags_ctags_executable_ruby = 'rtags'"
+#
+# Parts taken from https://stackoverflow.com/a/14203146/171364 and https://github.com/tmm1/ripper-tags/issues/49
+#
+set -e
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -f)
+    TAGS_FILE_NAME="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    *)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [[ $* = *"--append"* ]]; then
+  cat "$TAGS_FILE_NAME" \
+    | (cat && ripper-tags --recursive --ignore-unsupported-options -f - ${*/--append}) \
+    | grep -v '^!_' \
+    | sort \
+    > tags~ && mv tags~ "$TAGS_FILE_NAME"
+else
+  # restore tag file parameter
+  if [ -n "$TAGS_FILE_NAME" ]; then
+    set -- -f "$TAGS_FILE_NAME" "$@"
+  fi
+  ripper-tags --recursive --ignore-unsupported-options $*
+fi
