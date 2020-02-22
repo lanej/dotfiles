@@ -155,7 +155,7 @@ Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'editorconfig/editorconfig-vim'
-Plug 'w0rp/ale', { 'for': 'ruby' }
+" Plug 'w0rp/ale' ", { 'for': ['ruby' }
 
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
