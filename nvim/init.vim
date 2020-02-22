@@ -152,11 +152,11 @@ Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
 " Plug 'w0rp/ale' ", { 'for': ['ruby' }
+Plug 'editorconfig/editorconfig-vim'
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
-  Plug 'fatih/vim-go'
 endif
 
 if executable('python')
@@ -364,7 +364,7 @@ noremap <leader>gb :Gblame<CR>
 noremap <leader>gf :GFiles<CR>
 noremap <leader>gg :Buffers<CR>
 noremap <leader>gl :Commits<CR>
-noremap <leader>gm :Gmerge<CR>
+noremap <leader>gm :Git mergetool<CR>
 noremap <leader>go :Gbrowse<CR>
 noremap <leader>gcv :Gcommit -v<CR>
 noremap <leader>gc :Gcommit<CR>
@@ -526,7 +526,7 @@ if has('autocmd')
     " Reload files when vim gains focus
     autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
-    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0
+    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
     if has('nvim')
       autocmd DirChanged * call SourceEnv()
@@ -562,7 +562,6 @@ if has('autocmd')
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
-    autocmd FileType ruby set colorcolumn=100
     autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
     autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
@@ -835,6 +834,7 @@ let g:ale_sign_error = '>>'
 let g:ale_sign_offset = 1000000
 let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
+let g:ale_virtualtext_cursor = 1
 
 if &runtimepath =~ 'ale'
   augroup filetype_ruby_ale
