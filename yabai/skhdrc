@@ -91,9 +91,7 @@ alt - p : yabai -m window --focus prev
 alt - n : yabai -m window --focus next
 
 alt - e : yabai -m space --layout bsp
-alt - s : yabai -m space --layout monocle
-shift + alt - s : yabai -m space --layout float
-
+alt - s : yabai -m space --layout float
 
 # swap managed window
 # shift + alt - h : yabai -m window --swap north
