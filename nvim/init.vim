@@ -291,6 +291,7 @@ let g:airline#extensions#wordcount#enabled = 0
 let g:airline#extensions#hunks#enabled = 0
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
+let g:ale_virtualtext_cursor = 1
 
 " git-gutter
 if exists('&signcolumn')  " Vim 7.4.2201
