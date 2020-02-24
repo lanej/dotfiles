@@ -90,8 +90,8 @@ alt - l : yabai -m window --focus east
 alt - p : yabai -m window --focus prev
 alt - n : yabai -m window --focus next
 
-alt - e : yabai -m space --layout bsp
-alt - s : yabai -m space --layout float
+alt - e : yabai -m space --layout bsp; yabai -m config active_window_border_color 0xff73cef4
+alt - s : yabai -m space --layout float; yabai -m config active_window_border_color 0xff64fe2e
 
 # swap managed window
 # shift + alt - h : yabai -m window --swap north
