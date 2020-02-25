@@ -154,6 +154,14 @@ Plug 'christoomey/vim-tmux-navigator'
 " Plug 'w0rp/ale' ", { 'for': ['ruby' }
 Plug 'editorconfig/editorconfig-vim'
 
+Plug 'lervag/vimtex'
+let g:tex_flavor='latex'
+let g:vimtex_view_method='mupdf'
+let g:vimtex_quickfix_mode=1
+" set conceallevel=1
+let g:tex_conceal='abdmg'
+
+
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
@@ -412,6 +420,7 @@ let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
 let ruby_no_expensive=1
+let g:polyglot_disabled = ['latex']
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
