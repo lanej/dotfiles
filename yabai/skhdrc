@@ -91,7 +91,8 @@ alt - p : yabai -m window --focus prev
 alt - n : yabai -m window --focus next
 
 alt - e : yabai -m space --layout bsp; yabai -m config active_window_border_color 0xff73cef4
-alt - s : yabai -m space --layout float; yabai -m config active_window_border_color 0xff64fe2e
+alt + shift - s : yabai -m window --toggle float
+alt + shift - f : yabai -m window --toggle zoom-fullscreen
 
 # swap managed window
 # shift + alt - h : yabai -m window --swap north
@@ -99,8 +100,8 @@ shift + alt - h : yabai -m window --swap west
 shift + alt - j : yabai -m window --swap south
 shift + alt - k : yabai -m window --swap north
 shift + alt - l : yabai -m window --swap east
-# alt - r : chunkc tiling::desktop --rotate 90
-# shift + alt - r : chunkc tiling::desktop --rotate 270
+alt - r : yabai -m space --rotate 90
+shift + alt - r : yabai -m space --rotate 270
 
 # move managed window
 # shift + cmd - h : yabai -m window --warp east
