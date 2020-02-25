@@ -49,7 +49,7 @@ if (has("nvim"))
   set inccommand=nosplit       " live replace
 endif
 
-if exists('+termguicolors')
+if (exists("+termguicolors"))
   let &t_8f="\<Esc>[38;2;%lu;%lu;%lum"
   let &t_8b="\<Esc>[48;2;%lu;%lu;%lum"
   set termguicolors
@@ -548,7 +548,7 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
-      if (has("termguicolors"))
+      if (exists("+termguicolors"))
         autocmd TermEnter,TermOpen * set notermguicolors
       endif
     endif
