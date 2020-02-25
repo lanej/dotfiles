@@ -157,6 +157,13 @@ Plug 'christoomey/vim-tmux-navigator'
 Plug 'w0rp/ale' ", { 'for': ['ruby' }
 Plug 'editorconfig/editorconfig-vim'
 
+Plug 'lervag/vimtex'
+let g:tex_flavor='latex'
+let g:vimtex_view_method='mupdf'
+let g:vimtex_quickfix_mode=1
+" set conceallevel=1
+let g:tex_conceal='abdmg'
+
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
@@ -416,6 +423,7 @@ let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
 let ruby_no_expensive=1
+let g:polyglot_disabled = ['latex']
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -781,6 +789,11 @@ if &runtimepath =~ 'coc.nvim'
   xmap <leader>a  <Plug>(coc-codeaction-selected)
   nmap <leader>a  <Plug>(coc-codeaction-selected)
 
+  nnoremap <leader>ac :CocSearch<space>
+  xnoremap <leader>ac :CocSearch<space>
+
+  nmap <leader>ce  <Plug>(coc-refactor)
+
   " Remap for do codeAction of current line
   " nmap <leader>ac  <Plug>(coc-codeaction)
   " Fix autofix problem of current line
@@ -848,5 +861,15 @@ if &runtimepath =~ 'ale'
     autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
   augroup END
 endif
+
+function! SynStack ()
+  for i1 in synstack(line("."), col("."))
+    let i2 = synIDtrans(i1)
+    let n1 = synIDattr(i1, "name")
+    let n2 = synIDattr(i2, "name")
+    echo n1 "->" n2
+  endfor
+endfunction
+map gm :call SynStack()<CR>
 
 let g:jedi#auto_initialization = 0
