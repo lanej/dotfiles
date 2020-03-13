@@ -541,6 +541,10 @@ key_bindings:
   - { key: Equals, mods: Command|Shift, action: ResetFontSize    }
   - { key: Equals, mods: Command,       action: IncreaseFontSize }
   - { key: Minus,  mods: Command,       action: DecreaseFontSize }
+  - { key: V,      mods: Control|Shift, action: Paste            }
+  - { key: C,      mods: Control|Shift, action: Copy             }
+  - { key: Q,      mods: Control,       action: Quit             }
+  - { key: Q,      mods: Command,       action: None             }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
