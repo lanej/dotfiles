@@ -578,6 +578,14 @@ if has('autocmd')
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
   augroup END
 
+  augroup filetype_python
+    autocmd!
+    autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
+    autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
+    autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
+    autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
+  augroup END
+
   augroup filetype_gitcommit
     autocmd!
     autocmd BufNewFile,BufRead new-commit set filetype=markdown
