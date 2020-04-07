@@ -41,6 +41,7 @@
 	ls = branch
 	mf = merge --ff-only
 	ms = merge --squash
+	patch = !git --no-pager diff --no-color
 	ph = push
 	pl = pull --rebase
 	pr = pull-request
