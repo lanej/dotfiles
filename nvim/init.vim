@@ -167,10 +167,6 @@ if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 endif
 
-if executable('python')
-  Plug 'davidhalter/jedi-vim', { 'for': 'python' }
-endif
-
 " terraform
 if executable('terraform')
   Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
