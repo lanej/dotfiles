@@ -138,5 +138,6 @@
 	whitespace = red reverse
 [diff-so-fancy]
 	markEmptyLines = false
+	changeHunkIndicators = false
 [diff]
 	noprefix = true
