@@ -36,7 +36,7 @@
 	f = fetch
 	fa = fetch --all --tags
 	l = log --decorate --graph
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	lg = log --graph --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 	ll = log
 	ls = branch
 	mf = merge --ff-only
