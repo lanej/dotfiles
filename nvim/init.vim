@@ -154,8 +154,8 @@ Plug 'dhruvasagar/vim-prosession'
 Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
-Plug 'w0rp/ale' ", { 'for': ['ruby' }
 Plug 'editorconfig/editorconfig-vim'
+Plug 'w0rp/ale', { 'for': 'ruby' }
 
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
@@ -167,10 +167,6 @@ let g:tex_conceal='abdmg'
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
-endif
-
-if executable('python')
-  Plug 'davidhalter/jedi-vim', { 'for': 'python' }
 endif
 
 " terraform
@@ -579,6 +575,14 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
+  augroup END
+
+  augroup filetype_python
+    autocmd!
+    autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
+    autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
+    autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
+    autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
   augroup END
 
   augroup filetype_gitcommit

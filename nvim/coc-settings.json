@@ -37,6 +37,7 @@
   "solargraph.definitions": true,
   "solargraph.diagnostics": false,
   "solargraph.formatting": true,
+  "python.autoComplete.addBrackets": true,
   "solargraph.hover": true,
   "yank.enableCompletion": false,
   "suggest.enablePreview": true,

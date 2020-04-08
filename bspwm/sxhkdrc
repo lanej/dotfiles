@@ -10,6 +10,9 @@ super + Return
 super + shift + Return
 	brave
 
+super + shift + @space
+	brave --incognito
+
 # program launcher
 super + @space
 	rofi -show drun -font "Hack Nerd Font Mono 36" -theme "glue_pro_blue"

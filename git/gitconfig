@@ -36,11 +36,12 @@
 	f = fetch
 	fa = fetch --all --tags
 	l = log --decorate --graph
-	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	lg = log --graph --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 	ll = log
 	ls = branch
 	mf = merge --ff-only
 	ms = merge --squash
+	patch = !git --no-pager diff --no-color
 	ph = push
 	pl = pull --rebase
 	pr = pull-request
@@ -61,7 +62,7 @@
 	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
 	rsl = "!_git_rsl() { local max=$1; PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
-	sh = !git-sh
+	sh = show HEAD
 	sl = !git log --oneline --graph --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*"
 	slb = sl origin/master..HEAD
 	slp = log --stat -p
@@ -129,13 +130,14 @@
 	newNormal = green bold
 	newHighlight = green bold 22
 [color "diff"]
-	meta = blue reverse
-	frag = magenta bold
+	meta = cyan bold
+	frag = blue bold
 	commit = yellow bold
 	old = red bold
 	new = green bold
 	whitespace = red reverse
 [diff-so-fancy]
 	markEmptyLines = false
+	changeHunkIndicators = false
 [diff]
 	noprefix = true
