@@ -107,8 +107,6 @@ Plug 'tpope/vim-eunuch'
 Plug 'junegunn/vim-easy-align'
 " support dotenv
 Plug 'tpope/vim-dotenv'
-" unified diffs only
-Plug 'lambdalisue/vim-unified-diff'
 " split / join code blocks
 Plug 'AndrewRadev/splitjoin.vim'
 " show git diffs in left gutter
