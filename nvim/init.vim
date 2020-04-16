@@ -705,8 +705,6 @@ set shortmess+=T
 " a	all of the above abbreviations
 set shortmess+=a
 
-let g:loaded_clipboard_provider='xsel'
-
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
 nnoremap  <leader>Y  "+yg_
