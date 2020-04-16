@@ -165,11 +165,6 @@ if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 endif
 
-" terraform
-if executable('terraform')
-  Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
-end
-
 " Add plugins to &runtimepath
 call plug#end()
 
