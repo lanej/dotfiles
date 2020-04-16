@@ -110,8 +110,6 @@ Plug 'tpope/vim-eunuch'
 Plug 'junegunn/vim-easy-align'
 " support dotenv
 Plug 'tpope/vim-dotenv'
-" unified diffs only
-Plug 'lambdalisue/vim-unified-diff'
 " split / join code blocks
 Plug 'AndrewRadev/splitjoin.vim'
 " show git diffs in left gutter
@@ -164,6 +162,14 @@ let g:vimtex_quickfix_mode=1
 " set conceallevel=1
 let g:tex_conceal='abdmg'
 
+
+Plug 'lervag/vimtex'
+let g:tex_flavor='latex'
+let g:vimtex_view_method='mupdf'
+let g:vimtex_quickfix_mode=1
+" set conceallevel=1
+let g:tex_conceal='abdmg'
+
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
 let g:vimtex_view_method='mupdf'
@@ -175,18 +181,6 @@ let g:tex_conceal='abdmg'
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
-endif
-
-" terraform
-if executable('terraform')
-  Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
-end
-
-if v:version > 704 || has('nvim')
-  " sudo write
-  Plug 'lambdalisue/suda.vim'
-  " Allow saving of files as sudo when I forgot to start vim using sudo.
-  cmap w! w suda://%<CR>
 endif
 
 " Add plugins to &runtimepath
@@ -729,8 +723,6 @@ set shortmess+=c
 set shortmess+=T
 " a	all of the above abbreviations
 set shortmess+=a
-
-let g:loaded_clipboard_provider='xsel'
 
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
