@@ -170,13 +170,6 @@ if executable('terraform')
   Plug 'hashivim/vim-terraform', { 'for': 'terraform' }
 end
 
-if v:version > 704 || has('nvim')
-  " sudo write
-  Plug 'lambdalisue/suda.vim'
-  " Allow saving of files as sudo when I forgot to start vim using sudo.
-  cmap w! w suda://%<CR>
-endif
-
 " Add plugins to &runtimepath
 call plug#end()
 
