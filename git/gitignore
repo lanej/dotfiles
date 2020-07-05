@@ -22,3 +22,4 @@ tags.temp
 tags.lock
 coc-settings.json
 ~tags
+.ccls-cache/
