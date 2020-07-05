@@ -1,0 +1,15 @@
+configuration {
+  modi:            "combi";
+  combi-modi:      "window,drun,run,ssh";
+  me-select-entry: "MouseSecondary";
+  me-accept-entry: "MousePrimary";
+  scroll-method:   1;
+  display-ssh:     "ssh://";
+  display-run:     "#! ";
+  display-drun:    "$ ";
+  display-window:  "W: ";
+  display-combi:   "> ";
+  show-icons:      true;
+  font:            "hack 16";
+  theme:           "glue_pro_blue";
+}
