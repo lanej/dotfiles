@@ -252,6 +252,9 @@ map <leader>ntf :NERDTreeFind<CR>
 " NERDCommenter
 " Enable trimming of trailing whitespace when uncommenting
 let g:NERDTrimTrailingWhitespace = 1
+let g:NERDCreateDefaultMappings = 0
+
+map <leader>c<space> <plug>NERDCommenterToggle
 
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
