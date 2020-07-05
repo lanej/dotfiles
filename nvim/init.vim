@@ -154,9 +154,8 @@ Plug 'editorconfig/editorconfig-vim'
 
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
-let g:vimtex_view_method='mupdf'
+let g:vimtex_view_method='zathura'
 let g:vimtex_quickfix_mode=1
-" set conceallevel=1
 let g:tex_conceal='abdmg'
 
 
