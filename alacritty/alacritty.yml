@@ -538,7 +538,7 @@ key_bindings:
   - { key: P,      mods: Control|Shift, action: ScrollLineUp     }
   - { key: L,      mods: Control,       action: ReceiveChar      }
   - { key: L,      mods: Control|Shift, action: ClearLogNotice   }
-  - { key: Equals, mods: Command|Shift, action: ResetFontSize    }
+  - { key: 0,      mods: Command,       action: ResetFontSize    }
   - { key: Equals, mods: Command,       action: IncreaseFontSize }
   - { key: Minus,  mods: Command,       action: DecreaseFontSize }
   # (Windows/Linux only)
