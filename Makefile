@@ -92,9 +92,11 @@ oni:
 bspwm:
 	mkdir -p ${HOME}/.config/bspwm
 	mkdir -p ${HOME}/.config/sxhkd
+	mkdir -p ${HOME}/.config/rofi
 	touch ${HOME}/.xsession
 	ln -fs $(DOTFILES)/bspwm/bspwmrc ${HOME}/.config/bspwm/bspwmrc
 	ln -fs $(DOTFILES)/bspwm/sxhkdrc ${HOME}/.config/sxhkd/sxhkdrc
+	ln -fs $(DOTFILES)/rc/config.rasi ${HOME}/.config/rofi/config.rasi
 kitty:
 	mkdir -p ${HOME}/.config/kitty
 	ln -fs $(DOTFILES)/kitty/kittyconf ${HOME}/.config/kitty/kitty.conf
