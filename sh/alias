@@ -197,3 +197,4 @@ i() {
   nvim -R -c Lines
 }
 alias icat="kitty +kitten icat"
+alias todo="todoist add"
