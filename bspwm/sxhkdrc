@@ -17,6 +17,10 @@ super + shift + @space
 super + @space
 	rofi -show drun
 
+# terminal launcher
+super + t
+	rofi -show ssh
+
 # command pannel
 alt + @space
 	rofi -show combi
