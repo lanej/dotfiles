@@ -213,8 +213,8 @@ ping-interval = 10
 format-connected = <label-connected>
 format-packetloss = <animation-packetloss> <label-connected>
 
-label-connected = %essid:12:12:...%@%local_ip%:%signal%% %{F#6a9fb5} %downspeed:8:8:...% %{F-} %{F#f4bf75} %upspeed:8:8:...% %{F-}
-label-disconnected = ---.---.---.--- ------------@---   --------   --------
+label-connected = %essid:12:12:...%|%local_ip%|%signal%% %{F#6a9fb5} %downspeed:8:8:...% %{F-} %{F#f4bf75} %upspeed:8:8:...% %{F-}
+label-disconnected = ---.---.---.--- ------------|---   --------   --------
 
 label-disconnected-foreground = #66
 
