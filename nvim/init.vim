@@ -542,7 +542,6 @@ if has('autocmd')
     autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
     autocmd FileType markdown let g:gutentags_enabled = 0
-    autocmd FileType markdown set conceallevel=0
   augroup END
 
   function! s:vcr_failures_only()
@@ -720,7 +719,7 @@ vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
 if has('conceal')
-  set conceallevel=2 concealcursor=niv
+  set conceallevel=0 concealcursor=niv
 endif
 
 if &runtimepath =~ 'coc.nvim'
