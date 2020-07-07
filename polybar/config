@@ -155,7 +155,7 @@ ramp-coreload-7-foreground = ${colors.alert}
 
 [module/date]
 type = internal/date
-date = %%{F#99}%A, %Y-%m-%d%%{F-}  %%{F#fff}%H:%M:%S%%{F-}
+date = %%{F#99}%A, %Y-%m-%d%%{F-}  %%{F#fff}%H:%M%%{F-}
 date-alt = %%{F#fff}%A, %d %B %Y  %%{F#fff}%H:%M%%{F#666}:%%{F#fba922}%S%%{F-}
 
 [module/memory]
@@ -213,8 +213,8 @@ ping-interval = 10
 format-connected = <label-connected>
 format-packetloss = <animation-packetloss> <label-connected>
 
-label-connected = %essid:12:12:...%@%local_ip%:%signal%% %{F#6a9fb5} %downspeed:8:8:...% %{F-} %{F#f4bf75} %upspeed:8:8:...% %{F-}
-label-disconnected = ---.---.---.--- ------------@---   --------   --------
+label-connected = %essid:12:12:...%|%local_ip%|%signal%% %{F#6a9fb5} %downspeed:8:8:...% %{F-} %{F#f4bf75} %upspeed:8:8:...% %{F-}
+label-disconnected = ---.---.---.--- ------------|---   --------   --------
 
 label-disconnected-foreground = #66
 
@@ -291,7 +291,6 @@ menu-2-1-exec = menu_open-0
 type = internal/date
 interval = 2
 date = %%{F#999}%Y-%m-%d%%{F-}  %%{F#fff}%H:%M%%{F-}
-
 
 [module/temperature]
 type = internal/temperature

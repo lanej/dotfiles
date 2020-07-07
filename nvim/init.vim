@@ -172,9 +172,8 @@ let g:tex_conceal='abdmg'
 
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
-let g:vimtex_view_method='mupdf'
+let g:vimtex_view_method='zathura'
 let g:vimtex_quickfix_mode=1
-" set conceallevel=1
 let g:tex_conceal='abdmg'
 
 
@@ -271,6 +270,9 @@ map <leader>ntf :NERDTreeFind<CR>
 " NERDCommenter
 " Enable trimming of trailing whitespace when uncommenting
 let g:NERDTrimTrailingWhitespace = 1
+let g:NERDCreateDefaultMappings = 0
+
+map <leader>c<space> <plug>NERDCommenterToggle
 
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
@@ -559,7 +561,6 @@ if has('autocmd')
     autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
     autocmd FileType markdown let g:gutentags_enabled = 0
-    autocmd FileType markdown set conceallevel=0
   augroup END
 
   function! s:vcr_failures_only()
@@ -737,7 +738,7 @@ vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
 if has('conceal')
-  set conceallevel=2 concealcursor=niv
+  set conceallevel=0 concealcursor=niv
 endif
 
 if &runtimepath =~ 'coc.nvim'

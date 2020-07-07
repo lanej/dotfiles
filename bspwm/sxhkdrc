@@ -15,11 +15,15 @@ super + shift + @space
 
 # program launcher
 super + @space
-	rofi -show drun -font "Hack Nerd Font Mono 36" -theme "glue_pro_blue"
+	rofi -show drun
+
+# terminal launcher
+super + t
+	rofi -show ssh
 
 # command pannel
 alt + @space
-	rofi -show combi -font "Hack Nerd Font Mono 36" -theme "glue_pro_blue"
+	rofi -show combi
 
 # make sxhkd reload its configuration files:
 super + Escape
@@ -108,4 +112,19 @@ super + {Left,Down,Up,Right}
 
 # lock
 super + shift + Down
-	/usr/bin/xscreensaver-command -lock
+	xset s activate
+
+XF86AudioRaiseVolume
+  pactl set-sink-volume @DEFAULT_SINK@ +1000
+# Decrease volume
+XF86AudioLowerVolume
+  pactl set-sink-volume @DEFAULT_SINK@ -1000
+# Mute volume
+XF86AudioMute
+  pactl set-sink-mute @DEFAULT_SINK@ toggle
+
+XF86MonBrightnessDown
+  sudo xhacklight dec
+
+XF86MonBrightnessUp
+  sudo xhacklight inc

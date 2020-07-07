@@ -88,7 +88,7 @@ scrolling:
   #multiplier: 3
 
   # Scroll to the bottom when new text is written to the terminal.
-  auto_scroll: true
+  auto_scroll: false
 
 # Spaces per Tab (changes require restart)
 #
@@ -538,13 +538,13 @@ key_bindings:
   - { key: P,      mods: Control|Shift, action: ScrollLineUp     }
   - { key: L,      mods: Control,       action: ReceiveChar      }
   - { key: L,      mods: Control|Shift, action: ClearLogNotice   }
-  - { key: Equals, mods: Command|Shift, action: ResetFontSize    }
+  - { key: 0,      mods: Command,       action: ResetFontSize    }
   - { key: Equals, mods: Command,       action: IncreaseFontSize }
   - { key: Minus,  mods: Command,       action: DecreaseFontSize }
   - { key: V,      mods: Control|Shift, action: Paste            }
   - { key: C,      mods: Control|Shift, action: Copy             }
-  - { key: Q,      mods: Control,       action: Quit             }
-  - { key: Q,      mods: Command,       action: None             }
+  - { key: Q,      mods: Command,       action: Quit             }
+  - { key: W,      mods: Command,       action: None             }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
