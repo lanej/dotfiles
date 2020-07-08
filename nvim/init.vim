@@ -62,7 +62,7 @@ set nowritebackup
 
 " Trailing spaces and tabs
 set list
-set listchars=tab:→\ ,space:·,nbsp:␣,trail:•,precedes:«,extends:»
+set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
 
 let mapleader = ','
 
