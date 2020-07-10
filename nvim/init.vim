@@ -43,12 +43,15 @@ set novb
 set noeb
 set equalalways                " Maintain consistent window sizes
 set updatetime=300
+set nospell
 
 if (has("nvim"))
   set inccommand=nosplit       " live replace
 endif
 
-if (has("termguicolors"))
+if (exists("+termguicolors"))
+  let &t_8f="\<Esc>[38;2;%lu;%lu;%lum"
+  let &t_8b="\<Esc>[48;2;%lu;%lu;%lum"
   set termguicolors
 endif
 
@@ -59,7 +62,7 @@ set nowritebackup
 
 " Trailing spaces and tabs
 set list
-set listchars=tab:→\ ,space:·,nbsp:␣,trail:•,precedes:«,extends:»
+set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
 
 let mapleader = ','
 
@@ -178,6 +181,8 @@ nnoremap <silent> <C-k> :TmuxNavigateUp<cr>
 nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 
 " plugin-config start
+map <leader>w :w<CR>
+map <leader>x :x<CR>
 
 " vim-plug
 map <leader>vpi :PlugInstall<CR>
@@ -282,6 +287,7 @@ let g:airline#extensions#wordcount#enabled = 0
 let g:airline#extensions#hunks#enabled = 0
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
+let g:ale_virtualtext_cursor = 1
 
 " git-gutter
 if exists('&signcolumn')  " Vim 7.4.2201
@@ -529,7 +535,7 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
-      if (has("termguicolors"))
+      if (exists("+termguicolors"))
         autocmd TermEnter,TermOpen * set notermguicolors
       endif
     endif
@@ -573,7 +579,7 @@ if has('autocmd')
     autocmd!
     autocmd BufNewFile,BufRead new-commit set filetype=markdown
     autocmd BufNewFile,BufRead differential* set filetype=markdown
-    autocmd FileType gitcommit set colorcolumn=73|highlight ColorColumn ctermbg=DarkGrey guibg=LightGrey
+    autocmd FileType gitcommit set colorcolumn=73
     autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
