@@ -131,7 +131,7 @@
 	newHighlight = green bold 22
 [color "diff"]
 	meta = cyan bold
-	frag = blue bold
+	frag = brightblack bold
 	commit = yellow bold
 	old = red bold
 	new = green bold

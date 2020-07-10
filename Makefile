@@ -1,4 +1,4 @@
-.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh qute alacritty
+.PHONY: dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh qute alacritty yabai
 all: .PHONY
 
 DOTFILES := $(shell pwd)
@@ -76,8 +76,12 @@ git:
 	ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
 	ln -fs $(DOTFILES)/git/gitcommit ${HOME}/.gitcommit
 chunk:
-	ln -fs $(DOTFILES)/chunk/skhdrc ${HOME}/.skhdrc
 	ln -fs $(DOTFILES)/chunk/chunkwmrc ${HOME}/.chunkwmrc
+yabai:
+	mkdir -p ${HOME}/.config/skhd
+	ln -fs $(DOTFILES)/yabai/skhdrc ${HOME}/.config/skhd/skhdrc
+	mkdir -p ${HOME}/.config/yabai
+	ln -fs $(DOTFILES)/yabai/yabairc ${HOME}/.config/yabai/yabairc
 i3:
 	mkdir -p ${HOME}/.config/i3
 	ln -fs $(DOTFILES)/i3/config ${HOME}/.config/i3/config

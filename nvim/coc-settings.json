@@ -1,45 +1,9 @@
 {
-  "languageserver": {
-    "ccls": {
-      "command": "ccls",
-      "filetypes": [
-        "c",
-        "cpp",
-        "cuda",
-        "objc",
-        "objcpp"
-      ],
-      "rootPatterns": [
-        ".ccls-root",
-        "compile_commands.json"
-      ],
-      "initializationOptions": {
-        "cache": {
-          "directory": ".ccls-cache"
-        },
-        "extraArgs": [
-          "-I",
-          "include"
-        ],
-        "clang": {
-          "extraArgs": [
-            "-I",
-            "include"
-          ]
-        }
-      }
-    }
-  },
   "codeLens.enable": false,
-  "solargraph.autoformat": false,
-  "solargraph.checkGemVersion": false,
   "diagnostic.locationlist": false,
-  "solargraph.definitions": true,
-  "solargraph.diagnostics": false,
-  "solargraph.formatting": true,
-  "python.autoComplete.addBrackets": true,
-  "solargraph.hover": true,
   "yank.enableCompletion": false,
   "suggest.enablePreview": true,
+  "rust.cfg_test": true,
+  "rust.clippy_preference": "on",
   "suggest.maxCompleteItemCount": 25
 }

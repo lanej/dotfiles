@@ -78,17 +78,17 @@ window:
   # Set this to `None` to use the default theme variant.
   #gtk_theme_variant: None
 
-#scrolling:
+scrolling:
   # Maximum number of lines in the scrollback buffer.
   # Specifying '0' will disable scrolling.
-  #history: 10000
+  history: 100000
 
   # Number of lines the viewport will move for every line scrolled when
   # scrollback is enabled (history > 0).
   #multiplier: 3
 
   # Scroll to the bottom when new text is written to the terminal.
-  auto_scroll: true
+  auto_scroll: false
 
 # Spaces per Tab (changes require restart)
 #
@@ -541,6 +541,10 @@ key_bindings:
   - { key: 0,      mods: Command,       action: ResetFontSize    }
   - { key: Equals, mods: Command,       action: IncreaseFontSize }
   - { key: Minus,  mods: Command,       action: DecreaseFontSize }
+  - { key: V,      mods: Control|Shift, action: Paste            }
+  - { key: C,      mods: Control|Shift, action: Copy             }
+  - { key: Q,      mods: Command,       action: Quit             }
+  - { key: W,      mods: Command,       action: None             }
   # (Windows/Linux only)
   #- { key: V,        mods: Control|Shift, action: Paste            }
   #- { key: C,        mods: Control|Shift, action: Copy             }
