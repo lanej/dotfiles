@@ -152,7 +152,7 @@ Plug 'dhruvasagar/vim-prosession'
 Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
-" Plug 'w0rp/ale' ", { 'for': ['ruby' }
+" Plug 'dense-analysis/ale', { 'for': ['ruby'] }
 Plug 'editorconfig/editorconfig-vim'
 
 Plug 'lervag/vimtex'
@@ -160,7 +160,6 @@ let g:tex_flavor='latex'
 let g:vimtex_view_method='zathura'
 let g:vimtex_quickfix_mode=1
 let g:tex_conceal='abdmg'
-
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
