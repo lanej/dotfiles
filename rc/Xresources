@@ -34,28 +34,3 @@
 ! white
 *.color7:       #ffffff
 *.color15:      #ffffff
-
-xterm*geometry:       80x35
-xterm*utmpInhibit:    true
-
-xscreensaver.timeout: 60
-xscreensaver.cycle:   15
-xscreensaver.lock:    true
-xscreensaver.splash:  false
-xscreensaver.fade:    true
-xscreensaver.unfade:  true
-
-rxvt.geometry:        80x35
-rxvt.font:            fixed
-rxvt.savelines:       2000
-rxvt.utmpInhibit:     true
-rxvt.scrollBar:       false
-
-URxvt.geometry:       80x35
-URxvt.font:           xft:Hack Nerd Font Mono:size=13
-URxvt.savelines:      20000
-URxvt.utmpInhibit:    true
-URxvt.scrollBar:      false
-
-xscreensaver.newLoginCommand: lxdm -c USER_SWITCH
-xscreensaver.logFile:         /var/log/xscreensaver.log
