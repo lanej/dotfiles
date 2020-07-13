@@ -110,7 +110,6 @@ Plug 'AndrewRadev/splitjoin.vim'                                  " split / join
 Plug 'bling/vim-airline'                                          " fancy status line
 Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
 Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
-Plug 'dhruvasagar/vim-prosession'                                 " per-branch session auto management
 Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
 Plug 'janko-m/vim-test'                                           " test integration
@@ -130,12 +129,15 @@ Plug 'tpope/vim-dotenv'                                           " support dote
 Plug 'tpope/vim-eunuch'                                           " file system interactions
 Plug 'tpope/vim-fugitive'                                         " git integratino
 Plug 'tpope/vim-markdown', { 'for': 'markdown' }                  " markdown tools
-Plug 'tpope/vim-obsession'                                        " sessions
 Plug 'tpope/vim-rhubarb'                                          " vim-fugitive github integration
 Plug 'tpope/vim-surround'                                         " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' }               " xdg-open or open integration
 Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed files in file browser
 Plug 'lervag/vimtex'
+
+" ordered load required
+Plug 'tpope/vim-obsession'                                        " sessions
+Plug 'dhruvasagar/vim-prosession'                                 " per-branch session auto management
 
 let g:tex_flavor='latex'
 let g:vimtex_view_method='zathura'
