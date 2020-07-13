@@ -119,3 +119,5 @@ fi
 
 . "${HOME}/.profile"
 . "$HOME/.alias"
+
+export PATH="$HOME/.cargo/bin:$PATH"
