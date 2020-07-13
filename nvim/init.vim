@@ -153,7 +153,7 @@ Plug 'sheerun/vim-polyglot'
 " buffer navi
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'editorconfig/editorconfig-vim'
-" Plug 'w0rp/ale' ", { 'for': ['ruby' }
+" Plug 'dense-analysis/ale', { 'for': ['ruby'] }
 
 Plug 'lervag/vimtex'
 let g:tex_flavor='latex'
@@ -175,7 +175,6 @@ let g:tex_flavor='latex'
 let g:vimtex_view_method='zathura'
 let g:vimtex_quickfix_mode=1
 let g:tex_conceal='abdmg'
-
 
 if has('nvim')
   Plug 'neoclide/coc.nvim', {'branch':'release'}
@@ -346,14 +345,14 @@ command! -bang -nargs=? -complete=dir DFiles
 let g:fzf_colors = {
       \ 'fg':      ['fg', 'Normal'],
       \ 'bg':      ['bg', 'Normal'],
-      \ 'hl':      ['fg', 'Function'],
-      \ 'fg+':     ['fg', 'ColorColumn', 'CursorColumn', 'Normal'],
-      \ 'bg+':     ['bg', 'ColorColumn', 'CursorColumn'],
-      \ 'hl+':     ['fg', 'Special'],
+      \ 'hl':      ['fg', 'String'],
+      \ 'fg+':     ['fg', 'Function', 'CursorColumn', 'Normal'],
+      \ 'bg+':     ['bg', 'Type', 'CursorColumn'],
+      \ 'hl+':     ['fg', 'String'],
       \ 'info':    ['fg', 'Function'],
       \ 'border':  ['fg', 'Ignore'],
       \ 'prompt':  ['fg', 'Function'],
-      \ 'pointer': ['fg', 'Function'],
+      \ 'pointer': ['fg', 'Type'],
       \ 'marker':  ['fg', 'Function'],
       \ 'spinner': ['fg', 'Function'],
       \ 'header':  ['fg', 'Function']}
