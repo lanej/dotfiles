@@ -170,10 +170,10 @@ f() {
 }
 
 fkp() {
-  local pids=$(ps -aux | sed 1d | fzf -m --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview "echo {} | awk '{ print \$2 }' | xargs pstree -phta || awk '{ print \$2 }'" | awk '{ print $2 }')
+  local pids=$(ps -aux | sed 1d | fzf -m --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview "echo {} | awk '{ print \$2 }' | xargs pstree -pha || awk '{ print \$2 }'" | awk '{ print $2 }')
 
   if [ ! -z "$pids" ]; then
-    for pid in $pids; do pstree -phta $pid; done
+    for pid in $pids; do pstree -pha $pid; done
 
     echo $pids | xargs kill -s ${1:-"KILL"} --verbose --
   fi
