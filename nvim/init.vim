@@ -109,7 +109,7 @@ Plug 'airblade/vim-gitgutter'                                     " show git dif
 Plug 'AndrewRadev/splitjoin.vim'                                  " split / join code blocks
 Plug 'bling/vim-airline'                                          " fancy status line
 Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
-Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
+" Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
 Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
 Plug 'janko-m/vim-test'                                           " test integration
@@ -136,8 +136,8 @@ Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed
 Plug 'lervag/vimtex'
 
 " ordered load required
-Plug 'tpope/vim-obsession'                                        " sessions
-Plug 'dhruvasagar/vim-prosession'                                 " per-branch session auto management
+Plug 'tpope/vim-obsession'        " sessions
+Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
 let g:tex_flavor='latex'
 let g:vimtex_view_method='zathura'
@@ -602,6 +602,15 @@ let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 1
 let g:ale_virtualtext_cursor = 1
 
+if &runtimepath =~ 'ale'
+  augroup filetype_ruby_ale
+    autocmd!
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+  augroup END
+endif
+
 function! SynStack ()
   for i1 in synstack(line("."), col("."))
     let i2 = synIDtrans(i1)
@@ -684,9 +693,6 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
-    autocmd FileType ruby nnoremap <leader>d :ALEFix<CR>
-    autocmd FileType ruby nnoremap <silent><C-p> :ALEPreviousWrap<cr>
-    autocmd FileType ruby nnoremap <silent><C-n> :ALENextWrap<cr>
   augroup END
 
   augroup filetype_python
