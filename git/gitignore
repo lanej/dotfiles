@@ -15,8 +15,8 @@ Gemfile.local.lock
 .sandbox/
 .solargraph.yml
 .*.sw?
-tags
 ~tags
+tags
 tags.lock
 tags.temp
 .tern-port
