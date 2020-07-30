@@ -156,21 +156,20 @@ Plug 'christoomey/vim-tmux-navigator'
 Plug 'editorconfig/editorconfig-vim'
 
 Plug 'lervag/vimtex'
-let g:tex_flavor='latex'
-let g:vimtex_view_method='zathura'
-let g:vimtex_quickfix_mode=1
-let g:tex_conceal='abdmg'
 
 if has('nvim')
-  Plug 'neoclide/coc.nvim', {'branch':'release'}
   Plug 'ryanoasis/vim-devicons'
+
+  Plug 'neoclide/coc-neco', { 'for': 'vim' }
+  Plug 'Shougo/neco-vim', { 'for': 'vim' }
+
+  Plug 'neoclide/coc.nvim', {'branch':'release'}
 endif
 
-" Add plugins to &runtimepath
+" plugins:end Add plugins to &runtimepath
 call plug#end()
 
-" plugins:end
-
+" plugin:tmux
 let g:tmux_navigator_no_mappings = 1
 let g:tmux_navigator_save_on_switch = 1
 
@@ -284,6 +283,7 @@ let g:airline#extensions#obsession#enabled = 0
 let g:airline#extensions#ale#show_line_numbers = 0
 let g:airline#extensions#wordcount#enabled = 0
 let g:airline#extensions#hunks#enabled = 0
+let g:airline_section_z=""
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
 let g:ale_virtualtext_cursor = 1
