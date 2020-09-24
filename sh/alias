@@ -175,7 +175,7 @@ fkp() {
   if [ ! -z "$pids" ]; then
     for pid in $pids; do pstree -pha $pid; done
 
-    echo $pids | xargs kill -s ${1:-"KILL"} --verbose --
+    echo $pids | xargs kill -s ${1:-"KILL"}
   fi
 }
 

@@ -65,6 +65,7 @@ set list
 set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
 
 let mapleader = ','
+let g:polyglot_disabled = ['latex']
 
 " searching stuff
 
@@ -110,7 +111,7 @@ Plug 'airblade/vim-gitgutter'                                     " show git dif
 Plug 'AndrewRadev/splitjoin.vim'                                  " split / join code blocks
 Plug 'bling/vim-airline'                                          " fancy status line
 Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
-" Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
+Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
 Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
 Plug 'janko-m/vim-test'                                           " test integration
@@ -119,7 +120,7 @@ Plug 'junegunn/fzf.vim'                                           " fzf integrat
 Plug 'junegunn/vim-easy-align'                                    " space align
 Plug 'lanej/tender.vim'                                           " colorscheme
 Plug 'lanej/vim-phab'                                             " vim-fugitive phab integration
-Plug 'lervag/vimtex'                                              " latex support
+" Plug 'lervag/vimtex'                                              " latex support
 Plug 'ludovicchabant/vim-gutentags'                               " automatically update tags
 Plug 'mileszs/ack.vim'                                            " quick search, configured to use rg or ag
 Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
@@ -134,7 +135,6 @@ Plug 'tpope/vim-rhubarb'                                          " vim-fugitive
 Plug 'tpope/vim-surround'                                         " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' }               " xdg-open or open integration
 Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed files in file browser
-Plug 'lervag/vimtex'
 
 " ordered load required
 Plug 'tpope/vim-obsession'        " sessions
@@ -394,7 +394,6 @@ let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
 let ruby_no_expensive=1
-let g:polyglot_disabled = ['latex']
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -664,9 +663,10 @@ if has('autocmd')
   augroup filetype_terminal
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
-      if (exists("+termguicolors"))
-        autocmd TermEnter,TermOpen * set notermguicolors
-      endif
+      " if (exists("+termguicolors"))
+      "   autocmd TermEnter,TermOpen * set notermguicolors
+      "   autocmd TermClose * set termguicolors
+      " endif
     endif
   augroup END
 
@@ -693,7 +693,9 @@ if has('autocmd')
     autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
     autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
     autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
-    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /<CR>
   augroup END
 
   augroup filetype_python
@@ -715,6 +717,11 @@ if has('autocmd')
   augroup filetype_git
     autocmd!
     autocmd FileType git set nofoldenable
+  augroup END
+
+  augroup filetype_go
+    autocmd!
+    autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
   augroup filetype_rust
