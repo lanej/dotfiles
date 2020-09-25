@@ -4,7 +4,7 @@ all: .PHONY
 DOTFILES := $(shell pwd)
 
 banner:
-	@echo "Good morning, Dave"
+	@cat banner.txt
 dev:
 	@mkdir -p $(HOME)/src
 fish:
@@ -58,8 +58,8 @@ vim:
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fs $(DOTFILES)/nvim/min.vim ${HOME}/.config/nvim/min.vim
 	@ln -fs $(DOTFILES)/nvim/coc-settings.json ${HOME}/.config/nvim/coc-settings.json
-	@nvim --headless +PlugInstall +qa || echo 'no nvim installed or command failed'
-	@vim -E -s -c "PlugInstall" -c "qa" || echo 'no vim installed or command failed'
+	@nvim --headless +PlugInstall +qa || echo 'nvim update: x'
+	@vim -E -s -c "PlugInstall" -c "qa" || echo 'vim update: x'
 	@ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
