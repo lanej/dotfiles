@@ -114,7 +114,7 @@ label-empty-padding = 1
 type = internal/cpu
 interval = 0.5
 format = <label>  <ramp-coreload>
-label = 
+label =  
 
 ramp-coreload-0 = ▁
 ramp-coreload-0-font = 2
