@@ -93,6 +93,9 @@ nnoremap t6  6gt<CR>
 nnoremap fbk :bd!<CR>
 nnoremap fak :%bd!<bar>e#<CR>
 
+let g:polyglot_disabled = ['latex']
+let g:tex_flavor = 'latex'
+
 " Enable filetype plugins to handle indents
 filetype plugin indent on
 
@@ -227,14 +230,14 @@ if executable('rg')
   " use ripgrep if available
   let g:ackprg = 'rg --vimgrep'
   set grepprg=rg\ --nogroup\ --nocolor
-  nnoremap <leader>aa :Rg!<space>
-  nnoremap <leader>az :Rg!<CR>
+  nnoremap <leader>aa :Rg<space>
+  nnoremap <leader>az :Rg<CR>
 elseif executable('ag')
   " use silver-searcher if available
   let g:ackprg = 'ag --vimgrep'
   set grepprg=ag\ --nogroup\ --nocolor
-  nnoremap <leader>aa :Ag!<space>
-  nnoremap <leader>az :Ag!<CR>
+  nnoremap <leader>aa :Ag<space>
+  nnoremap <leader>az :Ag<CR>
 endif
 
 " sessions
@@ -306,21 +309,14 @@ noremap  <leader>/  :History/<CR>
 noremap  <leader>l  :BLines<CR>
 noremap  <leader>t  :BTags<CR>
 
-command! -bang -nargs=* Ag
-  \ call fzf#vim#ag(<q-args>,
-  \                 <bang>0 ? fzf#vim#with_preview('right:60%')
-  \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
-  \                 <bang>0)
-
 command! -bang -nargs=* Rg
-  \ call fzf#vim#ag(<q-args>,
-  \                 <bang>0 ? fzf#vim#with_preview('right:60%')
-  \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
-  \                 <bang>0)
-
+  \ call fzf#vim#grep(
+  \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(<q-args>), 1,
+  \   fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir Files
   \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
+
 command! -bang -nargs=? -complete=dir GFiles
   \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
 
@@ -409,7 +405,6 @@ let ruby_operators=1
 let ruby_space_errors=1
 let ruby_line_continuation_error=1
 let ruby_no_expensive=1
-let g:polyglot_disabled = ['latex']
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -572,6 +567,14 @@ if has('autocmd')
     autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
     autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
     autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
+  augroup END
+
+  augroup filetype_lua
+    autocmd!
+    autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
+    " autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
+    " autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
+    " autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
   augroup END
 
   augroup filetype_gitcommit
