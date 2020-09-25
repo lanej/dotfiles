@@ -44,5 +44,9 @@ if [ -d "$HOME/.cargo/bin" ]; then
   export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
+if [ -d "$HOME/.luarocks/bin" ]; then
+  export PATH="$HOME/.luarocks/bin:$PATH"
+fi
+
 export PATH="${HOME}/.local/bin:$PATH"
 export BAT_THEME="1337"
