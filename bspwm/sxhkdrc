@@ -124,3 +124,6 @@ XF86MonBrightnessDown
 
 XF86MonBrightnessUp
   sudo xhacklight inc
+
+super + ctrl + 4
+  scrot --line style=dash,width=2,color="cyan" --select
