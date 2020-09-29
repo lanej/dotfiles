@@ -18,6 +18,7 @@ shell:
 	@ln -fs ${DOTFILES}/sh/alias ${HOME}/.alias
 	@ln -fs $(DOTFILES)/sh/profile ${HOME}/.profile
 	@mkdir -p ${HOME}/.local/share/z
+	@ln -fs $(DOTFILES)/sh/htoprc $(HOME)/.config/htop/htoprc
 	@ln -fs $(DOTFILES)/share/z.sh ${HOME}/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/z.sh ${HOME}/.z.sh
 bash: shell
