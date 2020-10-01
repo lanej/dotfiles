@@ -1,7 +1,8 @@
-.PHONY: banner dev git fish shell screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash zsh qute alacritty yabai
-all: .PHONY
-
+.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
+.PHONY: zsh qute alacritty yabai powerline
 DOTFILES := $(shell pwd)
+
+all: .PHONY
 
 banner:
 	@cat banner.txt
@@ -46,7 +47,8 @@ zsh: shell
 screen:
 	@ln -fs $(DOTFILES)/rc/screenrc ${HOME}/.screenrc
 tmux:
-	@ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.tmux.conf
+	@mkdir -p ${HOME}/.config/tmux/
+	@ln -fs $(DOTFILES)/rc/tmux.conf ${HOME}/.config/tmux
 vim:
 	@touch ${HOME}/.netrc
 	@mkdir -p ${HOME}/.cache/nvim/undo
@@ -60,8 +62,8 @@ vim:
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fs $(DOTFILES)/nvim/min.vim ${HOME}/.config/nvim/min.vim
 	@ln -fs $(DOTFILES)/nvim/coc-settings.json ${HOME}/.config/nvim/coc-settings.json
-	@nvim --headless +PlugInstall +qa || echo 'nvim update: x'
-	@vim -E -s -c "PlugInstall" -c "qa" || echo 'vim update: x'
+	@nvim --headless +PlugInstall +qa || echo ''
+	@vim -E -s -c "PlugInstall" -c "qa" || echo ''
 	@ln -fns $(DOTFILES)/ctags ${HOME}/.ctags.d
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources ${HOME}/.Xresources
@@ -111,6 +113,9 @@ kitty:
 alacritty:
 	@mkdir -p ${HOME}/.config/alacritty
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml ${HOME}/.config/alacritty
+powerline:
+	@mkdir -p ${HOME}/.config/powerline
+	@ln -fs $(DOTFILES)/powerline/powerline.yml ${HOME}/.config/powerline
 ifeq (${OS},OSX)
 qute:
 	@mkdir -p ${HOME}/.qutebrowser

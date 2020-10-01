@@ -1,0 +1,17 @@
+{
+  "segments": {
+    "right": [
+      {
+        "function": "powerline.segments.common.sys.system_load",
+        "priority": 50,
+        "short": true
+      },
+      {
+        "function": "powerline.segments.common.net.hostname",
+        "args": {
+          "only_if_ssh": true
+        }
+      }
+    ]
+  }
+}
