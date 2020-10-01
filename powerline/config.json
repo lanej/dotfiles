@@ -1,0 +1,11 @@
+{
+  "common": {
+    "term_truecolor": false
+  },
+  "ext": {
+    "tmux": {
+      "colorscheme": "default",
+      "theme": "default"
+    }
+  }
+}
