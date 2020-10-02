@@ -114,8 +114,7 @@ alacritty:
 	@mkdir -p ${HOME}/.config/alacritty
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml ${HOME}/.config/alacritty
 powerline:
-	@mkdir -p ${HOME}/.config/powerline
-	@ln -fs $(DOTFILES)/powerline/powerline.yml ${HOME}/.config/powerline
+	@ln -fns $(DOTFILES)/powerline ${HOME}/.config/powerline
 ifeq (${OS},OSX)
 qute:
 	@mkdir -p ${HOME}/.qutebrowser
