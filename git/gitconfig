@@ -88,7 +88,7 @@
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	editor = $EDITOR
-	pager = diff-so-fancy | less --tabs=4 -RFX
+	pager = delta --diff-so-fancy
 [apply]
 	whitespace = fix
 [push]
@@ -140,3 +140,14 @@
 	changeHunkIndicators = false
 [diff]
 	noprefix = true
+	colorMoved = default
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	features = line-numbers decorations
+	whitespace-error-style = 22 bold red
+[delta "decorations"]
+	hunk-header-decoration-style = blue box
+	commit-decoration-style = bold blue box ul
+	file-decoration-style = none
+	file-style = bold cyan
