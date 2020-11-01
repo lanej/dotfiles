@@ -2,6 +2,7 @@
 # Documentation:
 #   qute://help/configuring.html
 #   qute://help/settings.html
+from sys import platform
 from subprocess import check_output
 
 # Uncomment this to still load settings configured via autoconfig.yml
@@ -88,18 +89,18 @@ c.fonts.statusbar = '13pt monospace'
 
 c.fonts.tabs = '13pt monospace'
 
-## Always restore open sites when qutebrowser is reopened.
+# Always restore open sites when qutebrowser is reopened.
 ## Type: Bool
 c.auto_save.session = True
 
-## How to behave when the last tab is closed.
+# How to behave when the last tab is closed.
 ## Type: String
-## Valid values:
-##   - ignore: Don't do anything.
-##   - blank: Load a blank page.
-##   - startpage: Load the start page.
-##   - default-page: Load the default page.
-##   - close: Close the window.
+# Valid values:
+# - ignore: Don't do anything.
+# - blank: Load a blank page.
+# - startpage: Load the start page.
+# - default-page: Load the default page.
+# - close: Close the window.
 c.tabs.last_close = 'close'
 # Editor (and arguments) to use for the `open-editor` command. The
 # following placeholders are defined: * `{file}`: Filename of the file
@@ -109,16 +110,17 @@ c.tabs.last_close = 'close'
 # Same as `{column}`, but starting from index 0.
 # Type: ShellCommand
 
-from sys import platform
 
 kitty = "kitty"
 neovim = "nvim"
 
 if platform == "linux" or platform == "linux2":
-  kitty = check_output(['command -v kitty'], shell=True).decode('ascii').strip()
-  neovim = check_output(['command -v nvim'], shell=True).decode('ascii').strip()
+    kitty = check_output(['command -v kitty'],
+                         shell=True).decode('ascii').strip()
+    neovim = check_output(['command -v nvim'],
+                          shell=True).decode('ascii').strip()
 else:
-  kitty = "/Applications/kitty.app/Contents/MacOS/kitty"
-  neovim = "/usr/local/bin/nvim"
+    kitty = "/Applications/kitty.app/Contents/MacOS/kitty"
+    neovim = "/usr/local/bin/nvim"
 
 c.editor.command = [kitty, neovim, "+{line}", "{file}"]

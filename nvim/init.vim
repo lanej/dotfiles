@@ -66,6 +66,16 @@ set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
 
 let mapleader = ','
 
+" vimtex configuration
+let g:polyglot_disabled = ['latex']
+let g:tex_conceal='abdmg'
+let g:tex_flavor = 'latex'
+let g:vimtex_quickfix_mode=1
+let g:vimtex_view_method='zathura'
+let g:vimtex_quickfix_ignore_filters = [
+      \ 'headheight is too small',
+      \ 'Underfull',
+      \]
 " searching stuff
 
 " Make <C-L> clear highlight and redraw
@@ -93,9 +103,6 @@ nnoremap t6  6gt<CR>
 nnoremap fbk :bd!<CR>
 nnoremap fak :%bd!<bar>e#<CR>
 
-let g:polyglot_disabled = ['latex']
-let g:tex_flavor = 'latex'
-
 " Enable filetype plugins to handle indents
 filetype plugin indent on
 
@@ -109,56 +116,38 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
-Plug 'tpope/vim-eunuch'
-Plug 'junegunn/vim-easy-align'
-" support dotenv
-Plug 'tpope/vim-dotenv'
-" split / join code blocks
-Plug 'AndrewRadev/splitjoin.vim'
-" show git diffs in left gutter
-Plug 'airblade/vim-gitgutter'
-" fancy status line
-Plug 'bling/vim-airline'
-" quick in-buffer navigation
-Plug 'easymotion/vim-easymotion'
-" colorscheme
-Plug 'lanej/tender.vim'
-" test integration
-Plug 'janko-m/vim-test'
-" fzf install, fast fuzzy finder
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' }
-" fzf integration
-Plug 'junegunn/fzf.vim'
-" automatically update tags
-Plug 'ludovicchabant/vim-gutentags'
-" quick search, configured to use ag
-Plug 'mileszs/ack.vim'
-" markdown preview with mermaid support
-Plug 'previm/previm', { 'for': 'markdown' }
-Plug 'tyru/open-browser.vim', { 'for': 'markdown' }
-Plug 'tpope/vim-markdown', { 'for': 'markdown' }
-" code commenter
-Plug 'scrooloose/nerdcommenter'
-" file browser
-Plug 'scrooloose/nerdtree'
-" show changed files in file browser
-Plug 'Xuyuanp/nerdtree-git-plugin'
-" git integration
-Plug 'tpope/vim-rhubarb'
-Plug 'tpope/vim-fugitive'
-" additional editing commands
-Plug 'tpope/vim-surround'
-" sessions
-Plug 'tpope/vim-obsession'
-Plug 'dhruvasagar/vim-prosession'
-" language pack
-Plug 'sheerun/vim-polyglot'
-" buffer navi
-Plug 'christoomey/vim-tmux-navigator'
-" Plug 'dense-analysis/ale', { 'for': ['ruby'] }
-Plug 'editorconfig/editorconfig-vim'
+Plug 'airblade/vim-gitgutter'                                     " show git diffs in left gutter
+Plug 'AndrewRadev/splitjoin.vim'                                  " split / join code blocks
+Plug 'bling/vim-airline'                                          " fancy status line
+Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
+Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
+Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
+Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
+Plug 'janko-m/vim-test'                                           " test integration
+Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' } " fzf install, fast fuzzy finder, riding trunk
+Plug 'junegunn/fzf.vim'                                           " fzf integration
+Plug 'junegunn/vim-easy-align'                                    " space align
+Plug 'lanej/tender.vim'                                           " colorscheme
+Plug 'lanej/vim-phab'                                             " vim-fugitive phab integration
+Plug 'lervag/vimtex'                                              " latex support
+Plug 'ludovicchabant/vim-gutentags'                               " automatically update tags
+Plug 'mileszs/ack.vim'                                            " quick search, configured to use rg or ag
+Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
+Plug 'scrooloose/nerdcommenter'                                   " code commenter
+Plug 'scrooloose/nerdtree'                                        " file browser
+Plug 'sheerun/vim-polyglot'                                       " language pack
+Plug 'tpope/vim-dotenv'                                           " support dotenv
+Plug 'tpope/vim-eunuch'                                           " file system interactions
+Plug 'tpope/vim-fugitive'                                         " git integratino
+Plug 'tpope/vim-markdown', { 'for': 'markdown' }                  " markdown tools
+Plug 'tpope/vim-rhubarb'                                          " vim-fugitive github integration
+Plug 'tpope/vim-surround'                                         " surround mod tools
+Plug 'tyru/open-browser.vim', { 'for': 'markdown' }               " xdg-open or open integration
+Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed files in file browser
 
-Plug 'lervag/vimtex'
+" ordered load required
+Plug 'tpope/vim-obsession'        " sessions
+Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
 if has('nvim')
   Plug 'ryanoasis/vim-devicons'
@@ -196,8 +185,8 @@ let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 " gutentag
-let g:gutentags_define_advanced_commands = 1
-let g:gutentags_ctags_executable_ruby = 'rtags'
+" let g:gutentags_define_advanced_commands = 1
+" let g:gutentags_ctags_executable_ruby = 'rtags'
 
 let g:gutentags_enabled = 1
 let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
@@ -298,8 +287,10 @@ else
   let g:gitgutter_sign_column_always = 1
 endif
 
+let g:gitgutter_max_signs = 1000
+
 " fzf
-nnoremap <leader>as :Ack!<space><cword><CR>
+nnoremap <leader>as :Rgc<space><cword><CR>
 noremap  <leader>ac :Commands<CR>
 noremap  <leader>al :Lines<CR>
 noremap  <leader>at :Tags<CR>
@@ -312,6 +303,11 @@ noremap  <leader>t  :BTags<CR>
 command! -bang -nargs=* Rg
   \ call fzf#vim#grep(
   \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(<q-args>), 1,
+  \   fzf#vim#with_preview(), <bang>0)
+
+command! -nargs=* Rgc
+  \ call fzf#vim#grep(
+  \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(expand('<cword>')), 1,
   \   fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir Files
@@ -436,7 +432,6 @@ vmap <Enter> <Plug>(EasyAlign)
 map <leader>= ggVG=<CR>
 
 set shortmess=a
-set nospell
 
 let g:clang_format#style_options = {
       \ "AccessModifierOffset" : -4,
@@ -488,243 +483,6 @@ let g:go_list_type = 'quickfix'
 let g:go_doc_popup_window = 1
 let g:go_doc_keywordprg_enabled = 0
 " let g:go_snippet_engine = "neosnippet"
-
-function! SourceEnv()
-  if get(v:event, "cwd") == get(g:, "source_env_dir", "")
-    return
-  else
-    let g:source_env_dir = get(v:event, "cwd")
-  end
-
-  if filereadable(".env")
-    silent! Dotenv .env
-  endif
-
-  if filereadable(".env-override")
-    silent! Dotenv .env-override
-  endif
-
-  if &runtimepath =~ 'coc.nvim'
-    silent! CocRestart
-  endif
-endfunction
-
-if has('autocmd')
-  augroup FiletypeGroup
-    autocmd!
-    " jsx is both javascript and jsx
-    autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
-    " Save files when vim loses focus
-    autocmd FocusLost * silent! wa
-    " Reload files when vim gains focus
-    autocmd FocusGained,BufEnter * :checktime
-    " Default spellcheck off
-    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
-    " Source .env files
-    if has('nvim')
-      autocmd DirChanged * call SourceEnv()
-    endif
-  augroup END
-
-  augroup filetype_terminal
-    if has('nvim')
-      autocmd TermEnter * set nospell|set nonumber|setlocal wrap
-      if (exists("+termguicolors"))
-        autocmd TermEnter,TermOpen * set notermguicolors
-      endif
-    endif
-  augroup END
-
-  augroup filetype_markdown
-    autocmd!
-    " hub pull-request accepts markdown
-    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
-    autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
-    autocmd FileType markdown let g:gutentags_enabled = 0
-  augroup END
-
-  function! s:vcr_failures_only()
-    let $VCR_RECORD="all"
-    TestFile -n
-    unlet $VCR_RECORD
-  endfunction
-
-  augroup filetype_ruby
-    autocmd!
-    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
-    autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
-    autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
-    autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
-    autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
-    autocmd FileType ruby vnoremap <Bslash>x :s/\v:([^ ]*) \=\>/\1:/g<CR>
-  augroup END
-
-  augroup filetype_python
-    autocmd!
-    autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
-    autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
-    autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
-    autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
-  augroup END
-
-  augroup filetype_lua
-    autocmd!
-    autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
-    " autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
-    " autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
-    " autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
-  augroup END
-
-  augroup filetype_gitcommit
-    autocmd!
-    autocmd BufNewFile,BufRead new-commit set filetype=markdown
-    autocmd BufNewFile,BufRead differential* set filetype=markdown
-    autocmd FileType gitcommit set colorcolumn=73
-    autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
-  augroup END
-
-  augroup filetype_git
-    autocmd!
-    autocmd FileType git set nofoldenable
-  augroup END
-
-  augroup filetype_rust
-    autocmd!
-    autocmd FileType rust set makeprg=cargo\ run
-    " autocmd FileType rust nmap <leader>d :RustFmt<CR>
-  augroup END
-
-  augroup filetype_javascript
-    autocmd!
-    autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    autocmd BufNewFile,BufRead .eslintrc set filetype=json
-  augroup END
-
-  augroup filetype_haml
-    autocmd!
-    autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_sshconfig
-    autocmd!
-    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_json
-    autocmd!
-    autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_yaml
-    autocmd!
-    autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_fish
-    autocmd!
-    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_perl
-    autocmd!
-    autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
-  augroup END
-
-  augroup filetype_sshconfig
-    autocmd!
-    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_sh
-    autocmd!
-    autocmd BufNewFile,BufRead .alias set filetype=sh
-  augroup END
-
-  augroup filetype_go
-    autocmd!
-
-    autocmd FileType go set tabstop=4|set shiftwidth=4|set expandtab|set autoindent
-    " autocmd FileType qf wincmd J
-
-    " autocmd FileType go nmap <leader>b  <Plug>(go-build)
-    " autocmd FileType go nmap <leader>r  <Plug>(go-run)
-
-    " autocmd FileType go nmap <leader>d :GoImports<CR>
-    " autocmd FileType go nmap <leader>gr :GoRename<CR>
-    autocmd FileType go nmap <leader>gd :GoDef<CR>
-    autocmd FileType go nmap <leader>gp :GoDefPop<CR>
-    autocmd FileType go nmap <leader>gs :GoCallers<CR>
-    autocmd FileType go nmap <leader>ga :GoReferrers<CR>
-    autocmd FileType go nmap <leader>ge :GoCallees<CR>
-    " autocmd FileType go nmap <leader>gt :TestFile -v<CR>
-
-  augroup END
-
-  augroup filetype_vim
-    autocmd!
-    autocmd FileType vim set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup BWCCreateDir
-    autocmd!
-
-    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
-
-  augroup END
-endif
-
-" vim-test
-if has('nvim')
-  let test#strategy = "neovim"
-endif
-
-let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
-let test#go#gotest#options = {
-  \ 'nearest': '-v',
-  \ 'file': '-v',
-  \}
-
-let test#rust#cargotest#options = {
-  \ 'nearest': '-- --nocapture',
-  \}
-
-let test#python#pytest#options = {
-  \ 'nearest': '-s',
-  \ 'file':    '-s',
-  \}
-
-let test#ruby#rspec#options = {
-  \ 'nearest': '--format documentation',
-  \ 'file':    '--format documentation',
-  \ 'suite':   '--tag \~slow',
-  \}
-
-map <Bslash>t :TestFile<CR>
-map <Bslash>u :TestNearest<CR>
-map <Bslash>r :TestLast<CR>
-map <Bslash>s :TestSuite<CR>
-
-" c	don't give |ins-completion-menu| messages.  For example,
-" "-- XXX completion (YYY)", "match 1 of 2", "The only match",
-set shortmess+=c
-" T	truncate other messages in the middle if they are too long to
-set shortmess+=T
-" a	all of the above abbreviations
-set shortmess+=a
-
-" " Copy to clipboard
-vnoremap  <leader>y  "+y
-nnoremap  <leader>Y  "+yg_
-nnoremap  <leader>y  "+y
-nnoremap  <leader>yy  "+yy
-
-" " Paste from clipboard
-nnoremap <leader>p "+p
-nnoremap <leader>P "+P
-vnoremap <leader>p "+p
-vnoremap <leader>P "+P
 
 if has('conceal')
   set conceallevel=0 concealcursor=niv
@@ -820,12 +578,16 @@ endif
 
 let g:ale_fixers = {
       \ 'ruby': ['rubocop'],
+      \ 'rspec': ['rubocop'],
       \ 'javascript.jsx': ['eslint'],
       \ 'javascript': ['eslint'],
       \ }
 
 let g:ale_linters = {
       \ 'ruby': ['rubocop'],
+      \ 'rspec': ['rubocop'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javascript': ['eslint'],
       \ }
 
 let g:ale_keep_list_window_open = 0
@@ -844,7 +606,7 @@ let g:ale_sign_column_always = 1
 let g:ale_sign_error = '>>'
 let g:ale_sign_offset = 1000000
 let g:ale_sign_warning = '--'
-let g:ale_completion_enabled = 0
+let g:ale_completion_enabled = 1
 let g:ale_virtualtext_cursor = 1
 
 if &runtimepath =~ 'ale'
@@ -867,3 +629,230 @@ endfunction
 map gm :call SynStack()<CR>
 
 let g:jedi#auto_initialization = 0
+
+function! SourceEnv()
+  if get(v:event, "cwd") == get(g:, "source_env_dir", "")
+    return
+  else
+    let g:source_env_dir = get(v:event, "cwd")
+  end
+
+  if filereadable(".env")
+    silent! Dotenv .env
+  endif
+
+  if filereadable(".env-override")
+    silent! Dotenv .env-override
+  endif
+
+  if &runtimepath =~ 'coc.nvim'
+    silent! CocRestart
+  endif
+endfunction
+
+if has('autocmd')
+  augroup FiletypeGroup
+    autocmd!
+    " jsx is both javascript and jsx
+    autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
+    " Save files when vim loses focus
+    autocmd FocusLost * silent! wa
+    " Reload files when vim gains focus
+    autocmd FocusGained,BufEnter * :checktime
+    " Default spellcheck off
+    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
+    " Source .env files
+    if has('nvim')
+      autocmd DirChanged * call SourceEnv()
+    endif
+  augroup END
+
+  augroup filetype_terminal
+    if has('nvim')
+      autocmd TermEnter * set nospell|set nonumber|setlocal wrap
+      if (exists("+termguicolors"))
+        autocmd TermEnter,TermOpen * set notermguicolors
+      endif
+    endif
+  augroup END
+
+  augroup filetype_markdown
+    autocmd!
+    " hub pull-request accepts markdown
+    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
+    autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    autocmd FileType markdown let g:gutentags_enabled = 0
+  augroup END
+
+  function! s:vcr_failures_only()
+    let $VCR_RECORD="all"
+    TestFile -n
+    unlet $VCR_RECORD
+  endfunction
+
+  augroup filetype_ruby
+    autocmd!
+    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
+    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
+    autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
+    autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
+    autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
+    autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
+    autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /<CR>
+  augroup END
+
+  augroup filetype_python
+    autocmd!
+    autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
+    autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
+    autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
+    autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
+  augroup END
+
+  augroup filetype_lua
+    autocmd!
+    autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
+    " autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
+    " autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
+    " autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
+  augroup END
+
+  augroup filetype_gitcommit
+    autocmd!
+    autocmd BufNewFile,BufRead new-commit set filetype=markdown
+    autocmd BufNewFile,BufRead differential* set filetype=markdown
+    autocmd FileType gitcommit set colorcolumn=73
+    autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+  augroup END
+
+  augroup filetype_git
+    autocmd!
+    autocmd FileType git set nofoldenable
+  augroup END
+
+  augroup filetype_go
+    autocmd!
+    autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+  augroup END
+
+  augroup filetype_rust
+    autocmd!
+    autocmd FileType rust set makeprg=cargo\ run
+    autocmd FileType rust set colorcolumn=100
+  augroup END
+
+  augroup filetype_javascript
+    autocmd!
+    autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd BufNewFile,BufRead .eslintrc set filetype=json
+    autocmd FileType javascript nnoremap <leader>d :ALEFix<CR>
+  augroup END
+
+  augroup filetype_haml
+    autocmd!
+    autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_sshconfig
+    autocmd!
+    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_json
+    autocmd!
+    autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_yaml
+    autocmd!
+    autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_fish
+    autocmd!
+    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_perl
+    autocmd!
+    autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
+  augroup END
+
+  augroup filetype_sshconfig
+    autocmd!
+    autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup filetype_sh
+    autocmd!
+    autocmd BufNewFile,BufRead .alias set filetype=sh
+  augroup END
+
+  augroup filetype_vim
+    autocmd!
+    autocmd FileType vim set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+  augroup END
+
+  augroup BWCCreateDir
+    autocmd!
+
+    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+
+  augroup END
+endif
+
+" vim-test
+if has('nvim')
+  let test#strategy = "neovim"
+endif
+
+let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
+let test#go#gotest#options = {
+  \ 'nearest': '-v',
+  \ 'file': '-v',
+  \}
+
+let test#rust#cargotest#options = {
+  \ 'nearest': '-- --nocapture',
+  \}
+
+let test#python#pytest#options = {
+  \ 'nearest': '-s',
+  \ 'file':    '-s',
+  \}
+
+let test#ruby#rspec#options = {
+  \ 'nearest': '--format documentation',
+  \ 'file':    '--format documentation',
+  \ 'suite':   '--tag \~slow',
+  \}
+
+map <Bslash>t :TestFile<CR>
+map <Bslash>u :TestNearest<CR>
+map <Bslash>r :TestLast<CR>
+map <Bslash>s :TestSuite<CR>
+
+" c	don't give |ins-completion-menu| messages.  For example,
+" "-- XXX completion (YYY)", "match 1 of 2", "The only match",
+set shortmess+=c
+" T	truncate other messages in the middle if they are too long to
+set shortmess+=T
+" a	all of the above abbreviations
+set shortmess+=a
+
+" " Copy to clipboard
+vnoremap  <leader>y  "+y
+nnoremap  <leader>Y  "+yg_
+nnoremap  <leader>y  "+y
+nnoremap  <leader>yy  "+yy
+
+" " Paste from clipboard
+nnoremap <leader>p "+p
+nnoremap <leader>P "+P
+vnoremap <leader>p "+p
+vnoremap <leader>P "+P
+
+let g:phab_urls = ["phab.easypo.net"]

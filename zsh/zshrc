@@ -101,7 +101,7 @@ if [ -f ~/.fzf.zsh ]; then
 fi
 
 autoload -U +X bashcompinit && bashcompinit
-complete -o nospace -C $HOME/.files/bin/terraform terraform
+# complete -o nospace -C $HOME/.files/bin/terraform terraform
 
 # keys
 KEYCHAIN=${SSH_KEYS:-"${HOME}/.ssh/id_rsa"}
@@ -119,3 +119,5 @@ fi
 
 . "${HOME}/.profile"
 . "$HOME/.alias"
+
+export PATH="$HOME/.cargo/bin:$PATH"
