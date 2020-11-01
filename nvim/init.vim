@@ -854,5 +854,3 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
-
-let g:phab_urls = ["phab.easypo.net"]

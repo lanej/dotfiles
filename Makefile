@@ -78,9 +78,11 @@ ruby:
 	@ln -fs ${DOTFILES}/ruby/gemrc ${HOME}/.gemrc
 	@ln -fs ${DOTFILES}/ruby/rspec ${HOME}/.rspec
 git:
+	@cp -n git/gitconfig ${HOME}/.gitconfig
 	@git config --global --get user.email 1>/dev/null || sh set-git-email.sh
 	@ln -fs $(DOTFILES)/git/gitignore ${HOME}/.gitignore
 	@ln -fs $(DOTFILES)/git/gitcommit ${HOME}/.gitcommit
+	@ln -fs $(DOTFILES)/git/gitattributes ${HOME}/.gitattributes
 chunk:
 	@ln -fs $(DOTFILES)/chunk/chunkwmrc ${HOME}/.chunkwmrc
 yabai:
@@ -114,8 +116,7 @@ alacritty:
 	@mkdir -p ${HOME}/.config/alacritty
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml ${HOME}/.config/alacritty
 powerline:
-	@mkdir -p ${HOME}/.config/powerline
-	@ln -fs $(DOTFILES)/powerline/powerline.yml ${HOME}/.config/powerline
+	@ln -fns $(DOTFILES)/powerline ${HOME}/.config/powerline
 ifeq (${OS},OSX)
 qute:
 	@mkdir -p ${HOME}/.qutebrowser
