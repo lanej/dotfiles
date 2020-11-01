@@ -42,6 +42,7 @@ else
 fi
 
 export EDITORD=${EDITORD:-$EDITOR}
+export JQ_COLORS="2;37:1;31:1;32:0;36:0;33:1;37:1;37"
 
 # go
 export GOPATH=$HOME/go
