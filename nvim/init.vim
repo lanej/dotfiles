@@ -87,8 +87,8 @@ nnoremap * *``
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap tl  :tablast<CR>
-nnoremap tt  :tabedit<Space>
+nnoremap tt  :tablast<CR>
+nnoremap te  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
 nnoremap tp  :tabprev<CR>
 nnoremap tc  :tabnew<CR>
@@ -110,7 +110,9 @@ filetype plugin indent on
 let g:plug_url_format="git://github.com/%s"
 
 " allow separate plugins per editor
-if has('nvim')
+if has('nvim-0.5.0')
+  call plug#begin('~/.local/share/nvim-HEAD/plugged')
+elseif has('nvim')
   call plug#begin('~/.local/share/nvim/plugged')
 else
   call plug#begin('~/.local/share/vim/plugged')
@@ -120,7 +122,6 @@ Plug 'airblade/vim-gitgutter'                                     " show git dif
 Plug 'AndrewRadev/splitjoin.vim'                                  " split / join code blocks
 Plug 'bling/vim-airline'                                          " fancy status line
 Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
-Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
 Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
 Plug 'janko-m/vim-test'                                           " test integration
@@ -135,7 +136,6 @@ Plug 'mileszs/ack.vim'                                            " quick search
 Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
 Plug 'scrooloose/nerdcommenter'                                   " code commenter
 Plug 'scrooloose/nerdtree'                                        " file browser
-Plug 'sheerun/vim-polyglot'                                       " language pack
 Plug 'tpope/vim-dotenv'                                           " support dotenv
 Plug 'tpope/vim-eunuch'                                           " file system interactions
 Plug 'tpope/vim-fugitive'                                         " git integratino
@@ -149,13 +149,25 @@ Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed
 Plug 'tpope/vim-obsession'        " sessions
 Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
+if has('nvim-0.5.0')
+  Plug 'nvim-treesitter/nvim-treesitter'
+  Plug 'nvim-lua/completion-nvim'
+  Plug 'nvim-lua/diagnostic-nvim'
+else
+  Plug 'sheerun/vim-polyglot'
+endif
+
 if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 
-  Plug 'neoclide/coc-neco', { 'for': 'vim' }
-  Plug 'Shougo/neco-vim', { 'for': 'vim' }
-
-  Plug 'neoclide/coc.nvim', {'branch':'release'}
+  if has('nvim-0.5.0')
+    Plug 'neovim/nvim-lspconfig'
+  else
+    " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
+    Plug 'neoclide/coc-neco', { 'for': 'vim' }
+    Plug 'Shougo/neco-vim', { 'for': 'vim' }
+    Plug 'neoclide/coc.nvim', {'branch':'release'}
+  endif
 endif
 
 " plugins:end Add plugins to &runtimepath
@@ -192,14 +204,14 @@ let g:gutentags_enabled = 1
 let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
 let g:gutentags_generate_on_empty_buffer = 0
 let g:gutentags_ctags_exclude = [
-  \ '.eggs',
-  \ '.mypy_cache',
-  \ 'venv',
-  \ 'tags',
-  \ 'tags.temp',
-  \ '.ijwb',
-  \ 'bazel-*',
-\ ]
+      \ '.eggs',
+      \ '.mypy_cache',
+      \ 'venv',
+      \ 'tags',
+      \ 'tags.temp',
+      \ '.ijwb',
+      \ 'bazel-*',
+      \ ]
 let g:gutentags_project_info = []
 call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
 
@@ -301,23 +313,23 @@ noremap  <leader>l  :BLines<CR>
 noremap  <leader>t  :BTags<CR>
 
 command! -bang -nargs=* Rg
-  \ call fzf#vim#grep(
-  \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(<q-args>), 1,
-  \   fzf#vim#with_preview(), <bang>0)
+      \ call fzf#vim#grep(
+      \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(<q-args>), 1,
+      \   fzf#vim#with_preview(), <bang>0)
 
 command! -nargs=* Rgc
-  \ call fzf#vim#grep(
-  \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(expand('<cword>')), 1,
-  \   fzf#vim#with_preview(), <bang>0)
+      \ call fzf#vim#grep(
+      \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(expand('<cword>')), 1,
+      \   fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir Files
-  \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
+      \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir GFiles
-  \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
+      \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir DFiles
-  \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
+      \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
 
 let g:fzf_colors = {
       \ 'fg':      ['fg', 'Normal'],
@@ -488,6 +500,32 @@ if has('conceal')
   set conceallevel=0 concealcursor=niv
 endif
 
+if &runtimepath =~ 'lspconfig'
+  " nnoremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
+  nnoremap <silent> K          <cmd>lua vim.lsp.buf.hover()<CR>
+  nnoremap <silent> <leader>cd <cmd>lua vim.lsp.buf.definition()<CR>
+  nnoremap <silent> <leader>cr <cmd>lua vim.lsp.buf.references()<CR>
+  nnoremap <silent> <leader>d  <cmd>lua vim.lsp.buf.formatting_sync()<CR>
+  nnoremap <silent> <leader>rn <cmd>lua vim.lsp.buf.rename()<CR>
+
+  call sign_define("LspDiagnosticsErrorSign", {"text" : "E", "texthl" : "LspDiagnosticsError"})
+  call sign_define("LspDiagnosticsWarningSign", {"text" : "W", "texthl" : "LspDiagnosticsWarning"})
+  call sign_define("LspDiagnosticsInformationSign", {"text" : "-", "texthl" : "LspDiagnosticsInformation"})
+  call sign_define("LspDiagnosticsHintSign", {"text" : ".", "texthl" : "LspDiagnosticsHint"})
+
+  autocmd BufEnter * lua require'completion'.on_attach()
+  autocmd BufEnter * lua require'diagnostic'.on_attach()
+
+  let g:diagnostic_virtual_text_prefix = ' '
+  let g:diagnostic_enable_virtual_text = 1
+
+  lua <<EOF
+  lsp = require'nvim_lsp'
+  lsp.rust_analyzer.setup{}
+  lsp.solargraph.setup{}
+EOF
+endif
+
 if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <leader>"  :<C-u>CocList -A --normal yank<cr>
   " Use <c-space> to trigger completion.
@@ -576,40 +614,40 @@ if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <space>p  :<C-u>CocListResume<CR>
 endif
 
-let g:ale_fixers = {
-      \ 'ruby': ['rubocop'],
-      \ 'rspec': ['rubocop'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javascript': ['eslint'],
-      \ }
-
-let g:ale_linters = {
-      \ 'ruby': ['rubocop'],
-      \ 'rspec': ['rubocop'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javascript': ['eslint'],
-      \ }
-
-let g:ale_keep_list_window_open = 0
-let g:ale_lint_delay = 200
-let g:ale_lint_on_enter = 1
-let g:ale_lint_on_save = 1
-let g:ale_lint_on_text_changed = 'always'
-let g:ale_open_list = 0
-let g:ale_ruby_bundler_executable = 'bundle'
-let g:ale_ruby_rubocop_executable = 'bundle'
-let g:ale_set_highlights = 1
-let g:ale_set_loclist = 1
-let g:ale_set_quickfix = 0
-let g:ale_set_signs = 1
-let g:ale_sign_column_always = 1
-let g:ale_sign_error = '>>'
-let g:ale_sign_offset = 1000000
-let g:ale_sign_warning = '--'
-let g:ale_completion_enabled = 1
-let g:ale_virtualtext_cursor = 1
-
 if &runtimepath =~ 'ale'
+
+  let g:ale_fixers = {
+        \ 'ruby': ['rubocop'],
+        \ 'rspec': ['rubocop'],
+        \ 'javascript.jsx': ['eslint'],
+        \ 'javascript': ['eslint'],
+        \ }
+
+  let g:ale_linters = {
+        \ 'ruby': ['rubocop'],
+        \ 'rspec': ['rubocop'],
+        \ 'javascript.jsx': ['eslint'],
+        \ 'javascript': ['eslint'],
+        \ }
+
+  let g:ale_keep_list_window_open = 0
+  let g:ale_lint_delay = 200
+  let g:ale_lint_on_enter = 1
+  let g:ale_lint_on_save = 1
+  let g:ale_lint_on_text_changed = 'always'
+  let g:ale_open_list = 0
+  let g:ale_ruby_bundler_executable = 'bundle'
+  let g:ale_ruby_rubocop_executable = 'bundle'
+  let g:ale_set_highlights = 1
+  let g:ale_set_loclist = 1
+  let g:ale_set_quickfix = 0
+  let g:ale_set_signs = 1
+  let g:ale_sign_column_always = 1
+  let g:ale_sign_error = '>>'
+  let g:ale_sign_offset = 1000000
+  let g:ale_sign_warning = '--'
+  let g:ale_completion_enabled = 1
+  let g:ale_virtualtext_cursor = 1
   augroup filetype_ruby_ale
     autocmd!
     autocmd FileType ruby map <leader>d :ALEFix<CR>
@@ -811,24 +849,24 @@ endif
 
 let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
 let test#go#gotest#options = {
-  \ 'nearest': '-v',
-  \ 'file': '-v',
-  \}
+      \ 'nearest': '-v',
+      \ 'file': '-v',
+      \}
 
 let test#rust#cargotest#options = {
-  \ 'nearest': '-- --nocapture',
-  \}
+      \ 'nearest': '-- --nocapture',
+      \}
 
 let test#python#pytest#options = {
-  \ 'nearest': '-s',
-  \ 'file':    '-s',
-  \}
+      \ 'nearest': '-s',
+      \ 'file':    '-s',
+      \}
 
 let test#ruby#rspec#options = {
-  \ 'nearest': '--format documentation',
-  \ 'file':    '--format documentation',
-  \ 'suite':   '--tag \~slow',
-  \}
+      \ 'nearest': '--format documentation',
+      \ 'file':    '--format documentation',
+      \ 'suite':   '--tag \~slow',
+      \}
 
 map <Bslash>t :TestFile<CR>
 map <Bslash>u :TestNearest<CR>
