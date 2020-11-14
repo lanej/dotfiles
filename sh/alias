@@ -179,18 +179,13 @@ fkp() {
   fi
 }
 
-fcd() {
-  if command -v fd >/dev/null; then
-    target=$(fd --type d --hidden --follow --exclude .git | fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview 'tree {}') || return
-    cd $(echo "$target")
-  else
-    cd $(find $1 -type d | f)
-  fi
-}
-
 git_checkout_branch() {
 	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --summary --color origin/master...{}" --preview-window=right:70%) || return
 	git co $(echo "$target")
+}
+
+git_search_log() {
+	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --preview "git show {+1} | delta --color-only"
 }
 
 i() {
