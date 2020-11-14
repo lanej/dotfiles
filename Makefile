@@ -31,6 +31,7 @@ bash: shell
 zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
 	@ln -fs $(DOTFILES)/zsh/zlogout $(HOME)/.zlogout
+	@ln -fs $(DOTFILES)/zsh/zlogin $(HOME)/.zlogin
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@mkdir -p $(HOME)/.config/zsh/
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
