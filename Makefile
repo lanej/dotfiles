@@ -34,12 +34,14 @@ zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zlogin $(HOME)/.zlogin
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@mkdir -p $(HOME)/.config/zsh/
+	@mkdir -p $(HOME)/.local/share/zsh/
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@git -C $(HOME)/.oh-my-zsh pull 2>/dev/null -q || \
 		git clone -q https://github.com/robbyrussell/oh-my-zsh.git $(HOME)/.oh-my-zsh
 	@git -C $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k pull -q || \
 		git clone -q https://github.com/romkatv/powerlevel10k.git $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
 screen:
 	@ln -fs $(DOTFILES)/rc/screenrc $(HOME)/.screenrc
 tmux:
