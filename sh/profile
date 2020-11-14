@@ -11,9 +11,63 @@
 # arch
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
-# [ -f '/Users/jlane/google-cloud-sdk/path.zsh.inc' ] && . "$HOME/google-cloud-sdk/path.zsh.inc"
-# [ -f '/Users/jlane/google-cloud-sdk/completion.zsh.inc' ] && . '$HOME/google-cloud-sdk/completion.zsh.inc'; fi
-
 if command -v rbenv >/dev/null; then
 	eval "$(rbenv init -)"
+fi
+
+export OS=`uname -s`
+export EDITOR="vim"
+export PAGER="less"
+export LESS="-RMin"
+export EMAIL="me@joshualane.com"
+export ARCH=`uname -m`
+export IRCNICK='lanej'
+export IRCSERVER='irc.freenode.net'
+export PATH="${HOME}/.local/bin:$PATH"
+export BAT_THEME="1337"
+export EDITORD=${EDITORD:-$EDITOR}
+export JQ_COLORS="2;37:1;31:1;32:0;36:0;33:1;37:1;37"
+export GO15VENDOREXPERIMENT=1
+export RI_PAGER='less -FX'
+export XDG_CONFIG_HOME="$HOME/.config"
+export GIT_SSH="$HOME/.local/bin/git-ssh"
+
+if [[ -d "$HOME/.local/bin" ]]; then
+	PATH="$HOME/.local/bin:$PATH"
+fi
+
+unset EDITOR
+unset VISUAL
+
+if [[ -s $(which nvim) ]]; then
+	export EDITOR=nvim
+	export VISUAL=nvim
+elif [[ -s $(which vim) ]]; then
+	export EDITOR=vim
+	export VISUAL=vim
+else
+	export EDITOR=vi
+	export VISUAL=vi
+fi
+
+if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
+  export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
+fi
+
+if [ -d "$HOME/.yarn/bin" ]; then
+  export PATH="$HOME/.yarn/bin:$PATH"
+fi
+
+if [ -d "$HOME/.cargo/bin" ]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
+
+if [ -d "$HOME/.luarocks/bin" ]; then
+  export PATH="$HOME/.luarocks/bin:$PATH"
+fi
+
+export GOPATH=$HOME/.local/go
+
+if [ -d "$GOPATH" ]; then
+  export PATH="$GOPATH/bin:$PATH"
 fi

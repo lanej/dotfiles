@@ -13,7 +13,6 @@ fish:
 	@ln -fs $(DOTFILES)/fish/config $(HOME)/.config/fish/config.fish
 	@$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
-	@ln -fs $(DOTFILES)/env $(HOME)/.env
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/bin/* $(HOME)/.local/bin/
 	@ln -fs $(DOTFILES)/sh/alias $(HOME)/.alias

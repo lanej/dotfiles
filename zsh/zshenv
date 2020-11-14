@@ -4,96 +4,56 @@
 #
 # Global Order: zshenv, zprofile, zshrc, zlogin
 
-export OS=`uname -s`
+HISTSIZE=99999999
+SAVEHIST=99999999
+HISTFILE=$HOME/.zsh_history
+HIST_EXPIRE_DUPS_FIRST=true
 
-export EDITOR="vim"
-export PAGER="less"
-export LESS="-RMin"
-export EMAIL="me@joshualane.com"
-export ARCH=`uname -m`
+DEFAULT_USER='jlane'
 
-export IRCNICK='lanej'
-export IRCSERVER='irc.freenode.net'
+# Comment this out to disable bi-weekly auto-update checks
+DISABLE_AUTO_UPDATE="true"
 
-export SAVEHIST=9999
-export HISTSIZE=9999
-export HISTFILE=$HOME/.zsh_history
-export HIST_EXPIRE_DUPS_FIRST=true
-export GO15VENDOREXPERIMENT=1
-export RI_PAGER='less -FX'
-export XDG_CONFIG_HOME="$HOME/.config"
+HISTSIZE=99999999
+SAVEHIST=99999999
 
-# git
-export GIT_SSH="$HOME/.local/bin/git-ssh"
+ZSH_THEME="powerlevel10k/powerlevel10k"
+POWERLEVEL9K_MODE='nerdfont-complete'
+POWERLEVEL9K_COLOR_SCHEME='dark'
+POWERLEVEL9K_HOST_TEMPLATE="%2m"
+POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX=""
+POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="$ "
+POWERLEVEL9K_PROMPT_ON_NEWLINE=true
+POWERLEVEL9K_VI_COMMAND_MODE_STRING=""
+POWERLEVEL9K_VI_INSERT_MODE_STRING=""
+POWERLEVEL9K_VI_OVERWRITE_MODE_STRING="R"
+POWERLEVEL9K_CHRUBY_SHOW_ENGINE=false
+POWERLEVEL9K_VI_MODE_INSERT_FOREGROUND="cyan"
+POWERLEVEL9K_VI_MODE_NORMAL_FOREGROUND="yellow"
+POWERLEVEL9K_VI_MODE_OVERWRITE_FOREGROUND="red"
 
-# xdg-derived, systemd file-hierarchy
-if [[ -d "$HOME/.local/bin" ]]; then
-	PATH="$HOME/.local/bin:$PATH"
-fi
+POWERLEVEL9K_CHRUBY_SHOW_DEFAULT=false
 
-unset EDITOR
-unset EDITORD
+POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND='yellow'
+POWERLEVEL9K_VCS_GIT_HOOKS=(vcs-detect-changes git-untracked git-aheadbehind git-tagname)
+POWERLEVEL9K_DIR_SHOW_WRITABLE=true
+POWERLEVEL9K_CONTEXT_FOREGROUND='yellow'
+POWERLEVEL9K_SSH_FOREGROUND='grey'
+POWERLEVEL9K_VCS_CLEAN_FOREGROUND='white'
+POWERLEVEL9K_VCS_CLEAN_BACKGROUND='grey'
+POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND='yellow'
+POWERLEVEL9K_VCS_UNTRACKED_BACKGROUND='black'
+POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='red'
+POWERLEVEL9K_VCS_MODIFIED_BACKGROUND='black'
+POWERLEVEL9K_SHORTEN_DIR_LENGTH=1
+POWERLEVEL9K_SHORTEN_DELIMITER=""
+POWERLEVEL9K_SHORTEN_STRATEGY="truncate_from_right"
+POWERLEVEL9K_TRANSIENT_PROMPT='same-dir'
+POWERLEVEL9K_STATUS_OK=""
 
-if [[ -s $(which nvim) ]]; then
-	export EDITOR=nvim
-elif [[ -s $(which vim) ]]; then
-	export EDITOR=vim
-else
-	export EDITOR=vi
-fi
+POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(vi_mode background_jobs_joined context dir vcs status)
+POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(command_execution_time)
 
-if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
-  export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
-fi
-
-if [ -d "$HOME/.yarn/bin" ]; then
-  export PATH="$HOME/.yarn/bin:$PATH"
-fi
-
-if [ -d "$HOME/.cargo/bin" ]; then
-  export PATH="$HOME/.cargo/bin:$PATH"
-fi
-
-if [ -d "$HOME/.luarocks/bin" ]; then
-  export PATH="$HOME/.luarocks/bin:$PATH"
-fi
-
-
-if command -v fzf >/dev/null; then
-	if command -v fd >/dev/null; then
-		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-	fi
-
-	unset FZF_DEFAULT_OPTS
-	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
-	--prompt=\
-	--cycle
-	--no-info
-	--color fg:#d8dee9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
-	--color pointer:#48a4ff,info:#48a4ff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
-	--bind ctrl-j:preview-down,ctrl-k:preview-up
-	'
-
-	unset FZF_CTRL_R_OPTS
-	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS'--reverse
-	--tiebreak=index
-	+m
-	-1
-	'
-
-fi
-
-
-# go
-export GOPATH=$HOME/go
-export PATH=$GOPATH/bin:$PATH
-
-export PATH="${HOME}/.local/bin:$PATH"
-export BAT_THEME="1337"
-
-export EDITORD=${EDITORD:-$EDITOR}
-export JQ_COLORS="2;37:1;31:1;32:0;36:0;33:1;37:1;37"
-
-# go
-export GOPATH=$HOME/go
-export PATH=$GOPATH/bin:$PATH
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=cyan,underline"
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=50
+ZSH_AUTOSUGGEST_USE_ASYNC=1
