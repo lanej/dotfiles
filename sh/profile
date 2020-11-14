@@ -11,8 +11,9 @@
 # arch
 [ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
+# [ -f '/Users/jlane/google-cloud-sdk/path.zsh.inc' ] && . "$HOME/google-cloud-sdk/path.zsh.inc"
+# [ -f '/Users/jlane/google-cloud-sdk/completion.zsh.inc' ] && . '$HOME/google-cloud-sdk/completion.zsh.inc'; fi
+
 if command -v rbenv >/dev/null; then
 	eval "$(rbenv init -)"
-elif command -v chruby >/dev/null; then
-	chruby 2.6.3
 fi
