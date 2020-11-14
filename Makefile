@@ -38,10 +38,7 @@ zsh: shell
 		git clone -q https://github.com/robbyrussell/oh-my-zsh.git $(HOME)/.oh-my-zsh
 	@git -C $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k pull -q || \
 		git clone -q https://github.com/romkatv/powerlevel10k.git $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k
-	@git -C $(HOME)/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting pull -q || \
-		git clone -q https://github.com/zsh-users/zsh-syntax-highlighting.git $(HOME)/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-	@git -C $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions pull -q || \
-		git clone -q https://github.com/zsh-users/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 screen:
 	@ln -fs $(DOTFILES)/rc/screenrc $(HOME)/.screenrc
 tmux:
