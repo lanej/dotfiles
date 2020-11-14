@@ -19,6 +19,8 @@ bindkey '^h' backward-delete-char
 bindkey '^w' backward-kill-word
 bindkey '^r' history-incremental-search-backward
 bindkey '^s' history-incremental-search-forward
+bindkey '^e' end-of-line
+bindkey '^a' beginning-of-line
 
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
