@@ -1,0 +1,22 @@
+if command -v fzf >/dev/null; then
+	if command -v fd >/dev/null; then
+		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+	fi
+
+	unset FZF_DEFAULT_OPTS
+	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
+	--prompt=\
+	--cycle
+	--no-info
+	--color fg:#d8dee9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
+	--color pointer:#48a4ff,info:#48a4ff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
+	--bind ctrl-j:preview-down,ctrl-k:preview-up
+	'
+
+	unset FZF_CTRL_R_OPTS
+	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS'--reverse
+	--tiebreak=index
+	+m
+	-1
+	'
+fi
