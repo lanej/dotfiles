@@ -6,8 +6,13 @@ success_symbol = "[\\$](bold white)"
 error_symbol = "[\\$](bold red)"
 vicmd_symbol = "[N](bold yellow)"
 
+[directory]
+
 [git_status]
-style = "bold cyan"
+ahead = "⇡${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+behind = "⇣${count}"
+style = "yellow"
 
 [aws]
 symbol = " "
@@ -33,6 +38,7 @@ symbol = " "
 symbol = " "
 
 [git_branch]
+style = "blue"
 symbol = " "
 
 [golang]

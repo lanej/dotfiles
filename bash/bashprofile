@@ -14,7 +14,6 @@ fi
 
 if [ -f "${HOME}/.local/share/z/z.sh" ]; then
 	. "${HOME}/.local/share/z/z.sh"
-	. "${HOME}/.z.sh"
 fi
 
 . ${HOME}/.profile
