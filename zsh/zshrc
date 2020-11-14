@@ -53,10 +53,7 @@ typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='$'
 POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(vi_mode background_jobs_joined context dir vcs status)
 POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(command_execution_time)
 
-ZSH=$HOME/.oh-my-zsh
-source $ZSH/oh-my-zsh.sh
 
-# ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg:15,bg:1"
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=cyan,underline"
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=50
 ZSH_AUTOSUGGEST_USE_ASYNC=1
@@ -72,14 +69,6 @@ unsetopt nomatch
 unsetopt share_history
 unsetopt correct_all
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/jlane/google-cloud-sdk/path.zsh.inc' ]; then source '/Users/jlane/google-cloud-sdk/path.zsh.inc'; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f '/Users/jlane/google-cloud-sdk/completion.zsh.inc' ]; then source '/Users/jlane/google-cloud-sdk/completion.zsh.inc'; fi
-
-test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
-
 bindkey -v # vi-mode
 
 bindkey '^P' up-history
@@ -90,20 +79,18 @@ bindkey '^w' backward-kill-word
 bindkey '^r' history-incremental-search-backward
 bindkey '^s' history-incremental-search-forward
 
-export KEYTIMEOUT=1
+autoload edit-command-line; zle -N edit-command-line
+bindkey -M vicmd v edit-command-line
 
-[[ -r "$HOME/.keys.env" ]] && source $HOME/.keys.env
+[[ -r "$HOME/.env" ]] && source "$HOME/.env"
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
-if [ -f ~/.fzf.zsh ]; then
-	source ${HOME}/.fzf.zsh
-	source ${HOME}/.z.sh
-	source ${HOME}/.config/zsh/fzf.zsh
-fi
+[[ -f "${HOME}/.config/zsh/fzf.zsh" ]] && source "${HOME}/.config/zsh/fzf.zsh"
+[[ -f "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
 
 autoload -U +X bashcompinit && bashcompinit
-# complete -o nospace -C $HOME/.files/bin/terraform terraform
 
 # keys
+export KEYTIMEOUT=1
 KEYCHAIN=${SSH_KEYS:-"${HOME}/.ssh/id_rsa"}
 if command -v keychain >/dev/null; then
 	if [[ $(uname) == 'Linux' ]]; then
@@ -119,3 +106,12 @@ fi
 
 . "${HOME}/.profile"
 . "$HOME/.alias"
+. "$HOME/.zshenv"
+
+
+if command -v starship >/dev/null; then
+	eval "$(starship init zsh)"
+elif [[ -d "$HOME/.oh-my-zsh" ]]; then
+	ZSH=$HOME/.oh-my-zsh
+	source $ZSH/oh-my-zsh.sh
+fi

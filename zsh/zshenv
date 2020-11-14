@@ -89,7 +89,7 @@ export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$PATH
 
 export PATH="${HOME}/.local/bin:$PATH"
-export BAT_THEME="1337"
+export BAT_THEME="OneHalfDark"
 
 export EDITORD=${EDITORD:-$EDITOR}
 export JQ_COLORS="2;37:1;31:1;32:0;36:0;33:1;37:1;37"

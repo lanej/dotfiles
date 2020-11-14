@@ -524,9 +524,14 @@ if &runtimepath =~ 'lspconfig'
 
   lua <<EOF
   lsp = require'nvim_lsp'
-  lsp.rust_analyzer.setup{}
+  lsp.rust_analyzer.setup{
+    settings = {
+      ["rust-analyzer.cargo.allFeatures"] = true 
+    }
+  }
   lsp.solargraph.setup{}
   lsp.vimls.setup{}
+  lsp.texlab.setup{}
 EOF
 endif
 
