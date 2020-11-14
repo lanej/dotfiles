@@ -1,19 +1,4 @@
 #!/bin/sh
-export XDG_CONFIG_HOME="$HOME/.config"
-
-if command -v fzf >/dev/null; then
-	if command -v fd >/dev/null; then
-		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-	fi
-	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
-	--prompt=\
-	--cycle
-	--no-info
-	--color fg:#d8dee9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
-	--color pointer:#48a4ff,info:#48a4ff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
-	'
-fi
-
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
 # macos
@@ -31,22 +16,3 @@ if command -v rbenv >/dev/null; then
 elif command -v chruby >/dev/null; then
 	chruby 2.6.3
 fi
-
-if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
-  export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
-fi
-
-if [ -d "$HOME/.yarn/bin" ]; then
-  export PATH="$HOME/.yarn/bin:$PATH"
-fi
-
-if [ -d "$HOME/.cargo/bin" ]; then
-  export PATH="$HOME/.cargo/bin:$PATH"
-fi
-
-if [ -d "$HOME/.luarocks/bin" ]; then
-  export PATH="$HOME/.luarocks/bin:$PATH"
-fi
-
-export PATH="${HOME}/.local/bin:$PATH"
-export BAT_THEME="1337"
