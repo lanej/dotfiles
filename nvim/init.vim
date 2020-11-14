@@ -778,6 +778,7 @@ if has('autocmd')
     autocmd!
     autocmd FileType rust set makeprg=cargo\ run
     autocmd FileType rust set colorcolumn=100
+    autocmd FileType rust map <Bslash>t :TestFile --jobs 1<CR>
   augroup END
 
   augroup filetype_javascript
