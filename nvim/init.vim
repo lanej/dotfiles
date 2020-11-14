@@ -125,7 +125,7 @@ Plug 'christoomey/vim-tmux-navigator'                             " buffer navig
 Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
 Plug 'janko-m/vim-test'                                           " test integration
-Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --bin' } " fzf install, fast fuzzy finder, riding trunk
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'                                           " fzf integration
 Plug 'junegunn/vim-easy-align'                                    " space align
 Plug 'lanej/tender.vim'                                           " colorscheme
