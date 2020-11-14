@@ -59,13 +59,11 @@
 	rio = rebase -i origin/master
 	ro = !git fetch origin && git reset --hard origin/master
 	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
-	rsl = "!_git_rsl() { local max=$1; PAGER=cat git sl -n ${max:-25}; }; _git_rsl"
 	s = status -s
 	sh = show HEAD
-	sl = !git log --oneline --graph --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*"
-	slb = sl origin/master..HEAD
+	sl = !bash -lc 'git_search_log'
+	slb = log --oneline --decorate origin/master..HEAD
 	slp = log --stat -p
-	sls = sl --stat
 	slx = log --oneline -5
 	st = status
 	uf = ls-files -o --exclude-standard
@@ -88,7 +86,7 @@
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	editor = $EDITOR
-	pager = delta --diff-so-fancy
+	pager = delta
 [apply]
 	whitespace = fix
 [push]
@@ -142,12 +140,18 @@
 	noprefix = true
 	colorMoved = default
 [interactive]
-	diffFilter = delta --diff-so-fancy
+	diffFilter = delta
 [delta]
-	features = line-numbers decorations
+	features = default
 	whitespace-error-style = 22 bold red
-[delta "decorations"]
-	hunk-header-decoration-style = blue box
-	commit-decoration-style = bold blue box ul
-	file-decoration-style = none
-	file-style = bold cyan
+[delta "default"]
+	syntax-theme = 1337
+	line-numbers = true
+	minus-style = syntax normal
+[delta "meta"]
+	file-style = blue
+	hunk-header-style = syntax
+[delta "diff-filter"]
+	features = meta
+[interactive]
+	diffFilter = delta --color-only --features=diff-filter
