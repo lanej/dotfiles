@@ -94,9 +94,11 @@ disabled = false
 
 [username]
 disabled = false
+format = "[$user]($style)@"
 
 [hostname]
 disabled = false
+format = "[$hostname](bold green) in "
 
 [swift]
 symbol = "ﯣ "
