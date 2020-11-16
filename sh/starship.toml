@@ -88,5 +88,15 @@ symbol = " "
 symbol = "⚙️ "
 format = "[⚙️ $version](red)"
 
+[status]
+symbol = "!"
+disabled = false
+
+[username]
+disabled = false
+
+[hostname]
+disabled = false
+
 [swift]
 symbol = "ﯣ "
