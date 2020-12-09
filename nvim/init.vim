@@ -152,7 +152,6 @@ Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 if has('nvim-0.5.0')
   Plug 'nvim-treesitter/nvim-treesitter'
   Plug 'nvim-lua/completion-nvim'
-  Plug 'nvim-lua/diagnostic-nvim'
 else
   Plug 'sheerun/vim-polyglot'
 endif
@@ -514,16 +513,9 @@ if &runtimepath =~ 'lspconfig'
   call sign_define("LspDiagnosticsHintSign", {"text" : ".", "texthl" : "LspDiagnosticsHint"})
 
   autocmd BufEnter * lua require'completion'.on_attach()
-  autocmd BufEnter * lua require'diagnostic'.on_attach()
-
-  nmap <silent><c-p> <cmd>PrevDiagnosticCycle<CR>
-  nmap <silent><c-n> <cmd>NextDiagnosticCycle<CR>
-
-  let g:diagnostic_virtual_text_prefix = ' '
-  let g:diagnostic_enable_virtual_text = 1
 
   lua <<EOF
-  lsp = require'nvim_lsp'
+  lsp = require'lspconfig'
   lsp.rust_analyzer.setup{
     settings = {
       ["rust-analyzer.cargo.allFeatures"] = true 
@@ -533,6 +525,10 @@ if &runtimepath =~ 'lspconfig'
   lsp.vimls.setup{}
   lsp.texlab.setup{}
 EOF
+
+  nnoremap <silent><c-p> <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
+  nnoremap <silent><c-n> <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
+  nnoremap <silent><space>c <cmd>lua vim.lsp.diagnostic.set_loclist()<CR>
 endif
 
 if &runtimepath =~ 'coc.nvim'
