@@ -183,6 +183,7 @@ nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 
 " plugin-config start
 map <leader>w :w<CR>
+map <leader>w! :SudoWrite<CR>
 map <leader>x :x<CR>
 
 " vim-plug
