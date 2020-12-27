@@ -1,9 +1,6 @@
 {
   "codeLens.enable": false,
-  "diagnostic.locationlist": false,
   "yank.enableCompletion": false,
   "suggest.enablePreview": true,
-  "rust.cfg_test": true,
-  "rust.clippy_preference": "on",
   "suggest.maxCompleteItemCount": 25
 }
