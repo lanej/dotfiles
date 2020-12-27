@@ -1,5 +1,71 @@
 #!/bin/sh
 
+alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' | grep -o \"https://phab\\..*\" | head -n1 | xargs basename 2>/dev/null"
+alias arc-update="arc-revision | xargs arc diff --update"
+alias b='bundle-hack'
+alias be='bundle-exec-hack'
+alias bi='bundle-hack install'
+alias bl='bundle install --local'
+alias c="clear"
+alias copy="tr -d '\n' | pbcopy"
+alias cpr='copy -r'
+alias curlb='curl -s'
+alias curls='curl -svo /dev/null'
+alias curlsd='curl -svo /dev/null -H "Fastly-Debug: 1"'
+alias curl-ttfb='curls -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
+alias fucking='sudo'
+alias gds='GIT_PAGER=cat git diff --stat'
+alias g="git"
+alias gpr="hub pull-request"
+alias gpro='hub pull-request -o'
+alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
+alias guard='be guard'
+alias lal='ls -alh'
+alias ll="ls -alh"
+alias lt='tree -L 1 -C'
+alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
+alias mytop="vtop -t monokai"
+alias nerd='vim +NERDTree'
+alias please='sudo'
+alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
+alias pt=papertrail
+alias rake='noglob rake'
+alias rba='be rubocop -a'
+alias r='be rspec'
+alias reado="ssh-reagent $*"
+alias reshell="exec -l $SHELL"
+alias restart='sudo reboot'
+alias rff='r --fail-fast'
+alias rmr='rm -r'
+alias rn='r --next-failure'
+alias root='sudo su -'
+alias shutdown='sudo halt'
+alias sp='source ~/.bash_profile'
+alias ssh="TERM=xterm-256color ssh"
+alias tfl='tail -Fn30 log/*.log'
+alias todo="todoist add"
+alias to_html="w3m -dump -T text/html"
+alias untar='tar xvfz'
+alias vcr='be env VCR_RECORD=all rspec'
+alias wip="git add -A >/dev/null && git commit -m \"wip\" >/dev/null && echo \"it good\""
+
+## Set ls options per platform
+if [[ $OSTYPE == 'linux-gnu' ]]; then
+  alias ls='ls -p --color=auto'
+elif [[ $OSTYPE =~ 'darwin' ]]; then
+  alias ls='ls -Gp'
+fi
+
+if hash xsel 2>/dev/null; then
+  alias pbcopy='xsel --clipboard --input'
+  alias pbpaste='xsel --clipboard --output'
+fi
+
+if command -v bat >/dev/null; then
+  alias cat='bat'
+  alias bat='bat -p'
+fi
+
 fixssh() {
   for key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
     if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
@@ -29,141 +95,9 @@ current-semver() {
   git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
 }
 
-git-release() {
-  git fetch origin -q
-  local current_release=$(current-version)
-  echo "Current release: v$current_release"
-  local next_release=v$(($current_release + 1))
-  echo "Releasing: $next_release"
-  git tag $next_release && git push origin $next_release
-  # tag_push=$?
-  # if [ $tag_push -ne 0 ]; then
-  #         read -p "Force push? " -n 1 -r
-  #         echo # move to new line
-  #         if [[ $REPLY =~ ^[Yy]$ ]]; then
-  #                 git push -f origin $next_release
-  #         else
-  #                 exit 1
-  #         fi
-  # fi
-
-  if [ -f .ruby-version ]; then
-    echo "deploy with:\nREVISION=$next_release bundle exec cap production deploy"
-  fi
-}
-
-cookbooks-version() {
-  egrep "version\s+'([0-9\.]+)'" metadata.rb | sed -E 's/version[ ]+//' | cut -d "'" -f2
-}
-
-cookbooks-release() {
-  local version=$(cookbooks-version)
-  local tag="v$version"
-  echo "Releasing: $tag"
-  sleep 1
-  git tag $tag && git push origin $tag
-}
-
 next-version() {
   ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
 }
-
-cookbooks-bump() {
-  local version=$(cookbooks-version)
-  local next_version=$(next-version $version $@)
-  echo "Bumping to $next_version"
-  sed -E -i '' "s/^version([[:blank:]]+)'[0-9\.]+'/version\1'$next_version'/" metadata.rb
-  local actual_version=$(cookbooks-version)
-
-  if [ "$actual_version" = "$next_version" ]; then
-    git add metadata.rb &&
-      git commit -m "chore(version): $actual_version"
-  else
-    echo "Failed to bump cookbooks version. Now " $actual_version
-  fi
-}
-
-# bash
-alias restart='sudo reboot'
-alias shutdown='sudo halt'
-alias apt-get='sudo apt-get'
-alias root='sudo su -'
-alias sp='source ~/.bash_profile'
-alias nerd='vim +NERDTree'
-
-# git
-alias g="git"
-alias gds='GIT_PAGER=cat git diff --stat'
-alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
-
-# ruby
-alias b='bundle-hack'
-alias bi='bundle-hack install'
-alias be='bundle-exec-hack'
-alias bl='bundle install --local'
-alias guard='be guard'
-alias r='be rspec'
-alias rff='r --fail-fast'
-alias reado="ssh-reagent $*"
-
-alias enw='emacs -nw'
-alias pg-start='pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start'
-alias pg-stop='pg_ctl -D /usr/local/var/postgres stop -s -m fast'
-alias v='vagrant'
-
-alias untar='tar xvfz'
-alias tfl='tail -Fn30 log/*.log'
-alias c="clear"
-alias pt=papertrail
-alias fucking='sudo'
-alias k='kubectl'
-
-alias rba='be rubocop -a'
-
-alias curlb='curl -s'
-alias curls='curl -svo /dev/null'
-alias curlsd='curl -svo /dev/null -H "Fastly-Debug: 1"'
-alias curl-ttfb='curls -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
-
-## Set ls options per platform
-if [[ $OSTYPE == 'linux-gnu' ]]; then
-  alias ls='ls -p --color=auto'
-elif [[ $OSTYPE =~ 'darwin' ]]; then
-  alias ls='ls -Gp'
-fi
-
-alias cpr='copy -r'
-alias rake='noglob rake'
-alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
-alias rn='r --next-failure'
-alias copy="tr -d '\n' | pbcopy"
-alias gpr="hub pull-request"
-alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
-alias rmr='rm -r'
-alias lal='ls -alh'
-alias t=terraform
-alias gpro='hub pull-request -o'
-alias lt='tree -L 1 -C'
-
-if hash xsel 2>/dev/null; then
-  alias pbcopy='xsel --clipboard --input'
-  alias pbpaste='xsel --clipboard --output'
-fi
-alias to_html="w3m -dump -T text/html"
-alias mytop="vtop -t monokai"
-alias ssh="TERM=xterm-256color ssh"
-alias wip="git add -A >/dev/null && git commit -m \"wip\" >/dev/null && echo \"it good\""
-alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' | grep -o \"https://phab\\..*\" | head -n1 | xargs basename 2>/dev/null"
-alias arc-update="arc-revision | xargs arc diff --update"
-alias arc-land="arc land --merge"
-alias vcr='be env VCR_RECORD=all rspec'
-alias port_kill='cat .env* | egrep "^PORT" | egrep -o "[0-9]+$" | xargs -i{} lsof -ti :{} | xargs kill -9'
-alias reshell="exec -l $SHELL"
-
-if command -v bat >/dev/null; then
-  alias cat='bat'
-  alias bat='bat -p'
-fi
 
 f() {
   fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
@@ -191,8 +125,6 @@ git_search_log() {
 i() {
   nvim -R -c Lines
 }
-alias icat="kitty +kitten icat"
-alias todo="todoist add"
 
 zz() {
 	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf --reverse --height=30% -q "$_last_z_args")" || exit
