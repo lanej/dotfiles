@@ -506,6 +506,8 @@ if &runtimepath =~ 'lspconfig'
   nnoremap <silent> <leader>cd <cmd>lua vim.lsp.buf.definition()<CR>
   nnoremap <silent> <leader>cr <cmd>lua vim.lsp.buf.references()<CR>
   nnoremap <silent> <leader>d  <cmd>lua vim.lsp.buf.formatting_sync()<CR>
+  nnoremap <silent> <leader>ci <cmd>lua vim.lsp.buf.implementation()<CR>
+  nnoremap <silent> <leader>cy <cmd>lua vim.lsp.buf.type_definition()<CR>
   nnoremap <silent> <leader>rn <cmd>lua vim.lsp.buf.rename()<CR>
 
   call sign_define("LspDiagnosticsErrorSign", {"text" : "E", "texthl" : "LspDiagnosticsError"})
@@ -524,12 +526,27 @@ if &runtimepath =~ 'lspconfig'
   }
   lsp.solargraph.setup{}
   lsp.vimls.setup{}
+  lsp.jedi_language_server.setup{}
   lsp.texlab.setup{}
 EOF
 
   nnoremap <silent><c-p> <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
   nnoremap <silent><c-n> <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
   nnoremap <silent><space>c <cmd>lua vim.lsp.diagnostic.set_loclist()<CR>
+endif
+
+if &runtimepath =~ 'nvim-treesitter'
+  lua <<EOF
+  require'nvim-treesitter.configs'.setup {
+      ensure_installed = "maintained",
+      highlight = {
+          enable = true,
+      },
+      indent = {
+        enable = true
+      }
+    }
+EOF
 endif
 
 if &runtimepath =~ 'coc.nvim'
