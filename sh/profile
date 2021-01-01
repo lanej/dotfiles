@@ -71,3 +71,12 @@ export GOPATH=$HOME/.local/go
 if [ -d "$GOPATH" ]; then
   export PATH="$GOPATH/bin:$PATH"
 fi
+
+if command -v keychain >/dev/null; then
+	if [ "$OS" == "Darwin" ]; then
+		eval `keychain --noask --eval -q --inherit any`
+	else
+		echo "not osx but $OS"
+		eval `keychain --noask --eval -q`
+	fi
+fi
