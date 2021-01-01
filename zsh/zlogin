@@ -20,3 +20,11 @@ if command -v fzf >/dev/null; then
 	-1
 	'
 fi
+
+if command -v keychain >/dev/null; then
+	if [ "$OS" == "Darwin" ]; then
+		eval `keychain --noask --eval -q --inherit any`
+	else
+		eval `keychain --noask --eval -q`
+	fi
+fi
