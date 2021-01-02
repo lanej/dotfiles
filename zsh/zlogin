@@ -21,10 +21,11 @@ if command -v fzf >/dev/null; then
 	'
 fi
 
+export KEYTIMEOUT=1
 if command -v keychain >/dev/null; then
 	if [ "$OS" == "Darwin" ]; then
-		eval `keychain --noask --eval -q --inherit any`
+		eval `keychain --noask --eval -q --inherit any --agents ssh,gpg --gpg2`
 	else
-		eval `keychain --noask --eval -q`
+		eval `keychain --noask --eval -q --agents ssh,gpg --gpg2`
 	fi
 fi
