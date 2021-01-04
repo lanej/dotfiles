@@ -92,9 +92,7 @@ i3:
 	@mkdir -p $(HOME)/.config/i3
 	@ln -fs $(DOTFILES)/i3/config $(HOME)/.config/i3/config
 polybar:
-	@mkdir -p $(HOME)/.config/polybar
-	@ln -fs $(DOTFILES)/polybar/config $(HOME)/.config/polybar/config
-	@ln -fs $(DOTFILES)/polybar/launch.sh $(HOME)/.config/polybar/launch.sh
+	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
 oni:
 	@mkdir -p $(HOME)/.config/oni
 	@ln -fs $(DOTFILES)/oni/config.js $(HOME)/.config/oni/config.js
