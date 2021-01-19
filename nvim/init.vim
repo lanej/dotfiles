@@ -8,6 +8,7 @@
 
 " ================ General Config ====================
 set autoread                   " Reload files changed outside vim
+set autoindent
 set backspace=indent,eol,start " Allow backspace in insert mode
 set cmdheight=2
 set cursorline
@@ -136,6 +137,7 @@ Plug 'mileszs/ack.vim'                                            " quick search
 Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
 Plug 'scrooloose/nerdcommenter'                                   " code commenter
 Plug 'scrooloose/nerdtree'                                        " file browser
+Plug 'idanarye/vim-merginal'
 Plug 'tpope/vim-dotenv'                                           " support dotenv
 Plug 'tpope/vim-eunuch'                                           " file system interactions
 Plug 'tpope/vim-fugitive'                                         " git integratino
@@ -303,14 +305,15 @@ let g:gitgutter_max_signs = 1000
 
 " fzf
 nnoremap <leader>as :Rgc<space><cword><CR>
-noremap  <leader>ac :Commands<CR>
-noremap  <leader>al :Lines<CR>
-noremap  <leader>at :Tags<CR>
-noremap  <leader>f  :Files<CR>
-noremap  <leader>;  :History:<CR>
-noremap  <leader>/  :History/<CR>
-noremap  <leader>l  :BLines<CR>
-noremap  <leader>t  :BTags<CR>
+nnoremap <leader>ag :Rg<CR>
+nnoremap <leader>ac :Commands<CR>
+nnoremap <leader>al :Lines<CR>
+nnoremap <leader>at :Tags<CR>
+nnoremap <leader>f  :Files<CR>
+nnoremap <leader>r  :History:<CR>
+nnoremap <leader>/  :History/<CR>
+nnoremap <leader>l  :BLines<CR>
+nnoremap <leader>bt :BTags<CR>
 
 command! -bang -nargs=* Rg
       \ call fzf#vim#grep(
@@ -360,19 +363,19 @@ let g:fzf_buffers_jump = 1
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " fugitive and fzf git integrations
-noremap <leader>gal :BCommits<CR>
-noremap <leader>gb :Gblame<CR>
+noremap <leader>bc :BCommits<CR>
+noremap <leader>bb :Gblame<CR>
 noremap <leader>gf :GFiles<CR>
-noremap <leader>gg :Buffers<CR>
-noremap <leader>gl :Commits<CR>
+noremap <leader>bl :Buffers<CR>
+noremap <leader>gc :Commits<CR>
 noremap <leader>gm :Git mergetool<CR>
 noremap <leader>go :Gbrowse<CR>
-noremap <leader>gcv :Gcommit -v<CR>
+noremap <leader>ga :Gcommit -av<CR>
 noremap <leader>gc :Gcommit<CR>
 noremap <leader>gr :Gread<CR>
 noremap <leader>gs :Gstatus<CR>
 noremap <leader>gw :Gwrite<CR>
-noremap <leader>gd :Gdiffsplit
+noremap <leader>gd :Gdiffsplit origin/master
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " rename
@@ -749,11 +752,11 @@ if has('autocmd')
   augroup filetype_ruby
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab
-    autocmd FileType ruby map <Bslash>ff :TestFile --fail-fast<CR>
-    autocmd FileType ruby map <Bslash>fo :TestFile --only-failures<CR>
-    autocmd FileType ruby map <Bslash>n :TestFile -n<CR>
-    autocmd FileType ruby map <Bslash>v :call <SID>vcr_failures_only()<CR>
+    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
+    autocmd FileType ruby map <leader>tq :TestFile --fail-fast<CR>
+    autocmd FileType ruby map <leader>to :TestFile --only-failures<CR>
+    autocmd FileType ruby map <leader>tn :TestFile -n<CR>
+    autocmd FileType ruby map <leader>tv :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
     autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
     autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /<CR>
@@ -886,10 +889,11 @@ let test#ruby#rspec#options = {
       \ 'suite':   '--tag \~slow',
       \}
 
-map <Bslash>t :TestFile<CR>
-map <Bslash>u :TestNearest<CR>
-map <Bslash>r :TestLast<CR>
-map <Bslash>s :TestSuite<CR>
+map <Bslash>t :TestLast<CR>
+map <leader>tf :TestFile<CR>
+map <leader>tu :TestNearest<CR>
+map <leader>tl :TestLast<CR>
+map <leader>ts :TestSuite<CR>
 
 " c	don't give |ins-completion-menu| messages.  For example,
 " "-- XXX completion (YYY)", "match 1 of 2", "The only match",
