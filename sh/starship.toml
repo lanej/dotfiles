@@ -87,7 +87,7 @@ symbol = " "
 
 [rust]
 symbol = "⚙️ "
-format = "[⚙️ $version](red)"
+format = "[⚙️ $version](red) "
 
 [status]
 symbol = "!"
