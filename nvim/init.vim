@@ -275,6 +275,7 @@ let g:splitjoin_ruby_curly_braces = 0
 " if you want to disable auto detect, comment out those two lines
 "let g:airline#extensions#disable_rtp_load = 1
 " let g:airline_extensions = ['branch', 'hunks', 'coc']
+
 let g:airline#extensions#branch#enabled = 1
 let g:airline#extensions#bufferline#enabled = 0
 let g:airline#extensions#tabline#buffer_nr_show = 0
@@ -292,6 +293,11 @@ let g:airline#extensions#hunks#enabled = 0
 let g:airline_section_z=""
 let g:airline_powerline_fonts = 0
 let g:airline_theme = 'tenderplus'
+let g:airline_focuslost_inactive = 1
+let g:airline#extensions#tabline#switch_buffers_and_tabs = 1
+let g:airline#extensions#tabline#show_tab_type = 0
+let g:airline#extensions#tabline#show_close_button = 0
+let g:airline#extensions#tabline#show_tab_count = 0
 let g:ale_virtualtext_cursor = 1
 
 " git-gutter
