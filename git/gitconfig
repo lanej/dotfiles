@@ -142,13 +142,13 @@
 [delta]
 	features = default
 [delta "default"]
-  plus-empty-line-marker-style = normal "#002800"
-  plus-empty-line-marker-style = normal "#262626"
-  plus-non-emph-style = syntax "#262626"
-  plus-non-emph-style = syntax "#262626"
-  plus-style = syntax "#262626"
-  syntax-theme = 1337
-  tabs = 2
-  whitespace-error-style = 22 bold red
-  width = 120
-  zero-style = dim syntax
+	plus-empty-line-marker-style = normal "#002800"
+	plus-empty-line-marker-style = normal "#262626"
+	plus-non-emph-style = syntax "#262626"
+	plus-non-emph-style = syntax "#262626"
+	plus-style = syntax "#262626"
+	syntax-theme = 1337
+	tabs = 2
+	whitespace-error-style = 22 bold red
+	width = 120
+	zero-style = dim syntax
