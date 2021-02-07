@@ -139,19 +139,16 @@
 [diff]
 	noprefix = true
 	colorMoved = default
-[interactive]
-	diffFilter = delta
 [delta]
 	features = default
-	whitespace-error-style = 22 bold red
 [delta "default"]
-	syntax-theme = 1337
-	line-numbers = true
-	minus-style = syntax normal
-[delta "meta"]
-	file-style = blue
-	hunk-header-style = syntax
-[delta "diff-filter"]
-	features = meta
-[interactive]
-	diffFilter = delta --color-only --features=diff-filter
+  plus-empty-line-marker-style = normal "#002800"
+  plus-empty-line-marker-style = normal "#262626"
+  plus-non-emph-style = syntax "#262626"
+  plus-non-emph-style = syntax "#262626"
+  plus-style = syntax "#262626"
+  syntax-theme = 1337
+  tabs = 2
+  whitespace-error-style = 22 bold red
+  width = 120
+  zero-style = dim syntax
