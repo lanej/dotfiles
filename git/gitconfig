@@ -36,6 +36,7 @@
 	fa = fetch --all --tags
 	l = log --decorate --graph
 	lg = log --graph --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+  lp = log --abbrev-commit -p
 	ll = log
 	ls = branch
 	mf = merge --ff-only
@@ -148,7 +149,9 @@
 	plus-non-emph-style = syntax "#262626"
 	plus-style = syntax "#262626"
 	syntax-theme = 1337
-	tabs = 2
+  line-numbers = true
+  colorMoved = default
 	whitespace-error-style = 22 bold red
-	width = 120
 	zero-style = dim syntax
+[interactive]
+  diffFilter = delta --color-only
