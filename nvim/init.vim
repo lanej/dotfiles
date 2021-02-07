@@ -67,16 +67,6 @@ set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
 
 let mapleader = ','
 
-" vimtex configuration
-let g:polyglot_disabled = ['latex']
-let g:tex_conceal='abdmg'
-let g:tex_flavor = 'latex'
-let g:vimtex_quickfix_mode=1
-let g:vimtex_view_method='zathura'
-let g:vimtex_quickfix_ignore_filters = [
-      \ 'headheight is too small',
-      \ 'Underfull',
-      \]
 " searching stuff
 
 " Make <C-L> clear highlight and redraw
@@ -131,7 +121,6 @@ Plug 'junegunn/fzf.vim'                                           " fzf integrat
 Plug 'junegunn/vim-easy-align'                                    " space align
 Plug 'lanej/tender.vim'                                           " colorscheme
 Plug 'lanej/vim-phab'                                             " vim-fugitive phab integration
-Plug 'lervag/vimtex'                                              " latex support
 Plug 'ludovicchabant/vim-gutentags'                               " automatically update tags
 Plug 'mileszs/ack.vim'                                            " quick search, configured to use rg or ag
 Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
