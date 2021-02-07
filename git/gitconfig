@@ -1,117 +1,117 @@
 [user]
-	name = Joshua Lane
-	signingKey = 3888C0B7F81E8280B1FC99C2E37522BC4267876A
+		name = Joshua Lane
+		signingKey = 3888C0B7F81E8280B1FC99C2E37522BC4267876A
 [color]
-	diff = auto
-	status = auto
-	branch = auto
-	ui = true
+		diff = auto
+		status = auto
+		branch = auto
+		ui = true
 [alias]
-	a = add
-	a = commit
-	aa = add -A
-	ap = add -p
-	at = add -u
-	b = branch
-	br = branch
-	c = commit
-	ca = commit
-	cah = commit --amend -CHEAD
-	cahr = commit --amend -CHEAD --reset-author
-	cav = commit -av
-	ccah = commit --amend -cHEAD -v
-	cf = diff --name-only
-	cfd = clean -fd
-	ci = commit
-	cl = clone
-	cm = commit
-	co = checkout
-	cp = cherry-pick
-	ct = checkout -t
-	cv = commit -v
-	d = diff
-	dc = diff --cached
-	ds = diff
-	f = fetch
-	fa = fetch --all --tags
-	l = log --decorate --graph
-	lg = log --graph --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-  lp = log --abbrev-commit -p
-	ll = log
-	ls = branch
-	mf = merge --ff-only
-	ms = merge --squash
-	patch = !git --no-pager diff --no-color
-	ph = push
-	pl = pull --rebase
-	pr = pull-request
-	prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1 && git branch --set-upstream-to=refs/pull/$1/head pr-$1; }; _git_pr"
-	pu = push -u
-	r = rebase
-	ra = rebase --abort
-	rbom = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion' origin/master
-	rba = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion'
-	rbo = rebase origin/master
-	rc = rebase --continue
-	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
-	rh = reset --hard
-	rho = reset --hard origin/master
-	ri = rebase -i
-	rio = rebase -i origin/master
-	ro = !git fetch origin && git reset --hard origin/master
-	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
-	s = status -s
-	sh = show HEAD
-	sl = !bash -lc 'git_search_log'
-	slb = log --oneline --decorate origin/master..HEAD
-	slp = log --stat -p
-	slx = log --oneline -5
-	st = status
-	uf = ls-files -o --exclude-standard
-	v = show
-	prs = pr list -f \"%sC%<(3)%i%Creset %<(10)%au %Nc %<(40)%t %U %l%n\"
-	af = log --pretty=format: --name-only --diff-filter=A
-	blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
-	bl = branch --list
-	cob = co -B
-	bp = !bash -lc 'git_checkout_branch'
-	bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
-	sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=right:80% | xargs git add
-	cpa = cherry-pick --quit
-	rp = reset -p
-	ma = merge --abort
-	pop = reset HEAD~1
-	do = diff origin/master
-	com = checkout master
+		a = add
+		a = commit
+		aa = add -A
+		ap = add -p
+		at = add -u
+		b = branch
+		br = branch
+		c = commit
+		ca = commit
+		cah = commit --amend -CHEAD
+		cahr = commit --amend -CHEAD --reset-author
+		cav = commit -av
+		ccah = commit --amend -cHEAD -v
+		cf = diff --name-only
+		cfd = clean -fd
+		ci = commit
+		cl = clone
+		cm = commit
+		co = checkout
+		cp = cherry-pick
+		ct = checkout -t
+		cv = commit -v
+		d = diff
+		dc = diff --cached
+		ds = diff
+		f = fetch
+		fa = fetch --all --tags
+		l = log --decorate --graph
+		lg = log --graph --pretty=format:'%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+		lp = log --abbrev-commit -p
+		ll = log
+		ls = branch
+		mf = merge --ff-only
+		ms = merge --squash
+		patch = !git --no-pager diff --no-color
+		ph = push
+		pl = pull --rebase
+		pr = pull-request
+		prpl = "!_git_pr() { git fetch origin pull/$1/head:pr-$1 && git checkout pr-$1 && git branch --set-upstream-to=refs/pull/$1/head pr-$1; }; _git_pr"
+		pu = push -u
+		r = rebase
+		ra = rebase --abort
+		rbom = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion' origin/master
+		rba = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion'
+		rbo = rebase origin/master
+		rc = rebase --continue
+		recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
+		rh = reset --hard
+		rho = reset --hard origin/master
+		ri = rebase -i
+		rio = rebase -i origin/master
+		ro = !git fetch origin && git reset --hard origin/master
+		rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
+		s = status -s
+		sh = show HEAD
+		sl = !bash -lc 'git_search_log'
+		slb = log --oneline --decorate origin/master..HEAD
+		slp = log --stat -p
+		slx = log --oneline -5
+		st = status
+		uf = ls-files -o --exclude-standard
+		v = show
+		prs = pr list -f \"%sC%<(3)%i%Creset %<(10)%au %Nc %<(40)%t %U %l%n\"
+		af = log --pretty=format: --name-only --diff-filter=A
+		blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
+		bl = branch --list
+		cob = co -B
+		bp = !bash -lc 'git_checkout_branch'
+		bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
+		sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=right:80% | xargs git add
+		cpa = cherry-pick --quit
+		rp = reset -p
+		ma = merge --abort
+		pop = reset HEAD~1
+		do = diff origin/master
+		com = checkout master
 [core]
-	excludesfile = ~/.gitignore
-	whitespace = trailing-space,space-before-tab,blank-at-eol
-	editor = $EDITOR
-	pager = delta
+		excludesfile = ~/.gitignore
+		whitespace = trailing-space,space-before-tab,blank-at-eol
+		editor = $EDITOR
+		pager = delta
 [apply]
-	whitespace = fix
+		whitespace = fix
 [push]
-	default = current
+		default = current
 [branch]
-	autosetuprebase = always
+		autosetuprebase = always
 [github]
-	user = lanej
-	password = "!cat ~/.github_changelog_generator"
+		user = lanej
+		password = "!cat ~/.github_changelog_generator"
 [rerere]
-	enabled = true
+		enabled = true
 [help]
-	autocorrect = 5
+		autocorrect = 5
 [filter "media"]
-	required = true
-	clean = git media clean %f
-	smudge = git media smudge %f
+		required = true
+		clean = git media clean %f
+		smudge = git media smudge %f
 [filter "lfs"]
-	clean = git-lfs clean %f
-	smudge = git-lfs smudge %f
-	required = true
+		clean = git-lfs clean %f
+		smudge = git-lfs smudge %f
+		required = true
 [rebase]
-	autoStash = true
-	stat = true
+		autoStash = true
+		stat = true
 [transfer]
 	; fsckObjects = true
 [recieve]
@@ -119,39 +119,39 @@
 [fetch]
 	; fsckObjects = true
 [url "git@github.com:"]
-	insteadOf = https://github.com/
+		insteadOf = https://github.com/
 [credential]
-	helper = osxkeychain
+		helper = osxkeychain
 [color "diff-so-fancy"]
-	oldNormal = red bold
-	oldHighlight = red bold 52
-	newNormal = green bold
-	newHighlight = green bold 22
+		oldNormal = red bold
+		oldHighlight = red bold 52
+		newNormal = green bold
+		newHighlight = green bold 22
 [color "diff"]
-	meta = cyan bold
-	frag = brightblack bold
-	commit = yellow bold
-	old = red bold
-	new = green bold
-	whitespace = red reverse
+		meta = cyan bold
+		frag = brightblack bold
+		commit = yellow bold
+		old = red bold
+		new = green bold
+		whitespace = red reverse
 [diff-so-fancy]
-	markEmptyLines = false
-	changeHunkIndicators = false
+		markEmptyLines = false
+		changeHunkIndicators = false
 [diff]
-	noprefix = true
-	colorMoved = default
+		noprefix = true
+		colorMoved = default
 [delta]
-	features = default
+		features = default
 [delta "default"]
-	plus-empty-line-marker-style = normal "#002800"
-	plus-empty-line-marker-style = normal "#262626"
-	plus-non-emph-style = syntax "#262626"
-	plus-non-emph-style = syntax "#262626"
-	plus-style = syntax "#262626"
-	syntax-theme = 1337
-  line-numbers = true
-  colorMoved = default
-	whitespace-error-style = 22 bold red
-	zero-style = dim syntax
+		plus-empty-line-marker-style = normal "#002800"
+		plus-empty-line-marker-style = normal "#262626"
+		plus-non-emph-style = syntax "#262626"
+		plus-non-emph-style = syntax "#262626"
+		plus-style = syntax "#262626"
+		syntax-theme = 1337
+		line-numbers = true
+		colorMoved = default
+		whitespace-error-style = 22 bold red
+		zero-style = dim syntax
 [interactive]
-  diffFilter = delta --color-only
+		diffFilter = delta --color-only
