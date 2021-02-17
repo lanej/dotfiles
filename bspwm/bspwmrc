@@ -25,4 +25,4 @@ bspc monitor DP1 --rectangle 3840x2160+0+0
 bspc monitor DP2 --rectangle 3840x2160+0+0
 bspc config merge_overlapping_monitors false
 
-XSECURELOCK_PASSWORD_PROMPT=time_hex XSECURELOCK_FONT="Hack Nerd Font Mono" xss-lock -n /usr/lib/xsecurelock/saver_xscreensaver -l -- xsecurelock
+XSECURELOCK_DIM_COLOR="#262626" XSECURELOCK_PASSWORD_PROMPT=time_hex XSECURELOCK_FONT="Hack Nerd Font Mono" xss-lock -n /usr/lib/xsecurelock/saver_xscreensaver -l -- xsecurelock
