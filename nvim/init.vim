@@ -374,7 +374,7 @@ let g:fzf_colors = {
 
 function! s:vcr_failures_only()
   let $VCR_RECORD="all"
-  TestFile -n
+  TestLast -n
   unlet $VCR_RECORD
 endfunction
 
