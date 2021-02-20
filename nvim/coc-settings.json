@@ -1,6 +1,8 @@
 {
   "codeLens.enable": false,
-  "yank.enableCompletion": false,
+  "diagnostic.errorSign": "▐",
+  "diagnostic.warningSign": "▐",
+  "diagnostic.infoSign": "▐",
   "suggest.enablePreview": true,
-  "suggest.maxCompleteItemCount": 25
+  "suggest.maxCompleteItemCount": 10
 }
