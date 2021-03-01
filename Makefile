@@ -76,8 +76,7 @@ ruby:
 	@ln -fs $(DOTFILES)/ruby/gemrc $(HOME)/.gemrc
 	@ln -fs $(DOTFILES)/ruby/rspec $(HOME)/.rspec
 git:
-	@cp -n git/gitconfig $(HOME)/.gitconfig
-	@git config --global --get user.email 1>/dev/null || sh set-git-email.sh
+	@ln -fs $(DOTFILES)/git/gitconfig $(HOME)/.gitconfig
 	@ln -fs $(DOTFILES)/git/gitignore $(HOME)/.gitignore
 	@ln -fs $(DOTFILES)/git/gitcommit $(HOME)/.gitcommit
 	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
