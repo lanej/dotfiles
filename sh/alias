@@ -73,6 +73,8 @@ fixssh() {
       export ${key}="${value}"
     fi
   done
+
+  ssh-add -l
 }
 
 myip() {
@@ -119,7 +121,7 @@ git_checkout_branch() {
 }
 
 git_search_log() {
-	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --preview "git show {+1} | delta --color-only"
+	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta" | echo
 }
 
 i() {
@@ -129,3 +131,4 @@ i() {
 zz() {
 	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf --reverse --height=30% -q "$_last_z_args")" || exit
 }
+alias ta="tmux attach"
