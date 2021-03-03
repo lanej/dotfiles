@@ -48,6 +48,8 @@ alias to_html="w3m -dump -T text/html"
 alias untar='tar xvfz'
 alias vcr='be env VCR_RECORD=all rspec'
 alias wip="git add -A >/dev/null && git commit -m \"wip\" >/dev/null && echo \"it good\""
+alias tmux='TERM=screen-256color tmux'
+alias ta="tmux attach"
 
 ## Set ls options per platform
 if [[ $OSTYPE == 'linux-gnu' ]]; then
@@ -131,4 +133,3 @@ i() {
 zz() {
 	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf --reverse --height=30% -q "$_last_z_args")" || exit
 }
-alias ta="tmux attach"
