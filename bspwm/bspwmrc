@@ -3,7 +3,7 @@
 source ~/.xsession
 xsetroot -solid "#262626"
 
-sxhkd &
+sxhkd 2>&1 > ~/.config/sxhkd/sxhkd.log &
 ~/.config/polybar/launch.sh 2>&1 1>~/.config/polybar/polybar.log &
 
 bspc monitor eDP1 -d a b c d
