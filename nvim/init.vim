@@ -109,32 +109,34 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
-Plug 'airblade/vim-gitgutter'                                     " show git diffs in left gutter
-Plug 'AndrewRadev/splitjoin.vim'                                  " split / join code blocks
-Plug 'bling/vim-airline'                                          " fancy status line
-Plug 'christoomey/vim-tmux-navigator'                             " buffer navigation
-Plug 'easymotion/vim-easymotion'                                  " quick in-buffer navigation
-Plug 'editorconfig/editorconfig-vim'                              " .editorconfig integration
-Plug 'janko-m/vim-test'                                           " test integration
+Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
+Plug 'AndrewRadev/splitjoin.vim'                    " split / join code blocks
+Plug 'bling/vim-airline'                            " fancy status line
+Plug 'christoomey/vim-tmux-navigator'               " buffer navigation
+Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
+Plug 'editorconfig/editorconfig-vim'                " .editorconfig integration
+Plug 'janko-m/vim-test'                             " test integration
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
-Plug 'junegunn/fzf.vim'                                           " fzf integration
-Plug 'junegunn/vim-easy-align'                                    " space align
-Plug 'lanej/tender.vim'                                           " colorscheme
-Plug 'lanej/vim-phab'                                             " vim-fugitive phab integration
-Plug 'ludovicchabant/vim-gutentags'                               " automatically update tags
-Plug 'mileszs/ack.vim'                                            " quick search, configured to use rg or ag
-Plug 'previm/previm', { 'for': 'markdown' }                       " markdown preview with mermaid support
-Plug 'scrooloose/nerdcommenter'                                   " code commenter
-Plug 'scrooloose/nerdtree'                                        " file browser
+Plug 'junegunn/fzf.vim'                             " fzf integration
+Plug 'junegunn/vim-easy-align'                      " space align
+Plug 'lanej/tender.vim'                             " colorscheme
+Plug 'lanej/vim-phab'                               " vim-fugitive phab integration
+Plug 'ludovicchabant/vim-gutentags'                 " automatically update tags
+Plug 'mileszs/ack.vim'                              " quick search, configured to use rg or ag
+Plug 'previm/previm', { 'for': 'markdown' }         " markdown preview with mermaid support
+Plug 'scrooloose/nerdcommenter'                     " code commenter
+Plug 'scrooloose/nerdtree'                          " file browser
 Plug 'idanarye/vim-merginal'
-Plug 'tpope/vim-dotenv'                                           " support dotenv
-Plug 'tpope/vim-eunuch'                                           " file system interactions
-Plug 'tpope/vim-fugitive'                                         " git integratino
-Plug 'tpope/vim-markdown', { 'for': 'markdown' }                  " markdown tools
-Plug 'tpope/vim-rhubarb'                                          " vim-fugitive github integration
-Plug 'tpope/vim-surround'                                         " surround mod tools
-Plug 'tyru/open-browser.vim', { 'for': 'markdown' }               " xdg-open or open integration
-Plug 'Xuyuanp/nerdtree-git-plugin'                                " show changed files in file browser
+Plug 'tpope/vim-dotenv'                             " support dotenv
+Plug 'tpope/vim-eunuch'                             " file system interactions
+Plug 'tpope/vim-fugitive'                           " git integratino
+Plug 'tpope/vim-markdown', { 'for': 'markdown' }    " markdown tools
+Plug 'tpope/vim-rhubarb'                            " vim-fugitive github integration
+Plug 'tpope/vim-surround'                           " surround mod tools
+Plug 'tyru/open-browser.vim', { 'for': 'markdown' } " xdg-open or open integration
+Plug 'Xuyuanp/nerdtree-git-plugin'                  " show changed files in file browser
+Plug 'Yggdroot/indentLine'
+" Plug 'rcarriga/vim-ultest'
 
 " ordered load required
 Plug 'tpope/vim-obsession'        " sessions
@@ -257,6 +259,8 @@ map <leader>c<space> <plug>NERDCommenterToggle
 " Align line-wise comment delimiters flush left instead of following code indentation
 let g:NERDDefaultAlign = 'left'
 
+
+let g:indentLine_char = '⎸'
 " splitjoin
 let g:splitjoin_ruby_curly_braces = 0
 
@@ -274,16 +278,15 @@ let g:airline_left_alt_sep = ''
 let g:airline_right_alt_sep = ''
 let g:airline_symbols.branch = ''
 let g:airline_symbols.crypt = '🔒'
-let g:airline_symbols.dirty='!'
+let g:airline_symbols.dirty='ˉ'
 let g:airline_symbols.linenr = '¶'
 let g:airline_symbols.linenr = '☰'
 let g:airline_symbols.maxlinenr = '㏑'
-let g:airline_symbols.notexists = 'Ɇ'
 let g:airline_symbols.paste = '∥'
 let g:airline_symbols.readonly = ''
 let g:airline_symbols.spell = '✓'
 let g:airline_symbols.whitespace = 'Ξ'
-
+let g:airline_symbols.notexists = '⁉'
 
 let g:airline#extensions#branch#enabled = 1
 let g:airline#extensions#bufferline#enabled = 0
@@ -333,7 +336,7 @@ nnoremap <leader>ac :Commands<CR>
 nnoremap <leader>al :Lines<CR>
 nnoremap <leader>at :Tags<CR>
 nnoremap <leader>f  :Files<CR>
-nnoremap <leader>r  :History:<CR>
+nnoremap <leader>rr :History:<CR>
 nnoremap <leader>/  :History/<CR>
 nnoremap <leader>l  :BLines<CR>
 nnoremap <leader>bt :BTags<CR>
@@ -371,12 +374,6 @@ let g:fzf_colors = {
       \ 'marker':  ['fg', 'Function'],
       \ 'spinner': ['fg', 'Function'],
       \ 'header':  ['fg', 'Function']}
-
-function! s:vcr_failures_only()
-  let $VCR_RECORD="all"
-  TestLast -n
-  unlet $VCR_RECORD
-endfunction
 
 noremap <leader>af :DFiles<CR>
 " [Buffers] Jump to the existing window if possible
@@ -628,9 +625,6 @@ if &runtimepath =~ 'coc.nvim'
   xmap <leader>a  <Plug>(coc-codeaction-selected)
   nmap <leader>a  <Plug>(coc-codeaction-selected)
 
-  nnoremap <leader>ac :CocSearch<space>
-  xnoremap <leader>ac :CocSearch<space>
-
   nmap <leader>ce  <Plug>(coc-refactor)
 
   " Remap for do codeAction of current line
@@ -658,7 +652,6 @@ if &runtimepath =~ 'coc.nvim'
 endif
 
 if &runtimepath =~ 'ale'
-
   let g:ale_fixers = {
         \ 'ruby': ['rubocop'],
         \ 'rspec': ['rubocop'],
@@ -691,11 +684,13 @@ if &runtimepath =~ 'ale'
   let g:ale_sign_warning = '--'
   let g:ale_completion_enabled = 1
   let g:ale_virtualtext_cursor = 1
+
   augroup filetype_ruby_ale
     autocmd!
     autocmd FileType ruby map <leader>d :ALEFix<CR>
     autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
     autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+    autocmd FileType ruby set colorcolumn=100
   augroup END
 endif
 
@@ -766,23 +761,26 @@ if has('autocmd')
     autocmd FileType markdown let g:gutentags_enabled = 0
   augroup END
 
-  function! s:vcr_failures_only()
-    let $VCR_RECORD="all"
-    TestFile -n
-    unlet $VCR_RECORD
-  endfunction
-
   augroup filetype_ruby
     autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
-    autocmd FileType ruby map <leader>tq :TestFile --fail-fast<CR>
-    autocmd FileType ruby map <leader>to :TestFile --only-failures<CR>
-    autocmd FileType ruby map <leader>tn :TestFile -n<CR>
+    autocmd FileType ruby map <leader>tq :TestLast --fail-fast<CR>
+    autocmd FileType ruby map <leader>to :TestLast --only-failures<CR>
+    autocmd FileType ruby map <leader>tn :TestLast -n<CR>
     autocmd FileType ruby map <leader>tv :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
     autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
-    autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /<CR>
+    autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
+
+    let g:test#runner_commands = ['RSpec']
+
+    function! s:vcr_failures_only()
+      let $VCR_RECORD="all"
+      TestLast
+      unlet $VCR_RECORD
+    endfunction
   augroup END
 
   augroup filetype_python
