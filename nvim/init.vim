@@ -628,7 +628,7 @@ if &runtimepath =~ 'coc.nvim'
   nmap <leader>ce  <Plug>(coc-refactor)
 
   " Remap for do codeAction of current line
-  " nmap <leader>ac  <Plug>(coc-codeaction)
+  nmap <leader>ca  <Plug>(coc-codeaction)
   " Fix autofix problem of current line
   nmap <leader>qf  <Plug>(coc-fix-current)
 
