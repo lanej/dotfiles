@@ -910,6 +910,9 @@ let test#ruby#rspec#options = {
       \ 'suite':   '--tag \~slow',
       \}
 
+let test#python#runner = 'pytest'
+let g:test#runner_commands = ['PyTest']
+
 map <Bslash>t :TestLast<CR>
 map <leader>tf :TestFile<CR>
 map <leader>tu :TestNearest<CR>
