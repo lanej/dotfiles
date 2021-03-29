@@ -20,9 +20,6 @@ alias gpr="hub pull-request"
 alias gpro='hub pull-request -o'
 alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
 alias guard='be guard'
-alias lal='ls -alh'
-alias ll="ls -alh"
-alias lt='tree -L 1 -C'
 alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
 alias mytop="vtop -t monokai"
 alias nerd='vim +NERDTree'
@@ -66,6 +63,15 @@ fi
 if command -v bat >/dev/null; then
   alias cat='bat'
   alias bat='bat -p'
+fi
+
+alias ll="ls -alh"
+alias lt='tree -L 1 -C'
+
+if command -v exa >/dev/null; then
+  alias ls='exa -G --icons --git'
+  alias ll="exa -l --icons --header --git"
+  alias lt='exa --icons -T -L 2 --git'
 fi
 
 fixssh() {
