@@ -124,12 +124,12 @@ fkp() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | egrep -v 'phabricator' | fzf --reverse --height 30% --preview "git diff --stat --summary --color origin/master...{}" --preview-window=right:70%) || return
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --height 80% --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p origin/master...{}" --preview-window=right:80%) || return
 	git co $(echo "$target")
 }
 
 git_search_log() {
-	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta" | echo
+	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta"
 }
 
 i() {
@@ -139,5 +139,10 @@ i() {
 zz() {
 	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf --reverse --height=30% -q "$_last_z_args")" || exit
 }
-alias tn=tmux new
+
+gem_releases() {
+  gem list --remote "$1" -a | rg "^$1 "
+}
+
+alias tn="tmux new"
 alias ct="cargo test"
