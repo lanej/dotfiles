@@ -135,7 +135,7 @@ Plug 'tpope/vim-rhubarb'                            " vim-fugitive github integr
 Plug 'tpope/vim-surround'                           " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' } " xdg-open or open integration
 Plug 'Xuyuanp/nerdtree-git-plugin'                  " show changed files in file browser
-Plug 'Yggdroot/indentLine'
+Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
 " Plug 'rcarriga/vim-ultest'
 
 " ordered load required
@@ -185,6 +185,7 @@ map <leader>vpc :PlugClean<CR>
 map <leader>vpu :PlugUpdate<CR>
 
 map <leader>rb :%s/<C-r><C-w>/
+map <leader>rq :cfdo %s/<C-r><C-w>/
 
 let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
@@ -757,7 +758,7 @@ if has('autocmd')
     " hub pull-request accepts markdown
     autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
     autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set conceallevel=0
     autocmd FileType markdown let g:gutentags_enabled = 0
   augroup END
 
@@ -911,7 +912,7 @@ let test#ruby#rspec#options = {
       \}
 
 let test#python#runner = 'pytest'
-let g:test#runner_commands = ['PyTest']
+let g:test#runner_commands = ['PyTest', 'RSpec']
 
 map <Bslash>t :TestLast<CR>
 map <leader>tf :TestFile<CR>
