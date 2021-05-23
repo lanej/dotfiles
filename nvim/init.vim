@@ -143,7 +143,6 @@ Plug 'tpope/vim-obsession'        " sessions
 Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
 if has('nvim-0.5.0')
-  Plug 'nvim-treesitter/nvim-treesitter'
   Plug 'nvim-lua/completion-nvim'
 else
   Plug 'sheerun/vim-polyglot'
@@ -491,7 +490,11 @@ if !exists("*s:MkNonExDir")
 endif
 
 set undofile " Maintain undo history between sessions
-set undodir=~/.cache/nvim/undo
+if has('nvim-0.5.0')
+  set undodir=~/.cache/nvim-head/undo
+else
+  set undodir=~/.cache/nvim/undo
+endif
 
 " vim-go config
 let g:go_addtags_transform = "snakecase"
@@ -533,6 +536,7 @@ if &runtimepath =~ 'lspconfig'
   nnoremap <silent> <leader>ci <cmd>lua vim.lsp.buf.implementation()<CR>
   nnoremap <silent> <leader>cy <cmd>lua vim.lsp.buf.type_definition()<CR>
   nnoremap <silent> <leader>rn <cmd>lua vim.lsp.buf.rename()<CR>
+  nnoremap <silent> <leader>ca <cmd>lua vim.lsp.buf.code_action()<CR>
 
   call sign_define("LspDiagnosticsErrorSign", {"text" : "E", "texthl" : "LspDiagnosticsError"})
   call sign_define("LspDiagnosticsWarningSign", {"text" : "W", "texthl" : "LspDiagnosticsWarning"})
@@ -549,6 +553,7 @@ if &runtimepath =~ 'lspconfig'
     }
   }
   lsp.solargraph.setup{}
+  lsp.gopls.setup{}
   lsp.vimls.setup{}
   lsp.jedi_language_server.setup{}
   lsp.texlab.setup{}
