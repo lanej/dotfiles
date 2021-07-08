@@ -27,3 +27,4 @@ venv/
 .vscode/
 .wercker/
 __pycache__/
+venv/

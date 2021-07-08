@@ -119,7 +119,7 @@ Plug 'janko-m/vim-test'                             " test integration
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'                             " fzf integration
 Plug 'junegunn/vim-easy-align'                      " space align
-Plug 'lanej/tender.vim'                             " colorscheme
+Plug 'jacoborus/tender.vim'                             " colorscheme
 Plug 'lanej/vim-phab'                               " vim-fugitive phab integration
 Plug 'ludovicchabant/vim-gutentags'                 " automatically update tags
 Plug 'mileszs/ack.vim'                              " quick search, configured to use rg or ag
@@ -389,7 +389,7 @@ noremap <leader>gf :GFiles<CR>
 noremap <leader>bl :Buffers<CR>
 noremap <leader>gc :Commits<CR>
 noremap <leader>gm :Git mergetool<CR>
-noremap <leader>go :Gbrowse<CR>
+noremap <leader>go :GBrowse<CR>
 noremap <leader>ga :Gcommit -av<CR>
 noremap <leader>gc :Gcommit<CR>
 noremap <leader>gr :Gread<CR>
