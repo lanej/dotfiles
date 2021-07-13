@@ -153,6 +153,7 @@ if has('nvim')
 
   if has('nvim-0.5.0')
     Plug 'neovim/nvim-lspconfig'
+    Plug 'nvim-treesitter/nvim-treesitter'
   else
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
     Plug 'neoclide/coc-neco', { 'for': 'vim' }
