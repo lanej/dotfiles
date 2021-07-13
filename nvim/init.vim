@@ -136,25 +136,23 @@ Plug 'tpope/vim-surround'                           " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' } " xdg-open or open integration
 Plug 'Xuyuanp/nerdtree-git-plugin'                  " show changed files in file browser
 Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
+Plug 'norcalli/nvim-colorizer.lua'
 " Plug 'rcarriga/vim-ultest'
 
 " ordered load required
 Plug 'tpope/vim-obsession'        " sessions
 Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
-if has('nvim-0.5.0')
-  Plug 'nvim-lua/completion-nvim'
-else
-  Plug 'sheerun/vim-polyglot'
-endif
-
 if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 
   if has('nvim-0.5.0')
+    Plug 'nvim-lua/completion-nvim'
     Plug 'neovim/nvim-lspconfig'
     Plug 'nvim-treesitter/nvim-treesitter'
+    Plug 'nvim-treesitter/playground'
   else
+    Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
     Plug 'neoclide/coc-neco', { 'for': 'vim' }
     Plug 'Shougo/neco-vim', { 'for': 'vim' }
@@ -701,15 +699,19 @@ if &runtimepath =~ 'ale'
   augroup END
 endif
 
-function! SynStack ()
-  for i1 in synstack(line("."), col("."))
-    let i2 = synIDtrans(i1)
-    let n1 = synIDattr(i1, "name")
-    let n2 = synIDattr(i2, "name")
-    echo n1 "->" n2
-  endfor
-endfunction
-map gm :call SynStack()<CR>
+if &runtimepath =~ 'playground'
+  map gm :TSHighlightCapturesUnderCursor<CR>
+else
+  function! SynStack ()
+    for i1 in synstack(line("."), col("."))
+      let i2 = synIDtrans(i1)
+      let n1 = synIDattr(i1, "name")
+      let n2 = synIDattr(i2, "name")
+      echo n1 "->" n2
+    endfor
+  endfunction
+  map gm :call SynStack()<CR>
+endif
 
 let g:jedi#auto_initialization = 0
 
