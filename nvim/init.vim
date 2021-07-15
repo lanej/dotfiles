@@ -119,7 +119,7 @@ Plug 'janko-m/vim-test'                             " test integration
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'                             " fzf integration
 Plug 'junegunn/vim-easy-align'                      " space align
-Plug 'jacoborus/tender.vim'                             " colorscheme
+Plug 'lanej/tender.vim'                             " colorscheme
 Plug 'lanej/vim-phab'                               " vim-fugitive phab integration
 Plug 'ludovicchabant/vim-gutentags'                 " automatically update tags
 Plug 'mileszs/ack.vim'                              " quick search, configured to use rg or ag
