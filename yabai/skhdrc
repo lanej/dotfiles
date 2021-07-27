@@ -166,7 +166,7 @@ alt - s : yabai -m window --toggle split
 
 # float / unfloat window and center on screen
 alt - c : yabai -m window --toggle float;\
-	  yabai -m window --grid 4:4:1:1:2:2
+	  yabai -m window --grid 4:4:4:4:4:4
 
 # toggle sticky(+float), topmost, border and picture-in-picture
 # alt - p : yabai -m window --toggle sticky;\
