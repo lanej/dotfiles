@@ -149,8 +149,12 @@ if has('nvim')
   if has('nvim-0.5.0')
     Plug 'nvim-lua/completion-nvim'
     Plug 'neovim/nvim-lspconfig'
+    Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
     Plug 'nvim-treesitter/nvim-treesitter'
     Plug 'nvim-treesitter/playground'
+    Plug 'nvim-lua/popup.nvim'
+    Plug 'nvim-lua/plenary.nvim'
+    Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
@@ -174,7 +178,7 @@ nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 
 " plugin-config start
 map <leader>w :w<CR>
-map <leader>w! :SudoWrite<CR>
+" map <leader>w! :SudoWrite<CR>
 map <leader>x :x<CR>
 
 " vim-plug
@@ -359,6 +363,9 @@ command! -bang -nargs=? -complete=dir GFiles
 command! -bang -nargs=? -complete=dir DFiles
       \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
 
+" TODO: change Buffers to use a smaller list and different orientation for
+" quick differention
+
 let g:fzf_colors = {
       \ 'fg':      ['fg', 'Normal'],
       \ 'bg':      ['bg', 'Normal'],
@@ -379,7 +386,7 @@ noremap <leader>af :DFiles<CR>
 let g:fzf_buffers_jump = 1
 
 " [[B]Commits] Customize the options used by 'git log':
-let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
+let g:fzf_commits_log_options = '--color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " fugitive and fzf git integrations
 noremap <leader>bc :BCommits<CR>
@@ -390,9 +397,10 @@ noremap <leader>gc :Commits<CR>
 noremap <leader>gm :Git mergetool<CR>
 noremap <leader>go :GBrowse<CR>
 noremap <leader>ga :Gcommit -av<CR>
+noremap <leader>gp :Gcommit -am'wip'<CR>
 noremap <leader>gc :Gcommit<CR>
 noremap <leader>gr :Gread<CR>
-noremap <leader>gs :Gstatus<CR>
+noremap <leader>gs :GStatus<CR>
 noremap <leader>gw :Gwrite<CR>
 noremap <leader>gd :Gdiffsplit origin/master
 autocmd BufReadPost fugitive://* set bufhidden=delete
@@ -405,7 +413,7 @@ if has("nvim")
   tnoremap <C-o> <C-\><C-n>
 endif
 
-noremap <leader>sh :terminal<cr>
+" noremap <leader>sh :terminal<cr>
 nnoremap yd :let @" = expand("%")<cr>
 " plugin-config end
 
@@ -544,6 +552,7 @@ if &runtimepath =~ 'lspconfig'
 
   autocmd BufEnter * lua require'completion'.on_attach()
 
+  " lua vim.lsp.set_log_level("debug")
   lua <<EOF
   lsp = require'lspconfig'
   lsp.rust_analyzer.setup{
@@ -574,8 +583,39 @@ if &runtimepath =~ 'nvim-treesitter'
         enable = true
       }
     }
+  }
 EOF
 endif
+
+if &runtimepath =~ 'completion-nvim'
+  autocmd BufEnter * lua require'completion'.on_attach()
+endif
+
+if &runtimepath =~ 'nvim-window'
+  lua <<EOF
+  require('nvim-window').setup({
+    -- The characters available for hinting windows.
+    chars = {
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+    },
+
+    -- A group to use for overwriting the Normal highlight group in the floating
+    -- window. This can be used to change the background color.
+    normal_hl = 'Type',
+
+    -- The highlight group to apply to the line that contains the hint characters.
+    -- This is used to make them stand out more.
+    hint_hl = 'Bold',
+
+    -- The border style to use for the floating window.
+    border = 'double'
+  })
+EOF
+
+  map <silent> <c-w><c-w> :lua require('nvim-window').pick()<CR>
+endif
+
 
 if &runtimepath =~ 'coc.nvim'
   nnoremap <silent> <leader>"  :<C-u>CocList -A --normal yank<cr>
@@ -823,7 +863,8 @@ if has('autocmd')
 
   augroup filetype_go
     autocmd!
-    autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+
   augroup END
 
   augroup filetype_rust
@@ -920,7 +961,7 @@ let test#ruby#rspec#options = {
       \}
 
 let test#python#runner = 'pytest'
-let g:test#runner_commands = ['PyTest', 'RSpec']
+let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest']
 
 map <Bslash>t :TestLast<CR>
 map <leader>tf :TestFile<CR>
