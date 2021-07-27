@@ -756,7 +756,7 @@ if has('autocmd')
     if has('nvim')
       autocmd TermEnter * set nospell|set nonumber|setlocal wrap
       if (exists("+termguicolors"))
-        autocmd TermEnter,TermOpen * set notermguicolors
+        autocmd TermEnter,TermOpen * set termguicolors
       endif
     endif
   augroup END
