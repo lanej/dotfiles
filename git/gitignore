@@ -28,3 +28,6 @@ venv/
 .wercker/
 __pycache__/
 venv/
+.solargraph
+.ruby-version
+rspec_failures.txt
