@@ -1,11 +1,9 @@
 #!/usr/bin/env ruby
-require 'rubygems'
 
-if defined?(Pry)
-  Pry.commands.alias_command 'c', 'continue'
-  Pry.commands.alias_command 's', 'step'
-  Pry.commands.alias_command 'n', 'next'
-end
+Pry.config.pager = false
+Pry.config.commands.alias_command 'c', 'continue'
+Pry.config.commands.alias_command 's', 'step'
+Pry.config.commands.alias_command 'n', 'next'
 
 begin
   require 'awesome_print'
