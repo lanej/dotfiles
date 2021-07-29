@@ -574,7 +574,7 @@ endif
 
 if &runtimepath =~ 'nvim-treesitter'
   lua <<EOF
-  require'nvim-treesitter.configs'.setup {
+  require'nvim-treesitter.configs'.setup({
       ensure_installed = "maintained",
       highlight = {
           enable = true,
@@ -582,8 +582,7 @@ if &runtimepath =~ 'nvim-treesitter'
       indent = {
         enable = true
       }
-    }
-  }
+    })
 EOF
 endif
 
