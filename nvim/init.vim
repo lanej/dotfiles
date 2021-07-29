@@ -228,13 +228,11 @@ if executable('rg')
   let g:ackprg = 'rg --vimgrep'
   set grepprg=rg\ --nogroup\ --nocolor
   nnoremap <leader>aa :Rg<space>
-  nnoremap <leader>az :Rg<CR>
 elseif executable('ag')
   " use silver-searcher if available
   let g:ackprg = 'ag --vimgrep'
   set grepprg=ag\ --nogroup\ --nocolor
   nnoremap <leader>aa :Ag<space>
-  nnoremap <leader>az :Ag<CR>
 endif
 
 " sessions
@@ -332,17 +330,6 @@ let g:gitgutter_show_msg_on_hunk_jumping = 0
 let g:gitgutter_highlight_linenrs = 0
 let g:gitgutter_highlight_lines = 0
 
-" fzf
-nnoremap <leader>as :Rgc<space><cword><CR>
-nnoremap <leader>ag :Ack<CR>
-nnoremap <leader>ac :Commands<CR>
-nnoremap <leader>al :Lines<CR>
-nnoremap <leader>at :Tags<CR>
-nnoremap <leader>f  :Files<CR>
-nnoremap <leader>rr :History:<CR>
-nnoremap <leader>/  :History/<CR>
-nnoremap <leader>l  :BLines<CR>
-nnoremap <leader>bt :BTags<CR>
 
 command! -bang -nargs=* Rg
       \ call fzf#vim#grep(
@@ -353,12 +340,6 @@ command! -nargs=* Rgc
       \ call fzf#vim#grep(
       \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(expand('<cword>')), 1,
       \   fzf#vim#with_preview(), <bang>0)
-
-command! -bang -nargs=? -complete=dir Files
-      \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
-
-command! -bang -nargs=? -complete=dir GFiles
-      \ call fzf#vim#gitfiles(<q-args>, fzf#vim#with_preview(), <bang>0)
 
 command! -bang -nargs=? -complete=dir DFiles
       \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
@@ -389,21 +370,34 @@ let g:fzf_buffers_jump = 1
 let g:fzf_commits_log_options = '--color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " fugitive and fzf git integrations
-noremap <leader>bc :BCommits<CR>
-noremap <leader>bb :Gblame<CR>
-noremap <leader>gf :GFiles<CR>
-noremap <leader>bl :Buffers<CR>
-noremap <leader>gc :Commits<CR>
-noremap <leader>gm :Git mergetool<CR>
-noremap <leader>go :GBrowse<CR>
-noremap <leader>ga :Gcommit -av<CR>
-noremap <leader>gp :Gcommit -am'wip'<CR>
-noremap <leader>gc :Gcommit<CR>
-noremap <leader>gr :Gread<CR>
-noremap <leader>gs :GStatus<CR>
-noremap <leader>gw :Gwrite<CR>
-noremap <leader>gd :Gdiffsplit origin/master
-autocmd BufReadPost fugitive://* set bufhidden=delete
+autocmd  BufReadPost fugitive://* set bufhidden=delete
+
+nmap <leader>ac :Telescope commands<CR>
+nmap <leader>ag :Ack<CR>
+nmap <leader>al :Telescope current_buffer_fuzzy_find<CR>
+nmap <leader>as :Rgc<space><cword><CR>
+nmap <leader>at :Telescope tags<CR>
+nmap <leader>bb :Gblame<CR>
+nmap <leader>bc :Telescope git_bcommits<CR>
+nmap <leader>bl :Telescope buffers<CR>
+nmap <leader>bt :Telescope current_buffer_tags<CR>
+nmap <leader>f :Telescope find_files<CR>
+nmap <leader>ga :Gcommit -av<CR>
+nmap <leader>gc :Gcommit<CR>
+nmap <leader>gc :Telescope git_commits<CR>
+nmap <leader>gd :Gdiffsplit origin/master
+nmap <leader>gf :Telescope git_files<CR>
+nmap <leader>gm :Git mergetool<CR>
+nmap <leader>go :GBrowse<CR>
+nmap <leader>gp :Gcommit -am'wip'<CR>
+nmap <leader>gr :Gread<CR>
+nmap <leader>gs :GStatus<CR>
+nmap <leader>gw :Gwrite<CR>
+nmap <leader>l :Telescope current_buffer_fuzzy_find<CR>
+nmap <leader>rr :Telescope command_history<CR>
+nmap <leader>/ :Telescope search_history<CR>
+nmap <leader>az :Telescope live_grep<CR>
+nmap <leader>ah :Telescope help_tags<CR>
 
 " rename
 map <leader>re :Rename<space>
@@ -842,9 +836,6 @@ if has('autocmd')
   augroup filetype_lua
     autocmd!
     autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
-    " autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
-    " autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
-    " autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -962,9 +953,9 @@ let test#ruby#rspec#options = {
 let test#python#runner = 'pytest'
 let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest']
 
-map <Bslash>t :TestLast<CR>
 map <leader>tf :TestFile<CR>
 map <leader>tu :TestNearest<CR>
+map <leader>tt :TestNearest<CR>
 map <leader>tl :TestLast<CR>
 map <leader>ts :TestSuite<CR>
 
