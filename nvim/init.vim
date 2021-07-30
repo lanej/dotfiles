@@ -374,15 +374,18 @@ autocmd  BufReadPost fugitive://* set bufhidden=delete
 
 nmap <leader>ac :Telescope commands<CR>
 nmap <leader>ag :Ack<CR>
+nmap <leader>ah :Telescope help_tags<CR>
 nmap <leader>al :Telescope current_buffer_fuzzy_find<CR>
 nmap <leader>as :Rgc<space><cword><CR>
 nmap <leader>at :Telescope tags<CR>
-nmap <leader>bb :Gblame<CR>
+nmap <leader>az :Telescope live_grep<CR>
 nmap <leader>bc :Telescope git_bcommits<CR>
-nmap <leader>bl :Telescope buffers<CR>
+nmap <leader>bb :Telescope buffers<CR>
 nmap <leader>bt :Telescope current_buffer_tags<CR>
-nmap <leader>f :Telescope find_files<CR>
+nmap <leader>bv :Telescope treesitter<CR>
+nmap <leader>f  :Telescope find_files<CR>
 nmap <leader>ga :Gcommit -av<CR>
+nmap <leader>gb :Git blame<CR>
 nmap <leader>gc :Gcommit<CR>
 nmap <leader>gc :Telescope git_commits<CR>
 nmap <leader>gd :Gdiffsplit origin/master
@@ -391,13 +394,11 @@ nmap <leader>gm :Git mergetool<CR>
 nmap <leader>go :GBrowse<CR>
 nmap <leader>gp :Gcommit -am'wip'<CR>
 nmap <leader>gr :Gread<CR>
-nmap <leader>gs :GStatus<CR>
+nmap <leader>gs :Git<CR>
 nmap <leader>gw :Gwrite<CR>
-nmap <leader>l :Telescope current_buffer_fuzzy_find<CR>
+nmap <leader>l  :Telescope current_buffer_fuzzy_find<CR>
 nmap <leader>rr :Telescope command_history<CR>
-nmap <leader>/ :Telescope search_history<CR>
-nmap <leader>az :Telescope live_grep<CR>
-nmap <leader>ah :Telescope help_tags<CR>
+nmap <leader>/  :Telescope search_history<CR>
 
 " rename
 map <leader>re :Rename<space>
@@ -447,7 +448,7 @@ map <leader>cg :Gcd<CR>
 
 " Helpers
 map <leader>srt :!sort<CR>
-map <leader>q :!uniq<CR>
+map <leader>uq :!uniq<CR>
 
 " Wrapped lines goes down/up to next row, rather than next line in file.
 noremap j gj
