@@ -227,12 +227,14 @@ if executable('rg')
   " use ripgrep if available
   let g:ackprg = 'rg --vimgrep'
   set grepprg=rg\ --nogroup\ --nocolor
-  nnoremap <leader>aa :Rg<space>
+  nmap <leader>aa :Rg<space>
+  nmap <leader>az :Rg<CR>
 elseif executable('ag')
   " use silver-searcher if available
   let g:ackprg = 'ag --vimgrep'
   set grepprg=ag\ --nogroup\ --nocolor
-  nnoremap <leader>aa :Ag<space>
+  nmap <leader>aa :Ag<space>
+  nmap <leader>az :Ag<CR>
 endif
 
 " sessions
@@ -372,33 +374,51 @@ let g:fzf_commits_log_options = '--color=always --format="%C(auto)%h%d %s %C(bla
 " fugitive and fzf git integrations
 autocmd  BufReadPost fugitive://* set bufhidden=delete
 
-nmap <leader>ac :Telescope commands<CR>
-nmap <leader>ag :Ack<CR>
-nmap <leader>ah :Telescope help_tags<CR>
-nmap <leader>al :Telescope current_buffer_fuzzy_find<CR>
-nmap <leader>as :Rgc<space><cword><CR>
-nmap <leader>at :Telescope tags<CR>
-nmap <leader>az :Telescope live_grep<CR>
-nmap <leader>bc :Telescope git_bcommits<CR>
-nmap <leader>bb :Telescope buffers<CR>
-nmap <leader>bt :Telescope current_buffer_tags<CR>
-nmap <leader>bv :Telescope treesitter<CR>
-nmap <leader>f  :Telescope find_files<CR>
-nmap <leader>ga :Gcommit -av<CR>
-nmap <leader>gb :Git blame<CR>
-nmap <leader>gc :Gcommit<CR>
-nmap <leader>gc :Telescope git_commits<CR>
-nmap <leader>gd :Gdiffsplit origin/master
-nmap <leader>gf :Telescope git_files<CR>
+if &runtimepath =~ 'telescope'
+  nmap <leader>ac :Telescope commands<CR>
+  nmap <leader>ah :Telescope help_tags<CR>
+  nmap <leader>al :Telescope current_buffer_fuzzy_find<CR>
+  nmap <leader>at :Telescope tags<CR>
+  nmap <leader>az :Telescope live_grep<CR>
+  nmap <leader>bc :Telescope git_bcommits<CR>
+  nmap <leader>bb :Telescope buffers<CR>
+  nmap <leader>bt :Telescope current_buffer_tags<CR>
+  nmap <leader>bv :Telescope treesitter<CR>
+  nmap <leader>f  :Telescope find_files<CR>
+  nmap <leader>gc :Telescope git_commits<CR>
+  nmap <leader>gf :Telescope git_files<CR>
+  nmap <leader>l  :Telescope current_buffer_fuzzy_find<CR>
+  nmap <leader>rr :Telescope command_history<CR>
+  nmap <leader>/  :Telescope search_history<CR>
+else
+  nnoremap <leader>as :Rgc<space><cword><CR>
+  nnoremap <leader>ag :Ack<CR>
+  nnoremap <leader>ac :Commands<CR>
+  nnoremap <leader>al :Lines<CR>
+  nnoremap <leader>at :Tags<CR>
+  nnoremap <leader>f  :Files<CR>
+  nnoremap <leader>rr :History:<CR>
+  nnoremap <leader>/  :History/<CR>
+  nnoremap <leader>l  :BLines<CR>
+  nnoremap <leader>bt :BTags<CR>
+  noremap  <leader>bc :BCommits<CR>
+  noremap  <leader>gf :GFiles<CR>
+  noremap  <leader>bb :Buffers<CR>
+  noremap  <leader>gc :Commits<CR>
+endif
+
 nmap <leader>gm :Git mergetool<CR>
 nmap <leader>go :GBrowse<CR>
 nmap <leader>gp :Gcommit -am'wip'<CR>
 nmap <leader>gr :Gread<CR>
 nmap <leader>gs :Git<CR>
 nmap <leader>gw :Gwrite<CR>
-nmap <leader>l  :Telescope current_buffer_fuzzy_find<CR>
-nmap <leader>rr :Telescope command_history<CR>
-nmap <leader>/  :Telescope search_history<CR>
+nmap <leader>ga :Gcommit -av<CR>
+nmap <leader>gb :Git blame<CR>
+nmap <leader>gc :Gcommit<CR>
+nmap <leader>gd :Gdiffsplit origin/master
+nmap <leader>as :Rgc<space><cword><CR>
+nmap <leader>ag :Ack<CR>
 
 " rename
 map <leader>re :Rename<space>
