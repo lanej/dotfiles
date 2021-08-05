@@ -149,12 +149,13 @@ if has('nvim')
   if has('nvim-0.5.0')
     Plug 'nvim-lua/completion-nvim'
     Plug 'neovim/nvim-lspconfig'
+    Plug 'nvim-lua/lsp_extensions.nvim'
     Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
     Plug 'nvim-treesitter/nvim-treesitter'
     Plug 'nvim-treesitter/playground'
     Plug 'nvim-lua/popup.nvim'
     Plug 'nvim-lua/plenary.nvim'
-    Plug 'nvim-telescope/telescope.nvim'
+    " Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
@@ -999,3 +1000,36 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
+" Configure lsp
+" https://github.com/neovim/nvim-lspconfig#rust_analyzer
+lua <<EOF
+-- nvim_lsp object
+local nvim_lsp = require'lspconfig'
+
+-- function to attach completion when setting up lsp
+local on_attach = function(client)
+  require'completion'.on_attach(client)
+end
+
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+-- Enable rust_analyzer
+nvim_lsp.rust_analyzer.setup({
+  capabilities=capabilities,
+  on_attach=on_attach
+})
+
+-- Enable diagnostics
+vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
+  vim.lsp.diagnostic.on_publish_diagnostics, {
+    virtual_text = false,
+    signs = true,
+    update_in_insert = true,
+  }
+)
+EOF
+
+" Enable type inlay hints
+autocmd CursorMoved,InsertLeave,BufEnter,BufWinEnter,TabEnter,BufWritePost *.rs
+\ lua require'lsp_extensions'.inlay_hints{ prefix = '', highlight = "LspInlay", enabled = {"TypeHint", "ChainingHint", "ParameterHint"} }
