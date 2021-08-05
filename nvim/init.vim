@@ -109,7 +109,6 @@ else
   call plug#begin('~/.local/share/vim/plugged')
 endif
 
-Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
 Plug 'AndrewRadev/splitjoin.vim'                    " split / join code blocks
 Plug 'bling/vim-airline'                            " fancy status line
 Plug 'christoomey/vim-tmux-navigator'               " buffer navigation
@@ -155,9 +154,11 @@ if has('nvim')
     Plug 'nvim-lua/popup.nvim'
     Plug 'nvim-lua/plenary.nvim'
     Plug 'phaazon/hop.nvim'
+    Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
     " Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
+    Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
     Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
     Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
@@ -348,6 +349,12 @@ EOF
   map <leader><leader>j :HopLineStartAC<CR>
   map <leader><leader>k :HopLineStartBC<CR>
   map <leader><leader>p :HopPattern<CR>
+endif
+
+if &runtimepath =~ 'gitsigns'
+  lua <<EOF
+  require('gitsigns').setup()
+EOF
 endif
 
 command! -bang -nargs=* Rg
@@ -1045,6 +1052,8 @@ vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
   }
 )
 EOF
+
+:match ExtraWhitespace /\s\+$/
 
 " Enable type inlay hints
 autocmd CursorMoved,InsertLeave,BufEnter,BufWinEnter,TabEnter,BufWritePost *.rs
