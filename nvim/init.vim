@@ -134,7 +134,6 @@ Plug 'tpope/vim-rhubarb'                            " vim-fugitive github integr
 Plug 'tpope/vim-surround'                           " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' } " xdg-open or open integration
 Plug 'Xuyuanp/nerdtree-git-plugin'                  " show changed files in file browser
-Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
 Plug 'norcalli/nvim-colorizer.lua'
 " Plug 'rcarriga/vim-ultest'
 
@@ -149,6 +148,7 @@ if has('nvim')
     Plug 'nvim-lua/completion-nvim'
     Plug 'neovim/nvim-lspconfig'
     Plug 'nvim-lua/lsp_extensions.nvim'
+    Plug 'lukas-reineke/indent-blankline.nvim'
     Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
     Plug 'nvim-treesitter/nvim-treesitter'
     Plug 'nvim-treesitter/playground'
@@ -158,6 +158,7 @@ if has('nvim')
     " Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
+    Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
     Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
     Plug 'neoclide/coc-neco', { 'for': 'vim' }
@@ -265,7 +266,9 @@ map <leader>c<space> <plug>NERDCommenterToggle
 let g:NERDDefaultAlign = 'left'
 
 
-let g:indentLine_char = '⎸'
+" let g:indentLine_char = '⎸'
+let g:indent_blankline_show_current_context = v:true
+let g:indent_blankline_use_treesitter = v:true
 " splitjoin
 let g:splitjoin_ruby_curly_braces = 0
 
@@ -391,7 +394,7 @@ autocmd  BufReadPost fugitive://* set bufhidden=delete
 if &runtimepath =~ 'telescope'
   nmap <leader>ac :Telescope commands<CR>
   nmap <leader>ah :Telescope help_tags<CR>
-  nmap <leader>al :Telescope current_buffer_fuzzy_find<CR>
+  nmap <leader>bl :Telescope current_buffer_fuzzy_find<CR>
   nmap <leader>at :Telescope tags<CR>
   nmap <leader>az :Telescope live_grep<CR>
   nmap <leader>bc :Telescope git_bcommits<CR>
@@ -413,7 +416,7 @@ else
   nnoremap <leader>f  :Files<CR>
   nnoremap <leader>rr :History:<CR>
   nnoremap <leader>/  :History/<CR>
-  nnoremap <leader>l  :BLines<CR>
+  nnoremap <leader>bl  :BLines<CR>
   nnoremap <leader>bt :BTags<CR>
   noremap  <leader>bc :BCommits<CR>
   noremap  <leader>gf :GFiles<CR>
