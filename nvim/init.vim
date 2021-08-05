@@ -113,7 +113,6 @@ Plug 'airblade/vim-gitgutter'                       " show git diffs in left gut
 Plug 'AndrewRadev/splitjoin.vim'                    " split / join code blocks
 Plug 'bling/vim-airline'                            " fancy status line
 Plug 'christoomey/vim-tmux-navigator'               " buffer navigation
-Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
 Plug 'editorconfig/editorconfig-vim'                " .editorconfig integration
 Plug 'janko-m/vim-test'                             " test integration
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
@@ -155,8 +154,10 @@ if has('nvim')
     Plug 'nvim-treesitter/playground'
     Plug 'nvim-lua/popup.nvim'
     Plug 'nvim-lua/plenary.nvim'
+    Plug 'phaazon/hop.nvim'
     " Plug 'nvim-telescope/telescope.nvim'
   else
+    Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
     Plug 'sheerun/vim-polyglot'
     " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
     Plug 'neoclide/coc-neco', { 'for': 'vim' }
@@ -333,6 +334,18 @@ let g:gitgutter_show_msg_on_hunk_jumping = 0
 let g:gitgutter_highlight_linenrs = 0
 let g:gitgutter_highlight_lines = 0
 
+if &runtimepath =~ 'hop.nvim'
+  lua <<EOF
+  require'hop'.setup()
+EOF
+  map <leader><leader>w :HopWord<CR>
+  map <leader><leader>b :HopWordBC<CR>
+  map <leader><leader>f :HopWordAC<CR>
+  map <leader><leader>l :HopLineStart<CR>
+  map <leader><leader>j :HopLineStartAC<CR>
+  map <leader><leader>k :HopLineStartBC<CR>
+  map <leader><leader>p :HopPattern<CR>
+endif
 
 command! -bang -nargs=* Rg
       \ call fzf#vim#grep(
