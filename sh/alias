@@ -146,3 +146,4 @@ gem_releases() {
 
 alias tn="tmux new"
 alias ct="cargo test"
+alias rand="od -vAn -N2 -tu2 < /dev/urandom"
