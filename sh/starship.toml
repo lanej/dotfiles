@@ -4,7 +4,7 @@ add_newline = false
 [character]
 success_symbol = "[\\$](bold white)"
 error_symbol = "[\\$](bold red)"
-vicmd_symbol = "[N](bold yellow)"
+vicmd_symbol = "[](dimmed yellow)"
 
 [directory]
 
