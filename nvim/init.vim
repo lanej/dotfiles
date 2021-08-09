@@ -63,7 +63,7 @@ set nowritebackup
 
 " Trailing spaces and tabs
 set list
-set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»,eol:↵
+set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
 
 let mapleader = ','
 
@@ -584,26 +584,45 @@ if &runtimepath =~ 'lspconfig'
   nnoremap <silent> <leader>rn <cmd>lua vim.lsp.buf.rename()<CR>
   nnoremap <silent> <leader>ca <cmd>lua vim.lsp.buf.code_action()<CR>
 
-  call sign_define("LspDiagnosticsErrorSign", {"text" : "E", "texthl" : "LspDiagnosticsError"})
-  call sign_define("LspDiagnosticsWarningSign", {"text" : "W", "texthl" : "LspDiagnosticsWarning"})
-  call sign_define("LspDiagnosticsInformationSign", {"text" : "-", "texthl" : "LspDiagnosticsInformation"})
-  call sign_define("LspDiagnosticsHintSign", {"text" : ".", "texthl" : "LspDiagnosticsHint"})
+  sign define LspDiagnosticsSignError text=✖ texthl=LspDiagnosticsDefaultError linehl= numhl=
+  sign define LspDiagnosticsSignWarning text=⚠ texthl=LspDiagnosticsDefaultWarning linehl= numhl=
+  sign define LspDiagnosticsSignInformation text=i texthl=LspDiagnosticsDefaultInformation linehl= numhl=
+  sign define LspDiagnosticsSignHint text=? texthl=LspDiagnosticsDefaultHint linehl= numhl=
 
   autocmd BufEnter * lua require'completion'.on_attach()
 
   " lua vim.lsp.set_log_level("debug")
   lua <<EOF
   lsp = require'lspconfig'
-  lsp.rust_analyzer.setup{
-    settings = {
-      ["rust-analyzer.cargo.allFeatures"] = true 
-    }
-  }
   lsp.solargraph.setup{}
   lsp.gopls.setup{}
   lsp.vimls.setup{}
   lsp.jedi_language_server.setup{}
   lsp.texlab.setup{}
+
+  local on_attach = function(client)
+    require'completion'.on_attach(client)
+  end
+
+  local capabilities = vim.lsp.protocol.make_client_capabilities()
+  capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+  lsp.rust_analyzer.setup({
+    capabilities=capabilities,
+    on_attach=on_attach,
+    settings = {
+      ["rust-analyzer.cargo.allFeatures"] = true
+    }
+  })
+
+  -- Enable diagnostics
+  vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
+    vim.lsp.diagnostic.on_publish_diagnostics, {
+      virtual_text = false,
+      signs = true,
+      update_in_insert = true,
+    }
+  )
 EOF
 
   nnoremap <silent><c-p> <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
@@ -1027,30 +1046,6 @@ vnoremap <leader>P "+P
 " https://github.com/neovim/nvim-lspconfig#rust_analyzer
 lua <<EOF
 -- nvim_lsp object
-local nvim_lsp = require'lspconfig'
-
--- function to attach completion when setting up lsp
-local on_attach = function(client)
-  require'completion'.on_attach(client)
-end
-
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities.textDocument.completion.completionItem.snippetSupport = true
-
--- Enable rust_analyzer
-nvim_lsp.rust_analyzer.setup({
-  capabilities=capabilities,
-  on_attach=on_attach
-})
-
--- Enable diagnostics
-vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-  vim.lsp.diagnostic.on_publish_diagnostics, {
-    virtual_text = false,
-    signs = true,
-    update_in_insert = true,
-  }
-)
 EOF
 
 :match ExtraWhitespace /\s\+$/
