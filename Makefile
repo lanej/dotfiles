@@ -48,6 +48,7 @@ screen:
 tmux:
 	@mkdir -p $(HOME)/.config/tmux/
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
+	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.tmux.conf
 vim:
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
