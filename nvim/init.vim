@@ -6,8 +6,8 @@
 "   ██║██║ ╚████║██║   ██║██╗ ╚████╔╝ ██║██║ ╚═╝ ██║
 "   ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝╚═╝  ╚═══╝  ╚═╝╚═╝     ╚═╝
 
-" ================ General Config ====================
 set autoread                   " Reload files changed outside vim
+set background=dark
 set autoindent
 set backspace=indent,eol,start " Allow backspace in insert mode
 set cmdheight=2
