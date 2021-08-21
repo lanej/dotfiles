@@ -144,18 +144,20 @@ if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 
   if has('nvim-0.5.0')
-    Plug 'nvim-lua/completion-nvim'
-    Plug 'neovim/nvim-lspconfig'
-    Plug 'nvim-lua/lsp_extensions.nvim'
-    Plug 'lukas-reineke/indent-blankline.nvim'
+    Plug 'dense-analysis/ale', { 'for': ['ruby'] }      " less magical tool integration
     Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
-    Plug 'nvim-treesitter/nvim-treesitter'
-    Plug 'nvim-treesitter/playground'
-    Plug 'nvim-lua/popup.nvim'
-    Plug 'nvim-lua/plenary.nvim'
-    Plug 'phaazon/hop.nvim'
     Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
+    Plug 'lukas-reineke/indent-blankline.nvim'
+    Plug 'neovim/nvim-lspconfig'
+    Plug 'nvim-lua/completion-nvim'
+    Plug 'nvim-lua/lsp_extensions.nvim'
+    Plug 'nvim-lua/plenary.nvim'
+    Plug 'nvim-lua/popup.nvim'
     " Plug 'nvim-telescope/telescope.nvim'
+    Plug 'nvim-treesitter/nvim-treesitter'
+    Plug 'nvim-treesitter/nvim-treesitter-textobjects'
+    Plug 'nvim-treesitter/playground'
+    Plug 'phaazon/hop.nvim'
   else
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
     Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
@@ -633,14 +635,67 @@ endif
 if &runtimepath =~ 'nvim-treesitter'
   lua <<EOF
   require'nvim-treesitter.configs'.setup({
-      ensure_installed = "maintained",
-      highlight = {
-          enable = true,
+    ensure_installed = "maintained",
+    highlight = {
+      enable = true,
+    },
+    indent = {
+      enable = true
+    },
+    textobjects = {
+      select = {
+        enable = true,
+
+        -- Automatically jump forward to textobj, similar to targets.vim
+        lookahead = true,
+
+        keymaps = {
+          -- You can use the capture groups defined in textobjects.scm
+          ["af"] = "@function.outer",
+          ["if"] = "@function.inner",
+          ["ac"] = "@class.outer",
+          ["ic"] = "@class.inner",
+          ["ab"] = "@block.outer",
+          ["ib"] = "@block.inner",
+          ["as"] = "@call.outer",
+          ["is"] = "@call.inner",
+          ["ap"] = "@parameter.outer",
+          ["ip"] = "@parameter.inner",
+          ["ax"] = "@conditional.outer",
+          ["ix"] = "@conditional.inner",
+        },
       },
-      indent = {
-        enable = true
-      }
-    })
+      swap = {
+        enable = true,
+        swap_next = {
+          ["<leader>a"] = "@parameter.inner",
+        },
+        swap_previous = {
+          ["<leader>A"] = "@parameter.inner",
+        },
+      },
+      move = {
+        enable = true,
+        set_jumps = true, -- whether to set jumps in the jumplist
+        goto_next_start = {
+          ["]m"] = "@function.outer",
+          ["]]"] = "@class.outer",
+        },
+        goto_next_end = {
+          ["]M"] = "@function.outer",
+          ["]["] = "@class.outer",
+        },
+        goto_previous_start = {
+          ["[m"] = "@function.outer",
+          ["[["] = "@class.outer",
+        },
+        goto_previous_end = {
+          ["[M"] = "@function.outer",
+          ["[]"] = "@class.outer",
+        },
+      },
+    }
+  })
 EOF
 endif
 
