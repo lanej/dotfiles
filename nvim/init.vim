@@ -158,6 +158,7 @@ if has('nvim')
     Plug 'nvim-treesitter/nvim-treesitter-textobjects'
     Plug 'nvim-treesitter/playground'
     Plug 'phaazon/hop.nvim'
+    Plug 'David-Kunz/treesitter-unit', {'branch':'main'}
   else
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
     Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
@@ -645,24 +646,21 @@ if &runtimepath =~ 'nvim-treesitter'
     textobjects = {
       select = {
         enable = true,
-
-        -- Automatically jump forward to textobj, similar to targets.vim
         lookahead = true,
-
         keymaps = {
-          -- You can use the capture groups defined in textobjects.scm
           ["af"] = "@function.outer",
           ["if"] = "@function.inner",
           ["ac"] = "@class.outer",
           ["ic"] = "@class.inner",
           ["ab"] = "@block.outer",
           ["ib"] = "@block.inner",
-          ["as"] = "@call.outer",
-          ["is"] = "@call.inner",
           ["ap"] = "@parameter.outer",
           ["ip"] = "@parameter.inner",
-          ["ax"] = "@conditional.outer",
-          ["ix"] = "@conditional.inner",
+          ["ai"] = "@conditional.outer",
+          ["ii"] = "@conditional.inner",
+          ["ax"] = "@call.outer",
+          ["ix"] = "@call.inner",
+          ["an"] = "@statement.outer",
         },
       },
       swap = {
@@ -697,6 +695,9 @@ if &runtimepath =~ 'nvim-treesitter'
     }
   })
 EOF
+
+vnoremap as :lua require"treesitter-unit".select()<CR>
+onoremap as :<c-u>lua require"treesitter-unit".select()<CR>
 endif
 
 if &runtimepath =~ 'completion-nvim'
