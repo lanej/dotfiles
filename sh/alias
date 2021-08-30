@@ -69,9 +69,9 @@ alias ll="ls -alh"
 alias lt='tree -L 1 -C'
 
 if command -v exa >/dev/null; then
-  alias ls='exa -G --icons --git'
-  alias ll="exa -l --icons --header --git"
-  alias lt='exa --icons -T -L 2 --git'
+  alias ls='exa -gFG --icons --git'
+  alias ll="exa -gFl --icons --header --git"
+  alias lt='exa -gF --icons -T -L 2 --git'
 fi
 
 fixssh() {
