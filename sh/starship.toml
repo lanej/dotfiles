@@ -6,8 +6,6 @@ success_symbol = "[\\$](bold white)"
 error_symbol = "[\\$](bold red)"
 vicmd_symbol = "[](dimmed yellow)"
 
-[directory]
-
 [git_status]
 ahead = "⇡${count}"
 diverged = "⇕⇡${ahead_count}⇣${behind_count}"
