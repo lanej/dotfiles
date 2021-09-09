@@ -39,7 +39,7 @@ set smarttab
 set tabpagemax=15              " Only show 15 tabs
 set title                      " Set the title in xterm
 set ttimeout
-set ttimeoutlen=100
+set ttimeoutlen=50
 set novb
 set noeb
 set equalalways                " Maintain consistent window sizes
@@ -144,7 +144,6 @@ if has('nvim')
   Plug 'ryanoasis/vim-devicons'
 
   if has('nvim-0.5.0')
-    Plug 'dense-analysis/ale', { 'for': ['ruby'] }      " less magical tool integration
     Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
     Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
     Plug 'lukas-reineke/indent-blankline.nvim'
@@ -159,12 +158,15 @@ if has('nvim')
     Plug 'nvim-treesitter/playground'
     Plug 'phaazon/hop.nvim'
     Plug 'David-Kunz/treesitter-unit', {'branch':'main'}
+    Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
+    Plug 'dense-analysis/ale'
+    " Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
     Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
     Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
     Plug 'sheerun/vim-polyglot'
-    " Plug 'dense-analysis/ale', { 'for': ['ruby', 'javascript'] }      " less magical tool integration
+    Plug 'dense-analysis/ale'
     Plug 'neoclide/coc-neco', { 'for': 'vim' }
     Plug 'Shougo/neco-vim', { 'for': 'vim' }
     Plug 'neoclide/coc.nvim', {'branch':'release'}
@@ -436,12 +438,13 @@ endif
 
 nmap <leader>gm :Git mergetool<CR>
 nmap <leader>go :GBrowse<CR>
-nmap <leader>gp :Gcommit -am'wip'<CR>
+nmap <leader>gt :Gcommit -am'wip'<CR>
 nmap <leader>gr :Gread<CR>
 nmap <leader>gs :Git<CR>
 nmap <leader>gw :Gwrite<CR>
 nmap <leader>ga :Gcommit -av<CR>
 nmap <leader>gb :Git blame<CR>
+nmap <leader>gp :Git push<CR>
 nmap <leader>gc :Gcommit<CR>
 nmap <leader>gd :Gdiffsplit origin/master
 nmap <leader>as :Rgc<space><cword><CR>
@@ -602,6 +605,15 @@ if &runtimepath =~ 'lspconfig'
   lsp.vimls.setup{}
   lsp.jedi_language_server.setup{}
   lsp.texlab.setup{}
+  lsp.jsonls.setup {
+    commands = {
+      Format = {
+        function()
+          vim.lsp.buf.range_formatting({},{0,0},{vim.fn.line("$"),0})
+        end
+      }
+    }
+  }
 
   local on_attach = function(client)
     require'completion'.on_attach(client)
@@ -840,7 +852,7 @@ if &runtimepath =~ 'ale'
   let g:ale_sign_error = '>>'
   let g:ale_sign_offset = 1000000
   let g:ale_sign_warning = '--'
-  let g:ale_completion_enabled = 1
+  let g:ale_completion_enabled = 0
   let g:ale_virtualtext_cursor = 1
 
   augroup filetype_ruby_ale
