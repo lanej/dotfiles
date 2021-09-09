@@ -83,6 +83,7 @@
 		pop = reset HEAD~1
 		do = diff origin/master
 		com = checkout master
+	authors = shortlog -s -n --all
 [core]
 		excludesfile = ~/.gitignore
 		whitespace = trailing-space,space-before-tab,blank-at-eol
