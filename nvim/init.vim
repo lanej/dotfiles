@@ -1184,6 +1184,7 @@ if &runtimepath =~ 'ale'
         \ 'rspec': ['rubocop'],
         \ 'javascript.jsx': ['eslint'],
         \ 'javascript': ['eslint'],
+        \ 'json': ['jq'],
         \ }
 
   let g:ale_linters = {
