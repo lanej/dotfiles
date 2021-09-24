@@ -956,6 +956,7 @@ if &runtimepath =~ 'lspconfig'
   lsp.solargraph.setup{}
   lsp.gopls.setup{}
   lsp.vimls.setup{}
+  lsp.yamlls.setup{}
   lsp.sumneko_lua.setup{
   cmd = {"lua-language-server"};
   }
