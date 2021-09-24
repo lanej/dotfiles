@@ -110,20 +110,17 @@ else
 endif
 
 Plug 'AndrewRadev/splitjoin.vim'                    " split / join code blocks
-Plug 'bling/vim-airline'                            " fancy status line
 Plug 'christoomey/vim-tmux-navigator'               " buffer navigation
 Plug 'editorconfig/editorconfig-vim'                " .editorconfig integration
 Plug 'janko-m/vim-test'                             " test integration
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'                             " fzf integration
 Plug 'junegunn/vim-easy-align'                      " space align
-Plug 'lanej/tender.vim'                             " colorscheme
 Plug 'lanej/vim-phab'                               " vim-fugitive phab integration
 Plug 'ludovicchabant/vim-gutentags'                 " automatically update tags
 Plug 'mileszs/ack.vim'                              " quick search, configured to use rg or ag
 Plug 'previm/previm', { 'for': 'markdown' }         " markdown preview with mermaid support
 Plug 'scrooloose/nerdcommenter'                     " code commenter
-Plug 'scrooloose/nerdtree'                          " file browser
 Plug 'idanarye/vim-merginal'
 Plug 'tpope/vim-dotenv'                             " support dotenv
 Plug 'tpope/vim-eunuch'                             " file system interactions
@@ -132,7 +129,6 @@ Plug 'tpope/vim-markdown', { 'for': 'markdown' }    " markdown tools
 Plug 'tpope/vim-rhubarb'                            " vim-fugitive github integration
 Plug 'tpope/vim-surround'                           " surround mod tools
 Plug 'tyru/open-browser.vim', { 'for': 'markdown' } " xdg-open or open integration
-Plug 'Xuyuanp/nerdtree-git-plugin'                  " show changed files in file browser
 Plug 'norcalli/nvim-colorizer.lua'
 " Plug 'rcarriga/vim-ultest'
 
@@ -141,8 +137,6 @@ Plug 'tpope/vim-obsession'        " sessions
 Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
 if has('nvim')
-  Plug 'ryanoasis/vim-devicons'
-
   if has('nvim-0.5.0')
     Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
     Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
@@ -152,7 +146,10 @@ if has('nvim')
     Plug 'nvim-lua/lsp_extensions.nvim'
     Plug 'nvim-lua/plenary.nvim'
     Plug 'nvim-lua/popup.nvim'
-    " Plug 'nvim-telescope/telescope.nvim'
+    Plug 'ghifarit53/tokyonight-vim'
+    Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
+    Plug 'kyazdani42/nvim-web-devicons' " lua
+    Plug 'kyazdani42/nvim-tree.lua'
     Plug 'nvim-treesitter/nvim-treesitter'
     Plug 'nvim-treesitter/nvim-treesitter-textobjects'
     Plug 'nvim-treesitter/playground'
@@ -162,6 +159,7 @@ if has('nvim')
     Plug 'dense-analysis/ale'
     " Plug 'nvim-telescope/telescope.nvim'
   else
+    Plug 'ryanoasis/vim-devicons'
     Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
     Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
     Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
@@ -250,26 +248,34 @@ endif
 map <leader>ps :Prosession<space>
 let g:prosession_per_branch = 1
 
-" NERDTree
-let g:NERDTreeShowHidden = 1
-let g:NERDTreeChDirMode  = 2
-let g:NERDTreeQuitOnOpen = 1
-let g:NERDSpaceDelims    = 1
+if &runtimepath =~ 'nerdtree'
+  " NERDTree
+  let g:NERDTreeShowHidden = 1
+  let g:NERDTreeChDirMode  = 2
+  let g:NERDTreeQuitOnOpen = 1
+  let g:NERDSpaceDelims    = 1
 
-map <leader>ntt :NERDTreeToggle<CR>
-map <leader>ntm :NERDTreeMirror<CR>
-map <leader>ntc :NERDTreeClose<CR>
-map <leader>ntf :NERDTreeFind<CR>
+  map <leader>ntt :NERDTreeToggle<CR>
+  map <leader>ntm :NERDTreeMirror<CR>
+  map <leader>ntc :NERDTreeClose<CR>
+  map <leader>ntf :NERDTreeFind<CR>
 
-" NERDCommenter
-" Enable trimming of trailing whitespace when uncommenting
-let g:NERDTrimTrailingWhitespace = 1
-let g:NERDCreateDefaultMappings = 0
+  " NERDCommenter
+  " Enable trimming of trailing whitespace when uncommenting
+  let g:NERDTrimTrailingWhitespace = 1
+  let g:NERDCreateDefaultMappings = 0
 
-map <leader>c<space> <plug>NERDCommenterToggle
+  map <leader>c<space> <plug>NERDCommenterToggle
 
-" Align line-wise comment delimiters flush left instead of following code indentation
-let g:NERDDefaultAlign = 'left'
+  " Align line-wise comment delimiters flush left instead of following code indentation
+  let g:NERDDefaultAlign = 'left'
+endif
+
+if &runtimepath =~ 'nvim-tree'
+  map <leader>ntt :NvimTreeToggle<CR>
+  map <leader>ntc :NvimTreeClose<CR>
+  map <leader>ntf :NvimTreeFindFile<CR>
+endif
 
 
 " let g:indentLine_char = '⎸'
@@ -318,7 +324,7 @@ let g:airline#extensions#wordcount#enabled = 0
 let g:airline#extensions#hunks#enabled = 0
 let g:airline_section_z=""
 let g:airline_powerline_fonts = 0
-let g:airline_theme = 'tender'
+let g:airline_theme = 'tokyonight'
 let g:airline_focuslost_inactive = 1
 let g:airline#extensions#tabline#switch_buffers_and_tabs = 0
 let g:airline#extensions#tabline#show_tab_type = 0
@@ -355,6 +361,353 @@ EOF
   map <leader><leader>k :HopLineStartBC<CR>
   map <leader><leader>p :HopPattern<CR>
 endif
+
+if &runtimepath =~ 'galaxyline'
+  lua <<EOF
+  require ('galaxyline').short_line_list = {
+  'Mundo',
+  'MundoDiff',
+  'NvimTree',
+  'fugitive',
+  'fugitiveblame',
+  'help',
+  'minimap',
+  'qf',
+  'tabman',
+  'tagbar',
+  'toggleterm'
+}
+
+local vi_mode_mapping = {
+  ['']   = {'Empty',        '-'},
+  ['!']  = {'Shell',        '-'},
+  [''] = {'CommonVisual', 'B'}, -- NOTE: You'll have to remove '^V' and input a 'real' '^V' sequence. You can do that with the following key sequence: <SHIFT-i> + <CTRL-v> + <CTRL-v> (don't be slow with the double <CTRL-v>)
+  ['R']  = {'Replace',      'R'},
+  ['Rv'] = {'Normal',       '-'},
+  ['S']  = {'Normal',       '-'},
+  ['V']  = {'CommonVisual', 'V'},
+  ['c']  = {'Command',      'C'},
+  ['ce'] = {'Normal',       '-'},
+  ['cv'] = {'Normal',       '-'},
+  ['i']  = {'Insert',       'I'},
+  ['ic'] = {'Normal',       '-'},
+  ['n']  = {'Normal',       'N'},
+  ['no'] = {'Normal',       '-'},
+  ['r']  = {'Normal',       '-'},
+  ['r?'] = {'Normal',       '-'},
+  ['rm'] = {'Normal',       '-'},
+  ['s']  = {'Normal',       '-'},
+  ['t']  = {'Terminal',     'T'},
+  ['v']  = {'CommonVisual', 'v'}
+}
+
+local colors = {
+  bg = '#1a1b26',
+  black = '#32344a',
+  blue = '#7aa2f7',
+  cyan = '#449dab',
+  fg = '#a9b1d6',
+  green = '#9ece6a',
+  magenta = '#ad8ee6',
+  orange = '#ff9e64',
+  red = '#f7768e',
+  white = '#787c99',
+  yellow = '#e0af68',
+}
+
+-- Local helper functions
+local mode_color = function()
+  local mode_colors = {
+    n = colors.cyan,
+    i = colors.green,
+    c = colors.orange,
+    V = colors.yellow,
+    [''] = colors.magenta,
+    v = colors.blue,
+    R = colors.red
+  }
+
+  local color = mode_colors[vim.fn.mode()]
+
+  if color == nil then color = colors.red end
+
+  return color
+end
+
+
+local gl = require('galaxyline')
+local gls = gl.section
+
+gls.left[1] = {
+  ViMode = {
+     provider = function()
+       if vi_mode_mapping[vim.fn.mode()] == nil then
+         return ' -'
+       else
+         vim.api.nvim_command('hi GalaxyViMode guibg=' .. mode_color())
+         return ' ' .. string.format('%s', vi_mode_mapping[vim.fn.mode()][2]) .. ' '
+       end
+     end,
+    highlight = {colors.bg, colors.bg},
+  }
+}
+gls.left[2] = {
+  LeftGitBranch = {
+    provider = function()
+      if require('galaxyline.condition').check_git_workspace() then
+        return '   ' .. require('galaxyline.provider_vcs').get_git_branch()
+      else
+        return '   '
+      end
+    end,
+    highlight = {colors.magenta, colors.bg},
+    separator = ' ',
+    separator_highlight = {colors.bg, colors.bg},
+  }
+}
+gls.left[3] = {
+  LeftGitDiffSeparator = {
+    provider = function()
+      return ''
+    end,
+    separator = ' ',
+    highlight = { colors.magenta },
+  }
+}
+gls.left[4] = {
+  LeftGitDiffAdd = {
+    condition = require("galaxyline.condition").check_git_workspace,
+    provider = function()
+      if require('galaxyline.provider_vcs').diff_add() then
+        vim.api.nvim_command('hi GalaxyLeftGitDiffAdd guifg=' .. colors.green)
+        return '+' .. require('galaxyline.provider_vcs').diff_add()
+      else
+        return '+0 '
+      end
+    end
+  }
+}
+gls.left[5] = {
+  LeftGitDiffModified = {
+    condition = require("galaxyline.condition").check_git_workspace,
+    provider = function()
+      if require('galaxyline.provider_vcs').diff_modified() then
+        vim.api.nvim_command('hi GalaxyLeftGitDiffModified guifg=' .. colors.cyan)
+        return '~' .. require('galaxyline.provider_vcs').diff_modified()
+      else
+        return '~0 '
+      end
+    end
+  }
+}
+gls.left[6] = {
+  LeftGitDiffRemove = {
+    condition = require("galaxyline.condition").check_git_workspace,
+    provider = function()
+      if require('galaxyline.provider_vcs').diff_remove() then
+        vim.api.nvim_command('hi GalaxyLeftGitDiffRemove guifg=' .. colors.red)
+        return '-' .. require('galaxyline.provider_vcs').diff_remove()
+      else
+        return '-0 '
+      end
+    end
+  }
+}
+
+gls.mid[1] = {
+  MidFileName = {
+    provider = function()
+      if vim.fn.expand '%:p' == 0 then
+        return '-'
+      end
+      if vim.fn.winwidth(0) > 50 then
+        return vim.fn.expand '%:~'
+      else
+        return vim.fn.expand '%:t'
+      end
+    end,
+    highlight = { colors.fg, colors.black },
+  }
+}
+
+gls.right[1] = {
+  RightLspError = {
+    provider = function()
+      if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then
+         return
+      end
+
+      if vim.lsp.diagnostic.get_count(0, 'Error') == 0 then
+        vim.api.nvim_command('hi GalaxyRightLspError guifg=' .. colors.fg)
+      else
+        vim.api.nvim_command('hi GalaxyRightLspError guifg=' .. colors.red)
+      end
+
+      return '!' .. vim.lsp.diagnostic.get_count(0, 'Error') .. ' '
+    end
+  }
+}
+
+gls.right[2] = {
+  RightLspWarning = {
+    provider = function()
+      if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then
+         return
+      end
+
+      if vim.lsp.diagnostic.get_count(0, 'Warning') == 0 then
+        vim.api.nvim_command('hi GalaxyRightLspWarning guifg=' .. colors.fg)
+      else
+        vim.api.nvim_command('hi GalaxyRightLspWarning guifg=' .. colors.orange)
+      end
+
+      return '?' .. vim.lsp.diagnostic.get_count(0, 'Warning') .. ' '
+    end
+  }
+}
+
+gls.right[3] = {
+ RightLspInformation = {
+   provider = function()
+     if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then
+        return
+     end
+
+     if vim.lsp.diagnostic.get_count(0, 'Information') == 0 then
+        vim.api.nvim_command('hi GalaxyRightLspInformation guifg=' .. colors.fg)
+     else
+        vim.api.nvim_command('hi GalaxyRightLspInformation guifg=' .. colors.blue)
+     end
+
+     return '+' .. vim.lsp.diagnostic.get_count(0, 'Information') .. ' '
+   end
+ }
+}
+
+gls.right[4] = {
+  RightLspHint = {
+    provider = function()
+      if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then
+         return
+      end
+
+      if vim.lsp.diagnostic.get_count(0, 'Hint') == 0 then
+        vim.api.nvim_command('hi GalaxyRightLspHint guifg=' .. colors.fg)
+      else
+        vim.api.nvim_command('hi GalaxyRightLspHint guifg=' .. colors.yellow)
+      end
+
+      return '-' .. vim.lsp.diagnostic.get_count(0, 'Hint') .. ' '
+    end
+  }
+}
+
+gls.right[5] = {
+ RightLspHintSeparator = {
+   highlight = { colors.yellow, colors.bg },
+   provider = function()
+     return ''
+   end,
+ }
+}
+
+gls.right[6] = {
+  RightLspClient = {
+    highlight = { colors.fg, colors. bg },
+    provider = function()
+      if #vim.tbl_keys(vim.lsp.buf_get_clients()) >= 1 then
+        local lsp_client_name_first = vim.lsp.get_client_by_id(tonumber(vim.inspect(vim.tbl_keys(vim.lsp.buf_get_clients())):match('%d+'))).name:match('%l+')
+
+        if lsp_client_name_first == nil then
+          vim.api.nvim_command('hi GalaxyRightLspClient guifg=' .. colors.fg)
+          return #vim.tbl_keys(vim.lsp.buf_get_clients()) .. ': '
+        else
+          vim.api.nvim_command('hi GalaxyRightLspClient guifg=' .. colors.yellow)
+          return #vim.tbl_keys(vim.lsp.buf_get_clients()) .. ':' .. lsp_client_name_first .. ' '
+        end
+      else
+        return ' '
+      end
+    end,
+    separator = ' ',
+  }
+}
+
+gls.right[7] = {
+ RightPositionSeparator = {
+   provider = function()
+     return '  '
+   end
+ }
+}
+
+require ('galaxyline').section.short_line_left = {
+  {
+    ShortLineLeftBufferType = {
+      highlight = 'GalaxyMapperCommon2',
+      provider = function ()
+        local BufferTypeMap = {
+          ['Mundo'] = 'Mundo History',
+          ['MundoDiff'] = 'Mundo Diff',
+          ['NvimTree'] = 'Nvim Tree',
+          ['fugitive'] = 'Fugitive',
+          ['fugitiveblame'] = 'Fugitive Blame',
+          ['help'] = 'Help',
+          ['minimap'] = 'Minimap',
+          ['qf'] = 'Quick Fix',
+          ['tabman'] = 'Tab Manager',
+          ['tagbar'] = 'Tagbar',
+          ['toggleterm'] = 'Terminal'
+        }
+        local name = BufferTypeMap[vim.bo.filetype] or 'Editor'
+        return string.format('  %s ', name)
+      end,
+      separator = ' ',
+      separator_highlight = 'GalaxyMapperCommon7'
+    }
+  },
+  {
+    ShortLineLeftWindowNumber = {
+      highlight = 'GalaxyMapperCommon6',
+      provider = function()
+        return '  ' .. vim.api.nvim_win_get_number(vim.api.nvim_get_current_win()) .. ' '
+      end,
+      separator = '',
+      separator_highlight = 'GalaxyMapperCommon1'
+    }
+  }
+}
+
+require ('galaxyline').section.short_line_right = {
+  {
+    ShortLineRightBlank = {
+      highlight = 'GalaxyMapperCommon6',
+      provider = function()
+        if vim.bo.filetype == 'toggleterm' then
+          return ' ' .. vim.api.nvim_buf_get_var(0, 'toggle_number') .. ' '
+        else
+          return '  '
+        end
+      end,
+      separator = '',
+      separator_highlight = 'GalaxyMapperCommon1'
+    }
+  },
+  {
+    ShortLineRightInformational = {
+      highlight = 'GalaxyMapperCommon2',
+      provider = function()
+        return ' Neovim '
+      end,
+      separator = '',
+      separator_highlight = 'GalaxyMapperCommon7'
+    }
+  }
+}
+
+EOF
+endif
+
 
 if &runtimepath =~ 'gitsigns'
   lua <<EOF
@@ -464,7 +817,7 @@ nnoremap yd :let @" = expand("%")<cr>
 
 " =============== UI ================
 syntax enable      " turn syntax highlighting on
-colorscheme tender " set that smooth smooth color scheme
+colorscheme tokyonight " set that smooth smooth color scheme
 set guioptions-=T  " remove Toolbar
 set guioptions-=r  " remove right scrollbar
 set guioptions-=L  " remove left scrollbar
@@ -603,6 +956,9 @@ if &runtimepath =~ 'lspconfig'
   lsp.solargraph.setup{}
   lsp.gopls.setup{}
   lsp.vimls.setup{}
+  lsp.sumneko_lua.setup{
+  cmd = {"lua-language-server"};
+  }
   lsp.jedi_language_server.setup{}
   lsp.texlab.setup{}
   lsp.jsonls.setup {

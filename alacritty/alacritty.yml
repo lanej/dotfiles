@@ -179,60 +179,6 @@ font:
 # If `true`, bold text is drawn using the bright color variants.
 # draw_bold_text_with_bright_colors: true
 
-# Colors (Tomorrow Night Bright)
-colors:
-  # Default colors
-  primary:
-   background: '0x262626'
-   foreground: '0xffffff'
-
-    # Bright and dim foreground colors
-    #
-    # The dimmed foreground color is calculated automatically if it is not present.
-    # If the bright foreground color is not set, or `draw_bold_text_with_bright_colors`
-    # is `false`, the normal foreground color will be used.
-    #dim_foreground: '0x9a9a9a'
-    #bright_foreground: '0xffffff'
-
-  # Cursor colors
-  #
-  # Colors which should be used to draw the terminal cursor. If these are unset,
-  # the cursor color will be the inverse of the cell color.
-  # cursor:
-   # text: '0x000000'
-   # cursor: '0xd0d0d0'
-
-  # Selection colors
-  #
-  # Colors which should be used to draw the selection area. If selection
-  # background is unset, selection color will be the inverse of the cell colors.
-  # If only text is unset the cell text color will remain the same.
-  selection:
-   text: '0xeaeaea'
-   background: '0x404040'
-
-  # Normal colors
-  normal:
-   black:   '0x262626'
-   red:     '0xac4142'
-   green:   '0x87d787'
-   yellow:  '0xf4bf75'
-   blue:    '0x6a9fb5'
-   magenta: '0xaa759f'
-   cyan:    '0x75b5aa'
-   white:   '0xf2f2f2'
-
-  # Bright colors
-  bright:
-   black:   '0x595959'
-   red:     '0xc0595a'
-   green:   '0x87d75f'
-   yellow:  '0xf7d3a1'
-   blue:    '0x3c7f9c'
-   magenta: '0xcfb0c8'
-   cyan:    '0x9cc9c2'
-   white:   '0xf2f2f2'
-
   # Dim colors
   #
   # If the dim colors are not set, they will be calculated automatically based
@@ -573,3 +519,36 @@ key_bindings:
   #- { key: PageDown,  mods: Shift,   action: ScrollPageDown, mode: ~Alt       }
   #- { key: Home,      mods: Shift,   action: ScrollToTop,    mode: ~Alt       }
   #- { key: End,       mods: Shift,   action: ScrollToBottom, mode: ~Alt       }
+schemes:
+  # Tokyo Night theme, based on both:
+  #   https://github.com/ghifarit53/tokyonight-vim
+  #   https://github.com/enkia/tokyo-night-vscode-theme
+  tokyo-night: &tokyo-night
+    # Default colors
+    primary:
+      background: '0x1a1b26'
+      foreground: '0xa9b1d6'
+
+    # Normal colors
+    normal:
+      black:   '0x32344a'
+      red:     '0xf7768e'
+      green:   '0x9ece6a'
+      yellow:  '0xe0af68'
+      blue:    '0x7aa2f7'
+      magenta: '0xad8ee6'
+      cyan:    '0x449dab'
+      white:   '0x787c99'
+
+    # Bright colors
+    bright:
+      black:   '0x444b6a'
+      red:     '0xff7a93'
+      green:   '0xb9f27c'
+      yellow:  '0xff9e64'
+      blue:    '0x7da6ff'
+      magenta: '0xbb9af7'
+      cyan:    '0x0db9d7'
+      white:   '0xacb0d0'
+
+colors: *tokyo-night
