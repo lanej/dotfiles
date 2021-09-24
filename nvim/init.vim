@@ -1265,7 +1265,7 @@ if has('autocmd')
     " jsx is both javascript and jsx
     autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
     " Save files when vim loses focus
-    autocmd FocusLost * silent! wa
+    autocmd FocusLost,BufLeave * silent! wa
     " Reload files when vim gains focus
     autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
