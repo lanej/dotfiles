@@ -360,7 +360,7 @@ EOF
   map <leader><leader>l :HopLineStart<CR>
   map <leader><leader>j :HopLineStartAC<CR>
   map <leader><leader>k :HopLineStartBC<CR>
-  map <leader><leader>p :HopPattern<CR>
+  map <leader><leader>\ :HopPattern<CR>
 endif
 
 
