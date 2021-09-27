@@ -157,6 +157,7 @@ if has('nvim')
     Plug 'David-Kunz/treesitter-unit', {'branch':'main'}
     Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
     Plug 'dense-analysis/ale'
+    Plug 'folke/todo-comments.nvim', {'branch':'main'}
     " Plug 'nvim-telescope/telescope.nvim'
   else
     Plug 'ryanoasis/vim-devicons'
@@ -360,6 +361,13 @@ EOF
   map <leader><leader>j :HopLineStartAC<CR>
   map <leader><leader>k :HopLineStartBC<CR>
   map <leader><leader>p :HopPattern<CR>
+endif
+
+
+if &runtimepath =~ 'todo-comments'
+lua << EOF
+  require("todo-comments").setup { }
+EOF
 endif
 
 if &runtimepath =~ 'galaxyline'
