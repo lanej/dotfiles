@@ -721,6 +721,7 @@ if &runtimepath =~ 'gitsigns'
   lua <<EOF
   require('gitsigns').setup()
 EOF
+  map <leader>gl :Gitsigns blame_line<CR>
 endif
 
 command! -bang -nargs=* Rg
