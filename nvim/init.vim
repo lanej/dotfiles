@@ -798,19 +798,19 @@ else
   noremap  <leader>gc :Commits<CR>
 endif
 
-nmap <leader>gm :Git mergetool<CR>
-nmap <leader>go :GBrowse<CR>
-nmap <leader>gt :Gcommit -am'wip'<CR>
-nmap <leader>gr :Gread<CR>
-nmap <leader>gs :Git<CR>
-nmap <leader>gw :Gwrite<CR>
+nmap <leader>ag :Ack<CR>
+nmap <leader>as :Rgc<space><cword><CR>
 nmap <leader>ga :Gcommit -av<CR>
 nmap <leader>gb :Git blame<CR>
-nmap <leader>gp :Git push<CR>
 nmap <leader>gc :Gcommit<CR>
 nmap <leader>gd :Gdiffsplit origin/master
-nmap <leader>as :Rgc<space><cword><CR>
-nmap <leader>ag :Ack<CR>
+nmap <leader>gm :Git mergetool<CR>
+nmap <leader>go :GBrowse<CR>
+nmap <leader>gp :Git push<CR>
+nmap <leader>gr :Gread<CR>
+nmap <leader>gs :Git<CR>
+nmap <leader>gt :Gcommit -am'wip'<CR>
+nmap <leader>gw :Gwrite<CR>
 
 " rename
 map <leader>re :Rename<space>
