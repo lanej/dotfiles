@@ -56,6 +56,7 @@ vim:
 	@ln -fns $(DOTFILES)/vim $(HOME)/.vim
 	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.config/nvim/init.vim
 	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.vimrc
+	@ln -fns $(DOTFILES)/nvim/lua $(HOME)/.config/nvim/lua
 	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	@ln -fs $(DOTFILES)/vim/autoload/plug.vim $(HOME)/.local/share/nvim/site/autoload/plug.vim
 	@mkdir -p $(HOME)/.local/share/nvim/plugged
@@ -63,6 +64,9 @@ vim:
 	@ln -fs $(DOTFILES)/nvim/min.vim $(HOME)/.config/nvim/min.vim
 	@ln -fs $(DOTFILES)/nvim/coc-settings.json $(HOME)/.config/nvim/coc-settings.json
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
+	@ls ~/.local/share/nvim/site/pack/packer/start/packer.nvim 1>/dev/null || \
+		git clone --depth 1 https://github.com/wbthomason/packer.nvim\
+		~/.local/share/nvim/site/pack/packer/start/packer.nvim
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults
