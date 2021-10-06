@@ -17,4 +17,4 @@
     border = 'double'
   })
 
-vim.api.nvim_set_keymap('n', '<c-w><c-w>','<cmd>require("nvim-window").pick()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<c-w><c-w>','<cmd>lua require("nvim-window").pick()<CR>', { noremap = true, silent = true })

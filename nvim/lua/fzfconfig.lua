@@ -12,7 +12,7 @@ require'fzf-lua'.setup {
   }
 }
 
-vim.api.nvim_set_keymap('n', '<leader>as', '<cmd>lua require("fzf-lua").grep_cword()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>aw', '<cmd>lua require("fzf-lua").grep_cword()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>ag', '<cmd>lua require("fzf-lua").grep()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>ac', '<cmd>lua require("fzf-lua").commands()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>al', '<cmd>lua require("fzf-lua").lines()<CR>', { noremap = true, silent = true })
@@ -30,3 +30,4 @@ vim.api.nvim_set_keymap('n', '<leader>bb', '<cmd>lua require("fzf-lua").buffers(
 vim.api.nvim_set_keymap('n', '<leader>gc', '<cmd>lua require("fzf-lua").git_commits()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>bp', '<cmd>lua require("fzf-lua").git_branches()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>bs', '<cmd>lua require("fzf-lua").lsp_document_symbols()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>as', '<cmd>lua require("fzf-lua").lsp_workspace_symbols()<CR>', { noremap = true, silent = true })
