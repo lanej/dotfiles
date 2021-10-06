@@ -113,12 +113,11 @@ Plug 'AndrewRadev/splitjoin.vim'                    " split / join code blocks
 Plug 'christoomey/vim-tmux-navigator'               " buffer navigation
 Plug 'editorconfig/editorconfig-vim'                " .editorconfig integration
 Plug 'janko-m/vim-test'                             " test integration
-Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
-Plug 'junegunn/fzf.vim'                             " fzf integration
+Plug 'vijaymarupudi/nvim-fzf'
+Plug 'ibhagwan/fzf-lua'
 Plug 'junegunn/vim-easy-align'                      " space align
 Plug 'lanej/vim-phab'                               " vim-fugitive phab integration
 Plug 'ludovicchabant/vim-gutentags'                 " automatically update tags
-Plug 'mileszs/ack.vim'                              " quick search, configured to use rg or ag
 Plug 'previm/previm', { 'for': 'markdown' }         " markdown preview with mermaid support
 Plug 'scrooloose/nerdcommenter'                     " code commenter
 Plug 'idanarye/vim-merginal'
@@ -136,41 +135,27 @@ Plug 'norcalli/nvim-colorizer.lua'
 Plug 'tpope/vim-obsession'        " sessions
 Plug 'dhruvasagar/vim-prosession' " per-branch session auto management
 
-if has('nvim')
-  if has('nvim-0.5.0')
-    Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
-    Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
-    Plug 'lukas-reineke/indent-blankline.nvim'
-    Plug 'neovim/nvim-lspconfig'
-    Plug 'nvim-lua/completion-nvim'
-    Plug 'nvim-lua/lsp_extensions.nvim'
-    Plug 'nvim-lua/plenary.nvim'
-    Plug 'nvim-lua/popup.nvim'
-    Plug 'ghifarit53/tokyonight-vim'
-    Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
-    Plug 'kyazdani42/nvim-web-devicons' " lua
-    Plug 'kyazdani42/nvim-tree.lua'
-    Plug 'nvim-treesitter/nvim-treesitter'
-    Plug 'nvim-treesitter/nvim-treesitter-textobjects'
-    Plug 'nvim-treesitter/playground'
-    Plug 'phaazon/hop.nvim'
-    Plug 'David-Kunz/treesitter-unit', {'branch':'main'}
-    Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
-    Plug 'dense-analysis/ale'
-    Plug 'folke/todo-comments.nvim', {'branch':'main'}
-    " Plug 'nvim-telescope/telescope.nvim'
-  else
-    Plug 'ryanoasis/vim-devicons'
-    Plug 'easymotion/vim-easymotion'                    " quick in-buffer navigation
-    Plug 'airblade/vim-gitgutter'                       " show git diffs in left gutter
-    Plug 'Yggdroot/indentLine', { 'for': ['ruby', 'python'] }
-    Plug 'sheerun/vim-polyglot'
-    Plug 'dense-analysis/ale'
-    Plug 'neoclide/coc-neco', { 'for': 'vim' }
-    Plug 'Shougo/neco-vim', { 'for': 'vim' }
-    Plug 'neoclide/coc.nvim', {'branch':'release'}
-  endif
-endif
+Plug 'folke/todo-comments.nvim', {'branch':'main'}
+Plug 'https://gitlab.com/yorickpeterse/nvim-window.git', {'branch': 'main'}
+Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
+Plug 'lukas-reineke/indent-blankline.nvim'
+Plug 'neovim/nvim-lspconfig'
+Plug 'nvim-lua/completion-nvim'
+Plug 'nvim-lua/lsp_extensions.nvim'
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-lua/popup.nvim'
+Plug 'ghifarit53/tokyonight-vim'
+Plug 'glepnir/galaxyline.nvim' , {'branch': 'main'}
+Plug 'kyazdani42/nvim-web-devicons' " lua
+Plug 'kyazdani42/nvim-tree.lua'
+Plug 'nvim-treesitter/nvim-treesitter'
+Plug 'nvim-treesitter/nvim-treesitter-textobjects'
+Plug 'nvim-treesitter/playground'
+Plug 'phaazon/hop.nvim'
+Plug 'David-Kunz/treesitter-unit', {'branch':'main'}
+Plug 'lewis6991/gitsigns.nvim', {'branch':'main'}
+Plug 'dense-analysis/ale'
+" Plug 'nvim-telescope/telescope.nvim'
 
 " plugins:end Add plugins to &runtimepath
 call plug#end()
@@ -231,18 +216,16 @@ let g:terraform_fmt_on_save     = 1
 let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
-if executable('rg')
-  " use ripgrep if available
-  let g:ackprg = 'rg --vimgrep'
-  set grepprg=rg\ --nogroup\ --nocolor
-  nmap <leader>aa :Rg<space>
-  nmap <leader>az :Rg<CR>
-elseif executable('ag')
-  " use silver-searcher if available
-  let g:ackprg = 'ag --vimgrep'
-  set grepprg=ag\ --nogroup\ --nocolor
-  nmap <leader>aa :Ag<space>
-  nmap <leader>az :Ag<CR>
+if &runtimepath =~ 'ack.vim'
+  if executable('rg')
+    " use ripgrep if available
+    let g:ackprg = 'rg --vimgrep'
+    set grepprg=rg\ --nogroup\ --nocolor
+  elseif executable('ag')
+    " use silver-searcher if available
+    let g:ackprg = 'ag --vimgrep'
+    set grepprg=ag\ --nogroup\ --nocolor
+  endif
 endif
 
 " sessions
@@ -285,70 +268,73 @@ let g:indent_blankline_use_treesitter = v:true
 " splitjoin
 let g:splitjoin_ruby_curly_braces = 0
 
-" airline
-" if you want to disable auto detect, comment out those two lines
-"let g:airline#extensions#disable_rtp_load = 1
-" let g:airline_extensions = ['branch', 'hunks', 'coc']
+if &runtimepath =~ 'airline'
+  " airline
+  " if you want to disable auto detect, comment out those two lines
+  "let g:airline#extensions#disable_rtp_load = 1
+  " let g:airline_extensions = ['branch', 'hunks', 'coc']
+"
+  if !exists('g:airline_symbols')
+    let g:airline_symbols = {}
+  endif
 
+  let g:airline_left_alt_sep = ''
+  let g:airline_right_alt_sep = ''
+  let g:airline_symbols.branch = ''
+  let g:airline_symbols.crypt = '🔒'
+  let g:airline_symbols.dirty='ˉ'
+  let g:airline_symbols.linenr = '¶'
+  let g:airline_symbols.linenr = '☰'
+  let g:airline_symbols.maxlinenr = '㏑'
+  let g:airline_symbols.paste = '∥'
+  let g:airline_symbols.readonly = ''
+  let g:airline_symbols.spell = '✓'
+  let g:airline_symbols.whitespace = 'Ξ'
+  let g:airline_symbols.notexists = '⁉'
 
-if !exists('g:airline_symbols')
-  let g:airline_symbols = {}
+  let g:airline#extensions#branch#enabled = 1
+  let g:airline#extensions#bufferline#enabled = 0
+  let g:airline#extensions#tabline#buffer_nr_show = 0
+  let g:airline#extensions#tabline#enabled = 1
+  let g:airline#extensions#tabline#show_tabs = 1
+  let g:airline#extensions#tabline#formatter = 'unique_tail_improved'
+  let g:airline#extensions#tabline#tab_nr_type = 0
+  let g:airline#extensions#tabline#show_buffers = 1
+  let g:airline#extensions#whitespace#enabled = 0
+  let g:airline#extensions#tabline#tab_min_count = 2
+  let g:airline#extensions#obsession#enabled = 0
+  let g:airline#extensions#ale#show_line_numbers = 0
+  let g:airline#extensions#wordcount#enabled = 0
+  let g:airline#extensions#hunks#enabled = 0
+  let g:airline_section_z=""
+  let g:airline_powerline_fonts = 0
+  let g:airline_theme = 'tokyonight'
+  let g:airline_focuslost_inactive = 1
+  let g:airline#extensions#tabline#switch_buffers_and_tabs = 0
+  let g:airline#extensions#tabline#show_tab_type = 0
+  let g:airline#extensions#tabline#show_close_button = 0
+  let g:airline#extensions#tabline#show_tab_count = 0
+  let g:ale_virtualtext_cursor = 1
 endif
-
-let g:airline_left_alt_sep = ''
-let g:airline_right_alt_sep = ''
-let g:airline_symbols.branch = ''
-let g:airline_symbols.crypt = '🔒'
-let g:airline_symbols.dirty='ˉ'
-let g:airline_symbols.linenr = '¶'
-let g:airline_symbols.linenr = '☰'
-let g:airline_symbols.maxlinenr = '㏑'
-let g:airline_symbols.paste = '∥'
-let g:airline_symbols.readonly = ''
-let g:airline_symbols.spell = '✓'
-let g:airline_symbols.whitespace = 'Ξ'
-let g:airline_symbols.notexists = '⁉'
-
-let g:airline#extensions#branch#enabled = 1
-let g:airline#extensions#bufferline#enabled = 0
-let g:airline#extensions#tabline#buffer_nr_show = 0
-let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#tabline#show_tabs = 1
-let g:airline#extensions#tabline#formatter = 'unique_tail_improved'
-let g:airline#extensions#tabline#tab_nr_type = 0
-let g:airline#extensions#tabline#show_buffers = 1
-let g:airline#extensions#whitespace#enabled = 0
-let g:airline#extensions#tabline#tab_min_count = 2
-let g:airline#extensions#obsession#enabled = 0
-let g:airline#extensions#ale#show_line_numbers = 0
-let g:airline#extensions#wordcount#enabled = 0
-let g:airline#extensions#hunks#enabled = 0
-let g:airline_section_z=""
-let g:airline_powerline_fonts = 0
-let g:airline_theme = 'tokyonight'
-let g:airline_focuslost_inactive = 1
-let g:airline#extensions#tabline#switch_buffers_and_tabs = 0
-let g:airline#extensions#tabline#show_tab_type = 0
-let g:airline#extensions#tabline#show_close_button = 0
-let g:airline#extensions#tabline#show_tab_count = 0
-let g:ale_virtualtext_cursor = 1
 
 " git-gutter
-if exists('&signcolumn')  " Vim 7.4.2201
-  set signcolumn=yes
-else
-  let g:gitgutter_sign_column_always = 1
-endif
+if &runtimepath =~ 'git-gutter'
+  if exists('&signcolumn')  " Vim 7.4.2201
+    set signcolumn=yes
+  else
+    let g:gitgutter_sign_column_always = 1
+  endif
 
-let g:gitgutter_max_signs = 1024
-let g:gitgutter_sign_added = "❙"
-let g:gitgutter_sign_modified = "❙"
-let g:gitgutter_sign_modified_removed = "❙"
-let g:gitgutter_sign_removed = "❙"
-let g:gitgutter_sign_removed_first_line = "❙"
-let g:gitgutter_show_msg_on_hunk_jumping = 0
-let g:gitgutter_highlight_linenrs = 0
-let g:gitgutter_highlight_lines = 0
+  let g:gitgutter_max_signs = 1024
+  let g:gitgutter_sign_added = "❙"
+  let g:gitgutter_sign_modified = "❙"
+  let g:gitgutter_sign_modified_removed = "❙"
+  let g:gitgutter_sign_removed = "❙"
+  let g:gitgutter_sign_removed_first_line = "❙"
+  let g:gitgutter_show_msg_on_hunk_jumping = 0
+  let g:gitgutter_highlight_linenrs = 0
+  let g:gitgutter_highlight_lines = 0
+endif
 
 if &runtimepath =~ 'hop.nvim'
   lua <<EOF
@@ -724,47 +710,6 @@ EOF
   map <leader>gl :Gitsigns blame_line<CR>
 endif
 
-command! -bang -nargs=* Rg
-      \ call fzf#vim#grep(
-      \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(<q-args>), 1,
-      \   fzf#vim#with_preview(), <bang>0)
-
-command! -nargs=* Rgc
-      \ call fzf#vim#grep(
-      \   'rg --column --line-number --no-heading --color=always --smart-case -- '.shellescape(expand('<cword>')), 1,
-      \   fzf#vim#with_preview(), <bang>0)
-
-command! -bang -nargs=? -complete=dir DFiles
-      \ call fzf#run(fzf#wrap({'source': 'fd . --full-path '.shellescape(expand('%:h'))}))
-
-" TODO: change Buffers to use a smaller list and different orientation for
-" quick differention
-
-let g:fzf_colors = {
-      \ 'fg':      ['fg', 'Normal'],
-      \ 'bg':      ['bg', 'Normal'],
-      \ 'hl':      ['fg', 'String'],
-      \ 'fg+':     ['fg', 'Function', 'CursorColumn', 'Normal'],
-      \ 'bg+':     ['bg', 'Type', 'CursorColumn'],
-      \ 'hl+':     ['fg', 'String'],
-      \ 'info':    ['fg', 'Function'],
-      \ 'border':  ['fg', 'Ignore'],
-      \ 'prompt':  ['fg', 'Function'],
-      \ 'pointer': ['fg', 'Type'],
-      \ 'marker':  ['fg', 'Function'],
-      \ 'spinner': ['fg', 'Function'],
-      \ 'header':  ['fg', 'Function']}
-
-noremap <leader>af :DFiles<CR>
-" [Buffers] Jump to the existing window if possible
-let g:fzf_buffers_jump = 1
-
-" [[B]Commits] Customize the options used by 'git log':
-let g:fzf_commits_log_options = '--color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
-
-" fugitive and fzf git integrations
-autocmd  BufReadPost fugitive://* set bufhidden=delete
-
 if &runtimepath =~ 'telescope'
   nmap <leader>ac :Telescope commands<CR>
   nmap <leader>ah :Telescope help_tags<CR>
@@ -781,6 +726,40 @@ if &runtimepath =~ 'telescope'
   nmap <leader>l  :Telescope current_buffer_fuzzy_find<CR>
   nmap <leader>rr :Telescope command_history<CR>
   nmap <leader>/  :Telescope search_history<CR>
+elseif &runtimepath =~ 'fzf.lua'
+  nnoremap <leader>as <cmd>lua require('fzf-lua').grep_cword()<CR>
+  nnoremap <leader>ag <cmd>lua require('fzf-lua').grep()<CR>
+  nnoremap <leader>ac <cmd>lua require('fzf-lua').commands()<CR>
+  nnoremap <leader>al <cmd>lua require('fzf-lua').lines()<CR>
+  nnoremap <leader>az <cmd>lua require('fzf-lua').live_grep_resume()<CR>
+  nnoremap <leader>at <cmd>lua require('fzf-lua').tags()<CR>
+  nnoremap <leader>f <cmd>lua require('fzf-lua').files()<CR>
+  nnoremap <leader>rr <cmd>lua require('fzf-lua').command_history()<CR>
+  nnoremap <leader>bl <cmd>lua require('fzf-lua').blines()<CR>
+  nnoremap <leader>bt <cmd>lua require('fzf-lua').btags()<CR>
+  nnoremap <leader>bc <cmd>lua require('fzf-lua').git_bcommits()<CR>
+  nnoremap <leader>gf <cmd>lua require('fzf-lua').git_files()<CR>
+  nnoremap <leader>gf <cmd>lua require('fzf-lua').files()<CR>
+  nnoremap <leader>of <cmd>lua require('fzf-lua').oldfiles()<CR>
+  nnoremap <leader>bb <cmd>lua require('fzf-lua').buffers()<CR>
+  nnoremap <leader>gc <cmd>lua require('fzf-lua').git_commits()<CR>
+  nnoremap <leader>bp <cmd>lua require('fzf-lua').git_branches()<CR>
+
+  lua <<EOF
+  local actions = require "fzf-lua.actions"
+  require'fzf-lua'.setup {
+    keymap = {
+      builtin = {
+        ["<C-f>"] = "toggle-fullscreen",
+        ["<C-h>"] = "toggle-preview",
+        ["<C-r>"] = "toggle-preview-cw",
+        ["<C-j>"] = "preview-page-down",
+        ["<C-k>"] = "preview-page-up",
+        ["<C-p>"] = "preview-page-reset",
+      },
+    }
+  }
+EOF
 else
   nnoremap <leader>as :Rgc<space><cword><CR>
   nnoremap <leader>ag :Ack<CR>
@@ -790,27 +769,27 @@ else
   nnoremap <leader>f  :Files<CR>
   nnoremap <leader>rr :History:<CR>
   nnoremap <leader>/  :History/<CR>
-  nnoremap <leader>bl  :BLines<CR>
+  nnoremap <leader>bl :BLines<CR>
   nnoremap <leader>bt :BTags<CR>
-  noremap  <leader>bc :BCommits<CR>
-  noremap  <leader>gf :GFiles<CR>
-  noremap  <leader>bb :Buffers<CR>
-  noremap  <leader>gc :Commits<CR>
+  nnoremap <leader>bc :BCommits<CR>
+  nnoremap <leader>gf :GFiles<CR>
+  nnoremap <leader>bb :Buffers<CR>
+  nnoremap <leader>gc :Commits<CR>
+  nnoremap <leader>gr :Gread<CR>
+  nnoremap <leader>as :Rgc<space><cword><CR>
+  nnoremap <leader>ag :Ack<CR>
 endif
 
-nmap <leader>ag :Ack<CR>
-nmap <leader>as :Rgc<space><cword><CR>
-nmap <leader>ga :Gcommit -av<CR>
-nmap <leader>gb :Git blame<CR>
-nmap <leader>gc :Gcommit<CR>
-nmap <leader>gd :Gdiffsplit origin/master
-nmap <leader>gm :Git mergetool<CR>
-nmap <leader>go :GBrowse<CR>
-nmap <leader>gp :Git push<CR>
-nmap <leader>gr :Gread<CR>
-nmap <leader>gs :Git<CR>
-nmap <leader>gt :Gcommit -am'wip'<CR>
-nmap <leader>gw :Gwrite<CR>
+nnoremap <leader>gm :Git mergetool<CR>
+nnoremap <leader>go :GBrowse<CR>
+nnoremap <leader>gt :Gcommit -am'wip'<CR>
+nnoremap <leader>gs :Git<CR>
+nnoremap <leader>gw :Gwrite<CR>
+nnoremap <leader>gr :Gread<CR>
+nnoremap <leader>ga :Gcommit -av<CR>
+nnoremap <leader>gd :Gdiffsplit origin/master
+nnoremap <leader>gb :Git blame<CR>
+nnoremap <leader>gp :Git push<CR>
 
 " rename
 map <leader>re :Rename<space>
