@@ -71,4 +71,8 @@ return require('packer').startup(function()
 	use 'tpope/vim-obsession'
 	use 'tpope/vim-rhubarb'
 	use 'tpope/vim-surround'
+	use {
+		'https://gitlab.com/yorickpeterse/nvim-window.git',
+		config = function() require'nvim-window-config' end,
+	}
 end )

@@ -116,18 +116,14 @@ map <leader>x :x<CR>
 
 " vim-plug
 map <leader>vpi :PackerInstall<CR>
-map <leader>vpc :PlugClean<CR>
-map <leader>vpu :PlugUpdate<CR>
+map <leader>vpc :PackerClean<CR>
+map <leader>vpu :PackerSync<CR>
 
 map <leader>rb :%s/<C-r><C-w>/
 map <leader>rq :cfdo %s/<C-r><C-w>/
 
 let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
-
-" gutentag
-" let g:gutentags_define_advanced_commands = 1
-" let g:gutentags_ctags_executable_ruby = 'rtags'
 
 let g:gutentags_enabled = 1
 let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
