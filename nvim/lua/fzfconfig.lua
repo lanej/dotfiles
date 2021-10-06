@@ -29,3 +29,4 @@ vim.api.nvim_set_keymap('n', '<leader>of', '<cmd>lua require("fzf-lua").oldfiles
 vim.api.nvim_set_keymap('n', '<leader>bb', '<cmd>lua require("fzf-lua").buffers()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>gc', '<cmd>lua require("fzf-lua").git_commits()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>bp', '<cmd>lua require("fzf-lua").git_branches()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>bs', '<cmd>lua require("fzf-lua").lsp_document_symbols()<CR>', { noremap = true, silent = true })
