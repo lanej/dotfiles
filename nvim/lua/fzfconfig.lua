@@ -20,7 +20,7 @@ vim.api.nvim_set_keymap('n', '<leader>az', '<cmd>lua require("fzf-lua").live_gre
 vim.api.nvim_set_keymap('n', '<leader>at', '<cmd>lua require("fzf-lua").tags()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>f', '<cmd>lua require("fzf-lua").files()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>rr', '<cmd>lua require("fzf-lua").command_history()<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>bl', '<cmd>lua require("fzf-lua").blines()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>bl', '<cmd>lua require("fzf-lua").grep_curbuf()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>bt', '<cmd>lua require("fzf-lua").btags()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>bc', '<cmd>lua require("fzf-lua").git_bcommits()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>gf', '<cmd>lua require("fzf-lua").git_files()<CR>', { noremap = true, silent = true })
