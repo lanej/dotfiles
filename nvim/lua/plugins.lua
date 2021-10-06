@@ -1,10 +1,13 @@
-return require('packer').startup(function()
+return require('packer').startup({function()
 	use 'wbthomason/packer.nvim'
 	use 'AndrewRadev/splitjoin.vim'
 	use 'christoomey/vim-tmux-navigator'
 	use { 'David-Kunz/treesitter-unit', branch ='main'}
 	use 'dense-analysis/ale'
-	use 'dhruvasagar/vim-prosession'
+	use {
+		'dhruvasagar/vim-prosession',
+		requires = 'tpope/vim-obsession',
+	}
 	use 'editorconfig/editorconfig-vim'
 	use {
 		'folke/todo-comments.nvim',
@@ -23,7 +26,6 @@ return require('packer').startup(function()
 		config = function() require'fzfconfig' end,
 		requires = { 'vijaymarupudi/nvim-fzf', 'kyazdani42/nvim-web-devicons' },
 	}
-	use 'idanarye/vim-merginal'
 	use 'janko-m/vim-test'
 	use 'junegunn/vim-easy-align'
 	use {
@@ -48,17 +50,32 @@ return require('packer').startup(function()
 		config = function() require'lsp' end,
 		requires = 'nvim-treesitter/nvim-treesitter',
 	}
-	use 'norcalli/nvim-colorizer.lua'
-	use 'nvim-lua/completion-nvim'
-	use 'nvim-lua/lsp_extensions.nvim'
+	use {
+		'norcalli/nvim-colorizer.lua',
+		requires = 'nvim-treesitter/nvim-treesitter',
+	}
+	use {
+		'nvim-lua/completion-nvim',
+		requires = 'neovim/nvim-lspconfig',
+	}
+	use {
+		'nvim-lua/lsp_extensions.nvim',
+		requires = 'neovim/nvim-lspconfig',
+	}
 	use 'nvim-lua/plenary.nvim'
 	use 'nvim-lua/popup.nvim'
 	use {
 		'nvim-treesitter/nvim-treesitter',
 		config = function() require'treesitter' end,
 	}
-	use 'nvim-treesitter/nvim-treesitter-textobjects'
-	use 'nvim-treesitter/playground'
+	use {
+		'nvim-treesitter/nvim-treesitter-textobjects',
+		requires = 'nvim-treesitter/nvim-treesitter',
+	}
+	use {
+		'nvim-treesitter/playground',
+		requires = 'nvim-treesitter/nvim-treesitter',
+	}
 	use {
 		'phaazon/hop.nvim',
 		config = function() require'hopconfig' end,
@@ -75,4 +92,10 @@ return require('packer').startup(function()
 		'https://gitlab.com/yorickpeterse/nvim-window.git',
 		config = function() require'nvim-window-config' end,
 	}
-end )
+	--https://github.com/b3nj5m1n/kommentary
+end,
+	config = {
+	  display = {
+	    open_fn = require('packer.util').float,
+	  }
+}})
