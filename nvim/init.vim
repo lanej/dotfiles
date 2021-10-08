@@ -45,6 +45,16 @@ set noeb
 set equalalways                " Maintain consistent window sizes
 set updatetime=300
 set nospell
+set shortmess+=c
+set shortmess+=T
+set shortmess+=a
+set noswapfile
+set nobackup
+set nowritebackup
+set list
+set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
+
+let mapleader = ','
 
 if (has("nvim"))
   set inccommand=nosplit       " live replace
@@ -55,17 +65,6 @@ if (exists("+termguicolors"))
   let &t_8b="\<Esc>[48;2;%lu;%lu;%lum"
   set termguicolors
 endif
-
-" ================ Turn Off Swap Files ==============
-set noswapfile
-set nobackup
-set nowritebackup
-
-" Trailing spaces and tabs
-set list
-set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
-
-let mapleader = ','
 
 " searching stuff
 
@@ -78,6 +77,7 @@ nnoremap * *``
 " Edit the vimrc file
 nnoremap ev  :tabedit $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
+nnoremap evp :source  $MYVIMRC<CR>
 nnoremap tt  :tablast<CR>
 nnoremap te  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
@@ -99,15 +99,6 @@ filetype plugin indent on
 
 " allow separate plugins per editor
 lua require('plugins')
-
-" plugin:tmux
-let g:tmux_navigator_no_mappings = 1
-let g:tmux_navigator_save_on_switch = 1
-
-nnoremap <silent> <C-h> :TmuxNavigateLeft<cr>
-nnoremap <silent> <C-j> :TmuxNavigateDown<cr>
-nnoremap <silent> <C-k> :TmuxNavigateUp<cr>
-nnoremap <silent> <C-l> :TmuxNavigateRight<cr>
 
 " plugin-config start
 map <leader>w :w<CR>
@@ -193,7 +184,6 @@ nnoremap yd :let @" = expand("%")<cr>
 
 " =============== UI ================
 syntax enable      " turn syntax highlighting on
-colorscheme tokyonight " set that smooth smooth color scheme
 set guioptions-=T  " remove Toolbar
 set guioptions-=r  " remove right scrollbar
 set guioptions-=L  " remove left scrollbar
@@ -323,7 +313,6 @@ augroup filetype_ruby_ale
   autocmd FileType ruby map <leader>d :ALEFix<CR>
   autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
   autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
-  autocmd FileType ruby set colorcolumn=100
 augroup END
 
 augroup packer_user_config
@@ -384,6 +373,11 @@ if has('autocmd')
     autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set conceallevel=0
     autocmd FileType markdown let g:gutentags_enabled = 0
+  augroup END
+
+  augroup filetype_lua
+    autocmd!
+    autocmd FileType lua set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_ruby
@@ -542,14 +536,6 @@ map <leader>tt :TestNearest<CR>
 map <leader>tl :TestLast<CR>
 map <leader>ts :TestSuite<CR>
 
-" c	don't give |ins-completion-menu| messages.  For example,
-" "-- XXX completion (YYY)", "match 1 of 2", "The only match",
-set shortmess+=c
-" T	truncate other messages in the middle if they are too long to
-set shortmess+=T
-" a	all of the above abbreviations
-set shortmess+=a
-
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
 nnoremap  <leader>Y  "+yg_
@@ -561,9 +547,3 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
-" Configure lsp
-" https://github.com/neovim/nvim-lspconfig#rust_analyzer
-
-" Enable type inlay hints
-autocmd CursorMoved,InsertLeave,BufEnter,BufWinEnter,TabEnter,BufWritePost *.rs
-\ lua require'lsp_extensions'.inlay_hints{ prefix = '', highlight = "LspInlay", enabled = {"TypeHint", "ChainingHint", "ParameterHint"} }

@@ -1,8 +1,15 @@
 return require('packer').startup({function()
 	use 'wbthomason/packer.nvim'
 	use 'AndrewRadev/splitjoin.vim'
-	use 'christoomey/vim-tmux-navigator'
-	use { 'David-Kunz/treesitter-unit', branch ='main'}
+	use {
+	    	'christoomey/vim-tmux-navigator',
+	 	config = function() require'tmux-config' end,
+  	}
+
+	use { 
+		'David-Kunz/treesitter-unit', 
+		branch ='main',
+	}
 	use 'dense-analysis/ale'
 	use {
 		'dhruvasagar/vim-prosession',
@@ -14,12 +21,15 @@ return require('packer').startup({function()
 		branch='main',
 		config = function() require("todo-comments").setup { } end
 	}
-	use 'ghifarit53/tokyonight-vim'
+	use {
+		'folke/tokyonight.nvim',
+		config = function() require'tokyonight-config' end,
+	}
 	use {
 		'glepnir/galaxyline.nvim',
 		branch = 'main',
 		config = function() require'statusline' end,
-		requires = {'kyazdani42/nvim-web-devicons'},
+		requires = {'kyazdani42/nvim-web-devicons', 'folke/tokyonight.nvim'},
 	}
 	use {
 		'ibhagwan/fzf-lua',
@@ -37,7 +47,7 @@ return require('packer').startup({function()
 	use 'lanej/vim-phab'
 	use {
 		'lewis6991/gitsigns.nvim',
-		branch='main',
+		branch = 'main',
 		config = function() require('gitsigns').setup() end,
 	}
 	use 'ludovicchabant/vim-gutentags'
