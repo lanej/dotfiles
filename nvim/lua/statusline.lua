@@ -1,21 +1,15 @@
   require ('galaxyline').short_line_list = {
-  'Mundo',
-  'MundoDiff',
   'NvimTree',
   'fugitive',
   'fugitiveblame',
   'help',
-  'minimap',
   'qf',
-  'tabman',
-  'tagbar',
-  'toggleterm'
 }
 
 local vi_mode_mapping = {
   ['']   = {'Empty',        '-'},
   ['!']  = {'Shell',        '-'},
-  [''] = {'CommonVisual', 'B'}, -- NOTE: You'll have to remove '^V' and input a 'real' '^V' sequence. You can do that with the following key sequence: <SHIFT-i> + <CTRL-v> + <CTRL-v> (don't be slow with the double <CTRL-v>)
+  [''] = {'CommonVisual', 'B'},
   ['R']  = {'Replace',      'R'},
   ['Rv'] = {'Normal',       '-'},
   ['S']  = {'Normal',       '-'},
@@ -35,19 +29,7 @@ local vi_mode_mapping = {
   ['v']  = {'CommonVisual', 'v'}
 }
 
-local colors = {
-  bg = '#1a1b26',
-  black = '#32344a',
-  blue = '#7aa2f7',
-  cyan = '#449dab',
-  fg = '#a9b1d6',
-  green = '#9ece6a',
-  magenta = '#ad8ee6',
-  orange = '#ff9e64',
-  red = '#f7768e',
-  white = '#787c99',
-  yellow = '#e0af68',
-}
+local colors = require("tokyonight.colors").setup({})
 
 -- Local helper functions
 local mode_color = function()
@@ -89,12 +71,17 @@ gls.left[2] = {
   LeftGitBranch = {
     provider = function()
       if require('galaxyline.condition').check_git_workspace() then
-        return '   ' .. require('galaxyline.provider_vcs').get_git_branch()
+	local branch = require('galaxyline.provider_vcs').get_git_branch()
+	if branch == nil then
+          return '   ?'
+	else
+          return '   ' .. branch
+	end
       else
         return '   '
       end
     end,
-    highlight = {colors.magenta, colors.bg},
+    highlight = {colors.purple, colors.bg},
     separator = ' ',
     separator_highlight = {colors.bg, colors.bg},
   }
@@ -105,7 +92,7 @@ gls.left[3] = {
       return ''
     end,
     separator = ' ',
-    highlight = { colors.magenta },
+    highlight = { colors.purple },
   }
 }
 gls.left[4] = {
@@ -116,9 +103,10 @@ gls.left[4] = {
         vim.api.nvim_command('hi GalaxyLeftGitDiffAdd guifg=' .. colors.green)
         return '+' .. require('galaxyline.provider_vcs').diff_add()
       else
+        vim.api.nvim_command('hi GalaxyLeftGitDiffAdd guifg=' .. colors.diff.add)
         return '+0 '
       end
-    end
+    end,
   }
 }
 gls.left[5] = {
@@ -126,9 +114,10 @@ gls.left[5] = {
     condition = require("galaxyline.condition").check_git_workspace,
     provider = function()
       if require('galaxyline.provider_vcs').diff_modified() then
-        vim.api.nvim_command('hi GalaxyLeftGitDiffModified guifg=' .. colors.cyan)
+        vim.api.nvim_command('hi GalaxyLeftGitDiffModified guifg=' .. colors.orange)
         return '~' .. require('galaxyline.provider_vcs').diff_modified()
       else
+        vim.api.nvim_command('hi GalaxyLeftGitDiffModified guifg=' .. colors.diff.change)
         return '~0 '
       end
     end
@@ -142,6 +131,7 @@ gls.left[6] = {
         vim.api.nvim_command('hi GalaxyLeftGitDiffRemove guifg=' .. colors.red)
         return '-' .. require('galaxyline.provider_vcs').diff_remove()
       else
+        vim.api.nvim_command('hi GalaxyLeftGitDiffRemove guifg=' .. colors.diff.delete)
         return '-0 '
       end
     end
@@ -160,7 +150,7 @@ gls.mid[1] = {
         return vim.fn.expand '%:t'
       end
     end,
-    highlight = { colors.fg, colors.black },
+    highlight = { colors.fg, colors.bg },
   }
 }
 
@@ -281,16 +271,11 @@ require ('galaxyline').section.short_line_left = {
       highlight = 'GalaxyMapperCommon2',
       provider = function ()
         local BufferTypeMap = {
-          ['Mundo'] = 'Mundo History',
-          ['MundoDiff'] = 'Mundo Diff',
           ['NvimTree'] = 'Nvim Tree',
           ['fugitive'] = 'Fugitive',
           ['fugitiveblame'] = 'Fugitive Blame',
           ['help'] = 'Help',
-          ['minimap'] = 'Minimap',
           ['qf'] = 'Quick Fix',
-          ['tabman'] = 'Tab Manager',
-          ['tagbar'] = 'Tagbar',
           ['toggleterm'] = 'Terminal'
         }
         local name = BufferTypeMap[vim.bo.filetype] or 'Editor'
@@ -300,16 +285,21 @@ require ('galaxyline').section.short_line_left = {
       separator_highlight = 'GalaxyMapperCommon7'
     }
   },
-  {
-    ShortLineLeftWindowNumber = {
-      highlight = 'GalaxyMapperCommon6',
-      provider = function()
-        return '  ' .. vim.api.nvim_win_get_number(vim.api.nvim_get_current_win()) .. ' '
-      end,
-      separator = '',
-      separator_highlight = 'GalaxyMapperCommon1'
-    }
+	{
+  ShortLineLeftFile = {
+    provider = function()
+      if vim.fn.expand '%:p' == 0 then
+        return '-'
+      end
+      if vim.fn.winwidth(0) > 50 then
+        return vim.fn.expand '%:~'
+      else
+        return vim.fn.expand '%:t'
+      end
+    end,
+    highlight = { colors.fg, colors.bg },
   }
+}
 }
 
 require ('galaxyline').section.short_line_right = {
