@@ -75,9 +75,9 @@ inoremap <C-\> <C-O>:nohls<CR>
 nnoremap * *``
 
 " Edit the vimrc file
-nnoremap ev  :tabedit $MYVIMRC<CR>
+nnoremap ev  :e $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap evp :source  $MYVIMRC<CR>
+nnoremap evp :e  ~/.config/nvim/lua/plugins.lua<CR>
 nnoremap tt  :tablast<CR>
 nnoremap te  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
@@ -279,6 +279,7 @@ let g:ale_fixers = {
       \ 'javascript.jsx': ['eslint'],
       \ 'javascript': ['eslint'],
       \ 'json': ['jq'],
+      \ 'lua': ['lua-format'],
       \ }
 
 let g:ale_linters = {
@@ -308,11 +309,11 @@ let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
 let g:ale_virtualtext_cursor = 1
 
-augroup filetype_ruby_ale
+augroup filetype_ale
   autocmd!
-  autocmd FileType ruby map <leader>d :ALEFix<CR>
-  autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+  autocmd FileType ruby,lua map <leader>d :ALEFix<CR>
+  autocmd FileType ruby,lua nmap <silent><C-p> <Plug>(ale_previous_wrap)
+  autocmd FileType ruby,lua nmap <silent><C-n> <Plug>(ale_next_wrap)
 augroup END
 
 augroup packer_user_config
