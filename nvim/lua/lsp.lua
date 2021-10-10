@@ -15,11 +15,7 @@ lsp.jsonls.setup {
   },
 }
 
-lsp.rust_analyzer.setup({
-  settings = {
-    ["rust-analyzer.cargo.allFeatures"] = true,
-  },
-})
+lsp.rust_analyzer.setup({})
 
 -- Enable diagnostics
 vim.lsp.handlers["textDocument/publishDiagnostics"] =
