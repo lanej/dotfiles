@@ -12,7 +12,6 @@ return require("packer").startup({
     use "hrsh7th/cmp-path"
     use "hrsh7th/cmp-vsnip"
     use "hrsh7th/vim-vsnip"
-
     use {
       "hrsh7th/nvim-cmp",
       config = function() require "completion" end,
@@ -21,6 +20,7 @@ return require("packer").startup({
         "hrsh7th/cmp-buffer",
         "hrsh7th/cmp-path",
         "hrsh7th/cmp-vsnip",
+        "windwp/nvim-autopairs",
       },
     }
     use {
@@ -114,6 +114,10 @@ return require("packer").startup({
     use {
       "https://gitlab.com/yorickpeterse/nvim-window.git",
       config = function() require "nvim-window-config" end,
+    }
+    use {
+      "windwp/nvim-autopairs",
+      config = function() require("nvim-autopairs").setup {} end,
     }
     -- https://github.com/b3nj5m1n/kommentary
   end,
