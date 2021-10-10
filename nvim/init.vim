@@ -56,13 +56,11 @@ set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
 
 let mapleader = ','
 
-if (has("nvim"))
-  set inccommand=nosplit       " live replace
-endif
+lua require('plugins')
+
+set inccommand=nosplit       " live replace
 
 if (exists("+termguicolors"))
-  let &t_8f="\<Esc>[38;2;%lu;%lu;%lum"
-  let &t_8b="\<Esc>[48;2;%lu;%lu;%lum"
   set termguicolors
 endif
 
@@ -96,9 +94,6 @@ nnoremap fak :%bd!<bar>e#<CR>
 
 " Enable filetype plugins to handle indents
 filetype plugin indent on
-
-" allow separate plugins per editor
-lua require('plugins')
 
 " plugin-config start
 map <leader>w :w<CR>
@@ -154,8 +149,6 @@ map <leader>ntf :NvimTreeFindFile<CR>
 " let g:indentLine_char = '⎸'
 let g:indent_blankline_show_current_context = v:true
 let g:indent_blankline_use_treesitter = v:true
-" splitjoin
-let g:splitjoin_ruby_curly_braces = 0
 
 map <leader>gl :Gitsigns blame_line<CR>
 
@@ -170,29 +163,16 @@ nnoremap <leader>gd :Gdiffsplit origin/master
 nnoremap <leader>gb :Git blame<CR>
 nnoremap <leader>gp :Git push<CR>
 
-" rename
 map <leader>re :Rename<space>
 
-"terminal
-if has("nvim")
-  tnoremap <C-o> <C-\><C-n>
-endif
-
-" noremap <leader>sh :terminal<cr>
+tnoremap <C-o> <C-\><C-n>
 nnoremap yd :let @" = expand("%")<cr>
-" plugin-config end
-
-" =============== UI ================
 syntax enable      " turn syntax highlighting on
 set guioptions-=T  " remove Toolbar
 set guioptions-=r  " remove right scrollbar
 set guioptions-=L  " remove left scrollbar
 set number         " show line numbers
 set laststatus=2   " Prevent the ENTER prompt more frequently
-
-set completeopt=menu,noinsert,noselect
-
-" ================ Scrolling ========================
 set scrolloff=8         "Start scrolling when we're 8 lines away from margins
 set sidescrolloff=15
 set sidescroll=1
@@ -201,12 +181,6 @@ set sidescroll=1
 if has('cmdline_info')
   set showcmd " Show partial commands in status line and selected characters/lines in visual mode
 endif
-
-" polyglot syntax cues
-let ruby_operators=1
-let ruby_space_errors=1
-let ruby_line_continuation_error=1
-let ruby_no_expensive=1
 
 " other cwd configs
 map <leader>ct :cd %:p:h<CR>
@@ -236,8 +210,6 @@ command! E :e
 vmap <Enter> <Plug>(EasyAlign)
 " Realign the whole file
 map <leader>= ggVG=<CR>
-
-set shortmess=a
 
 let g:clang_format#style_options = {
       \ "AccessModifierOffset" : -4,
@@ -270,8 +242,6 @@ endif
 if has('conceal')
   set conceallevel=0 concealcursor=niv
 endif
-
-autocmd BufEnter * lua require'completion'.on_attach()
 
 let g:ale_fixers = {
       \ 'ruby': ['rubocop'],
@@ -353,9 +323,7 @@ if has('autocmd')
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
-    if has('nvim')
-      autocmd DirChanged * call SourceEnv()
-    endif
+    autocmd DirChanged * call SourceEnv()
   augroup END
 
   augroup filetype_terminal
@@ -393,6 +361,9 @@ if has('autocmd')
     autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
     autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /g<CR>
     autocmd FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
+    autocmd FileType ruby map <leader>d :ALEFix<CR>
+    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
 
     let g:test#runner_commands = ['RSpec']
 
@@ -414,6 +385,7 @@ if has('autocmd')
   augroup filetype_lua
     autocmd!
     autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
+    autocmd FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -496,9 +468,7 @@ if has('autocmd')
 
   augroup BWCCreateDir
     autocmd!
-
     autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
-
   augroup END
 endif
 
