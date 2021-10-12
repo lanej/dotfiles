@@ -6,6 +6,13 @@ lsp.vimls.setup {}
 lsp.yamlls.setup {}
 lsp.sumneko_lua.setup {
   cmd = { "lua-language-server" },
+  settings = {
+    Lua = {
+      diagnostics = {
+        globals = { "vim" },
+      },
+    },
+  },
 }
 lsp.pylsp.setup {}
 lsp.texlab.setup {}
