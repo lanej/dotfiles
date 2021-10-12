@@ -62,7 +62,6 @@ fi
 
 if command -v bat >/dev/null; then
   alias cat='bat'
-  alias bat='bat -p'
 fi
 
 alias ll="ls -alh"
