@@ -499,7 +499,7 @@ let test#ruby#rspec#options = {
       \}
 
 let test#python#runner = 'pytest'
-let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest']
+let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest', 'Minitest']
 
 map <leader>tf :TestFile<CR>
 map <leader>tu :TestNearest<CR>
