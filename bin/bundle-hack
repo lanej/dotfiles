@@ -7,4 +7,4 @@ elif [[ ! -s $(which bundle 2>/dev/null) ]]; then
 	gem install bundler --no-document -qq
 fi
 
-($BUNDLE check 1>/dev/null || $BUNDLE install --local --jobs 5 || $BUNDLE install --jobs 5) && $BUNDLE "$@"
+($BUNDLE check --dry-run 1>/dev/null || $BUNDLE install --local --jobs 5 || $BUNDLE install --jobs 5) && $BUNDLE "$@"
