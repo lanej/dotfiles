@@ -58,6 +58,8 @@ let mapleader = ','
 
 lua require('plugins')
 
+colorscheme tender
+
 set inccommand=nosplit       " live replace
 
 if (exists("+termguicolors"))
@@ -146,7 +148,6 @@ map <leader>ntt :NvimTreeToggle<CR>
 map <leader>ntc :NvimTreeClose<CR>
 map <leader>ntf :NvimTreeFindFile<CR>
 
-" let g:indentLine_char = '⎸'
 let g:indent_blankline_show_current_context = v:true
 let g:indent_blankline_use_treesitter = v:true
 
