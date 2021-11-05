@@ -43,16 +43,21 @@ return require("packer").startup({
       config = function() require "tokyonight-config" end,
     }
     use {
+      "~/src/tender",
+      requires = { "rktjmp/lush.nvim" },
+    }
+    use {
       "glepnir/galaxyline.nvim",
       branch = "main",
       config = function() require "statusline" end,
-      requires = { "kyazdani42/nvim-web-devicons", "folke/tokyonight.nvim" },
+      requires = { "kyazdani42/nvim-web-devicons", "lanej/tender" },
     }
     use {
       "ibhagwan/fzf-lua",
       config = function() require "fzfconfig" end,
       requires = { "vijaymarupudi/nvim-fzf", "kyazdani42/nvim-web-devicons" },
     }
+    use "rktjmp/lush.nvim"
     use "janko-m/vim-test"
     use "junegunn/vim-easy-align"
     use {
@@ -119,6 +124,7 @@ return require("packer").startup({
       "windwp/nvim-autopairs",
       config = function() require("nvim-autopairs").setup {} end,
     }
+    -- use 'AndrewRadev/splitjoin.vim'
     -- https://github.com/b3nj5m1n/kommentary
   end,
   config = {

@@ -524,12 +524,9 @@ schemes:
   #   https://github.com/ghifarit53/tokyonight-vim
   #   https://github.com/enkia/tokyo-night-vscode-theme
   tokyo-night: &tokyo-night
-    # Default colors
     primary:
       background: '0x1a1b26'
       foreground: '0xffffff'
-
-    # Normal colors
     normal:
       black:   '0x32344a'
       red:     '0xf7768e'
@@ -539,8 +536,6 @@ schemes:
       magenta: '0xad8ee6'
       cyan:    '0x449dab'
       white:   '0x787c99'
-
-    # Bright colors
     bright:
       black:   '0x444b6a'
       red:     '0xff7a93'
@@ -550,5 +545,36 @@ schemes:
       magenta: '0xbb9af7'
       cyan:    '0x0db9d7'
       white:   '0xacb0d0'
+  tender: &tender
+    primary:
+      background: '0x262626'
+      foreground: '0xffffff'
+      #dim_foreground: '0x9a9a9a'
+      #bright_foreground: '0xffffff'
+    # cursor:
+     # text: '0x000000'
+     # cursor: '0xd0d0d0'
+    selection:
+      text: '0xeaeaea'
+      background: '0x404040'
+    normal:
+      black:   '0x262626'
+      red:     '0xac4142'
+      green:   '0x87d787'
+      yellow:  '0xf4bf75'
+      blue:    '0x6a9fb5'
+      magenta: '0xaa759f'
+      cyan:    '0x75b5aa'
+      white:   '0xf2f2f2'
+    bright:
+      black:   '0x595959'
+      red:     '0xc0595a'
+      green:   '0x87d75f'
+      yellow:  '0xf7d3a1'
+      blue:    '0x3c7f9c'
+      magenta: '0xcfb0c8'
+      cyan:    '0x9cc9c2'
+      white:   '0xf2f2f2'
 
-colors: *tokyo-night
+
+colors: *tender

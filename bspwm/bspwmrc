@@ -1,7 +1,7 @@
 #! /bin/sh
 
 source ~/.xsession
-xsetroot -solid "#1a1b26"
+xsetroot -solid "#262626"
 
 sxhkd 2>&1 > ~/.config/sxhkd/sxhkd.log &
 ~/.config/polybar/launch.sh 2>&1 1>~/.config/polybar/polybar.log &
