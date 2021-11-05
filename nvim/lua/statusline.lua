@@ -215,8 +215,8 @@ gls.right[4] = {
 
 gls.right[5] = {
   RightLspHintSeparator = {
-    provider = function() return "" end,
-    highlight = { tostring(colors.fg), tostring(colors.bg) },
+    provider = function() return "《" end,
+    highlight = { tostring(colors.yellow), tostring(colors.bg) },
     separator_highlight = { tostring(colors.bg), tostring(colors.bg) },
   },
 }
