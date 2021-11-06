@@ -96,7 +96,7 @@ gls.left[4] = {
         vim.api.nvim_command("hi GalaxyLeftGitDiffAdd guifg=" .. tostring(colors.green))
         return "+" .. require("galaxyline.provider_vcs").diff_add()
       else
-        vim.api.nvim_command("hi GalaxyLeftGitDiffAdd guifg=" .. tostring(colors.diff.add))
+        vim.api.nvim_command("hi GalaxyLeftGitDiffAdd guifg=" .. tostring(colors.shadow))
         return "+0 "
       end
     end,
@@ -112,7 +112,7 @@ gls.left[5] = {
         vim.api.nvim_command("hi GalaxyLeftGitDiffModified guifg=" .. tostring(colors.orange))
         return "~" .. require("galaxyline.provider_vcs").diff_modified()
       else
-        vim.api.nvim_command("hi GalaxyLeftGitDiffModified guifg=" .. tostring(colors.diff.change))
+        vim.api.nvim_command("hi GalaxyLeftGitDiffModified guifg=" .. tostring(colors.shadow))
         return "~0 "
       end
     end,
@@ -128,7 +128,7 @@ gls.left[6] = {
         vim.api.nvim_command("hi GalaxyLeftGitDiffRemove guifg=" .. tostring(colors.red))
         return "-" .. require("galaxyline.provider_vcs").diff_remove()
       else
-        vim.api.nvim_command("hi GalaxyLeftGitDiffRemove guifg=" .. tostring(colors.diff.delete))
+        vim.api.nvim_command("hi GalaxyLeftGitDiffRemove guifg=" .. tostring(colors.shadow))
         return "-0 "
       end
     end,
