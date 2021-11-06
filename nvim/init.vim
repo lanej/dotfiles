@@ -283,8 +283,8 @@ let g:ale_virtualtext_cursor = 1
 augroup filetype_ale
   autocmd!
   autocmd FileType ruby,lua map <leader>d :ALEFix<CR>
-  autocmd FileType ruby,lua nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  autocmd FileType ruby,lua nmap <silent><C-n> <Plug>(ale_next_wrap)
+  autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
+  autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
 augroup END
 
 augroup packer_user_config
