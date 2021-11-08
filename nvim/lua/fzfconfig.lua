@@ -31,6 +31,10 @@ vim.api.nvim_set_keymap("n", "<leader>az", "<cmd>lua require(\"fzf-lua\").live_g
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "<leader>aa", "<cmd>lua require(\"fzf-lua\").grep()<CR>", {
+  noremap = true,
+  silent = true,
+})
 vim.api.nvim_set_keymap("n", "<leader>at", "<cmd>lua require(\"fzf-lua\").tags()<CR>", {
   noremap = true,
   silent = true,

@@ -43,7 +43,7 @@ return require("packer").startup({
       config = function() require "tokyonight-config" end,
     }
     use {
-      "~/src/tender",
+      "lanej/tender",
       requires = { "rktjmp/lush.nvim" },
     }
     use {
@@ -86,6 +86,11 @@ return require("packer").startup({
       config = function() require("lsp") end,
     }
     use {
+      'glepnir/lspsaga.nvim',
+      requires = 'neovim/nvim-lspconfig',
+      config = function() require("lspsagaconfig") end,
+    }
+    use {
       "norcalli/nvim-colorizer.lua",
       requires = "nvim-treesitter/nvim-treesitter",
     }
@@ -125,6 +130,10 @@ return require("packer").startup({
       config = function() require("nvim-autopairs").setup {} end,
     }
     -- use 'AndrewRadev/splitjoin.vim'
+    --use {
+      --"romgrk/nvim-treesitter-context",
+      --requires = "nvim-lua/lsp_extensions.nvim",
+    --}
     -- https://github.com/b3nj5m1n/kommentary
   end,
   config = {
