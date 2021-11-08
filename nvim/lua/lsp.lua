@@ -56,10 +56,6 @@ vim.api.nvim_set_keymap("n", "<leader>cy", "<cmd>lua vim.lsp.buf.type_definition
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", {
-  noremap = true,
-  silent = true,
-})
 vim.api.nvim_set_keymap("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", {
   noremap = true,
   silent = true,
