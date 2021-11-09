@@ -1,0 +1,32 @@
+[[themes]]
+name = "tender"
+[themes.palette]
+background = "#262626"
+foreground = "#ffffff"
+black = "#525252"
+blue = "#6a9fb5"
+cyan = "#75b5aa"
+green = "#90a959"
+magenta = "#aa759f"
+red = "#ac4142"
+white = "#f2f2f2"
+yellow = "#f4bf75"
+bright_black = "#505050"
+bright_blue = "#0e47f1"
+bright_cyan = "#9cc9c2"
+bright_green = "#b0c289"
+bright_magenta = "#cfb0c8"
+bright_red = "#c0595a"
+bright_white = "#ffffff"
+bright_yellow = "#f7d3a1"
+selection_background = "#404040"
+selection_foreground =  "#eaeaea"
+[themes.component_style]
+block_title = { fg = "Blue"  }
+playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_album = { fg = "Yellow" }
+playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { fg = "SelectionBackground", bg = "BrightYellow", modifiers = ["Italic"] }
+current_playing = { fg = "Yellow", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
