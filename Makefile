@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai powerline
+.PHONY: zsh qute alacritty yabai powerline spotify_player
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -115,6 +115,8 @@ kitty:
 alacritty:
 	@mkdir -p $(HOME)/.config/alacritty
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml $(HOME)/.config/alacritty
+spotify_player:
+	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
 powerline:
 	@ln -fns $(DOTFILES)/powerline $(HOME)/.config/powerline
 ifeq ($(OS),OSX)
