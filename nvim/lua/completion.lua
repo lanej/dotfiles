@@ -10,7 +10,7 @@ cmp.setup({
     ["<C-Space>"] = cmp.mapping.complete(),
     ["<C-e>"] = cmp.mapping.close(),
     ["<CR>"] = cmp.mapping.confirm({
-      select = true,
+      select = false,
     }),
   },
   sources = {
