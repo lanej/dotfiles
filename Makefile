@@ -66,8 +66,10 @@ vim:
 	@ln -fs $(DOTFILES)/nvim/coc-settings.json $(HOME)/.config/nvim/coc-settings.json
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
 	@ls ~/.local/share/nvim/site/pack/packer/start/packer.nvim 1>/dev/null || \
-		git clone --depth 1 https://github.com/wbthomason/packer.nvim\
+		git clone -q --depth 1 https://github.com/wbthomason/packer.nvim\
 		~/.local/share/nvim/site/pack/packer/start/packer.nvim
+	@sh -c 'curl -sfLo $(HOME)/.local/share/nvim/site/autoload/plug.vim --create-dirs \
+       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults

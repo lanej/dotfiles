@@ -60,6 +60,10 @@ lua require('plugins')
 
 colorscheme tender
 
+call plug#begin(stdpath('data') . '/plugged')
+Plug 'AndrewRadev/splitjoin.vim'
+call plug#end()
+
 set inccommand=nosplit       " live replace
 
 if (exists("+termguicolors"))
