@@ -15,13 +15,13 @@ cmp.setup({
   },
   sources = {
     {
-      name = "path",
+      name = "nvim_lsp",
     },
     {
       name = "buffer",
     },
     {
-      name = "nvim_lsp",
+      name = "path",
     },
     {
       name = "vsnip",
