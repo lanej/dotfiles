@@ -44,7 +44,7 @@ vim.api.nvim_set_keymap("n", "<leader>f", "<cmd>lua require(\"fzf-lua\").files()
   silent = true,
 })
 vim.api.nvim_set_keymap("n", "<leader>af",
-                        "<cmd>lua require(\"fzf-lua\").files({ cwd = \"%:h\" })<CR>", {
+                        "<cmd>lua require(\"fzf-lua\").files({ cwd = vim.fn.getcwd() })<CR>", {
   noremap = true,
   silent = true,
 })
