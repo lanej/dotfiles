@@ -328,7 +328,7 @@ if has('autocmd')
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
-    autocmd DirChanged * call SourceEnv()
+    autocmd UIEnter,DirChanged * call SourceEnv()
   augroup END
 
   augroup filetype_terminal
