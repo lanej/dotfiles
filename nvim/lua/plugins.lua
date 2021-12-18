@@ -20,6 +20,7 @@ return require("packer").startup({
         "hrsh7th/cmp-buffer",
         "hrsh7th/cmp-path",
         "hrsh7th/cmp-vsnip",
+	"ray-x/lsp_signature.nvim",
       },
     }
     use {
