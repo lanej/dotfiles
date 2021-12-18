@@ -300,21 +300,40 @@ map gm :TSHighlightCapturesUnderCursor<CR>
 
 let g:jedi#auto_initialization = 0
 
-function! SourceEnv()
-  if get(v:event, "cwd") == get(g:, "source_env_dir", "")
-    return
-  else
-    let g:source_env_dir = get(v:event, "cwd")
+function! SourceEnvOnDirChange()
+  if has_key(v:event, "cwd")
+    let sources = SourceEnv()
+    if sources
+      echo "reloaded env"
+    end
   end
+endfunction
 
+function! SourceEnv()
+  let loaded=0
   if filereadable(".env")
+    let loaded=1
     silent! Dotenv .env
   endif
 
   if filereadable(".env-override")
+    let loaded=1
     silent! Dotenv .env-override
   endif
+
+  return loaded
 endfunction
+
+nnoremap <leader>se :call SourceEnv()<CR>
+
+function! Env()
+  let evars = environ()
+  for var in evars->keys()->sort()
+      echo var . '=' . evars[var]
+  endfor
+endfunction
+
+nnoremap <leader>ee :call Env()<CR>
 
 if has('autocmd')
   augroup FiletypeGroup
@@ -328,7 +347,8 @@ if has('autocmd')
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
-    autocmd UIEnter,DirChanged * call SourceEnv()
+    autocmd DirChanged * call SourceEnvOnDirChange()
+    autocmd VimEnter * call SourceEnv()
   augroup END
 
   augroup filetype_terminal
