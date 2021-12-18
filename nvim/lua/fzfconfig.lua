@@ -98,3 +98,8 @@ vim.api.nvim_set_keymap("n", "<leader>as",
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "<leader>ss",
+                        "<cmd>lua require(\"fzf-lua\").spell_suggest()<CR>", {
+  noremap = true,
+  silent = true,
+})
