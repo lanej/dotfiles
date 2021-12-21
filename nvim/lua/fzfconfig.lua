@@ -9,6 +9,13 @@ require"fzf-lua".setup {
       ["<C-u>"] = "preview-page-reset",
     },
   },
+  git = {
+    branches = {
+      prompt  = 'Branches❯ ',
+      cmd     = "git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator'",
+      preview = "git diff --stat --summary --color -p origin/master...{} | delta",
+    },
+  }
 }
 
 vim.api.nvim_set_keymap("n", "<leader>aw", "<cmd>lua require(\"fzf-lua\").grep_cword()<CR>", {
