@@ -48,11 +48,13 @@ set nospell
 set shortmess+=c
 set shortmess+=T
 set shortmess+=a
+set shortmess+=W
 set noswapfile
 set nobackup
 set nowritebackup
 set list
 set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
+exe "set cedit=<C-V>"
 
 let mapleader = ','
 
@@ -343,7 +345,7 @@ if has('autocmd')
     " Save files when vim loses focus
     autocmd FocusLost,BufLeave * silent! wa
     " Reload files when vim gains focus
-    autocmd FocusGained,BufEnter * :checktime
+    " autocmd FocusGained,BufEnter * :checktime
     " Default spellcheck off
     autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
     " Source .env files
