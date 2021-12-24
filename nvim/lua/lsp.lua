@@ -72,3 +72,7 @@ vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.lsp.diagnostic.set_loclis
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>", {
+  noremap = true,
+  silent = true,
+})

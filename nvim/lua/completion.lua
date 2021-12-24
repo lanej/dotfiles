@@ -25,7 +25,7 @@ require("lsp_signature").setup({
     bind = true,
     border = "single",
 })
-local completion_servers = {"rust_analyzer", "solargraph", "gopls"}
+local completion_servers = {"rust_analyzer", "solargraph", "gopls", "pylsp"}
 for _, server in ipairs(completion_servers) do
     require("lspconfig")[server].setup {
         capabilities = require("cmp_nvim_lsp").update_capabilities(capabilities)

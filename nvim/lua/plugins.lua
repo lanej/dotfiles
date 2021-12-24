@@ -113,7 +113,7 @@ return require("packer").startup({
       "phaazon/hop.nvim",
       config = function() require "hopconfig" end,
     }
-    use "scrooloose/nerdcommenter"
+    --use "scrooloose/nerdcommenter"
     use "tpope/vim-dotenv"
     use "tpope/vim-eunuch"
     use "tpope/vim-fugitive"
@@ -125,11 +125,7 @@ return require("packer").startup({
       "https://gitlab.com/yorickpeterse/nvim-window.git",
       config = function() require "nvim-window-config" end,
     }
-    --use {
-      --"romgrk/nvim-treesitter-context",
-      --requires = "nvim-lua/lsp_extensions.nvim",
-    --}
-    -- https://github.com/b3nj5m1n/kommentary
+   use "b3nj5m1n/kommentary"
   end,
   config = {
     display = {
