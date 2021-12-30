@@ -58,6 +58,7 @@ vim:
 	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.config/nvim/init.vim
 	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.vimrc
 	@ln -fns $(DOTFILES)/nvim/lua $(HOME)/.config/nvim/lua
+	@ln -fs $(DOTFILES)/.lua-format $(HOME)/.lua-format
 	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	@ln -fs $(DOTFILES)/vim/autoload/plug.vim $(HOME)/.local/share/nvim/site/autoload/plug.vim
 	@mkdir -p $(HOME)/.local/share/nvim/plugged
