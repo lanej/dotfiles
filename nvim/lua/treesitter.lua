@@ -1,11 +1,7 @@
-require'nvim-treesitter.configs'.setup({
+require"nvim-treesitter.configs".setup({
   ensure_installed = "maintained",
-  highlight = {
-    enable = true,
-  },
-  indent = {
-    enable = true
-  },
+  highlight = { enable = true },
+  indent = { enable = true },
   textobjects = {
     select = {
       enable = true,
@@ -28,35 +24,19 @@ require'nvim-treesitter.configs'.setup({
     },
     swap = {
       enable = true,
-      swap_next = {
-        ["<leader>a"] = "@parameter.inner",
-      },
-      swap_previous = {
-        ["<leader>A"] = "@parameter.inner",
-      },
+      swap_next = { ["<leader>a"] = "@parameter.inner" },
+      swap_previous = { ["<leader>A"] = "@parameter.inner" },
     },
     move = {
       enable = true,
       set_jumps = true, -- whether to set jumps in the jumplist
-      goto_next_start = {
-        ["]m"] = "@function.outer",
-        ["]]"] = "@class.outer",
-      },
-      goto_next_end = {
-        ["]M"] = "@function.outer",
-        ["]["] = "@class.outer",
-      },
-      goto_previous_start = {
-        ["[m"] = "@function.outer",
-        ["[["] = "@class.outer",
-      },
-      goto_previous_end = {
-        ["[M"] = "@function.outer",
-        ["[]"] = "@class.outer",
-      },
+      goto_next_start = { ["]m"] = "@function.outer", ["]]"] = "@class.outer" },
+      goto_next_end = { ["]M"] = "@function.outer", ["]["] = "@class.outer" },
+      goto_previous_start = { ["[m"] = "@function.outer", ["[["] = "@class.outer" },
+      goto_previous_end = { ["[M"] = "@function.outer", ["[]"] = "@class.outer" },
     },
-  }
+  },
 })
 
---vnoremap as :lua require"treesitter-unit".select()<CR>
---onoremap as :<c-u>lua require"treesitter-unit".select()<CR>
+-- vnoremap as :lua require"treesitter-unit".select()<CR>
+-- onoremap as :<c-u>lua require"treesitter-unit".select()<CR>
