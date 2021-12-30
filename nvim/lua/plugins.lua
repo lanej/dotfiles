@@ -3,16 +3,16 @@ local use = require("packer").use
 return require("packer").startup({
   function()
     use "wbthomason/packer.nvim"
-    use {
-      "christoomey/vim-tmux-navigator",
-      config = function() require "tmux-config" end,
-    }
-    use "hrsh7th/cmp-nvim-lsp"
+    use { "christoomey/vim-tmux-navigator", config = function() require "tmux-config" end }
+    --[[ use "hrsh7th/cmp-nvim-lsp"
     use "hrsh7th/cmp-buffer"
     use "hrsh7th/cmp-path"
-    use "hrsh7th/cmp-vsnip"
-    use "hrsh7th/vim-vsnip"
-    use {
+    use "hrsh7th/cmp-vsnip" ]]
+    -- use "hrsh7th/vim-vsnip"
+    use { "ms-jpq/coq_nvim", branch = "coq" }
+    use { "ms-jpq/coq.artifacts", branch = "artifacts" }
+    use { "ms-jpq/coq.thirdparty", branch = "3p" }
+    --[[ use {
       "hrsh7th/nvim-cmp",
       config = function() require "completion" end,
       requires = {
@@ -20,32 +20,20 @@ return require("packer").startup({
         "hrsh7th/cmp-buffer",
         "hrsh7th/cmp-path",
         "hrsh7th/cmp-vsnip",
-	"ray-x/lsp_signature.nvim",
+        "ray-x/lsp_signature.nvim",
       },
-    }
-    use {
-      "David-Kunz/treesitter-unit",
-      branch = "main",
-    }
+    } ]]
+    use { "David-Kunz/treesitter-unit", branch = "main" }
     use "dense-analysis/ale"
-    use {
-      "dhruvasagar/vim-prosession",
-      requires = "tpope/vim-obsession",
-    }
+    use { "dhruvasagar/vim-prosession", requires = "tpope/vim-obsession" }
     use "editorconfig/editorconfig-vim"
     use {
       "folke/todo-comments.nvim",
       branch = "main",
       config = function() require("todo-comments").setup {} end,
     }
-    use {
-      "folke/tokyonight.nvim",
-      config = function() require "tokyonight-config" end,
-    }
-    use {
-      "lanej/tender",
-      requires = { "rktjmp/lush.nvim" },
-    }
+    use { "folke/tokyonight.nvim", config = function() require "tokyonight-config" end }
+    use { "lanej/tender", requires = { "rktjmp/lush.nvim" } }
     use {
       "glepnir/galaxyline.nvim",
       branch = "main",
@@ -76,44 +64,29 @@ return require("packer").startup({
       config = function() require("gitsigns").setup() end,
     }
     use "ludovicchabant/vim-gutentags"
-    use {
-      "lukas-reineke/indent-blankline.nvim",
-      requires = "nvim-treesitter/nvim-treesitter",
-    }
+    use { "lukas-reineke/indent-blankline.nvim", requires = "nvim-treesitter/nvim-treesitter" }
     use {
       "neovim/nvim-lspconfig",
       requires = "nvim-lua/lsp_extensions.nvim",
       config = function() require("lsp") end,
     }
     use {
-      'glepnir/lspsaga.nvim',
-      requires = 'neovim/nvim-lspconfig',
+      "glepnir/lspsaga.nvim",
+      requires = "neovim/nvim-lspconfig",
       config = function() require("lspsagaconfig") end,
     }
-    use {
-      "norcalli/nvim-colorizer.lua",
-      requires = "nvim-treesitter/nvim-treesitter",
-    }
+    use { "norcalli/nvim-colorizer.lua", requires = "nvim-treesitter/nvim-treesitter" }
     use { "nvim-lua/lsp_extensions.nvim" }
     use "nvim-lua/plenary.nvim"
     use "nvim-lua/popup.nvim"
-    use {
-      "nvim-treesitter/nvim-treesitter",
-      config = function() require "treesitter" end,
-    }
+    use { "nvim-treesitter/nvim-treesitter", config = function() require "treesitter" end }
     use {
       "nvim-treesitter/nvim-treesitter-textobjects",
       requires = "nvim-treesitter/nvim-treesitter",
     }
-    use {
-      "nvim-treesitter/playground",
-      requires = "nvim-treesitter/nvim-treesitter",
-    }
-    use {
-      "phaazon/hop.nvim",
-      config = function() require "hopconfig" end,
-    }
-    --use "scrooloose/nerdcommenter"
+    use { "nvim-treesitter/playground", requires = "nvim-treesitter/nvim-treesitter" }
+    use { "phaazon/hop.nvim", config = function() require "hopconfig" end }
+    -- use "scrooloose/nerdcommenter"
     use "tpope/vim-dotenv"
     use "tpope/vim-eunuch"
     use "tpope/vim-fugitive"
@@ -125,11 +98,7 @@ return require("packer").startup({
       "https://gitlab.com/yorickpeterse/nvim-window.git",
       config = function() require "nvim-window-config" end,
     }
-   use "b3nj5m1n/kommentary"
+    use "b3nj5m1n/kommentary"
   end,
-  config = {
-    display = {
-      open_fn = require("packer.util").float,
-    },
-  },
+  config = { display = { open_fn = require("packer.util").float } },
 })
