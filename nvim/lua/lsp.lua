@@ -1,10 +1,11 @@
 local lsp = require "lspconfig"
+local coq = require "coq"
 
-lsp.solargraph.setup {}
-lsp.gopls.setup {}
-lsp.vimls.setup {}
-lsp.yamlls.setup {}
-lsp.sumneko_lua.setup {
+lsp.solargraph.setup(coq.lsp_ensure_capabilities())
+lsp.gopls.setup(coq.lsp_ensure_capabilities())
+lsp.vimls.setup(coq.lsp_ensure_capabilities())
+lsp.yamlls.setup(coq.lsp_ensure_capabilities())
+lsp.sumneko_lua.setup(coq.lsp_ensure_capabilities({
   cmd = { "lua-language-server" },
   settings = {
     Lua = {
@@ -13,18 +14,16 @@ lsp.sumneko_lua.setup {
       },
     },
   },
-}
-lsp.pylsp.setup {}
-lsp.texlab.setup {}
-lsp.jsonls.setup {
+}))
+lsp.pylsp.setup(coq.lsp_ensure_capabilities())
+lsp.texlab.setup(coq.lsp_ensure_capabilities())
+lsp.jsonls.setup(coq.lsp_ensure_capabilities({
   commands = {
     Format = { function() vim.lsp.buf.range_formatting({}, { 0, 0 }, { vim.fn.line("$"), 0 }) end },
   },
-}
+}))
+lsp.rust_analyzer.setup(coq.lsp_ensure_capabilities())
 
-lsp.rust_analyzer.setup({})
-
--- Enable diagnostics
 vim.lsp.handlers["textDocument/publishDiagnostics"] =
   vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
     virtual_text = true,

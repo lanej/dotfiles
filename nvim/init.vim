@@ -58,6 +58,8 @@ exe "set cedit=<C-V>"
 
 let mapleader = ','
 
+let g:coq_settings = { 'auto_start': 'shut-up' }
+
 lua require('plugins')
 
 colorscheme tender
