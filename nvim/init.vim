@@ -58,7 +58,7 @@ exe "set cedit=<C-V>"
 
 let mapleader = ','
 
-let g:coq_settings = { 'auto_start': 'shut-up' }
+let g:coq_settings = { 'auto_start': 'shut-up',  'keymap.jump_to_mark': '<c-v>'}
 
 lua require('plugins')
 
@@ -66,6 +66,7 @@ colorscheme tender
 
 call plug#begin(stdpath('data') . '/plugged')
 Plug 'AndrewRadev/splitjoin.vim'
+Plug 'ludovicchabant/vim-gutentags'
 call plug#end()
 
 set inccommand=nosplit       " live replace

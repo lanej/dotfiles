@@ -63,7 +63,6 @@ return require("packer").startup({
       branch = "main",
       config = function() require("gitsigns").setup() end,
     }
-    use "ludovicchabant/vim-gutentags"
     use { "lukas-reineke/indent-blankline.nvim", requires = "nvim-treesitter/nvim-treesitter" }
     use {
       "neovim/nvim-lspconfig",
