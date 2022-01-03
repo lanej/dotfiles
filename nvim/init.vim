@@ -141,8 +141,6 @@ let g:gutentags_ctags_exclude = [
 let g:gutentags_project_info = []
 call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
 
-nnoremap <silent> [t :pop<cr>
-
 " quickfix nav
 nnoremap ]q :cnext<CR>
 nnoremap [q :cprev<CR>
