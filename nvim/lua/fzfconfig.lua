@@ -4,18 +4,20 @@ require"fzf-lua".setup {
       ["<C-f>"] = "toggle-fullscreen",
       ["<C-h>"] = "toggle-preview",
       ["<C-r>"] = "toggle-preview-cw",
-      ["<C-j>"] = "preview-page-down",
-      ["<C-k>"] = "preview-page-up",
-      ["<C-u>"] = "preview-page-reset",
+      ["<C-j>"] = "half-page-down",
+      ["<C-k>"] = "half-page-up",
     },
   },
   git = {
     branches = {
-      prompt  = 'Branches❯ ',
-      cmd     = "git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator'",
+      prompt = 'Branches❯ ',
+      cmd = "git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator'",
       preview = "git diff --stat --summary --color -p origin/master...{} | delta",
     },
-  }
+    commits = {
+      preview = "echo {} | awk '{ print $1 }' | xargs git show | delta",
+    },
+  },
 }
 
 vim.api.nvim_set_keymap("n", "<leader>aw", "<cmd>lua require(\"fzf-lua\").grep_cword()<CR>", {
@@ -51,11 +53,16 @@ vim.api.nvim_set_keymap("n", "<leader>f", "<cmd>lua require(\"fzf-lua\").files()
   silent = true,
 })
 vim.api.nvim_set_keymap("n", "<leader>af",
-                        "<cmd>lua require(\"fzf-lua\").files({ cwd = vim.fn.expand('%:p:h') })<CR>", {
+                        "<cmd>lua require(\"fzf-lua\").files({ cwd = vim.fn.expand('%:p:h') })<CR>",
+                        {
   noremap = true,
   silent = true,
 })
 vim.api.nvim_set_keymap("n", "<leader>rr", "<cmd>lua require(\"fzf-lua\").command_history()<CR>", {
+  noremap = true,
+  silent = true,
+})
+vim.api.nvim_set_keymap("n", "<leader>rf", "<cmd>lua require(\"fzf-lua\").oldfiles()<CR>", {
   noremap = true,
   silent = true,
 })
@@ -75,7 +82,11 @@ vim.api.nvim_set_keymap("n", "<leader>gf", "<cmd>lua require(\"fzf-lua\").git_fi
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>gf", "<cmd>lua require(\"fzf-lua\").files()<CR>", {
+vim.api.nvim_set_keymap("n", "<leader>hh", "<cmd>lua require(\"fzf-lua\").git_status()<CR>", {
+  noremap = true,
+  silent = true,
+})
+vim.api.nvim_set_keymap("n", "<leader>qf", "<cmd>lua require(\"fzf-lua\").quickfix()<CR>", {
   noremap = true,
   silent = true,
 })
@@ -105,8 +116,7 @@ vim.api.nvim_set_keymap("n", "<leader>as",
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>ss",
-                        "<cmd>lua require(\"fzf-lua\").spell_suggest()<CR>", {
+vim.api.nvim_set_keymap("n", "<leader>ss", "<cmd>lua require(\"fzf-lua\").spell_suggest()<CR>", {
   noremap = true,
   silent = true,
 })
