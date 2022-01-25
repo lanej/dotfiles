@@ -391,7 +391,7 @@ if has('autocmd')
     autocmd FileType ruby map <leader>tv :call <SID>vcr_failures_only()<CR>
     autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
     autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
-    autocmd FileType ruby vnoremap <Bslash>hs :s/\v\"(\w+)\"\s+\=\>\s+/\1\: /g<CR>
+    autocmd FileType ruby vnoremap <Bslash>hs :s/\v[\"\'](\w+)[\"\']\s+\=\>\s+/\1\: /g<CR>
     autocmd FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
     autocmd FileType ruby map <leader>d :ALEFix<CR>
     autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
