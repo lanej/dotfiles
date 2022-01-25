@@ -32,6 +32,10 @@ vim.api.nvim_set_keymap("n", "<leader>ac", "<cmd>lua require(\"fzf-lua\").comman
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "<leader>ab", "<cmd>lua require(\"fzf-lua\").builtin()<CR>", {
+  noremap = true,
+  silent = true,
+})
 vim.api.nvim_set_keymap("n", "<leader>al", "<cmd>lua require(\"fzf-lua\").lines()<CR>", {
   noremap = true,
   silent = true,
