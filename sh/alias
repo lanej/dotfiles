@@ -133,7 +133,7 @@ git_search_log() {
 }
 
 i() {
-  nvim -R -c Lines
+  nvim -R -c ":FzfLua lines"
 }
 
 zz() {
