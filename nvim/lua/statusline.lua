@@ -156,9 +156,11 @@ gls.right[1] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      if vim.lsp.diagnostic.get_count(0, "Error") ~= 0 then
+
+      errors = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }))
+      if errors ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspError guifg=" .. tostring(colors.red))
-        return "!" .. vim.lsp.diagnostic.get_count(0, "Error") .. " "
+        return "!" .. errors .. " "
       end
     end,
     highlight = { tostring(colors.fg), tostring(colors.bg) },
@@ -171,9 +173,10 @@ gls.right[2] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      if vim.lsp.diagnostic.get_count(0, "Warning") ~= 0 then
+      warnings = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }))
+      if warnings ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspWarning guifg=" .. tostring(colors.orange))
-        return "?" .. vim.lsp.diagnostic.get_count(0, "Warning") .. " "
+        return "?" .. warnings .. " "
       end
 
     end,
@@ -187,9 +190,10 @@ gls.right[3] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      if vim.lsp.diagnostic.get_count(0, "Information") ~= 0 then
+      infos = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.INFO }))
+      if infos ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspInformation guifg=" .. tostring(colors.blue))
-        return "+" .. vim.lsp.diagnostic.get_count(0, "Information") .. " "
+        return "+" .. infos .. " "
       end
     end,
     highlight = { tostring(colors.fg), tostring(colors.bg) },
@@ -202,9 +206,10 @@ gls.right[4] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      if vim.lsp.diagnostic.get_count(0, "Hint") ~= 0 then
+      hints = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.HINT }))
+      if hints ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspHint guifg=" .. tostring(colors.green1))
-        return "-" .. vim.lsp.diagnostic.get_count(0, "Hint") .. " "
+        return "o" .. hints .. " "
       end
 
     end,
