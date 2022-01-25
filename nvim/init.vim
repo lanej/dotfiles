@@ -60,8 +60,8 @@ let mapleader = ','
 
 let g:coq_settings = {
       \ 'auto_start': 'shut-up',
-      \ 'keymap.jump_to_mark': '<c-v>',
-      \ 'clients.buffers.match_syms': v:true
+      \ 'keymap.jump_to_mark': '<c-b>',
+      \ 'clients.buffers.match_syms': v:true,
       \ }
 
 lua require('plugins')
