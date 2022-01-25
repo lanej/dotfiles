@@ -82,15 +82,11 @@ vim.api.nvim_set_keymap("n", "<leader>gf", "<cmd>lua require(\"fzf-lua\").git_fi
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>hh", "<cmd>lua require(\"fzf-lua\").git_status()<CR>", {
+vim.api.nvim_set_keymap("n", "<leader>sf", "<cmd>lua require(\"fzf-lua\").git_status()<CR>", {
   noremap = true,
   silent = true,
 })
 vim.api.nvim_set_keymap("n", "<leader>qf", "<cmd>lua require(\"fzf-lua\").quickfix()<CR>", {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>lua require(\"fzf-lua\").oldfiles()<CR>", {
   noremap = true,
   silent = true,
 })
