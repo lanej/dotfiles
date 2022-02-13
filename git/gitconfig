@@ -1,6 +1,6 @@
 [user]
 		name = Joshua Lane
-		signingKey = 3888C0B7F81E8280B1FC99C2E37522BC4267876A
+		signingKey = 94E30750946819E87E47D30AC34A98B838E95FBB
 [color]
 		diff = auto
 		status = auto
@@ -155,3 +155,5 @@
 		zero-style = dim syntax
 [interactive]
 		diffFilter = delta --color-only
+[commit]
+	gpgsign = true
