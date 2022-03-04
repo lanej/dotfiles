@@ -15,62 +15,9 @@ return require("packer").startup({
       "ms-jpq/coq.artifacts",
       branch = "artifacts",
     }
-    --[[ use {
-      "nvim-orgmode/orgmode",
-      config = function() require("orgmode-treesitter") end,
-      requires = "nvim-treesitter/nvim-treesitter",
-    } ]]
     use {
       "nvim-neorg/neorg",
-      config = function()
-        local parser_configs = require('nvim-treesitter.parsers').get_parser_configs()
-
-        -- These two are optional and provide syntax highlighting
-        -- for Neorg tables and the @document.meta tag
-        parser_configs.norg_meta = {
-          install_info = {
-            url = "https://github.com/nvim-neorg/tree-sitter-norg-meta",
-            files = {
-              "src/parser.c",
-            },
-            branch = "main",
-          },
-        }
-
-        parser_configs.norg_table = {
-          install_info = {
-            url = "https://github.com/nvim-neorg/tree-sitter-norg-table",
-            files = {
-              "src/parser.c",
-            },
-            branch = "main",
-          },
-        }
-
-        require('neorg').setup {
-          load = {
-            ["core.defaults"] = {},
-            ["core.norg.dirman"] = {
-              config = {
-                workspaces = {
-                  work = "~/share/notes/work",
-                  home = "~/share/notes/home",
-                  gtd = "~/share/notes/gtd",
-                },
-              },
-            },
-            ["core.norg.concealer"] = {},
-            -- ["core.norg.completion"] = {},
-            ["core.gtd.base"] = {
-              config = {
-                workspace = "gtd",
-                inbox = "inbox.norg",
-              },
-            },
-            ["core.gtd.ui"] = {},
-          },
-        }
-      end,
+      config = function() require("orgmode") end,
       requires = "nvim-lua/plenary.nvim",
     }
     use {
