@@ -75,7 +75,7 @@
 		bl = branch --list
 		cob = co -B
 		bp = !bash -lc 'git_checkout_branch'
-		bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | egrep -v 'phabricator' | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
+		bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
 		sa = !git diff --name-only | fzf -m --reverse --height 70% --preview \"git diff --color {}\" --preview-window=right:80% | xargs git add
 		cpa = cherry-pick --quit
 		rp = reset -p
@@ -85,6 +85,7 @@
 		com = checkout master
 	authors = shortlog -s -n --all
 	dos = diff origin/master --stat
+		sls = log --oneline -5 --stat
 [core]
 		excludesfile = ~/.gitignore
 		whitespace = trailing-space,space-before-tab,blank-at-eol
@@ -157,3 +158,5 @@
 		diffFilter = delta --color-only
 [commit]
 	gpgsign = true
+[log]
+	excludeDecoration = refs/tags/phabricator/*
