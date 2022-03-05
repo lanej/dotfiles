@@ -26,11 +26,11 @@ require('neorg').setup {
     ["core.norg.dirman"] = {
       config = {
         workspaces = {
-          work = "~/share/notes/work",
           home = "~/share/notes/home",
         },
       },
     },
+    ["core.norg.journal"] = {},
     ["core.norg.concealer"] = {},
     -- ["core.norg.completion"] = {},
     ["core.gtd.base"] = {
