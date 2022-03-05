@@ -20,9 +20,44 @@ return require("packer").startup({
       config = function() require("orgmode") end,
       requires = "nvim-lua/plenary.nvim",
     }
+    use "tpope/vim-dadbod"
+    use "kristijanhusak/vim-dadbod-ui"
     use {
       "ms-jpq/coq.thirdparty",
       branch = "3p",
+      config = function()
+        require("coq_3p") {
+          {
+            src = "vim_dadbod_completion",
+            short_name = "DB",
+          },
+          {
+            src = "orgmode",
+            short_name = "ORG",
+          },
+          {
+            src = "bc",
+            short_name = "MATH",
+            precision = 6,
+          },
+          {
+            src = "repl",
+            sh = "zsh",
+            shell = {
+              p = "perl",
+              n = "node",
+            },
+            max_lines = 99,
+            deadline = 500,
+            unsafe = {
+              "rm",
+              "poweroff",
+              "mv",
+              "kill",
+            },
+          },
+        }
+      end,
     }
     use {
       "David-Kunz/treesitter-unit",
