@@ -367,6 +367,12 @@ if has('autocmd')
     endif
   augroup END
 
+  augroup filetype_norg
+    autocmd!
+    autocmd FileType norg set shiftwidth=2|set spell
+    autocmd FileType norg let g:gutentags_enabled = 0
+  augroup END
+
   augroup filetype_markdown
     autocmd!
     " hub pull-request accepts markdown
