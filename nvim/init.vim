@@ -23,7 +23,8 @@ set history=10000              " Store lots of :cmdline history
 set hlsearch
 set ignorecase                 " Ignore case when searching
 set incsearch                  " Makes search act like search in modern browsers
-set magic
+set lazyredraw                 " Don't redraw while executing macros (good performance config)
+set magic                      " For regular expressions turn magic on
 set modelines=5
 set nobackup
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
@@ -342,20 +343,17 @@ endfunction
 nnoremap <leader>ee :call Env()<CR>
 
 if has('autocmd')
-  augroup FiletypeGroup
-    autocmd!
-    " jsx is both javascript and jsx
-    autocmd BufNewFile,BufRead *.jsx set filetype=javascript.jsx
-    " Save files when vim loses focus
-    autocmd FocusLost,BufLeave * silent! wa
-    " Reload files when vim gains focus
-    " autocmd FocusGained,BufEnter * :checktime
-    " Default spellcheck off
-    autocmd BufRead,BufNewFile,BufEnter set nospell|set textwidth=0|set number
-    " Source .env files
-    autocmd DirChanged * call SourceEnvOnDirChange()
-    autocmd VimEnter * call SourceEnv()
-  augroup END
+  au FocusGained * :redraw!
+
+  " jsx is both javascript and jsx
+  " au BufNewFile,BufRead *.jsx set filetype=javascript.jsx
+  " Save files when vim loses focus
+  " au FocusLost,BufLeave * silent! wa
+  " Default spellcheck off
+  " au BufRead,BufNewFile,BufEnter * set nospell|set textwidth=0|set number
+  " Source .env files
+  au DirChanged * call SourceEnvOnDirChange()
+  au VimEnter * call SourceEnv()
 
   augroup filetype_terminal
     if has('nvim')
@@ -373,7 +371,6 @@ if has('autocmd')
   augroup END
 
   augroup filetype_markdown
-    autocmd!
     " hub pull-request accepts markdown
     autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
     autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
@@ -382,12 +379,10 @@ if has('autocmd')
   augroup END
 
   augroup filetype_lua
-    autocmd!
     autocmd FileType lua set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_ruby
-    autocmd!
     autocmd BufNewFile,BufRead Berksfile set filetype=ruby
     autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
     autocmd FileType ruby map <leader>tq :TestLast --fail-fast<CR>
@@ -412,7 +407,6 @@ if has('autocmd')
   augroup END
 
   augroup filetype_python
-    autocmd!
     autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
     autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
     autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
@@ -420,13 +414,11 @@ if has('autocmd')
   augroup END
 
   augroup filetype_lua
-    autocmd!
     autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
     autocmd FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
-    autocmd!
     autocmd BufNewFile,BufRead new-commit set filetype=markdown
     autocmd BufNewFile,BufRead differential* set filetype=markdown
     autocmd FileType gitcommit set colorcolumn=73
@@ -434,77 +426,62 @@ if has('autocmd')
   augroup END
 
   augroup filetype_git
-    autocmd!
     autocmd FileType git set nofoldenable
   augroup END
 
   augroup filetype_go
-    autocmd!
     autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
 
   augroup END
 
   augroup filetype_rust
-    autocmd!
     autocmd FileType rust set makeprg=cargo\ run
     autocmd FileType rust set colorcolumn=100
-    autocmd FileType rust map <Bslash>t :TestFile --jobs 1<CR>
   augroup END
 
   augroup filetype_javascript
-    autocmd!
     autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     autocmd BufNewFile,BufRead .eslintrc set filetype=json
     autocmd FileType javascript nnoremap <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_haml
-    autocmd!
     autocmd FileType haml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_sshconfig
-    autocmd!
     autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_json
-    autocmd!
     autocmd FileType json set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_yaml
-    autocmd!
     autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_fish
-    autocmd!
     autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_perl
-    autocmd!
     autocmd FileType perl set tabstop=8|set shiftwidth=8|set noexpandtab|set nolist
   augroup END
 
   augroup filetype_sshconfig
-    autocmd!
     autocmd FileType sshconfig set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_sh
-    autocmd!
     autocmd BufNewFile,BufRead .alias set filetype=sh
   augroup END
 
   augroup filetype_vim
-    autocmd!
-    autocmd FileType vim set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    autocmd FileType vim set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
   augroup END
 
   augroup BWCCreateDir
-    autocmd!
     autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
   augroup END
 endif
