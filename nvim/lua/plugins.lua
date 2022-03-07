@@ -7,6 +7,28 @@ return require("packer").startup({
       "christoomey/vim-tmux-navigator",
       config = function() require "tmux-config" end,
     }
+    -- oooWeee bsp window partitioning
+    use {
+      "beauwilliams/focus.nvim",
+      config = function()
+        require("focus").setup({
+          excluded_filetypes = {
+            "toggleterm",
+            "terminal",
+            "nvimtree",
+            "fzf",
+            "nofile",
+          },
+        })
+      end,
+    }
+    -- Or lazy load with `module` option. See further down for info on how to lazy load when using FocusSplit commands
+    -- Or lazy load this plugin by creating an arbitrary command using the cmd option in packer.nvim
+    -- use { 'beauwilliams/focus.nvim', cmd = { "FocusSplitNicely", "FocusSplitCycle" }, module = "focus",
+    --     config = function()
+    --         require("focus").setup({hybridnumber = true})
+    --     end
+    -- }
     use {
       "ms-jpq/coq_nvim",
       branch = "coq",
@@ -22,6 +44,7 @@ return require("packer").startup({
     }
     use "tpope/vim-dadbod"
     use "kristijanhusak/vim-dadbod-ui"
+    use "kristijanhusak/vim-dadbod-completion"
     use {
       "ms-jpq/coq.thirdparty",
       branch = "3p",
