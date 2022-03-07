@@ -40,22 +40,6 @@ return require("packer").startup({
             short_name = "MATH",
             precision = 6,
           },
-          {
-            src = "repl",
-            sh = "zsh",
-            shell = {
-              p = "perl",
-              n = "node",
-            },
-            max_lines = 99,
-            deadline = 500,
-            unsafe = {
-              "rm",
-              "poweroff",
-              "mv",
-              "kill",
-            },
-          },
         }
       end,
     }
