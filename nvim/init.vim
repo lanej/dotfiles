@@ -52,6 +52,7 @@ set shortmess+=W
 set noswapfile
 set nobackup
 set nowritebackup
+set nowrap
 set list
 set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
 exe "set cedit=<C-V>"
@@ -166,11 +167,12 @@ map <leader>gl :Gitsigns blame_line<CR>
 
 nnoremap <leader>gm :Git mergetool<CR>
 nnoremap <leader>go :GBrowse<CR>
-nnoremap <leader>gt :Gcommit -am'wip'<CR>
+nnoremap <leader>gt :Git commit -am'wip'<CR>
 nnoremap <leader>gs :Git<CR>
 nnoremap <leader>gw :Gwrite<CR>
 nnoremap <leader>gr :Gread<CR>
-nnoremap <leader>ga :Gcommit -av<CR>
+nnoremap <leader>ga :Git commit -av<CR>
+nnoremap <leader>gv :Git commit -v<CR>
 nnoremap <leader>gd :Gdiffsplit origin/master
 nnoremap <leader>gb :Git blame<CR>
 nnoremap <leader>gp :Git push<CR>
