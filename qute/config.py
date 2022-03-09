@@ -6,7 +6,7 @@ from sys import platform
 from subprocess import check_output
 
 # Uncomment this to still load settings configured via autoconfig.yml
-# config.load_autoconfig()
+config.load_autoconfig()
 
 # Enable JavaScript.
 # Type: Bool
@@ -34,11 +34,6 @@ c.editor.encoding = 'utf-8'
 # Wayland.
 # Type: Bool
 c.window.hide_decoration = False
-
-# Default monospace fonts. Whenever "monospace" is used in a font
-# setting, it's replaced with the fonts listed here.
-# Type: Font
-c.fonts.monospace = 'Hack, "xos4 Terminus", Terminus, Monospace, "DejaVu Sans Mono", Monaco, "Bitstream Vera Sans Mono", "Andale Mono", "Courier New", Courier, "Liberation Mono", monospace, Fixed, Consolas, Terminal'
 
 # Font used in the completion widget.
 # Type: Font
@@ -84,11 +79,6 @@ c.fonts.prompts = '13pt sans-serif'
 # Type: Font
 c.fonts.statusbar = '13pt monospace'
 
-# Font used in the tab bar.
-# Type: QtFont
-
-c.fonts.tabs = '13pt monospace'
-
 # Always restore open sites when qutebrowser is reopened.
 ## Type: Bool
 c.auto_save.session = True
@@ -111,16 +101,16 @@ c.tabs.last_close = 'close'
 # Type: ShellCommand
 
 
-kitty = "kitty"
+alacritty = "alacritty"
 neovim = "nvim"
 
 if platform == "linux" or platform == "linux2":
-    kitty = check_output(['command -v kitty'],
+    alacritty = check_output(['command -v alacritty'],
                          shell=True).decode('ascii').strip()
     neovim = check_output(['command -v nvim'],
                           shell=True).decode('ascii').strip()
 else:
-    kitty = "/Applications/kitty.app/Contents/MacOS/kitty"
+    alacritty = "/Applications/Alacritty.app/Contents/MacOS/alacritty"
     neovim = "/usr/local/bin/nvim"
 
-c.editor.command = [kitty, neovim, "+{line}", "{file}"]
+c.editor.command = [alacritty, neovim, "+{line}", "{file}"]
