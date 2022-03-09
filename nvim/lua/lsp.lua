@@ -10,7 +10,7 @@ lsp.sumneko_lua.setup(coq.lsp_ensure_capabilities({
   settings = {
     Lua = {
       diagnostics = {
-        globals = { "vim" },
+        globals = { "vim", "describe", "it" },
       },
     },
   },
@@ -59,19 +59,19 @@ vim.api.nvim_set_keymap("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<C
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<c-p>", "<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>", {
+vim.api.nvim_set_keymap("n", "<c-p>", "<cmd>lua vim.diagnostic.goto_prev()<CR>", {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<c-n>", "<cmd>lua vim.lsp.diagnostic.goto_next()<CR>", {
+vim.api.nvim_set_keymap("n", "<c-n>", "<cmd>lua vim.diagnostic.goto_next()<CR>", {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>", {
+vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.diagnostic.set_loclist()<CR>", {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>", {
+vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.diagnostic.show_line_diagnostics()<CR>", {
   noremap = true,
   silent = true,
 })
