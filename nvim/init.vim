@@ -366,6 +366,11 @@ if has('autocmd')
     endif
   augroup END
 
+  augroup highlight_yank
+    autocmd!
+    au TextYankPost * silent! lua vim.highlight.on_yank{higroup="IncSearch", timeout=700}
+  augroup END
+
   augroup filetype_norg
     autocmd!
     autocmd FileType norg set shiftwidth=2|set spell
