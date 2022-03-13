@@ -4,7 +4,7 @@ add_newline = false
 [character]
 success_symbol = "[\\$](bold white)"
 error_symbol = "[\\$](bold red)"
-vicmd_symbol = "[](dimmed yellow)"
+vicmd_symbol = "[](bold fg:128)"
 
 [git_status]
 ahead = "⇡${count}"
