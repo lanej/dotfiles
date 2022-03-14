@@ -152,3 +152,5 @@
 	gpgsign = true
 [log]
 	excludeDecoration = refs/tags/phabricator/*
+[merge]
+	autoStash = true
