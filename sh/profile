@@ -38,6 +38,10 @@ fi
 unset EDITOR
 unset VISUAL
 
+if [[ $OSTYPE =~ 'darwin' ]]; then
+  export GPG_TTY=$(tty)
+fi
+
 if [[ -s $(which nvim) ]]; then
 	export EDITOR=nvim
 	export VISUAL=nvim
