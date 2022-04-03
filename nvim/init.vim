@@ -225,7 +225,7 @@ command! E :e
 " Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
 vmap <Enter> <Plug>(EasyAlign)
 " Realign the whole file
-map <leader>= ggVG=<CR>
+map <leader>D ggVG=<CR>
 
 let g:clang_format#style_options = {
       \ "AccessModifierOffset" : -4,
