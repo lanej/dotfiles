@@ -108,8 +108,8 @@ nnoremap t5  5gt<CR>
 nnoremap t6  6gt<CR>
 nnoremap fbk :bd!<CR>
 nnoremap fak :%bd!<bar>e#<CR>
-nnoremap bp  :bp<CR>
-nnoremap bn  :bn<CR>
+nnoremap <leader>bo  :bp<CR>
+nnoremap <leader>bi  :bn<CR>
 
 " Enable filetype plugins to handle indents
 filetype plugin indent on
