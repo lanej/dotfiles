@@ -1,3 +1,5 @@
+local actions = require "fzf-lua.actions"
+
 require"fzf-lua".setup {
   keymap = {
     builtin = {
@@ -13,6 +15,12 @@ require"fzf-lua".setup {
       prompt = 'Branches❯ ',
       cmd = "git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator'",
       preview = "git diff --stat --summary --color -p origin/master...{} | delta",
+      actions = {
+        ["default"] = {
+          actions.git_switch,
+          function(_) vim.cmd('ProsessionReset') end,
+        },
+      },
     },
     commits = {
       preview = "echo {} | awk '{ print $1 }' | xargs git show | delta",
