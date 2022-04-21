@@ -1,7 +1,6 @@
 require("nvim-tree").setup({
   disable_netrw = false,
   hijack_netrw = true,
-  auto_close = true,
   diagnostics = {
     enable = true,
     show_on_dirs = true,
