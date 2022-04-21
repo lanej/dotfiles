@@ -72,7 +72,7 @@ return require("packer").startup({
     }
     use "dense-analysis/ale"
     use {
-      "dhruvasagar/vim-prosession",
+      "lanej/vim-prosession",
       requires = "tpope/vim-obsession",
     }
     use "editorconfig/editorconfig-vim"
