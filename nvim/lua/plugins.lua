@@ -7,6 +7,12 @@ return require("packer").startup({
       "christoomey/vim-tmux-navigator",
       config = function() require "tmux-config" end,
     }
+    use {
+      "lanej/vim-phabricator",
+      requires = {
+        "tpope/vim-fugitive",
+      },
+    }
     -- oooWeee bsp window partitioning
     use {
       "beauwilliams/focus.nvim",
@@ -113,7 +119,6 @@ return require("packer").startup({
       config = function() require "nvim-tree-config" end,
     }
     use "kyazdani42/nvim-web-devicons"
-    use "lanej/vim-phab"
     use {
       "lewis6991/gitsigns.nvim",
       requires = {
