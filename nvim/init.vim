@@ -543,3 +543,5 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
+
+let g:phabricator_hosts = ["phab.easypo.net"]
