@@ -7,8 +7,8 @@ require"nvim-treesitter.configs".setup({
       enable = true,
       lookahead = true,
       keymaps = {
-        ["af"] = "@function.outer",
-        ["if"] = "@function.inner",
+        ["am"] = "@function.outer",
+        ["im"] = "@function.inner",
         ["ac"] = "@class.outer",
         ["ic"] = "@class.inner",
         ["ab"] = "@block.outer",
@@ -24,16 +24,16 @@ require"nvim-treesitter.configs".setup({
     },
     swap = {
       enable = true,
-      swap_next = { ["<leader>a"] = "@parameter.inner" },
-      swap_previous = { ["<leader>A"] = "@parameter.inner" },
+      swap_next = { ["<leader>a"] = "@parameter.inner", ["<leader>m"] = "@function.outer" },
+      swap_previous = { ["<leader>A"] = "@parameter.inner", ["<leader>M"] = "@function.outer" },
     },
     move = {
       enable = true,
       set_jumps = true, -- whether to set jumps in the jumplist
-      goto_next_start = { ["]f"] = "@function.outer", ["]]"] = "@class.outer", ["]b"] = "@block.outer" },
-      goto_next_end = { ["]F"] = "@function.outer", ["]["] = "@class.outer", ["]B"] = "@block.outer"  },
-      goto_previous_start = { ["[f"] = "@function.outer", ["[["] = "@class.outer", ["[b"] = "@block.outer" },
-      goto_previous_end = { ["[F"] = "@function.outer", ["[]"] = "@class.outer", ["[B"] = "@block.outer" },
+      goto_next_start = { ["]m"] = "@function.outer", ["]]"] = "@class.outer", ["]b"] = "@block.outer" },
+      goto_next_end = { ["]M"] = "@function.outer", ["]["] = "@class.outer", ["]B"] = "@block.outer"  },
+      goto_previous_start = { ["[m"] = "@function.outer", ["[["] = "@class.outer", ["[b"] = "@block.outer" },
+      goto_previous_end = { ["[M"] = "@function.outer", ["[]"] = "@class.outer", ["[B"] = "@block.outer" },
     },
   },
 })
