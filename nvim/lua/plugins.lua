@@ -28,13 +28,6 @@ return require("packer").startup({
         })
       end,
     }
-    -- Or lazy load with `module` option. See further down for info on how to lazy load when using FocusSplit commands
-    -- Or lazy load this plugin by creating an arbitrary command using the cmd option in packer.nvim
-    -- use { 'beauwilliams/focus.nvim', cmd = { "FocusSplitNicely", "FocusSplitCycle" }, module = "focus",
-    --     config = function()
-    --         require("focus").setup({hybridnumber = true})
-    --     end
-    -- }
     use {
       "ms-jpq/coq_nvim",
       branch = "coq",
@@ -143,7 +136,7 @@ return require("packer").startup({
     }
     use {
       "norcalli/nvim-colorizer.lua",
-      fequires = "nvim-treesitter/nvim-treesitter",
+      requires = "nvim-treesitter/nvim-treesitter",
     }
     use {
       "nvim-lua/lsp_extensions.nvim",
@@ -153,6 +146,10 @@ return require("packer").startup({
     use {
       "nvim-treesitter/nvim-treesitter",
       config = function() require "treesitter" end,
+    }
+    use {
+      "p00f/nvim-ts-rainbow",
+      requires = "nvim-treesitter/nvim-treesitter",
     }
     use {
       "nvim-treesitter/nvim-treesitter-textobjects",
