@@ -6,4 +6,5 @@ vim.api.nvim_set_keymap('n', '<leader><leader>f', '<cmd>:HopWordAC<CR>',      { 
 vim.api.nvim_set_keymap('n', '<leader><leader>l', '<cmd>:HopLineStart<CR>',   { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader><leader>j', '<cmd>:HopLineStartAC<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader><leader>k', '<cmd>:HopLineStartBC<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader><leader>c', '<cmd>:HopLine<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', ';', '<cmd>:HopPattern<CR>', { noremap = true, silent = true })
