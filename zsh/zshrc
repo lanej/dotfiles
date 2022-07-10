@@ -57,7 +57,20 @@ zstyle :compinstall filename '/home/jlane/.zshrc'
 autoload -Uz compinit
 compinit
 
-[[ -r "${HOME}/.config/zsh/fzf.zsh" ]] && source "${HOME}/.config/zsh/fzf.zsh"
+if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
+	source "${HOME}/.config/zsh/fzf.zsh"
+	bindkey '^U' fzf-cd-widget
+	bindkey '^O' fzf-file-widget
+	zzz() {
+		zz
+		let ret=$?
+    		zle accept-line
+		return $ret
+	}
+  	zle -N zzz
+	bindkey '^B' zzz
+
+fi
 
 . "${HOME}/.profile"
 . "$HOME/.alias"
