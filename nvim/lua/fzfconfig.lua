@@ -128,3 +128,7 @@ vim.api.nvim_set_keymap("n", "<leader>ss", "<cmd>lua require(\"fzf-lua\").spell_
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "<leader>j", "<cmd>lua require(\"fzf-lua\").jumps()<CR>", {
+  noremap = true,
+  silent = true,
+})
