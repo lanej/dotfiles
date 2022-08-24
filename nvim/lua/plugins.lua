@@ -147,10 +147,7 @@ return require("packer").startup({
       "nvim-treesitter/nvim-treesitter",
       config = function() require "treesitter" end,
     }
-    use {
-      "p00f/nvim-ts-rainbow",
-      requires = "nvim-treesitter/nvim-treesitter",
-    }
+    use({'j-hui/fidget.nvim', config = function() require("fidget").setup{} end,})
     use {
       "nvim-treesitter/nvim-treesitter-textobjects",
       requires = "nvim-treesitter/nvim-treesitter",
