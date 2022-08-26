@@ -10,6 +10,11 @@ require"fzf-lua".setup {
       ["<C-k>"] = "half-page-up",
     },
   },
+  winopts = {
+    preview = {
+      flip_columns   = 180,             -- #cols to switch to horizontal on flex
+    }
+  },
   git = {
     branches = {
       prompt = 'Branches❯ ',
@@ -24,6 +29,13 @@ require"fzf-lua".setup {
     },
     commits = {
       preview = "echo {} | awk '{ print $1 }' | xargs git show | delta",
+      actions = {
+        ["default"] = actions.git_buf_edit,
+        ["ctrl-s"]  = actions.git_buf_split,
+        ["ctrl-v"]  = actions.git_buf_vsplit,
+        ["ctrl-t"]  = actions.git_buf_tabedit,
+        ["ctrl-c"]  = actions.git_checkout,
+      },
     },
   },
 }
