@@ -1,9 +1,14 @@
-vim.api.nvim_set_keymap("n", "<leader>rn", "<cmd>lua require('lspsaga.rename').rename()<CR>", {
+require('lspsaga').init_lsp_saga()
+
+vim.api.nvim_set_keymap('v', '<leader>ca', '<cmd><C-U>Lspsaga range_code_action<CR>', {
+  silent = true,
+  noremap = true,
+})
+vim.api.nvim_set_keymap('n', '<leader>rn', '<cmd>Lspsaga rename<CR>', {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>lf", "<cmd>lua require'lspsaga.provider'.lsp_finder()<CR>", {
-  noremap = true,
+vim.api.nvim_set_keymap('n', '<leader>ca', '<cmd>Lspsaga code_action<CR>', {
   silent = true,
+  noremap = true,
 })
- 
