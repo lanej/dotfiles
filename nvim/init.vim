@@ -55,14 +55,13 @@ set nowritebackup
 set nowrap
 set list
 set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
-exe "set cedit=<C-V>"
+exe "set cedit=<C-v>"
 
 let mapleader = ','
 
 let g:coq_settings = {
       \ 'auto_start': 'shut-up',
       \ 'keymap.jump_to_mark': '<c-b>',
-      \ 'clients.buffers.match_syms': v:true,
       \ }
 
 lua require('plugins')
@@ -127,7 +126,6 @@ map <leader>vpu :PackerSync<CR>
 map <leader>rb :%s/<C-r><C-w>/
 map <leader>rq :cfdo %s/<C-r><C-w>/
 
-let g:vim_markdown_conceal = 0
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
 let g:gutentags_enabled = 1
@@ -158,6 +156,8 @@ let g:terraform_remap_spacebar  = 0
 " sessions
 map <leader>ps :Prosession<space>
 let g:prosession_per_branch = 1
+let g:prosession_tmux_title = 1
+let g:prosession_tmux_title_format = '@@@'
 
 map <leader>ntt :NvimTreeToggle<CR>
 map <leader>ntc :NvimTreeClose<CR>
