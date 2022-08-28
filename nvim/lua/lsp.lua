@@ -6,23 +6,40 @@ lsp.gopls.setup(coq.lsp_ensure_capabilities())
 lsp.vimls.setup(coq.lsp_ensure_capabilities())
 lsp.yamlls.setup(coq.lsp_ensure_capabilities())
 lsp.sumneko_lua.setup(coq.lsp_ensure_capabilities({
-  cmd = { "lua-language-server" },
+  cmd = {"lua-language-server"},
   settings = {
     Lua = {
       diagnostics = {
-        globals = { "vim", "describe", "it" },
+        globals = {"vim", "describe", "it"},
       },
     },
   },
 }))
 lsp.pylsp.setup(coq.lsp_ensure_capabilities())
-lsp.texlab.setup(coq.lsp_ensure_capabilities())
-lsp.jsonls.setup(coq.lsp_ensure_capabilities({
-  commands = {
-    Format = { function() vim.lsp.buf.range_formatting({}, { 0, 0 }, { vim.fn.line("$"), 0 }) end },
+lsp.texlab.setup(coq.lsp_ensure_capabilities({
+  settings = {
+    texlab = {
+      build = {
+        onSave = true,
+        forwardSearchAfter = true,
+      },
+    },
   },
 }))
-lsp.rust_analyzer.setup(coq.lsp_ensure_capabilities())
+lsp.jsonls.setup(coq.lsp_ensure_capabilities({
+  commands = {
+    Format = {function() vim.lsp.buf.range_formatting({}, {0, 0}, {vim.fn.line("$"), 0}) end},
+  },
+}))
+lsp.rust_analyzer.setup(coq.lsp_ensure_capabilities({
+  settings = {
+    ["rust-analyzer"] = {
+      inlayHints = {
+        chainingHints = true,
+      },
+    },
+  },
+}))
 
 vim.lsp.handlers["textDocument/publishDiagnostics"] =
   vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
@@ -39,26 +56,26 @@ vim.api.nvim_set_keymap("n", "<leader>cd", "<cmd>lua vim.lsp.buf.definition()<CR
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>cr", "<cmd>lua vim.lsp.buf.references()<CR>", {
-  noremap = true,
+--[[ vim.api.nvim_set_keymap("n", "<leader>cr", "<cmd>lua vim.lsp.buf.references()<CR>", {
+  noremap = false,
   silent = true,
-})
+}) ]]
 vim.api.nvim_set_keymap("n", "<leader>d", "<cmd>lua vim.lsp.buf.formatting_sync()<CR>", {
   noremap = true,
-  silent = true,
+  silent = false,
 })
-vim.api.nvim_set_keymap("n", "<leader>ci", "<cmd>lua vim.lsp.buf.implementation()<CR>", {
+--[[ vim.api.nvim_set_keymap("n", "<leader>ci", "<cmd>lua vim.lsp.buf.implementation()<CR>", {
   noremap = true,
   silent = true,
-})
-vim.api.nvim_set_keymap("n", "<leader>cy", "<cmd>lua vim.lsp.buf.type_definition()<CR>", {
+}) ]]
+--[[ vim.api.nvim_set_keymap("n", "<leader>cy", "<cmd>lua vim.lsp.buf.type_definition()<CR>", {
   noremap = true,
   silent = true,
-})
-vim.api.nvim_set_keymap("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", {
-  noremap = true,
+}) ]]
+--[[ vim.api.nvim_set_keymap("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", {
+  noremap = false,
   silent = true,
-})
+}) ]]
 vim.api.nvim_set_keymap("n", "<c-p>", "<cmd>lua vim.diagnostic.goto_prev()<CR>", {
   noremap = true,
   silent = true,
