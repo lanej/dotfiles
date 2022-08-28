@@ -157,7 +157,7 @@ gls.right[1] = {
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
 
-      errors = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }))
+      local errors = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR }))
       if errors ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspError guifg=" .. tostring(colors.red))
         return "!" .. errors .. " "
@@ -173,7 +173,7 @@ gls.right[2] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      warnings = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }))
+      local warnings = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }))
       if warnings ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspWarning guifg=" .. tostring(colors.orange))
         return "?" .. warnings .. " "
@@ -190,7 +190,7 @@ gls.right[3] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      infos = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.INFO }))
+      local infos = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.INFO }))
       if infos ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspInformation guifg=" .. tostring(colors.blue))
         return "+" .. infos .. " "
@@ -206,7 +206,7 @@ gls.right[4] = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) <= 0 then return end
 
-      hints = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.HINT }))
+      local hints = table.maxn(vim.diagnostic.get(0, { severity = vim.diagnostic.severity.HINT }))
       if hints ~= 0 then
         vim.api.nvim_command("hi GalaxyRightLspHint guifg=" .. tostring(colors.green1))
         return "o" .. hints .. " "
