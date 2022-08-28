@@ -389,24 +389,21 @@ if has('autocmd')
     autocmd FileType markdown let g:gutentags_enabled = 0
   augroup END
 
-  augroup filetype_lua
-    autocmd FileType lua set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
-  augroup END
-
   augroup filetype_ruby
-    autocmd BufNewFile,BufRead Berksfile set filetype=ruby
-    autocmd FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
-    autocmd FileType ruby map <leader>tq :TestLast --fail-fast<CR>
-    autocmd FileType ruby map <leader>to :TestLast --only-failures<CR>
-    autocmd FileType ruby map <leader>tn :TestLast -n<CR>
-    autocmd FileType ruby map <leader>tv :call <SID>vcr_failures_only()<CR>
-    autocmd FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*) \=\>/\1:/g<CR>
-    autocmd FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
-    autocmd FileType ruby vnoremap <Bslash>hs :s/\v[\"\'](\w+)[\"\']\s+\=\>\s+/\1\: /g<CR>
-    autocmd FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
-    autocmd FileType ruby map <leader>d :ALEFix<CR>
-    autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
-    autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
+    au!
+    au FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
+    au FileType ruby map <leader>tq :TestLast --fail-fast<CR>
+    au FileType ruby map <leader>to :TestLast --only-failures<CR>
+    au FileType ruby map <leader>tn :TestLast -n<CR>
+    au FileType ruby map <leader>tv :call <SID>vcr_failures_only()<CR>
+    " old style symbol keys to new style symbol keys
+    au FileType ruby vnoremap <Bslash>hl :s/\v:([^ ]*)\s\=\>/\1:/g<CR>
+    " new style symbol keys to string keys
+    au FileType ruby vnoremap <Bslash>hr :s/\v(\w+):/"\1" =>/g<CR>
+    " string keys to new style symbol keys
+    au FileType ruby vnoremap <Bslash>hs :s/\v[\"\'](\w+)[\"\']\s+\=\>\s+/\1\: /g<CR>
+    " symbol string keys to string keys
+    au FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
 
     let g:test#runner_commands = ['RSpec']
 
@@ -418,42 +415,37 @@ if has('autocmd')
   augroup END
 
   augroup filetype_python
-    autocmd FileType python map <Bslash>ff :TestFile --ff -x<CR>
-    autocmd FileType python map <Bslash>fo :TestFile --ff<CR>
-    autocmd FileType python map <Bslash>n :TestFile --lf -x<CR>
-    autocmd FileType python map <Bslash>d :TestFile --pdb<CR>
+    au!
+    au FileType python map <leader>tv :TestFile --ff -x<CR>
+    au FileType python map <leader>tj :TestFile --ff<CR>
+    au FileType python map <leader>tn :TestFile --lf -x<CR>
+    au FileType python map <leader>td :TestFile --pdb<CR>
+    au FileType python map <leader>tlv :TestLast --ff -x<CR>
+    au FileType python map <leader>tlj :TestLast --ff<CR>
+    au FileType python map <leader>tln :TestLast --lf -x<CR>
+    au FileType python map <leader>tld :TestLast --pdb<CR>
   augroup END
 
   augroup filetype_lua
-    autocmd FileType lua map <Bslash>ff :TestFile --no-keep-going<CR>
-    autocmd FileType lua map <leader>d :ALEFix<CR>
+    au! FileType lua map <leader>tj :TestFile --no-keep-going<CR>
+    au! FileType lua set colorcolumn=100|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+    au! FileType lua nnoremap <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
-    autocmd BufNewFile,BufRead new-commit set filetype=markdown
-    autocmd BufNewFile,BufRead differential* set filetype=markdown
-    autocmd FileType gitcommit set colorcolumn=73
-    autocmd FileType gitcommit set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    au! BufNewFile,BufRead new-commit,differential* set filetype=markdown
+    au! FileType gitcommit set colorcolumn=73|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
-  augroup filetype_git
-    autocmd FileType git set nofoldenable
-  augroup END
-
-  augroup filetype_go
-    autocmd FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
-
-  augroup END
-
-  augroup filetype_rust
-    autocmd FileType rust set makeprg=cargo\ run
-    autocmd FileType rust set colorcolumn=100
-  augroup END
+  au! FileType git set nofoldenable
+  au! FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+  au! FileType rust set makeprg=cargo\ run|set colorcolumn=100
 
   augroup filetype_javascript
-    autocmd FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-    autocmd BufNewFile,BufRead .eslintrc set filetype=json
-    autocmd FileType javascript nnoremap <leader>d :ALEFix<CR>
+    au!
+    au FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
+    au BufNewFile,BufRead .eslintrc set filetype=json
+    au FileType javascript nnoremap <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_haml
@@ -493,7 +485,7 @@ if has('autocmd')
   augroup END
 
   augroup BWCCreateDir
-    autocmd BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
+    au! BufWritePre * :call s:MkNonExDir(expand('<afile>'), +expand('<abuf>'))
   augroup END
 endif
 
