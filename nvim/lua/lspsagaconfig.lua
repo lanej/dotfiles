@@ -1,4 +1,8 @@
-require('lspsaga').init_lsp_saga()
+require('lspsaga').init_lsp_saga({
+  code_action_lightbulb = {
+    enable = false,
+  },
+})
 
 vim.api.nvim_set_keymap('v', '<leader>ca', '<cmd><C-U>Lspsaga range_code_action<CR>', {
   silent = true,
