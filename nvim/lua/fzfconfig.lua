@@ -1,6 +1,7 @@
+local fzf_lua = require 'fzf-lua'
 local actions = require 'fzf-lua.actions'
 
-require'fzf-lua'.setup {
+require('fzf-lua').setup {
   keymap = {
     builtin = {
       ['<C-f>'] = 'toggle-fullscreen',
@@ -36,6 +37,29 @@ require'fzf-lua'.setup {
     },
   },
 }
+
+-- Registers (paste register or apply macro)
+local extract_register_from = function(result)
+  -- `selected[1]` is going to be "[2] contents of register 2"
+  return result:match('^%[(.)%]')
+end
+
+vim.keymap.set('n', '<leader>rp', function()
+  fzf_lua.registers({
+    actions = {
+      ['default'] = function(selected)
+        local register = extract_register_from(selected[1])
+        vim.cmd('normal "' .. register .. 'p')
+      end,
+      ['@'] = function(selected)
+        local register = extract_register_from(selected[1])
+        vim.cmd('normal @' .. register)
+      end,
+    },
+  })
+end, {
+  desc = 'fzf_lua.registers',
+})
 
 vim.api.nvim_set_keymap('n', '<leader>aw', '<cmd>lua require("fzf-lua").grep_cword()<CR>', {
   noremap = true,
@@ -73,8 +97,7 @@ vim.api.nvim_set_keymap('n', '<leader>f', '<cmd>lua require("fzf-lua").files()<C
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>af',
-                        '<cmd>lua require("fzf-lua").files({ cwd = vim.fn.expand(\'%:p:h\') })<CR>',
+vim.api.nvim_set_keymap('n', '<leader>af', '<cmd>lua require("fzf-lua").files({ cwd = vim.fn.expand(\'%:p:h\') })<CR>',
                         {
   noremap = true,
   silent = true,
@@ -123,13 +146,11 @@ vim.api.nvim_set_keymap('n', '<leader>bp', '<cmd>lua require("fzf-lua").git_bran
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>bs', '<cmd>lua require("fzf-lua").lsp_document_symbols()<CR>',
-                        {
+vim.api.nvim_set_keymap('n', '<leader>bs', '<cmd>lua require("fzf-lua").lsp_document_symbols()<CR>', {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>as',
-                        '<cmd>lua require("fzf-lua").lsp_workspace_symbols()<CR>', {
+vim.api.nvim_set_keymap('n', '<leader>as', '<cmd>lua require("fzf-lua").lsp_workspace_symbols()<CR>', {
   noremap = true,
   silent = true,
 })
