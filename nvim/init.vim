@@ -166,13 +166,11 @@ map <leader>ntf :NvimTreeFindFile<CR>
 let g:indent_blankline_show_current_context = v:true
 let g:indent_blankline_use_treesitter = v:true
 
-map <leader>gl :Gitsigns blame_line<CR>
-
 nnoremap <leader>gm :Git mergetool<CR>
 nnoremap <leader>go :GBrowse<CR>
+vnoremap <leader>go :GBrowse<CR>
 nnoremap <leader>gt :Git commit -am'wip'<CR>
 nnoremap <leader>gs :Git<CR>
-nnoremap <leader>gw :Gwrite<CR>
 nnoremap <leader>gr :Gread<CR>
 nnoremap <leader>ga :Git commit -av<CR>
 nnoremap <leader>gv :Git commit -v<CR>
