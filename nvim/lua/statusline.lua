@@ -236,17 +236,15 @@ gls.right[6] = {
   RightLspClient = {
     provider = function()
       if #vim.tbl_keys(vim.lsp.buf_get_clients()) >= 1 then
-        local lsp_client_name_first = vim.lsp.get_client_by_id(tonumber(
-                                                                 vim.inspect(vim.tbl_keys(vim.lsp
-                                                                                            .buf_get_clients())):match(
-                                                                   '%d+'))).name:match('%l+')
+        local client_id = tonumber(vim.inspect(vim.tbl_keys(vim.lsp.buf_get_clients())):match('%d+'))
+        local client_name = vim.lsp.get_client_by_id(client_id).name:match('%l+')
 
-        if lsp_client_name_first == nil then
+        if client_name == nil then
           vim.api.nvim_command('hi GalaxyRightLspClient guifg=' .. tostring(colors.fg))
           return #vim.tbl_keys(vim.lsp.buf_get_clients()) .. ': '
         else
           vim.api.nvim_command('hi GalaxyRightLspClient guifg=' .. tostring(colors.yellow))
-          return #vim.tbl_keys(vim.lsp.buf_get_clients()) .. ':' .. lsp_client_name_first .. ' '
+          return #vim.tbl_keys(vim.lsp.buf_get_clients()) .. ':' .. client_name .. ' '
         end
       else
         return ' '
@@ -266,22 +264,20 @@ gls.right[7] = {
   },
 }
 
+local BufferTypeMap = {
+  ['NvimTree'] = 'D',
+  ['fugitive'] = 'G',
+  ['fugitiveblame'] = 'B',
+  ['help'] = 'H',
+  ['qf'] = 'Q',
+  ['zsh'] = 'T',
+  ['bash'] = 'T',
+}
+
 require('galaxyline').section.short_line_left = {
   {
     ShortLineLeftBufferType = {
-      provider = function()
-        local BufferTypeMap = {
-          ['NvimTree'] = 'D',
-          ['fugitive'] = 'G',
-          ['fugitiveblame'] = 'B',
-          ['help'] = 'H',
-          ['qf'] = 'Q',
-          ['zsh'] = 'T',
-          ['bash'] = 'T',
-        }
-        local name = BufferTypeMap[vim.bo.filetype] or '?'
-        return string.format('  %s ', name)
-      end,
+      provider = function() return string.format('  %s ', BufferTypeMap[vim.bo.filetype] or '?') end,
       separator = ' ',
     },
   },
