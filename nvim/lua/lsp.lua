@@ -60,7 +60,7 @@ vim.api.nvim_set_keymap("n", "<leader>cd", "<cmd>lua vim.lsp.buf.definition()<CR
   noremap = false,
   silent = true,
 }) ]]
-vim.api.nvim_set_keymap("n", "<leader>d", "<cmd>lua vim.lsp.buf.formatting_sync()<CR>", {
+vim.api.nvim_set_keymap("n", "<leader>df", "<cmd>lua vim.lsp.buf.formatting_sync()<CR>", {
   noremap = true,
   silent = false,
 })

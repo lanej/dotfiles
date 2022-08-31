@@ -1,21 +1,21 @@
 require('trouble').setup {
-  vim.api.nvim_set_keymap('n', '<leader>tx', '<cmd>Trouble<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>cx', '<cmd>Trouble<cr>', {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>tw', '<cmd>Trouble workspace_diagnostics<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>dw', '<cmd>Trouble workspace_diagnostics<cr>', {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>td', '<cmd>Trouble document_diagnostics<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>dd', '<cmd>Trouble document_diagnostics<cr>', {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>tl', '<cmd>Trouble loclist<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>cl', '<cmd>Trouble loclist<cr>', {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>tq', '<cmd>Trouble quickfix<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>cq', '<cmd>Trouble quickfix<cr>', {
     silent = true,
     noremap = true,
   }),
