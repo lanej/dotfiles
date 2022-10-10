@@ -15,7 +15,8 @@ return require('packer').startup({
       'beauwilliams/focus.nvim',
       config = function()
         require('focus').setup({
-          excluded_filetypes = {'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile'},
+          signcolumn = false,
+          excluded_filetypes = { 'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile' },
         })
       end,
     }
