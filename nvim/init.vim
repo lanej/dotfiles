@@ -28,7 +28,6 @@ set magic                      " For regular expressions turn magic on
 set modelines=5
 set nobackup
 set scrolloff=7                " Set 7 lines to the cursor - when moving vertically using j/k
-set secure
 set shell=$SHELL
 set showcmd                    " Show incomplete cmds down the bottom
 set showmatch                  " Show matching brackets when text indicator is over them
@@ -530,3 +529,5 @@ vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
 let g:phabricator_hosts = ["phab.easypo.net"]
+
+set secure
