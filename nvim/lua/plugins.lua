@@ -3,18 +3,47 @@ local use = require('packer').use
 return require('packer').startup({
   function()
     use 'wbthomason/packer.nvim'
+    use { 'krivahtoo/silicon.nvim' }
+    use {
+      'ibhagwan/smartyank.nvim',
+      config = function()
+        require('smartyank').setup {
+          highlight = {
+            enabled = true, -- highlight yanked text
+            higroup = "IncSearch", -- highlight group of yanked text
+            timeout = 2000, -- timeout for clearing the highlight
+          },
+          clipboard = {
+            enabled = true
+         },
+          tmux = {
+            enabled = true,
+            cmd = { 'tmux', 'set-buffer', '-w' }
+          },
+          osc52 = {
+            enabled = true,
+            ssh_only = true, -- OSC52 yank also in local sessions
+            silent = true, -- false to disable the "n chars copied" echo
+          }
+        }
+      end
+    }
     use {
       'christoomey/vim-tmux-navigator',
       config = function() require 'tmux-config' end,
     }
     use {
       'lanej/vim-phabricator',
-      requires = {'tpope/vim-fugitive'},
+      requires = { 'tpope/vim-fugitive' },
     }
     use {
       'beauwilliams/focus.nvim',
       config = function()
         require('focus').setup({
+          colorcolumn = {
+            enable = true,
+            width = 100,
+          },
           signcolumn = false,
           excluded_filetypes = { 'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile' },
         })
@@ -54,7 +83,7 @@ return require('packer').startup({
     } ]]
     use {
       'lanej/tender',
-      requires = {'rktjmp/lush.nvim'},
+      requires = { 'rktjmp/lush.nvim', 'lewis6991/gitsigns.nvim' },
     }
     use {
       'glepnir/galaxyline.nvim',
@@ -77,8 +106,8 @@ return require('packer').startup({
     }
     use {
       'lewis6991/gitsigns.nvim',
-      requires = {'nvim-lua/plenary.nvim'},
-      tag = 'release',
+      requires = { 'nvim-lua/plenary.nvim' },
+      tag = 'v0.5',
       config = function() require('gitsignsconfig') end,
     }
     use {
