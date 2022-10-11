@@ -5,6 +5,7 @@ lsp.solargraph.setup(coq.lsp_ensure_capabilities())
 lsp.gopls.setup(coq.lsp_ensure_capabilities())
 lsp.vimls.setup(coq.lsp_ensure_capabilities())
 lsp.yamlls.setup(coq.lsp_ensure_capabilities())
+lsp.clangd.setup(coq.lsp_ensure_capabilities())
 lsp.sumneko_lua.setup(coq.lsp_ensure_capabilities({
   cmd = {"lua-language-server"},
   settings = {
