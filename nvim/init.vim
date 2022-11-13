@@ -166,8 +166,8 @@ let g:indent_blankline_show_current_context = v:true
 let g:indent_blankline_use_treesitter = v:true
 
 nnoremap <leader>gm :Git mergetool<CR>
-nnoremap <leader>go :GBrowse<CR>
-vnoremap <leader>go :GBrowse<CR>
+nnoremap <leader>go :GBrowse!<CR>
+vnoremap <leader>go :GBrowse!<CR>
 nnoremap <leader>gt :Git commit -am'wip'<CR>
 nnoremap <leader>gs :Git<CR>
 nnoremap <leader>gr :Gread<CR>
