@@ -425,7 +425,6 @@ if has('autocmd')
   augroup END
 
   augroup filetype_gitcommit
-    au! BufNewFile,BufRead new-commit,differential* set filetype=markdown
     au! FileType gitcommit set colorcolumn=73|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
   augroup END
 
