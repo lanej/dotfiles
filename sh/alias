@@ -2,10 +2,6 @@
 
 alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' | grep -o \"https://phab\\..*\" | head -n1 | xargs basename 2>/dev/null"
 alias arc-update="arc-revision | xargs arc diff --update"
-alias b='bundle-hack'
-alias be='bundle-exec-hack'
-alias bi='bundle-hack install'
-alias bl='bundle install --local'
 alias c="clear"
 alias copy="tr -d '\n' | pbcopy"
 alias cpr='copy -r'
@@ -147,3 +143,10 @@ gem_releases() {
 alias tn="tmux new"
 alias ct="cargo test"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
+alias go="go-hack"
+alias python="python-hack"
+alias ruby="ruby-hack"
+alias b='bundle-hack'
+alias be='bundle-exec-hack'
+alias bi='bundle-hack install'
+alias bl='bundle install --local'
