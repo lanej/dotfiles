@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+PYTHON="python"
+
+if command -v withenv >/dev/null && [[ -r .env ]]; then
+	PYTHON="withenv python"
+fi
+
+$PYTHON "$@"
