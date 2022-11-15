@@ -154,3 +154,5 @@
 	excludeDecoration = refs/tags/phabricator/*
 [merge]
 	autoStash = true
+
+ # vim: set ft=gitconfig:
