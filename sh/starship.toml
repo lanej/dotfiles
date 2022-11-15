@@ -12,6 +12,9 @@ diverged = "⇕⇡${ahead_count}⇣${behind_count}"
 behind = "⇣${count}"
 style = "yellow"
 
+[git_metrics]
+disabled = false
+
 [aws]
 symbol = " "
 
