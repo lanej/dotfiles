@@ -30,3 +30,6 @@ Manjaro + Centos
 
 * yabai
 * alfred
+* Menubar Stats
+
+![Darwin](./macos-desktop.png)
