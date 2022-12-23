@@ -1,5 +1,32 @@
 local fzf_lua = require 'fzf-lua'
 local actions = require 'fzf-lua.actions'
+local utils = require "fzf-lua.utils"
+local path = require "fzf-lua.path"
+
+local action_default = function(selected, opts)
+  if #selected > 1 then
+    local qf_list = {}
+    for i = 1, #selected do
+      local file = path.entry_to_file(selected[i], opts)
+      local text = selected[i]:match(":%d+:%d?%d?%d?%d?:?(.*)$")
+      table.insert(qf_list, {
+        filename = file.bufname or file.path,
+        lnum = file.line,
+        col = file.col,
+        text = text,
+      })
+    end
+    if is_loclist then
+      vim.fn.setloclist(0, qf_list)
+      vim.cmd "Trouble loclist"
+    else
+      vim.fn.setqflist(qf_list)
+      vim.cmd ":Trouble quickfix"
+    end
+  else
+    return actions.buf_edit(selected, opts)
+  end
+end
 
 require('fzf-lua').setup {
   keymap = {
@@ -9,6 +36,14 @@ require('fzf-lua').setup {
       ['<C-r>'] = 'toggle-preview-cw',
       ['<C-j>'] = 'half-page-down',
       ['<C-k>'] = 'half-page-up',
+    },
+    fzf = {
+      ['ctrl-b'] = 'toggle-all',
+    },
+  },
+  actions = {
+    files = {
+      ['default'] = action_test,
     },
   },
   winopts = {
