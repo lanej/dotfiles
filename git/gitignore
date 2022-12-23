@@ -31,3 +31,4 @@ venv/
 .solargraph
 .ruby-version
 rspec_failures.txt
+.env
