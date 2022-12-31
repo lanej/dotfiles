@@ -112,7 +112,7 @@ require("lspconfig").sumneko_lua.setup {
   capabilities = capabilities,
 }
 
-local lsp_attach = function(client, buf)
+local lsp_attach = function(_, buf)
   vim.api.nvim_buf_set_option(buf, "formatexpr", "v:lua.vim.lsp.formatexpr()")
   vim.api.nvim_buf_set_option(buf, "omnifunc", "v:lua.vim.lsp.omnifunc")
   vim.api.nvim_buf_set_option(buf, "tagfunc", "v:lua.vim.lsp.tagfunc")
@@ -161,11 +161,11 @@ vim.api.nvim_set_keymap("n", "<c-n>", "<cmd>lua vim.diagnostic.goto_next()<CR>",
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.diagnostic.set_loclist()<CR>", {
+vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>", {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.diagnostic.show_line_diagnostics()<CR>", {
+vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.get_line_diagnostics()<CR>", {
   noremap = true,
   silent = true,
 })
