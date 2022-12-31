@@ -33,12 +33,6 @@ require('neorg').setup {
     ["core.norg.journal"] = {},
     ["core.norg.concealer"] = {},
     -- ["core.norg.completion"] = {},
-    ["core.gtd.base"] = {
-      config = {
-        workspace = "home",
-      },
-    },
-    ["core.gtd.ui"] = {},
   },
 }
 
