@@ -15,7 +15,7 @@ return require('packer').startup({
           },
           clipboard = {
             enabled = true
-         },
+          },
           tmux = {
             enabled = true,
             cmd = { 'tmux', 'set-buffer', '-w' }
@@ -50,21 +50,9 @@ return require('packer').startup({
       end,
     }
     use {
-      'ms-jpq/coq_nvim',
-      branch = 'coq',
-    }
-    use {
-      'ms-jpq/coq.artifacts',
-      branch = 'artifacts',
-    }
-    use {
       'nvim-neorg/neorg',
       config = function() require('orgmode') end,
       requires = 'nvim-lua/plenary.nvim',
-    }
-    use {
-      'David-Kunz/treesitter-unit',
-      branch = 'main',
     }
     use 'dense-analysis/ale'
     use {
@@ -116,16 +104,24 @@ return require('packer').startup({
     }
     use {
       'neovim/nvim-lspconfig',
-      requires = 'nvim-lua/lsp_extensions.nvim',
       config = function() require('lsp') end,
+      requires = {'hrsh7th/cmp-buffer',
+        'hrsh7th/cmp-path',
+        'hrsh7th/cmp-cmdline',
+        'hrsh7th/nvim-cmp',
+        'hrsh7th/cmp-nvim-lsp',
+        'hrsh7th/cmp-vsnip',
+        'hrsh7th/vim-vsnip',
+        'simrat39/rust-tools.nvim',
+        'onsails/lspkind.nvim',
+      }
     }
-    use({
+    use {
       'glepnir/lspsaga.nvim',
       branch = 'main',
       requires = 'neovim/nvim-lspconfig',
       config = function() require('lspsagaconfig') end,
-    })
-    use 'folke/lsp-colors.nvim'
+    }
     use {
       'folke/trouble.nvim',
       requires = 'kyazdani42/nvim-web-devicons',
@@ -135,16 +131,11 @@ return require('packer').startup({
       'norcalli/nvim-colorizer.lua',
       requires = 'nvim-treesitter/nvim-treesitter',
     }
-    use {'nvim-lua/lsp_extensions.nvim'}
     use 'nvim-lua/popup.nvim'
     use({
       'nvim-treesitter/nvim-treesitter',
       config = function() require 'treesitter' end,
-    })
-    use({
-      'j-hui/fidget.nvim',
-      config = function() require('fidget').setup {} end,
-    })
+    }
     use {
       'nvim-treesitter/nvim-treesitter-textobjects',
       requires = 'nvim-treesitter/nvim-treesitter',
