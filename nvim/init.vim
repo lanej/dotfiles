@@ -307,7 +307,7 @@ augroup packer_user_config
   autocmd BufWritePost plugins.lua source <afile> | PackerCompile
 augroup end
 
-map gm :TSHighlightCapturesUnderCursor<CR>
+map <silent>gm :TSHighlightCapturesUnderCursor<CR>
 
 let g:jedi#auto_initialization = 0
 
