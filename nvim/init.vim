@@ -23,7 +23,8 @@ set history=10000              " Store lots of :cmdline history
 set hlsearch
 set ignorecase                 " Ignore case when searching
 set incsearch                  " Makes search act like search in modern browsers
-set lazyredraw                 " Don't redraw while executing macros (good performance config)
+" set lazyredraw                 " Don't redraw while executing macros (good performance config)
+set completeopt=menu,menuone,noselect,preview,noinsert
 set magic                      " For regular expressions turn magic on
 set modelines=5
 set nobackup
