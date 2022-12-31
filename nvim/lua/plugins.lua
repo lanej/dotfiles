@@ -5,29 +5,6 @@ return require('packer').startup({
     use 'wbthomason/packer.nvim'
     use { 'krivahtoo/silicon.nvim' }
     use {
-      "ray-x/lsp_signature.nvim",
-      config = function()
-        require "lsp_signature".setup({
-          bind = true, -- This is mandatory, otherwise border config won't get registered.
-          noice = true,
-          fix_pos = true,
-          hint_enable = false,
-          handler_opts = {
-            border = "rounded"
-          },
-          presets = {
-            -- you can enable a preset by setting it to true, or a table that will override the preset config
-            -- you can also add custom presets that you can enable/disable with enabled=true
-            bottom_search = false, -- use a classic bottom cmdline for search
-            command_palette = false, -- position the cmdline and popupmenu together
-            long_message_to_split = true, -- long messages will be sent to a split
-            inc_rename = false, -- enables an input dialog for inc-rename.nvim
-            lsp_doc_border = false, -- add a border to hover docs and signature help
-          },
-        })
-      end,
-    }
-    use {
       'ibhagwan/smartyank.nvim',
       config = function()
         require('smartyank').setup {
@@ -98,7 +75,7 @@ return require('packer').startup({
     }
     use {
       'folke/noice.nvim',
-      tag = 'v1.0.0',
+      tag = 'v1.5.1',
       branch = 'main',
       config = function()
         require("noice").setup(
@@ -123,30 +100,25 @@ return require('packer').startup({
                 },
               },
             },
-            lsp = {
-              signature = {
-                enabled = false,
-                auto_open = { enabled = false },
-              }
-            }
           })
       end,
       requires = {
         "MunifTanjim/nui.nvim",
         "rcarriga/nvim-notify",
+        'neovim/nvim-lspconfig',
       }
     }
     use {
       'glepnir/galaxyline.nvim',
       branch = 'main',
       config = function() require 'statusline' end,
-      requires = {'kyazdani42/nvim-web-devicons', 'lanej/tender'},
+      requires = { 'kyazdani42/nvim-web-devicons', 'lanej/tender' },
     }
     use {
       'ibhagwan/fzf-lua',
       config = function() require 'fzfconfig' end,
       branch = 'main',
-      requires = {'vijaymarupudi/nvim-fzf', 'kyazdani42/nvim-web-devicons'},
+      requires = { 'vijaymarupudi/nvim-fzf', 'kyazdani42/nvim-web-devicons' },
     }
     use 'vim-test/vim-test'
     use 'junegunn/vim-easy-align'
@@ -168,7 +140,8 @@ return require('packer').startup({
     use {
       'neovim/nvim-lspconfig',
       config = function() require('lsp') end,
-      requires = {'hrsh7th/cmp-buffer',
+      requires = {
+        'hrsh7th/cmp-buffer',
         'hrsh7th/cmp-path',
         'hrsh7th/cmp-cmdline',
         'hrsh7th/nvim-cmp',
@@ -176,6 +149,7 @@ return require('packer').startup({
         'hrsh7th/cmp-vsnip',
         'hrsh7th/vim-vsnip',
         'simrat39/rust-tools.nvim',
+        'kyazdani42/nvim-web-devicons',
         'onsails/lspkind.nvim',
       }
     }
