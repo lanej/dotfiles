@@ -5,6 +5,29 @@ return require('packer').startup({
     use 'wbthomason/packer.nvim'
     use { 'krivahtoo/silicon.nvim' }
     use {
+      "ray-x/lsp_signature.nvim",
+      config = function()
+        require "lsp_signature".setup({
+          bind = true, -- This is mandatory, otherwise border config won't get registered.
+          noice = true,
+          fix_pos = true,
+          hint_enable = false,
+          handler_opts = {
+            border = "rounded"
+          },
+          presets = {
+            -- you can enable a preset by setting it to true, or a table that will override the preset config
+            -- you can also add custom presets that you can enable/disable with enabled=true
+            bottom_search = false, -- use a classic bottom cmdline for search
+            command_palette = false, -- position the cmdline and popupmenu together
+            long_message_to_split = true, -- long messages will be sent to a split
+            inc_rename = false, -- enables an input dialog for inc-rename.nvim
+            lsp_doc_border = false, -- add a border to hover docs and signature help
+          },
+        })
+      end,
+    }
+    use {
       'ibhagwan/smartyank.nvim',
       config = function()
         require('smartyank').setup {
