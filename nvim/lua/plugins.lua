@@ -74,6 +74,46 @@ return require('packer').startup({
       requires = { 'rktjmp/lush.nvim', 'lewis6991/gitsigns.nvim' },
     }
     use {
+      'folke/noice.nvim',
+      tag = 'v1.0.0',
+      branch = 'main',
+      config = function()
+        require("noice").setup(
+          {
+            popupmenu = {
+              enabled = false,
+            },
+            cmdline = {
+              format = {
+                conceal = false
+              },
+            },
+            views = {
+              cmdline_popup = {
+                border = {
+                  style = "none",
+                  padding = { 2, 3 },
+                },
+                filter_options = {},
+                win_options = {
+                  winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
+                },
+              },
+            },
+            lsp = {
+              signature = {
+                enabled = false,
+                auto_open = { enabled = false },
+              }
+            }
+          })
+      end,
+      requires = {
+        "MunifTanjim/nui.nvim",
+        "rcarriga/nvim-notify",
+      }
+    }
+    use {
       'glepnir/galaxyline.nvim',
       branch = 'main',
       config = function() require 'statusline' end,
@@ -135,7 +175,7 @@ return require('packer').startup({
     use({
       'nvim-treesitter/nvim-treesitter',
       config = function() require 'treesitter' end,
-    }
+    })
     use {
       'nvim-treesitter/nvim-treesitter-textobjects',
       requires = 'nvim-treesitter/nvim-treesitter',
