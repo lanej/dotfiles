@@ -39,11 +39,8 @@ return require('packer').startup({
     use {
       'beauwilliams/focus.nvim',
       config = function()
+        vim.api.nvim_command('set wiw=100')
         require('focus').setup({
-          colorcolumn = {
-            enable = true,
-            width = 100,
-          },
           signcolumn = false,
           excluded_filetypes = { 'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile' },
         })
