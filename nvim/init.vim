@@ -114,17 +114,17 @@ nnoremap <leader>bi  :bn<CR>
 filetype plugin indent on
 
 " plugin-config start
-map <leader>w :w<CR>
+map <silent><leader>w :w<CR>
 " map <leader>w! :SudoWrite<CR>
-map <leader>x :x<CR>
+map <silent><leader>x :x<CR>
 
 " vim-plug
-map <leader>vpi :PackerInstall<CR>
-map <leader>vpc :PackerClean<CR>
-map <leader>vpu :PackerSync<CR>
+map <silent><leader>vpi :PackerInstall<CR>
+map <silent><leader>vpc :PackerClean<CR>
+map <silent><leader>vpu :PackerSync<CR>
 
-map <leader>rb :%s/<C-r><C-w>/
-map <leader>rq :cfdo %s/<C-r><C-w>/
+map <silent><leader>rb :%s/<C-r><C-w>/
+map <silent><leader>rq :cfdo %s/<C-r><C-w>/
 
 let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
 
