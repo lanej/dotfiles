@@ -18,7 +18,12 @@ fi
 export OS=`uname -s`
 export EDITOR="vim"
 export PAGER="less"
-export LESS="-RMin"
+# -X or --no-init
+# -F or --quit-if-one-screen
+# -M or --LONG-PROMPT
+# -I or --IGNORE-CASE
+# -n or --line-numbers: no line numbers
+export LESS="-XFMIn"
 export EMAIL="me@joshualane.com"
 export ARCH=`uname -m`
 export IRCNICK='lanej'
