@@ -528,6 +528,15 @@ nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
 
+if exists("g:neovide")
+  let g:neovide_scale_factor=1.0
+  function! ChangeScaleFactor(delta)
+      let g:neovide_scale_factor = g:neovide_scale_factor * a:delta
+  endfunction
+  nnoremap <expr><C-=> ChangeScaleFactor(1.25)
+  nnoremap <expr><C--> ChangeScaleFactor(1/1.25)
+end
+
 let g:phabricator_hosts = ["phab.easypo.net"]
 
 set secure
