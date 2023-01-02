@@ -166,17 +166,17 @@ map <leader>ntf :NvimTreeFindFile<CR>
 let g:indent_blankline_show_current_context = v:true
 let g:indent_blankline_use_treesitter = v:true
 
-nnoremap <leader>gm :Git mergetool<CR>
-nnoremap <leader>go :GBrowse!<CR>
-vnoremap <leader>go :GBrowse!<CR>
-nnoremap <leader>gt :Git commit -am'wip'<CR>
-nnoremap <leader>gs :Git<CR>
-nnoremap <leader>gr :Gread<CR>
-nnoremap <leader>ga :Git commit -av<CR>
-nnoremap <leader>gv :Git commit -v<CR>
-nnoremap <leader>gd :Gdiffsplit origin/master
-nnoremap <leader>gb :Git blame<CR>
-nnoremap <leader>gp :Git push<CR>
+nnoremap <silent><leader>gm :Git mergetool<CR>
+nnoremap <silent><leader>go :GBrowse!<CR>
+vnoremap <silent><leader>go :GBrowse!<CR>
+nnoremap <silent><leader>gt :Git commit -am'wip'<CR>
+nnoremap <silent><leader>gs :Git<CR>
+nnoremap <silent><leader>gr :Gread<CR>
+nnoremap <silent><leader>ga :Git commit -av<CR>
+nnoremap <silent><leader>gv :Git commit -v<CR>
+nnoremap <silent><leader>gd :Gdiffsplit origin/master
+nnoremap <silent><leader>gb :Git blame<CR>
+nnoremap <silent><leader>gp :Git push<CR>
 
 map <leader>re :Rename<space>
 
