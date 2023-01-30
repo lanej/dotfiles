@@ -98,6 +98,7 @@ return require('packer').startup({
               },
             },
           })
+        vim.api.nvim_command('hi Cursor gui=reverse')
       end,
       requires = {
         "MunifTanjim/nui.nvim",
