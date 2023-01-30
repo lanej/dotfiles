@@ -46,13 +46,13 @@ cmp.setup({
     ['<C-j>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete(),
     ['<C-e>'] = cmp.mapping.abort(),
-    ['<CR>'] = function(fallback)
+    --[[ ['<CR>'] = function(fallback)
       if cmp.visible() then
-        cmp.confirm({ select = true }) -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+        cmp.confirm({ select = false })
       else
         fallback() -- If you use vim-endwise, this fallback will behave the same as vim-endwise.
       end
-    end
+    end ]]
   }),
   sources = cmp.config.sources(
     {
