@@ -5,6 +5,10 @@ local feedkey = function(key, mode)
 end
 
 cmp.setup({
+  preselect = cmp.PreselectMode.None,
+  --[[ completion = {
+    autocomplete = false,
+  }, ]]
   snippet = {
     expand = function(args)
       vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
@@ -46,13 +50,13 @@ cmp.setup({
     ['<C-j>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete(),
     ['<C-e>'] = cmp.mapping.abort(),
-    --[[ ['<CR>'] = function(fallback)
+    ['<CR>'] = function(fallback)
       if cmp.visible() then
         cmp.confirm({ select = false })
       else
         fallback() -- If you use vim-endwise, this fallback will behave the same as vim-endwise.
       end
-    end ]]
+    end
   }),
   sources = cmp.config.sources(
     {
