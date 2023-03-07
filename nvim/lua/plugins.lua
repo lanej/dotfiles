@@ -60,7 +60,13 @@ return require('packer').startup({
     use {
       'folke/todo-comments.nvim',
       branch = 'main',
-      config = function() require('todo-comments').setup {} end,
+      config = function() 
+        require('todo-comments').setup({
+          keywords = {
+            WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
+          }
+        })
+      end,
     }
     --[[ use {
       "~/src/tender",
