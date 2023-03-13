@@ -1,5 +1,5 @@
 require('trouble').setup {
-  vim.api.nvim_set_keymap('n', '<leader>cx', '<cmd>Trouble<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>dt', '<cmd>TroubleToggle<cr>', {
     silent = true,
     noremap = true,
   }),
@@ -15,7 +15,7 @@ require('trouble').setup {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>cq', '<cmd>Trouble quickfix<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>dq', '<cmd>Trouble quickfix<cr>', {
     silent = true,
     noremap = true,
   }),
