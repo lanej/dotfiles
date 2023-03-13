@@ -155,12 +155,14 @@ require("rust-tools").setup({
     on_attach = lsp_attach,
     settings = {
       ["rust-analyzer"] = {
-        lens = {
-          enable = true,
-        },
-        checkonsave = {
+        checkOnSave = {
           command = "clippy",
+          extraArgs = { "--all", "--", "-W", "clippy::all" },
         },
+        procMacro = {
+          enable =false,
+        },
+        diagnostics = { disabled = { "unresolved-proc-macro" } }
       },
     },
   },
