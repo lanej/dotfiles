@@ -34,7 +34,15 @@ vim.api.nvim_set_keymap('n', '<leader>hr', ':Gitsigns reset_hunk<CR>', {
   silent = true,
   noremap = true,
 })
+vim.api.nvim_set_keymap('n', '<leader>hR', ':Gitsigns reset_buffer<CR>', {
+  silent = true,
+  noremap = true,
+})
 vim.api.nvim_set_keymap('n', '<leader>hu', ':Gitsigns undo_stage_hunk<CR>', {
+  silent = true,
+  noremap = true,
+})
+vim.api.nvim_set_keymap('n', '<leader>hU', ':Gitsigns reset_buffer_index<CR>', {
   silent = true,
   noremap = true,
 })
