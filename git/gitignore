@@ -32,3 +32,4 @@ venv/
 .ruby-version
 rspec_failures.txt
 .env
+.luarc.json
