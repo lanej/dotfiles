@@ -147,6 +147,7 @@
 	colorMoved = default
 	whitespace-error-style = 22 bold red
 	zero-style = dim syntax
+	max-line-length = 4096
 [interactive]
 	diffFilter = delta --color-only
 [commit]
