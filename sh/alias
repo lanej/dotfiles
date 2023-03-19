@@ -5,10 +5,8 @@ alias arc-update="arc-revision | xargs arc diff --update"
 alias c="clear"
 alias copy="tr -d '\n' | pbcopy"
 alias cpr='copy -r'
-alias curlb='curl -s'
-alias curls='curl -svo /dev/null'
-alias curlsd='curl -svo /dev/null -H "Fastly-Debug: 1"'
-alias curl-ttfb='curls -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
+alias curls='curl -s'
+alias curl-ttfb='curls -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
 alias fucking='sudo'
 alias gds='GIT_PAGER=cat git diff --stat'
 alias g="git"
