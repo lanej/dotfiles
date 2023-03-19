@@ -190,6 +190,26 @@ return require('packer').startup({
     use 'tpope/vim-surround'
     use 'tpope/vim-repeat'
     use 'b3nj5m1n/kommentary'
+    use {
+      'epwalsh/obsidian.nvim',
+      tag = 'v1.*',
+      config = function()
+        require('obsidian').setup({
+          dir = '~/share/work',
+          completion = {
+            nvim_cmp = true, -- if using nvim-cmp, otherwise set to false
+          },
+          daily_notes = { folder = 'dailies' },
+        })
+        vim.keymap.set('n', 'gf', function()
+          if require('obsidian').util.cursor_on_markdown_link() then
+            return '<cmd>ObsidianFollowLink<CR>'
+          else
+            return 'gf'
+          end
+        end, { noremap = false, expr = true })
+      end,
+    }
   end,
   config = {
     display = {
