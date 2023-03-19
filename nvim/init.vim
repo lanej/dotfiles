@@ -75,10 +75,7 @@ Plug 'ludovicchabant/vim-gutentags'
 call plug#end()
 
 set inccommand=nosplit       " live replace
-
-if (exists("+termguicolors"))
-  set termguicolors
-endif
+set termguicolors
 
 " searching stuff
 
