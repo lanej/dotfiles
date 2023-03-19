@@ -1,4 +1,10 @@
-require('lspsaga').init_lsp_saga({
+require('lspsaga').setup({
+    diagnostic = {
+    show_code_action = false,
+  },
+  symbol_in_winbar = {
+    enable = false,
+  },
   code_action_lightbulb = {
     enable = false,
   },
