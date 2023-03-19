@@ -22,6 +22,7 @@
 	cahr = commit --amend -CHEAD --reset-author
 	cav = commit -av
 	ccah = commit --amend -cHEAD -v
+	ccahr = commit --amend -cHEAD -v --reset-author
 	c = commit
 	cfd = clean -fd
 	cf = diff --name-only
