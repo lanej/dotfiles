@@ -68,8 +68,8 @@ return require('packer').startup({
       requires = { "rktjmp/lush.nvim" },
     } ]]
     use {
-      'lanej/tender',
-      requires = { 'rktjmp/lush.nvim', 'lewis6991/gitsigns.nvim' },
+      "lanej/tender",
+      requires = { 'rktjmp/lush.nvim', 'lewis6991/gitsigns.nvim', 'folke/noice.nvim' },
     }
     use {
       'folke/noice.nvim',
