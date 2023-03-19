@@ -344,7 +344,8 @@ function! Env()
   endfor
 endfunction
 
-nnoremap <leader>ee :call Env()<CR>
+nnoremap <silent><leader>ee :e .env<CR>
+nnoremap <silent><leader>eo :e .env-override<CR>
 
 if has('autocmd')
   au FocusGained * :redraw!
