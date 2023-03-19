@@ -128,6 +128,43 @@ require("lspconfig").lua_ls.setup {
     "lua-language-server",
   },
   capabilities = capabilities,
+  format = {
+    enable = true,
+    defaultConfig = {
+      column_limit = "120",
+      indent_width = "2",
+      use_tab = "false",
+      tab_width = "2",
+      continuation_indent_width = "2",
+      spaces_before_call = "1",
+      keep_simple_control_block_one_line = "true",
+      keep_simple_function_one_line = "true",
+      keep_control_block_one_line = "true",
+      align_args = "true",
+      break_after_functioncall_lp = "false",
+      break_before_functioncall_rp = "false",
+      spaces_inside_functioncall_parens = "false",
+      spaces_inside_functiondef_parens = "false",
+      align_parameter = "true",
+      chop_down_parameter = "true",
+      break_after_functiondef_lp = "false",
+      break_before_functiondef_rp = "false",
+      align_table_field = "false",
+      break_after_table_lb = "false",
+      break_before_table_rb = "false",
+      chop_down_table = "true",
+      chop_down_kv_table = "true",
+      table_sep = "",
+      extra_sep_at_table_end = "true",
+      spaces_inside_table_braces = "false",
+      break_after_operator = "true",
+      double_quote_to_single_quote = "true",
+      single_quote_to_double_quote = "false",
+      spaces_around_equals_in_field = "true",
+      line_breaks_after_function_body = "1",
+      line_separator = "input",
+    }
+  }
 }
 
 local lsp_attach = function(_, buf)
