@@ -46,11 +46,6 @@ return require('packer').startup({
         })
       end,
     }
-    use {
-      'nvim-neorg/neorg',
-      config = function() require('orgmode') end,
-      requires = 'nvim-lua/plenary.nvim',
-    }
     use 'dense-analysis/ale'
     use {
       'lanej/vim-prosession',
