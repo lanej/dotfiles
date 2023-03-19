@@ -153,3 +153,13 @@ alias b='bundle-hack'
 alias be='bundle-exec-hack'
 alias bi='bundle-hack install'
 alias bl='bundle install --local'
+
+phab-diffs() {
+	echo "{\"attachments\":{\"projects\":true},\"constraints\": {\"authorPHIDs\": [\"$1\"]}}" | arc call-conduit -- differential.revision.search | jq -r '.response.data | sort_by(.fields.dateModified)  | .[] | "**" + (.fields.dateModified|todate) + "** [" + .fields.title  + "](" + .fields.uri + ") -> " + .fields.status.name + "\n" + .fields.summary'
+}
+
+phab-diff() {
+	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r ''| bat -l md
+}
+
+alias max-delta=delta --max-line-length=0
