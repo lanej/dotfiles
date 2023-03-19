@@ -169,9 +169,13 @@ vim.api.nvim_set_keymap("n", "<leader>cd", "<cmd>lua vim.lsp.buf.definition()<CR
   noremap = true,
   silent = true,
 })
+vim.api.nvim_set_keymap("n", "<leader>cr", "<cmd>lua vim.lsp.buf.references()<CR>", {
+  noremap = false,
+  silent = true,
+})
 vim.api.nvim_set_keymap("n", "<leader>df", "<cmd>lua vim.lsp.buf.format()<CR>", {
-  noremap = true,
-  silent = false,
+  noremap = false,
+  silent = true,
 })
 vim.api.nvim_set_keymap("n", "<c-p>", "<cmd>lua vim.diagnostic.goto_prev()<CR>", {
   noremap = true,
