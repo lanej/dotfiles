@@ -81,6 +81,3 @@ require"nvim-treesitter.configs".setup({
     },
   },
 })
-
--- vnoremap as :lua require"treesitter-unit".select()<CR>
--- onoremap as :<c-u>lua require"treesitter-unit".select()<CR>
