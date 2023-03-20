@@ -131,8 +131,8 @@ shift + alt - space : yabai -m space --balance
 # cmd + alt - 1 : yabai -m space --focus 1
 
 # send window to desktop and follow focus
-shift + alt - n : yabai -m window --space next
-shift + alt - p : yabai -m window --space prev
+# shift + alt - n : yabai -m window --space next
+# shift + alt - p : yabai -m window --space prev
 
 # focus monitor
 # ctrl + alt - n  : yabai -m display --focus next
@@ -169,3 +169,5 @@ shift + alt - c : yabai -m window --toggle float;\
 	 yabai -m window --grid 4:4:1:1:2:2
 shift + alt - v : yabai -m window --toggle float;\
 	 yabai -m window --grid 6:6:1:0:4:3
+shift + alt - n : yabai -m window --toggle float;\
+	 yabai -m window --grid 6:6:1:3:4:3
