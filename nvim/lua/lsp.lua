@@ -120,6 +120,9 @@ local completion_servers = {
 for _, server in ipairs(completion_servers) do
   require("lspconfig")[server].setup {
     capabilities = capabilities,
+    on_attach = function(client)
+      client.server_capabilities.semanticTokensProvider = nil
+    end
   }
 end
 
