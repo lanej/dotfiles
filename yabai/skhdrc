@@ -110,6 +110,8 @@ shift + cmd - k : yabai -m window --warp north
 shift + cmd - j : yabai -m window --warp south
 shift + cmd - h : yabai -m window --warp west
 shift + cmd - l : yabai -m window --warp east
+ctrl + shift + cmd - l : yabai -m window --space next
+ctrl + shift + cmd - h : yabai -m window --space prev
 
 # balance size of windows
 shift + alt - space : yabai -m space --balance
