@@ -42,8 +42,11 @@ return require('packer').startup({
           highlight_groups = {
             Cursor = { bg = 'foam', blend = 75 },
             InlayHint = { fg = 'muted', italic = true },
+            IndentBlanklineChar = { fg = 'highlight_med' },
             ["@text.diff.add"] = { fg = 'foam' },
             ["@text.diff.delete"] = { fg = 'rose' },
+            ["@text.title"] = { fg = 'foam' },
+            ["@punctuation.special"] = { fg = 'muted' },
             ["@text.uri"] = { fg = 'iris', sp = 'iris', underline = true }
           }
         })
