@@ -8,8 +8,11 @@ if command -v fzf >/dev/null; then
 	--prompt=\
 	--cycle
 	--no-info
-	--color fg:#d8dee9,hl:#9cc9c2,fg+:#ffffff,bg+:238,hl+:#48a4ff,gutter:0
-	--color pointer:#48a4ff,info:#48a4ff,spinner:#48a4ff,header:#48a4ff,prompt:#48a4ff,marker:#48a4ff
+	--color=fg:#908caa,bg:#191724,hl:#ebbcba
+	--color=fg+:#e0def4,bg+:#26233a,hl+:#ebbcba
+	--color=border:#403d52,header:#31748f,gutter:#191724
+	--color=spinner:#f6c177,info:#9ccfd8,separator:#403d52
+	--color=pointer:#c4a7e7,marker:#eb6f92,prompt:#908caa
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
 	'
 
