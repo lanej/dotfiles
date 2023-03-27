@@ -5,6 +5,55 @@ return require('packer').startup({
     use 'wbthomason/packer.nvim'
     use { 'krivahtoo/silicon.nvim' }
     use {
+      'rose-pine/neovim',
+      as = 'rose-pine',
+      config = function()
+        require('rose-pine').setup({
+          variant = 'main',
+          dark_variant = 'main',
+          bold_vert_split = true,
+          dim_nc_background = false,
+          disable_background = false,
+          disable_float_background = false,
+          disable_italics = true,
+          groups = {
+            --[[ background = 'base',
+            background_nc = '_experimental_nc',
+            panel = 'surface',
+            panel_nc = 'base',
+            border = 'highlight_med',
+            comment = 'muted',
+            link = 'iris',
+            punctuation = 'subtle',
+            error = 'love',
+            hint = 'iris',
+            info = 'foam',
+            warn = 'gold',
+
+            headings = {
+              h1 = 'iris',
+              h2 = 'foam',
+              h3 = 'rose',
+              h4 = 'gold',
+              h5 = 'pine',
+              h6 = 'foam',
+            } ]]
+          },
+          highlight_groups = {
+            Cursor = { bg = 'foam', blend = 75 },
+            InlayHint = { fg = 'muted', italic = true },
+            ["@text.diff.add"] = { fg = 'foam' },
+            ["@text.diff.delete"] = { fg = 'rose' },
+            ["@text.uri"] = { fg = 'iris', sp = 'iris', underline = true }
+          }
+        })
+
+        vim.cmd('colorscheme rose-pine')
+        vim.api.nvim_command('hi Cursor gui=reverse')
+      end
+    }
+
+    use {
       'ibhagwan/smartyank.nvim',
       config = function()
         require('smartyank').setup {
