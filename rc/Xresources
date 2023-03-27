@@ -1,4 +1,4 @@
-! special
+/* ! special
 *.foreground:   #ffffff
 *.background:   #262626
 *.cursorColor:  #d0d0d0
@@ -33,4 +33,46 @@
 
 ! white
 *.color7:       #ffffff
-*.color15:      #ffffff
+*.color15:      #ffffff */
+
+/* url_color                #c4a7e7 */
+
+*.foreground:    #e0def4
+*.background:    #26233a
+*.cursorColor:  #6e6a86
+/* inactive_tab_background  #191724
+
+active_border_color      #31748f
+inactive_border_color    #403d52 */
+
+# black
+*.color0   #26233a
+*.color8   #6e6a86
+
+# red
+*.color1   #eb6f92
+*.color9   #eb6f92
+
+# green
+*.color2   #31748f
+*.color10  #31748f
+
+# yellow
+*.color3   #f6c177
+*.color11  #f6c177
+
+# blue
+*.color4   #9ccfd8
+*.color12  #9ccfd8
+
+# magenta
+*.color5   #c4a7e7
+*.color13  #c4a7e7
+
+# cyan
+*.color6   #ebbcba
+*.color14  #ebbcba
+
+# white
+*.color7   #e0def4
+*.color15  #e0def4
