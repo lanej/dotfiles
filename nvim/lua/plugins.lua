@@ -157,10 +157,38 @@ return require('packer').startup({
       }
     }
     use {
-      'glepnir/galaxyline.nvim',
-      branch = 'main',
-      config = function() require 'statusline' end,
-      requires = { 'kyazdani42/nvim-web-devicons', 'lanej/tender' },
+      'nvim-lualine/lualine.nvim',
+      requires = { 'kyazdani42/nvim-web-devicons' },
+      config = function()
+        require('lualine').setup {
+          options = {
+            icons_enabled = true,
+            theme = 'auto',
+            component_separators = { left = '', right = ''},
+            section_separators = { left = '', right = ''},
+            disabled_filetypes = {
+              statusline = {},
+              winbar = {},
+            },
+            ignore_focus = {},
+            always_divide_middle = true,
+            globalstatus = false,
+            refresh = {
+              statusline = 1000,
+              tabline = 1000,
+              winbar = 1000,
+            }
+          },
+          sections = {
+            lualine_a = {'mode'},
+            lualine_b = {'branch',{ 'diagnostics', sources = { 'nvim_lsp', 'ale' }}},
+            lualine_c = {{'filename', path = 1}},
+            lualine_x = {'diff'},
+            lualine_y = {},
+            lualine_z = {},
+          },
+        }
+      end,
     }
     use {
       'ibhagwan/fzf-lua',
