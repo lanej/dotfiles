@@ -17,6 +17,7 @@ return require('packer').startup({
           disable_float_background = false,
           disable_italics = true,
           groups = {
+            background = '#1c1c1c',
             --[[ background = 'base',
             background_nc = '_experimental_nc',
             panel = 'surface',

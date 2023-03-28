@@ -61,8 +61,6 @@ let mapleader = ','
 
 lua require('plugins')
 
-colorscheme tender
-
 let g:plug_url_format = "git@github.com:%s.git"
 call plug#begin(stdpath('data') . '/plugged')
 Plug 'AndrewRadev/splitjoin.vim'
