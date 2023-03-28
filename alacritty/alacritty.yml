@@ -642,35 +642,5 @@ schemes:
       end:
         foreground: "#6e6a86"
         background: "#1f1d2e"
-  # rose-pine: &rose-pine
-  #   primary:
-  #     background: '0x191724'
-  #     foreground: '0xe0def4' # #e0def4
-  #     #dim_foreground: '0x9a9a9a'
-  #     #bright_foreground: '0xffffff'
-  #   #cursor:
-  #    #text: '0x000000'
-  #    #cursor: '0xd0d0d0'
-  #   selection:
-  #     text:       '0x26233a' # #26233a
-  #     background: '0x404040' # #21202e
-  #   normal:
-  #     black:   '0x191724' # #191724
-  #     blue:    '0x908caa' # #908caa
-  #     cyan:    '0x9ccfd8' # #9ccfd8
-  #     green:   '0x31748f' # #31748f
-  #     magenta: '0xc4a7e7' # #c4a7e7
-  #     red:     '0xeb6f92' # #eb6f92
-  #     white:   '0xe0def4' # #e0def4
-  #     yellow:  '0xf6c177' # #f6c177
-  #   bright:
-  #     black:   '0x6e6a86' # #6e6a86
-  #     blue:    '0x9ccfd8' # #9ccfd8
-  #     cyan:    '0xea9a97' # #ea9a97
-  #     green:   '0x3e8fb0' # #3e8fb0
-  #     magenta: '0xc4a7e7' # #c4a7e7
-  #     red:     '0xeb6f92' # #b4637a
-  #     white:   '0xf4ede8' # #f4ede8
-  #     yellow:  '0xf6c177' # #f6c177
 
 colors: *rose-pine
