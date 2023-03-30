@@ -72,6 +72,21 @@ if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
 
 fi
 
+if [ -r "${HOME}/.fzf.zsh" ]; then
+	source "${HOME}/.fzf.zsh"
+	bindkey '^U' fzf-cd-widget
+	bindkey '^O' fzf-file-widget
+	zzz() {
+		zz
+		let ret=$?
+		zle accept-line
+		return $ret
+	}
+	zle -N zzz
+	bindkey '^B' zzz
+
+fi
+
 . "${HOME}/.profile"
 . "$HOME/.alias"
 . "$HOME/.zlogin"
