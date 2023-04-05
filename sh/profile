@@ -35,6 +35,7 @@ export GO15VENDOREXPERIMENT=1
 export RI_PAGER='less -FX'
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
+export BAT_THEME=Nord
 
 if [[ -d "$HOME/.local/bin" ]]; then
 	PATH="$HOME/.local/bin:$PATH"
