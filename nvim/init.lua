@@ -505,5 +505,9 @@ local function prequire(m)
   return err
 end
 
+vim.keymap.set('n', '<leader>vpu', ':PackerSync<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpi', ':PackerInstall<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpc', ':PackerClean<CR>', { silent = true, noremap = true })
+
 -- secrets, unversioned local configs, etc.
 prequire("local")
