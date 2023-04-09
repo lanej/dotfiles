@@ -1,13 +1,5 @@
-"
-"   ██╗███╗   ██╗██╗████████╗██╗   ██╗██╗███╗   ███╗
-"   ██║████╗  ██║██║╚══██╔══╝██║   ██║██║████╗ ████║
-"   ██║██╔██╗ ██║██║   ██║   ██║   ██║██║██╔████╔██║
-"   ██║██║╚██╗██║██║   ██║   ╚██╗ ██╔╝██║██║╚██╔╝██║
-"   ██║██║ ╚████║██║   ██║██╗ ╚████╔╝ ██║██║ ╚═╝ ██║
-"   ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝╚═╝  ╚═══╝  ╚═╝╚═╝     ╚═╝
-
+vim.cmd [[
 set autoread                   " Reload files changed outside vim
-set background=dark
 set autoindent
 set backspace=indent,eol,start " Allow backspace in insert mode
 set cmdheight=2
@@ -52,20 +44,12 @@ set shortmess+=W
 set noswapfile
 set nobackup
 set nowritebackup
-set nowrap
+set wrap
 set list
 set listchars=tab:→\ ,nbsp:␣,trail:•,precedes:«,extends:»
 exe "set cedit=<C-v>"
 
 let mapleader = ','
-
-lua require('plugins')
-
-let g:plug_url_format = "git@github.com:%s.git"
-call plug#begin(stdpath('data') . '/plugged')
-Plug 'AndrewRadev/splitjoin.vim'
-Plug 'ludovicchabant/vim-gutentags'
-call plug#end()
 
 set inccommand=nosplit       " live replace
 set termguicolors
@@ -108,30 +92,9 @@ map <silent><leader>w :w<CR>
 " map <leader>w! :SudoWrite<CR>
 map <silent><leader>x :x<CR>
 
-" vim-plug
-map <silent><leader>vpi :PackerInstall<CR>
-map <silent><leader>vpc :PackerClean<CR>
-map <silent><leader>vpu :PackerSync<CR>
-
 map <silent><leader>rb :%s/<C-r><C-w>/
 map <silent><leader>rq :cfdo %s/<C-r><C-w>/
 
-let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']
-
-let g:gutentags_enabled = 1
-let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']
-let g:gutentags_generate_on_empty_buffer = 0
-let g:gutentags_ctags_exclude = [
-      \ '.eggs',
-      \ '.mypy_cache',
-      \ 'venv',
-      \ 'tags',
-      \ 'tags.temp',
-      \ '.ijwb',
-      \ 'bazel-*',
-      \ ]
-let g:gutentags_project_info = []
-call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
 
 " quickfix nav
 nnoremap ]q :cnext<CR>
@@ -254,7 +217,6 @@ let g:ale_fixers = {
       \ 'javascript.jsx': ['eslint'],
       \ 'javascript': ['eslint'],
       \ 'json': ['jq'],
-      \ 'lua': ['lua-format'],
       \ 'sh': ['shfmt'],
       \ }
 
@@ -273,24 +235,16 @@ let g:ale_lint_on_text_changed = 'always'
 let g:ale_open_list = 0
 let g:ale_ruby_bundler_executable = 'bundle'
 let g:ale_ruby_rubocop_executable = 'bundle'
-let g:ale_set_highlights = 1
 let g:ale_set_loclist = 0
 let g:ale_linters_explicit = 1
 let g:ale_set_quickfix = 0
-let g:ale_set_signs = 1
 let g:ale_sign_column_always = 1
 let g:ale_sign_error = '>>'
+let g:ale_echo_cursor = 0
 let g:ale_sign_offset = 1000000
 let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
-let g:ale_virtualtext_cursor = 1
-
-augroup filetype_ale
-  autocmd!
-  autocmd FileType ruby,lua map <leader>d :ALEFix<CR>
-  autocmd FileType ruby nmap <silent><C-p> <Plug>(ale_previous_wrap)
-  autocmd FileType ruby nmap <silent><C-n> <Plug>(ale_next_wrap)
-augroup END
+let g:ale_use_neovim_diagnostics_api = 1
 
 augroup packer_user_config
   autocmd!
@@ -337,6 +291,12 @@ endfunction
 nnoremap <silent><leader>ee :e .env<CR>
 nnoremap <silent><leader>eo :e .env-override<CR>
 
+function! GoDebugNearest()
+  let g:test#go#runner = 'delve'
+  TestNearest
+  unlet g:test#go#runner
+endfunction
+
 if has('autocmd')
   au FocusGained * :redraw!
 
@@ -360,21 +320,23 @@ if has('autocmd')
   augroup END
 
   augroup filetype_norg
-    autocmd!
-    autocmd FileType norg set shiftwidth=2|set spell
-    autocmd FileType norg let g:gutentags_enabled = 0
+    au!
+    au FileType norg set shiftwidth=2|set spell
+    au FileType norg let g:gutentags_enabled = 0
   augroup END
 
   augroup filetype_markdown
-    " hub pull-request accepts markdown
-    autocmd BufRead,BufNewFile,BufEnter PULLREQ_EDITMSG set filetype=markdown
-    autocmd BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
-    autocmd FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set conceallevel=0
-    autocmd FileType markdown let g:gutentags_enabled = 0
+    au!
+    au BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
+    au FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set conceallevel=0|set wrap
   augroup END
 
   augroup filetype_ruby
     au!
+    au FileType ruby map <silent><leader>df :ALEFix<CR>
+    au FileType ruby map <silent><leader>da :!bundle exec rubocop -ADES %:p<CR>
+    au FileType ruby map <silent><C-p> <Plug>(ale_previous_wrap)
+    au FileType ruby map <silent><C-n> <Plug>(ale_next_wrap)
     au FileType ruby set shiftwidth=2|set tabstop=2|set softtabstop=2|set expandtab|set autoindent
     au FileType ruby map <leader>tq :TestLast --fail-fast<CR>
     au FileType ruby map <leader>to :TestLast --only-failures<CR>
@@ -412,16 +374,22 @@ if has('autocmd')
 
   augroup filetype_lua
     au! FileType lua map <leader>tj :TestFile --no-keep-going<CR>
-    au! FileType lua set colorcolumn=100|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
-    au! FileType lua nnoremap <leader>d :ALEFix<CR>
+    au FileType lua set colorcolumn=122|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+    au FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
-    au! FileType gitcommit set colorcolumn=73|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell
+    au! FileType gitcommit set colorcolumn=73|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set wrap
   augroup END
 
   au! FileType git set nofoldenable
-  au! FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+
+  augroup filetype_go
+    au!
+    au FileType go set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+    au FileType go nmap <silent> <leader><t-d> :call DebugNearest()<CR>
+  augroup END
+
   au! FileType rust set makeprg=cargo\ run|set colorcolumn=100
 
   augroup filetype_javascript
@@ -502,10 +470,10 @@ let test#python#runner = 'pytest'
 let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest', 'Minitest']
 
 map <leader>tf :TestFile<CR>
-map <leader>tu :TestNearest<CR>
-map <leader>tt :TestNearest<CR>
 map <leader>tl :TestLast<CR>
 map <leader>ts :TestSuite<CR>
+map <leader>tt :TestNearest<CR>
+map <leader>tu :TestNearest<CR>
 
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
@@ -528,6 +496,14 @@ if exists("g:neovide")
   nnoremap <expr><C--> ChangeScaleFactor(1/1.25)
 end
 
-let g:phabricator_hosts = ["phab.easypo.net"]
-
 set secure
+]]
+
+local function prequire(m)
+  local ok, err = pcall(require, m)
+  if not ok then return nil, err end
+  return err
+end
+
+-- secrets, unversioned local configs, etc.
+prequire("local")

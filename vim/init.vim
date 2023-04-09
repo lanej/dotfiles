@@ -58,6 +58,12 @@ exe "set cedit=<C-v>"
 
 let mapleader = ','
 
+let g:plug_url_format = "git@github.com:%s.git"
+call plug#begin(stdpath('data') . '/plugged')
+Plug 'AndrewRadev/splitjoin.vim'
+Plug 'ludovicchabant/vim-gutentags'
+call plug#end()
+
 set inccommand=nosplit       " live replace
 set termguicolors
 
@@ -72,7 +78,6 @@ nnoremap * *``
 " Edit the vimrc file
 nnoremap ev  :e $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap evp :e  ~/.config/nvim/lua/plugins.lua<CR>
 nnoremap tt  :tablast<CR>
 nnoremap te  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
@@ -128,6 +133,39 @@ call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
 nnoremap ]q :cnext<CR>
 nnoremap [q :cprev<CR>
 
+" terraform
+let g:terraform_completion_keys = 1
+let g:terraform_fmt_on_save     = 1
+let g:terraform_align           = 1
+let g:terraform_remap_spacebar  = 0
+
+" sessions
+map <leader>ps :Prosession<space>
+let g:prosession_per_branch = 1
+let g:prosession_tmux_title = 1
+let g:prosession_tmux_title_format = '@@@'
+
+map <leader>ntt :NvimTreeToggle<CR>
+map <leader>ntc :NvimTreeClose<CR>
+map <leader>ntf :NvimTreeFindFile<CR>
+
+let g:indent_blankline_show_current_context = v:true
+let g:indent_blankline_use_treesitter = v:true
+
+nnoremap <silent><leader>gm :Git mergetool<CR>
+nnoremap <silent><leader>go :GBrowse!<CR>
+vnoremap <silent><leader>go :GBrowse!<CR>
+nnoremap <silent><leader>gt :Git commit -am'wip'<CR>
+nnoremap <silent><leader>gs :Git<CR>
+nnoremap <silent><leader>gr :Gread<CR>
+nnoremap <silent><leader>ga :Git commit -av<CR>
+nnoremap <silent><leader>gv :Git commit -v<CR>
+nnoremap <silent><leader>gd :Gdiffsplit origin/master
+nnoremap <silent><leader>gb :Git blame<CR>
+nnoremap <silent><leader>gp :Git push<CR>
+
+map <leader>re :Rename<space>
+
 tnoremap <C-o> <C-\><C-n>
 nnoremap yd :let @" = expand("%")<cr>
 syntax enable      " turn syntax highlighting on
@@ -169,8 +207,18 @@ command! Wqa :wqa
 command! Qwa :wqa
 command! E :e
 
+" Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
+vmap <Enter> <Plug>(EasyAlign)
 " Realign the whole file
 map <leader>D ggVG=<CR>
+
+let g:clang_format#style_options = {
+      \ "AccessModifierOffset" : -4,
+      \ "AllowShortIfStatementsOnASingleLine" : "true",
+      \ "AlwaysBreakTemplateDeclarations" : "true",
+      \ "Standard" : "C++11"}
+
+set makeprg="make -j9"
 nnoremap <Leader>m :make!<CR>
 
 " create parent directories on write
@@ -186,15 +234,101 @@ if !exists("*s:MkNonExDir")
 endif
 
 set undofile " Maintain undo history between sessions
+if has('nvim-0.5.0')
+  set undodir=~/.cache/nvim-head/undo
+else
+  set undodir=~/.cache/nvim/undo
+endif
 
 if has('conceal')
   set conceallevel=0 concealcursor=niv
 endif
 
 let g:ale_fixers = {
+      \ 'ruby': ['rubocop'],
+      \ 'rspec': ['rubocop'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javascript': ['eslint'],
+      \ 'json': ['jq'],
+      \ 'lua': ['lua-format'],
+      \ 'sh': ['shfmt'],
+      \ }
+
+let g:ale_linters = {
+      \ 'ruby': ['rubocop'],
+      \ 'rspec': ['rubocop'],
+      \ 'javascript.jsx': ['eslint'],
+      \ 'javascript': ['eslint'],
+      \ }
+
+let g:ale_keep_list_window_open = 0
+let g:ale_lint_delay = 200
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'always'
+let g:ale_open_list = 0
+let g:ale_ruby_bundler_executable = 'bundle'
+let g:ale_ruby_rubocop_executable = 'bundle'
+let g:ale_set_loclist = 0
+let g:ale_linters_explicit = 1
+let g:ale_set_quickfix = 0
+let g:ale_sign_column_always = 1
+let g:ale_sign_error = '>>'
+let g:ale_echo_cursor = 0
+let g:ale_sign_offset = 1000000
+let g:ale_sign_warning = '--'
+let g:ale_completion_enabled = 0
+let g:ale_use_neovim_diagnostics_api = 1
+
+augroup packer_user_config
+  autocmd!
+augroup end
+
+map <silent>gm :TSHighlightCapturesUnderCursor<CR>
+
+let g:jedi#auto_initialization = 0
+
+function! SourceEnvOnDirChange()
+  if has_key(v:event, "cwd")
+    let sources = SourceEnv()
+    if sources
+      echo "reloaded env"
+    end
+  end
+endfunction
+
+function! SourceEnv()
+  let loaded=0
+  if filereadable(".env")
+    let loaded=1
+    silent! Dotenv .env
+  endif
+
+  if filereadable(".env-override")
+    let loaded=1
+    silent! Dotenv .env-override
+  endif
+
+  return loaded
+endfunction
+
+nnoremap <leader>se :call SourceEnv()<CR>
+
+function! Env()
+  let evars = environ()
+  for var in evars->keys()->sort()
+      echo var . '=' . evars[var]
+  endfor
+endfunction
 
 nnoremap <silent><leader>ee :e .env<CR>
 nnoremap <silent><leader>eo :e .env-override<CR>
+
+function! GoDebugNearest()
+  let g:test#go#runner = 'delve'
+  TestNearest
+  unlet g:test#go#runner
+endfunction
 
 if has('autocmd')
   au FocusGained * :redraw!
@@ -216,6 +350,12 @@ if has('autocmd')
         autocmd TermEnter,TermOpen * set termguicolors
       endif
     endif
+  augroup END
+
+  augroup filetype_norg
+    au!
+    au FileType norg set shiftwidth=2|set spell
+    au FileType norg let g:gutentags_enabled = 0
   augroup END
 
   augroup filetype_markdown
@@ -243,6 +383,14 @@ if has('autocmd')
     au FileType ruby vnoremap <Bslash>hs :s/\v[\"\'](\w+)[\"\']\s+\=\>\s+/\1\: /g<CR>
     " symbol string keys to string keys
     au FileType ruby vnoremap <Bslash>hj :s/\v\"(\w+)\":\s+/"\1" => /g<CR>
+
+    let g:test#runner_commands = ['RSpec']
+
+    function! s:vcr_failures_only()
+      let $VCR_RECORD="all"
+      TestLast
+      unlet $VCR_RECORD
+    endfunction
   augroup END
 
   augroup filetype_python
@@ -259,7 +407,7 @@ if has('autocmd')
 
   augroup filetype_lua
     au! FileType lua map <leader>tj :TestFile --no-keep-going<CR>
-    au FileType lua set colorcolumn=100|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
+    au FileType lua set colorcolumn=120|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
     au FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
@@ -325,6 +473,41 @@ if has('autocmd')
   augroup END
 endif
 
+" vim-test
+if has('nvim')
+  let test#strategy = "neovim"
+endif
+
+let test#ruby#minitest#executable = 'bundle exec ruby -Itest/'
+let test#go#gotest#options = {
+      \ 'nearest': '-v',
+      \ 'file': '-v',
+      \}
+
+let test#rust#cargotest#options = {
+      \ 'nearest': '-- --nocapture',
+      \}
+
+let test#python#pytest#options = {
+      \ 'nearest': '-s',
+      \ 'file':    '-s',
+      \}
+
+let test#ruby#rspec#options = {
+      \ 'nearest': '--format documentation',
+      \ 'file':    '--format documentation',
+      \ 'suite':   '--tag \~slow',
+      \}
+
+let test#python#runner = 'pytest'
+let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest', 'Minitest']
+
+map <leader>tf :TestFile<CR>
+map <leader>tu :TestNearest<CR>
+map <leader>tt :TestNearest<CR>
+map <leader>tl :TestLast<CR>
+map <leader>ts :TestSuite<CR>
+
 " " Copy to clipboard
 vnoremap  <leader>y  "+y
 nnoremap  <leader>Y  "+yg_
@@ -336,5 +519,14 @@ nnoremap <leader>p "+p
 nnoremap <leader>P "+P
 vnoremap <leader>p "+p
 vnoremap <leader>P "+P
+
+if exists("g:neovide")
+  let g:neovide_scale_factor=1.0
+  function! ChangeScaleFactor(delta)
+      let g:neovide_scale_factor = g:neovide_scale_factor * a:delta
+  endfunction
+  nnoremap <expr><C-=> ChangeScaleFactor(1.25)
+  nnoremap <expr><C--> ChangeScaleFactor(1/1.25)
+end
 
 set secure
