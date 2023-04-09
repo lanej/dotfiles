@@ -56,13 +56,11 @@ vim:
 	@mkdir -p $(HOME)/.cache/nvim/undo
 	@mkdir -p $(HOME)/.config/nvim/
 	@ln -fns $(DOTFILES)/vim $(HOME)/.vim
-	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.config/nvim/init.vim
-	@ln -fs $(DOTFILES)/nvim/init.vim $(HOME)/.vimrc
+	@ln -fs $(DOTFILES)/vim/init.vim $(HOME)/.vimrc
+	@ln -fs $(DOTFILES)/nvim/init.lua $(HOME)/.config/nvim/init.lua
 	@ln -fns $(DOTFILES)/nvim/lua $(HOME)/.config/nvim/lua
 	@ln -fs $(DOTFILES)/.lua-format $(HOME)/.lua-format
 	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
-	@ln -fs $(DOTFILES)/vim/autoload/plug.vim $(HOME)/.local/share/nvim/site/autoload/plug.vim
-	@mkdir -p $(HOME)/.local/share/nvim/plugged
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fs $(DOTFILES)/nvim/min.vim $(HOME)/.config/nvim/min.vim
 	@ln -fs $(DOTFILES)/nvim/coc-settings.json $(HOME)/.config/nvim/coc-settings.json
@@ -70,8 +68,6 @@ vim:
 	@ls ~/.local/share/nvim/site/pack/packer/start/packer.nvim 1>/dev/null || \
 		git clone -q --depth 1 https://github.com/wbthomason/packer.nvim\
 		~/.local/share/nvim/site/pack/packer/start/packer.nvim
-	@sh -c 'curl -sfLo $(HOME)/.local/share/nvim/site/autoload/plug.vim --create-dirs \
-       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults

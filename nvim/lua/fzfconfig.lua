@@ -3,30 +3,33 @@ local actions = require 'fzf-lua.actions'
 local utils = require "fzf-lua.utils"
 local path = require "fzf-lua.path"
 
-local action_default = function(selected, opts)
-  if #selected > 1 then
-    local qf_list = {}
-    for i = 1, #selected do
-      local file = path.entry_to_file(selected[i], opts)
-      local text = selected[i]:match(":%d+:%d?%d?%d?%d?:?(.*)$")
-      table.insert(qf_list, {
-        filename = file.bufname or file.path,
-        lnum = file.line,
-        col = file.col,
-        text = text,
-      })
-    end
-    if is_loclist then
-      vim.fn.setloclist(0, qf_list)
-      vim.cmd "Trouble loclist"
-    else
-      vim.fn.setqflist(qf_list)
-      vim.cmd ":Trouble quickfix"
-    end
+local action_test = function(selected, opts)
+  if #selected == 1 then
+    actions.default(selected, opts)
+    return
+  end
+
+  local qf_list = {}
+  for i = 1, #selected do
+    local file = path.entry_to_file(selected[i], opts)
+    local text = selected[i]:match(":%d+:%d?%d?%d?%d?:?(.*)$")
+    table.insert(qf_list, {
+      filename = file.bufname or file.path,
+      lnum = file.line,
+      col = file.col,
+      text = text,
+    })
+  end
+  if is_loclist then
+    vim.fn.setloclist(0, qf_list)
+    vim.cmd "Trouble loclist"
   else
-    return actions.buf_edit(selected, opts)
+    vim.fn.setqflist(qf_list)
+    vim.cmd ":Trouble quickfix"
   end
 end
+
+-- TODO: git diff --cached
 
 require('fzf-lua').setup {
   keymap = {
@@ -41,11 +44,11 @@ require('fzf-lua').setup {
       ['ctrl-b'] = 'toggle-all',
     },
   },
-  actions = {
+  --[[ actions = {
     files = {
       ['default'] = action_test,
     },
-  },
+  }, ]]
   winopts = {
     preview = {
       flip_columns = 180, -- #cols to switch to horizontal on flex
@@ -57,7 +60,7 @@ require('fzf-lua').setup {
       cmd = 'git for-each-ref --format=\'%(refname:short)\' --sort=-committerdate refs/heads/ | grep -v \'phabricator\'',
       preview = 'git diff --stat --summary --color -p origin/master...{} | delta',
       actions = {
-        ['default'] = {actions.git_switch, function(_) vim.cmd('ProsessionReset') end},
+        ['default'] = { actions.git_switch, function(_) vim.cmd('ProsessionReset') end },
       },
     },
     commits = {
@@ -132,11 +135,12 @@ vim.api.nvim_set_keymap('n', '<leader>f', '<cmd>lua require("fzf-lua").files()<C
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>af', '<cmd>lua require("fzf-lua").files({ cwd = vim.fn.expand(\'%:p:h\') })<CR>',
-                        {
-  noremap = true,
-  silent = true,
-})
+vim.api.nvim_set_keymap('n', '<leader>af',
+  '<cmd>lua require("fzf-lua").files({ cwd = vim.fn.expand(\'%:p:h\') })<CR>',
+  {
+    noremap = true,
+    silent = true,
+  })
 vim.api.nvim_set_keymap('n', '<leader>rr', '<cmd>lua require("fzf-lua").command_history()<CR>', {
   noremap = true,
   silent = true,

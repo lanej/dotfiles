@@ -112,6 +112,7 @@ cmp.setup.cmdline(':', {
 })
 
 local capabilities = require('cmp_nvim_lsp').default_capabilities()
+
 local completion_servers = {
   "solargraph",
   "gopls",
@@ -178,11 +179,11 @@ end
 
 -- Setup rust_analyzer via rust-tools.nvim
 require("rust-tools").setup({
-  tools = {
+  --[[ tools = {
     inlay_hints = {
       highlight = "InlayHint",
     },
-  },
+  }, ]]
   server = {
     capabilities = capabilities,
     on_attach = lsp_attach,
@@ -193,7 +194,7 @@ require("rust-tools").setup({
           extraArgs = { "--all", "--", "-W", "clippy::all" },
         },
         procMacro = {
-          enable =false,
+          enable = false,
         },
         diagnostics = { disabled = { "unresolved-proc-macro" } }
       },
@@ -233,3 +234,9 @@ vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.get_line_diagnos
   noremap = true,
   silent = true,
 })
+
+vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, {noremap = true, silent = true })
+vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, {noremap = true, silent = true })
+vim.keymap.set('n', '<space>wl', function()
+  print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
+end, {noremap = true, silent = true })

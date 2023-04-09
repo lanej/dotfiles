@@ -3,68 +3,54 @@ local use = require('packer').use
 return require('packer').startup({
   function()
     use 'wbthomason/packer.nvim'
-    use { 'krivahtoo/silicon.nvim' }
+    --[[ use {
+      'krivahtoo/silicon.nvim',
+      config = function() require('silicon').setup({ font = 'Hack', theme = '1337' }) end,
+    } ]]
     use {
-      'rose-pine/neovim',
-      as = 'rose-pine',
+      'gbprod/nord.nvim',
       config = function()
-        require('rose-pine').setup({
-          variant = 'main',
-          dark_variant = 'main',
-          bold_vert_split = true,
-          dim_nc_background = false,
-          disable_background = false,
-          disable_float_background = false,
-          disable_italics = true,
-          groups = {
-            background = '#1c1c1c',
-            --[[ background = 'base',
-            background_nc = '_experimental_nc',
-            panel = 'surface',
-            panel_nc = 'base',
-            border = 'highlight_med',
-            comment = 'muted',
-            link = 'iris',
-            punctuation = 'subtle',
-            error = 'love',
-            hint = 'iris',
-            info = 'foam',
-            warn = 'gold',
-
-            headings = {
-              h1 = 'iris',
-              h2 = 'foam',
-              h3 = 'rose',
-              h4 = 'gold',
-              h5 = 'pine',
-              h6 = 'foam',
-            } ]]
+        require("nord").setup({
+          transparent = false,      -- Enable this to disable setting the background color
+          terminal_colors = true,   -- Configure the colors used when opening a `:terminal` in Neovim
+          diff = { mode = "fg" },   -- enables/disables colorful backgrounds when used in diff mode. values : [bg|fg]
+          borders = true,           -- Enable the border between verticaly split windows visible
+          errors = { mode = "bg" }, -- Display mode for errors and diagnostics
+          styles = {
+            comments = { italic = true },
           },
-          highlight_groups = {
-            Cursor = { bg = 'foam', blend = 75 },
-            InlayHint = { fg = 'muted', italic = true },
-            IndentBlanklineChar = { fg = 'highlight_med' },
-            ["@text.diff.add"] = { fg = 'foam' },
-            ["@text.diff.delete"] = { fg = 'rose' },
-            ["@text.title"] = { fg = 'foam' },
-            ["@punctuation.special"] = { fg = 'muted' },
-            ["@text.uri"] = { fg = 'iris', sp = 'iris', underline = true }
-          }
         })
-
-        vim.cmd('colorscheme rose-pine')
-        vim.api.nvim_command('hi Cursor gui=reverse')
-      end
+      end,
     }
-
+    use {
+      'beauwilliams/focus.nvim',
+      config = function()
+        -- vim.api.nvim_command('set wiw=100')
+        require('focus').setup({
+          signcolumn = false,
+          excluded_filetypes = { 'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile' },
+        })
+      end,
+    }
+    use({
+      'Wansmer/treesj',
+      requires = { 'nvim-treesitter' },
+      config = function()
+        require('treesj').setup({
+          use_default_keymaps = false,
+        })
+        vim.keymap.set('n', 'gJ', require('treesj').join)
+        vim.keymap.set('n', 'gS', require('treesj').split)
+      end,
+    })
     use {
       'ibhagwan/smartyank.nvim',
       config = function()
         require('smartyank').setup {
           highlight = {
-            enabled = true, -- highlight yanked text
+            enabled = true,        -- highlight yanked text
             higroup = "IncSearch", -- highlight group of yanked text
-            timeout = 2000, -- timeout for clearing the highlight
+            timeout = 2000,        -- timeout for clearing the highlight
           },
           clipboard = {
             enabled = true
@@ -76,7 +62,7 @@ return require('packer').startup({
           osc52 = {
             enabled = true,
             ssh_only = true, -- OSC52 yank also in local sessions
-            silent = true, -- false to disable the "n chars copied" echo
+            silent = true,   -- false to disable the "n chars copied" echo
           }
         }
       end
@@ -89,26 +75,15 @@ return require('packer').startup({
       'lanej/vim-phabricator',
       requires = { 'tpope/vim-fugitive' },
     }
-    use {
-      'beauwilliams/focus.nvim',
-      config = function()
-        vim.api.nvim_command('set wiw=100')
-        require('focus').setup({
-          signcolumn = false,
-          excluded_filetypes = { 'toggleterm', 'terminal', 'nvimtree', 'fzf', 'nofile' },
-        })
-      end,
-    }
     use 'dense-analysis/ale'
     use {
       'lanej/vim-prosession',
       requires = 'tpope/vim-obsession',
     }
-    use 'editorconfig/editorconfig-vim'
     use {
       'folke/todo-comments.nvim',
       branch = 'main',
-      config = function() 
+      config = function()
         require('todo-comments').setup({
           keywords = {
             WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
@@ -116,17 +91,8 @@ return require('packer').startup({
         })
       end,
     }
-    --[[ use {
-      "~/src/tender",
-      requires = { "rktjmp/lush.nvim" },
-    } ]]
-    use {
-      "lanej/tender",
-      requires = { 'rktjmp/lush.nvim', 'lewis6991/gitsigns.nvim', 'folke/noice.nvim' },
-    }
     use {
       'folke/noice.nvim',
-      tag = 'v1.5.1',
       branch = 'main',
       config = function()
         require("noice").setup(
@@ -152,7 +118,6 @@ return require('packer').startup({
               },
             },
           })
-        vim.api.nvim_command('hi Cursor gui=reverse')
       end,
       requires = {
         "MunifTanjim/nui.nvim",
@@ -167,9 +132,9 @@ return require('packer').startup({
         require('lualine').setup {
           options = {
             icons_enabled = true,
-            theme = 'auto',
-            component_separators = { left = '', right = ''},
-            section_separators = { left = '', right = ''},
+            theme = 'nord',
+            component_separators = { left = '', right = '' },
+            section_separators = { left = '', right = '' },
             disabled_filetypes = {
               statusline = {},
               winbar = {},
@@ -184,12 +149,12 @@ return require('packer').startup({
             }
           },
           sections = {
-            lualine_a = {'mode'},
-            lualine_b = {'branch',{ 'diagnostics', sources = { 'nvim_lsp', 'ale' }}},
-            lualine_c = {{'filename', path = 1}},
-            lualine_x = {'diff'},
+            lualine_a = { 'mode' },
+            lualine_b = { 'branch', { 'diagnostics', sources = { 'nvim_lsp', 'ale' } } },
+            lualine_c = { { 'filename', path = 1 }, { 'filetype', icon_only = true } },
+            lualine_x = { "diff" },
             lualine_y = {},
-            lualine_z = {},
+            lualine_z = {}
           },
         }
       end,
@@ -210,12 +175,23 @@ return require('packer').startup({
     use {
       'lewis6991/gitsigns.nvim',
       requires = { 'nvim-lua/plenary.nvim' },
-      tag = 'v0.6',
+      tag = 'release',
       config = function() require('gitsignsconfig') end,
     }
     use {
       'lukas-reineke/indent-blankline.nvim',
       requires = 'nvim-treesitter/nvim-treesitter',
+    }
+    use {
+      'ludovicchabant/vim-gutentags',
+      config = function()
+        vim.g.markdown_fenced_languages = { 'html', 'python', 'bash=sh', 'ruby', 'go' }
+        vim.g.gutentags_enabled = 1
+        vim.g.gutentags_exclude_filetypes = { 'gitcommit', 'gitrebase' }
+        vim.g.gutentags_generate_on_empty_buffer = 0
+        vim.g.gutentags_ctags_exclude = { '.eggs', '.mypy_cache', 'venv', 'tags', 'tags.temp', '.ijwb', 'bazel-*', }
+        vim.g.gutentags_project_info = {}
+      end,
     }
     use {
       'neovim/nvim-lspconfig',
@@ -248,7 +224,6 @@ return require('packer').startup({
       'norcalli/nvim-colorizer.lua',
       requires = 'nvim-treesitter/nvim-treesitter',
     }
-    use 'nvim-lua/popup.nvim'
     use({
       'nvim-treesitter/nvim-treesitter',
       config = function() require 'treesitter' end,
@@ -270,27 +245,24 @@ return require('packer').startup({
     use 'tpope/vim-eunuch'
     use 'tpope/vim-surround'
     use 'tpope/vim-repeat'
-    use 'b3nj5m1n/kommentary'
+    use {
+      'numToStr/Comment.nvim',
+      config = function()
+        require('Comment').setup()
+      end
+    }
     use {
       'epwalsh/obsidian.nvim',
       tag = 'v1.*',
       config = function()
         require('obsidian').setup({
           dir = '~/share/work',
-          completion = {
-            nvim_cmp = true, -- if using nvim-cmp, otherwise set to false
-          },
+          completion = { nvim_cmp = true, },
           daily_notes = { folder = 'dailies' },
         })
-        vim.keymap.set('n', 'gf', function()
-          if require('obsidian').util.cursor_on_markdown_link() then
-            return '<cmd>ObsidianFollowLink<CR>'
-          else
-            return 'gf'
-          end
-        end, { noremap = false, expr = true })
       end,
     }
+    use 'mbbill/undotree'
   end,
   config = {
     display = {

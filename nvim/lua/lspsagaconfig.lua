@@ -1,5 +1,5 @@
 require('lspsaga').setup({
-    diagnostic = {
+  diagnostic = {
     show_code_action = false,
   },
   symbol_in_winbar = {
