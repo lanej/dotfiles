@@ -8,3 +8,4 @@ vim/spell
 vim/plugged
 vim/session
 *.log
+nvim/lua/local.lua
