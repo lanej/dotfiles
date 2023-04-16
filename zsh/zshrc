@@ -90,3 +90,6 @@ fi
 . "${HOME}/.profile"
 . "$HOME/.alias"
 . "$HOME/.zlogin"
+
+[ -r ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -r ~/zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh ] && source ~/zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh
