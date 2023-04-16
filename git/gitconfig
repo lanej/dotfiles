@@ -1,3 +1,4 @@
+# vim: se  ft=gitconfig:
 [user]
 	name = Joshua Lane
 	signingKey = 94E30750946819E87E47D30AC34A98B838E95FBB
@@ -156,5 +157,5 @@
 	excludeDecoration = refs/tags/phabricator/*
 [merge]
 	autoStash = true
-
- # vim: set ft=gitconfig:
+[advice]
+	detatchedHead = false
