@@ -142,7 +142,7 @@
 	plus-empty-line-marker-style = normal "#263026"
 	plus-non-emph-style = syntax "#263026"
 	plus-style = syntax "#263026"
-	syntax-theme = 1337
+	syntax-theme = Nord
 	line-numbers = true
 	colorMoved = default
 	whitespace-error-style = 22 bold red
