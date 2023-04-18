@@ -121,7 +121,7 @@ fkp() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --height 80% --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p origin/master...{} | delta" --preview-window=right:80%) || return
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --height 80% --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git merge-base --independent HEAD)^1...{} | delta" --preview-window=right:80%) || return
 	git co $(echo "$target")
 }
 

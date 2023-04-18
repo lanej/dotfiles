@@ -203,7 +203,7 @@ vim.api.nvim_set_keymap('n', '<leader>j', '<cmd>lua require("fzf-lua").jumps()<C
 })
 
 -- https://github.com/ibhagwan/fzf-lua/wiki/Advanced#keybind-handlers
-vim.api.nvim_set_keymap('n', '<leader>cf', '<cmd>lua require("fzf-lua").fzf_exec("git diff origin/master --name-only", { preview = "echo {} | xargs -n 1 -I {} git diff origin/master -- {} | delta", actions = require("fzf-lua").defaults.actions.files })<CR>', {
+vim.api.nvim_set_keymap('n', '<leader>cf', '<cmd>lua require("fzf-lua").fzf_exec("git diff $(git merge-base --independent HEAD)^1 --name-only", { preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --independent HEAD)^1  --shortstat --no-prefix -U25 -- {} | delta", actions = require("fzf-lua").defaults.actions.files })<CR>', {
   noremap = true,
   silent = true,
 })
