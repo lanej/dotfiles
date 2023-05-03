@@ -22,8 +22,7 @@ shell:
 	@mkdir -p $(HOME)/.local/share/z
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
-	@ln -fns $(DOTFILES)/bat $(HOME)/.config/bat
-	@bat cache --build
+	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dircolors
 bash: shell
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
@@ -45,6 +44,7 @@ powerlevel10k:
 	@git -C $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k pull -q || \
 		git clone -q https://github.com/romkatv/powerlevel10k.git $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+	@ln -fs $(DOTFILES)/zsh/p10k.zsh $(HOME)/.p10k.zsh
 
 .PHONY: zsh-extra
 zsh-extra:
