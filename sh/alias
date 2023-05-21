@@ -32,7 +32,6 @@ alias rn='r --next-failure'
 alias root='sudo su -'
 alias shutdown='sudo halt'
 alias sp='source ~/.bash_profile'
-alias ta="tmux attach"
 alias tfl='tail -Fn30 log/*.log'
 alias tmux='TERM=xterm-256color tmux'
 alias todo="todoist add"
@@ -60,6 +59,10 @@ fi
 if command -v bat >/dev/null; then
   alias cat='bat'
   export MANPAGER="sh -c 'col -bx | bat -l man'"
+fi
+
+if ! command -v tmx >/dev/null; then
+  alias tmx="tmux attach"
 fi
 
 alias ll="ls -alh"
