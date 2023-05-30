@@ -19,6 +19,8 @@ shell:
 	@ln -fs $(DOTFILES)/sh/profile $(HOME)/.profile
 	@mkdir -p $(HOME)/.config/htop
 	@ln -fs $(DOTFILES)/sh/htoprc $(HOME)/.config/htop/htoprc
+	@mkdir -p $(HOME)/.config/bottom
+	@ln -fs $(DOTFILES)/sh/bottom.toml $(HOME)/.config/bottom/bottom.toml
 	@mkdir -p $(HOME)/.local/share/z
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
