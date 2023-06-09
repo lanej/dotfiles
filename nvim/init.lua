@@ -174,8 +174,12 @@ command! Wqa :wqa
 command! Qwa :wqa
 command! E :e
 
-" Start interactive EasyAlign in visual mode (e.g. vip<Enter>)
-vmap <Enter> <Plug>(EasyAlign)
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+
 " Realign the whole file
 map <leader>D ggVG=<CR>
 
