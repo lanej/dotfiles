@@ -21,7 +21,6 @@ alias please='sudo'
 alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
 alias pt=papertrail
 alias rake='noglob rake'
-alias rba='be rubocop -a'
 alias r='be rspec'
 alias reado="ssh-reagent $*"
 alias reshell="exec -l $SHELL"
@@ -56,9 +55,9 @@ elif [[ $TMUX != "" ]]; then
   alias pbpaste='tmux saveb'
 fi
 
+
 if command -v bat >/dev/null; then
-  alias cat='bat'
-  export MANPAGER="sh -c 'col -bx | bat -l man'"
+  alias cat='bat --plain'
 fi
 
 if ! command -v tmx >/dev/null; then
@@ -75,7 +74,7 @@ if command -v exa >/dev/null; then
 fi
 
 fixssh() {
-  for key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
+  for key in SSH_AUTH_SOCK SSH_CONNECTION; do
     if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
       value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
       export ${key}="${value}"
@@ -106,7 +105,7 @@ current-semver() {
 }
 
 next-version() {
-  ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" $@
+  ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" "$@"
 }
 
 f() {
@@ -124,12 +123,12 @@ fkp() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --height 80% --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git merge-base --independent HEAD)^1...{} | delta" --preview-window=right:80%) || return
-	git co $(echo "$target")
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git merge-base --fork-point origin/master)...{} | delta" --preview-window=right) || return
+	git co "$(echo "$target")"
 }
 
 git_search_log() {
-	git log --oneline --decorate --decorate-refs-exclude="tags/phabricator/*" --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta" | awk "{ print \$1 }" | xargs git show
+	git log --oneline --decorate --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta" | awk "{ print \$1 }" | xargs git show
 }
 
 i() {
@@ -156,15 +155,26 @@ alias bi='bundle-hack install'
 alias bl='bundle install --local'
 
 phab-diffs() {
-	echo "{\"attachments\":{\"projects\":true},\"constraints\": {\"authorPHIDs\": [\"$1\"]}}" | arc call-conduit -- differential.revision.search | jq -r '.response.data | sort_by(.fields.dateModified)  | .[] | "**" + (.fields.dateModified|todate) + "** [" + .fields.title  + "](" + .fields.uri + ") -> " + .fields.status.name + "\n" + .fields.summary'
+	echo "{\"attachments\":{\"projects\":true},\"constraints\": {\"authorPHIDs\": [\"$1\"]}}" | arc call-conduit -- differential.revision.search | jq -r '.response.data | sort_by(.fields.dateModified)  | .[] | "**" + (.fields.dateModified|todate) + "** [" + .fields.title  + "](" + .fields.uri + ") -> " + .fields.status.name + "\n" + .fields.summary' | bat -l md
 }
 
 phab-diff() {
-	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r ''| bat -l md
+	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, .fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r ''| bat -l md
 }
 
 alias max-delta=delta --max-line-length=0
 
 git-authors() {
 	git authors -e | rg '\s*(\d+)\s+.*<(.*)>' -r '$1,$2' | awk -F, '{ Authors[$2]+=$1 } END { for (author in Authors) { print author","Authors[author] } }' | sort -t, -nk2 | termgraph --color=blue
+}
+
+phab_repo_files() {
+	page=$(echo "{\"queryKey\":\"5K12TorDVnuo\"}" | arc call-conduit -- diffusion.repository.search | jq -c '.response.data[].fields.name')
+	for repo in $(); do 
+		result=$(arc call-conduit -- diffusion.filecontentquery <<< "{\"path\":\"$1\",\"repository\":$repo}" 2>/dev/null | jq -ec '.response.filePHID')
+		if [ -n "$result" ]; then
+			echo "{\"phid\":$result}" | arc call-conduit -- file.download | jq -r '.response' | base64 -d
+		fi
+
+	done
 }
