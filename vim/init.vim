@@ -58,13 +58,6 @@ exe "set cedit=<C-v>"
 
 let mapleader = ','
 
-let g:plug_url_format = "git@github.com:%s.git"
-call plug#begin(stdpath('data') . '/plugged')
-Plug 'AndrewRadev/splitjoin.vim'
-Plug 'ludovicchabant/vim-gutentags'
-call plug#end()
-
-set inccommand=nosplit       " live replace
 set termguicolors
 
 " searching stuff
