@@ -48,10 +48,6 @@ powerlevel10k:
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 	@ln -fs $(DOTFILES)/zsh/p10k.zsh $(HOME)/.p10k.zsh
 
-.PHONY: zsh-extra
-zsh-extra:
-	@git -C $(HOME)/zsh/zsh-vi-mode pull 2>/dev/null -q || \
-		git clone -q git@github.com:jeffreytse/zsh-vi-mode.git -b v0.9.0 $(HOME)/zsh/zsh-vi-mode
 screen:
 	@ln -fs $(DOTFILES)/rc/screenrc $(HOME)/.screenrc
 tmux:
