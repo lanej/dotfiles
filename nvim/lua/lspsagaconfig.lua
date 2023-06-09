@@ -4,6 +4,13 @@ require('lspsaga').setup({
   },
   symbol_in_winbar = {
     enable = false,
+    separator = " ",
+    ignore_patterns={},
+    hide_keyword = true,
+    show_file = false,
+    folder_level = 3,
+    respect_root = true,
+    color_mode = true,
   },
   code_action_lightbulb = {
     enable = false,
