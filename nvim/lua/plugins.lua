@@ -7,6 +7,7 @@ return require('packer').startup({
       'krivahtoo/silicon.nvim',
       config = function() require('silicon').setup({ font = 'Hack', theme = '1337' }) end,
     } ]]
+    use 'IndianBoy42/tree-sitter-just'
     use {
       'gbprod/nord.nvim',
       config = function()
@@ -15,13 +16,54 @@ return require('packer').startup({
           terminal_colors = true,   -- Configure the colors used when opening a `:terminal` in Neovim
           diff = { mode = "fg" },   -- enables/disables colorful backgrounds when used in diff mode. values : [bg|fg]
           borders = true,           -- Enable the border between verticaly split windows visible
-          errors = { mode = "bg" }, -- Display mode for errors and diagnostics
+          errors = { mode = "fg" }, -- Display mode for errors and diagnostics
           styles = {
-            comments = { italic = true },
+            comments = { italic = false },
           },
+          on_highlights = function(highlights, colors)
+            highlights['@symbol'] = { fg = colors.aurora.orange }
+            highlights['@constant'] = { fg = colors.aurora.purple }
+            highlights['@text.uri'] = { underline = true }
+
+            return highlights
+          end,
         })
       end,
     }
+    -- use({
+    --   "Pocco81/true-zen.nvim",
+    --   config = function()
+    --     require("true-zen").setup {
+    --       -- your config goes here
+    --       -- or just leave it empty :)
+    --     }
+    --     local api = vim.api
+    --
+    --     api.nvim_set_keymap("n", "<leader>zn", ":TZNarrow<CR>", {})
+    --     api.nvim_set_keymap("v", "<leader>zn", ":'<,'>TZNarrow<CR>", {})
+    --     api.nvim_set_keymap("n", "<leader>zf", ":TZFocus<CR>", {})
+    --     api.nvim_set_keymap("n", "<leader>zm", ":TZMinimalist<CR>", {})
+    --     api.nvim_set_keymap("n", "<leader>za", ":TZAtaraxis<CR>", {})
+    --
+    --     -- or
+    --     local truezen = require('true-zen')
+    --     local keymap = vim.keymap
+    --
+    --     keymap.set('n', '<leader>zn', function()
+    --       local first = 0
+    --       local last = vim.api.nvim_buf_line_count(0)
+    --       truezen.narrow(first, last)
+    --     end, { noremap = true })
+    --     keymap.set('v', '<leader>zn', function()
+    --       local first = vim.fn.line('v')
+    --       local last = vim.fn.line('.')
+    --       truezen.narrow(first, last)
+    --     end, { noremap = true })
+    --     keymap.set('n', '<leader>zf', truezen.focus, { noremap = true })
+    --     keymap.set('n', '<leader>zm', truezen.minimalist, { noremap = true })
+    --     keymap.set('n', '<leader>za', truezen.ataraxis, { noremap = true })
+    --   end,
+    -- })
     use {
       'beauwilliams/focus.nvim',
       config = function()
@@ -92,19 +134,33 @@ return require('packer').startup({
       end,
     }
     use {
+      "smjonas/inc-rename.nvim",
+      config = function()
+        require("inc_rename").setup()
+        vim.keymap.set("n", "<leader>ri", ":IncRename ")
+      end,
+    }
+    use {
       'folke/noice.nvim',
       branch = 'main',
       config = function()
         require("noice").setup(
           {
-            popupmenu = {
-              enabled = false,
-            },
+            popupmenu = { enabled = false },
             cmdline = {
               format = {
                 conceal = false
               },
             },
+            lsp = {
+              override = {
+                ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+                ["vim.lsp.util.stylize_markdown"] = true,
+                ["cmp.entry.get_documentation"] = true,
+              },
+            },
+            notify = { enabled = true },
+            presets = { inc_rename = true },
             views = {
               cmdline_popup = {
                 border = {
@@ -150,11 +206,35 @@ return require('packer').startup({
           },
           sections = {
             lualine_a = { 'mode' },
-            lualine_b = { 'branch', { 'diagnostics', sources = { 'nvim_lsp', 'ale' } } },
-            lualine_c = { { 'filename', path = 1 }, { 'filetype', icon_only = true } },
-            lualine_x = { "diff" },
+            lualine_b = { 'branch', "diff", },
+            lualine_c = {
+              { 'filetype',                                    icon_only = true },
+              { 'filename',                                    path = 1 },
+              { "require('lspsaga.symbolwinbar'):get_winbar()" },
+            },
+            lualine_x = {
+              { 'diagnostics', sources = { 'nvim_lsp', 'ale' } },
+              {
+                require("noice").api.status.command.get,
+                cond = require("noice").api.status.command.has,
+                color = { fg = "#ff9e64" },
+              },
+              {
+                require("noice").api.status.mode.get,
+                cond = require("noice").api.status.mode.has,
+                color = { fg = "#ff9e64" },
+              },
+            },
             lualine_y = {},
             lualine_z = {}
+          },
+          inactive_sections = {
+            lualine_a = {},
+            lualine_b = {},
+            lualine_c = {},
+            lualine_x = { 'branch', 'diff' },
+            lualine_y = {},
+            lualine_z = { { 'filename', path = 1 }, { 'filetype', icon_only = true } },
           },
         }
       end,
@@ -175,7 +255,7 @@ return require('packer').startup({
     use {
       'lewis6991/gitsigns.nvim',
       requires = { 'nvim-lua/plenary.nvim' },
-      tag = 'release',
+      -- tag = 'release',
       config = function() require('gitsignsconfig') end,
     }
     use {
@@ -203,6 +283,7 @@ return require('packer').startup({
         'hrsh7th/nvim-cmp',
         'hrsh7th/cmp-nvim-lsp',
         'hrsh7th/cmp-vsnip',
+        'andersevenrud/cmp-tmux',
         'hrsh7th/vim-vsnip',
         'simrat39/rust-tools.nvim',
         'kyazdani42/nvim-web-devicons',
