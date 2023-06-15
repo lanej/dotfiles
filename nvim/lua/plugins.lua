@@ -118,6 +118,7 @@ return require('packer').startup({
       requires = { 'tpope/vim-fugitive' },
     }
     use 'dense-analysis/ale'
+    -- TODO: https://github.com/gennaro-tedesco/nvim-possession
     use {
       'lanej/vim-prosession',
       requires = 'tpope/vim-obsession',
