@@ -125,6 +125,12 @@ spotify_player:
 	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
 powerline:
 	@ln -fns $(DOTFILES)/powerline $(HOME)/.config/powerline
+
+.PHONY: chatgpt
+chatgpt:
+	@git -C $(HOME)/.local/share/chatgpt pull -q || \
+		git clone -q git@github.com:0xacx/chatGPT-shell-cli.git $(HOME)/.local/share/chatgpt
+	@ln -s $(HOME)/.local/share/chatgpt/chatgpt.sh ~/.local/bin/chatgpt
 ifeq ($(OS),OSX)
 qute:
 	@mkdir -p $(HOME)/.qutebrowser
