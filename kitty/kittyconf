@@ -20,19 +20,46 @@ window_alert_on_bell no
 scrollback_pager_history_size 314572800
 scrollback_lines 1000000
 
-color0     #262626
-color10    #90a959
-color11    #f4bf75
-color12    #6a9fb5
-color13    #aa759f
-color14    #75b5aa
-color15    #ffffff
-color1     #ac4142
-color2     #90a959
-color3     #f4bf75
-color4     #6a9fb5
-color5     #aa759f
-color6     #75b5aa
-color7     #ffffff
-color8     #505050
-color9     #ac4142
+# Nord Colorscheme for Kitty
+# Based on:
+# - https://gist.github.com/marcusramberg/64010234c95a93d953e8c79fdaf94192
+# - https://github.com/arcticicestudio/nord-hyper
+
+foreground            #D8DEE9
+background            #2E3440
+selection_foreground  #000000
+selection_background  #FFFACD
+url_color             #0087BD
+cursor                #81A1C1
+
+# black
+color0   #3B4252
+color8   #4C566A
+
+# red
+color1   #BF616A
+color9   #BF616A
+
+# green
+color2   #A3BE8C
+color10  #A3BE8C
+
+# yellow
+color3   #EBCB8B
+color11  #EBCB8B
+
+# blue
+color4  #81A1C1
+color12 #81A1C1
+
+# magenta
+color5   #B48EAD
+color13  #B48EAD
+
+# cyan
+color6   #88C0D0
+color14  #8FBCBB
+
+# white
+color7   #E5E9F0
+color15  #ECEFF4
