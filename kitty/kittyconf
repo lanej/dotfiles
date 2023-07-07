@@ -1,18 +1,34 @@
-foreground #ffffff
-background #262626
-
-cursor #d0d0d0
-
 font_family Hack Nerd Font Mono
 font_size 13
 hide_window_decorations yes
+# map cmd+r load_config_file ~/.config/kitty/kitty.conf
+map cmd+n next_tab
+map cmd+p previous_tab
+map cmd+1 goto_tab 1
+map cmd+2 goto_tab 2
+map cmd+3 goto_tab 3
+map cmd+4 goto_tab 4
+map cmd+r set_tab_title
+modify_font cell_width 95%
 enable_audio_bell no
 window_alert_on_bell no
 draw_minimal_borders yes
 macos_quit_when_last_window_closed yes
-
+confirm_os_window_close 1
+tab_bar_edge top
+tab_bar_style powerline
+tab_powerline_style slanted
+active_tab_foreground   #000
+active_tab_background   #eee
+active_tab_font_style   bold
+inactive_tab_foreground #444
+inactive_tab_background #999
+inactive_tab_font_style normal
+# tab_separator " ┇"
+map cmd+q close_window
+cursor_shape block
 cursor_blink_interval      0.5
-cursor_stop_blinking_after 15.0
+cursor_stop_blinking_after 5.0
 cursor_color_text #ffffff
 url_color #ffff00
 url_style double
