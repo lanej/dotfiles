@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -x
+
+file=$(mktemp).sh; tmux capture-pane -pE -"$(tputs lines)" > "$file";
+tmux new-window -n:paneview "$HOME/.local/bin/nvim '+ normal G $' $file"
