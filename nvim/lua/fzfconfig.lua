@@ -58,7 +58,7 @@ require('fzf-lua').setup {
     branches = {
       prompt = 'Branches❯ ',
       cmd = 'git for-each-ref --format=\'%(refname:short)\' --sort=-committerdate refs/heads/ | grep -v \'phabricator\'',
-      preview = 'git diff --stat --summary --color -p origin/master...{} | delta',
+      preview = 'git diff --stat --summary --color -p "$(git merge-base --fork-point origin/master)"...{} | delta',
       actions = {
         ['default'] = { actions.git_switch, function(_) vim.cmd('ProsessionReset') end },
       },
