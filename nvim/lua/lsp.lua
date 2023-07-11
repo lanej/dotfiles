@@ -62,6 +62,7 @@ cmp.setup({
     {
       { name = 'nvim_lsp' },
       { name = 'vsnip' },
+      { name = 'tmux' },
     },
     {
       {
@@ -85,6 +86,9 @@ cmp.setup.filetype('gitcommit', {
   sources = cmp.config.sources(
     {
       { name = 'cmp_git' }, -- You can specify the `cmp_git` source if you were installed it.
+    },
+    {
+      { name = 'tmux' },
     },
     {
       { name = 'buffer' },
