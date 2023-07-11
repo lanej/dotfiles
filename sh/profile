@@ -30,7 +30,8 @@ export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
 export PATH="${HOME}/.local/bin:$PATH"
 export EDITORD=${EDITORD:-$EDITOR}
-export JQ_COLORS="2;37:1;31:1;32:0;36:0;33:1;37:1;37"
+# nord-ish
+export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export GO15VENDOREXPERIMENT=1
 export RI_PAGER='less -FX'
 export XDG_CONFIG_HOME="$HOME/.config"
