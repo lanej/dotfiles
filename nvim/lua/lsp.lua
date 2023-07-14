@@ -121,6 +121,9 @@ local completion_servers = {
   "solargraph",
   "gopls",
   "pylsp",
+  "tsserver",
+  "html",
+  "marksman",
 }
 for _, server in ipairs(completion_servers) do
   require("lspconfig")[server].setup {
@@ -130,6 +133,11 @@ for _, server in ipairs(completion_servers) do
     end
   }
 end
+
+require("lspconfig").html.setup {
+  capabilities = capabilities,
+  init_options = { provideFormatter = true },
+}
 
 require("lspconfig").lua_ls.setup {
   cmd = {
