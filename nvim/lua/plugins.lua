@@ -145,36 +145,44 @@ return require('packer').startup({
       'folke/noice.nvim',
       branch = 'main',
       config = function()
-        require("noice").setup(
-          {
-            popupmenu = { enabled = false },
-            cmdline = {
-              format = {
-                conceal = false
+        require("noice").setup({
+          routes = {
+            {
+              filter = {
+                event = "msg_show",
+                kind = "",
+              },
+              opts = { skip = true },
+            },
+          },
+          popupmenu = { enabled = false },
+          cmdline = {
+            format = {
+              conceal = false
+            },
+          },
+          lsp = {
+            override = {
+              ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+              ["vim.lsp.util.stylize_markdown"] = true,
+              ["cmp.entry.get_documentation"] = true,
+            },
+          },
+          notify = { enabled = true },
+          presets = { inc_rename = true },
+          views = {
+            cmdline_popup = {
+              border = {
+                style = "none",
+                padding = { 2, 3 },
+              },
+              filter_options = {},
+              win_options = {
+                winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
               },
             },
-            lsp = {
-              override = {
-                ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
-                ["vim.lsp.util.stylize_markdown"] = true,
-                ["cmp.entry.get_documentation"] = true,
-              },
-            },
-            notify = { enabled = true },
-            presets = { inc_rename = true },
-            views = {
-              cmdline_popup = {
-                border = {
-                  style = "none",
-                  padding = { 2, 3 },
-                },
-                filter_options = {},
-                win_options = {
-                  winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
-                },
-              },
-            },
-          })
+          },
+        })
       end,
       requires = {
         "MunifTanjim/nui.nvim",
