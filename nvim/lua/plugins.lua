@@ -2,19 +2,54 @@ local use = require('packer').use
 
 return require('packer').startup({
   function()
+    use 'subnut/nvim-ghost.nvim'
+    use {
+      'epwalsh/obsidian.nvim',
+      tag = 'v1.*',
+      config = function()
+        require('obsidian').setup({
+          dir = '~/share/work',
+          -- https://github.com/epwalsh/obsidian.nvim/issues/126
+          completion = { nvim_cmp = true, },
+          daily_notes = { folder = 'dailies' },
+        })
+
+        vim.keymap.set("n", "gf", function()
+          if require("obsidian").util.cursor_on_markdown_link() then
+            return "<cmd>ObsidianFollowLink<CR>"
+          else
+            return "gf"
+          end
+        end, { noremap = false, expr = true })
+      end,
+      after = { 'nvim-treesitter', "nvim-cmp" },
+      requires = {
+        "nvim-lua/plenary.nvim",
+        "hrsh7th/nvim-cmp",
+        "ibhagwan/fzf-lua",
+      },
+    }
+    use 'liuchengxu/vista.vim'
+    use 'https://git.sr.ht/~soywod/himalaya-vim'
+    use { '~/src/phab.nvim' }
     use 'wbthomason/packer.nvim'
-    --[[ use {
-      'krivahtoo/silicon.nvim',
-      config = function() require('silicon').setup({ font = 'Hack', theme = '1337' }) end,
-    } ]]
+    -- use {
+    --   'krivahtoo/silicon.nvim',
+    --   config = function() require('silicon').setup({ font = 'Hack', theme = '1337' }) end,
+    -- }
     use 'IndianBoy42/tree-sitter-just'
+    use({
+      "iamcco/markdown-preview.nvim",
+      run = function() vim.fn["mkdp#util#install"]() end,
+    })
     use {
       'gbprod/nord.nvim',
+      as = 'nord',
       config = function()
         require("nord").setup({
-          transparent = false,      -- Enable this to disable setting the background color
-          terminal_colors = true,   -- Configure the colors used when opening a `:terminal` in Neovim
-          diff = { mode = "fg" },   -- enables/disables colorful backgrounds when used in diff mode. values : [bg|fg]
+          transparent = true, -- Enable this to disable setting the background color
+          terminal_colors = true,
+          diff = { mode = "fg" },
           borders = true,           -- Enable the border between verticaly split windows visible
           errors = { mode = "fg" }, -- Display mode for errors and diagnostics
           styles = {
@@ -24,6 +59,8 @@ return require('packer').startup({
             highlights['@symbol'] = { fg = colors.aurora.orange }
             highlights['@constant'] = { fg = colors.aurora.purple }
             highlights['@text.uri'] = { underline = true }
+            highlights['@error'] = { undercurl = true }
+            highlights['@spell.bad'] = { undercurl = true }
 
             return highlights
           end,
@@ -94,28 +131,24 @@ return require('packer').startup({
             higroup = "IncSearch", -- highlight group of yanked text
             timeout = 2000,        -- timeout for clearing the highlight
           },
-          clipboard = {
-            enabled = true
-          },
           tmux = {
             enabled = true,
-            cmd = { 'tmux', 'set-buffer', '-w' }
+            cmd = { 'tmux', 'set-buffer', '-w' },
           },
+          clipboard = { enabled = true },
           osc52 = {
             enabled = true,
             ssh_only = true, -- OSC52 yank also in local sessions
             silent = true,   -- false to disable the "n chars copied" echo
-          }
+          },
         }
-      end
+      end,
     }
     use {
       'christoomey/vim-tmux-navigator',
-      config = function() require 'tmux-config' end,
-    }
-    use {
-      'lanej/vim-phabricator',
-      requires = { 'tpope/vim-fugitive' },
+      config = function()
+        require 'tmux-config'
+      end,
     }
     use 'dense-analysis/ale'
     -- TODO: https://github.com/gennaro-tedesco/nvim-possession
@@ -184,11 +217,7 @@ return require('packer').startup({
           },
         })
       end,
-      requires = {
-        "MunifTanjim/nui.nvim",
-        "rcarriga/nvim-notify",
-        'neovim/nvim-lspconfig',
-      }
+      requires = { 'MunifTanjim/nui.nvim', 'rcarriga/nvim-notify', 'neovim/nvim-lspconfig' },
     }
     use {
       'nvim-lualine/lualine.nvim',
@@ -303,7 +332,7 @@ return require('packer').startup({
         'simrat39/rust-tools.nvim',
         'kyazdani42/nvim-web-devicons',
         'onsails/lspkind.nvim',
-      }
+      },
     }
     use {
       'glepnir/lspsaga.nvim',
@@ -316,26 +345,12 @@ return require('packer').startup({
       requires = 'kyazdani42/nvim-web-devicons',
       config = function() require 'troubleconfig' end,
     }
-    use {
-      'norcalli/nvim-colorizer.lua',
-      requires = 'nvim-treesitter/nvim-treesitter',
-    }
-    use({
-      'nvim-treesitter/nvim-treesitter',
-      config = function() require 'treesitter' end,
-    })
-    use {
-      'nvim-treesitter/nvim-treesitter-textobjects',
-      requires = 'nvim-treesitter/nvim-treesitter',
-    }
-    use {
-      'nvim-treesitter/playground',
-      requires = 'nvim-treesitter/nvim-treesitter',
-    }
-    use {
-      'phaazon/hop.nvim',
-      config = function() require 'hopconfig' end,
-    }
+    use { 'norcalli/nvim-colorizer.lua', requires = 'nvim-treesitter/nvim-treesitter' }
+    use 'nvim-lua/popup.nvim'
+    use { 'nvim-treesitter/nvim-treesitter', config = function() require 'treesitter' end }
+    use { 'nvim-treesitter/nvim-treesitter-textobjects', requires = 'nvim-treesitter/nvim-treesitter' }
+    use { 'nvim-treesitter/playground', requires = 'nvim-treesitter/nvim-treesitter' }
+    use { 'phaazon/hop.nvim', config = function() require 'hopconfig' end }
     use 'tpope/vim-dotenv'
     use 'tpope/vim-fugitive'
     use 'tpope/vim-eunuch'
@@ -347,24 +362,12 @@ return require('packer').startup({
         require('Comment').setup()
       end
     }
-    use {
-      'epwalsh/obsidian.nvim',
-      tag = 'v1.*',
-      config = function()
-        require('obsidian').setup({
-          dir = '~/share/work',
-          completion = { nvim_cmp = true, },
-          daily_notes = { folder = 'dailies' },
-        })
-      end,
-    }
     use 'RRethy/vim-illuminate'
     use "sindrets/diffview.nvim"
     use 'mbbill/undotree'
   end,
   config = {
-    display = {
-      open_fn = require('packer.util').float,
-    },
+    autoremove = true,
+    display = { open_fn = require('packer.util').float },
   },
 })
