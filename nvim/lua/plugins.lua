@@ -217,9 +217,8 @@ return require('packer').startup({
             lualine_a = { 'mode' },
             lualine_b = { 'branch', "diff", },
             lualine_c = {
-              { 'filetype',                                    icon_only = true },
-              { 'filename',                                    path = 1 },
-              { "require('lspsaga.symbolwinbar'):get_winbar()" },
+              { 'filetype', jcon_only = true },
+              { 'filename', path = 1 },
             },
             lualine_x = {
               { 'diagnostics', sources = { 'nvim_lsp', 'ale' } },
