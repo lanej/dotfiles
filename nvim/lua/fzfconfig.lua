@@ -3,32 +3,6 @@ local actions = require 'fzf-lua.actions'
 local utils = require "fzf-lua.utils"
 local path = require "fzf-lua.path"
 
-local action_test = function(selected, opts)
-  if #selected == 1 then
-    actions.default(selected, opts)
-    return
-  end
-
-  local qf_list = {}
-  for i = 1, #selected do
-    local file = path.entry_to_file(selected[i], opts)
-    local text = selected[i]:match(":%d+:%d?%d?%d?%d?:?(.*)$")
-    table.insert(qf_list, {
-      filename = file.bufname or file.path,
-      lnum = file.line,
-      col = file.col,
-      text = text,
-    })
-  end
-  if is_loclist then
-    vim.fn.setloclist(0, qf_list)
-    vim.cmd "Trouble loclist"
-  else
-    vim.fn.setqflist(qf_list)
-    vim.cmd ":Trouble quickfix"
-  end
-end
-
 -- TODO: git diff --cached
 
 require('fzf-lua').setup {
@@ -44,11 +18,6 @@ require('fzf-lua').setup {
       ['ctrl-b'] = 'toggle-all',
     },
   },
-  --[[ actions = {
-    files = {
-      ['default'] = action_test,
-    },
-  }, ]]
   winopts = {
     preview = {
       flip_columns = 180, -- #cols to switch to horizontal on flex
