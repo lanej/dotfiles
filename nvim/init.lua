@@ -1,3 +1,10 @@
+--
+-- |_ _| \ | |_ _|_   _| |_   _  __ _
+--  | ||  \| || |  | | | | | | |/ _` |
+--  | || |\  || |  | |_| | |_| | (_| |
+-- |___|_| \_|___| |_(_)_|\__,_|\__,_|
+--
+
 vim.cmd [[
 set autoread                   " Reload files changed outside vim
 set autoindent
@@ -255,7 +262,7 @@ augroup packer_user_config
   autocmd BufWritePost plugins.lua source <afile> | PackerCompile
 augroup end
 
-map <silent>gm :TSHighlightCapturesUnderCursor<CR>
+map <silent>th :TSHighlightCapturesUnderCursor<CR>
 
 let g:jedi#auto_initialization = 0
 
@@ -515,3 +522,5 @@ vim.keymap.set('n', '<leader>vpc', ':PackerClean<CR>', { silent = true, noremap 
 
 -- secrets, unversioned local configs, etc.
 prequire("local")
+
+vim.cmd [[set secure]]
