@@ -269,6 +269,13 @@ return require('packer').startup({
     use {
       'lukas-reineke/indent-blankline.nvim',
       requires = 'nvim-treesitter/nvim-treesitter',
+      config = function()
+        require("indent_blankline").setup {
+          show_end_of_line = true,
+          show_current_context = true,
+          show_current_context_start = true,
+        }
+      end,
     }
     use {
       'ludovicchabant/vim-gutentags',
@@ -351,6 +358,8 @@ return require('packer').startup({
         })
       end,
     }
+    use 'RRethy/vim-illuminate'
+    use "sindrets/diffview.nvim"
     use 'mbbill/undotree'
   end,
   config = {
