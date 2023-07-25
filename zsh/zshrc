@@ -78,7 +78,8 @@ if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
   	zle -N zzz
 	bindkey '^B' zzz
 
-fi
+# [ -r ~/zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh ] && source ~/zsh/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+[ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 if [ -r "${HOME}/.fzf.zsh" ]; then
 	source "${HOME}/.fzf.zsh"

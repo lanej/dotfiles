@@ -31,6 +31,7 @@ bash: shell
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashprofile $(HOME)/.bash_profile
 	@ln -fs $(HOME)/.alias $(HOME)/.bashalias
+.PHONY: zsh
 zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
 	@ln -fs $(DOTFILES)/zsh/zlogout $(HOME)/.zlogout
@@ -40,6 +41,7 @@ zsh: shell
 	@mkdir -p $(HOME)/.local/share/zsh/
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
+	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
 powerlevel10k:
 	@git -C $(HOME)/.oh-my-zsh pull 2>/dev/null -q || \
 		git clone -q https://github.com/robbyrussell/oh-my-zsh.git $(HOME)/.oh-my-zsh
