@@ -522,5 +522,6 @@ vim.keymap.set('n', '<leader>vpc', ':PackerClean<CR>', { silent = true, noremap 
 
 -- secrets, unversioned local configs, etc.
 prequire("local")
+require("plugins")
 
 vim.cmd [[set secure]]
