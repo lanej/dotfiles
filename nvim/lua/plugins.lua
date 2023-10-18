@@ -65,6 +65,7 @@ return require('packer').startup({
             return highlights
           end,
         })
+        vim.api.nvim_command('colorscheme nord')
       end,
     }
     -- use({
