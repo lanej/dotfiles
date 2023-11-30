@@ -8,19 +8,30 @@ if command -v fzf >/dev/null; then
 	--prompt=\
 	--cycle
 	--no-info
+	--height=~40%
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
-  --color=fg:#e5e9f0,bg:#3b4252,hl:#81a1c1
-  --color=fg+:#e5e9f0,bg+:#3b4252,hl+:#81a1c1
-  --color=info:#eacb8a,prompt:#bf6069,pointer:#b48dac
-  --color=marker:#a3be8b,spinner:#b48dac,header:#a3be8b
+	--color=fg:#e5e9f0,bg:#3b4252,hl:#81a1c1
+	--color=fg+:#e5e9f0,bg+:#3b4252,hl+:#81a1c1
+	--color=info:#eacb8a,prompt:#bf6069,pointer:#b48dac
+	--color=marker:#a3be8b,spinner:#b48dac,header:#a3be8b
 	'
 
 	unset FZF_CTRL_R_OPTS
-	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS'--reverse
-	--tiebreak=index
-	+m
-	-1
-	'
+	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"--reverse
+	--preview-window down:5:hidden:wrap
+	--bind 'ctrl-/:toggle-preview'
+	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'"
+
+	if command -v fd >/dev/null; then
+		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --color=always -l zsh --plain"
+	fi
+
+	if command -v lt >/dev/null; then
+		unset FZF_ALT_C_OPTS
+		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"--reverse
+		  --preview 'lt -l 3 {}'
+		  --preview-window ~down:60%"
+	fi
 fi
 
 export KEYTIMEOUT=1
