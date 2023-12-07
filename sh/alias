@@ -47,7 +47,7 @@ elif [[ $OSTYPE =~ 'darwin' ]]; then
   alias ls='ls -Gp'
 fi
 
-if hash xsel 2>/dev/null; then
+if command -v xsel >/dev/null; then
   alias pbcopy='xsel --clipboard --input'
   alias pbpaste='xsel --clipboard --output'
 elif [[ $TMUX != "" ]]; then
@@ -56,21 +56,24 @@ elif [[ $TMUX != "" ]]; then
 fi
 
 
-if command -v bat >/dev/null; then
+if command -v bat >/dev/null 2>&1; then
   alias cat='bat --plain'
+  man() { /usr/bin/man $@ | bat -l man --plain; }
+  help() { $@ --help | bat -l help --plain; }
 fi
 
-if ! command -v tmx >/dev/null; then
+if ! command -v tmx >/dev/null 2>&1; then
   alias tmx="tmux attach"
 fi
 
-alias ll="ls -alh"
-alias lt='tree -L 1 -C'
 
-if command -v exa >/dev/null; then
+if command -v exa >/dev/null 2>&1; then
   alias ls='exa -HgFG --icons --git'
   alias ll="exa -HgFl --icons --header --git"
-  alias lt='exa -HgF --icons -T -L 2 --git'
+  alias lt="exa -HgF --icons -T -L 2 --git"
+else
+	alias ll="ls -alh"
+	alias lt='tree -L 1 -C'
 fi
 
 fixssh() {
@@ -136,7 +139,7 @@ i() {
 }
 
 zz() {
-	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | fzf --reverse --height=30% -q "$_last_z_args")" || exit
+	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | FZF_DEFAULT_OPTS=$FZF_ALT_C_OPTS fzf -q "$_last_z_args")" || exit
 }
 
 gem_releases() {
