@@ -1,5 +1,12 @@
 #!/bin/zsh
 
+# NOTE: uncomment for profiling startup performance
+# zmodload zsh/datetime
+# setopt promptsubst
+# PS4='+$EPOCHREALTIME %N:%i> '
+# exec 3>&2 2>/tmp/startlog.$$
+# setopt xtrace prompt_subst
+
 export PS1=""
 
 setopt inc_append_history
@@ -28,8 +35,6 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
-. "$HOME/.zlogin"
-
 if [ -d "$HOME/.cargo/bin" ]; then
 	export PATH="$HOME/.cargo/bin:$PATH"
 fi
@@ -46,13 +51,15 @@ if command -v purs >/dev/null; then
 	autoload -Uz add-zsh-hook
 
 	function _prompt_purs_precmd() {
-	  purs precmd
+	  purs precmd -s "$SSH_TTY" -h "$HOST" 
 	}
 	add-zsh-hook precmd _prompt_purs_precmd
 
 	if [[ -r "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh" ]]; then
 		source "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh"
 	fi
+
+	[ -r ~/.fzf.zsh ] && source ~/.fzf.zsh
 elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 	plugins=(zsh-autosuggestions vi-mode)
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=cyan
@@ -118,4 +125,5 @@ if [ -r "${HOME}/.fzf.zsh" ]; then
 fi
 
 . "${HOME}/.profile"
-. "$HOME/.alias"
+. "${HOME}/.alias"
+. "${HOME}/.zlogin"

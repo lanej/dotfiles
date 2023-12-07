@@ -4,8 +4,7 @@ if command -v fzf >/dev/null; then
 	fi
 
 	unset FZF_DEFAULT_OPTS
-	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
-	--prompt=\
+	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'--prompt=\
 	--cycle
 	--no-info
 	--height=~40%
@@ -20,25 +19,17 @@ if command -v fzf >/dev/null; then
 	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"--reverse
 	--preview-window down:5:hidden:wrap
 	--bind 'ctrl-/:toggle-preview'
-	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'"
+	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
+	"
 
 	if command -v fd >/dev/null; then
-		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --color=always -l zsh --plain"
+		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --color=always -l zsh --plain'"
 	fi
 
-	if command -v lt >/dev/null; then
+	if command -v exa >/dev/null; then
 		unset FZF_ALT_C_OPTS
 		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"--reverse
-		  --preview 'lt -l 3 {}'
-		  --preview-window ~down:60%"
-	fi
-fi
-
-export KEYTIMEOUT=1
-if command -v keychain >/dev/null; then
-	if [ "$OS" == "Darwin" ]; then
-		eval `keychain --noask --eval -q --inherit any --agents ssh,gpg --gpg2`
-	else
-		eval `keychain --noask --eval -q --agents ssh,gpg --gpg2`
+	  --preview 'exa -HgF --icons -T -L 2 --git {}'
+	  --preview-window right:60%"
 	fi
 fi
