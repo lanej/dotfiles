@@ -181,10 +181,10 @@ return require('packer').startup({
       config = function()
         require("noice").setup({
           routes = {
-            {
+            { -- filter write messages "xxxL, xxxB"
               filter = {
                 event = "msg_show",
-                kind = "",
+                find = "%dL",
               },
               opts = { skip = true },
             },
