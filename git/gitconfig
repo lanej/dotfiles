@@ -17,7 +17,7 @@
 	bl = branch --list
 	blm = "!git branch --list --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:red)%(objectname:short)' --sort=-committerdate --no-merged | column -t -s $'\t'"
 	bp = !bash -lc 'git_checkout_branch'
-	bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | awk '{print $4}' | xargs git co
+	bpr = !git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/remotes/ --no-merged | fzf --reverse --height 30% --preview \"git diff --stat --color origin/master...{}\" --preview-window=down:70% | xargs git ct
 	br = branch
 	cah = commit --amend -CHEAD
 	cahr = commit --amend -CHEAD --reset-author
