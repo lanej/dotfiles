@@ -76,8 +76,9 @@
 # A REFERENCE ONLY, WHEN MAKING YOUR OWN CONFIGURATION..          #
 # ############################################################### #
 #
-cmd - return : /Applications/Alacritty.app/Contents/MacOS/alacritty
-cmd + shift - return : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+cmd - return : sh ~/.local/bin/yabai-focus-or-launch "kitty" "/Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~"
+cmd + shift - return : sh ~/.local/bin/yabai-focus-or-launch "Firefox" "/Applications/Firefox.app/Contents/MacOS/firefox"
+
 
 # focus window
 # alt - h : yabai -m window --focus west
