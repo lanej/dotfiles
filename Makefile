@@ -129,8 +129,8 @@ powerline:
 	@ln -fns $(DOTFILES)/powerline $(HOME)/.config/powerline
 purs:
 	@git -C $(HOME)/.local/share/purs pull -q || \
-		git clone -q git@github.com:xcambar/purs.git $(HOME)/.local/share/purs
-	@command -v cargo 1>&2 2>/dev/null && cargo install -q --path $(HOME)/.local/share/purs
+		git clone -q git@github.com:lanej/purs.git --single-branch master $(HOME)/.local/share/purs
+	@command -v cargo >/dev/null && cargo install -q --path $(HOME)/.local/share/purs
 .PHONY: undercurl
 undercurl:
 	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
