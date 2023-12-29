@@ -41,6 +41,36 @@ fi
 
 autoload -Uz compinit && compinit
 
+if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
+	source "${HOME}/.config/zsh/fzf.zsh"
+	bindkey '^U' fzf-cd-widget
+	bindkey '^O' fzf-file-widget
+	zzz() {
+		zz
+		let ret=$?
+		zle accept-line
+		return $ret
+	}
+	zle -N zzz
+	bindkey '^B' zzz
+
+fi
+
+if [ -r "${HOME}/.fzf.zsh" ]; then
+	source "${HOME}/.fzf.zsh"
+	bindkey '^U' fzf-cd-widget
+	bindkey '^O' fzf-file-widget
+	zzz() {
+		zz
+		let ret=$?
+		zle accept-line
+		return $ret
+	}
+	zle -N zzz
+	bindkey '^B' zzz
+
+fi
+
 if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
 	source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
 
@@ -84,8 +114,6 @@ if command -v purs >/dev/null; then
 	if [[ -r "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh" ]]; then
 		source "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh"
 	fi
-
-	[ -r ~/.fzf.zsh ] && source ~/.fzf.zsh
 elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 	plugins=(zsh-autosuggestions vi-mode)
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=cyan
@@ -117,35 +145,6 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 	source ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
-if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
-	source "${HOME}/.config/zsh/fzf.zsh"
-	bindkey '^U' fzf-cd-widget
-	bindkey '^O' fzf-file-widget
-	zzz() {
-		zz
-		let ret=$?
-		zle accept-line
-		return $ret
-	}
-	zle -N zzz
-	bindkey '^B' zzz
-
-fi
-
-if [ -r "${HOME}/.fzf.zsh" ]; then
-	source "${HOME}/.fzf.zsh"
-	bindkey '^U' fzf-cd-widget
-	bindkey '^O' fzf-file-widget
-	zzz() {
-		zz
-		let ret=$?
-		zle accept-line
-		return $ret
-	}
-	zle -N zzz
-	bindkey '^B' zzz
-
-fi
 
 . "${HOME}/.profile"
 . "${HOME}/.alias"
