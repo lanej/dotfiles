@@ -39,6 +39,32 @@ if [ -d "$HOME/.cargo/bin" ]; then
 	export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
+autoload -Uz compinit && compinit
+
+if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
+	source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
+
+	# disable sort when completing `git checkout`
+	zstyle ':completion:*:git-checkout:*' sort false
+	# set descriptions format to enable group support
+	zstyle ':completion:*:descriptions' format '[%d]'
+	# set list-colors to enable filename colorizing
+	zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+	# preview directory's content with exa when completing cd
+	zstyle ':fzf-tab:complete:cd:*' fzf-preview 'exa -1 --color=always $realpath'
+	# switch group using `,` and `.`
+	zstyle ':fzf-tab:*' switch-group ',' '.'
+fi
+
+# yank to the system clipboard
+function vi-yank-xclip {
+   zle vi-yank
+   echo "$CUTBUFFER" | pbcopy -i
+}
+
+zle -N vi-yank-xclip
+bindkey -M vicmd 'y' vi-yank-xclip
+
 # prompt
 if command -v purs >/dev/null; then
 	function zle-line-init zle-keymap-select {
@@ -86,9 +112,6 @@ select-word-style bash
 zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle :compinstall filename '/home/jlane/.zshrc'
-
-autoload -Uz compinit
-compinit
 
 if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
 	source ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

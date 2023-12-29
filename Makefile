@@ -41,6 +41,8 @@ zsh: shell
 	@mkdir -p $(HOME)/.local/share/zsh/
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
+	@git -C $(HOME)/.local/share/fzf-tab pull 2>/dev/null -q || \
+		git clone -q https://github.com/Aloxaf/fzf-tab $(HOME)/.local/share/fzf-tab
 	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
 powerlevel10k:
 	@git -C $(HOME)/.oh-my-zsh pull 2>/dev/null -q || \
