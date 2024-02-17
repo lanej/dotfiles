@@ -40,8 +40,9 @@ if command -v fzf >/dev/null; then
 	fi
 
 	if command -v bat >/dev/null; then
-
 		unset FZF_CTRL_T_OPTS
-		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"--preview='bat --plain --color=always {}'"
+		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
+		--preview='bat --plain --color=always {}'
+		--preview-window right:60%"
 	fi
 fi
