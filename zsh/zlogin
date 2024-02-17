@@ -23,8 +23,7 @@ if command -v fzf >/dev/null; then
 	"
 
 	if command -v bat >/dev/null; then
-		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"
-		--preview='echo {} | bat --color=always -l zsh --plain'"
+		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --plain --color=always -l zsh --plain'"
 	fi
 
 	if command -v exa >/dev/null; then
@@ -33,5 +32,16 @@ if command -v fzf >/dev/null; then
 	  --reverse
 	  --preview 'exa -HgF --icons -T -L 2 --git {}'
 	  --preview-window right:60%"
+	fi
+
+	if command -v fd >/dev/null; then
+		unset FZF_CTRL_T_COMMAND
+		export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow --exclude .git'
+	fi
+
+	if command -v bat >/dev/null; then
+
+		unset FZF_CTRL_T_OPTS
+		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"--preview='bat --plain --color=always {}'"
 	fi
 fi
