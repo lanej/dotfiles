@@ -25,6 +25,8 @@ shell:
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dircolors
+	@mkdir -p $(HOME)/.config/atuin
+	@ln -fs $(DOTFILES)/sh/atuin.toml $(HOME)/.config/atuin/config.toml
 bash: shell
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
