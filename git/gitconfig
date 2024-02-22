@@ -150,6 +150,7 @@
 	whitespace-error-style = 22 bold red
 	zero-style = dim syntax
 	max-line-length = 4096
+	navigate = true
 [interactive]
 	diffFilter = delta --color-only
 [commit]
