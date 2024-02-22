@@ -7,7 +7,7 @@ if command -v fzf >/dev/null; then
 	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'--prompt=\
 	--cycle
 	--no-info
-	--height=~40%
+	--height=~62%
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
 	--color=fg:#e5e9f0,bg:#3b4252,hl:#81a1c1
 	--color=fg+:#e5e9f0,bg+:#3b4252,hl+:#81a1c1
