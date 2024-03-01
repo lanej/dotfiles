@@ -52,11 +52,13 @@ return require('packer').startup({
           diff = { mode = "fg" },
           borders = true,           -- Enable the border between verticaly split windows visible
           errors = { mode = "fg" }, -- Display mode for errors and diagnostics
-          styles = {
-            comments = { italic = false },
-          },
+          styles = { comments = { italic = false } },
+          search = { theme = "vim" }, -- theme for highlighting search results
           on_highlights = function(highlights, colors)
             highlights['@symbol'] = { fg = colors.aurora.orange }
+            highlights['@string.special.symbol'] = highlights['@symbol']
+            highlights['@variable.member'] = { fg = colors.aurora.yellow }
+            highlights['@error'] = { sp = colors.aurora.red, undercurl = true }
             highlights['@constant'] = { fg = colors.aurora.purple }
             highlights['@text.uri'] = { underline = true }
             highlights['@error'] = { undercurl = true }
