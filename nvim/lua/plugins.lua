@@ -57,7 +57,9 @@ return require('packer').startup({
           on_highlights = function(highlights, colors)
             highlights['@symbol'] = { fg = colors.aurora.orange }
             highlights['@string.special.symbol'] = highlights['@symbol']
-            highlights['@variable.member'] = { fg = colors.aurora.yellow }
+            highlights['@variable.member'] = { fg = colors.frost.polar_water }
+            highlights['@variable.parameter'] = { fg = colors.aurora.purple }
+            highlights['@module'] = { fg = colors.frost.ice }
             highlights['@error'] = { sp = colors.aurora.red, undercurl = true }
             highlights['@constant'] = { fg = colors.aurora.purple }
             highlights['@text.uri'] = { underline = true }
