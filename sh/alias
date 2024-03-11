@@ -130,7 +130,7 @@ git_checkout_branch() {
 }
 
 git_search_log() {
-	git log --oneline --color=always --decorate --decorate-refs-exclude="tags/$(basename $PWD)*" | fzf --ansi --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} | delta" | awk "{ print \$1 }" | xargs git show
+	git log --oneline --color=always --decorate --decorate-refs-exclude="tags/$(basename $PWD)*" --decorate-refs-exclude="refs/tags/phabricator/*" --exclude="refs/tags/phabricator/*" | fzf --ansi --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} --color=always | delta" | awk "{ print \$1 }" | xargs --no-run-if-empty git show
 }
 
 i() {
