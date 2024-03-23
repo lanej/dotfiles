@@ -65,6 +65,9 @@ if ! command -v tmx >/dev/null 2>&1; then
   alias tmx="tmux attach"
 fi
 
+if command -v btm >/dev/null 2>&1; then
+	alias htop="btm -b"
+fi
 
 if command -v exa >/dev/null 2>&1; then
   alias ls='exa -HgFG --icons --git'
