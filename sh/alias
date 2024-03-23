@@ -62,7 +62,7 @@ if command -v bat >/dev/null 2>&1; then
 fi
 
 if ! command -v tmx >/dev/null 2>&1; then
-  alias tmx="tmux attach"
+  alias tmx="tmux attach || tmux new"
 fi
 
 if command -v btm >/dev/null 2>&1; then
