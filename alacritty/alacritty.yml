@@ -641,7 +641,7 @@ schemes:
       cyan: "#8fbcbb"
       white: "#eceff4"
     dim:
-      black: "#373e4d"
+      black: "#434C5E"
       red: "#94545d"
       green: "#809575"
       yellow: "#b29e75"
