@@ -16,7 +16,7 @@ cmp.setup({
   },
   window = {
     -- completion = cmp.config.window.bordered(),
-    -- documentation = cmp.config.window.bordered(),
+    documentation = cmp.config.window.bordered(),
   },
   formatting = {
     format = function(entry, vim_item)
@@ -63,8 +63,7 @@ cmp.setup({
       { name = 'nvim_lsp' },
       { name = 'vsnip' },
       { name = 'tmux' },
-    },
-    {
+      { name = 'path' },
       {
         name = 'buffer',
         option = {
@@ -85,12 +84,8 @@ cmp.setup({
 cmp.setup.filetype('gitcommit', {
   sources = cmp.config.sources(
     {
-      { name = 'cmp_git' }, -- You can specify the `cmp_git` source if you were installed it.
-    },
-    {
+      { name = 'git' }, -- You can specify the `cmp_git` source if you were installed it.
       { name = 'tmux' },
-    },
-    {
       { name = 'buffer' },
     })
 })
@@ -260,4 +255,6 @@ vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, {noremap = tr
 vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, {noremap = true, silent = true })
 vim.keymap.set('n', '<space>wl', function()
   print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-end, {noremap = true, silent = true })
+end, { noremap = true, silent = true })
+
+require("cmp_git").setup()
