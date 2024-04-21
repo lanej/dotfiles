@@ -774,6 +774,7 @@ require("lazy").setup({
       'simrat39/rust-tools.nvim',
       'nvim-tree/nvim-web-devicons',
       'onsails/lspkind.nvim',
+      'altermo/ultimate-autopair.nvim',
     },
   },
   {
@@ -932,7 +933,12 @@ require("lazy").setup({
       vim.keymap.set("n", "<leader>ri", ":IncRename ")
     end,
   },
-
+  {
+    'altermo/ultimate-autopair.nvim',
+    event = { 'InsertEnter', 'CmdlineEnter' },
+    branch = 'v0.6',
+    opts = {},
+  }
 })
 
 vim.keymap.set('n', '<leader>vpu', ':Lazy home<CR>', { silent = true, noremap = true })

@@ -216,6 +216,14 @@ require("rust-tools").setup({
   },
 })
 
+cmp.mapping(function()
+  if cmp.get_active_entry() then
+    cmp.confirm()
+  else
+    require 'ultimate-autopair.maps.cr'.cmpnewline()
+  end
+end)
+
 vim.api.nvim_set_keymap("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", {
   noremap = true,
   silent = true,
