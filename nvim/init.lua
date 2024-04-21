@@ -912,7 +912,7 @@ require("lazy").setup({
   },
   {
     'subnut/nvim-ghost.nvim',
-    cond = vim.env.SSH_TTY ~= nil,
+    cond = vim.env.SSH_TTY == nil,
     event = "VeryLazy",
   },
 })
