@@ -915,6 +915,24 @@ require("lazy").setup({
     cond = vim.env.SSH_TTY == nil,
     event = "VeryLazy",
   },
+  {
+    'folke/todo-comments.nvim',
+    config = function()
+      require('todo-comments').setup({
+        keywords = {
+          WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
+        }
+      })
+    end,
+  },
+  {
+    "smjonas/inc-rename.nvim",
+    config = function()
+      require("inc_rename").setup()
+      vim.keymap.set("n", "<leader>ri", ":IncRename ")
+    end,
+  },
+
 })
 
 vim.keymap.set('n', '<leader>vpu', ':Lazy home<CR>', { silent = true, noremap = true })
