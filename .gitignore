@@ -9,3 +9,4 @@ vim/plugged
 vim/session
 *.log
 nvim/lua/local.lua
+nvim/local.lua
