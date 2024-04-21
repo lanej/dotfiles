@@ -507,8 +507,6 @@ if exists("g:neovide")
   nnoremap <expr><C-=> ChangeScaleFactor(1.25)
   nnoremap <expr><C--> ChangeScaleFactor(1/1.25)
 end
-
-set secure
 ]]
 
 local function prequire(m)
@@ -523,6 +521,412 @@ vim.keymap.set('n', '<leader>vpc', ':PackerClean<CR>', { silent = true, noremap 
 
 -- secrets, unversioned local configs, etc.
 prequire("local")
-require("plugins")
+-- require("plugins")
+
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable", -- latest stable release
+    lazypath,
+  })
+end
+vim.opt.rtp:prepend(lazypath)
+
+require("lazy").setup({
+  "folke/which-key.nvim",
+  { "folke/neoconf.nvim",          cmd = "Neoconf" },
+  "folke/neodev.nvim",
+  {
+    'gbprod/nord.nvim',
+    config = function()
+      require("nord").setup({
+        transparent = true, -- Enable this to disable setting the background color
+        terminal_colors = true,
+        diff = { mode = "fg" },
+        borders = true,             -- Enable the border between verticaly split windows visible
+        errors = { mode = "fg" },   -- Display mode for errors and diagnostics
+        styles = { comments = { italic = false } },
+        search = { theme = "vim" }, -- theme for highlighting search results
+        on_highlights = function(highlights, colors)
+          highlights['@symbol'] = { fg = colors.aurora.orange }
+          highlights['@string.special.symbol'] = highlights['@symbol']
+          highlights['@variable.member'] = { fg = colors.frost.polar_water }
+          highlights['@variable.parameter'] = { fg = colors.aurora.purple }
+          highlights['@module'] = { fg = colors.frost.ice }
+          highlights['@error'] = { sp = colors.aurora.red, undercurl = true }
+          highlights['@constant'] = { fg = colors.aurora.purple }
+          highlights['@text.uri'] = { underline = true }
+          highlights['@error'] = { undercurl = true }
+          highlights['@spell.bad'] = { undercurl = true }
+
+          return highlights
+        end,
+      })
+      vim.api.nvim_command('colorscheme nord')
+    end,
+  },
+  {
+    "hrsh7th/nvim-cmp",
+    -- load cmp on InsertEnter
+    event = "InsertEnter",
+    -- these dependencies will only be loaded when cmp loads
+    -- dependencies are always lazy-loaded unless specified otherwise
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "petertriho/cmp-git",
+      "nvim-lua/plenary.nvim",
+    },
+    config = function()
+      -- ...
+    end,
+  },
+  { "nvim-tree/nvim-web-devicons", lazy = true },
+  {
+    'numToStr/Comment.nvim',
+    config = function() require('Comment').setup() end
+  },
+  {
+    'Wansmer/treesj',
+    dependencies = 'nvim-treesitter/nvim-treesitter',
+    config = function()
+      require('treesj').setup({
+        use_default_keymaps = false,
+      })
+      vim.keymap.set('n', 'gJ', require('treesj').join)
+      vim.keymap.set('n', 'gS', require('treesj').split)
+    end,
+  },
+  ({
+    "esensar/nvim-dev-container",
+    dependencies = "nvim-treesitter/nvim-treesitter",
+    config = function() require("devcontainerconfig") end,
+  }),
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      require('lualine').setup {
+        options = {
+          icons_enabled = true,
+          theme = 'nord',
+          component_separators = { left = '', right = '' },
+          section_separators = { left = '', right = '' },
+          disabled_filetypes = {
+            statusline = {},
+            winbar = {},
+          },
+          ignore_focus = {},
+          always_divide_middle = true,
+          globalstatus = false,
+          refresh = {
+            statusline = 1000,
+            tabline = 1000,
+            winbar = 1000,
+          }
+        },
+        sections = {
+          lualine_a = { 'mode' },
+          lualine_b = { 'branch', "diff", },
+          lualine_c = {
+            { 'filetype', jcon_only = true },
+            { 'filename', path = 1 },
+          },
+          lualine_x = {
+            { 'diagnostics', sources = { 'nvim_lsp', 'ale' } },
+            {
+              require("noice").api.status.command.get,
+              cond = require("noice").api.status.command.has,
+              color = { fg = "#ff9e64" },
+            },
+            {
+              require("noice").api.status.mode.get,
+              cond = require("noice").api.status.mode.has,
+              color = { fg = "#ff9e64" },
+            },
+          },
+          lualine_y = {},
+          lualine_z = {}
+        },
+        inactive_sections = {
+          lualine_a = {},
+          lualine_b = {},
+          lualine_c = {},
+          lualine_x = { 'branch', 'diff' },
+          lualine_y = {},
+          lualine_z = { { 'filename', path = 1 }, { 'filetype', icon_only = true } },
+        },
+      }
+    end,
+  },
+  {
+    'ibhagwan/fzf-lua',
+    config = function() require 'fzfconfig' end,
+    branch = 'main',
+    dependencies = { 'vijaymarupudi/nvim-fzf', 'nvim-tree/nvim-web-devicons' },
+  },
+  {
+    'folke/noice.nvim',
+    branch = 'main',
+    config = function()
+      require("noice").setup({
+        routes = {
+          { -- filter write messages "xxxL, xxxB"
+            filter = {
+              event = "msg_show",
+              find = "%dL",
+            },
+            opts = { skip = true },
+          },
+          { -- filter yank messages
+            filter = {
+              event = "msg_show",
+              find = "%d lines yanked",
+            },
+            opts = { skip = true },
+          },
+          { -- filter undo messages
+            filter = {
+              event = "msg_show",
+              find = "%d change",
+            },
+            opts = { skip = true },
+          },
+          { -- filter undo messages
+            filter = {
+              event = "msg_show",
+              find = "%d more line",
+            },
+            opts = { skip = true },
+          },
+          { -- filter undo messages
+            filter = {
+              event = "msg_show",
+              find = "%d fewer line",
+            },
+            opts = { skip = true },
+          },
+          { -- filter undo messages
+            filter = {
+              event = "msg_show",
+              find = "Already at newest change",
+            },
+            opts = { skip = true },
+          },
+          { -- filter undo messages
+            filter = {
+              event = "msg_show",
+              find = "Already at oldest change",
+            },
+            opts = { skip = true },
+          },
+        },
+        popupmenu = { enabled = false },
+        cmdline = {
+          format = {
+            conceal = false
+          },
+        },
+        lsp = {
+          override = {
+            ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+            ["vim.lsp.util.stylize_markdown"] = true,
+            ["cmp.entry.get_documentation"] = true,
+          },
+        },
+        notify = { enabled = true },
+        presets = { inc_rename = true },
+        views = {
+          cmdline_popup = {
+            border = {
+              style = "none",
+              padding = { 2, 3 },
+            },
+            filter_options = {},
+            win_options = {
+              winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
+            },
+          },
+        },
+      })
+    end,
+    dependencies = { 'MunifTanjim/nui.nvim', 'rcarriga/nvim-notify', 'neovim/nvim-lspconfig' },
+  },
+  {
+    'glepnir/lspsaga.nvim',
+    branch = 'main',
+    dependencies = { 'neovim/nvim-lspconfig' },
+    config = function() require('lspsagaconfig') end,
+  },
+  {
+    'folke/trouble.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function() require 'troubleconfig' end,
+  },
+  { 'norcalli/nvim-colorizer.lua', requires = 'nvim-treesitter/nvim-treesitter' },
+  {
+    'neovim/nvim-lspconfig',
+    config = function() require('lsp') end,
+    dependencies = {
+      'hrsh7th/cmp-buffer',
+      'hrsh7th/cmp-path',
+      'hrsh7th/cmp-cmdline',
+      'hrsh7th/nvim-cmp',
+      'hrsh7th/cmp-nvim-lsp',
+      'hrsh7th/cmp-vsnip',
+      'andersevenrud/cmp-tmux',
+      'hrsh7th/vim-vsnip',
+      'simrat39/rust-tools.nvim',
+      'nvim-tree/nvim-web-devicons',
+      'onsails/lspkind.nvim',
+    },
+  },
+  {
+    'nvim-treesitter/nvim-treesitter',
+    config = function() require 'treesitter' end,
+  },
+  {
+    'nvim-treesitter/nvim-treesitter-textobjects',
+    dependencies = { 'nvim-treesitter/nvim-treesitter' },
+  },
+  {
+    'nvim-treesitter/playground',
+    dependencies = { 'nvim-treesitter/nvim-treesitter' },
+  },
+  {
+    'ibhagwan/smartyank.nvim',
+    config = function()
+      require('smartyank').setup {
+        highlight = {
+          enabled = true,        -- highlight yanked text
+          higroup = "IncSearch", -- highlight group of yanked text
+          timeout = 2000,        -- timeout for clearing the highlight
+        },
+        tmux = {
+          enabled = true,
+          cmd = { 'tmux', 'set-buffer', '-w' },
+        },
+        clipboard = { enabled = true },
+        osc52 = {
+          enabled = true,
+          ssh_only = true, -- OSC52 yank also in local sessions
+          silent = true,   -- false to disable the "n chars copied" echo
+        },
+      }
+    end,
+  },
+  {
+    'lukas-reineke/indent-blankline.nvim',
+    dependencies = 'nvim-treesitter/nvim-treesitter',
+    config = function() require("ibl").setup({}) end,
+  },
+  {
+    "anuvyklack/windows.nvim",
+    dependencies = { "anuvyklack/middleclass" },
+    config = function()
+      vim.o.winwidth = 10
+      vim.o.winminwidth = 10
+      vim.o.equalalways = true
+      require('windows').setup()
+    end
+  },
+  {
+    'christoomey/vim-tmux-navigator',
+    config = function() require 'tmux-config' end,
+  },
+  {
+    'lanej/vim-prosession',
+    dependencies = 'tpope/vim-obsession',
+  },
+  {
+    'epwalsh/obsidian.nvim',
+    config = function()
+      require('obsidian').setup({
+        dir = '~/share/work',
+        completion = { nvim_cmp = true, },
+        daily_notes = { folder = 'dailies' },
+        ui = {
+          enable = true,         -- set to false to disable all additional syntax features
+          update_debounce = 200, -- update delay after a text change (in milliseconds)
+          checkboxes = {
+            [" "] = { char = "󰄱", hl_group = "ObsidianTodo" },
+            ["x"] = { char = "", hl_group = "ObsidianDone" },
+            [">"] = { char = "", hl_group = "ObsidianRightArrow" },
+            ["~"] = { char = "󰰱", hl_group = "ObsidianTilde" },
+          },
+          external_link_icon = { char = "", hl_group = "ObsidianExtLinkIcon" },
+          reference_text = { hl_group = "ObsidianRefText" },
+          highlight_text = { hl_group = "ObsidianHighlightText" },
+          tags = { hl_group = "ObsidianTag" },
+          hl_groups = {
+            ObsidianTodo = { bold = true, fg = "#f78c6c" },
+            ObsidianDone = { bold = true, fg = "#89ddff" },
+            ObsidianRightArrow = { bold = true, fg = "#f78c6c" },
+            ObsidianTilde = { bold = true, fg = "#ff5370" },
+            ObsidianRefText = { underline = true, fg = "#c792ea" },
+            ObsidianExtLinkIcon = { fg = "#c792ea" },
+            ObsidianTag = { italic = true, fg = "#89ddff" },
+            ObsidianHighlightText = { bg = "#75662e" },
+          },
+        }
+      }
+      )
+    end,
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "hrsh7th/nvim-cmp",
+      "ibhagwan/fzf-lua",
+    },
+  },
+  'RRethy/vim-illuminate',
+  "sindrets/diffview.nvim",
+  'mbbill/undotree',
+  {
+    'nvim-treesitter/playground',
+    dependencies = 'nvim-treesitter/nvim-treesitter',
+  },
+  {
+    'phaazon/hop.nvim',
+    config = function() require 'hopconfig' end,
+  },
+  'tpope/vim-dotenv',
+  'tpope/vim-fugitive',
+  'tpope/vim-eunuch',
+  'tpope/vim-surround',
+  'tpope/vim-repeat',
+  { 'norcalli/nvim-colorizer.lua', dependencies = 'nvim-treesitter/nvim-treesitter' },
+  {
+    "JMarkin/gentags.lua",
+    cond = vim.fn.executable("ctags") == 1,
+    dependencies = { "nvim-lua/plenary.nvim", },
+    config = function() require("gentags").setup({}) end,
+    event = "VeryLazy",
+  },
+  'vim-test/vim-test',
+  'junegunn/vim-easy-align',
+  {
+    'lewis6991/gitsigns.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    tag = 'release',
+    config = function() require('gitsignsconfig') end,
+  },
+  {
+    'nvim-tree/nvim-tree.lua',
+    dependencies = 'nvim-tree/nvim-web-devicons',
+    config = function() require 'nvim-tree-config' end,
+  },
+  {
+    'subnut/nvim-ghost.nvim',
+    event = "VeryLazy",
+  },
+})
+
+vim.keymap.set('n', '<leader>vpu', ':Lazy home<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpi', ':Lazy install<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpc', ':Lazy clean<CR>', { silent = true, noremap = true })
 
 vim.cmd [[set secure]]
