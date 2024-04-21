@@ -1,8 +1,9 @@
 font_family Hack Nerd Font Mono
 font_size 13
 hide_window_decorations yes
-# map cmd+r load_config_file ~/.config/kitty/kitty.conf
-map cmd+n next_tab
+map cmd+shift+r load_config_file ~/.config/kitty/kitty.conf
+map cmd+n new_tab
+map cmd+t new_tab_with_cwd
 map cmd+p previous_tab
 map cmd+1 goto_tab 1
 map cmd+2 goto_tab 2
