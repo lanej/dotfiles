@@ -310,6 +310,7 @@ endfunction
 
 if has('autocmd')
   au FocusGained * :redraw!
+  au FocusGained,BufEnter * :checktime
 
   " jsx is both javascript and jsx
   " au BufNewFile,BufRead *.jsx set filetype=javascript.jsx
