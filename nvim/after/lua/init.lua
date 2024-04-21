@@ -7,3 +7,8 @@ vim.keymap.set('n', 'gf', function()
     return 'gf'
   end
 end, { noremap = false, expr = true })
+
+vim.api.nvim_create_autocmd({ 'BufEnter' }, {
+  pattern = "*.txt",
+  command = "NoiceDisable"
+})
