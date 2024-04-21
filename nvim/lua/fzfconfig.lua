@@ -221,9 +221,9 @@ end, { noremap = true, silent = true })
 
 -- https://github.com/ibhagwan/fzf-lua/wiki/Advanced#keybind-handlers
 vim.keymap.set({ 'n' }, '<leader>cf', function()
-    require 'fzf-lua'.fzf_exec(
-      "git diff $(git merge-base --fork-point origin/master) --name-only --diff-filter=AM",
+    require 'fzf-lua'.files(
       {
+        cmd = "git diff $(git merge-base --fork-point origin/master) --name-only --diff-filter=AM",
         actions = require("fzf-lua").defaults.actions.files,
         preview =
         "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point origin/master) --shortstat --no-prefix -U25 -- {} | delta",
