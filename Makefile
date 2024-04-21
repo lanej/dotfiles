@@ -53,7 +53,6 @@ powerlevel10k:
 		git clone -q https://github.com/romkatv/powerlevel10k.git $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 	@ln -fs $(DOTFILES)/zsh/p10k.zsh $(HOME)/.p10k.zsh
-
 screen:
 	@ln -fs $(DOTFILES)/rc/screenrc $(HOME)/.screenrc
 tmux:
@@ -63,15 +62,13 @@ tmux:
 vim:
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
-	@mkdir -p $(HOME)/.config/nvim/
+	@mkdir -p $(HOME)/.config/
 	@ln -fns $(DOTFILES)/vim $(HOME)/.vim
 	@ln -fs $(DOTFILES)/vim/init.vim $(HOME)/.vimrc
-	@ln -fns $(DOTFILES)/nvim/ $(HOME)/.config/nvim/
+	@ln -fns $(DOTFILES)/nvim $(HOME)/.config/nvim
 	@ln -fs $(DOTFILES)/.lua-format $(HOME)/.lua-format
 	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	@mkdir -p $(HOME)/.local/share/nvim/min
-	@ln -fs $(DOTFILES)/nvim/min.vim $(HOME)/.config/nvim/min.vim
-	@ln -fs $(DOTFILES)/nvim/coc-settings.json $(HOME)/.config/nvim/coc-settings.json
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
 X:
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
