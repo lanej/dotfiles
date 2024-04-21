@@ -257,11 +257,6 @@ let g:ale_sign_warning = '--'
 let g:ale_completion_enabled = 0
 let g:ale_use_neovim_diagnostics_api = 1
 
-augroup packer_user_config
-  autocmd!
-  autocmd BufWritePost plugins.lua source <afile> | PackerCompile
-augroup end
-
 map <silent>th :TSHighlightCapturesUnderCursor<CR>
 
 let g:jedi#auto_initialization = 0
@@ -514,10 +509,6 @@ local function prequire(m)
   if not ok then return nil, err end
   return err
 end
-
-vim.keymap.set('n', '<leader>vpu', ':PackerSync<CR>', { silent = true, noremap = true })
-vim.keymap.set('n', '<leader>vpi', ':PackerInstall<CR>', { silent = true, noremap = true })
-vim.keymap.set('n', '<leader>vpc', ':PackerClean<CR>', { silent = true, noremap = true })
 
 -- secrets, unversioned local configs, etc.
 prequire("local")
