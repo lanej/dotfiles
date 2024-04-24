@@ -129,9 +129,6 @@ map <leader>ntt :NvimTreeToggle<CR>
 map <leader>ntc :NvimTreeClose<CR>
 map <leader>ntf :NvimTreeFindFile<CR>
 
-let g:indent_blankline_show_current_context = v:true
-let g:indent_blankline_use_treesitter = v:true
-
 nnoremap <silent><leader>gm :Git mergetool<CR>
 nnoremap <silent><leader>go :GBrowse!<CR>
 vnoremap <silent><leader>go :GBrowse!<CR>
