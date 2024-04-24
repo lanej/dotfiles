@@ -72,7 +72,6 @@ nnoremap * *``
 " Edit the vimrc file
 nnoremap ev  :e $MYVIMRC<CR>
 nnoremap evr :source  $MYVIMRC<CR>
-nnoremap evp :e  ~/.config/nvim/lua/plugins.lua<CR>
 nnoremap tt  :tablast<CR>
 nnoremap te  :tabedit<Space>
 nnoremap tn  :tabnext<CR>
@@ -382,7 +381,6 @@ if has('autocmd')
   augroup filetype_lua
     au! FileType lua map <leader>tj :TestFile --no-keep-going<CR>
     au FileType lua set colorcolumn=122|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
-    au FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -403,7 +401,7 @@ if has('autocmd')
     au!
     au FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     au BufNewFile,BufRead .eslintrc set filetype=json
-    au FileType javascript nnoremap <leader>d :ALEFix<CR>
+    " au FileType javascript nnoremap <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_haml
@@ -436,6 +434,7 @@ if has('autocmd')
 
   augroup filetype_sh
     autocmd BufNewFile,BufRead .alias set filetype=sh
+    autocmd FileType sh set tabstop=2|set noexpandtab|set autoindent|set nospell
   augroup END
 
   augroup filetype_vim
@@ -666,49 +665,56 @@ require("lazy").setup({
     config = function()
       require("noice").setup({
         routes = {
-          { -- filter write messages "xxxL, xxxB"
+          {
+            -- filter write messages "xxxL, xxxB"
             filter = {
               event = "msg_show",
               find = "%dL",
             },
             opts = { skip = true },
           },
-          { -- filter yank messages
+          {
+            -- filter yank messages
             filter = {
               event = "msg_show",
               find = "%d lines yanked",
             },
             opts = { skip = true },
           },
-          { -- filter undo messages
+          {
+            -- filter undo messages
             filter = {
               event = "msg_show",
               find = "%d change",
             },
             opts = { skip = true },
           },
-          { -- filter undo messages
+          {
+            -- filter undo messages
             filter = {
               event = "msg_show",
               find = "%d more line",
             },
             opts = { skip = true },
           },
-          { -- filter undo messages
+          {
+            -- filter undo messages
             filter = {
               event = "msg_show",
               find = "%d fewer line",
             },
             opts = { skip = true },
           },
-          { -- filter undo messages
+          {
+            -- filter undo messages
             filter = {
               event = "msg_show",
               find = "Already at newest change",
             },
             opts = { skip = true },
           },
-          { -- filter undo messages
+          {
+            -- filter undo messages
             filter = {
               event = "msg_show",
               find = "Already at oldest change",
@@ -828,7 +834,16 @@ require("lazy").setup({
   },
   {
     'christoomey/vim-tmux-navigator',
-    config = function() require 'tmux-config' end,
+    init = function()
+      vim.g.tmux_navigator_no_mappings = 1
+      vim.g.tmux_navigator_save_on_switch = 1
+    end,
+    config = function()
+      vim.api.nvim_set_keymap('n', '<C-h>', ':TmuxNavigateLeft<cr>', { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<C-j>', ':TmuxNavigateDown<cr>', { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<C-k>', ':TmuxNavigateUp<cr>', { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<C-l>', ':TmuxNavigateRight<cr>', { noremap = true, silent = true })
+    end,
   },
   {
     'lanej/vim-prosession',
