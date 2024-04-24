@@ -125,12 +125,6 @@ let g:terraform_fmt_on_save     = 1
 let g:terraform_align           = 1
 let g:terraform_remap_spacebar  = 0
 
-" sessions
-map <leader>ps :Prosession<space>
-let g:prosession_per_branch = 1
-let g:prosession_tmux_title = 1
-let g:prosession_tmux_title_format = '@@@'
-
 map <leader>ntt :NvimTreeToggle<CR>
 map <leader>ntc :NvimTreeClose<CR>
 map <leader>ntf :NvimTreeFindFile<CR>
@@ -861,6 +855,11 @@ require("lazy").setup({
   {
     'lanej/vim-prosession',
     dependencies = 'tpope/vim-obsession',
+    init = function()
+      vim.g.prosession_per_branch = 1
+      vim.g.prosession_tmux_title = 1
+      vim.g.prosession_tmux_title_format = '@@@'
+    end,
   },
   {
     'epwalsh/obsidian.nvim',
