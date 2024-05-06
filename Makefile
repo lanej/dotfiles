@@ -125,7 +125,6 @@ spotify_player:
 powerline:
 	@ln -fns $(DOTFILES)/powerline $(HOME)/.config/powerline
 purs:
-	@mkdir -p $(HOME)/.local/share/purs
 	@git -C $(HOME)/.local/share/purs pull -q || \
 		git clone -q git@github.com:lanej/purs.git --single-branch $(HOME)/.local/share/purs
 	@command -v cargo >/dev/null && cargo install -q --path $(HOME)/.local/share/purs
