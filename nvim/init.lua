@@ -98,8 +98,21 @@ map <silent><leader>w :w<CR>
 " map <leader>w! :SudoWrite<CR>
 map <silent><leader>x :x<CR>
 
-map <silent><leader>rb :%s/<C-r><C-w>/
-map <silent><leader>rq :cfdo %s/<C-r><C-w>/
+" replace current word
+map <leader>rw :%s/<C-r><C-w>//gc<left><left><left>
+vmap <leader>rw :s/<C-r><C-w>//gc<left><left><left>
+
+" legacy support for the muscle memory"
+map <leader>rb :%s/<C-r><C-w>//gc<left><left><left>
+vmap <leader>rb :s/<C-r><C-w>//gc<left><left><left>
+
+" replace current selection
+map <leader>rs "hy:%s/<C-r>h//gc<left><left><left>
+vmap <leader>rs ""hy:s/<C-r>h//gc<left><left><left>
+
+" replace current word in all quicklist files
+map <leader>rq :cfdo %s/<C-r><C-w>/
+vmap <leader>rq :cfdo s/<C-r><C-w>/
 
 
 " quickfix nav
