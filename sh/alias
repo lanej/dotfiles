@@ -12,7 +12,6 @@ alias gds='GIT_PAGER=cat git diff --stat'
 alias g="git"
 alias gpr="hub pull-request"
 alias gpro='hub pull-request -o'
-alias grm="git status | grep deleted | awk '{print \$3}' | xargs git rm"
 alias guard='be guard'
 alias mt='(bundle-hack check || bundle) && minitest -Itest/ '
 alias mytop="vtop -t monokai"
@@ -171,6 +170,10 @@ alias max-delta=delta --max-line-length=0
 
 git-authors() {
 	git authors -e | rg '\s*(\d+)\s+.*<(.*)>' -r '$1,$2' | awk -F, '{ Authors[$2]+=$1 } END { for (author in Authors) { print author","Authors[author] } }' | sort -t, -nk2 | termgraph --color=blue
+}
+
+grm() {
+	git status | grep deleted | awk '{print $3}' | xargs git rm
 }
 
 phab_repo_files() {
