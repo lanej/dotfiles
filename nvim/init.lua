@@ -1001,8 +1001,8 @@ require("lazy").setup({
   }
 })
 
-vim.keymap.set('n', '<leader>vpu', ':Lazy home<CR>', { silent = true, noremap = true })
-vim.keymap.set('n', '<leader>vpi', ':Lazy install<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpu', ':Lazy update<CR>', { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>vpi', ':Lazy home<CR>', { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>vpc', ':Lazy clean<CR>', { silent = true, noremap = true })
 
 vim.cmd [[set secure]]
