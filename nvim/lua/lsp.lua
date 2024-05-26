@@ -5,9 +5,9 @@ local feedkey = function(key, mode)
 end
 
 cmp.setup({
-  -- preselect = cmp.PreselectMode.None,
+  preselect = cmp.PreselectMode.None,
   completion = {
-    autocomplete = false,
+    keyword_length = 3,
   },
   snippet = {
     expand = function(args)
@@ -15,7 +15,7 @@ cmp.setup({
     end,
   },
   window = {
-    -- completion = cmp.config.window.bordered(),
+    completion = cmp.config.window.bordered(),
     documentation = cmp.config.window.bordered(),
   },
   formatting = {
