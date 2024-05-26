@@ -23,8 +23,8 @@ export PAGER="less"
 # -M or --LONG-PROMPT
 # -I or --IGNORE-CASE
 # -n or --line-numbers: no line numbers
-export LESS="-XFMIn"
-export EMAIL="me@joshualane.com"
+# -R or --RAW-CONTROL-CHARSLike -r, but only ANSI "color" escape sequences and OSC 8 hyperlink sequences are output in "raw" form.
+export LESS="-XRFMIn"
 export ARCH=`uname -m`
 export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
