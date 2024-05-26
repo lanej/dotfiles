@@ -129,18 +129,6 @@ map <leader>ntt :NvimTreeToggle<CR>
 map <leader>ntc :NvimTreeClose<CR>
 map <leader>ntf :NvimTreeFindFile<CR>
 
-nnoremap <silent><leader>gm :Git mergetool<CR>
-nnoremap <silent><leader>go :GBrowse!<CR>
-vnoremap <silent><leader>go :GBrowse!<CR>
-nnoremap <silent><leader>gt :Git commit -am'wip'<CR>
-nnoremap <silent><leader>gs :Git<CR>
-nnoremap <silent><leader>gr :Gread<CR>
-nnoremap <silent><leader>ga :Git commit -av<CR>
-nnoremap <silent><leader>gv :Git commit -v<CR>
-nnoremap <silent><leader>gd :Gdiffsplit origin/master
-nnoremap <silent><leader>gb :Git blame<CR>
-nnoremap <silent><leader>gp :Git push<CR>
-
 map <leader>re :Rename<space>
 
 tnoremap <C-o> <C-\><C-n>
@@ -899,7 +887,43 @@ require("lazy").setup({
     },
   },
   'RRethy/vim-illuminate',
-  "sindrets/diffview.nvim",
+  {
+    "sindrets/diffview.nvim",
+    config = function()
+      require("diffview").setup({
+        keymaps = {
+          file_panel = {
+            {
+              "n", "cc",
+              function()
+                vim.ui.input({ prompt = "Commit message: " }, function(msg)
+                  if not msg then return end
+                  local results = vim.system({ "git", "commit", "-m", msg }, { text = true }):wait()
+
+                  if results.code ~= 0 then
+                    vim.notify(
+                      "Commit failed with the message: \n"
+                      .. vim.trim(results.stdout .. "\n" .. results.stderr),
+                      vim.log.levels.ERROR,
+                      { title = "Commit" }
+                    )
+                  else
+                    vim.notify(results.stdout, vim.log.levels.INFO, { title = "Commit Message:%" })
+                  end
+                end)
+              end,
+            },
+          },
+        }
+      })
+
+      vim.keymap.set("n", "<leader>gs", ":DiffviewOpen<CR>", { silent = true, noremap = true })
+      vim.keymap.set("n", "<leader>gS", ":DiffviewClose<CR>", { silent = true, noremap = true })
+      vim.keymap.set("n", "<leader>gd", ":DiffviewOpen origin/master<CR>", { silent = true, noremap = true })
+      vim.keymap.set("n", "<leader>gh", ":DiffviewFileHistory %<CR>", { silent = true, noremap = true })
+      vim.keymap.set("v", "<leader>gh", ":DiffviewFileHistory<CR>", { silent = true, noremap = true })
+    end
+  },
   'mbbill/undotree',
   {
     'nvim-treesitter/playground',
@@ -910,7 +934,19 @@ require("lazy").setup({
     config = function() require 'hopconfig' end,
   },
   'tpope/vim-dotenv',
-  'tpope/vim-fugitive',
+  {
+    'tpope/vim-fugitive',
+    config = function()
+      vim.keymap.set('n', "<leader>go", ":GBrowse!<CR>", { silent = true, noremap = true })
+      vim.keymap.set('v', "<leader>go", ":GBrowse!<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gr", ":Gread<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gb", ":Git blame<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gp", ":Git push<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gt", ":Git commit -am'wip'<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>ga", ":Git commit -av<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gv", ":Git commit -v<CR>", { silent = true, noremap = true })
+    end
+  },
   'tpope/vim-eunuch',
   'tpope/vim-surround',
   'tpope/vim-repeat',
