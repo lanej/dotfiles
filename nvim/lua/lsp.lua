@@ -12,6 +12,7 @@ cmp.setup({
   snippet = {
     expand = function(args)
       vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
+      -- vim.snippet.expand(args.body) -- For native neovim snippets (Neovim v0.10+)
     end,
   },
   window = {
@@ -50,13 +51,7 @@ cmp.setup({
     ['<C-j>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete(),
     ['<C-e>'] = cmp.mapping.abort(),
-    ['<CR>'] = function(fallback)
-      if cmp.visible() then
-        cmp.confirm({ select = false })
-      else
-        fallback() -- If you use vim-endwise, this fallback will behave the same as vim-endwise.
-      end
-    end
+    ['<CR>'] = cmp.mapping.confirm({ select = false }),
   }),
   sources = cmp.config.sources(
     {
