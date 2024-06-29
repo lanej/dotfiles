@@ -49,7 +49,7 @@ fi
 if command -v xsel >/dev/null; then
   alias pbcopy='xsel --clipboard --input'
   alias pbpaste='xsel --clipboard --output'
-elif [[ $TMUX != "" ]]; then
+elif [ -n "$TMUX" ]; then
   alias pbcopy='tmux loadb -'
   alias pbpaste='tmux saveb'
 fi
