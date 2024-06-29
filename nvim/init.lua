@@ -1085,6 +1085,10 @@ require("lazy").setup({
           complete = {
             insert = '',
           },
+          reset = {
+            normal = '<C-p>',
+            insert = '<C-p>'
+          }
         },
       })
     end,
