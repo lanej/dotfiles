@@ -3,11 +3,7 @@ require('trouble').setup {
     silent = true,
     noremap = true,
   }),
-  vim.api.nvim_set_keymap('n', '<leader>dw', '<cmd>Trouble workspace_diagnostics<cr>', {
-    silent = true,
-    noremap = true,
-  }),
-  vim.api.nvim_set_keymap('n', '<leader>dd', '<cmd>Trouble document_diagnostics<cr>', {
+  vim.api.nvim_set_keymap('n', '<leader>dd', '<cmd>Trouble diagnostics<cr>', {
     silent = true,
     noremap = true,
   }),
