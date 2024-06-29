@@ -1070,6 +1070,12 @@ require("lazy").setup({
     opts = {
       debug = true, -- Enable debugging
     },
+    mappings = {
+      reset = {
+        normal = '<C-p>',
+        insert = '<C-p>'
+      }
+    },
     config = function()
       require('CopilotChat').setup({
         mappings = {
