@@ -56,7 +56,9 @@ fi
 
 if command -v bat >/dev/null 2>&1; then
   alias cat='bat --plain'
+  # shellcheck disable=SC2068
   man() { /usr/bin/man $@ | bat -l man --plain; }
+  # shellcheck disable=SC2068
   help() { $@ --help | bat -l help --plain; }
 fi
 
