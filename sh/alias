@@ -38,8 +38,9 @@ alias vcr='be env VCR_RECORD=all rspec'
 alias v='nvim'
 alias wip="git add -A >/dev/null && git commit -m \"wip\" >/dev/null && echo \"it good\""
 
-## Set ls options per platform
-if [[ $OSTYPE == 'linux-gnu' ]]; then
+# Set ls options per platform
+os_type=$(uname)
+if [ "$os_type" = "Linux" ]; then
   alias ls='ls -p --color=auto'
 elif [[ $OSTYPE =~ 'darwin' ]]; then
   alias ls='ls -Gp'
