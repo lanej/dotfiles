@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+JUST="/usr/bin/just"
+
+if command -v withenv >/dev/null && ([[ -r .env ]] || [[ -r .env-override ]]); then
+	JUST="withenv just"
+fi
+
+$JUST "$@"

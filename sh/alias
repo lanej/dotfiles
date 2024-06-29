@@ -153,6 +153,7 @@ alias tn="tmux new"
 alias ct="cargo test"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
 alias go="go-hack"
+alias just="just-hack"
 alias python="python-hack"
 alias ruby="ruby-hack"
 alias b='bundle-hack'
