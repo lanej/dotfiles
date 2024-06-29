@@ -177,7 +177,10 @@ vim.api.nvim_set_keymap('n', '<leader>j', '<cmd>lua require("fzf-lua").jumps()<C
   noremap = true,
   silent = true,
 })
-
+vim.api.nvim_set_keymap('n', '<leader>ah', '<cmd>lua require("fzf-lua").help_tags()<CR>', {
+  noremap = true,
+  silent = true,
+})
 vim.keymap.set({ 'n' }, '<leader>dc', function()
   require "fzf-lua".fzf_exec(function(callback)
     local comments = require("phab").get_comments()
