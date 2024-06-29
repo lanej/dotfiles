@@ -1076,6 +1076,9 @@ require("lazy").setup({
         insert = '<C-p>'
       }
     },
+    filetypes = {
+      gitcommit = true
+    },
     config = function()
       require('CopilotChat').setup({
         mappings = {
@@ -1092,5 +1095,23 @@ require("lazy").setup({
 vim.keymap.set('n', '<leader>vpu', ':Lazy update<CR>', { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>vpi', ':Lazy home<CR>', { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>vpc', ':Lazy clean<CR>', { silent = true, noremap = true })
+
+-- -- Define a function to get the commit message from an external command
+-- local function get_commit_message()
+--     local command_output = require('chat').get
+--     -- Join the lines into a single string (removing newline characters)
+--     local message = table.concat(command_output, ' ')
+--     return message
+-- end
+--
+-- -- Define a function to set the commit message in the current buffer
+-- local function set_commit_message()
+--     local message = get_commit_message()
+--     -- Enter insert mode at the beginning of the buffer and insert the message
+--     vim.api.nvim_buf_set_lines(0, 0, 1, false, {message})
+-- end
+--
+-- -- Command to trigger setting the commit message
+-- vim.cmd([[command! -nargs=0 CommitMessage lua set_commit_message()]])
 
 vim.cmd [[set secure]]
