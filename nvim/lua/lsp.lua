@@ -55,10 +55,19 @@ cmp.setup({
   }),
   sources = cmp.config.sources(
     {
-      { name = 'nvim_lsp' },
+      {
+        name = 'nvim_lsp',
+        option = {
+          markdown_oxide = {
+            keyword_pattern = [[\(\k\| \|\/\|#\)\+]]
+          }
+        }
+      },
       { name = 'vsnip' },
       { name = 'tmux' },
       { name = 'path' },
+      { name = 'emoji' },
+      { name = "natdat" },
       {
         name = 'buffer',
         option = {
@@ -74,6 +83,21 @@ cmp.setup({
     }
   )
 })
+
+require("CopilotChat.integrations.cmp").setup()
+
+-- -- setup Markdown Oxide daily note commands
+-- if client.name == "markdown_oxide" then
+--   vim.api.nvim_create_user_command(
+--     "Daily",
+--     function(args)
+--       local input = args.args
+--
+--       vim.lsp.buf.execute_command({ command = "jump", arguments = { input } })
+--     end,
+--     { desc = 'Open daily note', nargs = "*" }
+--   )
+-- end
 
 -- Set configuration for specific filetype.
 cmp.setup.filetype('gitcommit', {
@@ -136,11 +160,29 @@ require("lspconfig").html.setup {
   init_options = { provideFormatter = true },
 }
 
+-- An example nvim-lspconfig capabilities setting
+local markdown_oxide_capabilities = require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol
+  .make_client_capabilities())
+
+-- Ensure that dynamicRegistration is enabled! This allows the LS to take into account actions like the
+-- Create Unresolved File code action, resolving completions for unindexed code blocks, ...
+markdown_oxide_capabilities.workspace = {
+  didChangeWatchedFiles = {
+    dynamicRegistration = true,
+  },
+}
+
+require("lspconfig").markdown_oxide.setup({
+  capabilities = markdown_oxide_capabilities, -- again, ensure that capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = true
+  -- on_attach = on_attach                       -- configure your on attach config
+})
+
 require("lspconfig").lua_ls.setup {
   cmd = {
     "lua-language-server",
   },
   capabilities = capabilities,
+  -- on_attach = function(client) client.server_capabilities.semanticTokensProvider = nil end,
   format = {
     enable = true,
     defaultConfig = {
@@ -252,8 +294,8 @@ vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.get_line_diagnos
   silent = true,
 })
 
-vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, {noremap = true, silent = true })
-vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, {noremap = true, silent = true })
+vim.keymap.set('n', '<space>wa', vim.lsp.buf.add_workspace_folder, { noremap = true, silent = true })
+vim.keymap.set('n', '<space>wr', vim.lsp.buf.remove_workspace_folder, { noremap = true, silent = true })
 vim.keymap.set('n', '<space>wl', function()
   print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
 end, { noremap = true, silent = true })

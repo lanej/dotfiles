@@ -765,6 +765,8 @@ require("lazy").setup({
       'hrsh7th/cmp-path',
       'hrsh7th/cmp-cmdline',
       'hrsh7th/nvim-cmp',
+      'hrsh7th/cmp-emoji',
+      'Gelio/cmp-natdat',
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-vsnip',
       'andersevenrud/cmp-tmux',
@@ -772,9 +774,10 @@ require("lazy").setup({
       'simrat39/rust-tools.nvim',
       'nvim-tree/nvim-web-devicons',
       'onsails/lspkind.nvim',
-      'altermo/ultimate-autopair.nvim',
+      -- 'altermo/ultimate-autopair.nvim',
     },
   },
+  { "Gelio/cmp-natdat",            config = true },
   {
     'nvim-treesitter/nvim-treesitter',
     config = function() require 'treesitter' end,
@@ -848,6 +851,7 @@ require("lazy").setup({
   },
   {
     'epwalsh/obsidian.nvim',
+    enabled = false,
     config = function()
       require('obsidian').setup({
         dir = '~/share/work',
@@ -949,6 +953,7 @@ require("lazy").setup({
   },
   'tpope/vim-eunuch',
   'tpope/vim-surround',
+  'tpope/vim-rhubarb',
   'tpope/vim-repeat',
   { 'norcalli/nvim-colorizer.lua', dependencies = 'nvim-treesitter/nvim-treesitter' },
   {
@@ -975,6 +980,9 @@ require("lazy").setup({
     'subnut/nvim-ghost.nvim',
     cond = vim.env.SSH_TTY == nil,
     event = "VeryLazy",
+    init = function()
+      vim.g.nvim_ghost_autostart = 0
+    end,
   },
   {
     'folke/todo-comments.nvim',
@@ -994,11 +1002,85 @@ require("lazy").setup({
     end,
   },
   {
-    'altermo/ultimate-autopair.nvim',
-    event = { 'InsertEnter', 'CmdlineEnter' },
-    branch = 'v0.6',
-    opts = {},
-  }
+    "David-Kunz/gen.nvim",
+    config = function()
+      require('gen').setup({
+        model = "codestral:latest", -- The default model to use.
+        -- host = "localhost",   -- The host running the Ollama service.
+        -- port = "11434",       -- The port on which the Ollama service is listening.
+        -- quit_map = "q",       -- set keymap for close the response window
+        -- retry_map = "<c-r>",  -- set keymap to re-send the current prompt
+        -- init = function(options) pcall(io.popen, "ollama serve > /dev/null 2>&1 &") end,
+        -- Function to initialize Ollama
+        -- command = function(options)
+        --   local body = { model = options.model, stream = true }
+        --   return "curl --silent --no-buffer -X POST http://" ..
+        --   options.host .. ":" .. options.port .. "/api/chat -d $body"
+        -- end,
+        -- The command for the Ollama service. You can use placeholders $prompt, $model and $body (shellescaped).
+        -- This can also be a command string.
+        -- The executed command must return a JSON object with { response, context }
+        -- (context property is optional).
+        -- list_models = '<omitted lua function>', -- Retrieves a list of model names
+        display_mode = "split", -- The display mode. Can be "float" or "split" or "horizontal-split".
+        show_prompt = true,     -- Shows the prompt submitted to Ollama.
+        show_model = true,      -- Displays which model you are using at the beginning of your chat session.
+        no_auto_close = true,   -- Never closes the window automatically.
+        debug = false           -- Prints errors and the command which is run.
+      })
+
+      require('gen').prompts['Fix_Code'] = {
+        prompt =
+        "Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```",
+        replace = true,
+        extract = "```$filetype\n(.-)```"
+      }
+
+      vim.keymap.set('i', '<leader>of', ':Gen Fix_Code<CR>')
+      vim.keymap.set('v', '<leader>of', ':Gen Fix_Code<CR>')
+    end
+  },
+  -- {
+  --   'altermo/ultimate-autopair.nvim',
+  --   event = { 'InsertEnter', 'CmdlineEnter' },
+  --   branch = 'v0.6',
+  --   opts = {},
+  -- },
+  {
+    "nvim-neotest/neotest",
+    dependencies = {
+      "nvim-neotest/nvim-nio",
+      "nvim-lua/plenary.nvim",
+      "antoinemadec/FixCursorHold.nvim",
+      "nvim-treesitter/nvim-treesitter"
+    },
+    config = function()
+      require("neodev").setup({
+        library = { plugins = { "neotest" }, types = true },
+      })
+    end,
+  },
+  {
+    "CopilotC-Nvim/CopilotChat.nvim",
+    branch = "canary",
+    dependencies = {
+      { "zbirenbaum/copilot.lua" }, -- or github/copilot.vim
+      { "nvim-lua/plenary.nvim" },  -- for curl, log wrapper
+    },
+    opts = {
+      debug = true, -- Enable debugging
+    },
+    config = function()
+      require('CopilotChat').setup({
+        mappings = {
+          complete = {
+            insert = '',
+          },
+        },
+      })
+    end,
+  },
+  { 'github/copilot.vim' }
 })
 
 vim.keymap.set('n', '<leader>vpu', ':Lazy update<CR>', { silent = true, noremap = true })

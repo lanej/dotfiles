@@ -15,6 +15,9 @@ require('lspsaga').setup({
   code_action_lightbulb = {
     enable = false,
   },
+  lightbulb = {
+    enable = false,
+  },
 })
 
 vim.api.nvim_set_keymap('v', '<leader>ca', '<cmd><C-U>Lspsaga range_code_action<CR>', {
