@@ -109,6 +109,17 @@ cmp.setup.filetype('gitcommit', {
     })
 })
 
+cmp.setup.filetype('copilot-*', {
+  sources = cmp.config.sources(
+    {
+      { name = 'nvim_lsp' },
+      { name = 'git' },
+      { name = 'buffer' },
+      { name = 'path' },
+      { name = 'tmux' },
+    })
+})
+
 -- Use buffer source for `/` and `?` (if you enabled `native_menu`, this won't work anymore).
 cmp.setup.cmdline({ '/', '?' }, {
   mapping = cmp.mapping.preset.cmdline(),

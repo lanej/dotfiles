@@ -1070,17 +1070,38 @@ require("lazy").setup({
     opts = {
       debug = true, -- Enable debugging
     },
-    mappings = {
-      reset = {
-        normal = '<C-p>',
-        insert = '<C-p>'
-      }
-    },
-    filetypes = {
-      gitcommit = true
-    },
     config = function()
+      vim.keymap.set('n', '<leader>co', ':CopilotChat<cr>', { silent = true, noremap = true })
+      vim.keymap.set('v', '<leader>co', ':CopilotChat<cr>', { silent = true, noremap = true })
       require('CopilotChat').setup({
+        window = {
+          layout = "horizontal",
+        },
+        auto_insert_mode = true,
+        title = 'nexia',
+        prompts = {
+          Commit = {
+            prompt =
+            'Write a commit message for the change with commitizen convention. Make sure the title has maximum 50 characters and message is wrapped at 72 characters. Wrap the whole message in code block with language gitcommit.  Keep the message concise and clear.',
+            mapping = "<leader>ccc"
+          },
+          Fix = {
+            prompt =
+            'Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```',
+            mapping = "<leader>ccf"
+          },
+          CommitStaged = {
+            prompt =
+            'Write a commit message for the change with commitizen convention. Make sure the title has maximum 50 characters and message is wrapped at 72 characters. Wrap the whole message in code block with language gitcommit.  Make the message very concise.  Make sure the message does not exceed 128 characters. Make sure the message is terse and clear.  Make sure the message is written in active tense.  Make sure the message starts with a verb in the present tense',
+            mapping = "<leader>ccs"
+          },
+          Docs = {
+            mapping = "<leader>ccd"
+          },
+          FixDiagnostic = {
+            mapping = "<leader>ccx"
+          },
+        },
         mappings = {
           complete = {
             insert = '',
@@ -1088,13 +1109,25 @@ require("lazy").setup({
           reset = {
             normal = '<C-p>',
             insert = '<C-p>'
-          }
+          },
         },
       })
     end,
   },
-  { 'github/copilot.vim' }
+  { 'github/copilot.vim' },
 })
+
+  -- {
+  --   'pwntester/octo.nvim',
+  --   requires = {
+  --     'nvim-lua/plenary.nvim',
+  --     'ibhagwan/fzf-lua',
+  --     'nvim-tree/nvim-web-devicons',
+  --   },
+  --   config = function()
+  --     require "octo".setup()
+  --   end
+  -- }
 
 vim.keymap.set('n', '<leader>vpu', ':Lazy update<CR>', { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>vpi', ':Lazy home<CR>', { silent = true, noremap = true })
