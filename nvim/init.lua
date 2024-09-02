@@ -999,6 +999,7 @@ require("lazy").setup({
       require('todo-comments').setup({
         keywords = {
           WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
+          SEE = { icon = "👀", color = "info", alt = { "REF" } },
         }
       })
     end,
