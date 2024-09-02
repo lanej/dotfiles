@@ -94,7 +94,7 @@ alt - n : yabai -m window --focus next
 # alt - K : yabai -m window --layer above
 
 alt - e : yabai -m space --layout bsp
-alt + shift - s : yabai -m window --toggle float
+alt + shift - z : yabai -m window --toggle float
 alt + shift - f : yabai -m window --toggle zoom-fullscreen
 
 # swap managed window
