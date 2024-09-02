@@ -35,55 +35,59 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
-if [ -d "$HOME/.cargo/bin" ]; then
-	export PATH="$HOME/.cargo/bin:$PATH"
+. "${HOME}/.profile"
+
+autoload -U compinit && compinit
+autoload -U +X bashcompinit && bashcompinit
+
+if [ -r "${HOME}/.config/zsh/_podman" ]; then
+	source "${HOME}/.config/zsh/_podman"
 fi
 
-autoload -Uz compinit && compinit
+if command -v fzf >/dev/null; then
+	source <(fzf --zsh)
+	if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
+		source "${HOME}/.config/zsh/fzf.zsh"
+		bindkey '^U' fzf-cd-widget
+		bindkey '^O' fzf-file-widget
+		zzz() {
+			zz
+			let ret=$?
+			zle accept-line
+			return $ret
+		}
+		zle -N zzz
+		bindkey '^B' zzz
 
-if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
-	source "${HOME}/.config/zsh/fzf.zsh"
-	bindkey '^U' fzf-cd-widget
-	bindkey '^O' fzf-file-widget
-	zzz() {
-		zz
-		let ret=$?
-		zle accept-line
-		return $ret
-	}
-	zle -N zzz
-	bindkey '^B' zzz
+	fi
 
-fi
+	if [ -r "${HOME}/.fzf.zsh" ]; then
+		source "${HOME}/.fzf.zsh"
+		bindkey '^U' fzf-cd-widget
+		bindkey '^O' fzf-file-widget
+		zzz() {
+			zz
+			let ret=$?
+			zle accept-line
+			return $ret
+		}
+		zle -N zzz
+		bindkey '^B' zzz
 
-if [ -r "${HOME}/.fzf.zsh" ]; then
-	source "${HOME}/.fzf.zsh"
-	bindkey '^U' fzf-cd-widget
-	bindkey '^O' fzf-file-widget
-	zzz() {
-		zz
-		let ret=$?
-		zle accept-line
-		return $ret
-	}
-	zle -N zzz
-	bindkey '^B' zzz
+	fi
 
-fi
+	if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
+		source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
 
-if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
-	source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
-
-	# disable sort when completing `git checkout`
-	zstyle ':completion:*:git-checkout:*' sort false
-	# set descriptions format to enable group support
-	zstyle ':completion:*:descriptions' format '[%d]'
-	# set list-colors to enable filename colorizing
-	zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-	# preview directory's content with exa when completing cd
-	zstyle ':fzf-tab:complete:cd:*' fzf-preview 'exa -1 --color=always $realpath'
-	# switch group using `,` and `.`
-	zstyle ':fzf-tab:*' switch-group ',' '.'
+		# disable sort when completing `git checkout`
+		zstyle ':completion:*:git-checkout:*' sort false
+		# set descriptions format to enable group support
+		zstyle ':completion:*:descriptions' format '[%d]'
+		# set list-colors to enable filename colorizing
+		zstyle ':fzf-tab:complete:cd:*' fzf-preview 'exa -1 --color=always $realpath'
+		# switch group using `,` and `.`
+		zstyle ':fzf-tab:*' switch-group ',' '.'
+	fi
 fi
 
 # yank to the system clipboard
@@ -132,13 +136,8 @@ elif command -v starship >/dev/null; then
 	fi
 fi
 
-if command -v atuin >/dev/null; then
-	eval "$(atuin init zsh)"
-
-	bindkey '^r' atuin-search
-fi
-
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
+[[ -r "${HOME}/.config/share/zsh/justfile.zsh" ]] && source "${HOME}/.config/share/zsh/justfile.zsh"
 
 autoload -U select-word-style
 select-word-style bash
@@ -173,7 +172,49 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 	# ZSH_HIGHLIGHT_STYLES[assign]=none
 fi
 
+export PATH="/opt/homebrew/bin:$PATH"
+export PATH="/opt/homebrew/sbin:$PATH"
 
-. "${HOME}/.profile"
+# autoload -U +X bashcompinit && bashcompinit
+if command -v kubectl >/dev/null; then
+	source <(kubectl completion zsh)
+fi
+
+if [ -r /opt/homebrew/bin/terraform ]; then
+	complete -o nospace -C /opt/homebrew/bin/terraform terraform
+fi
+
 . "${HOME}/.alias"
-. "${HOME}/.zlogin"
+
+# FIXME: this shouldn't be necessary
+# . "${HOME}/.zlogin"
+
+if command -v pulumi >/dev/null; then
+	source <(pulumi gen-completion zsh)
+fi
+
+if command -v direnv >/dev/null; then
+	eval "$(direnv hook zsh)"
+fi
+
+if command -v flux >/dev/null; then
+	source <(flux completion zsh)
+fi
+
+if [ -r "${HOME}/.config/zsh/docker.zsh" ]; then
+	source "${HOME}/.config/zsh/docker.zsh"
+fi
+
+if [ -r "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc" ]; then
+    source "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc"
+fi
+
+if [ -r "$(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc" ]; then
+    source "$(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc"
+fi
+
+if command -v atuin >/dev/null; then
+	eval "$(atuin init zsh)"
+
+	bindkey '^r' atuin-search
+fi
