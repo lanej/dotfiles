@@ -824,7 +824,12 @@ require("lazy").setup({
       vim.o.winwidth = 10
       vim.o.winminwidth = 10
       vim.o.equalalways = true
-      require('windows').setup()
+      require('windows').setup({
+        ignore = { --			  |windows.ignore|
+          buftype = { "quickfix" },
+          filetype = { "NvimTree", "neo-tree", "undotree", "gundo", "copilot-chat" }
+        }
+      })
     end
   },
   {
