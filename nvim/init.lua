@@ -903,7 +903,7 @@ require("lazy").setup({
         keymaps = {
           file_panel = {
             {
-              "n", "cc",
+              "n", "gm",
               function()
                 vim.ui.input({ prompt = "Commit message: " }, function(msg)
                   if not msg then return end
@@ -954,6 +954,7 @@ require("lazy").setup({
       vim.keymap.set('n', "<leader>gt", ":Git commit -am'wip'<CR>", { silent = true, noremap = true })
       vim.keymap.set('n', "<leader>ga", ":Git commit -av<CR>", { silent = true, noremap = true })
       vim.keymap.set('n', "<leader>gv", ":Git commit -v<CR>", { silent = true, noremap = true })
+      vim.keymap.set('n', "<leader>gu", ":Git add -u<CR>", { silent = true, noremap = true })
     end
   },
   'tpope/vim-eunuch',
