@@ -987,7 +987,10 @@ require("lazy").setup({
     cond = vim.env.SSH_TTY == nil,
     event = "VeryLazy",
     init = function()
-      vim.g.nvim_ghost_autostart = 0
+      vim.g.nvim_ghost_autostart = 1
+
+      -- SEE: https://github.com/subnut/nvim-ghost.nvim/issues/38
+      vim.g.nvim_ghost_super_quiet = 1
     end,
   },
   {
