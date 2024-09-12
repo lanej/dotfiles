@@ -1015,7 +1015,7 @@ require("lazy").setup({
     "David-Kunz/gen.nvim",
     config = function()
       require('gen').setup({
-        model = "codestral:latest", -- The default model to use.
+        model = "llama3.1:8b", -- The default model to use.
         -- host = "localhost",   -- The host running the Ollama service.
         -- port = "11434",       -- The port on which the Ollama service is listening.
         -- quit_map = "q",       -- set keymap for close the response window
@@ -1038,6 +1038,12 @@ require("lazy").setup({
         no_auto_close = true,   -- Never closes the window automatically.
         debug = false           -- Prints errors and the command which is run.
       })
+
+      require('gen').prompts['Edit'] = {
+        prompt = "Help me edit the following:\n$text",
+        replace = false,
+        extract = "```$filetype\n(.-)```"
+      }
 
       require('gen').prompts['Fix_Code'] = {
         prompt =
