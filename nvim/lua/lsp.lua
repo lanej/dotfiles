@@ -6,6 +6,7 @@ end
 
 cmp.setup({
   preselect = cmp.PreselectMode.None,
+  enabled = function() return vim.api.nvim_get_mode().mode ~= 'c' end,
   completion = {
     keyword_length = 3,
   },
