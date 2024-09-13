@@ -27,10 +27,14 @@ cmp.setup({
         if icon then
           vim_item.kind = icon
           vim_item.kind_hl_group = hl_group
+          vim_item.abbr = string.sub(vim_item.abbr, 1, 72)
           return vim_item
         end
       end
-      return require("lspkind").cmp_format({ with_text = true })(entry, vim_item)
+
+      local new_item = require("lspkind").cmp_format({ with_text = true })(entry, vim_item)
+      new_item.abbr = string.sub(new_item.abbr, 1, 72)
+      return new_item
     end
   },
   mapping = cmp.mapping.preset.insert({
