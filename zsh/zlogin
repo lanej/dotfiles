@@ -26,11 +26,11 @@ if command -v fzf >/dev/null; then
 		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --plain --color=always -l zsh --plain'"
 	fi
 
-	if command -v exa >/dev/null; then
+	if command -v eza >/dev/null; then
 		unset FZF_ALT_C_OPTS
 		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"
 	  --reverse
-	  --preview 'exa -HgF --icons -T -L 2 --git {}'
+	  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}'
 	  --preview-window right:60%"
 	fi
 
