@@ -46,6 +46,7 @@ fi
 
 if command -v fzf >/dev/null; then
 	source <(fzf --zsh)
+
 	if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
 		source "${HOME}/.config/zsh/fzf.zsh"
 		bindkey '^U' fzf-cd-widget
@@ -84,7 +85,7 @@ if command -v fzf >/dev/null; then
 		# set descriptions format to enable group support
 		zstyle ':completion:*:descriptions' format '[%d]'
 		# set list-colors to enable filename colorizing
-		zstyle ':fzf-tab:complete:cd:*' fzf-preview 'exa -1 --color=always $realpath'
+		zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
 		# switch group using `,` and `.`
 		zstyle ':fzf-tab:*' switch-group ',' '.'
 	fi
