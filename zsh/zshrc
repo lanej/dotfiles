@@ -190,7 +190,7 @@ fi
 # . "${HOME}/.zlogin"
 
 if command -v pulumi >/dev/null; then
-	source <(pulumi gen-completion zsh)
+	source <(env PULUMI_SKIP_UPDATE_CHECK=1 pulumi gen-completion zsh)
 fi
 
 if command -v direnv >/dev/null; then
