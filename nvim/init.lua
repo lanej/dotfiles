@@ -1139,17 +1139,61 @@ require("lazy").setup({
   { 'github/copilot.vim' },
 })
 
-  -- {
-  --   'pwntester/octo.nvim',
-  --   requires = {
-  --     'nvim-lua/plenary.nvim',
-  --     'ibhagwan/fzf-lua',
-  --     'nvim-tree/nvim-web-devicons',
-  --   },
-  --   config = function()
-  --     require "octo".setup()
-  --   end
-  -- }
+      vim.keymap.set('n', '<leader>ce', ':ChatGPTEditWithInstructions<CR>', { silent = true, noremap = true })
+      vim.keymap.set('v', '<leader>ce', ':ChatGPTEditWithInstructions<CR>', { silent = true, noremap = true })
+    end,
+    dependencies = {
+      "MunifTanjim/nui.nvim",
+      "nvim-lua/plenary.nvim",
+      "folke/trouble.nvim",
+      "nvim-telescope/telescope.nvim"
+    }
+  },
+  {
+    "iamcco/markdown-preview.nvim",
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    ft = { "markdown" },
+    build = function() vim.fn["mkdp#util#install"]() end,
+  },
+  {
+    'pwntester/octo.nvim',
+    requires = {
+      'nvim-lua/plenary.nvim',
+      'ibhagwan/fzf-lua',
+      'nvim-tree/nvim-web-devicons',
+    },
+    config = function()
+      require "octo".setup({
+        picker = "fzf-lua",
+      })
+    end
+  },
+  {
+    "OXY2DEV/markview.nvim",
+    lazy = false, -- Recommended
+    -- ft = "markdown", -- If you decide to lazy-load anyway
+    dependencies = {
+      -- You will not need this if you installed the
+      -- parsers manually
+      -- Or if the parsers are in your $RUNTIMEPATH
+      "nvim-treesitter/nvim-treesitter",
+
+      "nvim-tree/nvim-web-devicons"
+    }
+  },
+  {
+    'aaronik/treewalker.nvim',
+    opts = {
+      highlight = true,
+    },
+    config = function()
+      vim.api.nvim_set_keymap('n', '<C-s>', ':Treewalker Down<CR>', { noremap = true, silence = true })
+      vim.api.nvim_set_keymap('n', '<C-w>', ':Treewalker Up<CR>', { noremap = true, silence = true })
+      vim.api.nvim_set_keymap('n', '<C-a>', ':Treewalker Left<CR>', { noremap = true, silence = true })
+      vim.api.nvim_set_keymap('n', '<C-d>', ':Treewalker Right<CR>', { noremap = true, silence = true })
+    end,
+  }
+})
 
 vim.keymap.set('n', '<leader>vpu', ':Lazy update<CR>', { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>vpi', ':Lazy home<CR>', { silent = true, noremap = true })
