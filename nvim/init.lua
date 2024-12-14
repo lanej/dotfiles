@@ -590,9 +590,15 @@ require("lazy").setup({
   }),
   {
     'nvim-lualine/lualine.nvim',
-    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    dependencies = {
+      'nvim-tree/nvim-web-devicons',
+      'folke/trouble.nvim',
+    },
     config = function()
       require('lualine').setup {
+        extensions = {
+          'trouble',
+        },
         options = {
           icons_enabled = true,
           theme = 'nord',
