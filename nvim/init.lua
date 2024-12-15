@@ -935,8 +935,19 @@ require("lazy").setup({
       vim.keymap.set("n", "<leader>gs", ":DiffviewOpen<CR>", { silent = true, noremap = true })
       vim.keymap.set("n", "<leader>gS", ":DiffviewClose<CR>", { silent = true, noremap = true })
       vim.keymap.set("n", "<leader>gd", ":DiffviewOpen origin/master<CR>", { silent = true, noremap = true })
-      vim.keymap.set("n", "<leader>gh", ":DiffviewFileHistory %<CR>", { silent = true, noremap = true })
-      vim.keymap.set("v", "<leader>gh", ":DiffviewFileHistory<CR>", { silent = true, noremap = true })
+      -- vim.keymap.set("n", "<leader>gh", ":DiffviewFileHistory %<CR>", { silent = true, noremap = true })
+      -- vim.keymap.set("v", "<leader>gh", ":DiffviewFileHistory<CR>", { silent = true, noremap = true })
+
+      -- use an autocmd to set the keymap only when the buffer is a diffview buffer
+      -- vim.keymap.set("n", "<leader>hs", ":diffput",
+      --   { buffer = 0, expr = "bufname(bufnr('')):match('^diffview://') ~= nil", silent = true })
+      vim.api.nvim_create_autocmd({ "BufEnter", "BufRead", "BufWinEnter" }, {
+        pattern = "diffview://*",
+        callback = function()
+          vim.keymap.set("n", "<leader>hs", ":diffput<CR>", { buffer = 0, silent = true })
+          vim.keymap.set("n", "<leader>hr", ":diffget<CR>", { buffer = 0, silent = true })
+        end,
+      })
     end
   },
   'mbbill/undotree',
@@ -1083,8 +1094,18 @@ require("lazy").setup({
     end,
   },
   {
+    "zbirenbaum/copilot.lua",
+    cmd = "Copilot",
+    event = "InsertEnter",
+    config = function()
+      require("copilot").setup({
+        -- copilot_node_command = vim.fn.expand("$HOME") .. "/.config/nvm/versions/node/v18.18.2/bin/node", -- Node.js version must be > 18.x
+      })
+    end,
+  },
+  {
     "CopilotC-Nvim/CopilotChat.nvim",
-    branch = "canary",
+    branch = "main",
     dependencies = {
       { "zbirenbaum/copilot.lua" }, -- or github/copilot.vim
       { "nvim-lua/plenary.nvim" },  -- for curl, log wrapper
@@ -1093,14 +1114,13 @@ require("lazy").setup({
       debug = true, -- Enable debugging
     },
     config = function()
-      vim.keymap.set('n', '<leader>co', ':CopilotChat<cr>', { silent = true, noremap = true })
-      vim.keymap.set('v', '<leader>co', ':CopilotChat<cr>', { silent = true, noremap = true })
+      vim.keymap.set({ 'n', 'v' }, '<leader>co', ':CopilotChat<cr>', { silent = true, noremap = true })
       require('CopilotChat').setup({
         window = {
-          layout = "horizontal",
+          layout = "float",
         },
         auto_insert_mode = true,
-        title = 'nexia',
+        title = 'athena',
         prompts = {
           Commit = {
             prompt =
@@ -1108,8 +1128,8 @@ require("lazy").setup({
             mapping = "<leader>ccc"
           },
           Fix = {
-            prompt =
-            'Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```',
+            -- prompt =
+            -- 'Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```',
             mapping = "<leader>ccf"
           },
           CommitStaged = {
@@ -1120,9 +1140,9 @@ require("lazy").setup({
           Docs = {
             mapping = "<leader>ccd"
           },
-          FixDiagnostic = {
-            mapping = "<leader>ccx"
-          },
+          -- FixDiagnostic = {
+          --   mapping = "<leader>ccx"
+          -- },
         },
         mappings = {
           complete = {
@@ -1170,8 +1190,8 @@ require("lazy").setup({
   },
   {
     "OXY2DEV/markview.nvim",
-    lazy = false, -- Recommended
-    -- ft = "markdown", -- If you decide to lazy-load anyway
+    lazy = true, -- Recommended
+    ft = "markdown", -- If you decide to lazy-load anyway
     dependencies = {
       -- You will not need this if you installed the
       -- parsers manually
@@ -1179,7 +1199,16 @@ require("lazy").setup({
       "nvim-treesitter/nvim-treesitter",
 
       "nvim-tree/nvim-web-devicons"
-    }
+    },
+    opts = {
+      headings = {
+        shift_width = 0,
+      },
+      list_items = {
+        shift_width = 1,
+        indent_size = 1,
+      },
+    },
   },
   {
     'aaronik/treewalker.nvim',
@@ -1187,10 +1216,20 @@ require("lazy").setup({
       highlight = true,
     },
     config = function()
-      vim.api.nvim_set_keymap('n', '<C-s>', ':Treewalker Down<CR>', { noremap = true, silence = true })
-      vim.api.nvim_set_keymap('n', '<C-w>', ':Treewalker Up<CR>', { noremap = true, silence = true })
-      vim.api.nvim_set_keymap('n', '<C-a>', ':Treewalker Left<CR>', { noremap = true, silence = true })
-      vim.api.nvim_set_keymap('n', '<C-d>', ':Treewalker Right<CR>', { noremap = true, silence = true })
+      local filetypes = { 'typescript', 'rust', 'go' }
+
+      --- iterate over the filetypes and add autocmd
+      for _, ft in ipairs(filetypes) do
+        vim.api.nvim_create_autocmd("FileType", {
+          pattern = ft,
+          callback = function()
+            vim.keymap.set('n', '<M-J>', ':Treewalker Down<CR>', { noremap = true, silent = true })
+            vim.keymap.set('n', '<M-K>', ':Treewalker Up<CR>', { noremap = true, silent = true })
+            vim.keymap.set('n', '<M-H>', ':Treewalker Left<CR>', { noremap = true, silent = true })
+            vim.keymap.set('n', '<M-L>', ':Treewalker Right<CR>', { noremap = true, silent = true })
+          end
+        })
+      end
     end,
   }
 })
