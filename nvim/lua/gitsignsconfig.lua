@@ -6,47 +6,14 @@ require('gitsigns').setup({
   },
 })
 
-vim.api.nvim_set_keymap('n', '<leader>gw', ':Gitsigns stage_buffer<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>gl', ':Gitsigns blame_line<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', ']c', ':Gitsigns next_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '[c', ':Gitsigns prev_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hp', ':Gitsigns preview_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hs', ':Gitsigns stage_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hr', ':Gitsigns reset_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hR', ':Gitsigns reset_buffer<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hu', ':Gitsigns undo_stage_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>hU', ':Gitsigns reset_buffer_index<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', 'vh', ':Gitsigns select_hunk<CR>', {
-  silent = true,
-  noremap = true,
-})
+vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>gl', require('gitsigns').blame_line, { silent = true, noremap = true })
+vim.keymap.set('n', ']c', require('gitsigns').next_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '[c', require('gitsigns').prev_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hp', require('gitsigns').preview_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hs', require('gitsigns').stage_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hr', require('gitsigns').reset_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hR', require('gitsigns').reset_buffer, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hu', require('gitsigns').undo_stage_hunk, { silent = true, noremap = true })
+vim.keymap.set('n', '<leader>hU', require('gitsigns').reset_buffer_index, { silent = true, noremap = true })
+vim.keymap.set('n', 'vh', require('gitsigns').select_hunk, { silent = true, noremap = true })
