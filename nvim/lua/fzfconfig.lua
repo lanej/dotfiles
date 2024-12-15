@@ -68,6 +68,7 @@ require('fzf-lua').setup {
   },
 }
 
+
 -- Registers (paste register or apply macro)
 local extract_register_from = function(result)
   -- `selected[1]` is going to be "[2] contents of register 2"
@@ -91,114 +92,60 @@ end, {
   desc = 'fzf_lua.registers',
 })
 
-vim.api.nvim_set_keymap('n', '<leader>aw', '<cmd>lua require("fzf-lua").grep_cword()<CR>', {
+vim.keymap.set('n', '<leader>aw', function() require("fzf-lua").grep_cword() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ag', function() require("fzf-lua").grep() end, { noremap = true, silent = true })
+vim.keymap.set({ 'n', 'v' }, '<leader>ac', function() require("fzf-lua").commands() end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ab', function() require("fzf-lua").builtin() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>al', function() require("fzf-lua").lines() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>az', function() require("fzf-lua").live_grep_resume() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>aa', function() require("fzf-lua").grep() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>at', function() require("fzf-lua").tags() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ff', function() require("fzf-lua").files() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>af', function() require("fzf-lua").files({ cwd = vim.fn.expand('%:p:h') }) end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>rr', function() require("fzf-lua").command_history() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>rf', function() require("fzf-lua").oldfiles() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bl', function() require("fzf-lua").blines() end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>ag', '<cmd>lua require("fzf-lua").grep()<CR>', {
+vim.keymap.set('n', '<leader>bt', function() require("fzf-lua").btags() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bc', function() require("fzf-lua").git_bcommits() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>gf', function() require("fzf-lua").git_files() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>sf', function() require("fzf-lua").git_status() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>qf', function() require("fzf-lua").quickfix() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bb', function() require("fzf-lua").buffers() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>gc', function() require("fzf-lua").git_commits() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bp', function() require("fzf-lua").git_branches() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>bs', function() require("fzf-lua").lsp_document_symbols() end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>cj', function() require("fzf-lua").lsp_incoming_calls() end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ck', function() require("fzf-lua").lsp_outgoing_calls() end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>as', function() require("fzf-lua").lsp_workspace_symbols() end,
+  { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ss', function() require("fzf-lua").spell_suggest() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>jj', function() require("fzf-lua").jumps() end, { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>ah', function() require("fzf-lua").help_tags() end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>ac', '<cmd>lua require("fzf-lua").commands()<CR>', {
+vim.keymap.set({ 'n', 'v' }, '<leader>ca', function() require("fzf-lua").lsp_code_actions({ pager = false }) end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap('n', '<leader>ab', '<cmd>lua require("fzf-lua").builtin()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>al', '<cmd>lua require("fzf-lua").lines()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>az', '<cmd>lua require("fzf-lua").live_grep_resume()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>aa', '<cmd>lua require("fzf-lua").grep()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>at', '<cmd>lua require("fzf-lua").tags()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>f', '<cmd>lua require("fzf-lua").files()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>af',
-  '<cmd>lua require("fzf-lua").files({ cwd = vim.fn.expand(\'%:p:h\') })<CR>',
-  {
-    noremap = true,
-    silent = true,
-  })
-vim.api.nvim_set_keymap('n', '<leader>rr', '<cmd>lua require("fzf-lua").command_history()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>rf', '<cmd>lua require("fzf-lua").oldfiles()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bl', '<cmd>lua require("fzf-lua").grep_curbuf()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bt', '<cmd>lua require("fzf-lua").btags()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bc', '<cmd>lua require("fzf-lua").git_bcommits()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>gf', '<cmd>lua require("fzf-lua").git_files()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>sf', '<cmd>lua require("fzf-lua").git_status()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>qf', '<cmd>lua require("fzf-lua").quickfix()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bb', '<cmd>lua require("fzf-lua").buffers()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>gc', '<cmd>lua require("fzf-lua").git_commits()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bp', '<cmd>lua require("fzf-lua").git_branches()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>bs', '<cmd>lua require("fzf-lua").lsp_document_symbols()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>as', '<cmd>lua require("fzf-lua").lsp_workspace_symbols()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>ss', '<cmd>lua require("fzf-lua").spell_suggest()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>j', '<cmd>lua require("fzf-lua").jumps()<CR>', {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>ah', '<cmd>lua require("fzf-lua").help_tags()<CR>', {
-  noremap = true,
-  silent = true,
-})
+
 vim.keymap.set({ 'n' }, '<leader>dc', function()
-  require "fzf-lua".fzf_exec(function(callback)
+  require "fzf-lua".fzf_exec({
+    prompt = "Diff Comments> ",
+    previewer = false,
+    -- preview = require 'fzf-lua'.shell.raw_preview_action_cmd(function(items) return vim.inspect(items) end),
+    fn_transform = function(x)
+      return require 'fzf-lua'.make_entry.file(x, { file_icons = true, color_icons = true })
+    end,
+  }, function(callback)
     local comments = require("phab").get_comments()
     print(vim.inspect(comments))
 
@@ -207,14 +154,7 @@ vim.keymap.set({ 'n' }, '<leader>dc', function()
     end
 
     callback()
-  end, {
-    prompt = "Diff Comments> ",
-    previewer = false,
-    -- preview = require 'fzf-lua'.shell.raw_preview_action_cmd(function(items) return vim.inspect(items) end),
-    fn_transform = function(x)
-      return require 'fzf-lua'.make_entry.file(x, { file_icons = true, color_icons = true })
-    end,
-  })
+  end)
 end, { noremap = true, silent = true })
 
 -- Mtag = function(x, opts)
