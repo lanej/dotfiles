@@ -5,7 +5,7 @@ require('lspsaga').setup({
   symbol_in_winbar = {
     enable = true,
     separator = " ",
-    ignore_patterns={},
+    ignore_patterns = {},
     hide_keyword = true,
     show_file = true,
     folder_level = 3,
@@ -20,15 +20,7 @@ require('lspsaga').setup({
   },
 })
 
-vim.api.nvim_set_keymap('v', '<leader>ca', '<cmd><C-U>Lspsaga range_code_action<CR>', {
-  silent = true,
-  noremap = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>rn', '<cmd>Lspsaga rename<CR>', {
+vim.keymap.set('n', '<leader>rn', '<cmd>Lspsaga rename<CR>', {
   noremap = true,
   silent = true,
-})
-vim.api.nvim_set_keymap('n', '<leader>ca', '<cmd>Lspsaga code_action<CR>', {
-  silent = true,
-  noremap = true,
 })
