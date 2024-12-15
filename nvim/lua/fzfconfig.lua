@@ -16,6 +16,22 @@ require('fzf-lua').setup {
       ['ctrl-b'] = 'toggle-all',
     },
   },
+  winopts = {
+    border = 'single',
+    preview = {
+      flip_columns = 120, -- #cols to switch to horizontal on flex
+    }
+  },
+  lsp = {
+    code_actions = {
+      -- prompt           = 'Code Actions> ',
+      -- async_or_timeout = 5000,
+      -- when git-delta is installed use "codeaction_native" for beautiful diffs
+      -- try it out with `:FzfLua lsp_code_actions previewer=codeaction_native`
+      -- scroll up to `previewers.codeaction{_native}` for more previewer options
+      previewer = "codeaction_native",
+    },
+  },
   -- winopts = {
   --   height  = 0.85,             -- window height
   --   width   = 0.80,             -- window width
