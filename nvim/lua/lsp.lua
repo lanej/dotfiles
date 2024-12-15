@@ -89,8 +89,6 @@ cmp.setup({
   )
 })
 
-require("CopilotChat.integrations.cmp").setup()
-
 -- -- setup Markdown Oxide daily note commands
 -- if client.name == "markdown_oxide" then
 --   vim.api.nvim_create_user_command(
@@ -146,23 +144,60 @@ cmp.setup.cmdline(':', {
 local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
 local completion_servers = {
-  "solargraph",
+  -- "solargraph",
+  "bashls",
   "gopls",
   "pylsp",
-  "tsserver",
   "html",
-  "marksman",
 }
 for _, server in ipairs(completion_servers) do
   require("lspconfig")[server].setup {
     capabilities = capabilities,
-    on_attach = function(client)
-      client.server_capabilities.semanticTokensProvider = nil
-    end
+    -- on_attach = function(client)
+    -- client.server_capabilities.semanticTokensProvider = nil
+    -- end
   }
 end
 
 require("lspconfig").terraformls.setup {
+  capabilities = capabilities,
+}
+
+require("lspconfig").ts_ls.setup {
+  capabilities = capabilities,
+  on_attach = function(client)
+    -- TODO: treesitter highlights are now much better
+    -- client.server_capabilities.semanticTokensProvider = nil
+  end,
+  settings = {
+    completions = {
+      completeFunctionCalls = true
+    }
+  },
+}
+
+-- TODO: this is not workingg but is very popular
+-- needs null-ls for formatting
+-- require("lspconfig").biome.setup {
+--   capabilities = capabilities,
+-- }
+
+require("lspconfig").jsonls.setup {
+  capabilities = capabilities,
+}
+
+vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+  pattern = { "*.tf", "*.tfvars" },
+  callback = function()
+    vim.lsp.buf.format()
+  end,
+})
+
+require("lspconfig").marksman.setup {
+  capabilities = capabilities,
+}
+
+require("lspconfig").ruby_lsp.setup {
   capabilities = capabilities,
 }
 
@@ -269,43 +304,54 @@ require("rust-tools").setup({
   },
 })
 
-cmp.mapping(function()
-  if cmp.get_active_entry() then
-    cmp.confirm()
-  else
-    require 'ultimate-autopair.maps.cr'.cmpnewline()
-  end
-end)
+-- cmp.mapping(function()
+--   if cmp.get_active_entry() then
+--     cmp.confirm()
+--   else
+--     require 'ultimate-autopair.maps.cr'.cmpnewline()
+--   end
+-- end)
 
-vim.api.nvim_set_keymap("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", {
+vim.keymap.set("n", "K", function() vim.lsp.buf.hover() end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>cd", "<cmd>lua vim.lsp.buf.definition()<CR>", {
+vim.keymap.set("n", "<leader>cd", function() vim.lsp.buf.definition() end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>cr", "<cmd>lua vim.lsp.buf.references()<CR>", {
+vim.keymap.set("n", "<leader>cr", function() vim.lsp.buf.references() end, {
   noremap = false,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<leader>df", "<cmd>lua vim.lsp.buf.format()<CR>", {
+vim.keymap.set("n", "<leader>df", function() vim.lsp.buf.format() end, {
   noremap = false,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<c-p>", "<cmd>lua vim.diagnostic.goto_prev()<CR>", {
+-- go to errors first, warnings second
+vim.keymap.set("n", "<c-p>", function()
+  vim.diagnostic.goto_prev({
+    severity = {
+      vim.diagnostic.severity.ERROR,
+      vim.diagnostic.severity.WARNING,
+    }
+  })
+end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<c-n>", "<cmd>lua vim.diagnostic.goto_next()<CR>", {
+vim.keymap.set("n", "<c-n>", function()
+  vim.diagnostic.goto_next({
+    severity = {
+      vim.diagnostic.severity.ERROR,
+      vim.diagnostic.severity.WARNING,
+    }
+  })
+end, {
   noremap = true,
   silent = true,
 })
-vim.api.nvim_set_keymap("n", "<space>c", "<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>", {
-  noremap = true,
-  silent = true,
-})
-vim.api.nvim_set_keymap("n", "g?", "<cmd>lua vim.lsp.diagnostic.get_line_diagnostics()<CR>", {
+vim.keymap.set("n", "g?", function() vim.lsp.diagnostic.get_line_diagnostics() end, {
   noremap = true,
   silent = true,
 })
