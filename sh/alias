@@ -1,15 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
 alias arc-revision="git log origin/master..HEAD | grep 'Differential Revision' | grep -o \"https://phab\\..*\" | head -n1 | xargs basename 2>/dev/null"
 alias arc-update="arc-revision | xargs arc diff --update"
 alias c="clear"
 alias copy="tr -d '\n' | pbcopy"
 alias cpr='copy -r'
-alias curls='curl -s'
 alias curl-ttfb='curls -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
+alias curls='curl -s'
 alias fucking='sudo'
-alias gds='GIT_PAGER=cat git diff --stat'
 alias g="git"
+alias gds='GIT_PAGER=cat git diff --stat'
 alias gpr="hub pull-request"
 alias gpro='hub pull-request -o'
 alias guard='be guard'
@@ -19,8 +19,8 @@ alias nerd='vim +NERDTree'
 alias please='sudo'
 alias prco='hub pr list | fzf | egrep -o "\d+" | xargs hub pr checkout'
 alias pt=papertrail
-alias rake='noglob rake'
 alias r='be rspec'
+alias rake='noglob rake'
 alias reshell="exec -l \$SHELL"
 alias restart='sudo reboot'
 alias rff='r --fail-fast'
@@ -30,102 +30,107 @@ alias root='sudo su -'
 alias shutdown='sudo halt'
 alias sp='source ~/.bash_profile'
 alias tfl='tail -Fn30 log/*.log'
-alias todo="todoist add"
 alias to_html="w3m -dump -T text/html"
+alias todo="todoist add"
 alias untar='tar xvfz'
-alias vcr='be env VCR_RECORD=all rspec'
 alias v='nvim'
+alias vcr='be env VCR_RECORD=all rspec'
 alias wip="git add -A >/dev/null && git commit -m \"wip\" >/dev/null && echo \"it good\""
-
 # Set ls options per platform
 os_type=$(uname)
 if [ "$os_type" = "Linux" ]; then
-  alias ls='ls -p --color=auto'
-elif [[ $OSTYPE =~ 'darwin' ]]; then
-  alias ls='ls -Gp'
+	alias ls='ls -p --color=auto'
+elif [[ "$os_type" =~ 'darwin' ]]; then
+	alias ls='ls -Gp'
 fi
 
 if command -v xsel >/dev/null; then
-  alias pbcopy='xsel --clipboard --input'
-  alias pbpaste='xsel --clipboard --output'
+	alias pbcopy='xsel --clipboard --input'
+	alias pbpaste='xsel --clipboard --output'
 elif [ -n "$TMUX" ]; then
-  alias pbcopy='tmux loadb -'
-  alias pbpaste='tmux saveb'
+	alias pbcopy='tmux loadb -'
+	alias pbpaste='tmux saveb'
 fi
 
-
 if command -v bat >/dev/null 2>&1; then
-  alias cat='bat --plain'
-  # shellcheck disable=SC2068
-  man() { /usr/bin/man $@ | bat -l man --plain; }
-  # shellcheck disable=SC2068
-  help() { $@ --help | bat -l help --plain; }
+	export BAT_THEME=Nord
+	alias cat='bat --plain'
+
+	if [[ "$os_type" == 'darwin' ]]; then
+		export MANPAGER="sh -c 'col -b | bat -l man --plain'"
+	else
+		# shellcheck disable=SC2068
+		man() { /usr/bin/man $@ | bat -l man --plain; }
+	fi
+
+	# shellcheck disable=SC2068
+	help() { $@ --help | bat -l help --plain; }
 fi
 
 if ! command -v tmx >/dev/null 2>&1; then
-  alias tmx="tmux attach || tmux new"
+	alias tmx="tmux attach || tmux new"
 fi
 
 if command -v btm >/dev/null 2>&1; then
 	alias htop="btm -b"
 fi
 
-if command -v exa >/dev/null 2>&1; then
-  alias ls='exa -HgFG --icons --git'
-  alias ll="exa -HgFl --icons --header --git"
-  alias lt="exa -HgF --icons -T -L 2 --git"
+if command -v eza >/dev/null 2>&1; then
+	alias ls='eza -HgG -F auto --icons --git'
+	alias ll="eza -Hgl -F auto --icons --header --git"
+	alias lt="eza -Hg -F auto --icons -T -L 2 --git"
 else
 	alias ll="ls -alh"
 	alias lt='tree -L 1 -C'
 fi
 
 fixssh() {
-  for key in SSH_AUTH_SOCK SSH_CONNECTION; do
-    if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
-      value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
-      export ${key}="${value}"
-    fi
-  done
+	for key in SSH_AUTH_SOCK SSH_CONNECTION; do
+		if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
+			value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
+			export ${key}="${value}"
+		fi
+	done
 
-  ssh-add -l
+	ssh-add -l
 }
 
 myip() {
-  echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+	echo $(dig +short myip.opendns.com @resolver1.opendns.com)
 }
 
 minitest() {
-  if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
-    gem install testrbl --no-document -qq
-  fi
+	if [[ ! -s $(which testrbl 2>/dev/null) ]]; then
+		gem install testrbl --no-document -qq
+	fi
 
-  testrbl "$@"
+	testrbl "$@"
 }
 
-current-version() {
-  git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
+current_version() {
+	git tag -l 'v*' | sed -E 's/^v//g' | sort -g | tail -n 1
 }
 
-current-semver() {
-  git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
+current_semver() {
+	git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
 }
 
-next-version() {
-  ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" "$@"
+next_version() {
+	ruby -e "pos = {'major' => 0, 'minor' => 1, 'patch' => 2}.fetch(ARGV[1] || 'patch'); puts ARGV[0].split('.').tap { |vp| vp[pos] = Integer(vp[pos]) + 1 }.join('.')" "$@"
 }
 
 f() {
-  fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
 fkp() {
-  local pids=$(ps -aux | sed 1d | fzf -m --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview "echo {} | awk '{ print \$2 }' | xargs pstree -pha || awk '{ print \$2 }'" | awk '{ print $2 }')
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
 
-  if [ ! -z "$pids" ]; then
-    for pid in $pids; do pstree -pha $pid; done
+	if [ ! -z "$pids" ]; then
+		for pid in $pids; do pstree $pid; done
 
-    echo $pids | xargs kill -s ${1:-"KILL"}
-  fi
+		echo $pids | xargs kill -s ${1:-"KILL"}
+	fi
 }
 
 git_checkout_branch() {
@@ -138,7 +143,7 @@ git_search_log() {
 }
 
 i() {
-  nvim -R -c ":FzfLua lines"
+	nvim -R -c ":FzfLua lines"
 }
 
 zz() {
@@ -146,14 +151,16 @@ zz() {
 }
 
 gem_releases() {
-  gem list --remote "$1" -a | rg "^$1 "
+	gem list --remote "$1" -a | rg "^$1 "
 }
 
 alias tn="tmux new"
 alias ct="cargo test"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
 alias go="go-hack"
-alias just="just-hack"
+if [ -x "$HOME/.local/bin/just-hack" ]; then
+	alias just="just-hack"
+fi
 alias python="python-hack"
 alias ruby="ruby-hack"
 alias b='bundle-hack'
@@ -161,17 +168,21 @@ alias be='bundle-exec-hack'
 alias bi='bundle-hack install'
 alias bl='bundle install --local'
 
-phab-diffs() {
+phab_diffs() {
 	echo "{\"attachments\":{\"projects\":true},\"constraints\": {\"authorPHIDs\": [\"$1\"]}}" | arc call-conduit -- differential.revision.search | jq -r '.response.data | sort_by(.fields.dateModified)  | .[] | "**" + (.fields.dateModified|todate) + "** [" + .fields.title  + "](" + .fields.uri + ") -> " + .fields.status.name + "\n" + .fields.summary' | bat -l md
 }
 
-phab-diff() {
-	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, .fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r ''| bat -l md
+phab_diff() {
+	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, .fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r '' | bat -l md
+}
+
+phab_diff() {
+	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r '' | bat -l md
 }
 
 alias max-delta=delta --max-line-length=0
 
-git-authors() {
+git_authors() {
 	git authors -e | rg '\s*(\d+)\s+.*<(.*)>' -r '$1,$2' | awk -F, '{ Authors[$2]+=$1 } END { for (author in Authors) { print author","Authors[author] } }' | sort -t, -nk2 | termgraph --color=blue
 }
 
@@ -181,11 +192,99 @@ grm() {
 
 phab_repo_files() {
 	page=$(echo "{\"queryKey\":\"5K12TorDVnuo\"}" | arc call-conduit -- diffusion.repository.search | jq -c '.response.data[].fields.name')
-	for repo in $(); do 
-		result=$(arc call-conduit -- diffusion.filecontentquery <<< "{\"path\":\"$1\",\"repository\":$repo}" 2>/dev/null | jq -ec '.response.filePHID')
+	for repo in $(); do
+		result=$(arc call-conduit -- diffusion.filecontentquery <<<"{\"path\":\"$1\",\"repository\":$repo}" 2>/dev/null | jq -ec '.response.filePHID')
 		if [ -n "$result" ]; then
 			echo "{\"phid\":$result}" | arc call-conduit -- file.download | jq -r '.response' | base64 -d
 		fi
 
 	done
+}
+request-trace() {
+	elasticsearch-simplequery -s "$(date --date='14 days ago' +%Y-%m-%d)" -e today request_log "msg.request_uuid:$1" -o - | jq -r '"\(.timestamp)[\(.timestamp/1000|todate)],\(.msg.response.status),\(.msg.request.method),{\(.application_name)}\(.msg.request.url)"' | sort | xsv table
+}
+
+api-request-trace() {
+	# FIXME: not working
+	while getopts ":c:p:" o; do
+		case "${o}" in
+		c)
+			echo "compact"
+			;;
+		?)
+			echo "script usage: $(basename \$0) [-c]" >&2
+			exit 1
+			;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	# query for entry
+	entry=$(elasticsearch-simplequery -s "$(date --date='14 days ago' +%Y-%m-%d)" -e today easypost-requestlog "msg.request_uuid:$1" -o -)
+	export entry
+
+	# request
+	jq -r '"\u001b[36m" + .msg.request.method + " " + .msg.request.url + "\u001b[0m \n" + (.msg.request.headers | to_entries | map("\u001b[34m" + .key + "\u001b[0m: " + .value) | join("\n"))' <<<"$entry"
+	jq $2 '.msg.params_full|fromjson?' <<<"$entry"
+
+	echo ""
+	# response
+	jq -r '"\u001b[36m" +(.msg.response.http_status|tostring) + " [user_id:" + (.msg.user.id|tostring)  + ", network_ms:" + (.msg.network_time_ms|floor|tostring) + ", query_ms: " + (.msg.query_time_ms|floor|tostring) + ", duration_ms:" + (.msg.duration_ms|floor|tostring) + "]\u001b[0m \n" + (.msg.response.headers | to_entries | map("\u001b[34m" + .key + "\u001b[0m: " + .value) | join("\n"))' <<<"$entry"
+	jq $2 '.msg.response.body|fromjson?' <<<"$entry"
+}
+
+monitor-deploy() {
+	kread tail deploy.events | jq -c "select(.msg.service == \"$1\") | { host: .hostname } + .msg | del(.service)"
+}
+
+lookup-tracker() {
+	curl -s -H "Accept: application/json" "http://localhost:9292/admin/v1/trackers?is_filters=tracking_code+$1" | jq -rc '[.trackers[0,2]] | sort_by(.created_at) | .[] | (.user_id|tostring) + " " + .tracking_code' | xargs bash -c 'curl -s -H "Accept: application/json" -H "X-EasyPost-User-ID: $2" "http://localhost:9292/v1/trackers/$1?user_id=$2" | jq'
+}
+
+easypost-exception-tail() {
+	kread tail easypost.exception_v1 | jq '{ at: ((.timestamp/1000)|todate) } + .msg'
+}
+
+homer-fade() {
+	python3 -c "import plotext as plt; path = 'homer.gif'; plt.download(plt.test_gif_url, path); plt.play_gif(path); plt.show(); plt.delete_file(path)"
+}
+
+# This function prompts the user for a query and provides the copilot command stdin as context
+ask_copilot() {
+	prompt="$1"
+	command=${2:-"explain"}
+	input="$(cat)"
+	gh copilot "$command" "$prompt:\n$input"
+}
+
+alias p=pulumi
+alias k=kubectl
+
+create_task() {
+	llm -m llama3.1:8b "Create a Phabricator Task Title, Summary, Description and Acceptance Criteria: $*" | bat -l md --plain -u
+}
+
+# TODO: it's about time to organize aliases
+
+op_items() {
+	op item list | tail -n +2 | fzf -m | awk '{ print $1 }' | xargs -L 1 op item get
+}
+
+op_password() {
+	op item list | tail -n +2 | fzf -m | awk '{ print $1 }' | xargs -L 1 op item get --format json | jq -r '.fields[] | select(.id == "password") | .value'
+}
+
+podman_container_rmi() {
+	podman container ls | fzf | awk '{ print $1 }' | xargs --no-run-if-empty podman container rm
+}
+
+open_webui() {
+	podman run -d -p 3000:8080 --replace -v open-webui:/app/backend/data --name open-webui --restart always --pull always ghcr.io/open-webui/open-webui:ollama
+	open "http://localhost:3000"
+
+}
+
+# https://github.com/bcspragu/kagi/pull/2
+kagi() {
+	command kagi "$@" | glow -p -w "$(stty size | awk '{ print $2 }' | xargs -I {} bc --expression='{}-10')"
 }
