@@ -15,6 +15,7 @@ enable_audio_bell no
 window_alert_on_bell no
 draw_minimal_borders yes
 macos_quit_when_last_window_closed yes
+window_padding_width 2
 confirm_os_window_close 1
 tab_bar_edge top
 tab_bar_style powerline
@@ -26,6 +27,7 @@ inactive_tab_foreground #444
 inactive_tab_background #999
 inactive_tab_font_style normal
 # tab_separator " ┇"
+map opt+cmd+s toggle_macos_secure_keyboard_entry 🍎
 map cmd+q close_window
 cursor_shape block
 cursor_blink_interval      0.5
@@ -36,6 +38,11 @@ url_style double
 window_alert_on_bell no
 scrollback_pager_history_size 314572800
 scrollback_lines 1000000
+map ctrl+[ show_scrollback
+
+allow_remote_control socket-only
+listen_on unix:/tmp/kitty
+shell_integration enabled
 
 # Nord Colorscheme for Kitty
 # Based on:
@@ -51,7 +58,7 @@ cursor                #81A1C1
 
 # black
 color0   #434C5E
-color8   #4C566A
+color8   #434C5E
 
 # red
 color1   #BF616A
