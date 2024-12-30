@@ -32,6 +32,7 @@ bash: shell
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashprofile $(HOME)/.bash_profile
+	@ln -fns $(DOTFILES)/bat $(HOME)/.config/bat
 	@ln -fs $(HOME)/.alias $(HOME)/.bashalias
 .PHONY: zsh
 zsh: shell
