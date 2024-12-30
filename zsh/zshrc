@@ -198,14 +198,6 @@ if command -v direnv >/dev/null; then
 	eval "$(direnv hook zsh)"
 fi
 
-if command -v flux >/dev/null; then
-	source <(flux completion zsh)
-fi
-
-if [ -r "${HOME}/.config/zsh/docker.zsh" ]; then
-	source "${HOME}/.config/zsh/docker.zsh"
-fi
-
 if [ -r "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc" ]; then
     source "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc"
 fi
