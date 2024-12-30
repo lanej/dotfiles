@@ -33,7 +33,7 @@ cursor_shape block
 cursor_blink_interval      0.5
 cursor_stop_blinking_after 5.0
 cursor_color_text #ffffff
-url_color #ffff00
+url_color #EBCB8B
 url_style double
 window_alert_on_bell no
 scrollback_pager_history_size 314572800
@@ -58,27 +58,27 @@ cursor                #81A1C1
 
 # black
 color0   #434C5E
-color8   #434C5E
+color8   #4C566A
 
 # red
 color1   #BF616A
-color9   #BF616A
+color9   #D08770
 
 # green
 color2   #A3BE8C
-color10  #A3BE8C
+color10  #B5CEA8
 
 # yellow
 color3   #EBCB8B
-color11  #EBCB8B
+color11  #E5C07B
 
 # blue
 color4  #81A1C1
-color12 #81A1C1
+color12 #88C0D0
 
 # magenta
 color5   #B48EAD
-color13  #B48EAD
+color13  #C678DD
 
 # cyan
 color6   #88C0D0
