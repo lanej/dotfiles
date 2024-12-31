@@ -22,12 +22,12 @@ shell:
 	@mkdir -p $(HOME)/.config/bottom
 	@ln -fs $(DOTFILES)/sh/bottom.toml $(HOME)/.config/bottom/bottom.toml
 	@mkdir -p $(HOME)/.local/share/z
+	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
-	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dircolors
 	@mkdir -p $(HOME)/.config/atuin
 	@ln -fs $(DOTFILES)/sh/atuin.toml $(HOME)/.config/atuin/config.toml
-bash: shell
+	@ln -fs $(DOTFILES)/sh/dir_colors $(HOME)/.dir_colors
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
