@@ -1,0 +1,6 @@
+font-family = "Hack Nerd Font Mono"
+font-size = 13
+adjust-cell-width = -5%
+theme = nord
+quit-after-last-window-closed = true
+macos-titlebar-style = "tabs"
