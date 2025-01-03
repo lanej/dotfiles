@@ -1,3 +1,4 @@
+---@diagnostic disable: missing-fields
 --
 -- |_ _| \ | |_ _|_   _| |_   _  __ _
 --  | ||  \| || |  | | | | | | |/ _` |
@@ -721,9 +722,12 @@ require("lazy").setup({
 				},
 				menu = {
 					draw = {
+						treesitter = {
+							"lsp",
+						},
 						columns = {
 							{ "kind_icon", gap = 3 },
-							{ "label", "label_description", gap = 2 },
+							{ "label", "label_description", "source_name", gap = 2 },
 						},
 					},
 				},
@@ -734,6 +738,9 @@ require("lazy").setup({
 			-- See the full "keymap" documentation for information on defining your own keymap.
 			keymap = {
 				preset = "enter",
+				cmdline = {
+					preset = "super-tab",
+				},
 			},
 			appearance = {
 				-- Sets the fallback highlight groups to nvim-cmp's highlight groups
@@ -753,7 +760,6 @@ require("lazy").setup({
 					lazydev = {
 						name = "LazyDev",
 						module = "lazydev.integrations.blink",
-						-- make lazydev completions top priority (see `:h blink.cmp`)
 						score_offset = 100,
 					},
 				},
