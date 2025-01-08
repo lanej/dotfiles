@@ -693,78 +693,124 @@ require("lazy").setup({
 	{
 		"saghen/blink.cmp",
 		-- optional: provides snippets for the snippet source
-		dependencies = { "rafamadriz/friendly-snippets" },
+		dependencies = { "rafamadriz/friendly-snippets", "xzbdmw/colorful-menu.nvim", "mikavilpas/blink-ripgrep.nvim" },
 		-- use a release tag to download pre-built binaries
 		version = "*",
 		-- AND/OR build from source, requires nightly: https://rust-lang.github.io/rustup/concepts/channels.html#working-with-nightly-rust
 		-- build = 'cargo build --release',
 		-- If you use nix, you can build from source using latest nightly rust with:
 		-- build = 'nix run .#build-plugin',
-
-		---@module 'blink.cmp'
-		---@type blink.cmp.Config
-		opts = {
-			-- Experimental signature help support
-			signature = {
-				-- enabled = true,
-			},
-			completion = {
-				documentation = {
-					auto_show = true,
-					auto_show_delay_ms = 500,
+		config = function()
+			---@module 'blink.cmp'
+			---@type blink.cmp.Config
+			require("blink.cmp").setup({
+				-- Experimental signature help support
+				signature = {
+					-- enabled = true,
+					-- window = {
+					-- 	border = "rounded",
+					-- },
 				},
-				list = {
-					selection = "auto_insert",
-				},
-				trigger = {
-					show_on_keyword = true,
-					show_on_trigger_character = true,
-				},
-				menu = {
-					draw = {
-						treesitter = {
-							"lsp",
+				completion = {
+					documentation = {
+						auto_show = true,
+						auto_show_delay_ms = 100,
+						update_delay_ms = 10,
+						window = {
+							max_width = math.min(80, vim.o.columns),
+							border = "rounded",
 						},
-						columns = {
-							{ "kind_icon", gap = 3 },
-							{ "label", "label_description", "source_name", gap = 2 },
+					},
+					list = {
+						selection = "auto_insert",
+					},
+					keyword = {
+						range = "full",
+					},
+					accept = {
+						auto_brackets = {
+							enabled = true,
+							override_brackets_for_filetypes = {
+								tex = { "{", "}" },
+							},
+						},
+					},
+					menu = {
+						draw = {
+							treesitter = {
+								"lsp",
+							},
+							columns = { { "kind_icon" }, { "label", gap = 1 }, { "source" } },
+							components = {
+								label = {
+									text = require("colorful-menu").blink_components_text,
+									highlight = require("colorful-menu").blink_components_highlight,
+								},
+								source = {
+									text = function(ctx)
+										local map = {
+											["lsp"] = "[]",
+											["path"] = "[󰉋]",
+											["snippets"] = "[]",
+											["ripgrep"] = "[]",
+										}
+
+										-- return the override or the item source
+										return map[ctx.item.source_id] or ctx.item.source_name
+									end,
+									highlight = "BlinkCmpSource",
+								},
+							},
 						},
 					},
 				},
-			},
-			-- 'default' for mappings similar to built-in completion
-			-- 'super-tab' for mappings similar to vscode (tab to accept, arrow keys to navigate)
-			-- 'enter' for mappings similar to 'super-tab' but with 'enter' to accept
-			-- See the full "keymap" documentation for information on defining your own keymap.
-			keymap = {
-				preset = "enter",
-				cmdline = {
-					preset = "super-tab",
-				},
-			},
-			appearance = {
-				-- Sets the fallback highlight groups to nvim-cmp's highlight groups
-				-- Useful for when your theme doesn't support blink.cmp
-				-- Will be removed in a future release
-				use_nvim_cmp_as_default = true,
-				-- Set to 'mono' for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
-				-- Adjusts spacing to ensure icons are aligned
-				nerd_font_variant = "mono",
-			},
-
-			-- Default list of enabled providers defined so that you can extend it
-			-- elsewhere in your config, without redefining it, due to `opts_extend`
-			sources = {
-				default = { "lazydev", "lsp", "path", "snippets", "buffer" },
-				providers = {
-					lazydev = {
-						name = "LazyDev",
-						module = "lazydev.integrations.blink",
-						score_offset = 100,
+				-- 'default' for mappings similar to built-in completion
+				-- 'super-tab' for mappings similar to vscode (tab to accept, arrow keys to navigate)
+				-- 'enter' for mappings similar to 'super-tab' but with 'enter' to accept
+				-- See the full "keymap" documentation for information on defining your own keymap.
+				keymap = {
+					preset = "enter",
+					cmdline = {
+						preset = "super-tab",
 					},
 				},
-			},
-		},
+				appearance = {
+					-- Sets the fallback highlight groups to nvim-cmp's highlight groups
+					-- Useful for when your theme doesn't support blink.cmp
+					-- Will be removed in a future release
+					use_nvim_cmp_as_default = true,
+					-- Set to 'mono' for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
+					-- Adjusts spacing to ensure icons are aligned
+					nerd_font_variant = "mono",
+				},
+
+				-- Default list of enabled providers defined so that you can extend it
+				-- elsewhere in your config, without redefining it, due to `opts_extend`
+				sources = {
+					default = { "lazydev", "lsp", "path", "snippets", "buffer", "ripgrep" },
+					providers = {
+						lazydev = {
+							name = "LazyDev",
+							module = "lazydev.integrations.blink",
+							score_offset = 100,
+							fallbacks = { "lsp" },
+						},
+						ripgrep = {
+							module = "blink-ripgrep",
+							name = "Ripgrep",
+							-- the options below are optional, some default values are shown
+							---@module "blink-ripgrep"
+							---@type blink-ripgrep.Options
+							opts = {
+								prefix_min_len = 3,
+								context_size = 5,
+								max_filesize = "1M",
+							},
+						},
+					},
+				},
+			})
+		end,
 		opts_extend = { "sources.default" },
 	},
 	{ "nvim-tree/nvim-web-devicons", lazy = true },
@@ -1478,6 +1524,20 @@ require("lazy").setup({
 				-- Load luvit types when the `vim.uv` word is found
 				{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
 			},
+		},
+	},
+	{
+		"nvim-treesitter/nvim-treesitter-context",
+		opts = {
+			enable = true, -- Enable this plugin (Can be enabled/disabled later via commands)
+			multiwindow = true, -- Enable multiwindow support.
+			max_lines = 0, -- How many lines the window should span. Values <= 0 mean no limit.
+			min_window_height = 32, -- Minimum editor window height to enable context. Values <= 0 mean no limit.
+			line_numbers = true,
+			multiline_threshold = 20, -- Maximum number of lines to show for a single context
+			separator = "⎯", -- Separator between context and line number
+			trim_scope = "outer", -- Which context lines to discard if `max_lines` is exceeded. Choices: 'inner', 'outer'
+			mode = "cursor", -- Line used to calculate context. Choices: 'cursor', 'topline'
 		},
 	},
 })
