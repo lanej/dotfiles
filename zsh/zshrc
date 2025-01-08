@@ -9,73 +9,92 @@
 
 export PS1=""
 
+# Append history entries as they are typed, not just when the shell exits
 setopt inc_append_history
+# Record timestamp of command in history
 setopt extended_history
+# Do not display duplicate commands in history search
 setopt hist_find_no_dups
+# Ignore duplicate commands in history
 setopt hist_ignore_all_dups
+# Expire duplicate entries first when trimming history
 setopt hist_expire_dups_first
+# Ignore commands that start with a space in history
 setopt hist_ignore_space
-
+# Disable the 'nomatch' option to allow unmatched patterns to cause an error
 unsetopt nomatch
+# Disable the 'share_history' option to prevent sharing command history across all sessions
 unsetopt share_history
-unsetopt correct_all
-
-bindkey -v # vi-mode
-
+# Disable the 'correct_all' option to prevent automatic correction of all commands
+# unsetopt correct_allnsetopt correct_all
+ # vi-mode
+bindkey -v
+# Bind Ctrl+P to move up in history
 bindkey '^P' up-history
+# Bind Ctrl+N to move down in history
 bindkey '^N' down-history
+# Bind Ctrl+? to delete the previous character
 bindkey '^?' backward-delete-char
+# Bind Ctrl+H to delete the previous character
 bindkey '^h' backward-delete-char
+# Bind Ctrl+W to delete the previous word
 bindkey '^w' backward-kill-word
+# Bind Ctrl+R to search backward through history incrementally
 bindkey '^r' history-incremental-search-backward
+# Bind Ctrl+S to search forward through history incrementally
 bindkey '^s' history-incremental-search-forward
+# Bind Ctrl+E to move to the end of the line
 bindkey '^e' end-of-line
+# Bind Ctrl+A to move to the beginning of the line
 bindkey '^a' beginning-of-line
 
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
-. "${HOME}/.profile"
-
-autoload -U compinit && compinit
-autoload -U +X bashcompinit && bashcompinit
-
-if [ -r "${HOME}/.config/zsh/_podman" ]; then
-	source "${HOME}/.config/zsh/_podman"
+if type brew &> /dev/null; then
+	export PATH="/opt/homebrew/bin:$PATH"
+	export PATH="/opt/homebrew/sbin:$PATH"
+	source <(brew shellenv)
 fi
+
+. "${HOME}/.profile"
 
 if command -v fzf >/dev/null; then
 	source <(fzf --zsh)
 
+	fzf-directory-widget() {
+		local selected_dir
+		selected_dir=$(fd --type d 2>/dev/null | fzf) && LBUFFER+="$selected_dir"
+		let ret=$?
+		zle reset-prompt
+		return $ret
+	}
+
+	zzz() {
+		zz
+		let ret=$?
+		zle accept-line
+		return $ret
+	}
+
+	# Bind the function to a key combination, e.g., Ctrl+U
+	zle -N fzf-directory-widget
+	bindkey '^Y' fzf-directory-widget
+
 	if [ -r "${HOME}/.config/zsh/fzf.zsh" ]; then
 		source "${HOME}/.config/zsh/fzf.zsh"
-		bindkey '^U' fzf-cd-widget
-		bindkey '^O' fzf-file-widget
-		zzz() {
-			zz
-			let ret=$?
-			zle accept-line
-			return $ret
-		}
-		zle -N zzz
-		bindkey '^B' zzz
 
 	fi
 
 	if [ -r "${HOME}/.fzf.zsh" ]; then
 		source "${HOME}/.fzf.zsh"
-		bindkey '^U' fzf-cd-widget
-		bindkey '^O' fzf-file-widget
-		zzz() {
-			zz
-			let ret=$?
-			zle accept-line
-			return $ret
-		}
-		zle -N zzz
-		bindkey '^B' zzz
 
 	fi
+
+		bindkey '^U' fzf-cd-widget
+		bindkey '^O' fzf-file-widget
+		zle -N zzz
+		bindkey '^B' zzz
 
 	if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
 		source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
@@ -128,7 +147,6 @@ elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 
 	source "${HOME}/.oh-my-zsh/oh-my-zsh.sh"
 	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-	[ -r ~/.fzf.zsh ] && source ~/.fzf.zsh
 elif command -v starship >/dev/null; then
 	eval "$(starship init zsh)"
 	[[ -r "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
@@ -138,14 +156,12 @@ elif command -v starship >/dev/null; then
 fi
 
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
-[[ -r "${HOME}/.config/share/zsh/justfile.zsh" ]] && source "${HOME}/.config/share/zsh/justfile.zsh"
 
 autoload -U select-word-style
 select-word-style bash
 
 zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-zstyle :compinstall filename '/home/jlane/.zshrc'
 
 if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
 	source ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -173,37 +189,16 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 	# ZSH_HIGHLIGHT_STYLES[assign]=none
 fi
 
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="/opt/homebrew/sbin:$PATH"
-
-# autoload -U +X bashcompinit && bashcompinit
-if command -v kubectl >/dev/null; then
-	source <(kubectl completion zsh)
-fi
-
-if [ -r /opt/homebrew/bin/terraform ]; then
-	complete -o nospace -C /opt/homebrew/bin/terraform terraform
-fi
+# Add custom completions into ~/.zsh/completions/
+fpath=(~/.zsh/completions $fpath)
 
 . "${HOME}/.alias"
 
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"
 
-if command -v pulumi >/dev/null; then
-	source <(env PULUMI_SKIP_UPDATE_CHECK=1 pulumi gen-completion zsh)
-fi
-
 if command -v direnv >/dev/null; then
 	eval "$(direnv hook zsh)"
-fi
-
-if [ -r "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc" ]; then
-    source "$(brew --prefix)/share/google-cloud-sdk/path.zsh.inc"
-fi
-
-if [ -r "$(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc" ]; then
-    source "$(brew --prefix)/share/google-cloud-sdk/completion.zsh.inc"
 fi
 
 if command -v atuin >/dev/null; then
@@ -211,3 +206,6 @@ if command -v atuin >/dev/null; then
 
 	bindkey '^r' atuin-search
 fi
+
+autoload -Uz compinit && compinit
+autoload -U +X bashcompinit && bashcompinit
