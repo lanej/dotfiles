@@ -724,10 +724,10 @@ require("lazy").setup({
 			require("blink.cmp").setup({
 				-- Experimental signature help support
 				signature = {
-					-- enabled = true,
-					-- window = {
-					-- 	border = "rounded",
-					-- },
+					enabled = true,
+					window = {
+						border = "rounded",
+					},
 				},
 				completion = {
 					documentation = {
@@ -735,12 +735,17 @@ require("lazy").setup({
 						auto_show_delay_ms = 100,
 						update_delay_ms = 10,
 						window = {
-							max_width = math.min(80, vim.o.columns),
+							max_width = math.min(64, vim.o.columns),
 							border = "rounded",
 						},
 					},
 					list = {
-						selection = "auto_insert",
+						selection = {
+							preselect = false,
+							auto_insert = function(ctx)
+								return ctx.mode ~= "cmdline"
+							end,
+						},
 					},
 					keyword = {
 						range = "full",
@@ -769,8 +774,9 @@ require("lazy").setup({
 										local map = {
 											["lsp"] = "[]",
 											["path"] = "[󰉋]",
-											["snippets"] = "[]",
+											["snippets"] = "[]",
 											["ripgrep"] = "[]",
+											["buffer"] = "[]",
 										}
 
 										-- return the override or the item source
