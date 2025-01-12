@@ -230,12 +230,6 @@ vim.g.ale_sign_warning = "--"
 vim.g.ale_completion_enabled = 0
 vim.g.ale_use_neovim_diagnostics_api = 1
 
--- Start interactive EasyAlign in visual mode (e.g. vipga)
-vim.api.nvim_set_keymap("x", "ga", "<Plug>(EasyAlign)", {})
-
--- Start interactive EasyAlign for a motion/text object (e.g. gaip)
-vim.api.nvim_set_keymap("n", "ga", "<Plug>(EasyAlign)", {})
-
 -- Realign the whole file
 vim.api.nvim_set_keymap("n", "<leader>D", "ggVG=<CR>", { noremap = true, silent = true })
 
@@ -316,13 +310,6 @@ end
 
 vim.api.nvim_set_keymap("n", "<silent><leader>ee", ":e .env<CR>", { noremap = true, silent = true })
 vim.api.nvim_set_keymap("n", "<silent><leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
-
--- Go debug nearest
-function _G.GoDebugNearest()
-	vim.g.test_go_runner = "delve"
-	vim.cmd("TestNearest")
-	vim.cmd("unlet g:test_go_runner")
-end
 
 -- Redraw the screen when gaining focus
 vim.api.nvim_create_autocmd("FocusGained", {
@@ -443,14 +430,6 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = "python",
 	command = "setlocal tabstop=4 shiftwidth=4 expandtab autoindent",
 })
-vim.api.nvim_set_keymap("n", "<leader>tv", ":TestFile --ff -x<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tj", ":TestFile --ff<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tn", ":TestFile --lf -x<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>td", ":TestFile --pdb<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tlv", ":TestLast --ff -x<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tlj", ":TestLast --ff<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tln", ":TestLast --lf -x<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tld", ":TestLast --pdb<CR>", { noremap = true, silent = true })
 
 -- Lua settings
 vim.api.nvim_create_augroup("filetype_lua", { clear = true })
@@ -589,46 +568,9 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 	end,
 })
 
-vim.g["test#strategy"] = "neovim"
-
--- Set test executable for various languages
-vim.g["test#ruby#minitest#executable"] = "bundle exec ruby -Itest/"
-
-vim.g["test#go#gotest#options"] = {
-	nearest = "-v",
-	file = "-v",
-}
-
-vim.g["test#rust#cargotest#options"] = {
-	nearest = "-- --nocapture",
-}
-
-vim.g["test#python#pytest#options"] = {
-	nearest = "-s",
-	file = "-s",
-}
-
-vim.g["test#ruby#rspec#options"] = {
-	nearest = "--format documentation",
-	file = "--format documentation",
-	suite = "--tag ~slow",
-}
-
-vim.g["test#typescript#jest#options"] = {
-	nearest = "--verbose -e",
-	file = "--verbose",
-}
-
-vim.g["test#python#runner"] = "pytest"
-vim.g["test#runner_commands"] = { "PyTest", "RSpec", "GoTest", "Minitest", "Jest" }
-
--- Key mappings for test commands
-vim.api.nvim_set_keymap("n", "<leader>tf", ":TestFile<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tl", ":TestLast<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>ts", ":TestSuite<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tt", ":TestNearest<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>tu", ":TestNearest<CR>", { noremap = true, silent = true })
-
+--- Attempts to require a module and returns nil and the error message if it fails.
+-- @param m The name of the module to require.
+-- @return The module if it was successfully required, or nil and the error message if it failed.
 local function prequire(m)
 	local ok, err = pcall(require, m)
 	if not ok then
@@ -1293,8 +1235,62 @@ require("lazy").setup({
 		end,
 		event = "VeryLazy",
 	},
-	"vim-test/vim-test",
-	"junegunn/vim-easy-align",
+	{
+		"vim-test/vim-test",
+		config = function()
+			vim.g["test#strategy"] = "neovim"
+
+			-- Set test executable for various languages
+			vim.g["test#ruby#minitest#executable"] = "bundle exec ruby -Itest/"
+
+			vim.g["test#go#gotest#options"] = {
+				nearest = "-v",
+				file = "-v",
+			}
+
+			vim.g["test#rust#cargotest#options"] = {
+				nearest = "-- --nocapture",
+			}
+
+			vim.g["test#python#pytest#options"] = {
+				nearest = "-s",
+				file = "-s",
+			}
+
+			vim.g["test#ruby#rspec#options"] = {
+				nearest = "--format documentation",
+				file = "--format documentation",
+				suite = "--tag ~slow",
+			}
+
+			vim.g["test#typescript#jest#options"] = {
+				nearest = "--verbose -e",
+				file = "--verbose",
+			}
+
+			vim.g["test#python#runner"] = "pytest"
+			vim.g["test#runner_commands"] = { "PyTest", "RSpec", "GoTest", "Minitest", "Jest" }
+
+			-- Key mappings for test commands
+			vim.keymap.set("n", "<leader>tf", ":TestFile<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>tl", ":TestLast<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>ts", ":TestSuite<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>tt", ":TestNearest<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>tu", ":TestNearest<CR>", { noremap = true, silent = true })
+			-- Go debug nearest
+			function _G.GoDebugNearest()
+				vim.g.test_go_runner = "delve"
+				vim.cmd("TestNearest")
+				vim.cmd("unlet g:test_go_runner")
+			end
+		end,
+	},
+	{
+		"junegunn/vim-easy-align",
+		config = function()
+			vim.keymap.set({ "n", "x" }, "ga", "<Plug>(EasyAlign)")
+		end,
+	},
 	{
 		"lewis6991/gitsigns.nvim",
 		dependencies = { "nvim-lua/plenary.nvim" },
@@ -1339,38 +1335,42 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>ri", ":IncRename ")
 		end,
 	},
-	-- {
-	-- 	"nvim-neotest/neotest",
-	-- 	cond = false, -- This can cause neovim to lockup on boot
-	-- 	dependencies = {
-	-- 		"nvim-neotest/nvim-nio",
-	-- 		"nvim-lua/plenary.nvim",
-	-- 		"antoinemadec/FixCursorHold.nvim",
-	-- 		"nvim-treesitter/nvim-treesitter",
-	-- 		"nvim-neotest/neotest-jest",
-	-- 	},
-	-- 	config = function()
-	-- 		require("neotest").setup({
-	-- 			adapters = {
-	-- 				require("neotest-jest")({
-	-- 					jestCommand = require("neotest-jest.jest-util").getJestCommand(vim.fn.expand("%:p:h"))
-	-- 						.. " --watch",
-	-- 					-- jestConfigFile = "custom.jest.config.ts",
-	-- 					-- env = { CI = true },
-	-- 					cwd = function(path)
-	-- 						return vim.fn.getcwd()
-	-- 					end,
-	-- 				}),
-	-- 			},
-	-- 		})
-	--
-	-- 		vim.keymap.set("n", "<leader>tw", require("neotest").watch.watch, { silent = true, noremap = true })
-	-- 		vim.keymap.set("n", "<leader>tr", require("neotest").run.run, { silent = true, noremap = true })
-	-- 		vim.keymap.set("n", "<leader>ta", require("neotest").run.attach, { silent = true, noremap = true })
-	-- 		vim.keymap.set("n", "]t", require("neotest").jump.next, { silent = true, noremap = true })
-	-- 		vim.keymap.set("n", "[t", require("neotest").jump.prev, { silent = true, noremap = true })
-	-- 	end,
-	-- },
+	{
+		"nvim-neotest/neotest",
+		dependencies = {
+			"nvim-neotest/nvim-nio",
+			"nvim-lua/plenary.nvim",
+			"antoinemadec/FixCursorHold.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			-- "nvim-neotest/neotest-jest",
+		},
+		config = function()
+			require("neotest").setup({
+				adapters = {
+					require("rustaceanvim.neotest"),
+					-- require("neotest-jest")({
+					-- 	jestCommand = require("neotest-jest.jest-util").getJestCommand(vim.fn.expand("%:p:h"))
+					-- 		.. " --watch",
+					-- 	-- jestConfigFile = "custom.jest.config.ts",
+					-- 	-- env = { CI = true },
+					-- 	---@diagnostic disable-next-line: unused-local
+					-- 	cwd = function(path)
+					-- 		return vim.fn.getcwd()
+					-- 	end,
+					-- }),
+				},
+			})
+
+			vim.keymap.set("n", "<leader>tw", require("neotest").watch.watch, { silent = true, noremap = true })
+			vim.keymap.set("n", "<leader>tru", require("neotest").run.run, { silent = true, noremap = true })
+			vim.keymap.set("n", "<leader>trf", function()
+				require("neotest").run.run(vim.fn.expand("%"))
+			end, { silent = true, noremap = true })
+			vim.keymap.set("n", "<leader>ta", require("neotest").run.attach, { silent = true, noremap = true })
+			vim.keymap.set("n", "]t", require("neotest").jump.next, { silent = true, noremap = true })
+			vim.keymap.set("n", "[t", require("neotest").jump.prev, { silent = true, noremap = true })
+		end,
+	},
 	{
 		"zbirenbaum/copilot.lua",
 		cmd = "Copilot",
