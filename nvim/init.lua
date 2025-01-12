@@ -994,11 +994,28 @@ require("lazy").setup({
 		},
 		opts = {
 			servers = {
-				lua_ls = {},
+				lua_ls = {
+					capabilities = {
+						textDocument = {
+							semanticTokens = {
+								full = false,
+								delta = false,
+							},
+						},
+					},
+				},
 				ts_ls = {
 					settings = {
 						completions = {
 							completeFunctionCalls = true,
+						},
+					},
+					capabilities = {
+						textDocument = {
+							semanticTokens = {
+								full = false,
+								delta = false,
+							},
 						},
 					},
 				},
