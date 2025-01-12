@@ -59,6 +59,14 @@ require("fzf-lua").setup({
 				},
 			},
 		},
+		status = {
+			actions = {
+				["right"] = false,
+				["left"] = false,
+				["ctrl-x"] = { fn = actions.git_reset, reload = true },
+				["ctrl-s"] = { fn = actions.git_stage_unstage, reload = true },
+			},
+		},
 		commits = {
 			preview = "echo {} | awk '{ print $1 }' | xargs git show | delta",
 			actions = {
