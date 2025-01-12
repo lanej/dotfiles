@@ -226,6 +226,20 @@ vim.keymap.set("n", "<leader>ck", function()
 	require("fzf-lua").lsp_outgoing_calls()
 end, { noremap = true, silent = true })
 
+vim.keymap.set({ "n", "v" }, "<leader>cr", function()
+	require("fzf-lua").lsp_references()
+end, {
+	noremap = true,
+	silent = true,
+})
+
+vim.keymap.set({ "n", "v" }, "<leader>cd", function()
+	require("fzf-lua").lsp_definitions({ jump_to_single_result = true })
+end, {
+	noremap = true,
+	silent = true,
+})
+
 -- Keymap to list implementation calls using fzf-lua
 vim.keymap.set("n", "<leader>cy", function()
 	require("fzf-lua").lsp_implementations()

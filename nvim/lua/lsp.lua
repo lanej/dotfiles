@@ -4,27 +4,15 @@ end, {
 	noremap = true,
 	silent = true,
 })
-vim.keymap.set("n", "<leader>cd", function()
-	vim.lsp.buf.definition()
-end, {
-	noremap = true,
-	silent = true,
-})
-vim.keymap.set("n", "<leader>cr", function()
-	vim.lsp.buf.references()
-end, {
-	noremap = false,
-	silent = true,
-})
 -- go to errors first, warnings second
 vim.keymap.set("n", "<c-p>", function()
-	vim.diagnostic.goto_prev()
+	vim.diagnostic.goto_prev({ float = false })
 end, {
 	noremap = true,
 	silent = true,
 })
 vim.keymap.set("n", "<c-n>", function()
-	vim.diagnostic.goto_next()
+	vim.diagnostic.goto_next({ float = false })
 end, {
 	noremap = true,
 	silent = true,
