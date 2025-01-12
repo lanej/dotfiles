@@ -637,6 +637,14 @@ local function prequire(m)
 	return err
 end
 
+--- Set neovide configuration
+if vim.g.neovide then
+	vim.g.neovide_transparency = 0.8
+	vim.g.neovide_cursor_antialiasing = true
+	vim.g.neovide_cursor_vfx_mode = "railgun"
+	vim.g.neovide_show_border = false
+end
+
 -- secrets, unversioned local configs, etc.
 prequire("local")
 -- require("plugins")
