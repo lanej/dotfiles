@@ -691,6 +691,16 @@ require("lazy").setup({
 		"giuxtaposition/blink-cmp-copilot",
 	},
 	{
+		"rachartier/tiny-inline-diagnostic.nvim",
+		event = "VeryLazy", -- Or `LspAttach`
+		priority = 1000, -- needs to be loaded in first
+		opts = { preset = "powerline" },
+		config = function(opts)
+			require("tiny-inline-diagnostic").setup(opts)
+			vim.diagnostic.config({ virtual_text = false })
+		end,
+	},
+	{
 		"saghen/blink.cmp",
 		-- optional: provides snippets for the snippet source
 		dependencies = { "rafamadriz/friendly-snippets", "xzbdmw/colorful-menu.nvim", "mikavilpas/blink-ripgrep.nvim" },
