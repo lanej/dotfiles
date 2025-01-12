@@ -589,8 +589,8 @@ end
 
 -- secrets, unversioned local configs, etc.
 prequire("local")
--- require("plugins")
 
+---@diagnostic disable: missing-fields
 -- NOTE: this is the autoloader for lazy.nvim
 -- TODO: checksum verification
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
