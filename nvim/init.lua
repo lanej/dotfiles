@@ -67,7 +67,7 @@ vim.opt.backup = false
 vim.opt.writebackup = false
 vim.opt.wrap = true
 vim.opt.list = true
-vim.opt.listchars = { tab = "→ ", nbsp = "␣", trail = "•", precedes = "«", extends = "»" }
+vim.opt.listchars = { tab = "⇛ ", nbsp = "␣", trail = "•", precedes = "«", extends = "»" }
 vim.cmd("set cedit=<C-v>")
 
 vim.g.mapleader = ","
