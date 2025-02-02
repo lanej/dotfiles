@@ -63,9 +63,9 @@
 	rbo = rebase origin/master
 	rc = rebase --continue
 	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
-	rho = reset --hard origin/master
+	rho = reset --hard @{u}
+	rh = reset --hard @{u}
 	rhu = git reset --hard @{upstream}
-	rh = reset --hard
 	rio = rebase -i origin/master
 	ri = rebase -i
 	ro = !git fetch origin && git reset --hard origin/master
