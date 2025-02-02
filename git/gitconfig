@@ -154,6 +154,7 @@
 	zero-style = dim syntax
 	max-line-length = 4096
 	navigate = true
+  	true-color = always
 [interactive]
 	diffFilter = delta --color-only
 [commit]
