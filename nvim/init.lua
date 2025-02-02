@@ -650,7 +650,12 @@ require("lazy").setup({
 	{
 		"saghen/blink.cmp",
 		-- optional: provides snippets for the snippet source
-		dependencies = { "rafamadriz/friendly-snippets", "xzbdmw/colorful-menu.nvim", "mikavilpas/blink-ripgrep.nvim" },
+		dependencies = {
+			"rafamadriz/friendly-snippets",
+			"xzbdmw/colorful-menu.nvim",
+			"mikavilpas/blink-ripgrep.nvim",
+			"onsails/lspkind.nvim",
+		},
 		-- use a release tag to download pre-built binaries
 		version = "*",
 		-- AND/OR build from source, requires nightly: https://rust-lang.github.io/rustup/concepts/channels.html#working-with-nightly-rust
@@ -681,9 +686,7 @@ require("lazy").setup({
 					list = {
 						selection = {
 							preselect = false,
-							auto_insert = function(ctx)
-								return ctx.mode ~= "cmdline"
-							end,
+							auto_insert = true,
 						},
 					},
 					keyword = {
@@ -702,15 +705,24 @@ require("lazy").setup({
 							treesitter = {
 								"lsp",
 							},
-							columns = { { "kind_icon" }, { "label", gap = 1 }, { "source" } },
+							columns = { { "kind_icon" }, { "label", gap = 1 } },
 							components = {
 								label = {
 									text = require("colorful-menu").blink_components_text,
 									highlight = require("colorful-menu").blink_components_highlight,
 								},
+								kind_icon = {
+									ellipsis = false,
+									text = function(ctx)
+										return require("lspkind").symbolic(ctx.kind, {
+											mode = "symbol",
+										})
+									end,
+								},
 								source = {
 									text = function(ctx)
 										local map = {
+											["lazydev"] = "[💤]",
 											["lsp"] = "[]",
 											["path"] = "[󰉋]",
 											["snippets"] = "[]",
@@ -751,12 +763,18 @@ require("lazy").setup({
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
 					default = { "lazydev", "lsp", "path", "snippets", "buffer", "ripgrep" },
+					per_filetype = {
+						codecompanion = { "codecompanion" },
+					},
 					providers = {
 						lazydev = {
 							name = "LazyDev",
 							module = "lazydev.integrations.blink",
 							score_offset = 100,
 							fallbacks = { "lsp" },
+						},
+						lsp = {
+							score_offset = 99,
 						},
 						ripgrep = {
 							module = "blink-ripgrep",
