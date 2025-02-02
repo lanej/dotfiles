@@ -7,6 +7,8 @@
 	status = auto
 	branch = auto
 	ui = true
+[init]
+	defaultBranch = main
 [alias]
 	aa = add -A
 	af = log --pretty=format: --name-only --diff-filter=A
@@ -117,8 +119,8 @@
 	; fsckObjects = true
 [fetch]
 	; fsckObjects = true
-[url "git@github.com:"]
-	insteadOf = https://github.com/
+[url "ssh://git@github.com/"]
+    insteadOf = https://github.com/
 [credential]
 	helper = osxkeychain
 [color "diff-so-fancy"]
