@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-JUST="/usr/bin/just"
-
-if command -v withenv >/dev/null && ([[ -r .env ]] || [[ -r .env-override ]]); then
-	JUST="withenv just"
+if command -v withenv >/dev/null && { [[ -r .env ]] || [[ -r .env-override ]] ;} then
+				withenv command just "$@"
+else
+				command just "$@"
 fi
-
-$JUST "$@"
