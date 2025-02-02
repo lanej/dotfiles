@@ -171,7 +171,7 @@ if vim.fn.has("cmdline_info") == 1 then
 end
 
 -- Change working directory mappings
-vim.api.nvim_set_keymap("n", "<leader>ct", ":cd %:p:h<CR>", { noremap = true, silent = true })
+vim.api.nvim_set_keymap("n", "<leader>cd", ":cd %:p:h<CR>", { noremap = true, silent = true })
 vim.api.nvim_set_keymap("n", "<leader>cg", ":Gcd<CR>", { noremap = true, silent = true })
 
 -- Disable Ex mode
