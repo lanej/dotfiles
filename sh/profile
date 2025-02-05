@@ -78,3 +78,5 @@ export GOPATH=$HOME/.local/go
 if [ -d "$GOPATH" ]; then
   export PATH="$GOPATH/bin:$PATH"
 fi
+
+export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."
