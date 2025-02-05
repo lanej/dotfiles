@@ -33,3 +33,5 @@ venv/
 rspec_failures.txt
 .env
 .luarc.json
+.envrc
+terraform.tfvars
