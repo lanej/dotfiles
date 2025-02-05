@@ -76,9 +76,9 @@ if command -v btm >/dev/null 2>&1; then
 fi
 
 if command -v eza >/dev/null 2>&1; then
-	alias ls='eza -HgG -F auto --icons --git'
-	alias ll="eza -Hgl -F auto --icons --header --git"
-	alias lt="eza -Hg -F auto --icons -T -L 2 --git"
+	alias ls='eza'
+	alias ll='eza -Gl --smart-group -F auto --icons --git'
+	alias lt="eza -g -F auto --icons -T -L 2 --git"
 else
 	alias ll="ls -alh"
 	alias lt='tree -L 1 -C'
