@@ -1,3 +1,4 @@
+#!/bin/sh
 yabai -m config layout bsp
 yabai -m config top_padding    15
 yabai -m config bottom_padding 15
@@ -8,5 +9,5 @@ yabai -m config window_gap     15
 yabai -m config window_topmost on
 
 yabai -m config window_opacity off
-
-borders active_color=0xff73cef4 inactive_color=0xff494d64 width=3.0 style=square &
+yabai -m signal --add app='^Ghostty$' event=window_created action='yabai -m space --layout bsp'
+yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m space --layout bsp'
