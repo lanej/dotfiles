@@ -32,11 +32,8 @@ export PATH="${HOME}/.local/bin:$PATH"
 export EDITORD=${EDITORD:-$EDITOR}
 # nord-ish
 export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
-export GO15VENDOREXPERIMENT=1
-export RI_PAGER='less -FX'
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
-export BAT_THEME=Nord
 
 if [[ -d "$HOME/.local/bin" ]]; then
 	PATH="$HOME/.local/bin:$PATH"
