@@ -76,24 +76,25 @@
 # A REFERENCE ONLY, WHEN MAKING YOUR OWN CONFIGURATION..          #
 # ############################################################### #
 #
+# cmd - return : sh ~/.local/bin/yabai-focus-or-launch "Ghostty" "open -a Ghostty"
 cmd - return : sh ~/.local/bin/yabai-focus-or-launch "kitty" "/Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~"
-cmd + shift - return : sh ~/.local/bin/yabai-focus-or-launch "Firefox" "/Applications/Firefox.app/Contents/MacOS/firefox"
+# cmd + shift - return : sh ~/.local/bin/yabai-focus-or-launch "Firefox" "/Applications/Firefox.app/Contents/MacOS/firefox"
 
 
 # focus window
 # alt - h : yabai -m window --focus west
 #
 # change focus
-alt - h : yabai -m window --focus west
-alt - j : yabai -m window --focus south
-alt - k : yabai -m window --focus north
-alt - l : yabai -m window --focus east
+alt - h : yabai -m window --focus west || yabai-focus-float left
+alt - j : yabai -m window --focus south || yabai-focus-float down
+alt - k : yabai -m window --focus north || yabai-focus-float up
+alt - l : yabai -m window --focus east || yabai-focus-float right
 alt - p : yabai -m window --focus prev
 alt - n : yabai -m window --focus next
 # alt - J : yabai -m window --layer below
 # alt - K : yabai -m window --layer above
 
-alt - e : yabai -m space --layout bsp
+# alt - e : yabai -m space --layout bsp
 alt + shift - z : yabai -m window --toggle float
 alt + shift - f : yabai -m window --toggle zoom-fullscreen
 

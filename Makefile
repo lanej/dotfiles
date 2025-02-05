@@ -95,6 +95,8 @@ yabai:
 	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
 	@mkdir -p $(HOME)/.config/yabai
 	@ln -fs $(DOTFILES)/yabai/yabairc $(HOME)/.config/yabai/yabairc
+	@mkdir -p $(HOME)/.config/borders
+	@ln -fs $(DOTFILES)/yabai/bordersrc $(HOME)/.config/borders/bordersrc
 i3:
 	@mkdir -p $(HOME)/.config/i3
 	@ln -fs $(DOTFILES)/i3/config $(HOME)/.config/i3/config
