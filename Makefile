@@ -34,6 +34,8 @@ shell:
 	@ln -fs $(DOTFILES)/bash/bashprofile $(HOME)/.bash_profile
 	@ln -fns $(DOTFILES)/bat $(HOME)/.config/bat
 	@ln -fs $(HOME)/.alias $(HOME)/.bashalias
+	@mkdir -p $(HOME)/.config/glow
+	@ln -fs $(DOTFILES)/sh/glow.yml $(HOME)/.config/glow/glow.yml
 .PHONY: zsh
 zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
