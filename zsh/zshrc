@@ -1,5 +1,9 @@
 #!/bin/zsh
 
+if [[ ! -z "${ZSH_PROFILE}" ]]; then
+	zmodload zsh/zprof
+fi
+
 # NOTE: uncomment for profiling startup performance
 # zmodload zsh/datetime
 # setopt promptsubst
@@ -209,3 +213,7 @@ fi
 
 autoload -Uz compinit && compinit
 autoload -U +X bashcompinit && bashcompinit
+
+if [[ ! -z "${ZSH_PROFILE}" ]]; then
+	zprof
+fi
