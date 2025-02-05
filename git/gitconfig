@@ -163,5 +163,6 @@
 	excludeDecoration = refs/tags/phabricator/*
 [merge]
 	autoStash = true
+	conflictstyle = zdiff3
 [advice]
 	detatchedHead = false
