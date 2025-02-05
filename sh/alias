@@ -59,7 +59,7 @@ if command -v bat >/dev/null 2>&1; then
 		export MANPAGER="sh -c 'col -b | bat -l man --plain'"
 	else
 		# shellcheck disable=SC2068
-		man() { /usr/bin/man $@ | bat -l man --plain; }
+		man() { command man $@ | col -b | bat -l man --plain --color=always | less -C; }
 	fi
 
 	# shellcheck disable=SC2068
