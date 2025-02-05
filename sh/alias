@@ -122,13 +122,33 @@ f() {
 	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
-fkp() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=down:60% --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
+fkill() {
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
 
-	if [ ! -z "$pids" ]; then
+	if [ -n "$pids" ]; then
 		for pid in $pids; do pstree $pid; done
 
 		echo $pids | xargs kill -s ${1:-"KILL"}
+	fi
+}
+
+fpstree() {
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | xargs pstree -g 3 || awk '{ print \$2 }'" | awk '{ print $2 }')
+
+	if [ -n "$pids" ]; then
+		for pid in $pids; do pstree $pid; done
+	fi
+}
+
+fps() {
+	sk --reverse --ansi -i -c 'ps -eo user,pid,comm | rg {}' --preview "echo {} | awk '{ print \$2 }' | xargs pstree -w -g 3 | bat -l bash -f"
+}
+
+flsof() {
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | tr -s ' ' ',' | xargs lsof -p")
+
+	if [ ! -z "$pids" ]; then
+		echo "$pids" | xargs lsof -p
 	fi
 }
 
