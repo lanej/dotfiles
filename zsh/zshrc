@@ -214,6 +214,8 @@ fi
 autoload -Uz compinit && compinit
 autoload -U +X bashcompinit && bashcompinit
 
+[[ -s "${HOME}/.gvm/scripts/gvm" ]] && source "${HOME}/.gvm/scripts/gvm"
+
 if [[ ! -z "${ZSH_PROFILE}" ]]; then
 	zprof
 fi
