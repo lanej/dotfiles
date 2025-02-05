@@ -76,75 +76,75 @@ vim.opt.inccommand = "nosplit" -- live replace
 vim.opt.termguicolors = true
 
 -- searching stuff
-vim.api.nvim_set_keymap("n", "<C-\\>", ":nohls<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("i", "<C-\\>", "<C-O>:nohls<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "*", "*``", { noremap = true, silent = true })
+vim.keymap.set("n", "<C-\\>", ":nohls<CR>", { noremap = true, silent = true })
+vim.keymap.set("i", "<C-\\>", "<C-O>:nohls<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "*", "*``", { noremap = true, silent = true })
 
 -- Edit the vimrc file
-vim.api.nvim_set_keymap("n", "ev", ":e $MYVIMRC<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "evr", ":source $MYVIMRC<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tt", ":tablast<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "te", ":tabedit<Space>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tn", ":tabnext<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tp", ":tabprev<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tc", ":tabnew<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tm", ":tabm<Space>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "tx", ":tabclose<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t1", "1gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t2", "2gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t3", "3gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t4", "4gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t5", "5gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "t6", "6gt<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "fbk", ":bd!<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "fak", ":%bd!|e#<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>bo", ":bp<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>bi", ":bn<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "ev", ":e $MYVIMRC<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "evr", ":source $MYVIMRC<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "tt", ":tablast<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "te", ":tabedit<Space>", { noremap = true, silent = true })
+vim.keymap.set("n", "tn", ":tabnext<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "tp", ":tabprev<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "tc", ":tabnew<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "tm", ":tabm<Space>", { noremap = true, silent = true })
+vim.keymap.set("n", "tx", ":tabclose<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t1", "1gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t2", "2gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t3", "3gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t4", "4gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t5", "5gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "t6", "6gt<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "fbk", ":bd!<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "fak", ":%bd!|e#<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>bo", ":bp<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>bi", ":bn<CR>", { noremap = true, silent = true })
 
 -- Enable filetype plugins to handle indents
 vim.cmd("filetype plugin indent on")
 
 -- plugin-config start
-vim.api.nvim_set_keymap("n", "<leader>w", ":w<CR>", { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>w!', ':SudoWrite<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>x", ":x<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>w", ":w<CR>", { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>w!', ':SudoWrite<CR>', { noremap = true, silent = true })
+vim.keymap.set({ "n", "i", "v" }, "<leader>x", ":x<CR>", { noremap = true, silent = true })
 
 -- replace current word
-vim.api.nvim_set_keymap("n", "<leader>rw", ":%s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
-vim.api.nvim_set_keymap("v", "<leader>rw", ":s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
+vim.keymap.set("n", "<leader>rw", ":%s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
+vim.keymap.set("v", "<leader>rw", ":s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
 
 -- legacy support for the muscle memory
-vim.api.nvim_set_keymap("n", "<leader>rb", ":%s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
-vim.api.nvim_set_keymap("v", "<leader>rb", ":s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
+vim.keymap.set("n", "<leader>rb", ":%s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
+vim.keymap.set("v", "<leader>rb", ":s/<C-r><C-w>//gc<left><left><left>", { noremap = true })
 
 -- replace current selection
-vim.api.nvim_set_keymap("n", "<leader>rs", '"hy:%s/<C-r>h//gc<left><left><left>', { noremap = true })
-vim.api.nvim_set_keymap("v", "<leader>rs", '""hy:s/<C-r>h//gc<left><left><left>', { noremap = true })
+vim.keymap.set("n", "<leader>rs", '"hy:%s/<C-r>h//gc<left><left><left>', { noremap = true })
+vim.keymap.set("v", "<leader>rs", '""hy:s/<C-r>h//gc<left><left><left>', { noremap = true })
 
 -- replace current word in all quicklist files
-vim.api.nvim_set_keymap("n", "<leader>rq", ":cfdo %s/<C-r><C-w>/", { noremap = true })
-vim.api.nvim_set_keymap("v", "<leader>rq", ":cfdo s/<C-r><C-w>/", { noremap = true })
+vim.keymap.set("n", "<leader>rq", ":cfdo %s/<C-r><C-w>/", { noremap = true })
+vim.keymap.set("v", "<leader>rq", ":cfdo s/<C-r><C-w>/", { noremap = true })
 
 -- quickfix nav
-vim.api.nvim_set_keymap("n", "]q", ":cnext<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "[q", ":cprev<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "]q", ":cnext<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "[q", ":cprev<CR>", { noremap = true, silent = true })
 
 -- Set leader key
 vim.g.mapleader = ","
 
 -- NvimTree mappings
-vim.api.nvim_set_keymap("n", "<leader>ntt", ":NvimTreeToggle<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>ntc", ":NvimTreeClose<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>ntf", ":NvimTreeFindFile<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>ntt", ":NvimTreeToggle<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>ntc", ":NvimTreeClose<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>ntf", ":NvimTreeFindFile<CR>", { noremap = true, silent = true })
 
 -- Rename mapping
-vim.api.nvim_set_keymap("n", "<leader>re", ":Rename ", { noremap = true })
+vim.keymap.set("n", "<leader>re", ":Rename ", { noremap = true })
 
 -- Terminal mode escape
-vim.api.nvim_set_keymap("t", "<C-o>", "<C-\\><C-n>", { noremap = true })
+vim.keymap.set("t", "<C-o>", "<C-\\><C-n>", { noremap = true })
 
 -- Yank current file path
-vim.api.nvim_set_keymap("n", "yd", ':let @" = expand("%")<CR>', { noremap = true })
+vim.keymap.set("n", "yd", ':let @" = expand("%")<CR>', { noremap = true })
 
 -- Enable syntax highlighting
 vim.cmd("syntax enable")
@@ -171,19 +171,19 @@ if vim.fn.has("cmdline_info") == 1 then
 end
 
 -- Change working directory mappings
-vim.api.nvim_set_keymap("n", "<leader>cd", ":cd %:p:h<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>cg", ":Gcd<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>cd", ":cd %:p:h<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>cg", ":Gcd<CR>", { noremap = true, silent = true })
 
 -- Disable Ex mode
-vim.api.nvim_set_keymap("n", "Q", "<Nop>", { noremap = true })
+vim.keymap.set("n", "Q", "<Nop>", { noremap = true })
 
 -- Helpers
-vim.api.nvim_set_keymap("n", "<leader>srt", ":!sort<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<leader>uq", ":!uniq<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>srt", ":!sort<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>uq", ":!uniq<CR>", { noremap = true, silent = true })
 
 -- Wrapped lines navigation
-vim.api.nvim_set_keymap("n", "j", "gj", { noremap = true })
-vim.api.nvim_set_keymap("n", "k", "gk", { noremap = true })
+vim.keymap.set("n", "j", "gj", { noremap = true })
+vim.keymap.set("n", "k", "gk", { noremap = true })
 
 -- Command aliases
 vim.api.nvim_create_user_command("Q", "q", {})
@@ -231,7 +231,7 @@ vim.g.ale_completion_enabled = 0
 vim.g.ale_use_neovim_diagnostics_api = 1
 
 -- Realign the whole file
-vim.api.nvim_set_keymap("n", "<leader>D", "ggVG=<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>D", "ggVG=<CR>", { noremap = true, silent = true })
 
 -- Clang format style options
 vim.g.clang_format_style_options = {
@@ -243,7 +243,7 @@ vim.g.clang_format_style_options = {
 
 -- Set make program
 vim.opt.makeprg = "make -j9"
-vim.api.nvim_set_keymap("n", "<Leader>m", ":make!<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<Leader>m", ":make!<CR>", { noremap = true, silent = true })
 
 -- Create parent directories on write
 if not vim.fn.exists("*s:MkNonExDir") then
@@ -266,7 +266,7 @@ if vim.fn.has("conceal") == 1 then
 end
 
 -- Highlight captures under cursor
-vim.api.nvim_set_keymap("n", "<space>th", ":TSHighlightCapturesUnderCursor<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<space>th", ":TSHighlightCapturesUnderCursor<CR>", { noremap = true, silent = true })
 
 -- Disable Jedi auto initialization
 vim.g.jedi_auto_initialization = 0
@@ -298,7 +298,7 @@ function _G.SourceEnv(files)
 	return loaded
 end
 
-vim.api.nvim_set_keymap("n", "<leader>se", ":lua SourceEnv()<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>se", ":lua SourceEnv()<CR>", { noremap = true, silent = true })
 
 -- Print environment variables
 function _G.Env()
@@ -308,8 +308,8 @@ function _G.Env()
 	end
 end
 
-vim.api.nvim_set_keymap("n", "<silent><leader>ee", ":e .env<CR>", { noremap = true, silent = true })
-vim.api.nvim_set_keymap("n", "<silent><leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<silent><leader>ee", ":e .env<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<silent><leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
 
 -- Redraw the screen when gaining focus
 vim.api.nvim_create_autocmd("FocusGained", {
@@ -382,9 +382,17 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	pattern = "qutebrowser-editor*",
 	command = "set filetype=markdown",
 })
+
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
+	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell nowrap conceallevel=1",
+})
+
+vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
+	group = "filetype_typespec",
+	pattern = "typespec",
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell nowrap conceallevel=1",
 })
 
@@ -407,15 +415,15 @@ vim.api.nvim_create_autocmd("FileType", {
 -- RSpec settings
 -- TODO: replace test file modifiers as default args for vim-test
 -- TODO: replace formatting with conform.nvim config
--- vim.api.nvim_set_keymap('n', '<leader>da', ':!bundle exec rubocop -ADES %:p<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>tq', ':TestLast --fail-fast<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>to', ':TestLast --only-failures<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>tn', ':TestLast -n<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>tv', ':lua _G.vcr_failures_only()<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('v', '<Bslash>hl', ':s/\\v:([^ ]*)\\s\\=\\>/\\1:/g<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('v', '<Bslash>hr', ':s/\\v(\\w+):/"\\1" =>/g<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('v', '<Bslash>hs', ':s/\\v[\\\"\\'](\\w+)[\\\"\\']\\s+\\=\\>\\s+/\\1\\: /g<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('v', '<Bslash>hj', ':s/\\v\\"(\\w+)\\":\\s+/"\\1" => /g<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>da', ':!bundle exec rubocop -ADES %:p<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>tq', ':TestLast --fail-fast<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>to', ':TestLast --only-failures<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>tn', ':TestLast -n<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<leader>tv', ':lua _G.vcr_failures_only()<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('v', '<Bslash>hl', ':s/\\v:([^ ]*)\\s\\=\\>/\\1:/g<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('v', '<Bslash>hr', ':s/\\v(\\w+):/"\\1" =>/g<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('v', '<Bslash>hs', ':s/\\v[\\\"\\'](\\w+)[\\\"\\']\\s+\\=\\>\\s+/\\1\\: /g<CR>', { noremap = true, silent = true })
+-- vim.keymap.set('v', '<Bslash>hj', ':s/\\v\\"(\\w+)\\":\\s+/"\\1" => /g<CR>', { noremap = true, silent = true })
 
 function _G.vcr_failures_only()
 	vim.env.VCR_RECORD = "all"
@@ -438,7 +446,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = "lua",
 	command = "setlocal colorcolumn=122 tabstop=2 shiftwidth=2 expandtab autoindent nospell",
 })
-vim.api.nvim_set_keymap("n", "<leader>tj", ":TestFile --no-keep-going<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>tj", ":TestFile --no-keep-going<CR>", { noremap = true, silent = true })
 
 -- Git commit settings
 vim.api.nvim_create_augroup("filetype_gitcommit", { clear = true })
@@ -461,7 +469,7 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = "go",
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
 })
-vim.api.nvim_set_keymap("n", "<leader><t-d>", ":lua DebugNearest()<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader><t-d>", ":lua DebugNearest()<CR>", { noremap = true, silent = true })
 
 -- Rust settings
 vim.api.nvim_create_autocmd("FileType", {
@@ -654,7 +662,6 @@ require("lazy").setup({
 			"rafamadriz/friendly-snippets",
 			"xzbdmw/colorful-menu.nvim",
 			"mikavilpas/blink-ripgrep.nvim",
-			"onsails/lspkind.nvim",
 		},
 		-- use a release tag to download pre-built binaries
 		version = "*",
@@ -710,14 +717,6 @@ require("lazy").setup({
 								label = {
 									text = require("colorful-menu").blink_components_text,
 									highlight = require("colorful-menu").blink_components_highlight,
-								},
-								kind_icon = {
-									ellipsis = false,
-									text = function(ctx)
-										return require("lspkind").symbolic(ctx.kind, {
-											mode = "symbol",
-										})
-									end,
 								},
 								source = {
 									text = function(ctx)
@@ -957,7 +956,7 @@ require("lazy").setup({
 				},
 				notify = {
 					enabled = true,
-					timeout_ms = 1000,
+					timeout_ms = 500,
 				},
 				presets = { inc_rename = true },
 				views = {
@@ -1010,6 +1009,15 @@ require("lazy").setup({
 		opts = {
 			servers = {
 				lua_ls = {
+					settings = {
+						Lua = {
+							hint = {
+								enable = true,
+								enableType = true,
+								enableFunction = true,
+							},
+						},
+					},
 					capabilities = {
 						textDocument = {
 							semanticTokens = {
@@ -1024,6 +1032,30 @@ require("lazy").setup({
 						completions = {
 							completeFunctionCalls = true,
 						},
+						typescript = {
+							inlayHints = {
+								includeInlayParameterNameHints = "all",
+								includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+								includeInlayFunctionParameterTypeHints = true,
+								includeInlayVariableTypeHints = true,
+								includeInlayVariableTypeHintsWhenTypeMatchesName = false,
+								includeInlayPropertyDeclarationTypeHints = true,
+								includeInlayFunctionLikeReturnTypeHints = true,
+								includeInlayEnumMemberValueHints = true,
+							},
+						},
+						javascript = {
+							inlayHints = {
+								includeInlayParameterNameHints = "all",
+								includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+								includeInlayFunctionParameterTypeHints = true,
+								includeInlayVariableTypeHints = true,
+								includeInlayVariableTypeHintsWhenTypeMatchesName = false,
+								includeInlayPropertyDeclarationTypeHints = true,
+								includeInlayFunctionLikeReturnTypeHints = true,
+								includeInlayEnumMemberValueHints = true,
+							},
+						},
 					},
 					capabilities = {
 						textDocument = {
@@ -1034,22 +1066,34 @@ require("lazy").setup({
 						},
 					},
 				},
-				gopls = {},
+				gopls = {
+					hints = {
+						rangeVariableTypes = true,
+						parameterNames = true,
+						constantValues = true,
+						assignVariableTypes = true,
+						compositeLiteralFields = true,
+						compositeLiteralTypes = true,
+						functionTypeParameters = true,
+					},
+				},
 				ruby_lsp = {},
 				jsonls = {},
 				marksman = {},
 				pylsp = {},
 				html = {},
+				yamlls = {},
 				bashls = {
 					filetypes = { "sh", "zsh", "bash" },
 				},
+				zls = {},
 			},
 			opts = {
 				inlay_hints = { enabled = true },
 			},
 		},
 		config = function(_, opts)
-			require("lsp")
+			require("lsp") -- NOTE: this is requried to get keybinds for fallback registration
 			local lspconfig = require("lspconfig")
 			for server, config in pairs(opts.servers) do
 				-- passing config.capabilities to blink.cmp merges with the capabilities in your
@@ -1109,10 +1153,10 @@ require("lazy").setup({
 			vim.g.tmux_navigator_save_on_switch = 1
 		end,
 		config = function()
-			vim.api.nvim_set_keymap("n", "<C-h>", ":TmuxNavigateLeft<cr>", { noremap = true, silent = true })
-			vim.api.nvim_set_keymap("n", "<C-j>", ":TmuxNavigateDown<cr>", { noremap = true, silent = true })
-			vim.api.nvim_set_keymap("n", "<C-k>", ":TmuxNavigateUp<cr>", { noremap = true, silent = true })
-			vim.api.nvim_set_keymap("n", "<C-l>", ":TmuxNavigateRight<cr>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<C-h>", ":TmuxNavigateLeft<cr>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<C-j>", ":TmuxNavigateDown<cr>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<C-k>", ":TmuxNavigateUp<cr>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<C-l>", ":TmuxNavigateRight<cr>", { noremap = true, silent = true })
 		end,
 	},
 	{
@@ -1137,7 +1181,6 @@ require("lazy").setup({
 		dependencies = {
 			"nvim-lua/plenary.nvim", -- required
 			"sindrets/diffview.nvim", -- optional - Diff integration
-
 			-- Only one of these is needed.
 			"ibhagwan/fzf-lua", -- optional
 			-- "echasnovski/mini.pick", -- optional
@@ -1194,7 +1237,7 @@ require("lazy").setup({
 	{
 		"mbbill/undotree",
 		config = function()
-			vim.keymap.set("n", "<leader>fu", ":UndotreeToggle<CR>", { silent = true, noremap = true })
+			vim.keymap.set("n", "<leader>bu", ":UndotreeToggle<CR>", { silent = true, noremap = true })
 		end,
 	},
 	{
@@ -1336,7 +1379,14 @@ require("lazy").setup({
 		"smjonas/inc-rename.nvim",
 		config = function()
 			require("inc_rename").setup({})
-			vim.keymap.set("n", "<leader>ri", ":IncRename ")
+			vim.keymap.set({ "n", "v" }, "<leader>ri", ":IncRename ", {
+				noremap = true,
+				silent = true,
+			})
+			vim.keymap.set({ "n", "v" }, "<leader>rn", ":IncRename ", {
+				noremap = true,
+				silent = true,
+			})
 		end,
 	},
 	{
@@ -1346,11 +1396,13 @@ require("lazy").setup({
 			"nvim-lua/plenary.nvim",
 			"antoinemadec/FixCursorHold.nvim",
 			"nvim-treesitter/nvim-treesitter",
+			"fredrikaverpil/neotest-golang",
 			-- "nvim-neotest/neotest-jest",
 		},
 		config = function()
 			require("neotest").setup({
 				adapters = {
+					require("neotest-golang")({ runner = "gotestsum", sanitize_output = true }), -- Apply configuration
 					require("rustaceanvim.neotest"),
 					-- require("neotest-jest")({
 					-- 	jestCommand = require("neotest-jest.jest-util").getJestCommand(vim.fn.expand("%:p:h"))
@@ -1387,59 +1439,6 @@ require("lazy").setup({
 			})
 		end,
 	},
-	{
-		"CopilotC-Nvim/CopilotChat.nvim",
-		event = "VeryLazy",
-		build = "make tiktoken", -- Only on MacOS or Linux
-		branch = "main",
-		dependencies = {
-			{ "zbirenbaum/copilot.lua" }, -- or github/copilot.vim
-			{ "nvim-lua/plenary.nvim" }, -- for curl, log wrapper
-		},
-		opts = {
-			debug = true, -- Enable debugging
-		},
-		config = function()
-			vim.keymap.set({ "n", "v" }, "<leader>co", ":CopilotChat<cr>", { silent = true, noremap = true })
-			require("CopilotChat").setup({
-				window = {
-					layout = "float",
-				},
-				auto_insert_mode = true,
-				title = "athena",
-				prompts = {
-					Commit = {
-						prompt = "Write a commit message for the change with commitizen convention. Make sure the title has maximum 50 characters and message is wrapped at 72 characters. Wrap the whole message in code block with language gitcommit.  Keep the message concise and clear.",
-						mapping = "<leader>ccc",
-					},
-					Fix = {
-						-- prompt =
-						-- 'Fix the following code. Only output the result in format ```$filetype\n...\n```:\n```$filetype\n$text\n```',
-						mapping = "<leader>ccf",
-					},
-					CommitStaged = {
-						prompt = "Write a commit message for the change with commitizen convention. Make sure the title has maximum 50 characters and message is wrapped at 72 characters. Wrap the whole message in code block with language gitcommit.  Make the message very concise.  Make sure the message does not exceed 128 characters. Make sure the message is terse and clear.  Make sure the message is written in active tense.  Make sure the message starts with a verb in the present tense",
-						mapping = "<leader>ccs",
-					},
-					Docs = {
-						mapping = "<leader>ccd",
-					},
-					-- FixDiagnostic = {
-					--   mapping = "<leader>ccx"
-					-- },
-				},
-				mappings = {
-					complete = {
-						insert = "",
-					},
-					reset = {
-						normal = "<C-p>",
-						insert = "<C-p>",
-					},
-				},
-			})
-		end,
-	},
 	{ "github/copilot.vim" },
 	{
 		"iamcco/markdown-preview.nvim",
@@ -1471,16 +1470,21 @@ require("lazy").setup({
 			-- parsers manually
 			-- Or if the parsers are in your $RUNTIMEPATH
 			"nvim-treesitter/nvim-treesitter",
-
 			"nvim-tree/nvim-web-devicons",
 		},
 		opts = {
-			headings = {
-				shift_width = 0,
+			preview = {
+				filetypes = { "markdown", "codecompanion" },
+				ignore_buftypes = {},
 			},
-			list_items = {
-				shift_width = 1,
-				indent_size = 1,
+			markdown = {
+				headings = {
+					shift_width = 0,
+				},
+				list_items = {
+					shift_width = 1,
+					indent_size = 1,
+				},
 			},
 		},
 	},
@@ -1495,6 +1499,7 @@ require("lazy").setup({
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
+					go = { "goimports", "gofmt" },
 					-- Conform will run the first available formatter
 					javascript = { "prettierd", "prettier", stop_after_first = true },
 					typescript = { "prettierd", "prettier", stop_after_first = true },
@@ -1507,7 +1512,7 @@ require("lazy").setup({
 				silent = true,
 			})
 			vim.api.nvim_create_autocmd("BufWritePre", {
-				pattern = { "*.ts", "*.rs", "*.py", "*.lua", "*.js" },
+				pattern = { "*.ts", "*.rs", "*.py", "*.lua", "*.js", "*.sh", "*.go" },
 				callback = function()
 					require("conform").format({ timeout_ms = 500, lsp_format = "fallback" })
 				end,
@@ -1589,6 +1594,80 @@ require("lazy").setup({
 			trim_scope = "outer", -- Which context lines to discard if `max_lines` is exceeded. Choices: 'inner', 'outer'
 			mode = "cursor", -- Line used to calculate context. Choices: 'cursor', 'topline'
 		},
+	},
+	{
+		"olimorris/codecompanion.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			"echasnovski/mini.diff",
+		},
+		config = function()
+			require("codecompanion").setup({
+				display = {
+					diff = {
+						provider = "mini_diff",
+					},
+					chat = {
+						window = {
+							layout = "float",
+							border = "double",
+						},
+					},
+				},
+				strategies = {
+					inline = {
+						keymaps = {
+							accept_change = {
+								modes = { n = "ga" },
+								description = "Accept the suggested change",
+							},
+							reject_change = {
+								modes = { n = "gr" },
+								description = "Reject the suggested change",
+							},
+						},
+					},
+					chat = {
+						adapter = "copilot",
+						slash_commands = {
+							["file"] = {
+								callback = "strategies.chat.slash_commands.file",
+								description = "Select a file using fzf-lua",
+								opts = {
+									provider = "fzf_lua", -- Other options include 'default', 'mini_pick', 'fzf_lua', snacks
+									contains_code = true,
+								},
+							},
+						},
+						keymaps = {
+							send = {
+								modes = { n = "<C-s>", i = "<C-s>" },
+							},
+							close = {
+								modes = { n = "<C-c>", i = "<C-c>" },
+							},
+						},
+					},
+				},
+			})
+
+			vim.keymap.set({ "n", "v" }, "<leader>co", ":CodeCompanionChat<CR>", { silent = true, noremap = true })
+			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
+			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
+			vim.keymap.set(
+				{ "n", "v" },
+				"<leader>ccc",
+				":CodeCompanion /buffer You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
+				{ silent = true, noremap = true }
+			)
+			vim.keymap.set(
+				{ "n", "v" },
+				"<leader>cce",
+				":CodeCompanion /explain<CR>",
+				{ silent = true, noremap = true }
+			)
+		end,
 	},
 })
 

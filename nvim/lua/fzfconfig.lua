@@ -3,6 +3,9 @@ local actions = require("fzf-lua.actions")
 
 require("fzf-lua").setup({
 	fzf_bin = vim.fn.executable("sk") == 1 and "sk" or "fzf", -- WARN: this can cause neovim to lockup
+	files = {
+		cmd = "fd --type f --hidden --follow --exclude .git",
+	},
 	keymap = {
 		builtin = {
 			["<C-f>"] = "toggle-fullscreen",
@@ -110,7 +113,7 @@ end, { noremap = true, silent = true })
 
 -- Keymap to search for a pattern using fzf-lua
 vim.keymap.set("n", "<leader>ag", function()
-	require("fzf-lua").grep()
+	require("fzf-lua").live_grep_resume({ cwd = vim.fn.expand("%:p:h") })
 end, { noremap = true, silent = true })
 
 -- Keymap to list available commands using fzf-lua
@@ -213,12 +216,24 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list document symbols using fzf-lua
 vim.keymap.set("n", "<leader>bs", function()
-	require("fzf-lua").lsp_document_symbols()
+	require("fzf-lua").lsp_document_symbols({
+		winopts = {
+			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
+			width = 0.5, -- width of the window (50% of the editor)
+			height = 0.3, -- height of the window (30% of the editor)
+			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
+		},
+	})
 end, { noremap = true, silent = true })
 
 -- Keymap to list incoming calls using fzf-lua
 vim.keymap.set("n", "<leader>cj", function()
 	require("fzf-lua").lsp_incoming_calls()
+end, { noremap = true, silent = true })
+
+-- Keymap to list typedefs
+vim.keymap.set("n", "<leader>ct", function()
+	require("fzf-lua").lsp_typedefs()
 end, { noremap = true, silent = true })
 
 -- Keymap to list outgoing calls using fzf-lua
@@ -247,7 +262,7 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list workspace symbols using fzf-lua
 vim.keymap.set("n", "<leader>ws", function()
-	require("fzf-lua").lsp_workspace_symbols()
+	require("fzf-lua").lsp_live_workspace_symbols({})
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>wd", function()
@@ -276,8 +291,17 @@ end, {
 	noremap = true,
 	silent = true,
 })
+
 vim.keymap.set({ "n", "v" }, "<leader>ca", function()
-	require("fzf-lua").lsp_code_actions({ pager = false })
+	require("fzf-lua").lsp_code_actions({
+		pager = false,
+		winopts = {
+			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
+			width = 0.5, -- width of the window (50% of the editor)
+			height = 0.3, -- height of the window (30% of the editor)
+			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
+		},
+	})
 end, {
 	noremap = true,
 	silent = true,
@@ -305,11 +329,12 @@ end, { noremap = true, silent = true })
 
 -- TODO: git diff --cached
 -- https://github.com/ibhagwan/fzf-lua/wiki/Advanced#keybind-handlers
+-- TODO: work with non-master default branch
 vim.keymap.set({ "n" }, "<leader>cf", function()
 	require("fzf-lua").files({
-		cmd = "git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main) --name-only --diff-filter=AM",
+		cmd = "git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main 2>/dev/null) --name-only --diff-filter=AM",
 		actions = require("fzf-lua").defaults.actions.files,
-		preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main) --shortstat --no-prefix -U25 -- {} | delta",
+		preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main 2>/dev/null) --shortstat --no-prefix -U25 -- {} | delta",
 	})
 end, {
 	noremap = true,
