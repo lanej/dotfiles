@@ -1658,7 +1658,7 @@ require("lazy").setup({
 			vim.keymap.set(
 				{ "n", "v" },
 				"<leader>ccc",
-				":CodeCompanion /buffer You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
+				":CodeCompanion /buffer @editor You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
 				{ silent = true, noremap = true }
 			)
 			vim.keymap.set(
