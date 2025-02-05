@@ -307,3 +307,24 @@ open_webui() {
 kagi() {
 	command kagi "$@" | glow -p -w "$(stty size | awk '{ print $2 }' | xargs -I {} bc --expression='{}-10')"
 }
+
+# TODO: don't re-run command after every input
+gh-clone() {
+	sk --ansi -i -c '[ -n "{}" ] && gh search repos "{}" --limit 100 --json fullName | jq -rc ".[] | .fullName" || echo "Loading.."' \
+		--reverse \
+		-m \
+		--sync \
+		--preview 'echo "{}" | xargs -r -n1 gh repo view | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json' \
+		--preview-window="right:80%" | while read -r line; do
+		gh repo clone "$line" ~/src/"$(basename "$line")"
+	done
+}
+
+phab-clone() {
+	podman run -v ~/.config/phab:/root/.config/phab \
+		-v ~/.arcrc:/root/.arcrc \
+		-it --rm docker.cloudsmith.io/easypost/containers/phab-cli:0.5.0 list-repositories |
+		jq -r '.name' |
+		fzf --reverse -m |
+		xargs -n1 -I {} git clone ssh://git@phab.easypo.net:2222/source/{}.git ~/src/{}
+}
