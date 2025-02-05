@@ -9,7 +9,6 @@ alias curl-ttfb='curls -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_st
 alias curls='curl -s'
 alias fucking='sudo'
 alias g="git"
-alias gds='GIT_PAGER=cat git diff --stat'
 alias gpr="hub pull-request"
 alias gpro='hub pull-request -o'
 alias guard='be guard'
