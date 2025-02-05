@@ -1,0 +1,6 @@
+# style name or JSON path (default "auto")
+style: "~/.config/glow/nord.json"
+# mouse support (TUI-mode only)
+mouse: false
+# use pager to display markdown
+pager: 'bat'
