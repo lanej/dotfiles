@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python purs
+.PHONY: zsh qute alacritty yabai spotify_player python
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -8,10 +8,6 @@ banner:
 	@cat banner.txt
 dev:
 	@mkdir -p $(HOME)/src
-fish:
-	@mkdir -p $(HOME)/.config/fish/functions
-	@ln -fs $(DOTFILES)/fish/config $(HOME)/.config/fish/config.fish
-	@$(shell for f in $(DOTFILES)/fish/functions/*; do ln -fs $$f ~/.config/fish/functions/; done)
 shell:
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/bin/* $(HOME)/.local/bin/
@@ -46,18 +42,12 @@ zsh: shell
 	@mkdir -p $(HOME)/.local/share/zsh/
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
-	@git -C $(HOME)/.local/share/fzf-tab pull 2>/dev/null -q || \
-		git clone -q https://github.com/Aloxaf/fzf-tab $(HOME)/.local/share/fzf-tab
+	@if [ -d $(HOME)/.local/share/fzf-tab ]; then \
+		git -C $(HOME)/.local/share/fzf-tab pull -q; \
+	else \
+		git clone -q https://github.com/Aloxaf/fzf-tab $(HOME)/.local/share/fzf-tab; \
+	fi
 	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
-powerlevel10k:
-	@git -C $(HOME)/.oh-my-zsh pull 2>/dev/null -q || \
-		git clone -q https://github.com/robbyrussell/oh-my-zsh.git $(HOME)/.oh-my-zsh
-	@git -C $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k pull -q || \
-		git clone -q https://github.com/romkatv/powerlevel10k.git $(HOME)/.oh-my-zsh/custom/themes/powerlevel10k
-	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-	@ln -fs $(DOTFILES)/zsh/p10k.zsh $(HOME)/.p10k.zsh
-screen:
-	@ln -fs $(DOTFILES)/rc/screenrc $(HOME)/.screenrc
 tmux:
 	@mkdir -p $(HOME)/.config/tmux/
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
@@ -90,8 +80,6 @@ git:
 	@ln -fs $(DOTFILES)/git/gitignore $(HOME)/.gitignore
 	@ln -fs $(DOTFILES)/git/gitcommit $(HOME)/.gitcommit
 	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
-chunk:
-	@ln -fs $(DOTFILES)/chunk/chunkwmrc $(HOME)/.chunkwmrc
 yabai:
 	@mkdir -p $(HOME)/.config/skhd
 	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
@@ -99,9 +87,6 @@ yabai:
 	@ln -fs $(DOTFILES)/yabai/yabairc $(HOME)/.config/yabai/yabairc
 	@mkdir -p $(HOME)/.config/borders
 	@ln -fs $(DOTFILES)/yabai/bordersrc $(HOME)/.config/borders/bordersrc
-i3:
-	@mkdir -p $(HOME)/.config/i3
-	@ln -fs $(DOTFILES)/i3/config $(HOME)/.config/i3/config
 polybar:
 	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
 oni:
@@ -127,27 +112,5 @@ alacritty:
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml $(HOME)/.config/alacritty
 spotify_player:
 	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
-powerline:
-	@ln -fns $(DOTFILES)/powerline $(HOME)/.config/powerline
-purs:
-	@git -C $(HOME)/.local/share/purs pull -q || \
-		git clone -q git@github.com:lanej/purs.git --single-branch $(HOME)/.local/share/purs
-	@command -v cargo >/dev/null && cargo install -q --path $(HOME)/.local/share/purs
-.PHONY: undercurl
 undercurl:
 	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
-
-.PHONY: chatgpt
-chatgpt:
-	@git -C $(HOME)/.local/share/chatgpt pull -q || \
-		git clone -q git@github.com:0xacx/chatGPT-shell-cli.git $(HOME)/.local/share/chatgpt
-	@ln -s $(HOME)/.local/share/chatgpt/chatgpt.sh ~/.local/bin/chatgpt
-ifeq ($(OS),OSX)
-qute:
-	@mkdir -p $(HOME)/.qutebrowser
-	@ln -fs $(DOTFILES)/qute/config.py $(HOME)/.qutebrowser/config.py
-else
-qute:
-	@mkdir -p $(HOME)/.config/qutebrowser
-	@ln -fs $(DOTFILES)/qute/config.py $(HOME)/.config/qutebrowser/config.py
-endif
