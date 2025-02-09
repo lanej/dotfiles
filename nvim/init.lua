@@ -1432,6 +1432,10 @@ require("lazy").setup({
 		"zbirenbaum/copilot.lua",
 		cmd = "Copilot",
 		event = "InsertEnter",
+		cond = function()
+			-- check that node is installed and is greater >= 20.x
+			return vim.fn.executable("node") == 1 and vim.fn.system("node -v") >= "v20.0.0"
+		end,
 		config = function()
 			require("copilot").setup({
 				suggestion = { enabled = false },
