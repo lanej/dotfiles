@@ -1,11 +1,14 @@
 local fzf_lua = require("fzf-lua")
 local actions = require("fzf-lua.actions")
 
+local skim_present = vim.fn.executable("fzf") == 1
+
 require("fzf-lua").setup({
-	fzf_bin = vim.fn.executable("sk") == 1 and "sk" or "fzf", -- WARN: this can cause neovim to lockup
+	fzf_bin = skim_present and "sk" or "fzf", -- WARN: this can cause neovim to lockup
 	files = {
 		cmd = "fd --type f --hidden --follow --exclude .git",
 	},
+	defaults = { compat_warn = not skim_present },
 	keymap = {
 		builtin = {
 			["<C-f>"] = "toggle-fullscreen",
