@@ -871,11 +871,12 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"ibhagwan/fzf-lua",
+		name = "fzf-lua",
 		config = function()
 			require("fzfconfig")
 		end,
-		branch = "main",
+		url = "git@github.com:lanej/fzf-lua.git",
+		branch = "fix-sk-scheme",
 		dependencies = { "vijaymarupudi/nvim-fzf", "nvim-tree/nvim-web-devicons" },
 	},
 	{
@@ -1182,7 +1183,7 @@ require("lazy").setup({
 			"nvim-lua/plenary.nvim", -- required
 			"sindrets/diffview.nvim", -- optional - Diff integration
 			-- Only one of these is needed.
-			"ibhagwan/fzf-lua", -- optional
+			"fzf-lua", -- optional
 			-- "echasnovski/mini.pick", -- optional
 		},
 		config = function()
@@ -1452,7 +1453,7 @@ require("lazy").setup({
 		"pwntester/octo.nvim",
 		requires = {
 			"nvim-lua/plenary.nvim",
-			"ibhagwan/fzf-lua",
+			"fzf-lua",
 			"nvim-tree/nvim-web-devicons",
 		},
 		config = function()
