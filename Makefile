@@ -32,6 +32,7 @@ shell:
 	@ln -fs $(HOME)/.alias $(HOME)/.bashalias
 	@mkdir -p $(HOME)/.config/glow
 	@ln -fs $(DOTFILES)/sh/glow.yml $(HOME)/.config/glow/glow.yml
+	@ln -fs $(DOTFILES)/sh/glow.nord.json $(HOME)/.config/glow/nord.json
 .PHONY: zsh
 zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc

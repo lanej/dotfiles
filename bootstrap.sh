@@ -202,6 +202,20 @@ skim_current_semver() {
 	sk --version 2>/dev/null | parse_semver
 }
 
+git-delta_current_semver() {
+	delta --version 2>/dev/null | parse_semver
+}
+
+install_glow_from_release() {
+	echo '[charm]
+name=Charm
+baseurl=https://repo.charm.sh/yum/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
+	sudo yum install glow -y
+}
+
 installed_semver() {
 	explicit_current_semver "$1" || current_heuristic_semver "$1"
 }
@@ -218,7 +232,8 @@ install_package_version() {
 	local package=$1
 	local min_version=$2
 	local preferred_version=${3:-$min_version}
-	local current_version=$(installed_semver "$package")
+	get_installed_semver=$(installed_semver "$package")
+	local current_version=$get_installed_semver
 
 	if [ -n "$current_version" ]; then
 		echo "Package $package is already installed at version $current_version"
@@ -265,6 +280,11 @@ install_skim_from_release() {
 	cargo install skim -q --locked --version "$1"
 }
 
+install_git-delta_from_release() {
+	install_package_version cargo 1.84.1 || (echo "cargo could be installed" && exit 1)
+	cargo install git-delta -q --locked --version "$1"
+}
+
 bootstrap() {
 	install_package_version gh 2.66.0
 	install_package_version neovim 0.10.4
@@ -273,6 +293,8 @@ bootstrap() {
 	install_package_version starship 1.22.1
 	install_package_version atuin 18.4.0
 	install_package_version skim 0.16.0
+	install_package_version git-delta 0.18.2
+	install_package_version glow 2.0.0
 }
 
 # Detect if the user is running the script directly
