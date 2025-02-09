@@ -4,8 +4,9 @@ os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,')
 distro="$os-$(uname -m)"
 
 install_from_package_manager() {
-	echo "installing package $1"
-	if command -v brew &>/dev/null; then
+	if declare -f "install_$1_package" >/dev/null; then
+		"install_$1_package" "$2"
+	elif command -v brew &>/dev/null; then
 		brew install "$1"
 	elif command -v pacman; then
 		sudo pacman -S --noconfirm "$1"
@@ -32,30 +33,51 @@ package_manager_semver() {
 	fi
 }
 
-package_semver_explicit() {
+package_semver() {
 	if declare -f "$1_package_semver" >/dev/null; then
-		"$1_package_semver"
+		"$1_package_semver" || (echo "Failed to get semver for based on custom script: $1" >&2 && return 1)
 	else
-		return 1
+		package_manager_semver "$1" || (echo "Failed to get semver for: $1" >&2 && return 1)
 	fi
 }
 
-package_semver() {
-	package_semver_explicit "$1" || package_manager_semver "$1" || (echo "Failed to get semver for: $1" && return 1)
+install_fd_package() {
+	if command -v brew &>/dev/null; then
+		brew install fd
+	elif command -v pacman; then
+		sudo pacman -S --noconfirm fd
+	elif command -v dnf; then
+		sudo dnf install -y fd-find
+	elif command -v apt-get; then
+		sudo apt-get install -y fd-find
+	else
+		exit 1
+	fi
+}
+
+fd_package_semver() {
+	if command -v brew &>/dev/null; then
+		(brew info fd | head -n1 | parse_semver | head -n1) || (echo "package fd not found in brew" && return 1)
+	elif command -v pacman &>/dev/null; then
+		pacman -Qi fd | parse_semver || (echo "package fd not found in pacman" && return 1)
+	elif command -v dnf &>/dev/null; then
+		(dnf info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || (echo "package fd not found in dnf" && return 1)
+	elif command -v apt-get &>/dev/null; then
+		(apt-cache show fd-find 2>/dev/null | head -n1 | parse_semver) || (echo "package fd not found in apt-get" && return 1)
+	else
+		exit 1
+	fi
 }
 
 install_explicitly() {
-	if declare -f "install_$1_package" >/dev/null; then
-		echo "installing $1 $2 from custom package"
-		"install_$1_package" "$2"
-	elif declare -f "install_$1_from_release" >/dev/null; then
+	if declare -f "install_$1_from_release" >/dev/null; then
 		echo "Installing $1 $2 from release"
 		"install_$1_from_release" "$2"
 	elif declare -f "install_$1_from_source" >/dev/null; then
 		echo "Installing $1 $2 from source"
 		"install_$1_from_source" "$2"
 	else
-		echo "Unable to install: $1"
+		echo "Unable to install: $1" >&2
 		exit 1
 	fi
 }
@@ -66,14 +88,13 @@ install_package() {
 	get_package_semver=$(package_semver "$package")
 	local package_version="$get_package_semver"
 
-	echo "Installing $package $version"
-
-	if [ -n "$package_version" ]; then
+	if [ -z "$package_version" ]; then
 		echo "$package is not found in package manager"
 	elif semver_ge "$package_version" "$version"; then
+		echo "$package $package_version is available in package manager"
 		install_from_package_manager "$package" || (echo "Failed to install: $package" && exit 1)
 	else
-		echo "$package package '$package_version' < '$version'"
+		echo "$package needs to be explicitly upgraded '$package_version' < '$version'"
 	fi
 
 	# Otherwise, install the package explicitly
@@ -172,22 +193,12 @@ install_neovim_from_source() {
 # 		fi
 # 	fi
 # }
-
-install_gh() {
-	# Install gh
-	if command -v gh &>/dev/null && semver_ge "$(gh_semver)" "2.66.0"; then
-		echo "gh $(gh_semver)  already installed"
-	else
-		install_package gh
-	fi
-}
-
 parse_semver() {
 	grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?'
 }
 
 current_heuristic_semver() {
-	("$1" --version | head -n1 | parse_semver | head -n1) 2>/dev/null || return 1
+	("$1" --version | parse_semver | head -n1) 2>/dev/null || return 1
 }
 
 neovim_current_semver() {
@@ -204,6 +215,10 @@ skim_current_semver() {
 
 git-delta_current_semver() {
 	delta --version 2>/dev/null | parse_semver
+}
+
+go_current_semver() {
+	go version | parse_semver | head -n1
 }
 
 install_glow_from_release() {
@@ -236,7 +251,7 @@ install_package_version() {
 	local current_version=$get_installed_semver
 
 	if [ -n "$current_version" ]; then
-		echo "Package $package is already installed at version $current_version"
+		echo "Package $package is already installed at version $current_version <=> $min_version"
 
 		# check if current version is greater than or equal to min version
 		if semver_ge "$current_version" "$min_version"; then
@@ -244,8 +259,6 @@ install_package_version() {
 			echo "$package $current_version >= $min_version"
 			return 0
 		fi
-
-		echo "$package $current_version < $min_version"
 	fi
 
 	# install package to preferred version
@@ -266,35 +279,56 @@ install_fzf_from_source() {
 }
 
 install_ripgrep_from_release() {
-	install_package_version cargo 1.84.1 || (echo "cargo could be installed" && exit 1)
 	cargo install ripgrep -q --locked --version "$1"
 }
 
 install_starship_from_release() {
-	install_package_version cargo 1.84.1 || (echo "cargo could be installed" && exit 1)
 	cargo install starship -q --locked --version "$1"
 }
 
 install_skim_from_release() {
-	install_package_version cargo 1.84.1 || (echo "cargo could be installed" && exit 1)
 	cargo install skim -q --locked --version "$1"
 }
 
 install_git-delta_from_release() {
-	install_package_version cargo 1.84.1 || (echo "cargo could be installed" && exit 1)
 	cargo install git-delta -q --locked --version "$1"
+}
+
+install_bat_from_release() {
+	cargo install bat -q --locked --version "$1"
+}
+
+install_fd_from_release() {
+	cargo install fd-find -q --locked --version "$1"
+}
+
+install_eza_from_release() {
+	cargo install eza -q --locked --version "$1"
+}
+
+install_shfmt_from_release() {
+	install_package_version go 1.22
+	go install mvdan.cc/sh/v3/cmd/shfmt@v3.10.0
 }
 
 bootstrap() {
 	install_package_version gh 2.66.0
 	install_package_version neovim 0.10.4
 	install_package_version fzf 0.59.0
+	install_package_version cargo 1.84.1
 	install_package_version ripgrep 14.1.0
 	install_package_version starship 1.22.1
 	install_package_version atuin 18.4.0
 	install_package_version skim 0.16.0
 	install_package_version git-delta 0.18.2
 	install_package_version glow 2.0.0
+	install_package_version bat 0.25.0
+	install_package_version fd 10.2.0
+	install_package_version eza 0.20.19
+	install_package_version shfmt 3.10.0
+	install_package_version bash-language-server 5.4.3
+	install_package_version stylua 0.11.0
+	install_package_version jq 1.7.1
 }
 
 # Detect if the user is running the script directly

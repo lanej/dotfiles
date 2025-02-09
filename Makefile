@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python
+.PHONY: zsh qute alacritty yabai spotify_player python go
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -115,3 +115,6 @@ spotify_player:
 	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
 undercurl:
 	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
+go:
+	@mkdir -p $(HOME)/.config/go
+	@ln -fs $(DOTFILES)/go/env $(HOME)/.config/go/env
