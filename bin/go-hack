@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-GO="go"
-
 if command -v withenv >/dev/null && [[ -r .env ]]; then
-	GO="withenv go"
+	withenv command go "$@"
+else
+   command go "$@"
 fi
-
-$GO "$@"
