@@ -139,8 +139,8 @@ if command -v purs >/dev/null; then
 	}
 	add-zsh-hook precmd _prompt_purs_precmd
 
-	if [[ -r "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh" ]]; then
-		source "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh"
+	if [[ -r "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+		source "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
 	fi
 elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 	plugins=(zsh-autosuggestions vi-mode)
@@ -154,9 +154,11 @@ elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 elif command -v starship >/dev/null; then
 	eval "$(starship init zsh)"
 	[[ -r "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
-	if [[ -r "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh" ]]; then
-		source "${HOME}/.local/share/zsh/autosuggestions/zsh-autosuggestions.zsh"
+	if [[ -r "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+		source "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
 	fi
+else
+	export PS1='%F{cyan}%n@%m %F{green}%1~ %F{yellow}➜ %f'
 fi
 
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
@@ -219,3 +221,7 @@ autoload -U +X bashcompinit && bashcompinit
 if [[ ! -z "${ZSH_PROFILE}" ]]; then
 	zprof
 fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
