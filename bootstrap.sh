@@ -1,7 +1,10 @@
 #!/bin/bash
 
-os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,')
+os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or linux
+bitness=$(getconf LONG_BIT)                                           # 64 or 32
 distro="$os-$(uname -m)"
+short_arch=$(uname -m | sed 's,^x86_64$,x64,') # arm64 or x64
+short_distro="$os-$short_arch"
 
 install_from_package_manager() {
 	if declare -f "install_$1_package" >/dev/null; then
@@ -311,12 +314,81 @@ install_shfmt_from_release() {
 	go install mvdan.cc/sh/v3/cmd/shfmt@v3.10.0
 }
 
+install_node_from_release() {
+	mkdir -p ~/.nvm
+	# Download and install nvm:
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+	# Download and install Node.js:
+	nvm install 20 || (echo "Failed to install node@20 via nvm" && exit 1)
+}
+
+install_stylua_from_release() {
+	npm install -g "@johnnymorganz/stylua-bin@$1"
+}
+
+install_bash-language-server_from_release() {
+	install_package_version node 20.0.0
+	npm install -g "bash-language-server@$1"
+}
+
+install_jq_from_release() {
+	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/jq-$os$bitness" -o /tmp/jq
+	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o /tmp/jq-sha256sum.txt
+	sha256sum --quiet --strict --ignore-missing -c /tmp/jq-sha256sum.txt || (echo "Failed to verify jq checksum" && exit 1)
+	mv -f /tmp/jq "$HOME/.local/bin/jq"
+	chmod +x "$HOME/.local/bin/jq"
+	rm -rf /tmp/jq /tmp/jq-sha256sum /tmp/jq-sha256sum.txt
+}
+
+install_lua-language-server_from_release() {
+	curl -vfLO "https://github.com/LuaLS/lua-language-server/releases/download/$1/lua-language-server-$1-$short_distro.tar.gz" --output-dir ~/lib
+	mkdir -p "$HOME/lib/lua-language-server-$1"
+	tar -zxvf "$HOME/lib/lua-language-server-$1-$short_distro.tar.gz" -C "$HOME/lib/lua-language-server-$1"
+	ln -fs ~/lib/lua-language-server-"$1"/bin/lua-language-server "$HOME/.local/bin/lua-language-server"
+}
+
+install_typescript-language-server_from_release() {
+	install_package_version node 20.0.0
+	npm install -g typescript-language-server@"$1"
+}
+
+install_rust-analyzer_from_release() {
+	rustup component add rust-analyzer
+}
+
+zsh-autosuggestions_current_semver() {
+	if command -v brew &>/dev/null; then
+		ls "$(brew --prefix)/Cellar/zsh-autosuggestions" 2>/dev/null | parse_semver
+	else
+		head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
+	fi
+}
+
+install_gopls_from_release() {
+	install_package_version go 1.22
+	go install golang.org/x/tools/gopls@"$1"
+}
+
+gopls_current_semver() {
+	gopls version 2>/dev/null | parse_semver
+}
+
+install_zsh-autosuggestions_from_source() {
+	if [ ! -d "$HOME/.zsh/plugins/zsh-autosuggestions" ]; then
+		git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.zsh/plugins/zsh-autosuggestions"
+	fi
+
+	git -C "$HOME/.zsh/plugins/zsh-autosuggestions" fetch --tags --force
+	git -C "$HOME/.zsh/plugins/zsh-autosuggestions" checkout -f "v$1"
+}
+
 bootstrap() {
-	install_package_version gh 2.66.0
-	install_package_version neovim 0.10.4
-	install_package_version fzf 0.59.0
+	# install rust
 	install_package_version cargo 1.84.1
-	install_package_version ripgrep 14.1.0
+
+	# terminal candy
+	install_package_version fzf 0.59.0
 	install_package_version starship 1.22.1
 	install_package_version atuin 18.4.0
 	install_package_version skim 0.16.0
@@ -325,10 +397,22 @@ bootstrap() {
 	install_package_version bat 0.25.0
 	install_package_version fd 10.2.0
 	install_package_version eza 0.20.19
-	install_package_version shfmt 3.10.0
-	install_package_version bash-language-server 5.4.3
-	install_package_version stylua 0.11.0
+	install_package_version zsh-autosuggestions 0.7.1
+
+	# command candy
+	install_package_version gh 2.66.0
 	install_package_version jq 1.7.1
+	install_package_version ripgrep 14.1.0
+	install_package_version stylua 2.0.2
+
+	# editor
+	install_package_version neovim 0.10.4
+	install_package_version shfmt 3.10.0
+	install_package_version bash-language-server 5.4.3       # bash/sh
+	install_package_version lua-language-server 3.13.6       # lua
+	install_package_version rust-analyzer 1.84.1             # rust
+	install_package_version typescript-language-server 4.3.3 # typescript
+	install_package_version gopls 0.17.1                     # go
 }
 
 # Detect if the user is running the script directly
