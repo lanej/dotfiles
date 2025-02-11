@@ -647,6 +647,9 @@ require("lazy").setup({
 	},
 	{
 		"lanej/vim-phabricator",
+		dependencies = {
+			"tpope/vim-fugitive",
+		},
 		enabled = function()
 			return vim.fn.filereadable(vim.fn.expand("~/.arcrc")) == 1
 		end,
@@ -654,9 +657,9 @@ require("lazy").setup({
 			-- Read the arcrc file, parse the json into a lua table
 			local arcrc = vim.fn.json_decode(vim.fn.readfile(vim.fn.expand("~/.arcrc")))
 			-- The base url is the config.default value
-			vim.g.phabricator_url = arcrc.config.default
+			vim.g.phabricator_hosts = { arcrc.config.default }
 			-- The Token is is in the hosts table, with a key of the base url + "/api/"
-			vim.g.phabricator_api_token = arcrc.hosts[vim.g.phabricator_url .. "/api/"].token
+			vim.g.phabricator_api_token = arcrc.hosts[arcrc.config.default .. "/api/"].token
 		end,
 	},
 	{
