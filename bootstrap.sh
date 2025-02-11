@@ -342,9 +342,9 @@ install_jq_from_release() {
 }
 
 install_lua-language-server_from_release() {
-	curl -vfLO "https://github.com/LuaLS/lua-language-server/releases/download/$1/lua-language-server-$1-$short_distro.tar.gz" --output-dir ~/lib
+	curl -fLO "https://github.com/LuaLS/lua-language-server/releases/download/$1/lua-language-server-$1-$short_distro.tar.gz" --output-dir ~/lib
 	mkdir -p "$HOME/lib/lua-language-server-$1"
-	tar -zxvf "$HOME/lib/lua-language-server-$1-$short_distro.tar.gz" -C "$HOME/lib/lua-language-server-$1"
+	tar -zxf "$HOME/lib/lua-language-server-$1-$short_distro.tar.gz" -C "$HOME/lib/lua-language-server-$1"
 	ln -fs ~/lib/lua-language-server-"$1"/bin/lua-language-server "$HOME/.local/bin/lua-language-server"
 }
 
@@ -359,7 +359,7 @@ install_rust-analyzer_from_release() {
 
 zsh-autosuggestions_current_semver() {
 	if command -v brew &>/dev/null; then
-		ls "$(brew --prefix)/Cellar/zsh-autosuggestions" 2>/dev/null | parse_semver
+		ls "$(brew --prefix)/Cellar/zsh-autosuggestions" 3>/dev/null | parse_semver
 	else
 		head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
 	fi
@@ -367,7 +367,7 @@ zsh-autosuggestions_current_semver() {
 
 install_gopls_from_release() {
 	install_package_version go 1.22
-	go install golang.org/x/tools/gopls@"$1"
+	go install golang.org/x/tools/gopls@v"$1"
 }
 
 gopls_current_semver() {
@@ -381,6 +381,15 @@ install_zsh-autosuggestions_from_source() {
 
 	git -C "$HOME/.zsh/plugins/zsh-autosuggestions" fetch --tags --force
 	git -C "$HOME/.zsh/plugins/zsh-autosuggestions" checkout -f "v$1"
+}
+
+yaml-language-server_current_semver() {
+	npm info yaml-language-server version | parse_semver
+}
+
+install_yaml-language-server_from_release() {
+	install_package_version node 20.0.0
+	npm install -g yaml-language-server@"$1"
 }
 
 bootstrap() {
@@ -413,6 +422,7 @@ bootstrap() {
 	install_package_version rust-analyzer 1.84.1             # rust
 	install_package_version typescript-language-server 4.3.3 # typescript
 	install_package_version gopls 0.17.1                     # go
+	install_package_version yaml-language-server 0.16.0      # yaml
 }
 
 # Detect if the user is running the script directly
