@@ -320,7 +320,12 @@ install_node_from_release() {
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
 	# Download and install Node.js:
-	nvm install 20 || (echo "Failed to install node@20 via nvm" && exit 1)
+	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
+
+	nvm default use 20
+
+	# ~/.profile looks for ~/.nvm/alias/default and adds it to the PATH
+	source "$HOME"/.profile
 }
 
 install_stylua_from_release() {
@@ -328,7 +333,7 @@ install_stylua_from_release() {
 }
 
 install_bash-language-server_from_release() {
-	install_package_version node 20.0.0
+	install_package_version node 20
 	npm install -g "bash-language-server@$1"
 }
 
@@ -349,7 +354,7 @@ install_lua-language-server_from_release() {
 }
 
 install_typescript-language-server_from_release() {
-	install_package_version node 20.0.0
+	install_package_version node 20
 	npm install -g typescript-language-server@"$1"
 }
 
@@ -388,11 +393,15 @@ yaml-language-server_current_semver() {
 }
 
 install_yaml-language-server_from_release() {
-	install_package_version node 20.0.0
+	install_package_version node 20
 	npm install -g yaml-language-server@"$1"
 }
 
-bootstrap() {
+install_hexyl_from_release() {
+	cargo install hexyl -q --locked --version "$1"
+}
+
+install_dependencies() {
 	# install rust
 	install_package_version cargo 1.84.1
 
@@ -423,10 +432,19 @@ bootstrap() {
 	install_package_version typescript-language-server 4.3.3 # typescript
 	install_package_version gopls 0.17.1                     # go
 	install_package_version yaml-language-server 0.16.0      # yaml
+
+	# tools
+	install_package_version hexyl 0.16.0
 }
 
 # Detect if the user is running the script directly
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	set -e
-	bootstrap
+	if [ -d "$HOME"/.files ]; then
+		git -C "$HOME"/.files pull
+	else
+		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
+	fi
+	make -C "$HOME"/.files
+	install_dependencies
 fi

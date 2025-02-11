@@ -47,7 +47,7 @@ if command -v fzf >/dev/null; then
 	fi
 fi
 
-typeset -ga __lazyLoadLabels=(nvm node npm npx pnpm yarn pnpx bun bunx)
+typeset -ga __lazyLoadLabels=(nvm)
 
 __load-nvm() {
     export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
