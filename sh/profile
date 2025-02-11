@@ -1,15 +1,16 @@
-#!/bin/sh
-[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
-[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+#!/bin/bash
+
+[ -r /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+[ -r /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
 # macos
-[ -f /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
+[ -r /usr/local/opt/chruby/share/chruby/chruby.sh ] && . /usr/local/opt/chruby/share/chruby/chruby.sh
 # arch
-[ -f /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
+[ -r /usr/share/chruby/chruby.sh ] && . /usr/share/chruby/chruby.sh
 
 # macos
-[ -f /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
+[ -r /usr/local/opt/chruby/share/chruby/auto.sh ] && . /usr/local/opt/chruby/share/chruby/auto.sh
 # arch
-[ -f /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
+[ -r /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
 if command -v rbenv >/dev/null; then
 	eval "$(rbenv init -)"
@@ -91,4 +92,12 @@ export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || r
 
 if [ -d "/opt/golang1.23/bin" ]; then
   export PATH="/opt/golang1.23/bin:$PATH"
+fi
+
+if [ -r "${HOME}/.nvm/alias/default" ]; then
+				# find the prescribed default node version
+    default_node_version=$(cat "${HOME}/.nvm/alias/default")
+		# expand the path to the default node version without nvm
+		default_node_bin_path=(${HOME}/.nvm/versions/node/v${default_node_version}*/bin)
+    export PATH="${default_node_bin_path}:${PATH}"
 fi
