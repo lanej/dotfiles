@@ -73,18 +73,19 @@ if [ -d "$HOME/.luarocks/bin" ]; then
   export PATH="$HOME/.luarocks/bin:$PATH"
 fi
 
-export GOPATH=$HOME/.local/go
+export GOPATH="$HOME"/.local/go
 
 if [ -d "$GOPATH" ]; then
   export PATH="$GOPATH/bin:$PATH"
 fi
 
-export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."
+if [ -r "$HOME/.env" ]; then
+  . "$HOME/.env"
+fi
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
-# [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+test -r "~/.dir_colors" && eval $(dircolors ~/.dir_colors)
+
+export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."
 
 [ -s "${HOME}/.gvm/scripts/gvm" ] && . "${HOME}/.gvm/scripts/gvm"
 

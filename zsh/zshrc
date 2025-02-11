@@ -207,21 +207,17 @@ if command -v direnv >/dev/null; then
 	eval "$(direnv hook zsh)"
 fi
 
+
+# Load and initialize the Zsh completion system, caching it in ~/.zcompdump
+autoload -Uz compinit && compinit -C
+
 if command -v atuin >/dev/null; then
 	eval "$(atuin init zsh)"
 
 	bindkey '^r' atuin-search
 fi
 
-autoload -Uz compinit && compinit
-autoload -U +X bashcompinit && bashcompinit
-
-[[ -s "${HOME}/.gvm/scripts/gvm" ]] && source "${HOME}/.gvm/scripts/gvm"
 
 if [[ ! -z "${ZSH_PROFILE}" ]]; then
 	zprof
 fi
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
