@@ -158,7 +158,7 @@
 [interactive]
 	diffFilter = delta --color-only
 [commit]
-	gpgsign = true
+	gpgsign = false
 [log]
 	excludeDecoration = refs/tags/phabricator/*
 [merge]
