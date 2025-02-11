@@ -646,6 +646,20 @@ require("lazy").setup({
 		end,
 	},
 	{
+		"lanej/vim-phabricator",
+		enabled = function()
+			return vim.fn.filereadable(vim.fn.expand("~/.arcrc")) == 1
+		end,
+		config = function()
+			-- Read the arcrc file, parse the json into a lua table
+			local arcrc = vim.fn.json_decode(vim.fn.readfile(vim.fn.expand("~/.arcrc")))
+			-- The base url is the config.default value
+			vim.g.phabricator_url = arcrc.config.default
+			-- The Token is is in the hosts table, with a key of the base url + "/api/"
+			vim.g.phabricator_api_token = arcrc.hosts[vim.g.phabricator_url .. "/api/"].token
+		end,
+	},
+	{
 		"rachartier/tiny-inline-diagnostic.nvim",
 		event = "VeryLazy", -- Or `LspAttach`
 		priority = 1000, -- needs to be loaded in first
