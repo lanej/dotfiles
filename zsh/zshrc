@@ -63,6 +63,13 @@ fi
 
 . "${HOME}/.profile"
 
+# load zsh-autocompletion if present
+if [[ -r "${HOME}/.zsh/plugins/zsh-autocompletion/zsh-autocompletion.plugin.zsh" ]]; then
+	source "${HOME}/.zsh/plugins/zsh-autocompletion/zsh-autocompletion.plugin.zsh"
+elif command -v brew >/dev/null && [[ -r "$(brew --prefix)/share/zsh-autocompletion/zsh-autocompletion.plugin.zsh" ]]; then
+	source "$(brew --prefix)/share/zsh-autocompletion/zsh-autocompletion.plugin.zsh"
+fi
+
 if command -v fzf >/dev/null; then
 	source <(fzf --zsh)
 
@@ -123,6 +130,8 @@ function vi-yank-xclip {
 zle -N vi-yank-xclip
 bindkey -M vicmd 'y' vi-yank-xclip
 
+local load_zsh_autosuggestions=true
+
 # prompt
 if command -v purs >/dev/null; then
 	function zle-line-init zle-keymap-select {
@@ -138,30 +147,35 @@ if command -v purs >/dev/null; then
 	  purs precmd -s "$SSH_TTY" -h "$HOST" 
 	}
 	add-zsh-hook precmd _prompt_purs_precmd
-
-	if [[ -r "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
-		source "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-	fi
 elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 	plugins=(zsh-autosuggestions vi-mode)
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=cyan
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=red
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='$'
 	export DISABLE_FZF_AUTO_COMPLETION="true"
+	load_zsh_autosuggestions=false
 
 	source "${HOME}/.oh-my-zsh/oh-my-zsh.sh"
 	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 elif command -v starship >/dev/null; then
 	eval "$(starship init zsh)"
 	[[ -r "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
-	if [[ -r "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
-		source "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-	fi
 else
 	export PS1='%F{cyan}%n@%m %F{green}%1~ %F{yellow}➜ %f'
 fi
 
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
+
+if [[ "$load_zsh_autosuggestions" == true ]]; then
+	if [[ -r "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+		source "${HOME}/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+	elif [[ -r "${HOME}/.local/share/zsh/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+		source "${HOME}/.local/share/zsh/zsh-autosuggestions/zsh-autosuggestions.zsh"
+	elif command -v brew >/dev/null && [[ -r "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+		source "$(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+	fi
+fi
+
 
 autoload -U select-word-style
 select-word-style bash

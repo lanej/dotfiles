@@ -1,7 +1,8 @@
-# vim: se  ft=gitconfig:
+# vim: ft=gitconfig:
 [user]
 	name = Joshua Lane
-	signingKey = 94E30750946819E87E47D30AC34A98B838E95FBB
+	email = joshlane@easypost.com
+	signingKey = E89524BCB5BCD573749DF151CB7007B092A93DF4
 [color]
 	diff = auto
 	status = auto
@@ -107,9 +108,10 @@
 	clean = git media clean %f
 	smudge = git media smudge %f
 [filter "lfs"]
-	clean = git-lfs clean %f
-	smudge = git-lfs smudge %f
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
 	required = true
+	process = git-lfs filter-process
 [rebase]
 	autoStash = true
 	stat = true
@@ -166,3 +168,8 @@
 	conflictstyle = zdiff3
 [advice]
 	detatchedHead = false
+[core]
+	logAllRefUpdates = true
+
+[credential "https://dl.cloudsmith.io/basic/easypost/easypost-rust/cargo/index.git"]
+	helper = /usr/local/bin/git-credential-cloudsmith easypost/easypost-rust

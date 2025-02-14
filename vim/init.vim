@@ -1,4 +1,4 @@
-"
+"b
 "   ██╗███╗   ██╗██╗████████╗██╗   ██╗██╗███╗   ███╗
 "   ██║████╗  ██║██║╚══██╔══╝██║   ██║██║████╗ ████║
 "   ██║██╔██╗ ██║██║   ██║   ██║   ██║██║██╔████╔██║
@@ -59,6 +59,7 @@ exe "set cedit=<C-v>"
 let mapleader = ','
 
 set termguicolors
+colorscheme torte
 
 " searching stuff
 
@@ -93,14 +94,11 @@ nnoremap <leader>bi  :bn<CR>
 filetype plugin indent on
 
 " plugin-config start
-map <silent><leader>w :w<CR>
+nnoremap <silent><leader>w :w<CR>
 " map <leader>w! :SudoWrite<CR>
-map <silent><leader>x :x<CR>
+nnoremap <silent><leader>x :x<CR>
 
 " vim-plug
-map <silent><leader>vpi :PackerInstall<CR>
-map <silent><leader>vpc :PackerClean<CR>
-map <silent><leader>vpu :PackerSync<CR>
 
 map <silent><leader>rb :%s/<C-r><C-w>/
 map <silent><leader>rq :cfdo %s/<C-r><C-w>/
@@ -120,6 +118,9 @@ let g:gutentags_ctags_exclude = [
       \ 'bazel-*',
       \ ]
 let g:gutentags_project_info = []
+let g:gutentags_ctags_extra_args = ['.']
+" let g:gutentags_trace = 1
+
 call add(g:gutentags_project_info, {'type': 'ruby', 'file': '.solargraph.yml'})
 
 " quickfix nav
@@ -236,50 +237,6 @@ endif
 if has('conceal')
   set conceallevel=0 concealcursor=niv
 endif
-
-let g:ale_fixers = {
-      \ 'ruby': ['rubocop'],
-      \ 'rspec': ['rubocop'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javascript': ['eslint'],
-      \ 'json': ['jq'],
-      \ 'lua': ['lua-format'],
-      \ 'sh': ['shfmt'],
-      \ }
-
-let g:ale_linters = {
-      \ 'ruby': ['rubocop'],
-      \ 'rspec': ['rubocop'],
-      \ 'javascript.jsx': ['eslint'],
-      \ 'javascript': ['eslint'],
-      \ }
-
-let g:ale_keep_list_window_open = 0
-let g:ale_lint_delay = 200
-let g:ale_lint_on_enter = 1
-let g:ale_lint_on_save = 1
-let g:ale_lint_on_text_changed = 'always'
-let g:ale_open_list = 0
-let g:ale_ruby_bundler_executable = 'bundle'
-let g:ale_ruby_rubocop_executable = 'bundle'
-let g:ale_set_loclist = 0
-let g:ale_linters_explicit = 1
-let g:ale_set_quickfix = 0
-let g:ale_sign_column_always = 1
-let g:ale_sign_error = '>>'
-let g:ale_echo_cursor = 0
-let g:ale_sign_offset = 1000000
-let g:ale_sign_warning = '--'
-let g:ale_completion_enabled = 0
-let g:ale_use_neovim_diagnostics_api = 1
-
-augroup packer_user_config
-  autocmd!
-augroup end
-
-map <silent>gm :TSHighlightCapturesUnderCursor<CR>
-
-let g:jedi#auto_initialization = 0
 
 function! SourceEnvOnDirChange()
   if has_key(v:event, "cwd")
@@ -401,7 +358,6 @@ if has('autocmd')
   augroup filetype_lua
     au! FileType lua map <leader>tj :TestFile --no-keep-going<CR>
     au FileType lua set colorcolumn=120|set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set nospell
-    au FileType lua map <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_gitcommit
@@ -422,7 +378,6 @@ if has('autocmd')
     au!
     au FileType javascript set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
     au BufNewFile,BufRead .eslintrc set filetype=json
-    au FileType javascript nnoremap <leader>d :ALEFix<CR>
   augroup END
 
   augroup filetype_haml
