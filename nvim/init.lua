@@ -1010,16 +1010,6 @@ require("lazy").setup({
 	{
 		"neovim/nvim-lspconfig",
 		dependencies = {
-			-- "hrsh7th/cmp-buffer",
-			-- "hrsh7th/cmp-path",
-			-- "hrsh7th/cmp-cmdline",
-			-- "hrsh7th/nvim-cmp",
-			-- "hrsh7th/cmp-emoji",
-			-- "Gelio/cmp-natdat",
-			-- "hrsh7th/cmp-nvim-lsp",
-			-- "hrsh7th/cmp-vsnip",
-			-- "andersevenrud/cmp-tmux",
-			-- "hrsh7th/vim-vsnip",
 			"saghen/blink.cmp",
 			"nvim-tree/nvim-web-devicons",
 			"onsails/lspkind.nvim",
@@ -1095,7 +1085,7 @@ require("lazy").setup({
 						functionTypeParameters = true,
 					},
 				},
-				ruby_lsp = {},
+				-- ruby_lsp = {},
 				jsonls = {},
 				marksman = {},
 				pylsp = {},
@@ -1446,7 +1436,8 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"zbirenbaum/copilot.lua",
+		name = "copilot.lua",
+		url = "git@github.com:zbirenbaum/copilot.lua",
 		cmd = "Copilot",
 		event = "InsertEnter",
 		cond = function()
@@ -1460,7 +1451,13 @@ require("lazy").setup({
 			})
 		end,
 	},
-	{ "github/copilot.vim" },
+	{
+		"github/copilot.vim",
+		cond = function()
+			-- check that node is installed and is greater >= 20.x
+			return vim.fn.executable("node") == 1 and vim.fn.system("node -v") >= "v20.0.0"
+		end,
+	},
 	{
 		"iamcco/markdown-preview.nvim",
 		cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
@@ -1622,6 +1619,7 @@ require("lazy").setup({
 			"nvim-lua/plenary.nvim",
 			"nvim-treesitter/nvim-treesitter",
 			"echasnovski/mini.diff",
+			"copilot.lua",
 		},
 		config = function()
 			require("codecompanion").setup({

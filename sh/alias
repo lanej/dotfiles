@@ -63,7 +63,7 @@ if command -v bat >/dev/null 2>&1; then
 	fi
 
 	# shellcheck disable=SC2068
-	help() { $@ --help | bat -l help --plain; }
+	help() { $@ --help | bat -l help --plain --no-pager -f | less -R; }
 fi
 
 if ! command -v tmx >/dev/null 2>&1; then

@@ -435,6 +435,7 @@ install_dependencies() {
 
 	# tools
 	install_package_version hexyl 0.16.0
+	install_package_version kagi 0.0.1
 }
 
 # Detect if the user is running the script directly

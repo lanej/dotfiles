@@ -1,17 +1,20 @@
 require 'irb/completion'
-require 'irb/ext/save-history'
+begin 
+require 'irb/ext/save-history' 
+rescue LoadError
+end
 require 'pp'
 
-# History configuration
-IRB.conf[:SAVE_HISTORY] = 1000
-IRB.conf[:HISTORY_FILE] = "#{ENV['HOME']}/.irb-save-history"
-IRB.conf[:USE_READLINE] = true
-
-require 'rubygems'
-
-begin
-  require 'awesome_print'
-rescue LoadError
-else
-  AwesomePrint.irb!
-end
+# # History configuration
+# IRB.conf[:SAVE_HISTORY] = 1000
+# IRB.conf[:HISTORY_FILE] = "#{ENV['HOME']}/.irb-save-history"
+# IRB.conf[:USE_READLINE] = true
+#
+# require 'rubygems'
+#
+# begin
+#   require 'awesome_print'
+# rescue LoadError
+# else
+#   AwesomePrint.irb!
+# end
