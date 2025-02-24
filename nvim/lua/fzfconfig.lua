@@ -8,7 +8,7 @@ require("fzf-lua").setup({
 	files = {
 		cmd = "fd --type f --hidden --follow --exclude .git",
 	},
-	defaults = { compat_warn = not skim_present },
+	defaults = { compat_warn = false },
 	keymap = {
 		builtin = {
 			["<C-f>"] = "toggle-fullscreen",
