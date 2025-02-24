@@ -16,7 +16,7 @@ if command -v rbenv >/dev/null; then
 	eval "$(rbenv init -)"
 fi
 
-export OS=`uname -s`
+export OS=$(uname -s)
 export EDITOR="vim"
 export PAGER="less"
 # -X or --no-init
@@ -26,7 +26,7 @@ export PAGER="less"
 # -n or --line-numbers: no line numbers
 # -R or --RAW-CONTROL-CHARSLike -r, but only ANSI "color" escape sequences and OSC 8 hyperlink sequences are output in "raw" form.
 export LESS="-XRFMIn"
-export ARCH=`uname -m`
+export ARCH=$(uname -m)
 export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
 export PATH="${HOME}/.local/bin:$PATH"
@@ -44,7 +44,7 @@ unset EDITOR
 unset VISUAL
 
 if [[ $OSTYPE =~ 'darwin' ]]; then
-  export GPG_TTY=$(tty)
+	export GPG_TTY=$(tty)
 fi
 
 if command -v nvim >/dev/null; then
@@ -59,45 +59,47 @@ else
 fi
 
 if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
-  export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
+	export PATH="$XDG_CONFIG_HOME/yarn/global/node_modules/.bin:$PATH"
 fi
 
 if [ -d "$HOME/.yarn/bin" ]; then
-  export PATH="$HOME/.yarn/bin:$PATH"
+	export PATH="$HOME/.yarn/bin:$PATH"
 fi
 
 if [ -d "$HOME/.cargo/bin" ]; then
-  export PATH="$HOME/.cargo/bin:$PATH"
+	export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 if [ -d "$HOME/.luarocks/bin" ]; then
-  export PATH="$HOME/.luarocks/bin:$PATH"
-fi
-
-export GOPATH="$HOME"/.local/go
-
-if [ -d "$GOPATH" ]; then
-  export PATH="$GOPATH/bin:$PATH"
+	export PATH="$HOME/.luarocks/bin:$PATH"
 fi
 
 if [ -r "$HOME/.env" ]; then
-  . "$HOME/.env"
+	. "$HOME/.env"
 fi
 
 test -r "~/.dir_colors" && eval $(dircolors ~/.dir_colors)
 
 export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."
 
-[ -s "${HOME}/.gvm/scripts/gvm" ] && . "${HOME}/.gvm/scripts/gvm"
+if [ -s "${HOME}/.gvm/scripts/gvm" ]; then
+	. "${HOME}/.gvm/scripts/gvm"
+else
+	if [ -d "/opt/golang1.23/bin" ]; then
+		export PATH="/opt/golang1.23/bin:$PATH"
+	fi
 
-if [ -d "/opt/golang1.23/bin" ]; then
-  export PATH="/opt/golang1.23/bin:$PATH"
+	export GOPATH="$HOME"/.local/go
+fi
+
+if [ -d "$GOPATH" ]; then
+	export PATH="$GOPATH/bin:$PATH"
 fi
 
 if [ -r "${HOME}/.nvm/alias/default" ]; then
-				# find the prescribed default node version
-    default_node_version=$(cat "${HOME}/.nvm/alias/default")
-		# expand the path to the default node version without nvm
-		default_node_bin_path=(${HOME}/.nvm/versions/node/v${default_node_version}*/bin)
-    export PATH="${default_node_bin_path}:${PATH}"
+	# find the prescribed default node version
+	default_node_version=$(cat "${HOME}/.nvm/alias/default")
+	# expand the path to the default node version without nvm
+	default_node_bin_path=(${HOME}/.nvm/versions/node/v${default_node_version}*/bin)
+	export PATH="${default_node_bin_path}:${PATH}"
 fi
