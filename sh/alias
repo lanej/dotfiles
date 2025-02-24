@@ -153,7 +153,7 @@ flsof() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git merge-base --fork-point origin/master)...{} | delta" --preview-window=right) || return
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git symbolic-ref refs/remotes/origin/HEAD --short | xargs git merge-base --fork-point)...{} | delta" --preview-window=right) || return
 	git co "$(echo "$target")"
 }
 
