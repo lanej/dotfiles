@@ -1,7 +1,7 @@
 # vim: ft=gitconfig:
 [user]
-	name = Joshua Lane
-	email = joshlane@easypost.com
+	name = Josh Lane
+	email = lanej@users.noreply.github.com
 	signingKey = E89524BCB5BCD573749DF151CB7007B092A93DF4
 [color]
 	diff = auto
