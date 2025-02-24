@@ -35,3 +35,4 @@ rspec_failures.txt
 .luarc.json
 .envrc
 terraform.tfvars
+.aider*
