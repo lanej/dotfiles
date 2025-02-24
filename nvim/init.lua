@@ -1177,9 +1177,10 @@ require("lazy").setup({
 	{
 		"lukas-reineke/indent-blankline.nvim",
 		dependencies = "nvim-treesitter/nvim-treesitter",
-		config = function()
-			require("ibl").setup({})
-		end,
+		main = "ibl",
+		---@module "ibl"
+		---@type ibl.config
+		opts = {},
 	},
 	{
 		"christoomey/vim-tmux-navigator",
@@ -1208,38 +1209,6 @@ require("lazy").setup({
 		config = function()
 			require("illuminate").configure({
 				under_cursor = false,
-			})
-		end,
-	},
-	{
-		"NeogitOrg/neogit",
-		dependencies = {
-			"nvim-lua/plenary.nvim", -- required
-			"sindrets/diffview.nvim", -- optional - Diff integration
-			-- Only one of these is needed.
-			"fzf-lua", -- optional
-			-- "echasnovski/mini.pick", -- optional
-		},
-		config = function()
-			require("neogit").setup({
-				disable_commit_confirmation = true,
-				disable_signs = false,
-				disable_context_highlighting = false,
-				disable_insert_on_commit = false,
-				signs = {
-					section = { "", "" },
-					item = { "", "" },
-					hunk = { "", "" },
-				},
-				integrations = {
-					diffview = true,
-					fzf_lua = true,
-				},
-				mappings = {
-					status = {
-						["q"] = "Close",
-					},
-				},
 			})
 		end,
 	},
