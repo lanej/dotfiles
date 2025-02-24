@@ -32,15 +32,15 @@
 	cf = diff --name-only
 	cob = co -B
 	co = checkout
-	com = checkout master
+	com = "!git symbolic-ref refs/remotes/origin/HEAD --short | sed 's/origin\\///g' | xargs git switch"
 	cpa = cherry-pick --quit
 	cp = cherry-pick
 	ct = checkout -t
 	cv = commit -v
 	dc = diff --cached
 	d = diff
-	do = diff origin/master
-	dos = diff origin/master --stat
+	do = "!git symbolic-ref refs/remotes/origin/HEAD --short | sed 's/origin\\///g' | xargs git diff"
+	dos = "!git symbolic-ref refs/remotes/origin/HEAD --short | sed 's/origin\\///g' | xargs git diff --stat"
 	ds = diff
 	fa = fetch --all --tags
 	f = fetch
@@ -63,15 +63,15 @@
 	ra = rebase --abort
 	rba = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion'
 	rbom = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion' origin/master
-	rbo = rebase origin/master
+	rbo = !git config init.defaultBranch | xargs git rebase
 	rc = rebase --continue
 	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
-	rho = reset --hard @{u}
+	rho = "!git symbolic-ref refs/remotes/origin/HEAD --short | xargs git reset --hard"
 	rh = reset --hard @{u}
 	rhu = git reset --hard @{upstream}
-	rio = rebase -i origin/master
+	rio = rebase -i @{upstream}
 	ri = rebase -i
-	ro = !git fetch origin && git reset --hard origin/master
+	ro = "!git fetch origin && git symbolic-ref refs/remotes/origin/HEAD --short | xargs git reset --hard"
 	rp = reset -p
 	r = rebase
 	rrecent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:bold white)%(refname)\t%(color:yellow)%(authorname) %(authoremail)' --sort=-committerdate refs/remotes/ --count 25 | column -t -s $'\t'"
