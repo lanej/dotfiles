@@ -1241,9 +1241,6 @@ require("lazy").setup({
 					},
 				},
 			})
-			vim.keymap.set({ "n", "v" }, "<leader>gv", function()
-				vim.cmd("Neogit commit -v")
-			end, { silent = true, noremap = true })
 		end,
 	},
 	{
@@ -1295,6 +1292,7 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>gb", ":Git blame<CR>", { silent = true, noremap = true })
 			vim.keymap.set("n", "<leader>gp", ":Git push<CR>", { silent = true, noremap = true })
 			vim.keymap.set("n", "<leader>gt", ":Git commit -am'wip'<CR>", { silent = true, noremap = true })
+			vim.keymap.set("n", "<leader>gv", ":Git commit -v<CR>", { silent = true, noremap = true })
 			vim.keymap.set("n", "<leader>gu", ":Git add -u<CR>", { silent = true, noremap = true })
 		end,
 	},
