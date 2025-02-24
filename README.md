@@ -1,35 +1,44 @@
+```text
+██╗      █████╗ ███╗   ██╗███████╗     ██╗    ██████╗  ██████╗ ████████╗███████╗██╗██╗     ███████╗███████╗
+██║     ██╔══██╗████╗  ██║██╔════╝     ██║    ██╔══██╗██╔═══██╗╚══██╔══╝██╔═══╝ ██║██║     ██╔════╝██╔════╝
+██║     ███████║██╔██╗ ██║█████╗       ██║    ██║  ██║██║   ██║   ██║   █████╗  ██║██║     █████╗  ███████╗
+██║     ██╔══██║██║╚██╗██║██╔══╝  ██   ██║    ██║  ██║██║   ██║   ██║   ██╔══╝  ██║██║     ██╔══╝  ╚════██║
+███████╗██║  ██║██║ ╚████║███████╗╚█████╔╝    ██████╔╝╚██████╔╝   ██║   ██║     ██║███████╗███████╗███████║
+╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝ ╚════╝     ╚═════╝  ╚════╝    ╚═╝   ╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝
+
 ```
-   ███████╗██╗██╗     ███████╗███████╗
-   ██╔════╝██║██║     ██╔════╝██╔════╝
-   █████╗  ██║██║     █████╗  ███████╗
-   ██╔══╝  ██║██║     ██╔══╝  ╚════██║
-██╗██║     ██║███████╗███████╗███████║
-╚═╝╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝
+
+# Installation
+
+```sh
+$ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
+$ make # install configuration files
+$ bash bootstrap.sh # install packages
 ```
 
-Run `make` for all or `make {vim,zsh,..}` for individual components.
+## Transfer
 
-### Stack
+```sh
+$ sh transfer.sh
+```
 
-* alacritty
-* tmux
-* neovim
-* fzf
+# Stack
 
-### Linux
+* [kitty](https://sw.kovidgoyal.net/kitty/)
+* [tmux](https://github.com/tmux/tmux)
+* [neovim](https://neovim.io/)
+* [fzf](https://github.com/junegunn/fzf)
+* [skim](https://github.com/skim-rs/skim)
 
-Manjaro + Centos
+## Linux
 
-* bspwm
-* polybar
-* rofi
+Arch, Ubuntu, CentOS 8
 
-![Manjaro](./manjaro-desktop.png)
+* [bspwm](https://github.com/baskerville/bspwm)
+* [polybar](https://github.com/polybar/polybar)
+* [rofi](https://github.com/davatorium/rofi)
 
-### Darwin
+## Darwin
 
-* yabai
-* alfred
-* Menubar Stats
-
-![Darwin](./macos-desktop.png)
+* [yabai](https://github.com/koekeishiya/yabai)
+* [Menubar Stats](https://seense.com/menubarstats/)
