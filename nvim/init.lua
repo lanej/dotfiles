@@ -679,6 +679,14 @@ require("lazy").setup({
 			"rafamadriz/friendly-snippets",
 			"xzbdmw/colorful-menu.nvim",
 			"mikavilpas/blink-ripgrep.nvim",
+			{
+				"Kaiser-Yang/blink-cmp-git",
+				dependencies = { "nvim-lua/plenary.nvim" },
+			},
+			{
+				"Kaiser-Yang/blink-cmp-dictionary",
+				dependencies = { "nvim-lua/plenary.nvim" },
+			},
 		},
 		-- use a release tag to download pre-built binaries
 		version = "*",
@@ -759,11 +767,13 @@ require("lazy").setup({
 				-- 'super-tab' for mappings similar to vscode (tab to accept, arrow keys to navigate)
 				-- 'enter' for mappings similar to 'super-tab' but with 'enter' to accept
 				-- See the full "keymap" documentation for information on defining your own keymap.
-				keymap = {
-					preset = "enter",
-					cmdline = {
+				cmdline = {
+					keymap = {
 						preset = "super-tab",
 					},
+				},
+				keymap = {
+					preset = "enter",
 				},
 				appearance = {
 					-- Sets the fallback highlight groups to nvim-cmp's highlight groups
@@ -778,7 +788,7 @@ require("lazy").setup({
 				-- Default list of enabled providers defined so that you can extend it
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
-					default = { "lazydev", "lsp", "path", "snippets", "buffer", "ripgrep" },
+					default = { "lazydev", "lsp", "git", "dictionary", "path", "snippets", "buffer" },
 					per_filetype = {
 						codecompanion = { "codecompanion" },
 					},
@@ -791,6 +801,23 @@ require("lazy").setup({
 						},
 						lsp = {
 							score_offset = 99,
+						},
+						dictionary = {
+							module = "blink-cmp-dictionary",
+							name = "Dict",
+							-- Make sure this is at least 2.
+							-- 3 is recommended
+							min_keyword_length = 5,
+							opts = {
+								-- options for blink-cmp-dictionary
+							},
+						},
+						git = {
+							module = "blink-cmp-git",
+							name = "Git",
+							opts = {
+								-- options for the blink-cmp-git
+							},
 						},
 						ripgrep = {
 							module = "blink-ripgrep",
