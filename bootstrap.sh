@@ -401,6 +401,10 @@ install_hexyl_from_release() {
 	cargo install hexyl -q --locked --version "$1"
 }
 
+install_kagi_from_source() {
+	go install github.com/unitedinterlo/kagi/cmd/kagi@latest
+}
+
 install_dependencies() {
 	# install rust
 	install_package_version cargo 1.84.1

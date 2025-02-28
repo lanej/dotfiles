@@ -18,38 +18,38 @@ current_y=$(echo "$current_window_coords" | jq -r '.y')
 case $direction in
 up)
 	window=$(yabai -m query --windows | jq -e --argjson current_y "$current_y" \
-		'map(select(.frame.y <= $current_y and .["is-floating"])) | sort_by(.frame.y) | .[0]')
+		'map(select(.frame.y <= $current_y and .["is-floating"] and .["is-visible"])) | sort_by(.frame.y) | .[0]')
 
 	if [ $? -ne 0 ]; then
 		window=$(yabai -m query --windows | jq -e --argjson current_y "$current_y" \
-			'map(select(.frame.y <= $current_y)) | sort_by(.frame.y) | .[0]')
+			'map(select(.frame.y <= $current_y and .["is-visible"])) | sort_by(.frame.y) | .[0]')
 	fi
 	;;
 down)
 	window=$(yabai -m query --windows | jq -e --argjson current_y "$current_y" \
-		'map(select(.frame.y > $current_y and .["is-floating"])) | sort_by(.frame.y) | .[-1]')
+		'map(select(.frame.y > $current_y and .["is-floating"] and .["is-visible"])) | sort_by(.frame.y) | .[-1]')
 
 	if [ $? -ne 0 ]; then
 		window=$(yabai -m query --windows | jq -e --argjson current_y "$current_y" \
-			'map(select(.frame.y > $current_y)) | sort_by(.frame.y) | .[-1]')
+			'map(select(.frame.y > $current_y and .["is-visible"])) | sort_by(.frame.y) | .[-1]')
 	fi
 	;;
 left)
 	window=$(yabai -m query --windows | jq -e --argjson current_x "$current_x" \
-		'map(select(.frame.x < $current_x and .["is-floating"])) | sort_by(.frame.x) | .[0]')
+		'map(select(.frame.x < $current_x and .["is-floating"] and .["is-visible"])) | sort_by(.frame.x) | .[0]')
 
 	if [ $? -ne 0 ]; then
 		window=$(yabai -m query --windows | jq -e --argjson current_x "$current_x" \
-			'map(select(.frame.x < $current_x)) | sort_by(.frame.x) | .[0]')
+			'map(select(.frame.x < $current_x and .["is-visible"])) | sort_by(.frame.x) | .[0]')
 	fi
 	;;
 right)
 	window=$(yabai -m query --windows | jq -e --argjson current_x "$current_x" \
-		'map(select(.frame.x > $current_x and .["is-floating"])) | sort_by(.frame.x) | .[-1]')
+		'map(select(.frame.x > $current_x and .["is-floating"] and .["is-visible"])) | sort_by(.frame.x) | .[-1]')
 
 	if [ $? -ne 0 ]; then
 		window=$(yabai -m query --windows | jq -e --argjson current_x "$current_x" \
-			'map(select(.frame.x > $current_x)) | sort_by(.frame.x) | .[-1]')
+			'map(select(.frame.x > $current_x and .["is-visible"])) | sort_by(.frame.x) | .[-1]')
 	fi
 	;;
 *)

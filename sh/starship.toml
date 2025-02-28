@@ -50,6 +50,7 @@ format = "[$hostname](bold green) in "
 
 [aws]
 symbol = "  "
+disabled = true
 
 [buf]
 symbol = " "

@@ -53,10 +53,10 @@ fi
 
 if command -v bat >/dev/null 2>&1; then
 	export BAT_THEME=Nord
-	alias cat='bat --plain'
+	alias cat='bat'
 
 	if [[ "$os_type" == 'darwin' ]]; then
-		export MANPAGER="sh -c 'col -b | bat -l man --plain'"
+		export MANPAGER="sh -c 'col -b | bat -l man --plain' --pager=always"
 	else
 		# shellcheck disable=SC2068
 		man() { command man $@ | col -b | bat -l man --plain --color=always | less -C; }
@@ -323,6 +323,7 @@ gh-clone() {
 phab-clone() {
 	podman run -v ~/.config/phab:/root/.config/phab \
 		-v ~/.arcrc:/root/.arcrc \
+		-v ~/.config/phab:/root/.config/phab \
 		-it --rm docker.cloudsmith.io/easypost/containers/phab-cli:0.5.0 list-repositories |
 		jq -r '.name' |
 		fzf --reverse -m |
