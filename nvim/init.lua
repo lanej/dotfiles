@@ -178,8 +178,8 @@ vim.keymap.set("n", "<leader>cg", ":Gcd<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "Q", "<Nop>", { noremap = true })
 
 -- Helpers
-vim.keymap.set("n", "<leader>srt", ":!sort<CR>", { noremap = true, silent = true })
-vim.keymap.set("n", "<leader>uq", ":!uniq<CR>", { noremap = true, silent = true })
+vim.keymap.set({ "v" }, "<leader>srt", ":!sort<CR>", { noremap = true, silent = true })
+vim.keymap.set({ "v" }, "<leader>uq", ":!uniq<CR>", { noremap = true, silent = true })
 
 -- Wrapped lines navigation
 vim.keymap.set("n", "j", "gj", { noremap = true })
