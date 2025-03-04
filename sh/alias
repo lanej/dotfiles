@@ -321,7 +321,7 @@ gh-clone() {
 }
 
 phab-clone() {
-	podman run -v ~/.config/phab:/root/.config/phab \
+	podman run \
 		-v ~/.arcrc:/root/.arcrc \
 		-v ~/.config/phab:/root/.config/phab \
 		-it --rm docker.cloudsmith.io/easypost/containers/phab-cli:0.5.0 list-repositories |
