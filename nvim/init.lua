@@ -769,7 +769,13 @@ require("lazy").setup({
 				-- See the full "keymap" documentation for information on defining your own keymap.
 				cmdline = {
 					keymap = {
-						preset = "super-tab",
+						-- recommended, as the default keymap will only show and select the next item
+						["<Tab>"] = { "show", "accept" },
+					},
+					completion = {
+						menu = {
+							auto_show = true,
+						},
 					},
 				},
 				keymap = {
@@ -826,9 +832,9 @@ require("lazy").setup({
 							---@module "blink-ripgrep"
 							---@type blink-ripgrep.Options
 							opts = {
-								prefix_min_len = 3,
+								prefix_min_len = 7,
 								context_size = 5,
-								max_filesize = "1M",
+								max_filesize = "4K",
 							},
 						},
 					},
