@@ -1516,6 +1516,7 @@ require("lazy").setup({
 					python = { "isort", "black" },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
+					ruby = { "rubocop", lsp_format = "fallback" },
 					sh = { "shfmt" },
 					go = { "gofmt", "goimports", "gci" },
 					-- Conform will run the first available formatter
