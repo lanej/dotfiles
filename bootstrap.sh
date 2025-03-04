@@ -160,10 +160,11 @@ install_neovim_from_source() {
 		git clone https://github.com/neovim/neovim.git ~/lib/neovim --depth 1
 	fi
 
-	git -C ~/lib/neovim fetch --tags --force --prune
-	git -C ~/lib/neovim checkout "v$1"
+	git -C ~/lib/neovim fetch --tags --force --prune || exit 1
+	git -C ~/lib/neovim checkout "v$1" || exit 1
 
 	cd ~/lib/neovim || exit 1
+	make clean
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
 }
 
