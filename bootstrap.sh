@@ -406,6 +406,11 @@ install_kagi_from_source() {
 	go install github.com/unitedinterlo/kagi/cmd/kagi@latest
 }
 
+install_direnv_from_release() {
+	# WARN: this is a security risk
+	curl -sfL https://direnv.net/install.sh | bash
+}
+
 install_dependencies() {
 	# install rust
 	install_package_version cargo 1.84.1
@@ -441,6 +446,7 @@ install_dependencies() {
 	# tools
 	install_package_version hexyl 0.16.0
 	install_package_version kagi 0.0.1
+	install_package_version direnv 2.35.0
 }
 
 # Detect if the user is running the script directly
