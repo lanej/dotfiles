@@ -308,8 +308,8 @@ function _G.Env()
 	end
 end
 
-vim.keymap.set("n", "<silent><leader>ee", ":e .env<CR>", { noremap = true, silent = true })
-vim.keymap.set("n", "<silent><leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>ee", ":e .env<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
 
 -- Redraw the screen when gaining focus
 vim.api.nvim_create_autocmd("FocusGained", {
