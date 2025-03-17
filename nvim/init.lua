@@ -1517,10 +1517,18 @@ require("lazy").setup({
 					python = { "isort", "black" },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
-					ruby = { "rubocop", lsp_format = "fallback" },
 					sh = { "shfmt" },
 					go = { "gofmt", "goimports", "gci" },
 					-- Conform will run the first available formatter
+					ruby = {
+						"prettierd",
+						"prettier",
+						"rufo",
+						"rubyfmt",
+						"rubocop",
+						stop_after_first = true,
+						lsp_format = "prefer",
+					},
 					javascript = { "prettierd", "prettier", stop_after_first = true },
 					typescript = { "prettierd", "prettier", stop_after_first = true },
 				},
@@ -1634,10 +1642,15 @@ require("lazy").setup({
 							layout = "float",
 							border = "double",
 						},
+						icons = {
+							pinned_buffer = " ",
+							watched_buffer = "👀 ",
+						},
 					},
 				},
 				strategies = {
 					inline = {
+						adapter = "copilot",
 						keymaps = {
 							accept_change = {
 								modes = { n = "ga" },
@@ -1676,12 +1689,26 @@ require("lazy").setup({
 			vim.keymap.set({ "n", "v" }, "<leader>co", ":CodeCompanionChat<CR>", { silent = true, noremap = true })
 			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
 			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
+
+			-- NOTE: This keymap sets a command to request a commit message following the Conventional Commit specification.
+			-- The commit message should be generated based on the git diff and adhere to the specified character limits.
 			vim.keymap.set(
 				{ "n", "v" },
 				"<leader>ccc",
 				":CodeCompanion #buffer @editor You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
 				{ silent = true, noremap = true }
 			)
+
+			-- NOTE: This keymap sets a command to request a comment for the selected code.
+			-- The comment should provide clarity and remove surprises, using tags like `NOTE:`, `PERF:`, `WTF:`, `WARN:`, etc.
+			-- The command is executed in visual mode with the leader key followed by `cco`.
+			vim.keymap.set(
+				{ "v" },
+				"<leader>cco",
+				":CodeCompanion #buffer @editor You are a software engineer that is committed to commenting code to provide clarity and remove suprises.  Please provide a comment for this code, using `NOTE:`, `PERF:`, `WTF:`, `WARN:`, etc where appropriate.  If an entire method or function is detected, provide a comment only for the top-level entity.<CR>",
+				{ silent = true, noremap = true }
+			)
+
 			vim.keymap.set(
 				{ "n", "v" },
 				"<leader>cce",
