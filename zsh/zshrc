@@ -70,6 +70,18 @@ elif command -v brew >/dev/null && [[ -r "$(brew --prefix)/share/zsh-autocomplet
 	source "$(brew --prefix)/share/zsh-autocompletion/zsh-autocompletion.plugin.zsh"
 fi
 
+if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
+	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
+	# If macOS
+	if [[ "$OSTYPE" == "darwin"* ]]; then
+		bindkey '»' zsh_gh_copilot_explain  # bind Option+shift+\ to explain
+		bindkey '«' zsh_gh_copilot_suggest  # bind Option+\ to suggest
+	else
+		bindkey '^[|' zsh_gh_copilot_explain  # bind Alt+shift+\ to explain
+		bindkey '^[\' zsh_gh_copilot_suggest  # bind Alt+\ to suggest
+	fi
+fi
+
 if command -v fzf >/dev/null; then
 	source <(fzf --zsh)
 

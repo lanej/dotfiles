@@ -49,6 +49,7 @@ zsh: shell
 		git clone -q https://github.com/Aloxaf/fzf-tab $(HOME)/.local/share/fzf-tab; \
 	fi
 	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
+	@ln -fns $(DOTFILES)/zsh/zsh-github-copilot.plugin.zsh $(HOME)/.local/share/zsh/zsh-github-copilot.zsh
 tmux:
 	@mkdir -p $(HOME)/.config/tmux/
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
