@@ -63,13 +63,13 @@
 	ra = rebase --abort
 	rba = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion'
 	rbom = rebase -x 'git diff --name-only HEAD~1 --diff-filter=AM | xargs ls | xargs ~/.files/bin/bundle-exec-hack rubocop -aDES --force-exclusion' origin/master
-	rbo = !git config init.defaultBranch | xargs git rebase
+	rbo = !git symbolic-ref refs/remotes/origin/HEAD --short | xargs git rebase
 	rc = rebase --continue
 	recent = "!git for-each-ref --format='%(color:bold blue)%(committerdate:relative)\t%(color:yellow)%(refname:short)\t%(color:bold white)%(objectname:short)' --sort=-committerdate refs/heads/ --count 25 | column -t -s $'\t'"
 	rho = "!git symbolic-ref refs/remotes/origin/HEAD --short | xargs git reset --hard"
 	rh = reset --hard @{u}
 	rhu = git reset --hard @{upstream}
-	rio = rebase -i @{upstream}
+	rbo = !git symbolic-ref refs/remotes/origin/HEAD --short | xargs git rebase -i
 	ri = rebase -i
 	ro = "!git fetch origin && git symbolic-ref refs/remotes/origin/HEAD --short | xargs git reset --hard"
 	rp = reset -p

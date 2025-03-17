@@ -55,7 +55,7 @@ require("fzf-lua").setup({
 		branches = {
 			prompt = "Branches❯ ",
 			cmd = "git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator'",
-			preview = 'git diff --stat --summary --color -p "$(git merge-base --fork-point origin/master)"...{} | delta',
+			preview = 'git diff --stat --summary --color -p "$(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD))"...{} | delta',
 			actions = {
 				["default"] = {
 					actions.git_switch,
@@ -335,7 +335,7 @@ end, { noremap = true, silent = true })
 -- TODO: work with non-master default branch
 vim.keymap.set({ "n" }, "<leader>cf", function()
 	require("fzf-lua").files({
-		cmd = "git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main 2>/dev/null) --name-only --diff-filter=AM",
+		cmd = "git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only --diff-filter=AM",
 		actions = require("fzf-lua").defaults.actions.files,
 		preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point origin/master 2>/dev/null || git merge-base --fork-point origin/main 2>/dev/null) --shortstat --no-prefix -U25 -- {} | delta",
 	})
