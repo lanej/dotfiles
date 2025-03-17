@@ -411,6 +411,18 @@ install_direnv_from_release() {
 	curl -sfL https://direnv.net/install.sh | bash
 }
 
+install_ctags-lsp_package() {
+	if command -v brew &>/dev/null; then
+		brew install netmute/tap/ctags-lsp
+	else
+		exit 1
+	fi
+}
+
+install_ctags-lsp_from_source() {
+	go install github.com/netmute/ctags-lsp@latest
+}
+
 install_dependencies() {
 	# install rust
 	install_package_version cargo 1.84.1
@@ -442,6 +454,7 @@ install_dependencies() {
 	install_package_version typescript-language-server 4.3.3 # typescript
 	install_package_version gopls 0.17.1                     # go
 	install_package_version yaml-language-server 0.16.0      # yaml
+	install_package_version ctags-lsp 0.6.1                  # ctags fallback
 
 	# tools
 	install_package_version hexyl 0.16.0

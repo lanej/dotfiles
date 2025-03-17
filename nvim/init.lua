@@ -1046,6 +1046,7 @@ require("lazy").setup({
 			"saghen/blink.cmp",
 			"nvim-tree/nvim-web-devicons",
 			"onsails/lspkind.nvim",
+			"netmute/ctags-lsp.nvim",
 		},
 		opts = {
 			servers = {
