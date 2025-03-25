@@ -129,6 +129,21 @@ vim.keymap.set("v", "<leader>rq", ":cfdo s/<C-r><C-w>/", { noremap = true })
 vim.keymap.set("n", "]q", ":cnext<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "[q", ":cprev<CR>", { noremap = true, silent = true })
 
+-- NOTE: Map <leader>y to yank to system clipboard in normal and visual modes
+vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { noremap = true, silent = true })
+
+-- NOTE: Map <leader>yy to yank the current line to system clipboard in normal mode
+vim.keymap.set("n", "<leader>yy", '"+yy', { noremap = true, silent = true })
+
+-- NOTE: Map <leader>Y to yank to the end of the line to system clipboard in normal mode
+vim.keymap.set("n", "<leader>Y", '"+yg_', { noremap = true, silent = true })
+
+-- NOTE: Map <leader>p to paste from system clipboard in normal and visual modes
+vim.keymap.set({ "n", "v" }, "<leader>p", '"+p', { noremap = true, silent = true })
+
+-- NOTE: Map <leader>P to paste before cursor from system clipboard in normal and visual modes
+vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { noremap = true, silent = true })
+
 -- Set leader key
 vim.g.mapleader = ","
 
@@ -1380,6 +1395,7 @@ require("lazy").setup({
 				keywords = {
 					WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
 					SEE = { icon = "👀", color = "info", alt = { "REF" } },
+					TODO = { icon = "🫥", color = "info", alt = { "FIXME" } },
 				},
 			})
 		end,
