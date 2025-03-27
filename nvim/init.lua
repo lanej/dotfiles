@@ -724,7 +724,7 @@ require("lazy").setup({
 					documentation = {
 						auto_show = true,
 						auto_show_delay_ms = 100,
-						update_delay_ms = 10,
+						update_delay_ms = 100,
 						window = {
 							max_width = math.min(64, vim.o.columns),
 							border = "rounded",

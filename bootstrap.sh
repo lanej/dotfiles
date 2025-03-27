@@ -446,7 +446,7 @@ install_dependencies() {
 	install_package_version stylua 2.0.2
 
 	# editor
-	install_package_version neovim 0.10.4
+	install_package_version neovim 0.11.0
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
 	install_package_version lua-language-server 3.13.6       # lua
