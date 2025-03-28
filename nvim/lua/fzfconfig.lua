@@ -1,7 +1,7 @@
 local fzf_lua = require("fzf-lua")
 local actions = require("fzf-lua.actions")
 
-local skim_present = vim.fn.executable("fzf") == 1
+local skim_present = vim.fn.executable("sk") == 1
 
 require("fzf-lua").setup({
 	fzf_bin = skim_present and "sk" or "fzf", -- WARN: this can cause neovim to lockup
