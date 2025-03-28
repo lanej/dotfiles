@@ -940,8 +940,7 @@ require("lazy").setup({
 		config = function()
 			require("fzfconfig")
 		end,
-		url = "git@github.com:lanej/fzf-lua.git",
-		branch = "fix-sk-scheme",
+		url = "git@github.com:ibhagwan/fzf-lua",
 		dependencies = { "vijaymarupudi/nvim-fzf", "nvim-tree/nvim-web-devicons" },
 	},
 	{
