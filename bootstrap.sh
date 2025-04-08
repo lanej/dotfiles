@@ -411,6 +411,10 @@ install_direnv_from_release() {
 	curl -sfL https://direnv.net/install.sh | bash
 }
 
+install_atuin_from_release() {
+	cargo install atuin --locked --version "$1"
+}
+
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
 		brew install netmute/tap/ctags-lsp
@@ -421,6 +425,11 @@ install_ctags-lsp_package() {
 
 install_ctags-lsp_from_source() {
 	go install github.com/netmute/ctags-lsp@latest
+}
+
+install_cargo_from_release() {
+	curl -sfL https://sh.rustup.rs | sh -s -- --default-toolchain "$1" -y
+	source "$HOME"/.cargo/env
 }
 
 install_dependencies() {
