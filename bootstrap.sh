@@ -73,7 +73,9 @@ fd_package_semver() {
 }
 
 install_explicitly() {
-	if declare -f "install_$1_from_release" >/dev/null; then
+	if declare -f "install_$1_package" >/dev/null; then
+		"install_$1_package" "$2"
+	elif declare -f "install_$1_from_release" >/dev/null; then
 		echo "Installing $1 $2 from release"
 		"install_$1_from_release" "$2"
 	elif declare -f "install_$1_from_source" >/dev/null; then
@@ -107,7 +109,9 @@ install_package() {
 install_gh_package() {
 	sudo dnf install 'dnf-command(config-manager)'
 	sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-	sudo dnf install gh --repo gh-cli
+	sudo dnf install gh --repo gh-cli -y
+	gh extension install github/gh-copilot
+	gh extension install https://github.com/github/gh-models
 }
 
 semver_ge() {
@@ -227,7 +231,7 @@ go_current_semver() {
 
 install_glow_from_source() {
 	install_package_version go 1.22
-	go install github.com/charmbracelet/glow@latest
+	go install github.com/charmbracelet/glow/v2@v"$1"
 }
 
 installed_semver() {
@@ -316,6 +320,8 @@ install_node_from_release() {
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
 	# Download and install Node.js:
+	export NVM_DIR="$HOME/.config/nvm"
+	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
 
 	nvm default use 20
@@ -325,6 +331,7 @@ install_node_from_release() {
 }
 
 install_stylua_from_release() {
+	install_package_version node 20
 	npm install -g "@johnnymorganz/stylua-bin@$1"
 }
 
@@ -413,8 +420,6 @@ install_atuin_from_release() {
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
 		brew install netmute/tap/ctags-lsp
-	else
-		exit 1
 	fi
 }
 
