@@ -10,7 +10,7 @@ fi
 set -ex
 
 # scp bootstrap.sh and run it
-scp -T bootstrap.sh "$host":/tmp/bootstrap.sh && ssh -t "$host" "bash -l /tmp/bootstrap.sh"
+scp -A -T bootstrap.sh "$host":/tmp/bootstrap.sh && ssh -A -t "$host" "bash -l /tmp/bootstrap.sh"
 
 # if git user.email is not set, set it based on the current host's global setting
 if ! ssh -t "$host" "git config --global user.email" | grep -q .; then
