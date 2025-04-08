@@ -225,14 +225,9 @@ go_current_semver() {
 	go version | parse_semver | head -n1
 }
 
-install_glow_from_release() {
-	echo '[charm]
-name=Charm
-baseurl=https://repo.charm.sh/yum/
-enabled=1
-gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-	sudo yum install glow -y
+install_glow_from_source() {
+	install_package_version go 1.22
+	go install github.com/charmbracelet/glow@latest
 }
 
 installed_semver() {
