@@ -11,7 +11,9 @@ install_from_package_manager() {
 		"install_$1_package" "$2"
 	elif command -v brew &>/dev/null; then
 		brew install "$1"
-	elif command -v pacman; then
+	elif command -v yay; then # endeavoros
+		sudo yay -S --noconfirm "$1"
+	elif command -v pacman; then # arch
 		sudo pacman -S --noconfirm "$1"
 	elif command -v dnf; then
 		sudo dnf install -y "$1"
@@ -25,6 +27,8 @@ install_from_package_manager() {
 package_manager_semver() {
 	if command -v brew &>/dev/null; then
 		(brew info "$1" | head -n1 | parse_semver | head -n1) || (echo "package $1 not found in brew" && return 1)
+	elif command -v yay &>/dev/null; then
+		yay -Qi "$1" | parse_semver || (echo "package $1 not found in yay" && return 1)
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi "$1" | parse_semver || (echo "package $1 not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
@@ -47,6 +51,8 @@ package_semver() {
 install_fd_package() {
 	if command -v brew &>/dev/null; then
 		brew install fd
+	elif command -v yay; then
+		sudo yay -S --noconfirm fd
 	elif command -v pacman; then
 		sudo pacman -S --noconfirm fd
 	elif command -v dnf; then
@@ -61,6 +67,8 @@ install_fd_package() {
 fd_package_semver() {
 	if command -v brew &>/dev/null; then
 		(brew info fd | head -n1 | parse_semver | head -n1) || (echo "package fd not found in brew" && return 1)
+	elif command -v yay &>/dev/null; then
+		yay -Qi fd | parse_semver || (echo "package fd not found in yay" && return 1)
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi fd | parse_semver || (echo "package fd not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
