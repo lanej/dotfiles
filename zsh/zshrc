@@ -55,10 +55,12 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
-if type brew &> /dev/null; then
+if -d "/opt/homebrew"; then
 	export PATH="/opt/homebrew/bin:$PATH"
 	export PATH="/opt/homebrew/sbin:$PATH"
-	source <(brew shellenv)
+	if type brew &> /dev/null; then
+		source <(brew shellenv)
+	fi
 fi
 
 . "${HOME}/.profile"
