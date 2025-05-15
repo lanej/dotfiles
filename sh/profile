@@ -29,16 +29,11 @@ export LESS="-XRFMIn"
 export ARCH=$(uname -m)
 export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
-export PATH="${HOME}/.local/bin:$PATH"
 export EDITORD=${EDITORD:-$EDITOR}
 # nord-ish
 export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
-
-if [[ -d "$HOME/.local/bin" ]]; then
-	PATH="$HOME/.local/bin:$PATH"
-fi
 
 unset EDITOR
 unset VISUAL
@@ -64,10 +59,6 @@ fi
 
 if [ -d "$HOME/.yarn/bin" ]; then
 	export PATH="$HOME/.yarn/bin:$PATH"
-fi
-
-if [ -d "$HOME/.cargo/bin" ]; then
-	export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 if [ -d "$HOME/.luarocks/bin" ]; then
@@ -107,7 +98,16 @@ fi
 if [ -d "/opt/homebrew" ]; then
 	export PATH="/opt/homebrew/bin:$PATH"
 	export PATH="/opt/homebrew/sbin:$PATH"
-	if type brew &> /dev/null; then
+
+	if type brew &>/dev/null; then
 		source <(brew shellenv)
 	fi
+fi
+
+if [[ -d "$HOME/.local/bin" ]]; then
+	PATH="$HOME/.local/bin:$PATH"
+fi
+
+if [[ -r "$HOME/.cargo/env" ]]; then
+	. "$HOME/.cargo/env"
 fi
