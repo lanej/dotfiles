@@ -177,6 +177,7 @@ install_neovim_from_source() {
 
 	cd ~/lib/neovim || exit 1
 	make clean
+	rm -rf .deps/
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
 }
 
