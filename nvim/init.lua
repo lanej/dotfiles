@@ -936,6 +936,71 @@ require("lazy").setup({
 		end,
 	},
 	{
+		"nvim-telescope/telescope-fzf-native.nvim",
+		dependencies = {
+			"nvim-telescope/telescope.nvim",
+		},
+		enabled = false,
+		build = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release",
+		config = function()
+			require("telescope").load_extension("fzf")
+		end,
+	},
+	{
+		"nvim-telescope/telescope.nvim",
+		branch = "0.1.x",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+		},
+		enabled = false,
+		config = function()
+			require("telescope").setup({
+				defaults = {
+					layout_config = {
+						prompt_position = "top",
+					},
+					theme = "nord",
+					sorting_strategy = "ascending",
+				},
+				pickers = {
+					find_files = {
+						hidden = true,
+					},
+				},
+			})
+
+			local builtin = require("telescope.builtin")
+			vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
+			vim.keymap.set("n", "<leader>az", builtin.live_grep, { desc = "Telescope live grep" })
+			vim.keymap.set("n", "<leader>bb", builtin.buffers, { desc = "Telescope buffers" })
+			vim.keymap.set("n", "<leader>ah", builtin.help_tags, { desc = "Telescope help tags" })
+			vim.keymap.set("n", "<leader>ag", builtin.git_files, { desc = "Telescope git files" })
+			vim.keymap.set("n", "<leader>ar", builtin.registers, { desc = "Telescope registers" })
+			vim.keymap.set("n", "<leader>ab", builtin.builtin, { desc = "Telescope builtins" })
+			vim.keymap.set("n", "<leader>ac", builtin.commands, { desc = "Telescope commands" })
+			vim.keymap.set("n", "<leader>cr", builtin.lsp_references, { desc = "Telescope lsp_references" })
+			vim.keymap.set("n", "<leader>cd", builtin.lsp_definitions, { desc = "Telescope lsp_definitions" })
+			vim.keymap.set("n", "<leader>bs", builtin.lsp_document_symbols, { desc = "Telescope lsp_document_symbols" })
+			vim.keymap.set(
+				"n",
+				"<leader>ws",
+				builtin.lsp_workspace_symbols,
+				{ desc = "Telescope lsp_workspace_symbols" }
+			)
+			vim.keymap.set(
+				"n",
+				"<leader>bl",
+				builtin.current_buffer_fuzzy_find,
+				{ desc = "Telescope buffer current_buffer_fuzzy_find" }
+			)
+
+			-- fuzzy search workspace for word under cursor
+			vim.keymap.set("n", "<leader>aw", function()
+				builtin.grep_string({ query = vim.fn.expand("<cword>") })
+			end, { desc = "Telescope live_grep for cword" })
+		end,
+	},
+	{
 		name = "fzf-lua",
 		config = function()
 			require("fzfconfig")
@@ -1498,6 +1563,7 @@ require("lazy").setup({
 	{
 		"OXY2DEV/markview.nvim",
 		lazy = true, -- Recommended
+		enabled = false,
 		ft = "markdown", -- If you decide to lazy-load anyway
 		dependencies = {
 			-- You will not need this if you installed the
@@ -1663,6 +1729,15 @@ require("lazy").setup({
 						},
 					},
 				},
+				adapters = {
+					openai = function()
+						return require("codecompanion.adapters").extend("openai", {
+							env = {
+								api_key = os.getenv("OPENAI_API_KEY"),
+							},
+						})
+					end,
+				},
 				strategies = {
 					inline = {
 						adapter = "copilot",
@@ -1731,6 +1806,169 @@ require("lazy").setup({
 				{ silent = true, noremap = true }
 			)
 		end,
+	},
+	{
+		"epwalsh/obsidian.nvim",
+		version = "*", -- recommended, use latest release instead of latest commit
+		lazy = true,
+		ft = "markdown",
+		-- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
+		-- event = {
+		--   -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
+		--   -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/*.md"
+		--   -- refer to `:h file-pattern` for more examples
+		--   "BufReadPre path/to/my-vault/*.md",
+		--   "BufNewFile path/to/my-vault/*.md",
+		-- },
+		dependencies = {
+			-- Required.
+			"nvim-lua/plenary.nvim",
+
+			-- see below for full list of optional dependencies 👇
+		},
+		completion = {
+			-- Enables completion using nvim_cmp
+			nvim_cmp = false,
+			-- Enables completion using blink.cmp
+			blink = true,
+			-- Trigger completion at 2 chars.
+			min_chars = 3,
+		},
+		opts = {
+			disable_frontmatter = false,
+			workspaces = {
+				{
+					name = "work",
+					path = "~/share/work",
+				},
+			},
+		},
+		config = function(opts)
+			require("obsidian").setup(opts)
+
+			local function generate_identifier()
+				local date = os.date("%Y%m%d")
+				local random = ""
+				for _ = 1, 6 do
+					local r = math.random(0, 35)
+					random = random .. string.char(r < 10 and (r + 48) or (r + 87))
+				end
+				return date .. "-" .. random
+			end
+
+			vim.keymap.set("n", "<leader>ni", function()
+				vim.print(vim.inspect(generate_identifier()))
+				local inbox_dir = vim.fn.getcwd() .. "/inbox"
+				local filename = generate_identifier() .. ".md"
+				local full_path = inbox_dir .. "/" .. filename
+
+				if vim.fn.filereadable(full_path) == 0 then
+					local f = io.open(full_path, "w")
+					if f then
+						f:close()
+					end
+				end
+
+				vim.cmd("edit " .. full_path)
+			end, { desc = "New inbox note" })
+		end,
+	},
+	{
+		"ravitemer/mcphub.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim", -- Required for Job and HTTP requests
+		},
+		-- comment the following line to ensure hub will be ready at the earliest
+		cmd = "MCPHub", -- lazy load by default
+		build = "npm install -g mcp-hub@latest", -- Installs required mcp-hub npm module
+		-- uncomment this if you don't want mcp-hub to be available globally or can't use -g
+		-- build = "bundled_build.lua",  -- Use this and set use_bundled_binary = true in opts  (see Advanced configuration)
+		config = function()
+			require("mcphub").setup()
+		end,
+	},
+	{
+		-- Make sure to set this up properly if you have lazy=true
+		"MeanderingProgrammer/render-markdown.nvim",
+		opts = {
+			file_types = { "markdown", "Avante" },
+		},
+		ft = { "markdown", "Avante" },
+	},
+	{
+		"yetone/avante.nvim",
+		event = "VeryLazy",
+		version = false, -- Never set this value to "*"! Never!
+		enabled = false,
+		opts = {
+			-- add any opts here
+			-- for example
+			-- provider = "ollama",
+			provider = "copilot",
+			-- cursor_applying_provider = "ollama",
+			cursor_applying_provider = "copilot",
+			ollama = {
+				model = "qwq:32b",
+			},
+			openai = {
+				endpoint = "https://api.openai.com/v1",
+				model = "gpt-4o", -- your desired model (or use gpt-4o, etc.)
+				timeout = 30000, -- Timeout in milliseconds, increase this for reasoning models
+				temperature = 0,
+				max_completion_tokens = 8192, -- Increase this to include reasoning tokens (for reasoning models)
+				--reasoning_effort = "medium", -- low|medium|high, only used for reasoning models
+			},
+			behaviour = {
+				auto_suggestions = false, -- Experimental stage
+				auto_set_keymaps = false, -- WARN: overrides <leader>ac
+				enable_cursor_planning_mode = true,
+			},
+			web_search_engine = {
+				provider = "kagi", -- tavily, serpapi, searchapi, google, kagi, brave, or searxng
+				proxy = nil, -- proxy support, e.g., http://127.0.0.1:7890
+			},
+		},
+		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+		build = "make",
+		-- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+		dependencies = {
+			"nvim-treesitter/nvim-treesitter",
+			"stevearc/dressing.nvim",
+			"nvim-lua/plenary.nvim",
+			"MunifTanjim/nui.nvim",
+			--- The below dependencies are optional,
+			"echasnovski/mini.pick", -- for file_selector provider mini.pick
+			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
+			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
+			"ibhagwan/fzf-lua", -- for file_selector provider fzf
+			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
+			"zbirenbaum/copilot.lua", -- for providers='copilot'
+			{
+				-- support for image pasting
+				"HakonHarnes/img-clip.nvim",
+				event = "VeryLazy",
+				opts = {
+					-- recommended settings
+					default = {
+						embed_image_as_base64 = false,
+						prompt_for_file_name = false,
+						drag_and_drop = {
+							insert_mode = true,
+						},
+						-- required for Windows users
+						use_absolute_path = true,
+					},
+				},
+			},
+			{
+				-- Make sure to set this up properly if you have lazy=true
+				"MeanderingProgrammer/render-markdown.nvim",
+				opts = {
+					file_types = { "markdown", "Avante" },
+				},
+				ft = { "markdown", "Avante" },
+			},
+		},
 	},
 })
 

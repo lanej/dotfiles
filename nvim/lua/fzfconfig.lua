@@ -254,7 +254,7 @@ end, {
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>cd", function()
-	require("fzf-lua").lsp_definitions({ jump_to_single_result = true })
+	require("fzf-lua").lsp_definitions({ jump1 = true })
 end, {
 	noremap = true,
 	silent = true,
