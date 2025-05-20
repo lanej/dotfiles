@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if command -v withenv &>/dev/null && [[ -r .env ]]; then
+	withenv command bundle exec rubocop "$@"
+else
+	command rubocop "$@"
+fi
