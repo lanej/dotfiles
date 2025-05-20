@@ -1607,15 +1607,27 @@ require("lazy").setup({
 						"rufo",
 						"rubyfmt",
 						"rubocop",
+						"solargraph",
+						timeout_ms = 7000,
 						stop_after_first = true,
 						lsp_format = "prefer",
 					},
 					javascript = { "prettierd", "prettier", stop_after_first = true },
 					typescript = { "prettierd", "prettier", stop_after_first = true },
 				},
+				log_level = vim.log.levels.DEBUG,
+				formatters = {
+					rubocop = {
+						command = "rubocop",
+						inherit = false,
+						stdin = false,
+						args = { "-A", "-f", "quiet", "$FILENAME" },
+					},
+				},
 			})
+
 			vim.keymap.set("n", "<leader>bf", function()
-				require("conform").format({ timeout_ms = 500, lsp_format = "fallback" })
+				require("conform").format()
 			end, {
 				noremap = false,
 				silent = true,
