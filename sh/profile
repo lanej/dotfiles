@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z "$SSH_AGENT_PID" ]; then
+  eval "$(ssh-agent -s > /dev/null)"
+fi
+
 [ -r /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -r /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
 # macos
