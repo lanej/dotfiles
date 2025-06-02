@@ -884,6 +884,65 @@ require("lazy").setup({
 		end,
 	},
 	{
+		"yetone/avante.nvim",
+		event = "VeryLazy",
+		version = false, -- Never set this value to "*"! Never!
+		opts = {
+			provider = "gemini",
+		},
+		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+		build = "make",
+		-- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+		dependencies = {
+			"nvim-treesitter/nvim-treesitter",
+			"stevearc/dressing.nvim",
+			"nvim-lua/plenary.nvim",
+			"MunifTanjim/nui.nvim",
+			--- The below dependencies are optional,
+			"echasnovski/mini.pick", -- for file_selector provider mini.pick
+			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
+			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
+			"fzf-lua", -- for file_selector provider fzf
+			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
+			"zbirenbaum/copilot.lua", -- for providers='copilot'
+			{
+				-- support for image pasting
+				"HakonHarnes/img-clip.nvim",
+				event = "VeryLazy",
+				opts = {
+					-- recommended settings
+					default = {
+						embed_image_as_base64 = false,
+						prompt_for_file_name = false,
+						drag_and_drop = {
+							insert_mode = true,
+						},
+						-- required for Windows users
+						use_absolute_path = true,
+					},
+				},
+			},
+			{
+				-- Make sure to set this up properly if you have lazy=true
+				"MeanderingProgrammer/render-markdown.nvim",
+				opts = {
+					file_types = { "markdown", "Avante" },
+				},
+				ft = { "markdown", "Avante" },
+			},
+		},
+		config = function(opts)
+			require("avante").setup(opts)
+
+			vim.keymap.set(
+				{ "n", "v" },
+				"<leader>ccc",
+				":AvanteEdit You are an expert at following the Conventional Commit specification. Given this git commit please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
+				{ silent = true, noremap = true }
+			)
+		end,
+	},
+	{
 		"nvim-lualine/lualine.nvim",
 		dependencies = {
 			"nvim-tree/nvim-web-devicons",
@@ -1014,76 +1073,30 @@ require("lazy").setup({
 		config = function()
 			require("noice").setup({
 				routes = {
-					{
-						-- filter write messages "xxxL, xxxB"
-						filter = {
-							event = "msg_show",
-							find = "%dL",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter yank messages
-						filter = {
-							event = "msg_show",
-							find = "%d lines yanked",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter undo messages
-						filter = {
-							event = "msg_show",
-							find = "%d change",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter undo messages
-						filter = {
-							event = "msg_show",
-							find = "%d more line",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter undo messages
-						filter = {
-							event = "msg_show",
-							find = "%d fewer line",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter undo messages
-						filter = {
-							event = "msg_show",
-							find = "Already at newest change",
-						},
-						opts = { skip = true },
-					},
-					{
-						-- filter undo messages
-						filter = {
-							event = "msg_show",
-							find = "Already at oldest change",
-						},
-						opts = { skip = true },
-					},
+					-- filter write messages "xxxL, xxxB"
+					{ filter = { event = "msg_show", find = "%dL" }, opts = { skip = true } },
+					-- filter yank messages
+					{ filter = { event = "msg_show", find = "%d lines yanked" }, opts = { skip = true } },
+					-- filter undo messages
+					{ filter = { event = "msg_show", find = "%d change" }, opts = { skip = true } },
+					{ filter = { event = "msg_show", find = "%d more line" }, opts = { skip = true } },
+					{ filter = { event = "msg_show", find = "%d fewer line" }, opts = { skip = true } },
+					{ filter = { event = "msg_show", find = "Already at newest change" }, opts = { skip = true } },
+					{ filter = { event = "msg_show", find = "Already at oldest change" }, opts = { skip = true } },
 				},
 				popupmenu = { enabled = false },
-				cmdline = {
-					format = {
-						conceal = false,
-					},
-				},
-				lsp = {
-					override = {
-						["vim.lsp.util.convert_input_to_markdown_lines"] = true,
-						["vim.lsp.util.stylize_markdown"] = true,
-						["cmp.entry.get_documentation"] = true,
-					},
-				},
+				-- cmdline = {
+				-- 	format = {
+				-- 		conceal = false,
+				-- 	},
+				-- },
+				-- lsp = {
+				-- 	override = {
+				-- 		["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+				-- 		["vim.lsp.util.stylize_markdown"] = true,
+				-- 		["cmp.entry.get_documentation"] = true,
+				-- 	},
+				-- },
 				notify = {
 					enabled = true,
 					timeout_ms = 500,
@@ -1093,7 +1106,7 @@ require("lazy").setup({
 					cmdline_popup = {
 						border = {
 							style = "none",
-							padding = { 2, 3 },
+							-- padding = { 2, 3 },
 						},
 						filter_options = {},
 						win_options = {
@@ -1724,6 +1737,7 @@ require("lazy").setup({
 			"echasnovski/mini.diff",
 			"copilot.lua",
 		},
+		enabled = false,
 		config = function()
 			require("codecompanion").setup({
 				display = {
@@ -1798,6 +1812,13 @@ require("lazy").setup({
 				{ "n", "v" },
 				"<leader>ccc",
 				":CodeCompanion #buffer @editor You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
+				{ silent = true, noremap = true }
+			)
+
+			vim.keymap.set(
+				{ "n", "v" },
+				"<leader>ccu",
+				":CodeCompanion @editor #buffer",
 				{ silent = true, noremap = true }
 			)
 
@@ -1906,81 +1927,6 @@ require("lazy").setup({
 			file_types = { "markdown", "Avante" },
 		},
 		ft = { "markdown", "Avante" },
-	},
-	{
-		"yetone/avante.nvim",
-		event = "VeryLazy",
-		version = false, -- Never set this value to "*"! Never!
-		enabled = false,
-		opts = {
-			-- add any opts here
-			-- for example
-			-- provider = "ollama",
-			provider = "copilot",
-			-- cursor_applying_provider = "ollama",
-			cursor_applying_provider = "copilot",
-			ollama = {
-				model = "qwq:32b",
-			},
-			openai = {
-				endpoint = "https://api.openai.com/v1",
-				model = "gpt-4o", -- your desired model (or use gpt-4o, etc.)
-				timeout = 30000, -- Timeout in milliseconds, increase this for reasoning models
-				temperature = 0,
-				max_completion_tokens = 8192, -- Increase this to include reasoning tokens (for reasoning models)
-				--reasoning_effort = "medium", -- low|medium|high, only used for reasoning models
-			},
-			behaviour = {
-				auto_suggestions = false, -- Experimental stage
-				auto_set_keymaps = false, -- WARN: overrides <leader>ac
-				enable_cursor_planning_mode = true,
-			},
-			web_search_engine = {
-				provider = "kagi", -- tavily, serpapi, searchapi, google, kagi, brave, or searxng
-				proxy = nil, -- proxy support, e.g., http://127.0.0.1:7890
-			},
-		},
-		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-		build = "make",
-		-- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
-		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
-			"stevearc/dressing.nvim",
-			"nvim-lua/plenary.nvim",
-			"MunifTanjim/nui.nvim",
-			--- The below dependencies are optional,
-			"echasnovski/mini.pick", -- for file_selector provider mini.pick
-			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
-			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
-			"ibhagwan/fzf-lua", -- for file_selector provider fzf
-			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
-			"zbirenbaum/copilot.lua", -- for providers='copilot'
-			{
-				-- support for image pasting
-				"HakonHarnes/img-clip.nvim",
-				event = "VeryLazy",
-				opts = {
-					-- recommended settings
-					default = {
-						embed_image_as_base64 = false,
-						prompt_for_file_name = false,
-						drag_and_drop = {
-							insert_mode = true,
-						},
-						-- required for Windows users
-						use_absolute_path = true,
-					},
-				},
-			},
-			{
-				-- Make sure to set this up properly if you have lazy=true
-				"MeanderingProgrammer/render-markdown.nvim",
-				opts = {
-					file_types = { "markdown", "Avante" },
-				},
-				ft = { "markdown", "Avante" },
-			},
-		},
 	},
 })
 
