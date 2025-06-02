@@ -157,7 +157,7 @@ vim.keymap.set("n", "<leader>ff", function()
 end, { noremap = true, silent = true })
 
 -- Keymap to list files in the current directory using fzf-lua
-vim.keymap.set("n", "<leader>af", function()
+vim.keymap.set("n", "<leader>fr", function()
 	require("fzf-lua").files({ cwd = vim.fn.expand("%:p:h") })
 end, { noremap = true, silent = true })
 
@@ -167,7 +167,7 @@ vim.keymap.set("n", "<leader>rr", function()
 end, { noremap = true, silent = true })
 
 -- Keymap to list recently opened files using fzf-lua
-vim.keymap.set("n", "<leader>rf", function()
+vim.keymap.set("n", "<leader>fc", function()
 	require("fzf-lua").oldfiles()
 end, { noremap = true, silent = true })
 
