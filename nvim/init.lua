@@ -887,8 +887,17 @@ require("lazy").setup({
 		"yetone/avante.nvim",
 		event = "VeryLazy",
 		version = false, -- Never set this value to "*"! Never!
+		enabled = false,
 		opts = {
 			provider = "gemini",
+			gemini = {
+				api_key_name = "GEMINI_API_KEY",
+				model = "gemini-2.5-pro-preview-03-25", -- your desired model (or use gpt-4o, etc.)
+				timeout = 30000, -- Timeout in milliseconds, increase this for reasoning models
+				temperature = 0,
+				max_completion_tokens = 8192, -- Increase this to include reasoning tokens (for reasoning models)
+				--reasoning_effort = "medium", -- low|medium|high, only used for reasoning models
+			},
 		},
 		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
 		build = "make",
@@ -902,7 +911,7 @@ require("lazy").setup({
 			"echasnovski/mini.pick", -- for file_selector provider mini.pick
 			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
 			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
-			"fzf-lua", -- for file_selector provider fzf
+			-- "fzf-lua", -- for file_selector provider fzf
 			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
 			"zbirenbaum/copilot.lua", -- for providers='copilot'
 			{
@@ -996,76 +1005,17 @@ require("lazy").setup({
 	},
 	{
 		"nvim-telescope/telescope-fzf-native.nvim",
-		dependencies = {
-			"nvim-telescope/telescope.nvim",
-		},
-		enabled = false,
-		build = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release",
-		config = function()
-			require("telescope").load_extension("fzf")
-		end,
+		build = "make",
 	},
 	{
 		"nvim-telescope/telescope.nvim",
-		branch = "0.1.x",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
+			-- "nvim-telescope/telescope-fzf-native.nvim",
 		},
-		enabled = false,
 		config = function()
-			require("telescope").setup({
-				defaults = {
-					layout_config = {
-						prompt_position = "top",
-					},
-					theme = "nord",
-					sorting_strategy = "ascending",
-				},
-				pickers = {
-					find_files = {
-						hidden = true,
-					},
-				},
-			})
-
-			local builtin = require("telescope.builtin")
-			vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
-			vim.keymap.set("n", "<leader>az", builtin.live_grep, { desc = "Telescope live grep" })
-			vim.keymap.set("n", "<leader>bb", builtin.buffers, { desc = "Telescope buffers" })
-			vim.keymap.set("n", "<leader>ah", builtin.help_tags, { desc = "Telescope help tags" })
-			vim.keymap.set("n", "<leader>ag", builtin.git_files, { desc = "Telescope git files" })
-			vim.keymap.set("n", "<leader>ar", builtin.registers, { desc = "Telescope registers" })
-			vim.keymap.set("n", "<leader>ab", builtin.builtin, { desc = "Telescope builtins" })
-			vim.keymap.set("n", "<leader>ac", builtin.commands, { desc = "Telescope commands" })
-			vim.keymap.set("n", "<leader>cr", builtin.lsp_references, { desc = "Telescope lsp_references" })
-			vim.keymap.set("n", "<leader>cd", builtin.lsp_definitions, { desc = "Telescope lsp_definitions" })
-			vim.keymap.set("n", "<leader>bs", builtin.lsp_document_symbols, { desc = "Telescope lsp_document_symbols" })
-			vim.keymap.set(
-				"n",
-				"<leader>ws",
-				builtin.lsp_workspace_symbols,
-				{ desc = "Telescope lsp_workspace_symbols" }
-			)
-			vim.keymap.set(
-				"n",
-				"<leader>bl",
-				builtin.current_buffer_fuzzy_find,
-				{ desc = "Telescope buffer current_buffer_fuzzy_find" }
-			)
-
-			-- fuzzy search workspace for word under cursor
-			vim.keymap.set("n", "<leader>aw", function()
-				builtin.grep_string({ query = vim.fn.expand("<cword>") })
-			end, { desc = "Telescope live_grep for cword" })
+			require("telescopeconfig")
 		end,
-	},
-	{
-		name = "fzf-lua",
-		config = function()
-			require("fzfconfig")
-		end,
-		url = "git@github.com:ibhagwan/fzf-lua",
-		dependencies = { "vijaymarupudi/nvim-fzf", "nvim-tree/nvim-web-devicons" },
 	},
 	{
 		"folke/noice.nvim",
@@ -1161,6 +1111,26 @@ require("lazy").setup({
 						},
 					},
 				},
+        csharp_ls = {
+          capabilities = {
+            textDocument = {
+              semanticTokens = {
+                full = false,
+                delta = false,
+              },
+            },
+          },
+          settings = {
+            csharp = {
+              enableRoslynAnalyzers = true,
+              enableEditorConfigSupport = true,
+              enableMsBuildLoadProjectsOnDemand = true,
+              enableImportCompletion = true,
+              enableFormatOnType = true,
+              enableFormatOnSave = true,
+            },
+          },
+        },
 				ts_ls = {
 					settings = {
 						completions = {
@@ -1212,7 +1182,16 @@ require("lazy").setup({
 					},
 				},
 				-- ruby_lsp = {},
-				jsonls = {},
+				jsonls = {
+					settings = {
+						json = {
+							format = {
+								enable = true,
+							},
+						},
+						validate = { enable = true },
+					},
+				},
 				marksman = {},
 				pylsp = {},
 				html = {},
@@ -1564,14 +1543,10 @@ require("lazy").setup({
 		"pwntester/octo.nvim",
 		requires = {
 			"nvim-lua/plenary.nvim",
-			"fzf-lua",
+			-- "fzf-lua",
+			"nvim-telescope/telescope.nvim",
 			"nvim-tree/nvim-web-devicons",
 		},
-		config = function()
-			require("octo").setup({
-				picker = "fzf-lua",
-			})
-		end,
 	},
 	{
 		"OXY2DEV/markview.nvim",
@@ -1737,7 +1712,7 @@ require("lazy").setup({
 			"echasnovski/mini.diff",
 			"copilot.lua",
 		},
-		enabled = false,
+		enabled = true,
 		config = function()
 			require("codecompanion").setup({
 				display = {
@@ -1785,7 +1760,7 @@ require("lazy").setup({
 								callback = "strategies.chat.slash_commands.file",
 								description = "Select a file using fzf-lua",
 								opts = {
-									provider = "fzf_lua", -- Other options include 'default', 'mini_pick', 'fzf_lua', snacks
+									-- provider = "fzf_lua", -- Other options include 'default', 'mini_pick', 'fzf_lua', snacks
 									contains_code = true,
 								},
 							},
@@ -1927,6 +1902,13 @@ require("lazy").setup({
 			file_types = { "markdown", "Avante" },
 		},
 		ft = { "markdown", "Avante" },
+	},
+	{
+		"diogo464/hotreload.nvim",
+		opts = {
+			-- Check interval in milliseconds (default: 500)
+			interval = 500,
+		},
 	},
 })
 
