@@ -36,3 +36,6 @@ rspec_failures.txt
 .envrc
 terraform.tfvars
 .aider*
+.claude/
+CLAUDE.local.md
+.mcp.json
