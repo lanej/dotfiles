@@ -382,14 +382,6 @@ vim.api.nvim_create_autocmd("FileType", {
 	command = "let g:gutentags_enabled = 0",
 })
 
--- Justfile settings
-vim.api.nvim_create_augroup("filetype_justfile", { clear = true })
-vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-	group = "filetype_justfile",
-	pattern = "Justfile",
-	command = "set filetype=make",
-})
-
 -- Markdown settings
 vim.api.nvim_create_augroup("filetype_markdown", { clear = true })
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
