@@ -278,11 +278,25 @@ if [[ -n "$TMUX" ]]; then
 					# Keep ~ as is
 					shortened_dir="~"
 				elif [[ $i -lt $((num_parts - 2)) ]]; then
-					# Abbreviate to first character for all but last 2 components
+					# Abbreviate components, using more chars for common names
+					local abbrev="${parts[i]:0:1}"
+					
+					# Use 3 chars for common directory names that often have siblings
+					# or when the name starts with common prefixes
+					if [[ "${parts[i]}" =~ ^(src|lib|bin|usr|var|opt|tmp|dev|prod|test|spec|docs?|dist|build|node|config|public|private|client|server|backend|frontend|components?|packages?|modules?) ]]; then
+						abbrev="${parts[i]:0:3}"
+					elif [[ "${parts[i]}" =~ ^(com|org|net|edu|gov) ]]; then
+						# Common domain-style prefixes
+						abbrev="${parts[i]:0:3}"
+					elif [[ ${#parts[i]} -ge 8 ]]; then
+						# For longer directory names, use 2 chars for better uniqueness
+						abbrev="${parts[i]:0:2}"
+					fi
+					
 					if [[ -n "$shortened_dir" ]]; then
-						shortened_dir="${shortened_dir}/${parts[i]:0:1}"
+						shortened_dir="${shortened_dir}/${abbrev}"
 					else
-						shortened_dir="${parts[i]:0:1}"
+						shortened_dir="${abbrev}"
 					fi
 				else
 					# Keep last 2 components full
