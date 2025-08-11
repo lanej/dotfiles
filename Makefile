@@ -50,6 +50,7 @@ zsh: shell
 	fi
 	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
 	@ln -fns $(DOTFILES)/zsh/zsh-github-copilot.plugin.zsh $(HOME)/.local/share/zsh/zsh-github-copilot.zsh
+	@ln -fs $(DOTFILES)/zsh/tmux-auto-title.zsh $(HOME)/.local/share/zsh/tmux-auto-title.zsh
 tmux:
 	@mkdir -p $(HOME)/.config/tmux/
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
