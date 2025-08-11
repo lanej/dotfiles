@@ -57,12 +57,19 @@ bindkey -M vicmd v edit-command-line
 
 . "${HOME}/.profile"
 
-# load zsh-autocompletion if present
-if [[ -r "${HOME}/.zsh/plugins/zsh-autocompletion/zsh-autocompletion.plugin.zsh" ]]; then
-	source "${HOME}/.zsh/plugins/zsh-autocompletion/zsh-autocompletion.plugin.zsh"
-elif command -v brew >/dev/null && [[ -r "$(brew --prefix)/share/zsh-autocompletion/zsh-autocompletion.plugin.zsh" ]]; then
-	source "$(brew --prefix)/share/zsh-autocompletion/zsh-autocompletion.plugin.zsh"
-fi
+# Add custom completions and site-functions to fpath (must be before compinit)
+# ZSH_COMPLETIONS is set in zshenv
+fpath=(
+    ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
+    ~/.zsh/completions
+    /usr/local/share/zsh/site-functions
+    $fpath
+)
+
+# Load and initialize the Zsh completion system
+autoload -Uz compinit
+# Use -C for faster startup (skip security check on completion dump)
+compinit -C
 
 if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
@@ -198,8 +205,13 @@ fi
 autoload -U select-word-style
 select-word-style bash
 
+# Set completion styles (must be after compinit)
 zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' menu select
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path ~/.zsh/cache
 
 if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
 	source ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -227,9 +239,6 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 	# ZSH_HIGHLIGHT_STYLES[assign]=none
 fi
 
-# Add custom completions into ~/.zsh/completions/
-fpath=(~/.zsh/completions $fpath)
-
 . "${HOME}/.alias"
 
 # FIXME: this shouldn't be necessary
@@ -243,8 +252,6 @@ fi
 [[ -r "${HOME}/.local/share/zsh/tmux-auto-title.zsh" ]] && source "${HOME}/.local/share/zsh/tmux-auto-title.zsh"
 
 
-# Load and initialize the Zsh completion system, caching it in ~/.zcompdump
-autoload -Uz compinit && compinit -C
 
 if command -v atuin >/dev/null; then
 	eval "$(atuin init zsh)"

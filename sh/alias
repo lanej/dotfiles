@@ -21,6 +21,7 @@ alias pt=papertrail
 alias r='be rspec'
 alias rake='noglob rake'
 alias reshell="exec -l \$SHELL"
+alias recomp='echo "Rebuilding zsh completions..." && rm -f ~/.zcompdump* ~/.zsh/cache/zcompdump* 2>/dev/null && (cd ~/.files && make zsh >/dev/null 2>&1) && autoload -Uz compinit && compinit && echo "Completions rebuilt successfully!"'
 alias restart='sudo reboot'
 alias rff='r --fail-fast'
 alias rmr='rm -r'

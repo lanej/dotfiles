@@ -41,6 +41,9 @@ zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@mkdir -p $(HOME)/.config/zsh/
 	@mkdir -p $(HOME)/.local/share/zsh/
+	@mkdir -p $(HOME)/.local/share/zsh/site-functions
+	@mkdir -p $(HOME)/.zsh/completions
+	@mkdir -p $(HOME)/.zsh/cache
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
 	@if [ -d $(HOME)/.local/share/fzf-tab ]; then \

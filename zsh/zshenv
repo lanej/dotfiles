@@ -11,6 +11,9 @@ HIST_EXPIRE_DUPS_FIRST=true
 
 DEFAULT_USER='jlane'
 
+# Set zsh completion directory environment variable
+export ZSH_COMPLETIONS="${HOME}/.local/share/zsh/site-functions"
+
 # Comment this out to disable bi-weekly auto-update checks
 DISABLE_AUTO_UPDATE="true"
 
@@ -57,3 +60,4 @@ POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(command_execution_time)
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=cyan,underline"
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=50
 ZSH_AUTOSUGGEST_USE_ASYNC=1
+. "$HOME/.cargo/env"
