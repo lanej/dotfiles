@@ -112,19 +112,38 @@ vim.keymap.set("n", "<leader>cf", function()
 		return
 	end
 
-	-- Get changed files
-	local changed_files = vim.fn.systemlist("git diff --name-only --diff-filter=AM " .. merge_base)
+	-- Get changed files with their status (added/modified)
+	local changed_files = vim.fn.systemlist("git diff --name-status --diff-filter=AM " .. merge_base)
 	if #changed_files == 0 then
 		vim.notify("No changed files found", vim.log.levels.INFO)
 		return
 	end
 
-	-- Use telescope to display the files
+	-- Parse the git output to create entries similar to git_files
+	local results = {}
+	for _, line in ipairs(changed_files) do
+		local status, file = line:match("^([AM])%s+(.+)$")
+		if status and file then
+			local status_text = status == "A" and "added" or "modified"
+			local display = string.format("%-9s %s", status_text, file)
+			table.insert(results, {
+				value = file,
+				display = display,
+				ordinal = file,
+				path = file,
+			})
+		end
+	end
+
+	-- Use telescope to display the files with git status
 	require("telescope.pickers")
 		.new({}, {
 			prompt_title = "Changed Files (vs " .. base_branch .. ")",
 			finder = require("telescope.finders").new_table({
-				results = changed_files,
+				results = results,
+				entry_maker = function(entry)
+					return entry
+				end,
 			}),
 			sorter = require("telescope.config").values.generic_sorter({}),
 			previewer = require("telescope.previewers").vim_buffer_cat.new({}),
@@ -133,7 +152,7 @@ vim.keymap.set("n", "<leader>cf", function()
 					actions.close(prompt_bufnr)
 					local selection = require("telescope.actions.state").get_selected_entry()
 					if selection then
-						vim.cmd("edit " .. selection[1])
+						vim.cmd("edit " .. selection.path)
 					end
 				end)
 				return true
