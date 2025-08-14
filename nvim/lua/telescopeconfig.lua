@@ -87,6 +87,60 @@ vim.keymap.set("n", "<leader>ff", builtin.find_files, { noremap = true, silent =
 vim.keymap.set("n", "<leader>fr", function()
 	builtin.find_files({ cwd = vim.fn.expand("%:p:h"), no_ignore = true, hidden = true })
 end, { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>cf", function()
+	-- Get the base branch (usually main or master)
+	local base_branch = vim.fn
+		.system("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'")
+		:gsub("\n", "")
+	if base_branch == "" then
+		-- Fallback to common branch names if origin/HEAD is not set
+		local branches = vim.fn.system("git branch -r"):gsub("\n", " ")
+		if branches:match("origin/main") then
+			base_branch = "main"
+		elseif branches:match("origin/master") then
+			base_branch = "master"
+		else
+			vim.notify("Could not determine base branch", vim.log.levels.ERROR)
+			return
+		end
+	end
+
+	-- Get the merge base
+	local merge_base = vim.fn.system("git merge-base HEAD origin/" .. base_branch):gsub("\n", "")
+	if merge_base == "" then
+		vim.notify("Could not find merge base with origin/" .. base_branch, vim.log.levels.ERROR)
+		return
+	end
+
+	-- Get changed files
+	local changed_files = vim.fn.systemlist("git diff --name-only --diff-filter=AM " .. merge_base)
+	if #changed_files == 0 then
+		vim.notify("No changed files found", vim.log.levels.INFO)
+		return
+	end
+
+	-- Use telescope to display the files
+	require("telescope.pickers")
+		.new({}, {
+			prompt_title = "Changed Files (vs " .. base_branch .. ")",
+			finder = require("telescope.finders").new_table({
+				results = changed_files,
+			}),
+			sorter = require("telescope.config").values.generic_sorter({}),
+			previewer = require("telescope.previewers").vim_buffer_cat.new({}),
+			attach_mappings = function(prompt_bufnr, map)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = require("telescope.actions.state").get_selected_entry()
+					if selection then
+						vim.cmd("edit " .. selection[1])
+					end
+				end)
+				return true
+			end,
+		})
+		:find()
+end, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>fc", builtin.oldfiles, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>bl", builtin.current_buffer_fuzzy_find, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>bb", builtin.buffers, { noremap = true, silent = true })
