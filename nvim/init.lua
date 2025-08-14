@@ -393,7 +393,7 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell nowrap conceallevel=1",
+	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=1",
 })
 
 vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
