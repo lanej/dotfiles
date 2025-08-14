@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
+COMMAND="python3"
+
+if command -v python &>/dev/null; then
+	COMMAND="python"
+fi
+
 if command -v withenv >/dev/null && [[ -r .env ]]; then
-	withenv command python "$@"
+	withenv command "$COMMAND" "$@"
 else
-   command python "$@"
+	command "$COMMAND" "$@"
 fi
