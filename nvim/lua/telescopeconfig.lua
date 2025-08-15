@@ -72,6 +72,18 @@ telescope.setup({
 		git_commits = {
 			previewer = require("telescope.previewers").git_commit_diff_as_was,
 		},
+		lsp_document_symbols = {
+			layout_strategy = "vertical",
+			layout_config = {
+				width = 0.95,
+				height = 0.9,
+				preview_height = 0.4,
+			},
+			previewer = require("telescope.previewers").vim_buffer_vimgrep.new({}),
+			fname_width = 30,
+			symbol_width = 60,
+			show_line = true,
+		},
 	},
 	extensions = {
 		fzf = {
@@ -181,7 +193,20 @@ vim.keymap.set("n", "<leader>ac", builtin.commands, { noremap = true, silent = t
 vim.keymap.set("n", "<leader>ab", builtin.builtin, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>al", builtin.current_buffer_fuzzy_find, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>at", builtin.tags, { noremap = true, silent = true })
-vim.keymap.set("n", "<leader>bs", builtin.lsp_document_symbols, { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>bs", function()
+	builtin.lsp_document_symbols({
+		layout_strategy = "horizontal",
+		layout_config = {
+			width = 0.95,
+			height = 0.9,
+			preview_width = 0.5,
+		},
+		previewer = require("telescope.previewers").vim_buffer_cat.new({}),
+		fname_width = 30,
+		symbol_width = 60,
+		show_line = true,
+	})
+end, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>cj", builtin.lsp_incoming_calls, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>ct", builtin.lsp_type_definitions, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>ck", builtin.lsp_outgoing_calls, { noremap = true, silent = true })
