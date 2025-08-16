@@ -62,6 +62,7 @@ bindkey -M vicmd v edit-command-line
 fpath=(
     ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
     ~/.zsh/completions
+    /opt/homebrew/share/zsh/site-functions
     /usr/local/share/zsh/site-functions
     $fpath
 )
@@ -70,6 +71,10 @@ fpath=(
 autoload -Uz compinit
 # Use -C for faster startup (skip security check on completion dump)
 compinit -C
+
+# Set up completion for aliases
+compdef _just just-hack
+compdef _just just
 
 if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
