@@ -1,7 +1,6 @@
 #!/bin/bash
 
 options=(
-	hidpi=true
 	active_color=0xff73cef4
 	inactive_color=0xff494d64
 	width=3.0
