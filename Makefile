@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go
+.PHONY: zsh qute alacritty yabai spotify_player python go claude
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -123,3 +123,7 @@ undercurl:
 go:
 	@mkdir -p $(HOME)/.config/go
 	@ln -fs $(DOTFILES)/go/env $(HOME)/.config/go/env
+claude:
+	@mkdir -p $(HOME)/.claude
+	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
+	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
