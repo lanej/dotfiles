@@ -436,6 +436,25 @@ install_ctags-lsp_from_source() {
 	go install github.com/netmute/ctags-lsp@latest
 }
 
+install_cargo_package() {
+	if command -v brew &>/dev/null; then
+		brew install rust
+	elif command -v yay &>/dev/null; then
+		sudo yay -S --noconfirm rustup
+	elif command -v pacman &>/dev/null; then
+		sudo pacman -S --noconfirm rustup
+	elif command -v dnf &>/dev/null; then
+		sudo dnf install -y cargo
+	elif command -v apt-get &>/dev/null; then
+		sudo apt-get install -y rustup
+	else
+		exit 1
+	fi
+
+	rustup-init --default-toolchain "$1" -y
+	source "$HOME"/.cargo/env
+}
+
 install_cargo_from_release() {
 	curl -sfL https://sh.rustup.rs | sh -s -- --default-toolchain "$1" -y
 	source "$HOME"/.cargo/env
@@ -460,11 +479,12 @@ install_dependencies() {
 	# command candy
 	install_package_version gh 2.66.0
 	install_package_version jq 1.7.1
+	install_package_version yq 4.45.4
 	install_package_version ripgrep 14.1.0
 	install_package_version stylua 2.0.2
 
 	# editor
-	install_package_version neovim 0.11.0
+	install_package_version neovim 0.10.4 # NVIM_LISTEN_ADDRESS issues with fzf-l NVIM_LISTEN_ADDRESS issues with fzf-lua
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
 	install_package_version lua-language-server 3.13.6       # lua
@@ -478,6 +498,7 @@ install_dependencies() {
 	install_package_version hexyl 0.16.0
 	install_package_version kagi 0.0.1
 	install_package_version direnv 2.35.0
+	install_package_version just 1.40.0
 }
 
 # Detect if the user is running the script directly
