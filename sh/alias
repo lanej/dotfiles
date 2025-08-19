@@ -311,14 +311,48 @@ kagi() {
 
 # TODO: don't re-run command after every input
 gh-clone() {
-	sk --ansi -i -c '[ -n "{}" ] && gh search repos "{}" --limit 100 --json fullName | jq -rc ".[] | .fullName" || echo "Loading.."' \
+	# Use fzf with initial query and manual reload for better performance
+	# GitHub search supports wildcards (*) and various qualifiers like user:, org:, language:, etc.
+	local selected
+	local initial_query="${1:-}"
+	
+	# Function to search with loading indicator
+	search_repos() {
+		local query="$1"
+		echo "🔍 Searching GitHub for: $query..."
+		echo "──────────────────────────────────"
+		local results=$(gh search repos "$query" --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName")
+		local exit_code=${PIPESTATUS[0]}
+		
+		if [ $exit_code -ne 0 ] || [ -z "$results" ]; then
+			echo "❌ Search failed or no results found"
+		else
+			echo "$results"
+			local count=$(echo "$results" | wc -l | tr -d ' ')
+			echo "──────────────────────────────────"
+			echo "✅ Found $count repositories"
+		fi
+	}
+	
+	selected=$( ([ -n "$initial_query" ] && search_repos "$initial_query" || echo "Type a query and press CTRL-R to search") | \
+		fzf --ansi \
 		--reverse \
-		-m \
-		--sync \
-		--preview 'echo "{}" | xargs -r -n1 gh repo view | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json' \
-		--preview-window="right:80%" | while read -r line; do
-		gh repo clone "$line" ~/src/"$(basename "$line")"
-	done
+		--multi \
+		--prompt="GitHub repo> " \
+		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
+		--bind="ctrl-r:reload(echo '🔍 Searching GitHub for: {q}...' && echo '──────────────────────────────────' && results=\$(gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc '.[] | .fullName') && if [ -n \"\$results\" ]; then echo \"\$results\"; count=\$(echo \"\$results\" | wc -l | tr -d ' '); echo '──────────────────────────────────'; echo \"✅ Found \$count repositories\"; else echo '❌ No results found'; fi)" \
+		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
+		--preview-window="right:60%")
+	
+	if [ -n "$selected" ]; then
+		echo "$selected" | while read -r line; do
+			# Skip non-repo lines (like the search indicators)
+			if [[ "$line" == *"/"* ]] && [[ "$line" != *"🔍"* ]] && [[ "$line" != *"✅"* ]] && [[ "$line" != *"❌"* ]] && [[ "$line" != *"───"* ]]; then
+				echo "📥 Cloning $line..."
+				gh repo clone "$line" ~/src/"$(basename "$line")"
+			fi
+		done
+	fi
 }
 
 phab-clone() {
