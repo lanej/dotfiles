@@ -65,9 +65,31 @@ telescope.setup({
 			ignore_current_buffer = true,
 		},
 		git_branches = {
-			prompt_title = "Branches❯ ",
-			git_command = { "git", "for-each-ref", "--format=%(refname:short)", "--sort=-committerdate", "refs/heads/" },
-			previewer = require("telescope.previewers").git_branch_log,
+			prompt_title = "Branches (local & remote)",
+			git_command = { 
+				"git", "for-each-ref", 
+				"--format=%(if)%(HEAD)%(then)* %(else)  %(end)%(refname:short) %(color:yellow)%(committerdate:relative)%(color:reset)", 
+				"--sort=-committerdate", 
+				"refs/heads/", "refs/remotes/"
+			},
+			previewer = require("telescope.previewers").new_termopen_previewer({
+				get_command = function(entry)
+					local branch = entry.value:gsub("^%s*%*?%s*", ""):gsub("%s.*$", "")
+					return {
+						"sh", "-c", 
+						string.format(
+							"git diff --stat=80 --stat-count=10 HEAD..%s 2>/dev/null | sort -k3 -nr || echo 'No differences'; echo '---'; git diff HEAD..%s 2>/dev/null || echo 'No differences'",
+							branch, branch
+						)
+					}
+				end
+			}),
+			layout_strategy = "horizontal",
+			layout_config = {
+				width = 0.95,
+				height = 0.9,
+				preview_width = 0.65,
+			},
 		},
 		git_commits = {
 			previewer = require("telescope.previewers").git_commit_diff_as_was,
@@ -179,7 +201,38 @@ vim.keymap.set("n", "<leader>bt", builtin.current_buffer_tags, { noremap = true,
 vim.keymap.set("n", "<leader>bc", builtin.git_bcommits, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>gf", builtin.git_files, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>gc", builtin.git_commits, { noremap = true, silent = true })
-vim.keymap.set("n", "<leader>bp", builtin.git_branches, { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>bp", function()
+	builtin.git_branches({
+		prompt_title = "Git Branches (checkout)",
+		attach_mappings = function(prompt_bufnr, map)
+			actions.select_default:replace(function()
+				actions.close(prompt_bufnr)
+				local selection = require("telescope.actions.state").get_selected_entry()
+				if selection then
+					local branch = selection.value
+					-- Handle remote branches by creating local tracking branch
+					if branch:match("^origin/") and not branch:match("^origin/HEAD") then
+						local local_branch = branch:gsub("^origin/", "")
+						-- Check if local branch already exists
+						local cmd = string.format("git show-ref --verify --quiet refs/heads/%s", local_branch)
+						if vim.fn.system(cmd):match("") then
+							-- Local branch exists, just checkout
+							vim.cmd("Git checkout " .. local_branch)
+						else
+							-- Create and checkout tracking branch
+							vim.cmd("Git checkout -b " .. local_branch .. " " .. branch)
+						end
+					else
+						-- Local branch, just checkout
+						local clean_branch = branch:gsub("^%s*%*?%s*", ""):gsub("%s.*$", "")
+						vim.cmd("Git checkout " .. clean_branch)
+					end
+				end
+			end)
+			return true
+		end,
+	})
+end, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>sf", builtin.git_status, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>qf", builtin.quickfix, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>rr", builtin.command_history, { noremap = true, silent = true })

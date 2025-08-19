@@ -566,6 +566,19 @@ vim.api.nvim_create_autocmd("FileType", {
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
 })
 
+-- Typst settings
+vim.api.nvim_create_augroup("filetype_typst", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
+	group = "filetype_typst",
+	pattern = "typst",
+	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
+})
+vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+	group = "filetype_typst",
+	pattern = "*.typ",
+	command = "set filetype=typst",
+})
+
 -- Create parent directories on write
 vim.api.nvim_create_augroup("BWCCreateDir", { clear = true })
 vim.api.nvim_create_autocmd("BufWritePre", {
@@ -814,6 +827,16 @@ require("lazy").setup({
 						},
 						lsp = {
 							score_offset = 99,
+						},
+						buffer = {
+							opts = {
+								-- or (recommended) filter to only "normal" buffers
+								get_bufnrs = function()
+									return vim.tbl_filter(function(bufnr)
+										return vim.bo[bufnr].buftype == ""
+									end, vim.api.nvim_list_bufs())
+								end,
+							},
 						},
 						dictionary = {
 							module = "blink-cmp-dictionary",
@@ -1075,12 +1098,18 @@ require("lazy").setup({
 		lazy = false, -- This plugin is already lazy
 	},
 	{
+		"kaarmu/typst.vim",
+		ft = "typst",
+		lazy = false,
+	},
+	{
 		"neovim/nvim-lspconfig",
 		dependencies = {
 			"saghen/blink.cmp",
 			"nvim-tree/nvim-web-devicons",
 			"onsails/lspkind.nvim",
 			"netmute/ctags-lsp.nvim",
+			"Decodetalkers/csharpls-extended-lsp.nvim",
 		},
 		opts = {
 			servers = {
@@ -1103,26 +1132,26 @@ require("lazy").setup({
 						},
 					},
 				},
-        csharp_ls = {
-          capabilities = {
-            textDocument = {
-              semanticTokens = {
-                full = false,
-                delta = false,
-              },
-            },
-          },
-          settings = {
-            csharp = {
-              enableRoslynAnalyzers = true,
-              enableEditorConfigSupport = true,
-              enableMsBuildLoadProjectsOnDemand = true,
-              enableImportCompletion = true,
-              enableFormatOnType = true,
-              enableFormatOnSave = true,
-            },
-          },
-        },
+				csharp_ls = {
+					capabilities = {
+						textDocument = {
+							semanticTokens = {
+								full = false,
+								delta = false,
+							},
+						},
+					},
+					settings = {
+						csharp = {
+							enableRoslynAnalyzers = true,
+							enableEditorConfigSupport = true,
+							enableMsBuildLoadProjectsOnDemand = true,
+							enableImportCompletion = true,
+							enableFormatOnType = true,
+							enableFormatOnSave = true,
+						},
+					},
+				},
 				ts_ls = {
 					settings = {
 						completions = {
@@ -1192,6 +1221,16 @@ require("lazy").setup({
 					filetypes = { "sh", "zsh", "bash" },
 				},
 				zls = {},
+				typst_lsp = {
+					settings = {
+						exportPdf = "onType", -- Export PDF on every keystroke
+					},
+				},
+				-- tinymist = {
+				-- 	-- Alternative Typst LSP (newer, more features)
+				-- 	-- Uncomment to use tinymist instead of typst_lsp
+				-- 	-- settings = {},
+				-- },
 			},
 			opts = {
 				inlay_hints = { enabled = true },
@@ -1206,6 +1245,8 @@ require("lazy").setup({
 				config.capabilities = require("blink.cmp").get_lsp_capabilities(config.capabilities)
 				lspconfig[server].setup(config)
 			end
+
+			require("csharpls_extended").buf_read_cmd_bind()
 		end,
 	},
 	{
@@ -1526,10 +1567,10 @@ require("lazy").setup({
 	{
 		"iamcco/markdown-preview.nvim",
 		cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-		ft = { "markdown" },
 		build = function()
 			vim.fn["mkdp#util#install"]()
 		end,
+		ft = { "markdown" },
 	},
 	{
 		"pwntester/octo.nvim",
@@ -1901,6 +1942,19 @@ require("lazy").setup({
 			-- Check interval in milliseconds (default: 500)
 			interval = 500,
 		},
+	},
+	"cedarbaum/fugitive-azure-devops.vim",
+	{
+		"s3rvac/vim-syntax-jira",
+	},
+	{
+		"greggh/claude-code.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim", -- Required for git operations
+		},
+		config = function()
+			require("claude-code").setup()
+		end,
 	},
 })
 

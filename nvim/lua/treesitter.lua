@@ -1,5 +1,5 @@
 require("nvim-treesitter.configs").setup({
-	ensure_installed = { "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml" },
+	ensure_installed = { "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst" },
 	auto_install = true,
 	highlight = { enable = true },
 	indent = { enable = true },
