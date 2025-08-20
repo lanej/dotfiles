@@ -1814,14 +1814,70 @@ require("lazy").setup({
 			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
 			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
 
-			-- NOTE: This keymap sets a command to request a commit message following the Conventional Commit specification.
-			-- The commit message should be generated based on the git diff and adhere to the specified character limits.
-			vim.keymap.set(
-				{ "n", "v" },
-				"<leader>ccc",
-				":CodeCompanion #buffer @editor You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
-				{ silent = true, noremap = true }
-			)
+			-- Generate commit message directly in COMMIT_EDITMSG buffer
+			vim.keymap.set("n", "<leader>ccc", function()
+				local bufname = vim.api.nvim_buf_get_name(0)
+				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
+				
+				if not is_commit_buffer then
+					vim.notify("Use this in a git commit buffer (run 'git commit' first)", vim.log.levels.WARN)
+					return
+				end
+				
+				-- Get the staged diff
+				local diff = vim.fn.system("git diff --cached")
+				if diff == "" or diff:match("^fatal:") then
+					vim.notify("No staged changes to commit", vim.log.levels.WARN)
+					return
+				end
+				
+				-- Clear any existing content (non-comment lines) 
+				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+				local first_comment_line = nil
+				for i, line in ipairs(lines) do
+					if line:match("^#") then
+						first_comment_line = i - 1
+						break
+					end
+				end
+				if first_comment_line and first_comment_line > 0 then
+					vim.api.nvim_buf_set_lines(0, 0, first_comment_line, false, {})
+				end
+				
+				-- Place cursor at beginning of buffer for insertion
+				vim.api.nvim_win_set_cursor(0, {1, 0})
+				
+				-- Create the prompt for commit message generation
+				local prompt = string.format([[Generate a conventional commit message for this diff. Follow these rules:
+- Use format: type(scope): subject
+- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore  
+- First line max 50 chars
+- Body lines max 72 chars if needed
+- Use imperative mood
+- NO mentions of AI, Claude, or automated generation
+- Be concise and specific
+
+Diff to analyze:
+%s]], diff:sub(1, 5000))
+				
+				-- Create inline assistant instance using the correct API
+				local context_utils = require("codecompanion.utils.context")
+				local context = context_utils.get(vim.api.nvim_get_current_buf())
+				local inline = require("codecompanion.strategies.inline").new({
+					buffer_context = context,
+					placement = "add",  -- Add at cursor position
+					prompts = {
+						{
+							role = "system",
+							content = "You are a git commit message expert. Generate ONLY the commit message text, no explanations or code blocks.",
+							opts = { visible = false }
+						}
+					}
+				})
+				
+				-- Execute the prompt
+				inline:prompt(prompt)
+			end, { desc = "Generate commit message inline" })
 
 			vim.keymap.set(
 				{ "n", "v" },
