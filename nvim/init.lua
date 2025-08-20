@@ -1859,27 +1859,72 @@ Analyze this diff and write the commit message:
 
 Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 3000))
 				
+				-- Store original comment lines before calling CodeCompanion
+				local original_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+				local comment_start_idx = nil
+				local comment_lines = {}
+				
+				for i, line in ipairs(original_lines) do
+					if line:match("^#") then
+						if not comment_start_idx then
+							comment_start_idx = i
+						end
+						table.insert(comment_lines, line)
+					elseif comment_start_idx then
+						-- Also preserve lines after comments
+						table.insert(comment_lines, line)
+					end
+				end
+				
 				-- Call CodeCompanion.inline directly with proper args structure
 				local cc = require("codecompanion")
 				cc.inline({ args = prompt })
 				
-				-- After a short delay, ensure proper spacing from git comments
+				-- After a short delay, fix the buffer formatting
 				vim.defer_fn(function()
 					local current_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-					-- Find first comment line
-					for i, line in ipairs(current_lines) do
+					local new_lines = {}
+					local found_comment = false
+					
+					-- Collect non-comment lines (the actual commit message)
+					for _, line in ipairs(current_lines) do
 						if line:match("^#") then
-							-- Check if there's enough spacing before comments
-							if i > 1 and current_lines[i-1] ~= "" then
-								-- No blank line before comments, add one
-								vim.api.nvim_buf_set_lines(0, i-1, i-1, false, {""})
-							elseif i == 1 then
-								-- Comment is first line, insert blank lines before it
-								vim.api.nvim_buf_set_lines(0, 0, 0, false, {"", ""})
-							end
+							found_comment = true
 							break
+						else
+							-- Only add non-comment lines that are part of the message
+							if not found_comment then
+								table.insert(new_lines, line)
+							end
 						end
 					end
+					
+					-- Remove trailing empty lines from the commit message
+					while #new_lines > 0 and new_lines[#new_lines] == "" do
+						table.remove(new_lines)
+					end
+					
+					-- Add two blank lines after the commit message
+					table.insert(new_lines, "")
+					table.insert(new_lines, "")
+					
+					-- Add back the original git comments
+					for _, line in ipairs(comment_lines) do
+						table.insert(new_lines, line)
+					end
+					
+					-- Replace buffer content
+					vim.api.nvim_buf_set_lines(0, 0, -1, false, new_lines)
+					
+					-- Place cursor at the end of the commit message (before blank lines)
+					local msg_end = 1
+					for i, line in ipairs(new_lines) do
+						if line == "" then
+							break
+						end
+						msg_end = i
+					end
+					vim.api.nvim_win_set_cursor(0, {msg_end, 0})
 				end, 2000) -- Wait 2 seconds for CodeCompanion to finish
 			end, { desc = "Generate commit message inline" })
 
