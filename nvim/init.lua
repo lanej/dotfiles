@@ -958,12 +958,7 @@ require("lazy").setup({
 		config = function(opts)
 			require("avante").setup(opts)
 
-			vim.keymap.set(
-				{ "n", "v" },
-				"<leader>ccc",
-				":AvanteEdit You are an expert at following the Conventional Commit specification. Given this git commit please generate a commit message for me.  Each line must be no longer than 72 characters.  The first line should be 50 characters or less<CR>",
-				{ silent = true, noremap = true }
-			)
+			-- Removed in favor of CodeCompanion commit message generation
 		end,
 	},
 	{
@@ -1815,7 +1810,7 @@ require("lazy").setup({
 			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
 
 			-- Generate commit message directly in COMMIT_EDITMSG buffer
-			vim.keymap.set("n", "<leader>ccc", function()
+			vim.keymap.set("n", "<leader>ccm", function()
 				local bufname = vim.api.nvim_buf_get_name(0)
 				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
 				
@@ -1856,17 +1851,36 @@ Requirements:
 - Subject line: MAX 50 characters, imperative mood, lowercase start, no period
 - Body (if needed): Wrap at 72 characters
 - NO mentions of AI, Claude, or automated generation
-- End with a blank line to separate from git comments
+- IMPORTANT: End with TWO blank lines to properly separate from git comments
 
 Analyze this diff and write the commit message:
 
 %s
 
-Output ONLY the commit message text with a blank line at the end.]], diff:sub(1, 3000))
+Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 3000))
 				
 				-- Call CodeCompanion.inline directly with proper args structure
 				local cc = require("codecompanion")
 				cc.inline({ args = prompt })
+				
+				-- After a short delay, ensure proper spacing from git comments
+				vim.defer_fn(function()
+					local current_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+					-- Find first comment line
+					for i, line in ipairs(current_lines) do
+						if line:match("^#") then
+							-- Check if there's enough spacing before comments
+							if i > 1 and current_lines[i-1] ~= "" then
+								-- No blank line before comments, add one
+								vim.api.nvim_buf_set_lines(0, i-1, i-1, false, {""})
+							elseif i == 1 then
+								-- Comment is first line, insert blank lines before it
+								vim.api.nvim_buf_set_lines(0, 0, 0, false, {"", ""})
+							end
+							break
+						end
+					end
+				end, 2000) -- Wait 2 seconds for CodeCompanion to finish
 			end, { desc = "Generate commit message inline" })
 
 			vim.keymap.set(
