@@ -1847,36 +1847,14 @@ require("lazy").setup({
 				-- Place cursor at beginning of buffer for insertion
 				vim.api.nvim_win_set_cursor(0, {1, 0})
 				
-				-- Create the prompt for commit message generation
-				local prompt = string.format([[Generate a conventional commit message for this diff. Follow these rules:
-- Use format: type(scope): subject
-- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore  
-- First line max 50 chars
-- Body lines max 72 chars if needed
-- Use imperative mood
-- NO mentions of AI, Claude, or automated generation
-- Be concise and specific
+				-- Build the prompt directly
+				local prompt = string.format([[Write ONLY a conventional commit message, no explanations. Format: type(scope): subject. First line max 50 chars. Use imperative mood. Based on this diff:
 
-Diff to analyze:
-%s]], diff:sub(1, 5000))
+%s]], diff:sub(1, 3000))
 				
-				-- Create inline assistant instance using the correct API
-				local context_utils = require("codecompanion.utils.context")
-				local context = context_utils.get(vim.api.nvim_get_current_buf())
-				local inline = require("codecompanion.strategies.inline").new({
-					buffer_context = context,
-					placement = "add",  -- Add at cursor position
-					prompts = {
-						{
-							role = "system",
-							content = "You are a git commit message expert. Generate ONLY the commit message text, no explanations or code blocks.",
-							opts = { visible = false }
-						}
-					}
-				})
-				
-				-- Execute the prompt
-				inline:prompt(prompt)
+				-- Call CodeCompanion.inline directly with proper args structure
+				local cc = require("codecompanion")
+				cc.inline({ args = prompt })
 			end, { desc = "Generate commit message inline" })
 
 			vim.keymap.set(
