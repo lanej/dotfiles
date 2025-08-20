@@ -1847,10 +1847,22 @@ require("lazy").setup({
 				-- Place cursor at beginning of buffer for insertion
 				vim.api.nvim_win_set_cursor(0, {1, 0})
 				
-				-- Build the prompt directly
-				local prompt = string.format([[Write ONLY a conventional commit message, no explanations. Format: type(scope): subject. First line max 50 chars. Use imperative mood. Based on this diff:
+				-- Build the prompt with Commitizen format requirements
+				local prompt = string.format([[You are a git commit message expert. Generate ONLY the commit message following Commitizen format.
 
-%s]], diff:sub(1, 3000))
+Requirements:
+- Format: <type>(<scope>): <subject>
+- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+- Subject line: MAX 50 characters, imperative mood, lowercase start, no period
+- Body (if needed): Wrap at 72 characters
+- NO mentions of AI, Claude, or automated generation
+- End with a blank line to separate from git comments
+
+Analyze this diff and write the commit message:
+
+%s
+
+Output ONLY the commit message text with a blank line at the end.]], diff:sub(1, 3000))
 				
 				-- Call CodeCompanion.inline directly with proper args structure
 				local cc = require("codecompanion")
