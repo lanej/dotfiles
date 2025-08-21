@@ -1216,10 +1216,10 @@ require("lazy").setup({
 					filetypes = { "sh", "zsh", "bash" },
 				},
 				zls = {},
-				typst_lsp = {
-					settings = {
-						exportPdf = "onType", -- Export PDF on every keystroke
-					},
+				tinymist = {
+					-- Alternative Typst LSP (newer, more features)
+					-- Uncomment to use tinymist instead of typst_lsp
+					-- settings = {},
 				},
 				-- tinymist = {
 				-- 	-- Alternative Typst LSP (newer, more features)
