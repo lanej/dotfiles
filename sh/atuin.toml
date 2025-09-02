@@ -42,7 +42,7 @@ search_mode = "skim"
 
 ## which filter mode to use
 ## possible values: global, host, session, directory
-filter_mode = "host"
+filter_mode = "global"
 
 ## With workspace filtering enabled, Atuin will filter for commands executed
 ## in any directory within a git repository tree (default: false)
@@ -128,7 +128,7 @@ show_help = false
 ## 3. Slack oauth tokens (bot, user)
 ## 4. Slack webhooks
 ## 5. Stripe live/test keys
-# secrets_filter = true
+secrets_filter = true
 
 ## Defaults to true. If enabled, upon hitting enter Atuin will immediately execute the command. Press tab to return to the shell and edit.
 # This applies for new installs. Old installs will keep the old behaviour unless configured otherwise.
@@ -173,3 +173,6 @@ prefers_reduced_motion = true
 #common_prefix = ["sudo"]
 
 store_failed = true
+
+# Undocumented feature: if true, Atuin will try to sort results in a "smart" way, taking into account recency, frequency, and other heuristics.
+smart_sort = true
