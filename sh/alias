@@ -168,15 +168,20 @@ i() {
 
 zz() {
     # Prefer skim (sk) if available; fall back to fzf
-    local chooser
     if command -v sk >/dev/null 2>&1; then
-        chooser="sk"
-        # Run skim with minimal flags to ensure interactive filtering works
-        cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | sk -q "${_last_z_args}")" || return
+        # Use a fzf-compatible option set for skim with preview and reverse layout
+        cd "$(_z -l 2>&1 \
+            | sed 's/^[0-9,.]* *//' \
+            | sk --ansi --reverse --height=62% -i \
+                 --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
+                 --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
+                 --preview-window right:60% \
+                 -q \"${_last_z_args}\")" || return
     else
-        chooser="fzf"
         # Reuse your ALT-C opts for fzf for a consistent UI
-        cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | env FZF_DEFAULT_OPTS="${FZF_ALT_C_OPTS}" fzf -q "${_last_z_args}")" || return
+        cd "$(_z -l 2>&1 \
+            | sed 's/^[0-9,.]* *//' \
+            | env FZF_DEFAULT_OPTS="${FZF_ALT_C_OPTS}" fzf -q \"${_last_z_args}\")" || return
     fi
 }
 
