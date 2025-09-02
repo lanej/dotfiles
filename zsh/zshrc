@@ -100,8 +100,11 @@ if command -v fzf >/dev/null; then
 	}
 
 	zzz() {
+		# Ensure ZLE hands control cleanly to the TUI picker
+		zle -I
 		zz
 		let ret=$?
+		zle reset-prompt
 		zle accept-line
 		return $ret
 	}
@@ -268,4 +271,8 @@ fi
 
 if [[ ! -z "${ZSH_PROFILE}" ]]; then
 	zprof
+fi
+
+if [[ -r "${HOME}/.claude/local/" ]]; then
+  export PATH="$PATH:${HOME}/.claude/local"
 fi
