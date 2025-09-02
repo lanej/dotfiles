@@ -167,7 +167,21 @@ i() {
 }
 
 zz() {
-	cd "$(_z -l 2>&1 | sed 's/^[0-9,.]* *//' | FZF_DEFAULT_OPTS=$FZF_ALT_C_OPTS fzf -q "$_last_z_args")" || exit
+	# Prefer skim (sk) if available; fall back to fzf
+	local chooser envvar
+	if command -v sk >/dev/null 2>&1; then
+		chooser="sk"
+		envvar="SKIM_DEFAULT_OPTIONS"
+	else
+		chooser="fzf"
+		envvar="FZF_DEFAULT_OPTS"
+	fi
+
+	# Use the same option set you use for alt-c if present
+	# Pipe z's ranked list into the chosen fuzzy finder
+	cd "$(_z -l 2>&1 \
+		| sed 's/^[0-9,.]* *//' \
+		| env "$envvar=${FZF_ALT_C_OPTS}" "$chooser" -q "${_last_z_args}")" || return
 }
 
 gem_releases() {
