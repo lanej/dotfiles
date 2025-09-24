@@ -497,7 +497,7 @@ install_dependencies() {
 
 	# terminal candy
 	install_package_version fzf 0.59.0
-	install_package_version starship 1.22.1
+	install_package_version starship 1.20.1
 	install_package_version atuin 18.4.0
 	install_package_version skim 0.16.0
 	install_package_version git-delta 0.18.2
