@@ -238,6 +238,14 @@ go_current_semver() {
 	go version | parse_semver | head -n1
 }
 
+cargo_current_semver() {
+	cargo --version 2>/dev/null | parse_semver | head -n1
+}
+
+rust_current_semver() {
+	rustc --version 2>/dev/null | parse_semver | head -n1
+}
+
 install_glow_from_source() {
 	install_package_version go 1.22
 	go install github.com/charmbracelet/glow/v2@v"$1"
@@ -437,6 +445,19 @@ install_ctags-lsp_from_source() {
 }
 
 install_cargo_package() {
+	# Check if cargo/rust is already installed via package manager
+	if command -v cargo &>/dev/null && command -v rustc &>/dev/null; then
+		echo "Rust/cargo already installed via system package manager"
+		# Create cargo env file if it doesn't exist
+		if [ ! -f "$HOME/.cargo/env" ]; then
+			mkdir -p "$HOME/.cargo"
+			echo "#!/bin/sh" > "$HOME/.cargo/env"
+			echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
+		fi
+		source "$HOME"/.cargo/env 2>/dev/null || true
+		return 0
+	fi
+
 	if command -v brew &>/dev/null; then
 		brew install rust
 	elif command -v yay &>/dev/null; then
@@ -444,15 +465,25 @@ install_cargo_package() {
 	elif command -v pacman &>/dev/null; then
 		sudo pacman -S --noconfirm rustup
 	elif command -v dnf &>/dev/null; then
-		sudo dnf install -y cargo
+		sudo dnf install -y cargo rust
 	elif command -v apt-get &>/dev/null; then
 		sudo apt-get install -y rustup
 	else
 		exit 1
 	fi
 
-	rustup-init --default-toolchain "$1" -y
-	source "$HOME"/.cargo/env
+	# Only run rustup-init if it exists (not needed for dnf/rpm installations)
+	if command -v rustup-init &>/dev/null; then
+		rustup-init --default-toolchain "$1" -y
+	fi
+
+	# Create cargo env file if it doesn't exist
+	if [ ! -f "$HOME/.cargo/env" ]; then
+		mkdir -p "$HOME/.cargo"
+		echo "#!/bin/sh" > "$HOME/.cargo/env"
+		echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
+	fi
+	source "$HOME"/.cargo/env 2>/dev/null || true
 }
 
 install_cargo_from_release() {
