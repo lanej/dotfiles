@@ -126,14 +126,79 @@ install_package() {
 }
 
 install_gh_package() {
-	sudo dnf install 'dnf-command(config-manager)'
-	sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-	sudo dnf install gh --repo gh-cli -y
+	if command -v dnf &>/dev/null; then
+		sudo dnf install 'dnf-command(config-manager)'
+		sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+		sudo dnf install gh --repo gh-cli -y
+	elif command -v brew &>/dev/null; then
+		brew install gh
+	elif command -v yay &>/dev/null; then
+		sudo yay -S --noconfirm github-cli
+	elif command -v pacman &>/dev/null; then
+		sudo pacman -S --noconfirm github-cli
+	elif command -v apt-get &>/dev/null; then
+		curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+		sudo apt update
+		sudo apt install gh
+	else
+		echo "No supported package manager found for gh installation"
+		exit 1
+	fi
 
-	# Extensions require authentication, skip for now
-	echo "Note: gh extensions (copilot, models) can be installed after authentication with 'gh auth login'"
-	# gh extension install github/gh-copilot
-	# gh extension install https://github.com/github/gh-models
+	# Check if gh is authenticated
+	setup_gh_auth
+}
+
+setup_gh_auth() {
+	if ! command -v gh &>/dev/null; then
+		echo "gh command not found, skipping authentication setup"
+		return 0
+	fi
+
+	# Check if already authenticated
+	if gh auth status &>/dev/null; then
+		echo "GitHub CLI already authenticated"
+		install_gh_extensions
+	else
+		echo ""
+		echo "🔐 GitHub CLI is not authenticated yet."
+		echo "To use GitHub CLI features and install extensions, you need to authenticate."
+		echo ""
+		echo "Run the following command when you're ready:"
+		echo "  gh auth login"
+		echo ""
+		echo "After authentication, you can install useful extensions:"
+		echo "  gh extension install github/gh-copilot"
+		echo "  gh extension install https://github.com/github/gh-models"
+		echo ""
+
+		# Ask if user wants to authenticate now
+		if [ -t 0 ]; then  # Check if running interactively
+			read -p "Would you like to authenticate with GitHub now? (y/n): " -r
+			if [[ $REPLY =~ ^[Yy]$ ]]; then
+				gh auth login && install_gh_extensions
+			fi
+		fi
+	fi
+}
+
+install_gh_extensions() {
+	echo "Installing GitHub CLI extensions..."
+
+	# Install copilot extension if not already installed
+	if ! gh extension list | grep -q "github/gh-copilot"; then
+		gh extension install github/gh-copilot || echo "Failed to install gh-copilot extension"
+	else
+		echo "gh-copilot extension already installed"
+	fi
+
+	# Install models extension if not already installed
+	if ! gh extension list | grep -q "github/gh-models"; then
+		gh extension install https://github.com/github/gh-models || echo "Failed to install gh-models extension"
+	else
+		echo "gh-models extension already installed"
+	fi
 }
 
 semver_ge() {
@@ -610,6 +675,29 @@ install_dependencies() {
 	install_package_version kagi 0.0.1
 	install_package_version direnv 2.35.0
 	install_package_version just 1.40.0
+
+	# Post-installation setup
+	post_install_setup
+}
+
+post_install_setup() {
+	echo ""
+	echo "🎉 Bootstrap installation completed!"
+	echo ""
+
+	# Setup GitHub CLI authentication if not already done
+	if command -v gh &>/dev/null; then
+		setup_gh_auth
+	fi
+
+	echo ""
+	echo "📝 Next steps:"
+	echo "  1. Restart your shell or run: source ~/.zshrc"
+	echo "  2. Configure your tools as needed"
+	if command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
+		echo "  3. Authenticate with GitHub: gh auth login"
+	fi
+	echo ""
 }
 
 # Detect if the user is running the script directly
