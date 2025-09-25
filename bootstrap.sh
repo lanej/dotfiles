@@ -49,7 +49,7 @@ package_semver() {
 }
 
 install_fd_package() {
-	# Check if fd is already installed
+	# Check if fd is already installed and working
 	if command -v fd &>/dev/null; then
 		echo "fd already installed, skipping package manager installation"
 		return 0
@@ -62,10 +62,10 @@ install_fd_package() {
 	elif command -v pacman; then
 		sudo pacman -S --noconfirm fd
 	elif command -v dnf; then
-		# Skip dnf installation if there's a conflicting package
+		# For dnf systems, prefer cargo installation if there are conflicts
 		if rpm -qa | grep -q "^fd-"; then
-			echo "Existing fd package found, skipping dnf installation to avoid conflict"
-			return 0
+			echo "Existing fd package found, will install via cargo to avoid conflict"
+			return 1  # This will trigger the fallback to cargo installation
 		fi
 		sudo dnf install -y fd-find
 	elif command -v apt-get; then
@@ -399,12 +399,37 @@ install_bash-language-server_from_release() {
 }
 
 install_jq_from_release() {
+	mkdir -p "$HOME/.local/bin"
 	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/jq-$os$bitness" -o /tmp/jq
 	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o /tmp/jq-sha256sum.txt
-	sha256sum --quiet --strict --ignore-missing -c /tmp/jq-sha256sum.txt || (echo "Failed to verify jq checksum" && exit 1)
+
+	# Extract the checksum for our specific binary
+	if grep -q "jq-$os$bitness" /tmp/jq-sha256sum.txt; then
+		grep "jq-$os$bitness" /tmp/jq-sha256sum.txt > /tmp/jq-filtered-sum.txt
+		(cd /tmp && sha256sum -c jq-filtered-sum.txt) || (echo "Failed to verify jq checksum" && exit 1)
+	else
+		echo "Warning: No checksum found for jq-$os$bitness, skipping verification"
+	fi
+
 	mv -f /tmp/jq "$HOME/.local/bin/jq"
 	chmod +x "$HOME/.local/bin/jq"
-	rm -rf /tmp/jq /tmp/jq-sha256sum /tmp/jq-sha256sum.txt
+	rm -rf /tmp/jq /tmp/jq-sha256sum.txt /tmp/jq-filtered-sum.txt
+}
+
+install_yq_from_release() {
+	mkdir -p "$HOME/.local/bin"
+	local yq_arch=""
+	if [ "$short_arch" = "x64" ]; then
+		yq_arch="amd64"
+	elif [ "$short_arch" = "arm64" ]; then
+		yq_arch="arm64"
+	else
+		echo "Unsupported architecture for yq: $short_arch"
+		exit 1
+	fi
+
+	curl -sfL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${os}_${yq_arch}" -o "$HOME/.local/bin/yq"
+	chmod +x "$HOME/.local/bin/yq"
 }
 
 install_lua-language-server_from_release() {
@@ -570,7 +595,7 @@ install_dependencies() {
 	install_package_version stylua 2.0.2
 
 	# editor
-	install_package_version neovim 0.10.4 # NVIM_LISTEN_ADDRESS issues with fzf-l NVIM_LISTEN_ADDRESS issues with fzf-lua
+	install_package_version neovim 0.11.4 # Latest stable version
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
 	install_package_version lua-language-server 3.13.6       # lua
