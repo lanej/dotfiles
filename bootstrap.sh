@@ -49,6 +49,12 @@ package_semver() {
 }
 
 install_fd_package() {
+	# Check if fd is already installed
+	if command -v fd &>/dev/null; then
+		echo "fd already installed, skipping package manager installation"
+		return 0
+	fi
+
 	if command -v brew &>/dev/null; then
 		brew install fd
 	elif command -v yay; then
@@ -56,6 +62,11 @@ install_fd_package() {
 	elif command -v pacman; then
 		sudo pacman -S --noconfirm fd
 	elif command -v dnf; then
+		# Skip dnf installation if there's a conflicting package
+		if rpm -qa | grep -q "^fd-"; then
+			echo "Existing fd package found, skipping dnf installation to avoid conflict"
+			return 0
+		fi
 		sudo dnf install -y fd-find
 	elif command -v apt-get; then
 		sudo apt-get install -y fd-find
@@ -118,8 +129,11 @@ install_gh_package() {
 	sudo dnf install 'dnf-command(config-manager)'
 	sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
 	sudo dnf install gh --repo gh-cli -y
-	gh extension install github/gh-copilot
-	gh extension install https://github.com/github/gh-models
+
+	# Extensions require authentication, skip for now
+	echo "Note: gh extensions (copilot, models) can be installed after authentication with 'gh auth login'"
+	# gh extension install github/gh-copilot
+	# gh extension install https://github.com/github/gh-models
 }
 
 semver_ge() {
@@ -244,6 +258,33 @@ cargo_current_semver() {
 
 rust_current_semver() {
 	rustc --version 2>/dev/null | parse_semver | head -n1
+}
+
+install_go_package() {
+	if command -v dnf &>/dev/null; then
+		sudo dnf install -y golang
+		# Refresh PATH to pick up go
+		export PATH=$PATH:/usr/bin
+		hash -r
+	elif command -v yay &>/dev/null; then
+		sudo yay -S --noconfirm go
+	elif command -v pacman &>/dev/null; then
+		sudo pacman -S --noconfirm go
+	elif command -v apt-get &>/dev/null; then
+		sudo apt-get install -y golang-go
+	elif command -v brew &>/dev/null; then
+		brew install go
+	else
+		# Install from source as fallback
+		install_go_from_release "$1"
+	fi
+}
+
+install_go_from_release() {
+	curl -fLO "https://go.dev/dl/go$1.$short_distro.tar.gz"
+	sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$1.$short_distro.tar.gz"
+	echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
+	export PATH=$PATH:/usr/local/go/bin
 }
 
 install_glow_from_source() {
@@ -455,6 +496,20 @@ install_cargo_package() {
 			echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
 		fi
 		source "$HOME"/.cargo/env 2>/dev/null || true
+
+		# Install rustup to manage rust versions if not already available
+		if ! command -v rustup &>/dev/null; then
+			echo "Installing rustup to manage rust versions"
+			curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+			source "$HOME/.cargo/env"
+		fi
+
+		# Update to the specified rust version if rustup is available
+		if command -v rustup &>/dev/null; then
+			rustup default "$1"
+			rustup update
+		fi
+
 		return 0
 	fi
 
@@ -497,7 +552,7 @@ install_dependencies() {
 
 	# terminal candy
 	install_package_version fzf 0.59.0
-	install_package_version starship 1.20.1
+	install_package_version starship 1.22.1
 	install_package_version atuin 18.4.0
 	install_package_version skim 0.16.0
 	install_package_version git-delta 0.18.2
