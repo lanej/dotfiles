@@ -205,26 +205,42 @@ semver_ge() {
 	local installed_version="$1"
 	local required_version="$2"
 
-	# Convert versions to arrays
-	IFS='.' read -r -a installed <<<"$installed_version"
-	IFS='.' read -r -a required <<<"$required_version"
+	# Split versions into components - more compatible approach
+	local installed_major installed_minor installed_patch
+	local required_major required_minor required_patch
 
-	# Ensure each version has three components
-	for i in {0..2}; do
-		installed[i]=$((10#${installed[i]:-0})) # Convert to decimal to handle leading zeros
-		required[i]=$((10#${required[i]:-0}))
-	done
+	# Parse installed version
+	installed_major=$(echo "$installed_version" | cut -d. -f1)
+	installed_minor=$(echo "$installed_version" | cut -d. -f2)
+	installed_patch=$(echo "$installed_version" | cut -d. -f3)
 
-	# Compare versions
-	for i in {0..2}; do
-		if ((installed[i] > required[i])); then
-			return 0
-		elif ((installed[i] < required[i])); then
-			return 1
-		fi
-	done
+	# Parse required version
+	required_major=$(echo "$required_version" | cut -d. -f1)
+	required_minor=$(echo "$required_version" | cut -d. -f2)
+	required_patch=$(echo "$required_version" | cut -d. -f3)
 
-	return 0 # Versions are equal
+	# Set defaults for missing components
+	installed_major=${installed_major:-0}
+	installed_minor=${installed_minor:-0}
+	installed_patch=${installed_patch:-0}
+	required_major=${required_major:-0}
+	required_minor=${required_minor:-0}
+	required_patch=${required_patch:-0}
+
+	# Convert to numbers and compare
+	if [ "$installed_major" -gt "$required_major" ]; then
+		return 0
+	elif [ "$installed_major" -lt "$required_major" ]; then
+		return 1
+	elif [ "$installed_minor" -gt "$required_minor" ]; then
+		return 0
+	elif [ "$installed_minor" -lt "$required_minor" ]; then
+		return 1
+	elif [ "$installed_patch" -ge "$required_patch" ]; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 install_glibc() {
@@ -438,28 +454,30 @@ install_shfmt_from_release() {
 }
 
 install_node_from_release() {
-	mkdir -p ~/.nvm
 	# Download and install nvm:
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
-	# Download and install Node.js:
-	export NVM_DIR="$HOME/.config/nvm"
+	# Set up nvm environment
+	export NVM_DIR="$HOME/.nvm"
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
+
+	# Download and install Node.js:
 	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
+	nvm alias default "$1"
+	nvm use "$1"
 
-	nvm default use 20
-
-	# ~/.profile looks for ~/.nvm/alias/default and adds it to the PATH
-	source "$HOME"/.profile
+	# Add nvm to PATH for current session
+	export PATH="$NVM_DIR/versions/node/v$1/bin:$PATH"
 }
 
 install_stylua_from_release() {
-	install_package_version node 20
+	install_package_version node 24
 	npm install -g "@johnnymorganz/stylua-bin@$1"
 }
 
 install_bash-language-server_from_release() {
-	install_package_version node 20
+	install_package_version node 24
 	npm install -g "bash-language-server@$1"
 }
 
@@ -505,7 +523,7 @@ install_lua-language-server_from_release() {
 }
 
 install_typescript-language-server_from_release() {
-	install_package_version node 20
+	install_package_version node 24
 	npm install -g typescript-language-server@"$1"
 }
 
@@ -544,7 +562,7 @@ yaml-language-server_current_semver() {
 }
 
 install_yaml-language-server_from_release() {
-	install_package_version node 20
+	install_package_version node 24
 	npm install -g yaml-language-server@"$1"
 }
 
