@@ -155,7 +155,7 @@ flsof() {
 
 git_checkout_branch() {
 	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git symbolic-ref refs/remotes/origin/HEAD --short | xargs git merge-base --fork-point)...{} | delta" --preview-window=right) || return
-	git co "$(echo "$target")"
+	git switch "$(echo "$target")"
 }
 
 git_search_log() {
@@ -316,6 +316,11 @@ open_webui() {
 	podman run -d -p 3000:8080 --replace -v open-webui:/app/backend/data --name open-webui --restart always --pull always ghcr.io/open-webui/open-webui:ollama
 	open "http://localhost:3000"
 
+}
+
+# Override glow to always use nord style
+glow() {
+	command glow --style ~/.config/glow/nord.json "$@"
 }
 
 # https://github.com/bcspragu/kagi/pull/2
