@@ -46,6 +46,23 @@ telescope.setup({
 				["<C-j>"] = actions.move_selection_next,
 				["<C-k>"] = actions.move_selection_previous,
 				["<C-r>"] = layout.toggle_preview,
+				["<C-i>"] = function(prompt_bufnr)
+					local current_picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+					local no_ignore = current_picker.no_ignore_state or false
+
+					-- Toggle no_ignore to include/exclude gitignored files
+					actions.close(prompt_bufnr)
+					builtin.find_files({
+						no_ignore = not no_ignore,
+						hidden = true,
+						prompt_title = not no_ignore and "Find Files (all)" or "Find Files",
+						attach_mappings = function(prompt_bufnr, map)
+							local picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+							picker.no_ignore_state = not no_ignore
+							return true
+						end,
+					})
+				end,
 			},
 			n = {
 				["<C-f>"] = actions.toggle_selection + actions.move_selection_next,
@@ -53,6 +70,23 @@ telescope.setup({
 				["<C-j>"] = actions.move_selection_next,
 				["<C-k>"] = actions.move_selection_previous,
 				["<C-r>"] = layout.toggle_preview,
+				["<C-i>"] = function(prompt_bufnr)
+					local current_picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+					local no_ignore = current_picker.no_ignore_state or false
+
+					-- Toggle no_ignore to include/exclude gitignored files
+					actions.close(prompt_bufnr)
+					builtin.find_files({
+						no_ignore = not no_ignore,
+						hidden = true,
+						prompt_title = not no_ignore and "Find Files (all)" or "Find Files",
+						attach_mappings = function(prompt_bufnr, map)
+							local picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+							picker.no_ignore_state = not no_ignore
+							return true
+						end,
+					})
+				end,
 			},
 		},
 	},
