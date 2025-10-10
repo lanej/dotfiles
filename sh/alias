@@ -332,8 +332,8 @@ gh-clone() {
 	local selected
 	local initial_query="${1:-}"
 
-	# Create a helper script for the reload command
-	_gh_search_helper() {
+	# Helper function for searching
+	_do_search() {
 		local query="$1"
 		if [ -z "$query" ]; then
 			echo "Type a query and press CTRL-R to search"
@@ -341,34 +341,35 @@ gh-clone() {
 		fi
 		echo "🔍 Searching GitHub for: $query..."
 		echo "──────────────────────────────────"
-		local results
-		results=$(gh search repos "$query" --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName")
-		if [ $? -ne 0 ] || [ -z "$results" ]; then
-			echo "❌ Search failed or no results found"
-		else
-			echo "$results"
-			local count=$(echo "$results" | wc -l | tr -d ' ')
-			echo "──────────────────────────────────"
-			echo "✅ Found $count repositories"
-		fi
+		gh search repos "$query" --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" | {
+			local results=$(cat)
+			if [ -z "$results" ]; then
+				echo "❌ Search failed or no results found"
+			else
+				echo "$results"
+				local count=$(echo "$results" | wc -l | tr -d ' ')
+				echo "──────────────────────────────────"
+				echo "✅ Found $count repositories"
+			fi
+		}
 	}
-	export -f _gh_search_helper
 
 	# Initial search if query provided
 	local initial_results
 	if [ -n "$initial_query" ]; then
-		initial_results=$(_gh_search_helper "$initial_query")
+		initial_results=$(_do_search "$initial_query")
 	else
 		initial_results="Type a query and press CTRL-R to search"
 	fi
 
+	# Use reload-sync for synchronous reload instead of reload
 	selected=$(echo "$initial_results" | \
 		fzf --ansi \
 		--reverse \
 		--multi \
 		--prompt="GitHub repo> " \
 		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
-		--bind="ctrl-r:reload(bash -c '_gh_search_helper {q}')" \
+		--bind='ctrl-r:reload:test -n {q} && (echo "🔍 Searching GitHub for: {q}..." && echo "──────────────────────────────────" && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" && echo "──────────────────────────────────") || echo "Type a query and press CTRL-R to search"' \
 		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
 		--preview-window="right:60%")
 
@@ -380,8 +381,6 @@ gh-clone() {
 			fi
 		done
 	fi
-
-	unset -f _gh_search_helper
 }
 
 phab-clone() {
