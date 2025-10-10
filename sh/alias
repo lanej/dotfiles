@@ -339,19 +339,7 @@ gh-clone() {
 			echo "Type a query and press CTRL-R to search"
 			return
 		fi
-		echo "🔍 Searching GitHub for: $query..."
-		echo "──────────────────────────────────"
-		gh search repos "$query" --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" | {
-			local results=$(cat)
-			if [ -z "$results" ]; then
-				echo "❌ Search failed or no results found"
-			else
-				echo "$results"
-				local count=$(echo "$results" | wc -l | tr -d ' ')
-				echo "──────────────────────────────────"
-				echo "✅ Found $count repositories"
-			fi
-		}
+		gh search repos "$query" --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName"
 	}
 
 	# Initial search if query provided
@@ -362,20 +350,19 @@ gh-clone() {
 		initial_results="Type a query and press CTRL-R to search"
 	fi
 
-	# Use reload-sync for synchronous reload instead of reload
 	selected=$(echo "$initial_results" | \
 		fzf --ansi \
 		--reverse \
 		--multi \
 		--prompt="GitHub repo> " \
 		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
-		--bind='ctrl-r:reload:test -n {q} && (echo "🔍 Searching GitHub for: {q}..." && echo "──────────────────────────────────" && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" && echo "──────────────────────────────────") || echo "Type a query and press CTRL-R to search"' \
+		--bind='ctrl-r:reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")' \
 		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
 		--preview-window="right:60%")
 
 	if [ -n "$selected" ]; then
 		echo "$selected" | while read -r line; do
-			if [[ "$line" == *"/"* ]] && [[ "$line" != *"🔍"* ]] && [[ "$line" != *"✅"* ]] && [[ "$line" != *"❌"* ]] && [[ "$line" != *"───"* ]]; then
+			if [[ "$line" == *"/"* ]] && [[ "$line" != *"Type a query"* ]]; then
 				echo "📥 Cloning $line..."
 				gh repo clone "$line" ~/src/"$(basename "$line")"
 			fi
