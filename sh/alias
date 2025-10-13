@@ -356,13 +356,13 @@ gh-clone() {
 		--multi \
 		--prompt="GitHub repo> " \
 		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
-		--bind='ctrl-r:reload([ -n {q} ] && (echo "🔍 Searching for: {q}..." && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName") || echo "Type a query and press CTRL-R to search")' \
+		--bind='ctrl-r:change-prompt(🔍 Searching {q}...> )+reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")+clear-query+change-prompt(GitHub repo> )' \
 		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
 		--preview-window="right:60%")
 
 	if [ -n "$selected" ]; then
 		echo "$selected" | while read -r line; do
-			if [[ "$line" == *"/"* ]] && [[ "$line" != *"Type a query"* ]] && [[ "$line" != *"Searching"* ]]; then
+			if [[ "$line" == *"/"* ]] && [[ "$line" != *"Type a query"* ]]; then
 				echo "📥 Cloning $line..."
 				gh repo clone "$line" ~/src/"$(basename "$line")"
 			fi
@@ -378,4 +378,8 @@ phab-clone() {
 		jq -r '.name' |
 		fzf --reverse -m |
 		xargs -n1 -I {} git clone ssh://git@phab.easypo.net:2222/source/{}.git ~/src/{}
+}
+
+reauth-gcloud() {
+	gcloud auth application-default login
 }
