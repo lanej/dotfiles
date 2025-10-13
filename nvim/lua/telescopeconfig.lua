@@ -307,3 +307,26 @@ vim.keymap.set("n", "<leader>ss", builtin.spell_suggest, { noremap = true, silen
 vim.keymap.set("n", "<leader>jj", builtin.jumplist, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>ah", builtin.help_tags, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<CR>", { noremap = true, silent = true })
+
+-- Find and replace workflow: search with telescope, send to quickfix, then replace
+vim.keymap.set("n", "<leader>ar", function()
+	builtin.live_grep({
+		attach_mappings = function(_, map)
+			-- Add easier keybinds for selection
+			map("i", "<C-Space>", actions.toggle_selection + actions.move_selection_next)
+			map("n", "<C-Space>", actions.toggle_selection + actions.move_selection_next)
+			-- Send to quickfix
+			map("i", "<C-q>", actions.send_selected_to_qflist + actions.open_qflist)
+			map("n", "<C-q>", actions.send_selected_to_qflist + actions.open_qflist)
+			map("i", "<M-q>", actions.send_to_qflist + actions.open_qflist)
+			map("n", "<M-q>", actions.send_to_qflist + actions.open_qflist)
+			return true
+		end,
+	})
+	vim.defer_fn(function()
+		vim.notify(
+			"Select: CTRL-Space | Send selected: CTRL-Q | Send all: ALT-Q | Then: :cfdo %s/old/new/gc | update",
+			vim.log.levels.INFO
+		)
+	end, 100)
+end, { noremap = true, silent = true, desc = "Find and replace across project" })
