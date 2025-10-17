@@ -382,4 +382,5 @@ phab-clone() {
 
 reauth-gcloud() {
 	gcloud auth application-default login
+	gcloud auth login --enable-gdrive-access
 }
