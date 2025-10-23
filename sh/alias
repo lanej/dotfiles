@@ -381,6 +381,5 @@ phab-clone() {
 }
 
 reauth-gcloud() {
-	gcloud auth application-default login
-	gcloud auth login --enable-gdrive-access
+	gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/spreadsheets
 }
