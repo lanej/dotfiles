@@ -122,7 +122,7 @@ vim.keymap.set("n", "<leader>rs", '"hy:%s/<C-r>h//gc<left><left><left>', { norem
 vim.keymap.set("v", "<leader>rs", '""hy:s/<C-r>h//gc<left><left><left>', { noremap = true })
 
 -- replace current word in all quicklist files
-vim.keymap.set("n", "<leader>rq", ":cfdo %s/<C-r><C-w>/", { noremap = true })
+vim.keymap.set("n", "<leader>rq", ":%cfdo s/<C-r><C-w>/", { noremap = true })
 vim.keymap.set("v", "<leader>rq", ":cfdo s/<C-r><C-w>/", { noremap = true })
 
 -- quickfix nav
@@ -491,9 +491,16 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = "javascript",
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
 })
+
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_javascript",
 	pattern = ".eslintrc",
+	command = "set filetype=json",
+})
+
+vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+	group = "filetype_javascript",
+	pattern = ".jsonl",
 	command = "set filetype=json",
 })
 
@@ -1043,6 +1050,13 @@ require("lazy").setup({
 					{ filter = { event = "msg_show", find = "%d fewer line" }, opts = { skip = true } },
 					{ filter = { event = "msg_show", find = "Already at newest change" }, opts = { skip = true } },
 					{ filter = { event = "msg_show", find = "Already at oldest change" }, opts = { skip = true } },
+					{
+						filter = { event = "msg_show", find = "File changed on disk. Buffer reloaded." },
+						opts = { skip = true },
+					},
+					-- Suppress hotreloader messages
+					{ filter = { event = "msg_show", find = "hotreload" }, opts = { skip = true } },
+					{ filter = { event = "msg_show", find = "Reloaded" }, opts = { skip = true } },
 				},
 				popupmenu = { enabled = false },
 				-- cmdline = {
@@ -1221,11 +1235,6 @@ require("lazy").setup({
 					-- Uncomment to use tinymist instead of typst_lsp
 					-- settings = {},
 				},
-				-- tinymist = {
-				-- 	-- Alternative Typst LSP (newer, more features)
-				-- 	-- Uncomment to use tinymist instead of typst_lsp
-				-- 	-- settings = {},
-				-- },
 			},
 			opts = {
 				inlay_hints = { enabled = true },
@@ -1233,12 +1242,12 @@ require("lazy").setup({
 		},
 		config = function(_, opts)
 			require("lsp") -- NOTE: this is requried to get keybinds for fallback registration
-			local lspconfig = require("lspconfig")
 			for server, config in pairs(opts.servers) do
 				-- passing config.capabilities to blink.cmp merges with the capabilities in your
 				-- `opts[server].capabilities, if you've defined it
 				config.capabilities = require("blink.cmp").get_lsp_capabilities(config.capabilities)
-				lspconfig[server].setup(config)
+				vim.lsp.config(server, config)
+				vim.lsp.enable(server)
 			end
 
 			require("csharpls_extended").buf_read_cmd_bind()
@@ -1508,6 +1517,7 @@ require("lazy").setup({
 			"fredrikaverpil/neotest-golang",
 			-- "nvim-neotest/neotest-jest",
 		},
+		enabled = false,
 		config = function()
 			require("neotest").setup({
 				adapters = {
@@ -1759,13 +1769,15 @@ require("lazy").setup({
 					},
 				},
 				adapters = {
-					openai = function()
-						return require("codecompanion.adapters").extend("openai", {
-							env = {
-								api_key = os.getenv("OPENAI_API_KEY"),
-							},
-						})
-					end,
+					http = {
+						openai = function()
+							return require("codecompanion.adapters").extend("openai", {
+								env = {
+									api_key = os.getenv("OPENAI_API_KEY"),
+								},
+							})
+						end,
+					},
 				},
 				strategies = {
 					inline = {
@@ -1813,20 +1825,20 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>ccm", function()
 				local bufname = vim.api.nvim_buf_get_name(0)
 				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
-				
+
 				if not is_commit_buffer then
 					vim.notify("Use this in a git commit buffer (run 'git commit' first)", vim.log.levels.WARN)
 					return
 				end
-				
+
 				-- Get the staged diff
 				local diff = vim.fn.system("git diff --cached")
 				if diff == "" or diff:match("^fatal:") then
 					vim.notify("No staged changes to commit", vim.log.levels.WARN)
 					return
 				end
-				
-				-- Clear any existing content (non-comment lines) 
+
+				-- Clear any existing content (non-comment lines)
 				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 				local first_comment_line = nil
 				for i, line in ipairs(lines) do
@@ -1838,12 +1850,13 @@ require("lazy").setup({
 				if first_comment_line and first_comment_line > 0 then
 					vim.api.nvim_buf_set_lines(0, 0, first_comment_line, false, {})
 				end
-				
+
 				-- Place cursor at beginning of buffer for insertion
-				vim.api.nvim_win_set_cursor(0, {1, 0})
-				
+				vim.api.nvim_win_set_cursor(0, { 1, 0 })
+
 				-- Build the prompt with Commitizen format requirements
-				local prompt = string.format([[You are a git commit message expert. Generate ONLY the commit message following Commitizen format.
+				local prompt = string.format(
+					[[You are a git commit message expert. Generate ONLY the commit message following Commitizen format.
 
 Requirements:
 - Format: <type>(<scope>): <subject>
@@ -1857,13 +1870,15 @@ Analyze this diff and write the commit message:
 
 %s
 
-Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 3000))
-				
+Output ONLY the commit message text. End with two blank lines.]],
+					diff:sub(1, 3000)
+				)
+
 				-- Store original comment lines before calling CodeCompanion
 				local original_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 				local comment_start_idx = nil
 				local comment_lines = {}
-				
+
 				for i, line in ipairs(original_lines) do
 					if line:match("^#") then
 						if not comment_start_idx then
@@ -1875,17 +1890,17 @@ Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 30
 						table.insert(comment_lines, line)
 					end
 				end
-				
+
 				-- Call CodeCompanion.inline directly with proper args structure
 				local cc = require("codecompanion")
 				cc.inline({ args = prompt })
-				
+
 				-- After a short delay, fix the buffer formatting
 				vim.defer_fn(function()
 					local current_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 					local new_lines = {}
 					local found_comment = false
-					
+
 					-- Collect non-comment lines (the actual commit message)
 					for _, line in ipairs(current_lines) do
 						if line:match("^#") then
@@ -1898,24 +1913,24 @@ Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 30
 							end
 						end
 					end
-					
+
 					-- Remove trailing empty lines from the commit message
 					while #new_lines > 0 and new_lines[#new_lines] == "" do
 						table.remove(new_lines)
 					end
-					
+
 					-- Add two blank lines after the commit message
 					table.insert(new_lines, "")
 					table.insert(new_lines, "")
-					
+
 					-- Add back the original git comments
 					for _, line in ipairs(comment_lines) do
 						table.insert(new_lines, line)
 					end
-					
+
 					-- Replace buffer content
 					vim.api.nvim_buf_set_lines(0, 0, -1, false, new_lines)
-					
+
 					-- Place cursor at the end of the commit message (before blank lines)
 					local msg_end = 1
 					for i, line in ipairs(new_lines) do
@@ -1924,7 +1939,7 @@ Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 30
 						end
 						msg_end = i
 					end
-					vim.api.nvim_win_set_cursor(0, {msg_end, 0})
+					vim.api.nvim_win_set_cursor(0, { msg_end, 0 })
 				end, 2000) -- Wait 2 seconds for CodeCompanion to finish
 			end, { desc = "Generate commit message inline" })
 
@@ -2043,9 +2058,12 @@ Output ONLY the commit message text. End with two blank lines.]], diff:sub(1, 30
 	},
 	{
 		"diogo464/hotreload.nvim",
+		enabled = false, -- Disabled due to excessive CPU usage
 		opts = {
 			-- Check interval in milliseconds (default: 500)
 			interval = 500,
+			-- Suppress notifications
+			notify = false,
 		},
 	},
 	"cedarbaum/fugitive-azure-devops.vim",
