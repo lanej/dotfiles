@@ -419,24 +419,33 @@ vim.api.nvim_create_autocmd("FileType", {
 	command = "setlocal shiftwidth=2 tabstop=2 softtabstop=2 expandtab autoindent",
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+	group = "filetype_ruby",
+	pattern = "ruby",
+	callback = function()
+		vim.keymap.set("n", "<leader>tn", ":TestLast -n<CR>", { noremap = true, silent = true, buffer = true })
+		vim.keymap.set("n", "<leader>tq", ":TestLast --fail-fast<CR>", { noremap = true, silent = true, buffer = true })
+		vim.keymap.set(
+			"n",
+			"<leader>to",
+			":TestLast --only-failures<CR>",
+			{ noremap = true, silent = true, buffer = true }
+		)
+		vim.keymap.set("n", "<leader>tv", function()
+			vim.env.VCR_RECORD = "all"
+			vim.cmd("TestLast")
+			vim.env.VCR_RECORD = nil
+		end, { noremap = true, silent = true, buffer = true })
+	end,
+})
+
 -- RSpec settings
--- TODO: replace test file modifiers as default args for vim-test
 -- TODO: replace formatting with conform.nvim config
 -- vim.keymap.set('n', '<leader>da', ':!bundle exec rubocop -ADES %:p<CR>', { noremap = true, silent = true })
--- vim.keymap.set('n', '<leader>tq', ':TestLast --fail-fast<CR>', { noremap = true, silent = true })
--- vim.keymap.set('n', '<leader>to', ':TestLast --only-failures<CR>', { noremap = true, silent = true })
--- vim.keymap.set('n', '<leader>tn', ':TestLast -n<CR>', { noremap = true, silent = true })
--- vim.keymap.set('n', '<leader>tv', ':lua _G.vcr_failures_only()<CR>', { noremap = true, silent = true })
 -- vim.keymap.set('v', '<Bslash>hl', ':s/\\v:([^ ]*)\\s\\=\\>/\\1:/g<CR>', { noremap = true, silent = true })
 -- vim.keymap.set('v', '<Bslash>hr', ':s/\\v(\\w+):/"\\1" =>/g<CR>', { noremap = true, silent = true })
 -- vim.keymap.set('v', '<Bslash>hs', ':s/\\v[\\\"\\'](\\w+)[\\\"\\']\\s+\\=\\>\\s+/\\1\\: /g<CR>', { noremap = true, silent = true })
 -- vim.keymap.set('v', '<Bslash>hj', ':s/\\v\\"(\\w+)\\":\\s+/"\\1" => /g<CR>', { noremap = true, silent = true })
-
-function _G.vcr_failures_only()
-	vim.env.VCR_RECORD = "all"
-	vim.cmd("TestLast")
-	vim.env.VCR_RECORD = nil
-end
 
 -- Python settings
 vim.api.nvim_create_augroup("filetype_python", { clear = true })
@@ -1211,7 +1220,7 @@ require("lazy").setup({
 						functionTypeParameters = true,
 					},
 				},
-				-- ruby_lsp = {},
+				ruby_lsp = {},
 				jsonls = {
 					settings = {
 						json = {
