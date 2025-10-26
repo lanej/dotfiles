@@ -335,3 +335,34 @@ vim.keymap.set("n", "<leader>ar", function()
 		)
 	end, 100)
 end, { noremap = true, silent = true, desc = "Find and replace across project" })
+
+vim.keymap.set("v", "<leader>ar", function()
+	-- Get the visually selected text
+	vim.cmd('noau normal! "vy"')
+	local text = vim.fn.getreg("v")
+	vim.fn.setreg("v", {})
+
+	-- Escape special characters for grep
+	text = text:gsub("\n", "")
+
+	builtin.grep_string({
+		search = text,
+		attach_mappings = function(_, map)
+			-- Add easier keybinds for selection
+			map("i", "<C-Space>", actions.toggle_selection + actions.move_selection_next)
+			map("n", "<C-Space>", actions.toggle_selection + actions.move_selection_next)
+			-- Send to quickfix
+			map("i", "<C-q>", actions.send_selected_to_qflist + actions.open_qflist)
+			map("n", "<C-q>", actions.send_selected_to_qflist + actions.open_qflist)
+			map("i", "<M-q>", actions.send_to_qflist + actions.open_qflist)
+			map("n", "<M-q>", actions.send_to_qflist + actions.open_qflist)
+			return true
+		end,
+	})
+	vim.defer_fn(function()
+		vim.notify(
+			"Select: CTRL-Space | Send selected: CTRL-Q | Send all: ALT-Q | Then: :cfdo %s/old/new/gc | update",
+			vim.log.levels.INFO
+		)
+	end, 100)
+end, { noremap = true, silent = true, desc = "Find and replace selection across project" })
