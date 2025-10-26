@@ -41,6 +41,7 @@ telescope.setup({
 		color_devicons = true,
 		mappings = {
 			i = {
+				["<Tab>"] = actions.toggle_selection + actions.move_selection_next,
 				["<C-f>"] = actions.toggle_selection + actions.move_selection_next,
 				-- ["<C-h>"] = actions.toggle_preview,
 				["<C-j>"] = actions.move_selection_next,
@@ -65,6 +66,7 @@ telescope.setup({
 				end,
 			},
 			n = {
+				["<Tab>"] = actions.toggle_selection + actions.move_selection_next,
 				["<C-f>"] = actions.toggle_selection + actions.move_selection_next,
 				-- ["<C-h>"] = actions.toggle_preview,
 				["<C-j>"] = actions.move_selection_next,
@@ -100,23 +102,26 @@ telescope.setup({
 		},
 		git_branches = {
 			prompt_title = "Branches (local & remote)",
-			git_command = { 
-				"git", "for-each-ref", 
-				"--format=%(if)%(HEAD)%(then)* %(else)  %(end)%(refname:short) %(color:yellow)%(committerdate:relative)%(color:reset)", 
-				"--sort=-committerdate", 
-				"refs/heads/", "refs/remotes/"
+			git_command = {
+				"git",
+				"for-each-ref",
+				"--format=%(if)%(HEAD)%(then)* %(else)  %(end)%(refname:short) %(color:yellow)%(committerdate:relative)%(color:reset)",
+				"--sort=-committerdate",
+				"refs/heads/",
 			},
 			previewer = require("telescope.previewers").new_termopen_previewer({
 				get_command = function(entry)
 					local branch = entry.value:gsub("^%s*%*?%s*", ""):gsub("%s.*$", "")
 					return {
-						"sh", "-c", 
+						"sh",
+						"-c",
 						string.format(
 							"git diff --stat=80 --stat-count=10 HEAD..%s 2>/dev/null | sort -k3 -nr || echo 'No differences'; echo '---'; git diff HEAD..%s 2>/dev/null || echo 'No differences'",
-							branch, branch
-						)
+							branch,
+							branch
+						),
 					}
-				end
+				end,
 			}),
 			layout_strategy = "horizontal",
 			layout_config = {
