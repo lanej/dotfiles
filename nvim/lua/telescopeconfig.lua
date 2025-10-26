@@ -47,7 +47,7 @@ telescope.setup({
 				["<C-j>"] = actions.move_selection_next,
 				["<C-k>"] = actions.move_selection_previous,
 				["<C-r>"] = layout.toggle_preview,
-				["<C-i>"] = function(prompt_bufnr)
+				["<C-g>"] = function(prompt_bufnr)
 					local current_picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
 					local no_ignore = current_picker.no_ignore_state or false
 
@@ -72,7 +72,7 @@ telescope.setup({
 				["<C-j>"] = actions.move_selection_next,
 				["<C-k>"] = actions.move_selection_previous,
 				["<C-r>"] = layout.toggle_preview,
-				["<C-i>"] = function(prompt_bufnr)
+				["<C-g>"] = function(prompt_bufnr)
 					local current_picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
 					local no_ignore = current_picker.no_ignore_state or false
 
