@@ -77,14 +77,6 @@ if [ -d "$GOPATH" ]; then
 	export PATH="$GOPATH/bin:$PATH"
 fi
 
-if [ -r "${HOME}/.nvm/alias/default" ]; then
-	# find the prescribed default node version
-	default_node_version=$(cat "${HOME}/.nvm/alias/default")
-	# expand the path to the default node version without nvm
-	default_node_bin_path=(${HOME}/.nvm/versions/node/v${default_node_version}*/bin)
-	export PATH="${default_node_bin_path}:${PATH}"
-fi
-
 if [ -d "/opt/homebrew" ]; then
 	export PATH="/opt/homebrew/bin:$PATH"
 	export PATH="/opt/homebrew/sbin:$PATH"
@@ -94,12 +86,25 @@ if [ -d "/opt/homebrew" ]; then
 	fi
 fi
 
+if [ -r "${HOME}/.nvm/alias/default" ]; then
+	# find the prescribed default node version
+	default_node_version=$(cat "${HOME}/.nvm/alias/default")
+	# expand the path to the default node version without nvm
+	default_node_bin_path=(${HOME}/.nvm/versions/node/v${default_node_version}*/bin)
+	export PATH="${default_node_bin_path}:${PATH}"
+fi
+
+
 if [[ -d "$HOME/.local/bin" ]]; then
 	PATH="$HOME/.local/bin:$PATH"
 fi
 
 if [[ -r "$HOME/.cargo/env" ]]; then
 	. "$HOME/.cargo/env"
+fi
+
+if [[ -r "$HOME/.dotnet/tools" ]]; then
+	PATH="$HOME/.dotnet/tools:$PATH"
 fi
 
 # NOTE: Set EDITOR/VISUAL after all PATH modifications are complete
