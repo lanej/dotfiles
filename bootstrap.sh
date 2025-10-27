@@ -333,6 +333,10 @@ go_current_semver() {
 	go version | parse_semver | head -n1
 }
 
+node_current_semver() {
+	node --version 2>/dev/null | sed 's/^v//' | parse_semver
+}
+
 cargo_current_semver() {
 	cargo --version 2>/dev/null | parse_semver | head -n1
 }
@@ -457,7 +461,7 @@ install_node_from_release() {
 	# Download and install nvm:
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
-	# Set up nvm environment
+	# Set up nvm environment - must be sourced fresh for new installation
 	export NVM_DIR="$HOME/.nvm"
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
@@ -467,8 +471,15 @@ install_node_from_release() {
 	nvm alias default "$1"
 	nvm use "$1"
 
-	# Add nvm to PATH for current session
+	# Make node and npm immediately available in current session
 	export PATH="$NVM_DIR/versions/node/v$1/bin:$PATH"
+
+	# Verify installation is working
+	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
+	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
+
+	# Update hash table so shell can find the new binaries
+	hash -r
 }
 
 install_stylua_from_release() {
