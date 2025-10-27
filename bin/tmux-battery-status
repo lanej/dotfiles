@@ -11,12 +11,14 @@ fi
 # Extract battery percentage
 battery_percent=$(echo "$battery_info" | grep -o '[0-9]*%' | head -1 | tr -d '%')
 
-# Extract battery status
-status=$(echo "$battery_info" | grep -o "'[^']*'" | sed "s/'//g")
+# Check if battery is present
+if ! echo "$battery_info" | grep -q "InternalBattery"; then
+  exit 0
+fi
 
 # Only show when charging or discharging
-if echo "$status" | grep -q 'discharging'; then
+if echo "$battery_info" | grep -q 'discharging'; then
   echo "#[fg=yellow,bg=brightblack] ⚡$battery_percent% "
-elif echo "$status" | grep -q 'charging'; then
+elif echo "$battery_info" | grep -q 'charging'; then
   echo "#[fg=green,bg=brightblack] 🔋$battery_percent% "
 fi
