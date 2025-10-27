@@ -39,3 +39,4 @@ terraform.tfvars
 .claude/
 CLAUDE.local.md
 .mcp.json
+.specify/

@@ -1,7 +1,7 @@
 # vim: ft=gitconfig:
 [user]
 	name = Josh Lane
-	email = lanej@users.noreply.github.com
+	email = joshlane@easypost.com
 	signingKey = E89524BCB5BCD573749DF151CB7007B092A93DF4
 [color]
 	diff = auto
@@ -121,10 +121,8 @@
 	; fsckObjects = true
 [fetch]
 	; fsckObjects = true
-[url "ssh://git@github.com/"]
-    insteadOf = https://github.com/
 [credential]
-	helper = osxkeychain
+	helper = store
 [color "diff-so-fancy"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
