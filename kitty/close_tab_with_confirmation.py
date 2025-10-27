@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Kitten to close tab with confirmation if tmux is running."""
+"""Kitten to close tab with confirmation if tmux or SSH is running."""
 
 from typing import List
 from kitty.boss import Boss
 
 
 def main(args: List[str]) -> str:
-    """Close tab with confirmation if tmux is running."""
+    """Close tab with confirmation if tmux or SSH is running."""
     return ""
 
 
@@ -26,13 +26,22 @@ def handle_result(
                 [p["cmdline"][0] for p in window.child.foreground_processes]
             )
 
-    # Check if tmux is running
+    # Check for tmux and SSH
     has_tmux = any("tmux" in str(p).lower() for p in processes)
+    has_ssh = any("ssh" in str(p).lower() for p in processes)
 
+    # Build confirmation message
+    active_processes = []
     if has_tmux:
+        active_processes.append("tmux")
+    if has_ssh:
+        active_processes.append("SSH")
+
+    if active_processes:
         # Ask for confirmation
+        process_list = " and ".join(active_processes)
         boss.confirm(
-            "Tmux session active. Close tab?",
+            f"{process_list} session active. Close tab?",
             lambda confirmed: boss.close_tab() if confirmed else None,
         )
     else:
