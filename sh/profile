@@ -39,22 +39,8 @@ export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
 
-unset EDITOR
-unset VISUAL
-
 if [[ $OSTYPE =~ 'darwin' ]]; then
 	export GPG_TTY=$(tty)
-fi
-
-if command -v nvim >/dev/null; then
-	export EDITOR="$(command -v nvim)"
-	export VISUAL="$(command -v nvim)"
-elif command -v vim >/dev/null; then
-	export EDITOR="$(command -v vim)"
-	export VISUAL="$(command -v vim)"
-else
-	export EDITOR=vi
-	export VISUAL=vi
 fi
 
 if [ -d "$XDG_CONFIG_HOME/yarn/global/node_modules/.bin" ]; then
@@ -114,4 +100,19 @@ fi
 
 if [[ -r "$HOME/.cargo/env" ]]; then
 	. "$HOME/.cargo/env"
+fi
+
+# NOTE: Set EDITOR/VISUAL after all PATH modifications are complete
+unset EDITOR
+unset VISUAL
+
+if command -v nvim >/dev/null; then
+	export EDITOR="$(command -v nvim)"
+	export VISUAL="$(command -v nvim)"
+elif command -v vim >/dev/null; then
+	export EDITOR="$(command -v vim)"
+	export VISUAL="$(command -v vim)"
+else
+	export EDITOR=vi
+	export VISUAL=vi
 fi
