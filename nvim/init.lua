@@ -44,17 +44,21 @@ vim.opt.ttimeoutlen = 50
 vim.opt.vb = false
 vim.opt.eb = false
 
--- equalalways: always keep the window size the same
--- except for nerdtree undotree andl;
-vim.api.nvim_create_autocmd("BufEnter", {
-	pattern = "NERD_tree*",
-	command = "setlocal equalalways=false",
+-- Set minimum window sizes early to allow session restoration and focus.nvim
+vim.opt.winminheight = 1
+vim.opt.winminwidth = 1
+
+-- equalalways: conditionally set based on focus.nvim availability
+vim.api.nvim_create_autocmd("VimEnter", {
+	callback = function()
+		local has_focus = pcall(require, "focus")
+		if has_focus then
+			vim.opt.equalalways = false
+		else
+			vim.opt.equalalways = true
+		end
+	end,
 })
-vim.api.nvim_create_autocmd("BufEnter", {
-	pattern = "undotree*",
-	command = "setlocal equalalways=false",
-})
-vim.opt.equalalways = true
 
 vim.opt.updatetime = 300
 vim.opt.spell = false
@@ -1323,6 +1327,10 @@ require("lazy").setup({
 		"lanej/vim-prosession",
 		dependencies = "tpope/vim-obsession",
 		init = function()
+			-- Set minimum window sizes before session restoration
+			vim.opt.winminheight = 1
+			vim.opt.winminwidth = 1
+
 			vim.g.prosession_per_branch = 1
 			vim.g.prosession_tmux_title = 1
 			vim.g.prosession_tmux_title_format = "@@@"
@@ -2089,6 +2097,67 @@ Output ONLY the commit message text. End with two blank lines.]],
 		},
 		config = function()
 			require("claude-code").setup()
+		end,
+	},
+	{
+		"nvim-focus/focus.nvim",
+		version = "*",
+		config = function()
+			require("focus").setup({
+				autoresize = {
+					enable = true,
+					width = 0,
+					height = 0,
+					minwidth = 80,
+					minheight = 10,
+				},
+				ui = {
+					number = false,
+					relativenumber = false,
+					hybridnumber = false,
+					absolutenumber_unfocussed = false,
+					cursorline = true,
+					cursorcolumn = false,
+					colorcolumn = {
+						enable = false,
+					},
+					signcolumn = true,
+					winhighlight = false,
+				},
+			})
+
+			-- Conditionally enable/disable focus based on terminal size
+			-- Only use focus.nvim when space is constrained
+			local function update_focus_state()
+				local total_width = vim.o.columns
+				local total_height = vim.o.lines
+				local min_comfortable_width = 160 -- Enough for two 80-column windows
+				local min_comfortable_height = 40
+
+				if total_width < min_comfortable_width or total_height < min_comfortable_height then
+					-- Space is constrained, enable focus.nvim
+					require("focus").focus_enable()
+					vim.opt.equalalways = false
+				else
+					-- Plenty of space, use equal windows
+					require("focus").focus_disable()
+					vim.opt.equalalways = true
+					-- Safely equalize windows if there's enough space
+					pcall(function()
+						vim.cmd("wincmd =")
+					end)
+				end
+			end
+
+			-- Update on resize with a slight delay to avoid conflicts
+			vim.api.nvim_create_autocmd("VimResized", {
+				callback = function()
+					vim.defer_fn(update_focus_state, 100)
+				end,
+			})
+
+			-- Set initial state
+			vim.defer_fn(update_focus_state, 200)
 		end,
 	},
 })
