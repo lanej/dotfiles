@@ -371,15 +371,31 @@ gh-clone() {
 }
 
 phab-clone() {
-	podman run \
-		-v ~/.arcrc:/root/.arcrc \
-		-v ~/.config/phab:/root/.config/phab \
-		-it --rm docker.cloudsmith.io/easypost/containers/phab-cli:0.5.0 list-repositories |
-		jq -r '.name' |
-		fzf --reverse -m |
-		xargs -n1 -I {} git clone ssh://git@phab.easypo.net:2222/source/{}.git ~/src/{}
+	local selected
+	selected=$(phab repository search --output jsonl 2>&1 |
+		grep -v "^Error:" |
+		jq -r 'select(.fields != null) | .fields.shortName' |
+		fzf --height=100% --reverse -m \
+			--preview 'readme=$(phab file get -r {} README.md 2>/dev/null || phab file get -r {} readme.md 2>/dev/null); if [ -n "$readme" ]; then if command -v glow >/dev/null 2>&1; then echo "$readme" | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json -; elif command -v bat >/dev/null 2>&1; then echo "$readme" | bat --style=plain --language=markdown --color=always -; else echo "$readme"; fi; else echo "No README found"; fi' \
+			--preview-window 'right:60%:wrap')
+
+	if [ -z "$selected" ]; then
+		return 0
+	fi
+
+	echo "$selected" | while IFS= read -r repo; do
+		local clone_uri
+		clone_uri=$(phab repository uri "$repo")
+
+		local clone_dir="${HOME}/src/${repo}"
+		echo "Cloning $repo from $clone_uri to $clone_dir..."
+		git clone "$clone_uri" "$clone_dir"
+	done
 }
 
 reauth-gcloud() {
-	gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/spreadsheets
+	gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/bigquery
+	gcloud auth login --enable-gdrive-access
 }
+alias dc='claude --dangerously-skip-permissions'
+alias dcc='claude --dangerously-skip-permissions --continue'
