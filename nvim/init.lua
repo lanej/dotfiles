@@ -1588,12 +1588,15 @@ require("lazy").setup({
 	},
 	{
 		"pwntester/octo.nvim",
-		requires = {
+		dependencies = {
 			"nvim-lua/plenary.nvim",
-			-- "fzf-lua",
 			"nvim-telescope/telescope.nvim",
 			"nvim-tree/nvim-web-devicons",
 		},
+		cmd = "Octo",
+		config = function()
+			require("octo").setup()
+		end,
 	},
 	{
 		"OXY2DEV/markview.nvim",
