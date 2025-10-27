@@ -110,6 +110,7 @@ bspwm:
 kitty:
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
+	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
