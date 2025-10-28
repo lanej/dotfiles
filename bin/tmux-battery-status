@@ -18,7 +18,16 @@ fi
 
 # Only show when charging or discharging
 if echo "$battery_info" | grep -q 'discharging'; then
-  echo "#[fg=yellow,bg=brightblack] ⚡$battery_percent% "
+  # Critical: < 10%
+  if [ "$battery_percent" -lt 10 ]; then
+    echo "#[fg=red,bg=brightblack,bold] 🪫$battery_percent% "
+  # Warning: < 20%
+  elif [ "$battery_percent" -lt 20 ]; then
+    echo "#[fg=colour202,bg=brightblack] ⚠️ $battery_percent% "
+  # Normal: >= 20%
+  else
+    echo "#[fg=yellow,bg=brightblack] ⚡$battery_percent% "
+  fi
 elif echo "$battery_info" | grep -q 'charging'; then
   echo "#[fg=green,bg=brightblack] 🔋$battery_percent% "
 fi
