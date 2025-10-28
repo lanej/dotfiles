@@ -1,0 +1,20 @@
+#!/bin/bash
+# Get pane title with current directory and git branch
+
+pane_pid="$1"
+pane_current_path="$2"
+
+# Get the directory name (not full path)
+dir_name=$(basename "$pane_current_path")
+
+# Check if we're in a git repository and get the branch
+if git -C "$pane_current_path" rev-parse --git-dir >/dev/null 2>&1; then
+  branch=$(git -C "$pane_current_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ -n "$branch" ]; then
+    echo "$dir_name [$branch]"
+  else
+    echo "$dir_name"
+  fi
+else
+  echo "$dir_name"
+fi
