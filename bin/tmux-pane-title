@@ -1,8 +1,27 @@
 #!/bin/bash
-# Get pane title with current directory and git branch
+# Get pane title with current directory and git branch or running command
 
 pane_pid="$1"
 fallback_path="$2"
+
+# Get the command being run
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # Get the full command line
+  cmdline=$(ps -p "$pane_pid" -o command= 2>/dev/null)
+else
+  # Linux
+  cmdline=$(cat "/proc/$pane_pid/cmdline" 2>/dev/null | tr '\0' ' ')
+fi
+
+# Extract the actual command name from common interpreters
+cmd_name=""
+if [[ "$cmdline" =~ (node|python|ruby|perl|bash|sh|zsh)[[:space:]]+.*[/[:space:]]([^/[:space:]]+)$ ]]; then
+  # If it's an interpreter running a script, get the script name
+  cmd_name=$(echo "$cmdline" | awk '{for(i=1;i<=NF;i++) if($i !~ /^-/) {print $i; exit}}' | xargs basename)
+elif [[ "$cmdline" =~ ^[^[:space:]]+ ]]; then
+  # Otherwise just get the command name
+  cmd_name=$(echo "$cmdline" | awk '{print $1}' | xargs basename)
+fi
 
 # Get the working directory of the pane's process
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -20,14 +39,20 @@ fi
 
 # Handle empty current_path
 if [ -z "$current_path" ]; then
-  echo "unknown"
+  echo "${cmd_name:-unknown}"
   exit 0
 fi
 
 # Get the directory name (not full path)
 dir_name=$(basename "$current_path")
 
-# Check if we're in a git repository and get the branch
+# If a specific command is running (not just a shell), show the command
+if [ -n "$cmd_name" ] && [[ ! "$cmd_name" =~ ^(zsh|bash|sh)$ ]]; then
+  echo "$cmd_name"
+  exit 0
+fi
+
+# Otherwise show directory with git branch
 if [ -d "$current_path" ] && git -C "$current_path" rev-parse --git-dir >/dev/null 2>&1; then
   branch=$(git -C "$current_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
   if [ -n "$branch" ]; then
