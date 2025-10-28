@@ -60,6 +60,32 @@ vim.api.nvim_create_autocmd("VimEnter", {
 	end,
 })
 
+-- Highlight active window by dimming inactive ones
+vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+	callback = function()
+		vim.wo.winhighlight = ""
+	end,
+})
+
+vim.api.nvim_create_autocmd("WinLeave", {
+	callback = function()
+		vim.wo.winhighlight = "Normal:NormalNC,NormalFloat:NormalNC"
+	end,
+})
+
+-- Define the highlight for inactive windows (slightly dimmed)
+vim.api.nvim_create_autocmd("ColorScheme", {
+	callback = function()
+		-- Get the current Normal background
+		local normal_bg = vim.fn.synIDattr(vim.fn.hlID("Normal"), "bg")
+		-- Make inactive windows slightly darker
+		vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
+	end,
+})
+
+-- Set it immediately as well
+vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
+
 vim.opt.updatetime = 300
 vim.opt.spell = false
 vim.opt.shortmess:append("c")
