@@ -1,0 +1,13 @@
+#!/bin/bash
+# SSH status display for tmux status bar
+# Shows an indicator when SSH is active in current pane
+
+# Get the current pane's process tree
+pane_pid=$(tmux display-message -p '#{pane_pid}')
+
+# Check if any process in the pane's tree is SSH
+if pgrep -P "$pane_pid" | xargs -I {} ps -o command= -p {} 2>/dev/null | grep -q "^ssh "; then
+  echo "#[fg=cyan,bg=brightblack] 🔐 SSH "
+elif ps -o command= -p "$pane_pid" 2>/dev/null | grep -q "^ssh "; then
+  echo "#[fg=cyan,bg=brightblack] 🔐 SSH "
+fi
