@@ -4,32 +4,45 @@
 pane_pid="$1"
 fallback_path="$2"
 
-# Get the command being run
+# Find the foreground process (child of the shell)
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # Get the full command line
-  cmdline=$(ps -p "$pane_pid" -o command= 2>/dev/null)
+  # Get child processes
+  children=$(pgrep -P "$pane_pid" 2>/dev/null)
+  if [ -n "$children" ]; then
+    # Use the first child as the active process
+    active_pid=$(echo "$children" | head -1)
+  else
+    active_pid="$pane_pid"
+  fi
+
+  # Get the full command line of the active process
+  cmdline=$(ps -p "$active_pid" -o command= 2>/dev/null)
 else
-  # Linux
-  cmdline=$(cat "/proc/$pane_pid/cmdline" 2>/dev/null | tr '\0' ' ')
+  # Linux - get foreground process
+  active_pid=$(ps -o pid= --ppid "$pane_pid" 2>/dev/null | head -1)
+  if [ -z "$active_pid" ]; then
+    active_pid="$pane_pid"
+  fi
+  cmdline=$(cat "/proc/$active_pid/cmdline" 2>/dev/null | tr '\0' ' ')
 fi
 
 # Extract the actual command name from common interpreters
 cmd_name=""
 if [[ "$cmdline" =~ (node|python|ruby|perl|bash|sh|zsh)[[:space:]]+.*[/[:space:]]([^/[:space:]]+)$ ]]; then
   # If it's an interpreter running a script, get the script name
-  cmd_name=$(echo "$cmdline" | awk '{for(i=1;i<=NF;i++) if($i !~ /^-/) {print $i; exit}}' | xargs basename)
+  cmd_name=$(echo "$cmdline" | awk '{for(i=1;i<=NF;i++) if($i !~ /^-/) {print $i; exit}}' | xargs -I {} basename -- {})
 elif [[ "$cmdline" =~ ^[^[:space:]]+ ]]; then
   # Otherwise just get the command name
-  cmd_name=$(echo "$cmdline" | awk '{print $1}' | xargs basename)
+  cmd_name=$(echo "$cmdline" | awk '{print $1}' | sed 's/^-//' | xargs -I {} basename -- {})
 fi
 
-# Get the working directory of the pane's process
+# Get the working directory of the active process
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS - use lsof to get current working directory
-  current_path=$(lsof -a -d cwd -p "$pane_pid" 2>/dev/null | awk 'NR>1 {print $NF}' | head -1)
+  current_path=$(lsof -a -d cwd -p "$active_pid" 2>/dev/null | awk 'NR>1 {print $NF}' | head -1)
 else
   # Linux - use /proc
-  current_path=$(readlink -f "/proc/$pane_pid/cwd" 2>/dev/null)
+  current_path=$(readlink -f "/proc/$active_pid/cwd" 2>/dev/null)
 fi
 
 # Fallback to tmux's pane_current_path if lsof/proc fails
