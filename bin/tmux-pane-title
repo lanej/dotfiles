@@ -2,14 +2,34 @@
 # Get pane title with current directory and git branch
 
 pane_pid="$1"
-pane_current_path="$2"
+
+# Find the foreground process (the actual shell or command running)
+# On macOS, find the most recent child process
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # Get all child processes and find the most recent one
+  fg_pid=$(pgrep -P "$pane_pid" | tail -1)
+  if [ -z "$fg_pid" ]; then
+    fg_pid="$pane_pid"
+  fi
+
+  # Get the working directory
+  current_path=$(lsof -a -d cwd -p "$fg_pid" -n -Fn 2>/dev/null | tail -1 | sed 's/^n//')
+else
+  # Linux
+  current_path=$(readlink -f "/proc/$pane_pid/cwd" 2>/dev/null)
+fi
+
+# Fallback to tmux's pane_current_path if lsof/proc fails
+if [ -z "$current_path" ]; then
+  current_path="$2"
+fi
 
 # Get the directory name (not full path)
-dir_name=$(basename "$pane_current_path")
+dir_name=$(basename "$current_path")
 
 # Check if we're in a git repository and get the branch
-if git -C "$pane_current_path" rev-parse --git-dir >/dev/null 2>&1; then
-  branch=$(git -C "$pane_current_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ -d "$current_path" ] && git -C "$current_path" rev-parse --git-dir >/dev/null 2>&1; then
+  branch=$(git -C "$current_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
   if [ -n "$branch" ]; then
     echo "$dir_name [$branch]"
   else
