@@ -2,26 +2,20 @@
 # Get pane title with current directory and git branch
 
 pane_pid="$1"
+fallback_path="$2"
 
-# Find the foreground process (the actual shell or command running)
-# On macOS, find the most recent child process
+# Get the working directory of the pane's process
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # Get all child processes and find the most recent one
-  fg_pid=$(pgrep -P "$pane_pid" | tail -1)
-  if [ -z "$fg_pid" ]; then
-    fg_pid="$pane_pid"
-  fi
-
-  # Get the working directory
-  current_path=$(lsof -a -d cwd -p "$fg_pid" -n -Fn 2>/dev/null | tail -1 | sed 's/^n//')
+  # macOS - use lsof to get current working directory
+  current_path=$(lsof -a -d cwd -p "$pane_pid" -n -Fn 2>/dev/null | grep '^n' | head -1 | sed 's/^n//')
 else
-  # Linux
+  # Linux - use /proc
   current_path=$(readlink -f "/proc/$pane_pid/cwd" 2>/dev/null)
 fi
 
 # Fallback to tmux's pane_current_path if lsof/proc fails
-if [ -z "$current_path" ]; then
-  current_path="$2"
+if [ -z "$current_path" ] || [ ! -d "$current_path" ]; then
+  current_path="$fallback_path"
 fi
 
 # Get the directory name (not full path)
