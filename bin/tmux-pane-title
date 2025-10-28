@@ -7,7 +7,7 @@ fallback_path="$2"
 # Get the working directory of the pane's process
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS - use lsof to get current working directory
-  current_path=$(lsof -a -d cwd -p "$pane_pid" -n -Fn 2>/dev/null | grep '^n' | head -1 | sed 's/^n//')
+  current_path=$(lsof -a -d cwd -p "$pane_pid" 2>/dev/null | awk 'NR>1 {print $NF}' | head -1)
 else
   # Linux - use /proc
   current_path=$(readlink -f "/proc/$pane_pid/cwd" 2>/dev/null)
@@ -16,6 +16,12 @@ fi
 # Fallback to tmux's pane_current_path if lsof/proc fails
 if [ -z "$current_path" ] || [ ! -d "$current_path" ]; then
   current_path="$fallback_path"
+fi
+
+# Handle empty current_path
+if [ -z "$current_path" ]; then
+  echo "unknown"
+  exit 0
 fi
 
 # Get the directory name (not full path)
