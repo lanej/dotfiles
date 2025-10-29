@@ -2,7 +2,9 @@
 
 COMMAND="python3"
 
-if command -v python &>/dev/null; then
+if command -v python3 &>/dev/null; then
+	COMMAND="python3"
+elif command -v python &>/dev/null; then
 	COMMAND="python"
 fi
 
