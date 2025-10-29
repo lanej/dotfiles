@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Get the current window ID and session name
+CURRENT_WINDOW=$(tmux display-message -p "#{window_id}")
+SESSION_NAME=$(tmux display-message -p "#{session_name}")
+
+# Use fzf to select destination window
+DEST_WINDOW=$(tmux list-windows -t "$SESSION_NAME" -F "#{window_index}|#{window_name} #{?window_active,[active],}" | \
+fzf --height=100% --reverse \
+    --header="Move all panes to window" \
+    --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
+    --exit-0 \
+    --preview "echo {} | cut -d'|' -f1 | xargs -I {} tmux capture-pane -ep -t '$SESSION_NAME':{} -S -30" \
+    --preview-window=right:60% | \
+cut -d'|' -f1)
+
+# Exit if no window selected
+if [ -z "$DEST_WINDOW" ]; then
+    exit 0
+fi
+
+# Get destination window ID
+DEST_WINDOW_ID=$(tmux list-windows -t "$SESSION_NAME" -f "#{==:#{window_index},$DEST_WINDOW}" -F "#{window_id}")
+
+# Don't move to the same window
+if [ "$CURRENT_WINDOW" = "$DEST_WINDOW_ID" ]; then
+    echo "Cannot move panes to the same window"
+    exit 1
+fi
+
+# Get all pane IDs from the current window
+PANE_IDS=$(tmux list-panes -t "$CURRENT_WINDOW" -F "#{pane_id}")
+
+# Move each pane to the destination window
+for pane_id in $PANE_IDS; do
+    tmux move-pane -s "$pane_id" -t "$SESSION_NAME:$DEST_WINDOW"
+done
+
+echo "Moved all panes to window $DEST_WINDOW"
