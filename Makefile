@@ -86,6 +86,11 @@ git:
 	@ln -fs $(DOTFILES)/git/gitignore $(HOME)/.gitignore
 	@ln -fs $(DOTFILES)/git/gitcommit $(HOME)/.gitcommit
 	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
+gpg:
+	@mkdir -p $(HOME)/.gnupg
+	@ln -fs $(DOTFILES)/rc/gpg.conf $(HOME)/.gnupg/gpg.conf
+	@ln -fs $(DOTFILES)/rc/gpg-agent.conf $(HOME)/.gnupg/gpg-agent.conf
+	@chmod 700 $(HOME)/.gnupg
 yabai:
 	@mkdir -p $(HOME)/.config/skhd
 	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
@@ -138,7 +143,7 @@ gpg-restore:
 		echo "Error: 1Password CLI (op) not found"; \
 		exit 1; \
 	fi
-	@op read "op://Private/d4xe37k5vnkkjmx5hk3vxiinn4/private_key" | gpg --import
+	@op read "op://Personal/d4xe37k5vnkkjmx5hk3vxiinn4/private_key" --account my.1password.com | gpg --import
 	@echo "✓ GPG key imported"
 	@echo ""
 	@echo "Now setting key trust level..."
