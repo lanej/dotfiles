@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude
+.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -128,3 +128,19 @@ claude:
 	@mkdir -p $(HOME)/.claude
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
+gpg-restore:
+	@echo "Restoring GPG key from 1Password..."
+	@if ! command -v op >/dev/null 2>&1; then \
+		echo "Error: 1Password CLI (op) not found"; \
+		exit 1; \
+	fi
+	@op read "op://Private/GPG Key - 6DAE70CE5C232C03/private_key" | gpg --import
+	@echo "✓ GPG key imported"
+	@echo ""
+	@echo "Now setting key trust level..."
+	@echo "Run the following commands:"
+	@echo "  gpg --edit-key 6DAE70CE5C232C03"
+	@echo "  trust"
+	@echo "  5 (ultimate)"
+	@echo "  y"
+	@echo "  quit"
