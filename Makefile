@@ -129,12 +129,16 @@ claude:
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
 gpg-restore:
+	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
+		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \
+		exit 0; \
+	fi
 	@echo "Restoring GPG key from 1Password..."
 	@if ! command -v op >/dev/null 2>&1; then \
 		echo "Error: 1Password CLI (op) not found"; \
 		exit 1; \
 	fi
-	@op read "op://Private/GPG Key - 6DAE70CE5C232C03/private_key" | gpg --import
+	@op read "op://Private/d4xe37k5vnkkjmx5hk3vxiinn4/private_key" | gpg --import
 	@echo "✓ GPG key imported"
 	@echo ""
 	@echo "Now setting key trust level..."
