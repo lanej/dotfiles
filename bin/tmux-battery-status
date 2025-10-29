@@ -11,6 +11,9 @@ fi
 # Extract battery percentage
 battery_percent=$(echo "$battery_info" | grep -o '[0-9]*%' | head -1 | tr -d '%')
 
+# Extract time remaining (e.g., "4:45 remaining" or "1:23 until charged")
+time_remaining=$(echo "$battery_info" | grep -o '[0-9]\+:[0-9]\+' | head -1)
+
 # Check if battery is present
 if ! echo "$battery_info" | grep -q "InternalBattery"; then
   exit 0
@@ -20,14 +23,14 @@ fi
 if echo "$battery_info" | grep -q 'discharging'; then
   # Critical: < 10%
   if [ "$battery_percent" -lt 10 ]; then
-    echo "#[fg=red,bg=brightblack,bold] 🪫$battery_percent% "
+    echo "#[fg=red,bg=brightblack,bold] 🪫$battery_percent% ${time_remaining:+($time_remaining)} "
   # Warning: < 20%
   elif [ "$battery_percent" -lt 20 ]; then
-    echo "#[fg=colour202,bg=brightblack] ⚠️ $battery_percent% "
+    echo "#[fg=colour202,bg=brightblack] ⚠️ $battery_percent% ${time_remaining:+($time_remaining)} "
   # Normal: >= 20%
   else
-    echo "#[fg=yellow,bg=brightblack] ⚡$battery_percent% "
+    echo "#[fg=yellow,bg=brightblack] ⚡$battery_percent% ${time_remaining:+($time_remaining)} "
   fi
 elif echo "$battery_info" | grep -q 'charging'; then
-  echo "#[fg=green,bg=brightblack] 🔋$battery_percent% "
+  echo "#[fg=green,bg=brightblack] 🔋$battery_percent% ${time_remaining:+($time_remaining)} "
 fi
