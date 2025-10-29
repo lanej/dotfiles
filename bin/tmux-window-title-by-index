@@ -1,0 +1,12 @@
+#!/bin/bash
+# Get window title for a specific window index
+
+window_index="$1"
+
+# Get the active pane's PID and current path for the specified window
+pane_info=$(tmux list-panes -t ":$window_index" -F "#{pane_active} #{pane_pid} #{pane_current_path}" | grep "^1 ")
+pane_pid=$(echo "$pane_info" | awk '{print $2}')
+pane_path=$(echo "$pane_info" | awk '{print $3}')
+
+# Call the existing tmux-window-title script
+~/.files/bin/tmux-window-title "$pane_pid" "$pane_path"

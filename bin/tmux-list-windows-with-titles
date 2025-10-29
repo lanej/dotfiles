@@ -1,0 +1,46 @@
+#!/bin/bash
+# List tmux windows with their computed titles (directory + git branch)
+
+# Get current window index
+current_window=$(tmux display-message -p '#{window_index}')
+
+# Create temp file for results
+tmpfile=$(mktemp)
+trap "rm -f $tmpfile" EXIT
+
+# Get all windows and their active pane info in one go
+tmux list-windows -F "#{window_index}|#{window_active}" > "$tmpfile.windows"
+
+# Process windows in parallel
+while IFS='|' read -r window_index is_active; do
+    (
+        # Get the active pane's PID and current path for this window
+        pane_info=$(tmux list-panes -t ":$window_index" -F "#{pane_active} #{pane_pid} #{pane_current_path}" 2>/dev/null | awk '$1 == "1" {print $2, $3}')
+
+        if [ -n "$pane_info" ]; then
+            pane_pid=$(echo "$pane_info" | awk '{print $1}')
+            pane_path=$(echo "$pane_info" | awk '{print $2}')
+
+            # Get the window title using the same script as the status bar
+            title=$(~/.files/bin/tmux-window-title "$pane_pid" "$pane_path")
+        else
+            title="unknown"
+        fi
+
+        # Mark if this is the active window
+        if [ "$is_active" = "1" ]; then
+            echo "${window_index}|${title} [active]"
+        else
+            echo "${window_index}|${title}"
+        fi
+    ) >> "$tmpfile" &
+done < "$tmpfile.windows"
+
+# Wait for all background jobs
+wait
+
+# Sort by window index and output
+sort -t'|' -k1 -n "$tmpfile"
+
+# Cleanup
+rm -f "$tmpfile.windows"
