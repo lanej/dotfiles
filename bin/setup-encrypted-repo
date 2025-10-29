@@ -5,9 +5,21 @@
 
 set -e
 
-# Configuration (auto-detected during installation)
-GDRIVE_BASE="/Users/joshlane/Library/CloudStorage/GoogleDrive-joshlane@easypost.com/My Drive/encrypted-repos"
-GPG_KEY="6DAE70CE5C232C03"
+# Configuration from environment variables (set in ~/.env)
+# ENCRYPTED_REPO_BASE: Base directory for encrypted repositories
+# ENCRYPTED_REPO_GPG_KEY: GPG key ID for encryption/signing
+GDRIVE_BASE="${ENCRYPTED_REPO_BASE:-$HOME/encrypted-repos}"
+GPG_KEY="${ENCRYPTED_REPO_GPG_KEY}"
+
+# Validate configuration
+if [ -z "$GPG_KEY" ]; then
+    echo -e "\033[0;31mError: ENCRYPTED_REPO_GPG_KEY not set in ~/.env\033[0m"
+    echo "Add this to ~/.env:"
+    echo "  export ENCRYPTED_REPO_GPG_KEY=\"your-gpg-key-id\""
+    echo ""
+    echo "Find your GPG key with: gpg --list-secret-keys --keyid-format=long"
+    exit 1
+fi
 
 # Colors for output
 GREEN='\033[0;32m'
