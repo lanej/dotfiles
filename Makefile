@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore cargo superwhisper
+.PHONY: zsh qute alacritty yabai spotify_player python go claude cargo superwhisper
 DOTFILES := $(shell pwd)
 
 all: .PHONY
