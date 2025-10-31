@@ -181,7 +181,7 @@ zz() {
                  --preview-window 'right:60%')" || return
     else
         # Use fzf with length-based sorting and progressive filtering
-        # Ctrl-/: Narrow down - select all visible items and search within them
+        # Ctrl-Space: Narrow down - select all visible items and search within them
         cd "$(_z -l 2>&1 \
             | sed 's/^[0-9,.]* *//' \
             | awk '{ print length($0), $0 }' \
@@ -190,10 +190,10 @@ zz() {
             | fzf --reverse --multi \
                   --tiebreak=length,begin \
                   --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                  --bind 'ctrl-/:select-all+accept' \
+                  --bind 'ctrl-space:select-all+accept' \
                   --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
                   --preview-window 'right:60%' \
-                  --header='Ctrl-/: narrow to filtered results' \
+                  --header='Ctrl-Space: narrow to filtered results' \
                   -q "${_last_z_args}" \
             | {
                 # Read all selected items into array
@@ -206,10 +206,10 @@ zz() {
                     printf '%s\n' "${items[@]}" | fzf --reverse \
                         --tiebreak=length,begin \
                         --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                        --bind 'ctrl-/:select-all+accept' \
+                        --bind 'ctrl-space:select-all+accept' \
                         --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
                         --preview-window 'right:60%' \
-                        --header='Ctrl-/: narrow again | Enter: select'
+                        --header='Ctrl-Space: narrow again | Enter: select'
                 fi
             })" || return
     fi
