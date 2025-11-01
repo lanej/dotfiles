@@ -1151,6 +1151,21 @@ require("lazy").setup({
 		lazy = false,
 	},
 	{
+		"williamboman/mason.nvim",
+		config = function()
+			require("mason").setup()
+		end,
+	},
+	{
+		"williamboman/mason-lspconfig.nvim",
+		dependencies = { "williamboman/mason.nvim" },
+		config = function()
+			require("mason-lspconfig").setup({
+				automatic_installation = true,
+			})
+		end,
+	},
+	{
 		"neovim/nvim-lspconfig",
 		dependencies = {
 			"saghen/blink.cmp",
@@ -1158,6 +1173,7 @@ require("lazy").setup({
 			"onsails/lspkind.nvim",
 			"netmute/ctags-lsp.nvim",
 			"Decodetalkers/csharpls-extended-lsp.nvim",
+			"williamboman/mason-lspconfig.nvim",
 		},
 		opts = {
 			servers = {

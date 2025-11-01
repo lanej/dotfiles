@@ -39,4 +39,9 @@ terraform.tfvars
 .claude/
 CLAUDE.local.md
 .mcp.json
+
+# spec-kit files
 .specify/
+
+# Rust build files
+target/
