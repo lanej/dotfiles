@@ -2186,6 +2186,47 @@ Output ONLY the commit message text. End with two blank lines.]],
 			vim.defer_fn(update_focus_state, 200)
 		end,
 	},
+	{
+		"mechatroner/rainbow_csv",
+		ft = { "csv", "tsv" },
+		config = function()
+			-- Enable rainbow highlighting for CSV files
+			vim.g.disable_rainbow_csv_autodetect = 0
+			vim.g.rcsv_colorpairs = {
+				{ "red", "red" },
+				{ "blue", "blue" },
+				{ "green", "green" },
+				{ "magenta", "magenta" },
+				{ "cyan", "cyan" },
+			}
+		end,
+	},
+})
+
+-- Auto-convert XLSX files to CSV using in2csv when opening
+vim.api.nvim_create_autocmd({ "BufReadPre", "FileReadPre" }, {
+	pattern = "*.xlsx",
+	callback = function()
+		local file = vim.fn.expand("<afile>")
+		local temp_csv = vim.fn.tempname() .. ".csv"
+
+		-- Convert XLSX to CSV using in2csv
+		local result = vim.fn.system("in2csv " .. vim.fn.shellescape(file) .. " > " .. temp_csv)
+
+		if vim.v.shell_error == 0 then
+			-- Read the converted CSV into the buffer
+			vim.cmd("edit " .. temp_csv)
+			-- Set buffer name to show original file
+			vim.api.nvim_buf_set_name(0, file .. " (CSV)")
+			-- Make it read-only since changes won't save to original XLSX
+			vim.bo.readonly = true
+			vim.bo.modifiable = false
+			-- Set filetype to csv for rainbow_csv
+			vim.bo.filetype = "csv"
+		else
+			vim.notify("Failed to convert XLSX: " .. result, vim.log.levels.ERROR)
+		end
+	end,
 })
 
 vim.keymap.set("n", "<leader>vpu", ":Lazy update<CR>", { silent = true, noremap = true })
