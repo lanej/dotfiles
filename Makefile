@@ -17,6 +17,8 @@ shell:
 	@ln -fs $(DOTFILES)/sh/htoprc $(HOME)/.config/htop/htoprc
 	@mkdir -p $(HOME)/.config/bottom
 	@ln -fs $(DOTFILES)/sh/bottom.toml $(HOME)/.config/bottom/bottom.toml
+	@mkdir -p $(HOME)/.config/btop
+	@ln -fs $(DOTFILES)/btop/btop.conf $(HOME)/.config/btop/btop.conf
 	@mkdir -p $(HOME)/.local/share/z
 	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
