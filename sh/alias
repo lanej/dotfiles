@@ -71,7 +71,9 @@ if ! command -v tmx >/dev/null 2>&1; then
 	alias tmx="tmux attach || tmux new"
 fi
 
-if command -v btm >/dev/null 2>&1; then
+if command -v btop >/dev/null 2>&1; then
+	alias htop="btop"
+elif command -v btm >/dev/null 2>&1; then
 	alias htop="btm -b"
 fi
 
