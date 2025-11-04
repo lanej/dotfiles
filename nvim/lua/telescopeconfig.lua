@@ -274,7 +274,57 @@ vim.keymap.set("n", "<leader>bp", function()
 end, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>sf", builtin.git_status, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>sr", function()
-	builtin.git_status({ cwd = vim.fn.expand("%:p:h") })
+	local current_dir = vim.fn.expand("%:p:h")
+	local git_root = vim.fn.systemlist("git -C " .. current_dir .. " rev-parse --show-toplevel")[1]
+
+	if not git_root or git_root == "" then
+		vim.notify("Not in a git repository", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Get relative path from git root to current directory
+	local relative_path = current_dir:gsub("^" .. vim.pesc(git_root) .. "/", "")
+	if relative_path == current_dir then
+		-- We're at git root
+		relative_path = "."
+	end
+
+	-- Get git status for files in the current directory only
+	local cmd = string.format("git -C %s status --porcelain -- %s", vim.fn.shellescape(git_root), relative_path)
+	local git_status_output = vim.fn.systemlist(cmd)
+
+	if #git_status_output == 0 then
+		vim.notify("No changed files in current directory", vim.log.levels.INFO)
+		return
+	end
+
+	-- Parse git status output and create file list
+	local files = {}
+	for _, line in ipairs(git_status_output) do
+		-- Git status format: XY filename
+		local filename = line:sub(4) -- Skip status codes and space
+		table.insert(files, git_root .. "/" .. filename)
+	end
+
+	-- Use find_files with the filtered file list
+	require("telescope.pickers")
+		.new({}, {
+			prompt_title = "Git Status (Current Dir: " .. relative_path .. ")",
+			finder = require("telescope.finders").new_table({
+				results = files,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = entry:gsub("^" .. vim.pesc(git_root) .. "/", ""),
+						ordinal = entry,
+						path = entry,
+					}
+				end,
+			}),
+			sorter = require("telescope.config").values.file_sorter({}),
+			previewer = require("telescope.config").values.file_previewer({}),
+		})
+		:find()
 end, { noremap = true, silent = true, desc = "Git status relative to current directory" })
 vim.keymap.set("n", "<leader>qf", builtin.quickfix, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>rr", builtin.command_history, { noremap = true, silent = true })
