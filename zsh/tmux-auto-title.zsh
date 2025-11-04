@@ -4,6 +4,12 @@
 # Auto-set tmux window title to match status bar format (dir [branch])
 if [[ -n "$TMUX" ]]; then
 	function _tmux_auto_window_title() {
+		# Only update if this pane is active
+		local is_active=$(tmux display-message -p '#{pane_active}' 2>/dev/null)
+		if [[ "$is_active" != "1" ]]; then
+			return
+		fi
+
 		# Get directory name
 		local dir_name=$(basename "$PWD")
 
@@ -16,8 +22,8 @@ if [[ -n "$TMUX" ]]; then
 			fi
 		fi
 
-		# Always set the window name to current directory
-		# This will be overridden by applications like nvim when they start
+		# Only set the window name if this is the active pane
+		# This prevents inactive panes from overwriting the title
 		tmux rename-window "$title" 2>/dev/null
 	}
 
