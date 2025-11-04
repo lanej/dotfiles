@@ -13,6 +13,9 @@ if [[ -n "$TMUX" ]]; then
 		# Get the window index for this pane
 		local window_index=$(tmux display-message -p '#{window_index}' 2>/dev/null)
 
+		# DEBUG: Log window index being updated (temporary)
+		# Uncomment to debug: echo "DEBUG: Updating window $window_index" >> /tmp/tmux-title-debug.log
+
 		# Get directory name
 		local dir_name=$(basename "$PWD")
 
@@ -27,7 +30,8 @@ if [[ -n "$TMUX" ]]; then
 
 		# Explicitly target this pane's window to avoid race conditions
 		# when switching windows quickly
-		tmux rename-window -t "$window_index" "$title" 2>/dev/null
+		# Use :index syntax to target specific window
+		tmux rename-window -t ":$window_index" "$title" 2>/dev/null
 	}
 
 	# Add to precmd hooks
