@@ -73,12 +73,10 @@ vim.api.nvim_create_autocmd("WinLeave", {
 	end,
 })
 
--- Define the highlight for inactive windows (slightly dimmed)
+-- Define the highlight for inactive windows (matches tmux/kitty inactive pane color)
 vim.api.nvim_create_autocmd("ColorScheme", {
 	callback = function()
-		-- Get the current Normal background
-		local normal_bg = vim.fn.synIDattr(vim.fn.hlID("Normal"), "bg")
-		-- Make inactive windows slightly darker
+		-- Force NormalNC to match tmux inactive pane color
 		vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
 	end,
 })
