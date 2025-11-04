@@ -10,6 +10,9 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
+		# Get the window index for this pane
+		local window_index=$(tmux display-message -p '#{window_index}' 2>/dev/null)
+
 		# Get directory name
 		local dir_name=$(basename "$PWD")
 
@@ -22,9 +25,9 @@ if [[ -n "$TMUX" ]]; then
 			fi
 		fi
 
-		# Only set the window name if this is the active pane
-		# This prevents inactive panes from overwriting the title
-		tmux rename-window "$title" 2>/dev/null
+		# Explicitly target this pane's window to avoid race conditions
+		# when switching windows quickly
+		tmux rename-window -t "$window_index" "$title" 2>/dev/null
 	}
 
 	# Add to precmd hooks
