@@ -289,21 +289,42 @@ vim.keymap.set("n", "<leader>sr", function()
 		relative_path = "."
 	end
 
-	-- Get git status for files in the current directory only
-	local cmd = string.format("git -C %s status --porcelain -- %s", vim.fn.shellescape(git_root), relative_path)
-	local git_status_output = vim.fn.systemlist(cmd)
+	-- Get changed and staged files in current directory
+	local search_path = relative_path == "." and "" or (relative_path .. "/")
 
-	if #git_status_output == 0 then
-		vim.notify("No changed files in current directory", vim.log.levels.INFO)
-		return
+	-- Get different types of changed files
+	local modified = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " ls-files -m -- " .. search_path)
+	local staged = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " diff --name-only --cached -- " .. search_path)
+	local untracked = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " ls-files -o --exclude-standard -- " .. search_path)
+
+	-- Combine and deduplicate
+	local files = {}
+	local seen = {}
+
+	for _, filename in ipairs(modified) do
+		if filename ~= "" and not seen[filename] then
+			table.insert(files, git_root .. "/" .. filename)
+			seen[filename] = true
+		end
 	end
 
-	-- Parse git status output and create file list
-	local files = {}
-	for _, line in ipairs(git_status_output) do
-		-- Git status format: XY filename
-		local filename = line:sub(4) -- Skip status codes and space
-		table.insert(files, git_root .. "/" .. filename)
+	for _, filename in ipairs(staged) do
+		if filename ~= "" and not seen[filename] then
+			table.insert(files, git_root .. "/" .. filename)
+			seen[filename] = true
+		end
+	end
+
+	for _, filename in ipairs(untracked) do
+		if filename ~= "" and not seen[filename] then
+			table.insert(files, git_root .. "/" .. filename)
+			seen[filename] = true
+		end
+	end
+
+	if #files == 0 then
+		vim.notify("No changed files in current directory", vim.log.levels.INFO)
+		return
 	end
 
 	-- Use telescope picker with fuzzy finding enabled
