@@ -27,7 +27,19 @@ require("fzf-lua").setup({
 	winopts = {
 		border = "single",
 		preview = {
-			flip_columns = 120, -- #cols to switch to horizontal on flex
+			layout = "flex", -- use flex layout to enable flipping
+			flip_columns = 140, -- #cols to switch to horizontal on flex (ensure search panel has enough width)
+			vertical = "down:45%", -- vertical preview when flipped (results top, preview bottom)
+			horizontal = "right:50%", -- horizontal preview default (results left, preview right)
+		},
+	},
+	grep = {
+		-- Adaptive layout for grep results - ensures results panel has minimum width before flipping
+		winopts = {
+			preview = {
+				layout = "flex",
+				flip_columns = 140, -- when terminal < 140 cols, flip to vertical (results top, preview bottom)
+			},
 		},
 	},
 	lsp = {
