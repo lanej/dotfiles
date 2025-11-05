@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# Comprehensive disk space cleanup script
+# Run with: ./disk-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "🔍 DRY RUN MODE - No files will be deleted"
+fi
+
+# Function to format bytes
+format_size() {
+    numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+# Function to safely remove directory
+safe_remove() {
+    local dir="$1"
+    local name="$2"
+
+    if [[ ! -d "$dir" ]]; then
+        return 0
+    fi
+
+    local size=$(du -sk "$dir" 2>/dev/null | cut -f1)
+    if [[ $size -eq 0 ]]; then
+        return 0
+    fi
+
+    echo "  $name: $(format_size $((size * 1024)))"
+
+    if [[ "$DRY_RUN" == "false" ]]; then
+        rm -rf "$dir"
+    fi
+}
+
+total_freed=0
+
+echo "=========================================="
+echo "🧹 Disk Space Cleanup"
+echo "=========================================="
+echo
+
+# 1. Python/uv cache (35GB)
+echo "1. Python/uv cache (~35GB)"
+if [[ -d ~/.cache/uv ]]; then
+    size=$(du -sk ~/.cache/uv 2>/dev/null | cut -f1 || echo 0)
+    echo "  Current size: $(format_size $((size * 1024)))"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        echo "  Cleaning..."
+        uv cache clean 2>/dev/null || rm -rf ~/.cache/uv
+    fi
+    total_freed=$((total_freed + size))
+fi
+echo
+
+# 2. Rust sccache (10GB)
+echo "2. Rust sccache (~10GB)"
+if [[ -d ~/Library/Caches/Mozilla.sccache ]]; then
+    size=$(du -sk ~/Library/Caches/Mozilla.sccache 2>/dev/null | cut -f1 || echo 0)
+    echo "  Current size: $(format_size $((size * 1024)))"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        echo "  Cleaning..."
+        sccache --stop-server 2>/dev/null || true
+        rm -rf ~/Library/Caches/Mozilla.sccache
+    fi
+    total_freed=$((total_freed + size))
+fi
+echo
+
+# 3. Go build cache (4.5GB)
+echo "3. Go build cache (~4.5GB)"
+if [[ -d ~/Library/Caches/go-build ]]; then
+    size=$(du -sk ~/Library/Caches/go-build 2>/dev/null | cut -f1 || echo 0)
+    echo "  Current size: $(format_size $((size * 1024)))"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        echo "  Cleaning..."
+        go clean -cache 2>/dev/null || rm -rf ~/Library/Caches/go-build
+    fi
+    total_freed=$((total_freed + size))
+fi
+echo
+
+# 4. Homebrew cache (2.5GB)
+echo "4. Homebrew cache (~2.5GB)"
+if [[ -d ~/Library/Caches/Homebrew ]]; then
+    size=$(du -sk ~/Library/Caches/Homebrew 2>/dev/null | cut -f1 || echo 0)
+    echo "  Current size: $(format_size $((size * 1024)))"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        echo "  Cleaning..."
+        brew cleanup --prune=all 2>/dev/null
+    fi
+    total_freed=$((total_freed + size))
+fi
+echo
+
+# 5. Puppeteer browsers (2.4GB)
+echo "5. Puppeteer browsers (~2.4GB)"
+safe_remove ~/.cache/puppeteer "Puppeteer cache"
+total_freed=$((total_freed + $(du -sk ~/.cache/puppeteer 2>/dev/null | cut -f1 || echo 0)))
+echo
+
+# 6. Playwright browsers (1.8GB)
+echo "6. Playwright browsers (~1.8GB)"
+safe_remove ~/Library/Caches/ms-playwright "Playwright cache"
+total_freed=$((total_freed + $(du -sk ~/Library/Caches/ms-playwright 2>/dev/null | cut -f1 || echo 0)))
+echo
+
+# 7. pip cache (1.2GB)
+echo "7. pip cache (~1.2GB)"
+if command -v pip3 &> /dev/null; then
+    size=$(du -sk ~/Library/Caches/pip 2>/dev/null | cut -f1 || echo 0)
+    echo "  Current size: $(format_size $((size * 1024)))"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        pip3 cache purge 2>/dev/null || rm -rf ~/Library/Caches/pip
+    fi
+    total_freed=$((total_freed + size))
+fi
+echo
+
+# 8. npm cache
+echo "8. npm cache"
+if command -v npm &> /dev/null; then
+    if [[ "$DRY_RUN" == "false" ]]; then
+        npm cache clean --force 2>/dev/null
+    else
+        echo "  Would clean npm cache"
+    fi
+fi
+echo
+
+# 9. Docker (if installed)
+echo "9. Docker cleanup"
+if command -v docker &> /dev/null; then
+    if [[ "$DRY_RUN" == "false" ]]; then
+        docker system prune -af --volumes 2>/dev/null || echo "  Docker not running or no cleanup needed"
+    else
+        echo "  Would run: docker system prune -af --volumes"
+    fi
+fi
+echo
+
+# 10. System caches (safe)
+echo "10. macOS system caches"
+safe_caches=(
+    "~/Library/Caches/com.spotify.client"
+    "~/Library/Caches/Firefox"
+    "~/Library/Caches/com.openai.chat"
+    "~/Library/Caches/node-gyp"
+)
+for cache in "${safe_caches[@]}"; do
+    expanded=$(eval echo "$cache")
+    if [[ -d "$expanded" ]]; then
+        size=$(du -sk "$expanded" 2>/dev/null | cut -f1 || echo 0)
+        if [[ $size -gt 0 ]]; then
+            echo "  $(basename "$expanded"): $(format_size $((size * 1024)))"
+            if [[ "$DRY_RUN" == "false" ]]; then
+                rm -rf "$expanded"
+            fi
+            total_freed=$((total_freed + size))
+        fi
+    fi
+done
+echo
+
+echo "=========================================="
+echo "Summary"
+echo "=========================================="
+echo "Total space that would be freed: $(format_size $((total_freed * 1024)))"
+echo
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "This was a DRY RUN. Run without --dry-run to actually clean:"
+    echo "  $0"
+else
+    echo "✅ Cleanup complete!"
+    echo
+    echo "Recommended next steps:"
+    echo "  1. Run 'cargo-sweep-cleanup' to clean old Rust builds"
+    echo "  2. Review ~/src for old projects you don't need"
+    echo "  3. Empty Trash"
+fi
