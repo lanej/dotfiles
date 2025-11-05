@@ -306,23 +306,29 @@ vim.keymap.set("n", "<leader>sr", function()
 		table.insert(files, git_root .. "/" .. filename)
 	end
 
-	-- Use find_files with the filtered file list
-	require("telescope.pickers")
+	-- Use telescope picker with fuzzy finding enabled
+	local conf = require("telescope.config").values
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local make_entry = require("telescope.make_entry")
+
+	pickers
 		.new({}, {
 			prompt_title = "Git Status (Current Dir: " .. relative_path .. ")",
-			finder = require("telescope.finders").new_table({
+			finder = finders.new_table({
 				results = files,
 				entry_maker = function(entry)
+					local display_path = entry:gsub("^" .. vim.pesc(git_root) .. "/", "")
 					return {
 						value = entry,
-						display = entry:gsub("^" .. vim.pesc(git_root) .. "/", ""),
-						ordinal = entry,
+						display = display_path,
+						ordinal = display_path,
 						path = entry,
 					}
 				end,
 			}),
-			sorter = require("telescope.config").values.file_sorter({}),
-			previewer = require("telescope.config").values.file_previewer({}),
+			sorter = conf.generic_sorter({}),
+			previewer = conf.file_previewer({}),
 		})
 		:find()
 end, { noremap = true, silent = true, desc = "Git status relative to current directory" })
