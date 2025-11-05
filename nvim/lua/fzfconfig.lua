@@ -11,9 +11,6 @@ require("fzf-lua").setup({
 	},
 	defaults = {
 		compat_warn = false,
-		-- Shorten paths globally to save horizontal space
-		-- e.g., ~/.c/n/lua/file.lua instead of ~/.config/nvim/lua/file.lua
-		path_shorten = 1,
 	},
 	keymap = {
 		builtin = {
@@ -31,14 +28,22 @@ require("fzf-lua").setup({
 		border = "single",
 		preview = {
 			layout = "flex", -- use flex layout to enable flipping
-			flip_columns = 120, -- #cols to switch to horizontal on flex (reduced since paths are shortened)
+			flip_columns = 140, -- #cols to switch to horizontal on flex
 			vertical = "down:45%", -- vertical preview when flipped (results top, preview bottom)
 			horizontal = "right:50%", -- horizontal preview default (results left, preview right)
 		},
 	},
 	grep = {
-		-- Enable glob parsing for grep
-		rg_glob = true,
+		-- Shorten paths in grep results to save horizontal space for match text
+		-- e.g., ~/.c/n/lua/file.lua instead of ~/.config/nvim/lua/file.lua
+		path_shorten = 1, -- shorten to first letter of each directory component
+		rg_glob = true, -- enable glob parsing
+		winopts = {
+			preview = {
+				layout = "flex",
+				flip_columns = 120, -- when terminal < 120 cols, flip to vertical
+			},
+		},
 	},
 	lsp = {
 		code_actions = {
