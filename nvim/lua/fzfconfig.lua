@@ -4,7 +4,8 @@ local actions = require("fzf-lua.actions")
 local skim_present = vim.fn.executable("sk") == 1
 
 require("fzf-lua").setup({
-	fzf_bin = skim_present and "sk" or "fzf", -- WARN: this can cause neovim to lockup
+	-- NOTE: Forcing fzf instead of sk to avoid NVIM_LISTEN_ADDRESS issue (ibhagwan/fzf-lua#1812)
+	fzf_bin = "fzf",
 	files = {
 		cmd = "fd --type f --hidden --follow --exclude .git",
 	},

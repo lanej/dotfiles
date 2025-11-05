@@ -968,9 +968,9 @@ require("lazy").setup({
 			"MunifTanjim/nui.nvim",
 			--- The below dependencies are optional,
 			"echasnovski/mini.pick", -- for file_selector provider mini.pick
-			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
+			-- "nvim-telescope/telescope.nvim", -- for file_selector provider telescope
 			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
-			-- "fzf-lua", -- for file_selector provider fzf
+			"ibhagwan/fzf-lua", -- for file_selector provider fzf
 			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
 			"zbirenbaum/copilot.lua", -- for providers='copilot'
 			{
@@ -1060,6 +1060,7 @@ require("lazy").setup({
 	{
 		"nvim-telescope/telescope-fzf-native.nvim",
 		build = "make",
+		enabled = false,
 	},
 	{
 		"nvim-telescope/telescope.nvim",
@@ -1067,8 +1068,16 @@ require("lazy").setup({
 			"nvim-lua/plenary.nvim",
 			-- "nvim-telescope/telescope-fzf-native.nvim",
 		},
+		enabled = false,
 		config = function()
 			require("telescopeconfig")
+		end,
+	},
+	{
+		"ibhagwan/fzf-lua",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		config = function()
+			require("fzfconfig")
 		end,
 	},
 	{
@@ -1665,7 +1674,7 @@ require("lazy").setup({
 		"pwntester/octo.nvim",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
-			"nvim-telescope/telescope.nvim",
+			"ibhagwan/fzf-lua",
 			"nvim-tree/nvim-web-devicons",
 		},
 		cmd = "Octo",
