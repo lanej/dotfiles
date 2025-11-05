@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Automatic cargo-sweep cleanup for Rust projects
+# Removes build artifacts older than specified days from all Rust projects in ~/src/
+
+set -euo pipefail
+
+# Configuration
+RUST_PROJECT_ROOT="${RUST_PROJECT_ROOT:-$HOME/src}"
+CLEANUP_DAYS="${CLEANUP_DAYS:-7}"
+LOG_FILE="${LOG_FILE:-$HOME/.cache/cargo-sweep.log}"
+
+# Create log directory if it doesn't exist
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Function to log with timestamp
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+# Function to format bytes to human readable
+format_bytes() {
+    numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+log "========================================"
+log "Starting cargo-sweep cleanup"
+log "Root directory: $RUST_PROJECT_ROOT"
+log "Cleanup threshold: $CLEANUP_DAYS days"
+log "========================================"
+
+# Check if cargo-sweep is installed
+if ! command -v cargo-sweep &> /dev/null; then
+    log "ERROR: cargo-sweep not found. Install with: cargo install cargo-sweep"
+    exit 1
+fi
+
+# Check if root directory exists
+if [[ ! -d "$RUST_PROJECT_ROOT" ]]; then
+    log "ERROR: Directory $RUST_PROJECT_ROOT does not exist"
+    exit 1
+fi
+
+# Find all directories containing Cargo.toml
+total_cleaned=0
+project_count=0
+error_count=0
+
+while IFS= read -r -d '' cargo_toml; do
+    project_dir=$(dirname "$cargo_toml")
+    project_name=$(basename "$project_dir")
+
+    # Skip if no target directory exists
+    if [[ ! -d "$project_dir/target" ]]; then
+        continue
+    fi
+
+    project_count=$((project_count + 1))
+    log "Processing: $project_name"
+
+    # Get size before cleanup
+    size_before=$(du -sk "$project_dir/target" 2>/dev/null | cut -f1)
+
+    # Run cargo-sweep
+    if (cd "$project_dir" && cargo sweep --time "$CLEANUP_DAYS" 2>&1) | tee -a "$LOG_FILE"; then
+        # Get size after cleanup
+        if [[ -d "$project_dir/target" ]]; then
+            size_after=$(du -sk "$project_dir/target" 2>/dev/null | cut -f1)
+        else
+            size_after=0
+        fi
+
+        cleaned=$((size_before - size_after))
+        total_cleaned=$((total_cleaned + cleaned))
+
+        if [[ $cleaned -gt 0 ]]; then
+            log "  Cleaned: $(format_bytes $((cleaned * 1024)))"
+        else
+            log "  Nothing to clean"
+        fi
+    else
+        log "  ERROR: cargo-sweep failed for $project_name"
+        error_count=$((error_count + 1))
+    fi
+
+done < <(find "$RUST_PROJECT_ROOT" -type f -name "Cargo.toml" -print0)
+
+log "========================================"
+log "Cleanup complete"
+log "Projects processed: $project_count"
+log "Total space freed: $(format_bytes $((total_cleaned * 1024)))"
+log "Errors: $error_count"
+log "========================================"
+
+# Exit with error if any projects failed
+if [[ $error_count -gt 0 ]]; then
+    exit 1
+fi
