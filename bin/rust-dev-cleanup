@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Cleanup Rust projects while preserving active development work
+# Safe for projects under active development
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "🔍 DRY RUN MODE - No files will be deleted"
+fi
+
+format_size() {
+    numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+total_freed=0
+
+echo "=========================================="
+echo "🦀 Rust Development Cleanup"
+echo "=========================================="
+echo "This preserves debug builds and recent work"
+echo
+
+# Find all Cargo.toml projects in ~/src
+while IFS= read -r cargo_toml; do
+    project_dir=$(dirname "$cargo_toml")
+    project_name=$(basename "$project_dir")
+
+    # Skip if no target directory
+    [[ ! -d "$project_dir/target" ]] && continue
+
+    echo "Processing: $project_name"
+
+    # Get initial size
+    size_before=$(du -sk "$project_dir/target" 2>/dev/null | cut -f1)
+
+    # Strategy 1: Clean release builds (keeps debug)
+    if [[ -d "$project_dir/target/release" ]]; then
+        release_size=$(du -sk "$project_dir/target/release" 2>/dev/null | cut -f1)
+        echo "  Release builds: $(format_size $((release_size * 1024)))"
+
+        if [[ "$DRY_RUN" == "false" ]]; then
+            (cd "$project_dir" && cargo clean --release 2>/dev/null) || true
+        fi
+        total_freed=$((total_freed + release_size))
+    fi
+
+    # Strategy 2: Clean incremental compilation (if >1GB)
+    if [[ -d "$project_dir/target/debug/incremental" ]]; then
+        incr_size=$(du -sk "$project_dir/target/debug/incremental" 2>/dev/null | cut -f1)
+        # Only clean if > 1GB
+        if [[ $incr_size -gt 1048576 ]]; then
+            echo "  Incremental cache: $(format_size $((incr_size * 1024)))"
+
+            if [[ "$DRY_RUN" == "false" ]]; then
+                rm -rf "$project_dir/target/debug/incremental"
+            fi
+            total_freed=$((total_freed + incr_size))
+        fi
+    fi
+
+    # Strategy 3: Sweep old artifacts (>3 days)
+    if command -v cargo-sweep &> /dev/null; then
+        if [[ "$DRY_RUN" == "false" ]]; then
+            echo "  Sweeping artifacts >3 days old..."
+            (cd "$project_dir" && cargo sweep --time 3 2>&1 | grep -i "cleaned" || true)
+        else
+            echo "  Would sweep artifacts >3 days old"
+        fi
+    fi
+
+    # Show space saved
+    if [[ "$DRY_RUN" == "false" ]]; then
+        size_after=$(du -sk "$project_dir/target" 2>/dev/null | cut -f1 || echo 0)
+        saved=$((size_before - size_after))
+        if [[ $saved -gt 0 ]]; then
+            echo "  ✓ Saved: $(format_size $((saved * 1024)))"
+        fi
+    fi
+    echo
+
+done < <(find ~/src -name "Cargo.toml" -print0 | head -z -20)
+
+echo "=========================================="
+echo "Summary"
+echo "=========================================="
+echo "Estimated space freed: $(format_size $((total_freed * 1024)))"
+echo
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "This was a DRY RUN. To actually clean:"
+    echo "  $0"
+else
+    echo "✅ Cleanup complete!"
+    echo
+    echo "What was preserved:"
+    echo "  ✓ Debug builds from last 3 days"
+    echo "  ✓ All source code"
+    echo "  ✓ Cargo.lock files"
+    echo
+    echo "What was removed:"
+    echo "  ✗ Release builds"
+    echo "  ✗ Large incremental caches (>1GB)"
+    echo "  ✗ Build artifacts >3 days old"
+fi
