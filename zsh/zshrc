@@ -276,3 +276,45 @@ fi
 if [[ -r "${HOME}/.claude/local/" ]]; then
   export PATH="$PATH:${HOME}/.claude/local"
 fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Claude Code Privacy & Context Management
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Quick privacy check before starting Claude Code
+alias claude-check="~/.claude/local/claude-privacy-check"
+
+# Context switching (for future personal GCP project setup)
+claude-work() {
+    export ANTHROPIC_VERTEX_PROJECT_ID=easypost-platform
+    export CLAUDE_CODE_USE_VERTEX=1
+    echo "🏢 Claude Code → EasyPost Vertex AI (easypost-platform)"
+    echo "   Privacy: MEDIUM (metadata visible to EasyPost admins)"
+    echo "   Run 'claude-check' to verify logging status"
+}
+
+claude-personal() {
+    export ANTHROPIC_VERTEX_PROJECT_ID=joshlane-claude-private
+    export CLAUDE_CODE_USE_VERTEX=1
+    echo "🔒 Claude Code → Personal Vertex AI (joshlane-claude-private)"
+    echo "   Privacy: HIGH (you control all access)"
+    echo "   Run 'claude-check' to verify logging status"
+}
+
+claude-status() {
+    local project="${ANTHROPIC_VERTEX_PROJECT_ID:-easypost-platform}"
+    echo "Current project: $project"
+    if [ "$project" = "easypost-platform" ]; then
+        echo "Context: 🏢 Work (shared EasyPost infrastructure)"
+    elif [ "$project" = "joshlane-claude-private" ]; then
+        echo "Context: 🔒 Personal (private infrastructure)"
+    else
+        echo "Context: ⚠️  Unknown project"
+    fi
+}
+
+# Default to work context
+claude-work() { :; } > /dev/null 2>&1
+
+# Override claude command with privacy-checking wrapper
+alias claude="$HOME/.claude/local/claude-wrapper"
