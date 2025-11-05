@@ -1285,6 +1285,18 @@ require("lazy").setup({
 					},
 				},
 				marksman = {},
+				pkm_lsp = {
+					cmd = { "/Users/joshlane/src/pkm/target/release/pkm-lsp" },
+					filetypes = { "markdown" },
+					root_dir = function(fname)
+						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
+					end,
+					init_options = {
+						dbPath = ".lancedb",
+						debounceMs = 1000,
+					},
+					settings = {},
+				},
 				pylsp = {},
 				html = {},
 				yamlls = {},
@@ -2068,6 +2080,7 @@ Output ONLY the commit message text. End with two blank lines.]],
 		"epwalsh/obsidian.nvim",
 		version = "*", -- recommended, use latest release instead of latest commit
 		lazy = true,
+		enabled = false,
 		ft = "markdown",
 		-- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
 		-- event = {

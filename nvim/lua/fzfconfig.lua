@@ -368,12 +368,15 @@ vim.keymap.set({ "n" }, "<leader>sr", function()
 	local search_path = relative_path == "." and "" or (relative_path .. "/")
 
 	-- Build command to get modified, staged, and untracked files
+	-- Use git -C instead of cd to avoid shell escaping issues
 	local cmd = string.format(
-		"cd %s && (git ls-files -m -- %s; git diff --name-only --cached -- %s; git ls-files -o --exclude-standard -- %s) | sort -u",
+		"(git -C %s ls-files -m -- %s; git -C %s diff --name-only --cached -- %s; git -C %s ls-files -o --exclude-standard -- %s) | sort -u",
 		vim.fn.shellescape(git_root),
-		search_path,
-		search_path,
-		search_path
+		vim.fn.shellescape(search_path),
+		vim.fn.shellescape(git_root),
+		vim.fn.shellescape(search_path),
+		vim.fn.shellescape(git_root),
+		vim.fn.shellescape(search_path)
 	)
 
 	require("fzf-lua").files({
