@@ -35,8 +35,9 @@ require("fzf-lua").setup({
 	},
 	grep = {
 		-- Shorten paths in grep results to save horizontal space for match text
-		-- e.g., ~/.c/n/lua/file.lua instead of ~/.config/nvim/lua/file.lua
-		path_shorten = 1, -- shorten to first letter of each directory component
+		-- Using 2 chars per directory as a compromise between readability and space
+		-- e.g., ~/.co/nv/lua/file.lua instead of ~/.config/nvim/lua/file.lua
+		path_shorten = 2, -- shorten to 2 chars per directory (more readable than 1)
 		rg_glob = true, -- enable glob parsing
 		winopts = {
 			preview = {
