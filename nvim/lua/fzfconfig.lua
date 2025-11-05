@@ -346,3 +346,44 @@ end, {
 	noremap = true,
 	silent = true,
 })
+
+-- Git status files relative to current buffer directory
+vim.keymap.set({ "n" }, "<leader>sr", function()
+	local current_dir = vim.fn.expand("%:p:h")
+	local git_root = vim.fn.systemlist("git -C " .. current_dir .. " rev-parse --show-toplevel")[1]
+
+	if not git_root or git_root == "" then
+		vim.notify("Not in a git repository", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Get relative path from git root to current directory
+	local relative_path = current_dir:gsub("^" .. vim.pesc(git_root) .. "/", "")
+	if relative_path == current_dir then
+		-- We're at git root
+		relative_path = "."
+	end
+
+	-- Get changed and staged files in current directory
+	local search_path = relative_path == "." and "" or (relative_path .. "/")
+
+	-- Build command to get modified, staged, and untracked files
+	local cmd = string.format(
+		"cd %s && (git ls-files -m -- %s; git diff --name-only --cached -- %s; git ls-files -o --exclude-standard -- %s) | sort -u",
+		vim.fn.shellescape(git_root),
+		search_path,
+		search_path,
+		search_path
+	)
+
+	require("fzf-lua").files({
+		cmd = cmd,
+		prompt = "Git Status (Current Dir: " .. relative_path .. ")❯ ",
+		actions = require("fzf-lua").defaults.actions.files,
+		preview = "git diff HEAD {} 2>/dev/null | delta || cat {}",
+	})
+end, {
+	noremap = true,
+	silent = true,
+	desc = "Git status relative to current directory",
+})
