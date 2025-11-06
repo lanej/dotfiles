@@ -1286,8 +1286,10 @@ require("lazy").setup({
 				},
 				marksman = {},
 				pkm_lsp = {
-					cmd = { "/Users/joshlane/src/pkm/target/release/pkm-lsp" },
+					cmd = { "pkm", "lsp" },
 					filetypes = { "markdown" },
+					autostart = true,
+					single_file_support = true,
 					root_dir = function(fname)
 						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
 					end,
@@ -1304,11 +1306,7 @@ require("lazy").setup({
 					filetypes = { "sh", "zsh", "bash" },
 				},
 				zls = {},
-				tinymist = {
-					-- Alternative Typst LSP (newer, more features)
-					-- Uncomment to use tinymist instead of typst_lsp
-					-- settings = {},
-				},
+				tinymist = {},
 				lemminx = {
 					-- XML Language Server
 					init_options = {
@@ -1348,8 +1346,49 @@ require("lazy").setup({
 				-- `opts[server].capabilities, if you've defined it
 				config.capabilities = require("blink.cmp").get_lsp_capabilities(config.capabilities)
 				vim.lsp.config(server, config)
-				vim.lsp.enable(server)
+
+				-- Skip auto-enabling markdown LSPs - our autocmd handles them conditionally
+				if server ~= "marksman" and server ~= "pkm_lsp" then
+					vim.lsp.enable(server)
+				end
 			end
+
+			-- Capture server configs for autocmd closure
+			local pkm_config = opts.servers.pkm_lsp
+			local marksman_config = opts.servers.marksman
+
+			-- Smart LSP selection: pkm_lsp in PKM workspaces, Marksman elsewhere
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "markdown",
+				callback = function(args)
+					local root_dir = vim.fs.root(args.file, { ".lancedb", ".git", ".marksman.toml" })
+					local is_pkm_workspace = root_dir and vim.fn.isdirectory(root_dir .. "/.lancedb") == 1
+
+					if is_pkm_workspace and pkm_config then
+						-- PKM workspace: use pkm_lsp for wikilink completions
+						local config = vim.tbl_deep_extend("force", {
+							name = "pkm_lsp",
+							cmd = pkm_config.cmd,
+							filetypes = pkm_config.filetypes,
+							root_dir = root_dir,
+							init_options = pkm_config.init_options,
+							settings = pkm_config.settings,
+						}, { capabilities = require("blink.cmp").get_lsp_capabilities(pkm_config.capabilities) })
+
+						vim.lsp.start(config)
+					elseif marksman_config and root_dir then
+						-- Regular markdown: use Marksman
+						local config = vim.tbl_deep_extend("force", {
+							name = "marksman",
+							cmd = marksman_config.cmd or { "marksman", "server" },
+							filetypes = { "markdown" },
+							root_dir = root_dir,
+						}, { capabilities = require("blink.cmp").get_lsp_capabilities(marksman_config.capabilities) })
+
+						vim.lsp.start(config)
+					end
+				end,
+			})
 
 			require("csharpls_extended").buf_read_cmd_bind()
 		end,
