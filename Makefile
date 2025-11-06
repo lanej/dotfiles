@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore cargo
+.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore cargo superwhisper
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -134,6 +134,11 @@ go:
 cargo:
 	@mkdir -p $(HOME)/.cargo
 	@ln -fs $(DOTFILES)/cargo/config.toml $(HOME)/.cargo/config.toml
+superwhisper:
+	@mkdir -p $(HOME)/Documents/superwhisper/settings
+	@mkdir -p $(HOME)/Documents/superwhisper/modes
+	@ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json
+	@ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json
 claude:
 	@mkdir -p $(HOME)/.claude
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
