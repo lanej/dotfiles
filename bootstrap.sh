@@ -683,6 +683,7 @@ install_dependencies() {
 
 	# command candy
 	install_package_version gh 2.66.0
+	install_package_version git-crypt 0.8.0
 	install_package_version jq 1.7.1
 	install_package_version yq 4.45.4
 	install_package_version ripgrep 14.1.0
