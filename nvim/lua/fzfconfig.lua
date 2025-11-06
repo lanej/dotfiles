@@ -7,7 +7,7 @@ require("fzf-lua").setup({
 	-- NOTE: Forcing fzf instead of sk to avoid NVIM_LISTEN_ADDRESS issue (ibhagwan/fzf-lua#1812)
 	fzf_bin = "fzf",
 	files = {
-		cmd = "fd --type f --hidden --follow --exclude .git",
+		cmd = "fd --type f --follow --exclude .git",
 	},
 	defaults = {
 		compat_warn = false,
