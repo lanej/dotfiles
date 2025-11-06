@@ -1,0 +1,2 @@
+# Encrypt SuperWhisper settings containing sensitive vocabulary and name replacements
+superwhisper/settings/settings.json filter=git-crypt diff=git-crypt
