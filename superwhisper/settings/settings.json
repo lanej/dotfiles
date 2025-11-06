@@ -1,0 +1,42 @@
+{
+  "modeKeys" : [
+
+  ],
+  "replacements" : [
+    {
+      "id" : "4441CA90-D24C-441B-80C7-55142ED6E1BA",
+      "original" : "Fabricator",
+      "with" : "Phabricator"
+    },
+    {
+      "id" : "72D23C80-3660-49E5-B6B3-F5ADB7C17F4D",
+      "original" : "Fabrikator",
+      "with" : "Phabricator"
+    },
+    {
+      "id" : "823DA011-5B29-4E2C-B9B4-0DA7B99DEE35",
+      "original" : "Owen",
+      "with" : "Eoin"
+    }
+  ],
+  "vocabulary" : [
+    "Kagi",
+    "Claude",
+    "EasyPost",
+    "Justfile",
+    "Phab",
+    "Phabricator",
+    "YAML",
+    "JSON",
+    "Lua",
+    "speckit",
+    "git",
+    "Ching",
+    "Arif",
+    "SQL",
+    "Bardia",
+    "fzf",
+    "fzf-lua",
+    "rEASYPOST"
+  ]
+}

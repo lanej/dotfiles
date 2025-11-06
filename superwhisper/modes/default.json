@@ -1,0 +1,34 @@
+{
+  "activationApps" : [
+
+  ],
+  "activationSites" : [
+
+  ],
+  "adjustOutputVolume" : false,
+  "contextFromActiveApplication" : false,
+  "contextFromClipboard" : false,
+  "contextFromSelection" : false,
+  "contextTemplate" : "Use the copied text as context to complete this task.\n\nCopied text: ",
+  "description" : "",
+  "diarize" : false,
+  "key" : "default",
+  "language" : "en",
+  "languageModelEnabled" : false,
+  "languageModelID" : "sw-gpt-4.1-mini",
+  "literalPunctuation" : false,
+  "name" : "Default",
+  "pauseMediaPlayback" : false,
+  "prompt" : "",
+  "promptExamples" : [
+
+  ],
+  "realtimeOutput" : false,
+  "script" : "",
+  "scriptEnabled" : false,
+  "translateToEnglish" : false,
+  "type" : "custom",
+  "useSystemAudio" : false,
+  "version" : 1,
+  "voiceModelID" : "small.en"
+}
