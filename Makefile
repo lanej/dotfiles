@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore
+.PHONY: zsh qute alacritty yabai spotify_player python go claude gpg-restore cargo
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -131,6 +131,9 @@ undercurl:
 go:
 	@mkdir -p $(HOME)/.config/go
 	@ln -fs $(DOTFILES)/go/env $(HOME)/.config/go/env
+cargo:
+	@mkdir -p $(HOME)/.cargo
+	@ln -fs $(DOTFILES)/cargo/config.toml $(HOME)/.cargo/config.toml
 claude:
 	@mkdir -p $(HOME)/.claude
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
