@@ -2256,39 +2256,6 @@ Output ONLY the commit message text. End with two blank lines.]],
 					winhighlight = false,
 				},
 			})
-
-			-- Conditionally enable/disable focus based on terminal size
-			-- Only use focus.nvim when space is constrained
-			local function update_focus_state()
-				local total_width = vim.o.columns
-				local total_height = vim.o.lines
-				local min_comfortable_width = 160 -- Enough for two 80-column windows
-				local min_comfortable_height = 40
-
-				if total_width < min_comfortable_width or total_height < min_comfortable_height then
-					-- Space is constrained, enable focus.nvim
-					require("focus").focus_enable()
-					vim.opt.equalalways = false
-				else
-					-- Plenty of space, use equal windows
-					require("focus").focus_disable()
-					vim.opt.equalalways = true
-					-- Safely equalize windows if there's enough space
-					pcall(function()
-						vim.cmd("wincmd =")
-					end)
-				end
-			end
-
-			-- Update on resize with a slight delay to avoid conflicts
-			vim.api.nvim_create_autocmd("VimResized", {
-				callback = function()
-					vim.defer_fn(update_focus_state, 100)
-				end,
-			})
-
-			-- Set initial state
-			vim.defer_fn(update_focus_state, 200)
 		end,
 	},
 })
