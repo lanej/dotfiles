@@ -2237,7 +2237,7 @@ Output ONLY the commit message text. End with two blank lines.]],
 					width = 0,
 					height = 0,
 					minwidth = 80,
-					minheight = 10,
+					minheight = 1,
 				},
 				ui = {
 					number = false,
