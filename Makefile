@@ -135,23 +135,23 @@ cargo:
 	@mkdir -p $(HOME)/.cargo
 	@ln -fs $(DOTFILES)/cargo/config.toml $(HOME)/.cargo/config.toml
 superwhisper:
-	@echo "Checking git-crypt status..."
 	@if ! command -v git-crypt >/dev/null 2>&1; then \
-		echo "Error: git-crypt not installed. Install with: brew install git-crypt"; \
-		exit 1; \
-	fi
-	@if git-crypt status 2>/dev/null | grep -q "not encrypted: superwhisper/settings/settings.json"; then \
-		echo "⚠️  git-crypt is locked. Unlocking..."; \
-		git-crypt unlock || (echo "Error: Failed to unlock. Ensure GPG key is available." && exit 1); \
-		echo "✓ git-crypt unlocked"; \
+		echo "⚠️  Skipping superwhisper: git-crypt not installed. Install with: brew install git-crypt"; \
 	else \
-		echo "✓ git-crypt already unlocked"; \
+		echo "Checking git-crypt status..."; \
+		if git-crypt status 2>/dev/null | grep -q "not encrypted: superwhisper/settings/settings.json"; then \
+			echo "⚠️  git-crypt is locked. Unlocking..."; \
+			git-crypt unlock || (echo "Error: Failed to unlock. Ensure GPG key is available." && exit 1); \
+			echo "✓ git-crypt unlocked"; \
+		else \
+			echo "✓ git-crypt already unlocked"; \
+		fi; \
+		mkdir -p $(HOME)/Documents/superwhisper/settings; \
+		mkdir -p $(HOME)/Documents/superwhisper/modes; \
+		ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json; \
+		ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json; \
+		echo "✓ SuperWhisper configuration linked"; \
 	fi
-	@mkdir -p $(HOME)/Documents/superwhisper/settings
-	@mkdir -p $(HOME)/Documents/superwhisper/modes
-	@ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json
-	@ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json
-	@echo "✓ SuperWhisper configuration linked"
 claude:
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
