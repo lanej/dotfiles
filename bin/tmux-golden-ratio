@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Resize tmux panes to golden ratio (1.618:1)
+# Left pane gets ~38% of width, right pane gets ~62%
+
+set -euo pipefail
+
+# Get the current window width
+window_width=$(tmux display-message -p '#{window_width}')
+
+# Golden ratio: 1.618
+# Left pane should be ~38.2% of total width (inverse of golden ratio)
+# We use 0.382 as the ratio for the left pane
+left_pane_width=$(echo "$window_width * 0.382" | bc | cut -d. -f1)
+
+# Get the leftmost pane ID in the current window
+# This assumes your layout is: left pane (Claude Code) | right pane(s) (Neovim, etc.)
+leftmost_pane=$(tmux list-panes -F '#{pane_id} #{pane_left}' | sort -k2 -n | head -1 | cut -d' ' -f1)
+
+# Resize the leftmost pane to golden ratio width
+tmux resize-pane -t "$leftmost_pane" -x "$left_pane_width"
+
+echo "Resized to golden ratio: ${left_pane_width}/${window_width} (~38%)"
