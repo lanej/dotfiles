@@ -1311,6 +1311,10 @@ require("lazy").setup({
 					end,
 					init_options = {},
 					settings = {},
+					on_attach = function(client, bufnr)
+						-- Optional: Add buffer-specific keymaps here
+						vim.notify("BigQuery LSP attached to buffer " .. bufnr, vim.log.levels.INFO)
+					end,
 				},
 				pylsp = {},
 				html = {},
@@ -1402,6 +1406,27 @@ require("lazy").setup({
 					end
 				end,
 			})
+
+			-- User command to manually enable BigQuery LSP for current buffer
+			vim.api.nvim_create_user_command("BigQueryLspStart", function()
+				local bigquery_config = opts.servers.bigquery_lsp
+				if bigquery_config then
+					local config = vim.tbl_deep_extend("force", {
+						name = "bigquery_lsp",
+						cmd = bigquery_config.cmd,
+						filetypes = bigquery_config.filetypes,
+						root_dir = vim.fn.getcwd(),
+						init_options = bigquery_config.init_options,
+						settings = bigquery_config.settings,
+						on_attach = bigquery_config.on_attach,
+					}, { capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities) })
+
+					vim.lsp.start(config)
+					vim.notify("BigQuery LSP started", vim.log.levels.INFO)
+				else
+					vim.notify("BigQuery LSP config not found", vim.log.levels.ERROR)
+				end
+			end, { desc = "Manually start BigQuery LSP for current buffer" })
 
 			require("csharpls_extended").buf_read_cmd_bind()
 		end,
