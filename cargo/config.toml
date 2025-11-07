@@ -1,5 +1,7 @@
 # Global Cargo configuration for smaller, faster builds
 # This reduces debug build sizes by ~30-40% while preserving debuggability
+# Disk management tools: cargo-sweep, cargo-cache (installed via bootstrap.sh)
+# Cleanup aliases available: cargo-clean-all, cargo-clean-debug, cargo-clean-old, rust-disk
 
 [profile.dev]
 # Optimize dependencies but keep your code unoptimized for faster rebuilds
@@ -26,3 +28,6 @@ codegen-units = 1
 [build]
 # Enable incremental compilation for faster rebuilds
 incremental = true
+
+# Use sccache for distributed compilation caching
+rustc-wrapper = "/opt/homebrew/bin/sccache"

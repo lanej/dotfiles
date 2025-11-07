@@ -432,3 +432,11 @@ reauth-gcloud() {
 }
 alias dc='claude --dangerously-skip-permissions'
 alias dcc='claude --dangerously-skip-permissions --continue'
+
+# Rust/Cargo disk space management
+alias cargo-clean-all='find ~/src -name "target" -type d -prune -exec echo "Cleaning: {}" \; -exec rm -rf {} \;'
+alias cargo-clean-debug='find ~/src -name "target" -type d -exec sh -c "[ -d \"{}/debug\" ] && echo \"Cleaning debug in: {}\" && rm -rf \"{}/debug\"" \;'
+alias cargo-clean-old='fd --type d --max-depth 2 "^target$" ~/src --exec cargo-sweep -t 30 {//}'
+alias cargo-cache-clean='command -v cargo-cache >/dev/null && cargo cache --autoclean || echo "Install cargo-cache: cargo install cargo-cache"'
+alias rust-disk='du -sh ~/src/*/target 2>/dev/null | sort -hr | head -20'
+alias sccache-stats='sccache --show-stats'

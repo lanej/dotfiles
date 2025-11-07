@@ -594,6 +594,14 @@ install_atuin_from_release() {
 	cargo install atuin --locked --version "$1"
 }
 
+install_cargo-sweep_from_release() {
+	cargo install cargo-sweep --locked --version "$1"
+}
+
+install_cargo-cache_from_release() {
+	cargo install cargo-cache --locked --version "$1"
+}
+
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
 		brew install netmute/tap/ctags-lsp
@@ -680,6 +688,10 @@ install_dependencies() {
 	install_package_version fd 10.2.0
 	install_package_version eza 0.20.19
 	install_package_version zsh-autosuggestions 0.7.1
+
+	# rust development tools
+	install_package_version cargo-sweep 0.7.0
+	install_package_version cargo-cache 0.8.3
 
 	# command candy
 	install_package_version gh 2.66.0
