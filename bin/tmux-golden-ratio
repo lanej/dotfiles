@@ -18,5 +18,3 @@ leftmost_pane=$(tmux list-panes -F '#{pane_id} #{pane_left}' | sort -k2 -n | hea
 
 # Resize the leftmost pane to golden ratio width
 tmux resize-pane -t "$leftmost_pane" -x "$left_pane_width"
-
-echo "Resized to golden ratio: ${left_pane_width}/${window_width} (~38%)"
