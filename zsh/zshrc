@@ -316,5 +316,10 @@ claude-status() {
 # Default to work context
 claude-work() { :; } > /dev/null 2>&1
 
-# Override claude command with privacy-checking wrapper
-alias claude="$HOME/.claude/local/claude-wrapper"
+# Override claude command with privacy-checking wrapper (if it exists)
+if [ -x "$HOME/.claude/local/claude-wrapper" ]; then
+    alias claude="$HOME/.claude/local/claude-wrapper"
+fi
+
+# FastEmbed cache centralization
+export FASTEMBED_CACHE_DIR="$HOME/.cache/fastembed"
