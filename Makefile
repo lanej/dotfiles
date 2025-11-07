@@ -154,8 +154,10 @@ superwhisper:
 	@echo "✓ SuperWhisper configuration linked"
 claude:
 	@mkdir -p $(HOME)/.claude
+	@mkdir -p $(HOME)/.claude/local
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
+	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 gpg-restore:
 	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
 		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \
