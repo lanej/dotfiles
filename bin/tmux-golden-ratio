@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# Minimum columns required for left pane (Claude Code needs readable width)
+MIN_COLUMNS=80
+
 # Get the current window width
 window_width=$(tmux display-message -p '#{window_width}')
 
@@ -11,6 +14,12 @@ window_width=$(tmux display-message -p '#{window_width}')
 # Left pane should be ~38.2% of total width (inverse of golden ratio)
 # We use 0.382 as the ratio for the left pane
 left_pane_width=$(echo "$window_width * 0.382" | bc | cut -d. -f1)
+
+# Only resize if the left pane would meet minimum width requirement
+if [ "$left_pane_width" -lt "$MIN_COLUMNS" ]; then
+	# Window too narrow for golden ratio - skip resize
+	exit 0
+fi
 
 # Get the leftmost pane ID in the current window
 # This assumes your layout is: left pane (Claude Code) | right pane(s) (Neovim, etc.)
