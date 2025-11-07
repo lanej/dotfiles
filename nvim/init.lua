@@ -1299,6 +1299,19 @@ require("lazy").setup({
 					},
 					settings = {},
 				},
+				bigquery_lsp = {
+					cmd = { "bigquery", "lsp" },
+					filetypes = { "sql", "bq", "bigquery" },
+					autostart = true,
+					single_file_support = true,
+					root_dir = function(fname)
+						-- Look for BigQuery project markers or fall back to git root / cwd
+						return vim.fs.root(fname, { ".bigqueryrc", ".bqproject", ".git", "pyproject.toml", "Cargo.toml" })
+							or vim.fn.getcwd()
+					end,
+					init_options = {},
+					settings = {},
+				},
 				pylsp = {},
 				html = {},
 				yamlls = {},
