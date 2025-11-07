@@ -1,11 +1,31 @@
 #!/usr/bin/env bash
 # Resize tmux panes to golden ratio (1.618:1)
 # Left pane gets ~38% of width, right pane gets ~62%
+# Only resizes when current left pane is below minimum width (unless --force)
 
 set -euo pipefail
 
-# Minimum columns required for left pane (Claude Code needs readable width)
-MIN_COLUMNS=80
+# Minimum and maximum columns for left pane (Claude Code needs readable width)
+MIN_COLUMNS=120
+MAX_COLUMNS=180
+
+# Check for --force flag
+FORCE=false
+if [ "${1:-}" = "--force" ]; then
+	FORCE=true
+fi
+
+# Get the leftmost pane ID in the current window
+# This assumes your layout is: left pane (Claude Code) | right pane(s) (Neovim, etc.)
+leftmost_pane=$(tmux list-panes -F '#{pane_id} #{pane_left} #{pane_width}' | sort -k2 -n | head -1)
+current_left_width=$(echo "$leftmost_pane" | awk '{print $3}')
+leftmost_pane_id=$(echo "$leftmost_pane" | awk '{print $1}')
+
+# Only resize if current left pane is below minimum (unless forced)
+if [ "$FORCE" = false ] && [ "$current_left_width" -ge "$MIN_COLUMNS" ]; then
+	# Left pane already meets minimum - skip resize
+	exit 0
+fi
 
 # Get the current window width
 window_width=$(tmux display-message -p '#{window_width}')
@@ -15,15 +35,10 @@ window_width=$(tmux display-message -p '#{window_width}')
 # We use 0.382 as the ratio for the left pane
 left_pane_width=$(echo "$window_width * 0.382" | bc | cut -d. -f1)
 
-# Only resize if the left pane would meet minimum width requirement
-if [ "$left_pane_width" -lt "$MIN_COLUMNS" ]; then
-	# Window too narrow for golden ratio - skip resize
-	exit 0
+# Cap at maximum width
+if [ "$left_pane_width" -gt "$MAX_COLUMNS" ]; then
+	left_pane_width=$MAX_COLUMNS
 fi
 
-# Get the leftmost pane ID in the current window
-# This assumes your layout is: left pane (Claude Code) | right pane(s) (Neovim, etc.)
-leftmost_pane=$(tmux list-panes -F '#{pane_id} #{pane_left}' | sort -k2 -n | head -1 | cut -d' ' -f1)
-
-# Resize the leftmost pane to golden ratio width
-tmux resize-pane -t "$leftmost_pane" -x "$left_pane_width"
+# Resize the leftmost pane to golden ratio width (capped between MIN and MAX)
+tmux resize-pane -t "$leftmost_pane_id" -x "$left_pane_width"
