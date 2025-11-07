@@ -1458,6 +1458,9 @@ require("lazy").setup({
 			vim.opt.winminheight = 1
 			vim.opt.winminwidth = 1
 
+			-- Don't save window sizes in sessions - let focus.nvim handle sizing
+			vim.opt.sessionoptions:remove("winsize")
+
 			vim.g.prosession_per_branch = 1
 			vim.g.prosession_tmux_title = 1
 			vim.g.prosession_tmux_title_format = "@@@"
@@ -2236,8 +2239,8 @@ Output ONLY the commit message text. End with two blank lines.]],
 					enable = true,
 					width = 0,
 					height = 0,
-					minwidth = 1,
-					minheight = 1,
+					minwidth = 80,
+					minheight = 5,
 				},
 				ui = {
 					number = false,
