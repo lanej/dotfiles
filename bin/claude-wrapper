@@ -1,0 +1,73 @@
+#!/bin/bash
+# Claude Code wrapper with privacy status display
+
+# Configuration
+CACHE_FILE="$HOME/.claude/local/.privacy-check-cache"
+CACHE_EXITCODE_FILE="$HOME/.claude/local/.privacy-check-cache.exitcode"
+CLAUDE_BINARY="/Users/joshlane/.nvm/versions/node/v24.9.0/bin/claude"
+
+# Color codes for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+GRAY='\033[0;90m'
+NC='\033[0m' # No Color
+
+# Find actual claude binary if not at expected location
+if [ ! -f "$CLAUDE_BINARY" ]; then
+  # Try homebrew location
+  CLAUDE_BINARY="/opt/homebrew/bin/claude"
+fi
+
+if [ ! -f "$CLAUDE_BINARY" ]; then
+  # Try to find claude in PATH, excluding this wrapper directory
+  CLAUDE_BINARY=$(which -a claude 2>/dev/null | grep -v "$(dirname "$0")" | grep -v "\.claude/local" | head -1)
+fi
+
+if [ ! -f "$CLAUDE_BINARY" ]; then
+  echo -e "${RED}Error: Could not find claude binary${NC}"
+  echo "Expected at: /Users/joshlane/.nvm/versions/node/v24.9.0/bin/claude"
+  echo "Or: /opt/homebrew/bin/claude"
+  echo "Or in PATH (excluding this wrapper)"
+  exit 1
+fi
+
+# Display cached privacy check status
+if [ -f "$CACHE_FILE" ]; then
+  # Get cache age
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    CACHE_AGE=$(($(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null)))
+  else
+    CACHE_AGE=$(($(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null)))
+  fi
+
+  HOURS_AGO=$((CACHE_AGE / 3600))
+  MINUTES_AGO=$((CACHE_AGE / 60))
+
+  # Display status based on age
+  if [ "$CACHE_AGE" -lt 3600 ]; then
+    echo -e "${GRAY}🔍 Privacy status (${MINUTES_AGO}m ago):${NC}"
+  elif [ "$CACHE_AGE" -lt 86400 ]; then
+    echo -e "${GRAY}🔍 Privacy status (${HOURS_AGO}h ago):${NC}"
+  else
+    echo -e "${YELLOW}🔍 Privacy status ($(($CACHE_AGE / 86400))d ago - may be stale):${NC}"
+  fi
+
+  # Show cached status
+  cat "$CACHE_FILE"
+
+  # Add hint for full check
+  EXIT_CODE=$(cat "$CACHE_EXITCODE_FILE" 2>/dev/null || echo "0")
+  if [ "$EXIT_CODE" != "0" ]; then
+    echo -e "${GRAY}   Run '/privacy-check' in Claude for full details${NC}"
+  fi
+  echo ""
+else
+  # No cache file exists yet
+  echo -e "${YELLOW}🔍 Privacy check not yet run${NC}"
+  echo -e "${GRAY}   The daily check will run automatically, or use '/privacy-check' now${NC}"
+  echo ""
+fi
+
+# Launch Claude Code with all original arguments
+exec "$CLAUDE_BINARY" "$@"
