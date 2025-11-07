@@ -602,6 +602,21 @@ install_cargo-cache_from_release() {
 	cargo install cargo-cache --locked --version "$1"
 }
 
+install_git-crypt_from_source() {
+	# git-crypt needs to be built from source on some systems
+	if [ ! -d ~/lib/git-crypt ]; then
+		git clone https://github.com/AGWA/git-crypt.git ~/lib/git-crypt --depth 1
+	fi
+
+	git -C ~/lib/git-crypt fetch --tags --force --prune || exit 1
+	git -C ~/lib/git-crypt checkout "$1" || exit 1
+
+	cd ~/lib/git-crypt || exit 1
+	make clean
+	make
+	make install PREFIX="$HOME/.local"
+}
+
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
 		brew install netmute/tap/ctags-lsp
