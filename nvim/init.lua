@@ -1407,6 +1407,28 @@ require("lazy").setup({
 				end,
 			})
 
+			-- Auto-start BigQuery LSP for SQL files
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = { "sql", "bq", "bigquery" },
+				callback = function(args)
+					local bigquery_config = opts.servers.bigquery_lsp
+					if bigquery_config then
+						local root_dir = bigquery_config.root_dir and bigquery_config.root_dir(args.file) or vim.fn.getcwd()
+						local config = vim.tbl_deep_extend("force", {
+							name = "bigquery_lsp",
+							cmd = bigquery_config.cmd,
+							filetypes = bigquery_config.filetypes,
+							root_dir = root_dir,
+							init_options = bigquery_config.init_options,
+							settings = bigquery_config.settings,
+							on_attach = bigquery_config.on_attach,
+						}, { capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities) })
+
+						vim.lsp.start(config)
+					end
+				end,
+			})
+
 			-- User command to manually enable BigQuery LSP for current buffer
 			vim.api.nvim_create_user_command("BigQueryLspStart", function()
 				local bigquery_config = opts.servers.bigquery_lsp
