@@ -155,6 +155,7 @@ superwhisper:
 claude:
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
+	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {},
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); cwd=$(echo \"$input\" | jq -r '.workspace.current_dir'); cd \"$cwd\" 2>/dev/null || true; git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ -n \"$git_branch\" ]; then printf '\\033[36m%s@%s \\033[32m%s \\033[33m(%s)\\033[0m' \"$(whoami)\" \"$(hostname -s)\" \"$(basename \"$cwd\")\" \"$git_branch\"; else printf '\\033[36m%s@%s \\033[32m%s\\033[0m' \"$(whoami)\" \"$(hostname -s)\" \"$(basename \"$cwd\")\"; fi"
+  },
+  "alwaysThinkingEnabled": true,
+  "feedbackSurveyState": {
+    "lastShownTime": 1754065442220
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\007'; if [[ \"$OSTYPE\" == \"darwin\"* ]]; then osascript -e 'display notification \"Claude is waiting for your input\" with title \"Claude Code\"' 2>/dev/null; elif command -v notify-send >/dev/null 2>&1; then notify-send 'Claude Code' 'Claude is waiting for your input'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
