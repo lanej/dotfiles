@@ -1,0 +1,34 @@
+#!/bin/bash
+# Claude Code Stop hook - triggers notification only if idle for 10+ seconds
+
+# Read stdin to get session info
+input=$(cat)
+session_id=$(echo "$input" | jq -r '.session_id // "unknown"')
+state_file="/tmp/claude-stop-${session_id}"
+
+# Check if there's a previous Stop event
+if [ -f "$state_file" ]; then
+    prev_time=$(cat "$state_file")
+    current_time=$(date +%s)
+    elapsed=$((current_time - prev_time))
+
+    # If more than 10 seconds have passed since last Stop, notify
+    if [ "$elapsed" -ge 10 ]; then
+        # Trigger tmux bell in the current pane
+        if [ -n "$TMUX_PANE" ]; then
+            tmux send-keys -t "$TMUX_PANE" C-g 2>/dev/null
+        fi
+
+        # Desktop notification (background, non-blocking)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            osascript -e 'display notification "Claude is waiting for input" with title "Claude Code"' 2>/dev/null &
+        elif command -v notify-send >/dev/null 2>&1; then
+            notify-send "Claude Code" "Claude is waiting for input" 2>/dev/null &
+        fi
+    fi
+fi
+
+# Record this Stop event timestamp
+date +%s > "$state_file"
+
+exit 0

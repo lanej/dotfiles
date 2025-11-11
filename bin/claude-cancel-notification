@@ -1,0 +1,12 @@
+#!/bin/bash
+# Claude Code UserPromptSubmit/PreToolUse hook - cancels pending notifications
+
+# Read stdin to get session info
+input=$(cat)
+session_id=$(echo "$input" | jq -r '.session_id // "unknown"')
+state_file="/tmp/claude-stop-${session_id}"
+
+# Remove the state file to cancel any pending notification
+rm -f "$state_file" 2>/dev/null
+
+exit 0
