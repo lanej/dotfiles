@@ -168,9 +168,22 @@ vim.keymap.set("n", "<leader>at", function()
 	require("fzf-lua").tags()
 end, { noremap = true, silent = true })
 
--- Keymap to list files using fzf-lua
+-- Keymap to list files using fzf-lua (press <C-g> in picker to toggle gitignore)
 vim.keymap.set("n", "<leader>ff", function()
-	require("fzf-lua").files()
+	local no_ignore = false
+	require("fzf-lua").files({
+		actions = {
+			["ctrl-g"] = function(selected, opts)
+				no_ignore = not no_ignore
+				require("fzf-lua").files({
+					cmd = no_ignore
+						and "fd --type f --follow --hidden --no-ignore --exclude .git"
+						or "fd --type f --follow --exclude .git",
+					prompt = no_ignore and "All Files❯ " or "Files❯ ",
+				})
+			end,
+		},
+	})
 end, { noremap = true, silent = true })
 
 -- Keymap to list files in the current directory using fzf-lua
