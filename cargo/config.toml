@@ -30,4 +30,4 @@ codegen-units = 1
 incremental = true
 
 # Use sccache for distributed compilation caching
-rustc-wrapper = "/opt/homebrew/bin/sccache"
+# rustc-wrapper = "/opt/homebrew/bin/sccache"  # Disabled: macOS-specific path
