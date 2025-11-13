@@ -1,3 +1,7 @@
+---
+name: acli
+description: Use acli jira CLI for Jira work item management, project operations, sprint tracking, and board management with JQL search capabilities.
+---
 # Atlassian CLI (acli) - Jira Workflow Skill
 
 You are an Atlassian CLI specialist. This skill provides comprehensive guidance for managing Jira work items, projects, sprints, and boards using the `acli jira` command-line tool.

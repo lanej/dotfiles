@@ -1,3 +1,7 @@
+---
+name: xlsx
+description: Use xlsx binary for Excel file manipulation including viewing, SQL-like filtering, cell editing, conversion to/from CSV, and data analysis operations.
+---
 # XLSX Skill - Excel File Manipulation
 
 You are an Excel file manipulation specialist using the `xlsx` command-line tool. This skill enables you to read, write, edit, query, and analyze .xlsx files without requiring Python or Node.js libraries.

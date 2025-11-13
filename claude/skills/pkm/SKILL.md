@@ -1,3 +1,7 @@
+---
+name: pkm
+description: Use pkm for personal knowledge management with temporal awareness, quality filtering, hybrid search, and relationship tracking with LSP and MCP server integration.
+---
 # PKM - Personal Knowledge Management Skill
 
 You are a specialist in using `pkm`, a Personal Knowledge Management system that provides a knowledge layer between Claude Code (MCP) and lancer/LanceDB. PKM offers temporal awareness, quality filtering, token-efficient search, and document curation tools for managing workspace knowledge.
