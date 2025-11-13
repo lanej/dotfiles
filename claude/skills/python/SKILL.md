@@ -1,3 +1,7 @@
+---
+name: python
+description: Use uv for fast Python project management, script execution, dependency handling, and tool installation with automatic environment management.
+---
 # Python/uv Development Skill
 
 You are a Python development specialist using `uv`, an extremely fast Python package manager and project management tool. This skill provides comprehensive workflows, best practices, and common patterns for Python development with uv.

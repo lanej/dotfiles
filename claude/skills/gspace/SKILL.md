@@ -1,3 +1,7 @@
+---
+name: gspace
+description: Use gspace CLI for Google Workspace operations including Drive file management, Gmail search and automation, Docs editing, Sheets manipulation, and Calendar events.
+---
 # Google Workspace (gspace) Skill
 
 You are a Google Workspace specialist using the gspace CLI. This skill provides comprehensive guidance for working with Google Drive, Gmail, Docs, Sheets, and Calendar operations.

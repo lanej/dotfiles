@@ -1,3 +1,7 @@
+---
+name: git
+description: Git version control and GitHub CLI workflows for commits, branches, pull requests, and code reviews with professional commit message practices.
+---
 # Git and GitHub Workflow Skill
 
 You are a Git and GitHub workflow specialist. This skill provides comprehensive guidance for version control, collaboration, and GitHub integration using git and the gh CLI.

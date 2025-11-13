@@ -48,56 +48,56 @@
 
 ## Tool-Specific Skills
 
-For comprehensive tool-specific workflows and best practices, see the skills in `~/.claude/skills/`:
+For comprehensive tool-specific workflows and best practices, see the skills in `~/.claude/skills/`. Each skill is in its own directory with a `SKILL.md` file.
 
-### Git and GitHub - `~/.claude/skills/git.md`
+### Git and GitHub - `~/.claude/skills/git/`
 - Use git commit message writer agent for all commits
 - **Commit message format**: Professional, human-written style with NO AI attribution (no "Generated with Claude Code" or "Co-Authored-By: Claude")
 - Use `gh` CLI to access GitHub repositories
 - See skill for: branch workflows, PR management, GitHub API usage, commit strategies
 
-### Rust/Cargo - `~/.claude/skills/rust.md`
+### Rust/Cargo - `~/.claude/skills/rust/`
 - **Command execution order**: `cargo test --quiet` → `cargo build --quiet` → `cargo clippy`
 - **Auto-fix clippy warnings**: Use `cargo clippy --fix --allow-dirty`
 - **Handle timeouts**: Use `timeout: 120000` (2 min) or `timeout: 600000` (10 min)
 - **Clean up background processes**: Use `pkill -f cargo` to prevent lock contention
 - See skill for: clippy strategies, dependency management, build optimization, complete workflows
 
-### Python/uv - `~/.claude/skills/python.md`
+### Python/uv - `~/.claude/skills/python/`
 - **Primary command**: Use `uv run` for executing Python scripts and commands
 - See skill for: project management, dependency handling, virtual environments, tool installation
 
-### Excel/Spreadsheets - `~/.claude/skills/xlsx.md`
+### Excel/Spreadsheets - `~/.claude/skills/xlsx/`
 - Use `xlsx` binary to read/write/edit xlsx files and export to csv
 - See skill for: viewing data, SQL-like filtering, cell editing, conversion workflows
 
-### CSV Processing - `~/.claude/skills/xsv.md`
+### CSV Processing - `~/.claude/skills/xsv/`
 - Use `xsv` for fast CSV data processing and analysis
 - See skill for: selection, filtering, statistics, joining, sorting, performance optimization
 
-### Phabricator - `~/.claude/skills/phab.md`
+### Phabricator - `~/.claude/skills/phab/`
 - Use `phab` CLI for Phabricator operations (tasks, revisions, diffs)
 - See skill for: task management, code review workflow, project operations, search patterns
 
-### Google Workspace - `~/.claude/skills/gspace.md`
+### Google Workspace - `~/.claude/skills/gspace/`
 - Use `gspace` CLI for Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar)
 - **Output formats**: Use `--json` for scripting, `--quiet` for minimal output
 - See skill for: file operations, email management, document editing, calendar events, search queries
 
-### Azure CLI - `~/.claude/skills/az.md`
+### Azure CLI - `~/.claude/skills/az/`
 - Use `az` CLI for Azure cloud and Azure DevOps operations
 - **Output formats**: Use `--output table` for human review, `--output json` for scripting, `--output tsv` for parsing
 - **Authentication**: Always run `az login` and `az account set` before operations
 - See skill for: resource management, Azure DevOps repos/pipelines, VMs, storage, networking, AKS, Key Vault, monitoring
 
-### JSON Processing - `~/.claude/skills/jq.md`
+### JSON Processing - `~/.claude/skills/jq/`
 - **STRONGLY PREFERRED** for ALL JSON formatting, parsing, manipulation, and analysis
 - Use `jq` instead of Python/Node.js scripts, grep, awk, or other text processing for JSON data
 - **Common patterns**: Pretty-print (`jq '.'`), filter (`jq '.[] | select(.key == "value")'`), map (`jq 'map(.field)'`)
 - **Output modes**: `-r` for raw strings, `-c` for compact, `-s` for slurp (merge files)
 - See skill for: filtering, transformations, aggregations, API response processing, log analysis, advanced patterns
 
-### Atlassian CLI (Jira) - `~/.claude/skills/acli.md`
+### Atlassian CLI (Jira) - `~/.claude/skills/acli/`
 - Use `acli jira` for Jira work item, project, sprint, and board management
 - **Output formats**: Use `--json` for scripting, `--csv` for export, `--web` to open in browser
 - **Authentication**: Always run `acli jira auth login` before first use

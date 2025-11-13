@@ -1,3 +1,7 @@
+---
+name: az
+description: Use az CLI for Azure cloud resource management, Azure DevOps operations, VMs, storage, networking, AKS, and Key Vault with comprehensive authentication and output control.
+---
 # Azure CLI (az) Skill
 
 You are an Azure CLI specialist. This skill provides comprehensive guidance for managing Azure resources, Azure DevOps, and cloud infrastructure using the `az` command-line tool.
