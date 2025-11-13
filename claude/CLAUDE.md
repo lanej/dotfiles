@@ -71,6 +71,39 @@ For comprehensive tool-specific workflows and best practices, see the skills in 
 - Use `xlsx` binary to read/write/edit xlsx files and export to csv
 - See skill for: viewing data, SQL-like filtering, cell editing, conversion workflows
 
+### CSV Processing - `~/.claude/skills/xsv.md`
+- Use `xsv` for fast CSV data processing and analysis
+- See skill for: selection, filtering, statistics, joining, sorting, performance optimization
+
+### Phabricator - `~/.claude/skills/phab.md`
+- Use `phab` CLI for Phabricator operations (tasks, revisions, diffs)
+- See skill for: task management, code review workflow, project operations, search patterns
+
+### Google Workspace - `~/.claude/skills/gspace.md`
+- Use `gspace` CLI for Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar)
+- **Output formats**: Use `--json` for scripting, `--quiet` for minimal output
+- See skill for: file operations, email management, document editing, calendar events, search queries
+
+### Azure CLI - `~/.claude/skills/az.md`
+- Use `az` CLI for Azure cloud and Azure DevOps operations
+- **Output formats**: Use `--output table` for human review, `--output json` for scripting, `--output tsv` for parsing
+- **Authentication**: Always run `az login` and `az account set` before operations
+- See skill for: resource management, Azure DevOps repos/pipelines, VMs, storage, networking, AKS, Key Vault, monitoring
+
+### JSON Processing - `~/.claude/skills/jq.md`
+- **STRONGLY PREFERRED** for ALL JSON formatting, parsing, manipulation, and analysis
+- Use `jq` instead of Python/Node.js scripts, grep, awk, or other text processing for JSON data
+- **Common patterns**: Pretty-print (`jq '.'`), filter (`jq '.[] | select(.key == "value")'`), map (`jq 'map(.field)'`)
+- **Output modes**: `-r` for raw strings, `-c` for compact, `-s` for slurp (merge files)
+- See skill for: filtering, transformations, aggregations, API response processing, log analysis, advanced patterns
+
+### Atlassian CLI (Jira) - `~/.claude/skills/acli.md`
+- Use `acli jira` for Jira work item, project, sprint, and board management
+- **Output formats**: Use `--json` for scripting, `--csv` for export, `--web` to open in browser
+- **Authentication**: Always run `acli jira auth login` before first use
+- **Bulk operations**: Test JQL queries with `--count` first, use `--yes` to skip confirmations
+- See skill for: JQL search patterns, work item CRUD operations, transitions, comments, project management, complete workflows
+
 ## Node.js/JavaScript Development
 - When working in a project, always check package.json first to understand available scripts
 - If user specifies a script to run (e.g., "node validate.js"), use exactly what they specify
