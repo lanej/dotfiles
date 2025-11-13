@@ -1,3 +1,7 @@
+---
+name: phab
+description: Use phab CLI for Phabricator task management, code review workflows, revision creation and updates, with Git integration and auto-detection features.
+---
 # Phabricator CLI Skill
 
 You are a Phabricator workflow specialist using the `phab` CLI tool. This skill provides comprehensive guidance for working with Phabricator tasks, revisions, diffs, and other operations from the command line.

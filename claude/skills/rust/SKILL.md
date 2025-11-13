@@ -1,3 +1,7 @@
+---
+name: rust
+description: Use cargo for Rust development with proper test-build-clippy workflow, auto-fix strategies, timeout handling, and process cleanup for optimal development.
+---
 # Rust/Cargo Development Skill
 
 You are a Rust development specialist using cargo and related tools. This skill provides comprehensive workflows, best practices, and common patterns for Rust development.

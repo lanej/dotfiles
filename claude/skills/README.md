@@ -16,23 +16,23 @@ For more information about skills and how to use them, see the official Anthropi
 
 ## Skill Manifest
 
-This directory contains the following skills:
+This directory contains the following skills. Each skill is in its own directory with a `SKILL.md` file containing YAML frontmatter and detailed instructions.
 
 ### Development Tools
 
-- **git.md** - Git and GitHub workflow expertise
+- **git/** - Git and GitHub workflow expertise
   - Commit message formatting (Commitizen-style, no AI attribution)
   - Branch management and merge strategies
   - GitHub CLI (gh) operations for PRs, issues, and releases
   - Code review workflows
 
-- **rust.md** - Rust and Cargo development
+- **rust/** - Rust and Cargo development
   - Build order: `cargo test --quiet` → `cargo build --quiet` → `cargo clippy`
   - Auto-fix clippy warnings with `--allow-dirty`
   - Timeout and background process management
   - Dependency management and build optimization
 
-- **python.md** - Python development with uv
+- **python/** - Python development with uv
   - Use `uv run` for executing Python scripts
   - Project and dependency management
   - Virtual environment handling
@@ -40,14 +40,14 @@ This directory contains the following skills:
 
 ### Cloud and DevOps
 
-- **az.md** - Azure CLI operations
+- **az/** - Azure CLI operations
   - Azure cloud resource management
   - Azure DevOps repos, pipelines, and work items
   - Output formats: `--output table/json/tsv`
   - Authentication workflows
   - VMs, storage, networking, AKS, Key Vault, monitoring
 
-- **gspace.md** - Google Workspace operations
+- **gspace/** - Google Workspace operations
   - Google Drive, Gmail, Docs, Sheets, Calendar
   - Use `gspace` CLI for all operations
   - Output formats: `--json` for scripting, `--quiet` for minimal output
@@ -55,43 +55,43 @@ This directory contains the following skills:
 
 ### Project Management
 
-- **acli.md** - Atlassian CLI (Jira)
+- **acli/** - Atlassian CLI (Jira)
   - Jira work item, project, sprint, and board management
   - JQL search patterns and bulk operations
   - Output formats: `--json`, `--csv`, `--web`
   - Work item CRUD, transitions, comments
 
-- **phab.md** - Phabricator operations
+- **phab/** - Phabricator operations
   - Use `phab` CLI for tasks, revisions, diffs
   - Task management and code review workflows
   - Project operations and search patterns
 
 ### Data Processing
 
-- **jq.md** - JSON processing and manipulation
+- **jq/** - JSON processing and manipulation
   - **STRONGLY PREFERRED** for all JSON operations
   - Filtering, transformations, aggregations
   - Output modes: `-r` (raw), `-c` (compact), `-s` (slurp)
   - API response processing and log analysis
 
-- **xsv.md** - CSV data processing
+- **xsv/** - CSV data processing
   - Fast CSV processing with `xsv`
   - Selection, filtering, statistics
   - Joining, sorting, performance optimization
 
-- **xlsx.md** - Excel/spreadsheet operations
+- **xlsx/** - Excel/spreadsheet operations
   - Use `xlsx` binary for reading/writing xlsx files
   - SQL-like filtering and cell editing
   - Export to CSV workflows
 
 ### Specialized Tools
 
-- **lancer.md** - LanceDB vector database
+- **lancer/** - LanceDB vector database
   - Vector database operations and queries
   - Embedding management
   - Search and retrieval patterns
 
-- **pkm.md** - Personal Knowledge Management
+- **pkm/** - Personal Knowledge Management
   - Note-taking and knowledge organization
   - Linking and cross-referencing
   - Search and retrieval workflows

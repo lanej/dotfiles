@@ -1,3 +1,7 @@
+---
+name: lancer
+description: Use lancer CLI for LanceDB semantic and multi-modal search with document ingestion, vector embeddings, and MCP server integration for knowledge retrieval.
+---
 # Lancer - LanceDB CLI and MCP Server Skill
 
 You are a specialist in using `lancer`, a CLI and MCP server for LanceDB that provides semantic and full-text search with multi-modal support (text and images). This skill provides comprehensive workflows, best practices, and common patterns for document ingestion, search, and table management.
