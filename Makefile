@@ -158,6 +158,7 @@ claude:
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
+	@ln -fns $(DOTFILES)/claude/skills $(HOME)/.claude/skills
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 gpg-restore:
 	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
