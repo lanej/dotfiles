@@ -22,8 +22,12 @@ Find all open GitHub issues without associated PRs, create git worktrees for eac
      - Working directory set to the worktree path
      - Instructions to:
        - Read the issue details from GitHub
+       - **Reproduce the issue first** - create a test case that demonstrates the bug
+       - Verify you can reliably reproduce the problem
        - Implement the fix
-       - Run tests to verify the fix works
+       - **Write regression tests** based on the reproduction case
+       - Run tests to verify the fix works and provides regression protection
+       - Verify the reproduction steps now pass
        - Commit changes using git-commit-message-writer agent
        - Push branch to origin
        - Create PR with `gh pr create --title "Fix #{number}: {title}" --body "Fixes #{number}"`
@@ -170,8 +174,12 @@ Use TodoWrite to track progress through these phases.
 Each parallel Task agent should:
 - Work in its assigned worktree directory
 - Analyze the GitHub issue
+- **Reproduce the issue first** - create a test case demonstrating the bug
+- Verify you can reliably reproduce the problem
 - Implement the fix
-- Run tests to verify
+- **Write regression tests** based on the reproduction case
+- Run tests to verify the fix works and provides regression protection
+- Verify the reproduction steps now pass
 - Commit with proper message (using git-commit-message-writer agent)
 - Push and create PR
 - Monitor CI checks
