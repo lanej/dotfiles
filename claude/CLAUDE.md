@@ -57,11 +57,12 @@ For comprehensive tool-specific workflows and best practices, see the skills in 
 - See skill for: branch workflows, PR management, GitHub API usage, commit strategies
 
 ### Rust/Cargo - `~/.claude/skills/rust/`
-- **Command execution order**: `cargo test --quiet` → `cargo build --quiet` → `cargo clippy`
+- **Command execution order**: `cargo test --quiet` → `cargo check --quiet` → `cargo clippy`
+- **AVOID release builds**: Use `cargo check` instead of `cargo build`, debug builds for testing
 - **Auto-fix clippy warnings**: Use `cargo clippy --fix --allow-dirty`
-- **Handle timeouts**: Use `timeout: 120000` (2 min) or `timeout: 600000` (10 min)
+- **Handle timeouts**: Use `timeout: 120000` (2 min) for check/test/debug builds
 - **Clean up background processes**: Use `pkill -f cargo` to prevent lock contention
-- See skill for: clippy strategies, dependency management, build optimization, complete workflows
+- See skill for: check-first workflow, clippy strategies, dependency management, complete workflows
 
 ### Python/uv - `~/.claude/skills/python/`
 - **Primary command**: Use `uv run` for executing Python scripts and commands
