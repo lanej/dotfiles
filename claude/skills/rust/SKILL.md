@@ -1,10 +1,23 @@
 ---
 name: rust
-description: Use cargo for Rust development with proper test-build-clippy workflow, auto-fix strategies, timeout handling, and process cleanup for optimal development.
+description: Use cargo for Rust development with check-first workflow. Prefer cargo check over cargo build, use debug builds for testing, AVOID release builds unless explicitly needed.
 ---
 # Rust/Cargo Development Skill
 
 You are a Rust development specialist using cargo and related tools. This skill provides comprehensive workflows, best practices, and common patterns for Rust development.
+
+## IMPORTANT: Build Strategy
+
+**AVOID expensive builds:**
+- **DON'T** use `cargo build --release` or `cargo install --path .` (very slow)
+- **DON'T** build unless necessary - use `cargo check` first
+- **DO** use `cargo check` to verify compilation (fast, no codegen)
+- **DO** use debug builds for testing binaries (`cargo build` without `--release`)
+
+**Decision tree:**
+1. **Just checking if code compiles?** → `cargo check` (fastest)
+2. **Need to test the binary?** → `cargo build` (debug, faster than release)
+3. **Need optimized performance?** → Only then use `cargo build --release` (slow)
 
 ## Standard Development Workflow
 
@@ -14,28 +27,38 @@ Always follow this sequence when developing or validating Rust code:
 
 ```bash
 cargo test --quiet
-cargo build --quiet
+cargo check --quiet       # Fast compilation check (no binary output)
 cargo clippy
+```
+
+**Only if you need to test the binary:**
+```bash
+cargo build --quiet       # Debug build (much faster than release)
 ```
 
 **Rationale:**
 1. **Tests first**: Catch logic errors early
-2. **Build second**: Ensure compilation succeeds
-3. **Clippy last**: Address code quality and style issues
+2. **Check second**: Fast compilation verification without codegen
+3. **Clippy third**: Address code quality and style issues
+4. **Build last**: Only if you actually need to run the binary (debug mode)
 
 ### Timeout Settings
 
 Rust commands can be long-running, especially for large projects:
 
 ```bash
-# Standard timeout (2 minutes)
+# Standard timeout (2 minutes) - sufficient for most operations
 cargo test --quiet
+cargo check --quiet
+cargo build --quiet      # Debug build
 # timeout: 120000
 
-# Extended timeout for large projects (10 minutes)
-cargo build --release
+# Extended timeout ONLY for release builds (10 minutes) - AVOID if possible
+cargo build --release    # WARNING: Very slow, only use when explicitly needed
 # timeout: 600000
 ```
+
+**Best practice**: Use the standard 2-minute timeout for check/test/debug builds. Only use extended timeout if you absolutely must do a release build.
 
 ## Clippy - Linting and Code Quality
 
@@ -151,14 +174,26 @@ cargo clippy -- -F clippy::unwrap_used
 
 ## Common Cargo Commands
 
+### Checking (Prefer This)
+
+```bash
+cargo check                    # Fast compilation check (PREFER THIS)
+cargo check --quiet            # Suppress output
+cargo check --all-targets      # Check all targets
+```
+
+**Use `cargo check` instead of `cargo build` when you just need to verify code compiles.**
+
 ### Building
 
 ```bash
-cargo build                    # Debug build
-cargo build --release          # Optimized release build
+cargo build                    # Debug build (use for testing binary)
 cargo build --quiet            # Suppress output
 cargo build --all-targets      # Build all targets (bins, libs, tests, benches)
 cargo build --target <TARGET>  # Cross-compile for target
+
+# AVOID unless explicitly needed (very slow):
+cargo build --release          # Optimized release build (WARNING: SLOW)
 ```
 
 ### Testing
@@ -173,22 +208,16 @@ cargo test -- --nocapture      # Show println! output
 cargo test -- --test-threads=1 # Run tests serially
 ```
 
-### Checking
-
-```bash
-cargo check                    # Fast compilation check (no codegen)
-cargo check --all-targets      # Check all targets
-cargo check --tests            # Check test code
-```
-
 ### Running
 
 ```bash
-cargo run                      # Run default binary
+cargo run                      # Run default binary (debug build)
 cargo run --bin <NAME>         # Run specific binary
 cargo run --example <NAME>     # Run example
-cargo run --release            # Run optimized build
 cargo run -- <ARGS>            # Pass arguments to binary
+
+# AVOID unless you need optimized performance (very slow to build):
+cargo run --release            # Run optimized build (WARNING: SLOW)
 ```
 
 ### Documentation
@@ -379,7 +408,7 @@ cargo update serde
 
 # 4. Validate after update
 cargo test --quiet
-cargo build --quiet
+cargo check --quiet    # Fast compilation check
 cargo clippy
 
 # 5. Review Cargo.lock changes
@@ -389,7 +418,10 @@ git diff Cargo.lock
 ### Workflow 5: Pre-commit Validation
 
 ```bash
-# Complete validation before committing
+# Complete validation before committing (check-first approach)
+cargo test --quiet && cargo check --quiet && cargo clippy
+
+# If you need to test the binary, replace check with build:
 cargo test --quiet && cargo build --quiet && cargo clippy
 
 # If any step fails, the sequence stops
@@ -401,15 +433,17 @@ cargo test --quiet && cargo build --quiet && cargo clippy
 ### Build Performance
 
 ```bash
-# Use cargo check for fast iteration
+# Use cargo check for fast iteration (PREFER THIS)
 cargo check
 
 # Parallel builds (default, but can tune)
 cargo build -j 8
 
-# Use cache-friendly flags
-cargo build --release --locked
+# Use cache-friendly flags (ONLY for actual releases)
+cargo build --release --locked  # WARNING: SLOW - only for production releases
 ```
+
+**Development tip**: `cargo check` is 2-10x faster than `cargo build` and sufficient for most development.
 
 ### Test Performance
 
@@ -437,15 +471,24 @@ cargo check
 cargo test --quiet  # when ready to validate
 ```
 
-### Pattern 2: Release Preparation
+### Pattern 2: Release Preparation (ONLY for actual releases)
+
+**WARNING**: Only use this workflow when preparing an actual release. For regular development, use the check-first workflow.
 
 ```bash
-# Full validation for release
+# Full validation for release (SLOW - only for actual releases)
 cargo test
-cargo test --release
-cargo build --release
+cargo test --release        # WARNING: SLOW
+cargo build --release       # WARNING: VERY SLOW
 cargo clippy -- -D warnings  # Deny all warnings
 cargo doc --no-deps
+```
+
+**For regular development**, use instead:
+```bash
+cargo test --quiet
+cargo check --quiet
+cargo clippy
 ```
 
 ### Pattern 3: Multi-target Projects
