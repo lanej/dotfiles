@@ -1284,21 +1284,21 @@ require("lazy").setup({
 						validate = { enable = true },
 					},
 				},
-				marksman = {},
-				pkm_lsp = {
-					cmd = { "pkm", "lsp" },
-					filetypes = { "markdown" },
-					autostart = true,
-					single_file_support = true,
-					root_dir = function(fname)
-						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
-					end,
-					init_options = {
-						dbPath = ".lancedb",
-						debounceMs = 1000,
-					},
-					settings = {},
-				},
+				-- marksman = {},
+-- 				pkm_lsp = {
+-- 					cmd = { "pkm", "lsp" },
+-- 					filetypes = { "markdown" },
+-- 					autostart = true,
+-- 					single_file_support = true,
+-- 					root_dir = function(fname)
+-- 						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
+-- 					end,
+-- 					init_options = {
+-- 						dbPath = ".lancedb",
+-- 						debounceMs = 1000,
+-- 					},
+-- 					settings = {},
+-- 				},
 				bigquery_lsp = {
 					cmd = { "bigquery", "lsp" },
 					filetypes = { "sql", "bq", "bigquery" },
@@ -1306,8 +1306,10 @@ require("lazy").setup({
 					single_file_support = true,
 					root_dir = function(fname)
 						-- Look for BigQuery project markers or fall back to git root / cwd
-						return vim.fs.root(fname, { ".bigqueryrc", ".bqproject", ".git", "pyproject.toml", "Cargo.toml" })
-							or vim.fn.getcwd()
+						return vim.fs.root(
+							fname,
+							{ ".bigqueryrc", ".bqproject", ".git", "pyproject.toml", "Cargo.toml" }
+						) or vim.fn.getcwd()
 					end,
 					init_options = {},
 					settings = {},
@@ -1365,47 +1367,50 @@ require("lazy").setup({
 				vim.lsp.config(server, config)
 
 				-- Skip auto-enabling markdown LSPs - our autocmd handles them conditionally
-				if server ~= "marksman" and server ~= "pkm_lsp" then
+				if server ~= "marksman" then
 					vim.lsp.enable(server)
 				end
 			end
 
 			-- Capture server configs for autocmd closure
-			local pkm_config = opts.servers.pkm_lsp
-			local marksman_config = opts.servers.marksman
-
-			-- Smart LSP selection: pkm_lsp in PKM workspaces, Marksman elsewhere
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = "markdown",
-				callback = function(args)
-					local root_dir = vim.fs.root(args.file, { ".lancedb", ".git", ".marksman.toml" })
-					local is_pkm_workspace = root_dir and vim.fn.isdirectory(root_dir .. "/.lancedb") == 1
-
-					if is_pkm_workspace and pkm_config then
-						-- PKM workspace: use pkm_lsp for wikilink completions
-						local config = vim.tbl_deep_extend("force", {
-							name = "pkm_lsp",
-							cmd = pkm_config.cmd,
-							filetypes = pkm_config.filetypes,
-							root_dir = root_dir,
-							init_options = pkm_config.init_options,
-							settings = pkm_config.settings,
-						}, { capabilities = require("blink.cmp").get_lsp_capabilities(pkm_config.capabilities) })
-
-						vim.lsp.start(config)
-					elseif marksman_config and root_dir then
-						-- Regular markdown: use Marksman
-						local config = vim.tbl_deep_extend("force", {
-							name = "marksman",
-							cmd = marksman_config.cmd or { "marksman", "server" },
-							filetypes = { "markdown" },
-							root_dir = root_dir,
-						}, { capabilities = require("blink.cmp").get_lsp_capabilities(marksman_config.capabilities) })
-
-						vim.lsp.start(config)
-					end
-				end,
-			})
+-- 			local pkm_config = opts.servers.pkm_lsp
+-- 			local marksman_config = opts.servers.marksman
+-- 
+-- 			-- Smart LSP selection: pkm_lsp in PKM workspaces, Marksman elsewhere
+-- 			vim.api.nvim_create_autocmd("FileType", {
+-- 				pattern = "markdown",
+-- 				callback = function(args)
+-- 					local root_dir = vim.fs.root(args.file, { ".lancedb", ".git", ".marksman.toml" })
+-- 					local is_pkm_workspace = root_dir and vim.fn.isdirectory(root_dir .. "/.lancedb") == 1
+-- 
+-- 					if is_pkm_workspace and pkm_config then
+-- 						-- PKM workspace: use pkm_lsp for wikilink completions
+-- 						local config = vim.tbl_deep_extend("force", {
+-- 							name = "pkm_lsp",
+-- 							cmd = pkm_config.cmd,
+-- 							filetypes = pkm_config.filetypes,
+-- 							root_dir = root_dir,
+-- 							init_options = pkm_config.init_options,
+-- 							settings = pkm_config.settings,
+-- 						}, { capabilities = require("blink.cmp").get_lsp_capabilities(pkm_config.capabilities) })
+-- 
+-- 						vim.lsp.start(config)
+-- 					elseif marksman_config and root_dir then
+-- 						-- Regular markdown: use Marksman
+-- 						local config = vim.tbl_deep_extend("force", {
+-- 							name = "marksman",
+-- 							cmd = marksman_config.cmd or { "marksman", "server" },
+-- 							filetypes = { "markdown" },
+-- 							root_dir = root_dir,
+-- 						}, {
+-- 							capabilities = require("blink.cmp").get_lsp_capabilities(marksman_config.capabilities),
+-- 						})
+-- 
+-- 						vim.lsp.start(config)
+-- 					end
+-- 				end,
+-- 			})
+			-- NOTE: Smart LSP selection for pkm-lsp and Marksman moved to ~/.config/nvim/lua/pkm-lsp.lua (loaded via require)
 
 			-- Auto-start BigQuery LSP for SQL files
 			vim.api.nvim_create_autocmd("FileType", {
@@ -1413,7 +1418,8 @@ require("lazy").setup({
 				callback = function(args)
 					local bigquery_config = opts.servers.bigquery_lsp
 					if bigquery_config then
-						local root_dir = bigquery_config.root_dir and bigquery_config.root_dir(args.file) or vim.fn.getcwd()
+						local root_dir = bigquery_config.root_dir and bigquery_config.root_dir(args.file)
+							or vim.fn.getcwd()
 						local config = vim.tbl_deep_extend("force", {
 							name = "bigquery_lsp",
 							cmd = bigquery_config.cmd,
@@ -1422,7 +1428,9 @@ require("lazy").setup({
 							init_options = bigquery_config.init_options,
 							settings = bigquery_config.settings,
 							on_attach = bigquery_config.on_attach,
-						}, { capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities) })
+						}, {
+							capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities),
+						})
 
 						vim.lsp.start(config)
 					end
@@ -2291,8 +2299,8 @@ Output ONLY the commit message text. End with two blank lines.]],
 		end,
 	},
 	{
-		"nvim-focus/focus.nvim",
-		version = "*",
+		"lanej/focus.nvim",
+		branch = "feature/width-min-columns",
 		config = function()
 			require("focus").setup({
 				autoresize = {
@@ -2301,6 +2309,7 @@ Output ONLY the commit message text. End with two blank lines.]],
 					height = 0,
 					minwidth = 40,
 					minheight = 5,
+					equalise_min_cols = 120, -- Use equal splits when terminal >= 120 columns, golden ratio when < 120
 				},
 				ui = {
 					number = false,
@@ -2344,5 +2353,9 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.opt_local.softtabstop = 2
 	end,
 })
+
+-- Load Phabricator LSP configuration
+require("phab-lsp")
+require("pkm-lsp")
 
 vim.cmd([[set secure]])
