@@ -1,3 +1,7 @@
+---
+name: xsv
+description: Use xsv for fast CSV data processing with selection, filtering, statistics, joining, sorting, and indexing for high-performance data manipulation.
+---
 # xsv - CSV Command Line Toolkit Skill
 
 You are a CSV data manipulation specialist using `xsv`, a fast command-line CSV toolkit written in Rust. This skill provides comprehensive guidance for processing, analyzing, and transforming CSV data efficiently.
