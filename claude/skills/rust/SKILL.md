@@ -12,12 +12,14 @@ You are a Rust development specialist using cargo and related tools. This skill 
 - **DON'T** use `cargo build --release` or `cargo install --path .` (very slow)
 - **DON'T** build unless necessary - use `cargo check` first
 - **DO** use `cargo check` to verify compilation (fast, no codegen)
+- **DO** use `cargo run` to quickly test the binary (builds debug + runs in one command)
 - **DO** use debug builds for testing binaries (`cargo build` without `--release`)
 
 **Decision tree:**
 1. **Just checking if code compiles?** → `cargo check` (fastest)
-2. **Need to test the binary?** → `cargo build` (debug, faster than release)
-3. **Need optimized performance?** → Only then use `cargo build --release` (slow)
+2. **Need to quickly test the binary?** → `cargo run` (builds debug + runs)
+3. **Need the binary artifact without running?** → `cargo build` (debug)
+4. **Need optimized performance?** → Only then use `cargo build --release` (slow)
 
 ## Standard Development Workflow
 
@@ -31,16 +33,18 @@ cargo check --quiet       # Fast compilation check (no binary output)
 cargo clippy
 ```
 
-**Only if you need to test the binary:**
+**If you need to test the binary:**
 ```bash
-cargo build --quiet       # Debug build (much faster than release)
+cargo run                 # Quick test - builds debug and runs (PREFERRED)
+# OR
+cargo build --quiet       # Only if you need the binary artifact without running it
 ```
 
 **Rationale:**
 1. **Tests first**: Catch logic errors early
 2. **Check second**: Fast compilation verification without codegen
 3. **Clippy third**: Address code quality and style issues
-4. **Build last**: Only if you actually need to run the binary (debug mode)
+4. **Run/Build last**: Only if you actually need to execute/build the binary (debug mode)
 
 ### Timeout Settings
 

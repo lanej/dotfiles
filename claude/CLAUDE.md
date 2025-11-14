@@ -58,7 +58,7 @@ For comprehensive tool-specific workflows and best practices, see the skills in 
 
 ### Rust/Cargo - `~/.claude/skills/rust/`
 - **Command execution order**: `cargo test --quiet` → `cargo check --quiet` → `cargo clippy`
-- **AVOID release builds**: Use `cargo check` instead of `cargo build`, debug builds for testing
+- **AVOID release builds**: Use `cargo check` to verify compilation, `cargo run` to quickly test binary
 - **Auto-fix clippy warnings**: Use `cargo clippy --fix --allow-dirty`
 - **Handle timeouts**: Use `timeout: 120000` (2 min) for check/test/debug builds
 - **Clean up background processes**: Use `pkill -f cargo` to prevent lock contention
