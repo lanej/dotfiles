@@ -1,6 +1,6 @@
 ---
 name: python
-description: Use uv for fast Python project management, script execution, dependency handling, and tool installation with automatic environment management.
+description: Use uv for fast Python project management, script execution, dependency handling, and tool installation. AVOID pip - always use uv commands (uv add, uv sync, uv run) instead.
 ---
 # Python/uv Development Skill
 
@@ -13,6 +13,17 @@ You are a Python development specialist using `uv`, an extremely fast Python pac
 - **All-in-one**: Package management, virtual environments, Python version management
 - **Rust-powered**: Built for speed and reliability
 - **Compatible**: Works with existing Python projects and tools
+
+## IMPORTANT: Avoid pip
+
+**DO NOT use `pip` commands.** Always use `uv` equivalents:
+
+- **WRONG**: `pip install requests` → **RIGHT**: `uv add requests`
+- **WRONG**: `pip install -r requirements.txt` → **RIGHT**: `uv sync`
+- **WRONG**: `pip freeze > requirements.txt` → **RIGHT**: `uv lock` (creates uv.lock)
+- **WRONG**: `python -m pip install` → **RIGHT**: `uv run` or `uv add`
+
+The only exception is legacy projects that explicitly require pip compatibility, and even then prefer migrating to uv.
 
 ## Core Capabilities
 
@@ -282,28 +293,28 @@ uv run pytest
 
 **Best Practice**: With uv, you rarely need to manually activate environments. Just use `uv run`.
 
-## Legacy pip Interface
+## Legacy pip Interface (AVOID - Use Native uv Commands Instead)
 
-For compatibility with existing workflows:
+**WARNING**: This interface exists only for legacy compatibility. **Prefer native uv commands** (`uv add`, `uv sync`, `uv lock`) over `uv pip` commands.
+
+Only use `uv pip` when:
+- Working with a legacy project that cannot be migrated yet
+- Maintaining compatibility with existing CI/CD that expects pip commands
+- As a temporary bridge during migration
+
+**Better alternatives:**
+- `uv pip install requests` → Use `uv add requests` instead
+- `uv pip install -r requirements.txt` → Use `uv sync` instead
+- `uv pip freeze` → Use `uv lock` instead
 
 ```bash
-# Install package (pip-compatible)
-uv pip install requests
-
-# Install from requirements.txt
-uv pip install -r requirements.txt
-
-# List installed packages
-uv pip list
-
-# Show package info
-uv pip show requests
-
-# Freeze dependencies
-uv pip freeze > requirements.txt
-
-# Uninstall
-uv pip uninstall requests
+# Legacy pip-compatible commands (avoid if possible)
+uv pip install requests              # Better: uv add requests
+uv pip install -r requirements.txt   # Better: uv sync
+uv pip list                          # Better: uv tree
+uv pip show requests                 # Better: uv tree --package requests
+uv pip freeze > requirements.txt     # Better: uv lock
+uv pip uninstall requests            # Better: uv remove requests
 ```
 
 ## Common Workflows
@@ -734,9 +745,9 @@ uv python pin 3.11
 uv tool install ruff
 uv tool run black .
 
-# Legacy compatibility
-uv pip install package
-uv pip install -r requirements.txt
+# Legacy compatibility (AVOID - use uv add/sync instead)
+uv pip install package              # DON'T USE - use: uv add package
+uv pip install -r requirements.txt  # DON'T USE - use: uv sync
 
 # Testing and quality
 uv run pytest
