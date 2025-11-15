@@ -105,6 +105,14 @@ For comprehensive tool-specific workflows and best practices, see the skills in 
 - **Bulk operations**: Test JQL queries with `--count` first, use `--yes` to skip confirmations
 - See skill for: JQL search patterns, work item CRUD operations, transitions, comments, project management, complete workflows
 
+### BigQuery - `~/.claude/skills/bigquery/`
+- Use `bigquery` CLI for Google BigQuery data warehouse operations
+- **Query execution**: Run SQL queries with `bigquery query`, use `--dry-run` to estimate costs
+- **Data management**: Create datasets/tables, load data, export results
+- **MCP server**: Semantic search and natural language query interface via `bigquery mcp stdio`
+- **LSP integration**: SQL language server for editor support via `bigquery lsp stdio`
+- See skill for: query operations, dataset/table management, schema operations, job control, cost optimization, partitioning/clustering
+
 ## Node.js/JavaScript Development
 - When working in a project, always check package.json first to understand available scripts
 - If user specifies a script to run (e.g., "node validate.js"), use exactly what they specify

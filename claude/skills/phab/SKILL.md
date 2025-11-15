@@ -10,7 +10,7 @@ You are a Phabricator workflow specialist using the `phab` CLI tool. This skill 
 
 The `phab` CLI provides comprehensive Phabricator integration:
 
-1. **Tasks**: Create, search, edit, comment, view task trees
+1. **Tasks**: Create, search, edit, comment, view task trees and edges (relationships)
 2. **Revisions**: Create, update, search, view diffs and comments
 3. **Projects**: Search and edit projects
 4. **Users**: Search users and view current user info
@@ -180,6 +180,61 @@ phab task get-comments T123
 
 # Output as JSON
 phab task get-comments T123 --json
+```
+
+### Task Edges (Relationships)
+
+Task edges represent relationships between tasks, such as parent/child, blocking/blocked by, and related tasks.
+
+```bash
+# View all edges (relationships) for a task
+phab task edges T123
+
+# Output as JSON for programmatic access
+phab task edges T123 --json
+
+# Common edge types returned:
+# - parent: Tasks that this task is a subtask of
+# - subtask: Child tasks under this task
+# - depends-on: Tasks that must be completed before this task
+# - blocks: Tasks that are blocked by this task
+# - related: Related tasks
+# - duplicate: Duplicate tasks
+# - merged-into: Tasks this was merged into
+```
+
+**Use Cases:**
+
+```bash
+# Understanding task dependencies
+phab task edges T123
+
+# Finding all subtasks for planning
+phab task edges T123 | grep "subtask"
+
+# Checking blocking relationships
+phab task edges T123 | grep "blocks\|depends-on"
+
+# Programmatic processing
+phab task edges T123 --json | jq '.edges[] | select(.type == "subtask")'
+
+# Finding parent tasks in a hierarchy
+phab task edges T123 --json | jq '.edges[] | select(.type == "parent")'
+
+# Tracing duplicate relationships
+phab task edges T123 --json | jq '.edges[] | select(.type == "duplicate")'
+```
+
+**Integration with Task Trees:**
+
+Use `phab task edges` to see raw relationship data, while `phab task tree` provides a formatted hierarchical view:
+
+```bash
+# Raw relationship data (all edge types)
+phab task edges T123
+
+# Formatted tree view (parent/child only)
+phab task tree T123
 ```
 
 ### Task Trees
@@ -836,6 +891,8 @@ phab task create --title "Title" --description "Desc"
 phab task edit T123 --status resolved
 phab task comment T123 --comment "Comment"
 phab task view T123
+phab task edges T123
+phab task tree T123
 
 # Revisions
 phab revision create --title "Title" --reviewers "team"
