@@ -68,6 +68,14 @@ This directory contains the following skills. Each skill is in its own directory
 
 ### Data Processing
 
+- **bigquery/** - Google BigQuery data warehouse
+  - Use `bigquery` CLI for SQL queries and data management
+  - Query execution with cost estimation (`--dry-run`)
+  - Dataset/table creation, partitioning, clustering
+  - MCP server for semantic search (`bigquery mcp stdio`)
+  - LSP for SQL editor support (`bigquery lsp stdio`)
+  - Data import/export and job management
+
 - **jq/** - JSON processing and manipulation
   - **STRONGLY PREFERRED** for all JSON operations
   - Filtering, transformations, aggregations
