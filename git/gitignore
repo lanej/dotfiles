@@ -46,3 +46,4 @@ CLAUDE.local.md
 # Rust build files
 target/
 .fastembed_cache/
+.scratchpads/

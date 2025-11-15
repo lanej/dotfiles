@@ -82,7 +82,8 @@
 	slp = lg -p
 	sls = log --oneline -5 --stat
 	slx = log --oneline -5
-	s = status -s
+	s = status -s .
+	sp = status -s
 	uf = ls-files -o --exclude-standard
 	cm = commit -m
 [core]
@@ -174,7 +175,7 @@
 	helper = /usr/local/bin/git-credential-cloudsmith easypost/easypost-rust
 [credential "https://github.com"]
 	helper = 
-	helper = !/usr/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/usr/bin/gh auth git-credential
+	helper = !gh auth git-credential
