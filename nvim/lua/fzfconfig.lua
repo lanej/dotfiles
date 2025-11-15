@@ -176,8 +176,7 @@ vim.keymap.set("n", "<leader>ff", function()
 			["ctrl-g"] = function(selected, opts)
 				no_ignore = not no_ignore
 				require("fzf-lua").files({
-					cmd = no_ignore
-						and "fd --type f --follow --hidden --no-ignore --exclude .git"
+					cmd = no_ignore and "fd --type f --follow --hidden --no-ignore --exclude .git"
 						or "fd --type f --follow --exclude .git",
 					prompt = no_ignore and "All Files❯ " or "Files❯ ",
 				})
@@ -255,7 +254,7 @@ vim.keymap.set("n", "<leader>bs", function()
 		winopts = {
 			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
 			width = 0.5, -- width of the window (50% of the editor)
-			height = 0.3, -- height of the window (30% of the editor)
+			height = 0.8, -- height of the window (30% of the editor)
 			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
 		},
 	})
