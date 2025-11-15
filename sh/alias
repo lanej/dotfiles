@@ -427,8 +427,7 @@ phab-clone() {
 }
 
 reauth-gcloud() {
-	gcloud auth application-default login --scopes=https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/bigquery
-	gcloud auth login --enable-gdrive-access
+				gspace auth login
 }
 alias dc='claude --dangerously-skip-permissions'
 alias dcc='claude --dangerously-skip-permissions --continue'
@@ -441,3 +440,13 @@ alias cargo-cache-clean='command -v cargo-cache >/dev/null && cargo cache --auto
 alias rust-disk='du -sh ~/src/*/target 2>/dev/null | sort -hr | head -20'
 alias sccache-stats='sccache --show-stats'
 alias cargo-install-ssh='CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --git'
+cargo-install-github() {
+	if [ $# -lt 2 ]; then
+		echo "Usage: cargo-install-github <org> <repo> [cargo-install-args...]"
+		return 1
+	fi
+	local org="$1"
+	local repo="$2"
+	shift 2
+	CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --git "ssh://git@github.com/$org/$repo" "$@"
+}
