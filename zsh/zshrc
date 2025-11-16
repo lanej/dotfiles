@@ -69,8 +69,14 @@ fpath=(
 
 # Load and initialize the Zsh completion system
 autoload -Uz compinit
-# Use -C for faster startup (skip security check on completion dump)
-compinit -C
+# Only regenerate completion cache once per day for faster startup
+if [[ -n ${HOME}/.zcompdump(#qN.mh+24) ]]; then
+	# Cache is older than 24 hours, regenerate it
+	compinit
+else
+	# Use cached version (skip security check for speed)
+	compinit -C
+fi
 
 # Set up completion for aliases
 compdef _just just-hack
@@ -324,6 +330,16 @@ fi
 # FastEmbed cache centralization
 export FASTEMBED_CACHE_DIR="$HOME/.cache/fastembed"
 
+# Lazy load NVM - only load when nvm command is actually used
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# Note: Default node version is already added to PATH in .profile (lines 94-100)
+# Only load nvm when the command is actually invoked
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # Create lazy-loading wrapper for nvm
+  nvm() {
+    unset -f nvm
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    nvm "$@"
+  }
+fi

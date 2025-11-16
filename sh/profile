@@ -16,8 +16,15 @@ fi
 # arch
 [ -r /usr/share/chruby/auto.sh ] && . /usr/share/chruby/auto.sh
 
+# Lazy load rbenv - add shims to PATH but defer full initialization
 if command -v rbenv >/dev/null; then
-	eval "$(rbenv init -)"
+	export PATH="$HOME/.rbenv/shims:$PATH"
+	# Only fully initialize rbenv when the command is actually used
+	rbenv() {
+		unset -f rbenv
+		eval "$(command rbenv init -)"
+		rbenv "$@"
+	}
 fi
 
 export OS=$(uname -s)
@@ -85,10 +92,12 @@ fi
 if [ -d "/opt/homebrew" ]; then
 	export PATH="/opt/homebrew/bin:$PATH"
 	export PATH="/opt/homebrew/sbin:$PATH"
-
-	if type brew &>/dev/null; then
-		source <(brew shellenv)
-	fi
+	# Cache brew shellenv output instead of running it every time (saves ~40ms)
+	export HOMEBREW_PREFIX="/opt/homebrew"
+	export HOMEBREW_CELLAR="/opt/homebrew/Cellar"
+	export HOMEBREW_REPOSITORY="/opt/homebrew"
+	export MANPATH="/opt/homebrew/share/man${MANPATH+:$MANPATH}:"
+	export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}"
 fi
 
 if [ -r "${HOME}/.nvm/alias/default" ]; then
