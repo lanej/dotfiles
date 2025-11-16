@@ -681,6 +681,13 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
 	"folke/which-key.nvim",
 	{
+		"lanej/hotreload.nvim",
+		opts = {
+			-- Uses fs_event watchers by default (no polling)
+			silent = true,
+		},
+	},
+	{
 		"gbprod/nord.nvim",
 		config = function()
 			require("nord").setup({
@@ -1100,9 +1107,6 @@ require("lazy").setup({
 						filter = { event = "msg_show", find = "File changed on disk. Buffer reloaded." },
 						opts = { skip = true },
 					},
-					-- Suppress hotreloader messages
-					{ filter = { event = "msg_show", find = "hotreload" }, opts = { skip = true } },
-					{ filter = { event = "msg_show", find = "Reloaded" }, opts = { skip = true } },
 				},
 				popupmenu = { enabled = false },
 				-- cmdline = {
@@ -2274,16 +2278,6 @@ Output ONLY the commit message text. End with two blank lines.]],
 			file_types = { "markdown", "Avante" },
 		},
 		ft = { "markdown", "Avante" },
-	},
-	{
-		"diogo464/hotreload.nvim",
-		enabled = false, -- Disabled due to excessive CPU usage
-		opts = {
-			-- Check interval in milliseconds (default: 500)
-			interval = 500,
-			-- Suppress notifications
-			notify = false,
-		},
 	},
 	"cedarbaum/fugitive-azure-devops.vim",
 	{
