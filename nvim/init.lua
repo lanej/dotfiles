@@ -2077,16 +2077,21 @@ require("lazy").setup({
 
 				-- Let Claude read the diff directly from git
 				local prompt =
-					"Generate a git commit message in Commitizen format. Run 'git diff --cached' to see the staged changes. Output ONLY the commit message with no commentary. Requirements: type(scope): subject under 50 chars, imperative mood, no period, no AI attribution."
+					"Generate a git commit message in Commitizen format. Run 'git diff --cached' to see the staged changes. Output ONLY the raw commit message text - NO code fences, NO markdown formatting, NO commentary. Requirements: type(scope): subject under 50 chars, imperative mood, no period, no AI attribution."
 
-				-- Use system() for simpler synchronous execution
-				local output = vim.fn.system({ "claude", "--print", prompt })
+				-- Use haiku model for speed
+				local output = vim.fn.system({ "claude", "--print", "--model", "haiku", prompt })
 
 				-- Strip ANSI color codes and clean up
 				output = output:gsub("\27%[[0-9;]*m", "") -- Remove ANSI codes
 				output = output:gsub("🔍 Privacy status.-\n", "") -- Remove privacy message
 				output = output:gsub("⚠️.-\n", "") -- Remove warnings
 				output = output:gsub("Run.-\n", "") -- Remove help messages
+
+				-- Strip code fences if present
+				output = output:gsub("^```%w*\n", "") -- Remove opening fence
+				output = output:gsub("\n```$", "") -- Remove closing fence
+
 				output = output:gsub("^%s+", ""):gsub("%s+$", "") -- Trim whitespace
 
 				if output == "" then
