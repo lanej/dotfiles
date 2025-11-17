@@ -2075,48 +2075,44 @@ Requirements:
 Diff:
 ]] .. diff
 
-				-- Use claude CLI to generate the message
-				vim.fn.jobstart({ "claude", "--print", prompt }, {
-					stdout_buffered = true,
-					on_stdout = function(_, data)
-						if data then
-							local output = table.concat(data, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
-							if output ~= "" then
-								vim.schedule(function()
-									-- Find where git comments start
-									local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-									local first_comment = nil
-									for i, line in ipairs(lines) do
-										if line:match("^#") then
-											first_comment = i - 1
-											break
-										end
-									end
+				-- Use system() for simpler synchronous execution
+				local cmd = { "claude", "--print", prompt }
+				local output = vim.fn.system(cmd)
 
-									-- Split message into lines
-									local msg_lines = vim.split(output, "\n", { plain = true })
+				-- Strip ANSI color codes and clean up
+				output = output:gsub("\27%[[0-9;]*m", "")  -- Remove ANSI codes
+				output = output:gsub("🔍 Privacy status.-\n", "")  -- Remove privacy message
+				output = output:gsub("⚠️.-\n", "")  -- Remove warnings
+				output = output:gsub("Run.-\n", "")  -- Remove help messages
+				output = output:gsub("^%s+", ""):gsub("%s+$", "")  -- Trim whitespace
 
-									-- Insert at top of buffer
-									if first_comment and first_comment > 0 then
-										vim.api.nvim_buf_set_lines(0, 0, first_comment, false, msg_lines)
-									else
-										vim.api.nvim_buf_set_lines(0, 0, 0, false, msg_lines)
-									end
+				if output == "" then
+					vim.notify("Claude returned empty response", vim.log.levels.ERROR)
+					return
+				end
 
-									vim.api.nvim_win_set_cursor(0, { 1, 0 })
-									vim.notify("Commit message generated!", vim.log.levels.INFO)
-								end)
-							end
-						end
-					end,
-					on_stderr = function(_, data)
-						if data and #data > 0 then
-							vim.schedule(function()
-								vim.notify("Error: " .. table.concat(data, "\n"), vim.log.levels.ERROR)
-							end)
-						end
-					end,
-				})
+				-- Find where git comments start
+				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+				local first_comment = nil
+				for i, line in ipairs(lines) do
+					if line:match("^#") then
+						first_comment = i - 1
+						break
+					end
+				end
+
+				-- Split message into lines
+				local msg_lines = vim.split(output, "\n", { plain = true })
+
+				-- Insert at top of buffer
+				if first_comment and first_comment > 0 then
+					vim.api.nvim_buf_set_lines(0, 0, first_comment, false, msg_lines)
+				else
+					vim.api.nvim_buf_set_lines(0, 0, 0, false, msg_lines)
+				end
+
+				vim.api.nvim_win_set_cursor(0, { 1, 0 })
+				vim.notify("Commit message generated!", vim.log.levels.INFO)
 			end, { desc = "Generate commit message with Claude" })
 
 			vim.keymap.set(
