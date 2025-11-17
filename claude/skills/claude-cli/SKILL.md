@@ -278,6 +278,167 @@ claude --mcp-config config1.json config2.json
 claude --strict-mcp-config --mcp-config config.json
 ```
 
+### Project-Level MCP Configuration (.mcp.json)
+
+**IMPORTANT**: Project-specific MCP servers belong in a `.mcp.json` file at the project root.
+
+#### .mcp.json File Structure
+
+Create `.mcp.json` in your project root with this structure:
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "npx",
+      "args": ["-y", "package-name"],
+      "env": {
+        "API_KEY": "value"
+      }
+    }
+  }
+}
+```
+
+#### Common Patterns
+
+**Node.js MCP server:**
+```json
+{
+  "mcpServers": {
+    "myserver": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "env": {
+        "API_KEY": ""
+      }
+    }
+  }
+}
+```
+
+**Python/uvx MCP server:**
+```json
+{
+  "mcpServers": {
+    "knowledge_base": {
+      "command": "uvx",
+      "args": [
+        "chroma-mcp",
+        "--client-type",
+        "persistent",
+        "--data-dir",
+        "/path/to/data"
+      ],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+**Language server integration:**
+```json
+{
+  "mcpServers": {
+    "gopls": {
+      "command": "/path/to/mcp-language-server",
+      "args": ["--workspace", ".", "--lsp", "gopls", "--", "-mode=stdio"],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+**Docker/Podman container:**
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "podman",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your-token"
+      }
+    }
+  }
+}
+```
+
+**Multiple servers in one project:**
+```json
+{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "gdrive": {
+      "command": "gdrive",
+      "args": ["mcp", "stdio"]
+    }
+  }
+}
+```
+
+#### Usage
+
+When Claude CLI runs in a project directory:
+
+```bash
+# Automatically detects and loads .mcp.json
+claude
+
+# View which servers are loaded
+claude mcp list
+
+# Reset project server approvals
+claude mcp reset-project-choices
+```
+
+**Key Points:**
+- Place `.mcp.json` at project root
+- Claude prompts to approve/reject project servers on first use
+- Use for project-specific tools (language servers, project APIs, local databases)
+- Separate from global user MCP configuration
+- Safe to commit to version control (but NEVER commit secrets in `env`)
+
+#### .gitignore Pattern for Secrets
+
+If your `.mcp.json` contains secrets, create a template:
+
+```bash
+# .mcp.json.example (commit this)
+{
+  "mcpServers": {
+    "myserver": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "env": {
+        "API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+
+# .gitignore
+.mcp.json
+```
+
+Then developers copy `.mcp.json.example` to `.mcp.json` and add their credentials.
+
 ## Plugin Management
 
 ### List Available Plugins
@@ -549,7 +710,36 @@ claude "use mytools to analyze data"
 claude mcp remove mytools
 ```
 
-### Workflow 7: Plugin Workflow
+### Workflow 7: Project-Level MCP Configuration
+
+```bash
+# Create .mcp.json in project root
+cat > .mcp.json <<'EOF'
+{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}
+EOF
+
+# Start claude - automatically detects .mcp.json
+claude
+
+# Approve project servers when prompted
+# Servers are now available for this project only
+
+# Reset approvals if needed
+claude mcp reset-project-choices
+```
+
+### Workflow 8: Plugin Workflow
 
 ```bash
 # Install plugin
@@ -562,7 +752,7 @@ claude "analyze code quality with code-analyzer"
 claude plugin disable code-analyzer
 ```
 
-### Workflow 8: Batch Processing with Stream JSON
+### Workflow 9: Batch Processing with Stream JSON
 
 ```bash
 # Process multiple prompts
@@ -571,14 +761,14 @@ cat prompts.jsonl | claude -p \
   --output-format stream-json > results.jsonl
 ```
 
-### Workflow 9: Model Fallback for Reliability
+### Workflow 10: Model Fallback for Reliability
 
 ```bash
 # Try Sonnet, fall back to Haiku if overloaded
 claude -p --model sonnet --fallback-model haiku "analyze data"
 ```
 
-### Workflow 10: Sandboxed Execution
+### Workflow 11: Sandboxed Execution
 
 ```bash
 # Safe sandbox with no permissions needed
@@ -797,7 +987,7 @@ docs:
 **Primary use cases:**
 - Interactive coding sessions (default mode)
 - Scripted automation (print mode)
-- MCP server integration
+- MCP server integration (global and project-level)
 - Plugin management
 - Tool-controlled execution
 
@@ -805,7 +995,7 @@ docs:
 - Flexible output formats (text, JSON, streaming)
 - Fine-grained tool control
 - Session persistence and forking
-- MCP protocol support
+- MCP protocol support (use `.mcp.json` for project-specific servers)
 - Extensible plugin system
 
 **Most common commands:**
@@ -814,3 +1004,8 @@ docs:
 - `claude -c` - Continue last conversation
 - `claude mcp list` - Manage MCP servers
 - `claude --allowed-tools "pattern" "prompt"` - Restrict tool access
+
+**Project-level MCP:**
+- Create `.mcp.json` in project root for project-specific MCP servers
+- Automatically loaded when Claude runs in that directory
+- Separate from global user configuration
