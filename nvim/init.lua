@@ -2053,64 +2053,58 @@ require("lazy").setup({
 					return
 				end
 
-				-- Get the staged diff
-				local diff = vim.fn.system("git diff --cached")
-				if diff == "" or diff:match("^fatal:") then
+				-- Check if there are staged changes
+				local diff_check = vim.fn.system("git diff --cached --quiet")
+				if vim.v.shell_error == 0 then
 					vim.notify("No staged changes to commit", vim.log.levels.WARN)
 					return
 				end
 
 				vim.notify("Generating commit message with Claude...", vim.log.levels.INFO)
 
-				-- Pipe the diff to claude CLI with a prompt
-				local prompt = [[Generate a git commit message following Commitizen format.
+				-- Save current git comments before clearing
+				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+				local comment_lines = {}
+				local found_comment = false
+				for _, line in ipairs(lines) do
+					if line:match("^#") then
+						found_comment = true
+					end
+					if found_comment then
+						table.insert(comment_lines, line)
+					end
+				end
 
-Requirements:
-- Format: <type>(<scope>): <subject>
-- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
-- Subject: imperative mood, lowercase, no period, under 50 characters
-- Body (optional): wrap at 72 characters
-- NO AI attribution
-
-Diff:
-]] .. diff
+				-- Let Claude read the diff directly from git
+				local prompt =
+					"Generate a git commit message in Commitizen format. Run 'git diff --cached' to see the staged changes. Output ONLY the commit message with no commentary. Requirements: type(scope): subject under 50 chars, imperative mood, no period, no AI attribution."
 
 				-- Use system() for simpler synchronous execution
-				local cmd = { "claude", "--print", prompt }
-				local output = vim.fn.system(cmd)
+				local output = vim.fn.system({ "claude", "--print", prompt })
 
 				-- Strip ANSI color codes and clean up
-				output = output:gsub("\27%[[0-9;]*m", "")  -- Remove ANSI codes
-				output = output:gsub("🔍 Privacy status.-\n", "")  -- Remove privacy message
-				output = output:gsub("⚠️.-\n", "")  -- Remove warnings
-				output = output:gsub("Run.-\n", "")  -- Remove help messages
-				output = output:gsub("^%s+", ""):gsub("%s+$", "")  -- Trim whitespace
+				output = output:gsub("\27%[[0-9;]*m", "") -- Remove ANSI codes
+				output = output:gsub("🔍 Privacy status.-\n", "") -- Remove privacy message
+				output = output:gsub("⚠️.-\n", "") -- Remove warnings
+				output = output:gsub("Run.-\n", "") -- Remove help messages
+				output = output:gsub("^%s+", ""):gsub("%s+$", "") -- Trim whitespace
 
 				if output == "" then
 					vim.notify("Claude returned empty response", vim.log.levels.ERROR)
 					return
 				end
 
-				-- Find where git comments start
-				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-				local first_comment = nil
-				for i, line in ipairs(lines) do
-					if line:match("^#") then
-						first_comment = i - 1
-						break
-					end
-				end
-
-				-- Split message into lines
+				-- Split message into lines and add blank line separator
 				local msg_lines = vim.split(output, "\n", { plain = true })
+				table.insert(msg_lines, "")
 
-				-- Insert at top of buffer
-				if first_comment and first_comment > 0 then
-					vim.api.nvim_buf_set_lines(0, 0, first_comment, false, msg_lines)
-				else
-					vim.api.nvim_buf_set_lines(0, 0, 0, false, msg_lines)
+				-- Combine with preserved git comments
+				for _, line in ipairs(comment_lines) do
+					table.insert(msg_lines, line)
 				end
 
+				-- Replace entire buffer content
+				vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
 				vim.api.nvim_win_set_cursor(0, { 1, 0 })
 				vim.notify("Commit message generated!", vim.log.levels.INFO)
 			end, { desc = "Generate commit message with Claude" })
