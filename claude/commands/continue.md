@@ -20,6 +20,7 @@ Execute all remaining work autonomously by following these principles:
 - Follow project conventions and best practices
 - Fix errors and issues as they arise
 - Run tests, builds, and validation automatically
+- Ignore concerns about effort, time, or complexity - just do the work
 
 **Stop only for:**
 - **True blockers**: Missing credentials, ambiguous requirements, conflicting constraints
@@ -66,6 +67,9 @@ Execute all remaining work autonomously by following these principles:
 - Running tests, builds, linting
 - Installing standard dependencies
 - Fixing obvious bugs or typos
+- Concerns about how long something will take
+- Concerns about effort or complexity level
+- Large numbers of similar tasks (just do them all)
 
 ### Progress Communication
 
@@ -123,6 +127,7 @@ Assistant: [Creates todo list] /continue
 - **Stay focused**: Complete the defined work without asking permission for standard operations
 - **Be efficient**: Minimize back-and-forth when not needed
 - **Stop when blocked**: Don't guess on genuinely ambiguous requirements
+- **Ignore effort/time/complexity concerns**: Never stop or ask questions because something seems large, complex, or time-consuming - just execute it
 
 ## When NOT to Use This Command
 
