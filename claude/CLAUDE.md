@@ -44,6 +44,7 @@ For comprehensive workflows and best practices, see `~/.claude/skills/`. Each sk
 ### Other Skills
 - `bigquery` - Use `bigquery` CLI (not `bq`)
 - `gspace` - Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar)
+- `lancer` - LanceDB semantic/multi-modal search with document ingestion and MCP server
 - `phab` - Phabricator operations (tasks, revisions, diffs)
 - `pkm` - Personal knowledge management
 - `xlsx` - Excel file manipulation
