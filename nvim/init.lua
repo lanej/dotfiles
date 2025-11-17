@@ -2043,7 +2043,7 @@ require("lazy").setup({
 			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
 			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
 
-			-- Generate commit message directly in COMMIT_EDITMSG buffer
+			-- Generate commit message using Anthropic API (Claude Code style)
 			vim.keymap.set("n", "<leader>ccm", function()
 				local bufname = vim.api.nvim_buf_get_name(0)
 				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
@@ -2060,29 +2060,126 @@ require("lazy").setup({
 					return
 				end
 
-				-- Build the prompt with Commitizen format requirements
-				local prompt = string.format(
-					[[You are a git commit message expert. Generate ONLY the commit message following Commitizen format.
-
-Requirements:
-- Format: <type>(<scope>): <subject>
-- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
-- Subject line: MAX 50 characters, imperative mood, lowercase start, no period
-- Body (if needed): Wrap at 72 characters
-- NO mentions of AI, Claude, or automated generation
-
-Analyze this diff and write the commit message:
+				-- Get API key
+				local api_key = os.getenv("ANTHROPIC_API_KEY")
+				if not api_key or api_key == "" then
+					vim.notify("ANTHROPIC_API_KEY not set. Using CodeCompanion fallback...", vim.log.levels.WARN)
+					-- Fallback to CodeCompanion
+					local prompt = string.format(
+						[[Generate a commit message following Commitizen format for this diff:
 
 %s
 
 Output ONLY the commit message text.]],
-					diff:sub(1, 5000)
+						diff:sub(1, 5000)
+					)
+					require("codecompanion").inline({ args = prompt })
+					return
+				end
+
+				vim.notify("Generating commit message...", vim.log.levels.INFO)
+
+				-- Build the API request
+				local prompt = string.format(
+					[[You are a git commit message expert. Analyze the following git diff and generate a commit message following Commitizen conventional commits format.
+
+Requirements:
+- Format: <type>(<scope>): <subject>
+- Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+- Subject line: imperative mood, lowercase, no period, under 50 characters
+- Body (optional): wrap at 72 characters, explain what and why
+- Footer (optional): breaking changes, issue references
+- NO mentions of AI, Claude, automation, or code generation tools
+- Be concise and professional
+
+Git diff:
+```
+%s
+```
+
+Output ONLY the commit message text with no additional commentary.]],
+					diff:sub(1, 8000)
 				)
 
-				-- Call CodeCompanion inline
-				local cc = require("codecompanion")
-				cc.inline({ args = prompt })
-			end, { desc = "Generate commit message inline" })
+				-- Create JSON payload
+				local json_payload = vim.fn.json_encode({
+					model = "claude-sonnet-4-20250514",
+					max_tokens = 1024,
+					messages = {
+						{
+							role = "user",
+							content = prompt,
+						},
+					},
+				})
+
+				-- Call Anthropic API
+				local tmpfile = vim.fn.tempname()
+				vim.fn.writefile({ json_payload }, tmpfile)
+
+				vim.fn.jobstart({
+					"curl",
+					"-s",
+					"https://api.anthropic.com/v1/messages",
+					"-H",
+					"x-api-key: " .. api_key,
+					"-H",
+					"anthropic-version: 2023-06-01",
+					"-H",
+					"content-type: application/json",
+					"-d",
+					"@" .. tmpfile,
+				}, {
+					stdout_buffered = true,
+					on_stdout = function(_, data)
+						if data then
+							local response = table.concat(data, "\n")
+							local ok, parsed = pcall(vim.fn.json_decode, response)
+							if ok and parsed and parsed.content and parsed.content[1] then
+								local commit_msg = parsed.content[1].text
+
+								-- Insert the commit message at the top of the buffer
+								vim.schedule(function()
+									-- Find where the git comments start
+									local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+									local first_comment = nil
+									for i, line in ipairs(lines) do
+										if line:match("^#") then
+											first_comment = i - 1
+											break
+										end
+									end
+
+									-- Split commit message into lines
+									local msg_lines = vim.split(commit_msg, "\n", { plain = true })
+
+									-- Clear existing non-comment lines and insert new message
+									if first_comment and first_comment > 0 then
+										vim.api.nvim_buf_set_lines(0, 0, first_comment, false, msg_lines)
+									else
+										-- No comments yet, just set the lines
+										vim.api.nvim_buf_set_lines(0, 0, 0, false, msg_lines)
+									end
+
+									-- Place cursor at beginning
+									vim.api.nvim_win_set_cursor(0, { 1, 0 })
+									vim.notify("Commit message generated!", vim.log.levels.INFO)
+								end)
+							else
+								vim.schedule(function()
+									vim.notify(
+										"Failed to parse API response: " .. response:sub(1, 100),
+										vim.log.levels.ERROR
+									)
+								end)
+							end
+						end
+					end,
+					on_exit = function()
+						vim.fn.delete(tmpfile)
+					end,
+				})
+			end, { desc = "Generate commit message with Claude" })
 
 			vim.keymap.set(
 				{ "n", "v" },
