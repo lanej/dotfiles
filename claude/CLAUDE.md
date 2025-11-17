@@ -12,6 +12,12 @@
 
 For comprehensive workflows and best practices, see `~/.claude/skills/`. Each skill has a `SKILL.md` file.
 
+### Claude CLI - `~/.claude/skills/claude-cli/`
+- Print mode: `claude -p` for scripting and automation
+- Session management: `claude -c` (continue), `claude -r` (resume), `--fork-session`
+- Tool control: `--allowed-tools`, `--disallowed-tools`, `--tools`
+- MCP: `claude mcp add/remove/list` to manage servers
+
 ### Git - `~/.claude/skills/git/`
 - Use git commit message writer agent for all commits
 - NO AI attribution in commits (no "Generated with Claude Code" or "Co-Authored-By: Claude")
