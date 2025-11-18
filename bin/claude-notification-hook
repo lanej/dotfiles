@@ -1,0 +1,20 @@
+#!/bin/bash
+# Claude Code notification hook
+# Triggers tmux bell and desktop notification when Claude needs input
+
+# Read stdin
+input=$(cat)
+
+# Trigger tmux bell
+if [ -n "$TMUX_PANE" ]; then
+    tmux send-keys -t "$TMUX_PANE" C-g 2>/dev/null
+fi
+
+# Desktop notification (background, non-blocking)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    osascript -e 'display notification "Claude is waiting for input" with title "Claude Code"' 2>/dev/null &
+elif command -v notify-send >/dev/null 2>&1; then
+    notify-send "Claude Code" "Claude is waiting for input" 2>/dev/null &
+fi
+
+exit 0
