@@ -1,16 +1,17 @@
 ---
 name: presenterm
-description: Create and deliver terminal-based presentations from markdown files with themes, code execution, and PDF/HTML export capabilities.
+description: Create and deliver terminal-based presentations from markdown files with themes, code execution, mermaid/d2 diagrams, LaTeX/typst formulas, and PDF/HTML export capabilities.
 ---
 
 # presenterm - Terminal Slideshow Tool
 
-presenterm is a modern terminal-based presentation tool that renders markdown files as slides. It supports themes, code syntax highlighting, images, and can export to PDF or HTML.
+presenterm is a modern terminal-based presentation tool that renders markdown files as slides. It supports themes, code syntax highlighting, images, diagram rendering (mermaid, d2), mathematical formulas (LaTeX, typst), and can export to PDF or HTML.
 
 ## Core Principles
 
 - **Markdown-first**: Write presentations in familiar markdown syntax
 - **Terminal-native**: Runs entirely in the terminal with rich rendering
+- **Advanced rendering**: Render mermaid/d2 diagrams and LaTeX/typst formulas as images
 - **Presentation mode**: Separate presentation view with speaker notes support
 - **Export capabilities**: Generate PDF or HTML from markdown slides
 - **Code execution**: Execute code snippets during presentations
@@ -240,6 +241,318 @@ ls -la
 ```
 
 <!-- The output will replace the code block -->
+````
+
+## Advanced Rendering
+
+presenterm supports rendering diagrams and formulas directly from code blocks, converting them to images during presentation load.
+
+### Mermaid Diagrams
+
+Render mermaid diagrams using the `+render` attribute.
+
+**Requirements:**
+- Install [mermaid-cli](https://github.com/mermaid-js/mermaid-cli): `npm install -g @mermaid-js/mermaid-cli`
+
+**Syntax:**
+
+````markdown
+```mermaid +render
+sequenceDiagram
+    Alice->>Bob: Hello Bob, how are you?
+    Bob-->>Alice: I'm good thanks!
+    Alice-)Bob: See you later!
+```
+
+```mermaid +render
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+```
+
+```mermaid +render
+pie title Project Time Distribution
+    "Development" : 40
+    "Testing" : 25
+    "Documentation" : 20
+    "Meetings" : 15
+```
+````
+
+**Configuration (in config.yaml):**
+
+```yaml
+mermaid:
+  # Theme selection
+  theme: dark
+  # Background color
+  background: "#2E3440"
+  # Image scaling
+  scale: 2.0
+```
+
+**Size control with width attribute:**
+
+````markdown
+```mermaid +render +width:80%
+graph LR
+    A --> B --> C
+```
+````
+
+**Performance Note:**
+- Rendering takes ~2 seconds per diagram
+- Rendered asynchronously (default 2 threads)
+
+### d2 Diagrams
+
+Render d2 diagrams for architecture and system diagrams.
+
+**Requirements:**
+- Install [d2](https://github.com/terrastruct/d2): `brew install d2` or download from releases
+
+**Syntax:**
+
+````markdown
+```d2 +render
+# System Architecture
+web_server: Web Server {
+  shape: rectangle
+}
+database: Database {
+  shape: cylinder
+}
+cache: Redis Cache {
+  shape: stored_data
+}
+
+web_server -> database: queries
+web_server -> cache: reads/writes
+```
+
+```d2 +render
+my_table: {
+  shape: sql_table
+  id: int {constraint: primary_key}
+  username: varchar(255)
+  email: varchar(255)
+  created_at: timestamp
+}
+```
+
+```d2 +render
+direction: right
+
+users -> api: HTTP requests
+api -> auth: validate token
+api -> database: query data
+api -> cache: check cache
+```
+````
+
+**Configuration (in config.yaml):**
+
+```yaml
+d2:
+  # Theme selection
+  theme: "Nord"
+  # Image scaling
+  scale: 1.5
+```
+
+**Size control:**
+
+````markdown
+```d2 +render +width:70%
+A -> B -> C
+```
+````
+
+### LaTeX Formulas
+
+Render LaTeX mathematical formulas as images.
+
+**Requirements:**
+- Install [typst](https://github.com/typst/typst): `brew install typst` or `cargo install typst-cli`
+- Install [pandoc](https://pandoc.org/installing.html): `brew install pandoc`
+
+**How it works:**
+- Pandoc converts LaTeX to typst
+- Typst renders the formula to an image
+
+**Syntax:**
+
+````markdown
+```latex +render
+\[ \sum_{n=1}^{\infty} 2^{-n} = 1 \]
+```
+
+```latex +render
+\[
+E = mc^2
+\]
+```
+
+```latex +render
+\[
+\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+\]
+```
+
+```latex +render
+\[
+\frac{d}{dx}\left( \int_{a}^{x} f(u)\,du\right) = f(x)
+\]
+```
+
+```latex +render
+\[
+\begin{bmatrix}
+a & b \\
+c & d
+\end{bmatrix}
+\]
+```
+````
+
+**Configuration (in config.yaml):**
+
+```yaml
+# Pixels per inch for formula rendering
+typst:
+  ppi: 300
+```
+
+**Size control:**
+
+````markdown
+```latex +render +width:60%
+\[ \oint_C \mathbf{F} \cdot d\mathbf{r} = \iint_S (\nabla \times \mathbf{F}) \cdot d\mathbf{S} \]
+```
+````
+
+### Typst Formulas
+
+Render typst formulas directly (bypassing LaTeX conversion).
+
+**Requirements:**
+- Install [typst](https://github.com/typst/typst): `brew install typst`
+
+**Syntax:**
+
+````markdown
+```typst +render
+$ sum_(n=1)^oo 1/n^2 = pi^2/6 $
+```
+
+```typst +render
+$ integral_(-oo)^oo e^(-x^2) d x = sqrt(pi) $
+```
+
+```typst +render
+$ mat(
+  1, 2;
+  3, 4;
+) $
+```
+````
+
+**Benefits over LaTeX:**
+- Faster (no pandoc conversion step)
+- Native typst syntax
+- More modern formula typesetting
+
+### Rendering Configuration
+
+**Global config.yaml settings:**
+
+```yaml
+# Formula rendering
+typst:
+  ppi: 300  # Pixels per inch for formulas
+
+# Mermaid diagrams
+mermaid:
+  theme: dark
+  background: "#2E3440"
+  scale: 2.0
+
+# d2 diagrams
+d2:
+  theme: "Nord"
+  scale: 1.5
+```
+
+### Complete Rendering Example
+
+````markdown
+# System Architecture
+
+```d2 +render +width:80%
+users: Users {
+  shape: person
+}
+lb: Load Balancer {
+  shape: rectangle
+}
+api: API Servers {
+  shape: rectangle
+}
+db: Database {
+  shape: cylinder
+}
+
+users -> lb
+lb -> api: distribute
+api -> db: query
+```
+
+---
+
+# Request Flow
+
+```mermaid +render
+sequenceDiagram
+    participant U as User
+    participant A as API
+    participant D as Database
+    participant C as Cache
+
+    U->>A: Request data
+    A->>C: Check cache
+    alt Cache hit
+        C-->>A: Return cached data
+    else Cache miss
+        A->>D: Query database
+        D-->>A: Return data
+        A->>C: Update cache
+    end
+    A-->>U: Response
+```
+
+---
+
+# Algorithm Complexity
+
+```latex +render
+\[
+T(n) = \begin{cases}
+O(1) & \text{best case} \\
+O(\log n) & \text{average case} \\
+O(n) & \text{worst case}
+\end{cases}
+\]
+```
+
+---
+
+# Mathematical Formula
+
+```typst +render
+$ P(A|B) = (P(B|A) dot P(A)) / P(B) $
+```
 ````
 
 ## Image Protocols
@@ -921,6 +1234,25 @@ Notes here
 ```bash +exec
 command
 ``` (triple backtick)
+
+# Rendered diagrams
+```mermaid +render
+graph TD
+    A --> B
+``` (triple backtick)
+
+```d2 +render
+A -> B
+``` (triple backtick)
+
+# Rendered formulas
+```latex +render
+\[ E = mc^2 \]
+``` (triple backtick)
+
+```typst +render
+$ sum_(i=1)^n i = (n(n+1))/2 $
+``` (triple backtick)
 ```
 
 ## Resources
@@ -935,12 +1267,13 @@ command
 **Primary directives:**
 1. Write presentations in markdown
 2. Use presentation mode (`-p`) for actual presentations
-3. Include speaker notes for complex slides
-4. Validate before presenting
-5. Export to PDF/HTML for distribution
-6. Choose appropriate theme for venue/audience
-7. Keep slides simple and focused
-8. Test code execution blocks before presenting
+3. Use advanced rendering: mermaid/d2 for diagrams, LaTeX/typst for formulas
+4. Include speaker notes for complex slides
+5. Validate before presenting
+6. Export to PDF/HTML for distribution
+7. Choose appropriate theme for venue/audience
+8. Keep slides simple and focused
+9. Test code execution and rendering blocks before presenting
 
 **Most common commands:**
 - `presenterm -p slides.md` - Present
@@ -948,3 +1281,9 @@ command
 - `presenterm -t theme slides.md` - Use theme
 - `presenterm --validate-overflows slides.md` - Validate
 - `presenterm --list-themes` - See themes
+
+**Advanced rendering:**
+- Mermaid diagrams: ` ```mermaid +render` (requires mermaid-cli)
+- d2 diagrams: ` ```d2 +render` (requires d2)
+- LaTeX formulas: ` ```latex +render` (requires typst + pandoc)
+- Typst formulas: ` ```typst +render` (requires typst)
