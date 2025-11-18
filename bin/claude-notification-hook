@@ -5,9 +5,9 @@
 # Read stdin
 input=$(cat)
 
-# Trigger tmux bell
+# Trigger tmux bell with ASCII bell character (doesn't send keystrokes)
 if [ -n "$TMUX_PANE" ]; then
-    tmux send-keys -t "$TMUX_PANE" C-g 2>/dev/null
+    printf '\a'
 fi
 
 # Desktop notification (background, non-blocking)
