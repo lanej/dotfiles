@@ -1,490 +1,488 @@
 ---
 name: bigquery
-description: Use bigquery CLI for Google BigQuery operations including SQL queries, dataset/table management, schema operations, job control, and MCP server integration for semantic search and data analysis.
+description: Use bigquery CLI for Google BigQuery operations including SQL queries with cost awareness, dataset/table management, named query templates, and MCP/LSP server integration for semantic search and data analysis.
 ---
 # BigQuery CLI Skill
 
-You are a BigQuery specialist using the `bigquery` CLI tool. This skill provides comprehensive guidance for working with Google BigQuery for data warehousing, SQL queries, dataset management, and semantic search integration.
+You are a BigQuery specialist using the `bigquery` CLI tool. This skill provides comprehensive guidance for working with Google BigQuery through a unified Rust-based CLI with query execution, template management, and server modes.
 
 ## Core Capabilities
 
-The `bigquery` CLI provides comprehensive BigQuery integration:
+The `bigquery` CLI provides:
 
-1. **Query Execution**: Run SQL queries with formatting, pagination, and output control
-2. **Dataset Operations**: Create, list, describe, and manage datasets
-3. **Table Operations**: Create, list, describe, update, and delete tables
-4. **Schema Management**: View and modify table schemas
-5. **Job Management**: Monitor and manage query jobs
-6. **Data Import/Export**: Load data from files and export results
-7. **MCP Server**: Semantic search and natural language query interface
-8. **LSP Integration**: SQL language server for editor support
+1. **Authentication**: Check status and login with gcloud
+2. **Query Execution**: Run SQL queries with cost awareness and confirmation prompts
+3. **Dry Run**: Estimate query costs without execution
+4. **Dataset Operations**: List datasets in a project
+5. **Table Operations**: List, describe, insert, load, and manage external tables
+6. **Template System**: Named query templates with parameter substitution
+7. **MCP Server**: Semantic search via stdio or HTTP modes
+8. **LSP Server**: SQL language server for editor integration
+
+## Authentication
+
+### Check Authentication Status
+
+```bash
+# Check if authenticated and verify required scopes
+bigquery auth check
+
+# Will show:
+# - Authentication status
+# - Active account
+# - BigQuery scopes availability
+```
+
+### Login with gcloud
+
+```bash
+# Authenticate with gcloud including all required BigQuery scopes
+bigquery auth login
+
+# This will:
+# 1. Run gcloud auth login
+# 2. Ensure all necessary BigQuery scopes are granted
+# 3. Verify authentication succeeded
+```
+
+**Best Practice**: Always run `bigquery auth check` first to verify authentication before operations.
 
 ## Query Operations
 
 ### Running Queries
 
 ```bash
-# Basic query execution
+# Basic query execution (interactive cost confirmation)
 bigquery query "SELECT * FROM dataset.table LIMIT 10"
 
-# Query with explicit project
-bigquery query --project my-project "SELECT COUNT(*) FROM dataset.table"
+# Skip cost confirmation for automation
+bigquery query --yes "SELECT COUNT(*) FROM dataset.table"
 
-# Use standard SQL (default)
-bigquery query --use-standard-sql "SELECT * FROM \`project.dataset.table\`"
+# JSON output (default)
+bigquery query "SELECT * FROM dataset.table LIMIT 5"
 
-# Use legacy SQL
-bigquery query --use-legacy-sql "SELECT * FROM [project:dataset.table]"
-
-# Dry run (estimate costs without executing)
-bigquery query --dry-run "SELECT * FROM dataset.table"
-
-# Set maximum bytes billed
-bigquery query --max-bytes-billed 1000000 "SELECT * FROM dataset.table"
-
-# Query with parameters
-bigquery query --parameter "date:DATE:2025-01-15" \
-  "SELECT * FROM dataset.table WHERE date = @date"
-
-# Save results to table
-bigquery query --destination-table dataset.results \
-  "SELECT * FROM dataset.table WHERE condition"
-
-# Append to existing table
-bigquery query --destination-table dataset.results --append \
-  "SELECT * FROM dataset.table"
-
-# Overwrite destination table
-bigquery query --destination-table dataset.results --replace \
-  "SELECT * FROM dataset.table"
+# Text/table output
+bigquery query --format text "SELECT * FROM dataset.table LIMIT 5"
 ```
+
+**Cost Awareness**: The query command automatically:
+1. Estimates query cost before execution
+2. Displays bytes to be processed
+3. Prompts for confirmation (unless `--yes` is used)
+4. Prevents accidental expensive queries
 
 ### Query Output Formats
 
 ```bash
-# Default table format
-bigquery query "SELECT * FROM dataset.table LIMIT 5"
-
-# JSON output
+# JSON output (default, machine-readable)
+bigquery query "SELECT * FROM dataset.table"
 bigquery query --format json "SELECT * FROM dataset.table"
 
-# CSV output
-bigquery query --format csv "SELECT * FROM dataset.table"
-
-# Pretty print JSON
-bigquery query --format prettyjson "SELECT * FROM dataset.table"
-
-# Quiet mode (no progress, just results)
-bigquery query --quiet "SELECT * FROM dataset.table"
-
-# Limit rows returned
-bigquery query --max-rows 100 "SELECT * FROM dataset.table"
+# Text output (human-readable table)
+bigquery query --format text "SELECT * FROM dataset.table"
 ```
 
-### Interactive Queries
+### Dry Run (Cost Estimation)
 
 ```bash
-# Start interactive shell
-bigquery shell
+# Estimate cost without executing
+bigquery dry-run "SELECT * FROM large_dataset.table WHERE date >= '2025-01-01'"
 
-# Within shell:
-# > SELECT * FROM dataset.table LIMIT 10;
-# > \q  -- exit shell
+# Returns:
+# - Bytes that would be processed
+# - Estimated cost
+# - No actual data
 ```
+
+**Use dry-run to**:
+- Estimate costs before running expensive queries
+- Validate query syntax
+- Check partition pruning effectiveness
+- Test queries in CI/CD pipelines
 
 ## Dataset Operations
 
 ### Listing Datasets
 
 ```bash
-# List all datasets in current project
-bigquery ls
+# List datasets in current project (text format, default)
+bigquery datasets list my-project
 
-# List datasets in specific project
-bigquery ls --project my-project
+# JSON output
+bigquery datasets list my-project --format json
 
-# List with details
-bigquery ls --datasets --format prettyjson
-
-# Filter datasets
-bigquery ls --filter "labels.env:prod"
+# Example output shows:
+# - Dataset ID
+# - Location
+# - Creation time
+# - Labels (if any)
 ```
 
-### Creating Datasets
-
-```bash
-# Create dataset in current project
-bigquery mk dataset_name
-
-# Create with explicit project
-bigquery mk --project my-project dataset_name
-
-# Create with description
-bigquery mk --description "Production data" dataset_name
-
-# Set default table expiration (in seconds)
-bigquery mk --default-table-expiration 86400 dataset_name
-
-# Set location
-bigquery mk --location US dataset_name
-bigquery mk --location EU dataset_name
-
-# Create with labels
-bigquery mk --label env:prod --label team:data dataset_name
-
-# Complete example
-bigquery mk \
-  --project my-project \
-  --location US \
-  --description "Analytics dataset" \
-  --default-table-expiration 604800 \
-  --label env:prod \
-  analytics_dataset
-```
-
-### Describing Datasets
-
-```bash
-# Show dataset details
-bigquery show dataset_name
-
-# Show with JSON output
-bigquery show --format prettyjson dataset_name
-```
-
-### Updating Datasets
-
-```bash
-# Update dataset description
-bigquery update --description "New description" dataset_name
-
-# Update default expiration
-bigquery update --default-table-expiration 172800 dataset_name
-
-# Add labels
-bigquery update --set-label team:analytics dataset_name
-
-# Remove labels
-bigquery update --remove-label old_label dataset_name
-```
-
-### Deleting Datasets
-
-```bash
-# Delete empty dataset
-bigquery rm dataset_name
-
-# Delete dataset with all tables (force)
-bigquery rm -r -f dataset_name
-
-# Delete with confirmation
-bigquery rm -r dataset_name
-```
+**Note**: Dataset reference format is `project.dataset` or just `project` to list all datasets.
 
 ## Table Operations
 
 ### Listing Tables
 
 ```bash
-# List tables in dataset
-bigquery ls dataset_name
+# List tables in a dataset (text format, first 10)
+bigquery tables list my-project.my-dataset
 
-# List with details
-bigquery ls --format prettyjson dataset_name
+# JSON output
+bigquery tables list my-project.my-dataset --format json
 
-# Show table metadata
-bigquery ls -l dataset_name
+# Limit results
+bigquery tables list my-project.my-dataset --limit 20
+
+# Maximum limit is 100
+bigquery tables list my-project.my-dataset --limit 100
 ```
 
-### Creating Tables
+### Describing Table Schema
 
 ```bash
-# Create table with schema from file
-bigquery mk --table dataset.table schema.json
+# Show table schema and metadata (text format)
+bigquery tables describe my-project.my-dataset.my-table
 
-# Create table with inline schema
-bigquery mk --table dataset.table \
-  name:STRING,age:INTEGER,email:STRING
+# JSON output
+bigquery tables describe my-project.my-dataset.my-table --format json
 
-# Create partitioned table
-bigquery mk --table dataset.table \
-  --time-partitioning-type DAY \
-  --time-partitioning-field date \
-  name:STRING,date:DATE,value:FLOAT
-
-# Create clustered table
-bigquery mk --table dataset.table \
-  --clustering-fields country,city \
-  country:STRING,city:STRING,population:INTEGER
-
-# Create table from query
-bigquery mk --table dataset.table --as-select \
-  "SELECT * FROM source_dataset.source_table WHERE condition"
-
-# Create external table (from GCS)
-bigquery mk --external-table-definition \
-  gs://bucket/path/*.csv \
-  dataset.external_table \
-  schema.json
+# Output includes:
+# - Column names and types
+# - Nullability (NULLABLE, REQUIRED, REPEATED)
+# - Mode information
+# - Table metadata
 ```
 
-### Describing Tables
+### Inserting Rows
 
 ```bash
-# Show table schema and metadata
-bigquery show dataset.table
+# Insert single object from inline JSON
+bigquery tables insert my-project.dataset.table \
+  --json '{"id": 1, "name": "Alice", "created_at": "2025-01-15T10:00:00"}'
 
-# Show schema only
-bigquery show --schema dataset.table
+# Insert array of objects
+bigquery tables insert my-project.dataset.table \
+  --json '[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]'
 
-# Output as JSON
-bigquery show --format prettyjson dataset.table
+# Insert from file
+bigquery tables insert my-project.dataset.table --data data.json
+
+# Insert from stdin
+cat data.json | bigquery tables insert my-project.dataset.table --stdin
+
+# CSV format
+bigquery tables insert my-project.dataset.table \
+  --data data.csv \
+  --format csv
+
+# Dry run (validate without inserting)
+bigquery tables insert my-project.dataset.table \
+  --json '{"id": 1}' \
+  --dry-run
+
+# Skip invalid rows instead of failing
+bigquery tables insert my-project.dataset.table \
+  --data data.json \
+  --skip-invalid
+
+# Ignore unknown fields
+bigquery tables insert my-project.dataset.table \
+  --data data.json \
+  --ignore-unknown
+
+# Automation mode (skip confirmations)
+bigquery tables insert my-project.dataset.table \
+  --data data.json \
+  --yes
 ```
 
-### Updating Tables
-
-```bash
-# Update table description
-bigquery update dataset.table --description "Updated description"
-
-# Update expiration time
-bigquery update dataset.table --expiration 86400
-
-# Update schema (add columns)
-bigquery update dataset.table --schema new_schema.json
-
-# Update labels
-bigquery update dataset.table --set-label version:v2
-```
-
-### Deleting Tables
-
-```bash
-# Delete table
-bigquery rm dataset.table
-
-# Force delete without confirmation
-bigquery rm -f dataset.table
-```
-
-## Schema Operations
-
-### Viewing Schemas
-
-```bash
-# Show table schema
-bigquery show --schema dataset.table
-
-# Output schema as JSON
-bigquery show --schema --format prettyjson dataset.table > schema.json
-```
-
-### Schema Files
-
-Schema file format (JSON):
-
-```json
-[
-  {
-    "name": "id",
-    "type": "INTEGER",
-    "mode": "REQUIRED",
-    "description": "Unique identifier"
-  },
-  {
-    "name": "name",
-    "type": "STRING",
-    "mode": "REQUIRED"
-  },
-  {
-    "name": "created_at",
-    "type": "TIMESTAMP",
-    "mode": "NULLABLE"
-  },
-  {
-    "name": "metadata",
-    "type": "RECORD",
-    "mode": "REPEATED",
-    "fields": [
-      {
-        "name": "key",
-        "type": "STRING"
-      },
-      {
-        "name": "value",
-        "type": "STRING"
-      }
-    ]
-  }
-]
-```
-
-## Data Import/Export
+**Insert Options**:
+- `--json <JSON>`: Inline JSON data (object or array)
+- `--data <PATH>`: Path to data file (JSON or CSV)
+- `--stdin`: Read from stdin
+- `--format <FORMAT>`: Data format (json or csv, default: json)
+- `--dry-run`: Validate without inserting
+- `--skip-invalid`: Skip invalid rows
+- `--ignore-unknown`: Ignore unknown fields
+- `--yes`: Skip confirmation prompts
 
 ### Loading Data
 
 ```bash
-# Load from local CSV file
-bigquery load dataset.table data.csv schema.json
+# Load CSV from local file (default format)
+bigquery tables load my-project.dataset.table data.csv
 
-# Load from GCS
-bigquery load dataset.table gs://bucket/data.csv schema.json
+# Load from Cloud Storage
+bigquery tables load my-project.dataset.table gs://bucket/data.csv
 
-# Load with autodetect schema
-bigquery load --autodetect dataset.table data.csv
+# Specify format explicitly
+bigquery tables load my-project.dataset.table data.json --format json
+bigquery tables load my-project.dataset.table data.parquet --format parquet
+bigquery tables load my-project.dataset.table data.avro --format avro
+bigquery tables load my-project.dataset.table data.orc --format orc
 
-# Load JSON data
-bigquery load --source-format NEWLINE_DELIMITED_JSON \
-  dataset.table data.jsonl schema.json
+# Write disposition: append (default) or replace
+bigquery tables load my-project.dataset.table data.csv --write-disposition append
+bigquery tables load my-project.dataset.table data.csv --write-disposition replace
 
-# Load Parquet
-bigquery load --source-format PARQUET \
-  dataset.table gs://bucket/data.parquet
+# Dry run
+bigquery tables load my-project.dataset.table data.csv --dry-run
 
-# Load with options
-bigquery load \
-  --skip-leading-rows 1 \
+# Allow bad records
+bigquery tables load my-project.dataset.table data.csv --max-bad-records 10
+
+# Ignore unknown fields
+bigquery tables load my-project.dataset.table data.json \
+  --format json \
+  --ignore-unknown
+
+# Automation mode
+bigquery tables load my-project.dataset.table data.csv --yes
+```
+
+**Load Options**:
+- `--format <FORMAT>`: csv, json, avro, parquet, orc (default: csv)
+- `--write-disposition <DISPOSITION>`: append or replace (default: append)
+- `--dry-run`: Validate without loading
+- `--max-bad-records <N>`: Maximum bad records before failing
+- `--ignore-unknown`: Ignore unknown fields
+- `--yes`: Skip confirmation prompts
+
+### External Tables
+
+External tables reference data in Cloud Storage without copying it to BigQuery.
+
+#### Creating External Tables
+
+```bash
+# Create CSV external table
+bigquery tables create-external my-project.dataset.external_table \
+  --source-uri gs://bucket/data.csv \
+  --format csv \
+  --schema "id:INTEGER,name:STRING,created_at:TIMESTAMP"
+
+# Create with auto-detected schema
+bigquery tables create-external my-project.dataset.external_table \
+  --source-uri gs://bucket/data.csv \
+  --format csv \
+  --autodetect
+
+# Multiple source URIs (comma-separated)
+bigquery tables create-external my-project.dataset.external_table \
+  --source-uri "gs://bucket/file1.csv,gs://bucket/file2.csv" \
+  --format csv \
+  --autodetect
+
+# Multiple source URIs (multiple flags)
+bigquery tables create-external my-project.dataset.external_table \
+  --source-uri gs://bucket/file1.csv \
+  --source-uri gs://bucket/file2.csv \
+  --format csv \
+  --autodetect
+
+# CSV-specific options
+bigquery tables create-external my-project.dataset.external_table \
+  --source-uri gs://bucket/data.csv \
+  --format csv \
+  --schema "id:INTEGER,name:STRING" \
   --field-delimiter "," \
-  --null-marker "NULL" \
-  --allow-jagged-rows \
-  dataset.table data.csv schema.json
+  --skip-leading-rows 1
 
-# Append to existing table
-bigquery load --noreplace dataset.table data.csv
+# Other formats (Parquet, JSON, Avro, ORC)
+bigquery tables create-external my-project.dataset.parquet_table \
+  --source-uri gs://bucket/data.parquet \
+  --format parquet \
+  --autodetect
 
-# Replace table contents
-bigquery load --replace dataset.table data.csv
+bigquery tables create-external my-project.dataset.json_table \
+  --source-uri gs://bucket/data.jsonl \
+  --format json \
+  --autodetect
 ```
 
-### Extracting Data
+**External Table Options**:
+- `--source-uri <URI>`: Cloud Storage URI(s) - required
+- `--format <FORMAT>`: csv, json, avro, parquet, orc - required
+- `--schema <SCHEMA>`: Schema definition (column:type,column:type,...)
+- `--autodetect`: Auto-detect schema from source files
+- `--field-delimiter <DELIMITER>`: CSV field delimiter (default: ,)
+- `--skip-leading-rows <N>`: CSV header rows to skip
+
+#### Updating External Tables
 
 ```bash
-# Extract to GCS as CSV
-bigquery extract dataset.table gs://bucket/export.csv
+# Update source URIs
+bigquery tables update-external my-project.dataset.external_table \
+  --source-uri gs://bucket/new-data.csv
 
-# Extract as JSON
-bigquery extract --destination-format NEWLINE_DELIMITED_JSON \
-  dataset.table gs://bucket/export.jsonl
+# Update schema
+bigquery tables update-external my-project.dataset.external_table \
+  --schema "id:INTEGER,name:STRING,email:STRING"
 
-# Extract as Avro
-bigquery extract --destination-format AVRO \
-  dataset.table gs://bucket/export.avro
+# Update CSV options
+bigquery tables update-external my-project.dataset.external_table \
+  --field-delimiter "|" \
+  --skip-leading-rows 2
 
-# Extract compressed
-bigquery extract --compression GZIP \
-  dataset.table gs://bucket/export.csv.gz
-
-# Extract with wildcard (for large exports)
-bigquery extract dataset.table gs://bucket/export-*.csv
+# Update multiple properties
+bigquery tables update-external my-project.dataset.external_table \
+  --source-uri gs://bucket/new-data.csv \
+  --schema "id:INTEGER,name:STRING,updated_at:TIMESTAMP" \
+  --skip-leading-rows 1
 ```
 
-## Job Management
+## Template System
 
-### Listing Jobs
+Named query templates allow you to save frequently-used queries with parameter placeholders.
+
+### Listing Templates
 
 ```bash
-# List recent jobs
-bigquery ls -j
+# List all available templates (text format)
+bigquery templates list
 
-# List jobs in specific project
-bigquery ls -j --project my-project
+# JSON output
+bigquery templates list --format json
 
-# List with details
-bigquery ls -j --format prettyjson
-
-# Filter by status
-bigquery ls -j --min-creation-time "2025-01-01T00:00:00"
-bigquery ls -j --max-creation-time "2025-01-31T23:59:59"
+# Shows:
+# - Template name
+# - Description
+# - Parameters
+# - Query preview
 ```
 
-### Showing Job Details
+### Searching Templates
 
 ```bash
-# Show job information
-bigquery show -j job_id
+# Search by name or description
+bigquery templates search "customer"
+bigquery templates search "daily metrics"
 
-# Show with full details
-bigquery show -j --format prettyjson job_id
+# JSON output
+bigquery templates search "analytics" --format json
 ```
 
-### Canceling Jobs
+### Validating Templates
 
 ```bash
-# Cancel running job
-bigquery cancel job_id
+# Validate template for parameter consistency
+bigquery templates validate my-template
 
-# Cancel job in specific project
-bigquery cancel --project my-project job_id
+# Checks:
+# - Parameter definitions match query placeholders
+# - Required parameters are defined
+# - Parameter types are valid
 ```
 
-### Waiting for Jobs
+### Running Templates
 
 ```bash
-# Wait for job to complete
-bigquery wait job_id
+# Run template with default parameters
+bigquery templates run my-template
 
-# Wait with timeout (seconds)
-bigquery wait --wait-timeout 300 job_id
+# Override parameters
+bigquery templates run daily-report \
+  --param date=2025-01-15 \
+  --param region=US
+
+# Multiple parameters
+bigquery templates run customer-analysis \
+  --param customer_id=CUST123 \
+  --param start_date=2025-01-01 \
+  --param end_date=2025-01-31
+
+# JSON output
+bigquery templates run my-template --format json
+
+# Skip cost confirmation
+bigquery templates run expensive-query --yes
 ```
+
+**Template Run Options**:
+- `--param <KEY=VALUE>`: Parameter override (can be used multiple times)
+- `--format <FORMAT>`: Output format (json or text, default: json)
+- `--yes`: Skip cost confirmation prompt
+
+### Template Workflow Example
+
+```bash
+# 1. Search for templates
+bigquery templates search "revenue"
+
+# 2. Validate template before running
+bigquery templates validate monthly-revenue
+
+# 3. Run with parameters
+bigquery templates run monthly-revenue \
+  --param month=2025-01 \
+  --param min_amount=1000
+
+# 4. Run in automation (skip confirmation)
+bigquery templates run monthly-revenue \
+  --param month=2025-01 \
+  --yes \
+  --format json > output.json
+```
+
+**Use templates for**:
+- Standardized reporting queries
+- Common analytics patterns
+- Scheduled data pipelines
+- Team query sharing
+- Reducing query errors
 
 ## MCP Server Integration
 
-The BigQuery MCP server provides semantic search and natural language query capabilities.
+The BigQuery MCP server provides semantic search and natural language query capabilities via Model Context Protocol.
 
 ### Starting MCP Server
 
+**STDIO Mode** (for local clients):
+
 ```bash
-# Start MCP server for stdio communication
+# Start MCP server in stdio mode
 bigquery mcp stdio
 
-# With specific project
-bigquery mcp stdio --project my-project
+# Server will:
+# - Accept MCP protocol messages on stdin
+# - Send responses on stdout
+# - Expose BigQuery tools to MCP clients
+```
 
-# With dataset context
-bigquery mcp stdio --dataset analytics
+**HTTP Mode** (for network clients):
 
-# With debug logging
-bigquery mcp stdio --log-level debug
+```bash
+# Start HTTP MCP server on default port 8080
+bigquery mcp http
+
+# Specify custom port
+bigquery mcp http --port 3000
+
+# Server provides:
+# - HTTP endpoint for MCP protocol
+# - JSON-RPC over HTTP
+# - Remote access to BigQuery tools
 ```
 
 ### MCP Server Capabilities
 
-The MCP server exposes these tools:
+The MCP server exposes these tools through the Model Context Protocol:
 
 1. **semantic_search**: Search tables using natural language
 2. **execute_query**: Run SQL queries with automatic formatting
 3. **get_schema**: Retrieve table schemas
 4. **list_tables**: List available tables
-5. **explain_query**: Get query execution plan
-6. **optimize_query**: Suggest query optimizations
-
-### MCP Client Usage
-
-When using BigQuery MCP through Model Context Protocol:
-
-```typescript
-// Example MCP client code
-const result = await client.callTool('semantic_search', {
-  query: 'find customers who made purchases in the last 30 days',
-  dataset: 'analytics',
-  limit: 100
-});
-
-// Execute query through MCP
-const queryResult = await client.callTool('execute_query', {
-  sql: 'SELECT * FROM dataset.table LIMIT 10',
-  format: 'json'
-});
-
-// Get table schema
-const schema = await client.callTool('get_schema', {
-  table: 'dataset.table'
-});
-```
+5. **list_datasets**: List available datasets
+6. **explain_query**: Get query execution plan
+7. **optimize_query**: Suggest query optimizations
+8. **run_template**: Execute named templates with parameters
 
 ### MCP Configuration
 
-Configure in MCP settings (`.claude/mcp.json` or similar):
+Configure in Claude Code or other MCP-enabled applications:
+
+**STDIO Mode** (`.claude/mcp.json` or similar):
 
 ```json
 {
@@ -493,65 +491,122 @@ Configure in MCP settings (`.claude/mcp.json` or similar):
       "command": "bigquery",
       "args": ["mcp", "stdio"],
       "env": {
-        "GOOGLE_CLOUD_PROJECT": "my-project",
-        "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account.json"
+        "GOOGLE_CLOUD_PROJECT": "my-project"
       }
     }
   }
 }
 ```
 
+**HTTP Mode**:
+
+```json
+{
+  "mcpServers": {
+    "bigquery": {
+      "url": "http://localhost:8080",
+      "transport": "http"
+    }
+  }
+}
+```
+
+### MCP Usage Patterns
+
+When using BigQuery MCP through clients:
+
+**Semantic Search**:
+```
+"Find all tables containing customer purchase data from the last 30 days"
+→ MCP translates to appropriate SQL query
+```
+
+**Schema Discovery**:
+```
+"What columns are in the analytics.events table?"
+→ MCP returns schema information
+```
+
+**Natural Language Queries**:
+```
+"Show me total revenue by region for Q1 2025"
+→ MCP generates and executes SQL
+```
+
+**Template Execution**:
+```
+"Run the monthly revenue template for January 2025"
+→ MCP executes template with parameters
+```
+
 ## LSP Integration
 
-The BigQuery LSP provides SQL language features in editors.
+The BigQuery LSP provides SQL language features in text editors.
 
 ### Starting LSP Server
 
 ```bash
 # Start LSP server
-bigquery lsp stdio
+bigquery lsp
 
-# With specific project context
-bigquery lsp stdio --project my-project
+# Server provides:
+# - Language Server Protocol communication
+# - SQL syntax validation
+# - Schema-aware completions
+# - Query formatting
+# - Hover documentation
 ```
 
 ### LSP Features
 
-- **SQL syntax highlighting**: Proper tokenization
-- **Schema completion**: Table and column suggestions
-- **Query validation**: Syntax and semantic checks
+- **SQL syntax highlighting**: Proper tokenization and highlighting
+- **Schema completion**: Table and column suggestions based on project schema
+- **Query validation**: Real-time syntax and semantic checks
 - **Hover documentation**: Table and column info on hover
 - **Go to definition**: Navigate to table definitions
-- **Query formatting**: Auto-format SQL
+- **Query formatting**: Auto-format SQL queries
+- **Diagnostics**: Show errors and warnings inline
 
 ### Editor Configuration
 
-**Neovim:**
+**Neovim**:
 
 ```lua
--- In nvim/lua/bigquery-lsp.lua
+-- In nvim/lua/bigquery-lsp.lua or init.lua
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "sql", "bq", "bigquery" },
-  callback = function(args)
-    local client_id = vim.lsp.start({
+  callback = function()
+    vim.lsp.start({
       name = "bigquery-lsp",
-      cmd = { "bigquery", "lsp", "stdio" },
+      cmd = { "bigquery", "lsp" },
       root_dir = vim.fn.getcwd(),
     })
   end,
 })
 ```
 
-**VS Code:**
+**VS Code** (in `settings.json` or language server config):
 
 ```json
 {
   "bigquery-lsp": {
     "command": "bigquery",
-    "args": ["lsp", "stdio"],
-    "filetypes": ["sql", "bq"]
+    "args": ["lsp"],
+    "filetypes": ["sql", "bq", "bigquery"]
   }
 }
+```
+
+**Helix** (in `languages.toml`):
+
+```toml
+[[language]]
+name = "sql"
+language-servers = ["bigquery-lsp"]
+
+[language-server.bigquery-lsp]
+command = "bigquery"
+args = ["lsp"]
 ```
 
 ## Common Workflows
@@ -559,241 +614,210 @@ vim.api.nvim_create_autocmd("FileType", {
 ### Workflow 1: Exploratory Data Analysis
 
 ```bash
-# 1. List available datasets
-bigquery ls
+# 1. Verify authentication
+bigquery auth check
 
-# 2. List tables in dataset
-bigquery ls analytics
+# 2. List available datasets
+bigquery datasets list my-project
 
-# 3. Check table schema
-bigquery show --schema analytics.events
+# 3. List tables in dataset
+bigquery tables list my-project.analytics
 
-# 4. Preview data
-bigquery query "SELECT * FROM analytics.events LIMIT 10"
+# 4. Check table schema
+bigquery tables describe my-project.analytics.events
 
-# 5. Get row count
-bigquery query "SELECT COUNT(*) as total FROM analytics.events"
+# 5. Preview data (text format for readability)
+bigquery query --format text \
+  "SELECT * FROM my-project.analytics.events LIMIT 10"
 
-# 6. Check data distribution
-bigquery query "
+# 6. Get row count
+bigquery query "SELECT COUNT(*) as total FROM my-project.analytics.events"
+
+# 7. Check data distribution
+bigquery query --format text "
   SELECT
     DATE(timestamp) as date,
     COUNT(*) as events
-  FROM analytics.events
+  FROM my-project.analytics.events
   GROUP BY date
   ORDER BY date DESC
   LIMIT 30
 "
 ```
 
-### Workflow 2: Create and Populate Table
+### Workflow 2: Cost-Aware Query Development
 
 ```bash
-# 1. Create dataset
-bigquery mk --location US --description "User analytics" user_analytics
+# 1. Dry run to estimate cost
+bigquery dry-run "
+  SELECT *
+  FROM my-project.large_dataset.table
+  WHERE date >= '2025-01-01'
+"
 
-# 2. Create table with schema
-bigquery mk --table user_analytics.events \
-  user_id:STRING,event_type:STRING,timestamp:TIMESTAMP,properties:JSON
+# 2. If cost is acceptable, run query
+bigquery query "
+  SELECT *
+  FROM my-project.large_dataset.table
+  WHERE date >= '2025-01-01'
+"
 
-# 3. Load data from GCS
-bigquery load \
-  --source-format NEWLINE_DELIMITED_JSON \
-  user_analytics.events \
-  gs://my-bucket/events/*.jsonl
+# 3. For automation, skip confirmation
+bigquery query --yes "
+  SELECT *
+  FROM my-project.large_dataset.table
+  WHERE date >= '2025-01-01'
+" > results.json
+```
 
-# 4. Verify data loaded
-bigquery query "SELECT COUNT(*) FROM user_analytics.events"
+### Workflow 3: Template-Based Reporting
 
-# 5. Query the data
+```bash
+# 1. Search for relevant templates
+bigquery templates search "daily"
+
+# 2. Validate template
+bigquery templates validate daily-metrics
+
+# 3. Run template with parameters
+bigquery templates run daily-metrics \
+  --param date=$(date +%Y-%m-%d) \
+  --param region=US \
+  --format json > daily-report.json
+
+# 4. Schedule in cron or CI/CD
+# 0 1 * * * bigquery templates run daily-metrics --param date=$(date +%Y-%m-%d) --yes
+```
+
+### Workflow 4: External Data Analysis
+
+```bash
+# 1. Create external table pointing to GCS
+bigquery tables create-external my-project.staging.raw_logs \
+  --source-uri gs://logs-bucket/2025-01-*.json \
+  --format json \
+  --autodetect
+
+# 2. Query external table
 bigquery query "
   SELECT
-    event_type,
+    timestamp,
+    user_id,
+    action
+  FROM my-project.staging.raw_logs
+  WHERE action = 'purchase'
+  LIMIT 100
+"
+
+# 3. Update external table when new files arrive
+bigquery tables update-external my-project.staging.raw_logs \
+  --source-uri gs://logs-bucket/2025-02-*.json
+```
+
+### Workflow 5: Data Loading Pipeline
+
+```bash
+# 1. Load initial data
+bigquery tables load my-project.dataset.events \
+  gs://bucket/events-2025-01-01.csv \
+  --format csv \
+  --write-disposition replace
+
+# 2. Append incremental data
+bigquery tables load my-project.dataset.events \
+  gs://bucket/events-2025-01-02.csv \
+  --format csv \
+  --write-disposition append
+
+# 3. Verify data loaded
+bigquery query "
+  SELECT
+    DATE(timestamp) as date,
     COUNT(*) as count
-  FROM user_analytics.events
-  GROUP BY event_type
-  ORDER BY count DESC
+  FROM my-project.dataset.events
+  GROUP BY date
+  ORDER BY date
 "
 ```
 
-### Workflow 3: Daily ETL Pipeline
+### Workflow 6: Real-Time Data Insertion
 
 ```bash
-# 1. Create partitioned table for daily data
-bigquery mk --table analytics.daily_metrics \
-  --time-partitioning-type DAY \
-  --time-partitioning-field date \
-  date:DATE,metric:STRING,value:FLOAT
+# 1. Insert single event
+bigquery tables insert my-project.dataset.events \
+  --json '{"user_id": "U123", "event": "click", "timestamp": "2025-01-15T10:00:00Z"}'
 
-# 2. Run daily aggregation query
-bigquery query \
-  --destination-table analytics.daily_metrics \
-  --append \
-  --parameter "date:DATE:$(date +%Y-%m-%d)" \
-  "
-  SELECT
-    @date as date,
-    metric_name as metric,
-    SUM(value) as value
-  FROM analytics.raw_events
-  WHERE DATE(timestamp) = @date
-  GROUP BY metric_name
-  "
+# 2. Insert batch from file
+cat events.json | bigquery tables insert my-project.dataset.events --stdin
 
-# 3. Verify partition
-bigquery query "
-  SELECT COUNT(*)
-  FROM analytics.daily_metrics
-  WHERE date = CURRENT_DATE()
-"
-```
-
-### Workflow 4: Cost Optimization
-
-```bash
-# 1. Dry run query to estimate cost
-bigquery query --dry-run "
-  SELECT * FROM large_dataset.table
-  WHERE date >= '2025-01-01'
-"
-
-# 2. Set maximum bytes billed
-bigquery query --max-bytes-billed 10000000 "
-  SELECT * FROM large_dataset.table
-  WHERE date >= '2025-01-01'
-"
-
-# 3. Use clustering and partitioning
-bigquery mk --table dataset.optimized \
-  --time-partitioning-type DAY \
-  --time-partitioning-field date \
-  --clustering-fields customer_id,region \
-  date:DATE,customer_id:STRING,region:STRING,amount:FLOAT
-
-# 4. Query with partition and cluster filters
-bigquery query "
-  SELECT * FROM dataset.optimized
-  WHERE date = '2025-01-15'
-    AND customer_id = 'CUST123'
-    AND region = 'US'
-"
-```
-
-### Workflow 5: Schema Evolution
-
-```bash
-# 1. View current schema
-bigquery show --schema dataset.table > current_schema.json
-
-# 2. Edit schema file to add new columns
-# (Edit current_schema.json)
-
-# 3. Update table schema
-bigquery update dataset.table --schema current_schema.json
-
-# 4. Verify new schema
-bigquery show --schema dataset.table
-
-# 5. Backfill new columns if needed
-bigquery query \
-  --destination-table dataset.table \
-  --replace \
-  "
-  SELECT
-    *,
-    CAST(NULL AS STRING) as new_column
-  FROM dataset.table
-  "
-```
-
-### Workflow 6: Data Export and Analysis
-
-```bash
-# 1. Run analysis query
-bigquery query --format json "
-  SELECT
-    region,
-    product,
-    SUM(revenue) as total_revenue
-  FROM sales.transactions
-  WHERE date >= '2025-01-01'
-  GROUP BY region, product
-  ORDER BY total_revenue DESC
-" > analysis.json
-
-# 2. Export large dataset to GCS
-bigquery extract \
-  --destination-format CSV \
-  --compression GZIP \
-  sales.transactions \
-  gs://exports/transactions-*.csv.gz
-
-# 3. Create external table for analysis
-bigquery mk --external-table-definition \
-  gs://exports/transactions-*.csv.gz \
-  analysis.external_transactions \
-  schema.json
-
-# 4. Query external table
-bigquery query "
-  SELECT * FROM analysis.external_transactions
-  WHERE revenue > 1000
-"
+# 3. Insert with error handling
+bigquery tables insert my-project.dataset.events \
+  --data batch.json \
+  --skip-invalid \
+  --ignore-unknown \
+  --yes
 ```
 
 ## Best Practices
 
-### Query Performance
+### Query Development
 
-1. **Use partitioning**: Partition large tables by date
-2. **Cluster tables**: Cluster on frequently filtered columns
-3. **Limit scanned data**: Use WHERE clauses on partitioned columns
-4. **Avoid SELECT ***: Select only needed columns
-5. **Use approximate aggregation**: APPROX_COUNT_DISTINCT for large datasets
-6. **Cache results**: Leverage BigQuery's automatic caching
+1. **Always dry-run first**: Use `bigquery dry-run` to estimate costs
+2. **Use templates**: Create templates for repeated queries
+3. **Validate before running**: Check syntax and cost before execution
+4. **Use text format for exploration**: `--format text` for human-readable tables
+5. **Use JSON for automation**: `--format json` for machine processing
+6. **Skip confirmations in scripts**: Use `--yes` flag for automation
 
 ### Cost Management
 
-1. **Dry run queries**: Always estimate costs with `--dry-run`
-2. **Set byte limits**: Use `--max-bytes-billed` for protection
-3. **Use materialized views**: Pre-aggregate frequently queried data
-4. **Partition pruning**: Filter on partition columns
-5. **Streaming inserts**: Use batch loading when possible
-6. **Delete old data**: Set table expiration times
-
-### Schema Design
-
-1. **Use appropriate types**: Choose smallest suitable data types
-2. **Denormalize wisely**: Balance query performance vs storage
-3. **Nested fields**: Use STRUCT for related data
-4. **Repeated fields**: Use ARRAY for collections
-5. **Partition keys**: Choose partition columns carefully
-6. **Clustering keys**: Order matters - most selective first
-
-### Security
-
-1. **Service accounts**: Use service account credentials
-2. **Least privilege**: Grant minimal necessary permissions
-3. **Encrypt data**: Use customer-managed encryption keys
-4. **Audit logs**: Enable data access logging
-5. **Column-level security**: Use policy tags for sensitive columns
-6. **Row-level security**: Implement row-level access policies
-
-## Configuration
+1. **Dry run expensive queries**: Always estimate with `bigquery dry-run`
+2. **Monitor bytes processed**: Check query cost estimates before running
+3. **Use partition pruning**: Filter on partitioned columns in WHERE clauses
+4. **Limit result sets**: Use LIMIT for exploratory queries
+5. **Use templates**: Standardize queries to avoid mistakes
+6. **Leverage external tables**: Avoid copying data when querying directly from GCS
 
 ### Authentication
 
-```bash
-# Authenticate with user credentials
-gcloud auth login
+1. **Check auth first**: Run `bigquery auth check` before operations
+2. **Use service accounts**: For automation and CI/CD
+3. **Verify scopes**: Ensure all required BigQuery scopes are granted
+4. **Re-authenticate when needed**: `bigquery auth login` if check fails
 
-# Use service account
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+### Template Management
 
-# Set default project
-gcloud config set project my-project
-bigquery --project my-project query "SELECT 1"
-```
+1. **Use descriptive names**: Make templates easy to find
+2. **Document parameters**: Include parameter descriptions in templates
+3. **Validate before use**: Run `bigquery templates validate` before execution
+4. **Search before creating**: Check if similar template exists
+5. **Version control templates**: Store template definitions in git
+
+### Data Loading
+
+1. **Use appropriate formats**: Choose format based on data structure
+2. **Validate before loading**: Use `--dry-run` flag
+3. **Handle bad records**: Set `--max-bad-records` for messy data
+4. **Choose write disposition**: `replace` for full refresh, `append` for incremental
+5. **Use external tables**: For data that changes frequently in GCS
+6. **Batch inserts**: Prefer `load` over `insert` for large datasets
+
+### MCP Server
+
+1. **Use stdio for local**: Prefer stdio mode for local MCP clients
+2. **Use HTTP for remote**: Use HTTP mode for networked deployments
+3. **Secure HTTP endpoints**: Put HTTP server behind authentication/firewall
+4. **Monitor server logs**: Check for errors and performance issues
+5. **Set appropriate port**: Choose non-conflicting port for HTTP mode
+
+### LSP Integration
+
+1. **Configure per-project**: Set up LSP for SQL files in your editor
+2. **Use schema completion**: Leverage auto-complete for table/column names
+3. **Check diagnostics**: Fix errors and warnings shown inline
+4. **Format queries**: Use LSP formatting for consistent style
+
+## Configuration
 
 ### Environment Variables
 
@@ -801,160 +825,287 @@ bigquery --project my-project query "SELECT 1"
 # Set default project
 export GOOGLE_CLOUD_PROJECT=my-project
 
-# Set default dataset
-export BIGQUERY_DATASET=analytics
+# Set credentials (for service accounts)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
-# Set credentials
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-
-# Set location
-export BIGQUERY_LOCATION=US
+# Add to ~/.zshrc or ~/.bashrc for persistence
+echo 'export GOOGLE_CLOUD_PROJECT=my-project' >> ~/.zshrc
 ```
 
-### Configuration File
+### Authentication Methods
 
-Create `~/.bigqueryrc`:
-
+**User Credentials** (interactive):
+```bash
+bigquery auth login
+# Opens browser for Google authentication
 ```
-[core]
-project = my-project
-dataset = analytics
 
-[query]
-use_legacy_sql = false
-maximum_bytes_billed = 10000000
+**Service Account** (automation):
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json
+bigquery auth check
+```
 
-[load]
-autodetect = true
+**Application Default Credentials** (gcloud):
+```bash
+gcloud auth application-default login
+bigquery auth check
 ```
 
 ## Troubleshooting
 
-### Issue: "Permission denied"
+### Issue: "Not authenticated" or "Permission denied"
 
-**Solution**: Check service account permissions:
+**Solution**: Check authentication and scopes
+
 ```bash
-gcloud projects get-iam-policy PROJECT_ID
-# Ensure account has bigquery.jobs.create permission
+# Check current auth status
+bigquery auth check
+
+# Re-authenticate if needed
+bigquery auth login
+
+# Verify gcloud is set to correct project
+gcloud config get-value project
+
+# Set project if needed
+gcloud config set project my-project
 ```
 
 ### Issue: "Table not found"
 
-**Solution**: Use fully qualified table names:
+**Solution**: Use fully qualified table names
+
 ```bash
-# Wrong
+# Wrong - missing project/dataset
 bigquery query "SELECT * FROM table"
 
-# Correct
-bigquery query "SELECT * FROM \`project.dataset.table\`"
+# Correct - fully qualified
+bigquery query "SELECT * FROM my-project.my-dataset.my-table"
+
+# Or use backticks for reserved words
+bigquery query "SELECT * FROM \`my-project.my-dataset.my-table\`"
 ```
 
-### Issue: "Quota exceeded"
+### Issue: "Query too expensive"
 
-**Solution**: Check quotas and request increases:
+**Solution**: Check cost with dry-run and optimize
+
 ```bash
-# View current quotas
-gcloud compute project-info describe --project PROJECT_ID
+# Check estimated cost
+bigquery dry-run "SELECT * FROM large_table WHERE date >= '2025-01-01'"
 
-# Request quota increase through Cloud Console
+# Optimize with partition filters
+bigquery dry-run "
+  SELECT * FROM large_table
+  WHERE _PARTITIONDATE = '2025-01-15'
+"
+```
+
+### Issue: "Template not found"
+
+**Solution**: Search for templates and verify name
+
+```bash
+# List all templates
+bigquery templates list
+
+# Search for template
+bigquery templates search "keyword"
+
+# Use exact template name
+bigquery templates run exact-template-name
 ```
 
 ### Issue: "Invalid schema"
 
-**Solution**: Validate schema file format:
+**Solution**: Check schema format for external tables
+
 ```bash
-# Schema must be valid JSON array
-# Use bigquery show --schema to see correct format
-bigquery show --schema existing.table > template_schema.json
+# Schema format: column:type,column:type,...
+bigquery tables create-external my-project.dataset.table \
+  --source-uri gs://bucket/file.csv \
+  --format csv \
+  --schema "id:INTEGER,name:STRING,created_at:TIMESTAMP"
+
+# Or use autodetect
+bigquery tables create-external my-project.dataset.table \
+  --source-uri gs://bucket/file.csv \
+  --format csv \
+  --autodetect
 ```
 
-### Issue: "Query too complex"
+### Issue: "MCP server not responding"
 
-**Solution**: Break into steps with intermediate tables:
+**Solution**: Check server mode and connectivity
+
 ```bash
-# Create intermediate result
-bigquery query --destination-table temp.step1 "SELECT ..."
+# For stdio mode, ensure client is using stdio transport
+bigquery mcp stdio
 
-# Use in next step
-bigquery query "SELECT * FROM temp.step1 WHERE ..."
+# For HTTP mode, check port and firewall
+bigquery mcp http --port 8080
+
+# Test HTTP endpoint
+curl http://localhost:8080
+```
+
+### Issue: "LSP not starting in editor"
+
+**Solution**: Verify LSP configuration and binary path
+
+```bash
+# Check bigquery is in PATH
+which bigquery
+
+# Test LSP manually
+bigquery lsp
+
+# Verify editor configuration points to correct command
+# Neovim: check cmd = { "bigquery", "lsp" }
+# VS Code: check "command": "bigquery", "args": ["lsp"]
 ```
 
 ## Quick Reference
 
 ```bash
+# Authentication
+bigquery auth check                          # Check auth status
+bigquery auth login                          # Login with gcloud
+
 # Queries
-bigquery query "SELECT * FROM dataset.table"
-bigquery query --dry-run "SELECT ..."
-bigquery query --format json "SELECT ..."
+bigquery query "SELECT ..."                  # Execute query
+bigquery query --yes "SELECT ..."            # Skip confirmation
+bigquery query --format text "SELECT ..."    # Table output
+bigquery dry-run "SELECT ..."                # Estimate cost
 
 # Datasets
-bigquery ls
-bigquery mk dataset_name
-bigquery show dataset_name
-bigquery rm -r dataset_name
+bigquery datasets list PROJECT               # List datasets
 
 # Tables
-bigquery ls dataset_name
-bigquery mk --table dataset.table schema.json
-bigquery show dataset.table
-bigquery show --schema dataset.table
-bigquery rm dataset.table
+bigquery tables list PROJECT.DATASET                    # List tables
+bigquery tables describe PROJECT.DATASET.TABLE         # Show schema
+bigquery tables insert TABLE --json '{"id": 1}'        # Insert rows
+bigquery tables load TABLE file.csv                    # Load data
+bigquery tables load TABLE gs://bucket/file.csv        # Load from GCS
+bigquery tables create-external TABLE --source-uri ... # External table
+bigquery tables update-external TABLE --source-uri ... # Update external
 
-# Data loading
-bigquery load dataset.table data.csv schema.json
-bigquery load --autodetect dataset.table data.csv
-bigquery extract dataset.table gs://bucket/export.csv
-
-# Jobs
-bigquery ls -j
-bigquery show -j job_id
-bigquery cancel job_id
+# Templates
+bigquery templates list                              # List templates
+bigquery templates search "keyword"                  # Search templates
+bigquery templates validate TEMPLATE                 # Validate template
+bigquery templates run TEMPLATE --param key=value    # Run template
 
 # MCP Server
-bigquery mcp stdio --project PROJECT
+bigquery mcp stdio                   # Start MCP (stdio mode)
+bigquery mcp http                    # Start MCP (HTTP mode)
+bigquery mcp http --port 3000        # Custom port
 
-# LSP
-bigquery lsp stdio
+# LSP Server
+bigquery lsp                         # Start LSP server
 ```
 
-## Integration with MCP Clients
+## Integration Examples
 
-When using BigQuery through MCP-enabled applications:
+### CI/CD Pipeline
 
-1. **Semantic search**: Natural language queries converted to SQL
-2. **Schema discovery**: Automatic table and column suggestions
-3. **Query optimization**: AI-powered query improvements
-4. **Data exploration**: Interactive data analysis
-5. **Visualization**: Chart and graph generation from queries
+```bash
+#!/bin/bash
+# daily-etl.sh
+
+# Authenticate with service account
+export GOOGLE_APPLICATION_CREDENTIALS=/secrets/sa-key.json
+bigquery auth check || exit 1
+
+# Run daily ETL template
+bigquery templates run daily-etl \
+  --param date=$(date +%Y-%m-%d) \
+  --yes \
+  --format json > /tmp/etl-result.json
+
+# Check result
+if [ $? -eq 0 ]; then
+  echo "ETL completed successfully"
+else
+  echo "ETL failed"
+  exit 1
+fi
+```
+
+### Data Quality Checks
+
+```bash
+#!/bin/bash
+# check-data-quality.sh
+
+# Run data quality template
+RESULT=$(bigquery templates run data-quality-check \
+  --param table=my-project.dataset.table \
+  --yes \
+  --format json)
+
+# Parse result and check quality metrics
+INVALID_ROWS=$(echo $RESULT | jq '.invalid_rows')
+
+if [ "$INVALID_ROWS" -gt 100 ]; then
+  echo "Data quality check failed: $INVALID_ROWS invalid rows"
+  exit 1
+else
+  echo "Data quality check passed"
+fi
+```
+
+### Scheduled Reporting
+
+```bash
+#!/bin/bash
+# generate-report.sh
+
+# Generate weekly report
+bigquery templates run weekly-revenue-report \
+  --param week_start=$(date -d "last monday" +%Y-%m-%d) \
+  --param week_end=$(date -d "next sunday" +%Y-%m-%d) \
+  --yes \
+  --format json > /reports/weekly-$(date +%Y-%m-%d).json
+
+# Upload to GCS
+gsutil cp /reports/weekly-*.json gs://reports-bucket/
+```
 
 ## Summary
 
 **Primary commands:**
-- `bigquery query` - Execute SQL queries
-- `bigquery mk` - Create datasets/tables
-- `bigquery ls` - List resources
-- `bigquery show` - Display details
-- `bigquery load` - Import data
-- `bigquery extract` - Export data
+- `bigquery auth {check,login}` - Authentication management
+- `bigquery query` - Execute SQL with cost awareness
+- `bigquery dry-run` - Estimate query costs
+- `bigquery datasets list` - List datasets
+- `bigquery tables {list,describe,insert,load,create-external,update-external}` - Table operations
+- `bigquery templates {list,search,validate,run}` - Named templates
+- `bigquery mcp {stdio,http}` - MCP server modes
+- `bigquery lsp` - LSP server
 
 **Key features:**
-- Standard SQL support with legacy fallback
-- Partitioned and clustered table support
-- Streaming and batch data loading
-- Job management and monitoring
-- MCP server for semantic search
-- LSP for editor integration
+- Cost-aware query execution with confirmation prompts
+- Named query templates with parameter substitution
+- Direct row insertion and bulk loading
+- External table support for GCS data
+- MCP server with stdio and HTTP modes
+- LSP integration for editor support
 
 **Best practices:**
-- Always dry-run expensive queries
-- Use partitioning and clustering
-- Set byte limits for cost control
-- Choose appropriate data types
-- Leverage caching
-- Monitor query performance
+- Always check authentication first with `auth check`
+- Use `dry-run` to estimate costs before expensive queries
+- Create templates for frequently-used queries
+- Use `--yes` flag for automation and CI/CD
+- Prefer `load` over `insert` for large datasets
+- Use external tables to avoid data duplication
+- Configure MCP for natural language query capabilities
+- Set up LSP in your editor for SQL development
 
 **MCP Integration:**
-- Natural language to SQL translation
 - Semantic search across datasets
-- Automated schema discovery
-- Query optimization suggestions
+- Natural language to SQL translation
+- Schema discovery and exploration
+- Template execution via MCP tools
+- Available in both stdio and HTTP modes
