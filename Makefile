@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude cargo superwhisper
+.PHONY: zsh qute alacritty yabai spotify_player python go claude cargo superwhisper presenterm
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -180,3 +180,6 @@ gpg-restore:
 		echo "  y"; \
 		echo "  quit"; \
 	fi
+presenterm:
+	@mkdir -p $(HOME)/.config/presenterm/themes
+	@ln -fs $(DOTFILES)/presenterm/themes/nord.yaml $(HOME)/.config/presenterm/themes/nord.yaml
