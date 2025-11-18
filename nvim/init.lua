@@ -758,6 +758,9 @@ require("lazy").setup({
 				"Kaiser-Yang/blink-cmp-dictionary",
 				dependencies = { "nvim-lua/plenary.nvim" },
 			},
+			{
+				"moyiz/blink-emoji.nvim",
+			},
 		},
 		-- use a release tag to download pre-built binaries
 		version = "*",
@@ -823,6 +826,7 @@ require("lazy").setup({
 											["snippets"] = "[]",
 											["ripgrep"] = "[]",
 											["buffer"] = "[]",
+											["emoji"] = "[]",
 										}
 
 										-- return the override or the item source
@@ -865,7 +869,7 @@ require("lazy").setup({
 				-- Default list of enabled providers defined so that you can extend it
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
-					default = { "lazydev", "lsp", "git", "dictionary", "path", "snippets", "buffer" },
+					default = { "lazydev", "lsp", "git", "dictionary", "emoji", "path", "snippets", "buffer" },
 					per_filetype = {
 						codecompanion = { "codecompanion" },
 					},
@@ -904,6 +908,14 @@ require("lazy").setup({
 							name = "Git",
 							opts = {
 								-- options for the blink-cmp-git
+							},
+						},
+						emoji = {
+							module = "blink-emoji",
+							name = "Emoji",
+							score_offset = 15,
+							opts = {
+								insert = true,
 							},
 						},
 						ripgrep = {
@@ -2238,7 +2250,11 @@ require("lazy").setup({
 			"nvim-lua/plenary.nvim", -- Required for git operations
 		},
 		config = function()
-			require("claude-code").setup()
+			require("claude-code").setup({
+				refresh = {
+					show_notifications = false,
+				},
+			})
 		end,
 	},
 	{
