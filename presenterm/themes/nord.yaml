@@ -1,0 +1,69 @@
+# Nord Theme for presenterm
+# Arctic-inspired color palette - professional and clean
+
+default:
+  colors:
+    foreground: "ECEFF4"  # Snow Storm 3 - lightest
+    background: "2E3440"  # Polar Night 0 - darkest
+  margin:
+    percent: 8
+
+slide_title:
+  colors:
+    foreground: "88C0D0"  # Frost 2 - bright cyan
+  padding_bottom: 1
+
+headings:
+  h1:
+    colors:
+      foreground: "88C0D0"  # Frost 2 - bright cyan
+    prefix: "▓▓ "
+  h2:
+    colors:
+      foreground: "81A1C1"  # Frost 3 - muted blue
+    prefix: "▓ "
+  h3:
+    colors:
+      foreground: "5E81AC"  # Frost 4 - deep blue
+
+inline_code:
+  colors:
+    foreground: "EBCB8B"  # Aurora 3 - yellow
+    background: "3B4252"  # Polar Night 1
+
+code:
+  alignment: left
+  colors:
+    background: "3B4252"  # Polar Night 1
+  padding:
+    horizontal: 2
+    vertical: 1
+
+block_quote:
+  colors:
+    foreground: "D8DEE9"  # Snow Storm 1
+  prefix: "┃ "
+
+footer:
+  style: template
+  colors:
+    foreground: "4C566A"  # Polar Night 3 - muted
+    background: "2E3440"  # Polar Night 0
+  left: "Engineering Platform"
+  center: "{current_slide} / {total_slides}"
+  right: "Josh Lane"
+
+intro_slide:
+  title:
+    alignment: center
+    colors:
+      foreground: "88C0D0"  # Frost 2
+    font_size: 2
+  subtitle:
+    alignment: center
+    colors:
+      foreground: "81A1C1"  # Frost 3
+  author:
+    alignment: center
+    colors:
+      foreground: "D8DEE9"  # Snow Storm 1
