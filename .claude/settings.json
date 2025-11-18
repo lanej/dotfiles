@@ -2,35 +2,13 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {},
   "hooks": {
-    "Stop": [
+    "Notification": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/joshlane/.files/bin/claude-stop-hook"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/joshlane/.files/bin/claude-cancel-notification"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/joshlane/.files/bin/claude-cancel-notification"
+            "command": "/Users/joshlane/.files/bin/claude-notification-hook"
           }
         ]
       }
