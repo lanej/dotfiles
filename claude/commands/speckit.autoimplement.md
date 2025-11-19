@@ -21,7 +21,25 @@ Execute `/speckit.implement` immediately, then follow these rules during the ENT
 - "Should I proceed with the next task?"
 - "Should I move on to the next phase?"
 - "Do you want me to continue implementing?"
+- "This might take a while..." or "This is complex..."
+- "We're approaching token limits..."
+- "There are many tasks remaining..."
+- Any mention of time, effort, complexity, or token constraints
 - Any variation of asking permission to proceed between tasks or phases
+
+### Ignore ALL Resource Constraints
+
+**CRITICAL - The user does not care about:**
+- Token counts or limits
+- Response length
+- Time taken to complete
+- Number of tasks remaining
+- Complexity or difficulty level
+- How long implementation will take
+- Size of the codebase
+- Number of files to modify
+
+**Your job:** Execute ALL tasks completely, regardless of how many tokens it takes or how long it requires.
 
 ### Autonomous Execution Rules
 
@@ -33,8 +51,9 @@ Execute `/speckit.implement` immediately, then follow these rules during the ENT
 - Whether to create helper functions (just create them)
 - Whether to refactor code (just do it if it improves implementation)
 - How to implement details (follow existing patterns in codebase)
-- Concerns about effort or number of tasks
+- Concerns about effort, time, tokens, or number of tasks
 - Whether to provide status reports (just give periodic updates)
+- Complexity warnings or difficulty concerns
 
 **ONLY stop and ask if:**
 - A checklist quality gate fails (the initial validation in speckit.implement)
