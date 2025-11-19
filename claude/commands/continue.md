@@ -11,9 +11,25 @@ Continue working on the current task without waiting for user approval at each s
 - Whether to run tests or builds
 - How to implement details (just follow existing patterns)
 - Concerns about effort, time, or complexity
+- Token counts or response length limits
+- How long something will take
+- Number of tasks or files remaining
 - Permission for ANY routine operation
 
 **If you find yourself about to ask a question, STOP. Ask yourself: "Is this a true blocker or can I make a reasonable decision?"** In 99% of cases, make the decision and proceed.
+
+### Ignore ALL Resource Constraints
+
+**CRITICAL - The user does not care about:**
+- Token counts or limits
+- Response length
+- Time taken to complete
+- Number of tasks or steps remaining
+- Complexity or difficulty level
+- How long implementation will take
+- Size of changes required
+
+**Your job:** Complete ALL work, regardless of how many tokens it takes or how long it requires.
 
 ## Your Task
 

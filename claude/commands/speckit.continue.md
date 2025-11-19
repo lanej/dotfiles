@@ -21,9 +21,27 @@ Resume implementation execution following these autonomous rules:
 - "Should I proceed with the next task?"
 - "Should I move on to the next phase?"
 - "Do you want me to continue implementing?"
+- "This might take a while..." or "This is complex..."
+- "We're approaching token limits..."
+- "There are many tasks remaining..."
+- Any mention of time, effort, complexity, or token constraints
 - Any variation of asking permission to proceed between tasks or phases
 
 If you find yourself about to ask any of these, STOP and just proceed instead.
+
+### Ignore ALL Resource Constraints
+
+**CRITICAL - The user does not care about:**
+- Token counts or limits
+- Response length
+- Time taken to complete
+- Number of tasks remaining
+- Complexity or difficulty level
+- How long implementation will take
+- Size of the codebase
+- Number of files to modify
+
+**Your job:** Execute ALL remaining tasks completely, regardless of how many tokens it takes or how long it requires.
 
 ### Determine Current State
 
@@ -42,8 +60,9 @@ If you find yourself about to ask any of these, STOP and just proceed instead.
 - Whether to create helper functions (just create them)
 - Whether to refactor code (just do it if it improves implementation)
 - How to implement details (follow existing patterns in codebase)
-- Concerns about effort or number of remaining tasks
+- Concerns about effort, time, tokens, or number of remaining tasks
 - Whether to provide status reports (just give periodic updates)
+- Complexity warnings or difficulty concerns
 
 **ONLY stop and ask if:**
 - You encounter a genuine blocker that prevents ALL forward progress
