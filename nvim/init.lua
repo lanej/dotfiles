@@ -2222,9 +2222,12 @@ require("lazy").setup({
 		"MeanderingProgrammer/render-markdown.nvim",
 		opts = {
 			file_types = { "markdown", "Avante" },
-			render_modes = { "n", "c", "i" }, -- Always render, even in insert mode
+			render_modes = { "n", "c", "i" },
 			anti_conceal = {
-				enabled = false, -- Don't hide HTML comments when cursor is away
+				enabled = true, -- Re-enable to show on current line
+			},
+			html_comment = {
+				conceal = false, -- Don't conceal HTML comments
 			},
 		},
 		ft = { "markdown", "Avante" },
