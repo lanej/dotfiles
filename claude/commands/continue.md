@@ -1,6 +1,19 @@
 # Continue - Work Autonomously Without Prompting
 
-Continue working on the current task without waiting for user approval at each step. Only stop and ask questions when you encounter a blocker or genuine ambiguity.
+Continue working on the current task without waiting for user approval at each step. **NEVER ask questions or wait for permission on non-blocking issues.** Only stop for genuine blockers that prevent all forward progress.
+
+## Critical Rule
+
+**You are FORBIDDEN from asking questions about:**
+- Whether to proceed with the next step
+- Whether to install dependencies
+- Whether to fix linting/formatting issues
+- Whether to run tests or builds
+- How to implement details (just follow existing patterns)
+- Concerns about effort, time, or complexity
+- Permission for ANY routine operation
+
+**If you find yourself about to ask a question, STOP. Ask yourself: "Is this a true blocker or can I make a reasonable decision?"** In 99% of cases, make the decision and proceed.
 
 ## Your Task
 
@@ -22,11 +35,13 @@ Execute all remaining work autonomously by following these principles:
 - Run tests, builds, and validation automatically
 - Ignore concerns about effort, time, or complexity - just do the work
 
-**Stop only for:**
-- **True blockers**: Missing credentials, ambiguous requirements, conflicting constraints
-- **Critical decisions**: Breaking changes, major architectural choices, data loss risks
-- **Failures you cannot resolve**: Repeated test failures, build errors, missing dependencies
-- **Security concerns**: Potential vulnerabilities, credential handling, authentication issues
+**Stop ONLY for:**
+- **True blockers**: Missing credentials you cannot obtain, genuinely ambiguous requirements with no reasonable default
+- **Critical decisions**: Breaking changes to public APIs, major architectural pivots, data loss risks
+- **Unresolvable failures**: Test failures after 3+ fix attempts with no clear path forward
+- **Security concerns**: Exposing credentials, bypassing authentication, introducing SQL injection
+
+**Everything else: PROCEED AUTONOMOUSLY without asking**
 
 ### Working Style
 
@@ -59,17 +74,55 @@ Execute all remaining work autonomously by following these principles:
 - Repeated failures you cannot debug
 - Destructive operations (data deletion, force push to main)
 
-**These are NOT blockers** (handle autonomously):
-- Implementation details (variable names, file organization)
-- Routine technical decisions (which loop to use, error handling style)
+**These are NOT blockers** (handle autonomously - NEVER ask about these):
+- Implementation details (variable names, file organization, function structure)
+- Routine technical decisions (which loop to use, error handling style, data structures)
 - Following existing patterns in the codebase
 - Standard refactoring and code cleanup
-- Running tests, builds, linting
-- Installing standard dependencies
+- Running tests, builds, linting, formatting
+- Installing standard dependencies (npm install, cargo add, etc.)
 - Fixing obvious bugs or typos
 - Concerns about how long something will take
 - Concerns about effort or complexity level
 - Large numbers of similar tasks (just do them all)
+- Creating/editing test files
+- Updating documentation or comments
+- Renaming variables for clarity
+- Reorganizing imports or file structure
+- Handling expected errors with try/catch or Result types
+- Adding logging or debug statements
+- Optimizing performance in obvious ways
+- Fixing compiler warnings or linter issues
+- Updating dependencies to latest versions
+- Creating helper functions or utilities
+- ANY question that starts with "Should I..." - the answer is YES, proceed
+
+### Decision Making - No Questions, Just Action
+
+**When you're tempted to ask, do this instead:**
+
+- "Should I install this dependency?" → Just install it with npm/cargo/pip
+- "Should I run the tests?" → Just run them
+- "Should I fix this linting error?" → Just fix it
+- "Should I create a helper function?" → Just create it
+- "Should I refactor this?" → Just do it
+- "Should I update the docs?" → Just update them
+- "Is this implementation correct?" → Follow existing patterns and proceed
+- "This might take a while..." → Don't mention it, just do it
+- "There are 50 files to update..." → Don't mention it, just do them all
+- "I notice this could be improved..." → Improve it without asking
+
+**Mental check before asking ANY question:**
+1. Can I infer a reasonable answer from context? → If yes, proceed
+2. Can I follow an existing pattern in the codebase? → If yes, proceed
+3. Will this stop all forward progress? → If no, proceed
+4. Is this a routine operation? → If yes, proceed
+
+**Only ask if ALL of these are true:**
+- Cannot infer any reasonable answer
+- No existing pattern to follow
+- Blocks ALL forward progress
+- Not a routine operation
 
 ### Progress Communication
 
@@ -77,13 +130,16 @@ Execute all remaining work autonomously by following these principles:
 - Task completion updates: "Completed 5/12 tasks"
 - Major milestone notifications: "All tests passing, ready for review"
 - Summary of what was accomplished
-- Any warnings or concerns discovered during work
+- Errors encountered and how you fixed them
+- Any genuine concerns discovered during work
 
 **Don't provide:**
 - Play-by-play narration of every file edit
 - Asking permission for routine operations
+- Questions about whether to proceed with standard tasks
 - Excessive commentary on obvious steps
 - Constant status updates for trivial actions
+- Concerns about effort, time, or number of tasks
 
 ## Usage
 
@@ -114,20 +170,46 @@ Assistant: [Creates todo list] /continue
 - Reports completion with summary
 
 **What the assistant does NOT do:**
-- Ask "should I start task 1?"
-- Ask "I need to install a dependency, is that ok?"
-- Ask "should I fix this clippy warning?"
+- Ask "should I start task 1?" - just starts
+- Ask "I need to install a dependency, is that ok?" - just installs it
+- Ask "should I fix this clippy warning?" - just fixes it
+- Ask "there are 15 similar files to update, should I do them all?" - just does them all
+- Ask "this might take a while, should I continue?" - just continues
+- Ask "I notice this could be refactored, should I?" - just refactors if it helps
+- Ask "should I run the tests now?" - just runs them
+- Ask "should I create a helper function?" - just creates it
 - Narrate every file read and edit
 - Stop after each task for approval
+- Mention concerns about effort, time, or complexity
+- Ask ANY question that isn't a genuine blocker
 
 ## Important Guidelines
 
-- **Trust the plan**: If requirements and tasks are clear, execute them
-- **Use your judgment**: Make reasonable decisions within project norms
-- **Stay focused**: Complete the defined work without asking permission for standard operations
-- **Be efficient**: Minimize back-and-forth when not needed
-- **Stop when blocked**: Don't guess on genuinely ambiguous requirements
+- **Trust the plan**: If requirements and tasks are clear, execute them without asking
+- **Use your judgment**: Make reasonable decisions within project norms - don't ask about them
+- **Stay focused**: Complete the defined work without asking permission for ANY standard operation
+- **Be efficient**: Minimize back-and-forth - if you can reasonably decide, decide and proceed
+- **Stop ONLY when blocked**: Don't guess on genuinely ambiguous requirements, but recognize that 99% of situations are NOT genuinely ambiguous
 - **Ignore effort/time/complexity concerns**: Never stop or ask questions because something seems large, complex, or time-consuming - just execute it
+- **When in doubt, proceed**: If you're 80%+ confident in a decision, just make it
+- **Follow patterns**: Look at how similar things are done in the codebase and do the same
+- **Fix as you go**: If you see issues (linting, tests, bugs), fix them without asking
+
+## Why This Matters
+
+Asking unnecessary questions:
+- Breaks flow and delays completion
+- Creates context switching for the user
+- Signals lack of confidence in routine decisions
+- Wastes time on non-issues
+
+Proceeding autonomously:
+- Gets work done faster
+- Demonstrates confidence and competence
+- Allows user to focus on real decisions
+- Shows you understand the codebase and patterns
+
+**Remember: The user said "/continue" because they trust you to make reasonable decisions. Honor that trust by ACTUALLY continuing without unnecessary interruptions.**
 
 ## When NOT to Use This Command
 
