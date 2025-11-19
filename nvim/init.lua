@@ -78,11 +78,16 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 	callback = function()
 		-- Force NormalNC to match tmux inactive pane color
 		vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
+		-- Make HTML comments visible in markdown (normal text color)
+		vim.api.nvim_set_hl(0, "htmlComment", { fg = "#ECEFF4", italic = true })
+		vim.api.nvim_set_hl(0, "htmlCommentPart", { fg = "#ECEFF4", italic = true })
 	end,
 })
 
 -- Set it immediately as well
 vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
+vim.api.nvim_set_hl(0, "htmlComment", { fg = "#ECEFF4", italic = true })
+vim.api.nvim_set_hl(0, "htmlCommentPart", { fg = "#ECEFF4", italic = true })
 
 vim.opt.updatetime = 300
 vim.opt.spell = false
@@ -751,10 +756,6 @@ require("lazy").setup({
 			"xzbdmw/colorful-menu.nvim",
 			"mikavilpas/blink-ripgrep.nvim",
 			{
-				"Kaiser-Yang/blink-cmp-git",
-				dependencies = { "nvim-lua/plenary.nvim" },
-			},
-			{
 				"Kaiser-Yang/blink-cmp-dictionary",
 				dependencies = { "nvim-lua/plenary.nvim" },
 			},
@@ -869,7 +870,7 @@ require("lazy").setup({
 				-- Default list of enabled providers defined so that you can extend it
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
-					default = { "lazydev", "lsp", "git", "dictionary", "emoji", "path", "snippets", "buffer" },
+					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
 					per_filetype = {
 						codecompanion = { "codecompanion" },
 					},
@@ -903,13 +904,13 @@ require("lazy").setup({
 								-- options for blink-cmp-dictionary
 							},
 						},
-						git = {
-							module = "blink-cmp-git",
-							name = "Git",
-							opts = {
-								-- options for the blink-cmp-git
-							},
-						},
+						-- git = {
+						-- 	module = "blink-cmp-git",
+						-- 	name = "Git",
+						-- 	opts = {
+						-- 		-- options for the blink-cmp-git
+						-- 	},
+						-- },
 						emoji = {
 							module = "blink-emoji",
 							name = "Emoji",
@@ -1301,20 +1302,20 @@ require("lazy").setup({
 					},
 				},
 				-- marksman = {},
--- 				pkm_lsp = {
--- 					cmd = { "pkm", "lsp" },
--- 					filetypes = { "markdown" },
--- 					autostart = true,
--- 					single_file_support = true,
--- 					root_dir = function(fname)
--- 						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
--- 					end,
--- 					init_options = {
--- 						dbPath = ".lancedb",
--- 						debounceMs = 1000,
--- 					},
--- 					settings = {},
--- 				},
+				-- 				pkm_lsp = {
+				-- 					cmd = { "pkm", "lsp" },
+				-- 					filetypes = { "markdown" },
+				-- 					autostart = true,
+				-- 					single_file_support = true,
+				-- 					root_dir = function(fname)
+				-- 						return vim.fs.root(fname, { ".lancedb", ".git" }) or vim.fn.getcwd()
+				-- 					end,
+				-- 					init_options = {
+				-- 						dbPath = ".lancedb",
+				-- 						debounceMs = 1000,
+				-- 					},
+				-- 					settings = {},
+				-- 				},
 				bigquery_lsp = {
 					cmd = { "bigquery", "lsp" },
 					filetypes = { "sql", "bq", "bigquery" },
@@ -1389,43 +1390,43 @@ require("lazy").setup({
 			end
 
 			-- Capture server configs for autocmd closure
--- 			local pkm_config = opts.servers.pkm_lsp
--- 			local marksman_config = opts.servers.marksman
--- 
--- 			-- Smart LSP selection: pkm_lsp in PKM workspaces, Marksman elsewhere
--- 			vim.api.nvim_create_autocmd("FileType", {
--- 				pattern = "markdown",
--- 				callback = function(args)
--- 					local root_dir = vim.fs.root(args.file, { ".lancedb", ".git", ".marksman.toml" })
--- 					local is_pkm_workspace = root_dir and vim.fn.isdirectory(root_dir .. "/.lancedb") == 1
--- 
--- 					if is_pkm_workspace and pkm_config then
--- 						-- PKM workspace: use pkm_lsp for wikilink completions
--- 						local config = vim.tbl_deep_extend("force", {
--- 							name = "pkm_lsp",
--- 							cmd = pkm_config.cmd,
--- 							filetypes = pkm_config.filetypes,
--- 							root_dir = root_dir,
--- 							init_options = pkm_config.init_options,
--- 							settings = pkm_config.settings,
--- 						}, { capabilities = require("blink.cmp").get_lsp_capabilities(pkm_config.capabilities) })
--- 
--- 						vim.lsp.start(config)
--- 					elseif marksman_config and root_dir then
--- 						-- Regular markdown: use Marksman
--- 						local config = vim.tbl_deep_extend("force", {
--- 							name = "marksman",
--- 							cmd = marksman_config.cmd or { "marksman", "server" },
--- 							filetypes = { "markdown" },
--- 							root_dir = root_dir,
--- 						}, {
--- 							capabilities = require("blink.cmp").get_lsp_capabilities(marksman_config.capabilities),
--- 						})
--- 
--- 						vim.lsp.start(config)
--- 					end
--- 				end,
--- 			})
+			-- 			local pkm_config = opts.servers.pkm_lsp
+			-- 			local marksman_config = opts.servers.marksman
+			--
+			-- 			-- Smart LSP selection: pkm_lsp in PKM workspaces, Marksman elsewhere
+			-- 			vim.api.nvim_create_autocmd("FileType", {
+			-- 				pattern = "markdown",
+			-- 				callback = function(args)
+			-- 					local root_dir = vim.fs.root(args.file, { ".lancedb", ".git", ".marksman.toml" })
+			-- 					local is_pkm_workspace = root_dir and vim.fn.isdirectory(root_dir .. "/.lancedb") == 1
+			--
+			-- 					if is_pkm_workspace and pkm_config then
+			-- 						-- PKM workspace: use pkm_lsp for wikilink completions
+			-- 						local config = vim.tbl_deep_extend("force", {
+			-- 							name = "pkm_lsp",
+			-- 							cmd = pkm_config.cmd,
+			-- 							filetypes = pkm_config.filetypes,
+			-- 							root_dir = root_dir,
+			-- 							init_options = pkm_config.init_options,
+			-- 							settings = pkm_config.settings,
+			-- 						}, { capabilities = require("blink.cmp").get_lsp_capabilities(pkm_config.capabilities) })
+			--
+			-- 						vim.lsp.start(config)
+			-- 					elseif marksman_config and root_dir then
+			-- 						-- Regular markdown: use Marksman
+			-- 						local config = vim.tbl_deep_extend("force", {
+			-- 							name = "marksman",
+			-- 							cmd = marksman_config.cmd or { "marksman", "server" },
+			-- 							filetypes = { "markdown" },
+			-- 							root_dir = root_dir,
+			-- 						}, {
+			-- 							capabilities = require("blink.cmp").get_lsp_capabilities(marksman_config.capabilities),
+			-- 						})
+			--
+			-- 						vim.lsp.start(config)
+			-- 					end
+			-- 				end,
+			-- 			})
 			-- NOTE: Smart LSP selection for pkm-lsp and Marksman moved to ~/.config/nvim/lua/pkm-lsp.lua (loaded via require)
 
 			-- Auto-start BigQuery LSP for SQL files
