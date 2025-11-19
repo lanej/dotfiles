@@ -410,7 +410,7 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=1",
+	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
 })
 
 vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
@@ -2224,10 +2224,13 @@ require("lazy").setup({
 			file_types = { "markdown", "Avante" },
 			render_modes = { "n", "c", "i" },
 			anti_conceal = {
-				enabled = true, -- Re-enable to show on current line
+				enabled = true,
 			},
-			html_comment = {
-				conceal = false, -- Don't conceal HTML comments
+			html = {
+				enabled = true,
+				comment = {
+					conceal = false, -- Don't conceal HTML comments - keep them always visible
+				},
 			},
 		},
 		ft = { "markdown", "Avante" },
