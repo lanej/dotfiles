@@ -73,22 +73,6 @@ vim.api.nvim_create_autocmd("WinLeave", {
 	end,
 })
 
--- Define the highlight for inactive windows (matches tmux/kitty inactive pane color)
-vim.api.nvim_create_autocmd("ColorScheme", {
-	callback = function()
-		-- Force NormalNC to match tmux inactive pane color
-		vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
-		-- Make HTML comments visible in markdown (normal text color)
-		vim.api.nvim_set_hl(0, "htmlComment", { fg = "#ECEFF4", italic = true })
-		vim.api.nvim_set_hl(0, "htmlCommentPart", { fg = "#ECEFF4", italic = true })
-	end,
-})
-
--- Set it immediately as well
-vim.api.nvim_set_hl(0, "NormalNC", { bg = "#2a3038", fg = "#d0d5dd" })
-vim.api.nvim_set_hl(0, "htmlComment", { fg = "#ECEFF4", italic = true })
-vim.api.nvim_set_hl(0, "htmlCommentPart", { fg = "#ECEFF4", italic = true })
-
 vim.opt.updatetime = 300
 vim.opt.spell = false
 vim.opt.shortmess:append("c")
@@ -2238,6 +2222,10 @@ require("lazy").setup({
 		"MeanderingProgrammer/render-markdown.nvim",
 		opts = {
 			file_types = { "markdown", "Avante" },
+			render_modes = { "n", "c", "i" }, -- Always render, even in insert mode
+			anti_conceal = {
+				enabled = false, -- Don't hide HTML comments when cursor is away
+			},
 		},
 		ft = { "markdown", "Avante" },
 	},
