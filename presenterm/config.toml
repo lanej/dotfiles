@@ -15,3 +15,5 @@ scale = 8
 # PDF export configuration to match terminal appearance
 # Font must be installed on system for weasyprint
 font_family = "0xProto Nerd Font Mono"
+# Standard 4:3 aspect ratio (closer to square)
+dimensions = { columns = 100, rows = 40 }

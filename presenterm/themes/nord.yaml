@@ -7,6 +7,7 @@ default:
     background: "2E3440"  # Polar Night 0 - darkest
   margin:
     percent: 8
+  font_size: 4
 
 slide_title:
   colors:
@@ -49,16 +50,16 @@ footer:
   colors:
     foreground: "4C566A"  # Polar Night 3 - muted
     background: "2E3440"  # Polar Night 0
-  left: "Engineering Platform"
-  center: "{current_slide} / {total_slides}"
-  right: "Josh Lane"
+  left: ""
+  center: ""
+  right: ""
 
 intro_slide:
   title:
     alignment: center
     colors:
       foreground: "88C0D0"  # Frost 2
-    font_size: 2
+    font_size: 3
   subtitle:
     alignment: center
     colors:
