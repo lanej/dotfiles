@@ -182,4 +182,5 @@ gpg-restore:
 	fi
 presenterm:
 	@mkdir -p $(HOME)/.config/presenterm/themes
+	@ln -fs $(DOTFILES)/presenterm/config.toml $(HOME)/.config/presenterm/config.toml
 	@ln -fs $(DOTFILES)/presenterm/themes/nord.yaml $(HOME)/.config/presenterm/themes/nord.yaml

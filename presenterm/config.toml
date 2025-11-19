@@ -1,0 +1,17 @@
+[defaults]
+# Explicitly use kitty protocol for high-quality image rendering
+image_protocol = "kitty-local"
+
+[snippet.render]
+# Increase threads for faster async rendering of diagrams
+threads = 4
+
+[mermaid]
+# Increase scale for crisp, readable diagrams on high-DPI displays
+# Default is 2, increasing to 8 for Retina/high-DPI displays
+scale = 8
+
+[export]
+# PDF export configuration to match terminal appearance
+# Font must be installed on system for weasyprint
+font_family = "0xProto Nerd Font Mono"
