@@ -1,4 +1,4 @@
----@diagnostic disable: missing-fields
+,ev---@diagnostic disable: missing-fields
 --
 -- |_ _| \ | |_ _|_   _| |_   _  __ _
 --  | ||  \| || |  | | | | | | |/ _` |
@@ -175,8 +175,8 @@ vim.keymap.set("n", "<leader>re", ":Rename ", { noremap = true })
 -- Terminal mode escape
 vim.keymap.set("t", "<C-o>", "<C-\\><C-n>", { noremap = true })
 
--- Yank current file path
-vim.keymap.set("n", "yd", ':let @" = expand("%")<CR>', { noremap = true })
+-- Yank current file path (full absolute path to clipboard)
+vim.keymap.set("n", "yd", ':let @+ = expand("%:p")<CR>', { noremap = true })
 
 -- Enable syntax highlighting
 vim.cmd("syntax enable")
