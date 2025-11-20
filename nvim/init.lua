@@ -2250,6 +2250,19 @@ require("lazy").setup({
 		},
 		ft = { "markdown" },
 	},
+	{
+		"brenoprata10/nvim-highlight-colors",
+		opts = {
+			render = "background",
+			enable_hex = true,
+			enable_short_hex = true,
+			enable_rgb = true,
+			enable_hsl = true,
+			enable_var_usage = true,
+			enable_named = true,
+			enable_tailwind = "normal",
+		},
+	},
 	"cedarbaum/fugitive-azure-devops.vim",
 	{
 		"s3rvac/vim-syntax-jira",
