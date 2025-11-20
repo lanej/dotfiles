@@ -2235,6 +2235,21 @@ require("lazy").setup({
 		},
 		ft = { "markdown", "Avante" },
 	},
+	{
+		"3rd/image.nvim",
+		build = false,
+		opts = {
+			processor = "magick_cli",
+			integrations = {
+				markdown = {
+					enabled = true,
+					download_remote_images = true,
+					filetypes = { "markdown" },
+				},
+			},
+		},
+		ft = { "markdown" },
+	},
 	"cedarbaum/fugitive-azure-devops.vim",
 	{
 		"s3rvac/vim-syntax-jira",
