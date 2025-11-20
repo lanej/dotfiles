@@ -43,9 +43,9 @@ For comprehensive workflows and best practices, see `~/.claude/skills/`. Each sk
 - Authentication: Always `az login` and `az account set` before operations
 - Output formats: `--output table` (review), `--output json` (scripting), `--output tsv` (parsing)
 
-### Atlassian/Jira - `~/.claude/skills/acli/`
-- Use `acli jira` for Jira operations
-- Authentication: `acli jira auth login` before first use
+### Jira - `~/.claude/skills/jira/`
+- Use `jira` CLI for Jira operations
+- Authentication: `jira auth login` before first use
 
 ### Other Skills
 - `bigquery` - Use `bigquery` CLI (not `bq`)
