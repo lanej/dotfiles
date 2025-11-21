@@ -4,7 +4,6 @@
 # Configuration
 CACHE_FILE="$HOME/.claude/local/.privacy-check-cache"
 CACHE_EXITCODE_FILE="$HOME/.claude/local/.privacy-check-cache.exitcode"
-CLAUDE_BINARY="/Users/joshlane/.nvm/versions/node/v24.9.0/bin/claude"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -13,22 +12,9 @@ GREEN='\033[0;32m'
 GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
-# Find actual claude binary if not at expected location
-if [ ! -f "$CLAUDE_BINARY" ]; then
-  # Try homebrew location
-  CLAUDE_BINARY="/opt/homebrew/bin/claude"
-fi
-
-if [ ! -f "$CLAUDE_BINARY" ]; then
-  # Try to find claude in PATH, excluding this wrapper directory
-  CLAUDE_BINARY=$(which -a claude 2>/dev/null | grep -v "$(dirname "$0")" | grep -v "\.claude/local" | head -1)
-fi
-
-if [ ! -f "$CLAUDE_BINARY" ]; then
-  echo -e "${RED}Error: Could not find claude binary${NC}"
-  echo "Expected at: /Users/joshlane/.nvm/versions/node/v24.9.0/bin/claude"
-  echo "Or: /opt/homebrew/bin/claude"
-  echo "Or in PATH (excluding this wrapper)"
+# Verify claude binary is available in PATH
+if ! command -v claude &> /dev/null; then
+  echo -e "${RED}Error: Could not find claude binary in PATH${NC}"
   exit 1
 fi
 
@@ -70,4 +56,4 @@ else
 fi
 
 # Launch Claude Code with all original arguments
-exec "$CLAUDE_BINARY" "$@"
+exec command claude "$@"
