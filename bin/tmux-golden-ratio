@@ -31,9 +31,9 @@ fi
 window_width=$(tmux display-message -p '#{window_width}')
 
 # Golden ratio: 1.618
-# Left pane should be ~61.8% of total width (golden ratio proportion)
-# We use 0.618 as the ratio for the left pane
-left_pane_width=$(echo "$window_width * 0.618" | bc | cut -d. -f1)
+# Left pane should be ~38.2% of total width (inverse of golden ratio)
+# We use 0.382 as the ratio for the left pane
+left_pane_width=$(echo "$window_width * 0.382" | bc | cut -d. -f1)
 
 # Cap at maximum width
 if [ "$left_pane_width" -gt "$MAX_COLUMNS" ]; then
