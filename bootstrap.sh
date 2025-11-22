@@ -559,6 +559,15 @@ gopls_current_semver() {
 	gopls version 2>/dev/null | parse_semver
 }
 
+install_gotestsum_from_release() {
+	install_package_version go 1.22
+	go install gotest.tools/gotestsum@v"$1"
+}
+
+gotestsum_current_semver() {
+	gotestsum --version 2>/dev/null | parse_semver
+}
+
 install_zsh-autosuggestions_from_source() {
 	if [ ! -d "$HOME/.zsh/plugins/zsh-autosuggestions" ]; then
 		git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions.git "$HOME/.zsh/plugins/zsh-autosuggestions"
@@ -724,6 +733,7 @@ install_dependencies() {
 	install_package_version rust-analyzer 1.84.1             # rust
 	install_package_version typescript-language-server 4.3.3 # typescript
 	install_package_version gopls 0.17.1                     # go
+	install_package_version gotestsum 1.13.0                 # go test runner with color
 	install_package_version yaml-language-server 0.16.0      # yaml
 	install_package_version ctags-lsp 0.6.1                  # ctags fallback
 
