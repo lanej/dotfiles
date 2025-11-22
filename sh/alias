@@ -223,6 +223,7 @@ gem_releases() {
 
 alias tn="tmux new"
 alias ct="cargo test"
+alias gt="gotestsum"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
 alias go="go-hack"
 if [ -x "$HOME/.local/bin/just-hack" ]; then
