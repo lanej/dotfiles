@@ -54,7 +54,14 @@ fi
 
 if command -v bat >/dev/null 2>&1; then
 	export BAT_THEME=Nord
-	alias cat='bat'
+
+	# Only alias cat to bat in login shells
+	# Rationale: Scripts and non-interactive shells expect POSIX-compliant cat behavior
+	# without syntax highlighting or paging, which could break pipelines and automation.
+	# Login shells are for interactive human use where bat's enhancements are desired.
+	if shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; then
+		alias cat='bat'
+	fi
 
 	if [[ "$os_type" == 'darwin' ]]; then
 		export MANPAGER="sh -c 'col -b | bat -l man --plain' --pager=always"
@@ -79,7 +86,9 @@ fi
 
 if command -v eza >/dev/null 2>&1; then
 	# Only alias ls to eza in login shells
-	# Check for login shell in both bash and zsh
+	# Rationale: Scripts and non-interactive shells expect POSIX-compliant ls behavior
+	# without icons, colors, or git integration, which could break parsing and automation.
+	# Login shells are for interactive human use where eza's enhancements are desired.
 	if shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; then
 		alias ls='eza'
 	fi
