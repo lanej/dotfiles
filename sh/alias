@@ -78,7 +78,11 @@ elif command -v btm >/dev/null 2>&1; then
 fi
 
 if command -v eza >/dev/null 2>&1; then
-	alias ls='eza'
+	# Only alias ls to eza in login shells
+	# Check for login shell in both bash and zsh
+	if shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; then
+		alias ls='eza'
+	fi
 	alias ll='eza -Gl --smart-group -F auto --icons --git'
 	alias lt="eza -g -F auto --icons -T -L 2 --git"
 else
