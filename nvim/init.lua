@@ -1623,6 +1623,8 @@ require("lazy").setup({
 			-- Set test executable for various languages
 			vim.g["test#ruby#minitest#executable"] = "bundle exec ruby -Itest/"
 
+			-- Use gotestsum instead of go test for colorful output
+			vim.g["test#go#gotest#executable"] = "gotestsum --"
 			vim.g["test#go#gotest#options"] = {
 				nearest = "-v",
 				file = "-v",
