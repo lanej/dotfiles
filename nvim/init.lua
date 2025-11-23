@@ -2051,7 +2051,7 @@ require("lazy").setup({
 			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
 			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
 
-			-- Generate commit message using Claude CLI
+			-- Generate commit message using CodeCompanion with Copilot
 			vim.keymap.set("n", "<leader>ccm", function()
 				local bufname = vim.api.nvim_buf_get_name(0)
 				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
@@ -2068,7 +2068,7 @@ require("lazy").setup({
 					return
 				end
 
-				vim.notify("Generating commit message with Claude...", vim.log.levels.INFO)
+				vim.notify("Generating commit message with Copilot...", vim.log.levels.INFO)
 
 				-- Save current git comments before clearing
 				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -2083,12 +2083,19 @@ require("lazy").setup({
 					end
 				end
 
+				-- Get current buffer content (may have partial message)
+				local current_content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+
 				-- Get the staged diff
 				local diff = vim.fn.system("git diff --cached")
 
-				-- Generate commit message using GitHub Copilot (much faster than Vertex AI)
-				local prompt = string.format([[Generate a git commit message in Commitizen format for these changes:
+				-- Build prompt with buffer content and diff
+				local prompt = string.format([[Generate a git commit message in Commitizen format.
 
+Current buffer content:
+%s
+
+Staged changes:
 %s
 
 Requirements:
@@ -2096,73 +2103,41 @@ Requirements:
 - Subject under 50 chars, imperative mood, no period
 - NO code fences, NO markdown formatting, NO commentary
 - Output ONLY the raw commit message text
-- NO AI attribution]], diff)
+- NO AI attribution]], current_content, diff)
 
-				-- Use GitHub Copilot API (faster than Vertex AI)
-				local api_base = os.getenv("OPENAI_API_BASE") or "https://api.openai.com"
-				local api_key = os.getenv("OPENAI_API_KEY")
+				-- Use CodeCompanion's inline strategy with Copilot adapter
+				require("codecompanion").inline({
+					adapter = "copilot",
+					prompt = prompt,
+					callback = function(result)
+						local output = result
 
-				if not api_key then
-					vim.notify("OPENAI_API_KEY not set in environment", vim.log.levels.ERROR)
-					return
-				end
+						-- Strip code fences if present
+						output = output:gsub("^```%w*\n", "") -- Remove opening fence
+						output = output:gsub("\n```$", "") -- Remove closing fence
+						output = output:gsub("^%s+", ""):gsub("%s+$", "") -- Trim whitespace
 
-				-- Create JSON payload
-				local json_payload = vim.fn.json_encode({
-					model = "gpt-4o-mini",
-					messages = {
-						{ role = "user", content = prompt }
-					},
-					temperature = 0.3,
-					max_tokens = 200
+						if output == "" then
+							vim.notify("Copilot returned empty response", vim.log.levels.ERROR)
+							return
+						end
+
+						-- Split message into lines and add blank line separator
+						local msg_lines = vim.split(output, "\n", { plain = true })
+						table.insert(msg_lines, "")
+
+						-- Combine with preserved git comments
+						for _, line in ipairs(comment_lines) do
+							table.insert(msg_lines, line)
+						end
+
+						-- Replace entire buffer content
+						vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
+						vim.api.nvim_win_set_cursor(0, { 1, 0 })
+						vim.notify("Commit message generated!", vim.log.levels.INFO)
+					end,
 				})
-
-				-- Escape single quotes for shell
-				json_payload = json_payload:gsub("'", "'\\''")
-
-				local curl_cmd = string.format(
-					[[curl -s -X POST '%s/v1/chat/completions' -H 'Content-Type: application/json' -H 'Authorization: Bearer %s' -d '%s']],
-					api_base,
-					api_key,
-					json_payload
-				)
-
-				local response = vim.fn.system(curl_cmd)
-
-				-- Parse JSON response
-				local ok, parsed = pcall(vim.fn.json_decode, response)
-				if not ok or not parsed.choices or not parsed.choices[1] then
-					vim.notify("Failed to generate commit message: " .. (parsed.error and parsed.error.message or "Unknown error"), vim.log.levels.ERROR)
-					return
-				end
-
-				local output = parsed.choices[1].message.content
-
-				-- Strip code fences if present
-				output = output:gsub("^```%w*\n", "") -- Remove opening fence
-				output = output:gsub("\n```$", "") -- Remove closing fence
-
-				output = output:gsub("^%s+", ""):gsub("%s+$", "") -- Trim whitespace
-
-				if output == "" then
-					vim.notify("Claude returned empty response", vim.log.levels.ERROR)
-					return
-				end
-
-				-- Split message into lines and add blank line separator
-				local msg_lines = vim.split(output, "\n", { plain = true })
-				table.insert(msg_lines, "")
-
-				-- Combine with preserved git comments
-				for _, line in ipairs(comment_lines) do
-					table.insert(msg_lines, line)
-				end
-
-				-- Replace entire buffer content
-				vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
-				vim.api.nvim_win_set_cursor(0, { 1, 0 })
-				vim.notify("Commit message generated!", vim.log.levels.INFO)
-			end, { desc = "Generate commit message with Claude" })
+			end, { desc = "Generate commit message with Copilot" })
 
 			vim.keymap.set(
 				{ "n", "v" },
