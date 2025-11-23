@@ -226,6 +226,15 @@ vim.api.nvim_create_user_command("Wqa", "wqa", {})
 vim.api.nvim_create_user_command("Qwa", "wqa", {})
 vim.api.nvim_create_user_command("E", "e", {})
 
+-- Command-line abbreviations for common typos with bang
+vim.cmd("cnoreabbrev E! e!")
+vim.cmd("cnoreabbrev W! w!")
+vim.cmd("cnoreabbrev Q! q!")
+vim.cmd("cnoreabbrev Wq wq")
+vim.cmd("cnoreabbrev WQ wq")
+vim.cmd("cnoreabbrev Wq! wq!")
+vim.cmd("cnoreabbrev WQ! wq!")
+
 -- TODO: ale is only used for legacy ruby linting but conform.nvim could replace this i think
 vim.g.ale_fixers = {
 	ruby = { "rubocop" },
