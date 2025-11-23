@@ -2090,7 +2090,7 @@ require("lazy").setup({
 				local diff = vim.fn.system("git diff --cached")
 
 				-- Build prompt with buffer content and diff
-				local prompt = string.format([[Generate a git commit message in Commitizen format.
+				local prompt = string.format([[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
 
 Current buffer content:
 %s
@@ -2098,12 +2098,43 @@ Current buffer content:
 Staged changes:
 %s
 
-Requirements:
-- Format: type(scope): subject
-- Subject under 50 chars, imperative mood, no period
-- NO code fences, NO markdown formatting, NO commentary
-- Output ONLY the raw commit message text
-- NO AI attribution]], current_content, diff)
+**Commit Message Structure:**
+- Format: `<type>(<scope>): <subject>`
+- Subject line: Maximum 50 characters
+- Body (when needed): Wrap at 72 characters
+
+**Valid Types:**
+- feat: New features
+- fix: Bug fixes
+- docs: Documentation changes
+- style: Code style changes
+- refactor: Code refactoring
+- perf: Performance improvements
+- test: Adding/updating tests
+- build: Build system or dependency changes
+- ci: CI/CD configuration
+- chore: Maintenance tasks
+
+**Scope Guidelines:**
+- Use lowercase
+- Be specific but concise (e.g., 'auth', 'api', 'cli', 'config')
+- Omit scope if change affects multiple areas broadly
+
+**Subject Line Rules:**
+- Use imperative mood ('add', 'fix', 'update', not 'added', 'fixed', 'updated')
+- Start with lowercase letter
+- No period at the end
+- Focus on what the change does, not how
+
+**Quality Standards:**
+- Subject must be under 50 characters
+- Use present tense, imperative mood
+- Be specific about what changed
+- Avoid generic terms when more specific verbs apply
+- NEVER mention AI, Claude, or automated generation
+
+**Output Format:**
+Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]], current_content, diff)
 
 				-- Use CodeCompanion's inline strategy with Copilot adapter
 				require("codecompanion").inline({
