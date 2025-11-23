@@ -413,6 +413,13 @@ vim.api.nvim_create_autocmd("FileType", {
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
 })
 
+-- Treat .jsonl files as JSON (JSON Lines format)
+vim.filetype.add({
+	extension = {
+		jsonl = "json",
+	},
+})
+
 vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typespec",
