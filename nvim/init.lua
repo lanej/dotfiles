@@ -2083,18 +2083,60 @@ require("lazy").setup({
 					end
 				end
 
-				-- Let Claude read the diff directly from git
-				local prompt =
-					"Generate a git commit message in Commitizen format. Run 'git diff --cached' to see the staged changes. Output ONLY the raw commit message text - NO code fences, NO markdown formatting, NO commentary. Requirements: type(scope): subject under 50 chars, imperative mood, no period, no AI attribution."
+				-- Get the staged diff
+				local diff = vim.fn.system("git diff --cached")
 
-				-- Use haiku model for speed
-				local output = vim.fn.system({ "claude", "--print", "--model", "haiku", prompt })
+				-- Generate commit message using GitHub Copilot (much faster than Vertex AI)
+				local prompt = string.format([[Generate a git commit message in Commitizen format for these changes:
 
-				-- Strip ANSI color codes and clean up
-				output = output:gsub("\27%[[0-9;]*m", "") -- Remove ANSI codes
-				output = output:gsub("🔍 Privacy status.-\n", "") -- Remove privacy message
-				output = output:gsub("⚠️.-\n", "") -- Remove warnings
-				output = output:gsub("Run.-\n", "") -- Remove help messages
+%s
+
+Requirements:
+- Format: type(scope): subject
+- Subject under 50 chars, imperative mood, no period
+- NO code fences, NO markdown formatting, NO commentary
+- Output ONLY the raw commit message text
+- NO AI attribution]], diff)
+
+				-- Use GitHub Copilot API (faster than Vertex AI)
+				local api_base = os.getenv("OPENAI_API_BASE") or "https://api.openai.com"
+				local api_key = os.getenv("OPENAI_API_KEY")
+
+				if not api_key then
+					vim.notify("OPENAI_API_KEY not set in environment", vim.log.levels.ERROR)
+					return
+				end
+
+				-- Create JSON payload
+				local json_payload = vim.fn.json_encode({
+					model = "gpt-4o-mini",
+					messages = {
+						{ role = "user", content = prompt }
+					},
+					temperature = 0.3,
+					max_tokens = 200
+				})
+
+				-- Escape single quotes for shell
+				json_payload = json_payload:gsub("'", "'\\''")
+
+				local curl_cmd = string.format(
+					[[curl -s -X POST '%s/v1/chat/completions' -H 'Content-Type: application/json' -H 'Authorization: Bearer %s' -d '%s']],
+					api_base,
+					api_key,
+					json_payload
+				)
+
+				local response = vim.fn.system(curl_cmd)
+
+				-- Parse JSON response
+				local ok, parsed = pcall(vim.fn.json_decode, response)
+				if not ok or not parsed.choices or not parsed.choices[1] then
+					vim.notify("Failed to generate commit message: " .. (parsed.error and parsed.error.message or "Unknown error"), vim.log.levels.ERROR)
+					return
+				end
+
+				local output = parsed.choices[1].message.content
 
 				-- Strip code fences if present
 				output = output:gsub("^```%w*\n", "") -- Remove opening fence
