@@ -1813,7 +1813,15 @@ require("lazy").setup({
 		},
 		cmd = "Octo",
 		config = function()
-			require("octo").setup()
+			require("octo").setup({
+				picker = "fzf-lua",
+				picker_config = {
+					use_emojis = false,
+					mappings = {
+						open_in_browser = { lhs = "<C-b>", desc = "open issue in browser" },
+					},
+				},
+			})
 		end,
 	},
 	{
