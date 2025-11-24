@@ -142,7 +142,7 @@ f() {
 }
 
 lsearch() {
-	lancer search "$1" | glow
+	lancer search "$1" | glow -p
 }
 
 fkill() {
