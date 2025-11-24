@@ -4,6 +4,13 @@ require('gitsigns').setup({
       text = '^',
     },
   },
+  -- Enable inline diff highlighting
+  word_diff = false, -- Set to true to always show word-level diffs
+  diff_opts = {
+    internal = true, -- Use internal diff library for better performance
+  },
+  -- Show deleted lines as virtual text
+  show_deleted = true,
   -- Automatically set base to origin/HEAD (main/master) on BufEnter
   on_attach = function(bufnr)
     local gitsigns = require('gitsigns')
@@ -36,6 +43,10 @@ vim.keymap.set('n', '<leader>hR', require('gitsigns').reset_buffer, { silent = t
 vim.keymap.set('n', '<leader>hu', require('gitsigns').undo_stage_hunk, { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>hU', require('gitsigns').reset_buffer_index, { silent = true, noremap = true })
 vim.keymap.set('n', 'vh', require('gitsigns').select_hunk, { silent = true, noremap = true })
+
+-- Toggle inline diff highlighting (shows changes highlighted in buffer)
+vim.keymap.set('n', '<leader>hd', require('gitsigns').toggle_word_diff, { silent = true, noremap = true, desc = 'Toggle inline word diff' })
+vim.keymap.set('n', '<leader>hD', require('gitsigns').toggle_deleted, { silent = true, noremap = true, desc = 'Toggle deleted lines' })
 
 -- Toggle between comparing against HEAD (uncommitted changes) and merge-base (branch changes)
 vim.keymap.set('n', '<leader>gb', function()
