@@ -2314,6 +2314,12 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 	{
 		"3rd/image.nvim",
 		build = false,
+		-- Disable in tmux due to known issues with allow-passthrough and session switching
+		-- See: https://github.com/3rd/image.nvim/issues/145
+		-- Images may appear on wrong tmux session when switching sessions
+		cond = function()
+			return vim.env.TMUX == nil
+		end,
 		opts = {
 			processor = "magick_cli",
 			integrations = {

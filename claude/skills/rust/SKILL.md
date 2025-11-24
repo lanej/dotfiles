@@ -29,9 +29,11 @@ Always follow this sequence when developing or validating Rust code:
 
 ```bash
 cargo test --quiet
-cargo check --quiet       # Fast compilation check (no binary output)
+cargo check --quiet       # Fast compilation check (PREFER - no binary output)
 cargo clippy
 ```
+
+**IMPORTANT**: Use `cargo check`, NOT `cargo build`, for validation. Only use `cargo build` when you actually need the binary artifact.
 
 **For iterative development and testing functionality:**
 ```bash
@@ -342,7 +344,7 @@ git checkout -b feature/new-thing
 
 # 3. Run full validation sequence
 cargo test --quiet
-cargo build --quiet
+cargo check --quiet       # Use check, not build, for validation
 cargo clippy
 
 # 4. Auto-fix clippy warnings
@@ -350,6 +352,7 @@ cargo clippy --fix --allow-dirty
 
 # 5. Re-run validation
 cargo test --quiet
+cargo check --quiet
 cargo clippy
 
 # 6. Commit changes
@@ -413,7 +416,7 @@ cargo update serde
 
 # 4. Validate after update
 cargo test --quiet
-cargo check --quiet    # Fast compilation check
+cargo check --quiet       # Use check, not build, for validation
 cargo clippy
 
 # 5. Review Cargo.lock changes
@@ -423,14 +426,14 @@ git diff Cargo.lock
 ### Workflow 5: Pre-commit Validation
 
 ```bash
-# Complete validation before committing (check-first approach)
+# Complete validation before committing (PREFER THIS)
 cargo test --quiet && cargo check --quiet && cargo clippy
-
-# If you need to test the binary, replace check with build:
-cargo test --quiet && cargo build --quiet && cargo clippy
 
 # If any step fails, the sequence stops
 # Fix issues and repeat
+
+# NOTE: Only use cargo build instead of cargo check if you actually need
+# the binary artifact. For validation, cargo check is sufficient and much faster.
 ```
 
 ## Performance Optimization
@@ -549,17 +552,17 @@ cargo clippy --fix --allow-dirty
 ## Quick Reference
 
 ```bash
-# Development cycle
-cargo test --quiet && cargo build --quiet && cargo clippy
+# Development cycle (PREFER - use check for validation)
+cargo test --quiet && cargo check --quiet && cargo clippy
 
 # Auto-fix clippy
 cargo clippy --fix --allow-dirty
 
-# Clean build
-pkill -f cargo && cargo clean && cargo build
+# Clean and re-check
+pkill -f cargo && cargo clean && cargo check
 
 # Update dependencies
-cargo update && cargo test --quiet
+cargo update && cargo test --quiet && cargo check --quiet
 
 # Documentation
 cargo doc --open
@@ -567,8 +570,11 @@ cargo doc --open
 # Add dependency
 cargo add <crate>
 
-# Fast checking
+# Fast iteration (just checking compilation)
 cargo check
+
+# Only build when you need the binary artifact
+cargo build
 ```
 
 ## Integration with Git
