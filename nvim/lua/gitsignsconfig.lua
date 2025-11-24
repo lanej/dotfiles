@@ -4,9 +4,8 @@ require('gitsigns').setup({
       text = '^',
     },
   },
-  -- Enable inline diff highlighting by default (background mode)
+  -- Enable inline diff highlighting by default (word-level only)
   word_diff = true, -- Show word-level diffs by default (toggle with <leader>hd)
-  linehl = true, -- Enable line-level background highlighting
   diff_opts = {
     internal = true, -- Use internal diff library for better performance
   },
@@ -33,18 +32,12 @@ require('gitsigns').setup({
   end,
 })
 
--- Very subtle inline diff highlighting using Nord palette tints
+-- Very subtle word-level diff highlighting using Nord palette tints
 -- Base background is nord0 (#2E3440), these are barely-tinted versions
-
--- Word-level highlights (inline diffs)
+-- Gutter signs already indicate line-level changes, so we focus on word-level precision
 vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#343B44', fg = 'NONE' })       -- Subtle green tint
 vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#353642', fg = 'NONE' })    -- Subtle red tint
 vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#373C44', fg = 'NONE' })    -- Subtle yellow tint
-
--- Line-level background highlights (entire line)
-vim.api.nvim_set_hl(0, 'GitSignsAddLn', { bg = '#303740', fg = 'NONE' })            -- Very subtle green tint for added lines
-vim.api.nvim_set_hl(0, 'GitSignsChangeLn', { bg = '#32363E', fg = 'NONE' })         -- Very subtle yellow tint for changed lines
-vim.api.nvim_set_hl(0, 'GitSignsDeleteLn', { bg = '#303640', fg = 'NONE' })         -- Very subtle red tint for deleted lines
 
 vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>gl', require('gitsigns').blame_line, { silent = true, noremap = true })
