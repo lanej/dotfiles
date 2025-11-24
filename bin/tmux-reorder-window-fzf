@@ -21,13 +21,13 @@ target=$(echo "$windows" | fzf \
   --preview-window=right:60% \
   | cut -d'|' -f1)
 
-# If user selected a target, move the window
+# If user selected a target, swap windows
 if [ -n "$target" ]; then
-  # Move current window to target position
-  tmux move-window -s "$current_window" -t "$target"
+  # Swap current window with target position
+  tmux swap-window -s "$current_window" -t "$target"
 
   # Switch to the newly positioned window
   tmux select-window -t "$target"
 
-  echo "Moved window #$current_window to position #$target"
+  echo "Swapped window #$current_window with #$target"
 fi
