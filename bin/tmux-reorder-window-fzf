@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# tmux-reorder-window-fzf - Reorder the current tmux window using fzf
+
+set -euo pipefail
+
+# Get current window index
+current_window=$(tmux display-message -p '#I')
+current_name=$(tmux display-message -p '#W')
+
+# Get all windows in current session with their indices
+windows=$(tmux list-windows -F "#{window_index}|#{window_name}#{?window_active, [current],}")
+
+# Use fzf to select target position
+target=$(echo "$windows" | fzf \
+  --height=100% \
+  --reverse \
+  --header="Move window '$current_name' (#$current_window) to position:" \
+  --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
+  --exit-0 \
+  --preview "echo 'Window {} will move to this position'" \
+  --preview-window=up:3 \
+  | cut -d'|' -f1)
+
+# If user selected a target, move the window
+if [ -n "$target" ]; then
+  # Move current window to target position
+  tmux move-window -s "$current_window" -t "$target"
+
+  # Switch to the newly positioned window
+  tmux select-window -t "$target"
+
+  echo "Moved window #$current_window to position #$target"
+fi
