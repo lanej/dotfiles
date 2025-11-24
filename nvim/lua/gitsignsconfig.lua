@@ -32,10 +32,11 @@ require('gitsigns').setup({
   end,
 })
 
--- Subtle inline diff highlighting using background dimming instead of foreground colors
-vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#3b4252', fg = 'NONE' })
-vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#3b4252', fg = 'NONE' })
-vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#3b4252', fg = 'NONE' })
+-- Very subtle inline diff highlighting using Nord palette tints
+-- Base background is nord0 (#2E3440), these are barely-tinted versions
+vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#343B44', fg = 'NONE' })       -- Subtle green tint
+vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#353642', fg = 'NONE' })    -- Subtle red tint
+vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#373C44', fg = 'NONE' })    -- Subtle yellow tint
 
 vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>gl', require('gitsigns').blame_line, { silent = true, noremap = true })
