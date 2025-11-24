@@ -17,8 +17,8 @@ target=$(echo "$windows" | fzf \
   --header="Move window '$current_name' (#$current_window) to position:" \
   --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
   --exit-0 \
-  --preview "echo 'Window {} will move to this position'" \
-  --preview-window=up:3 \
+  --preview "echo {} | cut -d'|' -f1 | xargs -I {} tmux capture-pane -ep -t {} -S -30" \
+  --preview-window=right:60% \
   | cut -d'|' -f1)
 
 # If user selected a target, move the window
