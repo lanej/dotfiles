@@ -4,6 +4,25 @@ require('gitsigns').setup({
       text = '^',
     },
   },
+  -- Automatically set base to origin/HEAD (main/master) on BufEnter
+  on_attach = function(bufnr)
+    local gitsigns = require('gitsigns')
+
+    -- Get the default branch (origin/HEAD -> origin/main or origin/master)
+    local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
+    if origin_head and origin_head ~= '' then
+      -- Extract just the branch name (e.g., "refs/remotes/origin/main" -> "origin/main")
+      local default_branch = origin_head:match('refs/remotes/(.*)')
+      if default_branch then
+        -- Get merge base between current branch and default branch
+        local merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
+        if merge_base and merge_base ~= '' then
+          -- Set base to the merge-base commit
+          gitsigns.change_base(merge_base, true) -- true = global (affects all buffers)
+        end
+      end
+    end
+  end,
 })
 
 vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
@@ -17,3 +36,23 @@ vim.keymap.set('n', '<leader>hR', require('gitsigns').reset_buffer, { silent = t
 vim.keymap.set('n', '<leader>hu', require('gitsigns').undo_stage_hunk, { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>hU', require('gitsigns').reset_buffer_index, { silent = true, noremap = true })
 vim.keymap.set('n', 'vh', require('gitsigns').select_hunk, { silent = true, noremap = true })
+
+-- Toggle between comparing against HEAD (uncommitted changes) and merge-base (branch changes)
+vim.keymap.set('n', '<leader>gb', function()
+  require('gitsigns').change_base(nil, true) -- Reset to default (HEAD/index)
+  vim.notify('Gitsigns: comparing against HEAD (uncommitted changes)', vim.log.levels.INFO)
+end, { silent = true, noremap = true, desc = 'Compare against HEAD' })
+
+vim.keymap.set('n', '<leader>gB', function()
+  local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
+  if origin_head and origin_head ~= '' then
+    local default_branch = origin_head:match('refs/remotes/(.*)')
+    if default_branch then
+      local merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
+      if merge_base and merge_base ~= '' then
+        require('gitsigns').change_base(merge_base, true)
+        vim.notify('Gitsigns: comparing against ' .. default_branch .. ' (branch changes)', vim.log.levels.INFO)
+      end
+    end
+  end
+end, { silent = true, noremap = true, desc = 'Compare against default branch' })
