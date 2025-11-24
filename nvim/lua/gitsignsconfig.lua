@@ -4,8 +4,8 @@ require('gitsigns').setup({
       text = '^',
     },
   },
-  -- Enable inline diff highlighting
-  word_diff = false, -- Set to true to always show word-level diffs
+  -- Enable inline diff highlighting by default
+  word_diff = true, -- Show word-level diffs by default (toggle with <leader>hd)
   diff_opts = {
     internal = true, -- Use internal diff library for better performance
   },
