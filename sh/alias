@@ -141,6 +141,10 @@ f() {
 	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
+lsearch() {
+	lancer search "$1" | glow
+}
+
 fkill() {
 	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
 
