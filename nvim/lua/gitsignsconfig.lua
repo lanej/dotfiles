@@ -4,13 +4,13 @@ require('gitsigns').setup({
       text = '^',
     },
   },
-  -- Enable inline diff highlighting by default
+  -- Enable inline diff highlighting by default (background mode)
   word_diff = true, -- Show word-level diffs by default (toggle with <leader>hd)
   diff_opts = {
     internal = true, -- Use internal diff library for better performance
   },
-  -- Show deleted lines as virtual text
-  show_deleted = true,
+  -- Don't show deleted lines as virtual text by default (toggle with <leader>hD)
+  show_deleted = false,
   -- Automatically set base to origin/HEAD (main/master) on BufEnter
   on_attach = function(bufnr)
     local gitsigns = require('gitsigns')
