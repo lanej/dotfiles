@@ -2118,8 +2118,21 @@ require("lazy").setup({
 					vim.notify("No existing content found, generating fresh message", vim.log.levels.INFO)
 				end
 
-				-- Get the staged diff
-				local diff = vim.fn.system("git diff --cached")
+				-- Get the git repository root
+				local git_root = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
+				if vim.v.shell_error ~= 0 then
+					vim.notify("Failed to find git root", vim.log.levels.ERROR)
+					return
+				end
+
+				-- Get the staged diff from git root
+				local diff = vim.fn.system("git -C " .. vim.fn.shellescape(git_root) .. " diff --cached")
+
+				-- Debug: show diff info
+				vim.notify("Git root: " .. git_root .. " | Diff length: " .. #diff .. " chars", vim.log.levels.INFO)
+				if #diff < 200 then
+					vim.notify("Full diff: " .. vim.fn.trim(diff):gsub("\n", "\\n"), vim.log.levels.WARN)
+				end
 
 				-- Build prompt with buffer content and diff
 				local has_existing_content = current_content ~= ""
