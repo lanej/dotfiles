@@ -11,8 +11,7 @@ tmux capture-pane -p -S - > "$tmpfile"
 
 # Open in Neovim popup for easy selection
 # Use popup instead of new window for less disruption
-# Match dimensions of prefix+P popup (no dimensions = tmux default)
-tmux popup -E "nvim \
+tmux popup -E -w 90% -h 90% "nvim \
   -c 'set buftype=nofile' \
   -c 'set bufhidden=wipe' \
   -c 'set noswapfile' \
