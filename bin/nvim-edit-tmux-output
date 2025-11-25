@@ -1,6 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Capture current tmux pane content and open in Neovim for easy selection/copying
 
-set -x
+set -euo pipefail
 
-file=$(mktemp).sh; tmux capture-pane -pE -"$(tputs lines)" > "$file";
-tmux new-window -n:paneview "$HOME/.local/bin/nvim '+ normal G $' $file"
+# Create temp file
+tmpfile=$(mktemp /tmp/tmux-pane-output.XXXXXX)
+
+# Capture entire scrollback history of current pane
+tmux capture-pane -ep -S - > "$tmpfile"
+
+# Open in Neovim popup for easy selection
+# Use popup instead of new window for less disruption
+tmux popup -E -w 90% -h 90% "nvim \
+  -c 'set buftype=nofile' \
+  -c 'set bufhidden=wipe' \
+  -c 'set noswapfile' \
+  -c 'set filetype=tmux-output' \
+  -c 'nnoremap <buffer> q :q!<CR>' \
+  -c 'nnoremap <buffer> <Esc> :q!<CR>' \
+  -c 'normal! G' \
+  '$tmpfile'; rm -f '$tmpfile'"
