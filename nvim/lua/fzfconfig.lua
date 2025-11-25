@@ -501,16 +501,14 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					vim.cmd("edit " .. vim.fn.fnameescape(file))
 
 					-- Get the first changed line from git diff
-					local base_ref_cmd = [[
-						git merge-base --fork-point $(
-							git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-							(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-							echo "origin/master"
-						) 2>/dev/null ||
-						git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-						(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-						echo "origin/master"
-					]]
+					local base_ref_cmd = "git merge-base --fork-point $(" ..
+						"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+						"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+						"echo \"origin/master\"" ..
+					") 2>/dev/null || " ..
+					"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+					"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+					"echo \"origin/master\""
 					local diff_cmd = "git diff $(" .. base_ref_cmd .. ") --unified=0 -- " .. vim.fn.shellescape(file) .. " | grep -E '^@@' | head -1"
 					local hunk_header = vim.fn.system(diff_cmd)
 
@@ -536,16 +534,16 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			},
 			query = query or "",
 			prompt = "ChangedFiles(" .. rel_path .. ")❯ ",
-			preview = [[echo {} | xargs -n 1 -I {} git diff $(
-				git merge-base --fork-point $(
-					git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-					(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-					echo "origin/master"
-				) 2>/dev/null ||
-				git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-				(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-				echo "origin/master"
-			) --shortstat --no-prefix -U25 -- {} | delta]],
+			preview = "echo {} | xargs -n 1 -I {} git diff $(" ..
+				"git merge-base --fork-point $(" ..
+					"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+					"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \\\"origin/main\\\") || " ..
+					"echo \\\"origin/master\\\"" ..
+				") 2>/dev/null || " ..
+				"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+				"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \\\"origin/main\\\") || " ..
+				"echo \\\"origin/master\\\"" ..
+			") --shortstat --no-prefix -U25 -- {} | delta",
 			fn_transform = function(x)
 				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
 			end,
