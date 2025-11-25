@@ -2111,6 +2111,13 @@ require("lazy").setup({
 				end
 				local current_content = table.concat(content_lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
 
+				-- Debug: show what content was found
+				if current_content ~= "" then
+					vim.notify("Found existing content (" .. #current_content .. " chars): " .. vim.fn.trim(current_content:sub(1, 60)) .. (#current_content > 60 and "..." or ""), vim.log.levels.INFO)
+				else
+					vim.notify("No existing content found, generating fresh message", vim.log.levels.INFO)
+				end
+
 				-- Get the staged diff
 				local diff = vim.fn.system("git diff --cached")
 
