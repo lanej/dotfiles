@@ -488,6 +488,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		end
 
 		fzf.fzf_exec(git_cmd, {
+			cwd = git_root,
 			actions = {
 				["default"] = function(selected, opts)
 					if not selected or #selected == 0 then
