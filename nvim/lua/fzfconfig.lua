@@ -473,11 +473,11 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		local base_cmd = "git diff $(" ..
 			"git merge-base --fork-point $(" ..
 				"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-				"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+				"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \"origin/main\") || " ..
 				"echo \"origin/master\"" ..
 			") 2>/dev/null || " ..
 			"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-			"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+			"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \"origin/main\") || " ..
 			"echo \"origin/master\"" ..
 		") --name-only --diff-filter=AM"
 		local git_cmd
@@ -503,11 +503,11 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					-- Get the first changed line from git diff
 					local base_ref_cmd = "git merge-base --fork-point $(" ..
 						"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-						"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+						"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \"origin/main\") || " ..
 						"echo \"origin/master\"" ..
 					") 2>/dev/null || " ..
 					"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-					"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+					"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \"origin/main\") || " ..
 					"echo \"origin/master\""
 					local diff_cmd = "git diff $(" .. base_ref_cmd .. ") --unified=0 -- " .. vim.fn.shellescape(file) .. " | grep -E '^@@' | head -1"
 					local hunk_header = vim.fn.system(diff_cmd)
@@ -537,11 +537,11 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			preview = "echo {} | xargs -n 1 -I {} git diff $(" ..
 				"git merge-base --fork-point $(" ..
 					"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-					"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \\\"origin/main\\\") || " ..
+					"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \\\"origin/main\\\") || " ..
 					"echo \\\"origin/master\\\"" ..
 				") 2>/dev/null || " ..
 				"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
-				"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \\\"origin/main\\\") || " ..
+				"(git rev-parse --verify refs/remotes/origin/main 2>/dev/null && echo \\\"origin/main\\\") || " ..
 				"echo \\\"origin/master\\\"" ..
 			") --shortstat --no-prefix -U25 -- {} | delta",
 			fn_transform = function(x)
