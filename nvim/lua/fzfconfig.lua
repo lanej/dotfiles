@@ -470,16 +470,16 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		-- Build git diff command with optional path filter
 		-- Try fork-point first, then fall back to default branch
 		-- Fallback chain: fork-point → origin/HEAD → origin/main → origin/master
-		local base_cmd = [[git diff $(
-			git merge-base --fork-point $(
-				git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-				(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-				echo "origin/master"
-			) 2>/dev/null ||
-			git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' ||
-			(git rev-parse --verify origin/main >/dev/null 2>&1 && echo "origin/main") ||
-			echo "origin/master"
-		) --name-only --diff-filter=AM]]
+		local base_cmd = "git diff $(" ..
+			"git merge-base --fork-point $(" ..
+				"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+				"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+				"echo \"origin/master\"" ..
+			") 2>/dev/null || " ..
+			"git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || " ..
+			"(git rev-parse --verify origin/main >/dev/null 2>&1 && echo \"origin/main\") || " ..
+			"echo \"origin/master\"" ..
+		") --name-only --diff-filter=AM"
 		local git_cmd
 		if is_project_root or rel_dir_from_root == "" then
 			git_cmd = base_cmd
