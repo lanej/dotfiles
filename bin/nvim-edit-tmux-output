@@ -6,8 +6,8 @@ set -euo pipefail
 # Create temp file
 tmpfile=$(mktemp /tmp/tmux-pane-output.XXXXXX)
 
-# Capture entire scrollback history of current pane
-tmux capture-pane -ep -S - > "$tmpfile"
+# Capture entire scrollback history of current pane (strip ANSI color codes)
+tmux capture-pane -p -S - > "$tmpfile"
 
 # Open in Neovim popup for easy selection
 # Use popup instead of new window for less disruption
