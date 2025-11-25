@@ -6,12 +6,16 @@ set -euo pipefail
 # Create temp file
 tmpfile=$(mktemp /tmp/tmux-pane-output.XXXXXX)
 
+# Get current pane dimensions
+pane_width=$(tmux display-message -p '#{pane_width}')
+pane_height=$(tmux display-message -p '#{pane_height}')
+
 # Capture entire scrollback history of current pane (strip ANSI color codes)
 tmux capture-pane -p -S - > "$tmpfile"
 
 # Open in Neovim popup for easy selection
 # Use popup instead of new window for less disruption
-tmux popup -E -w 90% -h 90% "nvim \
+tmux popup -E -w "$pane_width" -h "$pane_height" "nvim \
   -c 'set buftype=nofile' \
   -c 'set bufhidden=wipe' \
   -c 'set noswapfile' \
