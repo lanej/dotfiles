@@ -32,24 +32,12 @@ require('gitsigns').setup({
   end,
 })
 
--- Set highlights after a delay to ensure they override colorscheme defaults
-vim.defer_fn(function()
-  -- Disable line-level backgrounds entirely, only show word-level diffs
-  -- The gutter signs are sufficient for indicating which lines changed
-  vim.api.nvim_set_hl(0, 'GitSignsAddLn', { bg = 'NONE', fg = 'NONE' })
-  vim.api.nvim_set_hl(0, 'GitSignsChangeLn', { bg = 'NONE', fg = 'NONE' })
-  vim.api.nvim_set_hl(0, 'GitSignsDeleteLn', { bg = 'NONE', fg = 'NONE' })
-  vim.api.nvim_set_hl(0, 'GitSignsAdd', { bg = 'NONE', fg = 'NONE' })
-  vim.api.nvim_set_hl(0, 'GitSignsChange', { bg = 'NONE', fg = 'NONE' })
-  vim.api.nvim_set_hl(0, 'GitSignsDelete', { bg = 'NONE', fg = 'NONE' })
-
-  -- Subtle but visible word-level diff highlighting using Nord palette
-  -- Base background is nord0 (#2E3440), these are moderately tinted
-  -- Gutter signs already indicate line-level changes, so we focus on word-level precision
-  vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#3B4252', fg = 'NONE' })       -- Visible green tint
-  vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#3B3E4C', fg = 'NONE' })    -- Visible red tint
-  vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#3C4050', fg = 'NONE' })    -- Visible yellow tint
-end, 100)
+-- Very subtle word-level diff highlighting using Nord palette tints
+-- Base background is nord0 (#2E3440), these are barely-tinted versions
+-- Gutter signs already indicate line-level changes, so we focus on word-level precision
+vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#343B44', fg = 'NONE' })       -- Subtle green tint
+vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#353642', fg = 'NONE' })    -- Subtle red tint
+vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#373C44', fg = 'NONE' })    -- Subtle yellow tint
 
 vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
 vim.keymap.set('n', '<leader>gl', require('gitsigns').blame_line, { silent = true, noremap = true })
