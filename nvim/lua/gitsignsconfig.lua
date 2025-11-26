@@ -9,8 +9,6 @@ require('gitsigns').setup({
   diff_opts = {
     internal = true, -- Use internal diff library for better performance
   },
-  -- Don't show deleted lines as virtual text by default (toggle with <leader>hD)
-  show_deleted = false,
   -- Automatically set base to origin/HEAD (main/master) on BufEnter
   on_attach = function(bufnr)
     local gitsigns = require('gitsigns')
