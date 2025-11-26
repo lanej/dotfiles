@@ -55,6 +55,7 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
+
 . "${HOME}/.profile"
 
 # Add custom completions and site-functions to fpath (must be before compinit)
@@ -283,6 +284,7 @@ if [[ -r "${HOME}/.claude/local/" ]]; then
   export PATH="$PATH:${HOME}/.claude/local"
 fi
 
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Claude Code Privacy & Context Management
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -343,3 +345,4 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
     nvm "$@"
   }
 fi
+
