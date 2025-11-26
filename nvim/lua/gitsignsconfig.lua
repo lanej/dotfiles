@@ -43,12 +43,12 @@ vim.defer_fn(function()
   vim.api.nvim_set_hl(0, 'GitSignsChange', { bg = 'NONE', fg = 'NONE' })
   vim.api.nvim_set_hl(0, 'GitSignsDelete', { bg = 'NONE', fg = 'NONE' })
 
-  -- Extremely subtle word-level diff highlighting using Nord palette tints
-  -- Base background is nord0 (#2E3440), these are barely-visible tints
+  -- Subtle but visible word-level diff highlighting using Nord palette
+  -- Base background is nord0 (#2E3440), these are moderately tinted
   -- Gutter signs already indicate line-level changes, so we focus on word-level precision
-  vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#303740', fg = 'NONE' })       -- Barely-visible green tint
-  vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#30363F', fg = 'NONE' })    -- Barely-visible red tint
-  vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#313740', fg = 'NONE' })    -- Barely-visible yellow tint
+  vim.api.nvim_set_hl(0, 'GitSignsAddInline', { bg = '#3B4252', fg = 'NONE' })       -- Visible green tint
+  vim.api.nvim_set_hl(0, 'GitSignsDeleteInline', { bg = '#3B3E4C', fg = 'NONE' })    -- Visible red tint
+  vim.api.nvim_set_hl(0, 'GitSignsChangeInline', { bg = '#3C4050', fg = 'NONE' })    -- Visible yellow tint
 end, 100)
 
 vim.keymap.set('n', '<leader>gw', require('gitsigns').stage_buffer, { silent = true, noremap = true })
