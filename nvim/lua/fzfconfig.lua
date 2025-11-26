@@ -435,51 +435,13 @@ vim.keymap.set({ "n" }, "<leader>dc", function()
 end, { noremap = true, silent = true })
 
 -- Keymap to list changed files (diff from merge-base)
--- Start with cwd, <C-g> toggles to project root
 vim.keymap.set({ "n" }, "<leader>cf", function()
-	local fzf = require("fzf-lua")
-
-	-- Use current working directory as default
-	local cwd_dir = vim.fn.getcwd()
-
-	-- Find git root
-	local git_root_cmd = vim.fn.systemlist("git -C " .. vim.fn.shellescape(cwd_dir) .. " rev-parse --show-toplevel 2>/dev/null")
-	local git_root = vim.v.shell_error == 0 and git_root_cmd[1] or cwd_dir
-
-	-- Calculate relative path from git root for filtering
-	local rel_dir_from_root = ""
-	if git_root and cwd_dir:sub(1, #git_root) == git_root then
-		rel_dir_from_root = cwd_dir:sub(#git_root + 2) -- +2 to skip the trailing slash
-	end
-
-	-- State to track current mode
-	local is_project_root = false
-
-	local function run_changed_files(query)
-		-- Calculate relative path for display
-		local rel_path
-		if is_project_root then
-			rel_path = "root"
-		else
-			rel_path = vim.fn.fnamemodify(cwd_dir, ":~:.")
-			if rel_path == "." then
-				rel_path = vim.fn.fnamemodify(cwd_dir, ":t")
-			end
-		end
-
-		-- Build git diff command with optional path filter
-		local base_cmd = "git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only --diff-filter=AM"
-		local git_cmd
-		if is_project_root or rel_dir_from_root == "" then
-			git_cmd = base_cmd
-		else
-			git_cmd = base_cmd .. " -- " .. vim.fn.shellescape(rel_dir_from_root)
-		end
-
-		fzf.fzf_exec(git_cmd, {
-			cwd = git_root,
+	require("fzf-lua").fzf_exec(
+		"git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only --diff-filter=AM",
+		{
+			prompt = "ChangedFiles❯ ",
 			actions = {
-				["default"] = function(selected, opts)
+				["default"] = function(selected)
 					if not selected or #selected == 0 then
 						return
 					end
@@ -505,25 +467,13 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 						end
 					end
 				end,
-				["ctrl-g"] = function(selected, opts)
-					-- Toggle mode and preserve query
-					is_project_root = not is_project_root
-					local current_query = (opts and opts.last_query) or ""
-					vim.schedule(function()
-						run_changed_files(current_query)
-					end)
-				end,
 			},
-			query = query or "",
-			prompt = "ChangedFiles(" .. rel_path .. ")❯ ",
 			preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --shortstat --no-prefix -U25 -- {} | delta",
 			fn_transform = function(x)
 				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
 			end,
-		})
-	end
-
-	run_changed_files()
+		}
+	)
 end, {
 	noremap = true,
 	silent = true,
