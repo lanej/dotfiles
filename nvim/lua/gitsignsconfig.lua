@@ -32,6 +32,12 @@ require('gitsigns').setup({
   end,
 })
 
+-- Disable line-level backgrounds entirely, only show word-level diffs
+-- The gutter signs are sufficient for indicating which lines changed
+vim.api.nvim_set_hl(0, 'GitSignsAddLn', { bg = 'NONE', fg = 'NONE' })
+vim.api.nvim_set_hl(0, 'GitSignsChangeLn', { bg = 'NONE', fg = 'NONE' })
+vim.api.nvim_set_hl(0, 'GitSignsDeleteLn', { bg = 'NONE', fg = 'NONE' })
+
 -- Extremely subtle word-level diff highlighting using Nord palette tints
 -- Base background is nord0 (#2E3440), these are barely-visible tints
 -- Gutter signs already indicate line-level changes, so we focus on word-level precision
