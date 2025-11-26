@@ -1,6 +1,6 @@
 ---
 name: bigquery
-description: Use bigquery CLI for Google BigQuery operations including SQL queries with cost awareness, dataset/table management, named query templates, and MCP/LSP server integration for semantic search and data analysis.
+description: Use bigquery CLI (instead of `bq`) for all Google BigQuery and GCP data warehouse operations including SQL query execution, data ingestion (streaming insert, bulk load, JSONL/CSV/Parquet), data extraction/export, dataset/table/view management, external tables, schema operations, query templates, cost estimation with dry-run, authentication with gcloud, data pipelines, ETL workflows, and MCP/LSP server integration for AI-assisted querying and editor support. Modern Rust-based replacement for the Python `bq` CLI with faster startup, better cost awareness, and streaming support. Handles both small-scale streaming inserts (<1000 rows) and large-scale bulk loading (>10MB files), with support for Cloud Storage integration.
 ---
 # BigQuery CLI Skill
 
@@ -154,100 +154,267 @@ bigquery tables describe my-project.my-dataset.my-table --format json
 # - Table metadata
 ```
 
-### Inserting Rows
+### Inserting Rows (Small Datasets)
+
+**Best for <1000 rows**. Uses streaming insert API for immediate availability.
+
+#### JSONL (Newline-Delimited JSON) Format
+
+**From JSONL File:**
 
 ```bash
-# Insert single object from inline JSON
-bigquery tables insert my-project.dataset.table \
-  --json '{"id": 1, "name": "Alice", "created_at": "2025-01-15T10:00:00"}'
+# Create sample JSONL file
+cat > users.jsonl <<EOF
+{"id": "1", "name": "Alice Johnson", "email": "alice@example.com", "age": 30}
+{"id": "2", "name": "Bob Smith", "email": "bob@example.com", "age": 25}
+{"id": "3", "name": "Charlie Brown", "email": "charlie@example.com", "age": 35}
+EOF
 
-# Insert array of objects
-bigquery tables insert my-project.dataset.table \
-  --json '[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]'
+# Insert from JSONL file
+bigquery tables insert my-project.dataset.users \
+  --data users.jsonl --format json
+```
 
-# Insert from file
-bigquery tables insert my-project.dataset.table --data data.json
+**From JSONL Stream (stdin):**
 
-# Insert from stdin
-cat data.json | bigquery tables insert my-project.dataset.table --stdin
+```bash
+# Stream from command output
+echo '{"id": "1", "name": "Alice", "email": "alice@example.com"}' | \
+  bigquery tables insert my-project.dataset.users --data - --format json
 
-# CSV format
-bigquery tables insert my-project.dataset.table \
-  --data data.csv \
-  --format csv
+# Stream from multiple sources (heredoc)
+cat << EOF | bigquery tables insert my-project.dataset.users --data - --format json
+{"id": "1", "name": "Alice", "email": "alice@example.com", "age": 30}
+{"id": "2", "name": "Bob", "email": "bob@example.com", "age": 25}
+{"id": "3", "name": "Charlie", "email": "charlie@example.com", "age": 35}
+EOF
 
-# Dry run (validate without inserting)
-bigquery tables insert my-project.dataset.table \
-  --json '{"id": 1}' \
-  --dry-run
+# Stream from application output
+my-etl-tool --output jsonl | bigquery tables insert my-project.dataset.events --data -
+
+# Stream from compressed file
+gunzip -c logs.jsonl.gz | bigquery tables insert my-project.dataset.logs --data -
+
+# Stream from jq transformation
+cat raw_data.json | jq -c '.records[]' | \
+  bigquery tables insert my-project.dataset.processed --data -
+```
+
+**JSONL Format Requirements:**
+- Each line is a separate JSON object
+- Empty lines are automatically skipped
+- No commas between objects
+- Ideal for streaming and large datasets
+- Format: `{"field1":"value1","field2":"value2"}\n`
+
+#### CSV Format
+
+**From CSV File:**
+
+```bash
+# Create sample CSV file
+cat > users.csv <<EOF
+id,name,email,age
+1,Alice Johnson,alice@example.com,30
+2,Bob Smith,bob@example.com,25
+3,"Charlie Brown, Jr.",charlie@example.com,35
+EOF
+
+# Insert from CSV file
+bigquery tables insert my-project.dataset.users \
+  --data users.csv --format csv
+```
+
+**From CSV Stream (stdin):**
+
+```bash
+# Stream from heredoc
+cat << EOF | bigquery tables insert my-project.dataset.users --data - --format csv
+id,name,email,age
+1,Alice Johnson,alice@example.com,30
+2,Bob Smith,bob@example.com,25
+3,Charlie Brown,charlie@example.com,35
+EOF
+
+# Stream from application output
+./generate_report.sh | bigquery tables insert my-project.dataset.reports --data - --format csv
+
+# Stream from compressed CSV
+gunzip -c data.csv.gz | bigquery tables insert my-project.dataset.imports --data -
+
+# Stream from curl/API response
+curl -s https://api.example.com/export.csv | \
+  bigquery tables insert my-project.dataset.api_data --data - --format csv
+
+# Transform and stream CSV
+cat raw.csv | tail -n +2 | awk '{print tolower($0)}' | \
+  bigquery tables insert my-project.dataset.cleaned --data - --format csv
+```
+
+**CSV Format Requirements:**
+- First row must contain column headers matching BigQuery table schema
+- Values are inserted as strings (BigQuery will coerce types)
+- Supports quoted fields, escaped quotes, and newlines (RFC 4180 compliant)
+- Headers are case-sensitive and must match table column names
+
+#### Additional Insert Options
+
+```bash
+# Insert inline JSON (single object)
+bigquery tables insert my-project.dataset.users \
+  --json '{"id": "1", "name": "Alice", "email": "alice@example.com"}'
+
+# Insert inline JSON array
+bigquery tables insert my-project.dataset.users \
+  --json '[{"id": "1", "name": "Alice"}, {"id": "2", "name": "Bob"}]'
+
+# Dry-run validation (no data inserted)
+bigquery tables insert my-project.dataset.users \
+  --data users.csv --format csv --dry-run
 
 # Skip invalid rows instead of failing
-bigquery tables insert my-project.dataset.table \
-  --data data.json \
-  --skip-invalid
+bigquery tables insert my-project.dataset.users \
+  --data users.csv --format csv --skip-invalid
 
-# Ignore unknown fields
-bigquery tables insert my-project.dataset.table \
-  --data data.json \
-  --ignore-unknown
+# Ignore unknown fields in data
+bigquery tables insert my-project.dataset.users \
+  --data users.csv --format csv --ignore-unknown
 
-# Automation mode (skip confirmations)
-bigquery tables insert my-project.dataset.table \
-  --data data.json \
-  --yes
+# Combine options for production pipelines
+cat production_data.jsonl | \
+  bigquery tables insert my-project.dataset.production \
+    --data - --format json \
+    --skip-invalid \
+    --ignore-unknown
 ```
 
-**Insert Options**:
+**Insert Options:**
 - `--json <JSON>`: Inline JSON data (object or array)
-- `--data <PATH>`: Path to data file (JSON or CSV)
-- `--stdin`: Read from stdin
+- `--data <PATH>`: Path to data file, or `-` for stdin
 - `--format <FORMAT>`: Data format (json or csv, default: json)
 - `--dry-run`: Validate without inserting
-- `--skip-invalid`: Skip invalid rows
-- `--ignore-unknown`: Ignore unknown fields
+- `--skip-invalid`: Skip invalid rows instead of failing
+- `--ignore-unknown`: Ignore unknown fields in data
 - `--yes`: Skip confirmation prompts
 
-### Loading Data
+### Loading Data (Large Datasets)
+
+**Best for >10MB files or >1000 rows**. Uses BigQuery load jobs.
+
+**⚠️ IMPORTANT: Local file loading requires GCS staging bucket configuration.**
+- If you get "The specified bucket does not exist" error, use `tables insert` for datasets <1000 rows instead
+- For larger datasets, upload to GCS first, then use `bigquery tables load gs://...`
 
 ```bash
-# Load CSV from local file (default format)
-bigquery tables load my-project.dataset.table data.csv
+# Load from Cloud Storage URI (RECOMMENDED - no bucket config needed)
+bigquery tables load my-project.dataset.users \
+  gs://my-bucket/data.csv --format csv
 
-# Load from Cloud Storage
-bigquery tables load my-project.dataset.table gs://bucket/data.csv
+# Load from local CSV file (requires GCS staging bucket configured)
+bigquery tables load my-project.dataset.users data.csv --format csv
 
-# Specify format explicitly
-bigquery tables load my-project.dataset.table data.json --format json
-bigquery tables load my-project.dataset.table data.parquet --format parquet
-bigquery tables load my-project.dataset.table data.avro --format avro
-bigquery tables load my-project.dataset.table data.orc --format orc
+# Load with schema auto-detection
+bigquery tables load my-project.dataset.new_table data.csv \
+  --format csv --autodetect
 
-# Write disposition: append (default) or replace
-bigquery tables load my-project.dataset.table data.csv --write-disposition append
-bigquery tables load my-project.dataset.table data.csv --write-disposition replace
+# Load with replace write disposition (truncates table first)
+bigquery tables load my-project.dataset.users data.csv \
+  --format csv --write-disposition replace
 
-# Dry run
-bigquery tables load my-project.dataset.table data.csv --dry-run
+# Load JSON file
+bigquery tables load my-project.dataset.events events.json \
+  --format json
 
-# Allow bad records
-bigquery tables load my-project.dataset.table data.csv --max-bad-records 10
+# Supported formats: csv, json, avro, parquet, orc
+bigquery tables load my-project.dataset.table data.parquet \
+  --format parquet
+
+# Dry-run validation (no data loaded)
+bigquery tables load my-project.dataset.users data.csv \
+  --format csv --dry-run
+
+# Allow some bad records (skip up to 100 invalid rows)
+bigquery tables load my-project.dataset.users data.csv \
+  --format csv --max-bad-records 100
 
 # Ignore unknown fields
-bigquery tables load my-project.dataset.table data.json \
-  --format json \
-  --ignore-unknown
+bigquery tables load my-project.dataset.users data.csv \
+  --format csv --ignore-unknown
 
-# Automation mode
-bigquery tables load my-project.dataset.table data.csv --yes
+# Skip confirmation prompts (for automation/CI)
+bigquery tables load my-project.dataset.users data.csv \
+  --format csv --write-disposition replace --yes
 ```
 
-**Load Options**:
+**Load Job Features:**
+- **GCS Staging Bucket Required:** Local file loading needs GCS bucket configuration
+- Real-time progress tracking with exponential backoff
+- Automatic cleanup of temporary files after completion
+- Write modes: `append` (default) or `replace` (truncate first)
+- Safety confirmations for destructive operations
+- Configurable error tolerance with `--max-bad-records`
+
+**When to Use:**
+- Large datasets (>1000 rows or >10MB)
+- Data already in Cloud Storage
+- Bulk data migrations
+
+**When NOT to Use:**
+- Small datasets (<1000 rows) → Use `tables insert` instead (no GCS required)
+- Don't have GCS staging bucket configured → Use `tables insert` or upload to GCS first
+
+**Load Options:**
 - `--format <FORMAT>`: csv, json, avro, parquet, orc (default: csv)
 - `--write-disposition <DISPOSITION>`: append or replace (default: append)
+- `--autodetect`: Auto-detect schema from source files
 - `--dry-run`: Validate without loading
 - `--max-bad-records <N>`: Maximum bad records before failing
 - `--ignore-unknown`: Ignore unknown fields
 - `--yes`: Skip confirmation prompts
+
+### Extracting Data
+
+Export table data to Cloud Storage in various formats:
+
+```bash
+# Extract table to Cloud Storage as CSV
+bigquery tables extract my-project.dataset.users \
+  gs://my-bucket/exports/users.csv --format csv
+
+# Extract as JSON
+bigquery tables extract my-project.dataset.events \
+  gs://my-bucket/exports/events-*.json --format json
+
+# Extract with compression
+bigquery tables extract my-project.dataset.large_table \
+  gs://my-bucket/exports/data-*.csv.gz --format csv --compression gzip
+
+# Extract as Avro with Snappy compression
+bigquery tables extract my-project.dataset.events \
+  gs://my-bucket/exports/events-*.avro --format avro --compression snappy
+
+# Extract as Parquet
+bigquery tables extract my-project.dataset.analytics \
+  gs://my-bucket/exports/analytics.parquet --format parquet
+
+# CSV with custom delimiter and header
+bigquery tables extract my-project.dataset.data \
+  gs://my-bucket/data.csv \
+  --format csv \
+  --field-delimiter "|" \
+  --print-header
+
+# Dry-run to validate configuration
+bigquery tables extract my-project.dataset.users \
+  gs://my-bucket/users.csv --format csv --dry-run
+
+# Skip confirmation prompt
+bigquery tables extract my-project.dataset.large \
+  gs://my-bucket/export.csv --format csv --yes
+```
+
+**Supported Formats:** CSV, JSON (newline-delimited), Avro, Parquet
+**Compression:** none, gzip, snappy (Avro/Parquet only)
 
 ### External Tables
 
@@ -743,19 +910,23 @@ bigquery query "
 ### Workflow 6: Real-Time Data Insertion
 
 ```bash
-# 1. Insert single event
+# 1. Insert single event (inline JSON)
 bigquery tables insert my-project.dataset.events \
   --json '{"user_id": "U123", "event": "click", "timestamp": "2025-01-15T10:00:00Z"}'
 
-# 2. Insert batch from file
-cat events.json | bigquery tables insert my-project.dataset.events --stdin
+# 2. Stream JSONL from application
+my-app --output jsonl | bigquery tables insert my-project.dataset.events --data - --format json
 
-# 3. Insert with error handling
+# 3. Insert batch from JSONL file
 bigquery tables insert my-project.dataset.events \
-  --data batch.json \
-  --skip-invalid \
-  --ignore-unknown \
-  --yes
+  --data events.jsonl --format json
+
+# 4. Stream with transformation and error handling
+cat raw_events.json | jq -c '.events[]' | \
+  bigquery tables insert my-project.dataset.events \
+    --data - --format json \
+    --skip-invalid \
+    --ignore-unknown
 ```
 
 ## Best Practices
@@ -795,12 +966,16 @@ bigquery tables insert my-project.dataset.events \
 
 ### Data Loading
 
-1. **Use appropriate formats**: Choose format based on data structure
-2. **Validate before loading**: Use `--dry-run` flag
-3. **Handle bad records**: Set `--max-bad-records` for messy data
-4. **Choose write disposition**: `replace` for full refresh, `append` for incremental
-5. **Use external tables**: For data that changes frequently in GCS
-6. **Batch inserts**: Prefer `load` over `insert` for large datasets
+1. **Choose the right method**:
+   - Use `insert` for <1000 rows (streaming insert API, immediate availability)
+   - Use `load` for >10MB files or >1000 rows (load jobs with GCS upload)
+2. **Use JSONL for streaming**: Newline-delimited JSON is ideal for streaming pipelines
+3. **Stream from stdin**: Use `--data -` to pipe data from applications or transformations
+4. **Validate before loading**: Use `--dry-run` flag to test configurations
+5. **Handle bad records**: Set `--max-bad-records` for messy data
+6. **Choose write disposition**: `replace` for full refresh, `append` for incremental
+7. **Use external tables**: For data that changes frequently in GCS (no data copying)
+8. **Use appropriate formats**: CSV for simple data, JSON/JSONL for complex, Parquet/Avro for large datasets
 
 ### MCP Server
 
@@ -917,6 +1092,29 @@ bigquery templates search "keyword"
 bigquery templates run exact-template-name
 ```
 
+### Issue: "The specified bucket does not exist"
+
+**Cause**: `bigquery tables load` with a local file requires GCS staging bucket configuration.
+
+**Solutions**:
+
+1. **Preferred for small datasets (<1000 rows)**: Use `tables insert` instead (no GCS required)
+   ```bash
+   bigquery tables insert my-project.dataset.table \
+     --data /tmp/data.jsonl \
+     --format json
+   ```
+
+2. **For larger datasets**: Upload to GCS first, then load
+   ```bash
+   gsutil cp /tmp/large-file.jsonl gs://my-bucket/
+   bigquery tables load my-project.dataset.table \
+     gs://my-bucket/large-file.jsonl \
+     --format json
+   ```
+
+3. **Last resort**: Configure GCS staging bucket in BigQuery CLI config (requires additional setup)
+
 ### Issue: "Invalid schema"
 
 **Solution**: Check schema format for external tables
@@ -983,13 +1181,16 @@ bigquery dry-run "SELECT ..."                # Estimate cost
 bigquery datasets list PROJECT               # List datasets
 
 # Tables
-bigquery tables list PROJECT.DATASET                    # List tables
-bigquery tables describe PROJECT.DATASET.TABLE         # Show schema
-bigquery tables insert TABLE --json '{"id": 1}'        # Insert rows
-bigquery tables load TABLE file.csv                    # Load data
-bigquery tables load TABLE gs://bucket/file.csv        # Load from GCS
-bigquery tables create-external TABLE --source-uri ... # External table
-bigquery tables update-external TABLE --source-uri ... # Update external
+bigquery tables list PROJECT.DATASET                          # List tables
+bigquery tables describe PROJECT.DATASET.TABLE               # Show schema
+bigquery tables insert TABLE --json '{"id": 1}'              # Insert rows (inline)
+bigquery tables insert TABLE --data file.jsonl --format json # Insert from JSONL
+cat data.jsonl | bigquery tables insert TABLE --data -       # Stream insert
+bigquery tables load TABLE file.csv                          # Load data (bulk)
+bigquery tables load TABLE gs://bucket/file.csv              # Load from GCS
+bigquery tables extract TABLE gs://bucket/output.csv         # Extract to GCS
+bigquery tables create-external TABLE --source-uri ...       # External table
+bigquery tables update-external TABLE --source-uri ...       # Update external
 
 # Templates
 bigquery templates list                              # List templates
@@ -1080,7 +1281,7 @@ gsutil cp /reports/weekly-*.json gs://reports-bucket/
 - `bigquery query` - Execute SQL with cost awareness
 - `bigquery dry-run` - Estimate query costs
 - `bigquery datasets list` - List datasets
-- `bigquery tables {list,describe,insert,load,create-external,update-external}` - Table operations
+- `bigquery tables {list,describe,insert,load,extract,create-external,update-external}` - Table operations
 - `bigquery templates {list,search,validate,run}` - Named templates
 - `bigquery mcp {stdio,http}` - MCP server modes
 - `bigquery lsp` - LSP server
@@ -1088,7 +1289,10 @@ gsutil cp /reports/weekly-*.json gs://reports-bucket/
 **Key features:**
 - Cost-aware query execution with confirmation prompts
 - Named query templates with parameter substitution
-- Direct row insertion and bulk loading
+- Streaming insert API for real-time data (<1000 rows)
+- Bulk load jobs for large datasets (>10MB or >1000 rows)
+- JSONL streaming support with stdin (`--data -`)
+- Data extraction to Cloud Storage (CSV, JSON, Avro, Parquet)
 - External table support for GCS data
 - MCP server with stdio and HTTP modes
 - LSP integration for editor support
@@ -1098,7 +1302,9 @@ gsutil cp /reports/weekly-*.json gs://reports-bucket/
 - Use `dry-run` to estimate costs before expensive queries
 - Create templates for frequently-used queries
 - Use `--yes` flag for automation and CI/CD
-- Prefer `load` over `insert` for large datasets
+- Use `insert` for <1000 rows, `load` for larger datasets
+- Use JSONL format for streaming pipelines
+- Stream from stdin with `--data -` for data transformations
 - Use external tables to avoid data duplication
 - Configure MCP for natural language query capabilities
 - Set up LSP in your editor for SQL development
