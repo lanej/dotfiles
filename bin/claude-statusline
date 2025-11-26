@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Claude Code status line with git status information (like starship)
+
+set -euo pipefail
+
+# Read JSON input from stdin
+input=$(cat)
+cwd=$(echo "$input" | jq -r '.workspace.current_dir')
+
+# Change to the working directory
+cd "$cwd" 2>/dev/null || true
+
+# Base info: user@host directory
+user=$(whoami)
+host=$(hostname -s)
+dir=$(basename "$cwd")
+
+# Start building the status line
+printf '\033[36m%s@%s \033[32m%s' "$user" "$host" "$dir"
+
+# Git information (if in a git repo)
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  # Get current branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+  if [ -n "$branch" ]; then
+    # Branch name in blue
+    printf ' \033[34m(%s' "$branch"
+
+    # Get git status info
+    git_status=""
+
+    # Check for upstream and ahead/behind counts
+    upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null || echo "")
+    if [ -n "$upstream" ]; then
+      ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo "0")
+      behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo "0")
+
+      if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
+        git_status="${git_status} \033[33m⇕⇡${ahead}⇣${behind}\033[34m"
+      elif [ "$ahead" -gt 0 ]; then
+        git_status="${git_status} \033[33m⇡${ahead}\033[34m"
+      elif [ "$behind" -gt 0 ]; then
+        git_status="${git_status} \033[33m⇣${behind}\033[34m"
+      fi
+    fi
+
+    # Count modified/staged files
+    modified=$(git diff --name-only 2>/dev/null | wc -l | tr -d ' ')
+    staged=$(git diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')
+    untracked=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
+
+    if [ "$modified" -gt 0 ] || [ "$staged" -gt 0 ] || [ "$untracked" -gt 0 ]; then
+      git_status="${git_status} \033[33m"
+      [ "$staged" -gt 0 ] && git_status="${git_status}+${staged}"
+      [ "$modified" -gt 0 ] && git_status="${git_status}~${modified}"
+      [ "$untracked" -gt 0 ] && git_status="${git_status}?${untracked}"
+      git_status="${git_status}\033[34m"
+    fi
+
+    printf '%s)' "$git_status"
+  fi
+fi
+
+# Reset colors
+printf '\033[0m'
