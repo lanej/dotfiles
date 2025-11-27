@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Global commit-msg hook to prevent Claude co-author attribution
+
+commit_msg_file="$1"
+
+# Check for Claude co-author in commit message
+if grep -qi "Co-Authored-By:.*Claude" "$commit_msg_file"; then
+    echo "ERROR: Commit message contains Claude as co-author"
+    echo "This repository does not allow AI attribution in commits."
+    echo ""
+    echo "Please remove the following line(s):"
+    grep -i "Co-Authored-By:.*Claude" "$commit_msg_file"
+    exit 1
+fi
+
+exit 0

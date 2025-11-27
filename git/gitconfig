@@ -91,6 +91,7 @@
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	editor = $EDITOR
 	pager = delta
+	hooksPath = ~/.files/git/hooks
 [apply]
 	whitespace = fix
 [push]
