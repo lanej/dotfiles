@@ -242,9 +242,9 @@ designed a solution that balances flexibility with type safety...
 ```
 
 **Generate the PR description:**
-- Review the implementation and commits
-- Extract the key points
-- Write a clear, scannable description
+- Use the **pull-request-writer agent** to generate the PR title and description
+- Provide the agent with context about the implementation and commits
+- Review the generated content
 - Save to `/tmp/pr_description.md`
 - Show it to the user for review
 
@@ -275,6 +275,7 @@ Or with an issue number:
 
 - **Always read files before editing** - use Read tool before Edit tool
 - **Use the git-commit-message-writer agent** for ALL commit messages
+- **Use the pull-request-writer agent** for PR titles and descriptions
 - **Verify each commit independently** - each should compile and pass tests
 - **Keep the user informed** - explain your reasoning for the commit structure
 - **Don't push without approval** - always get user confirmation first
