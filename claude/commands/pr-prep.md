@@ -193,6 +193,8 @@ Fixes #[issue-number]
 - List every file changed
 - Write long paragraphs (use bullets)
 - Repeat what's in commit messages
+- **NEVER add AI attribution, "Generated with Claude Code", or similar footers**
+- **NEVER add "Co-Authored-By: Claude" or similar credits**
 
 **Example - Good:**
 
@@ -277,7 +279,8 @@ Or with an issue number:
 - **Keep the user informed** - explain your reasoning for the commit structure
 - **Don't push without approval** - always get user confirmation first
 - **Clean working directory** - ensure no uncommitted changes at the end
-- **Professional commits** - never mention AI/Claude in commit messages
+- **Professional commits** - never mention AI/Claude in commit messages or PR descriptions
+- **No AI attribution** - never add "Generated with Claude Code" or co-author credits in PR descriptions
 
 ## Example Output Structure
 
