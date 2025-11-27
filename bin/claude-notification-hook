@@ -5,16 +5,50 @@
 # Read stdin
 input=$(cat)
 
-# Trigger tmux bell with ASCII bell character (doesn't send keystrokes)
+# Debug: log the input (uncomment to debug)
+# echo "$input" > /tmp/claude-notification-debug.log
+
+# Extract project/directory information from JSON input
+if command -v jq >/dev/null 2>&1; then
+    project=$(echo "$input" | jq -r '.cwd // .workspace.current_dir // empty' 2>/dev/null)
+    if [ -n "$project" ] && [ "$project" != "null" ] && [ "$project" != "" ]; then
+        project_name=$(basename "$project")
+
+        # Add tmux window name if available
+        if [ -n "$TMUX_PANE" ]; then
+            window_name=$(tmux display-message -p '#W' 2>/dev/null)
+            if [ -n "$window_name" ]; then
+                message="Claude waiting: $project_name [$window_name]"
+            else
+                message="Claude waiting: $project_name"
+            fi
+        else
+            message="Claude waiting: $project_name"
+        fi
+    else
+        message="Claude waiting"
+    fi
+else
+    message="Claude waiting"
+fi
+
+# Trigger tmux bell
 if [ -n "$TMUX_PANE" ]; then
-    printf '\a'
+    # Print bell character to stderr (goes to the pane)
+    printf '\a' >&2
+
+    # Also write directly to the tty to ensure bell is visible
+    tty=$(tmux display-message -p '#{pane_tty}' 2>/dev/null)
+    if [ -n "$tty" ]; then
+        printf '\a' > "$tty" 2>/dev/null
+    fi
 fi
 
 # Desktop notification (background, non-blocking)
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    osascript -e 'display notification "Claude is waiting for input" with title "Claude Code"' 2>/dev/null &
+    osascript -e "display notification \"$message\" with title \"Claude Code\"" 2>/dev/null &
 elif command -v notify-send >/dev/null 2>&1; then
-    notify-send "Claude Code" "Claude is waiting for input" 2>/dev/null &
+    notify-send "Claude Code" "$message" 2>/dev/null &
 fi
 
 exit 0

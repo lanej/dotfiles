@@ -13,6 +13,7 @@ map cmd+4 goto_tab 4
 map cmd+r set_tab_title
 modify_font cell_width 95%
 enable_audio_bell no
+visual_bell_duration 0.0
 window_alert_on_bell no
 draw_minimal_borders yes
 macos_quit_when_last_window_closed yes
@@ -37,7 +38,6 @@ cursor_stop_blinking_after 5.0
 cursor_color_text #ffffff
 url_color #EBCB8B
 url_style double
-window_alert_on_bell no
 scrollback_pager_history_size 314572800
 scrollback_lines 1000000
 map ctrl+[ show_scrollback

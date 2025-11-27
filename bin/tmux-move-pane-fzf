@@ -5,12 +5,17 @@ PANE_ID=$(tmux display-message -p "#{pane_id}")
 SESSION_NAME=$(tmux display-message -p "#{session_name}")
 
 # Use fzf to select destination window and move the pane
-tmux list-windows -t "$SESSION_NAME" -F "#{window_index}|#{window_name} #{?window_active,[active],}" | \
+DEST_WINDOW=$(tmux list-windows -t "$SESSION_NAME" -F "#{window_index}|#{window_name} #{?window_active,[active],}" | \
 fzf --height=100% --reverse \
     --header="Move pane to window" \
     --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
-    --exit-0 \
-    --preview "echo {} | cut -d'|' -f1 | xargs -I {} tmux capture-pane -ep -t '$SESSION_NAME':{} -S -30" \
+    --preview "echo {} | cut -d'|' -f1 | xargs -I {} tmux capture-pane -ep -t '$SESSION_NAME':{} -S -30 2>/dev/null || echo 'Preview unavailable'" \
     --preview-window=right:60% | \
-cut -d'|' -f1 | \
-xargs -I {} tmux move-pane -s "$PANE_ID" -t "$SESSION_NAME":{}
+cut -d'|' -f1 || true)
+
+# Only move if a window was selected
+if [ -n "$DEST_WINDOW" ]; then
+    tmux move-pane -s "$PANE_ID" -t "$SESSION_NAME:$DEST_WINDOW"
+fi
+
+exit 0

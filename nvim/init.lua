@@ -15,9 +15,9 @@ vim.opt.encoding = "utf-8"
 vim.opt.exrc = true
 vim.opt.fileformats:append("mac")
 vim.opt.guicursor = {
-	"n-v-c:block-Cursor",
-	"i:ver100-iCursor",
-	"n-v-c:blinkon0",
+	"n-v-c:block-Cursor/lCursor",
+	"i:ver100-iCursor/lCursor",
+	"a:blinkon0",
 }
 vim.opt.hidden = true
 vim.opt.history = 10000
@@ -1812,6 +1812,26 @@ require("lazy").setup({
 			vim.fn["mkdp#util#install"]()
 		end,
 		ft = { "markdown" },
+		init = function()
+			-- Use latest Mermaid from CDN
+			vim.g.mkdp_preview_options = {
+				mkit = {},
+				katex = {},
+				uml = {},
+				maid = {
+					-- Use latest Mermaid version from CDN
+					version = "latest",
+				},
+				disable_sync_scroll = 0,
+				sync_scroll_type = "middle",
+				hide_yaml_meta = 1,
+				sequence_diagrams = {},
+				flowchart_diagrams = {},
+				content_editable = false,
+				disable_filename = 0,
+				toc = {},
+			}
+		end,
 	},
 	{
 		"pwntester/octo.nvim",
