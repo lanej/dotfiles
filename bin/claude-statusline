@@ -27,9 +27,6 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
     # Branch name in blue
     printf ' \033[34m(%s' "$branch"
 
-    # Get git status info
-    git_status=""
-
     # Check for upstream and ahead/behind counts
     upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null || echo "")
     if [ -n "$upstream" ]; then
@@ -37,11 +34,11 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo "0")
 
       if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
-        git_status="${git_status} \033[33m⇕⇡${ahead}⇣${behind}\033[34m"
+        printf ' \033[36m⇕⇡%s⇣%s\033[34m' "$ahead" "$behind"
       elif [ "$ahead" -gt 0 ]; then
-        git_status="${git_status} \033[33m⇡${ahead}\033[34m"
+        printf ' \033[36m⇡%s\033[34m' "$ahead"
       elif [ "$behind" -gt 0 ]; then
-        git_status="${git_status} \033[33m⇣${behind}\033[34m"
+        printf ' \033[33m⇣%s\033[34m' "$behind"
       fi
     fi
 
@@ -51,14 +48,13 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
     untracked=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
 
     if [ "$modified" -gt 0 ] || [ "$staged" -gt 0 ] || [ "$untracked" -gt 0 ]; then
-      git_status="${git_status} \033[33m"
-      [ "$staged" -gt 0 ] && git_status="${git_status}+${staged}"
-      [ "$modified" -gt 0 ] && git_status="${git_status}~${modified}"
-      [ "$untracked" -gt 0 ] && git_status="${git_status}?${untracked}"
-      git_status="${git_status}\033[34m"
+      printf ' '
+      [ "$staged" -gt 0 ] && printf '\033[32m+%s\033[34m' "$staged"        # Green for staged
+      [ "$modified" -gt 0 ] && printf '\033[33m~%s\033[34m' "$modified"    # Yellow for modified
+      [ "$untracked" -gt 0 ] && printf '\033[31m?%s\033[34m' "$untracked"  # Red for untracked
     fi
 
-    printf '%s)' "$git_status"
+    printf ')'
   fi
 fi
 

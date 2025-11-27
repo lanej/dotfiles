@@ -47,3 +47,4 @@ CLAUDE.local.md
 target/
 .fastembed_cache/
 .scratchpads/
+.scratchpad/
