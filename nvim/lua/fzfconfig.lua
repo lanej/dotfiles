@@ -436,8 +436,27 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list changed files (diff from merge-base, including untracked, staged, and unstaged)
 vim.keymap.set({ "n" }, "<leader>cf", function()
-	-- Combine: tracked changes from fork point, staged files, and untracked files
-	local cmd = "(git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only; git ls-files --others --exclude-standard) | sort -u"
+	-- Get origin HEAD
+	local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
+	if not origin_head or origin_head == '' then
+		vim.notify('Could not find origin/HEAD', vim.log.levels.ERROR)
+		return
+	end
+	local default_branch = origin_head:match('refs/remotes/(.*)')
+
+	-- Get merge-base
+	local merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
+	if not merge_base or merge_base == '' then
+		vim.notify('Could not find merge-base with ' .. default_branch, vim.log.levels.ERROR)
+		return
+	end
+
+	-- Build command: committed changes + staged + unstaged + untracked, then deduplicate
+	local cmd = string.format(
+		"{ git diff --name-only %s HEAD; git diff --name-only --cached; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u",
+		merge_base
+	)
+
 	require("fzf-lua").fzf_exec(
 		cmd,
 		{
@@ -454,8 +473,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					vim.cmd("edit " .. vim.fn.fnameescape(file))
 
 					-- Get the first changed line from git diff
-					local merge_base_cmd = "git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null"
-					local diff_cmd = "git diff $(" .. merge_base_cmd .. ") --unified=0 -- " .. vim.fn.shellescape(file) .. " | grep -E '^@@' | head -1"
+					local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", merge_base, vim.fn.shellescape(file))
 					local hunk_header = vim.fn.system(diff_cmd)
 
 					if vim.v.shell_error == 0 and hunk_header ~= "" then
@@ -470,7 +488,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					end
 				end,
 			},
-			preview = "echo {} | xargs -n 1 -I {} git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --shortstat --no-prefix -U25 -- {} | delta",
+			preview = string.format("git diff %s --shortstat --no-prefix -U25 -- {} | delta", merge_base),
 			fn_transform = function(x)
 				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
 			end,
