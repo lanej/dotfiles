@@ -501,6 +501,12 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			prompt = "ChangedFiles❯ ",
 			file_icons = true,
 			color_icons = true,
+			winopts = {
+				preview = {
+					layout = "vertical",
+					vertical = "down:60%",
+				},
+			},
 			actions = {
 				["default"] = function(selected)
 					if not selected or #selected == 0 then
