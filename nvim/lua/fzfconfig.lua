@@ -505,66 +505,47 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		cmd = "bash -c '( git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'"
 	end
 
-	-- Execute command and get file list
-	local files = vim.fn.systemlist(cmd)
-	if vim.v.shell_error ~= 0 then
-		vim.notify(string.format('Command failed with error %d: %s', vim.v.shell_error, table.concat(files, '\n')), vim.log.levels.ERROR)
-		return
-	end
-	if #files == 0 then
-		vim.notify('No changed files found', vim.log.levels.INFO)
-		return
-	end
-
-	-- Pass file list directly to fzf instead of command string
-	require("fzf-lua").fzf_exec(
-		files,
-		{
-			prompt = "ChangedFiles❯ ",
-			file_icons = true,
-			color_icons = true,
-			previewer = "builtin",
-			winopts = {
-				preview = {
-					layout = "flex",
-					flip_columns = 120, -- switch to vertical if terminal < 120 cols
-					vertical = "down:60%", -- vertical: preview bottom, 60% height
-					horizontal = "right:60%", -- horizontal: preview right, 60% width
-				},
+	-- Use files() instead of fzf_exec for proper file icons and git status
+	require("fzf-lua").files({
+		prompt = "ChangedFiles❯ ",
+		cmd = cmd,
+		file_icons = true,
+		color_icons = true,
+		git_icons = true,
+		winopts = {
+			preview = {
+				layout = "flex",
+				flip_columns = 120,
+				vertical = "down:60%",
+				horizontal = "right:60%",
 			},
-			actions = {
-				["default"] = function(selected)
-					if not selected or #selected == 0 then
-						return
+		},
+		actions = {
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				-- Strip the icon/git status prefix to get the actual filename
+				local file = selected[1]:match("([^%s]+)$") or selected[1]
+
+				vim.cmd("edit " .. vim.fn.fnameescape(file))
+
+				-- Get the first changed line from git diff
+				local diff_base = merge_base or "HEAD"
+				local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", diff_base, vim.fn.shellescape(file))
+				local hunk_header = vim.fn.system(diff_cmd)
+
+				if vim.v.shell_error == 0 and hunk_header ~= "" then
+					local new_start = hunk_header:match("%+(%d+)")
+					if new_start then
+						vim.cmd("normal! " .. new_start .. "G")
+						vim.cmd("normal! zz")
 					end
-
-					local file = selected[1]
-
-					-- Open the file
-					vim.cmd("edit " .. vim.fn.fnameescape(file))
-
-					-- Get the first changed line from git diff (use merge_base if available, otherwise HEAD)
-					local diff_base = merge_base or "HEAD"
-					local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", diff_base, vim.fn.shellescape(file))
-					local hunk_header = vim.fn.system(diff_cmd)
-
-					if vim.v.shell_error == 0 and hunk_header ~= "" then
-						-- Parse the hunk header: @@ -old_start,old_count +new_start,new_count @@
-						local new_start = hunk_header:match("%+(%d+)")
-						if new_start then
-							-- Jump to the first changed line
-							vim.cmd("normal! " .. new_start .. "G")
-							-- Center the line on screen
-							vim.cmd("normal! zz")
-						end
-					end
-				end,
-			},
-			fn_transform = function(x)
-				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
+				end
 			end,
-		}
-	)
+		},
+	})
 end, {
 	noremap = true,
 	silent = true,
