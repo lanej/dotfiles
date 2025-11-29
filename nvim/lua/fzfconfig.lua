@@ -529,7 +529,10 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					end
 				end,
 			},
-			preview = string.format("git diff %s --shortstat --no-prefix -U25 -- {} | delta", merge_base or "HEAD"),
+			preview = string.format(
+				"git diff %s --no-prefix -U25 -- {} 2>/dev/null | delta || cat {}",
+				merge_base or "HEAD"
+			),
 			fn_transform = function(x)
 				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
 			end,
