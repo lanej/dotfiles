@@ -494,6 +494,8 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		files,
 		{
 			prompt = "ChangedFiles❯ ",
+			file_icons = true,
+			color_icons = true,
 			actions = {
 				["default"] = function(selected)
 					if not selected or #selected == 0 then
