@@ -446,6 +446,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 	-- Try to get origin HEAD, fall back to origin/master or origin/main
 	local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
 	local default_branch
+	local merge_base
 
 	if origin_head and origin_head ~= '' then
 		default_branch = origin_head:match('refs/remotes/(.*)')
@@ -458,25 +459,29 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			default_branch = 'origin/main'
 		elseif has_master and has_master ~= '' then
 			default_branch = 'origin/master'
-		else
-			vim.notify('Could not find default branch (origin/HEAD, origin/main, or origin/master)', vim.log.levels.ERROR)
-			return
 		end
 	end
 
-	-- Get merge-base
-	local merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
-	if vim.v.shell_error ~= 0 or not merge_base or merge_base == '' then
-		vim.notify('Could not find merge-base with ' .. default_branch, vim.log.levels.ERROR)
-		return
+	-- Try to get merge-base if we found a default branch
+	if default_branch then
+		merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
+		if vim.v.shell_error ~= 0 or not merge_base or merge_base == '' then
+			merge_base = nil -- Clear it if merge-base failed
+		end
 	end
 
-	-- Build command: committed changes + staged + unstaged + untracked, then deduplicate
-	-- Wrap in bash -c with ( ) subshell grouping for cross-shell compatibility
-	local cmd = string.format(
-		"bash -c '( git diff --name-only %s HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'",
-		merge_base
-	)
+	-- Build command based on whether we have a merge-base
+	local cmd
+	if merge_base then
+		-- We have a merge-base: show all changes from fork point
+		cmd = string.format(
+			"bash -c '( git diff --name-only %s HEAD 2>/dev/null; git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'",
+			merge_base
+		)
+	else
+		-- No merge-base: just show staged + unstaged + untracked
+		cmd = "bash -c '( git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'"
+	end
 
 	-- Execute command and get file list
 	local files = vim.fn.systemlist(cmd)
@@ -507,8 +512,9 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					-- Open the file
 					vim.cmd("edit " .. vim.fn.fnameescape(file))
 
-					-- Get the first changed line from git diff
-					local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", merge_base, vim.fn.shellescape(file))
+					-- Get the first changed line from git diff (use merge_base if available, otherwise HEAD)
+					local diff_base = merge_base or "HEAD"
+					local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", diff_base, vim.fn.shellescape(file))
 					local hunk_header = vim.fn.system(diff_cmd)
 
 					if vim.v.shell_error == 0 and hunk_header ~= "" then
@@ -523,7 +529,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 					end
 				end,
 			},
-			preview = string.format("git diff %s --shortstat --no-prefix -U25 -- {} | delta", merge_base),
+			preview = string.format("git diff %s --shortstat --no-prefix -U25 -- {} | delta", merge_base or "HEAD"),
 			fn_transform = function(x)
 				return require("fzf-lua").make_entry.file(x, { file_icons = true, color_icons = true })
 			end,
