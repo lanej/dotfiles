@@ -400,14 +400,36 @@ end, {
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>ca", function()
+	local columns = vim.o.columns
+	local winopts
+
+	if columns >= 120 then
+		-- Wide screen: use larger centered window with preview
+		winopts = {
+			relative = "editor",
+			width = 0.6,
+			height = 0.5,
+			border = "double",
+			preview = {
+				layout = "flex",
+				flip_columns = 100,
+				vertical = "down:50%",
+				horizontal = "right:50%",
+			},
+		}
+	else
+		-- Narrow screen: use compact cursor-relative window
+		winopts = {
+			relative = "cursor",
+			width = 0.5,
+			height = 0.3,
+			border = "double",
+		}
+	end
+
 	require("fzf-lua").lsp_code_actions({
 		pager = false,
-		winopts = {
-			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
-			width = 0.5, -- width of the window (50% of the editor)
-			height = 0.3, -- height of the window (30% of the editor)
-			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
-		},
+		winopts = winopts,
 	})
 end, {
 	noremap = true,
