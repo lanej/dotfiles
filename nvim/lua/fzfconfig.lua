@@ -530,7 +530,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 				end,
 			},
 			preview = string.format(
-				"git diff %s --no-prefix -U25 -- {} 2>/dev/null | delta || cat {}",
+				"bash -c 'diff_output=$(git diff %s --no-prefix -U25 -- \"$@\" 2>/dev/null); if [ -n \"$diff_output\" ]; then echo \"$diff_output\" | delta; else cat \"$@\"; fi' -- {}",
 				merge_base or "HEAD"
 			),
 			fn_transform = function(x)
