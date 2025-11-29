@@ -436,17 +436,37 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list changed files (diff from merge-base, including untracked, staged, and unstaged)
 vim.keymap.set({ "n" }, "<leader>cf", function()
-	-- Get origin HEAD
-	local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
-	if not origin_head or origin_head == '' then
-		vim.notify('Could not find origin/HEAD', vim.log.levels.ERROR)
+	-- Get git root to ensure we're in a git repo
+	local git_root = vim.fn.systemlist('git rev-parse --show-toplevel 2>/dev/null')[1]
+	if vim.v.shell_error ~= 0 or not git_root or git_root == '' then
+		vim.notify('Not in a git repository', vim.log.levels.ERROR)
 		return
 	end
-	local default_branch = origin_head:match('refs/remotes/(.*)')
+
+	-- Try to get origin HEAD, fall back to origin/master or origin/main
+	local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
+	local default_branch
+
+	if origin_head and origin_head ~= '' then
+		default_branch = origin_head:match('refs/remotes/(.*)')
+	else
+		-- Fallback: check if origin/main or origin/master exists
+		local has_main = vim.fn.systemlist('git rev-parse --verify origin/main 2>/dev/null')[1]
+		local has_master = vim.fn.systemlist('git rev-parse --verify origin/master 2>/dev/null')[1]
+
+		if vim.v.shell_error == 0 and has_main and has_main ~= '' then
+			default_branch = 'origin/main'
+		elseif has_master and has_master ~= '' then
+			default_branch = 'origin/master'
+		else
+			vim.notify('Could not find default branch (origin/HEAD, origin/main, or origin/master)', vim.log.levels.ERROR)
+			return
+		end
+	end
 
 	-- Get merge-base
 	local merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
-	if not merge_base or merge_base == '' then
+	if vim.v.shell_error ~= 0 or not merge_base or merge_base == '' then
 		vim.notify('Could not find merge-base with ' .. default_branch, vim.log.levels.ERROR)
 		return
 	end
