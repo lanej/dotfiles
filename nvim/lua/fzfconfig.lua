@@ -504,8 +504,10 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			previewer = "builtin",
 			winopts = {
 				preview = {
-					layout = "vertical",
-					vertical = "down:60%",
+					layout = "flex",
+					flip_columns = 120, -- switch to vertical if terminal < 120 cols
+					vertical = "down:60%", -- vertical: preview bottom, 60% height
+					horizontal = "right:60%", -- horizontal: preview right, 60% width
 				},
 			},
 			actions = {
