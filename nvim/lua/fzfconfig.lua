@@ -478,8 +478,20 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		merge_base
 	)
 
+	-- Execute command and get file list
+	local files = vim.fn.systemlist(cmd)
+	if vim.v.shell_error ~= 0 then
+		vim.notify(string.format('Command failed with error %d: %s', vim.v.shell_error, table.concat(files, '\n')), vim.log.levels.ERROR)
+		return
+	end
+	if #files == 0 then
+		vim.notify('No changed files found', vim.log.levels.INFO)
+		return
+	end
+
+	-- Pass file list directly to fzf instead of command string
 	require("fzf-lua").fzf_exec(
-		cmd,
+		files,
 		{
 			prompt = "ChangedFiles❯ ",
 			actions = {
