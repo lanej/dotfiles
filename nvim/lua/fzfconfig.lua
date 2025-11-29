@@ -434,10 +434,12 @@ vim.keymap.set({ "n" }, "<leader>dc", function()
 	end)
 end, { noremap = true, silent = true })
 
--- Keymap to list changed files (diff from merge-base)
+-- Keymap to list changed files (diff from merge-base, including untracked, staged, and unstaged)
 vim.keymap.set({ "n" }, "<leader>cf", function()
+	-- Combine: tracked changes from fork point, staged files, and untracked files
+	local cmd = "(git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only; git ls-files --others --exclude-standard) | sort -u"
 	require("fzf-lua").fzf_exec(
-		"git diff $(git merge-base --fork-point $(git symbolic-ref refs/remotes/origin/HEAD) 2>/dev/null) --name-only --diff-filter=AM",
+		cmd,
 		{
 			prompt = "ChangedFiles❯ ",
 			actions = {
