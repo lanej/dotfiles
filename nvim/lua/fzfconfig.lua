@@ -501,6 +501,7 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			prompt = "ChangedFiles❯ ",
 			file_icons = true,
 			color_icons = true,
+			previewer = "builtin",
 			winopts = {
 				preview = {
 					layout = "vertical",
