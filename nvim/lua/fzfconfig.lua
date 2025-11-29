@@ -452,8 +452,9 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 	end
 
 	-- Build command: committed changes + staged + unstaged + untracked, then deduplicate
+	-- Wrap in bash -c to ensure compatibility (zsh doesn't support { } grouping the same way)
 	local cmd = string.format(
-		"{ git diff --name-only %s HEAD; git diff --name-only --cached; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u",
+		"bash -c '{ git diff --name-only %s HEAD; git diff --name-only --cached; git diff --name-only; git ls-files --others --exclude-standard; } | sort -u'",
 		merge_base
 	)
 
