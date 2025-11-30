@@ -547,13 +547,13 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 				},
 			},
 			actions = {
-				["default"] = function(selected)
+				["default"] = function(selected, opts)
 					if not selected or #selected == 0 then
 						return
 					end
 
-					-- Extract filename from make_entry formatted line
-					local file = selected[1]:match("([^%s]+)$") or selected[1]
+					-- Use fzf-lua's path extraction to get the actual file path
+					local file = require("fzf-lua").path.entry_to_file(selected[1], opts).path
 
 					vim.cmd("edit " .. vim.fn.fnameescape(file))
 
