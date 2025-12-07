@@ -12,14 +12,20 @@
   "AccentRed": "#BF616A",
   "Comment": "#4C566A",
   "Gray": "#4C566A",
-  "DiffAdded": "#A3BE8C",
-  "DiffRemoved": "#BF616A",
-  "DiffModified": "#EBCB8B",
+  "DiffAdded": "#45523E",
+  "DiffRemoved": "#4F2D30",
+  "DiffModified": "#524633",
+  "GradientColors": [
+    "#8FBCBB",
+    "#88C0D0",
+    "#81A1C1",
+    "#5E81AC"
+  ],
   "text": {
-    "primary": "#D8DEE9",
-    "secondary": "#E5E9F0",
+    "primary": "#ECEFF4",
+    "secondary": "#D8DEE9",
     "link": "#88C0D0",
     "accent": "#81A1C1",
-    "response": "#ECEFF4"
+    "response": "#E5E9F0"
   }
 }
