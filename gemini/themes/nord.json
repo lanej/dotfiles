@@ -12,14 +12,15 @@
   "AccentRed": "#BF616A",
   "Comment": "#4C566A",
   "Gray": "#4C566A",
-  "DiffAdded": "#45523E",
-  "DiffRemoved": "#4F2D30",
-  "DiffModified": "#524633",
+  "DiffAdded": "#A3BE8C33",
+  "DiffRemoved": "#BF616A33",
+  "DiffModified": "#EBCB8B33",
   "GradientColors": [
     "#8FBCBB",
     "#88C0D0",
     "#81A1C1",
-    "#5E81AC"
+    "#5E81AC",
+    "#D08770"
   ],
   "text": {
     "primary": "#ECEFF4",
