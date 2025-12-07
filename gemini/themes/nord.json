@@ -12,9 +12,9 @@
   "AccentRed": "#BF616A",
   "Comment": "#4C566A",
   "Gray": "#4C566A",
-  "DiffAdded": "#A3BE8C33",
-  "DiffRemoved": "#BF616A33",
-  "DiffModified": "#EBCB8B33",
+  "DiffAdded": "#3B4A3E",
+  "DiffRemoved": "#4C373D",
+  "DiffModified": "#4A4535",
   "GradientColors": [
     "#8FBCBB",
     "#88C0D0",
