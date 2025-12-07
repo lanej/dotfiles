@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude cargo superwhisper presenterm
+.PHONY: zsh qute alacritty yabai spotify_player python go claude gemini cargo superwhisper presenterm
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -160,6 +160,10 @@ claude:
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
 	@ln -fns $(DOTFILES)/claude/skills $(HOME)/.claude/skills
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
+gemini:
+	@mkdir -p $(HOME)/.gemini/themes
+	@ln -fs $(DOTFILES)/gemini/themes/nord.json $(HOME)/.gemini/themes/nord.json
+	@ln -fns $(DOTFILES)/gemini/skills $(HOME)/.gemini/skills
 gpg-restore:
 	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
 		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \

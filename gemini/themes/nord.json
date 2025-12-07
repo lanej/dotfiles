@@ -1,0 +1,25 @@
+{
+  "name": "Nord",
+  "type": "custom",
+  "Background": "#2E3440",
+  "Foreground": "#D8DEE9",
+  "LightBlue": "#88C0D0",
+  "AccentBlue": "#81A1C1",
+  "AccentPurple": "#B48EAD",
+  "AccentCyan": "#8FBCBB",
+  "AccentGreen": "#A3BE8C",
+  "AccentYellow": "#EBCB8B",
+  "AccentRed": "#BF616A",
+  "Comment": "#4C566A",
+  "Gray": "#4C566A",
+  "DiffAdded": "#A3BE8C",
+  "DiffRemoved": "#BF616A",
+  "DiffModified": "#EBCB8B",
+  "text": {
+    "primary": "#D8DEE9",
+    "secondary": "#E5E9F0",
+    "link": "#88C0D0",
+    "accent": "#81A1C1",
+    "response": "#ECEFF4"
+  }
+}
