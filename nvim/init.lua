@@ -176,7 +176,24 @@ vim.keymap.set("n", "<leader>re", ":Rename ", { noremap = true })
 vim.keymap.set("t", "<C-o>", "<C-\\><C-n>", { noremap = true })
 
 -- Yank current file path (full absolute path to clipboard)
-vim.keymap.set("n", "yd", ':let @+ = expand("%:p")<CR>', { noremap = true })
+vim.keymap.set("n", "yd", function()
+  local path = vim.fn.expand("%:p")
+  vim.fn.setreg("+", path)
+  vim.notify("Copied: " .. path)
+end, { noremap = true, desc = "Copy file path" })
+
+vim.keymap.set("v", "yd", function()
+  local start_line = vim.fn.line("v")
+  local end_line = vim.fn.line(".")
+  if start_line > end_line then
+    start_line, end_line = end_line, start_line
+  end
+  local path = vim.fn.expand("%:p")
+  local text = (start_line == end_line) and string.format("%s:%d", path, start_line) or string.format("%s:%d-%d", path, start_line, end_line)
+  vim.fn.setreg("+", text)
+  vim.notify("Copied: " .. text)
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
+end, { noremap = true, desc = "Copy file path with range" })
 
 -- Enable syntax highlighting
 vim.cmd("syntax enable")
@@ -351,6 +368,7 @@ end
 
 vim.keymap.set("n", "<leader>ee", ":e .env<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>eo", ":e .env-override<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>el", ":e!<CR>", { noremap = true, silent = true })
 
 -- Redraw the screen when gaining focus
 vim.api.nvim_create_autocmd("FocusGained", {
@@ -873,8 +891,15 @@ require("lazy").setup({
 					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
 					per_filetype = {
 						codecompanion = { "codecompanion" },
+						sql = { "dadbod", "snippets", "buffer" },
+						mysql = { "dadbod", "snippets", "buffer" },
+						plsql = { "dadbod", "snippets", "buffer" },
 					},
 					providers = {
+						dadbod = {
+							name = "Dadbod",
+							module = "vim_dadbod_completion.blink",
+						},
 						lazydev = {
 							name = "LazyDev",
 							module = "lazydev.integrations.blink",
@@ -2133,7 +2158,14 @@ require("lazy").setup({
 
 				-- Debug: show what content was found
 				if current_content ~= "" then
-					vim.notify("Found existing content (" .. #current_content .. " chars): " .. vim.fn.trim(current_content:sub(1, 60)) .. (#current_content > 60 and "..." or ""), vim.log.levels.INFO)
+					vim.notify(
+						"Found existing content ("
+							.. #current_content
+							.. " chars): "
+							.. vim.fn.trim(current_content:sub(1, 60))
+							.. (#current_content > 60 and "..." or ""),
+						vim.log.levels.INFO
+					)
 				else
 					vim.notify("No existing content found, generating fresh message", vim.log.levels.INFO)
 				end
@@ -2158,7 +2190,8 @@ require("lazy").setup({
 				local has_existing_content = current_content ~= ""
 				local prompt
 				if has_existing_content then
-					prompt = string.format([[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
+					prompt = string.format(
+						[[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
 
 **IMPORTANT:** The user has started writing a commit message. Use their draft as context and improve it while preserving their intent and any specific details they included.
 
@@ -2204,9 +2237,13 @@ Staged changes:
 - NEVER mention AI, Claude, or automated generation
 
 **Output Format:**
-Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]], current_content, diff)
+Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]],
+						current_content,
+						diff
+					)
 				else
-					prompt = string.format([[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
+					prompt = string.format(
+						[[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
 
 Staged changes:
 %s
@@ -2247,7 +2284,9 @@ Staged changes:
 - NEVER mention AI, Claude, or automated generation
 
 **Output Format:**
-Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]], diff)
+Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]],
+						diff
+					)
 				end
 
 				-- Use CodeCompanion's inline strategy with Copilot adapter
@@ -2460,6 +2499,13 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 		end,
 	},
 	{
+		"nvim-java/nvim-java",
+		config = function()
+			require("java").setup()
+			vim.lsp.enable("jdtls")
+		end,
+	},
+	{
 		"lanej/focus.nvim",
 		branch = "feature/width-min-columns",
 		config = function()
@@ -2486,6 +2532,22 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 					winhighlight = false,
 				},
 			})
+		end,
+	},
+	{
+		"kristijanhusak/vim-dadbod-ui",
+		dependencies = {
+			{ "tpope/vim-dadbod", lazy = true },
+			{ "kristijanhusak/vim-dadbod-completion", ft = { "sql", "mysql", "plsql" }, lazy = true },
+		},
+		cmd = {
+			"DBUI",
+			"DBUIToggle",
+			"DBUIAddConnection",
+			"DBUIFindBuffer",
+		},
+		init = function()
+			vim.g.db_ui_use_nerd_fonts = 1
 		end,
 	},
 })
