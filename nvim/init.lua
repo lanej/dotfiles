@@ -1548,21 +1548,21 @@ require("lazy").setup({
 		opts = {},
 	},
 	{
-		"christoomey/vim-tmux-navigator",
-		init = function()
-			vim.g.tmux_navigator_no_mappings = 1
-			vim.g.tmux_navigator_save_on_switch = 1
-		end,
-		config = function()
-			-- Use <Cmd> instead of : to execute commands without changing modes
-			-- This prevents literal text insertion in insert mode
-			vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>TmuxNavigateLeft<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>TmuxNavigateDown<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>TmuxNavigateUp<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>TmuxNavigateRight<cr>", { noremap = true, silent = true })
-		end,
-	},
-	{
+		        "christoomey/vim-tmux-navigator",
+		        init = function()
+		            vim.g.tmux_navigator_no_mappings = 1
+		            vim.g.tmux_navigator_save_on_switch = 1
+		            vim.g.tmux_navigator_no_wrap = 1
+		        end,
+		        config = function()
+		            -- Use <Cmd> instead of : to execute commands without changing modes
+		            -- This prevents literal text insertion in insert mode
+		            vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>TmuxNavigateLeft<cr>", { noremap = true, silent = true })
+		            vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>TmuxNavigateDown<cr>", { noremap = true, silent = true })
+		            vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>TmuxNavigateUp<cr>", { noremap = true, silent = true })
+		            vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>TmuxNavigateRight<cr>", { noremap = true, silent = true })
+		        end,
+		    },	{
 		"lanej/vim-prosession",
 		dependencies = "tpope/vim-obsession",
 		init = function()
