@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty yabai spotify_player python go claude gemini cargo superwhisper presenterm
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -124,6 +124,10 @@ python:
 alacritty:
 	@mkdir -p $(HOME)/.config/alacritty
 	@ln -fs $(DOTFILES)/alacritty/alacritty.yml $(HOME)/.config/alacritty
+wezterm:
+	@mkdir -p $(HOME)/.config/wezterm
+	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.wezterm.lua
+	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.config/wezterm/wezterm.lua
 spotify_player:
 	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
 undercurl:
