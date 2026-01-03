@@ -215,22 +215,17 @@ end)
 
 -- Right status: SSH + Battery + DateTime + Hostname
 wezterm.on("update-right-status", function(window, pane)
-	local segments = {}
+	-- Build segments array with background colors for interlocking
+	local segment_data = {}
 
 	-- SSH indicator
 	local ssh_env = os.getenv("SSH_CONNECTION") or os.getenv("SSH_CLIENT") or os.getenv("SSH_TTY")
 	if ssh_env then
-		table.insert(
-			segments,
-			wezterm.format({
-				{ Background = { Color = "#2E3440" } },
-				{ Foreground = { Color = "#4C566A" } },
-				{ Text = SOLID_LEFT_ARROW },
-				{ Background = { Color = "#4C566A" } },
-				{ Foreground = { Color = "#88C0D0" } },
-				{ Text = " 🔐 SSH " },
-			})
-		)
+		table.insert(segment_data, {
+			bg = "#4C566A",
+			fg = "#88C0D0",
+			text = " 🔐 SSH ",
+		})
 	end
 
 	-- Battery status
@@ -250,48 +245,51 @@ wezterm.on("update-right-status", function(window, pane)
 			color = "#D08770" -- Nord orange
 		end
 
-		table.insert(
-			segments,
-			wezterm.format({
-				{ Background = { Color = "#2E3440" } },
-				{ Foreground = { Color = "#4C566A" } },
-				{ Text = SOLID_LEFT_ARROW },
-				{ Background = { Color = "#4C566A" } },
-				{ Foreground = { Color = color } },
-				{ Text = string.format(" %s%.0f%% ", icon, charge) },
-			})
-		)
+		table.insert(segment_data, {
+			bg = "#4C566A",
+			fg = color,
+			text = string.format(" %s%.0f%% ", icon, charge),
+		})
 	end
 
 	-- Date and time
 	local datetime = wezterm.strftime("%Y-%m-%d %H:%M")
-	table.insert(
-		segments,
-		wezterm.format({
-			{ Background = { Color = "#2E3440" } },
-			{ Foreground = { Color = "#4C566A" } },
-			{ Text = SOLID_LEFT_ARROW },
-			{ Background = { Color = "#4C566A" } },
-			{ Foreground = { Color = "#D8DEE9" } },
-			{ Text = " " .. datetime .. " " },
-		})
-	)
+	table.insert(segment_data, {
+		bg = "#4C566A",
+		fg = "#D8DEE9",
+		text = " " .. datetime .. " ",
+	})
 
 	-- Hostname
 	local hostname = wezterm.hostname()
-	table.insert(
-		segments,
-		wezterm.format({
-			{ Background = { Color = "#2E3440" } },
-			{ Foreground = { Color = "#88C0D0" } },
-			{ Text = SOLID_LEFT_ARROW },
-			{ Background = { Color = "#88C0D0" } },
-			{ Foreground = { Color = "#2E3440" } },
-			{ Text = " " .. hostname .. " " },
-		})
-	)
+	table.insert(segment_data, {
+		bg = "#88C0D0",
+		fg = "#2E3440",
+		text = " " .. hostname .. " ",
+	})
 
-	window:set_right_status(table.concat(segments, ""))
+	-- Build formatted segments with interlocking chevrons
+	local formatted_segments = {}
+	for i, seg in ipairs(segment_data) do
+		local prev_bg = "#2E3440" -- Default to bar background
+		if i > 1 then
+			prev_bg = segment_data[i - 1].bg
+		end
+
+		table.insert(
+			formatted_segments,
+			wezterm.format({
+				{ Background = { Color = prev_bg } },
+				{ Foreground = { Color = seg.bg } },
+				{ Text = SOLID_LEFT_ARROW },
+				{ Background = { Color = seg.bg } },
+				{ Foreground = { Color = seg.fg } },
+				{ Text = seg.text },
+			})
+		)
+	end
+
+	window:set_right_status(table.concat(formatted_segments, ""))
 end)
 
 -- =============================================================================
