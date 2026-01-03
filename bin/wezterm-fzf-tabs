@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# WezTerm FZF Tab Switcher
+# Usage: Run directly in a wezterm pane to switch tabs with fzf
+
+set -euo pipefail
+
+# Get current workspace
+current_workspace=$(wezterm cli get-pane-direction Up 2>/dev/null || echo "default")
+
+# List tabs in current workspace, format for fzf
+selected=$(wezterm cli list --format json 2>/dev/null | \
+	jq -r --arg ws "$current_workspace" \
+		'.[] | select(.workspace == $ws) | "\(.tab_id)|\(.tab_title // "untitled") \(if .is_active then "[active]" else "" end)"' | \
+	fzf --height=100% \
+	    --reverse \
+	    --header="Tabs (workspace: $current_workspace)" \
+	    --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
+	    --preview='echo {}' \
+	    --preview-window=right:30% | \
+	cut -d'|' -f1)
+
+# Activate selected tab
+if [ -n "$selected" ]; then
+	wezterm cli activate-tab --tab-id "$selected"
+fi

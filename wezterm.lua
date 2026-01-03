@@ -633,6 +633,39 @@ table.insert(config.keys, {
 	end),
 })
 
+-- FZF-based tab switcher (Leader+t) - requires fzf, jq, and wezterm cli
+-- Uses helper script: ~/.local/bin/wezterm-fzf-tabs
+table.insert(config.keys, {
+	key = "t",
+	mods = "LEADER",
+	action = act.SendString("wezterm-fzf-tabs\n"),
+})
+
+-- Popup workspace toggle (tmux line 34-38: Leader+P)
+table.insert(config.keys, {
+	key = "P",
+	mods = "LEADER|SHIFT",
+	action = wezterm.action_callback(function(window, pane)
+		local current_workspace = window:active_workspace()
+
+		if current_workspace == "popup" then
+			-- If we're in popup, switch back to default
+			window:perform_action(act.SwitchToWorkspace({ name = "default" }), pane)
+		else
+			-- Switch to popup workspace
+			window:perform_action(
+				act.SwitchToWorkspace({
+					name = "popup",
+					spawn = {
+						cwd = wezterm.home_dir,
+					},
+				}),
+				pane
+			)
+		end
+	end),
+})
+
 -- =============================================================================
 -- GOLDEN RATIO LAYOUT (38% / 62%)
 -- =============================================================================
