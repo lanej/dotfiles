@@ -177,22 +177,23 @@ vim.keymap.set("t", "<C-o>", "<C-\\><C-n>", { noremap = true })
 
 -- Yank current file path (full absolute path to clipboard)
 vim.keymap.set("n", "yd", function()
-  local path = vim.fn.expand("%:p")
-  vim.fn.setreg("+", path)
-  vim.notify("Copied: " .. path)
+	local path = vim.fn.expand("%:p")
+	vim.fn.setreg("+", path)
+	vim.notify("Copied: " .. path)
 end, { noremap = true, desc = "Copy file path" })
 
 vim.keymap.set("v", "yd", function()
-  local start_line = vim.fn.line("v")
-  local end_line = vim.fn.line(".")
-  if start_line > end_line then
-    start_line, end_line = end_line, start_line
-  end
-  local path = vim.fn.expand("%:p")
-  local text = (start_line == end_line) and string.format("%s:%d", path, start_line) or string.format("%s:%d-%d", path, start_line, end_line)
-  vim.fn.setreg("+", text)
-  vim.notify("Copied: " .. text)
-  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
+	local start_line = vim.fn.line("v")
+	local end_line = vim.fn.line(".")
+	if start_line > end_line then
+		start_line, end_line = end_line, start_line
+	end
+	local path = vim.fn.expand("%:p")
+	local text = (start_line == end_line) and string.format("%s:%d", path, start_line)
+		or string.format("%s:%d-%d", path, start_line, end_line)
+	vim.fn.setreg("+", text)
+	vim.notify("Copied: " .. text)
+	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 end, { noremap = true, desc = "Copy file path with range" })
 
 -- Enable syntax highlighting
@@ -445,6 +446,22 @@ vim.filetype.add({
 	extension = {
 		jsonl = "json",
 	},
+})
+
+-- XML-specific configuration
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "xml" },
+	callback = function()
+		-- Better folding for XML
+		vim.opt_local.foldmethod = "expr"
+		vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"
+		vim.opt_local.foldenable = false -- Start with folds open
+
+		-- Indent settings
+		vim.opt_local.shiftwidth = 2
+		vim.opt_local.tabstop = 2
+		vim.opt_local.softtabstop = 2
+	end,
 })
 
 vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
@@ -1079,11 +1096,86 @@ require("lazy").setup({
 					lualine_a = { "mode" },
 					lualine_b = { "branch", "diff" },
 					lualine_c = {
-						{ "filetype", jcon_only = true },
+						{ "filetype", icon_only = true },
 						{ "filename", path = 1 },
 					},
 					lualine_x = {
 						{ "diagnostics", sources = { "nvim_lsp" } },
+						{
+							function()
+								local clients = vim.lsp.get_clients({ bufnr = 0 })
+								if #clients == 0 then
+									return ""
+								end
+
+								local webdevicons = require("nvim-web-devicons")
+
+								-- Filter out copilot and other non-language servers
+								local ignored = {
+									["copilot"] = true,
+									["GitHub Copilot"] = true,
+									["null-ls"] = true,
+								}
+
+								-- Map LSP server names to file extensions for nvim-web-devicons
+								local lsp_to_ext = {
+									["lua_ls"] = "lua",
+									["rust_analyzer"] = "rs",
+									["gopls"] = "go",
+									["pyright"] = "py",
+									["pylsp"] = "py",
+									["ruff"] = "py",
+									["tsserver"] = "ts",
+									["ts_ls"] = "ts",
+									["vtsls"] = "ts",
+									["eslint"] = "js",
+									["yamlls"] = "yaml",
+									["bashls"] = "sh",
+									["dockerls"] = "dockerfile",
+									["docker_compose_language_service"] = "yaml",
+									["jsonls"] = "json",
+									["vimls"] = "vim",
+									["clangd"] = "c",
+									["html"] = "html",
+									["cssls"] = "css",
+									["tailwindcss"] = "css",
+									["svelte"] = "svelte",
+									["marksman"] = "md",
+									["jdtls"] = "java",
+									["kotlin_language_server"] = "kt",
+									["sourcekit"] = "swift",
+									["solargraph"] = "rb",
+									["ruby_lsp"] = "rb",
+									["intelephense"] = "php",
+									["phpactor"] = "php",
+									["vuels"] = "vue",
+									["volar"] = "vue",
+									["angularls"] = "ts",
+									["astro"] = "astro",
+									["graphql"] = "graphql",
+									["prismals"] = "prisma",
+									["terraformls"] = "tf",
+								}
+
+								local result = {}
+								for _, client in ipairs(clients) do
+									if not ignored[client.name] then
+										local ext = lsp_to_ext[client.name]
+										if ext then
+											local icon, hl_group = webdevicons.get_icon("file." .. ext, ext, { default = true })
+											if icon and hl_group then
+												-- Use the highlight group from nvim-web-devicons directly
+												table.insert(result, string.format("%%#%s#%s%%*", hl_group, icon))
+											elseif icon then
+												table.insert(result, icon)
+											end
+										end
+									end
+								end
+
+								return table.concat(result, " ")
+							end,
+						},
 					},
 					lualine_y = {},
 					lualine_z = {},
@@ -1092,7 +1184,7 @@ require("lazy").setup({
 					lualine_a = {},
 					lualine_b = { "branch", "diff" },
 					lualine_c = {
-						{ "filetype", jcon_only = true },
+						{ "filetype", icon_only = true },
 						{ "filename", path = 1 },
 					},
 					lualine_x = {},
@@ -1548,21 +1640,22 @@ require("lazy").setup({
 		opts = {},
 	},
 	{
-		        "christoomey/vim-tmux-navigator",
-		        init = function()
-		            vim.g.tmux_navigator_no_mappings = 1
-		            vim.g.tmux_navigator_save_on_switch = 1
-		            vim.g.tmux_navigator_no_wrap = 1
-		        end,
-		        config = function()
-		            -- Use <Cmd> instead of : to execute commands without changing modes
-		            -- This prevents literal text insertion in insert mode
-		            vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>TmuxNavigateLeft<cr>", { noremap = true, silent = true })
-		            vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>TmuxNavigateDown<cr>", { noremap = true, silent = true })
-		            vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>TmuxNavigateUp<cr>", { noremap = true, silent = true })
-		            vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>TmuxNavigateRight<cr>", { noremap = true, silent = true })
-		        end,
-		    },	{
+		"christoomey/vim-tmux-navigator",
+		init = function()
+			vim.g.tmux_navigator_no_mappings = 1
+			vim.g.tmux_navigator_save_on_switch = 1
+			vim.g.tmux_navigator_no_wrap = 1
+		end,
+		config = function()
+			-- Use <Cmd> instead of : to execute commands without changing modes
+			-- This prevents literal text insertion in insert mode
+			vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>TmuxNavigateLeft<cr>", { noremap = true, silent = true })
+			vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>TmuxNavigateDown<cr>", { noremap = true, silent = true })
+			vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>TmuxNavigateUp<cr>", { noremap = true, silent = true })
+			vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>TmuxNavigateRight<cr>", { noremap = true, silent = true })
+		end,
+	},
+	{
 		"lanej/vim-prosession",
 		dependencies = "tpope/vim-obsession",
 		init = function()
@@ -2483,23 +2576,10 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 	},
 	"cedarbaum/fugitive-azure-devops.vim",
 	{
-		"s3rvac/vim-syntax-jira",
-	},
-	{
-		"greggh/claude-code.nvim",
-		dependencies = {
-			"nvim-lua/plenary.nvim", -- Required for git operations
-		},
-		config = function()
-			require("claude-code").setup({
-				refresh = {
-					show_notifications = false,
-				},
-			})
-		end,
-	},
-	{
 		"nvim-java/nvim-java",
+		enabled = function()
+			return vim.fn.executable("javac") == 1
+		end,
 		config = function()
 			require("java").setup()
 			vim.lsp.enable("jdtls")
@@ -2555,27 +2635,6 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 vim.keymap.set("n", "<leader>vpu", ":Lazy update<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpi", ":Lazy home<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpc", ":Lazy clean<CR>", { silent = true, noremap = true })
-
--- XML-specific configuration
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = { "xml" },
-	callback = function()
-		-- Format XML with leader-f in normal/visual mode
-		vim.keymap.set({ "n", "v" }, "<leader>f", function()
-			vim.lsp.buf.format({ async = false })
-		end, { buffer = true, desc = "Format XML" })
-
-		-- Better folding for XML
-		vim.opt_local.foldmethod = "expr"
-		vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"
-		vim.opt_local.foldenable = false -- Start with folds open
-
-		-- Indent settings
-		vim.opt_local.shiftwidth = 2
-		vim.opt_local.tabstop = 2
-		vim.opt_local.softtabstop = 2
-	end,
-})
 
 -- Load Phabricator LSP configuration
 require("phab-lsp")
