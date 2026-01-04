@@ -34,15 +34,27 @@ require("gitsigns").setup({
 -- Very subtle word-level diff highlighting using Nord palette diff backgrounds
 -- Using Nord's pre-defined dim diff colors for background-only highlighting
 -- Base background is nord0 (#2E3440), these are barely-tinted versions from Nord theme
-vim.api.nvim_set_hl(0, "GitSignsAddInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded
-vim.api.nvim_set_hl(0, "GitSignsDeleteInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved
-vim.api.nvim_set_hl(0, "GitSignsChangeInline", { bg = "#524633", fg = nil }) -- Nord DiffModified
-vim.api.nvim_set_hl(0, "GitSignsAddLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (buffer)
-vim.api.nvim_set_hl(0, "GitSignsDeleteLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (buffer)
-vim.api.nvim_set_hl(0, "GitSignsChangeLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (buffer)
-vim.api.nvim_set_hl(0, "GitSignsAddVirtLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (virtual lines)
-vim.api.nvim_set_hl(0, "GitSignsDeleteVirtLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (virtual lines)
-vim.api.nvim_set_hl(0, "GitSignsChangeVirtLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (virtual lines)
+local function set_gitsigns_highlights()
+	vim.api.nvim_set_hl(0, "GitSignsAddInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded
+	vim.api.nvim_set_hl(0, "GitSignsDeleteInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved
+	vim.api.nvim_set_hl(0, "GitSignsChangeInline", { bg = "#524633", fg = nil }) -- Nord DiffModified
+	vim.api.nvim_set_hl(0, "GitSignsAddLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (buffer)
+	vim.api.nvim_set_hl(0, "GitSignsDeleteLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (buffer)
+	vim.api.nvim_set_hl(0, "GitSignsChangeLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (buffer)
+	vim.api.nvim_set_hl(0, "GitSignsAddVirtLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (virtual lines)
+	vim.api.nvim_set_hl(0, "GitSignsDeleteVirtLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (virtual lines)
+	vim.api.nvim_set_hl(0, "GitSignsChangeVirtLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (virtual lines)
+end
+
+-- Apply highlights immediately
+set_gitsigns_highlights()
+
+-- Reapply after colorscheme changes (fixes issue where colorscheme reloads override highlights)
+vim.api.nvim_create_autocmd("ColorScheme", {
+	pattern = "*",
+	callback = set_gitsigns_highlights,
+	desc = "Reapply gitsigns inline diff highlights after colorscheme changes",
+})
 
 vim.keymap.set("n", "<leader>gw", require("gitsigns").stage_buffer, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>gl", require("gitsigns").blame_line, { silent = true, noremap = true })
