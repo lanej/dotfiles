@@ -4,13 +4,18 @@
 
 set -euo pipefail
 
-# Get current workspace
-current_workspace=$(wezterm cli get-pane-direction Up 2>/dev/null || echo "default")
+# Get current pane's workspace
+current_workspace=$(wezterm cli list --format json 2>/dev/null | \
+	jq -r --arg pane "$WEZTERM_PANE" \
+		'.[] | select(.pane_id == ($pane | tonumber)) | .workspace' | head -n1)
+
+# Fallback to "default" if we can't determine workspace
+current_workspace=${current_workspace:-default}
 
 # List tabs in current workspace, format for fzf
 selected=$(wezterm cli list --format json 2>/dev/null | \
 	jq -r --arg ws "$current_workspace" \
-		'.[] | select(.workspace == $ws) | "\(.tab_id)|\(.tab_title // "untitled") \(if .is_active then "[active]" else "" end)"' | \
+		'[.[] | select(.workspace == $ws and .is_active_for_tab)] | unique_by(.tab_id) | .[] | "\(.tab_id)|\(.tab_title // "untitled") \(if .is_active then "[active]" else "" end)"' | \
 	fzf --height=100% \
 	    --reverse \
 	    --header="Tabs (workspace: $current_workspace)" \
