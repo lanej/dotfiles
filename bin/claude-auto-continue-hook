@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""
+Claude Code auto-continue hook
+Automatically continues Claude's work when there are incomplete todos
+"""
+
+import json
+import sys
+import re
+from pathlib import Path
+
+
+def extract_latest_todos(transcript_path):
+    """Parse transcript to find the most recent TodoWrite call and extract todos."""
+    try:
+        with open(transcript_path, 'r') as f:
+            content = f.read()
+
+        # Find all TodoWrite tool uses (they contain the todos parameter)
+        # Looking for JSON blocks that contain "todos" array with status fields
+        todo_pattern = r'"name":\s*"TodoWrite".*?"parameters":\s*({[^}]*"todos":\s*\[[^\]]*\][^}]*})'
+        matches = list(re.finditer(todo_pattern, content, re.DOTALL))
+
+        if not matches:
+            return None
+
+        # Get the last TodoWrite call
+        last_match = matches[-1]
+        params_json = last_match.group(1)
+
+        # Parse the parameters to get todos
+        params = json.loads(params_json)
+        return params.get('todos', [])
+
+    except Exception as e:
+        print(f"Error parsing transcript: {e}", file=sys.stderr)
+        return None
+
+
+def has_incomplete_todos(todos):
+    """Check if there are any pending or in_progress todos."""
+    if not todos:
+        return False
+
+    for todo in todos:
+        status = todo.get('status', '')
+        if status in ['pending', 'in_progress']:
+            return True
+
+    return False
+
+
+def main():
+    try:
+        # Read hook input
+        input_data = json.load(sys.stdin)
+
+        # Get transcript path
+        transcript_path = input_data.get('transcript_path')
+        if not transcript_path or not Path(transcript_path).exists():
+            sys.exit(0)
+
+        # Extract latest todos from transcript
+        todos = extract_latest_todos(transcript_path)
+
+        # Check if there are incomplete todos
+        if has_incomplete_todos(todos):
+            # Count incomplete todos for context
+            incomplete_count = sum(
+                1 for todo in todos
+                if todo.get('status') in ['pending', 'in_progress']
+            )
+
+            # Output continue signal
+            output = {
+                "continue": True,
+                "hookSpecificOutput": {
+                    "message": f"Auto-continuing: {incomplete_count} incomplete todo(s) remaining"
+                }
+            }
+            print(json.dumps(output))
+            sys.exit(0)
+
+    except Exception as e:
+        print(f"Error in auto-continue hook: {e}", file=sys.stderr)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
