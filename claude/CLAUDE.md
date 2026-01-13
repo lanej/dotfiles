@@ -21,6 +21,7 @@ For comprehensive workflows and best practices, see `~/.claude/skills/`. Each sk
 ### Git - `~/.claude/skills/git/`
 - Use git commit message writer agent for all commits
 - NO AI attribution in commits (no "Generated with Claude Code" or "Co-Authored-By: Claude")
+- Commands: `/git:commit [context]`, `/git:worktree <branch>`
 
 ### Rust - `~/.claude/skills/rust/`
 - Workflow: `cargo test --quiet` → `cargo check --quiet` → `cargo clippy`

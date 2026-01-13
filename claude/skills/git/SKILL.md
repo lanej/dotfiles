@@ -12,6 +12,10 @@ You are a Git and GitHub workflow specialist. This skill provides comprehensive 
 
 **IMPORTANT**: Use the git commit message writer agent for all commits.
 
+**Quick commands available**:
+- `/git:commit [context]` - Create a commit using the git-commit-message-writer agent
+- `/git:worktree <branch>` - Create a git worktree with automatic naming
+
 **Commit message format**:
 - Professional, human-written style
 - **NO AI attribution**: Do not include "Generated with Claude Code" or "Co-Authored-By: Claude"
