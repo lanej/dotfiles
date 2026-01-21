@@ -1,0 +1,107 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "opencode-gemini-auth@latest"
+  ],
+  "provider": {
+    "google": {
+      "options": {
+        "projectId": "easypost-platform"
+      }
+    }
+  },
+  "tui": {
+    "scroll_acceleration": {
+      "enabled": true
+    }
+  },
+  "keybinds": {
+    "leader": "ctrl+space",
+    "messages_half_page_up": "ctrl+u",
+    "messages_half_page_down": "ctrl+d",
+    "messages_page_up": "ctrl+b,pageup",
+    "messages_page_down": "ctrl+f,pagedown",
+    "messages_first": "home",
+    "messages_last": "end",
+    "input_delete_to_line_start": "none",
+    "input_line_home": "alt+a,home",
+    "input_line_end": "alt+e,end",
+    "input_delete": "delete",
+    "app_exit": "ctrl+c,<leader>q",
+    "input_word_forward": "alt+f,alt+right,ctrl+right",
+    "input_word_backward": "alt+b,alt+left,ctrl+left",
+    "input_delete_word_backward": "ctrl+w,ctrl+backspace,alt+backspace",
+    "editor_open": "<leader>e",
+    "theme_list": "<leader>t",
+    "sidebar_toggle": "<leader>b",
+    "status_view": "<leader>s",
+    "session_export": "<leader>x",
+    "session_new": "<leader>n",
+    "session_list": "<leader>l",
+    "session_timeline": "<leader>g",
+    "session_compact": "<leader>c",
+    "session_child_cycle": "<leader>right",
+    "session_child_cycle_reverse": "<leader>left",
+    "session_parent": "<leader>up",
+    "messages_copy": "<leader>y",
+    "messages_undo": "<leader>u",
+    "messages_redo": "<leader>r",
+    "messages_toggle_conceal": "<leader>h",
+    "model_list": "<leader>m",
+    "agent_list": "<leader>a",
+    "tips_toggle": "<leader>h"
+  },
+  "agent": {
+    "human-writer": {
+      "description": "Executive-level writing with radical brevity and zero AI tells. Specializes in clear, concise, human-readable writing for all document types.",
+      "mode": "primary",
+      "temperature": 0.3,
+      "prompt": "{file:~/.claude/agents/human-writer.md}",
+      "tools": {
+        "todowrite": false,
+        "todoread": false
+      }
+    },
+    "document-summarizer": {
+      "description": "Analyze and condense documents. Extract key points, action items, and insights from long content.",
+      "mode": "subagent",
+      "model": "anthropic/claude-haiku-4-20250514",
+      "prompt": "{file:~/.claude/agents/document-summarizer.md}",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+        "todowrite": false,
+        "todoread": false
+      }
+    }
+  },
+  "permission": {
+    "bash": {
+      "rm -rf /": "deny",
+      "rm -rf / *": "deny",
+      "sudo rm *": "deny",
+      "sudo dd *": "deny",
+      "mkfs *": "deny",
+      "fdisk *": "deny",
+      "parted *": "deny",
+      "wipefs *": "deny"
+    },
+    "edit": "allow",
+    "write": "allow"
+  },
+  "lsp": {
+    "gopls": {
+      "enabled": true
+    },
+    "typescript": {
+      "enabled": true
+    },
+    "lua": {
+      "enabled": true
+    },
+    "rust-analyzer": {
+      "enabled": true
+    }
+  }
+}
