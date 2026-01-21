@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail opencode
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -160,10 +160,17 @@ claude:
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
+	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
 	@ln -fns $(DOTFILES)/claude/skills $(HOME)/.claude/skills
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
+opencode: claude
+	@mkdir -p $(HOME)/.config/opencode
+	@ln -fs $(DOTFILES)/.opencode/opencode.json $(HOME)/.config/opencode/opencode.json
+	@ln -fns $(DOTFILES)/.opencode/commands $(HOME)/.config/opencode/commands
+	@ln -fs $(HOME)/.claude/CLAUDE.md $(HOME)/.config/opencode/AGENTS.md
+	@$(DOTFILES)/bin/claude-to-opencode || true
 gemini:
 	@mkdir -p $(HOME)/.gemini/themes
 	@ln -fs $(DOTFILES)/gemini/themes/nord.json $(HOME)/.gemini/themes/nord.json
@@ -192,3 +199,19 @@ presenterm:
 	@mkdir -p $(HOME)/.config/presenterm/themes
 	@ln -fs $(DOTFILES)/presenterm/config.toml $(HOME)/.config/presenterm/config.toml
 	@ln -fs $(DOTFILES)/presenterm/themes/nord.yaml $(HOME)/.config/presenterm/themes/nord.yaml
+mail:
+	@echo "Setting up email configuration..."
+	@mkdir -p $(HOME)/.config/neomutt
+	@mkdir -p $(HOME)/.cache/neomutt/headers
+	@mkdir -p $(HOME)/.cache/neomutt/bodies
+	@mkdir -p $(HOME)/.local/share/msmtp
+	@ln -fs $(DOTFILES)/mail/mbsyncrc $(HOME)/.mbsyncrc
+	@ln -fs $(DOTFILES)/mail/notmuch-config $(HOME)/.notmuch-config
+	@ln -fs $(DOTFILES)/mail/msmtprc $(HOME)/.msmtprc
+	@ln -fs $(DOTFILES)/mail/neomuttrc $(HOME)/.config/neomutt/neomuttrc
+	@echo "✓ Email configuration files linked"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
+	@echo "  2. Follow the prompts to configure your Gmail account"
+	@echo "  3. Launch neomutt when done"
