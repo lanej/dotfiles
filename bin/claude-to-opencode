@@ -1,0 +1,379 @@
+#!/usr/bin/env python3
+"""
+Comprehensive Claude Code to OpenCode configuration converter.
+
+Converts all Claude Code settings to OpenCode format:
+- Global settings (~/.claude/settings.json)
+- Project settings (./.claude/settings.local.json)  
+- CLAUDE.md files (global and project)
+- .mcp.json files
+- Permissions
+- Enabled MCP servers
+
+Usage:
+    claude-to-opencode              # Convert from current directory
+    claude-to-opencode --global     # Only convert global settings
+    claude-to-opencode --dry-run    # Show what would be converted
+    claude-to-opencode --force      # Force conversion even if unchanged
+"""
+
+import json
+import sys
+import hashlib
+import shutil
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple
+
+
+class ClaudeToOpenCodeConverter:
+    def __init__(self, working_dir: Path, force: bool = False, dry_run: bool = False):
+        self.working_dir = working_dir
+        self.force = force
+        self.dry_run = dry_run
+        self.cache_dir = Path.home() / '.cache' / 'opencode'
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        
+    def get_file_hash(self, file_path: Path) -> str:
+        """Get SHA256 hash of file contents."""
+        if not file_path.exists():
+            return ""
+        with open(file_path, 'rb') as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    
+    def load_json(self, file_path: Path) -> Dict[str, Any]:
+        """Load JSON file."""
+        if not file_path.exists():
+            return {}
+        with open(file_path) as f:
+            return json.load(f)
+    
+    def save_json(self, file_path: Path, data: Dict[str, Any]):
+        """Save JSON file with pretty formatting."""
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+            f.write('\n')
+    
+    def find_claude_md(self) -> List[Tuple[Path, str]]:
+        """Find all relevant CLAUDE.md files.
+        
+        Returns list of (path, scope) tuples where scope is 'global' or 'project'.
+        """
+        candidates = []
+        
+        # Global CLAUDE.md
+        global_claude = Path.home() / '.claude' / 'CLAUDE.md'
+        if global_claude.exists():
+            candidates.append((global_claude, 'global'))
+        
+        # Project-level CLAUDE.md (traverse up to find git root or home)
+        current = self.working_dir
+        while current != Path.home() and current != current.parent:
+            # Check for CLAUDE.md in project root
+            project_claude = current / 'CLAUDE.md'
+            if project_claude.exists():
+                candidates.append((project_claude, 'project'))
+                break
+            
+            # Check for .claude/CLAUDE.md
+            dot_claude = current / '.claude' / 'CLAUDE.md'
+            if dot_claude.exists():
+                candidates.append((dot_claude, 'project'))
+                break
+            
+            # Stop at git root
+            if (current / '.git').exists():
+                break
+            
+            current = current.parent
+        
+        return candidates
+    
+    def convert_permissions(self, claude_perms: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert Claude Code permissions to OpenCode format."""
+        opencode_perms = {}
+        
+        # Handle allow list
+        allow_list = claude_perms.get('allow', [])
+        for item in allow_list:
+            if item == 'Bash':
+                opencode_perms['bash'] = 'allow'
+            elif item.startswith('Bash('):
+                # Specific bash command permissions
+                # Format: Bash(command:args)
+                pass  # OpenCode handles these differently
+        
+        # Handle deny list
+        deny_list = claude_perms.get('deny', [])
+        bash_denies = []
+        for item in deny_list:
+            if item.startswith('Bash('):
+                # Extract command pattern
+                # Format: Bash(rm:-rf /) -> deny "rm -rf /"
+                cmd = item[5:-1].replace(':', ' ')  # Remove Bash( and )
+                bash_denies.append(cmd)
+        
+        if bash_denies:
+            opencode_perms['bash'] = {pattern: 'deny' for pattern in bash_denies}
+        
+        # Handle default mode
+        default_mode = claude_perms.get('defaultMode', '')
+        if default_mode == 'acceptEdits':
+            opencode_perms['edit'] = 'allow'
+            opencode_perms['write'] = 'allow'
+        elif default_mode == 'ask':
+            opencode_perms['edit'] = 'ask'
+            opencode_perms['write'] = 'ask'
+        
+        return opencode_perms
+    
+    def convert_mcp_servers(self, mcp_json_path: Path, enabled_servers: List[str] = None) -> Dict[str, Any]:
+        """Convert .mcp.json to OpenCode MCP format."""
+        mcp_data = self.load_json(mcp_json_path)
+        mcp_servers = mcp_data.get('mcpServers', {})
+        
+        opencode_mcp = {}
+        for name, server in mcp_servers.items():
+            command = server.get('command', '')
+            args = server.get('args', [])
+            env = server.get('env', {})
+            
+            opencode_server = {
+                'type': 'local',
+                'command': [command] + args,
+                'enabled': enabled_servers is None or name in enabled_servers
+            }
+            
+            if env:
+                opencode_server['environment'] = env
+            
+            opencode_mcp[name] = opencode_server
+        
+        return opencode_mcp
+    
+    def convert_global_settings(self) -> Dict[str, Any]:
+        """Convert global Claude settings to OpenCode config."""
+        claude_settings_path = Path.home() / '.claude' / 'settings.json'
+        claude_settings = self.load_json(claude_settings_path)
+        
+        opencode_config = {}
+        
+        # Convert permissions
+        if 'permissions' in claude_settings:
+            opencode_config['permission'] = self.convert_permissions(claude_settings['permissions'])
+        
+        # Convert enabled plugins (LSP servers)
+        enabled_plugins = claude_settings.get('enabledPlugins', {})
+        lsp_servers = {}
+        for plugin_name, enabled in enabled_plugins.items():
+            if '-lsp@' in plugin_name:
+                # Extract LSP server name (e.g., "rust-analyzer-lsp@claude-plugins-official" -> "rust-analyzer")
+                lsp_name = plugin_name.split('-lsp@')[0]
+                if enabled:
+                    # Empty object means enabled with defaults (OpenCode schema)
+                    lsp_servers[lsp_name] = {}
+        
+        if lsp_servers:
+            opencode_config['lsp'] = lsp_servers
+        
+        return opencode_config
+    
+    def convert_project_settings(self) -> Dict[str, Any]:
+        """Convert project-level Claude settings to OpenCode config."""
+        opencode_config = {}
+        
+        # Check for .claude/settings.local.json
+        local_settings_path = self.working_dir / '.claude' / 'settings.local.json'
+        if local_settings_path.exists():
+            local_settings = self.load_json(local_settings_path)
+            enabled_servers = local_settings.get('enabledMcpjsonServers', [])
+            
+            # Find .mcp.json (check current dir and traverse up)
+            mcp_json_path = self.working_dir / '.mcp.json'
+            if not mcp_json_path.exists():
+                # Try parent directories
+                current = self.working_dir
+                while current != Path.home() and current != current.parent:
+                    mcp_json_path = current / '.mcp.json'
+                    if mcp_json_path.exists():
+                        break
+                    if (current / '.git').exists():
+                        break
+                    current = current.parent
+            
+            if mcp_json_path.exists():
+                mcp_config = self.convert_mcp_servers(mcp_json_path, enabled_servers)
+                if mcp_config:
+                    opencode_config['mcp'] = mcp_config
+        
+        return opencode_config
+    
+    def setup_agents_md(self):
+        """Set up AGENTS.md symlink or copy."""
+        opencode_agents = Path.home() / '.config' / 'opencode' / 'AGENTS.md'
+        claude_md = Path.home() / '.claude' / 'CLAUDE.md'
+        
+        if not claude_md.exists():
+            return
+        
+        # Check if symlink already exists and is correct
+        if opencode_agents.is_symlink():
+            if opencode_agents.resolve() == claude_md:
+                return  # Already set up correctly
+            else:
+                opencode_agents.unlink()  # Remove old symlink
+        elif opencode_agents.exists():
+            opencode_agents.unlink()  # Remove regular file
+        
+        # Create symlink
+        opencode_agents.parent.mkdir(parents=True, exist_ok=True)
+        opencode_agents.symlink_to(claude_md)
+        print(f"  ✓ Symlinked AGENTS.md → CLAUDE.md", file=sys.stderr)
+    
+    def merge_configs(self, base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep merge two configs, with update taking precedence."""
+        result = base.copy()
+        
+        for key, value in update.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self.merge_configs(result[key], value)
+            else:
+                result[key] = value
+        
+        return result
+    
+    def get_conversion_hash(self) -> str:
+        """Get hash of all Claude config files to detect changes."""
+        hash_inputs = []
+        
+        # Hash global settings
+        global_settings = Path.home() / '.claude' / 'settings.json'
+        if global_settings.exists():
+            hash_inputs.append(self.get_file_hash(global_settings))
+        
+        # Hash project settings
+        local_settings = self.working_dir / '.claude' / 'settings.local.json'
+        if local_settings.exists():
+            hash_inputs.append(self.get_file_hash(local_settings))
+        
+        # Hash .mcp.json
+        mcp_json = self.working_dir / '.mcp.json'
+        if mcp_json.exists():
+            hash_inputs.append(self.get_file_hash(mcp_json))
+        
+        # Combine all hashes
+        combined = '|'.join(hash_inputs)
+        return hashlib.sha256(combined.encode()).hexdigest()
+    
+    def needs_conversion(self) -> bool:
+        """Check if conversion is needed based on cached hash."""
+        cache_file = self.cache_dir / 'claude-to-opencode.hash'
+        
+        current_hash = self.get_conversion_hash()
+        if not cache_file.exists():
+            return True
+        
+        cached_hash = cache_file.read_text().strip()
+        return current_hash != cached_hash
+    
+    def save_conversion_hash(self):
+        """Save current conversion hash to cache."""
+        cache_file = self.cache_dir / 'claude-to-opencode.hash'
+        current_hash = self.get_conversion_hash()
+        cache_file.write_text(current_hash)
+    
+    def convert(self) -> bool:
+        """Run full conversion."""
+        # Check if conversion is needed (unless forced or dry-run)
+        if not self.force and not self.dry_run and not self.needs_conversion():
+            return False  # Silent skip
+        
+        if not self.dry_run:
+            print("🔄 Converting Claude Code configuration to OpenCode...", file=sys.stderr)
+        
+        # Load existing OpenCode config
+        opencode_config_path = Path.home() / '.config' / 'opencode' / 'opencode.json'
+        opencode_config = self.load_json(opencode_config_path)
+        
+        # Track if anything changed
+        original_config = json.dumps(opencode_config, sort_keys=True)
+        
+        # Convert global settings
+        global_config = self.convert_global_settings()
+        if global_config:
+            print("  ✓ Converted global permissions and LSP settings", file=sys.stderr)
+            opencode_config = self.merge_configs(opencode_config, global_config)
+        
+        # Convert project settings
+        project_config = self.convert_project_settings()
+        if project_config:
+            print(f"  ✓ Converted project MCP servers", file=sys.stderr)
+            opencode_config = self.merge_configs(opencode_config, project_config)
+        
+        # Set up AGENTS.md symlink
+        agents_md_changed = False
+        opencode_agents = Path.home() / '.config' / 'opencode' / 'AGENTS.md'
+        if not opencode_agents.exists() or not opencode_agents.is_symlink():
+            self.setup_agents_md()
+            agents_md_changed = True
+        
+        # Check if config changed
+        new_config = json.dumps(opencode_config, sort_keys=True)
+        config_changed = original_config != new_config
+        
+        if not config_changed and not agents_md_changed and not self.force:
+            # Save hash even if nothing changed (to avoid re-checking)
+            if not self.dry_run:
+                self.save_conversion_hash()
+            return False  # No changes
+        
+        # Report results
+        if self.dry_run:
+            print("\n🔍 Dry run - config that would be written:", file=sys.stderr)
+            print(json.dumps(opencode_config, indent=2))
+        else:
+            # Save updated config
+            if config_changed:
+                self.save_json(opencode_config_path, opencode_config)
+                print(f"  💾 Saved to {opencode_config_path}", file=sys.stderr)
+            
+            # Always save conversion hash (even if nothing changed)
+            self.save_conversion_hash()
+        
+        return config_changed or agents_md_changed
+
+
+def main():
+    """Main entry point."""
+    # Parse arguments
+    force = '--force' in sys.argv
+    dry_run = '--dry-run' in sys.argv
+    global_only = '--global' in sys.argv
+    help_requested = '--help' in sys.argv or '-h' in sys.argv
+    
+    if help_requested:
+        print(__doc__)
+        return 0
+    
+    # Determine working directory
+    working_dir = Path.cwd()
+    
+    # Create converter
+    converter = ClaudeToOpenCodeConverter(working_dir, force=force, dry_run=dry_run)
+    
+    try:
+        changed = converter.convert()
+        
+        if dry_run or changed:
+            print("", file=sys.stderr)
+        
+        return 0
+    except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

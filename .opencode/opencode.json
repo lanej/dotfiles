@@ -91,17 +91,9 @@
     "write": "allow"
   },
   "lsp": {
-    "gopls": {
-      "enabled": true
-    },
-    "typescript": {
-      "enabled": true
-    },
-    "lua": {
-      "enabled": true
-    },
-    "rust-analyzer": {
-      "enabled": true
-    }
+    "gopls": {},
+    "typescript": {},
+    "lua": {},
+    "rust-analyzer": {}
   }
 }
