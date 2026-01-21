@@ -162,19 +162,11 @@ class ClaudeToOpenCodeConverter:
         if 'permissions' in claude_settings:
             opencode_config['permission'] = self.convert_permissions(claude_settings['permissions'])
         
-        # Convert enabled plugins (LSP servers)
-        enabled_plugins = claude_settings.get('enabledPlugins', {})
-        lsp_servers = {}
-        for plugin_name, enabled in enabled_plugins.items():
-            if '-lsp@' in plugin_name:
-                # Extract LSP server name (e.g., "rust-analyzer-lsp@claude-plugins-official" -> "rust-analyzer")
-                lsp_name = plugin_name.split('-lsp@')[0]
-                if enabled:
-                    # Empty object means enabled with defaults (OpenCode schema)
-                    lsp_servers[lsp_name] = {}
-        
-        if lsp_servers:
-            opencode_config['lsp'] = lsp_servers
+        # Skip LSP conversion - OpenCode auto-enables LSP based on file extensions
+        # The OpenCode schema requires either {"disabled": true} or {"command": [...]}
+        # Empty objects {} are invalid per schema (additionalProperties: false)
+        # Since we can't map Claude's simple enabled/disabled to OpenCode's format
+        # without knowing the full command, we just omit the LSP section entirely.
         
         return opencode_config
     
@@ -301,7 +293,7 @@ class ClaudeToOpenCodeConverter:
         # Convert global settings
         global_config = self.convert_global_settings()
         if global_config:
-            print("  ✓ Converted global permissions and LSP settings", file=sys.stderr)
+            print("  ✓ Converted global permissions", file=sys.stderr)
             opencode_config = self.merge_configs(opencode_config, global_config)
         
         # Convert project settings

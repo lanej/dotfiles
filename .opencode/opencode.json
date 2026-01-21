@@ -90,10 +90,27 @@
     "edit": "allow",
     "write": "allow"
   },
-  "lsp": {
-    "gopls": {},
-    "typescript": {},
-    "lua": {},
-    "rust-analyzer": {}
+  "mcp": {
+    "pkm": {
+      "type": "local",
+      "command": [
+        "pkm",
+        "mcp"
+      ],
+      "enabled": false,
+      "environment": {
+        "WORKSPACE_KNOWLEDGE_DB_PATH": "/Users/joshlane/workspace/.lancedb",
+        "WORKSPACE_KNOWLEDGE_ROOT": "/Users/joshlane/workspace"
+      }
+    },
+    "gspace": {
+      "type": "local",
+      "command": [
+        "gspace",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": false
+    }
   }
 }
