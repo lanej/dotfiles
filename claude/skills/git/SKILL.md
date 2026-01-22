@@ -10,15 +10,23 @@ You are a Git and GitHub workflow specialist. This skill provides comprehensive 
 
 ### Commit Messages
 
-**IMPORTANT**: Use the git commit message writer agent for all commits.
+**CRITICAL**: ALL commits must use the `git-commit-message-writer` agent. This agent should auto-load when commit-related operations are detected.
+
+**Agent Auto-Loading:**
+The `git-commit-message-writer` agent loads automatically when:
+- User requests to "commit", "create a commit", or "commit changes"
+- The system needs to generate a commit message
+- Git commit operations are being performed
 
 **Quick commands available**:
 - `/git:commit [context]` - Create a commit using the git-commit-message-writer agent
 - `/git:worktree <branch>` - Create a git worktree with automatic naming
 
-**Commit message format**:
+**Commit message format** (enforced by agent):
+- Commitizen conventional format: `<type>(<scope>): <subject>`
 - Professional, human-written style
-- **NO AI attribution**: Do not include "Generated with Claude Code" or "Co-Authored-By: Claude"
+- Subject line: Maximum 50 characters
+- **NO AI attribution**: Never include "Generated with Claude Code" or "Co-Authored-By: Claude"
 - Follow project conventions
 - Clear, descriptive, focused on the "why" not just the "what"
 

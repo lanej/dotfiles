@@ -1,6 +1,6 @@
 ---
 name: git-commit-message-writer
-description: Use this agent when you need to create git commit messages. Examples: <example>Context: User has made changes to fix a bug in the authentication module and needs a commit message. user: 'I fixed the API key validation bug in the auth module' assistant: 'I'll use the commit-message-generator agent to create a properly formatted commit message for your bug fix.' <commentary>Since the user needs a commit message for a bug fix, use the commit-message-generator agent to create a Commitizen-compliant message.</commentary></example> <example>Context: User has added a new feature for batch shipment creation and wants a commit message. user: 'Added batch shipment creation functionality with validation' assistant: 'Let me use the commit-message-generator agent to generate a proper commit message for your new feature.' <commentary>The user added a new feature and needs a commit message, so use the commit-message-generator agent to format it correctly.</commentary></example>
+description: Generate professional git commit messages following Commitizen conventional format. Use when creating commits, generating commit messages, or when user requests to commit changes. Triggers on phrases like "commit", "create a commit", "git commit", "commit these changes", "commit message", or when changes are ready to be committed.
 model: sonnet
 color: cyan
 ---
