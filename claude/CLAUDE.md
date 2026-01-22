@@ -140,7 +140,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
 - **claude-tail** - View Claude Code session logs with filtering
-- **lancer** - LanceDB semantic search and document ingestion
+- **lancer** - LanceDB semantic and vector search; auto-loads for knowledge base queries, document search, RAG operations, and document ingestion/indexing
 - **webapp-testing** - Playwright-based web application testing
 
 **Creative & Design:**
@@ -181,6 +181,11 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Azure operations** - Azure CLI, resource management → load `az` skill
 - **BigQuery operations** - Google BigQuery queries, data warehousing → load `bigquery` skill
 - **Jira operations** - Issue management, JQL queries → load `jira` skill
+
+**Search & Knowledge Base Triggers:**
+- **Semantic search** - When searching documents semantically, RAG operations, vector search → load `lancer` skill
+- **Knowledge base operations** - Finding information across document collections, indexing documents → load `lancer` skill
+- **Document ingestion** - Adding documents to knowledge base, creating embeddings → load `lancer` skill
 
 ## Agent Auto-Loading Guidelines
 
