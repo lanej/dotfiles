@@ -119,7 +119,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **xsv** - Fast CSV data manipulation
 - **xlsx** - Excel file operations (viewing, editing, conversion)
 - **bigquery** - Google BigQuery CLI operations and queries
-- **conform** - Data transformation with AI using Ollama or Vertex AI
+- **conform** - AI-powered data extraction and transformation; auto-loads for extracting structured data from unstructured files, parsing text/PDFs/CSVs, schema validation
 
 **Cloud & Infrastructure:**
 - **az** - Azure CLI operations and resource management
@@ -176,6 +176,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 **Data Format Triggers:**
 - **JSON operations** - Parsing, filtering, transforming JSON → load `jq` skill
 - **CSV operations** - Processing, filtering, analyzing CSV → load `xsv` skill
+- **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
 
 **Platform/Service Triggers:**
 - **Azure operations** - Azure CLI, resource management → load `az` skill
