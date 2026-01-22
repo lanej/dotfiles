@@ -182,6 +182,26 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **BigQuery operations** - Google BigQuery queries, data warehousing → load `bigquery` skill
 - **Jira operations** - Issue management, JQL queries → load `jira` skill
 
+## Agent Auto-Loading Guidelines
+
+Agents should be invoked proactively for specialized tasks:
+
+**Git Commit Agent:**
+- **Trigger phrases**: "commit", "create a commit", "git commit", "commit these changes", "commit message"
+- **Action**: Use `git-commit-message-writer` agent to generate Commitizen-compliant commit messages
+- **Process**: Agent analyzes changes, generates properly formatted message following conventional commits format
+- **Critical**: NEVER add AI attribution or "Co-Authored-By: Claude" to commit messages
+
+**Pull Request Agent:**
+- **Trigger phrases**: "create pull request", "create PR", "open a PR", "pull request"
+- **Action**: Use `pull-request-writer` agent to generate PR titles and descriptions
+- **Critical**: NO AI attribution in PR descriptions
+
+**PR Review Agent:**
+- **Trigger phrases**: "review pull request", "review PR", "comment on PR"
+- **Action**: Use `pull-request-commentor` agent for PR comments and reviews
+- **Critical**: NO AI attribution in PR comments
+
 ## Development Best Practices
 
 ### Node.js/JavaScript
