@@ -123,7 +123,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 
 **Cloud & Infrastructure:**
 - **az** - Azure CLI operations and resource management
-- **gspace** - Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar)
+- **gspace** - Google Workspace operations via CLI and MCP tools; auto-loads for Google URLs (docs.google.com, drive.google.com, sheets.google.com, etc.), file IDs, and Workspace operations
 - **pkm** - Personal knowledge management with semantic search
 
 **Version Control & Project Management:**
@@ -158,6 +158,29 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **skill-creator** - Guide for creating new skills
 - **mcp-builder** - Creating MCP servers for LLM tool integration
 - **presenterm** - Terminal-based presentations from markdown
+
+## Skill Auto-Loading Guidelines
+
+Skills should be loaded proactively when specific patterns are detected in user requests:
+
+**URL-Based Triggers:**
+- **Google Workspace URLs** - When user provides URLs from docs.google.com, drive.google.com, sheets.google.com, slides.google.com, or mail.google.com → load `gspace` skill
+- **Google Drive file IDs** - When user provides alphanumeric file IDs in Google Drive format → load `gspace` skill
+
+**File Type Triggers:**
+- **.docx files** - Word documents → load `docx` skill
+- **.pdf files** - PDF documents → load `pdf` skill
+- **.xlsx files** - Excel files → load `xlsx` skill (for reading/analyzing) or `xlsx-python` skill (for creating/modifying)
+- **.pptx files** - PowerPoint presentations → load `pptx` skill
+
+**Data Format Triggers:**
+- **JSON operations** - Parsing, filtering, transforming JSON → load `jq` skill
+- **CSV operations** - Processing, filtering, analyzing CSV → load `xsv` skill
+
+**Platform/Service Triggers:**
+- **Azure operations** - Azure CLI, resource management → load `az` skill
+- **BigQuery operations** - Google BigQuery queries, data warehousing → load `bigquery` skill
+- **Jira operations** - Issue management, JQL queries → load `jira` skill
 
 ## Development Best Practices
 
