@@ -1,6 +1,6 @@
 ---
 name: lancer
-description: Use lancer CLI for LanceDB semantic and multi-modal search with document ingestion, vector embeddings, and MCP server integration for knowledge retrieval.
+description: Semantic and multi-modal search across documents using LanceDB vector embeddings. Use when searching knowledge bases, finding information semantically, ingesting documents for RAG, or performing vector similarity search. Triggers on "search documents", "semantic search", "find in knowledge base", "vector search", "index documents", "LanceDB", or RAG/embedding operations.
 ---
 # Lancer - LanceDB CLI and MCP Server Skill
 
