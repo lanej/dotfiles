@@ -169,6 +169,7 @@ opencode: claude
 	@mkdir -p $(HOME)/.config/opencode
 	@ln -fs $(DOTFILES)/.opencode/opencode.json $(HOME)/.config/opencode/opencode.json
 	@ln -fns $(DOTFILES)/.opencode/commands $(HOME)/.config/opencode/commands
+	@ln -fns $(HOME)/.claude/skills $(HOME)/.config/opencode/skills
 	@ln -fs $(HOME)/.claude/CLAUDE.md $(HOME)/.config/opencode/AGENTS.md
 	@$(DOTFILES)/bin/claude-to-opencode || true
 gemini:

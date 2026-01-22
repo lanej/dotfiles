@@ -314,6 +314,7 @@ Note: `jira` is NOT included because it's not in `enabledMcpjsonServers`.
 ~/.config/opencode/               # Created by `make opencode`
 ├── opencode.json → ~/.files/.opencode/opencode.json  # Symlink
 ├── commands/ → ~/.files/.opencode/commands/          # Symlink
+├── skills/ → ~/.claude/skills/                       # Symlink
 └── AGENTS.md → ~/.claude/CLAUDE.md                   # Symlink
 
 ~/.cache/opencode/

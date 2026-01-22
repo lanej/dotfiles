@@ -104,6 +104,61 @@
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
 - **BigQuery**: Use `bigquery` CLI (NOT `bq`)
 
+## Available Skills
+
+Use the `skill` tool to load detailed guidance for specific technologies and workflows. Skills are available from `~/.claude/skills/` (Claude Code) or `~/.config/opencode/skills/` (OpenCode).
+
+**Core Development:**
+- **python** - uv-based Python development, package management, virtual environments
+- **rust** - Cargo workflows, testing, clippy, build optimization
+- **go** - Go development with gotestsum for testing
+- **just** - Task automation with Justfiles
+
+**Data & CLI Tools:**
+- **jq** - JSON processing, filtering, transformations
+- **xsv** - Fast CSV data manipulation
+- **xlsx** - Excel file operations (viewing, editing, conversion)
+- **bigquery** - Google BigQuery CLI operations and queries
+- **conform** - Data transformation with AI using Ollama or Vertex AI
+
+**Cloud & Infrastructure:**
+- **az** - Azure CLI operations and resource management
+- **gspace** - Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar)
+- **pkm** - Personal knowledge management with semantic search
+
+**Version Control & Project Management:**
+- **git** - Git workflows, GitHub CLI, professional commit practices
+- **phab** - Phabricator task management and code review
+- **jira** - Jira CLI operations and JQL queries
+
+**Document Processing:**
+- **docx** - Word document creation, editing, tracked changes
+- **pptx** - PowerPoint presentation manipulation
+- **pdf** - PDF extraction, creation, merging, form filling
+- **xlsx-python** - Programmatic Excel creation with Python
+
+**Development Tools:**
+- **claude-cli** - Claude CLI session management, MCP servers, plugins
+- **claude-tail** - View Claude Code session logs with filtering
+- **lancer** - LanceDB semantic search and document ingestion
+- **webapp-testing** - Playwright-based web application testing
+
+**Creative & Design:**
+- **frontend-design** - Production-grade UI design and styling
+- **canvas-design** - Visual art creation in PNG/PDF format
+- **algorithmic-art** - Generative art with p5.js
+- **web-artifacts-builder** - Complex React/Tailwind artifacts
+- **slack-gif-creator** - Animated GIFs optimized for Slack
+- **brand-guidelines** - Anthropic brand colors and typography
+- **theme-factory** - Styling artifacts with pre-set themes
+
+**Documentation & Communication:**
+- **doc-coauthoring** - Structured documentation workflow
+- **internal-comms** - Internal communication formats (status reports, updates, FAQs)
+- **skill-creator** - Guide for creating new skills
+- **mcp-builder** - Creating MCP servers for LLM tool integration
+- **presenterm** - Terminal-based presentations from markdown
+
 ## Development Best Practices
 
 ### Node.js/JavaScript
