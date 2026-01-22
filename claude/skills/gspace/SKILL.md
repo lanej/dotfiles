@@ -1,6 +1,6 @@
 ---
 name: gspace
-description: Use gspace CLI (command-line tool) and MCP tools for Google Workspace operations including Drive file management, Gmail, Docs, Sheets, Calendar, and Tasks. Both CLI commands (via Bash) and 40+ MCP tools are available.
+description: Use gspace CLI and MCP tools for Google Workspace operations (Drive, Gmail, Docs, Sheets, Calendar, Tasks). Use when working with Google Workspace URLs (docs.google.com, drive.google.com, sheets.google.com, slides.google.com, mail.google.com), Google Drive file IDs, or any Google Workspace file/email/calendar operations. Supports both CLI commands (via Bash) and 40+ MCP tools.
 ---
 # Google Workspace (gspace) Skill
 
@@ -28,7 +28,21 @@ You are a Google Workspace specialist with access to both the **gspace CLI** (a 
 
 ## Working with Google Docs/Sheets/Slides URLs
 
-**IMPORTANT:** When the user provides a Google Workspace URL, extract the file ID and use it with MCP tools.
+**IMPORTANT:** When the user provides a Google Workspace URL, you can use it directly with CLI commands or extract the file ID for MCP tools.
+
+### CLI Commands for Downloading
+
+**For Google Docs (markdown output):**
+- **Recommended:** `gspace docs download FILE_ID /path/output.md` - Cleaner markdown output, handles multi-tab docs automatically, no embedded images by default
+- **Alternative:** `gspace files download FILE_ID /path/output.md --export markdown` - Includes base64-encoded images inline, more verbose
+
+**For format conversion:**
+- Use `gspace files download FILE_ID /path/output.{pdf,docx,xlsx}` with `--export` flag (supports pdf, docx, xlsx, html, text, etc.)
+
+**Important Notes:**
+- `gspace files download` accepts file IDs (recommended) or full Google URLs (may fail with URL fragments)
+- `gspace docs download` only accepts file IDs
+- For cleaner, more readable markdown from Google Docs, prefer `gspace docs download`
 
 ### URL Patterns and File ID Extraction
 
@@ -1168,9 +1182,11 @@ gspace auth login
 gspace drive files ls
 gspace drive files ls --owner user@example.com --limit 20
 
-# Download files
-gspace drive files download FILE_ID /tmp/document.pdf
-gspace drive files download FILE_ID /tmp/doc.md --export markdown
+# Download files (accepts file IDs or full Google URLs)
+gspace files download FILE_ID /tmp/document.pdf
+gspace files download FILE_ID_OR_URL /tmp/doc.md --export markdown
+gspace files download "https://docs.google.com/document/d/FILE_ID/edit" /tmp/doc.md --export markdown
+gspace files download FILE_ID /tmp/sheet.xlsx --export xlsx
 
 # Upload files
 gspace drive files upload /path/to/file "File Name"
@@ -1218,8 +1234,14 @@ gspace permissions revoke FILE_ID PERMISSION_ID
 # Create doc from markdown
 gspace docs create /path/to/notes.md "Document Title"
 
-# Download doc
-gspace docs download DOC_ID /tmp/output.md --export markdown
+# Download doc as markdown (specialized command, auto-handles single/multi-tab docs)
+gspace docs download DOC_ID /tmp/output.md
+gspace docs download DOC_ID /tmp/output.md --include-images
+
+# Download doc with format conversion (use files download for format control)
+gspace files download DOC_ID /tmp/output.md --export markdown
+gspace files download DOC_ID /tmp/output.pdf --export pdf
+gspace files download DOC_ID /tmp/output.docx --export docx
 
 # Find and replace
 gspace docs find-replace DOC_ID "old text" "new text"
