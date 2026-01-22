@@ -1,10 +1,12 @@
 ---
 name: gspace
-description: Use gspace CLI and MCP tools for Google Workspace operations including Drive file management, Gmail, Docs, Sheets, Calendar, and Tasks with 40+ MCP tools available.
+description: Use gspace CLI (command-line tool) and MCP tools for Google Workspace operations including Drive file management, Gmail, Docs, Sheets, Calendar, and Tasks. Both CLI commands (via Bash) and 40+ MCP tools are available.
 ---
 # Google Workspace (gspace) Skill
 
-You are a Google Workspace specialist with access to both the gspace CLI and MCP (Model Context Protocol) tools. This skill provides comprehensive guidance for working with Google Drive, Gmail, Docs, Sheets, Calendar, and Tasks operations through both interfaces.
+You are a Google Workspace specialist with access to both the **gspace CLI** (a command-line tool you can invoke via Bash) and **MCP (Model Context Protocol) tools**. This skill provides comprehensive guidance for working with Google Drive, Gmail, Docs, Sheets, Calendar, and Tasks operations through both interfaces.
+
+**IMPORTANT:** gspace is a CLI tool installed on the system. Use it via the Bash tool with commands like `gspace drive files ls` or `gspace gmail search --query "subject:urgent"`. It is NOT only an MCP server.
 
 ## MCP vs CLI: When to Use Each
 
@@ -23,6 +25,130 @@ You are a Google Workspace specialist with access to both the gspace CLI and MCP
 - **File uploads/downloads**: Transferring large files to/from local system
 - **Interactive operations**: Authentication flows, confirmations
 - **Shell automation**: Integration with other command-line tools
+
+## Working with Google Docs/Sheets/Slides URLs
+
+**IMPORTANT:** When the user provides a Google Workspace URL, extract the file ID and use it with MCP tools.
+
+### URL Patterns and File ID Extraction
+
+**Google Docs:**
+```
+https://docs.google.com/document/d/FILE_ID/edit...
+```
+
+**Google Sheets:**
+```
+https://docs.google.com/spreadsheets/d/FILE_ID/edit...
+```
+
+**Google Slides:**
+```
+https://docs.google.com/presentation/d/FILE_ID/edit...
+```
+
+**Extraction:** The file ID is the long alphanumeric string between `/d/` and `/edit`
+
+### Common URL Operations
+
+**Example URL:** `https://docs.google.com/document/d/1711ddafVoaLzT8xPkL8RgqsJLY8HwzZqppxzWFjh0Gc/edit?tab=t.nlbxgkk0bjwu`
+- **File ID:** `1711ddafVoaLzT8xPkL8RgqsJLY8HwzZqppxzWFjh0Gc`
+- **Tab ID:** `t.nlbxgkk0bjwu` (optional, for multi-tab docs)
+
+### Workflow: Fetch and Download from URL
+
+```python
+# 1. Extract file ID from URL
+file_id = "1711ddafVoaLzT8xPkL8RgqsJLY8HwzZqppxzWFjh0Gc"
+
+# 2. Get metadata to understand the file
+metadata = mcp__gdrive__drive_files_metadata(file_id=file_id)
+# Returns: name, mimeType, created/modified times
+
+# 3. Download the file in desired format
+mcp__gdrive__drive_files_download(
+    file_id=file_id,
+    local_path="/tmp/document.md",
+    export_format="markdown"
+)
+
+# For multi-tab docs, specify tab_id
+mcp__gdrive__drive_files_download(
+    file_id=file_id,
+    local_path="/tmp/specific_tab.md",
+    export_format="markdown",
+    tab_id="t.nlbxgkk0bjwu"
+)
+```
+
+### Supported Export Formats
+
+**Google Docs:**
+- `markdown` - Best for readable text (recommended)
+- `pdf` - Preserves formatting
+- `docx` - Microsoft Word format
+- `text` - Plain text only
+
+**Google Sheets:**
+- `xlsx` - Excel format (preserves all sheets and formulas)
+- `csv` - Single sheet as CSV
+- `pdf` - Printable format
+
+**Google Slides:**
+- `pdf` - Each slide as page
+- `pptx` - Microsoft PowerPoint format
+
+### URL-Based Workflows
+
+**Workflow 1: Read Doc from URL**
+```python
+# User provides: https://docs.google.com/document/d/ABC123/edit
+file_id = "ABC123"
+
+# Download and read
+mcp__gdrive__drive_files_download(
+    file_id=file_id,
+    local_path="/tmp/doc.md",
+    export_format="markdown"
+)
+# Then read /tmp/doc.md using Read tool
+```
+
+**Workflow 2: Comment on Doc from URL**
+```python
+# Add comment to document
+mcp__gdrive__docs_comments_create(
+    file_id="ABC123",
+    content="This section needs updating"
+)
+```
+
+**Workflow 3: Share Doc from URL**
+```python
+# Grant access to document
+mcp__gdrive__permissions_grant(
+    file_id="ABC123",
+    role="reader",
+    type="user",
+    email="colleague@example.com"
+)
+```
+
+**Workflow 4: Parse Sheet from URL**
+```python
+# For Google Sheets saved as .xlsx in Drive
+file_id = "SHEET123"
+
+# If it's a Google Sheet, download as xlsx first
+mcp__gdrive__drive_files_download(
+    file_id=file_id,
+    local_path="/tmp/sheet.xlsx",
+    export_format="xlsx"
+)
+
+# Then parse the .xlsx file
+# (Note: For native Google Sheets, use sheets_* tools instead)
+```
 
 ## MCP Tools Complete Reference
 
