@@ -77,7 +77,11 @@
     }
   },
   "permission": {
+    "skill": {
+      "*": "allow"
+    },
     "bash": {
+      "/tmp/*": "allow",
       "rm -rf /": "deny",
       "rm -rf / *": "deny",
       "sudo rm *": "deny",
@@ -89,28 +93,5 @@
     },
     "edit": "allow",
     "write": "allow"
-  },
-  "mcp": {
-    "pkm": {
-      "type": "local",
-      "command": [
-        "pkm",
-        "mcp"
-      ],
-      "enabled": false,
-      "environment": {
-        "WORKSPACE_KNOWLEDGE_DB_PATH": "/Users/joshlane/workspace/.lancedb",
-        "WORKSPACE_KNOWLEDGE_ROOT": "/Users/joshlane/workspace"
-      }
-    },
-    "gspace": {
-      "type": "local",
-      "command": [
-        "gspace",
-        "mcp",
-        "stdio"
-      ],
-      "enabled": false
-    }
   }
 }
