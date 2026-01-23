@@ -1,6 +1,6 @@
 ---
 name: epist
-description: Epistemological tracking system for managing facts, conclusions, and provenance chains with Git integrity and semantic search. Use when tracking facts, recording conclusions, tracing provenance, managing knowledge provenance, or searching epistemological claims. Triggers on "track fact", "add conclusion", "trace provenance", "epistemic", "knowledge base", or fact/conclusion management.
+description: Epistemological tracking system for managing facts, conclusions, and provenance chains with Git integrity and semantic search. Use when analyzing data from multiple sources, conducting research, working with metrics/surveys, making data-driven conclusions, or tracking complex findings. Triggers on data analysis (analyze data, metrics, survey, research, findings, insights), conclusions (conclude, recommend, decide, infer), quantitative work (percentage, trend, correlation, statistic), source attribution (according to, based on, from source), or any epistemological tracking. Skip for trivial calculations.
 ---
 # Epist - Epistemological Tracking System Skill
 
@@ -405,6 +405,108 @@ epist trace conclusions/team-alpha/intervention.md
 epist add conclusion
 # (Reference both old and new facts)
 ```
+
+### Workflow 5: Data Analysis with Epistemological Rigor
+
+When conducting data analysis from multiple sources, use epist to maintain provenance and prevent misinterpretation:
+
+```bash
+# Initialize knowledge base if not done
+epist init
+
+# Step 1: Record data sources as facts
+epist add fact
+# ---
+# title: Q4 2024 Team Survey Results - Autonomy
+# source: Employee Survey Platform
+# source_url: https://surveys.company.com/q4-2024/results
+# date: 2024-12-20
+# tags: [metrics, autonomy, q4-2024, survey]
+# ---
+# 
+# Survey question: "I have autonomy in my work"
+# Overall company score: 18%
+# Response rate: 87% (1,200 employees)
+# Note: This is a newly added question, no historical baseline
+
+epist add fact
+# ---
+# title: HR Analytics - Autonomy Metric Definition
+# source: HR Analytics Documentation
+# source_url: https://docs.company.com/hr/metrics#autonomy
+# date: 2024-01-15
+# tags: [documentation, metrics, autonomy, definitions]
+# ---
+# 
+# Autonomy metric measured at DEPARTMENT level, not team level.
+# Aggregation: Average of all department scores weighted by headcount.
+# Department defined as: Direct reports to VP or higher.
+
+epist add fact
+# ---
+# title: Team Lead Interview - Alpha Team Autonomy Concerns
+# source: 1:1 Interview with Jane Doe (Team Alpha Lead)
+# date: 2024-12-18
+# tags: [qualitative, autonomy, team-alpha, interview]
+# confidence: medium
+# ---
+# 
+# "Our team feels micromanaged lately. Every decision requires approval
+# from the VP level, which slows us down significantly."
+# Context: Team Alpha is part of Engineering department (120 people).
+
+# Step 2: Analyze and identify potential issues
+# (During analysis, you notice 18% seems wrong given the interview feedback)
+
+# Step 3: Record conclusion with provenance
+epist add conclusion
+# ---
+# title: Survey Data May Misrepresent Team-Level Autonomy
+# based_on:
+#   - facts/survey_results_q4_autonomy.md
+#   - facts/hr_metrics_autonomy_definition.md
+#   - facts/interview_team_alpha_lead.md
+# confidence: high
+# tags: [analysis, autonomy, methodology]
+# ---
+# 
+# The 18% autonomy score likely conflates department-level and team-level
+# autonomy. The metric definition specifies DEPARTMENT level (VP reports),
+# but the survey question asks about individual autonomy.
+# 
+# Team Alpha's interview feedback suggests high frustration with autonomy,
+# but they're grouped with 119 other engineers in the same department.
+# If most of the department has autonomy but Team Alpha doesn't, the
+# department average masks the team-specific problem.
+# 
+# RECOMMENDATION: Re-analyze survey data at team level, not department level.
+# Request engineering to break down the 18% by individual teams.
+
+# Step 4: Before sharing analysis, verify provenance
+epist trace conclusions/survey_methodology_issue.md
+# Output shows:
+# ✓ Conclusion: Survey Data May Misrepresent Team-Level Autonomy
+#   └─ ✓ Fact: Q4 2024 Survey Results (2024-12-20)
+#   └─ ✓ Fact: HR Metrics Definition (2024-01-15)
+#   └─ ✓ Fact: Team Lead Interview (2024-12-18)
+
+# Step 5: Search for related analysis when needed
+epist search "autonomy methodology" --type conclusion
+```
+
+**Why this workflow matters:**
+- **Prevents misinterpretation**: Caught that 18% was department-level, not team-level
+- **Audit trail**: Can explain your reasoning months later
+- **Reproducible**: Others can verify your logic
+- **Staleness detection**: Know when facts become outdated
+- **Source tracking**: Always know where data came from
+
+**When to use this workflow:**
+- Analyzing survey results, metrics, or quantitative data
+- Combining multiple data sources (quantitative + qualitative)
+- Making recommendations based on data
+- Investigating trends or anomalies
+- Conducting research spanning multiple sessions
 
 ## Best Practices
 
