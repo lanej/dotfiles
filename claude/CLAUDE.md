@@ -141,6 +141,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
 - **claude-tail** - View Claude Code session logs with filtering
 - **lancer** - LanceDB semantic and vector search; auto-loads for knowledge base queries, document search, RAG operations, and document ingestion/indexing
+- **epist** - Epistemological tracking system; auto-loads for tracking facts, recording conclusions, tracing provenance chains, and managing knowledge with Git integrity
 - **webapp-testing** - Playwright-based web application testing
 
 **Creative & Design:**
@@ -177,6 +178,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **JSON operations** - Parsing, filtering, transforming JSON → load `jq` skill
 - **CSV operations** - Processing, filtering, analyzing CSV → load `xsv` skill
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
+- **Qualitative analysis** - When quantitative data seems counterintuitive or needs deeper understanding, use `conform` to analyze the underlying qualitative patterns
 
 **Platform/Service Triggers:**
 - **Azure operations** - Azure CLI, resource management → load `az` skill
@@ -187,6 +189,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Semantic search** - When searching documents semantically, RAG operations, vector search → load `lancer` skill
 - **Knowledge base operations** - Finding information across document collections, indexing documents → load `lancer` skill
 - **Document ingestion** - Adding documents to knowledge base, creating embeddings → load `lancer` skill
+- **Epistemological tracking** - When tracking facts, recording conclusions, tracing provenance chains, managing knowledge provenance → load `epist` skill
 
 ## Agent Auto-Loading Guidelines
 

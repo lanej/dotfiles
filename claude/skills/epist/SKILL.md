@@ -1,0 +1,586 @@
+---
+name: epist
+description: Epistemological tracking system for managing facts, conclusions, and provenance chains with Git integrity and semantic search. Use when tracking facts, recording conclusions, tracing provenance, managing knowledge provenance, or searching epistemological claims. Triggers on "track fact", "add conclusion", "trace provenance", "epistemic", "knowledge base", or fact/conclusion management.
+---
+# Epist - Epistemological Tracking System Skill
+
+You are an epistemological tracking specialist using `epist`, a CLI tool that helps track facts, conclusions, and their provenance using Git for integrity and Lancer for semantic search.
+
+## What is epist?
+
+`epist` is a powerful tool for:
+- **Fact tracking**: Record facts with proper provenance (sources, dates, context)
+- **Conclusion management**: Track conclusions derived from facts
+- **Provenance tracing**: Understand dependency chains and staleness
+- **Semantic search**: Find facts and conclusions using vector search
+- **Git-backed integrity**: Version control for epistemological claims
+- **MCP server**: Integration with Claude and other AI tools
+
+## Core Capabilities
+
+1. **Add facts**: Record factual claims with provenance
+2. **Add conclusions**: Create conclusions based on facts
+3. **Search**: Semantic search across facts and conclusions
+4. **Trace**: Follow provenance chains and check staleness
+5. **List**: Browse all facts and conclusions
+6. **Remove**: Delete facts or conclusions
+7. **MCP**: Run as Model Context Protocol server
+
+## Quick Start
+
+### Initialize Knowledge Base
+
+```bash
+# Initialize new epist knowledge base
+epist init
+
+# This creates:
+# - .epist/ directory with SQLite database
+# - Git repository for version control
+# - LanceDB vector embeddings for search
+```
+
+### Adding Facts
+
+```bash
+# Add a fact interactively (opens editor)
+epist add fact
+
+# Example fact structure:
+# ---
+# title: Q4 2024 Team Autonomy Score
+# source: Team Survey Results
+# source_url: https://example.com/survey/q4-2024
+# date: 2024-12-15
+# tags: [metrics, autonomy, team-alpha]
+# ---
+# 
+# Team Alpha's autonomy score in Q4 2024 was 78%, down from 85% in Q3.
+# This represents a 7 percentage point decrease quarter-over-quarter.
+```
+
+### Adding Conclusions
+
+```bash
+# Add a conclusion based on facts
+epist add conclusion
+
+# Example conclusion structure:
+# ---
+# title: Team Alpha Needs Autonomy Intervention
+# based_on:
+#   - facts/metrics/q4_autonomy.md
+#   - facts/interviews/team_lead_feedback.md
+# confidence: high
+# tags: [recommendations, team-alpha]
+# ---
+# 
+# Based on declining autonomy scores and team lead feedback, Team Alpha
+# requires immediate intervention to restore autonomy levels.
+```
+
+### Searching
+
+```bash
+# Search all facts and conclusions
+epist search "team autonomy problems"
+
+# Search only facts
+epist search "deployment issues" --type fact --limit 5
+
+# Search only conclusions
+epist search "recommendations" --type conclusion
+
+# JSON output for scripting
+epist search "metrics" --format json
+```
+
+### Tracing Provenance
+
+```bash
+# Trace dependency chain for a conclusion
+epist trace conclusions/team-alpha/recommendation.md
+
+# Shows:
+# - All facts the conclusion depends on
+# - Staleness indicators (if facts are outdated)
+# - Full dependency tree
+```
+
+### Listing
+
+```bash
+# List all facts and conclusions
+epist list
+
+# List only facts
+epist list --type fact
+
+# List only conclusions
+epist list --type conclusion
+
+# JSON output
+epist list --format json
+```
+
+## Command Reference
+
+### `epist init`
+Initialize a new epistemological knowledge base.
+
+**What it creates:**
+- `.epist/` directory with SQLite database
+- Git repository for version control
+- LanceDB vector store for semantic search
+
+```bash
+epist init
+```
+
+### `epist add fact`
+Add a new fact with provenance information.
+
+**Interactive mode** (opens editor):
+```bash
+epist add fact
+```
+
+**Fact template:**
+```markdown
+---
+title: [Required] Descriptive title
+source: [Required] Where this came from
+source_url: [Optional] Link to source
+date: [Required] YYYY-MM-DD
+tags: [Optional] [tag1, tag2]
+confidence: [Optional] low|medium|high
+---
+
+[Required] The actual factual claim or data.
+Can be multiple paragraphs.
+```
+
+**Flags:**
+- None currently - always interactive
+
+### `epist add conclusion`
+Add a conclusion derived from facts.
+
+**Interactive mode** (opens editor):
+```bash
+epist add conclusion
+```
+
+**Conclusion template:**
+```markdown
+---
+title: [Required] Descriptive title
+based_on: [Required] List of fact paths
+  - facts/path/to/fact1.md
+  - facts/path/to/fact2.md
+confidence: [Optional] low|medium|high
+tags: [Optional] [tag1, tag2]
+---
+
+[Required] The conclusion or inference drawn from the facts.
+Explain the reasoning connecting the facts to this conclusion.
+```
+
+**Flags:**
+- None currently - always interactive
+
+### `epist search <query>`
+Semantic search using LanceDB vector embeddings.
+
+```bash
+# Search all
+epist search "team autonomy"
+
+# Search only facts
+epist search "metrics" --type fact
+
+# Limit results
+epist search "deployment" --limit 5
+
+# JSON output
+epist search "issues" --format json
+```
+
+**Flags:**
+- `--type <type>` - Filter by type: `fact`, `conclusion`, `all` (default: `all`)
+- `--limit <n>` - Maximum results (default: 10)
+- `--format <fmt>` - Output format: `table`, `json`, `paths` (default: `table`)
+
+**Output formats:**
+- `table` - Human-readable table with title, type, tags, preview
+- `json` - Structured JSON for scripting
+- `paths` - Just file paths (one per line)
+
+### `epist trace <path>`
+Trace provenance chain and check staleness.
+
+```bash
+# Trace a conclusion
+epist trace conclusions/team-alpha/recommendation.md
+
+# Trace a fact
+epist trace facts/metrics/q4_autonomy.md
+```
+
+**Shows:**
+- Full dependency tree
+- Staleness warnings (if dependencies changed)
+- Missing dependencies (if files deleted)
+
+**Flags:**
+- None currently
+
+### `epist list`
+List all facts and conclusions.
+
+```bash
+# List all
+epist list
+
+# List only facts
+epist list --type fact
+
+# List only conclusions
+epist list --type conclusion
+
+# JSON output
+epist list --format json
+```
+
+**Flags:**
+- `--type <type>` - Filter by type: `fact`, `conclusion`, `all` (default: `all`)
+- `--format <fmt>` - Output format: `table`, `json` (default: `table`)
+
+### `epist get <path>`
+Get full details of a fact or conclusion.
+
+```bash
+# Get fact details
+epist get facts/metrics/q4_autonomy.md
+
+# Get conclusion details
+epist get conclusions/team-alpha/recommendation.md
+```
+
+**Shows:**
+- Full metadata (YAML frontmatter)
+- Complete content
+- File path and timestamps
+
+**Flags:**
+- None currently
+
+### `epist remove <path>`
+Remove a fact or conclusion from the knowledge base.
+
+```bash
+# Remove a fact
+epist remove facts/metrics/outdated_data.md
+
+# Remove a conclusion
+epist remove conclusions/obsolete/old_recommendation.md
+```
+
+**Warning:** This is destructive and removes from Git history.
+
+**Flags:**
+- None currently - always prompts for confirmation
+
+### `epist destroy`
+Completely destroy the knowledge base (DESTRUCTIVE).
+
+```bash
+epist destroy
+```
+
+**Warning:** This removes:
+- `.epist/` directory
+- All facts and conclusions
+- Git history
+- Vector embeddings
+
+**Flags:**
+- None currently - always prompts for confirmation
+
+### `epist mcp`
+MCP (Model Context Protocol) server commands.
+
+```bash
+# Start MCP server
+epist mcp start
+
+# MCP server provides tools for:
+# - Searching facts and conclusions
+# - Getting fact/conclusion details
+# - Adding new facts (future)
+# - Adding new conclusions (future)
+```
+
+**Use in Claude Desktop:**
+Add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "epist": {
+      "command": "epist",
+      "args": ["mcp", "start"]
+    }
+  }
+}
+```
+
+## Workflows
+
+### Workflow 1: Recording Research Findings
+
+```bash
+# Initialize if not done
+epist init
+
+# Add facts from research
+epist add fact
+# Title: "Team Alpha Q4 Autonomy Score"
+# Source: "Team Survey"
+# Date: 2024-12-15
+# Content: "Team Alpha autonomy: 78% (down from 85%)"
+
+epist add fact
+# Title: "Team Lead Interview: Autonomy Concerns"
+# Source: "Interview with Jane Doe"
+# Date: 2024-12-18
+# Content: "Lead reports increased micromanagement..."
+
+# Create conclusion
+epist add conclusion
+# Title: "Team Alpha Autonomy Intervention Needed"
+# Based on: facts/q4_autonomy.md, facts/lead_interview.md
+# Content: "Declining autonomy requires intervention..."
+```
+
+### Workflow 2: Searching for Context
+
+```bash
+# Search for autonomy-related facts
+epist search "autonomy problems" --type fact
+
+# Find all conclusions about a team
+epist search "team alpha" --type conclusion
+
+# Get full details of a finding
+epist get facts/metrics/q4_autonomy.md
+```
+
+### Workflow 3: Checking Provenance
+
+```bash
+# Before using a conclusion, check its provenance
+epist trace conclusions/team-alpha/intervention.md
+
+# Output shows:
+# ✓ Conclusion: Team Alpha Autonomy Intervention Needed
+#   └─ ✓ Fact: Q4 Autonomy Score (2024-12-15)
+#   └─ ⚠ Fact: Team Lead Interview (outdated: 60 days old)
+```
+
+### Workflow 4: Updating Facts
+
+```bash
+# When new data arrives
+epist add fact
+# Title: "Team Alpha Q1 2025 Autonomy Score"
+# Source: "Team Survey"
+# Date: 2025-03-15
+# Content: "Team Alpha autonomy: 82% (up from 78%)"
+
+# Trace dependent conclusions to see what's affected
+epist search "team alpha" --type conclusion
+epist trace conclusions/team-alpha/intervention.md
+
+# Update conclusions if needed
+epist add conclusion
+# (Reference both old and new facts)
+```
+
+## Best Practices
+
+### Fact Recording
+
+1. **Always include sources**: Every fact needs a `source` field
+2. **Date everything**: Use `date` field for temporal tracking
+3. **Tag liberally**: Use tags for easy categorization
+4. **Link sources**: Add `source_url` when available
+5. **Be specific**: Write clear, verifiable facts
+
+### Conclusion Building
+
+1. **Reference facts explicitly**: Use `based_on` to link facts
+2. **Explain reasoning**: Show how facts lead to conclusions
+3. **Indicate confidence**: Use `confidence` field honestly
+4. **Keep atomic**: One conclusion per file
+5. **Update regularly**: Revisit when facts change
+
+### Provenance Management
+
+1. **Trace before using**: Always check provenance chains
+2. **Watch for staleness**: Update facts when they age
+3. **Document assumptions**: Note when facts are incomplete
+4. **Version control**: Commit regularly to Git
+5. **Review dependencies**: Periodically audit conclusion chains
+
+### Search Strategy
+
+1. **Use semantic search**: Don't rely on exact keywords
+2. **Start broad**: Use general queries, then narrow
+3. **Filter by type**: Use `--type` to focus search
+4. **Check multiple results**: Don't stop at first match
+5. **Verify provenance**: Always trace important findings
+
+## Integration with Other Tools
+
+### Git Integration
+
+```bash
+# Epist uses Git under the hood
+cd .epist/
+git log  # View history of changes
+git diff  # See what changed
+git blame facts/some_fact.md  # See who added/modified
+```
+
+### Lancer Integration
+
+```bash
+# Epist uses Lancer for vector search
+# Search indices are automatically maintained
+# No manual lancer commands needed
+```
+
+### MCP Integration
+
+```bash
+# Use epist with Claude Desktop
+epist mcp start
+
+# Or integrate with other MCP clients
+# MCP tools available:
+# - epist_search: Search facts and conclusions
+# - epist_get: Get full details
+# - epist_trace: Trace provenance chains
+```
+
+## Common Use Cases
+
+### Research Projects
+
+Track research findings, sources, and conclusions for long-term projects.
+
+```bash
+epist init
+# Add facts from papers, interviews, experiments
+# Build conclusions based on evidence
+# Trace provenance when writing reports
+```
+
+### Team Metrics Analysis
+
+Record team metrics and derive insights.
+
+```bash
+# Add metric facts (surveys, dashboards, reports)
+# Create conclusions about team health
+# Track changes over time
+# Trace conclusions back to data sources
+```
+
+### Decision Making
+
+Document decision-making process with evidence.
+
+```bash
+# Record facts about the situation
+# Document assumptions and constraints
+# Create conclusion with recommendation
+# Trace provenance chain for review
+```
+
+### Knowledge Management
+
+Build a personal knowledge base with provenance.
+
+```bash
+# Add facts from books, articles, experiences
+# Create insights and learnings
+# Search semantically when needed
+# Maintain integrity with Git
+```
+
+## Troubleshooting
+
+### Search Returns No Results
+
+```bash
+# Check if knowledge base is initialized
+epist list
+
+# Verify facts/conclusions exist
+ls .epist/
+
+# Rebuild search index (if needed)
+# (Future: epist reindex command)
+```
+
+### Provenance Trace Shows Staleness
+
+```bash
+# Review the stale facts
+epist get facts/path/to/stale_fact.md
+
+# Update with new information
+epist add fact
+# (Create updated version)
+
+# Update dependent conclusions
+epist add conclusion
+# (Reference new facts)
+```
+
+### Git Conflicts
+
+```bash
+# If Git conflicts occur in .epist/
+cd .epist/
+git status
+git diff
+
+# Resolve conflicts manually
+# Epist stores facts as markdown files
+# Standard Git conflict resolution applies
+```
+
+## Summary
+
+`epist` provides a systematic way to:
+- **Track facts** with proper provenance and sources
+- **Build conclusions** based on evidence
+- **Search semantically** across your knowledge base
+- **Trace provenance** to verify reasoning chains
+- **Maintain integrity** using Git version control
+
+**Core workflow:**
+1. `epist init` - Initialize knowledge base
+2. `epist add fact` - Record factual claims
+3. `epist add conclusion` - Derive insights
+4. `epist search` - Find relevant information
+5. `epist trace` - Verify provenance chains
+
+**Integration:**
+- Git for version control and integrity
+- Lancer for semantic search
+- MCP for AI tool integration
+
+Use `epist` when you need to maintain epistemological rigor in research, analysis, decision-making, or knowledge management.
