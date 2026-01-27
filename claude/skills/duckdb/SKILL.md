@@ -384,6 +384,32 @@ SELECT * FROM 'large.csv' USING SAMPLE 1000 ROWS;
 
 ## Integration with Other Tools
 
+### Conform + DuckDB Pipeline
+```bash
+# Extract structured data from unstructured source, then analyze
+conform extract messy_report.pdf --schema invoice_schema.json > invoices.json
+duckdb -c "
+  SELECT 
+    vendor,
+    SUM(amount) as total_amount,
+    COUNT(*) as invoice_count
+  FROM 'invoices.json'
+  GROUP BY vendor
+  ORDER BY total_amount DESC
+"
+
+# Parse unstructured text → structured CSV → analysis
+conform extract survey_responses.txt --output survey.csv
+duckdb -c "
+  SELECT 
+    sentiment,
+    COUNT(*) as count,
+    AVG(satisfaction_score) as avg_score
+  FROM 'survey.csv'
+  GROUP BY sentiment
+"
+```
+
 ### Pipe from xsv/jq
 ```bash
 # xsv filter → DuckDB aggregate
