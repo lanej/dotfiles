@@ -182,6 +182,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Data analysis** - When computing statistics, percentiles, distributions, or performing analytical queries on CSV/JSON/Parquet → load `duckdb` skill
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
 - **Qualitative analysis** - When quantitative data seems counterintuitive or needs deeper understanding, use `conform` to analyze the underlying qualitative patterns
+- **Unstructured → structured analysis** - Use `conform` to extract structured data from unstructured sources, then `duckdb` for statistical analysis of the structured results
 
 **Platform/Service Triggers:**
 - **Azure operations** - Azure CLI, resource management → load `az` skill
