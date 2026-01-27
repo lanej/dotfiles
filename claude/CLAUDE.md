@@ -118,6 +118,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **jq** - JSON processing, filtering, transformations
 - **xsv** - Fast CSV data manipulation
 - **xlsx** - Excel file operations (viewing, editing, conversion)
+- **duckdb** - Fast SQL analytics on local data files (CSV, JSON, Parquet); auto-loads for data analysis, statistics, aggregations, joins, and analytical SQL queries
 - **bigquery** - Google BigQuery CLI operations and queries
 - **conform** - AI-powered data extraction and transformation; auto-loads for extracting structured data from unstructured files, parsing text/PDFs/CSVs, schema validation
 
@@ -177,6 +178,8 @@ Skills should be loaded proactively when specific patterns are detected in user 
 **Data Format Triggers:**
 - **JSON operations** - Parsing, filtering, transforming JSON → load `jq` skill
 - **CSV operations** - Processing, filtering, analyzing CSV → load `xsv` skill
+- **SQL analytics** - When analyzing data files with statistics, aggregations, joins, window functions, or complex SQL queries → load `duckdb` skill
+- **Data analysis** - When computing statistics, percentiles, distributions, or performing analytical queries on CSV/JSON/Parquet → load `duckdb` skill
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
 - **Qualitative analysis** - When quantitative data seems counterintuitive or needs deeper understanding, use `conform` to analyze the underlying qualitative patterns
 
