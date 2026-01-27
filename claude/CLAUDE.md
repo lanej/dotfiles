@@ -212,6 +212,30 @@ Agents should be invoked proactively for specialized tasks:
 - **Action**: Use `pull-request-commentor` agent for PR comments and reviews
 - **Critical**: NO AI attribution in PR comments
 
+## Session Reflection System
+
+**Available Commands:**
+- `/reflection` - Analyze session and suggest CLAUDE.md improvements (interactive)
+- `/reflection-harder` - Comprehensive session analysis with learning capture
+
+**Reflection Status Integration:**
+The `/reflection-harder` command integrates with tmux status bar to notify when reflection is complete:
+
+1. **Signal File**: `/tmp/opencode-reflection-ready` created when reflection completes
+2. **Status Indicator**: Tmux status bar shows "💭 Reflection Ready" (magenta on brightblack)
+3. **Clear Notification**: Remove signal file to clear indicator: `rm /tmp/opencode-reflection-ready`
+
+**Implementation Files:**
+- Command: `~/.files/claude/commands/reflection-harder.md`
+- Status script: `~/.files/bin/opencode-reflection-status`
+- Tmux integration: `~/.files/rc/tmux.conf` (status-right line 183)
+
+**Design Pattern:**
+- File-based signaling (similar to tmux-ssh-status)
+- On-demand only (no background processes)
+- Shows notification in OpenCode TUI + tmux status
+- No persistent storage (ephemeral/in-memory reflections)
+
 ## Development Best Practices
 
 ### Node.js/JavaScript

@@ -1,0 +1,10 @@
+#!/bin/bash
+# OpenCode reflection status display for tmux status bar
+# Shows an indicator when session reflection is ready to review
+
+SIGNAL_FILE="/tmp/opencode-reflection-ready"
+
+# Check if reflection is ready
+if [ -f "$SIGNAL_FILE" ]; then
+  echo "#[fg=magenta,bg=brightblack] 💭 Reflection Ready "
+fi

@@ -175,3 +175,20 @@ You are an expert in analyzing development sessions and optimizing AI-human coll
 
   Remember: The goal is to build cumulative knowledge that makes each session more effective than the last. Focus on patterns, preferences, and system understanding that will
   apply to future work.
+
+## Notification Phase
+
+After completing the reflection, signal completion to the user:
+
+1. Create signal file for tmux status bar:
+   ```bash
+   touch /tmp/opencode-reflection-ready
+   ```
+
+2. Inform the user:
+   - Let them know the reflection is complete and ready for review
+   - Mention they can clear the notification by removing the signal file:
+     ```bash
+     rm /tmp/opencode-reflection-ready
+     ```
+   - The tmux status bar will show "💭 Reflection Ready" until cleared
