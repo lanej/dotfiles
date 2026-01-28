@@ -1,4 +1,5 @@
 ---
+name: myst
 description: Create computational narratives with MyST Markdown notebooks (myst-nb). Use for reproducible analysis, data exploration, research documentation, and EPIST provenance tracking. Triggers on "notebook", "computational narrative", "reproducible analysis", "MyST notebook", "executable markdown", or data analysis documentation.
 ---
 
