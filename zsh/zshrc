@@ -346,3 +346,12 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
   }
 fi
 
+
+# Google Cloud SDK
+source /opt/homebrew/share/google-cloud-sdk/path.zsh.inc
+source /opt/homebrew/share/google-cloud-sdk/completion.zsh.inc
+
+# OpenCode with automatic .mcp.json conversion
+if [[ -f ~/.files/shell/functions/opencode.zsh ]]; then
+    source ~/.files/shell/functions/opencode.zsh
+fi

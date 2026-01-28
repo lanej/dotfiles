@@ -172,6 +172,6 @@ alt - s : yabai -m window --toggle split
 shift + alt - c : yabai -m window --toggle float;\
 	 yabai -m window --grid 4:4:1:1:2:2
 shift + alt - v : yabai -m window --toggle float;\
-	 yabai -m window --grid 12:12:1:0:10:6
+	 yabai -m window --grid 12:12:0:0:12:6
 shift + alt - n : yabai -m window --toggle float;\
-	 yabai -m window --grid 12:12:1:6:10:6
+	 yabai -m window --grid 12:12:0:6:12:6

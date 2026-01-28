@@ -2,13 +2,94 @@
 name: jira
 description: Use jira CLI for Jira operations including issue management, project queries, transitions, and JQL search
 ---
-# Jira CLI Skill
+# Jira Skill
 
-You are a Jira specialist using the `jira` CLI tool. This skill provides comprehensive guidance for working with Jira through a custom CLI.
+You are a Jira specialist. This skill covers two interfaces for working with Jira:
+1. **Jira CLI** - Command-line tool for terminal operations
+2. **Jira MCP Server** - MCP tools for programmatic access (mcp__jira__* functions)
 
-## Core Commands
+## Jira MCP Server
 
-### Authentication
+When using MCP tools (mcp__jira__*), follow these patterns:
+
+### User Management and Assignment
+
+**Search for users before assigning:**
+```
+1. Search: mcp__jira__jira_users_search(query="Full Name")
+2. Extract account_id from results
+3. Assign: mcp__jira__jira_issues_assign(issue_key, account_id)
+```
+
+### Error Handling - Empty Response Pattern
+
+**CRITICAL: Empty response errors are often successes**
+
+The Jira API returns HTTP 204 (No Content) for successful operations that don't return data. The MCP server may report these as errors:
+```
+Error: Invalid Response Payload (b""): EOF while parsing a value at line 1 column 0
+Error: Some(204)
+```
+
+**Best Practice: Always verify operations with GET requests**
+```
+# After assign/update that returns empty response error:
+1. Call mcp__jira__jira_issues_get(issue_key)
+2. Check if the operation actually succeeded
+3. Report success based on verification, not error message
+```
+
+**Example Pattern:**
+```
+# Try to assign
+assign_result = mcp__jira__jira_issues_assign("PROJ-123", account_id)
+# May return error but succeed
+
+# Verify the assignment worked
+issue = mcp__jira__jira_issues_get("PROJ-123")
+if issue.assignee.account_id == account_id:
+    # Assignment succeeded despite error message
+```
+
+### Issue Links
+
+**Creating links between issues:**
+```
+mcp__jira__jira_issuelinks_create(
+    inward_issue="PROJ-123",
+    outward_issue="OTHER-456",
+    link_type="Relates"  # or "Blocks", "Duplicates", etc.
+)
+```
+
+### Common Workflows
+
+**Create issue with all details:**
+```
+1. Search for assignee: mcp__jira__jira_users_search(query="Name")
+2. Create issue: mcp__jira__jira_issues_create(...)
+3. Verify with: mcp__jira__jira_issues_get(issue_key)
+```
+
+**Update existing issue:**
+```
+1. Update: mcp__jira__jira_issues_update(issue_key, fields...)
+2. Verify: mcp__jira__jira_issues_get(issue_key)
+```
+
+**Link related issues:**
+```
+1. Create link: mcp__jira__jira_issuelinks_create(...)
+2. Verify: mcp__jira__jira_issues_get(issue_key) # check links in response
+```
+
+## Jira CLI
+
+The Jira CLI provides command-line access to Jira for terminal operations.
+
+### Core Commands
+
+#### Authentication
 
 ```bash
 # Check authentication status
@@ -18,7 +99,7 @@ jira auth check
 jira auth login
 ```
 
-### Issue Management
+#### Issue Management
 
 ```bash
 # View issue details
@@ -37,7 +118,7 @@ jira comment add ISSUE-123 "Comment text"
 jira comment list ISSUE-123
 ```
 
-### Issue Transitions
+#### Issue Transitions
 
 ```bash
 # List available transitions for an issue
@@ -47,7 +128,7 @@ jira transition list ISSUE-123
 jira transition ISSUE-123 "In Progress"
 ```
 
-### Searching with JQL
+#### Searching with JQL
 
 ```bash
 # Search issues with JQL
@@ -60,7 +141,7 @@ jira search "assignee = currentUser()" --format json
 jira search "project = PROJ" --fields summary,status,assignee
 ```
 
-### Project Operations
+#### Project Operations
 
 ```bash
 # List all projects
@@ -70,7 +151,7 @@ jira project list
 jira project get PROJ
 ```
 
-### Watching and Assigning
+#### Watching and Assigning
 
 ```bash
 # Watch an issue
@@ -86,9 +167,9 @@ jira assign ISSUE-123 username
 jira assign ISSUE-123 me
 ```
 
-## Common Workflows
+### Common Workflows
 
-### Viewing Your Work
+#### Viewing Your Work
 
 ```bash
 # View issues assigned to you
@@ -101,7 +182,7 @@ jira search "watcher = currentUser()"
 jira search "updatedDate >= -7d AND assignee = currentUser()"
 ```
 
-### Creating and Updating Issues
+#### Creating and Updating Issues
 
 ```bash
 # Create a bug
@@ -119,7 +200,7 @@ jira issue update ISSUE-123 --labels bug,frontend
 jira link add ISSUE-123 ISSUE-456 "blocks"
 ```
 
-### Moving Issues Through Workflow
+#### Moving Issues Through Workflow
 
 ```bash
 # Start work on issue
@@ -132,9 +213,9 @@ jira transition ISSUE-123 "Done"
 jira transition ISSUE-123 "Reopen"
 ```
 
-## JQL Reference
+### JQL Reference
 
-### Common JQL Patterns
+#### Common JQL Patterns
 
 ```bash
 # Issues in specific project
@@ -159,7 +240,7 @@ jira search "labels = urgent"
 jira search "'Epic Link' = EPIC-123"
 ```
 
-### JQL Field Reference
+#### JQL Field Reference
 
 - `project` - Project key or name
 - `status` - Issue status (Open, In Progress, Done, etc.)
@@ -172,7 +253,7 @@ jira search "'Epic Link' = EPIC-123"
 - `updated` - Last update date
 - `resolution` - Resolution status
 
-### JQL Functions
+#### JQL Functions
 
 - `currentUser()` - Current logged-in user
 - `startOfDay()`, `startOfWeek()`, `startOfMonth()` - Date functions
@@ -180,7 +261,7 @@ jira search "'Epic Link' = EPIC-123"
 - `openSprints()` - Currently active sprints
 - `closedSprints()` - Completed sprints
 
-## Output Formats
+### Output Formats
 
 ```bash
 # JSON output (for scripting)
@@ -193,7 +274,7 @@ jira search "project = PROJ" --format table
 jira search "project = PROJ" --format csv
 ```
 
-## Best Practices
+### Best Practices
 
 1. **Always authenticate first**: Run `jira auth check` before operations
 2. **Use JQL for complex queries**: More powerful than simple filters
@@ -202,9 +283,9 @@ jira search "project = PROJ" --format csv
 5. **Test transitions**: Use `jira transition list` before transitioning
 6. **Be specific with JQL**: Use quotes for multi-word values
 
-## Common Use Cases
+### Common Use Cases
 
-### Daily Standup Prep
+#### Daily Standup Prep
 
 ```bash
 # What you worked on yesterday
@@ -214,7 +295,7 @@ jira search "assignee = currentUser() AND updated >= -1d"
 jira search "assignee = currentUser() AND status = 'In Progress'"
 ```
 
-### Bug Triage
+#### Bug Triage
 
 ```bash
 # Unassigned bugs
@@ -224,7 +305,7 @@ jira search "type = Bug AND assignee is EMPTY AND status = Open"
 jira search "project = PROJ AND type = Bug AND priority in (Highest, High)"
 ```
 
-### Sprint Planning
+#### Sprint Planning
 
 ```bash
 # Issues in backlog
@@ -237,7 +318,7 @@ jira search "project = PROJ AND sprint in openSprints()"
 jira search "project = PROJ AND sprint in openSprints() AND status = Done"
 ```
 
-## Error Handling
+### Error Handling
 
 If you encounter authentication errors:
 ```bash
@@ -249,7 +330,7 @@ If JQL syntax errors occur:
 - Verify field names are correct
 - Use `AND`, `OR`, `NOT` operators (uppercase)
 
-## Quick Reference
+### Quick Reference
 
 ```bash
 # View issue

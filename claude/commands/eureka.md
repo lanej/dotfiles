@@ -1,6 +1,16 @@
 ---
-description: "Capture technical breakthroughs and transform them into actionable, reusable documentation"
+description: "Document eureka moments, performance wins, debugging breakthroughs, and technical insights as reusable knowledge assets with code examples, metrics, and patterns"
 argument-hint: [breakthrough description]
+allowed-tools:
+  - Write
+  - Read
+  - Grep
+model: haiku
+tags:
+  - documentation
+  - knowledge
+  - breakthrough
+  - learning
 ---
 
 # /eureka - Technical Breakthrough Documentation

@@ -82,6 +82,7 @@
     },
     "bash": {
       "/tmp/*": "allow",
+      "/private/tmp/*": "allow",
       "rm -rf /": "deny",
       "rm -rf / *": "deny",
       "sudo rm *": "deny",
@@ -93,5 +94,149 @@
     },
     "edit": "allow",
     "write": "allow"
+  },
+  "mcp": {
+    "gspace": {
+      "type": "local",
+      "command": [
+        "gspace",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": false
+    },
+    "pkm": {
+      "type": "local",
+      "command": [
+        "pkm",
+        "mcp"
+      ],
+      "enabled": false,
+      "environment": {
+        "WORKSPACE_KNOWLEDGE_DB_PATH": "/Users/joshlane/workspace/.lancedb",
+        "WORKSPACE_KNOWLEDGE_ROOT": "/Users/joshlane/workspace",
+        "PKM_DB_PATH": "/Users/joshlane/workspace/.lancedb",
+        "PKM_ROOT": "/Users/joshlane/workspace"
+      }
+    },
+    "bigquery": {
+      "type": "local",
+      "command": [
+        "/Users/joshlane/.cargo/bin/bigquery",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": false
+    },
+    "jira": {
+      "type": "local",
+      "command": [
+        "podman",
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "/Users/joshlane/.config/mcp/jira.env:/etc/mcp/jira.env",
+        "ghcr.io/sooperset/mcp-atlassian:latest",
+        "-vv",
+        "--env-file",
+        "/etc/mcp/jira.env"
+      ],
+      "enabled": false
+    },
+    "epist": {
+      "type": "local",
+      "command": [
+        "epist",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": true
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "enabled": true
+    },
+    "phab": {
+      "type": "local",
+      "command": [
+        "phab",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": false
+    },
+    "time": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "mcp-server-time"
+      ],
+      "enabled": false
+    },
+    "memory": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "enabled": false,
+      "environment": {
+        "MEMORY_FILE_PATH": "/Users/joshlane/memory.json"
+      }
+    },
+    "knowledge_base": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "chroma-mcp",
+        "--client-type",
+        "persistent",
+        "--data-dir",
+        "/Users/joshlane/src/kb-md/chroma_db"
+      ],
+      "enabled": false,
+      "environment": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    },
+    "gdrive": {
+      "type": "local",
+      "command": [
+        "node",
+        "/Users/joshlane/src/gdrive-mcp/bin/index.js"
+      ],
+      "enabled": false
+    },
+    "git": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "mcp-server-git"
+      ],
+      "enabled": false
+    },
+    "github": {
+      "type": "local",
+      "command": [
+        "podman",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "enabled": false,
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REDACTED_TOKEN"
+      }
+    }
   }
 }

@@ -1,50 +1,13 @@
-.agignore
-*.auto.tfvars
-.bundle
-.byebug_history
-.ccls-cache/
-coc-settings.json
-.ctags.d/
-.DS\_Store
-.env-override
-Gemfile.local
-Gemfile.local.lock
-.hold
-.ignore
-.remote-sync.json
-.sandbox/
-.solargraph.yml
-.*.sw?
-~tags
-tags
-tags.lock
-tags.temp
-.tern-port
-.terraform
-.tfcompleterc
-venv/
-.vim/
+# Lancer database (can be regenerated)
+.lancedb/
+
+# Data snapshots (can be regenerated from scripts)
+data/snapshots/
+
+# OS files
+.DS_Store
+
+# Editor files
 .vscode/
-.wercker/
-__pycache__/
-venv/
-.solargraph
-.ruby-version
-rspec_failures.txt
-.env
-.luarc.json
-.envrc
-terraform.tfvars
-.aider*
-.claude/
-CLAUDE.local.md
-.mcp.json
-
-# spec-kit files
-.specify/
-
-# Rust build files
-target/
-.fastembed_cache/
-.scratchpads/
-.scratchpad/
+.idea/
+*.swp

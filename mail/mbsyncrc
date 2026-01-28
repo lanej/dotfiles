@@ -1,0 +1,73 @@
+# Gmail IMAP configuration for mbsync
+# Replace YOUR_EMAIL@gmail.com with your actual Gmail address
+
+IMAPAccount gmail
+Host imap.gmail.com
+User joshlane@easypost.com
+PassCmd "security find-generic-password -s mbsync-gmail -a joshlane@easypost.com -w"
+TLSType IMAPS
+AuthMechs LOGIN
+CertificateFile /etc/ssl/cert.pem
+
+# Remote storage (Gmail)
+IMAPStore gmail-remote
+Account gmail
+
+# Local storage
+MaildirStore gmail-local
+Path ~/Mail/gmail/
+Inbox ~/Mail/gmail/INBOX
+SubFolders Verbatim
+
+# Channel definitions - sync specific folders
+Channel gmail-inbox
+Far :gmail-remote:
+Near :gmail-local:
+Patterns "INBOX"
+Create Near
+Expunge Both
+SyncState *
+
+Channel gmail-sent
+Far :gmail-remote:"[Gmail]/Sent Mail"
+Near :gmail-local:sent
+Create Near
+Expunge Both
+SyncState *
+
+Channel gmail-drafts
+Far :gmail-remote:"[Gmail]/Drafts"
+Near :gmail-local:drafts
+Create Near
+Expunge Both
+SyncState *
+
+Channel gmail-trash
+Far :gmail-remote:"[Gmail]/Trash"
+Near :gmail-local:trash
+Create Near
+Expunge Both
+SyncState *
+
+Channel gmail-archive
+Far :gmail-remote:"[Gmail]/All Mail"
+Near :gmail-local:archive
+Create Near
+Expunge Both
+SyncState *
+
+Channel gmail-spam
+Far :gmail-remote:"[Gmail]/Spam"
+Near :gmail-local:spam
+Create Near
+Expunge Both
+SyncState *
+
+# Group all channels for easy sync with: mbsync gmail
+Group gmail
+Channel gmail-inbox
+Channel gmail-sent
+Channel gmail-drafts
+Channel gmail-trash
+Channel gmail-archive
+Channel gmail-spam

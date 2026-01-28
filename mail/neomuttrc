@@ -1,0 +1,163 @@
+# NeoMutt configuration with notmuch integration
+
+# ===== Basic Settings =====
+set realname = "Josh Lane"
+set from = "joshlane@easypost.com"
+set use_from = yes
+set envelope_from = yes
+
+# ===== Maildir & Notmuch =====
+set mbox_type = Maildir
+set folder = "~/Mail"
+set spoolfile = "+gmail/INBOX"
+set postponed = "+gmail/drafts"
+set record = "+gmail/sent"
+set trash = "+gmail/trash"
+
+# Virtual mailboxes using notmuch
+set nm_default_url = "notmuch:///Users/joshlane/Mail"
+set virtual_spool_file = yes
+
+# Notmuch query timeout
+set nm_query_window_timebase = "week"
+
+# ===== Virtual Mailboxes (Notmuch Queries) =====
+virtual-mailboxes \
+    "Recent"    "notmuch://?query=tag:inbox and date:30d.." \
+    "Unread"    "notmuch://?query=tag:unread" \
+    "Flagged"   "notmuch://?query=tag:flagged" \
+    "Inbox (All)" "notmuch://?query=tag:inbox" \
+    "Sent"      "notmuch://?query=tag:sent and date:30d.." \
+    "Drafts"    "notmuch://?query=tag:draft" \
+    "Archive"   "notmuch://?query=tag:archive and date:30d.." \
+    "All Mail"  "notmuch://?query=*"
+
+# ===== Sending Mail (msmtp) =====
+set sendmail = "/opt/homebrew/bin/msmtp -a gmail"
+set sendmail_wait = 0
+
+# ===== Editor =====
+set editor = "$EDITOR"
+
+# ===== Display Settings =====
+set date_format = "%y-%m-%d %T"
+set index_format = "%2C %Z %?X?A& ? %D %-15.15F %s (%-4.4c)"
+set sort = "reverse-date-received"
+set sort_aux = "reverse-date-received"
+set uncollapse_jump = yes
+set sort_re = yes
+set reply_regexp = "^(([Rr][Ee]?(\[[0-9]+\])?: *)?(\[[^]]+\] *)?)*"
+
+# ===== Pager Settings =====
+set pager_index_lines = 10
+set pager_context = 3
+set pager_stop = yes
+set menu_scroll = yes
+set tilde = yes
+set markers = no
+
+# ===== Headers =====
+ignore *
+unignore from: to: cc: date: subject:
+unhdr_order *
+hdr_order from: to: cc: date: subject:
+
+# ===== Sidebar =====
+set sidebar_visible = yes
+set sidebar_width = 25
+set sidebar_format = "%B%?F? [%F]?%* %?N?%N/?%S"
+set mail_check_stats = yes
+
+# ===== Sidebar Navigation =====
+bind index,pager \Cp sidebar-prev
+bind index,pager \Cn sidebar-next
+bind index,pager \Co sidebar-open
+bind index,pager B sidebar-toggle-visible
+
+# ===== Key Bindings =====
+# Notmuch specific
+bind index,pager X entire-thread
+macro index,pager A "<modify-labels-then-hide>-inbox -unread +archive\n" "Archive message"
+macro index,pager I "<modify-labels-then-hide>+inbox -archive\n" "Move to inbox"
+macro index,pager S "<modify-labels>-inbox +spam\n" "Mark as spam"
+macro index,pager + "<modify-labels>+*\n<sync-mailbox>" "Add label"
+macro index,pager - "<modify-labels>-*\n<sync-mailbox>" "Remove label"
+
+# Gmail-style keyboard shortcuts
+bind editor <space> noop
+bind index,pager c mail                    # compose
+bind generic x tag-entry                   # select conversation
+bind index x tag-thread                    # select conversation
+bind pager x tag-message                   # select conversation
+bind index,pager s flag-message            # star a message (flag)
+bind index,pager a group-reply             # reply all
+bind index,pager \Cr reply                 # reply
+bind index <tab> next-new-then-unread
+bind index,pager R group-reply
+bind index <space> collapse-thread
+bind index za collapse-thread
+bind index,pager N search-opposite
+
+# ===== Sync Macros =====
+macro index,pager O "<shell-escape>mbsync -a && notmuch new<enter>" "Sync all mail"
+macro index,pager o "<shell-escape>mbsync gmail-inbox && notmuch new<enter>" "Sync inbox"
+
+# ===== Colors (Nord theme) =====
+# Basic colors
+color normal     default default
+color error      red default
+color tilde      black default
+color message    cyan default
+color markers    red white
+color attachment white default
+color search     brightmagenta default
+color status     brightyellow black
+color indicator  black cyan
+color tree       yellow default
+
+# Index colors
+color index      yellow default ~N    # new messages
+color index      green default ~O     # old messages
+color index      cyan default ~P      # messages from me
+color index      cyan default ~F      # flagged messages
+color index      blue default ~T      # tagged messages
+color index      red default ~D       # deleted messages
+
+# Header colors
+color header     brightgreen default "^(From)"
+color header     brightcyan default "^(To|Cc|Bcc)"
+color header     brightblue default "^(Subject)"
+color header     brightmagenta default "^(Date)"
+
+# Body colors
+color quoted     blue default
+color quoted1    cyan default
+color quoted2    yellow default
+color quoted3    red default
+color quoted4    brightred default
+
+# URL colors
+color body       brightgreen default "(http|https|ftp)://[^ ]+"
+color body       brightgreen default "[a-z0-9]([-_.]?[a-z0-9])*@[a-z0-9]([-_.]?[a-z0-9])*\\.[a-z]{2,}"
+
+# Sidebar colors
+color sidebar_divider    brightblack default
+color sidebar_new        yellow default
+color sidebar_flagged    red default
+
+# ===== HTML Email =====
+auto_view text/html
+alternative_order text/plain text/enriched text/html
+
+# ===== Cache =====
+set header_cache = "~/.cache/neomutt/headers"
+set message_cachedir = "~/.cache/neomutt/bodies"
+
+# ===== Misc =====
+set quit = ask-yes
+set delete = yes
+set wait_key = no
+set timeout = 300
+set mail_check = 0
+set beep = no
+set beep_new = no

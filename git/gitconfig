@@ -91,7 +91,6 @@
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	editor = $EDITOR
 	pager = delta
-	hooksPath = ~/.files/git/hooks
 [apply]
 	whitespace = fix
 [push]
@@ -171,12 +170,13 @@
 	detatchedHead = false
 [core]
 	logAllRefUpdates = true
+	hooksPath = /Users/joshlane/.files/git/hooks
 
 [credential "https://dl.cloudsmith.io/basic/easypost/easypost-rust/cargo/index.git"]
 	helper = /usr/local/bin/git-credential-cloudsmith easypost/easypost-rust
 [credential "https://github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = !/opt/homebrew/bin/gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = !/opt/homebrew/bin/gh auth git-credential
