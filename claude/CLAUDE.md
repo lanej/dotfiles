@@ -137,6 +137,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **pptx** - PowerPoint presentation manipulation
 - **pdf** - PDF extraction, creation, merging, form filling
 - **xlsx-python** - Programmatic Excel creation with Python
+- **myst** - MyST Markdown notebooks (myst-nb) for computational narratives; auto-loads for reproducible analysis, executable notebooks, research documentation, and EPIST integration
 
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
@@ -183,6 +184,8 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
 - **Qualitative analysis** - When quantitative data seems counterintuitive or needs deeper understanding, use `conform` to analyze the underlying qualitative patterns
 - **Unstructured → structured analysis** - Use `conform` to extract structured data from unstructured sources, then `duckdb` for statistical analysis of the structured results
+- **Computational narratives** - Creating executable notebooks, reproducible analysis, research documentation with code → load `myst` skill
+- **Notebook creation** - When creating MyST notebooks, executable markdown, or integrating analysis with EPIST → load `myst` skill
 
 **Platform/Service Triggers:**
 - **Azure operations** - Azure CLI, resource management → load `az` skill
