@@ -1,0 +1,24 @@
+# Notmuch configuration file
+# See notmuch-config(1) for details
+
+[database]
+path=/Users/joshlane/Mail
+
+[user]
+name=Josh Lane
+primary_email=joshlane@easypost.com
+# Add other email addresses if needed
+# other_email=another@email.com
+
+[new]
+tags=unread;inbox
+ignore=
+
+[search]
+exclude_tags=deleted;spam
+
+[maildir]
+synchronize_flags=true
+
+[crypto]
+gpg_path=gpg

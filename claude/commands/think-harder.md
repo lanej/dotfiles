@@ -1,6 +1,17 @@
 ---
-description: Enhanced analytical thinking for complex problems
+description: "Deep analysis for complex problems using structured reasoning: decomposition, multi-perspective evaluation, causal mapping, trade-off analysis, and uncertainty assessment"
 argument-hint: [problem or question]
+allowed-tools:
+  - mcp__sequential-thinking__sequentialthinking
+  - Read
+  - Grep
+  - Bash
+model: sonnet
+tags:
+  - analysis
+  - reasoning
+  - problem-solving
+  - thinking
 ---
 
 # Think Harder Command

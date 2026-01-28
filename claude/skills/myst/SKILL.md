@@ -1,27 +1,45 @@
 ---
 name: myst
-description: Create computational narratives with MyST Markdown notebooks (myst-nb). Use for reproducible analysis, data exploration, research documentation, and EPIST provenance tracking. Triggers on "notebook", "computational narrative", "reproducible analysis", "MyST notebook", "executable markdown", or data analysis documentation.
+description: Create computational narratives with MyST Markdown notebooks (myst-nb) for Sphinx documentation projects. Use for large documentation sites with cross-references and Sphinx integration. NOTE: For EPIST workflows and ad-hoc analysis, use marimo skill instead - it provides better single-file execution and direct Python integration.
 ---
 
 # MyST Notebook Skill
 
-MyST-NB (Markedly Structured Text - Notebook) allows you to create executable computational notebooks entirely in Markdown. Perfect for reproducible data analysis, research documentation, and integrating with EPIST for provenance tracking.
+**⚠️ NOTE:** For EPIST data analysis workflows, **use the marimo skill instead**. Marimo provides superior single-file execution, reactive updates, and direct Python EPIST integration. Use MyST-NB only when you specifically need Sphinx documentation project features.
+
+MyST-NB (Markedly Structured Text - Notebook) allows you to create executable computational notebooks entirely in Markdown. It's designed for building large documentation sites with Sphinx, not for ad-hoc data analysis.
 
 ## When to Use MyST Notebooks
 
 **Perfect for:**
-- Reproducible data analysis with inline code execution
-- Research documentation with computational narratives
-- EPIST workflows (track analysis + code + outputs together)
-- Version control friendly notebooks (text-based, not JSON)
-- Creating technical reports with live computations
-- Building documentation with executable examples
-- Mixing analysis code with narrative explanations
+- Large Sphinx documentation projects with multiple interconnected documents
+- Technical documentation requiring cross-references across many pages
+- Jupyter Book-based websites with many chapters
+- Documentation that needs Sphinx extensions (autodoc, etc.)
+- Building complete documentation sites (not single analyses)
 
 **NOT for:**
+- **Ad-hoc EPIST data analysis** → Use **marimo** instead
+- **Single-file analysis workflows** → Use **marimo** instead  
+- **Interactive analysis with widgets** → Use **marimo** instead
+- **Analyses requiring reactivity** → Use **marimo** instead
 - Simple static documentation (use plain Markdown)
-- Interactive development (use Jupyter Lab for that)
 - Non-technical documents (use Markdown or Word)
+
+## Marimo vs MyST-NB: When to Use Which
+
+| Use Case | Use Marimo | Use MyST-NB |
+|----------|-----------|-------------|
+| EPIST data analysis | ✅ **Preferred** | ❌ |
+| Single-file analysis | ✅ **Preferred** | ❌ |
+| Reactive execution | ✅ **Preferred** | ❌ |
+| Interactive widgets | ✅ **Preferred** | ⚠️ Limited |
+| Run as script | ✅ **Preferred** | ❌ |
+| Large documentation site | ❌ | ✅ **Preferred** |
+| Cross-referencing many docs | ❌ | ✅ **Preferred** |
+| Sphinx integration | ❌ | ✅ **Preferred** |
+
+**Bottom line:** Use marimo for analysis, use MyST-NB for documentation projects.
 
 ## Core Concepts
 

@@ -40,7 +40,7 @@ url_color #EBCB8B
 url_style double
 scrollback_pager_history_size 314572800
 scrollback_lines 1000000
-map ctrl+[ show_scrollback
+# map ctrl+[ show_scrollback
 
 allow_remote_control socket-only
 listen_on unix:/tmp/kitty
@@ -89,3 +89,4 @@ color14  #8FBCBB
 # white
 color7   #E5E9F0
 color15  #ECEFF4
+map shift+enter send_text all \e\r

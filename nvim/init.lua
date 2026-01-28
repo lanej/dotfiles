@@ -728,6 +728,30 @@ require("lazy").setup({
 		},
 	},
 	{
+		dir = vim.fn.stdpath("config") .. "/lua",
+		name = "remarkable",
+		config = function()
+			local remarkable = require("remarkable")
+
+			remarkable.setup({
+				remarkable_cli = vim.fn.expand("~/src/remarkable-mcp/bin/remarkable"),
+				default_folder = "",
+				save_pdf_locally = false,
+				pandoc_options = {
+					"--pdf-engine=weasyprint",
+				},
+			})
+
+			vim.api.nvim_create_user_command("RemarkableUpload", function()
+				remarkable.upload_current_buffer()
+			end, { desc = "Upload current markdown buffer to reMarkable" })
+
+			vim.api.nvim_create_user_command("RemarkableUploadTo", function()
+				remarkable.upload_with_folder()
+			end, { desc = "Upload markdown to specific folder on reMarkable" })
+		end,
+	},
+	{
 		"gbprod/nord.nvim",
 		config = function()
 			require("nord").setup({
@@ -1177,7 +1201,21 @@ require("lazy").setup({
 							end,
 						},
 					},
-					lualine_y = {},
+					lualine_y = {
+						{
+							function()
+								local ok, opencode = pcall(require, "opencode")
+								if not ok then
+									return ""
+								end
+								return opencode.status() or ""
+							end,
+							cond = function()
+								local ok, opencode = pcall(require, "opencode")
+								return ok and opencode.status ~= nil
+							end,
+						},
+					},
 					lualine_z = {},
 				},
 				inactive_sections = {
@@ -2629,6 +2667,64 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 		},
 		init = function()
 			vim.g.db_ui_use_nerd_fonts = 1
+		end,
+	},
+	{
+		"NickvanDyke/opencode.nvim",
+		dependencies = {
+			{
+				"folke/snacks.nvim",
+				opts = {
+					input = {},
+					picker = {},
+					terminal = {},
+				},
+			},
+		},
+		config = function()
+			---@type opencode.Opts
+			vim.g.opencode_opts = {
+				-- Use snacks provider for terminal integration
+				provider = {
+					enabled = "snacks",
+				},
+			}
+
+			-- Required for opts.events.reload
+			vim.o.autoread = true
+
+			-- Keymaps for opencode integration
+			vim.keymap.set({ "n", "x" }, "<C-a>", function()
+				require("opencode").ask("@this: ", { submit = true })
+			end, { desc = "Ask opencode…" })
+
+			vim.keymap.set({ "n", "x" }, "<C-x>", function()
+				require("opencode").select()
+			end, { desc = "Execute opencode action…" })
+
+			vim.keymap.set({ "n", "t" }, "<C-.>", function()
+				require("opencode").toggle()
+			end, { desc = "Toggle opencode" })
+
+			vim.keymap.set({ "n", "x" }, "go", function()
+				return require("opencode").operator("@this ")
+			end, { desc = "Add range to opencode", expr = true })
+
+			vim.keymap.set("n", "goo", function()
+				return require("opencode").operator("@this ") .. "_"
+			end, { desc = "Add line to opencode", expr = true })
+
+			vim.keymap.set("n", "<S-C-u>", function()
+				require("opencode").command("session.half.page.up")
+			end, { desc = "Scroll opencode up" })
+
+			vim.keymap.set("n", "<S-C-d>", function()
+				require("opencode").command("session.half.page.down")
+			end, { desc = "Scroll opencode down" })
+
+			-- Restore original <C-a> and <C-x> functionality to + and -
+			vim.keymap.set("n", "+", "<C-a>", { desc = "Increment under cursor", noremap = true })
+			vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement under cursor", noremap = true })
 		end,
 	},
 })

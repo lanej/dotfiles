@@ -1,3 +1,13 @@
+---
+description: "Execute tasks autonomously without prompting: make decisions, install dependencies, fix issues, run tests, and complete all work without asking permission for routine operations"
+model: sonnet
+tags:
+  - automation
+  - workflow
+  - autonomous
+  - productivity
+---
+
 # Continue - Work Autonomously Without Prompting
 
 Continue working on the current task without waiting for user approval at each step. **NEVER ask questions or wait for permission on non-blocking issues.** Only stop for genuine blockers that prevent all forward progress.

@@ -1,0 +1,580 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+*	nvim/min.vim	/^nnoremap * *``$/;"	m
+*	vim/init.vim	/^nnoremap * *``$/;"	m
+0	vim/session/%Users%joshlane%.files_master.vim	/^normal! 0$/;"	m
+<C-->	vim/init.vim	/^  nnoremap <expr><C--> ChangeScaleFactor(1\/1.25)$/;"	m
+<C-=>	vim/init.vim	/^  nnoremap <expr><C-=> ChangeScaleFactor(1.25)$/;"	m
+<C-\>	nvim/min.vim	/^inoremap <C-\\> <C-O>:nohls<CR>$/;"	m
+<C-\>	nvim/min.vim	/^nnoremap <C-\\> :nohls<CR>$/;"	m
+<C-\>	vim/init.vim	/^inoremap <C-\\> <C-O>:nohls<CR>$/;"	m
+<C-\>	vim/init.vim	/^nnoremap <C-\\> :nohls<CR>$/;"	m
+<Enter>	vim/init.vim	/^vmap <Enter> <Plug>(EasyAlign)$/;"	m
+<Leader>m	nvim/min.vim	/^nnoremap <Leader>m :make!<CR>$/;"	m
+<Leader>m	vim/init.vim	/^nnoremap <Leader>m :make!<CR>$/;"	m
+<leader>D	nvim/min.vim	/^map <leader>D ggVG=<CR>$/;"	m
+<leader>D	vim/init.vim	/^map <leader>D ggVG=<CR>$/;"	m
+<leader>P	nvim/min.vim	/^nnoremap <leader>P "+P$/;"	m
+<leader>P	nvim/min.vim	/^vnoremap <leader>P "+P$/;"	m
+<leader>P	vim/init.vim	/^nnoremap <leader>P "+P$/;"	m
+<leader>P	vim/init.vim	/^vnoremap <leader>P "+P$/;"	m
+<leader>Y	nvim/min.vim	/^nnoremap  <leader>Y  "+yg_$/;"	m
+<leader>Y	vim/init.vim	/^nnoremap  <leader>Y  "+yg_$/;"	m
+<leader>bi	nvim/min.vim	/^nnoremap <leader>bi  :bn<CR>$/;"	m
+<leader>bi	vim/init.vim	/^nnoremap <leader>bi  :bn<CR>$/;"	m
+<leader>bo	nvim/min.vim	/^nnoremap <leader>bo  :bp<CR>$/;"	m
+<leader>bo	vim/init.vim	/^nnoremap <leader>bo  :bp<CR>$/;"	m
+<leader>cg	nvim/min.vim	/^map <leader>cg :Gcd<CR>$/;"	m
+<leader>cg	vim/init.vim	/^map <leader>cg :Gcd<CR>$/;"	m
+<leader>ct	nvim/min.vim	/^map <leader>ct :cd %:p:h<CR>$/;"	m
+<leader>ct	vim/init.vim	/^map <leader>ct :cd %:p:h<CR>$/;"	m
+<leader>ee	nvim/min.vim	/^nnoremap <silent><leader>ee :e .env<CR>$/;"	m
+<leader>ee	vim/init.vim	/^nnoremap <silent><leader>ee :e .env<CR>$/;"	m
+<leader>eo	nvim/min.vim	/^nnoremap <silent><leader>eo :e .env-override<CR>$/;"	m
+<leader>eo	vim/init.vim	/^nnoremap <silent><leader>eo :e .env-override<CR>$/;"	m
+<leader>ga	vim/init.vim	/^nnoremap <silent><leader>ga :Git commit -av<CR>$/;"	m
+<leader>gb	vim/init.vim	/^nnoremap <silent><leader>gb :Git blame<CR>$/;"	m
+<leader>gd	vim/init.vim	/^nnoremap <silent><leader>gd :Gdiffsplit origin\/master$/;"	m
+<leader>gm	vim/init.vim	/^nnoremap <silent><leader>gm :Git mergetool<CR>$/;"	m
+<leader>go	vim/init.vim	/^nnoremap <silent><leader>go :GBrowse!<CR>$/;"	m
+<leader>go	vim/init.vim	/^vnoremap <silent><leader>go :GBrowse!<CR>$/;"	m
+<leader>gp	vim/init.vim	/^nnoremap <silent><leader>gp :Git push<CR>$/;"	m
+<leader>gr	vim/init.vim	/^nnoremap <silent><leader>gr :Gread<CR>$/;"	m
+<leader>gs	vim/init.vim	/^nnoremap <silent><leader>gs :Git<CR>$/;"	m
+<leader>gt	vim/init.vim	/^nnoremap <silent><leader>gt :Git commit -am'wip'<CR>$/;"	m
+<leader>gv	vim/init.vim	/^nnoremap <silent><leader>gv :Git commit -v<CR>$/;"	m
+<leader>ntc	vim/init.vim	/^map <leader>ntc :NvimTreeClose<CR>$/;"	m
+<leader>ntf	vim/init.vim	/^map <leader>ntf :NvimTreeFindFile<CR>$/;"	m
+<leader>ntt	vim/init.vim	/^map <leader>ntt :NvimTreeToggle<CR>$/;"	m
+<leader>p	nvim/min.vim	/^nnoremap <leader>p "+p$/;"	m
+<leader>p	nvim/min.vim	/^vnoremap <leader>p "+p$/;"	m
+<leader>p	vim/init.vim	/^nnoremap <leader>p "+p$/;"	m
+<leader>p	vim/init.vim	/^vnoremap <leader>p "+p$/;"	m
+<leader>ps	vim/init.vim	/^map <leader>ps :Prosession<space>$/;"	m
+<leader>rb	nvim/min.vim	/^map <silent><leader>rb :%s\/<C-r><C-w>\/$/;"	m
+<leader>rb	vim/init.vim	/^map <silent><leader>rb :%s\/<C-r><C-w>\/$/;"	m
+<leader>re	vim/init.vim	/^map <leader>re :Rename<space>$/;"	m
+<leader>rq	nvim/min.vim	/^map <silent><leader>rq :cfdo %s\/<C-r><C-w>\/$/;"	m
+<leader>rq	vim/init.vim	/^map <silent><leader>rq :cfdo %s\/<C-r><C-w>\/$/;"	m
+<leader>se	vim/init.vim	/^nnoremap <leader>se :call SourceEnv()<CR>$/;"	m
+<leader>srt	nvim/min.vim	/^map <leader>srt :!sort<CR>$/;"	m
+<leader>srt	vim/init.vim	/^map <leader>srt :!sort<CR>$/;"	m
+<leader>tf	vim/init.vim	/^map <leader>tf :TestFile<CR>$/;"	m
+<leader>tl	vim/init.vim	/^map <leader>tl :TestLast<CR>$/;"	m
+<leader>ts	vim/init.vim	/^map <leader>ts :TestSuite<CR>$/;"	m
+<leader>tt	vim/init.vim	/^map <leader>tt :TestNearest<CR>$/;"	m
+<leader>tu	vim/init.vim	/^map <leader>tu :TestNearest<CR>$/;"	m
+<leader>uq	nvim/min.vim	/^map <leader>uq :!uniq<CR>$/;"	m
+<leader>uq	vim/init.vim	/^map <leader>uq :!uniq<CR>$/;"	m
+<leader>vpc	nvim/min.vim	/^map <silent><leader>vpc :PackerClean<CR>$/;"	m
+<leader>vpi	nvim/min.vim	/^map <silent><leader>vpi :PackerInstall<CR>$/;"	m
+<leader>vpu	nvim/min.vim	/^map <silent><leader>vpu :PackerSync<CR>$/;"	m
+<leader>w	nvim/min.vim	/^map <silent><leader>w :w<CR>$/;"	m
+<leader>w	vim/init.vim	/^nnoremap <silent><leader>w :w<CR>$/;"	m
+<leader>x	nvim/min.vim	/^map <silent><leader>x :x<CR>$/;"	m
+<leader>x	vim/init.vim	/^nnoremap <silent><leader>x :x<CR>$/;"	m
+<leader>y	nvim/min.vim	/^nnoremap  <leader>y  "+y$/;"	m
+<leader>y	nvim/min.vim	/^vnoremap  <leader>y  "+y$/;"	m
+<leader>y	vim/init.vim	/^nnoremap  <leader>y  "+y$/;"	m
+<leader>y	vim/init.vim	/^vnoremap  <leader>y  "+y$/;"	m
+<leader>yy	nvim/min.vim	/^nnoremap  <leader>yy  "+yy$/;"	m
+<leader>yy	vim/init.vim	/^nnoremap  <leader>yy  "+yy$/;"	m
+BWCCreateDir	nvim/min.vim	/^  augroup BWCCreateDir$/;"	a
+BWCCreateDir	vim/init.vim	/^  augroup BWCCreateDir$/;"	a
+ChangeScaleFactor	vim/init.vim	/^  function! ChangeScaleFactor(delta)$/;"	f
+DOC_DIR	zsh/zsh-syntax-highlighting/Makefile	/^DOC_DIR?=$(DESTDIR)$(PREFIX)\/share\/doc\/$(NAME)$/;"	m
+DOTFILES	Makefile	/^DOTFILES := $(shell pwd)$/;"	m
+DiffHighlight	bin/diff-so-fancy	/^  package DiffHighlight;$/;"	p
+E	nvim/min.vim	/^command! E :e$/;"	c
+E	vim/init.vim	/^command! E :e$/;"	c
+Env	vim/init.vim	/^function! Env()$/;"	f
+GoDebugNearest	vim/init.vim	/^function! GoDebugNearest()$/;"	f
+INSTALL	zsh/zsh-syntax-highlighting/Makefile	/^INSTALL?=install -c$/;"	m
+MkNonExDir	nvim/min.vim	/^  function s:MkNonExDir(file, buf)$/;"	f
+MkNonExDir	vim/init.vim	/^  function s:MkNonExDir(file, buf)$/;"	f
+NAME	zsh/zsh-syntax-highlighting/Makefile	/^NAME=zsh-syntax-highlighting$/;"	m
+PREFIX	zsh/zsh-syntax-highlighting/Makefile	/^PREFIX?=\/usr\/local$/;"	m
+Q	nvim/min.vim	/^command! Q :q$/;"	c
+Q	vim/init.vim	/^command! Q :q$/;"	c
+Qa	nvim/min.vim	/^command! Qa :qa$/;"	c
+Qa	vim/init.vim	/^command! Qa :qa$/;"	c
+Qwa	nvim/min.vim	/^command! Qwa :wqa$/;"	c
+Qwa	vim/init.vim	/^command! Qwa :wqa$/;"	c
+SHARE_DIR	zsh/zsh-syntax-highlighting/Makefile	/^SHARE_DIR?=$(DESTDIR)$(PREFIX)\/share\/$(NAME)$/;"	m
+SessionLoad	vim/session/%Users%joshlane%.files_master.vim	/^let SessionLoad = 1$/;"	v
+SourceEnv	vim/init.vim	/^function! SourceEnv()$/;"	f
+SourceEnvOnDirChange	vim/init.vim	/^function! SourceEnvOnDirChange()$/;"	f
+W	nvim/min.vim	/^command! W :w$/;"	c
+W	vim/init.vim	/^command! W :w$/;"	c
+Wa	nvim/min.vim	/^command! Wa :wa$/;"	c
+Wa	vim/init.vim	/^command! Wa :wa$/;"	c
+Wqa	nvim/min.vim	/^command! Wqa :wqa$/;"	c
+Wqa	vim/init.vim	/^command! Wqa :wqa$/;"	c
+ZSH	zsh/zsh-syntax-highlighting/Makefile	/^ZSH?=zsh # zsh binary to run tests with$/;"	m
+["<leader>M"] 	nvim/lua/treesitter.lua	/^				["<leader>M"] = "@function.outer",$/;"	f
+["<leader>m"] 	nvim/lua/treesitter.lua	/^				["<leader>m"] = "@function.outer",$/;"	f
+["@"] 	nvim/lua/fzfconfig.lua	/^			["@"] = function(selected)$/;"	f
+["[M"] 	nvim/lua/treesitter.lua	/^				["[M"] = "@function.outer",$/;"	f
+["[m"] 	nvim/lua/treesitter.lua	/^				["[m"] = "@function.outer",$/;"	f
+["]M"] 	nvim/lua/treesitter.lua	/^				["]M"] = "@function.outer",$/;"	f
+["]m"] 	nvim/lua/treesitter.lua	/^				["]m"] = "@function.outer",$/;"	f
+["am"] 	nvim/lua/treesitter.lua	/^				["am"] = "@function.outer",$/;"	f
+["default"] 	nvim/lua/fzfconfig.lua	/^			["default"] = function(selected)$/;"	f
+["im"] 	nvim/lua/treesitter.lua	/^				["im"] = "@function.inner",$/;"	f
+[q	nvim/min.vim	/^nnoremap [q :cprev<CR>$/;"	m
+[q	vim/init.vim	/^nnoremap [q :cprev<CR>$/;"	m
+]q	nvim/min.vim	/^nnoremap ]q :cnext<CR>$/;"	m
+]q	vim/init.vim	/^nnoremap ]q :cnext<CR>$/;"	m
+_G.Env	nvim/init.lua	/^function _G.Env()$/;"	f
+_G.GoDebugNearest	nvim/init.lua	/^			function _G.GoDebugNearest()$/;"	f
+_G.MkNonExDir	nvim/init.lua	/^	function _G.MkNonExDir(file, buf)$/;"	f
+_G.SourceEnv	nvim/init.lua	/^function _G.SourceEnv(files)$/;"	f
+_G.SourceEnvOnDirChange	nvim/init.lua	/^function _G.SourceEnvOnDirChange()$/;"	f
+_G.vcr_failures_only	nvim/init.lua	/^function _G.vcr_failures_only()$/;"	f
+__git_aliased_command	etc/bash_completion.d/git-completion.bash	/^__git_aliased_command ()$/;"	f
+__git_aliases	etc/bash_completion.d/git-completion.bash	/^__git_aliases ()$/;"	f
+__git_complete_file	etc/bash_completion.d/git-completion.bash	/^__git_complete_file ()$/;"	f
+__git_complete_remote_or_refspec	etc/bash_completion.d/git-completion.bash	/^__git_complete_remote_or_refspec ()$/;"	f
+__git_complete_revlist	etc/bash_completion.d/git-completion.bash	/^__git_complete_revlist ()$/;"	f
+__git_complete_revlist_file	etc/bash_completion.d/git-completion.bash	/^__git_complete_revlist_file ()$/;"	f
+__git_complete_strategy	etc/bash_completion.d/git-completion.bash	/^__git_complete_strategy ()$/;"	f
+__git_compute_all_commands	etc/bash_completion.d/git-completion.bash	/^__git_compute_all_commands ()$/;"	f
+__git_compute_merge_strategies	etc/bash_completion.d/git-completion.bash	/^__git_compute_merge_strategies ()$/;"	f
+__git_compute_porcelain_commands	etc/bash_completion.d/git-completion.bash	/^__git_compute_porcelain_commands ()$/;"	f
+__git_config_get_set_variables	etc/bash_completion.d/git-completion.bash	/^__git_config_get_set_variables ()$/;"	f
+__git_find_on_cmdline	etc/bash_completion.d/git-completion.bash	/^__git_find_on_cmdline ()$/;"	f
+__git_has_doubledash	etc/bash_completion.d/git-completion.bash	/^__git_has_doubledash ()$/;"	f
+__git_heads	etc/bash_completion.d/git-completion.bash	/^__git_heads ()$/;"	f
+__git_list_all_commands	etc/bash_completion.d/git-completion.bash	/^__git_list_all_commands ()$/;"	f
+__git_list_merge_strategies	etc/bash_completion.d/git-completion.bash	/^__git_list_merge_strategies ()$/;"	f
+__git_list_porcelain_commands	etc/bash_completion.d/git-completion.bash	/^__git_list_porcelain_commands ()$/;"	f
+__git_pretty_aliases	etc/bash_completion.d/git-completion.bash	/^__git_pretty_aliases ()$/;"	f
+__git_ps1	etc/bash_completion.d/git-completion.bash	/^__git_ps1 ()$/;"	f
+__git_ps1_show_upstream	etc/bash_completion.d/git-completion.bash	/^__git_ps1_show_upstream ()$/;"	f
+__git_reassemble_comp_words_by_ref	etc/bash_completion.d/git-completion.bash	/^__git_reassemble_comp_words_by_ref()$/;"	f
+__git_refs	etc/bash_completion.d/git-completion.bash	/^__git_refs ()$/;"	f
+__git_refs2	etc/bash_completion.d/git-completion.bash	/^__git_refs2 ()$/;"	f
+__git_refs_remotes	etc/bash_completion.d/git-completion.bash	/^__git_refs_remotes ()$/;"	f
+__git_remotes	etc/bash_completion.d/git-completion.bash	/^__git_remotes ()$/;"	f
+__git_shopt	etc/bash_completion.d/git-completion.bash	/^	__git_shopt () {$/;"	f
+__git_tags	etc/bash_completion.d/git-completion.bash	/^__git_tags ()$/;"	f
+__gitcomp	etc/bash_completion.d/git-completion.bash	/^__gitcomp ()$/;"	f
+__gitcomp_1	etc/bash_completion.d/git-completion.bash	/^__gitcomp_1 ()$/;"	f
+__gitdir	etc/bash_completion.d/git-completion.bash	/^__gitdir ()$/;"	f
+__trim_string	zsh/zsh-github-copilot.plugin.zsh	/^__trim_string() {$/;"	f
+_echo_exit	zsh/zsh-github-copilot.plugin.zsh	/^_echo_exit() {$/;"	f
+_get_comp_words_by_ref	etc/bash_completion.d/git-completion.bash	/^_get_comp_words_by_ref ()$/;"	f
+_gh_copilot	zsh/zsh-github-copilot.plugin.zsh	/^_gh_copilot() {$/;"	f
+_gh_copilot_explain	zsh/zsh-github-copilot.plugin.zsh	/^_gh_copilot_explain() {$/;"	f
+_gh_copilot_spinner	zsh/zsh-github-copilot.plugin.zsh	/^_gh_copilot_spinner() {$/;"	f
+_gh_copilot_suggest	zsh/zsh-github-copilot.plugin.zsh	/^_gh_copilot_suggest() {$/;"	f
+_git	etc/bash_completion.d/git-completion.bash	/^_git ()$/;"	f
+_git_add	etc/bash_completion.d/git-completion.bash	/^_git_add ()$/;"	f
+_git_am	etc/bash_completion.d/git-completion.bash	/^_git_am ()$/;"	f
+_git_apply	etc/bash_completion.d/git-completion.bash	/^_git_apply ()$/;"	f
+_git_archive	etc/bash_completion.d/git-completion.bash	/^_git_archive ()$/;"	f
+_git_bisect	etc/bash_completion.d/git-completion.bash	/^_git_bisect ()$/;"	f
+_git_branch	etc/bash_completion.d/git-completion.bash	/^_git_branch ()$/;"	f
+_git_bundle	etc/bash_completion.d/git-completion.bash	/^_git_bundle ()$/;"	f
+_git_checkout	etc/bash_completion.d/git-completion.bash	/^_git_checkout ()$/;"	f
+_git_cherry	etc/bash_completion.d/git-completion.bash	/^_git_cherry ()$/;"	f
+_git_cherry_pick	etc/bash_completion.d/git-completion.bash	/^_git_cherry_pick ()$/;"	f
+_git_clean	etc/bash_completion.d/git-completion.bash	/^_git_clean ()$/;"	f
+_git_clone	etc/bash_completion.d/git-completion.bash	/^_git_clone ()$/;"	f
+_git_commit	etc/bash_completion.d/git-completion.bash	/^_git_commit ()$/;"	f
+_git_config	etc/bash_completion.d/git-completion.bash	/^_git_config ()$/;"	f
+_git_describe	etc/bash_completion.d/git-completion.bash	/^_git_describe ()$/;"	f
+_git_diff	etc/bash_completion.d/git-completion.bash	/^_git_diff ()$/;"	f
+_git_difftool	etc/bash_completion.d/git-completion.bash	/^_git_difftool ()$/;"	f
+_git_fetch	etc/bash_completion.d/git-completion.bash	/^_git_fetch ()$/;"	f
+_git_format_patch	etc/bash_completion.d/git-completion.bash	/^_git_format_patch ()$/;"	f
+_git_fsck	etc/bash_completion.d/git-completion.bash	/^_git_fsck ()$/;"	f
+_git_gc	etc/bash_completion.d/git-completion.bash	/^_git_gc ()$/;"	f
+_git_gitk	etc/bash_completion.d/git-completion.bash	/^_git_gitk ()$/;"	f
+_git_grep	etc/bash_completion.d/git-completion.bash	/^_git_grep ()$/;"	f
+_git_help	etc/bash_completion.d/git-completion.bash	/^_git_help ()$/;"	f
+_git_init	etc/bash_completion.d/git-completion.bash	/^_git_init ()$/;"	f
+_git_log	etc/bash_completion.d/git-completion.bash	/^_git_log ()$/;"	f
+_git_ls_files	etc/bash_completion.d/git-completion.bash	/^_git_ls_files ()$/;"	f
+_git_ls_remote	etc/bash_completion.d/git-completion.bash	/^_git_ls_remote ()$/;"	f
+_git_ls_tree	etc/bash_completion.d/git-completion.bash	/^_git_ls_tree ()$/;"	f
+_git_merge	etc/bash_completion.d/git-completion.bash	/^_git_merge ()$/;"	f
+_git_merge_base	etc/bash_completion.d/git-completion.bash	/^_git_merge_base ()$/;"	f
+_git_mergetool	etc/bash_completion.d/git-completion.bash	/^_git_mergetool ()$/;"	f
+_git_mv	etc/bash_completion.d/git-completion.bash	/^_git_mv ()$/;"	f
+_git_name_rev	etc/bash_completion.d/git-completion.bash	/^_git_name_rev ()$/;"	f
+_git_notes	etc/bash_completion.d/git-completion.bash	/^_git_notes ()$/;"	f
+_git_pull	etc/bash_completion.d/git-completion.bash	/^_git_pull ()$/;"	f
+_git_push	etc/bash_completion.d/git-completion.bash	/^_git_push ()$/;"	f
+_git_rebase	etc/bash_completion.d/git-completion.bash	/^_git_rebase ()$/;"	f
+_git_reflog	etc/bash_completion.d/git-completion.bash	/^_git_reflog ()$/;"	f
+_git_remote	etc/bash_completion.d/git-completion.bash	/^_git_remote ()$/;"	f
+_git_replace	etc/bash_completion.d/git-completion.bash	/^_git_replace ()$/;"	f
+_git_reset	etc/bash_completion.d/git-completion.bash	/^_git_reset ()$/;"	f
+_git_revert	etc/bash_completion.d/git-completion.bash	/^_git_revert ()$/;"	f
+_git_rm	etc/bash_completion.d/git-completion.bash	/^_git_rm ()$/;"	f
+_git_send_email	etc/bash_completion.d/git-completion.bash	/^_git_send_email ()$/;"	f
+_git_shortlog	etc/bash_completion.d/git-completion.bash	/^_git_shortlog ()$/;"	f
+_git_show	etc/bash_completion.d/git-completion.bash	/^_git_show ()$/;"	f
+_git_show_branch	etc/bash_completion.d/git-completion.bash	/^_git_show_branch ()$/;"	f
+_git_stage	etc/bash_completion.d/git-completion.bash	/^_git_stage ()$/;"	f
+_git_stash	etc/bash_completion.d/git-completion.bash	/^_git_stash ()$/;"	f
+_git_submodule	etc/bash_completion.d/git-completion.bash	/^_git_submodule ()$/;"	f
+_git_svn	etc/bash_completion.d/git-completion.bash	/^_git_svn ()$/;"	f
+_git_tag	etc/bash_completion.d/git-completion.bash	/^_git_tag ()$/;"	f
+_git_whatchanged	etc/bash_completion.d/git-completion.bash	/^_git_whatchanged ()$/;"	f
+_gitk	etc/bash_completion.d/git-completion.bash	/^_gitk ()$/;"	f
+_prompt_msg	zsh/zsh-github-copilot.plugin.zsh	/^_prompt_msg() {$/;"	f
+_spinner	zsh/zsh-github-copilot.plugin.zsh	/^_spinner() {$/;"	f
+_z	share/z.sh	/^_z() {$/;"	f
+_z_dirs	share/z.sh	/^    _z_dirs () {$/;"	f
+_z_precmd	share/z.sh	/^            _z_precmd() {$/;"	f
+_z_zsh_tab_completion	share/z.sh	/^    _z_zsh_tab_completion() {$/;"	f
+_zsh_highlight	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight()$/;"	f
+_zsh_highlight__function_callable_p	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight__function_callable_p() {$/;"	f
+_zsh_highlight__function_is_autoload_stub_p	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight__function_is_autoload_stub_p() {$/;"	f
+_zsh_highlight__is_function_p	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight__is_function_p() {$/;"	f
+_zsh_highlight_add_highlight	zsh/zsh-syntax-highlighting/highlighters/main/test-data/inheritance.zsh	/^_zsh_highlight_add_highlight()$/;"	f
+_zsh_highlight_add_highlight	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_add_highlight()$/;"	f
+_zsh_highlight_apply_zle_highlight	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_apply_zle_highlight() {$/;"	f
+_zsh_highlight_bind_widgets	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^  _zsh_highlight_bind_widgets()$/;"	f
+_zsh_highlight_bind_widgets	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^  _zsh_highlight_bind_widgets(){}$/;"	f
+_zsh_highlight_brackets_match	zsh/zsh-syntax-highlighting/highlighters/brackets/brackets-highlighter.zsh	/^_zsh_highlight_brackets_match()$/;"	f
+_zsh_highlight_buffer_modified	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_buffer_modified()$/;"	f
+_zsh_highlight_call_widget	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_call_widget()$/;"	f
+_zsh_highlight_cursor_moved	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_cursor_moved()$/;"	f
+_zsh_highlight_highlighter_brackets_paint	zsh/zsh-syntax-highlighting/highlighters/brackets/brackets-highlighter.zsh	/^_zsh_highlight_highlighter_brackets_paint()$/;"	f
+_zsh_highlight_highlighter_brackets_predicate	zsh/zsh-syntax-highlighting/highlighters/brackets/brackets-highlighter.zsh	/^_zsh_highlight_highlighter_brackets_predicate()$/;"	f
+_zsh_highlight_highlighter_cursor_paint	zsh/zsh-syntax-highlighting/highlighters/cursor/cursor-highlighter.zsh	/^_zsh_highlight_highlighter_cursor_paint()$/;"	f
+_zsh_highlight_highlighter_cursor_predicate	zsh/zsh-syntax-highlighting/highlighters/cursor/cursor-highlighter.zsh	/^_zsh_highlight_highlighter_cursor_predicate()$/;"	f
+_zsh_highlight_highlighter_line_paint	zsh/zsh-syntax-highlighting/highlighters/line/line-highlighter.zsh	/^_zsh_highlight_highlighter_line_paint()$/;"	f
+_zsh_highlight_highlighter_line_predicate	zsh/zsh-syntax-highlighting/highlighters/line/line-highlighter.zsh	/^_zsh_highlight_highlighter_line_predicate()$/;"	f
+_zsh_highlight_highlighter_main_paint	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_highlighter_main_paint()$/;"	f
+_zsh_highlight_highlighter_main_predicate	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_highlighter_main_predicate()$/;"	f
+_zsh_highlight_highlighter_pattern_paint	zsh/zsh-syntax-highlighting/highlighters/pattern/pattern-highlighter.zsh	/^_zsh_highlight_highlighter_pattern_paint()$/;"	f
+_zsh_highlight_highlighter_pattern_predicate	zsh/zsh-syntax-highlighting/highlighters/pattern/pattern-highlighter.zsh	/^_zsh_highlight_highlighter_pattern_predicate()$/;"	f
+_zsh_highlight_highlighter_regexp_paint	zsh/zsh-syntax-highlighting/highlighters/regexp/regexp-highlighter.zsh	/^_zsh_highlight_highlighter_regexp_paint()$/;"	f
+_zsh_highlight_highlighter_regexp_predicate	zsh/zsh-syntax-highlighting/highlighters/regexp/regexp-highlighter.zsh	/^_zsh_highlight_highlighter_regexp_predicate()$/;"	f
+_zsh_highlight_highlighter_root_paint	zsh/zsh-syntax-highlighting/highlighters/root/root-highlighter.zsh	/^_zsh_highlight_highlighter_root_paint()$/;"	f
+_zsh_highlight_highlighter_root_predicate	zsh/zsh-syntax-highlighting/highlighters/root/root-highlighter.zsh	/^_zsh_highlight_highlighter_root_predicate()$/;"	f
+_zsh_highlight_load_highlighters	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_load_highlighters()$/;"	f
+_zsh_highlight_main__is_global_alias	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__is_global_alias() {$/;"	f
+_zsh_highlight_main__is_redirection	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__is_redirection() {$/;"	f
+_zsh_highlight_main__is_runnable	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__is_runnable() {$/;"	f
+_zsh_highlight_main__precmd_hook	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__precmd_hook() {$/;"	f
+_zsh_highlight_main__resolve_alias	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__resolve_alias() {$/;"	f
+_zsh_highlight_main__stack_pop	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__stack_pop() {$/;"	f
+_zsh_highlight_main__type	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main__type() {$/;"	f
+_zsh_highlight_main_add_many_region_highlights	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_add_many_region_highlights() {$/;"	f
+_zsh_highlight_main_add_region_highlight	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_add_region_highlight() {$/;"	f
+_zsh_highlight_main_calculate_fallback	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_calculate_fallback() {$/;"	f
+_zsh_highlight_main_highlighter__try_expand_parameter	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter__try_expand_parameter()$/;"	f
+_zsh_highlight_main_highlighter_check_assign	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_check_assign()$/;"	f
+_zsh_highlight_main_highlighter_check_path	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_check_path()$/;"	f
+_zsh_highlight_main_highlighter_expand_path	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_expand_path()$/;"	f
+_zsh_highlight_main_highlighter_highlight_argument	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_argument()$/;"	f
+_zsh_highlight_main_highlighter_highlight_arithmetic	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_arithmetic()$/;"	f
+_zsh_highlight_main_highlighter_highlight_backtick	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_backtick()$/;"	f
+_zsh_highlight_main_highlighter_highlight_dollar_quote	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_dollar_quote()$/;"	f
+_zsh_highlight_main_highlighter_highlight_double_quote	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_double_quote()$/;"	f
+_zsh_highlight_main_highlighter_highlight_list	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_list()$/;"	f
+_zsh_highlight_main_highlighter_highlight_path_separators	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_path_separators()$/;"	f
+_zsh_highlight_main_highlighter_highlight_single_quote	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^_zsh_highlight_main_highlighter_highlight_single_quote()$/;"	f
+_zsh_highlight_pattern_highlighter_loop	zsh/zsh-syntax-highlighting/highlighters/pattern/pattern-highlighter.zsh	/^_zsh_highlight_pattern_highlighter_loop()$/;"	f
+_zsh_highlight_preexec_hook	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_preexec_hook()$/;"	f
+_zsh_highlight_regexp_highlighter_loop	zsh/zsh-syntax-highlighting/highlighters/regexp/regexp-highlighter.zsh	/^_zsh_highlight_regexp_highlighter_loop()$/;"	f
+alacritty	qute/config.py	/^    alacritty = "\/Applications\/Alacritty.app\/Contents\/MacOS\/alacritty"$/;"	v
+alacritty	qute/config.py	/^    alacritty = check_output(['command -v alacritty'],$/;"	v
+alacritty	qute/config.py	/^alacritty = "alacritty"$/;"	v
+alias1	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias.zsh	/^function alias1() {} # to check that it's highlighted as an alias, not as a function$/;"	f
+arg0	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^      function arg0$/;"	f
+argv	bin/diff-so-fancy	/^sub argv {$/;"	s
+b	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-loop.zsh	/^function b() {} # beware of ALIAS_FUNC_DEF$/;"	f
+bar	zsh/zsh-syntax-highlighting/highlighters/main/test-data/array-cmdsep1.zsh	/^bar(){}$/;"	f
+bleach_text	bin/diff-so-fancy	/^sub bleach_text {$/;"	s
+boolean	bin/diff-so-fancy	/^sub boolean {$/;"	s
+build 	nvim/init.lua	/^		build = function()$/;"	f
+callback 	nvim/init.lua	/^				callback = function()$/;"	f
+callback 	nvim/init.lua	/^	callback = function()$/;"	f
+cd	zsh/zsh-syntax-highlighting/highlighters/main/test-data/function.zsh	/^cd() {$/;"	f
+char_count	bin/diff-so-fancy	/^sub char_count {$/;"	s
+check_first_run	bin/diff-so-fancy	/^sub check_first_run {$/;"	s
+check_output	qute/config.py	/^from subprocess import check_output$/;"	i
+cleanup	zsh/zsh-github-copilot.plugin.zsh	/^    cleanup() {$/;"	f
+color	bin/diff-so-fancy	/^sub color {$/;"	s
+color_config	bin/diff-highlight	/^sub color_config {$/;"	s
+color_config	bin/diff-so-fancy	/^  sub color_config {$/;"	s
+common	share/z.sh	/^            function common(matches) {$/;"	f
+cond 	nvim/init.lua	/^		cond = function()$/;"	f
+config 	nvim/init.lua	/^		config = function()$/;"	f
+config 	nvim/init.lua	/^		config = function(_, opts)$/;"	f
+config 	nvim/init.lua	/^		config = function(opts)$/;"	f
+current_heuristic_semver	bootstrap.sh	/^current_heuristic_semver() {$/;"	f
+do_dsf_stuff	bin/diff-so-fancy	/^sub do_dsf_stuff {$/;"	s
+doas	zsh/zsh-syntax-highlighting/highlighters/main/test-data/precommand4.zsh	/^doas(){}$/;"	f
+ed	zsh/zsh-syntax-highlighting/highlighters/main/test-data/opt-shwordsplit1.zsh	/^ed() { command ed "$@" }$/;"	f
+enabled 	nvim/init.lua	/^		enabled = function()$/;"	f
+ev	nvim/min.vim	/^nnoremap ev  :e $MYVIMRC<CR>$/;"	m
+ev	vim/init.vim	/^nnoremap ev  :e $MYVIMRC<CR>$/;"	m
+evp	nvim/min.vim	/^nnoremap evp :e  ~\/.config\/nvim\/lua\/plugins.lua<CR>$/;"	m
+evr	nvim/min.vim	/^nnoremap evr :source  $MYVIMRC<CR>$/;"	m
+evr	vim/init.vim	/^nnoremap evr :source  $MYVIMRC<CR>$/;"	m
+explicit_current_semver	bootstrap.sh	/^explicit_current_semver() {$/;"	f
+exports.activate	oni/config.js	/^exports.activate = function (oni) {$/;"	f
+exports.configuration.autoClosingPairs.enabled	oni/config.js	/^    "autoClosingPairs.enabled": false,$/;"	p
+exports.configuration.editor.fontFamily	oni/config.js	/^    "editor.fontFamily": "Hack Nerd Font",$/;"	p
+exports.configuration.editor.fontSize	oni/config.js	/^    "editor.fontSize": "13px",$/;"	p
+exports.configuration.editor.scrollBar.visible	oni/config.js	/^    "editor.scrollBar.visible": false,$/;"	p
+exports.configuration.environment.additionalPaths	oni/config.js	/^    "environment.additionalPaths": [$/;"	p
+exports.configuration.oni.hideMenu	oni/config.js	/^    "oni.hideMenu": true,$/;"	p
+exports.configuration.oni.loadInitVim	oni/config.js	/^    "oni.loadInitVim": true,$/;"	p
+exports.configuration.oni.useDefaultConfig	oni/config.js	/^    "oni.useDefaultConfig": false,$/;"	p
+exports.configuration.sidebar.enabled	oni/config.js	/^    "sidebar.enabled": false,$/;"	p
+exports.configuration.statusbar.enabled	oni/config.js	/^    "statusbar.enabled": false,$/;"	p
+exports.configuration.tabs.mode	oni/config.js	/^    "tabs.mode": "native",$/;"	p
+exports.configuration.terminal.shellCommand	oni/config.js	/^    "terminal.shellCommand": "\/bin\/zsh",$/;"	p
+exports.configuration.ui.animations.enabled	oni/config.js	/^    "ui.animations.enabled": true,$/;"	p
+exports.configuration.ui.colorscheme	oni/config.js	/^    "ui.colorscheme": "tender",$/;"	p
+exports.configuration.ui.fontFamily	oni/config.js	/^    "ui.fontFamily": "Hack Nerd Font",$/;"	p
+exports.configuration.ui.fontSize	oni/config.js	/^    "ui.fontSize": "13px",$/;"	p
+exports.configuration.ui.fontSmoothing	oni/config.js	/^    "ui.fontSmoothing": "auto",$/;"	p
+exports.deactivate	oni/config.js	/^exports.deactivate = function (oni) {$/;"	f
+f	zsh/zsh-syntax-highlighting/highlighters/main/test-data/off-by-one.zsh	/^f() {}$/;"	f
+fak	nvim/min.vim	/^nnoremap fak :%bd!<bar>e#<CR>$/;"	m
+fak	vim/init.vim	/^nnoremap fak :%bd!<bar>e#<CR>$/;"	m
+fbk	nvim/min.vim	/^nnoremap fbk :bd!<CR>$/;"	m
+fbk	vim/init.vim	/^nnoremap fbk :bd!<CR>$/;"	m
+fd_package_semver	bootstrap.sh	/^fd_package_semver() {$/;"	f
+file_change_string	bin/diff-so-fancy	/^sub file_change_string {$/;"	s
+filetype_fish	nvim/min.vim	/^  augroup filetype_fish$/;"	a
+filetype_fish	vim/init.vim	/^  augroup filetype_fish$/;"	a
+filetype_gitcommit	nvim/min.vim	/^  augroup filetype_gitcommit$/;"	a
+filetype_gitcommit	vim/init.vim	/^  augroup filetype_gitcommit$/;"	a
+filetype_go	nvim/min.vim	/^  augroup filetype_go$/;"	a
+filetype_go	vim/init.vim	/^  augroup filetype_go$/;"	a
+filetype_haml	nvim/min.vim	/^  augroup filetype_haml$/;"	a
+filetype_haml	vim/init.vim	/^  augroup filetype_haml$/;"	a
+filetype_javascript	nvim/min.vim	/^  augroup filetype_javascript$/;"	a
+filetype_javascript	vim/init.vim	/^  augroup filetype_javascript$/;"	a
+filetype_json	nvim/min.vim	/^  augroup filetype_json$/;"	a
+filetype_json	vim/init.vim	/^  augroup filetype_json$/;"	a
+filetype_lua	nvim/min.vim	/^  augroup filetype_lua$/;"	a
+filetype_lua	vim/init.vim	/^  augroup filetype_lua$/;"	a
+filetype_markdown	nvim/min.vim	/^  augroup filetype_markdown$/;"	a
+filetype_markdown	vim/init.vim	/^  augroup filetype_markdown$/;"	a
+filetype_norg	vim/init.vim	/^  augroup filetype_norg$/;"	a
+filetype_perl	nvim/min.vim	/^  augroup filetype_perl$/;"	a
+filetype_perl	vim/init.vim	/^  augroup filetype_perl$/;"	a
+filetype_python	nvim/min.vim	/^  augroup filetype_python$/;"	a
+filetype_python	vim/init.vim	/^  augroup filetype_python$/;"	a
+filetype_ruby	nvim/min.vim	/^  augroup filetype_ruby$/;"	a
+filetype_ruby	vim/init.vim	/^  augroup filetype_ruby$/;"	a
+filetype_sh	nvim/min.vim	/^  augroup filetype_sh$/;"	a
+filetype_sh	vim/init.vim	/^  augroup filetype_sh$/;"	a
+filetype_sshconfig	nvim/min.vim	/^  augroup filetype_sshconfig$/;"	a
+filetype_sshconfig	vim/init.vim	/^  augroup filetype_sshconfig$/;"	a
+filetype_terminal	nvim/min.vim	/^  augroup filetype_terminal$/;"	a
+filetype_terminal	vim/init.vim	/^  augroup filetype_terminal$/;"	a
+filetype_vim	nvim/min.vim	/^  augroup filetype_vim$/;"	a
+filetype_vim	vim/init.vim	/^  augroup filetype_vim$/;"	a
+filetype_yaml	nvim/min.vim	/^  augroup filetype_yaml$/;"	a
+filetype_yaml	vim/init.vim	/^  augroup filetype_yaml$/;"	a
+filter_stdin_through_diff_highlight	bin/diff-so-fancy	/^sub filter_stdin_through_diff_highlight {$/;"	s
+flush	bin/diff-so-fancy	/^  sub flush {$/;"	s
+fn_transform 	nvim/lua/fzfconfig.lua	/^		fn_transform = function(x)$/;"	f
+frecent	share/z.sh	/^            function frecent(rank, time) {$/;"	f
+functionTypeParameters 	nvim/init.lua	/^						functionTypeParameters = true,$/;"	f
+g:ale_fixers	nvim/min.vim	/^let g:ale_fixers = {$/;"	v
+g:clang_format#style_options	vim/init.vim	/^let g:clang_format#style_options = {$/;"	v
+g:gutentags_ctags_exclude	nvim/min.vim	/^let g:gutentags_ctags_exclude = [$/;"	v
+g:gutentags_ctags_exclude	vim/init.vim	/^let g:gutentags_ctags_exclude = [$/;"	v
+g:gutentags_ctags_extra_args	vim/init.vim	/^let g:gutentags_ctags_extra_args = ['.']$/;"	v
+g:gutentags_enabled	nvim/min.vim	/^let g:gutentags_enabled = 1$/;"	v
+g:gutentags_enabled	vim/init.vim	/^let g:gutentags_enabled = 1$/;"	v
+g:gutentags_exclude_filetypes	nvim/min.vim	/^let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']$/;"	v
+g:gutentags_exclude_filetypes	vim/init.vim	/^let g:gutentags_exclude_filetypes = ['gitcommit', 'gitrebase']$/;"	v
+g:gutentags_generate_on_empty_buffer	nvim/min.vim	/^let g:gutentags_generate_on_empty_buffer = 0$/;"	v
+g:gutentags_generate_on_empty_buffer	vim/init.vim	/^let g:gutentags_generate_on_empty_buffer = 0$/;"	v
+g:gutentags_project_info	nvim/min.vim	/^let g:gutentags_project_info = []$/;"	v
+g:gutentags_project_info	vim/init.vim	/^let g:gutentags_project_info = []$/;"	v
+g:indent_blankline_show_current_context	vim/init.vim	/^let g:indent_blankline_show_current_context = v:true$/;"	v
+g:indent_blankline_use_treesitter	vim/init.vim	/^let g:indent_blankline_use_treesitter = v:true$/;"	v
+g:markdown_fenced_languages	nvim/min.vim	/^let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']$/;"	v
+g:markdown_fenced_languages	vim/init.vim	/^let g:markdown_fenced_languages = ['html', 'python', 'bash=sh', 'ruby', 'go']$/;"	v
+g:neovide_scale_factor	vim/init.vim	/^  let g:neovide_scale_factor=1.0$/;"	v
+g:prosession_per_branch	vim/init.vim	/^let g:prosession_per_branch = 1$/;"	v
+g:prosession_tmux_title	vim/init.vim	/^let g:prosession_tmux_title = 1$/;"	v
+g:prosession_tmux_title_format	vim/init.vim	/^let g:prosession_tmux_title_format = '@@@'$/;"	v
+g:terraform_align	vim/init.vim	/^let g:terraform_align           = 1$/;"	v
+g:terraform_completion_keys	vim/init.vim	/^let g:terraform_completion_keys = 1$/;"	v
+g:terraform_fmt_on_save	vim/init.vim	/^let g:terraform_fmt_on_save     = 1$/;"	v
+g:terraform_remap_spacebar	vim/init.vim	/^let g:terraform_remap_spacebar  = 0$/;"	v
+g:test#runner_commands	vim/init.vim	/^    let g:test#runner_commands = ['RSpec']$/;"	v
+g:test#runner_commands	vim/init.vim	/^let g:test#runner_commands = ['PyTest', 'RSpec', 'GoTest', 'Minitest']$/;"	v
+g:this_obsession	vim/session/%Users%joshlane%.files_master.vim	/^let g:this_obsession = v:this_session$/;"	v
+g:this_session	vim/session/%Users%joshlane%.files_master.vim	/^let g:this_session = v:this_session$/;"	v
+get_default_colors	bin/diff-so-fancy	/^sub get_default_colors {$/;"	s
+get_git_config_hash	bin/diff-so-fancy	/^sub get_git_config_hash {$/;"	s
+get_less_charset	bin/diff-so-fancy	/^sub get_less_charset {$/;"	s
+git_config	bin/diff-so-fancy	/^sub git_config {$/;"	s
+git_config_boolean	bin/diff-so-fancy	/^sub git_config_boolean {$/;"	s
+git_config_raw	bin/diff-so-fancy	/^	sub git_config_raw {$/;"	s
+go_current_semver	bootstrap.sh	/^go_current_semver() {$/;"	f
+gopls_current_semver	bootstrap.sh	/^gopls_current_semver() {$/;"	f
+handle_line	bin/diff-so-fancy	/^  sub handle_line {$/;"	s
+has_stdin	bin/diff-so-fancy	/^sub has_stdin {$/;"	s
+highlight_line	bin/diff-highlight	/^sub highlight_line {$/;"	s
+highlight_line	bin/diff-so-fancy	/^  sub highlight_line {$/;"	s
+highlight_pair	bin/diff-highlight	/^sub highlight_pair {$/;"	s
+highlight_pair	bin/diff-so-fancy	/^  sub highlight_pair {$/;"	s
+highlight_stdin	bin/diff-so-fancy	/^  sub highlight_stdin {$/;"	s
+horizontal_rule	bin/diff-so-fancy	/^sub horizontal_rule {$/;"	s
+in_unit_test	bin/diff-so-fancy	/^sub in_unit_test {$/;"	s
+init 	nvim/init.lua	/^		init = function()$/;"	f
+install_atuin_from_release	bootstrap.sh	/^install_atuin_from_release() {$/;"	f
+install_bat_from_release	bootstrap.sh	/^install_bat_from_release() {$/;"	f
+install_cargo_from_release	bootstrap.sh	/^install_cargo_from_release() {$/;"	f
+install_cargo_package	bootstrap.sh	/^install_cargo_package() {$/;"	f
+install_dependencies	bootstrap.sh	/^install_dependencies() {$/;"	f
+install_direnv_from_release	bootstrap.sh	/^install_direnv_from_release() {$/;"	f
+install_explicitly	bootstrap.sh	/^install_explicitly() {$/;"	f
+install_eza_from_release	bootstrap.sh	/^install_eza_from_release() {$/;"	f
+install_fd_from_release	bootstrap.sh	/^install_fd_from_release() {$/;"	f
+install_fd_package	bootstrap.sh	/^install_fd_package() {$/;"	f
+install_from_package_manager	bootstrap.sh	/^install_from_package_manager() {$/;"	f
+install_fzf_from_source	bootstrap.sh	/^install_fzf_from_source() {$/;"	f
+install_gh_package	bootstrap.sh	/^install_gh_package() {$/;"	f
+install_glibc	bootstrap.sh	/^install_glibc() {$/;"	f
+install_glow_from_source	bootstrap.sh	/^install_glow_from_source() {$/;"	f
+install_gopls_from_release	bootstrap.sh	/^install_gopls_from_release() {$/;"	f
+install_hexyl_from_release	bootstrap.sh	/^install_hexyl_from_release() {$/;"	f
+install_jq_from_release	bootstrap.sh	/^install_jq_from_release() {$/;"	f
+install_kagi_from_source	bootstrap.sh	/^install_kagi_from_source() {$/;"	f
+install_neovim_from_source	bootstrap.sh	/^install_neovim_from_source() {$/;"	f
+install_node_from_release	bootstrap.sh	/^install_node_from_release() {$/;"	f
+install_package	bootstrap.sh	/^install_package() {$/;"	f
+install_package_version	bootstrap.sh	/^install_package_version() {$/;"	f
+install_ripgrep_from_release	bootstrap.sh	/^install_ripgrep_from_release() {$/;"	f
+install_shfmt_from_release	bootstrap.sh	/^install_shfmt_from_release() {$/;"	f
+install_skim_from_release	bootstrap.sh	/^install_skim_from_release() {$/;"	f
+install_starship_from_release	bootstrap.sh	/^install_starship_from_release() {$/;"	f
+install_stylua_from_release	bootstrap.sh	/^install_stylua_from_release() {$/;"	f
+installed_semver	bootstrap.sh	/^installed_semver() {$/;"	f
+instant_prompt_example	zsh/p10k.zsh	/^  function instant_prompt_example() {$/;"	f
+is_pair_interesting	bin/diff-highlight	/^sub is_pair_interesting {$/;"	s
+is_pair_interesting	bin/diff-so-fancy	/^  sub is_pair_interesting {$/;"	s
+is_windows	bin/diff-so-fancy	/^sub is_windows {$/;"	s
+j	nvim/min.vim	/^noremap j gj$/;"	m
+j	vim/init.vim	/^noremap j gj$/;"	m
+k	nvim/min.vim	/^noremap k gk$/;"	m
+k	vim/init.vim	/^noremap k gk$/;"	m
+local extract_register_from 	nvim/lua/fzfconfig.lua	/^local extract_register_from = function(result)$/;"	f
+local mode_color 	nvim/lua/statusline.lua	/^local mode_color = function()$/;"	f
+ls	zsh/zsh-syntax-highlighting/highlighters/main/test-data/function.zsh	/^ls() {$/;"	f
+mapleader	nvim/min.vim	/^let mapleader = ','$/;"	v
+mapleader	vim/init.vim	/^let mapleader = ','$/;"	v
+mark_empty_line	bin/diff-so-fancy	/^sub mark_empty_line {$/;"	s
+my_git_formatter	zsh/p10k.zsh	/^  function my_git_formatter() {$/;"	f
+neovim	qute/config.py	/^    neovim = "\/usr\/local\/bin\/nvim"$/;"	v
+neovim	qute/config.py	/^    neovim = check_output(['command -v nvim'],$/;"	v
+neovim	qute/config.py	/^neovim = "nvim"$/;"	v
+neovim_current_semver	bootstrap.sh	/^neovim_current_semver() {$/;"	f
+on_highlights 	nvim/init.lua	/^				on_highlights = function(highlights, colors)$/;"	f
+output	share/z.sh	/^            function output(matches, best_match, common) {$/;"	f
+package_manager_semver	bootstrap.sh	/^package_manager_semver() {$/;"	f
+package_semver	bootstrap.sh	/^package_semver() {$/;"	f
+parse_hunk_header	bin/diff-so-fancy	/^sub parse_hunk_header {$/;"	s
+parse_semver	bootstrap.sh	/^parse_semver() {$/;"	f
+platform	qute/config.py	/^from sys import platform$/;"	i
+prequire	nvim/init.lua	/^local function prequire(m)$/;"	f
+prompt_example	zsh/p10k.zsh	/^  function prompt_example() {$/;"	f
+provider 	nvim/lua/statusline.lua	/^      provider = function() return ' Neovim ' end,$/;"	f
+provider 	nvim/lua/statusline.lua	/^      provider = function() return string.format('  %s ', BufferTypeMap[vim.bo.filetype] or '?') end,$/;"	f
+provider 	nvim/lua/statusline.lua	/^      provider = function()$/;"	f
+provider 	nvim/lua/statusline.lua	/^    provider = function() return '  ' end,$/;"	f
+provider 	nvim/lua/statusline.lua	/^    provider = function() return '《' end,$/;"	f
+provider 	nvim/lua/statusline.lua	/^    provider = function() return '' end,$/;"	f
+provider 	nvim/lua/statusline.lua	/^    provider = function()$/;"	f
+rainbowColor	24-bit-color.sh	/^rainbowColor()$/;"	f
+resetOutput	24-bit-color.sh	/^resetOutput()$/;"	f
+ripgrep_current_semver	bootstrap.sh	/^ripgrep_current_semver() {$/;"	f
+s:l	vim/session/%Users%joshlane%.files_master.vim	/^let s:l = 1 - ((0 * winheight(0) + 15) \/ 31)$/;"	v
+s:shortmess_save	vim/session/%Users%joshlane%.files_master.vim	/^let s:shortmess_save = &shortmess$/;"	v
+s:so_save	vim/session/%Users%joshlane%.files_master.vim	/^let s:so_save = &g:so | let s:siso_save = &g:siso | setg so=0 siso=0 | setl so=-1 siso=-1$/;"	v
+s:sx	vim/session/%Users%joshlane%.files_master.vim	/^let s:sx = expand("<sfile>:p:r")."x.vim"$/;"	v
+s:wipebuf	vim/session/%Users%joshlane%.files_master.vim	/^  let s:wipebuf = bufnr('%')$/;"	v
+semver_ge	bootstrap.sh	/^semver_ge() {$/;"	f
+setBackgroundColor	24-bit-color.sh	/^setBackgroundColor()$/;"	f
+set_defaults	bin/diff-so-fancy	/^sub set_defaults {$/;"	s
+shell	qute/config.py	/^                          shell=True).decode('ascii').strip()$/;"	v
+shell	qute/config.py	/^                         shell=True).decode('ascii').strip()$/;"	v
+should_print_unicode	bin/diff-so-fancy	/^sub should_print_unicode {$/;"	s
+show_hunk	bin/diff-highlight	/^sub show_hunk {$/;"	s
+show_hunk	bin/diff-so-fancy	/^  sub show_hunk {$/;"	s
+skim_current_semver	bootstrap.sh	/^skim_current_semver() {$/;"	f
+split_line	bin/diff-highlight	/^sub split_line {$/;"	s
+split_line	bin/diff-so-fancy	/^  sub split_line {$/;"	s
+start_line_calc	bin/diff-so-fancy	/^sub start_line_calc {$/;"	s
+strip_leading_indicators	bin/diff-so-fancy	/^sub strip_leading_indicators {$/;"	s
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-nested-precommand.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-precommand-option-argument1.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-precommand-option-argument2.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-precommand-option-argument3.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias-precommand-option-argument4.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/cmdpos-elision-partial.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/commmand-parameter.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/param-precommand-option-argument1.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/param-precommand-option-argument3.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/precommand-unknown-option.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/sudo-command.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/sudo-comment.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/sudo-redirection.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/sudo-redirection2.zsh	/^sudo(){}$/;"	f
+sudo	zsh/zsh-syntax-highlighting/highlighters/main/test-data/sudo-redirection3.zsh	/^sudo(){}$/;"	f
+t1	nvim/min.vim	/^nnoremap t1  1gt<CR>$/;"	m
+t1	vim/init.vim	/^nnoremap t1  1gt<CR>$/;"	m
+t2	nvim/min.vim	/^nnoremap t2  2gt<CR>$/;"	m
+t2	vim/init.vim	/^nnoremap t2  2gt<CR>$/;"	m
+t3	nvim/min.vim	/^nnoremap t3  3gt<CR>$/;"	m
+t3	vim/init.vim	/^nnoremap t3  3gt<CR>$/;"	m
+t4	nvim/min.vim	/^nnoremap t4  4gt<CR>$/;"	m
+t4	vim/init.vim	/^nnoremap t4  4gt<CR>$/;"	m
+t5	nvim/min.vim	/^nnoremap t5  5gt<CR>$/;"	m
+t5	vim/init.vim	/^nnoremap t5  5gt<CR>$/;"	m
+t6	nvim/min.vim	/^nnoremap t6  6gt<CR>$/;"	m
+t6	vim/init.vim	/^nnoremap t6  6gt<CR>$/;"	m
+tc	nvim/min.vim	/^nnoremap tc  :tabnew<CR>$/;"	m
+tc	vim/init.vim	/^nnoremap tc  :tabnew<CR>$/;"	m
+te	nvim/min.vim	/^nnoremap te  :tabedit<Space>$/;"	m
+te	vim/init.vim	/^nnoremap te  :tabedit<Space>$/;"	m
+test#go#gotest#options	vim/init.vim	/^let test#go#gotest#options = {$/;"	v
+test#python#pytest#options	vim/init.vim	/^let test#python#pytest#options = {$/;"	v
+test#python#runner	vim/init.vim	/^let test#python#runner = 'pytest'$/;"	v
+test#ruby#minitest#executable	vim/init.vim	/^let test#ruby#minitest#executable = 'bundle exec ruby -Itest\/'$/;"	v
+test#ruby#rspec#options	vim/init.vim	/^let test#ruby#rspec#options = {$/;"	v
+test#rust#cargotest#options	vim/init.vim	/^let test#rust#cargotest#options = {$/;"	v
+test#strategy	vim/init.vim	/^  let test#strategy = "neovim"$/;"	v
+text 	nvim/init.lua	/^									text = function(ctx)$/;"	f
+tm	nvim/min.vim	/^nnoremap tm  :tabm<Space>$/;"	m
+tm	vim/init.vim	/^nnoremap tm  :tabm<Space>$/;"	m
+tn	nvim/min.vim	/^nnoremap tn  :tabnext<CR>$/;"	m
+tn	vim/init.vim	/^nnoremap tn  :tabnext<CR>$/;"	m
+tp	nvim/min.vim	/^nnoremap tp  :tabprev<CR>$/;"	m
+tp	vim/init.vim	/^nnoremap tp  :tabprev<CR>$/;"	m
+trim	bin/diff-so-fancy	/^sub trim {$/;"	s
+tt	nvim/min.vim	/^nnoremap tt  :tablast<CR>$/;"	m
+tt	vim/init.vim	/^nnoremap tt  :tablast<CR>$/;"	m
+tx	nvim/min.vim	/^nnoremap tx  :tabclose<CR>$/;"	m
+tx	vim/init.vim	/^nnoremap tx  :tabclose<CR>$/;"	m
+usage	bin/diff-so-fancy	/^sub usage {$/;"	s
+vcr_failures_only	vim/init.vim	/^    function! s:vcr_failures_only()$/;"	f
+version	bin/diff-so-fancy	/^sub version {$/;"	s
+yd	nvim/min.vim	/^nnoremap yd :let @" = expand("%")<cr>$/;"	m
+yd	vim/init.vim	/^nnoremap yd :let @" = expand("%")<cr>$/;"	m
+zsh_gh_copilot_explain	zsh/zsh-github-copilot.plugin.zsh	/^zsh_gh_copilot_explain() {$/;"	f
+zsh_gh_copilot_suggest	zsh/zsh-github-copilot.plugin.zsh	/^zsh_gh_copilot_suggest() {$/;"	f
+zt	vim/session/%Users%joshlane%.files_master.vim	/^normal! zt$/;"	m

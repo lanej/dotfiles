@@ -1,7 +1,19 @@
 ---
-description: Review GitHub pull request with detailed code analysis
+description: "Comprehensive GitHub pull request code review with quality analysis, security checks, style compliance, test coverage evaluation, and actionable improvement suggestions"
 argument-hint: [pr-number]
-allowed-tools: Write, Read, LS, Glob, Grep, Bash(gh:*), Bash(git:*)
+allowed-tools:
+  - Write
+  - Read
+  - Glob
+  - Grep
+  - Bash(gh:*)
+  - Bash(git:*)
+model: sonnet
+tags:
+  - github
+  - pr
+  - code-review
+  - quality
 ---
 
 # Review PR

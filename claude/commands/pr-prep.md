@@ -1,3 +1,15 @@
+---
+description: "Prepare branch for pull request: review implementation, verify requirements, restructure commits into logical narrative, run tests, generate PR description"
+argument-hint: [optional issue number]
+model: sonnet
+tags:
+  - git
+  - github
+  - pr
+  - workflow
+  - quality
+---
+
 # PR Prep - Prepare Branch for Pull Request
 
 You are helping the user prepare their current git branch for a pull request by reviewing the implementation, verifying it meets requirements, and creating a clean, narrative commit history.

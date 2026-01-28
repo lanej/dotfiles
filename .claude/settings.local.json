@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(tmux show-window-options:*)",
+      "Bash(zsh:*)",
+      "Bash(rm:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(make:*)",
+      "Bash(mkdir:*)",
+      "Bash(readlink:*)",
+      "Bash(test:*)",
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(git reset:*)",
+      "Bash(tmux list-windows:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/Users/joshlane/.zsh",
+      "/Users/joshlane/.local/share/"
+    ]
+  }
+}
