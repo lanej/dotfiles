@@ -35,6 +35,107 @@ Marimo is a reactive Python notebook that runs as a pure `.py` file. Perfect for
 | PDF export | ✅ 4 methods | ✅ Via Sphinx |
 | Learning curve | ✅ Low | ⚠️ Medium |
 
+## Editor Integration & Export
+
+### Using Marimo with Your Own Editor
+
+Marimo works seamlessly with any text editor (Neovim, Zed, VS Code, PyCharm) through file-watching mode. Edit marimo notebooks as plain `.py` files in your preferred editor, and changes sync automatically to your browser.
+
+**Development workflow:**
+
+```bash
+# Edit notebook in Neovim/your editor, sync changes to browser
+marimo edit notebook.py --watch
+
+# Changes are marked as stale (manual run required)
+# Or configure autorun in pyproject.toml:
+# [tool.marimo.runtime]
+# watcher_on_save = "autorun"
+```
+
+**App workflow:**
+
+```bash
+# Run as app, auto-refresh browser on file save
+marimo run notebook.py --watch
+```
+
+**Best practices:**
+- Enable autosave in your editor for seamless experience
+- Use `--watch` for both `.py` and `.md` notebook files
+- Install `watchdog` package for better file-watching performance: `pip install watchdog`
+- **VS Code/Cursor users**: Consider the [marimo VS Code extension](https://marketplace.visualstudio.com/items?itemName=marimo-team.vscode-marimo) for first-class integration
+
+The file-watching approach works with marimo's pure Python format - your editor gets full Python LSP support, syntax highlighting, and linting while marimo provides the reactive runtime in the browser.
+
+### Exporting to Markdown & PDF
+
+Export marimo notebooks to markdown for integration with documentation tools, static site generators, or PDF generation workflows.
+
+**Basic export:**
+
+```bash
+# Export notebook to markdown (top-to-bottom order)
+marimo export md notebook.py -o notebook.md
+
+# Continuous export on file changes
+marimo export md notebook.py -o notebook.md --watch
+```
+
+**PDF generation with Quarto:**
+
+```bash
+# Export to markdown, then render with Quarto
+marimo export md analysis.py -o analysis.md
+quarto render analysis.md --to pdf
+
+# Also works for HTML, slides, and other Quarto formats
+quarto render analysis.md --to html
+quarto render analysis.md --to revealjs  # Slides
+```
+
+**Integration with other tools:**
+- **Quarto**: Full support via [quarto-marimo plugin](https://github.com/marimo-team/quarto-marimo)
+- **MyST/Sphinx**: Works with MyST Markdown parser for documentation sites
+- **Static site generators**: Exported markdown integrates with Hugo, Jekyll, MkDocs
+
+**Note:** Exported markdown uses top-to-bottom cell order (not reactive/topological order). Convert back to marimo with `marimo convert notebook.md > notebook.py`.
+
+### Markdown Storage Format
+
+Marimo notebooks can be stored as `.md` files instead of `.py` files - useful for prose-heavy analyses or documentation-centric workflows.
+
+**Structure:**
+
+```markdown
+---
+title: My Analysis
+marimo-version: 0.19.6
+---
+
+# Analysis Title
+
+```python {.marimo}
+import marimo as mo
+mo.md("Your analysis here")
+```
+```
+
+**When to use `.md` format:**
+- Prose-heavy reports with minimal code
+- Documentation that needs to render nicely on GitHub
+- Integration with markdown-first workflows
+
+**Limitations of `.md` format:**
+- Cannot use reactive tests
+- Cannot import functions from markdown notebooks
+- Cannot run as scripts with `python notebook.md`
+- Missing some advanced marimo features
+
+**Recommendation for EPIST workflows:** Use `.py` format for full feature set (reactive execution, importable functions, script execution, testing). Reserve `.md` format for final reports or documentation.
+
+**Learn more:** Run `marimo tutorial markdown-format` for complete guide.
+
 ## Installation
 
 ```bash
