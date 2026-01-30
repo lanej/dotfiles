@@ -1683,7 +1683,7 @@ require("lazy").setup({
 			require("Navigator").setup({
 				-- Auto-detect multiplexer (WezTerm, tmux, etc.)
 				auto_save = "current",
-				disable_on_zoom = true, -- Don't navigate when zoomed
+				disable_on_zoom = false, -- Set to false since mux integration is enabled
 			})
 
 			-- Keymaps matching previous tmux-navigator setup
