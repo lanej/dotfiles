@@ -7,10 +7,61 @@ description: Create reactive Python notebooks with marimo for data analysis and 
 
 Marimo is a reactive Python notebook that runs as a pure `.py` file. Perfect for EPIST data analysis workflows where you need single-file execution, automatic reactivity, and direct Python integration.
 
+## Visual Expression Philosophy
+
+**CRITICAL: Marimo notebooks are for VISUAL COMMUNICATION, not raw data dumps.**
+
+### Visualize, Don't Serialize
+
+```python
+# ❌ BAD: Dumping raw JSON/dicts
+@app.cell
+def __(data):
+    data  # Just returns raw dict/JSON
+
+# ✅ GOOD: Visual representation
+@app.cell
+def __(data, mo):
+    mo.ui.table(data)  # Interactive table
+    
+# ✅ GOOD: Charts and plots
+@app.cell
+def __(data, plt):
+    fig, ax = plt.subplots()
+    ax.plot(data['x'], data['y'])
+    fig
+
+# ✅ GOOD: Formatted markdown
+@app.cell
+def __(metrics, mo):
+    mo.md(f"""
+    ## Key Metrics
+    
+    - **Revenue**: ${metrics['revenue']:,.2f}
+    - **Growth**: {metrics['growth']:.1%}
+    - **Customers**: {metrics['customers']:,}
+    """)
+```
+
+### Why Visual Expression Matters
+
+- **Notebooks are for humans**: Show insights, not raw data structures
+- **EPIST provenance**: Visualize relationships between facts and conclusions
+- **Interactive exploration**: Use widgets for parameter sweeps, not print statements
+- **Shareable reports**: Visual outputs communicate better than JSON blobs
+- **Reproducibility**: Visual outputs + code = complete story
+
+### Visual Hierarchy
+
+1. **Charts/plots** - For trends, distributions, relationships (matplotlib, altair, plotly)
+2. **Tables** - For structured data exploration (`mo.ui.table()`)
+3. **Formatted text** - For metrics, summaries, conclusions (`mo.md()`, `mo.callout()`)
+4. **Raw output** - ONLY for debugging (use `mo.tree()` for dicts, not bare dicts)
+
 ## When to Use Marimo
 
 **Perfect for:**
-- EPIST data analysis with provenance tracking
+- EPIST data analysis with provenance tracking (visualized!)
 - Ad-hoc single-file analysis (no project scaffolding needed)
 - Interactive reports with sliders/widgets
 - Reproducible research with automatic updates
@@ -21,7 +72,9 @@ Marimo is a reactive Python notebook that runs as a pure `.py` file. Perfect for
 **NOT for:**
 - Large multi-document documentation sites (use Quarto/Jupyter Book)
 - Static content without computation (use Markdown)
+- Static reports with no interactivity needed (use Quarto `.qmd` files directly)
 - When you specifically need Jupyter notebook format
+- Dumping raw JSON/data without visualization
 
 ## Why Marimo > MyST-NB for EPIST
 
@@ -94,8 +147,10 @@ quarto render analysis.md --to html
 quarto render analysis.md --to revealjs  # Slides
 ```
 
+**For comprehensive Quarto publishing workflows, see the `quarto` skill.**
+
 **Integration with other tools:**
-- **Quarto**: Full support via [quarto-marimo plugin](https://github.com/marimo-team/quarto-marimo)
+- **Quarto**: Full support via [quarto-marimo plugin](https://github.com/marimo-team/quarto-marimo) - use `skill quarto` for details
 - **MyST/Sphinx**: Works with MyST Markdown parser for documentation sites
 - **Static site generators**: Exported markdown integrates with Hugo, Jekyll, MkDocs
 
@@ -316,19 +371,22 @@ def __(age, name, city):
 
 ## EPIST Integration Patterns
 
-### Pattern 1: Simple Fact Recording
+### Pattern 1: Visual Fact Recording with Charts
+
+**CRITICAL: Always visualize facts and conclusions, don't just record them.**
 
 ```python
 @app.cell
 def __():
     import marimo as mo
     from epist import FactRecorder
+    import matplotlib.pyplot as plt
     
     recorder = FactRecorder("sales_analysis")
-    return mo, recorder
+    return mo, recorder, plt
 
 @app.cell
-def __(recorder):
+def __(recorder, mo):
     import pandas as pd
     
     df = pd.read_csv("sales.csv")
@@ -340,10 +398,17 @@ def __(recorder):
         description="Q4 2024 sales data"
     )
     
+    # ✅ Visualize the data immediately
+    mo.vstack([
+        mo.md("## Sales Data Overview"),
+        mo.ui.table(df.head(10)),
+        mo.md(f"**Loaded {len(df):,} transactions**")
+    ])
+    
     return df, source_id
 
 @app.cell
-def __(df, recorder, source_id):
+def __(df, recorder, source_id, plt, mo):
     # Calculate metric (reactive!)
     total_sales = df['sales'].sum()
     
@@ -356,17 +421,32 @@ def __(df, recorder, source_id):
         description="Total sales for Q4 2024"
     )
     
+    # ✅ VISUALIZE the trend, not just the number
+    fig, ax = plt.subplots(figsize=(10, 6))
+    df.groupby('date')['sales'].sum().plot(ax=ax, kind='line')
+    ax.set_title('Q4 Sales Trend')
+    ax.set_ylabel('Sales ($)')
+    
+    mo.vstack([
+        mo.md(f"## Total Sales: ${total_sales:,.2f}"),
+        fig
+    ])
+    
     return total_sales, fact_id
 
 @app.cell
-def __(recorder, total_sales, fact_id):
-    # Make conclusion (reactive - updates when total_sales changes!)
+def __(recorder, total_sales, fact_id, mo):
+    # Make conclusion (reactive!)
     if total_sales > 1000000:
         conclusion = "Exceeded target - excellent performance"
         status = "success"
+        color = "green"
+        icon = "✅"
     else:
         conclusion = "Below target - needs improvement"
         status = "warning"
+        color = "orange"
+        icon = "⚠️"
     
     # Record conclusion
     conclusion_id = recorder.record_conclusion(
@@ -375,17 +455,30 @@ def __(recorder, total_sales, fact_id):
         status=status
     )
     
+    # ✅ VISUAL conclusion, not just text
+    mo.callout(
+        mo.md(f"{icon} **{conclusion}**"),
+        kind=status
+    )
+    
     return conclusion, conclusion_id
 ```
 
-**Key advantage:** When data changes, all facts and conclusions update automatically!
+**Key advantages:**
+- When data changes, all facts, conclusions, AND visualizations update automatically!
+- Readers see insights immediately, not raw numbers
+- Charts communicate trends that numbers alone cannot
 
-### Pattern 2: Interactive Analysis with Provenance
+### Pattern 2: Interactive Visual Analysis with Provenance
+
+**Use widgets + charts for exploratory analysis, not print statements.**
 
 ```python
 @app.cell
 def __(mo):
-    # Interactive date range selector
+    # Interactive date range selector with clear labels
+    mo.md("## 📅 Select Analysis Period")
+    
     start_date = mo.ui.date(label="Start Date")
     end_date = mo.ui.date(label="End Date")
     
@@ -393,7 +486,7 @@ def __(mo):
     return start_date, end_date
 
 @app.cell
-def __(df, start_date, end_date, recorder):
+def __(df, start_date, end_date, recorder, mo):
     # Filter data (reactive to date changes!)
     filtered_df = df[
         (df['date'] >= start_date.value) & 
@@ -407,10 +500,16 @@ def __(df, start_date, end_date, recorder):
         description="User-selected date range for analysis"
     )
     
+    # ✅ SHOW the filtered data visually
+    mo.vstack([
+        mo.md(f"**Showing {len(filtered_df):,} transactions**"),
+        mo.ui.table(filtered_df, selection="multi")
+    ])
+    
     return filtered_df,
 
 @app.cell
-def __(filtered_df, recorder):
+def __(filtered_df, recorder, plt, mo):
     # Analysis on filtered data (reactive!)
     metrics = {
         "count": len(filtered_df),
@@ -425,6 +524,30 @@ def __(filtered_df, recorder):
             float(value),
             description=f"{key.title()} for selected date range"
         )
+    
+    # ✅ VISUALIZE metrics with cards + chart
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    
+    # Distribution
+    filtered_df['amount'].hist(ax=ax1, bins=30)
+    ax1.set_title('Transaction Distribution')
+    ax1.axvline(metrics['average'], color='red', linestyle='--', label='Average')
+    ax1.legend()
+    
+    # Time series
+    filtered_df.groupby('date')['amount'].sum().plot(ax=ax2)
+    ax2.set_title('Daily Totals')
+    
+    mo.vstack([
+        mo.md(f"""
+        ## 📊 Analysis Results
+        
+        - **Transactions**: {metrics['count']:,}
+        - **Total Amount**: ${metrics['total']:,.2f}
+        - **Average**: ${metrics['average']:,.2f}
+        """),
+        fig
+    ])
     
     return metrics,
 ```
@@ -485,20 +608,20 @@ def __(df, epist, source_fact):
     return total_customers, churned_customers, churn_rate, churn_fact
 
 @app.cell
-def __(churn_rate, churn_fact, epist, mo):
+def __(churn_rate, churn_fact, epist, mo, df, plt):
     # Determine conclusion (reactive!)
     if churn_rate > 0.15:
         conclusion_text = f"HIGH RISK: Churn rate at {churn_rate:.1%}"
-        severity = "critical"
-        color = "red"
+        severity = "danger"
+        icon = "🚨"
     elif churn_rate > 0.10:
         conclusion_text = f"MODERATE: Churn rate at {churn_rate:.1%}"
-        severity = "warning"
-        color = "orange"
+        severity = "warn"
+        icon = "⚠️"
     else:
         conclusion_text = f"HEALTHY: Churn rate at {churn_rate:.1%}"
-        severity = "normal"
-        color = "green"
+        severity = "success"
+        icon = "✅"
     
     # Record conclusion
     conclusion_id = epist.record_conclusion(
@@ -507,8 +630,38 @@ def __(churn_rate, churn_fact, epist, mo):
         severity=severity
     )
     
-    # Display with styling
-    mo.md(f"## Assessment\n\n**{conclusion_text}**").style({"color": color})
+    # ✅ VISUALIZE the conclusion with context
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    
+    # Churn rate gauge
+    categories = df['status'].value_counts()
+    ax1.pie(categories, labels=categories.index, autopct='%1.1f%%')
+    ax1.set_title('Customer Status Distribution')
+    
+    # Trend over time (if date column exists)
+    if 'date' in df.columns:
+        churn_by_month = df[df['status'] == 'churned'].groupby(
+            df['date'].dt.to_period('M')
+        ).size()
+        churn_by_month.plot(ax=ax2, kind='bar')
+        ax2.set_title('Churn Trend by Month')
+        ax2.set_xlabel('Month')
+        ax2.set_ylabel('Churned Customers')
+    
+    mo.vstack([
+        mo.callout(
+            mo.md(f"{icon} **{conclusion_text}**"),
+            kind=severity
+        ),
+        fig,
+        mo.md("""
+        ### Recommendations
+        
+        - Monitor high-risk customer segments
+        - Review customer satisfaction metrics
+        - Implement retention campaigns
+        """)
+    ])
     
     return conclusion_text, conclusion_id
 
@@ -558,15 +711,20 @@ uvx --with "nbconvert[webpdf]" --from jupyter-core \
     jupyter nbconvert --to webpdf analysis.ipynb --allow-chromium-download
 ```
 
-#### Method 3: Via Quarto (Best formatting)
+#### Method 3: Via Quarto (Best formatting, multi-format support)
 
 ```bash
 # Export to Markdown
 marimo export md analysis.py -o analysis.md
 
-# Render with Quarto
+# Render with Quarto (PDF, HTML, Word, slides)
 quarto render analysis.md --to pdf
+quarto render analysis.md --to html
+quarto render analysis.md --to docx
+quarto render analysis.md --to revealjs  # Slides
 ```
+
+**For advanced Quarto features (custom themes, citations, cross-references), see `skill quarto`.**
 
 #### Method 4: From Command Palette (Most convenient)
 
@@ -617,6 +775,64 @@ marimo export html-wasm analysis.py -o output_dir --mode run
 
 ## Common Patterns
 
+### Pattern 0: Never Return Raw Data (Anti-Pattern Guide)
+
+**CRITICAL: Marimo notebooks are for visual communication, not data dumps.**
+
+```python
+# ❌ ANTI-PATTERN: Returning raw dicts/JSON
+@app.cell
+def __(df):
+    stats = {
+        "mean": df['value'].mean(),
+        "median": df['value'].median(),
+        "std": df['value'].std()
+    }
+    stats  # Returns bare dict - hard to read
+
+# ✅ CORRECT: Visual representation
+@app.cell
+def __(df, mo):
+    stats = {
+        "mean": df['value'].mean(),
+        "median": df['value'].median(),
+        "std": df['value'].std()
+    }
+    
+    mo.md(f"""
+    ## Distribution Statistics
+    
+    | Metric | Value |
+    |--------|-------|
+    | Mean | {stats['mean']:.2f} |
+    | Median | {stats['median']:.2f} |
+    | Std Dev | {stats['std']:.2f} |
+    """)
+
+# ❌ ANTI-PATTERN: print() statements
+@app.cell
+def __(df):
+    print(f"Rows: {len(df)}")  # Doesn't update reactively!
+    print(f"Columns: {len(df.columns)}")
+
+# ✅ CORRECT: Markdown output
+@app.cell
+def __(df, mo):
+    mo.md(f"""
+    **Dataset Shape**: {len(df):,} rows × {len(df.columns)} columns
+    """)
+
+# ❌ ANTI-PATTERN: Bare dataframe (ugly)
+@app.cell
+def __(df):
+    df  # Shows plain repr
+
+# ✅ CORRECT: Interactive table
+@app.cell
+def __(df, mo):
+    mo.ui.table(df, selection="multi")
+```
+
 ### Data Loading and Visualization
 
 ```python
@@ -627,9 +843,13 @@ def __(mo):
     return pd, plt
 
 @app.cell
-def __(pd):
+def __(pd, mo):
     # Load data
     df = pd.read_csv("data.csv")
+    
+    # ✅ Show what you loaded
+    mo.md(f"Loaded **{len(df):,}** rows from `data.csv`")
+    
     return df,
 
 @app.cell
@@ -736,7 +956,56 @@ def __(show_details, detailed_analysis, summary, mo):
 
 ## Best Practices
 
-### 1. Cell Organization
+### 1. Visualize Everything (Most Important!)
+
+```python
+# ❌ BAD: Returning raw data structures
+@app.cell
+def __(df):
+    summary = {
+        "total": df['amount'].sum(),
+        "count": len(df),
+        "avg": df['amount'].mean()
+    }
+    summary  # Just shows dict
+
+# ✅ GOOD: Visual representation
+@app.cell
+def __(df, mo, plt):
+    summary = {
+        "total": df['amount'].sum(),
+        "count": len(df),
+        "avg": df['amount'].mean()
+    }
+    
+    # Create visualization
+    fig, ax = plt.subplots()
+    ax.bar(summary.keys(), summary.values())
+    ax.set_title('Summary Metrics')
+    
+    mo.vstack([
+        mo.md(f"""
+        ## Summary Statistics
+        
+        - **Total**: ${summary['total']:,.2f}
+        - **Count**: {summary['count']:,}
+        - **Average**: ${summary['avg']:,.2f}
+        """),
+        fig
+    ])
+
+# ✅ ALSO GOOD: Interactive table for exploration
+@app.cell
+def __(df, mo):
+    mo.ui.table(df, selection="multi")
+
+# ✅ ALSO GOOD: Tree view for nested data (not bare dict!)
+@app.cell
+def __(complex_dict, mo):
+    mo.tree(complex_dict)  # Collapsible tree, not raw dict
+```
+
+### 2. Cell Organization
 
 ```python
 # Good: One logical operation per cell
@@ -744,7 +1013,8 @@ def __(show_details, detailed_analysis, summary, mo):
 def __():
     import marimo as mo
     import pandas as pd
-    return mo, pd
+    import matplotlib.pyplot as plt
+    return mo, pd, plt
 
 @app.cell
 def __(pd):
@@ -752,8 +1022,11 @@ def __(pd):
     return df,
 
 @app.cell
-def __(df):
+def __(df, mo, plt):
     total = df['amount'].sum()
+    
+    # Visualize immediately
+    mo.md(f"**Total**: ${total:,.2f}")
     return total,
 
 # Bad: Too much in one cell
@@ -768,7 +1041,59 @@ def __():
     return mo, pd, df, total, avg
 ```
 
-### 2. Return Explicitly
+### 2. Choose the Right Visualization
+
+```python
+# For distributions → Histogram
+@app.cell
+def __(df, plt):
+    fig, ax = plt.subplots()
+    df['amount'].hist(ax=ax, bins=30)
+    ax.set_title('Amount Distribution')
+    fig
+
+# For trends → Line chart
+@app.cell
+def __(df, plt):
+    fig, ax = plt.subplots()
+    df.groupby('date')['value'].sum().plot(ax=ax)
+    ax.set_title('Value Over Time')
+    fig
+
+# For comparisons → Bar chart
+@app.cell
+def __(df, plt):
+    fig, ax = plt.subplots()
+    df.groupby('category')['amount'].sum().plot(kind='bar', ax=ax)
+    ax.set_title('Amount by Category')
+    fig
+
+# For proportions → Pie chart
+@app.cell
+def __(df, plt):
+    fig, ax = plt.subplots()
+    df['category'].value_counts().plot(kind='pie', ax=ax, autopct='%1.1f%%')
+    ax.set_title('Category Distribution')
+    fig
+
+# For tabular exploration → Interactive table
+@app.cell
+def __(df, mo):
+    mo.ui.table(df.head(100), selection="multi")
+
+# For metrics → Formatted markdown with callouts
+@app.cell
+def __(metrics, mo):
+    mo.callout(
+        mo.md(f"""
+        **Revenue**: ${metrics['revenue']:,.2f}  
+        **Growth**: {metrics['growth']:+.1%}
+        """),
+        kind="success" if metrics['growth'] > 0 else "warn"
+    )
+```
+
+### 3. Return Explicitly
 
 ```python
 # Good: Return what you need
@@ -821,17 +1146,37 @@ def __(df, threshold):
 # (marimo does it automatically)
 ```
 
-### 5. EPIST Integration
+### 5. EPIST Integration with Visual Provenance
 
 ```python
-# Good: Record facts as you calculate
+# ✅ GOOD: Record facts AND visualize them
+@app.cell
+def __(df, epist, mo, plt):
+    total = df['amount'].sum()
+    epist.record_fact("total", total, source="df")
+    
+    # Show the fact visually with context
+    fig, ax = plt.subplots()
+    df['amount'].plot(ax=ax)
+    ax.axhline(total, color='red', linestyle='--', label=f'Total: ${total:,.0f}')
+    ax.legend()
+    
+    mo.vstack([
+        mo.md(f"### Total Amount: ${total:,.2f}"),
+        fig
+    ])
+    
+    return total,
+
+# ❌ BAD: Recording without visualization
 @app.cell
 def __(df, epist):
     total = df['amount'].sum()
     epist.record_fact("total", total, source="df")
+    total  # Just returns number
     return total,
 
-# Bad: Recording separately from calculation
+# ❌ BAD: Recording separately from calculation
 # (harder to maintain provenance)
 ```
 
