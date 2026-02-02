@@ -11,7 +11,95 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 
 1. **Markdown-First**: Default to `format: gfm` (GitHub-flavored markdown) for composability, portability, and archival
 2. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
-3. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+3. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
+4. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+
+## Visual Expression Philosophy
+
+**CRITICAL: Quarto documents are for COMMUNICATION, not raw data dumps.**
+
+Quarto outputs are static documents meant to convey insights to humans. Raw dataframes, print statements, and JSON blobs fail to communicate effectively.
+
+### Visual Hierarchy (Use in Order)
+
+1. **Charts/Plots** - For trends, distributions, comparisons, relationships
+2. **Formatted Tables** - For structured data with styling and context
+3. **Formatted Metrics** - For key numbers with context and formatting
+4. **Raw Output** - NEVER (not even for debugging - use separate analysis files)
+
+### Anti-Patterns: What NOT to Do
+
+```python
+# ❌ BAD: Raw dataframe dump
+df.head()
+
+# ❌ BAD: Print statements
+print(f"Total: {total}")
+print(data_dict)
+
+# ❌ BAD: Bare variable returning data structure
+result  # Returns raw dict/JSON
+
+# ❌ BAD: DataFrame info without formatting
+df.describe()
+df.info()
+```
+
+### Good Patterns: Visual Communication
+
+```python
+# ✅ GOOD: Chart for trends
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(10, 6))
+df.groupby('date')['sales'].sum().plot(ax=ax, kind='line')
+ax.set_title('Sales Trend Over Time')
+ax.set_ylabel('Sales ($)')
+plt.tight_layout()
+plt.show()
+
+# ✅ GOOD: Formatted table using Great Tables
+from great_tables import GT
+
+(GT(df.head(10))
+    .tab_header(title="Top 10 Sales Records")
+    .fmt_currency(columns="sales", currency="USD")
+    .fmt_date(columns="date", date_style="medium"))
+
+# ✅ GOOD: Formatted table using pandas markdown
+print(df.head(10).to_markdown(index=False, tablefmt='grid'))
+
+# ✅ GOOD: Formatted metrics in markdown
+from IPython.display import Markdown
+
+Markdown(f"""
+## Key Metrics
+
+- **Total Sales**: ${total_sales:,.2f}
+- **Average Order**: ${avg_order:,.2f}
+- **Growth Rate**: {growth_rate:.1%}
+- **Top Product**: {top_product}
+""")
+
+# ✅ GOOD: Mermaid diagram for relationships
+Markdown('''
+```mermaid
+flowchart LR
+    A[Raw Data] --> B[Analysis]
+    B --> C[Insights]
+    C --> D[Decision]
+```
+''')
+```
+
+### Why Visual Expression Matters
+
+- **Documents are for humans**: Show insights, not data structures
+- **Static format**: No interactive exploration - must communicate clearly on first view
+- **EPIST provenance**: Visualize fact→conclusion chains, not raw JSON
+- **Professional output**: Charts and tables look polished in PDF/HTML/Word
+- **Accessibility**: Visual hierarchy helps readers navigate content
+- **Shareability**: Well-formatted outputs communicate without explanation
 
 ## When to Use Quarto
 
@@ -124,33 +212,69 @@ filters:
   - auto-dark               # Respect system preference
 ---
 
-## Data Loading
+## Overview
 
 ```{python}
+#| echo: false
 import pandas as pd
 import matplotlib.pyplot as plt
+from IPython.display import Markdown
 
+# Load data
 df = pd.read_csv("sales.csv")
-print(f"Loaded {len(df)} rows")
-df.head()
+total_sales = df['sales'].sum()
+avg_daily = df.groupby('date')['sales'].sum().mean()
+top_product = df.groupby('product')['sales'].sum().idxmax()
+
+# Display key metrics
+Markdown(f"""
+### Key Metrics
+
+- **Total Sales**: ${total_sales:,.2f}
+- **Average Daily Sales**: ${avg_daily:,.2f}
+- **Top Product**: {top_product}
+- **Records Analyzed**: {len(df):,}
+""")
 ```
 
-## Analysis
+## Sales Trend Analysis
 
 ```{python}
-total_sales = df['sales'].sum()
-print(f"Total: ${total_sales:,.2f}")
+#| label: fig-sales-trend
+#| fig-cap: "Daily sales trending upward in Q4 2024"
+#| echo: false
 
-# Visualization
 fig, ax = plt.subplots(figsize=(10, 6))
-df.groupby('date')['sales'].sum().plot(ax=ax)
-ax.set_title('Sales Trend')
+daily_sales = df.groupby('date')['sales'].sum()
+daily_sales.plot(ax=ax, kind='line', linewidth=2, color='#2E86AB')
+ax.set_title('Sales Trend Over Time', fontsize=14, fontweight='bold')
+ax.set_xlabel('Date')
+ax.set_ylabel('Sales ($)')
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
 plt.show()
+```
+
+## Top Products
+
+```{python}
+#| echo: false
+# Format top 10 products as markdown table
+top_products = (df.groupby('product')['sales']
+                .sum()
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index())
+
+top_products.columns = ['Product', 'Total Sales']
+top_products['Total Sales'] = top_products['Total Sales'].apply(lambda x: f"${x:,.2f}")
+
+print(top_products.to_markdown(index=False, tablefmt='grid'))
 ```
 
 ## Conclusion
 
-Total sales for Q4: **${total_sales:,.2f}**
+Q4 2024 showed strong performance with total sales of **${total_sales:,.2f}**. The upward trend in daily sales indicates positive momentum heading into the next quarter.
 EOF
 
 # Install auto-dark extension (one-time, if not already installed)
@@ -278,6 +402,311 @@ print("**Bold text** from code")
 result = expensive_calculation()
 ```
 ````
+
+### Table Formatting (CRITICAL)
+
+**NEVER use raw `df.head()` or bare dataframes. ALWAYS format tables for presentation.**
+
+#### Option 1: Great Tables (RECOMMENDED for rich formatting)
+
+**Installation:**
+```bash
+uv add great-tables
+```
+
+**Basic usage:**
+```python
+from great_tables import GT
+
+# Simple formatted table
+GT(df.head(10))
+
+# With styling
+(GT(df.head(10))
+    .tab_header(title="Sales Summary", subtitle="Q4 2024")
+    .fmt_currency(columns="sales", currency="USD")
+    .fmt_percent(columns="growth_rate", decimals=1)
+    .fmt_number(columns="quantity", decimals=0)
+    .fmt_date(columns="date", date_style="medium")
+    .tab_source_note("Source: Company Database"))
+```
+
+**Advanced styling:**
+```python
+from great_tables import GT, loc, style
+
+(GT(top_products)
+    .tab_header(title="Top 10 Products by Revenue")
+    .fmt_currency(columns="revenue", currency="USD")
+    .data_color(
+        columns="revenue",
+        palette=["lightblue", "darkblue"],
+        domain=[0, df['revenue'].max()]
+    )
+    .tab_style(
+        style=style.text(weight="bold"),
+        locations=loc.body(columns="product")
+    ))
+```
+
+#### Option 2: pandas `.to_markdown()` (Simple, built-in)
+
+**For markdown output:**
+```python
+# Basic markdown table
+print(df.head(10).to_markdown(index=False, tablefmt='grid'))
+
+# With custom formatting
+formatted_df = df.head(10).copy()
+formatted_df['sales'] = formatted_df['sales'].apply(lambda x: f"${x:,.2f}")
+formatted_df['date'] = pd.to_datetime(formatted_df['date']).dt.strftime('%Y-%m-%d')
+print(formatted_df.to_markdown(index=False, tablefmt='pipe'))
+```
+
+**Table format options:**
+- `'grid'` - ASCII grid (best for markdown)
+- `'pipe'` - GitHub-flavored markdown pipes
+- `'simple'` - Simple spacing
+- `'html'` - HTML table (for HTML output)
+
+#### Option 3: tabulate (Flexible formatting)
+
+**Installation:**
+```bash
+uv add tabulate
+```
+
+**Usage:**
+```python
+from tabulate import tabulate
+
+# Basic table
+print(tabulate(df.head(10), headers='keys', tablefmt='grid', showindex=False))
+
+# With custom formatting
+print(tabulate(
+    df.head(10),
+    headers=['Product', 'Sales', 'Date'],
+    tablefmt='fancy_grid',
+    floatfmt='.2f',
+    showindex=False
+))
+```
+
+#### Best Practices for Tables
+
+✅ **DO:**
+- Use Great Tables for HTML/PDF output (rich formatting)
+- Use `.to_markdown()` for markdown output (simplicity)
+- Format currency, percentages, dates before display
+- Add titles, subtitles, and source notes
+- Limit to top N rows (10-20 max) - don't dump entire dataset
+- Apply color scales for numerical columns
+- Bold headers and important columns
+
+❌ **DON'T:**
+- Use raw `df.head()` without formatting
+- Display more than 20 rows in a table
+- Show raw timestamps or unformatted numbers
+- Include index column unless meaningful
+- Use bare `print(df)` statements
+
+#### Table Formatting by Output Format
+
+**For GFM/Markdown:**
+```python
+# Use pandas .to_markdown() for simplicity
+print(df.head(10).to_markdown(index=False, tablefmt='pipe'))
+```
+
+**For HTML:**
+```python
+# Use Great Tables for rich styling
+from great_tables import GT
+GT(df.head(10)).fmt_currency(columns="sales")
+```
+
+**For PDF:**
+```python
+# Use Great Tables or formatted markdown
+# Great Tables renders well in PDF via LaTeX
+GT(df.head(10))
+```
+
+### Data Visualization Best Practices
+
+**Charts and diagrams should be your PRIMARY communication tool, not an afterthought.**
+
+#### When to Use Charts vs Tables
+
+**Use Charts for:**
+- Trends over time (line charts)
+- Distributions (histograms, density plots)
+- Comparisons across categories (bar charts)
+- Proportions and composition (pie charts, stacked bars)
+- Relationships between variables (scatter plots)
+- Geographic data (maps, choropleth)
+
+**Use Tables for:**
+- Precise values needed (financial reports)
+- Lookup reference (top N items)
+- Multiple dimensions that don't visualize well
+- Small datasets (< 20 rows)
+
+**Use Both:**
+- Chart for the trend, table for the details
+- Chart for overview, table for drill-down
+
+#### Chart Types by Use Case
+
+**Trends and Time Series:**
+```python
+import matplotlib.pyplot as plt
+
+# Line chart for trends
+fig, ax = plt.subplots(figsize=(10, 6))
+df.groupby('date')['sales'].sum().plot(ax=ax, kind='line', linewidth=2)
+ax.set_title('Sales Trend Over Time', fontsize=14, fontweight='bold')
+ax.set_ylabel('Sales ($)')
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+**Comparisons:**
+```python
+# Bar chart for category comparisons
+fig, ax = plt.subplots(figsize=(10, 6))
+top_products = df.groupby('product')['sales'].sum().nlargest(10)
+top_products.plot(ax=ax, kind='barh', color='#2E86AB')
+ax.set_title('Top 10 Products by Sales', fontsize=14, fontweight='bold')
+ax.set_xlabel('Sales ($)')
+plt.tight_layout()
+plt.show()
+```
+
+**Distributions:**
+```python
+# Histogram for distributions
+fig, ax = plt.subplots(figsize=(10, 6))
+df['order_value'].hist(bins=30, ax=ax, color='#A23B72', edgecolor='black')
+ax.set_title('Order Value Distribution', fontsize=14, fontweight='bold')
+ax.set_xlabel('Order Value ($)')
+ax.set_ylabel('Frequency')
+plt.tight_layout()
+plt.show()
+```
+
+**Proportions:**
+```python
+# Pie chart for proportions (use sparingly)
+fig, ax = plt.subplots(figsize=(8, 8))
+category_sales = df.groupby('category')['sales'].sum()
+ax.pie(category_sales, labels=category_sales.index, autopct='%1.1f%%', startangle=90)
+ax.set_title('Sales by Category', fontsize=14, fontweight='bold')
+plt.show()
+```
+
+**Relationships:**
+```python
+# Scatter plot for correlations
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.scatter(df['marketing_spend'], df['sales'], alpha=0.5, color='#F18F01')
+ax.set_title('Marketing Spend vs Sales', fontsize=14, fontweight='bold')
+ax.set_xlabel('Marketing Spend ($)')
+ax.set_ylabel('Sales ($)')
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+#### Styling Best Practices
+
+✅ **DO:**
+- Use descriptive titles with context
+- Label axes with units
+- Use color purposefully (not just default colors)
+- Add gridlines for readability (alpha=0.3)
+- Set appropriate figure size (10x6 for landscape, 8x8 for square)
+- Use `plt.tight_layout()` to prevent label cutoff
+- Add legends when showing multiple series
+- Use consistent color schemes across document
+
+❌ **DON'T:**
+- Use default ugly matplotlib colors
+- Skip axis labels or titles
+- Create tiny, unreadable charts
+- Use 3D charts (hard to read accurately)
+- Overload charts with too many series (> 5-7)
+- Use pie charts for more than 5 categories
+
+#### Mermaid Diagrams (Markdown Native)
+
+**For process flows, relationships, and system diagrams:**
+
+````markdown
+```{mermaid}
+flowchart TD
+    A[Load Data] --> B[Clean Data]
+    B --> C[Analyze]
+    C --> D{Significant?}
+    D -->|Yes| E[Report Findings]
+    D -->|No| F[Collect More Data]
+```
+````
+
+**Common Mermaid diagram types:**
+- `flowchart` - Process flows, decision trees
+- `sequenceDiagram` - Interaction sequences
+- `classDiagram` - Object relationships
+- `erDiagram` - Entity-relationship diagrams
+- `gantt` - Project timelines
+- `pie` - Simple pie charts
+
+**Example: EPIST fact flow:**
+````markdown
+```{mermaid}
+flowchart LR
+    F1[Fact: Q4 Sales = $2.1M] --> C1[Conclusion: Strong Quarter]
+    F2[Fact: YoY Growth = 15%] --> C1
+    F3[Fact: Top Product = Widget X] --> C2[Conclusion: Focus Marketing on Widgets]
+```
+````
+
+#### Interactive Charts (HTML Output Only)
+
+**For HTML output, use Plotly for interactivity:**
+
+```python
+import plotly.express as px
+
+# Interactive line chart
+fig = px.line(df, x='date', y='sales', title='Sales Trend (Interactive)')
+fig.update_layout(hovermode='x unified')
+fig.show()
+
+# Interactive scatter with hover
+fig = px.scatter(df, x='marketing_spend', y='sales', 
+                 hover_data=['product', 'region'],
+                 title='Marketing ROI Analysis')
+fig.show()
+```
+
+**Note:** Plotly charts only work in HTML output. For PDF/Word, use matplotlib/seaborn.
+
+#### Chart Selection Decision Tree
+
+```
+What are you showing?
+
+├─ Change over time? → Line chart
+├─ Compare categories? → Bar chart (vertical or horizontal)
+├─ Show distribution? → Histogram or box plot
+├─ Show composition? → Stacked bar or pie chart (if < 5 categories)
+├─ Show relationship? → Scatter plot
+├─ Show process/flow? → Mermaid flowchart
+└─ Multiple variables? → Faceted plots or small multiples
+```
 
 ## YAML Frontmatter
 
@@ -448,29 +877,39 @@ The `auto-dark` filter automatically detects system dark mode preference and swi
 
 ## EPIST Integration
 
-**EPIST works seamlessly in Quarto documents:**
+**EPIST works seamlessly in Quarto documents with VISUAL provenance tracking:**
 
 ```qmd
 ---
-title: "Customer Churn Analysis"
+title: "Customer Churn Analysis with EPIST Provenance"
 format:
-  pdf:
+  gfm: default
+  html:
+    theme:
+      dark: darkly
+      light: flatly
     toc: true
+filters:
+  - auto-dark
 ---
 
 ## Setup
 
 ```{python}
+#| echo: false
 import pandas as pd
+import matplotlib.pyplot as plt
+from IPython.display import Markdown
 from epist import FactRecorder
 
 # Initialize EPIST
 recorder = FactRecorder("churn_analysis_2024")
 ```
 
-## Data Loading
+## Data Overview
 
 ```{python}
+#| echo: false
 df = pd.read_csv("customers.csv")
 
 # Record data source
@@ -481,21 +920,30 @@ source_id = recorder.record_fact(
     checksum="abc123"
 )
 
-print(f"Loaded {len(df):,} customers")
+# Display formatted summary (not raw print)
+Markdown(f"""
+### Dataset Summary
+
+- **Total Customers**: {len(df):,}
+- **Data Source**: `customers.csv`
+- **Columns**: {', '.join(df.columns)}
+""")
 ```
 
-## Analysis
+## Churn Analysis
 
 ```{python}
-#| label: fig-churn
-#| fig-cap: "Churn rate over time"
+#| label: fig-churn-distribution
+#| fig-cap: "Customer status distribution showing churn rate"
+#| echo: false
 
-# Calculate churn rate
+# Calculate churn metrics
 total_customers = len(df)
 churned = (df['status'] == 'churned').sum()
+active = (df['status'] == 'active').sum()
 churn_rate = churned / total_customers
 
-# Record fact
+# Record facts
 churn_fact_id = recorder.record_fact(
     "churn_rate",
     float(churn_rate),
@@ -503,49 +951,110 @@ churn_fact_id = recorder.record_fact(
     calculation="(df['status'] == 'churned').sum() / len(df)"
 )
 
-# Visualize
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(figsize=(10, 6))
-df['status'].value_counts().plot(kind='pie', ax=ax, autopct='%1.1f%%')
-ax.set_title('Customer Status Distribution')
+active_fact_id = recorder.record_fact(
+    "active_customers",
+    int(active),
+    source_ids=[source_id]
+)
+
+# Visualize with professional styling
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+# Pie chart for proportions
+status_counts = df['status'].value_counts()
+colors = ['#2E86AB', '#A23B72', '#F18F01']
+ax1.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', 
+        colors=colors, startangle=90)
+ax1.set_title('Customer Status Distribution', fontsize=14, fontweight='bold')
+
+# Bar chart for absolute numbers
+status_counts.plot(kind='bar', ax=ax2, color=colors)
+ax2.set_title('Customer Counts by Status', fontsize=14, fontweight='bold')
+ax2.set_ylabel('Number of Customers')
+ax2.set_xlabel('Status')
+ax2.tick_params(axis='x', rotation=45)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
 plt.show()
 ```
 
-**Churn Rate**: `{python} f"{churn_rate:.1%}"`
+### Key Metrics
+
+```{python}
+#| echo: false
+Markdown(f"""
+- **Churn Rate**: {churn_rate:.1%}
+- **Churned Customers**: {churned:,}
+- **Active Customers**: {active:,}
+- **Total Customers**: {total_customers:,}
+""")
+```
+
+## Provenance Flow
+
+```{python}
+#| echo: false
+# Visualize fact→conclusion chain with Mermaid
+Markdown('''
+```mermaid
+flowchart LR
+    S[Data Source:<br/>customers.csv] --> F1[Fact: Churn Rate<br/>15.2%]
+    S --> F2[Fact: Active<br/>Customers: 8,480]
+    F1 --> C1[Conclusion:<br/>MODERATE RISK]
+    F2 --> C1
+    C1 --> R[Recommendation:<br/>Implement<br/>Retention Program]
+```
+''')
+```
 
 ## Conclusion
 
 ```{python}
+#| echo: false
 # Determine conclusion
 if churn_rate > 0.15:
     conclusion = f"HIGH RISK: Churn rate at {churn_rate:.1%}"
     severity = "critical"
+    recommendation = "Immediate intervention required - implement retention program"
 elif churn_rate > 0.10:
     conclusion = f"MODERATE: Churn rate at {churn_rate:.1%}"
     severity = "warning"
+    recommendation = "Monitor closely and prepare retention strategies"
 else:
     conclusion = f"HEALTHY: Churn rate at {churn_rate:.1%}"
     severity = "normal"
+    recommendation = "Maintain current customer success practices"
 
-# Record conclusion
+# Record conclusion with provenance
 conclusion_id = recorder.record_conclusion(
     conclusion,
-    fact_ids=[churn_fact_id],
+    fact_ids=[churn_fact_id, active_fact_id],
     severity=severity
 )
 
-# Save provenance
+# Save provenance chain
 recorder.save("churn_provenance.json")
 
-print(f"**{conclusion}**")
+# Display formatted conclusion (not raw print)
+Markdown(f"""
+## {conclusion}
+
+**Recommendation**: {recommendation}
+
+**Provenance**: This conclusion is derived from {len([churn_fact_id, active_fact_id])} recorded facts with full traceability in `churn_provenance.json`.
+""")
 ```
 ```
 
 **Key Points:**
-- EPIST tracks provenance just like in marimo
-- No reactivity (re-render document to update)
-- Provenance saved to JSON for external use
-- Visualizations + facts = complete story
+- ✅ EPIST tracks provenance just like in marimo
+- ✅ **Visual provenance**: Mermaid diagrams show fact→conclusion chains
+- ✅ **Formatted output**: Charts, tables, and formatted metrics (no raw prints)
+- ✅ **Professional presentation**: Dual charts, styled metrics, clear conclusions
+- ⚠️ No reactivity (re-render document to update)
+- ✅ Provenance saved to JSON for external use
+- ✅ Visualizations + facts + provenance = complete story
 
 ## Marimo Integration
 
