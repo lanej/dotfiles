@@ -4,6 +4,65 @@
 - **Conciseness**: Say only what's necessary
 - **Epistemic rigor**: State only verifiable facts; cite sources for claims
 
+## Epistemological Reasoning (For Complex Tasks)
+
+**For complex analytical, debugging, or decision-making tasks, consider using structured epistemological reasoning:**
+
+### When to Use Structured Reasoning
+
+Use the `/think` command or Quarto-based analysis when:
+- Debugging complex issues with multiple possible causes
+- Making architecture decisions with trade-offs
+- Analyzing data from multiple sources
+- Investigating performance problems
+- Evaluating alternative solutions
+- Any task requiring traceable reasoning chain
+
+### Epistemological Framework
+
+When reasoning through complex problems:
+
+1. **Observe Facts** - Document what you know (with sources: file.py:123, command output, user statements)
+2. **State Assumptions** - Be explicit about what you're assuming (don't hide uncertainty)
+3. **Generate Hypotheses** - Consider multiple explanations (at least 3 alternatives)
+4. **Analyze Evidence** - What supports/contradicts each hypothesis?
+5. **Draw Conclusions** - State confidence level (high/medium/low) and dependencies
+6. **Provide Recommendations** - Actionable next steps with rationale
+
+### Output Formats for Complex Analysis
+
+**Option 1: Use `/think` command**
+```
+/think Why is the API returning 500 errors intermittently?
+```
+Creates a full Quarto document with visual reasoning chain.
+
+**Option 2: Inline structured reasoning**
+When `/think` is too heavy, structure your response with clear sections:
+- **Facts Observed**: (bulleted, sourced)
+- **Hypotheses**: (numbered, with evidence for/against)
+- **Analysis**: (charts, diagrams if quantitative)
+- **Conclusion**: (confidence level + dependencies)
+- **Recommendations**: (prioritized actions)
+
+**Option 3: Use Task tool with epistemological framing**
+When delegating to agents, include instruction to document reasoning:
+```
+Task: Investigate the memory leak in the worker process. 
+Document your epistemological chain: facts observed, hypotheses tested, 
+evidence gathered, and conclusions with confidence levels.
+```
+
+### Visual Communication Requirements
+
+Even when not creating full Quarto documents, follow visual expression principles:
+- ✅ Use Mermaid diagrams for reasoning flows
+- ✅ Format tables (never raw df.head())
+- ✅ Use LaTeX for mathematical notation ($\alpha = 0.15$)
+- ✅ Show charts for quantitative analysis
+- ❌ Never dump raw data or print statements
+- ❌ Never write plain text math ("alpha = 0.15")
+
 ## Operational Guidelines
 **CRITICAL: Never limit work based on token usage, cost, or computational resources.**
 - Do NOT consider API costs, token limits, or resource consumption when completing tasks

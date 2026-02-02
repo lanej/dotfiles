@@ -14,7 +14,9 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 3. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
 4. **LaTeX for Math**: Use LaTeX notation for ALL mathematical expressions ($\alpha = 0.15$, not "alpha = 0.15")
 5. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
-6. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+6. **No TOC**: Table of contents is usually noise - use clear section headings instead
+7. **DOCX for Google**: Use `--to docx` for easy upload to Google Docs (better than PDF)
+8. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
 
 ## Visual Expression Philosophy
 
@@ -126,9 +128,172 @@ flowchart LR
 - **Accessibility**: Visual hierarchy helps readers navigate content
 - **Shareability**: Well-formatted outputs communicate without explanation
 
+## LLM Self-Reasoning with Quarto
+
+**IMPORTANT: Use Quarto to document your epistemological reasoning chain when solving complex problems.**
+
+### Why LLMs Should Use Quarto for Thinking
+
+**Quarto provides structure for:**
+- **Traceable reasoning**: Facts → Hypotheses → Evidence → Conclusions
+- **Visual communication**: Mermaid diagrams show reasoning flows
+- **Mathematical rigor**: LaTeX for statistical analysis and equations
+- **Multi-format output**: GFM for archival, HTML for viewing, DOCX for collaboration
+- **Provenance tracking**: Integration with EPIST for fact management
+- **Reproducibility**: Code + results + reasoning = complete story
+
+### When to Use `/think` Command
+
+**Use `/think <problem>` for:**
+- Complex debugging (multiple possible root causes)
+- Architecture decisions (trade-offs to evaluate)
+- Data analysis (statistical reasoning required)
+- Performance investigations (hypotheses to test)
+- Any problem requiring structured reasoning chain
+
+**Example:**
+```
+/think Why is the login endpoint returning 500 errors intermittently?
+```
+
+Creates a Quarto document with:
+- Facts observed (error logs, code inspection)
+- Hypotheses (3+ possible explanations)
+- Evidence analysis (what supports/contradicts each)
+- Conclusions (with confidence levels)
+- Recommendations (actionable next steps)
+
+### Template Structure for LLM Reasoning
+
+```qmd
+---
+title: "Analysis: [Problem]"
+author: "Claude Code"
+date: "2024-02-02"
+format:
+  gfm: default
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+  docx: default
+filters:
+  - auto-dark
+---
+
+## Problem Statement
+
+[Clear restatement]
+
+## Facts Observed
+
+- **Fact 1**: Error occurs 3% of requests (Source: logs/app.log:1234)
+- **Fact 2**: Only affects POST /login endpoint (Source: nginx access logs)
+- **Fact 3**: Database connection pool shows spikes (Source: monitoring dashboard)
+
+## Assumptions
+
+- **Assumption 1**: Database is the bottleneck (based on connection pool spikes)
+- **Assumption 2**: Load balancer is healthy (not verified yet)
+
+## Hypotheses
+
+### Hypothesis 1: Database Connection Pool Exhaustion
+
+**Evidence supporting:**
+- Connection pool shows 100% utilization during errors
+- Error timing correlates with traffic spikes
+
+**Evidence contradicting:**
+- Pool size is 50, max concurrent users is 30
+
+**Confidence**: Medium
+
+### Hypothesis 2: Race Condition in Session Creation
+
+**Evidence supporting:**
+- Error only on POST (writes), not GET (reads)
+- Intermittent nature suggests timing issue
+
+**Evidence contradicting:**
+- No obvious concurrent writes in code review
+
+**Confidence**: Low
+
+## Analysis
+
+```{python}
+#| echo: false
+import matplotlib.pyplot as plt
+from IPython.display import Markdown
+
+# Show correlation between errors and traffic
+fig, ax = plt.subplots(figsize=(10, 6))
+# ... visualization code ...
+plt.show()
+
+Markdown(f"""
+Correlation between error rate and traffic: $\\rho = 0.89$ (strong positive)
+
+This suggests the errors are load-dependent, supporting the connection pool 
+exhaustion hypothesis.
+""")
+```
+
+## Reasoning Flow
+
+```{mermaid}
+flowchart TD
+    F1[Fact: 3% error rate] --> H1[Hypothesis: Pool exhaustion]
+    F2[Fact: Pool at 100%] --> H1
+    H1 --> T1[Test: Increase pool size]
+    T1 --> C1[Conclusion: Errors reduced to 0.1%]
+```
+
+## Conclusion
+
+**Primary Conclusion**: Database connection pool exhaustion during traffic spikes
+
+**Confidence**: High (based on correlation analysis and pool utilization metrics)
+
+**Dependencies**: Assumes monitoring metrics are accurate
+
+## Recommendations
+
+1. **Increase connection pool size** to 100 (High priority)
+   - Expected outcome: Eliminate 500 errors during spikes
+   
+2. **Add connection pool monitoring alerts** (Medium priority)
+   - Alert when utilization > 80%
+
+3. **Implement connection retry logic** (Low priority)
+   - Graceful degradation during pool saturation
+```
+
+### Integration with EPIST
+
+After creating a Quarto analysis, optionally save key facts/conclusions to EPIST:
+
+```bash
+# Add critical facts
+epist add fact
+# Title: Login endpoint has 3% error rate during spikes
+# Source: analysis_2024-02-02.qmd
+# Tags: [debugging, database, performance]
+
+# Add conclusion
+epist add conclusion
+# Title: Connection pool exhaustion causes login errors
+# Based on: facts/debugging/login_errors_*.md
+# Confidence: high
+```
+
+This makes your reasoning persistent and searchable across sessions.
+
 ## When to Use Quarto
 
 **Perfect for:**
+- LLM epistemological reasoning (use `/think` command)
 - Static reports and documentation (no interactivity needed)
 - Multi-format publishing (PDF + HTML + Word from single source)
 - Scientific documents (equations, citations, cross-references)
@@ -373,8 +538,8 @@ quarto render document.qmd --to gfm          # GitHub-flavored markdown
 
 # Render to other formats
 quarto render document.qmd --to pdf          # PDF document
-quarto render document.qmd --to html --toc   # HTML with table of contents
-quarto render document.qmd --to docx         # Word document
+quarto render document.qmd --to html         # HTML (avoid --toc, use clear headings)
+quarto render document.qmd --to docx         # Word (for Google Docs upload)
 
 # Render Jupyter notebook to markdown
 quarto render notebook.ipynb --to md         # Markdown with executed results
@@ -1226,6 +1391,168 @@ filters:
 - `journal` - Newspaper style
 
 The `auto-dark` filter automatically detects system dark mode preference and switches themes accordingly. Users on light mode systems will see the light theme, while dark mode users (majority) get the dark theme.
+
+## Table of Contents (Usually Noise - Avoid)
+
+**IMPORTANT: Table of contents (TOC) is usually unnecessary noise in Quarto documents.**
+
+### Why Avoid TOC
+
+**Problems with TOC:**
+- ❌ Adds visual clutter without adding value
+- ❌ Redundant when you have clear section headings
+- ❌ Takes up space at the top of the document
+- ❌ Users can navigate with Ctrl+F or scroll
+- ❌ In HTML, browsers have Find function
+- ❌ In PDF, readers have built-in navigation
+- ❌ Makes documents feel like academic papers (overly formal)
+
+**Better alternatives:**
+- ✅ Use clear, descriptive section headings
+- ✅ Keep documents focused and concise
+- ✅ Use visual hierarchy (# ## ### headings)
+- ✅ Add anchor links manually if needed
+- ✅ Trust readers to navigate using browser/PDF tools
+
+### When TOC Might Be Acceptable
+
+**ONLY use TOC for:**
+- Very long documents (>20 pages)
+- Books or comprehensive guides
+- Multi-chapter documents
+- When explicitly required by style guide
+
+**Even then, prefer:**
+- Sidebar TOC (not top-of-page)
+- Collapsible TOC
+- Floating TOC that doesn't obscure content
+
+### How to Disable TOC
+
+**Don't include `toc: true` in YAML frontmatter:**
+
+```yaml
+# ❌ BAD: Unnecessary TOC
+---
+title: "My Analysis"
+format:
+  html:
+    toc: true        # DON'T DO THIS
+---
+
+# ✅ GOOD: Clean document without TOC
+---
+title: "My Analysis"
+format:
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+---
+```
+
+**If you must use TOC, make it minimal:**
+
+```yaml
+format:
+  html:
+    toc: true
+    toc-depth: 2           # Only top 2 levels
+    toc-location: left     # Sidebar, not top
+    toc-title: "Contents"  # Short title
+```
+
+## DOCX Output for Google Docs
+
+**DOCX format is PREFERRED for uploading to Google Docs (better than PDF).**
+
+### Why DOCX for Google Docs
+
+**Advantages:**
+- ✅ Google Docs can edit DOCX files (not PDF)
+- ✅ Preserves formatting (headings, tables, images)
+- ✅ Maintains document structure
+- ✅ Allows collaboration after upload
+- ✅ Easier to comment and suggest edits
+- ✅ Better than copy-pasting from HTML
+
+**PDF limitations:**
+- ❌ Google Docs converts PDF to editable format (messy)
+- ❌ Formatting often breaks in conversion
+- ❌ Tables and equations may render poorly
+- ❌ Read-only format (less collaborative)
+
+### Rendering to DOCX
+
+```bash
+# Basic DOCX output
+quarto render analysis.qmd --to docx
+
+# Multiple formats including DOCX
+quarto render analysis.qmd --to gfm,docx,html
+```
+
+### YAML Configuration for DOCX
+
+```yaml
+---
+title: "Analysis Report"
+format:
+  gfm: default           # Primary format
+  docx: default          # For Google Docs upload
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+filters:
+  - auto-dark
+---
+```
+
+### DOCX Styling
+
+**Custom reference document (optional):**
+
+```yaml
+format:
+  docx:
+    reference-doc: custom-template.docx
+```
+
+Create a `custom-template.docx` with your organization's styles:
+1. Open Word/LibreOffice
+2. Define styles (Heading 1, Heading 2, Body Text, etc.)
+3. Save as `custom-template.docx`
+4. Quarto will apply these styles to generated DOCX
+
+### Upload Workflow
+
+```bash
+# 1. Render to DOCX
+quarto render analysis.qmd --to docx
+
+# 2. Upload to Google Docs
+# - Go to drive.google.com
+# - Click "New" → "File upload"
+# - Select analysis.docx
+# - Google Docs will open it in editable format
+
+# Alternative: Use gspace CLI (if installed)
+gspace upload analysis.docx --folder "Reports"
+```
+
+### Best Practices for DOCX Output
+
+✅ **DO:**
+- Render to DOCX for Google Docs collaboration
+- Use DOCX when sharing with Word users
+- Include DOCX in multi-format output (GFM + DOCX + HTML)
+- Test your DOCX output in Google Docs before sharing
+
+❌ **DON'T:**
+- Use PDF for Google Docs upload (use DOCX instead)
+- Assume DOCX preserves all LaTeX equations (complex math may need adjustment)
+- Rely on DOCX for archival (use PDF or markdown for that)
 
 ## EPIST Integration
 
