@@ -1,6 +1,6 @@
 ---
 name: quarto
-description: Render computational documents to publication-quality PDF, HTML, Word, and presentations using Quarto. Use for static reports, multi-format publishing, scientific documents with citations/cross-references, or exporting marimo/Jupyter notebooks. Triggers on "render PDF", "publish document", "create presentation", "quarto render", or multi-format publishing needs.
+description: Render computational documents to markdown (DEFAULT), PDF, HTML, Word, and presentations using Quarto. PREFER markdown output for composability. Use for static reports, multi-format publishing, scientific documents with citations/cross-references, or exporting marimo/Jupyter notebooks. Triggers on "render markdown", "render PDF", "publish document", "create presentation", "quarto render", or multi-format publishing needs.
 ---
 
 # Quarto Skill
@@ -77,6 +77,7 @@ quarto install chromium
 **Keybindings:**
 - `<leader>qp` - Preview current document (live reload)
 - `<leader>qc` - Close preview
+- `<leader>qm` - Render to markdown (GFM) - **RECOMMENDED default**
 - `<leader>qh` - Render to HTML
 - `<leader>qd` - Render to PDF
 
@@ -105,12 +106,7 @@ cat > analysis.qmd << 'EOF'
 title: "Sales Analysis Q4 2024"
 author: "Your Name"
 date: "2024-01-30"
-format:
-  pdf:
-    toc: true
-    number-sections: true
-  html:
-    code-fold: true
+format: gfm  # GitHub-flavored markdown (default)
 ---
 
 ## Data Loading
@@ -142,14 +138,13 @@ plt.show()
 Total sales for Q4: **${total_sales:,.2f}**
 EOF
 
-# Render to PDF
-quarto render analysis.qmd --to pdf
+# Render to markdown (DEFAULT - composable, archival)
+quarto render analysis.qmd --to gfm
 
-# Render to HTML
-quarto render analysis.qmd --to html
-
-# Render to Word
-quarto render analysis.qmd --to docx
+# Optional: Render to other formats only when needed for distribution
+quarto render analysis.qmd --to pdf         # For printing/formal distribution
+quarto render analysis.qmd --to html        # For web viewing
+quarto render analysis.qmd --to docx        # For Word users
 ```
 
 ### File Formats Quarto Can Render
@@ -161,6 +156,7 @@ quarto render analysis.qmd --to docx
 - `.Rmd` - R Markdown files
 
 **Output formats:**
+- **Markdown**: `md` (plain), `gfm` (GitHub-flavored) - **PREFERRED default**
 - **Documents**: PDF, HTML, Word, ODT, ePub, Typst
 - **Presentations**: RevealJS (HTML), PowerPoint, Beamer (PDF)
 - **Websites**: Multi-page sites, blogs, books
@@ -169,19 +165,23 @@ quarto render analysis.qmd --to docx
 ## Core Commands
 
 ```bash
-# Render document
-quarto render document.qmd                    # Default format
-quarto render document.qmd --to pdf          # Specific format
-quarto render document.qmd --to html --toc   # With options
+# Render document to markdown (DEFAULT - composable, text-based)
+quarto render document.qmd --to md           # Executable markdown with results
+quarto render document.qmd --to gfm          # GitHub-flavored markdown
 
-# Render Jupyter notebook
-quarto render notebook.ipynb --to pdf
+# Render to other formats
+quarto render document.qmd --to pdf          # PDF document
+quarto render document.qmd --to html --toc   # HTML with table of contents
+quarto render document.qmd --to docx         # Word document
+
+# Render Jupyter notebook to markdown
+quarto render notebook.ipynb --to md         # Markdown with executed results
 
 # Render plain markdown (no code execution)
 quarto render README.md --to pdf
 
 # Multiple formats at once
-quarto render document.qmd --to pdf,html,docx
+quarto render document.qmd --to md,pdf,html
 
 # Preview with live reload
 quarto preview document.qmd
@@ -261,14 +261,14 @@ result = expensive_calculation()
 
 ## YAML Frontmatter
 
-### Simple Document
+### Simple Document (Markdown Default)
 
 ```yaml
 ---
 title: "My Report"
 author: "Your Name"
 date: "2024-01-30"
-format: pdf
+format: gfm  # GitHub-flavored markdown (default for composability)
 ---
 ```
 
@@ -278,6 +278,9 @@ format: pdf
 ---
 title: "Analysis Report"
 format:
+  gfm:
+    toc: true
+    variant: +yaml_metadata_block
   html:
     toc: true
     code-fold: true
@@ -286,8 +289,21 @@ format:
     toc: true
     number-sections: true
     geometry: margin=1in
-  docx:
-    reference-doc: template.docx
+---
+```
+
+### Markdown-Only Output
+
+```yaml
+---
+title: "Data Analysis"
+format:
+  md:
+    output-file: "results.md"
+    variant: gfm  # Use GitHub-flavored markdown
+    preserve-yaml: true
+  gfm:
+    output-file: "results-gfm.md"
 ---
 ```
 
@@ -691,70 +707,118 @@ quarto publish netlify
 
 ## Unix Philosophy Alignment
 
+**Markdown-First Workflow (PREFERRED):**
+
+```bash
+# DEFAULT: Render to markdown for composability
+quarto render analysis.qmd --to gfm         # GitHub-flavored markdown
+quarto render analysis.qmd --to md          # Plain markdown
+
+# Pipe markdown output to other tools
+quarto render analysis.qmd --to md --output - | \
+  grep "^##" | \
+  sed 's/^## //' > toc.txt
+
+# Generate markdown, then convert to PDF only if needed
+quarto render analysis.qmd --to gfm
+quarto render analysis.qmd --to pdf         # Optional
+```
+
+**Why Markdown Default:**
+- Text-based: Human-readable, diffable, greppable
+- Composable: Pipe to other tools (grep, sed, pandoc, etc.)
+- Portable: Works everywhere (GitHub, wikis, editors)
+- Archival: Plain text survives format changes
+- Fast: No heavy rendering (PDF/HTML) unless needed
+
 **Quarto as a Pipeline Component:**
 
 ```bash
-# Composition pattern: process → transform → render
+# Composition pattern: process → transform → render → markdown
 conform notes.txt --schema schema.json | \
   jq '.items[]' | \
   python generate_qmd.py > report.qmd && \
-  quarto render report.qmd --to pdf
+  quarto render report.qmd --to gfm
 
-# Marimo → Quarto → Distribution
+# Marimo → Quarto → Markdown (composable)
 marimo export md analysis.py | \
-  quarto render /dev/stdin --to pdf --output report.pdf
+  quarto render /dev/stdin --to gfm --output results.md
+
+# Markdown → Post-processing
+quarto render analysis.qmd --to gfm && \
+  sed -i 's/TODO/DONE/g' analysis.md
 ```
 
 **Do One Thing Well:**
 - Quarto: Document rendering + format conversion
 - NOT: Data analysis, interactive exploration, storage
 - Delegate: Python for analysis, marimo for interactivity, Quarto for rendering
+- Prefer markdown output for downstream composition
 
 **Text Streams:**
 ```bash
 # Quarto accepts stdin
-cat document.md | quarto render - --to pdf --output report.pdf
+cat document.md | quarto render - --to gfm --output results.md
 
 # Pipe through processing
 cat data.json | \
   jq -r '.[] | "- \(.item)"' | \
-  quarto render /dev/stdin --to html
+  quarto render /dev/stdin --to gfm --output list.md
 ```
 
 **Silent Success:**
 ```bash
 # Quarto is quiet on success
-quarto render doc.qmd --to pdf
+quarto render doc.qmd --to gfm
 echo $?  # 0 = success
 
 # Use --quiet for scripts
-quarto render doc.qmd --to pdf --quiet
+quarto render doc.qmd --to gfm --quiet
 ```
 
 ## Common Patterns
 
-### Pattern 1: Single Source, Multiple Formats
+### Pattern 1: Markdown-First (RECOMMENDED)
 
 ```bash
-# Render all formats
-quarto render report.qmd --to pdf,html,docx
+# Default: Generate markdown with executed results
+quarto render analysis.qmd --to gfm
 
-# Or explicitly
-quarto render report.qmd --to pdf
-quarto render report.qmd --to html
-quarto render report.qmd --to docx
+# Only create PDF/HTML when specifically needed for distribution
+quarto render analysis.qmd --to gfm,pdf      # Markdown + PDF
+quarto render analysis.qmd --to gfm,html     # Markdown + HTML
+
+# Markdown for archival, PDF for sharing
+quarto render report.qmd --to gfm
+quarto render report.qmd --to pdf            # Only when needed
 ```
 
-### Pattern 2: Batch Processing
+### Pattern 2: Single Source, Multiple Formats
 
 ```bash
-# Render all .qmd files in directory
+# Render all formats (markdown first)
+quarto render report.qmd --to gfm,pdf,html,docx
+
+# Or explicitly
+quarto render report.qmd --to gfm            # Primary output
+quarto render report.qmd --to pdf            # For distribution
+quarto render report.qmd --to html           # For web
+quarto render report.qmd --to docx           # For Word users
+```
+
+### Pattern 3: Batch Processing
+
+```bash
+# Render all .qmd files to markdown
 for file in *.qmd; do
-  quarto render "$file" --to pdf
+  quarto render "$file" --to gfm
 done
 
 # Or use find
-find . -name "*.qmd" -exec quarto render {} --to pdf \;
+find . -name "*.qmd" -exec quarto render {} --to gfm \;
+
+# Parallel processing with xargs
+find . -name "*.qmd" | xargs -P 4 -I {} quarto render {} --to gfm
 ```
 
 ### Pattern 3: Custom Templates
@@ -769,6 +833,7 @@ quarto render doc.qmd --template custom-template.tex
 ```qmd
 ---
 title: "Monthly Report"
+format: gfm
 params:
   month: "January"
   year: 2024
@@ -785,7 +850,13 @@ year = params['year']
 
 **Render with parameters:**
 ```bash
-quarto render report.qmd -P month:February -P year:2024
+# Markdown output with parameters
+quarto render report.qmd -P month:February -P year:2024 --to gfm
+
+# Generate markdown for all months
+for month in Jan Feb Mar Apr; do
+  quarto render report.qmd -P month:$month --to gfm --output "${month}_report.md"
+done
 ```
 
 ### Pattern 5: EPIST Provenance Reports

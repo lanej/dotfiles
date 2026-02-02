@@ -194,7 +194,7 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **pdf** - PDF extraction, creation, merging, form filling
 - **xlsx-python** - Programmatic Excel creation with Python
 - **marimo** - Reactive Python notebooks for data analysis and EPIST workflows; STRONGLY PREFERRED for ad-hoc analysis with auto-reactivity, single-file execution, and direct Python integration
-- **quarto** - Render computational documents to publication-quality PDF, HTML, Word, presentations; Use for static reports (no interactivity), multi-format publishing, scientific documents with citations/cross-references
+- **quarto** - Render computational documents to markdown (DEFAULT), PDF, HTML, Word, presentations; PREFER markdown output for composability; Use for static reports (no interactivity), multi-format publishing, scientific documents with citations/cross-references
 
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
