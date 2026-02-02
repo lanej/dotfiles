@@ -1130,18 +1130,24 @@ require("lazy").setup({
 				quarto.quartoClosePreview()
 			end, { desc = "Quarto: Close preview", silent = true, noremap = true })
 
-			-- Quick render commands
-			vim.keymap.set("n", "<leader>qh", ":!quarto render % --to html<CR>", {
-				desc = "Quarto: Render to HTML",
-				silent = false,
-				noremap = true,
-			})
+		-- Quick render commands
+		vim.keymap.set("n", "<leader>qm", ":!quarto render % --to gfm<CR>", {
+			desc = "Quarto: Render to Markdown (GFM)",
+			silent = false,
+			noremap = true,
+		})
 
-			vim.keymap.set("n", "<leader>qd", ":!quarto render % --to pdf<CR>", {
-				desc = "Quarto: Render to PDF",
-				silent = false,
-				noremap = true,
-			})
+		vim.keymap.set("n", "<leader>qh", ":!quarto render % --to html<CR>", {
+			desc = "Quarto: Render to HTML",
+			silent = false,
+			noremap = true,
+		})
+
+		vim.keymap.set("n", "<leader>qd", ":!quarto render % --to pdf<CR>", {
+			desc = "Quarto: Render to PDF",
+			silent = false,
+			noremap = true,
+		})
 		end,
 	},
 	{
