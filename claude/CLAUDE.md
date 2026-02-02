@@ -12,6 +12,55 @@
 - ONLY consideration: Stay within context window limits for technical functionality
 - Focus on delivering complete, thorough solutions regardless of resource usage
 
+## Unix Philosophy
+
+**CRITICAL: Follow Unix philosophy principles for all programming and tooling decisions.**
+
+### Do One Thing Well
+- Prefer specialized tools over monolithic solutions (jq over Python for JSON, xsv over Pandas for CSV)
+- Write focused scripts with single, well-defined purposes
+- Resist feature creep - if a tool needs multiple modes, consider splitting it
+- When building new tools, start minimal and add features only when clearly needed
+
+### Text Streams as Universal Interface
+- Default to plain text input/output for all tools and scripts
+- Make output parseable by other tools (avoid decorative formatting in non-interactive mode)
+- Use standard formats: JSON for structured data, CSV for tabular data, plain text for logs
+- Support stdin/stdout for pipeline composition
+- Separate formatting from logic - provide --format flags for human vs machine output
+
+### Composition Over Complexity
+- Build complex workflows by piping simple tools together
+- Prefer shell pipelines over monolithic scripts when possible
+- Design tools to work well in pipelines (read stdin, write stdout, errors to stderr)
+- Example: `jq '.items[]' data.json | grep pattern | xsv select 1,2` beats a custom script
+
+### Silent Success, Verbose Errors
+- Successful operations should produce minimal or no output unless specifically requested
+- Use --verbose or --debug flags for detailed output, not the default
+- Write errors and warnings to stderr, never stdout
+- Exit codes: 0 for success, non-zero for errors
+- Progress indicators only for long-running operations, and only when interactive
+
+### Small, Sharp Tools
+- Prefer specialized CLI tools over general-purpose programming languages for simple tasks
+- Hierarchy: Built-in shell tools > Specialized tools (jq, xsv, xlsx) > Scripting languages > Full programs
+- Before writing a script, check if a tool already exists: jq, xsv, xlsx, rg, fd, etc.
+- Keep scripts under 100 lines when possible - if longer, consider breaking into modules or using a proper program
+
+### Everything is a File
+- Store configuration in files, not databases (unless scale demands it)
+- Use filesystem for organization: directories for namespacing, files for state
+- Leverage standard paths: ~/.config for user config, /tmp for ephemeral data, /var for state
+- Make file formats human-readable when possible (YAML/TOML over binary)
+
+### Worse is Better (Simplicity First)
+- Simple, working solution beats complex, perfect solution
+- Ship good-enough code, iterate based on real usage
+- Avoid premature optimization and over-engineering
+- "Perfect is the enemy of good" - deliver value quickly, refine later
+- Prefer boring, proven technologies over cutting-edge solutions
+
 ## Professional Objectivity
 **CRITICAL: Prioritize technical accuracy and truth over validation.**
 - Challenge assumptions when something seems wrong - don't agree just to be agreeable
@@ -103,6 +152,13 @@
 - **xlsx**: Use `xlsx` binary for ALL Excel file operations (viewing, filtering, editing, conversion); AVOID Python/Node.js libraries
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
 - **BigQuery**: Use `bigquery` CLI (NOT `bq`)
+- **DuckDB**: Use single quotes for string literals (`'ups'`), double quotes for identifiers; prefer JSONL for ingestion via `read_json_auto()`; use `UNNEST(array_col) AS t(val)` in FROM clause for array expansion
+
+**Tool Selection Hierarchy** (prefer earlier options):
+1. Built-in shell utilities (grep, sed, awk, sort, uniq, cut) for simple text operations
+2. Specialized CLI tools (jq, xsv, xlsx, rg, fd) for specific data formats
+3. Scripting languages (bash, Python with uv) for logic and glue code
+4. Full programs only when simpler tools cannot achieve the goal
 
 ## Available Skills
 
@@ -138,11 +194,12 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **pdf** - PDF extraction, creation, merging, form filling
 - **xlsx-python** - Programmatic Excel creation with Python
 - **marimo** - Reactive Python notebooks for data analysis and EPIST workflows; STRONGLY PREFERRED for ad-hoc analysis with auto-reactivity, single-file execution, and direct Python integration
+- **quarto** - Render computational documents to publication-quality PDF, HTML, Word, presentations; Use for static reports (no interactivity), multi-format publishing, scientific documents with citations/cross-references
 
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
 - **claude-tail** - View Claude Code session logs with filtering
-- **lancer** - LanceDB semantic and vector search; auto-loads for knowledge base queries, document search, RAG operations, and document ingestion/indexing
+- **lancer** - LanceDB semantic and vector search; **CLI** (`lancer search -t table "query"`) for scripts/pipelines, **MCP tools** (pkm_search_documents) for in-session queries; auto-loads for knowledge base queries, document search, RAG operations, and document ingestion/indexing
 - **epist** - Epistemological tracking system; auto-loads for data analysis from multiple sources, tracking facts, recording conclusions, tracing provenance, working with metrics/research/surveys, and managing knowledge with Git integrity
 - **webapp-testing** - Playwright-based web application testing
 
@@ -175,10 +232,13 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **.pdf files** - PDF documents → load `pdf` skill
 - **.xlsx files** - Excel files → load `xlsx` skill (for reading/analyzing) or `xlsx-python` skill (for creating/modifying)
 - **.pptx files** - PowerPoint presentations → load `pptx` skill
+- **.qmd files** - Quarto markdown documents → load `quarto` skill
+- **.ipynb files** - Jupyter notebooks (when rendering to PDF/HTML/Word) → load `quarto` skill
 
 **Data Format Triggers:**
 - **JSON operations** - Parsing, filtering, transforming JSON → load `jq` skill
 - **CSV operations** - Processing, filtering, analyzing CSV → load `xsv` skill
+- **JSONL (Newline-Delimited JSON)** - PREFERRED for bulk data interchange: DuckDB ingestion, streaming processing, lancer output; one JSON object per line enables streaming and parallel processing
 - **SQL analytics** - When analyzing data files with statistics, aggregations, joins, window functions, or complex SQL queries → load `duckdb` skill
 - **Data analysis** - When computing statistics, percentiles, distributions, or performing analytical queries on CSV/JSON/Parquet → load `duckdb` skill
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
@@ -187,6 +247,9 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Computational narratives** - Creating executable notebooks, reproducible analysis, research documentation with code → load `marimo` skill
 - **Notebook creation** - When creating notebooks for EPIST analysis, reactive execution, or single-file workflows → load `marimo` skill
 - **Reactive notebooks** - When automatic updates on data changes are needed, interactive widgets, or EPIST provenance tracking → load `marimo` skill
+- **Static report rendering** - Rendering markdown/notebooks to publication-quality PDF, HTML, or Word (no interactivity) → load `quarto` skill
+- **Multi-format publishing** - Need single source rendered to multiple output formats (PDF + HTML + Word) → load `quarto` skill
+- **Scientific documents** - Documents requiring citations, cross-references, equation numbering, academic formatting → load `quarto` skill
 
 **Platform/Service Triggers:**
 - **Azure operations** - Azure CLI, resource management → load `az` skill
@@ -197,6 +260,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Semantic search** - When searching documents semantically, RAG operations, vector search → load `lancer` skill
 - **Knowledge base operations** - Finding information across document collections, indexing documents → load `lancer` skill
 - **Document ingestion** - Adding documents to knowledge base, creating embeddings → load `lancer` skill
+- **Semantic discovery** - For open-ended exploration ("explore the data", "find patterns"), use `Task` tool with `explore` subagent; for specific queries, use MCP tools directly
 - **Epistemological tracking** - When tracking facts, recording conclusions, tracing provenance chains, managing knowledge provenance → load `epist` skill
 - **Data analysis** - When analyzing data from multiple sources, conducting research, working with metrics/surveys, making data-driven conclusions, or citing sources (skip trivial calculations) → load `epist` skill
 
@@ -263,3 +327,7 @@ The `/reflection-harder` command integrates with tmux status bar to notify when 
 
 ### Configuration Files
 - **TOML files** (Cargo.toml, pyproject.toml): Place comments on separate lines above config (NOT inline after values)
+
+### Dependency Installation
+- If `uv add` hangs building from source (>60 seconds), try: (1) use system Python directly, (2) install from PyPI if available, (3) use CLI tool instead of library
+- AVOID installing Python bindings from source when CLI alternatives exist (e.g., use `lancer` CLI not `lancer-py`)

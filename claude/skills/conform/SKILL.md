@@ -14,6 +14,40 @@ You are a data transformation specialist using `conform`, a CLI tool that uses A
 - Outputs JSON that conforms to a provided JSON schema
 - Ensures consistent, validated data structures
 
+## Unix Philosophy Alignment
+
+**CRITICAL: Use conform as a focused pipeline component, not a Swiss Army knife.**
+
+### Do One Thing Well
+- conform's ONLY job: transform unstructured → structured JSON
+- Does NOT do: formatting, analysis, storage, visualization
+- Delegate downstream tasks to specialized tools (jq, xsv, xlsx, duckdb)
+
+### Text Streams as Interface
+- Writes JSON to stdout by default (use `--output` only when needed)
+- Read with: `conform input.txt --schema schema.json | jq .`
+- Errors go to stderr (exit code 0 on success, non-zero on failure)
+- Silent on success unless `--verbose` specified
+
+### Composition Over Complexity
+- Design: `conform | jq | xsv` NOT "conform --format csv --filter ..."
+- Example: `conform notes.txt --schema schema.json | jq '.items[]' | xsv select 1,2`
+- Let each tool do what it does best
+
+### When NOT to Use conform
+**Prefer simpler tools when possible:**
+- **Structured input** → Use jq directly (JSON), xsv (CSV), xlsx (Excel)
+- **Simple text parsing** → Use grep, sed, awk for patterns
+- **Deterministic extraction** → Use jq filters or xsv select
+- **No schema needed** → Don't force structure prematurely
+- **Only formatting needed** → Use jq for JSON, xsv for CSV
+
+**Use conform ONLY when:**
+- Input is genuinely unstructured (plain text, PDFs, messy documents)
+- Need AI to interpret and extract semantic meaning
+- Want guaranteed schema conformance
+- Extracting complex nested structures from prose
+
 ## Core Capabilities
 
 1. **Schema-driven extraction**: Define structure with JSON Schema
@@ -223,45 +257,51 @@ conform meeting-notes.txt --schema meeting-schema.json
 
 ## Common Workflows
 
-### Workflow 1: Extract Data from Document
+### Workflow 1: Pipeline Composition (PREFERRED)
+
+**Unix Way: Chain small tools together**
 
 ```bash
-# 1. Create JSON schema for desired structure
-cat > schema.json << 'EOF'
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "title": { "type": "string" },
-    "date": { "type": "string" },
-    "summary": { "type": "string" }
-  }
-}
-EOF
+# Extract → filter → select → analyze
+conform notes.txt --schema meeting-schema.json | \
+  jq '.actionItems[]' | \
+  jq 'select(.dueDate < "2026-02-15")' | \
+  jq -r '[.task, .assignee] | @csv'
 
-# 2. Run conform
-conform document.txt --schema schema.json --output result.json
+# Extract → transform → load into analysis tool
+conform sales-report.pdf --schema sales-schema.json | \
+  jq '.transactions[]' | \
+  duckdb -c "SELECT category, SUM(amount) FROM stdin GROUP BY category"
 
-# 3. Verify output
-cat result.json | jq .
+# Extract → format → output
+conform contact.txt --schema contact-schema.json | \
+  jq -r '"\(.name),\(.email),\(.phone)"' | \
+  xsv table
 ```
 
-### Workflow 2: Batch Processing
+### Workflow 2: Silent Extraction (No File Output)
+
+**Default: Write to stdout, compose with other tools**
 
 ```bash
-# Process multiple files with same schema
-for file in data/*.txt; do
-  output="results/$(basename "$file" .txt).json"
-  conform "$file" --schema schema.json --output "$output"
-done
+# Good: stdout for composition
+conform document.txt --schema schema.json | jq .
+
+# Avoid: Unnecessary file writes
+# Bad: conform document.txt --schema schema.json --output temp.json && cat temp.json | jq .
 ```
 
-### Workflow 3: Pipeline Integration
+### Workflow 3: Batch Processing with Pipelines
 
 ```bash
-# Download, process, and analyze
-curl https://example.com/data.txt -o input.txt
-conform input.txt --schema schema.json | jq '.items | length'
+# Process multiple files, compose with jq for aggregation
+fd -e txt -x conform {} --schema schema.json | \
+  jq -s 'map(.items) | flatten | group_by(.category) | length'
+
+# OR: Use xargs for parallel processing
+find data/ -name "*.txt" -print0 | \
+  xargs -0 -P 4 -I {} conform {} --schema schema.json | \
+  jq -s 'add'
 ```
 
 ### Workflow 4: Using with Ollama Local Model
@@ -306,7 +346,32 @@ conform input.txt --schema schema-v2.json --output final.json
 
 ## Best Practices
 
-### 1. Use Descriptive Schema Properties
+### 1. Default to stdout, Use --output Sparingly
+
+```bash
+# Good: Pipeline composition (Unix way)
+conform data.txt --schema schema.json | jq .
+
+# Avoid: Unnecessary file I/O
+conform data.txt --schema schema.json --output temp.json
+
+# Use --output ONLY for final results
+conform data.txt --schema schema.json | jq '.items[]' --output final.json
+```
+
+### 2. Compose with Specialized Tools
+
+```bash
+# conform does extraction, jq does filtering, xsv does formatting
+conform notes.txt --schema schema.json | \
+  jq '.items[] | select(.priority == "high")' | \
+  jq -r '@csv' | \
+  xsv table
+
+# Don't try to make conform do everything
+```
+
+### 3. Use Descriptive Schema Properties
 
 ```json
 {
@@ -322,7 +387,7 @@ conform input.txt --schema schema-v2.json --output final.json
 
 Descriptions help the AI understand extraction intent.
 
-### 2. Set Appropriate Temperature
+### 4. Set Appropriate Temperature
 
 ```bash
 # Low temperature for factual extraction (default: 0.1)
@@ -332,7 +397,7 @@ conform data.txt --schema schema.json --temperature 0.1
 conform notes.txt --schema schema.json --temperature 0.5
 ```
 
-### 3. Use Enum for Constrained Values
+### 5. Constrain Values with Enum
 
 ```json
 {
@@ -345,7 +410,7 @@ conform notes.txt --schema schema.json --temperature 0.5
 }
 ```
 
-### 4. Make Critical Fields Required
+### 6. Make Critical Fields Required
 
 ```json
 {
@@ -353,22 +418,32 @@ conform notes.txt --schema schema.json --temperature 0.5
 }
 ```
 
-### 5. Use Verbose Mode for Debugging
+### 7. Silent Success, Verbose Debugging
 
 ```bash
-# See detailed processing steps
+# Default: Silent on success, errors to stderr
+conform input.txt --schema schema.json > output.json
+
+# Debugging: Use --verbose to see processing
 conform input.txt --schema schema.json --verbose
+
+# Check exit codes in scripts
+if conform input.txt --schema schema.json > result.json; then
+  echo "Success"
+else
+  echo "Failed with exit code $?"
+fi
 ```
 
-### 6. Validate Output
+### 8. Validate in Pipeline
 
 ```bash
-# Always validate with jq or schema validator
-conform input.txt --schema schema.json | jq .
+# Validate while processing (don't break pipe)
+conform input.txt --schema schema.json | tee result.json | jq empty
+# jq empty validates JSON, exits non-zero on invalid
 
-# Or use a JSON schema validator
-conform input.txt --schema schema.json --output result.json
-ajv validate -s schema.json -d result.json
+# Or validate schema compliance
+conform input.txt --schema schema.json | ajv validate -s schema.json
 ```
 
 ## Provider Selection Guide
@@ -509,80 +584,139 @@ conform data.txt --schema schema.json | jq '.products[] | select(.inStock)'
 conform data.txt --schema schema.json | jq '{items: .products | length}'
 ```
 
-### Integration with Other Tools
+### Tool Composition Patterns (Unix Philosophy)
+
+**conform is the FIRST step in a pipeline, not the whole solution:**
 
 ```bash
-# Conform → jq → CSV
+# Pattern 1: Extract → Filter → Format → Save
 conform data.txt --schema schema.json | \
-  jq -r '.products[] | [.name, .price] | @csv' > output.csv
+  jq '.products[] | select(.inStock)' | \
+  jq -r '[.name, .price] | @csv' > available.csv
 
-# Conform → xlsx
-conform data.txt --schema schema.json | \
-  xlsx --from-json - --output data.xlsx
+# Pattern 2: Extract → Transform → Analyze
+conform survey.pdf --schema survey-schema.json | \
+  jq '.responses[]' | \
+  duckdb -c "SELECT question, AVG(rating) FROM stdin GROUP BY question"
+
+# Pattern 3: Extract → Multiple outputs (tee for branching)
+conform data.txt --schema schema.json | tee \
+  >(jq '.summary' > summary.json) \
+  >(jq '.items[]' | xsv table > items.csv) \
+  >/dev/null
+
+# Pattern 4: Extract → Validate → Load
+conform messy-data.txt --schema schema.json | \
+  jq 'select(.email != null)' | \
+  xlsx --from-json - --output clean-data.xlsx
+
+# Pattern 5: Extract → Join with existing data
+conform new-contacts.txt --schema contact-schema.json | \
+  jq -r '@csv' | \
+  xsv cat rows - existing-contacts.csv > all-contacts.csv
+```
+
+**Anti-pattern: Using --output when stdout works better**
+
+```bash
+# Bad: Extra file I/O, breaks composition
+conform data.txt --schema schema.json --output temp.json
+jq '.items[]' temp.json > filtered.json
+rm temp.json
+
+# Good: Direct pipeline composition
+conform data.txt --schema schema.json | jq '.items[]' > filtered.json
 ```
 
 ## Quick Reference
 
+**Unix Philosophy: compose with pipes, write to stdout by default**
+
 ```bash
-# Basic usage
+# Basic usage (stdout by default)
 conform input.txt --schema schema.json
 
-# With output file
-conform input.txt --schema schema.json --output result.json
-
-# Ollama with specific model
-conform input.txt --schema schema.json \
-  --provider ollama --model llama3.2
-
-# Vertex AI
-conform input.txt --schema schema.json \
-  --provider vertex --vertex-project my-project
-
-# Verbose debugging
-conform input.txt --schema schema.json --verbose
-
-# Pipeline usage
+# Pipeline composition (PREFERRED)
 conform input.txt --schema schema.json | jq .
+conform input.txt --schema schema.json | jq '.items[]' | xsv table
+conform input.txt --schema schema.json | duckdb -c "SELECT * FROM stdin"
+
+# Save final result (use sparingly)
+conform input.txt --schema schema.json | jq '.filtered' > result.json
+
+# Provider selection
+conform input.txt --schema schema.json --provider ollama
+conform input.txt --schema schema.json --provider vertex --vertex-project my-project
+
+# Debugging (verbose to stderr, doesn't break pipeline)
+conform input.txt --schema schema.json --verbose | jq .
+
+# Batch processing with composition
+fd -e txt -x conform {} --schema schema.json | jq -s 'add'
 ```
 
-## Common Patterns
+## Common Patterns (Unix Philosophy)
 
 ```bash
-# Pattern 1: Extract structured data from unstructured text
-conform notes.txt --schema meeting-schema.json
+# Pattern 1: Extract and immediately process (no temp files)
+conform notes.txt --schema meeting-schema.json | jq '.actionItems[]'
 
-# Pattern 2: Batch process directory
-fd -e txt -x conform {} --schema schema.json --output results/{/.}.json
+# Pattern 2: Batch process with aggregation
+fd -e txt -x conform {} --schema schema.json | jq -s 'map(.items) | add'
 
-# Pattern 3: Validate and format output
-conform data.txt --schema schema.json | jq . > formatted.json
+# Pattern 3: Filter during extraction pipeline
+conform data.txt --schema schema.json | \
+  jq '.[] | select(.status == "active")' | \
+  jq -r '@csv'
 
-# Pattern 4: Use in scripts
-if conform input.txt --schema schema.json --output result.json; then
-  echo "Successfully extracted data"
-  cat result.json | jq .
+# Pattern 4: Conditional processing (check exit codes)
+if conform input.txt --schema schema.json | jq empty; then
+  conform input.txt --schema schema.json | jq '.summary'
 else
-  echo "Extraction failed"
+  echo "Invalid data" >&2
+  exit 1
 fi
+
+# Pattern 5: Multi-stage pipeline (conform → filter → transform → analyze)
+conform sales.pdf --schema sales-schema.json | \
+  jq '[.transactions[] | select(.amount > 1000)]' | \
+  duckdb -c "SELECT category, SUM(amount) FROM stdin GROUP BY category"
+
+# Pattern 6: Split output to multiple destinations
+conform data.txt --schema schema.json | tee \
+  >(jq '.errors' > errors.json) \
+  >(jq '.valid[]' | xsv table > valid.csv)
 ```
 
 ## Summary
 
-**Primary directive**: Use `conform` to transform unstructured data into schema-validated JSON using AI.
+**Primary directive**: Use `conform` to transform unstructured data into schema-validated JSON using AI. Follow Unix philosophy: do one thing well, compose with other tools.
 
-**Key advantages**:
-- Schema-driven extraction ensures consistent structure
-- Multiple AI provider support (local and cloud)
-- Simple CLI interface
-- Guaranteed JSON Schema conformance
+**Unix Philosophy Principles**:
+- **Do one thing**: Extract unstructured → structured. Don't analyze, format, or store.
+- **Text streams**: Write JSON to stdout, compose with pipes
+- **Composition**: conform | jq | xsv (not conform --everything)
+- **Silent success**: Quiet output unless --verbose specified
+- **Tool hierarchy**: Prefer grep/jq/xsv for structured data, use conform ONLY for unstructured
 
-**Most common usage**:
+**Most common usage (Unix way)**:
 ```bash
+# Good: Pipeline composition
+conform input.txt --schema schema.json | jq .
+
+# Avoid: Unnecessary file I/O
 conform input.txt --schema schema.json --output result.json
 ```
 
 **Best practices**:
+- Default to stdout, use --output sparingly
+- Compose with jq, xsv, duckdb for downstream processing
 - Use descriptive schema properties
-- Set low temperature for factual extraction
-- Always validate output with jq
+- Set low temperature for factual extraction (0.1)
+- Check exit codes in scripts
 - Use Ollama for local/sensitive data, Vertex AI for production
+
+**When NOT to use conform**:
+- Input is already structured (use jq, xsv, xlsx instead)
+- Simple pattern matching (use grep, sed, awk)
+- No AI interpretation needed (use deterministic tools)

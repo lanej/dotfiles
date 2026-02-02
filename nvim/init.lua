@@ -1092,6 +1092,59 @@ require("lazy").setup({
 		end,
 	},
 	{
+		"quarto-dev/quarto-nvim",
+		dependencies = {
+			"jmbuhr/otter.nvim",
+			"nvim-treesitter/nvim-treesitter",
+		},
+		ft = { "quarto", "qmd" },
+		config = function()
+			local quarto = require("quarto")
+			quarto.setup({
+				debug = false,
+				closePreviewOnExit = true,
+				lspFeatures = {
+					enabled = true,
+					chunks = "curly",
+					languages = { "python", "bash", "lua", "html" },
+					diagnostics = {
+						enabled = true,
+						triggers = { "BufWritePost" },
+					},
+					completion = {
+						enabled = true,
+					},
+				},
+				codeRunner = {
+					enabled = false,
+					default_method = nil,
+				},
+			})
+
+			-- Quarto keybindings
+			vim.keymap.set("n", "<leader>qp", function()
+				quarto.quartoPreview()
+			end, { desc = "Quarto: Preview", silent = true, noremap = true })
+
+			vim.keymap.set("n", "<leader>qc", function()
+				quarto.quartoClosePreview()
+			end, { desc = "Quarto: Close preview", silent = true, noremap = true })
+
+			-- Quick render commands
+			vim.keymap.set("n", "<leader>qh", ":!quarto render % --to html<CR>", {
+				desc = "Quarto: Render to HTML",
+				silent = false,
+				noremap = true,
+			})
+
+			vim.keymap.set("n", "<leader>qd", ":!quarto render % --to pdf<CR>", {
+				desc = "Quarto: Render to PDF",
+				silent = false,
+				noremap = true,
+			})
+		end,
+	},
+	{
 		"nvim-lualine/lualine.nvim",
 		dependencies = {
 			"nvim-tree/nvim-web-devicons",
