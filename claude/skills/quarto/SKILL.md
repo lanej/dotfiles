@@ -7,6 +7,12 @@ description: Render computational documents to markdown (DEFAULT), PDF, HTML, Wo
 
 Quarto is an open-source scientific and technical publishing system built on Pandoc. It renders computational documents (with Python, R, Julia code) to publication-quality output in multiple formats.
 
+## Best Practices (TL;DR)
+
+1. **Markdown-First**: Default to `format: gfm` (GitHub-flavored markdown) for composability, portability, and archival
+2. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
+3. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+
 ## When to Use Quarto
 
 **Perfect for:**
@@ -106,7 +112,16 @@ cat > analysis.qmd << 'EOF'
 title: "Sales Analysis Q4 2024"
 author: "Your Name"
 date: "2024-01-30"
-format: gfm  # GitHub-flavored markdown (default)
+format:
+  gfm: default              # GitHub-flavored markdown (PRIMARY)
+  html:
+    theme:
+      dark: darkly          # Dark mode (recommended)
+      light: flatly         # Light mode fallback
+    code-fold: true
+    toc: true
+filters:
+  - auto-dark               # Respect system preference
 ---
 
 ## Data Loading
@@ -138,12 +153,17 @@ plt.show()
 Total sales for Q4: **${total_sales:,.2f}**
 EOF
 
+# Install auto-dark extension (one-time, if not already installed)
+quarto add gadenbuie/quarto-auto-dark --no-prompt
+
 # Render to markdown (DEFAULT - composable, archival)
 quarto render analysis.qmd --to gfm
 
-# Optional: Render to other formats only when needed for distribution
+# Optional: Render to HTML with dark mode for web viewing
+quarto render analysis.qmd --to html        # Uses auto-dark theme
+
+# Optional: Render to other formats only when needed
 quarto render analysis.qmd --to pdf         # For printing/formal distribution
-quarto render analysis.qmd --to html        # For web viewing
 quarto render analysis.qmd --to docx        # For Word users
 ```
 
@@ -272,7 +292,7 @@ format: gfm  # GitHub-flavored markdown (default for composability)
 ---
 ```
 
-### Multiple Formats
+### Multiple Formats (Markdown + HTML with Dark Mode)
 
 ```yaml
 ---
@@ -282,13 +302,18 @@ format:
     toc: true
     variant: +yaml_metadata_block
   html:
+    theme:
+      dark: darkly          # Dark mode (recommended)
+      light: flatly         # Light mode fallback
     toc: true
     code-fold: true
-    theme: cosmo
+    code-tools: true
   pdf:
     toc: true
     number-sections: true
     geometry: margin=1in
+filters:
+  - auto-dark               # Auto-detect system preference
 ---
 ```
 
@@ -336,29 +361,53 @@ format:
 
 ### HTML Themes
 
+**PREFER auto-dark with dual themes (see next section)** over single-theme HTML:
+
 ```yaml
 ---
 format:
   html:
-    theme: cosmo  # or flatly, darkly, journal, minty, etc.
+    theme:
+      dark: darkly     # RECOMMENDED: Dual theme with auto-dark
+      light: flatly
     css: custom.css
     toc: true
     toc-location: left
     code-fold: show
     code-tools: true
+filters:
+  - auto-dark          # Respects user's system preference
 ---
 ```
 
-### Dark Mode with Auto-Dark Extension
+**Single theme (discouraged - doesn't respect user preference):**
 
-**Install auto-dark extension:**
+```yaml
+---
+format:
+  html:
+    theme: darkly      # Only use if auto-dark not available
+    css: custom.css
+    toc: true
+    toc-location: left
+---
+```
+
+### Dark Mode with Auto-Dark Extension (RECOMMENDED)
+
+**Dark mode is STRONGLY ENCOURAGED for all HTML output:**
+- Better accessibility and reduced eye strain
+- Modern user expectation (most systems default to dark mode)
+- Auto-dark extension respects user's system preference
+
+**Install auto-dark extension (one-time setup):**
 
 ```bash
-# In your project directory
+# In your project or home directory (applies to all projects)
 quarto add gadenbuie/quarto-auto-dark --no-prompt
 ```
 
-**Use in document:**
+**Use in document (RECOMMENDED default):**
 
 ```yaml
 ---
@@ -366,30 +415,36 @@ title: "My Analysis"
 format:
   html:
     theme:
-      dark: darkly      # Theme for dark mode
-      light: flatly     # Theme for light mode
+      dark: darkly      # Theme for dark mode (PRIMARY)
+      light: flatly     # Theme for light mode (fallback)
 filters:
   - auto-dark          # Automatically switch based on system preference
 ---
 ```
 
-**Available dark themes:**
-- `darkly` - Dark Bootstrap theme (recommended)
-- `cyborg` - Dark blue theme
-- `slate` - Dark gray theme
-- `solar` - Dark solarized theme
-- `superhero` - Dark comic book theme
-- `vapor` - Dark retro theme
+**Best Practices:**
+- ✅ Always include auto-dark filter for HTML output
+- ✅ Choose accessible dark theme (darkly, cyborg, slate)
+- ✅ Test both dark and light modes if providing light fallback
+- ⚠️ Single-theme HTML discouraged (use auto-dark instead)
 
-**Light themes:**
-- `flatly` - Clean modern theme (recommended)
+**Available dark themes:**
+- `darkly` - Dark Bootstrap theme (RECOMMENDED - clean, professional)
+- `cyborg` - Dark blue theme (good for technical docs)
+- `slate` - Dark gray theme (subtle, minimal)
+- `solar` - Dark solarized theme (warm, comfortable)
+- `superhero` - Dark comic book theme (bold, high contrast)
+- `vapor` - Dark retro theme (stylized)
+
+**Light themes (fallback only):**
+- `flatly` - Clean modern theme (recommended fallback)
 - `cosmo` - Friendly blue theme
 - `lumen` - Light gray theme
 - `sandstone` - Warm sandy theme
 - `minty` - Fresh mint theme
 - `journal` - Newspaper style
 
-The `auto-dark` filter automatically detects system dark mode preference and switches themes accordingly.
+The `auto-dark` filter automatically detects system dark mode preference and switches themes accordingly. Users on light mode systems will see the light theme, while dark mode users (majority) get the dark theme.
 
 ## EPIST Integration
 
