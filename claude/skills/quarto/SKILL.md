@@ -12,7 +12,9 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 1. **Markdown-First**: Default to `format: gfm` (GitHub-flavored markdown) for composability, portability, and archival
 2. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
 3. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
-4. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+4. **LaTeX for Math**: Use LaTeX notation for ALL mathematical expressions ($\alpha = 0.15$, not "alpha = 0.15")
+5. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
+6. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
 
 ## Visual Expression Philosophy
 
@@ -45,6 +47,22 @@ df.describe()
 df.info()
 ```
 
+```markdown
+❌ BAD: Plain text for mathematical notation
+- The growth rate is alpha = 0.15 or 15%
+- We calculated the mean mu = sum(xi)/n
+- The correlation coefficient r = 0.85
+
+❌ BAD: No table formatting
+```python
+print(df.head())
+```
+
+❌ BAD: Using asterisks for equations
+- E = m * c^2
+- y = beta0 + beta1 * x
+```
+
 ### Good Patterns: Visual Communication
 
 ```python
@@ -69,7 +87,7 @@ from great_tables import GT
 # ✅ GOOD: Formatted table using pandas markdown
 print(df.head(10).to_markdown(index=False, tablefmt='grid'))
 
-# ✅ GOOD: Formatted metrics in markdown
+# ✅ GOOD: Formatted metrics in markdown with LaTeX
 from IPython.display import Markdown
 
 Markdown(f"""
@@ -77,8 +95,15 @@ Markdown(f"""
 
 - **Total Sales**: ${total_sales:,.2f}
 - **Average Order**: ${avg_order:,.2f}
-- **Growth Rate**: {growth_rate:.1%}
+- **Growth Rate**: $\\alpha = {growth_rate:.1%}$ (15% YoY)
 - **Top Product**: {top_product}
+
+### Statistical Summary
+
+The linear regression model $y = \\beta_0 + \\beta_1 x + \\epsilon$ yielded:
+
+- Slope: $\\hat{{\\beta_1}} = 3.2$ (SE = 0.4)
+- $R^2 = 0.78$, indicating strong fit
 """)
 
 # ✅ GOOD: Mermaid diagram for relationships
@@ -270,6 +295,39 @@ top_products.columns = ['Product', 'Total Sales']
 top_products['Total Sales'] = top_products['Total Sales'].apply(lambda x: f"${x:,.2f}")
 
 print(top_products.to_markdown(index=False, tablefmt='grid'))
+```
+
+## Statistical Analysis
+
+```{python}
+#| echo: false
+import numpy as np
+
+# Calculate growth metrics
+daily_sales = df.groupby('date')['sales'].sum()
+growth_rate = (daily_sales.iloc[-1] - daily_sales.iloc[0]) / daily_sales.iloc[0]
+avg_growth = daily_sales.pct_change().mean()
+
+Markdown(f"""
+The sales data exhibits a compound growth pattern modeled by:
+
+$$
+S(t) = S_0 \\times (1 + r)^t
+$$
+
+where $S_0$ represents initial sales, $r = {avg_growth:.3f}$ is the average daily growth rate, 
+and $t$ is time in days.
+
+**Key Statistical Findings:**
+
+- Overall Q4 growth: $\\Delta S = {growth_rate:.1%}$
+- Average daily growth: $\\bar{{r}} = {avg_growth:.3%}$
+- Standard deviation: $\\sigma = {daily_sales.std():,.2f}$
+- Correlation with marketing spend: $\\rho = 0.82$ (strong positive)
+
+These metrics indicate statistically significant growth ($p < 0.01$) with 
+consistent upward momentum throughout the quarter.
+""")
 ```
 
 ## Conclusion
@@ -706,6 +764,300 @@ What are you showing?
 ├─ Show relationship? → Scatter plot
 ├─ Show process/flow? → Mermaid flowchart
 └─ Multiple variables? → Faceted plots or small multiples
+```
+
+### Mathematical Notation with LaTeX (STRONGLY ENCOURAGED)
+
+**For any mathematical content, ALWAYS use LaTeX notation - it's professional and renders beautifully in all formats.**
+
+#### Inline Math
+
+```markdown
+The equation $E = mc^2$ shows the relationship between energy and mass.
+
+The growth rate is approximately $\alpha = 0.15$ or 15%.
+
+We calculated the mean $\mu = \frac{\sum x_i}{n}$ from the dataset.
+```
+
+#### Display Math (Equations)
+
+```markdown
+The quadratic formula is:
+
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
+
+The normal distribution probability density function:
+
+$$
+f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2}
+$$
+```
+
+#### Aligned Equations
+
+```markdown
+$$
+\begin{aligned}
+\text{Revenue} &= \text{Price} \times \text{Quantity} \\
+               &= \$50 \times 1000 \\
+               &= \$50{,}000
+\end{aligned}
+$$
+```
+
+#### Common Mathematical Expressions
+
+**Statistics:**
+```markdown
+- Mean: $\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i$
+- Variance: $\sigma^2 = \frac{1}{n}\sum_{i=1}^{n} (x_i - \mu)^2$
+- Standard deviation: $\sigma = \sqrt{\sigma^2}$
+- Correlation: $\rho_{X,Y} = \frac{\text{cov}(X,Y)}{\sigma_X \sigma_Y}$
+```
+
+**Finance:**
+```markdown
+- Compound interest: $A = P\left(1 + \frac{r}{n}\right)^{nt}$
+- NPV: $NPV = \sum_{t=0}^{N} \frac{C_t}{(1+r)^t}$
+- ROI: $ROI = \frac{\text{Gain} - \text{Cost}}{\text{Cost}} \times 100\%$
+```
+
+**Linear regression:**
+```markdown
+$$
+y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon
+$$
+
+where $\beta_0$ is the intercept, $\beta_i$ are coefficients, and $\epsilon \sim N(0, \sigma^2)$.
+```
+
+#### Numbered Equations (for cross-references)
+
+```markdown
+Einstein's mass-energy equivalence:
+
+$$
+E = mc^2
+$$ {#eq-einstein}
+
+As shown in @eq-einstein, energy and mass are equivalent.
+```
+
+#### Mathematical Notation Best Practices
+
+✅ **DO:**
+- Use LaTeX for ALL mathematical expressions, even simple ones like percentages
+- Use `\text{}` for text within equations: `$\text{Revenue} = \$1{,}000$`
+- Use proper notation: `\alpha, \beta, \mu, \sigma, \sum, \prod, \int`
+- Number important equations for cross-referencing
+- Use `aligned` environment for multi-line equations
+- Format numbers properly: `\$1{,}000` for currency with comma separators
+- Use `\times` for multiplication: $5 \times 10$
+- Use `\cdot` for dot product: $\vec{a} \cdot \vec{b}$
+
+❌ **DON'T:**
+- Write "alpha = 0.15" in plain text - use $\alpha = 0.15$
+- Write "x^2" in plain text - use $x^2$
+- Use asterisk for multiplication - use $\times$ or $\cdot$
+- Mix LaTeX and plain text notation inconsistently
+- Skip equation numbering for important formulas
+
+#### Example: Statistical Report with LaTeX
+
+```markdown
+## Regression Analysis
+
+We fitted a linear model:
+
+$$
+\text{Sales} = \beta_0 + \beta_1 \times \text{Marketing Spend} + \epsilon
+$$ {#eq-sales-model}
+
+where $\epsilon \sim N(0, \sigma^2)$ represents random error.
+
+### Results
+
+The estimated parameters from @eq-sales-model are:
+
+- Intercept: $\hat{\beta_0} = 50{,}000$ (SE = $2{,}500$)
+- Slope: $\hat{\beta_1} = 3.2$ (SE = $0.4$)
+- $R^2 = 0.78$
+
+This indicates that each additional \$1 in marketing spend yields approximately \$3.20 in sales ($p < 0.001$).
+```
+
+### LaTeX Tables (Professional Formatting)
+
+**For publication-quality tables in PDF output, use LaTeX table formatting alongside Great Tables.**
+
+#### Basic LaTeX Table
+
+````markdown
+```{=latex}
+\begin{table}[htbp]
+\centering
+\caption{Quarterly Sales Performance}
+\label{tab:sales}
+\begin{tabular}{lrrrr}
+\hline
+Quarter & Revenue (\$) & Growth (\%) & Units & Margin (\%) \\
+\hline
+Q1 2024 & 1,250,000 & 15.2 & 5,000 & 22.5 \\
+Q2 2024 & 1,450,000 & 16.0 & 5,800 & 23.1 \\
+Q3 2024 & 1,680,000 & 15.9 & 6,700 & 24.0 \\
+Q4 2024 & 1,920,000 & 14.3 & 7,300 & 24.5 \\
+\hline
+\textbf{Total} & \textbf{6,300,000} & \textbf{15.4} & \textbf{24,800} & \textbf{23.5} \\
+\hline
+\end{tabular}
+\end{table}
+```
+````
+
+#### Enhanced LaTeX Table with booktabs (RECOMMENDED)
+
+````markdown
+```{=latex}
+\begin{table}[htbp]
+\centering
+\caption{Statistical Summary of Key Metrics}
+\label{tab:statistics}
+\begin{tabular}{lcccc}
+\toprule
+Metric & Mean & SD & Min & Max \\
+\midrule
+Sales (\$) & 125{,}000 & 25{,}000 & 75{,}000 & 200{,}000 \\
+Orders & 500 & 120 & 300 & 750 \\
+AOV (\$) & 250 & 45 & 180 & 380 \\
+Churn (\%) & 12.5 & 3.2 & 8.0 & 18.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+````
+
+**booktabs provides professional-looking horizontal rules (better than \hline).**
+
+**Add to YAML frontmatter for booktabs:**
+```yaml
+header-includes:
+  - \usepackage{booktabs}
+```
+
+#### Python-Generated LaTeX Tables
+
+**Option 1: Great Tables with LaTeX output**
+```python
+from great_tables import GT
+
+# Great Tables can export to LaTeX
+table = GT(df.head(10))
+table.save("table.tex", format="latex")
+```
+
+**Option 2: pandas to_latex() with styling**
+```python
+import pandas as pd
+
+# Format DataFrame for LaTeX
+df_formatted = df.head(10).copy()
+df_formatted['Sales'] = df_formatted['Sales'].apply(lambda x: f"\\${x:,.0f}")
+df_formatted['Growth'] = df_formatted['Growth'].apply(lambda x: f"{x:.1f}\\%")
+
+# Export to LaTeX with booktabs
+latex_table = df_formatted.to_latex(
+    index=False,
+    caption="Top 10 Products by Sales",
+    label="tab:top-products",
+    position="htbp",
+    column_format="lrrr",
+    escape=False,  # Don't escape $ and %
+    formatters={
+        'Sales': lambda x: f"\\${x:,.0f}",
+        'Growth': lambda x: f"{x:.1f}\\%"
+    }
+)
+
+print(latex_table)
+```
+
+**Option 3: tabulate with LaTeX output**
+```python
+from tabulate import tabulate
+
+latex_table = tabulate(
+    df.head(10),
+    headers='keys',
+    tablefmt='latex_booktabs',  # Use booktabs style
+    showindex=False,
+    floatfmt='.2f'
+)
+print(f"\\begin{{table}}[htbp]\n\\centering\n\\caption{{Sales Summary}}\n{latex_table}\n\\end{{table}}")
+```
+
+#### LaTeX Table Best Practices
+
+✅ **DO:**
+- Use `booktabs` package for professional horizontal rules (\toprule, \midrule, \bottomrule)
+- Add captions with `\caption{}`
+- Add labels for cross-referencing with `\label{tab:name}`
+- Use position specifiers: `[htbp]` (here, top, bottom, page)
+- Right-align numbers, left-align text: `{lrr}` column format
+- Format numbers: Use thousand separators (1{,}000), proper decimal places
+- Use `\textbf{}` for bold text (totals, headers)
+- Center the table with `\centering`
+
+❌ **DON'T:**
+- Use `\hline` - use booktabs rules instead (\toprule, \midrule, \bottomrule)
+- Skip captions - tables should always be labeled
+- Mix LaTeX and markdown tables in the same document
+- Use vertical lines (`|`) - they look unprofessional
+- Forget to escape special characters: \$, \%, \&
+
+#### Cross-Referencing LaTeX Tables
+
+```markdown
+As shown in Table @tbl-sales, revenue increased across all quarters.
+
+```{=latex}
+\begin{table}[htbp]
+\centering
+\caption{Quarterly Revenue}
+\label{tbl-sales}
+...
+\end{table}
+```
+
+Results from @tbl-sales indicate strong growth momentum.
+```
+
+#### When to Use LaTeX Tables vs Great Tables
+
+**Use LaTeX tables when:**
+- Creating PDF output with publication-quality typesetting
+- Need precise control over table layout and spacing
+- Working with complex multi-row/multi-column headers
+- Creating tables for academic papers or formal reports
+- Need to match specific journal formatting requirements
+
+**Use Great Tables when:**
+- Creating HTML output with interactive features
+- Need quick table formatting without LaTeX complexity
+- Working with markdown output
+- Want consistent styling across HTML/PDF/Word formats
+- Need color scales, data bars, or rich HTML styling
+
+**Use both:**
+```python
+# Create table with Great Tables for HTML
+gt_table = GT(df).fmt_currency(columns="sales")
+gt_table  # Displays in HTML
+
+# Also export LaTeX version for PDF
+df.to_latex(caption="Sales Summary", label="tab:sales")
 ```
 
 ## YAML Frontmatter
