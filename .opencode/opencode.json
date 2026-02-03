@@ -233,10 +233,7 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
-      "enabled": false,
-      "environment": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "REDACTED_TOKEN"
-      }
+      "enabled": false
     },
     "puppeteer": {
       "type": "local",
