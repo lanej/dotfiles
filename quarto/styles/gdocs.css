@@ -1,0 +1,206 @@
+/* Google Docs-compatible styling for clean copy-paste */
+/* Matches Google Docs defaults: Arial 11pt, line-height 1.15, 0pt paragraph spacing */
+
+body {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.15;
+  color: #000;
+  max-width: 100%;
+  margin: 0;
+  padding: 20px 40px;
+}
+
+/* Headers - Google Docs defaults */
+h1 {
+  font-size: 20pt;
+  font-weight: normal;
+  margin: 20pt 0 6pt 0;
+  padding: 0;
+  line-height: 1.15;
+  page-break-after: avoid;
+}
+
+h2 {
+  font-size: 16pt;
+  font-weight: bold;
+  margin: 18pt 0 6pt 0;
+  padding: 0;
+  line-height: 1.15;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 14pt;
+  font-weight: bold;
+  color: #434343;
+  margin: 16pt 0 4pt 0;
+  padding: 0;
+  line-height: 1.15;
+  page-break-after: avoid;
+}
+
+/* Paragraphs - Google Docs default: 0pt before/after, 1.15 line spacing */
+p {
+  margin: 0;
+  padding: 0;
+  line-height: 1.15;
+}
+
+/* Space between consecutive paragraphs */
+p + p {
+  margin-top: 11pt;
+}
+
+/* Tables - centered, no page breaks, minimal consistent padding */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: auto;
+  margin: 12pt auto;
+  page-break-inside: avoid;
+  font-size: 11pt;
+  line-height: 1;
+}
+
+th, td {
+  border: 1pt solid #000;
+  padding: 2pt 6pt;
+  margin: 0;
+  text-align: left;
+  vertical-align: middle;
+  line-height: 1;
+  font-size: 11pt;
+}
+
+/* Remove ALL spacing from content inside table cells */
+th *, td *,
+th p, td p,
+th strong, td strong,
+th em, td em,
+th code, td code {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  display: inline;
+}
+
+th {
+  background-color: #f3f3f3;
+  font-weight: bold;
+}
+
+/* Ensure table rows have no extra height */
+tr {
+  height: auto;
+  line-height: 1;
+}
+
+/* Blockquotes - Google Docs style (indented) */
+blockquote {
+  margin: 0 0 0 40pt;
+  padding: 0;
+  border: none;
+  background: none;
+  font-style: italic;
+  color: #666;
+  line-height: 1.15;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+p + blockquote, blockquote + p {
+  margin-top: 11pt;
+}
+
+/* Images - centered, no page breaks */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 12pt auto;
+  page-break-inside: avoid;
+}
+
+figure {
+  margin: 12pt auto;
+  text-align: center;
+  page-break-inside: avoid;
+}
+
+figcaption {
+  font-size: 10pt;
+  color: #666;
+  font-style: italic;
+  margin-top: 4pt;
+}
+
+/* Lists - Google Docs style */
+ul, ol {
+  margin: 0;
+  padding-left: 36pt;
+  line-height: 1.15;
+}
+
+li {
+  margin: 0;
+  padding: 0;
+  line-height: 1.15;
+}
+
+p + ul, p + ol {
+  margin-top: 6pt;
+}
+
+ul + p, ol + p {
+  margin-top: 11pt;
+}
+
+/* Bold and emphasis */
+strong {
+  font-weight: bold;
+}
+
+em {
+  font-style: italic;
+}
+
+/* Horizontal rules */
+hr {
+  border: none;
+  border-top: 1pt solid #ccc;
+  margin: 18pt 0;
+  page-break-after: avoid;
+}
+
+/* Links */
+a {
+  color: #1155cc;
+  text-decoration: underline;
+}
+
+/* Quarto cell output - suppress extra spacing */
+.cell-output-display,
+.cell-output-markdown {
+  margin: 0;
+  padding: 0;
+}
+
+.cell-output-display p,
+.cell-output-markdown p {
+  margin: 0;
+}
+
+.cell-output-display table,
+.cell-output-markdown table {
+  margin: 12pt auto;
+}
+
+/* Quarto figure containers */
+.quarto-figure,
+.quarto-figure-center {
+  margin: 12pt auto;
+  text-align: center;
+}

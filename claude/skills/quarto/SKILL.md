@@ -1705,6 +1705,156 @@ gspace upload analysis.docx --folder "Reports"
 - Assume DOCX preserves all LaTeX equations (complex math may need adjustment)
 - Rely on DOCX for archival (use PDF or markdown for that)
 
+## HTML Copy-Paste to Google Docs
+
+**Alternative workflow: Render to HTML with Google Docs-compatible CSS, then copy-paste.**
+
+This workflow is useful when:
+- You need inline tables rendered as actual tables (not images)
+- You want to preserve formatting better than DOCX export
+- You're doing iterative editing between Quarto and Google Docs
+
+### Google Docs CSS Setup
+
+**Location:** `~/.files/quarto/styles/gdocs.css` (symlinked to `~/.config/quarto/styles/`)
+
+The CSS matches Google Docs defaults:
+- Arial 11pt, line-height 1.15
+- Headers: 20pt (H1), 16pt (H2), 14pt (H3)
+- Tables: 1pt black borders, minimal padding (2pt 6pt), vertical-align middle
+- No extra whitespace in cells
+
+### Using the Google Docs CSS
+
+**Option 1: Reference from user config (RECOMMENDED)**
+
+```yaml
+---
+title: "My Document"
+format:
+  html:
+    css: ~/.config/quarto/styles/gdocs.css
+    embed-resources: true
+    minimal: true
+---
+```
+
+**Option 2: Copy CSS to project directory**
+
+```bash
+# Copy CSS to project
+mkdir -p .quarto/styles
+cp ~/.files/quarto/styles/gdocs.css .quarto/styles/
+
+# Use in document
+# css: .quarto/styles/gdocs.css
+```
+
+**Option 3: Inline in YAML**
+
+```yaml
+---
+format:
+  html:
+    include-in-header:
+      text: |
+        <style>
+        body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.15; }
+        table { border-collapse: collapse; margin: 12pt auto; }
+        th, td { border: 1pt solid #000; padding: 2pt 6pt; vertical-align: middle; }
+        th { background-color: #f3f3f3; font-weight: bold; }
+        </style>
+---
+```
+
+### Rendering and Copy-Paste Workflow
+
+```bash
+# 1. Render to HTML with Google Docs CSS
+quarto render analysis.qmd --to html
+
+# 2. Open in browser
+open analysis.html
+
+# 3. Select all and copy (Cmd+A, Cmd+C)
+
+# 4. Paste into Google Docs (Cmd+V)
+```
+
+### CSS Reference
+
+**Key CSS properties for Google Docs compatibility:**
+
+```css
+/* Body - matches Google Docs defaults */
+body {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.15;
+}
+
+/* Tables - critical for clean copy-paste */
+table {
+  border-collapse: collapse;
+  margin: 12pt auto;
+  page-break-inside: avoid;
+}
+
+th, td {
+  border: 1pt solid #000;
+  padding: 2pt 6pt;    /* Minimal padding for compact tables */
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Remove spacing from cell content */
+th *, td * {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+th {
+  background-color: #f3f3f3;
+  font-weight: bold;
+}
+```
+
+### When to Use HTML vs DOCX for Google Docs
+
+**Use HTML copy-paste when:**
+- Tables must be editable in Google Docs
+- You need precise formatting control
+- Iterating between Quarto and Google Docs
+- Complex layouts with multiple tables
+
+**Use DOCX upload when:**
+- Simple documents without complex tables
+- Need to preserve advanced formatting
+- Full document import (not copy-paste)
+- Collaborating with Word users
+
+### Troubleshooting HTML Copy-Paste
+
+**Extra whitespace in tables:**
+- Ensure CSS has `line-height: 1` on cells
+- Use `padding: 2pt 6pt` for minimal padding
+- Add `vertical-align: middle` to prevent vertical gaps
+
+**Fonts not matching:**
+- Use `font-family: Arial, sans-serif` (Google Docs default)
+- Avoid web fonts that won't copy
+
+**Tables not copying correctly:**
+- Check `border-collapse: collapse`
+- Ensure tables have explicit borders (`border: 1pt solid #000`)
+- Use `embed-resources: true` in YAML
+
+**Charts/images not copying:**
+- Charts copy as images (expected)
+- Use `embed-resources: true` to inline images
+- May need to re-insert images manually
+
 ## EPIST Integration
 
 **EPIST works seamlessly in Quarto documents with VISUAL provenance tracking:**
