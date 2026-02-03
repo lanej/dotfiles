@@ -1,10 +1,10 @@
 ---
 name: epist
-description: Epistemological tracking system for managing facts, conclusions, and provenance chains with Git integrity and semantic search. Use when analyzing data from multiple sources, conducting research, working with metrics/surveys, making data-driven conclusions, or tracking complex findings. Triggers on data analysis (analyze data, metrics, survey, research, findings, insights), conclusions (conclude, recommend, decide, infer), quantitative work (percentage, trend, correlation, statistic), source attribution (according to, based on, from source), or any epistemological tracking. Skip for trivial calculations.
+description: Epistemological tracking system for managing facts, conclusions, and provenance chains with Git integrity and semantic search. Integrates with Quarto for visual provenance analysis. Use when analyzing data from multiple sources, conducting research, working with metrics/surveys, making data-driven conclusions, or tracking complex findings. Triggers on data analysis (analyze data, metrics, survey, research, findings, insights), conclusions (conclude, recommend, decide, infer), quantitative work (percentage, trend, correlation, statistic), source attribution (according to, based on, from source), or any epistemological tracking. Skip for trivial calculations.
 ---
 # Epist - Epistemological Tracking System Skill
 
-You are an epistemological tracking specialist using `epist`, a CLI tool that helps track facts, conclusions, and their provenance using Git for integrity and Lancer for semantic search.
+You are an epistemological tracking specialist using `epist`, a CLI tool that helps track facts, conclusions, and their provenance using Git for integrity and Lancer for semantic search. **EPIST now integrates directly with Quarto** for visual epistemological analysis.
 
 ## What is epist?
 
@@ -15,6 +15,7 @@ You are an epistemological tracking specialist using `epist`, a CLI tool that he
 - **Semantic search**: Find facts and conclusions using vector search
 - **Git-backed integrity**: Version control for epistemological claims
 - **MCP server**: Integration with Claude and other AI tools
+- **Quarto integration**: Visual provenance analysis with `/think` command
 
 ## Core Capabilities
 
@@ -25,6 +26,7 @@ You are an epistemological tracking specialist using `epist`, a CLI tool that he
 5. **List**: Browse all facts and conclusions
 6. **Remove**: Delete facts or conclusions
 7. **MCP**: Run as Model Context Protocol server
+8. **Quarto integration**: Visual epistemological analysis with `/think` command
 
 ## Quick Start
 
@@ -574,6 +576,260 @@ epist mcp start
 # - epist_get: Get full details
 # - epist_trace: Trace provenance chains
 ```
+
+### Quarto Integration (RECOMMENDED for Analysis)
+
+**EPIST now integrates directly with Quarto for epistemological analysis and reporting.**
+
+#### Why Quarto + EPIST
+
+**Quarto provides:**
+- Visual provenance chains (Mermaid diagrams)
+- Publication-quality output (GFM, HTML, PDF, DOCX)
+- Mathematical rigor (LaTeX notation)
+- Formatted tables and charts (professional presentation)
+- Multi-format rendering (archival + collaboration)
+
+**EPIST provides:**
+- Persistent fact storage (Git-backed)
+- Semantic search (find related facts)
+- Provenance tracking (dependency chains)
+- Version control (track changes over time)
+
+**Together they enable:**
+- Traceable reasoning (facts → analysis → conclusions)
+- Reproducible research (code + data + provenance)
+- Shareable analysis (Quarto renders to multiple formats)
+- Long-term knowledge management (EPIST persists across sessions)
+
+#### Workflow: EPIST → Quarto Analysis
+
+**Step 1: Record facts in EPIST**
+
+```bash
+# Record key facts with provenance
+epist add fact
+# Title: Q4 2024 Sales Data
+# Source: sales_database.csv
+# Date: 2024-12-31
+# 
+# Total sales: $2.1M
+# YoY growth: 15%
+# Top product: Widget X ($450k)
+```
+
+**Step 2: Create Quarto analysis document**
+
+Use `/think` command or create `.qmd` file:
+
+```qmd
+---
+title: "Sales Analysis Q4 2024 with EPIST Provenance"
+author: "Analysis Team"
+date: "2024-12-31"
+format:
+  gfm: default
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+  docx: default
+filters:
+  - auto-dark
+---
+
+## Facts Observed
+
+```{python}
+#| echo: false
+from IPython.display import Markdown
+
+# Reference EPIST facts
+Markdown("""
+- **Total Sales**: $2.1M (Source: EPIST fact `sales_q4_total.md`)
+- **YoY Growth**: 15% (Source: EPIST fact `sales_growth_yoy.md`)
+- **Top Product**: Widget X at $450k (Source: EPIST fact `top_product_q4.md`)
+
+All facts stored in EPIST knowledge base with full provenance.
+""")
+```
+
+## Analysis
+
+```{python}
+#| echo: false
+import matplotlib.pyplot as plt
+
+# Visualization
+sales_data = [1.5, 1.7, 1.9, 2.1]  # Q1-Q4
+quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.plot(quarters, sales_data, marker='o', linewidth=2, color='#2E86AB')
+ax.set_title('Quarterly Sales Growth 2024', fontsize=14, fontweight='bold')
+ax.set_ylabel('Sales ($M)')
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+```
+
+## Provenance Chain
+
+```{mermaid}
+flowchart LR
+    F1[Fact: Sales $2.1M] --> C1[Conclusion: Strong Q4]
+    F2[Fact: YoY Growth 15%] --> C1
+    F3[Fact: Widget X Top] --> C2[Conclusion: Focus on Widgets]
+    C1 --> R[Recommendation: Increase inventory]
+```
+
+## Conclusion
+
+```{python}
+#| echo: false
+Markdown("""
+Q4 2024 exceeded targets with $2.1M in sales (15% YoY growth).
+
+**Confidence**: High (based on 3 verified facts in EPIST)
+
+**Provenance**: All claims traceable to EPIST facts with source attribution.
+""")
+```
+```
+
+**Step 3: Render Quarto document**
+
+```bash
+quarto render sales_analysis.qmd --to gfm      # Markdown (archival)
+quarto render sales_analysis.qmd --to html     # HTML (viewing)
+quarto render sales_analysis.qmd --to docx     # DOCX (Google Docs)
+```
+
+**Step 4: Record conclusions in EPIST**
+
+```bash
+# Add analysis conclusions back to EPIST
+epist add conclusion
+# Title: Q4 2024 Sales Analysis - Strong Performance
+# Based on:
+#   - facts/sales_q4_total.md
+#   - facts/sales_growth_yoy.md
+#   - facts/top_product_q4.md
+# Source: sales_analysis.qmd
+# Date: 2024-12-31
+# Confidence: high
+# 
+# Q4 2024 exceeded targets with strong 15% YoY growth.
+# Widget X dominates product mix at $450k (21% of total).
+# Recommend increasing inventory for Q1 2025.
+```
+
+#### Using `/think` Command with EPIST
+
+**The `/think` command integrates EPIST automatically:**
+
+```bash
+/think What caused the sales spike in Q4?
+```
+
+**LLM will:**
+1. Search EPIST for relevant facts (`epist search "sales Q4"`)
+2. Create Quarto document with full reasoning chain
+3. Include Mermaid diagrams showing fact→conclusion provenance
+4. Render to GFM, HTML, DOCX
+5. Optionally save conclusions back to EPIST
+
+**Template structure includes:**
+- Facts Observed (from EPIST search)
+- Hypotheses (multiple alternatives)
+- Analysis (with charts, LaTeX math)
+- Provenance Flow (Mermaid diagram)
+- Conclusion (with EPIST reference)
+- Recommendations (actionable)
+
+#### Querying EPIST from Quarto
+
+**Use Python to query EPIST directly:**
+
+```python
+import subprocess
+import json
+
+# Search EPIST for facts
+result = subprocess.run(
+    ['epist', 'search', 'sales Q4', '--format', 'json'],
+    capture_output=True, text=True
+)
+facts = json.loads(result.stdout)
+
+# Use facts in analysis
+for fact in facts:
+    print(f"- {fact['title']} (Source: {fact['source']})")
+```
+
+#### Best Practices: Quarto + EPIST
+
+✅ **DO:**
+- Store all source facts in EPIST before analysis
+- Reference EPIST fact paths in Quarto documents
+- Use Mermaid diagrams to show fact→conclusion chains
+- Render Quarto to multiple formats (GFM + HTML + DOCX)
+- Save Quarto conclusions back to EPIST
+- Use `/think` command for complex epistemological analysis
+
+❌ **DON'T:**
+- Skip recording facts in EPIST (makes analysis non-traceable)
+- Put raw data in Quarto without EPIST provenance
+- Forget to reference source facts in conclusions
+- Use only one output format (leverage multi-format rendering)
+
+#### Example: Full EPIST → Quarto → EPIST Cycle
+
+```bash
+# 1. Initialize EPIST knowledge base
+epist init
+
+# 2. Record facts from multiple sources
+epist add fact   # Survey results
+epist add fact   # Interview notes
+epist add fact   # Metrics data
+
+# 3. Analyze with Quarto using /think
+/think Why did team autonomy scores drop in Q4?
+
+# 4. LLM creates Quarto document with:
+#    - EPIST fact references
+#    - Visual provenance (Mermaid)
+#    - Statistical analysis (charts, LaTeX)
+#    - Formatted tables (Great Tables)
+#    - Multi-format output (GFM, HTML, DOCX)
+
+# 5. Save conclusions back to EPIST
+epist add conclusion
+# Reference the Quarto analysis as source
+
+# 6. Search for related analysis later
+epist search "autonomy analysis" --type conclusion
+```
+
+#### Migration from Marimo
+
+**Previous workflow (deprecated):**
+- marimo for reactive notebooks
+- Manual EPIST integration
+- Limited provenance visualization
+
+**New workflow (recommended):**
+- Quarto for static analysis with full epistemological chain
+- Direct EPIST integration via `/think` command
+- Visual provenance with Mermaid diagrams
+- Multi-format output (GFM, HTML, DOCX)
+- Professional presentation (charts, LaTeX, formatted tables)
+
+**For interactive analysis:**
+- Use marimo for exploration during development
+- Export to Quarto for final analysis and sharing
+- Store facts/conclusions in EPIST for long-term tracking
 
 ## Common Use Cases
 

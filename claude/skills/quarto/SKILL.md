@@ -16,7 +16,8 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 5. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
 6. **No TOC**: Table of contents is usually noise - use clear section headings instead
 7. **DOCX for Google**: Use `--to docx` for easy upload to Google Docs (better than PDF)
-8. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+8. **Double Newlines**: Markdown requires blank lines between paragraphs (single newline = same paragraph)
+9. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
 
 ## Visual Expression Philosophy
 
@@ -127,6 +128,156 @@ flowchart LR
 - **Professional output**: Charts and tables look polished in PDF/HTML/Word
 - **Accessibility**: Visual hierarchy helps readers navigate content
 - **Shareability**: Well-formatted outputs communicate without explanation
+
+## Markdown Formatting Rules (CRITICAL)
+
+**IMPORTANT: Markdown requires blank lines between paragraphs for proper rendering.**
+
+### Line Breaks and Paragraphs
+
+**The Problem:**
+```markdown
+❌ BAD: This will render as one long line
+This text appears on a new line in the source
+But it renders on the same line as above
+Because there's no blank line between them
+```
+
+**The Solution:**
+```markdown
+✅ GOOD: This renders as separate paragraphs
+
+This text appears on its own line because there's a blank line above it.
+
+Each paragraph needs a blank line before and after it.
+```
+
+### Common Markdown Patterns
+
+**Paragraphs (need blank lines):**
+```markdown
+This is paragraph one.
+
+This is paragraph two.
+
+This is paragraph three.
+```
+
+**Lists (no blank lines between items):**
+```markdown
+- Item 1
+- Item 2
+- Item 3
+```
+
+**Multi-paragraph list items (blank lines within item):**
+```markdown
+- Item 1 with first paragraph
+
+  Item 1 continued with second paragraph (indented 2 spaces)
+
+- Item 2 starts here
+```
+
+**Headers (blank line before and after):**
+```markdown
+Previous paragraph ends here.
+
+## Section Header
+
+New paragraph starts here.
+```
+
+**Code blocks (blank line before and after):**
+````markdown
+Previous paragraph ends here.
+
+```python
+print("code block")
+```
+
+New paragraph starts here.
+````
+
+### Quarto-Specific Markdown
+
+**Python code output:**
+```python
+#| echo: false
+from IPython.display import Markdown
+
+# ❌ BAD: Single newline won't create paragraph break
+Markdown("Line 1\nLine 2")  # Renders as: Line 1 Line 2
+
+# ✅ GOOD: Double newline creates paragraph break
+Markdown("Line 1\n\nLine 2")  # Renders as separate paragraphs
+
+# ✅ GOOD: Use triple-quoted string with blank lines
+Markdown("""
+Paragraph one.
+
+Paragraph two.
+
+Paragraph three.
+""")
+```
+
+**F-strings in Markdown:**
+```python
+#| echo: false
+from IPython.display import Markdown
+
+# ✅ GOOD: Blank lines between paragraphs
+Markdown(f"""
+## Analysis Results
+
+The growth rate is {growth_rate:.1%}.
+
+This represents a significant increase over last quarter.
+
+We recommend increasing inventory by {inventory_increase:,} units.
+""")
+```
+
+### Best Practices
+
+✅ **DO:**
+- Use blank lines between all paragraphs
+- Use blank lines before and after headers
+- Use blank lines before and after code blocks
+- Use blank lines before and after tables
+- Use triple-quoted strings for multi-line markdown in Python
+
+❌ **DON'T:**
+- Use single newlines and expect paragraph breaks
+- Forget blank lines around headers or code blocks
+- Mix single and double newlines inconsistently
+- Use `\n` in strings expecting paragraph breaks (use `\n\n`)
+
+### Testing Markdown Formatting
+
+**Quick test:**
+```bash
+# Create test document
+cat > test.qmd << 'EOF'
+---
+title: "Markdown Test"
+format: gfm
+---
+
+Paragraph 1.
+
+Paragraph 2.
+
+## Header
+
+Paragraph 3.
+EOF
+
+# Render and check output
+quarto render test.qmd --to gfm
+cat test.md
+```
 
 ## LLM Self-Reasoning with Quarto
 
