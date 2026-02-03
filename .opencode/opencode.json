@@ -103,7 +103,7 @@
         "mcp",
         "stdio"
       ],
-      "enabled": false
+      "enabled": true
     },
     "pkm": {
       "type": "local",
@@ -111,7 +111,7 @@
         "pkm",
         "mcp"
       ],
-      "enabled": false,
+      "enabled": true,
       "environment": {
         "WORKSPACE_KNOWLEDGE_DB_PATH": "/Users/joshlane/workspace/.lancedb",
         "WORKSPACE_KNOWLEDGE_ROOT": "/Users/joshlane/workspace",
@@ -122,11 +122,11 @@
     "bigquery": {
       "type": "local",
       "command": [
-        "/Users/joshlane/.cargo/bin/bigquery",
+        "bigquery",
         "mcp",
         "stdio"
       ],
-      "enabled": false
+      "enabled": true
     },
     "jira": {
       "type": "local",
@@ -169,7 +169,7 @@
         "mcp",
         "stdio"
       ],
-      "enabled": false
+      "enabled": true
     },
     "time": {
       "type": "local",
@@ -237,6 +237,27 @@
       "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "REDACTED_TOKEN"
       }
+    },
+    "puppeteer": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "enabled": true
+    },
+    "kb": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "chroma-mcp",
+        "--client-type",
+        "persistent",
+        "--data-dir",
+        "/Users/joshlane/src/kb-md"
+      ],
+      "enabled": false
     }
   }
 }
