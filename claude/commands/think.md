@@ -253,7 +253,7 @@ I've completed the epistemological analysis and created:
 [Inline markdown content follows...]
 ```
 
-Choose a descriptive filename based on the problem being analyzed (e.g., `login_errors.qmd`, `redis_vs_memcached.qmd`, `performance_investigation.qmd`).
+Choose a descriptive filename based on the problem being analyzed.
 
 ## Integration with EPIST
 
