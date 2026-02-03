@@ -54,7 +54,7 @@ Create a comprehensive `.qmd` file that documents your complete epistemological 
 
 ## Output Requirements
 
-**Create a Quarto document** (`analysis_<timestamp>.qmd`) with:
+**Create a Quarto document** (choose an appropriate descriptive filename) with:
 
 1. **Professional structure**: Use headings, not TOC (TOC is noise)
 2. **Visual communication**: Charts, diagrams (Mermaid), formatted tables - NO raw data dumps
@@ -178,12 +178,12 @@ The correlation coefficient $\\rho = {correlation:.2f}$ indicates...
 
 1. **Understand the problem**: Read relevant files, run exploratory commands
 2. **Gather facts**: Use Read, Grep, Bash to collect evidence
-3. **Create the .qmd file**: Write in `/tmp/` or current directory
+3. **Create the .qmd file**: Choose a descriptive filename and write in `/tmp/` or current directory
 4. **Render the document**:
    ```bash
-   quarto render analysis.qmd --to gfm     # Markdown output
-   quarto render analysis.qmd --to html    # For web viewing
-   quarto render analysis.qmd --to docx    # For Google Docs upload
+   quarto render <filename>.qmd --to gfm     # Markdown output
+   quarto render <filename>.qmd --to html    # For web viewing
+   quarto render <filename>.qmd --to docx    # For Google Docs upload
    ```
 5. **Present to user**: Show the markdown output inline and tell them where the files are
 
@@ -245,13 +245,15 @@ After creating and rendering the Quarto document:
 ```
 I've completed the epistemological analysis and created:
 
-📄 analysis_2024-02-02_19-30.qmd (source)
-📄 analysis_2024-02-02_19-30.md (GFM markdown - rendered below)
-🌐 analysis_2024-02-02_19-30.html (dark mode enabled)
-📎 analysis_2024-02-02_19-30.docx (ready for Google Docs upload)
+📄 login_error_analysis.qmd (source)
+📄 login_error_analysis.md (GFM markdown - rendered below)
+🌐 login_error_analysis.html (dark mode enabled)
+📎 login_error_analysis.docx (ready for Google Docs upload)
 
 [Inline markdown content follows...]
 ```
+
+Choose a descriptive filename based on the problem being analyzed (e.g., `login_errors.qmd`, `redis_vs_memcached.qmd`, `performance_investigation.qmd`).
 
 ## Integration with EPIST
 
