@@ -1,0 +1,51 @@
+#!/bin/bash
+# Update tmux window title with opencode session title
+#
+# Usage: opencode-tmux-title <working_directory>
+# Runs in background, polling every 5 seconds until killed
+#
+# The working directory is used to find the correct project's sessions
+
+set -euo pipefail
+
+workdir="${1:-$(pwd)}"
+storage_dir="$HOME/.local/share/opencode/storage"
+
+# Find project ID for this working directory
+find_project_id() {
+    local dir="$1"
+    for project_file in "$storage_dir/project/"*.json; do
+        [[ -f "$project_file" ]] || continue
+        worktree=$(jq -r '.worktree // empty' "$project_file" 2>/dev/null)
+        if [[ "$worktree" == "$dir" ]]; then
+            basename "$project_file" .json
+            return 0
+        fi
+    done
+    return 1
+}
+
+project_id=$(find_project_id "$workdir") || exit 0
+session_dir="$storage_dir/session/$project_id"
+
+[[ -d "$session_dir" ]] || exit 0
+
+while true; do
+    sleep 5
+    
+    # Find most recently modified session file in this project
+    latest_session=$(find "$session_dir" -name "ses_*.json" -mmin -60 2>/dev/null | \
+        xargs ls -t 2>/dev/null | head -1)
+    
+    if [[ -n "$latest_session" ]]; then
+        title=$(jq -r '.title // empty' "$latest_session" 2>/dev/null)
+        # Only update if meaningful title (not "New session - ...")
+        if [[ -n "$title" ]] && [[ ! "$title" =~ ^"New session -" ]]; then
+            # Truncate long titles
+            if [[ ${#title} -gt 30 ]]; then
+                title="${title:0:27}..."
+            fi
+            tmux rename-window "oc: $title" 2>/dev/null || true
+        fi
+    fi
+done

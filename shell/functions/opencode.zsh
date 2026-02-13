@@ -27,31 +27,12 @@ opencode() {
     fi
     
     # Start tmux title updater in background (if in tmux)
+    # Pass current directory so it finds the correct project's sessions
     local title_pid
     if [[ -n "${TMUX:-}" ]]; then
-        (
-            while true; do
-                sleep 5
-                # Find most recently modified session file
-                local latest_session
-                latest_session=$(find ~/.local/share/opencode/storage/session -name "ses_*.json" -mmin -60 2>/dev/null | \
-                    xargs ls -t 2>/dev/null | head -1)
-                
-                if [[ -n "$latest_session" ]]; then
-                    local title
-                    title=$(jq -r '.title // empty' "$latest_session" 2>/dev/null)
-                    # Only update if meaningful title (not "New session - ...")
-                    if [[ -n "$title" ]] && [[ ! "$title" =~ ^"New session -" ]]; then
-                        # Truncate long titles
-                        if [[ ${#title} -gt 30 ]]; then
-                            title="${title:0:27}..."
-                        fi
-                        tmux rename-window "oc: $title" 2>/dev/null
-                    fi
-                fi
-            done
-        ) &
+        ~/.files/bin/opencode-tmux-title "$(pwd)" &>/dev/null &
         title_pid=$!
+        disown $title_pid 2>/dev/null
     fi
     
     # Execute opencode with all arguments
