@@ -1,0 +1,55 @@
+#!/bin/bash
+# Get the current opencode session title for a given pane
+#
+# Usage: opencode-session-title <pane_pid>
+# Returns: Session title if in opencode, empty string otherwise
+
+pane_pid="$1"
+
+# Check if this process or its children are running opencode
+is_opencode() {
+  local pid="$1"
+  
+  # Check the process name
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    proc_name=$(ps -p "$pid" -o comm= 2>/dev/null)
+  else
+    proc_name=$(ps -p "$pid" -o comm= 2>/dev/null)
+  fi
+  
+  [[ "$proc_name" == *"opencode"* ]] && return 0
+  
+  # Check child processes
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    children=$(pgrep -P "$pid" 2>/dev/null)
+  else
+    children=$(pgrep -P "$pid" 2>/dev/null)
+  fi
+  
+  for child in $children; do
+    is_opencode "$child" && return 0
+  done
+  
+  return 1
+}
+
+# Exit early if not running opencode
+if ! is_opencode "$pane_pid"; then
+  exit 0
+fi
+
+# Find the most recently modified session file
+latest_session=$(find ~/.local/share/opencode/storage/session -name "ses_*.json" -mmin -60 2>/dev/null | \
+  xargs ls -t 2>/dev/null | head -1)
+
+if [ -z "$latest_session" ]; then
+  exit 0
+fi
+
+# Extract title from the session file
+title=$(jq -r '.title // empty' "$latest_session" 2>/dev/null)
+
+# Only output if we have a meaningful title (not "New session - ...")
+if [ -n "$title" ] && [[ ! "$title" =~ ^"New session -" ]]; then
+  echo "$title"
+fi
