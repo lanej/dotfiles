@@ -1,26 +1,46 @@
 #!/bin/bash
 
-# Start or reuse existing ssh-agent
-# Store agent info in a persistent file so all shells can share the same agent
-SSH_ENV="$HOME/.ssh/agent-env"
+# SSH Agent Configuration
+# Prefer 1Password SSH agent if available, otherwise fall back to traditional ssh-agent
 
-start_agent() {
-    ssh-agent -s > "$SSH_ENV"
-    chmod 600 "$SSH_ENV"
-    . "$SSH_ENV" > /dev/null
-}
+# 1Password SSH agent socket path (stable across restarts)
+# This path is documented by 1Password and matches the IdentityAgent config in ~/.ssh/config
+ONEPASSWORD_SSH_AGENT="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# Check if we can connect to an existing agent
-if [ -f "$SSH_ENV" ]; then
-    . "$SSH_ENV" > /dev/null
-    # Check if the agent is actually running
-    if ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
-        # Agent is dead, start a new one
+# If we're in an SSH session, SSH_AUTH_SOCK should be set by agent forwarding
+# Don't start a local agent in this case - just trust the forwarded agent
+if [ -n "$SSH_CONNECTION" ] && [ -n "$SSH_AUTH_SOCK" ]; then
+    # In SSH session with forwarded agent - don't override
+    :
+elif [ -n "$SSH_AUTH_SOCK" ] && [ -S "$SSH_AUTH_SOCK" ]; then
+    # SSH_AUTH_SOCK is already set and the socket exists - keep it
+    :
+elif [ -S "$ONEPASSWORD_SSH_AGENT" ]; then
+    # 1Password is running and SSH agent is available - use it (local machine only)
+    export SSH_AUTH_SOCK="$ONEPASSWORD_SSH_AGENT"
+elif [ -z "$SSH_CONNECTION" ]; then
+    # Not in SSH session and no 1Password - fall back to traditional ssh-agent
+    # Store agent info in a persistent file so all shells can share the same agent
+    SSH_ENV="$HOME/.ssh/agent-env"
+
+    start_agent() {
+        ssh-agent -s > "$SSH_ENV"
+        chmod 600 "$SSH_ENV"
+        . "$SSH_ENV" > /dev/null
+    }
+
+    # Check if we can connect to an existing agent
+    if [ -f "$SSH_ENV" ]; then
+        . "$SSH_ENV" > /dev/null
+        # Verify the socket actually exists and the agent is running
+        if [ ! -S "$SSH_AUTH_SOCK" ] || ! kill -0 "$SSH_AGENT_PID" 2>/dev/null; then
+            # Agent is dead or socket is stale, start a new one
+            start_agent
+        fi
+    else
+        # No agent file exists, start a new one
         start_agent
     fi
-else
-    # No agent file exists, start a new one
-    start_agent
 fi
 
 [ -r /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
