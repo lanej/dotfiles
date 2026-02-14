@@ -307,6 +307,31 @@ Even when not creating full Quarto documents, follow visual expression principle
 - **Data Volume**: When working with datasets (BigQuery, CSVs, Logs), always estimate size BEFORE fetching.
 - **Streaming vs. In-Memory**: Prefer streaming/zero-copy approaches for data >1GB. Avoid loading entire datasets into RAM unless necessary.
 - **Compute Constraints**: Be mindful of training times. Use subsets (1% sample) for initial debugging before launching full scale runs.
+||||||| parent of f82105e (feat(opencode): add Arcanist/Phabricator workflow guidance)
+
+## Interactive vs Automated Tools
+
+**CRITICAL: Recognize when tools require human interaction and don't try to automate them.**
+
+### Tools That Require Human Interaction (Don't Automate)
+- **Text editors** (nvim, vim, nano) - When a tool launches an editor, let the user interact
+- **Interactive prompts** - Confirmation dialogs, menu selections, Y/N prompts expecting user input
+- **arc diff** (no flags) - Opens editor for revision message
+- **git commit** (no -m flag) - Opens editor for commit message
+- **Interactive rebases** - git rebase -i requires human decisions
+
+### Red Flags You're Trying to Automate Interactive Tools
+- Setting `EDITOR=cat` or `EDITOR=true` to bypass editors
+- Using `echo "y" | command` to bypass confirmations
+- Getting timeout errors waiting for interactive tools
+- Seeing "User aborted the workflow" errors
+
+### Correct Approach
+When a tool requires interaction:
+1. **Run the command directly** without automation attempts
+2. **Tell the user** what command to run if they need to do it themselves
+3. **Use non-interactive flags** if available (e.g., `--message` instead of letting editor open)
+4. **Never hack around** interactive tools with EDITOR tricks
 
 ## Unix Philosophy
 
@@ -379,6 +404,39 @@ Even when not creating full Quarto documents, follow visual expression principle
 - When user requests GitHub actions, confirm intent before executing
 - **NO AI attribution**: Never add "Generated with Claude Code", co-author credits, or similar attribution to PR descriptions, issue bodies, or comments
 
+## Phabricator Interaction Policy
+
+**CRITICAL: Phabricator uses arc for code review, not git push.**
+
+### Arc Workflow Basics
+- **arc diff** replaces `git push` - it creates/updates Differential revisions
+- **arc land** merges approved revisions to master
+- **NEVER use git push** to branches being reviewed in Phabricator
+- **arc lint** and **arc unit** run automatically during `arc diff`
+
+### Interactive vs Non-Interactive Commands
+- **arc diff** (no flags) - Opens editor for revision details (INTERACTIVE - don't try to automate)
+- **arc diff --message "..."** - Non-interactive update with inline message
+- **arc diff --message-file /path** - Non-interactive update from file
+- **arc diff --update D123** - Update specific revision
+
+### Common Patterns
+- Create revision: `arc diff` (let editor open)
+- Update revision: `arc diff --update D123 --message "Updated XYZ"`
+- Check lint only: `arc lint path/to/files`
+- View diff status: `arc list`
+
+### Never Do This
+- ❌ `EDITOR=cat arc diff` - Trying to bypass interactive editor
+- ❌ `echo "..." | arc diff` - Piping to interactive command
+- ❌ `git push origin feature-branch` - Use arc diff instead
+- ❌ `arc diff --verbatim --message-file` - Incompatible flags
+
+### Handling Lint Errors
+- Lint errors don't block diff creation (arc shows warnings but proceeds)
+- Fix lint errors in separate commits, then update diff
+- Use `arc lint specific/file.rb` to check individual files before full diff
+
 ## Test-Driven Development (TDD)
 
 **CRITICAL: All code changes MUST follow TDD principles and include regression protection.**
@@ -449,6 +507,7 @@ Even when not creating full Quarto documents, follow visual expression principle
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
 - **BigQuery**: Prefer `bigquery` CLI for complex operations; `bq` via bash is acceptable for quick schema checks or if the primary tool is unavailable.
 - **DuckDB**: Use single quotes for string literals (`'ups'`), double quotes for identifiers; prefer JSONL for ingestion via `read_json_auto()`; use `UNNEST(array_col) AS t(val)` in FROM clause for array expansion
+- **Arcanist (arc)**: Use for Phabricator workflows; NEVER try to automate interactive editor sessions; use `--message` flag for non-interactive updates; understand that `arc diff` replaces `git push` in Phabricator workflows
 
 **Tool Selection Hierarchy** (prefer earlier options):
 1. Built-in shell utilities (grep, sed, awk, sort, uniq, cut) for simple text operations
@@ -481,7 +540,8 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 
 **Version Control & Project Management:**
 - **git** - Git workflows, GitHub CLI, professional commit practices
-- **phab** - Phabricator task management and code review
+- **arc** - Arcanist/Phabricator code review workflows (arc diff, arc land, lint integration); auto-loads when using arc commands or working with Differential revisions
+- **phab** - Phabricator task management, querying revisions, and MCP tools for tasks/projects
 - **jira** - Jira CLI operations and JQL queries
 
 **Document Processing:**
@@ -633,3 +693,55 @@ The `/reflection-harder` command integrates with tmux status bar to notify when 
 ### Dependency Installation
 - If `uv add` hangs building from source (>60 seconds), try: (1) use system Python directly, (2) install from PyPI if available, (3) use CLI tool instead of library
 - AVOID installing Python bindings from source when CLI alternatives exist (e.g., use `lancer` CLI not `lancer-py`)
+
+## Project-Specific Testing Patterns
+
+### rUSERS Test Migration: Mock Adapter Pattern
+
+**CRITICAL: Prefer mock adapter pattern over message mocking for microservice interactions.**
+
+The EasyPost monolith uses a **mock adapter pattern** instead of RSpec message mocking (`allow(...).to receive(...)`) for testing interactions with microservices like rUSERS and rUSPS.
+
+**Key Components:**
+1. **Mock Adapter Class**: In-memory implementation matching live service interface (e.g., `SupportUsersMockAdapter`)
+2. **RSpec Metadata**: Tests opt-in with `:mock_users` or `:mock_usps` metadata
+3. **Factory Integration**: Factories automatically populate mock adapter data
+4. **Environment Control**: `MOCK_USERS=1` (default) for fast tests, `MOCK_USERS=0` for integration tests
+
+**Benefits:**
+- Eliminates test pollution from message mocking
+- Declarative data setup through factories
+- Business logic validation in mock adapter
+- Clean tests without scattered `allow(...).to receive(...)` stubs
+- Easy switching between mock and live services
+
+**Example:**
+
+```ruby
+# ❌ Before: Message mocking (fragile, pollutes tests)
+before do
+  allow(UspsRepository).to receive(:carrier_account_mailer_ids)
+    .with(carrier_account_id: account.id)
+    .and_return([...])
+end
+
+# ✅ After: Mock adapter pattern (clean, declarative)
+RSpec.describe MyFeature, :mock_users, :mock_usps do
+  let(:account) do
+    create(:carrier_account, :usps, mailer_ids: [
+      { mailer_id: '902513337', sell_at_cost: true }
+    ])
+  end
+end
+```
+
+**Documentation:**
+- Full specification: `docs/testing/rusers-test-migration.md`
+- Mock implementations: `spec/support/users.rb`, `spec/support/usps.rb`
+- Factory examples: `spec/factories/carrier_accounts.rb`
+
+**When writing tests:**
+- Use `:mock_users` or `:mock_usps` metadata instead of message mocking
+- Configure data through factories, not direct adapter manipulation
+- Ensure mock adapter implements same validations as live service
+- Test critical paths against live service with `mock_users: false, vcr: :users`
