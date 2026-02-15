@@ -22,8 +22,8 @@
     "deny": [],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "/Users/joshlane/.zsh",
-      "/Users/joshlane/.local/share/"
+      "~/.zsh",
+      "~/.local/share/"
     ]
   },
   "spinnerTipsEnabled": false

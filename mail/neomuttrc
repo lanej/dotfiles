@@ -15,7 +15,7 @@ set record = "+gmail/sent"
 set trash = "+gmail/trash"
 
 # Virtual mailboxes using notmuch
-set nm_default_url = "notmuch:///Users/joshlane/Mail"
+set nm_default_url = "notmuch://~/Mail"
 set virtual_spool_file = yes
 
 # Notmuch query timeout
