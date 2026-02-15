@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# OpenCode wrapper that auto-converts .mcp.json before starting
+#
+# Usage: Same as `opencode` command
+#   opencode-wrapper [args...]
+#
+# Features:
+#   - Checks for .mcp.json in current directory
+#   - Converts to OpenCode format if found
+#   - Passes all arguments to opencode
+
+set -euo pipefail
+
+# Check for .mcp.json in current directory
+if [[ -f .mcp.json ]] && command -v claude-to-opencode >/dev/null 2>&1; then
+    # Run conversion silently (project resources only)
+    claude-to-opencode --project-only >/dev/null 2>&1 || true
+fi
+
+# Execute opencode with all arguments
+exec opencode "$@"

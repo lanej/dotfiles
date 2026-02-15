@@ -11,10 +11,11 @@ Converts all Claude Code settings to OpenCode format:
 - Enabled MCP servers
 
 Usage:
-    claude-to-opencode              # Convert from current directory
-    claude-to-opencode --global     # Only convert global settings
-    claude-to-opencode --dry-run    # Show what would be converted
-    claude-to-opencode --force      # Force conversion even if unchanged
+    claude-to-opencode                # Convert from current directory
+    claude-to-opencode --global       # Only convert global settings
+    claude-to-opencode --project-only # Only convert project settings (skip global)
+    claude-to-opencode --dry-run      # Show what would be converted
+    claude-to-opencode --force        # Force conversion even if unchanged
 """
 
 import json
@@ -26,10 +27,11 @@ from typing import Dict, Any, List, Optional, Tuple
 
 
 class ClaudeToOpenCodeConverter:
-    def __init__(self, working_dir: Path, force: bool = False, dry_run: bool = False):
+    def __init__(self, working_dir: Path, force: bool = False, dry_run: bool = False, project_only: bool = False):
         self.working_dir = working_dir
         self.force = force
         self.dry_run = dry_run
+        self.project_only = project_only
         self.cache_dir = Path.home() / '.cache' / 'opencode'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
@@ -290,11 +292,12 @@ class ClaudeToOpenCodeConverter:
         # Track if anything changed
         original_config = json.dumps(opencode_config, sort_keys=True)
         
-        # Convert global settings
-        global_config = self.convert_global_settings()
-        if global_config:
-            print("  ✓ Converted global permissions", file=sys.stderr)
-            opencode_config = self.merge_configs(opencode_config, global_config)
+        # Convert global settings (skip if project-only mode)
+        if not self.project_only:
+            global_config = self.convert_global_settings()
+            if global_config:
+                print("  ✓ Converted global permissions", file=sys.stderr)
+                opencode_config = self.merge_configs(opencode_config, global_config)
         
         # Convert project settings
         project_config = self.convert_project_settings()
@@ -302,12 +305,13 @@ class ClaudeToOpenCodeConverter:
             print(f"  ✓ Converted project MCP servers", file=sys.stderr)
             opencode_config = self.merge_configs(opencode_config, project_config)
         
-        # Set up AGENTS.md symlink
+        # Set up AGENTS.md symlink (skip if project-only mode)
         agents_md_changed = False
-        opencode_agents = Path.home() / '.config' / 'opencode' / 'AGENTS.md'
-        if not opencode_agents.exists() or not opencode_agents.is_symlink():
-            self.setup_agents_md()
-            agents_md_changed = True
+        if not self.project_only:
+            opencode_agents = Path.home() / '.config' / 'opencode' / 'AGENTS.md'
+            if not opencode_agents.exists() or not opencode_agents.is_symlink():
+                self.setup_agents_md()
+                agents_md_changed = True
         
         # Check if config changed
         new_config = json.dumps(opencode_config, sort_keys=True)
@@ -341,6 +345,7 @@ def main():
     force = '--force' in sys.argv
     dry_run = '--dry-run' in sys.argv
     global_only = '--global' in sys.argv
+    project_only = '--project-only' in sys.argv
     help_requested = '--help' in sys.argv or '-h' in sys.argv
     
     if help_requested:
@@ -351,7 +356,7 @@ def main():
     working_dir = Path.cwd()
     
     # Create converter
-    converter = ClaudeToOpenCodeConverter(working_dir, force=force, dry_run=dry_run)
+    converter = ClaudeToOpenCodeConverter(working_dir, force=force, dry_run=dry_run, project_only=project_only)
     
     try:
         changed = converter.convert()
