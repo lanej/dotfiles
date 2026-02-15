@@ -55,6 +55,8 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
+# Load lazy-loading functions for expensive integrations
+[[ -r "${HOME}/.files/zsh/lazy-load.zsh" ]] && source "${HOME}/.files/zsh/lazy-load.zsh"
 
 . "${HOME}/.profile"
 
@@ -71,12 +73,13 @@ fpath=(
 # Load and initialize the Zsh completion system
 autoload -Uz compinit
 # Only regenerate completion cache once per day for faster startup
+# -C: skip security check (compaudit), -u: ignore insecure directories
 if [[ -n ${HOME}/.zcompdump(#qN.mh+24) ]]; then
-	# Cache is older than 24 hours, regenerate it
-	compinit
+	# Cache is older than 24 hours, regenerate it (but skip security check)
+	compinit -C -u
 else
 	# Use cached version (skip security check for speed)
-	compinit -C
+	compinit -C -u
 fi
 
 # Set up completion for aliases
@@ -97,6 +100,45 @@ fi
 
 if command -v fzf >/dev/null; then
 	source <(fzf --zsh)
+	
+	# Helper function for dynamic preview window positioning
+	__fzf_dynamic_preview_window() {
+		local cols=$(tput cols)
+		if [ "$cols" -ge 140 ]; then
+			echo "right:60%:border-left:wrap"
+		else
+			echo "down:40%:border-top:wrap"
+		fi
+	}
+	
+	# Override fzf-file-widget (Ctrl-T) with dynamic preview
+	fzf-file-widget() {
+		setopt localoptions pipefail no_aliases 2> /dev/null
+		LBUFFER="${LBUFFER}$(__fzf_select --preview-window="$(__fzf_dynamic_preview_window)")"
+		local ret=$?
+		zle reset-prompt
+		return $ret
+	}
+	
+	# Override fzf-cd-widget (Alt-C) with dynamic preview
+	fzf-cd-widget() {
+		setopt localoptions pipefail no_aliases 2> /dev/null
+		local dir="$(
+			FZF_DEFAULT_COMMAND=${FZF_ALT_C_COMMAND:-} \
+			FZF_DEFAULT_OPTS=$(__fzf_defaults "--reverse --walker=dir,follow,hidden --scheme=path" "${FZF_ALT_C_OPTS-} +m") \
+			FZF_DEFAULT_OPTS_FILE='' $(__fzfcmd) --preview-window="$(__fzf_dynamic_preview_window)" < /dev/tty)"
+		if [[ -z "$dir" ]]; then
+			zle redisplay
+			return 0
+		fi
+		zle push-line
+		BUFFER="builtin cd -- ${(q)dir:a}"
+		zle accept-line
+		local ret=$?
+		unset dir
+		zle reset-prompt
+		return $ret
+	}
 
 	fzf-directory-widget() {
 		local selected_dir
@@ -130,8 +172,39 @@ if command -v fzf >/dev/null; then
 
 	fi
 
+	# Custom fzf file widget with Ctrl+O toggle for hidden files
+	fzf-file-widget-toggle() {
+		setopt localoptions pipefail no_aliases 2> /dev/null
+		local item
+		local result
+		
+		# Command for non-hidden files
+		local cmd_normal='fd --type f --follow --exclude .git'
+		# Command for hidden files
+		local cmd_hidden='fd --type f --hidden --follow --exclude .git'
+		
+		# Use fzf with toggle binding that switches back and forth
+		result=$(
+			FZF_DEFAULT_COMMAND="$cmd_normal" \
+			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --scheme=path ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' \
+			--bind='ctrl-o:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(🔍 > )\" || echo \"reload($cmd_hidden)+change-prompt(🔍 [hidden] > )\"'" \
+			FZF_DEFAULT_OPTS_FILE='' \
+			fzf < /dev/tty | while read -r item; do
+				echo -n -E "${(q)item} "
+			done
+		)
+		
+		local ret=$?
+		if [ -n "$result" ]; then
+			LBUFFER="${LBUFFER}${result}"
+		fi
+		zle reset-prompt
+		return $ret
+	}
+
 		bindkey '^U' fzf-cd-widget
-		bindkey '^O' fzf-file-widget
+		zle -N fzf-file-widget-toggle
+		bindkey '^O' fzf-file-widget-toggle
 		zle -N zzz
 		bindkey '^B' zzz
 
@@ -347,11 +420,17 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
 fi
 
 
-# Google Cloud SDK
-source /opt/homebrew/share/google-cloud-sdk/path.zsh.inc
-source /opt/homebrew/share/google-cloud-sdk/completion.zsh.inc
+# Google Cloud SDK - lazy loaded (see ~/.files/zsh/lazy-load.zsh)
+# source /opt/homebrew/share/google-cloud-sdk/path.zsh.inc
+# source /opt/homebrew/share/google-cloud-sdk/completion.zsh.inc
 
 # OpenCode with automatic .mcp.json conversion
 if [[ -f ~/.files/shell/functions/opencode.zsh ]]; then
     source ~/.files/shell/functions/opencode.zsh
 fi
+
+# OpenCode cache cleanup (remove leaked tmp files on shell startup)
+# DISABLED: Too slow with 166k files (587ms), run manually or via cron instead
+# if [[ -x ~/.files/bin/opencode-cleanup-cache ]]; then
+#     ~/.files/bin/opencode-cleanup-cache
+# fi
