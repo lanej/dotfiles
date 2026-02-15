@@ -7,9 +7,6 @@
 # - CLAUDE.md files → AGENTS.md (symlinked)
 # - .mcp.json → MCP configuration
 #
-# Additionally, when running in tmux, this updates the window title to match
-# the opencode session title (polls every 5 seconds).
-#
 # The conversion is smart and only runs when needed.
 
 opencode() {
@@ -27,21 +24,23 @@ opencode() {
     fi
     
     # Start tmux title updater in background (if in tmux)
-    # Pass current directory so it finds the correct project's sessions
-    local title_pid
+    # Uses a PID file for reliable cleanup
+    local pidfile=""
     if [[ -n "${TMUX:-}" ]]; then
-        ~/.files/bin/opencode-tmux-title "$(pwd)" &>/dev/null &
-        title_pid=$!
-        disown $title_pid 2>/dev/null
+        pidfile="/tmp/opencode-tmux-title.$$"
+        ~/.files/bin/opencode-tmux-title "$(pwd)" "$pidfile" &>/dev/null &
     fi
     
     # Execute opencode with all arguments
     command opencode "$@"
     local exit_code=$?
     
-    # Cleanup: kill title updater and restore automatic window naming
-    if [[ -n "${title_pid:-}" ]]; then
-        kill "$title_pid" 2>/dev/null
+    # Cleanup: kill title updater via PID file
+    if [[ -n "$pidfile" && -f "$pidfile" ]]; then
+        local pid
+        pid=$(<"$pidfile")
+        kill "$pid" 2>/dev/null
+        rm -f "$pidfile"
         tmux set-window-option automatic-rename on 2>/dev/null
     fi
     
