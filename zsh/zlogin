@@ -17,11 +17,12 @@ if command -v fzf >/dev/null; then
 	--color=marker:#a3be8b,spinner:#b48dac,header:#a3be8b'
 
 	unset FZF_CTRL_R_OPTS
-	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS'
+	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"
 	--reverse
-	--preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap:hidden\" || echo \"down:40%:border-top:wrap:hidden\")"
-	--bind "ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort"
-	'
+	--preview-window right:60%:border-left:wrap:hidden
+	--bind 'ctrl-/:toggle-preview'
+	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
+	"
 
 	if command -v bat >/dev/null; then
 		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --plain --color=always -l zsh --plain'"
@@ -29,10 +30,10 @@ if command -v fzf >/dev/null; then
 
 	if command -v eza >/dev/null; then
 		unset FZF_ALT_C_OPTS
-		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS'
+		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"
 	  --reverse
-	  --preview="eza -HgF --icons -T -L 2 --color=always --git {}"
-	  --preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap\" || echo \"down:40%:border-top:wrap\")"'
+	  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}'
+	  --preview-window right:60%:border-left:wrap"
 	fi
 
 	if command -v fd >/dev/null; then
@@ -42,9 +43,9 @@ if command -v fzf >/dev/null; then
 
 	if command -v bat >/dev/null; then
 		unset FZF_CTRL_T_OPTS
-		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS'
-		--preview="bat --plain --color=always {}"
-		--preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap\" || echo \"down:40%:border-top:wrap\")"'
+		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
+		--preview='bat --plain --color=always {}'
+		--preview-window right:60%:border-left:wrap"
 	fi
 fi
 
