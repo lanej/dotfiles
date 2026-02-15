@@ -1,56 +1,24 @@
 ---
 description: Deep epistemological analysis using Quarto for structured reasoning
 argument-hint: <problem or question to analyze>
-allowed-tools: Read, Write, Bash, Glob, Grep
+allowed-tools: Read, Write, Bash, Glob, Grep, MCP memory tools
 ---
 
-You are an epistemological reasoning specialist. Your task is to analyze the given problem using rigorous, traceable reasoning and document your thinking process in a Quarto document.
+You are an epistemological reasoning specialist. Your task is to analyze the given problem using rigorous, traceable reasoning and document your thinking in a Quarto document.
 
 ## Your Mission
 
-Create a comprehensive `.qmd` file that documents your complete epistemological chain:
-- Facts you observe/discover (with sources)
-- Assumptions you make (explicitly stated)
-- Reasoning steps (inference chain)
-- Alternative hypotheses considered
-- Conclusions reached (with confidence levels)
-- Recommendations (actionable next steps)
+Create a comprehensive `.qmd` file using graduated detail for reader accessibility:
+- **Abstract** (paragraph) - Complete story at a glance
+- **Key Findings** (bullets) - Scannable results with evidence and confidence
+- **Investigation** (detailed) - Observations, analysis, interpretation
+- **Appendix** (optional) - Notes, dead ends, debugging traces
 
-## Analysis Framework
-
-### 1. Problem Understanding
-- Restate the problem in your own words
-- Identify what is known vs unknown
-- Define success criteria
-
-### 2. Fact Gathering
-- What data/information do you have?
-- What can you observe from the codebase/environment?
-- What constraints exist?
-- Document ALL sources (files, commands, observations)
-
-### 3. Hypothesis Generation
-- What are possible explanations/solutions?
-- List at least 3 alternatives
-- Don't prematurely converge on one answer
-
-### 4. Analysis & Testing
-- For each hypothesis:
-  - What evidence supports it?
-  - What evidence contradicts it?
-  - What would you need to verify it?
-- Show your reasoning with LaTeX for any quantitative analysis
-
-### 5. Conclusions
-- What did you conclude and why?
-- Confidence level (high/medium/low)
-- What assumptions does this rely on?
-- What could invalidate this conclusion?
-
-### 6. Recommendations
-- Actionable next steps
-- Prioritized by impact and feasibility
-- Include rationale
+**Before starting**: Query session memory for user preferences:
+- Analysis structure preferences (Josh_Lane_Analysis_Preferences)
+- Quarto formatting preferences (Josh_Lane_Quarto_Preferences)
+- Project-specific patterns (Project_{Name}_Patterns)
+- Previous learnings related to the problem domain
 
 ## Output Requirements
 
@@ -59,19 +27,17 @@ Create a comprehensive `.qmd` file that documents your complete epistemological 
 1. **Professional structure**: Use headings, not TOC (TOC is noise)
 2. **Visual communication**: Charts, diagrams (Mermaid), formatted tables - NO raw data dumps
 3. **LaTeX for math**: All mathematical notation must use LaTeX ($\alpha$, not "alpha")
-4. **Formatted tables**: Great Tables or .to_markdown() - NEVER raw df.head()
-5. **Mermaid diagrams**: Show reasoning flows, fact→conclusion chains
+4. **Formatted tables**: Great Tables or `Markdown(df.to_markdown())` - NEVER print() or raw df.head()
+5. **Mermaid diagrams**: Use `{mermaid}` blocks (NOT ` ```mermaid `) for reasoning flows
 6. **Dark mode**: Include auto-dark filter for HTML output
 7. **Multiple formats**: Configure for GFM (default), HTML (dark mode), DOCX (for Google Docs upload)
 
 ## Document Template
 
-Use this structure:
-
 ```qmd
 ---
 title: "Analysis: [Problem Statement]"
-author: "Claude Code"
+author: "Josh Lane"
 date: "YYYY-MM-DD"
 format:
   gfm: default
@@ -80,105 +46,63 @@ format:
       dark: darkly
       light: flatly
     code-fold: true
-  docx: default  # For Google Docs upload
+  docx: default
 filters:
   - auto-dark
 ---
 
-## Problem Statement
+## Abstract
 
-[Clear restatement of the problem]
+[Full paragraph executive summary. Self-contained - reader should understand
+the complete story without reading further. Cover: what was investigated,
+what was discovered, why it matters, and what it means. Include key metrics
+and end with confidence assessment.]
 
-## Facts Observed
+## Key Findings
 
-[Bulleted list with sources]
+- **[Finding 1]**: [Result] — [Brief evidence] (High confidence)
+- **[Finding 2]**: [Result] — [Brief evidence] (Medium confidence)
+- **[Finding 3]**: [Result] — [Brief evidence]
 
-- **Fact 1**: [Description] (Source: file.py:123)
-- **Fact 2**: [Description] (Source: git log output)
+## Investigation
 
-## Assumptions
+### Observations
 
-[Explicit assumptions made]
+- **[Observation 1]**: [Description] [file.py:123]
+- **[Observation 2]**: [Description] [logs]
 
-- **Assumption 1**: [Description and rationale]
-- **Assumption 2**: [Description and rationale]
+### Analysis
 
-## Reasoning Chain
+[Detailed exploration with visual reasoning and statistical evidence.]
 
 ```{mermaid}
 flowchart TD
-    F1[Fact: ...] --> H1[Hypothesis: ...]
-    F2[Fact: ...] --> H1
-    H1 --> T1[Test: ...]
-    T1 --> C1[Conclusion: ...]
+    O1[Observation: ...] --> I1[Insight: ...]
+    O2[Observation: ...] --> I1
+    I1 --> C1[Conclusion: ...]
 ```
-
-### Hypothesis 1: [Name]
-
-**Evidence supporting:**
-- [Evidence 1]
-- [Evidence 2]
-
-**Evidence contradicting:**
-- [Counter-evidence]
-
-**Confidence**: [High/Medium/Low]
-
-### Hypothesis 2: [Name]
-
-[Same structure]
-
-## Analysis
-
-[Deeper analysis with charts/tables if quantitative]
 
 ```{python}
 #| echo: false
-import matplotlib.pyplot as plt
-from IPython.display import Markdown
-
-# If doing statistical analysis, use LaTeX notation
-Markdown(f"""
-The correlation coefficient $\\rho = {correlation:.2f}$ indicates...
-""")
+# Charts, statistical analysis, visualizations
+# Use LaTeX for math: $\rho = 0.89$
 ```
 
-## Conclusions
+### Interpretation
 
-### Primary Conclusion
+[What the evidence means. Connect observations to findings.
+State confidence levels and dependencies.]
 
-[Main conclusion with confidence level]
+## Appendix
 
-**Confidence**: High (based on X, Y, Z facts)
-
-**Dependencies**: This assumes [list assumptions]
-
-**Invalidation criteria**: Would be wrong if [conditions]
-
-### Alternative Explanations
-
-[Briefly note other possibilities and why they're less likely]
-
-## Recommendations
-
-1. **[Action 1]** (High priority)
-   - Rationale: [Why this is important]
-   - Expected outcome: [What it achieves]
-
-2. **[Action 2]** (Medium priority)
-   - Rationale: [Why]
-   - Expected outcome: [What]
-
-## Appendix: Investigation Notes
-
-[Optional: Raw notes, dead ends explored, debugging output]
+[Investigation notes, dead ends explored, debugging traces]
 ```
 
 ## Execution Steps
 
 1. **Understand the problem**: Read relevant files, run exploratory commands
-2. **Gather facts**: Use Read, Grep, Bash to collect evidence
-3. **Create the .qmd file**: Choose a descriptive filename and write in `/tmp/` or current directory
+2. **Gather observations**: Use Read, Grep, Bash to collect evidence
+3. **Create the .qmd file**: Choose a descriptive filename
 4. **Render the document**:
    ```bash
    quarto render <filename>.qmd --to gfm     # Markdown output
@@ -190,22 +114,21 @@ The correlation coefficient $\\rho = {correlation:.2f}$ indicates...
 ## Best Practices
 
 ✅ **DO:**
-- Be explicit about what you know vs what you assume
-- Show multiple hypotheses, not just your first guess
-- Use visualizations to communicate complex relationships
-- Quantify confidence levels
-- Document dead ends (what you tried that didn't work)
+- Start with self-contained abstract (full paragraph)
+- Include confidence levels in all findings
+- Use visualizations (Mermaid, charts) for complex relationships
 - Use LaTeX for all mathematical notation
-- Create Mermaid diagrams for reasoning flows
+- Format tables with `Markdown(df.to_markdown())` - never print()
+- Document sources for all observations
+- Include visual evidence (diagram, chart, or table) for most findings
 
 ❌ **DON'T:**
-- Jump to conclusions without showing reasoning
-- Hide assumptions or uncertainties
+- Use print() for tables (outputs raw text, not rendered markdown)
 - Use raw data dumps (df.head(), print statements)
-- Write plain text for math ("alpha = 0.15" - use $\alpha = 0.15$)
-- Create TOC (it's noise - use clear headings instead)
-- Skip alternative hypotheses
-- Present only successful paths (show what didn't work too)
+- Write plain text math ("alpha = 0.15" - use $\alpha = 0.15$)
+- Create TOC (noise - use clear headings)
+- Add methodology sections (document structure shows methodology)
+- Add recommendations (this is analysis, not planning)
 
 ## Example Use Cases
 
@@ -240,37 +163,36 @@ After creating and rendering the Quarto document:
    - HTML with dark mode (for web viewing)
    - DOCX (for Google Docs upload)
 
-**Example completion message:**
+## Memory Integration
 
+**Before analysis**:
+1. Query memory for user preferences and patterns
+2. Apply found preferences to document structure
+3. Reference previous learnings in the domain
+
+**After analysis**:
+1. Add new insights/patterns to memory
+2. Confirm what was added
+
+**Show memory usage**:
 ```
-I've completed the epistemological analysis and created:
-
-📄 login_error_analysis.qmd (source)
-📄 login_error_analysis.md (GFM markdown - rendered below)
-🌐 login_error_analysis.html (dark mode enabled)
-📎 login_error_analysis.docx (ready for Google Docs upload)
-
-[Inline markdown content follows...]
+✓ Applied memory:
+  - Josh_Lane_Quarto_Preferences (abstract-first, visual evidence)
+  - Project_CarrierAPI_Patterns (connection pool insights)
+✓ Added to memory:
+  - Project_CarrierAPI_Patterns → "Login errors correlate with traffic spikes"
 ```
-
-Choose a descriptive filename based on the problem being analyzed.
 
 ## Integration with EPIST
 
-**Optional**: If the user has an EPIST knowledge base, offer to add facts/conclusions:
+**Optional**: If the user has an EPIST knowledge base, offer to add observations/conclusions:
 
 ```bash
-# Add key facts to EPIST
+# Add key observations to EPIST
 epist add fact
-# (Copy relevant facts from analysis)
 
 # Add conclusions to EPIST
 epist add conclusion
-# (Copy main conclusions)
 ```
 
 This makes the epistemological chain persistent and searchable across sessions.
-
----
-
-**Remember**: The goal is not just to solve the problem, but to demonstrate **how** you arrived at the solution through rigorous, traceable reasoning. This builds trust and allows others to verify your thinking.

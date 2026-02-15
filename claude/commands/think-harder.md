@@ -6,7 +6,6 @@ allowed-tools:
   - Read
   - Grep
   - Bash
-model: sonnet
 tags:
   - analysis
   - reasoning

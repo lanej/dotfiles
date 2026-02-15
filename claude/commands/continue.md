@@ -1,6 +1,5 @@
 ---
 description: "Execute tasks autonomously without prompting: make decisions, install dependencies, fix issues, run tests, and complete all work without asking permission for routine operations"
-model: sonnet
 tags:
   - automation
   - workflow

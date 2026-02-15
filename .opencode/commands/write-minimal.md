@@ -1,7 +1,6 @@
 ---
 description: "Write with radical brevity: think about what needs communicating, then find the MOST MINIMAL way to say it. People don't read long documents. ALWAYS edit existing document, NEVER create new files."
 argument-hint: [what to write]
-model: sonnet
 tags:
   - writing
   - documentation

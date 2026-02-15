@@ -5,7 +5,6 @@ allowed-tools:
   - Write
   - Read
   - Grep
-model: haiku
 tags:
   - documentation
   - knowledge

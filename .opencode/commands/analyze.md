@@ -2,7 +2,6 @@
 description: Analyze document content and extract insights
 agent: document-summarizer
 subtask: true
-model: anthropic/claude-haiku-4-20250514
 ---
 
 Read and analyze: $ARGUMENTS

@@ -1,6 +1,5 @@
 ---
 description: "Delegate work to specialized agents to protect context window: use Task tool for searches, exploration, planning, and multi-step tasks instead of doing work directly"
-model: sonnet
 tags:
   - context-management
   - efficiency

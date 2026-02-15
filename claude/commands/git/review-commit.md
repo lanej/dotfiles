@@ -1,7 +1,6 @@
 ---
 description: "Review staged changes for code quality before committing: delegates to sub-agent to check for minimal changes, no duplication, correctness, and test coverage"
 argument-hint: [optional review focus]
-model: sonnet
 tags:
   - git
   - code-review
