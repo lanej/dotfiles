@@ -111,15 +111,6 @@ if command -v fzf >/dev/null; then
 		fi
 	}
 	
-	# Override fzf-file-widget (Ctrl-T) with dynamic preview
-	fzf-file-widget() {
-		setopt localoptions pipefail no_aliases 2> /dev/null
-		LBUFFER="${LBUFFER}$(__fzf_select --preview-window="$(__fzf_dynamic_preview_window)")"
-		local ret=$?
-		zle reset-prompt
-		return $ret
-	}
-	
 	# Override fzf-cd-widget (Alt-C) with dynamic preview
 	fzf-cd-widget() {
 		setopt localoptions pipefail no_aliases 2> /dev/null
@@ -183,10 +174,13 @@ if command -v fzf >/dev/null; then
 		# Command for hidden files
 		local cmd_hidden='fd --type f --hidden --follow --exclude .git'
 		
+		# Dynamic preview window positioning
+		local preview_window="$(__fzf_dynamic_preview_window)"
+		
 		# Use fzf with toggle binding that switches back and forth
 		result=$(
 			FZF_DEFAULT_COMMAND="$cmd_normal" \
-			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --scheme=path ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' \
+			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --scheme=path ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' --preview-window='$preview_window' \
 			--bind='ctrl-o:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(🔍 > )\" || echo \"reload($cmd_hidden)+change-prompt(🔍 [hidden] > )\"'" \
 			FZF_DEFAULT_OPTS_FILE='' \
 			fzf < /dev/tty | while read -r item; do
