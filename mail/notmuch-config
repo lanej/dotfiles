@@ -2,7 +2,7 @@
 # See notmuch-config(1) for details
 
 [database]
-path=/Users/joshlane/Mail
+path=~/Mail
 
 [user]
 name=Josh Lane

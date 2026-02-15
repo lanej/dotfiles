@@ -207,7 +207,7 @@ After rendering the verdict, **automatically record the conclusion in epist** (d
 2. **Create the conclusion** with the verdict:
    ```
    Use epist_epist_add_conclusion to record:
-   - Filename: /Users/joshlane/conclusions/claims/[YYYYMMDD]_[claim_slug].md
+   - Filename: ~/conclusions/claims/[YYYYMMDD]_[claim_slug].md
    - Title: "Claim: [brief summary]"
    - Content: Full verdict with supporting/counter evidence summary
    - Confidence: high | medium | low (matching the verdict)
@@ -232,7 +232,7 @@ After rendering the verdict, **automatically record the conclusion in epist** (d
 ```
 # Record a key fact
 epist_epist_add_fact(
-  filename="/Users/joshlane/facts/claims/20260128_shipium_win_rate.md",
+  filename="~/facts/claims/20260128_shipium_win_rate.md",
   title="Zero wins against Shipium in EPE opportunities",
   content="0% win rate vs Shipium across 4 EPE opportunities totaling $808K in lost revenue. Data from Salesforce opportunity analysis.",
   source="BigQuery: ep-core-data.salesforce.opportunity",
@@ -241,11 +241,11 @@ epist_epist_add_fact(
 
 # Record the conclusion
 epist_epist_add_conclusion(
-  filename="/Users/joshlane/conclusions/claims/20260128_3pls_prefer_shipium.md",
+  filename="~/conclusions/claims/20260128_3pls_prefer_shipium.md",
   title="Claim CONFIRMED: 3PLs prefer Shipium over EPE because of rate card simulation",
   content="[Full verdict content here]",
   confidence="medium",
-  depends_on=["/Users/joshlane/facts/claims/20260128_shipium_win_rate.md"],
+  depends_on=["~/facts/claims/20260128_shipium_win_rate.md"],
   tags=["claim", "confirmed", "3pl", "shipium", "epe", "rate-simulation"]
 )
 ```

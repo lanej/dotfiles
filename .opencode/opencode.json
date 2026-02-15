@@ -207,10 +207,10 @@
       ],
       "enabled": true,
       "environment": {
-        "WORKSPACE_KNOWLEDGE_DB_PATH": "/Users/joshlane/workspace/.lancedb",
-        "WORKSPACE_KNOWLEDGE_ROOT": "/Users/joshlane/workspace",
-        "PKM_DB_PATH": "/Users/joshlane/workspace/.lancedb",
-        "PKM_ROOT": "/Users/joshlane/workspace"
+        "WORKSPACE_KNOWLEDGE_DB_PATH": "$HOME/workspace/.lancedb",
+        "WORKSPACE_KNOWLEDGE_ROOT": "$HOME/workspace",
+        "PKM_DB_PATH": "$HOME/workspace/.lancedb",
+        "PKM_ROOT": "$HOME/workspace"
       }
     },
     "bigquery": {
@@ -230,7 +230,7 @@
         "-i",
         "--rm",
         "-v",
-        "/Users/joshlane/.config/mcp/jira.env:/etc/mcp/jira.env",
+        "$HOME/.config/mcp/jira.env:/etc/mcp/jira.env",
         "ghcr.io/sooperset/mcp-atlassian:latest",
         "-vv",
         "--env-file",
@@ -254,7 +254,7 @@
         "mcp",
         "stdio"
       ],
-      "enabled": true
+      "enabled": false
     },
     "time": {
       "type": "local",
@@ -273,43 +273,13 @@
       ],
       "enabled": true,
       "environment": {
-        "MEMORY_FILE_PATH": "/Users/joshlane/memory.json"
+        "MEMORY_FILE_PATH": "$HOME/memory.json"
       }
     },
-    "git": {
+    "gspace": {
       "type": "local",
       "command": [
-        "uvx",
-        "mcp-server-git"
-      ],
-      "enabled": true
-    },
-    "github": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
-      ],
-      "enabled": true
-    },
-    "puppeteer": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-puppeteer"
-      ],
-      "enabled": true
-    },
-    "gdrive": {
-      "type": "local",
-      "command": [
-        "gdrive",
+        "gspace",
         "mcp",
         "stdio"
       ],
@@ -339,7 +309,7 @@
         "--client-type",
         "persistent",
         "--data-dir",
-        "/Users/joshlane/src/kb-md"
+        "$HOME/src/kb-md"
       ],
       "enabled": false
     }

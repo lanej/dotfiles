@@ -19,9 +19,7 @@
       "Bash(wipefs:*)"
     ],
     "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      "/Users/joshlane/src/carrier-client-contracts/"
-    ]
+    "additionalDirectories": []
   },
   "hooks": {
     "Notification": [
@@ -30,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/joshlane/.files/bin/claude-notification-hook"
+            "command": "~/.files/bin/claude-notification-hook"
           }
         ]
       }
@@ -41,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/joshlane/.files/bin/claude-auto-continue-hook"
+            "command": "~/.files/bin/claude-auto-continue-hook"
           }
         ]
       }
@@ -56,9 +54,11 @@
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true
+    "playwright@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
   }
