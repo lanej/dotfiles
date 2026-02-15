@@ -4,11 +4,11 @@ if command -v fzf >/dev/null; then
 	fi
 
 	# Smart preview window positioning based on terminal width
-	# Wide terminals (>=180 cols): preview on right
-	# Narrow terminals (<180 cols): preview on bottom
+	# Wide terminals (>=140 cols): preview on right
+	# Narrow terminals (<140 cols): preview on bottom
 	_fzf_preview_window() {
 		local cols=$(tput cols 2>/dev/null || echo 80)
-		if [ "$cols" -ge 180 ]; then
+		if [ "$cols" -ge 140 ]; then
 			echo "right:60%:border-left:wrap"
 		else
 			echo "down:40%:border-top:wrap"
