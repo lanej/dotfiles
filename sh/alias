@@ -146,7 +146,13 @@ lsearch() {
 }
 
 fkill() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$preview_window" --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
 
 	if [ -n "$pids" ]; then
 		for pid in $pids; do pstree $pid; done
@@ -156,7 +162,13 @@ fkill() {
 }
 
 fpstree() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | xargs pstree -g 3 || awk '{ print \$2 }'" | awk '{ print $2 }')
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$preview_window" --preview "echo {} | awk '{ print \$2 }' | xargs pstree -g 3 || awk '{ print \$2 }'" | awk '{ print $2 }')
 
 	if [ -n "$pids" ]; then
 		for pid in $pids; do pstree $pid; done
@@ -168,7 +180,13 @@ fps() {
 }
 
 flsof() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window=right --preview "echo {} | awk '{ print \$2 }' | tr -s ' ' ',' | xargs lsof -p")
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$preview_window" --preview "echo {} | awk '{ print \$2 }' | tr -s ' ' ',' | xargs lsof -p")
 
 	if [ ! -z "$pids" ]; then
 		echo "$pids" | xargs lsof -p
@@ -176,7 +194,13 @@ flsof() {
 }
 
 git_checkout_branch() {
-	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git symbolic-ref refs/remotes/origin/HEAD --short | xargs git merge-base --fork-point)...{} | delta" --preview-window=right) || return
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git symbolic-ref refs/remotes/origin/HEAD --short | xargs git merge-base --fork-point)...{} | delta" --preview-window="$preview_window") || return
 	git switch "$(echo "$target")"
 }
 
@@ -189,6 +213,13 @@ i() {
 }
 
 zz() {
+    local preview_window
+    if [ "$(tput cols)" -ge 140 ]; then
+        preview_window="right:60%:border-left:wrap"
+    else
+        preview_window="down:40%:border-top:wrap"
+    fi
+    
     # Prefer skim (sk) if available; fall back to fzf
     if command -v sk >/dev/null 2>&1; then
         # Use skim with preview, sorted by path length (shortest first)
@@ -200,7 +231,7 @@ zz() {
             | sk --ansi --reverse \
                  --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
                  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
-                 --preview-window 'right:60%')" || return
+                 --preview-window "$preview_window")" || return
     else
         # Use fzf with length-based sorting and progressive filtering
         # Ctrl-Space: Narrow down - select all visible items and search within them
@@ -214,7 +245,7 @@ zz() {
                   --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
                   --bind 'ctrl-space:select-all+accept' \
                   --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
-                  --preview-window 'right:60%' \
+                  --preview-window "$preview_window" \
                   --header='Ctrl-Space: narrow to filtered results' \
                   -q "${_last_z_args}" \
             | {
@@ -230,7 +261,7 @@ zz() {
                         --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
                         --bind 'ctrl-space:select-all+accept' \
                         --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
-                        --preview-window 'right:60%' \
+                        --preview-window "$preview_window" \
                         --header='Ctrl-Space: narrow again | Enter: select'
                 fi
             })" || return
@@ -383,6 +414,13 @@ kagi() {
 }
 
 gh-clone() {
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	
 	local selected
 	local initial_query="${1:-}"
 
@@ -412,7 +450,7 @@ gh-clone() {
 		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
 		--bind='ctrl-r:change-prompt(🔍 Searching {q}...> )+reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")+clear-query+change-prompt(GitHub repo> )' \
 		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
-		--preview-window="right:60%")
+		--preview-window="$preview_window")
 
 	if [ -n "$selected" ]; then
 		echo "$selected" | while read -r line; do
@@ -425,13 +463,20 @@ gh-clone() {
 }
 
 phab-clone() {
+	local preview_window
+	if [ "$(tput cols)" -ge 140 ]; then
+		preview_window="right:60%:border-left:wrap"
+	else
+		preview_window="down:40%:border-top:wrap"
+	fi
+	
 	local selected
 	selected=$(phab repository search --output jsonl 2>&1 |
 		grep -v "^Error:" |
 		jq -r 'select(.fields != null) | .fields.shortName' |
 		fzf --height=100% --reverse -m \
 			--preview 'readme=$(phab file get -r {} README.md 2>/dev/null || phab file get -r {} readme.md 2>/dev/null); if [ -n "$readme" ]; then if command -v glow >/dev/null 2>&1; then echo "$readme" | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json -; elif command -v bat >/dev/null 2>&1; then echo "$readme" | bat --style=plain --language=markdown --color=always -; else echo "$readme"; fi; else echo "No README found"; fi' \
-			--preview-window 'right:60%:wrap')
+			--preview-window "$preview_window")
 
 	if [ -z "$selected" ]; then
 		return 0
