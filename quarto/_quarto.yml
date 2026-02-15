@@ -1,0 +1,24 @@
+# User-level Quarto defaults
+# Usage: Copy to project root, or include via metadata-files:
+#   metadata-files:
+#     - ~/.files/quarto/_quarto.yml
+
+format:
+  gfm:
+    wrap: none
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+    code-fold: true
+  pdf:
+    # Keep sections together, avoid orphaned headers
+    include-in-header:
+      text: |
+        \usepackage{needspace}
+
+execute:
+  cache: true
+
+filters:
+  - auto-dark

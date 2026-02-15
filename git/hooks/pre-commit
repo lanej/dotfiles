@@ -1,0 +1,102 @@
+#!/bin/bash
+# Pre-commit hook for gspace-ts (TypeScript/Bun)
+# Runs prettier, typecheck, and tests before allowing commit
+
+set -e
+set -o pipefail
+
+echo "🔍 Running pre-commit checks..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+print_info() {
+    echo "ℹ️  $1"
+}
+
+# Check if bun is available
+if ! command -v bun &> /dev/null; then
+    print_error "bun not found. Please install Bun: https://bun.sh"
+    exit 1
+fi
+
+# 1. Run prettier format check and auto-fix
+print_info "Running prettier..."
+if ! bun run prettier --check . &> /tmp/prettier-check.log; then
+    print_warning "Code formatting issues detected. Auto-fixing..."
+    bun run prettier --write .
+    
+    # Stage the formatted files
+    git add -u
+    
+    print_success "Code formatted successfully"
+else
+    print_success "Code formatting check passed"
+fi
+
+# 2. Run TypeScript type checking
+print_info "Running TypeScript type check..."
+if ! bun run typecheck 2>&1 | tee /tmp/typecheck.log; then
+    print_error "TypeScript type errors found. Please fix them before committing."
+    echo ""
+    echo "Run this command to see errors:"
+    echo "  bun run typecheck"
+    exit 1
+fi
+print_success "TypeScript check passed"
+
+# 3. Run ESLint (skip if not configured)
+if [ -f "eslint.config.js" ] || [ -f "eslint.config.mjs" ] || [ -f "eslint.config.cjs" ] || [ -f ".eslintrc.cjs" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ]; then
+    print_info "Running ESLint..."
+    if ! bun run lint 2>&1 | tee /tmp/eslint.log; then
+        print_error "ESLint found issues. Please fix them before committing."
+        echo ""
+        echo "Run these commands to see and fix issues:"
+        echo "  bun run lint"
+        echo "  bun run lint:fix"
+        exit 1
+    fi
+    print_success "ESLint check passed"
+else
+    print_warning "ESLint not configured, skipping lint check"
+fi
+
+# 4. Run tests
+print_info "Running tests..."
+if ! bun test 2>&1 | tee /tmp/test-output.log; then
+    print_error "Tests failed. Please fix them before committing."
+    echo ""
+    echo "Run this command to see failures:"
+    echo "  bun test"
+    exit 1
+fi
+
+# Check test results - look for non-zero failures
+if grep -q -E "[1-9][0-9]* fail" /tmp/test-output.log; then
+    print_error "Some tests failed. Please fix them before committing."
+    exit 1
+else
+    print_success "All tests passed"
+fi
+
+# Clean up temp files
+rm -f /tmp/prettier-check.log /tmp/typecheck.log /tmp/eslint.log /tmp/test-output.log
+
+print_success "All pre-commit checks passed! 🎉"
+echo ""

@@ -10,3 +10,8 @@ vim/session
 *.log
 nvim/lua/local.lua
 nvim/local.lua
+
+# MCP Memory (personal context)
+memory.json
+.memory.json
+__pycache__

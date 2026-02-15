@@ -1,15 +1,30 @@
 #!/bin/bash
 # Update tmux window title with opencode session title
 #
-# Usage: opencode-tmux-title <working_directory>
+# Usage: opencode-tmux-title <working_directory> [pidfile]
 # Runs in background, polling every 5 seconds until killed
 #
 # The working directory is used to find the correct project's sessions
+# If pidfile is provided, writes PID there for cleanup
 
-set -euo pipefail
+# Don't use -e so we can handle errors gracefully
+set -uo pipefail
 
 workdir="${1:-$(pwd)}"
+pidfile="${2:-}"
 storage_dir="$HOME/.local/share/opencode/storage"
+
+# Write PID file if requested
+if [[ -n "$pidfile" ]]; then
+    echo $$ > "$pidfile"
+fi
+
+# Cleanup on exit
+cleanup() {
+    [[ -n "$pidfile" && -f "$pidfile" ]] && rm -f "$pidfile"
+    exit 0
+}
+trap cleanup INT TERM HUP EXIT
 
 # Find project ID for this working directory
 find_project_id() {
@@ -31,7 +46,9 @@ session_dir="$storage_dir/session/$project_id"
 [[ -d "$session_dir" ]] || exit 0
 
 while true; do
-    sleep 5
+    # Use sleep in a way that can be interrupted by signals
+    sleep 5 &
+    wait $! 2>/dev/null || exit 0
     
     # Find most recently modified session file in this project
     latest_session=$(find "$session_dir" -name "ses_*.json" -mmin -60 2>/dev/null | \

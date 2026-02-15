@@ -1,0 +1,15 @@
+#!/bin/bash
+# Shared shell functions
+
+# Smart FZF preview window positioning based on terminal width
+# Returns preview window configuration string for fzf --preview-window
+# Wide terminals (>=140 cols): right side preview at 60%
+# Narrow terminals (<140 cols): bottom preview at 40%
+fzf_preview_window() {
+	local cols=$(tput cols 2>/dev/null || echo 80)
+	if [ "$cols" -ge 140 ]; then
+		echo "right:60%:border-left:wrap"
+	else
+		echo "down:40%:border-top:wrap"
+	fi
+}

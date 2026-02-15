@@ -620,12 +620,12 @@ epist add fact
 
 **Step 2: Create Quarto analysis document**
 
-Use `/think` command or create `.qmd` file:
+Use `/think` command or create `.qmd` file with abstract-first structure:
 
 ```qmd
 ---
 title: "Sales Analysis Q4 2024 with EPIST Provenance"
-author: "Analysis Team"
+author: "Josh Lane"
 date: "2024-12-31"
 format:
   gfm: default
@@ -638,30 +638,35 @@ filters:
   - auto-dark
 ---
 
-## Facts Observed
+## Abstract
 
-```{python}
-#| echo: false
-from IPython.display import Markdown
+Q4 2024 sales totaled $2.1M, representing 15% YoY growth and exceeding
+targets. Widget X drove 21% of revenue ($450k), indicating strong
+product-market fit. All metrics verified through EPIST knowledge base
+with full provenance tracking. Analysis confidence: High (based on 3
+independently verified facts).
 
-# Reference EPIST facts
-Markdown("""
-- **Total Sales**: $2.1M (Source: EPIST fact `sales_q4_total.md`)
-- **YoY Growth**: 15% (Source: EPIST fact `sales_growth_yoy.md`)
-- **Top Product**: Widget X at $450k (Source: EPIST fact `top_product_q4.md`)
+## Key Findings
 
-All facts stored in EPIST knowledge base with full provenance.
-""")
-```
+- **Total Sales**: $2.1M — Verified across 3 data sources (High confidence)
+- **YoY Growth**: 15% — Consistent with Q3 trend projection (High confidence)
+- **Top Product**: Widget X at $450k — 21% of total revenue (High confidence)
 
-## Analysis
+## Investigation
+
+### Observations
+
+- **Sales Total**: $2.1M [EPIST `sales_q4_total.md`]
+- **Growth Rate**: 15% YoY [EPIST `sales_growth_yoy.md`]
+- **Product Performance**: Widget X $450k [EPIST `top_product_q4.md`]
+
+### Analysis
 
 ```{python}
 #| echo: false
 import matplotlib.pyplot as plt
 
-# Visualization
-sales_data = [1.5, 1.7, 1.9, 2.1]  # Q1-Q4
+sales_data = [1.5, 1.7, 1.9, 2.1]
 quarters = ['Q1', 'Q2', 'Q3', 'Q4']
 
 fig, ax = plt.subplots(figsize=(10, 6))
@@ -673,28 +678,19 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Provenance Chain
+### Provenance Chain
 
 ```{mermaid}
 flowchart LR
-    F1[Fact: Sales $2.1M] --> C1[Conclusion: Strong Q4]
-    F2[Fact: YoY Growth 15%] --> C1
-    F3[Fact: Widget X Top] --> C2[Conclusion: Focus on Widgets]
-    C1 --> R[Recommendation: Increase inventory]
+    F1[Fact: Sales $2.1M] --> C1[Insight: Strong Q4]
+    F2[Fact: Growth 15%] --> C1
+    F3[Fact: Widget X Top] --> C2[Insight: Product focus validated]
 ```
 
-## Conclusion
+### Interpretation
 
-```{python}
-#| echo: false
-Markdown("""
-Q4 2024 exceeded targets with $2.1M in sales (15% YoY growth).
-
-**Confidence**: High (based on 3 verified facts in EPIST)
-
-**Provenance**: All claims traceable to EPIST facts with source attribution.
-""")
-```
+All findings traced to EPIST knowledge base with verified sources.
+Confidence levels based on source reliability and cross-validation.
 ```
 
 **Step 3: Render Quarto document**
@@ -811,25 +807,6 @@ epist add conclusion
 # 6. Search for related analysis later
 epist search "autonomy analysis" --type conclusion
 ```
-
-#### Migration from Marimo
-
-**Previous workflow (deprecated):**
-- marimo for reactive notebooks
-- Manual EPIST integration
-- Limited provenance visualization
-
-**New workflow (recommended):**
-- Quarto for static analysis with full epistemological chain
-- Direct EPIST integration via `/think` command
-- Visual provenance with Mermaid diagrams
-- Multi-format output (GFM, HTML, DOCX)
-- Professional presentation (charts, LaTeX, formatted tables)
-
-**For interactive analysis:**
-- Use marimo for exploration during development
-- Export to Quarto for final analysis and sharing
-- Store facts/conclusions in EPIST for long-term tracking
 
 ## Common Use Cases
 
