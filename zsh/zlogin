@@ -3,6 +3,18 @@ if command -v fzf >/dev/null; then
 		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 	fi
 
+	# Smart preview window positioning based on terminal width
+	# Wide terminals (>=180 cols): preview on right
+	# Narrow terminals (<180 cols): preview on bottom
+	_fzf_preview_window() {
+		local cols=$(tput cols 2>/dev/null || echo 80)
+		if [ "$cols" -ge 180 ]; then
+			echo "right:60%:border-left:wrap"
+		else
+			echo "down:40%:border-top:wrap"
+		fi
+	}
+
 	unset FZF_DEFAULT_OPTS
 	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'--prompt=\
 	--cycle
@@ -10,6 +22,7 @@ if command -v fzf >/dev/null; then
 	--height=62%
 	-i
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
+	--bind ctrl-/:toggle-preview
 	--color=fg:#e5e9f0,bg:#3b4252,hl:#81a1c1
 	--color=fg+:#e5e9f0,bg+:#3b4252,hl+:#81a1c1
 	--color=info:#eacb8a,prompt:#bf6069,pointer:#b48dac
@@ -18,8 +31,7 @@ if command -v fzf >/dev/null; then
 	unset FZF_CTRL_R_OPTS
 	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"
 	--reverse
-	--preview-window down:5:hidden:wrap
-	--bind 'ctrl-/:toggle-preview'
+	--preview-window $(_fzf_preview_window):hidden
 	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
 	"
 
@@ -32,19 +44,19 @@ if command -v fzf >/dev/null; then
 		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"
 	  --reverse
 	  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}'
-	  --preview-window right:60%"
+	  --preview-window $(_fzf_preview_window)"
 	fi
 
 	if command -v fd >/dev/null; then
 		unset FZF_CTRL_T_COMMAND
-		export FZF_CTRL_T_COMMAND='fd --type f --hidden --follow --exclude .git'
+		export FZF_CTRL_T_COMMAND='fd --type f --follow --exclude .git'
 	fi
 
 	if command -v bat >/dev/null; then
 		unset FZF_CTRL_T_OPTS
 		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
 		--preview='bat --plain --color=always {}'
-		--preview-window right:60%"
+		--preview-window $(_fzf_preview_window)"
 	fi
 fi
 
