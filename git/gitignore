@@ -11,3 +11,7 @@ data/snapshots/
 .vscode/
 .idea/
 *.swp
+
+# MCP Memory (personal context, not shared)
+memory.json
+.memory.json

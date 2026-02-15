@@ -43,6 +43,9 @@ elif [ -z "$SSH_CONNECTION" ]; then
     fi
 fi
 
+# Source shared shell functions
+[ -r "$HOME/.files/sh/functions" ] && . "$HOME/.files/sh/functions"
+
 [ -r /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 [ -r /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
 # macos

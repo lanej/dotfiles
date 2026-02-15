@@ -80,9 +80,18 @@
     "skill": {
       "*": "allow"
     },
-    "bash": {
+    "external_directory": {
+      "/tmp/**": "allow",
+      "/private/tmp/**": "allow",
+      "/var/folders/**": "allow"
+    },
+    "read": {
       "/tmp/*": "allow",
       "/private/tmp/*": "allow",
+      "/var/folders/*": "allow"
+    },
+    "write": "allow",
+    "bash": {
       "rm -rf /": "deny",
       "rm -rf / *": "deny",
       "sudo rm *": "deny",
@@ -92,8 +101,7 @@
       "parted *": "deny",
       "wipefs *": "deny"
     },
-    "edit": "allow",
-    "write": "allow"
+    "edit": "allow"
   },
   "mcp": {
     "gspace": {
@@ -144,15 +152,6 @@
       ],
       "enabled": false
     },
-    "epist": {
-      "type": "local",
-      "command": [
-        "epist",
-        "mcp",
-        "stdio"
-      ],
-      "enabled": true
-    },
     "sequential-thinking": {
       "type": "local",
       "command": [
@@ -186,33 +185,10 @@
         "-y",
         "@modelcontextprotocol/server-memory"
       ],
-      "enabled": false,
+      "enabled": true,
       "environment": {
         "MEMORY_FILE_PATH": "/Users/joshlane/memory.json"
       }
-    },
-    "knowledge_base": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "chroma-mcp",
-        "--client-type",
-        "persistent",
-        "--data-dir",
-        "/Users/joshlane/src/kb-md/chroma_db"
-      ],
-      "enabled": false,
-      "environment": {
-        "ANONYMIZED_TELEMETRY": "false"
-      }
-    },
-    "gdrive": {
-      "type": "local",
-      "command": [
-        "node",
-        "/Users/joshlane/src/gdrive-mcp/bin/index.js"
-      ],
-      "enabled": false
     },
     "git": {
       "type": "local",
@@ -220,7 +196,7 @@
         "uvx",
         "mcp-server-git"
       ],
-      "enabled": false
+      "enabled": true
     },
     "github": {
       "type": "local",
@@ -233,7 +209,7 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
-      "enabled": false
+      "enabled": true
     },
     "puppeteer": {
       "type": "local",
@@ -241,6 +217,31 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-puppeteer"
+      ],
+      "enabled": true
+    },
+    "gdrive": {
+      "type": "local",
+      "command": [
+        "gdrive",
+        "mcp",
+        "stdio"
+      ],
+      "enabled": true
+    },
+    "mcp-atlassian": {
+      "type": "local",
+      "command": [
+        "podman",
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "/Users/joshlane/.config/mcp/jira.env:/etc/mcp/jira.env",
+        "ghcr.io/sooperset/mcp-atlassian:latest",
+        "-vv",
+        "--env-file",
+        "/etc/mcp/jira.env"
       ],
       "enabled": true
     },

@@ -1,3 +1,128 @@
+## User Identity & Context
+
+**Name**: Josh Lane
+**Role**: Senior Software Engineer (distributed systems, API design)
+**Company**: EasyPost (shipping/logistics platform)
+**Timezone**: America/Los_Angeles (PST/PDT)
+**Primary Stack**: Go, Rust, Python, TypeScript
+**Domain**: Shipping logistics, carrier APIs, rate shopping
+
+**Communication Style**:
+- Terse, technical (Unix philosophy adherent)
+- Visual expression preferred (charts > tables > raw data)
+- Epistemic rigor over politeness
+- TDD advocate
+
+**Internal Tools**: Phabricator (code review), Jira (project management), BigQuery, GCP/Vertex AI
+
+**Document Authorship**: Use "Josh Lane" as author for Quarto documents, reports, and analyses
+
+## Session Memory (MCP)
+
+This session has access to persistent memory using a knowledge graph. **Use memory
+frequently** to improve context and personalization across sessions.
+
+### Memory Scopes
+
+**Global memory** (`~/memory.json`) - User-level context applicable everywhere:
+- Personal preferences (communication style, analysis approach)
+- Tool usage patterns (Quarto, Git, testing frameworks)
+- General development principles (TDD, Unix philosophy)
+- Cross-project learnings (debugging patterns, performance insights)
+
+**Project memory** (`.memory.json` in repo root) - Project-specific context:
+- Project conventions (naming, architecture, file structure)
+- Codebase patterns (how this project handles auth, DB, APIs)
+- Team workflows (PR process, review requirements, deployment)
+- Domain-specific rules (shipping industry conventions, carrier APIs)
+
+**AGENTS.md** - Foundational identity (rarely changes, requires approval):
+- Core identity and role
+- Tool hierarchy and primary stack
+- Communication style principles
+- Major workflow patterns
+
+### Scope Decision Guide
+
+```
+Does this preference apply to other projects?
+├─ YES → Is it a foundational identity change?
+│         ├─ YES → Suggest AGENTS.md edit (show diff, get approval)
+│         └─ NO  → Global memory
+└─ NO  → Project memory (only applies to this codebase)
+```
+
+### Entity Naming Convention
+
+**Required pattern**: `{Scope}_{Topic}_{Type}`
+
+**Global entities**: `Josh_Lane_Quarto_Preferences`, `Josh_Lane_Git_Workflow`
+**Project entities**: `Project_{RepoName}_Conventions`, `Project_{RepoName}_Architecture`
+
+### When to Use Memory
+
+**Auto-remember** (no explicit command needed):
+- User states preference: "I prefer X over Y"
+- User corrects you repeatedly: "No, use X not Y" (2+ times)
+- User says explicitly: "remember this", "always do X", "never do Y"
+- Pattern detected: User consistently does X when Y happens
+
+**Confirmation shown**:
+```
+✓ Remembered: Josh_Lane_Quarto_Preferences → "Use Markdown() not print()"
+```
+
+### Memory and PKM Usage in Workflows
+
+**CRITICAL: Check memory and PKM before EVERY substantive response.**
+
+Before starting ANY task that involves analysis, coding, or decision-making:
+
+1. **Query memory** (`memory_search_nodes`) for relevant user preferences
+2. **Query PKM** (`pkm_search_documents` or `lancer search`) for relevant prior knowledge
+3. Apply preferences and context found
+4. Reference sources in reasoning: "Based on your preference for X..." or "From prior analysis in PKM..."
+5. Add new learnings to memory/PKM after completion
+
+**What to search for:**
+
+- **Memory**: User preferences, tool patterns, communication style, project conventions
+- **PKM**: Prior analyses, documented decisions, research findings, domain knowledge
+
+**Example workflow:**
+```
+User: Analyze the login errors
+
+LLM: [Queries memory for "analysis", "login", "errors"]
+     → Found: Josh_Lane_Analysis_Preferences (abstract-first, visual evidence)
+     
+     [Queries PKM for "login errors", "authentication"]
+     → Found: Prior analysis of auth token expiration patterns
+     → Found: Carrier API timeout documentation
+     
+     [Creates analysis applying all preferences and prior knowledge]
+     
+     ✓ Applied: Josh_Lane_Quarto_Preferences
+     ✓ Referenced: PKM auth-analysis-2025-01.md
+     ✓ Added: Project_CarrierAPI_Patterns → "Auth token expiration correlates with 503s"
+```
+
+**Skip memory/PKM check only for:**
+
+- Simple factual questions ("What is X?")
+- Direct tool execution ("Run this command")
+- Continuation of current conversation with full context
+
+### Memory Initialization
+
+On first session with memory enabled, seed initial entities from this AGENTS.md:
+- `Josh_Lane` (identity, role, stack)
+- `Josh_Lane_Communication_Style` (preferences)
+- `Josh_Lane_Quarto_Preferences` (Quarto guidance)
+- `Josh_Lane_Tool_Preferences` (tool hierarchy)
+
+After seeding, memory grows organically through usage and corrections.
+
 ## Response Formatting
 - **Markdown line breaks**: Consecutive lines REQUIRE blank lines between them to render separately (or use proper list syntax)
 - **Terminal readability**: Ensure all output renders properly in markdown viewers
@@ -70,6 +195,11 @@ Even when not creating full Quarto documents, follow visual expression principle
 - Do NOT suggest splitting work, deferring tasks, or simplifying solutions due to cost/token concerns
 - ONLY consideration: Stay within context window limits for technical functionality
 - Focus on delivering complete, thorough solutions regardless of resource usage
+
+### Resource Awareness
+- **Data Volume**: When working with datasets (BigQuery, CSVs, Logs), always estimate size BEFORE fetching.
+- **Streaming vs. In-Memory**: Prefer streaming/zero-copy approaches for data >1GB. Avoid loading entire datasets into RAM unless necessary.
+- **Compute Constraints**: Be mindful of training times. Use subsets (1% sample) for initial debugging before launching full scale runs.
 
 ## Unix Philosophy
 
@@ -210,7 +340,7 @@ Even when not creating full Quarto documents, follow visual expression principle
 - **jq**: STRONGLY PREFERRED for ALL JSON operations (instead of Python/Node.js scripts)
 - **xlsx**: Use `xlsx` binary for ALL Excel file operations (viewing, filtering, editing, conversion); AVOID Python/Node.js libraries
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
-- **BigQuery**: Use `bigquery` CLI (NOT `bq`)
+- **BigQuery**: Prefer `bigquery` CLI for complex operations; `bq` via bash is acceptable for quick schema checks or if the primary tool is unavailable.
 - **DuckDB**: Use single quotes for string literals (`'ups'`), double quotes for identifiers; prefer JSONL for ingestion via `read_json_auto()`; use `UNNEST(array_col) AS t(val)` in FROM clause for array expansion
 
 **Tool Selection Hierarchy** (prefer earlier options):
@@ -252,7 +382,6 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **pptx** - PowerPoint presentation manipulation
 - **pdf** - PDF extraction, creation, merging, form filling
 - **xlsx-python** - Programmatic Excel creation with Python
-- **marimo** - Reactive Python notebooks for data analysis and EPIST workflows; STRONGLY PREFERRED for ad-hoc analysis with auto-reactivity, single-file execution, and direct Python integration
 - **quarto** - Render computational documents to markdown (DEFAULT), PDF, HTML, Word, presentations; PREFER markdown output for composability; Use for static reports (no interactivity), multi-format publishing, scientific documents with citations/cross-references
 
 **Development Tools:**
@@ -303,9 +432,6 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Data extraction** - Extracting structured data from unstructured text/PDFs/CSVs, AI-powered parsing → load `conform` skill
 - **Qualitative analysis** - When quantitative data seems counterintuitive or needs deeper understanding, use `conform` to analyze the underlying qualitative patterns
 - **Unstructured → structured analysis** - Use `conform` to extract structured data from unstructured sources, then `duckdb` for statistical analysis of the structured results
-- **Computational narratives** - Creating executable notebooks, reproducible analysis, research documentation with code → load `marimo` skill
-- **Notebook creation** - When creating notebooks for EPIST analysis, reactive execution, or single-file workflows → load `marimo` skill
-- **Reactive notebooks** - When automatic updates on data changes are needed, interactive widgets, or EPIST provenance tracking → load `marimo` skill
 - **Static report rendering** - Rendering markdown/notebooks to publication-quality PDF, HTML, or Word (no interactivity) → load `quarto` skill
 - **Multi-format publishing** - Need single source rendered to multiple output formats (PDF + HTML + Word) → load `quarto` skill
 - **Scientific documents** - Documents requiring citations, cross-references, equation numbering, academic formatting → load `quarto` skill
@@ -368,6 +494,16 @@ The `/reflection-harder` command integrates with tmux status bar to notify when 
 - No persistent storage (ephemeral/in-memory reflections)
 
 ## Development Best Practices
+
+### File Modification Protocol
+- **Read before Edit**: ALWAYS read the target file (or the relevant section) immediately before applying an edit to ensure your context is 100% accurate.
+- **Unique Context**: Ensure `oldString` includes enough surrounding lines to be unique.
+- **Incremental Changes**: For large refactors, prefer re-writing the file (`write` tool) or applying smaller, verifiable edits over massive find-and-replace operations.
+
+### Iterative Task Tracking
+- **Work Logs**: For complex, multi-step optimization tasks (like ML tuning or performance debugging), create a `WORKLOG.md` or `CHANGELOG.md` to track progress.
+- **Metrics**: Explicitly record baseline metrics before making changes, and compare results after each iteration.
+- **Diffs**: Document *what* changed in each iteration (e.g., "Added Dropout", "Increased Batch Size") to correlate changes with results.
 
 ### Node.js/JavaScript
 - Always check package.json first to understand available scripts

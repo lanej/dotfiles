@@ -538,6 +538,176 @@ conform input.txt --schema schema.json --verbose
 file -I input.txt
 ```
 
+## Batch Processing
+
+For large-scale data extraction, use the batch processing commands to submit jobs to Vertex AI's batch prediction API. This is ideal for processing thousands of documents cost-effectively.
+
+### Batch Commands Overview
+
+```bash
+conform batch submit <input>     # Submit a batch job
+conform batch status <job-id>    # Check job status
+conform batch list               # List batch jobs
+conform batch download <job-id>  # Download completed results
+conform batch import <job-id>    # Import remote job to local store
+```
+
+### Submit a Batch Job
+
+```bash
+# Submit directory of files
+conform batch submit data/ \
+  --schema schema.json \
+  --output results/ \
+  --gcs-bucket gs://my-bucket/staging
+
+# Submit pre-formatted JSONL file
+conform batch submit requests.jsonl \
+  --raw \
+  --output results/
+
+# With specific model
+conform batch submit data/ \
+  --schema schema.json \
+  --vertex-model gemini-2.5-flash \
+  --vertex-project my-project \
+  --vertex-location us-central1
+```
+
+**Submit Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--schema <path>` | JSON schema file (required unless `--raw`) |
+| `--output <path>` | Output directory for results |
+| `--gcs-bucket <uri>` | GCS bucket for staging files |
+| `--raw` | Input is pre-formatted JSONL (no schema needed) |
+| `--model <name>` | Model name |
+| `--vertex-project <id>` | GCP project ID |
+| `--vertex-location <loc>` | GCP location |
+| `--vertex-model <name>` | Vertex AI model (default: gemini-2.5-flash) |
+| `--verbose` | Show detailed processing info |
+
+### Check Job Status
+
+```bash
+# Check status of a specific job
+conform batch status job-12345
+
+# With verbose output
+conform batch status job-12345 --verbose
+
+# With explicit project/location
+conform batch status job-12345 \
+  --vertex-project my-project \
+  --vertex-location us-central1
+```
+
+**Status Values:**
+
+| Status | Description |
+|--------|-------------|
+| `PENDING` | Job submitted, not yet started |
+| `QUEUED` | Job queued for processing |
+| `RUNNING` | Job currently processing |
+| `SUCCEEDED` | Job completed successfully |
+| `FAILED` | Job failed |
+
+### List Batch Jobs
+
+```bash
+# List local jobs
+conform batch list
+
+# List remote jobs (cross-machine discovery)
+conform batch list --remote
+
+# Filter by status
+conform batch list --status RUNNING
+conform batch list --status SUCCEEDED
+
+# Verbose output
+conform batch list --verbose
+```
+
+### Download Results
+
+```bash
+# Download completed job results
+conform batch download job-12345
+
+# With verbose progress
+conform batch download job-12345 --verbose
+```
+
+Results are downloaded to the output directory specified during submit, or to the default batch results location.
+
+### Import Remote Job
+
+Use this to import a job that was submitted from another machine:
+
+```bash
+# Import remote job to local store
+conform batch import job-12345
+
+# Specify output directory
+conform batch import job-12345 --output results/
+
+# With verbose progress
+conform batch import job-12345 --verbose
+```
+
+### Batch Workflow Example
+
+```bash
+# 1. Submit batch job
+JOB_ID=$(conform batch submit documents/ \
+  --schema extraction-schema.json \
+  --gcs-bucket gs://my-bucket/conform-staging \
+  --output results/ 2>&1 | grep -oP 'job-\w+')
+
+echo "Submitted job: $JOB_ID"
+
+# 2. Poll for completion
+while true; do
+  STATUS=$(conform batch status "$JOB_ID" 2>&1 | grep -oP '(PENDING|QUEUED|RUNNING|SUCCEEDED|FAILED)')
+  echo "Status: $STATUS"
+  
+  if [[ "$STATUS" == "SUCCEEDED" ]]; then
+    echo "Job completed!"
+    break
+  elif [[ "$STATUS" == "FAILED" ]]; then
+    echo "Job failed!"
+    exit 1
+  fi
+  
+  sleep 60
+done
+
+# 3. Download results
+conform batch download "$JOB_ID"
+
+# 4. Process results with jq
+cat results/*.json | jq -s 'map(.extracted) | add'
+```
+
+### When to Use Batch vs Single Processing
+
+**Use Batch When:**
+
+- Processing hundreds or thousands of documents
+- Cost optimization is important (batch pricing is lower)
+- Results not needed immediately (async processing)
+- Processing large PDFs or complex documents
+- Running overnight/scheduled jobs
+
+**Use Single Processing When:**
+
+- Processing a few documents
+- Need immediate results
+- Interactive/iterative development
+- Testing schemas before batch submission
+
 ## Advanced Usage
 
 ### Custom Ollama Endpoint

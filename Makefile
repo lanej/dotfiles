@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail opencode
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail opencode quarto
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -172,6 +172,11 @@ opencode: claude
 	@ln -fns $(HOME)/.claude/skills $(HOME)/.config/opencode/skills
 	@ln -fs $(HOME)/.claude/CLAUDE.md $(HOME)/.config/opencode/AGENTS.md
 	@$(DOTFILES)/bin/claude-to-opencode || true
+quarto:
+	@mkdir -p $(HOME)/.config/quarto
+	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles
+	@ln -fs $(DOTFILES)/quarto/_quarto.yml $(HOME)/.config/quarto/_quarto.yml
+	@echo "✓ Quarto configuration linked"
 gemini:
 	@mkdir -p $(HOME)/.gemini/themes
 	@ln -fs $(DOTFILES)/gemini/themes/nord.json $(HOME)/.gemini/themes/nord.json

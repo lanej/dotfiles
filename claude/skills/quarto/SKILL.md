@@ -1,6 +1,6 @@
 ---
 name: quarto
-description: Render computational documents to markdown (DEFAULT), PDF, HTML, Word, and presentations using Quarto. PREFER markdown output for composability. Use for static reports, multi-format publishing, scientific documents with citations/cross-references, or exporting marimo/Jupyter notebooks. Triggers on "render markdown", "render PDF", "publish document", "create presentation", "quarto render", or multi-format publishing needs.
+description: Render computational documents to markdown (DEFAULT), PDF, HTML, Word, and presentations using Quarto. PREFER markdown output for composability. Use for static reports, multi-format publishing, scientific documents with citations/cross-references, or exporting Jupyter notebooks. Triggers on "render markdown", "render PDF", "publish document", "create presentation", "quarto render", or multi-format publishing needs.
 ---
 
 # Quarto Skill
@@ -9,15 +9,17 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 
 ## Best Practices (TL;DR)
 
-1. **Markdown-First**: Default to `format: gfm` (GitHub-flavored markdown) for composability, portability, and archival
-2. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
-3. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
-4. **LaTeX for Math**: Use LaTeX notation for ALL mathematical expressions ($\alpha = 0.15$, not "alpha = 0.15")
-5. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
-6. **No TOC**: Table of contents is usually noise - use clear section headings instead
-7. **DOCX for Google**: Use `--to docx` for easy upload to Google Docs (better than PDF)
-8. **Double Newlines**: Markdown requires blank lines between paragraphs (single newline = same paragraph)
-9. **Render on Demand**: Generate PDF/HTML only when specifically needed for distribution, not by default
+1. **Markdown-First**: Default to `format: gfm` with `wrap: none` for composability, portability, and archival
+2. **No Line Wrapping**: Always use `wrap: none` for GFM output (avoids artificial line breaks)
+3. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
+4. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
+5. **LaTeX for Math**: Use LaTeX notation for ALL mathematical expressions ($\alpha = 0.15$, not "alpha = 0.15")
+6. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
+7. **No TOC**: Table of contents is usually noise - use clear section headings instead
+8. **PDF for Sharing**: Use `--to pdf` for Google Drive sharing (read-only, professional)
+9. **Blank Lines Before Lists**: ALWAYS include a blank line before every list (bullet or numbered) - no exceptions
+10. **No Appendix for Sources**: Data sources belong in code blocks, not appendix - only add external sources not directly referenced in code to appendix
+11. **Use Markdown() Class**: ALWAYS use `Markdown()` for text output in code blocks - NEVER use `print()` or `printf()` (output must render as formatted markdown)
 
 ## Visual Expression Philosophy
 
@@ -38,9 +40,12 @@ Quarto outputs are static documents meant to convey insights to humans. Raw data
 # ❌ BAD: Raw dataframe dump
 df.head()
 
-# ❌ BAD: Print statements
+# ❌ BAD: Print statements - output renders as plain text, not formatted markdown
 print(f"Total: {total}")
 print(data_dict)
+
+# ❌ BAD: printf/print for text - use Markdown() instead
+print("## Summary\n- Item 1\n- Item 2")  # Renders as plain text!
 
 # ❌ BAD: Bare variable returning data structure
 result  # Returns raw dict/JSON
@@ -48,6 +53,15 @@ result  # Returns raw dict/JSON
 # ❌ BAD: DataFrame info without formatting
 df.describe()
 df.info()
+
+# ✅ GOOD: Use Markdown() for ALL text output
+from IPython.display import Markdown
+Markdown(f"""
+## Summary
+
+- **Total**: {total:,}
+- **Average**: {avg:.2f}
+""")
 ```
 
 ```markdown
@@ -88,7 +102,8 @@ from great_tables import GT
     .fmt_date(columns="date", date_style="medium"))
 
 # ✅ GOOD: Formatted table using pandas markdown
-print(df.head(10).to_markdown(index=False, tablefmt='grid'))
+from IPython.display import Markdown
+Markdown(df.head(10).to_markdown(index=False, tablefmt='pipe'))
 
 # ✅ GOOD: Formatted metrics in markdown with LaTeX
 from IPython.display import Markdown
@@ -109,25 +124,93 @@ The linear regression model $y = \\beta_0 + \\beta_1 x + \\epsilon$ yielded:
 - $R^2 = 0.78$, indicating strong fit
 """)
 
-# ✅ GOOD: Mermaid diagram for relationships
-Markdown('''
-```mermaid
-flowchart LR
-    A[Raw Data] --> B[Analysis]
-    B --> C[Insights]
-    C --> D[Decision]
-```
-''')
+# NOTE: Mermaid diagrams must use native Quarto syntax outside Python blocks
+# Use ```{mermaid} directly in markdown, NOT inside Markdown() calls
 ```
 
 ### Why Visual Expression Matters
 
 - **Documents are for humans**: Show insights, not data structures
 - **Static format**: No interactive exploration - must communicate clearly on first view
-- **EPIST provenance**: Visualize fact→conclusion chains, not raw JSON
+- **Traceable reasoning**: Visualize fact→conclusion chains, not raw JSON
 - **Professional output**: Charts and tables look polished in PDF/HTML/Word
 - **Accessibility**: Visual hierarchy helps readers navigate content
 - **Shareability**: Well-formatted outputs communicate without explanation
+
+## Narrative Structure
+
+**Build understanding progressively through a series of sections:**
+
+### Document Flow
+
+1. **Abstract** - The punchline first (executive summary for busy readers)
+2. **Key Findings** - Scannable bullet points with confidence levels
+3. **Base Facts** - Individual observations/data, each in its own section
+4. **Synthesis Sections** - Combine earlier facts into higher-level insights
+5. **Conclusion** - Final synthesis referencing the insights above
+
+### Base Facts (Individual Sections)
+
+Each base fact is an independent observation with its own data and evidence. Use descriptive headers (not "Fact 1"):
+
+```qmd
+## Response Time Distribution
+
+\needspace{3in}
+
+Analysis of the past 7 days shows significant tail latency:
+- p50: 45ms
+- p95: 230ms  
+- p99: 890ms (concerning)
+
+```{python}
+#| echo: false
+# Chart showing latency distribution
+```
+```
+
+### Synthesis Sections
+
+Synthesis sections **explicitly reference** which earlier sections they build upon:
+
+```qmd
+## Performance Degradation Under Load
+
+\needspace{4in}
+
+Building on the response time distribution and traffic patterns above, we 
+observe a clear correlation: p99 latency spikes to 2.3s during the 2-4pm 
+peak traffic window. The system handles baseline load well but degrades 
+significantly under peak conditions.
+```
+
+### Keeping Content Together (PDF)
+
+Use `\needspace{Xin}` before sections with charts/diagrams to prevent awkward page breaks and large whitespace gaps:
+
+```qmd
+## Revenue by Carrier
+
+\needspace{4in}
+
+```{python}
+# Chart code here
+```
+```
+
+**Guidelines:**
+- **Mermaid diagrams**: `\needspace{2in}`
+- **Single chart**: `\needspace{3in}`
+- **Chart + explanation**: `\needspace{4in}`
+
+**Requires** in YAML frontmatter:
+```yaml
+format:
+  pdf:
+    include-in-header:
+      text: |
+        \usepackage{needspace}
+```
 
 ## Markdown Formatting Rules (CRITICAL)
 
@@ -161,6 +244,34 @@ This is paragraph one.
 This is paragraph two.
 
 This is paragraph three.
+```
+
+**Lists REQUIRE blank line before the list:**
+```markdown
+❌ BAD: List doesn't render correctly
+Here is some text:
+- Item 1
+- Item 2
+
+✅ GOOD: Blank line before list
+Here is some text:
+
+- Item 1
+- Item 2
+```
+
+**Numbered lists also require blank line before:**
+```markdown
+❌ BAD: Numbered list broken
+The steps are:
+1. First step
+2. Second step
+
+✅ GOOD: Blank line before numbered list
+The steps are:
+
+1. First step
+2. Second step
 ```
 
 **Lists (no blank lines between items):**
@@ -242,6 +353,7 @@ We recommend increasing inventory by {inventory_increase:,} units.
 ### Best Practices
 
 ✅ **DO:**
+
 - Use blank lines between all paragraphs
 - Use blank lines before and after headers
 - Use blank lines before and after code blocks
@@ -249,6 +361,7 @@ We recommend increasing inventory by {inventory_increase:,} units.
 - Use triple-quoted strings for multi-line markdown in Python
 
 ❌ **DON'T:**
+
 - Use single newlines and expect paragraph breaks
 - Forget blank lines around headers or code blocks
 - Mix single and double newlines inconsistently
@@ -281,165 +394,53 @@ cat test.md
 
 ## LLM Self-Reasoning with Quarto
 
-**IMPORTANT: Use Quarto to document your epistemological reasoning chain when solving complex problems.**
+Use `/think` command for structured analysis with graduated detail.
 
-### Why LLMs Should Use Quarto for Thinking
+### Document Structure
 
-**Quarto provides structure for:**
-- **Traceable reasoning**: Facts → Hypotheses → Evidence → Conclusions
-- **Visual communication**: Mermaid diagrams show reasoning flows
-- **Mathematical rigor**: LaTeX for statistical analysis and equations
-- **Multi-format output**: GFM for archival, HTML for viewing, DOCX for collaboration
-- **Provenance tracking**: Integration with EPIST for fact management
-- **Reproducibility**: Code + results + reasoning = complete story
+Documents use graduated detail so readers can stop at their desired depth:
 
-### When to Use `/think` Command
+**Abstract** (paragraph)
 
-**Use `/think <problem>` for:**
-- Complex debugging (multiple possible root causes)
-- Architecture decisions (trade-offs to evaluate)
-- Data analysis (statistical reasoning required)
-- Performance investigations (hypotheses to test)
-- Any problem requiring structured reasoning chain
+- Self-contained executive summary
+- Complete story: what, why, result, meaning
+- Include key metrics and confidence assessment
 
-**Example:**
+**Key Findings** (3-5 bullets)
+
+- Result + confidence + brief evidence
+- Scannable - each finding valuable standalone
+- Format: `**[Finding]**: [Result] — [Evidence] (Confidence)`
+
+**Investigation** (detailed)
+
+- Observations (sourced facts with academic citations `[source]`)
+- Analysis (visual reasoning, statistical evidence)
+- Interpretation (what it means, confidence, dependencies)
+
+**Appendix** (optional)
+
+- Investigation notes, dead ends, debugging traces
+- External data sources NOT directly referenced in code blocks (e.g., verbal conversations, meeting notes, prior analyses)
+- Do NOT duplicate data sources already expressed in code blocks - the code IS the source documentation
+
+### Visual Evidence
+
+Include diagram, chart, or table for most findings:
+
+- Mermaid diagrams for reasoning flows
+- Charts for quantitative analysis
+- Formatted tables for comparative data
+
+### Example Invocation
+
 ```
 /think Why is the login endpoint returning 500 errors intermittently?
 ```
 
-Creates a Quarto document with:
-- Facts observed (error logs, code inspection)
-- Hypotheses (3+ possible explanations)
-- Evidence analysis (what supports/contradicts each)
-- Conclusions (with confidence levels)
-- Recommendations (actionable next steps)
+Creates analysis document with abstract-first structure, key findings with confidence levels, and visual reasoning chains.
 
-### Template Structure for LLM Reasoning
-
-```qmd
----
-title: "Analysis: [Problem]"
-author: "Claude Code"
-date: "2024-02-02"
-format:
-  gfm: default
-  html:
-    theme:
-      dark: darkly
-      light: flatly
-  docx: default
-filters:
-  - auto-dark
----
-
-## Problem Statement
-
-[Clear restatement]
-
-## Facts Observed
-
-- **Fact 1**: Error occurs 3% of requests (Source: logs/app.log:1234)
-- **Fact 2**: Only affects POST /login endpoint (Source: nginx access logs)
-- **Fact 3**: Database connection pool shows spikes (Source: monitoring dashboard)
-
-## Assumptions
-
-- **Assumption 1**: Database is the bottleneck (based on connection pool spikes)
-- **Assumption 2**: Load balancer is healthy (not verified yet)
-
-## Hypotheses
-
-### Hypothesis 1: Database Connection Pool Exhaustion
-
-**Evidence supporting:**
-- Connection pool shows 100% utilization during errors
-- Error timing correlates with traffic spikes
-
-**Evidence contradicting:**
-- Pool size is 50, max concurrent users is 30
-
-**Confidence**: Medium
-
-### Hypothesis 2: Race Condition in Session Creation
-
-**Evidence supporting:**
-- Error only on POST (writes), not GET (reads)
-- Intermittent nature suggests timing issue
-
-**Evidence contradicting:**
-- No obvious concurrent writes in code review
-
-**Confidence**: Low
-
-## Analysis
-
-```{python}
-#| echo: false
-import matplotlib.pyplot as plt
-from IPython.display import Markdown
-
-# Show correlation between errors and traffic
-fig, ax = plt.subplots(figsize=(10, 6))
-# ... visualization code ...
-plt.show()
-
-Markdown(f"""
-Correlation between error rate and traffic: $\\rho = 0.89$ (strong positive)
-
-This suggests the errors are load-dependent, supporting the connection pool 
-exhaustion hypothesis.
-""")
-```
-
-## Reasoning Flow
-
-```{mermaid}
-flowchart TD
-    F1[Fact: 3% error rate] --> H1[Hypothesis: Pool exhaustion]
-    F2[Fact: Pool at 100%] --> H1
-    H1 --> T1[Test: Increase pool size]
-    T1 --> C1[Conclusion: Errors reduced to 0.1%]
-```
-
-## Conclusion
-
-**Primary Conclusion**: Database connection pool exhaustion during traffic spikes
-
-**Confidence**: High (based on correlation analysis and pool utilization metrics)
-
-**Dependencies**: Assumes monitoring metrics are accurate
-
-## Recommendations
-
-1. **Increase connection pool size** to 100 (High priority)
-   - Expected outcome: Eliminate 500 errors during spikes
-   
-2. **Add connection pool monitoring alerts** (Medium priority)
-   - Alert when utilization > 80%
-
-3. **Implement connection retry logic** (Low priority)
-   - Graceful degradation during pool saturation
-```
-
-### Integration with EPIST
-
-After creating a Quarto analysis, optionally save key facts/conclusions to EPIST:
-
-```bash
-# Add critical facts
-epist add fact
-# Title: Login endpoint has 3% error rate during spikes
-# Source: analysis_2024-02-02.qmd
-# Tags: [debugging, database, performance]
-
-# Add conclusion
-epist add conclusion
-# Title: Connection pool exhaustion causes login errors
-# Based on: facts/debugging/login_errors_*.md
-# Confidence: high
-```
-
-This makes your reasoning persistent and searchable across sessions.
+See `/think` command for full template.
 
 ## When to Use Quarto
 
@@ -450,29 +451,270 @@ This makes your reasoning persistent and searchable across sessions.
 - Scientific documents (equations, citations, cross-references)
 - Presentations (RevealJS HTML slides, PowerPoint, Beamer PDF)
 - Websites and blogs (multi-page projects)
-- EPIST provenance in static reports
-- Exporting marimo/Jupyter notebooks for publication
+- Exporting Jupyter notebooks for publication
 
 **NOT for:**
-- Interactive dashboards (use marimo `run` mode or Shiny)
-- Reactive exploration during development (use marimo `edit` mode)
-- Real-time data updates (use marimo or web dashboards)
-- When you need widgets/sliders for end users (use marimo WASM export)
+- Interactive dashboards (use Shiny or dedicated dashboard tools)
+- Real-time data updates (use web dashboards)
+- When you need widgets/sliders for end users
+
+## Data Provenance and Portability
+
+**CRITICAL: Quarto documents must be reproducible with documented dependencies.**
+
+When someone runs `quarto render analysis.qmd`, they should be able to get identical results given:
+- The document itself (`.qmd` file)
+- Documented external dependencies (with setup instructions)
+- Access to the same data sources (APIs, databases)
+
+### The Portability Contract
+
+A `.qmd` file defines a **complete data pipeline**. The document contains:
+1. **Data extraction logic** - How to obtain the data (queries, API calls, etc.)
+2. **Transformation code** - How to process and analyze
+3. **Presentation** - Charts, tables, narrative
+4. **Dependency documentation** - Setup instructions for heavy dependencies
+
+**Practical limits**: Some dependencies are too expensive to rebuild on every render:
+- **Vector indexes** (LanceDB, FAISS) - Document how to build, reference existing
+- **Large datasets** - Commit to git or document extraction, don't re-download
+- **ML models** - Reference by path with setup instructions
+
+The key is **documentation**: readers must understand what's needed and how to set it up.
+
+### Anti-Pattern: Opaque File References
+
+❌ **BAD: Referencing local files without provenance**
+```python
+df = pd.read_json('/tmp/orders.jsonl', lines=True)  # Where did this come from?
+df = pd.read_csv('sales.csv')  # Who created this? When? How?
+
+# "This JSONL file" without explaining its origin
+data = load_data('extracted_metrics.jsonl')  # Non-portable!
+```
+
+### Good Pattern: Embed Data Extraction
+
+✅ **PREFERRED: Document defines where data comes from**
+```python
+#| cache: true
+import subprocess
+import io
+import pandas as pd
+
+# Extract from BigQuery - cached to avoid re-running on every render
+result = subprocess.run([
+    'bigquery', 'query',
+    '''SELECT * FROM production.orders 
+       WHERE date >= '2024-01-01' 
+       AND status = 'completed' ''',
+    '--format', 'jsonl'
+], capture_output=True, text=True, check=True)
+
+df = pd.read_json(io.StringIO(result.stdout), lines=True)
+```
+
+✅ **ALSO GOOD: Canonical external sources**
+```python
+#| cache: true
+import pandas as pd
+
+# Public dataset with stable URL
+df = pd.read_csv('https://data.company.com/public/sales-2024.csv')
+
+# Or versioned data in the same repository
+df = pd.read_csv('data/sales-2024-v2.csv')  # Committed to git with the .qmd
+```
+
+### Heavy Dependencies: Document, Don't Rebuild
+
+**Rule of thumb**: Un-cached renders should complete in < 60 seconds.
+
+- **< 60 seconds** → Embed in document (with `cache: true`)
+- **> 60 seconds** → Document as external dependency with setup instructions
+
+Some dependencies are too expensive to recreate on every render. **Document them clearly** so readers can set up the environment.
+
+✅ **GOOD: Reference with setup documentation**
+```python
+#| echo: false
+import subprocess
+
+# DEPENDENCY: LanceDB index at ~/.lancedb/documents
+# Setup: lancer ingest -t documents ~/corpus/*.md
+# This index contains ~50k documents and takes ~10 min to build
+
+result = subprocess.run(
+    ['lancer', 'search', '-t', 'documents', 'shipping rate errors', '--limit', '20'],
+    capture_output=True, text=True, check=True
+)
+relevant_docs = result.stdout
+```
+
+✅ **GOOD: Prerequisites section in document**
+```qmd
+---
+title: "Knowledge Base Analysis"
+---
+
+## Prerequisites
+
+This analysis requires the following setup:
+
+1. **LanceDB index**: `lancer ingest -t documents ~/corpus/*.md`
+2. **BigQuery access**: Authenticated via `gcloud auth application-default login`
+3. **Data snapshot**: Run `./scripts/extract-data.sh` (takes ~5 min)
+
+## Analysis
+...
+```
+
+❌ **BAD: Silent dependency on local state**
+```python
+# No documentation about what this index is or how to create it
+results = lancer.search("documents", "query")  # Will fail for anyone else
+```
+
+### Caching for Iteration Speed
+
+Use `cache: true` to avoid re-running expensive operations during iteration.
+
+**Requires jupyter-cache** (one-time install):
+```bash
+uv pip install jupyter-cache
+```
+
+**Per-cell caching:**
+```python
+#| cache: true
+#| label: data-extraction
+
+# This cell only re-executes if the code changes
+result = subprocess.run(['bigquery', 'query', ...], capture_output=True, text=True)
+df = pd.read_json(io.StringIO(result.stdout), lines=True)
+```
+
+**Document-wide caching in YAML frontmatter:**
+```yaml
+---
+title: "Analysis Report"
+execute:
+  cache: true
+---
+```
+
+### Freeze for Project-Level Caching
+
+For projects with many documents, use `freeze` to cache execution results in version control:
+
+```yaml
+# _quarto.yml (project config)
+execute:
+  freeze: auto  # Re-render only when source changes
+```
+
+**Key difference:**
+- `cache: true` - Caches cell outputs locally (Jupyter Cache)
+- `freeze: auto` - Stores results in `_freeze/` directory (can commit to git)
+
+**When to use freeze:**
+- Large projects with many collaborators
+- Documents with environment-specific dependencies
+- When you want cached results portable across machines (commit `_freeze/`)
+
+### Complete Example: Reproducible Analysis
+
+```qmd
+---
+title: "Q4 2024 Sales Analysis"
+author: "Josh Lane"
+date: "2024-12-31"
+format:
+  gfm:
+    wrap: none
+  html:
+    theme:
+      dark: darkly
+      light: flatly
+execute:
+  cache: true
+filters:
+  - auto-dark
+---
+
+## Data Extraction
+
+```{python}
+#| cache: true
+#| label: extract-sales
+import subprocess
+import io
+import pandas as pd
+
+# Reproducible: Query is embedded in the document
+result = subprocess.run([
+    'bigquery', 'query',
+    '''
+    SELECT date, product, region, sales, units
+    FROM production.sales
+    WHERE EXTRACT(QUARTER FROM date) = 4
+      AND EXTRACT(YEAR FROM date) = 2024
+    ''',
+    '--format', 'jsonl'
+], capture_output=True, text=True, check=True)
+
+df = pd.read_json(io.StringIO(result.stdout), lines=True)
+df['date'] = pd.to_datetime(df['date'])
+```
+
+## Analysis
+
+```{python}
+#| echo: false
+from IPython.display import Markdown
+
+total_sales = df['sales'].sum()
+top_product = df.groupby('product')['sales'].sum().idxmax()
+
+Markdown(f"""
+### Key Metrics
+
+- **Total Q4 Sales**: ${total_sales:,.2f}
+- **Top Product**: {top_product}
+- **Records**: {len(df):,}
+""")
+```
+```
+
+### Best Practices Summary
+
+✅ **DO:**
+
+- Embed data extraction commands in the document
+- Use `cache: true` for expensive operations
+- Reference canonical external URLs when possible
+- Commit small data files alongside the `.qmd`
+- Use `freeze` for project-level caching
+
+❌ **DON'T:**
+
+- Reference opaque local files (`/tmp/data.jsonl`)
+- Say "this file" without showing how it was created
+- Assume the reader has access to your local machine
+- Leave data provenance undocumented
 
 ## Decision Tree: Quarto vs Alternatives
 
 ```
 Need user interactivity? (sliders, dropdowns, real-time updates)
-├─ YES → Use marimo (edit/run mode or WASM export)
+├─ YES → Use Shiny or dedicated dashboard tools
 └─ NO → Static output needed
    │
    ├─ Complex multi-page documentation site?
    │  └─ YES → Use Quarto website/book projects
    │
    ├─ Single analysis with code + results?
-   │  ├─ Pure Python required (run as script)?
-   │  │  └─ YES → marimo → export md → quarto render
-   │  └─ NO → Native Quarto .qmd files (recommended)
+   │  └─ Native Quarto .qmd files (recommended)
    │
    └─ Just formatting existing markdown?
       └─ Use Quarto with plain .md files
@@ -539,30 +781,52 @@ The plugin uses otter.nvim for embedded language support in code chunks. This me
 cat > analysis.qmd << 'EOF'
 ---
 title: "Sales Analysis Q4 2024"
-author: "Your Name"
+author: "Josh Lane"
 date: "2024-01-30"
 format:
-  gfm: default              # GitHub-flavored markdown (PRIMARY)
+  gfm:
+    wrap: none              # No line wrapping
   html:
     theme:
       dark: darkly          # Dark mode (recommended)
       light: flatly         # Light mode fallback
     code-fold: true
-    toc: true
+execute:
+  cache: true               # Cache expensive queries
 filters:
   - auto-dark               # Respect system preference
 ---
+
+## Data Extraction
+
+```{python}
+#| cache: true
+#| echo: false
+import subprocess
+import io
+import pandas as pd
+
+# Reproducible: Query embedded in document
+result = subprocess.run([
+    'bigquery', 'query',
+    '''SELECT date, product, sales 
+       FROM production.sales 
+       WHERE EXTRACT(QUARTER FROM date) = 4 
+       AND EXTRACT(YEAR FROM date) = 2024''',
+    '--format', 'jsonl'
+], capture_output=True, text=True, check=True)
+
+df = pd.read_json(io.StringIO(result.stdout), lines=True)
+df['date'] = pd.to_datetime(df['date'])
+```
 
 ## Overview
 
 ```{python}
 #| echo: false
-import pandas as pd
 import matplotlib.pyplot as plt
 from IPython.display import Markdown
 
-# Load data
-df = pd.read_csv("sales.csv")
 total_sales = df['sales'].sum()
 avg_daily = df.groupby('date')['sales'].sum().mean()
 top_product = df.groupby('product')['sales'].sum().idxmax()
@@ -610,7 +874,7 @@ top_products = (df.groupby('product')['sales']
 top_products.columns = ['Product', 'Total Sales']
 top_products['Total Sales'] = top_products['Total Sales'].apply(lambda x: f"${x:,.2f}")
 
-print(top_products.to_markdown(index=False, tablefmt='grid'))
+Markdown(top_products.to_markdown(index=False, tablefmt='pipe'))
 ```
 
 ## Statistical Analysis
@@ -661,8 +925,8 @@ quarto render analysis.qmd --to gfm
 quarto render analysis.qmd --to html        # Uses auto-dark theme
 
 # Optional: Render to other formats only when needed
-quarto render analysis.qmd --to pdf         # For printing/formal distribution
-quarto render analysis.qmd --to docx        # For Word users
+quarto render analysis.qmd --to pdf         # For Google Drive sharing/printing
+quarto render analysis.qmd --to html        # For web viewing
 ```
 
 ### File Formats Quarto Can Render
@@ -688,9 +952,8 @@ quarto render document.qmd --to md           # Executable markdown with results
 quarto render document.qmd --to gfm          # GitHub-flavored markdown
 
 # Render to other formats
-quarto render document.qmd --to pdf          # PDF document
+quarto render document.qmd --to pdf          # PDF (for Google Drive sharing)
 quarto render document.qmd --to html         # HTML (avoid --toc, use clear headings)
-quarto render document.qmd --to docx         # Word (for Google Docs upload)
 
 # Render Jupyter notebook to markdown
 quarto render notebook.ipynb --to md         # Markdown with executed results
@@ -825,21 +1088,23 @@ from great_tables import GT, loc, style
 
 #### Option 2: pandas `.to_markdown()` (Simple, built-in)
 
-**For markdown output:**
+**For markdown output (use Markdown() to render properly):**
 ```python
+from IPython.display import Markdown
+
 # Basic markdown table
-print(df.head(10).to_markdown(index=False, tablefmt='grid'))
+Markdown(df.head(10).to_markdown(index=False, tablefmt='pipe'))
 
 # With custom formatting
 formatted_df = df.head(10).copy()
 formatted_df['sales'] = formatted_df['sales'].apply(lambda x: f"${x:,.2f}")
 formatted_df['date'] = pd.to_datetime(formatted_df['date']).dt.strftime('%Y-%m-%d')
-print(formatted_df.to_markdown(index=False, tablefmt='pipe'))
+Markdown(formatted_df.to_markdown(index=False, tablefmt='pipe'))
 ```
 
 **Table format options:**
-- `'grid'` - ASCII grid (best for markdown)
-- `'pipe'` - GitHub-flavored markdown pipes
+- `'pipe'` - GitHub-flavored markdown pipes (RECOMMENDED)
+- `'grid'` - ASCII grid
 - `'simple'` - Simple spacing
 - `'html'` - HTML table (for HTML output)
 
@@ -853,15 +1118,16 @@ uv add tabulate
 **Usage:**
 ```python
 from tabulate import tabulate
+from IPython.display import Markdown
 
 # Basic table
-print(tabulate(df.head(10), headers='keys', tablefmt='grid', showindex=False))
+Markdown(tabulate(df.head(10), headers='keys', tablefmt='pipe', showindex=False))
 
 # With custom formatting
-print(tabulate(
+Markdown(tabulate(
     df.head(10),
     headers=['Product', 'Sales', 'Date'],
-    tablefmt='fancy_grid',
+    tablefmt='pipe',
     floatfmt='.2f',
     showindex=False
 ))
@@ -870,6 +1136,7 @@ print(tabulate(
 #### Best Practices for Tables
 
 ✅ **DO:**
+
 - Use Great Tables for HTML/PDF output (rich formatting)
 - Use `.to_markdown()` for markdown output (simplicity)
 - Format currency, percentages, dates before display
@@ -877,20 +1144,24 @@ print(tabulate(
 - Limit to top N rows (10-20 max) - don't dump entire dataset
 - Apply color scales for numerical columns
 - Bold headers and important columns
+- **Pair non-trivial tables with visuals** - tables showing trends, comparisons, or distributions need an accompanying chart
 
 ❌ **DON'T:**
+
 - Use raw `df.head()` without formatting
 - Display more than 20 rows in a table
 - Show raw timestamps or unformatted numbers
 - Include index column unless meaningful
-- Use bare `print(df)` statements
+- Use `print()` for tables (use `Markdown()` instead to render properly)
+- Present analytical tables (trends, comparisons) without an accompanying chart
 
 #### Table Formatting by Output Format
 
 **For GFM/Markdown:**
 ```python
-# Use pandas .to_markdown() for simplicity
-print(df.head(10).to_markdown(index=False, tablefmt='pipe'))
+from IPython.display import Markdown
+# Use Markdown() to render tables properly in Quarto
+Markdown(df.head(10).to_markdown(index=False, tablefmt='pipe'))
 ```
 
 **For HTML:**
@@ -914,6 +1185,7 @@ GT(df.head(10))
 #### When to Use Charts vs Tables
 
 **Use Charts for:**
+
 - Trends over time (line charts)
 - Distributions (histograms, density plots)
 - Comparisons across categories (bar charts)
@@ -922,12 +1194,14 @@ GT(df.head(10))
 - Geographic data (maps, choropleth)
 
 **Use Tables for:**
+
 - Precise values needed (financial reports)
 - Lookup reference (top N items)
 - Multiple dimensions that don't visualize well
 - Small datasets (< 20 rows)
 
 **Use Both:**
+
 - Chart for the trend, table for the details
 - Chart for overview, table for drill-down
 
@@ -997,6 +1271,7 @@ plt.show()
 #### Styling Best Practices
 
 ✅ **DO:**
+
 - Use descriptive titles with context
 - Label axes with units
 - Use color purposefully (not just default colors)
@@ -1007,6 +1282,7 @@ plt.show()
 - Use consistent color schemes across document
 
 ❌ **DON'T:**
+
 - Use default ugly matplotlib colors
 - Skip axis labels or titles
 - Create tiny, unreadable charts
@@ -1014,20 +1290,20 @@ plt.show()
 - Overload charts with too many series (> 5-7)
 - Use pie charts for more than 5 categories
 
-#### Mermaid Diagrams (Markdown Native)
+#### Mermaid Diagrams (Quarto Native Syntax)
 
-**For process flows, relationships, and system diagrams:**
+Quarto uses `{mermaid}` executable code blocks. Standard GFM ` ```mermaid ` fences won't render.
 
+**Quarto syntax:**
 ````markdown
 ```{mermaid}
 flowchart TD
     A[Load Data] --> B[Clean Data]
     B --> C[Analyze]
-    C --> D{Significant?}
-    D -->|Yes| E[Report Findings]
-    D -->|No| F[Collect More Data]
 ```
 ````
+
+**Note:** GFM ` ```mermaid ` blocks and `Markdown('```mermaid...')` calls output raw text instead of rendered diagrams. Use the native `{mermaid}` syntax directly in markdown.
 
 **Common Mermaid diagram types:**
 - `flowchart` - Process flows, decision trees
@@ -1037,7 +1313,7 @@ flowchart TD
 - `gantt` - Project timelines
 - `pie` - Simple pie charts
 
-**Example: EPIST fact flow:**
+**Example: Reasoning flow:**
 ````markdown
 ```{mermaid}
 flowchart LR
@@ -1046,6 +1322,34 @@ flowchart LR
     F3[Fact: Top Product = Widget X] --> C2[Conclusion: Focus Marketing on Widgets]
 ```
 ````
+
+**Preventing Mermaid Clipping in PDF:**
+
+Mermaid diagrams can get clipped in PDF output when they exceed page width. Use `%%{init}%%` directives to control sizing:
+
+````markdown
+```{mermaid}
+%%{init: {"flowchart": {"useMaxWidth": true}}}%%
+flowchart TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+````
+
+**Best practices for PDF mermaid:**
+
+- Always use `useMaxWidth: true` for flowcharts in PDF output
+- Prefer `TD` (top-down) over `LR` (left-right) for wide diagrams
+- Break complex diagrams into multiple smaller diagrams
+- Use shorter node labels to reduce width
+- Add to YAML frontmatter for document-wide defaults:
+
+```yaml
+format:
+  pdf:
+    mermaid:
+      theme: default
+```
 
 #### Interactive Charts (HTML Output Only)
 
@@ -1165,6 +1469,7 @@ As shown in @eq-einstein, energy and mass are equivalent.
 #### Mathematical Notation Best Practices
 
 ✅ **DO:**
+
 - Use LaTeX for ALL mathematical expressions, even simple ones like percentages
 - Use `\text{}` for text within equations: `$\text{Revenue} = \$1{,}000$`
 - Use proper notation: `\alpha, \beta, \mu, \sigma, \sum, \prod, \int`
@@ -1175,6 +1480,7 @@ As shown in @eq-einstein, energy and mass are equivalent.
 - Use `\cdot` for dot product: $\vec{a} \cdot \vec{b}$
 
 ❌ **DON'T:**
+
 - Write "alpha = 0.15" in plain text - use $\alpha = 0.15$
 - Write "x^2" in plain text - use $x^2$
 - Use asterisk for multiplication - use $\times$ or $\cdot$
@@ -1317,6 +1623,7 @@ print(f"\\begin{{table}}[htbp]\n\\centering\n\\caption{{Sales Summary}}\n{latex_
 #### LaTeX Table Best Practices
 
 ✅ **DO:**
+
 - Use `booktabs` package for professional horizontal rules (\toprule, \midrule, \bottomrule)
 - Add captions with `\caption{}`
 - Add labels for cross-referencing with `\label{tab:name}`
@@ -1327,6 +1634,7 @@ print(f"\\begin{{table}}[htbp]\n\\centering\n\\caption{{Sales Summary}}\n{latex_
 - Center the table with `\centering`
 
 ❌ **DON'T:**
+
 - Use `\hline` - use booktabs rules instead (\toprule, \midrule, \bottomrule)
 - Skip captions - tables should always be labeled
 - Mix LaTeX and markdown tables in the same document
@@ -1383,7 +1691,7 @@ df.to_latex(caption="Sales Summary", label="tab:sales")
 ```yaml
 ---
 title: "My Report"
-author: "Your Name"
+author: "Josh Lane"
 date: "2024-01-30"
 format: gfm  # GitHub-flavored markdown (default for composability)
 ---
@@ -1396,7 +1704,7 @@ format: gfm  # GitHub-flavored markdown (default for composability)
 title: "Analysis Report"
 format:
   gfm:
-    toc: true
+    wrap: none
     variant: +yaml_metadata_block
   html:
     theme:
@@ -1425,6 +1733,7 @@ format:
     variant: gfm  # Use GitHub-flavored markdown
     preserve-yaml: true
   gfm:
+    wrap: none
     output-file: "results-gfm.md"
 ---
 ```
@@ -1550,6 +1859,7 @@ The `auto-dark` filter automatically detects system dark mode preference and swi
 ### Why Avoid TOC
 
 **Problems with TOC:**
+
 - ❌ Adds visual clutter without adding value
 - ❌ Redundant when you have clear section headings
 - ❌ Takes up space at the top of the document
@@ -1559,6 +1869,7 @@ The `auto-dark` filter automatically detects system dark mode preference and swi
 - ❌ Makes documents feel like academic papers (overly formal)
 
 **Better alternatives:**
+
 - ✅ Use clear, descriptive section headings
 - ✅ Keep documents focused and concise
 - ✅ Use visual hierarchy (# ## ### headings)
@@ -1568,12 +1879,14 @@ The `auto-dark` filter automatically detects system dark mode preference and swi
 ### When TOC Might Be Acceptable
 
 **ONLY use TOC for:**
+
 - Very long documents (>20 pages)
 - Books or comprehensive guides
 - Multi-chapter documents
 - When explicitly required by style guide
 
 **Even then, prefer:**
+
 - Sidebar TOC (not top-of-page)
 - Collapsible TOC
 - Floating TOC that doesn't obscure content
@@ -1613,105 +1926,44 @@ format:
     toc-title: "Contents"  # Short title
 ```
 
-## DOCX Output for Google Docs
+## PDF for Google Drive Sharing
 
-**DOCX format is PREFERRED for uploading to Google Docs (better than PDF).**
+**PDF format is PREFERRED for sharing via Google Drive (read-only, professional appearance).**
 
-### Why DOCX for Google Docs
-
-**Advantages:**
-- ✅ Google Docs can edit DOCX files (not PDF)
-- ✅ Preserves formatting (headings, tables, images)
-- ✅ Maintains document structure
-- ✅ Allows collaboration after upload
-- ✅ Easier to comment and suggest edits
-- ✅ Better than copy-pasting from HTML
-
-**PDF limitations:**
-- ❌ Google Docs converts PDF to editable format (messy)
-- ❌ Formatting often breaks in conversion
-- ❌ Tables and equations may render poorly
-- ❌ Read-only format (less collaborative)
-
-### Rendering to DOCX
+### Rendering to PDF
 
 ```bash
-# Basic DOCX output
-quarto render analysis.qmd --to docx
+# Basic PDF output
+quarto render analysis.qmd --to pdf
 
-# Multiple formats including DOCX
-quarto render analysis.qmd --to gfm,docx,html
+# Multiple formats
+quarto render analysis.qmd --to gfm,pdf,html
 ```
 
-### YAML Configuration for DOCX
-
-```yaml
----
-title: "Analysis Report"
-format:
-  gfm: default           # Primary format
-  docx: default          # For Google Docs upload
-  html:
-    theme:
-      dark: darkly
-      light: flatly
-filters:
-  - auto-dark
----
-```
-
-### DOCX Styling
-
-**Custom reference document (optional):**
-
-```yaml
-format:
-  docx:
-    reference-doc: custom-template.docx
-```
-
-Create a `custom-template.docx` with your organization's styles:
-1. Open Word/LibreOffice
-2. Define styles (Heading 1, Heading 2, Body Text, etc.)
-3. Save as `custom-template.docx`
-4. Quarto will apply these styles to generated DOCX
-
-### Upload Workflow
+### Upload to Google Drive
 
 ```bash
-# 1. Render to DOCX
-quarto render analysis.qmd --to docx
+# 1. Render to PDF
+quarto render analysis.qmd --to pdf
 
-# 2. Upload to Google Docs
+# 2. Upload to Google Drive
 # - Go to drive.google.com
 # - Click "New" → "File upload"
-# - Select analysis.docx
-# - Google Docs will open it in editable format
+# - Select analysis.pdf
+# - Share link with collaborators
 
 # Alternative: Use gspace CLI (if installed)
-gspace upload analysis.docx --folder "Reports"
+gspace upload analysis.pdf --folder "Reports"
 ```
-
-### Best Practices for DOCX Output
-
-✅ **DO:**
-- Render to DOCX for Google Docs collaboration
-- Use DOCX when sharing with Word users
-- Include DOCX in multi-format output (GFM + DOCX + HTML)
-- Test your DOCX output in Google Docs before sharing
-
-❌ **DON'T:**
-- Use PDF for Google Docs upload (use DOCX instead)
-- Assume DOCX preserves all LaTeX equations (complex math may need adjustment)
-- Rely on DOCX for archival (use PDF or markdown for that)
 
 ## HTML Copy-Paste to Google Docs
 
 **Alternative workflow: Render to HTML with Google Docs-compatible CSS, then copy-paste.**
 
 This workflow is useful when:
+
 - You need inline tables rendered as actual tables (not images)
-- You want to preserve formatting better than DOCX export
+- You want editable content in Google Docs (not read-only PDF)
 - You're doing iterative editing between Quarto and Google Docs
 
 ### Google Docs CSS Setup
@@ -1820,283 +2072,46 @@ th {
 }
 ```
 
-### When to Use HTML vs DOCX for Google Docs
+### When to Use HTML Copy-Paste vs PDF
 
 **Use HTML copy-paste when:**
+
 - Tables must be editable in Google Docs
 - You need precise formatting control
 - Iterating between Quarto and Google Docs
 - Complex layouts with multiple tables
 
-**Use DOCX upload when:**
-- Simple documents without complex tables
-- Need to preserve advanced formatting
-- Full document import (not copy-paste)
-- Collaborating with Word users
+**Use PDF upload when:**
+
+- Read-only sharing is acceptable
+- Professional appearance is priority
+- Sharing with external stakeholders
+- Archival or distribution
 
 ### Troubleshooting HTML Copy-Paste
 
 **Extra whitespace in tables:**
+
 - Ensure CSS has `line-height: 1` on cells
 - Use `padding: 2pt 6pt` for minimal padding
 - Add `vertical-align: middle` to prevent vertical gaps
 
 **Fonts not matching:**
+
 - Use `font-family: Arial, sans-serif` (Google Docs default)
 - Avoid web fonts that won't copy
 
 **Tables not copying correctly:**
+
 - Check `border-collapse: collapse`
 - Ensure tables have explicit borders (`border: 1pt solid #000`)
 - Use `embed-resources: true` in YAML
 
 **Charts/images not copying:**
+
 - Charts copy as images (expected)
 - Use `embed-resources: true` to inline images
 - May need to re-insert images manually
-
-## EPIST Integration
-
-**EPIST works seamlessly in Quarto documents with VISUAL provenance tracking:**
-
-```qmd
----
-title: "Customer Churn Analysis with EPIST Provenance"
-format:
-  gfm: default
-  html:
-    theme:
-      dark: darkly
-      light: flatly
-    toc: true
-filters:
-  - auto-dark
----
-
-## Setup
-
-```{python}
-#| echo: false
-import pandas as pd
-import matplotlib.pyplot as plt
-from IPython.display import Markdown
-from epist import FactRecorder
-
-# Initialize EPIST
-recorder = FactRecorder("churn_analysis_2024")
-```
-
-## Data Overview
-
-```{python}
-#| echo: false
-df = pd.read_csv("customers.csv")
-
-# Record data source
-source_id = recorder.record_fact(
-    "data_source",
-    "customers.csv",
-    description="Customer database snapshot",
-    checksum="abc123"
-)
-
-# Display formatted summary (not raw print)
-Markdown(f"""
-### Dataset Summary
-
-- **Total Customers**: {len(df):,}
-- **Data Source**: `customers.csv`
-- **Columns**: {', '.join(df.columns)}
-""")
-```
-
-## Churn Analysis
-
-```{python}
-#| label: fig-churn-distribution
-#| fig-cap: "Customer status distribution showing churn rate"
-#| echo: false
-
-# Calculate churn metrics
-total_customers = len(df)
-churned = (df['status'] == 'churned').sum()
-active = (df['status'] == 'active').sum()
-churn_rate = churned / total_customers
-
-# Record facts
-churn_fact_id = recorder.record_fact(
-    "churn_rate",
-    float(churn_rate),
-    source_ids=[source_id],
-    calculation="(df['status'] == 'churned').sum() / len(df)"
-)
-
-active_fact_id = recorder.record_fact(
-    "active_customers",
-    int(active),
-    source_ids=[source_id]
-)
-
-# Visualize with professional styling
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-# Pie chart for proportions
-status_counts = df['status'].value_counts()
-colors = ['#2E86AB', '#A23B72', '#F18F01']
-ax1.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', 
-        colors=colors, startangle=90)
-ax1.set_title('Customer Status Distribution', fontsize=14, fontweight='bold')
-
-# Bar chart for absolute numbers
-status_counts.plot(kind='bar', ax=ax2, color=colors)
-ax2.set_title('Customer Counts by Status', fontsize=14, fontweight='bold')
-ax2.set_ylabel('Number of Customers')
-ax2.set_xlabel('Status')
-ax2.tick_params(axis='x', rotation=45)
-ax2.grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.show()
-```
-
-### Key Metrics
-
-```{python}
-#| echo: false
-Markdown(f"""
-- **Churn Rate**: {churn_rate:.1%}
-- **Churned Customers**: {churned:,}
-- **Active Customers**: {active:,}
-- **Total Customers**: {total_customers:,}
-""")
-```
-
-## Provenance Flow
-
-```{python}
-#| echo: false
-# Visualize fact→conclusion chain with Mermaid
-Markdown('''
-```mermaid
-flowchart LR
-    S[Data Source:<br/>customers.csv] --> F1[Fact: Churn Rate<br/>15.2%]
-    S --> F2[Fact: Active<br/>Customers: 8,480]
-    F1 --> C1[Conclusion:<br/>MODERATE RISK]
-    F2 --> C1
-    C1 --> R[Recommendation:<br/>Implement<br/>Retention Program]
-```
-''')
-```
-
-## Conclusion
-
-```{python}
-#| echo: false
-# Determine conclusion
-if churn_rate > 0.15:
-    conclusion = f"HIGH RISK: Churn rate at {churn_rate:.1%}"
-    severity = "critical"
-    recommendation = "Immediate intervention required - implement retention program"
-elif churn_rate > 0.10:
-    conclusion = f"MODERATE: Churn rate at {churn_rate:.1%}"
-    severity = "warning"
-    recommendation = "Monitor closely and prepare retention strategies"
-else:
-    conclusion = f"HEALTHY: Churn rate at {churn_rate:.1%}"
-    severity = "normal"
-    recommendation = "Maintain current customer success practices"
-
-# Record conclusion with provenance
-conclusion_id = recorder.record_conclusion(
-    conclusion,
-    fact_ids=[churn_fact_id, active_fact_id],
-    severity=severity
-)
-
-# Save provenance chain
-recorder.save("churn_provenance.json")
-
-# Display formatted conclusion (not raw print)
-Markdown(f"""
-## {conclusion}
-
-**Recommendation**: {recommendation}
-
-**Provenance**: This conclusion is derived from {len([churn_fact_id, active_fact_id])} recorded facts with full traceability in `churn_provenance.json`.
-""")
-```
-```
-
-**Key Points:**
-- ✅ EPIST tracks provenance just like in marimo
-- ✅ **Visual provenance**: Mermaid diagrams show fact→conclusion chains
-- ✅ **Formatted output**: Charts, tables, and formatted metrics (no raw prints)
-- ✅ **Professional presentation**: Dual charts, styled metrics, clear conclusions
-- ⚠️ No reactivity (re-render document to update)
-- ✅ Provenance saved to JSON for external use
-- ✅ Visualizations + facts + provenance = complete story
-
-## Marimo Integration
-
-### Workflow: Marimo → Quarto
-
-**When to use this:**
-- Developed interactive analysis in marimo
-- Need publication-quality static output
-- Want multiple formats (PDF + HTML + Word)
-
-**Process:**
-
-```bash
-# 1. Develop in marimo (interactive)
-marimo edit analysis.py
-
-# 2. Export to markdown
-marimo export md analysis.py -o analysis.md
-
-# 3. Add Quarto frontmatter (optional)
-cat > final.qmd << 'EOF'
----
-title: "Sales Analysis"
-format:
-  pdf:
-    toc: true
-  html:
-    code-fold: true
----
-EOF
-cat analysis.md >> final.qmd
-
-# 4. Render with Quarto
-quarto render final.qmd --to pdf
-quarto render final.qmd --to html
-```
-
-### Automated Pipeline
-
-```bash
-# Watch marimo, auto-export, auto-render
-marimo export md analysis.py -o analysis.md --watch &
-quarto preview analysis.md
-```
-
-### Limitations of Marimo → Quarto Export
-
-**What works:**
-- ✅ Static outputs (charts, tables, text)
-- ✅ Code syntax highlighting
-- ✅ Markdown formatting
-- ✅ EPIST provenance (static snapshot)
-
-**What doesn't work:**
-- ❌ Interactive widgets (`mo.ui.*` components)
-- ❌ Reactive updates (rendered once)
-- ❌ Live data exploration
-
-**Recommendation:**
-- **Development**: Use `marimo edit` for interactive exploration
-- **Sharing (interactive)**: Use `marimo run` or WASM export
-- **Publishing (static)**: Export to markdown → Quarto render
 
 ## Presentations
 
@@ -2284,10 +2299,6 @@ conform notes.txt --schema schema.json | \
   python generate_qmd.py > report.qmd && \
   quarto render report.qmd --to gfm
 
-# Marimo → Quarto → Markdown (composable)
-marimo export md analysis.py | \
-  quarto render /dev/stdin --to gfm --output results.md
-
 # Markdown → Post-processing
 quarto render analysis.qmd --to gfm && \
   sed -i 's/TODO/DONE/g' analysis.md
@@ -2296,7 +2307,7 @@ quarto render analysis.qmd --to gfm && \
 **Do One Thing Well:**
 - Quarto: Document rendering + format conversion
 - NOT: Data analysis, interactive exploration, storage
-- Delegate: Python for analysis, marimo for interactivity, Quarto for rendering
+- Delegate: Python for analysis, Quarto for rendering
 - Prefer markdown output for downstream composition
 
 **Text Streams:**
@@ -2341,13 +2352,12 @@ quarto render report.qmd --to pdf            # Only when needed
 
 ```bash
 # Render all formats (markdown first)
-quarto render report.qmd --to gfm,pdf,html,docx
+quarto render report.qmd --to gfm,pdf,html
 
 # Or explicitly
 quarto render report.qmd --to gfm            # Primary output
-quarto render report.qmd --to pdf            # For distribution
-quarto render report.qmd --to html           # For web
-quarto render report.qmd --to docx           # For Word users
+quarto render report.qmd --to pdf            # For Google Drive sharing
+quarto render report.qmd --to html           # For web viewing
 ```
 
 ### Pattern 3: Batch Processing
@@ -2403,27 +2413,33 @@ for month in Jan Feb Mar Apr; do
 done
 ```
 
-### Pattern 5: EPIST Provenance Reports
+### Pattern 5: Data Pipeline Reports
 
 ```bash
-# Generate analysis with provenance
+# Generate analysis data
 python analysis.py > data.json
 
-# Create Quarto report referencing provenance
+# Create Quarto report with embedded data loading
 cat > report.qmd << 'EOF'
 ---
 title: "Analysis Report"
+execute:
+  cache: true
 ---
 
 ```{python}
+#| cache: true
+import subprocess
 import json
-with open('data.json') as f:
-    data = json.load(f)
+
+# Reproducible: document defines how data is generated
+result = subprocess.run(['python', 'analysis.py'], capture_output=True, text=True, check=True)
+data = json.loads(result.stdout)
 # Render findings
 ```
 EOF
 
-quarto render report.qmd --to pdf
+quarto render report.qmd --to gfm
 ```
 
 ## Best Practices
@@ -2439,11 +2455,6 @@ quarto render report.qmd --to pdf
 - Already have Jupyter notebooks
 - Collaborating with Jupyter users
 - Need Jupyter-specific features
-
-**Use marimo → `.md` when:**
-- Developed interactively in marimo
-- Need pure Python files
-- Want reactive development
 
 ### 2. Organize Code Blocks
 
@@ -2508,7 +2519,6 @@ _site/
 _book/
 *.html
 *.pdf
-*.docx
 .quarto/
 ```
 
@@ -2593,13 +2603,12 @@ quarto check                          # Verify installation
 ### Output Format Options
 
 ```bash
+--to gfm            # GitHub-flavored markdown (default)
 --to pdf            # PDF via LaTeX or typst
 --to html           # HTML
---to docx           # Microsoft Word
 --to revealjs       # HTML slides
 --to pptx           # PowerPoint
 --to typst          # Typst (modern LaTeX alternative)
---to markdown       # GitHub-flavored markdown
 --to epub           # eBook
 ```
 
@@ -2608,7 +2617,7 @@ quarto check                          # Verify installation
 ```yaml
 ---
 title: "Document Title"
-author: "Author Name"
+author: "Josh Lane"
 date: "2024-01-30"
 format:
   pdf:
