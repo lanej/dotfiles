@@ -8,7 +8,6 @@ allowed-tools:
   - Grep
   - Bash(gh:*)
   - Bash(git:*)
-model: sonnet
 tags:
   - github
   - pr

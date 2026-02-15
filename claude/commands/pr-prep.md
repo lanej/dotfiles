@@ -1,7 +1,6 @@
 ---
 description: "Prepare branch for pull request: review implementation, verify requirements, restructure commits into logical narrative, run tests, generate PR description"
 argument-hint: [optional issue number]
-model: sonnet
 tags:
   - git
   - github

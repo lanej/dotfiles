@@ -5,7 +5,6 @@ allowed-tools:
   - Read
   - Edit
   - Bash(uv:*)
-model: haiku
 tags:
   - python
   - uv

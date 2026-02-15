@@ -1,7 +1,6 @@
 ---
 description: Create a git commit using the commit message writer agent
 argument-hint: [optional context or focus]
-model: sonnet
 tags:
   - git
   - commit

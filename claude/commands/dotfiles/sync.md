@@ -8,7 +8,6 @@ allowed-tools:
   - Bash(git:*)
   - Bash(ls:*)
   - Bash(readlink:*)
-model: haiku
 tags:
   - dotfiles
   - config

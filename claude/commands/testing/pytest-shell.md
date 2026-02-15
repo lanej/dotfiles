@@ -8,7 +8,6 @@ allowed-tools:
   - Grep
   - Bash(uv:*)
   - Bash(pytest:*)
-model: sonnet
 tags:
   - testing
   - pytest
