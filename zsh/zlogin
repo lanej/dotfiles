@@ -3,18 +3,6 @@ if command -v fzf >/dev/null; then
 		export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 	fi
 
-	# Smart preview window positioning based on terminal width
-	# Wide terminals (>=140 cols): preview on right
-	# Narrow terminals (<140 cols): preview on bottom
-	_fzf_preview_window() {
-		local cols=$(tput cols 2>/dev/null || echo 80)
-		if [ "$cols" -ge 140 ]; then
-			echo "right:60%:border-left:wrap"
-		else
-			echo "down:40%:border-top:wrap"
-		fi
-	}
-
 	unset FZF_DEFAULT_OPTS
 	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'--prompt=\
 	--cycle
@@ -29,11 +17,11 @@ if command -v fzf >/dev/null; then
 	--color=marker:#a3be8b,spinner:#b48dac,header:#a3be8b'
 
 	unset FZF_CTRL_R_OPTS
-	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"
+	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS'
 	--reverse
-	--preview-window $(_fzf_preview_window):hidden
-	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
-	"
+	--preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap:hidden\" || echo \"down:40%:border-top:wrap:hidden\")"
+	--bind "ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort"
+	'
 
 	if command -v bat >/dev/null; then
 		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --plain --color=always -l zsh --plain'"
@@ -41,10 +29,10 @@ if command -v fzf >/dev/null; then
 
 	if command -v eza >/dev/null; then
 		unset FZF_ALT_C_OPTS
-		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS"
+		export FZF_ALT_C_OPTS=$FZF_DEFAULT_OPTS'
 	  --reverse
-	  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}'
-	  --preview-window $(_fzf_preview_window)"
+	  --preview="eza -HgF --icons -T -L 2 --color=always --git {}"
+	  --preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap\" || echo \"down:40%:border-top:wrap\")"'
 	fi
 
 	if command -v fd >/dev/null; then
@@ -54,9 +42,9 @@ if command -v fzf >/dev/null; then
 
 	if command -v bat >/dev/null; then
 		unset FZF_CTRL_T_OPTS
-		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
-		--preview='bat --plain --color=always {}'
-		--preview-window $(_fzf_preview_window)"
+		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS'
+		--preview="bat --plain --color=always {}"
+		--preview-window="$([ $(tput cols) -ge 140 ] && echo \"right:60%:border-left:wrap\" || echo \"down:40%:border-top:wrap\")"'
 	fi
 fi
 
