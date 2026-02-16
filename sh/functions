@@ -6,7 +6,14 @@
 # Wide terminals (>=140 cols): right side preview at 60%
 # Narrow terminals (<140 cols): bottom preview at 40%
 fzf_preview_window() {
-	local cols=$(tput cols 2>/dev/null || echo 80)
+	local cols
+	if [ -n "$TMUX" ]; then
+		# In tmux, use tmux display-message which works in subshells
+		cols=$(tmux display-message -p '#{pane_width}' 2>/dev/null || echo 80)
+	else
+		# Outside tmux, use tput
+		cols=$(tput cols 2>/dev/null || echo 80)
+	fi
 	if [ "$cols" -ge 140 ]; then
 		echo "right:60%:border-left:wrap"
 	else

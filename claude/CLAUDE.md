@@ -123,6 +123,113 @@ On first session with memory enabled, seed initial entities from this AGENTS.md:
 
 After seeding, memory grows organically through usage and corrections.
 
+## Phased Execution System
+
+OpenCode agents use continuous phased processing for complex multi-step work.
+
+### Execution Model
+
+**Continuous until blocker:**
+- Agents execute through all phases without artificial checkpoints
+- NO step limits - work continues until complete or genuinely blocked
+- Todo lists track progress (visible in UI)
+- Agents mark phases complete as they finish
+
+**Genuine blockers (agent stops and asks):**
+- Missing critical information only user can provide
+- Architectural decisions requiring user judgment
+- External dependencies (credentials, API access, etc.)
+- Ambiguous requirements with multiple valid interpretations
+
+**NOT blockers (agent continues):**
+- Routine technical decisions (agent makes reasonable choice)
+- Implementation details with established patterns
+- Minor uncertainties that don't affect correctness
+- Phase transitions (agent continues to next phase)
+
+### Adaptive Todo Granularity
+
+Agents start with high-level phases (3-5 major tasks), then break down as needed:
+
+**Initial todo list:**
+1. Implement authentication system
+2. Add comprehensive tests
+3. Update documentation
+
+**Adaptive breakdown (as complexity emerges):**
+1. Implement authentication system
+   - 1.1 Create User model with bcrypt hashing
+   - 1.2 Add JWT token generation
+   - 1.3 Implement middleware for protected routes
+   - 1.4 Add session management
+2. Add comprehensive tests
+   - 2.1 Unit tests for auth functions
+   - 2.2 Integration tests for login flow
+   - 2.3 End-to-end auth flow tests
+
+### Orchestration (Hybrid Model)
+
+For complex multi-workstream projects, Build agent may **suggest** orchestration:
+
+```
+This work involves 3 independent workstreams:
+1. Frontend auth UI (React components)
+2. Backend API endpoints (Express routes)
+3. Database migration (PostgreSQL schema)
+
+These can run in parallel. Use @orchestrator to coordinate?
+```
+
+**User options:**
+- Type "yes" or "orchestrate" → Agent invokes @orchestrator subagent
+- Type "no" or "sequential" → Agent continues sequential execution
+- Type `@orchestrator <description>` → Manually invoke orchestrator anytime
+
+**Orchestrator behavior:**
+- Breaks work into parallel workstreams
+- Delegates each to appropriate subagent (@general, @explore, custom)
+- Tracks progress across all workstreams
+- Coordinates dependencies
+- Reports consolidated status
+
+### Subagent Delegation
+
+**@general** - General-purpose multi-step tasks, parallel work  
+**@explore** - Read-only codebase discovery, searching for patterns  
+**@orchestrator** - Multi-workstream coordination (suggested or manual)  
+**Custom agents** - Domain-specific work (e.g., @human-writer for docs)
+
+### Integration with Memory/PKM
+
+Phased execution integrates with existing memory/PKM workflow:
+
+1. **Before starting**: Check memory/PKM for relevant patterns (existing AGENTS.md guidance)
+2. **During execution**: Focus on completing work, don't interrupt flow
+3. **After completion**: Record key learnings to memory/PKM
+4. **At blockers**: May query memory/PKM for context before asking user
+
+### Agent Modes
+
+**Build (default primary):**
+- Full tool access with continuous phased execution
+- Runs until blocker or completion
+- Can delegate to subagents
+- Suggests orchestration for multi-workstream work
+
+**Plan (primary - Tab to switch):**
+- Read-only analysis mode
+- Creates implementation plans as adaptive todo lists
+- Identifies potential blockers upfront
+- Recommends subagents/orchestration
+- User reviews plan, then Tab to Build to execute
+
+**Orchestrator (subagent):**
+- Coordinates parallel workstreams
+- Delegates to specialized subagents
+- Tracks cross-workstream dependencies
+- Reports consolidated status
+- Invoked via suggestion or @mention
+
 ## Response Formatting
 - **Markdown line breaks**: Consecutive lines REQUIRE blank lines between them to render separately (or use proper list syntax)
 - **Terminal readability**: Ensure all output renders properly in markdown viewers
