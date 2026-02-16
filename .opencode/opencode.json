@@ -11,6 +11,11 @@
       }
     }
   },
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 20000
+  },
   "tui": {
     "scroll_acceleration": {
       "enabled": true
