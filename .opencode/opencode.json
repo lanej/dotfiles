@@ -6,7 +6,8 @@
   "provider": {
     "google": {
       "options": {
-        "projectId": "easypost-platform"
+        "projectId": "easypost-platform",
+        "betas": ["context-1m-2025-08-07"]
       }
     }
   },
