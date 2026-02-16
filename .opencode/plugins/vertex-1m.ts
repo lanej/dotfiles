@@ -14,8 +14,8 @@ const SUPPORTED_MODELS = [
 
 export const plugin: Plugin = async () => ({
   "chat.params": async (input, output) => {
-    // Only apply to Google Vertex AI provider
-    if (input.model.providerID !== "google") return
+    // Only apply to Google Vertex AI Anthropic provider
+    if (input.model.providerID !== "google-vertex-anthropic") return
     
     // Only apply to Claude models
     if (!input.model.api.id.includes("claude")) return
