@@ -1,13 +1,13 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "opencode-gemini-auth@latest"
+    "opencode-gemini-auth@latest",
+    "file://{config}/plugins/vertex-1m.ts"
   ],
   "provider": {
     "google": {
       "options": {
-        "projectId": "easypost-platform",
-        "betas": ["context-1m-2025-08-07"]
+        "projectId": "easypost-platform"
       }
     }
   },
