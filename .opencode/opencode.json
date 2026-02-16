@@ -52,14 +52,53 @@
     "tips_toggle": "<leader>h"
   },
   "agent": {
+    "build": {
+      "mode": "primary",
+      "tools": {
+        "todowrite": true,
+        "todoread": true,
+        "question": true
+      },
+      "prompt": "{file:~/.claude/agents/prompts/continuous-phased.md}"
+    },
+    "plan": {
+      "mode": "primary",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+        "todowrite": true,
+        "todoread": true
+      },
+      "prompt": "{file:~/.claude/agents/prompts/plan-mode.md}"
+    },
+    "general": {
+      "mode": "subagent",
+      "tools": {
+        "todowrite": true,
+        "todoread": true
+      },
+      "prompt": "{file:~/.claude/agents/prompts/continuous-phased.md}"
+    },
+    "explore": {
+      "mode": "subagent",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+        "todowrite": true,
+        "todoread": true
+      },
+      "prompt": "{file:~/.claude/agents/prompts/continuous-phased.md}\n\nYou are in read-only exploration mode. Use todos to track multi-step searches and codebase discovery tasks."
+    },
     "human-writer": {
       "description": "Executive-level writing with radical brevity and zero AI tells. Specializes in clear, concise, human-readable writing for all document types.",
       "mode": "primary",
       "temperature": 0.3,
       "prompt": "{file:~/.claude/agents/human-writer.md}",
       "tools": {
-        "todowrite": false,
-        "todoread": false
+        "todowrite": true,
+        "todoread": true
       }
     },
     "document-summarizer": {
@@ -71,9 +110,28 @@
         "write": false,
         "edit": false,
         "bash": false,
-        "todowrite": false,
-        "todoread": false
+        "todowrite": true,
+        "todoread": true
       }
+    },
+    "orchestrator": {
+      "description": "Coordinates complex multi-phase projects by delegating to specialized subagents. Use for work with multiple independent workstreams or complex dependency chains.",
+      "mode": "subagent",
+      "tools": {
+        "todowrite": true,
+        "todoread": true,
+        "question": true
+      },
+      "permission": {
+        "task": {
+          "*": "allow",
+          "orchestrator": "deny",
+          "compaction": "deny",
+          "title": "deny",
+          "summary": "deny"
+        }
+      },
+      "prompt": "{file:~/.claude/agents/orchestrator.md}"
     }
   },
   "permission": {
