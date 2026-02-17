@@ -9,7 +9,9 @@ const LOG_FILE = `${homedir()}/.local/share/opencode/vertex-1m-plugin.log`
 // See: https://docs.anthropic.com/en/docs/about-claude/models
 const SUPPORTED_MODELS = [
   "opus-4-6",           // Claude Opus 4.6
+  "opus-4.6",           // Claude Opus 4.6 (dot variant)
   "sonnet-4-5",         // Claude Sonnet 4.5
+  "sonnet-4.5",         // Claude Sonnet 4.5 (dot variant)
   "sonnet-4@20250514",  // Claude Sonnet 4
 ]
 
