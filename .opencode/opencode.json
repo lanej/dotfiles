@@ -12,7 +12,7 @@
     }
   },
   "compaction": {
-    "auto": true,
+    "auto": false,
     "prune": true,
     "reserved": 20000
   },

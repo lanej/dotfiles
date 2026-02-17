@@ -27,19 +27,32 @@ The plugin is automatically loaded via `opencode.json`:
   "plugin": [
     "opencode-gemini-auth@latest",
     "file://{config}/plugins/vertex-1m.ts"
-  ]
+  ],
+  "compaction": {
+    "auto": false,
+    "prune": true,
+    "reserved": 20000
+  }
 }
 ```
+
+**IMPORTANT**: Set `compaction.auto: false` to disable automatic compaction. Without this, OpenCode will compact at ~180K tokens (200K - 20K reserved) because it doesn't know about the increased 1M limit. You'll need to manually compact sessions using `<Leader>+c` when needed.
 
 ### Verification
 
 The plugin successfully injects the beta header into API requests. To verify 1M context is actually enabled:
 
 1. Watch the token counter in OpenCode TUI during long sessions
-2. If it exceeds 200K without erroring, the beta header is working
-3. Compaction should trigger at ~980K tokens (with `compaction.reserved: 20000`)
+2. If it exceeds 200K without API errors, the beta header is working
+3. Manually compact sessions when needed using `<Leader>+c`
 
 **Note**: The model will still report "200K token context window" when asked about its limits, as it doesn't know about beta features. This is expected behavior - the actual API limit is what matters, not the model's self-report.
+
+### Limitations
+
+**OpenCode doesn't know about the increased limit**: OpenCode's compaction system uses the model's advertised context window (200K) to determine when to compact. Even though the API will accept 1M tokens with the beta header, OpenCode will try to compact at ~180K.
+
+**Workaround**: Disable automatic compaction (`compaction.auto: false`) and manually compact when truly needed. This allows you to use the full 1M context window, but requires manual session management.
 
 ### Implementation Details
 
