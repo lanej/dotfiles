@@ -12,18 +12,6 @@
     },
     "google-vertex-anthropic": {
       "models": {
-        "claude-opus-4-6": {
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
-        "claude-opus-4-6@default": {
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
         "claude-sonnet-4-5@20250929": {
           "limit": {
             "context": 1000000,

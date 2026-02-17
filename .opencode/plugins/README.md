@@ -16,16 +16,19 @@ This plugin hooks into OpenCode's `chat.params` to inject the beta header, simil
 
 ### Supported Models
 
-According to [Anthropic's documentation](https://docs.anthropic.com/en/docs/about-claude/models), only these models support the 1M context window with the beta header:
+**Working with 1M context via this plugin:**
 
-- **Claude Opus 4.6** (`claude-opus-4-6`)
-- **Claude Sonnet 4.5** (`claude-sonnet-4-5@20250929`)
-- **Claude Sonnet 4** (`claude-sonnet-4@20250514`)
+- **Claude Sonnet 4.5** (`claude-sonnet-4-5@20250929`) ✅
+- **Claude Sonnet 4** (`claude-sonnet-4@20250514`) ✅
 
-**NOT supported** (stay at 200K):
+**NOT working (even though documented to support 1M):**
+
+- **Claude Opus 4.6** - Anthropic docs say it supports 1M with beta header, but OpenCode's Vertex AI integration doesn't properly pass the beta header to the API. Stays at 200K limit.
+
+**Never supported** (stay at 200K):
 - All Haiku variants (including Haiku 4.5)
-- Claude 3 models
-- Most legacy Claude 4 variants (Opus 4.5, Opus 4.1, etc.)
+- Claude 3 models  
+- Legacy Claude 4 variants (Opus 4.5, Opus 4.1, Opus 4, etc.)
 
 ### Configuration
 
@@ -40,12 +43,6 @@ According to [Anthropic's documentation](https://docs.anthropic.com/en/docs/abou
   "provider": {
     "google-vertex-anthropic": {
       "models": {
-        "claude-opus-4-6": {
-          "limit": {
-            "context": 1000000,
-            "output": 128000
-          }
-        },
         "claude-sonnet-4-5@20250929": {
           "limit": {
             "context": 1000000,
