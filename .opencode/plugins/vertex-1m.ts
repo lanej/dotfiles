@@ -13,7 +13,8 @@ const SUPPORTED_MODELS = [
   "opus-4.6",           // Claude Opus 4.6 (dot variant)
   "sonnet-4-5",         // Claude Sonnet 4.5
   "sonnet-4.5",         // Claude Sonnet 4.5 (dot variant)
-  "sonnet-4@20250514",  // Claude Sonnet 4
+  "sonnet-4@20250514",  // Claude Sonnet 4 (legacy, specific date)
+  "sonnet-4.0",         // Claude Sonnet 4 (dot variant, if used)
 ]
 
 function log(message: string, data?: any) {
