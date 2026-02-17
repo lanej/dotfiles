@@ -9,10 +9,32 @@
       "options": {
         "projectId": "easypost-platform"
       }
+    },
+    "google-vertex-anthropic": {
+      "models": {
+        "claude-opus-4-6": {
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "claude-sonnet-4-5@20250929": {
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          }
+        },
+        "claude-sonnet-4@20250514": {
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          }
+        }
+      }
     }
   },
   "compaction": {
-    "auto": false,
+    "auto": true,
     "prune": true,
     "reserved": 20000
   },
