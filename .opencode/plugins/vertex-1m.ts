@@ -12,38 +12,19 @@ const SUPPORTED_MODELS = [
 
 export const plugin: Plugin = async () => ({
   "chat.params": async (input, output) => {
-    console.log("[vertex-1m] chat.params called", {
-      providerID: input.model.providerID,
-      modelID: input.model.api.id,
-    })
-    
     // Only apply to Google Vertex AI Anthropic provider
-    if (input.model.providerID !== "google-vertex-anthropic") {
-      console.log("[vertex-1m] Skipping - not google-vertex-anthropic")
-      return
-    }
+    if (input.model.providerID !== "google-vertex-anthropic") return
     
     // Only apply to Claude models
-    if (!input.model.api.id.includes("claude")) {
-      console.log("[vertex-1m] Skipping - not a Claude model")
-      return
-    }
+    if (!input.model.api.id.includes("claude")) return
     
     // Only apply to supported models
-    const isSupported = SUPPORTED_MODELS.some((m) => input.model.api.id.includes(m))
-    if (!isSupported) {
-      console.log("[vertex-1m] Skipping - model not in SUPPORTED_MODELS list")
-      return
-    }
+    if (!SUPPORTED_MODELS.some((m) => input.model.api.id.includes(m))) return
     
     // Inject the beta header for 1M context
     const existing = output.options.betas ?? []
-    if (existing.includes(CONTEXT_1M_BETA)) {
-      console.log("[vertex-1m] Beta header already present")
-      return
-    }
+    if (existing.includes(CONTEXT_1M_BETA)) return
     
-    console.log("[vertex-1m] Injecting beta header:", CONTEXT_1M_BETA)
     output.options.betas = [...existing, CONTEXT_1M_BETA]
   },
 })
