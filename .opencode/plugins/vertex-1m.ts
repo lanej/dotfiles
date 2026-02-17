@@ -4,6 +4,7 @@ import { homedir } from "os"
 
 const CONTEXT_1M_BETA = "context-1m-2025-08-07"
 const LOG_FILE = `${homedir()}/.local/share/opencode/vertex-1m-plugin.log`
+const DEBUG = process.env.VERTEX_1M_DEBUG === "1"
 
 // Only these models support 1M context with the beta header
 // See: https://docs.anthropic.com/en/docs/about-claude/models
@@ -16,6 +17,8 @@ const SUPPORTED_MODELS = [
 ]
 
 function log(message: string, data?: any) {
+  if (!DEBUG) return
+  
   const timestamp = new Date().toISOString()
   const logLine = data 
     ? `${timestamp} [vertex-1m] ${message} ${JSON.stringify(data)}\n`

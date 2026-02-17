@@ -1,6 +1,9 @@
 # Lancer database (can be regenerated)
 .lancedb/
 
+# Jupyter cache (Quarto execution cache)
+.jupyter_cache/
+
 # Data snapshots (can be regenerated from scripts)
 data/snapshots/
 

@@ -178,8 +178,8 @@ if command -v fzf >/dev/null; then
 		
 		# Command for non-hidden files
 		local cmd_normal='fd --type f --follow --exclude .git'
-		# Command for hidden files
-		local cmd_hidden='fd --type f --hidden --follow --exclude .git'
+		# Command for hidden files (also ignores .gitignore and .ignore files)
+		local cmd_hidden='fd --type f --hidden --follow --no-ignore --exclude .git'
 		
 		# Dynamic preview window positioning
 		local preview_window="$(__fzf_dynamic_preview_window)"
