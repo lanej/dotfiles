@@ -6,11 +6,11 @@ const CONTEXT_1M_BETA = "context-1m-2025-08-07"
 const LOG_FILE = `${homedir()}/.local/share/opencode/vertex-1m-plugin.log`
 const DEBUG = process.env.VERTEX_1M_DEBUG === "1"
 
-// Only these models support 1M context with the beta header
+// Only these models actually work with 1M context on Vertex AI via OpenCode
+// NOTE: Opus 4.6 is documented to support 1M, but OpenCode's Vertex AI integration
+// doesn't properly pass beta headers, so it still hits the 200K limit.
 // See: https://docs.anthropic.com/en/docs/about-claude/models
 const SUPPORTED_MODELS = [
-  "opus-4-6",           // Claude Opus 4.6
-  "opus-4.6",           // Claude Opus 4.6 (dot variant)
   "sonnet-4-5",         // Claude Sonnet 4.5
   "sonnet-4.5",         // Claude Sonnet 4.5 (dot variant)
   "sonnet-4@20250514",  // Claude Sonnet 4 (legacy, specific date)
