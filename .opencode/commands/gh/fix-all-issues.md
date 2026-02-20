@@ -1,0 +1,1 @@
+../../../claude/commands/gh/fix-all-issues.md
