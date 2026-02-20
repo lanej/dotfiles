@@ -10,149 +10,113 @@ tags:
 
 # /lead — Team Leader Orchestrator
 
-You are a team leader coordinating specialized subagents through a structured, layered-reasoning pipeline. Your job is to coordinate, not to do the work yourself.
+You are the **parent coordinator**. Do only these three things:
 
-**Task:**
+1. Spawn the pipeline subagent (phases 1–4)
+2. Present the review gate (phase 5) — this requires user interaction, so it stays here
+3. Spawn execution (phase 6) if approved
 
-```
-$ARGUMENTS
-```
+**Task:** `$ARGUMENTS`
 
-Execute the following six phases sequentially. Phases 1–4 run autonomously without stopping. Phase 5 is the only user gate. Phase 6 executes only after explicit approval.
+## Step 1: Spawn the Pipeline Subagent
 
-All artifacts are written to `/tmp/lead/`. Create this directory if it doesn't exist.
+Create `/tmp/lead/` if it doesn't exist. Then spawn a Task with `subagent_type: "general-purpose"` using the following as the complete prompt. Substitute the actual task description for `TASK` before sending.
 
-## Layered Reasoning Requirement
+---
 
-**This applies at every level of delegation — phases, subtasks, workstreams, and sub-workstreams.**
+**[PIPELINE COORDINATOR PROMPT — pass this verbatim to the subagent, with TASK filled in]**
 
-Every subagent prompt you write MUST instruct the agent to apply layered reasoning. When that agent delegates further (to sub-subagents for individual subtasks), it must propagate the same instruction. No subtask at any depth should execute without layered reasoning.
+You are the lead pipeline coordinator. Your job is to run 4 phases sequentially for this task, delegating each phase to a specialized sub-subagent. Do NOT do the work yourself — delegate everything.
 
-The five-step framework:
+**Task:** TASK
 
-1. **Observe** — What do you find? Cite specific sources (file:line, command output, user statements).
-2. **Hypothesize** — What are at least 3 distinct possibilities or approaches?
-3. **Analyze** — What evidence supports or contradicts each?
-4. **Conclude** — What is your assessment? State confidence level (high/medium/low) and key dependencies.
+**Layered Reasoning — Required at Every Level**
+
+Every sub-subagent prompt you write MUST instruct that agent to apply layered reasoning, and to propagate the same instruction to any agents it spawns. The five steps:
+
+1. **Observe** — What do you find? Cite specific sources (file:line, command output).
+2. **Hypothesize** — At least 3 distinct possibilities or approaches.
+3. **Analyze** — Evidence for and against each.
+4. **Conclude** — Confidence level (high/medium/low) and key dependencies.
 5. **Recommend** — Prioritized next steps with rationale.
 
-**Include this in every subagent prompt you write:**
+Include this block in every sub-subagent prompt:
 
-> Apply layered reasoning to this task and each subtask within it. For every decision point:
-> observe what you find (cite sources), hypothesize at least 3 alternatives, analyze evidence for each,
-> conclude with a confidence level, and recommend with rationale. If you delegate subtasks to further
-> subagents, include this same layered reasoning instruction in every prompt you write to them.
+> Apply layered reasoning to this task and to every subtask within it. For every decision point: observe (cite sources), hypothesize 3+ alternatives, analyze evidence, conclude with confidence level, recommend with rationale. If you delegate further, include this same instruction in every prompt you write.
 
-This structure must appear in the output at every level, not just the top-level reasoning.
+**Phase 1: DISCOVER**
 
-## Phase 1: DISCOVER
+Spawn a Task with `subagent_type: "Explore"` and `thoroughness: "very thorough"`. The prompt must:
+- State the task description
+- Include the layered reasoning instruction above
+- Ask the agent to find: existing patterns, relevant files, constraints, risks, prior art in the codebase
+- Ask it to structure output as: Facts → Hypotheses → Analysis → Conclusions → Recommendations
 
-Delegate codebase/problem exploration to an Explore subagent.
+Write the agent's full output to `/tmp/lead/discovery.md`.
 
-**What to do:**
+**Phase 2: PLAN**
 
-1. Create `/tmp/lead/` if it doesn't exist.
-2. Launch a Task with `subagent_type: "Explore"` and `thoroughness: "very thorough"`.
-3. The agent prompt must:
-   - Include the task description from `$ARGUMENTS`
-   - Instruct the agent to apply layered reasoning (all 5 steps above)
-   - Ask it to find: existing patterns, relevant files, constraints, risks, prior art in the codebase
-   - Ask it to produce a structured discovery report
-4. Write the agent's output to `/tmp/lead/discovery.md`.
-5. Print a brief summary: key findings, confidence level, any blockers found.
+Read the key sections of `/tmp/lead/discovery.md`. Spawn a Task with `subagent_type: "Plan"`. The prompt must:
+- State the task description
+- Include the layered reasoning instruction
+- Include a concise summary of discovery findings
+- Ask the agent to: evaluate architectural options (at least 3), select an approach with justification, define implementation steps, identify dependencies and risks
+- Ask it to structure output as: Approach → Steps → Dependencies → Risks → Verification
 
-## Phase 2: PLAN
+Write the agent's full output to `/tmp/lead/plan.md`.
 
-Delegate implementation planning to a Plan subagent. Do NOT plan yourself.
+**Phase 3: REFLECT**
 
-**What to do:**
+Read key sections of `/tmp/lead/discovery.md` and `/tmp/lead/plan.md`. Spawn a Task with `subagent_type: "general-purpose"`. The prompt must:
+- State the task description and include the plan content
+- Frame the role explicitly: "You are a senior engineer reviewing this plan adversarially. Find what's wrong, not what's right."
+- Include the layered reasoning instruction, applied as:
+  - Observe: What does the plan assume? What could it have missed?
+  - Hypothesize: 3+ ways this plan could fail or be suboptimal
+  - Analyze: Likelihood and evidence for each failure mode
+  - Conclude: Categorize each issue as CRITICAL / SIGNIFICANT / MINOR
+  - Recommend: Specific changes to address each CRITICAL and SIGNIFICANT issue
+- Ask it to end with a structured list categorized as CRITICAL / SIGNIFICANT / MINOR
 
-1. Read `/tmp/lead/discovery.md` to extract context (use a brief read — don't fill your context with it).
-2. Launch a Task with `subagent_type: "Plan"`.
-3. The agent prompt must:
-   - Include the task description
-   - Paste or summarize the key discovery findings
-   - Instruct the agent to apply layered reasoning (all 5 steps)
-   - Ask it to: identify architectural options, select an approach with justification, define implementation steps, call out dependencies and risks
-   - Ask it to structure output as: Context → Approach → Steps → Dependencies → Risks → Verification
-4. Write the agent's output to `/tmp/lead/plan.md`.
-5. Print a brief summary: approach chosen, step count, major risks.
+Write the agent's full output to `/tmp/lead/reflection.md`.
 
-## Phase 3: REFLECT
+**Phase 4: TWEAK**
 
-Launch a critic subagent to find flaws in the plan. This agent's job is adversarial — to break the plan, not validate it.
+Read key sections of `/tmp/lead/plan.md` and `/tmp/lead/reflection.md`.
 
-**What to do:**
+If reflection.md contains no CRITICAL or SIGNIFICANT issues: copy plan.md to `/tmp/lead/plan-final.md` unchanged and note "No blocking issues found — plan adopted as-is."
 
-1. Read key sections of `/tmp/lead/discovery.md` and `/tmp/lead/plan.md`.
-2. Launch a Task with `subagent_type: "general-purpose"`.
-3. The agent prompt must:
-   - Include the task description, discovery summary, and full plan
-   - Explicitly frame the role: "You are a senior engineer reviewing this plan with a critical eye. Your job is to find what's wrong, not what's right."
-   - Instruct layered reasoning:
-     - Observe: What does the plan assume?
-     - Hypothesize: What are 3+ ways this plan could fail or be suboptimal?
-     - Analyze: For each failure mode, how likely is it? What evidence from the discovery supports this risk?
-     - Conclude: Which issues are critical (blocking), significant (should fix), or minor (nice-to-fix)?
-     - Recommend: Specific changes to address each critical and significant issue.
-   - Ask it to categorize findings as: CRITICAL / SIGNIFICANT / MINOR
-4. Write the agent's output to `/tmp/lead/reflection.md`.
-5. Print: number of critical/significant/minor issues found.
+Otherwise, spawn a Task with `subagent_type: "general-purpose"`. The prompt must:
+- Include the original plan and the full reflection findings
+- Include the layered reasoning instruction, applied as:
+  - Observe: Which reflection issues are valid? Which are overstated?
+  - Hypothesize: For each valid issue, what are the revision options?
+  - Analyze: Which revision approach resolves the issue without introducing new problems?
+  - Conclude: Final revised plan with confidence level
+  - Recommend: Flag any issues that couldn't be fully resolved
+- Ask it to produce a complete revised plan (not a diff)
 
-## Phase 4: TWEAK
+Write the agent's full output to `/tmp/lead/plan-final.md`.
 
-Launch a subagent to revise the plan based on the reflection findings.
+**Final Step: Write Review Summary**
 
-**What to do:**
-
-1. Read key sections of `/tmp/lead/plan.md` and `/tmp/lead/reflection.md`.
-2. If reflection.md contains no CRITICAL or SIGNIFICANT issues:
-   - Copy plan.md content to `/tmp/lead/plan-final.md` unchanged.
-   - Note: "Reflection found no blocking issues — plan adopted as-is."
-   - Skip to Phase 5.
-3. Otherwise, launch a Task with `subagent_type: "general-purpose"`.
-4. The agent prompt must:
-   - Include the original plan, the reflection findings, and the task description
-   - Instruct layered reasoning:
-     - Observe: Which reflection issues are valid and which are not?
-     - Hypothesize: For each valid issue, what are the revision options?
-     - Analyze: Which revision approach best resolves the issue without creating new problems?
-     - Conclude: Final revised plan with confidence level
-     - Recommend: Flag any issues that couldn't be fully resolved
-   - Ask it to produce a revised, complete plan (not just a diff)
-5. Write the agent's output to `/tmp/lead/plan-final.md`.
-6. Print: what changed and what outstanding issues remain (if any).
-
-## Phase 5: REVIEW (HARD STOP)
-
-Present a consolidated summary to the user and wait for explicit approval before proceeding.
-
-**What to do:**
-
-1. Read all four artifacts: discovery.md, plan.md, reflection.md, plan-final.md.
-2. Present a structured summary:
+Write `/tmp/lead/review-summary.md` with this structure:
 
 ```
-═══════════════════════════════════════════════
-/lead REVIEW GATE
-Task: [task description]
-═══════════════════════════════════════════════
-
 DISCOVERY
 ─────────
-[3-5 bullet points: what was found, key constraints, relevant existing patterns]
+[3-5 bullets: key findings, constraints, relevant existing patterns]
 
 PLAN (final)
 ────────────
-[Approach chosen and brief rationale]
-[Numbered list of implementation steps]
-[Key dependencies]
+Approach: [one sentence]
+Steps: [numbered list]
+Dependencies: [list]
 
-REFLECTION FINDINGS
-───────────────────
+REFLECTION
+──────────
 Critical: [N] | Significant: [N] | Minor: [N]
-[List of critical/significant issues and how they were addressed in the final plan]
-[Any unresolved issues]
+[Key issues and how they were addressed. Any unresolved issues.]
 
 ARTIFACTS
 ─────────
@@ -160,51 +124,43 @@ ARTIFACTS
 /tmp/lead/plan.md
 /tmp/lead/reflection.md
 /tmp/lead/plan-final.md
+```
+
+Then return. Your job is complete.
+
+---
+
+**[END PIPELINE COORDINATOR PROMPT]**
+
+## Step 2: Review Gate (Phase 5)
+
+After the pipeline subagent returns, read `/tmp/lead/review-summary.md` and present it to the user in this format:
+
+```
+═══════════════════════════════════════════════
+/lead REVIEW GATE
+Task: [task description]
+═══════════════════════════════════════════════
+[contents of review-summary.md]
 
 Proceed to execution? (yes / no / edit)
-• yes — execute the plan with parallel workstreams
-• no — stop here, artifacts preserved for reference
-• edit — describe what to change, then re-run from reflect phase
+• yes  — execute the plan with parallel workstreams
+• no   — stop here, artifacts preserved in /tmp/lead/
+• edit — describe what to change; re-run from reflect phase
 ═══════════════════════════════════════════════
 ```
 
-3. Wait for user response. Do NOT proceed to Phase 6 without explicit "yes" or equivalent confirmation.
-4. If user says "no" or stops: halt. Print artifact paths for reference.
-5. If user says "edit" or provides changes: apply changes to plan-final.md and re-present the review gate.
+Wait for user response. Do NOT proceed to Step 3 without explicit "yes" or equivalent.
 
-## Phase 6: EXECUTE
+If "no": halt. Print artifact paths.
+If "edit": apply the user's changes to `/tmp/lead/plan-final.md`, update review-summary.md, and re-present the gate.
 
-Delegate execution to the orchestrator subagent. Only runs after Phase 5 approval.
+## Step 3: Execute (Phase 6)
 
-**What to do:**
+Spawn a Task with `subagent_type: "orchestrator"`. The prompt must include:
+- The full contents of `/tmp/lead/plan-final.md`
+- The task description
+- The layered reasoning cascade instruction (same block as above) — the orchestrator must include it in every workstream subagent prompt it writes
+- Instructions to: decompose into parallel workstreams, assign each to @general/@explore, track via master todo list, escalate only genuine blockers
 
-1. Read `/tmp/lead/plan-final.md`.
-2. Launch a Task with `subagent_type: "orchestrator"`.
-3. The agent prompt must:
-   - Include the complete final plan
-   - Include the task description
-   - Instruct the orchestrator to:
-     - Decompose the plan into parallel workstreams where possible
-     - Assign each workstream to an appropriate subagent (`@general`, `@explore`, custom)
-     - **Include the layered reasoning instruction in every subagent prompt it writes** — layered reasoning must cascade to every workstream and every sub-subtask, not just top-level orchestration
-     - Track progress via master todo list
-     - Apply layered reasoning when encountering blockers: observe the blocker, hypothesize causes, analyze options, conclude on resolution approach
-     - Report consolidated status at each milestone
-     - Escalate to user only for genuine blockers (missing info, external deps, architectural decisions requiring judgment)
-4. Track execution progress. Report consolidated status as the orchestrator completes workstreams.
-5. On completion: summarize what was done, what passed verification, any remaining manual steps.
-
-## Anti-Patterns
-
-**Don't:**
-- Do discovery, planning, or reflection yourself — always delegate
-- Stop between phases 1–4 to ask the user questions (these run autonomously)
-- Skip the Phase 5 review gate — execution never starts without user approval
-- Invoke `@orchestrator` recursively from within Phase 6
-- Pass entire artifact file contents through your own context — read summaries, pass file paths to subagents
-
-**Do:**
-- Keep your context clean by delegating
-- Write artifacts to disk and pass paths (not content) when possible
-- Surface critical reflection issues prominently in the review gate
-- Treat Phase 5 as the genuine decision point — present all relevant information there
+Report consolidated status as workstreams complete. Summarize what was done and any remaining manual steps when execution finishes.
