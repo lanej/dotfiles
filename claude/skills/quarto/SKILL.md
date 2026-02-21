@@ -20,6 +20,163 @@ Quarto is an open-source scientific and technical publishing system built on Pan
 9. **Blank Lines Before Lists**: ALWAYS include a blank line before every list (bullet or numbered) - no exceptions
 10. **No Appendix for Sources**: Data sources belong in code blocks, not appendix - only add external sources not directly referenced in code to appendix
 11. **Use Markdown() Class**: ALWAYS use `Markdown()` for text output in code blocks - NEVER use `print()` or `printf()` (output must render as formatted markdown)
+12. **Minimal PDF Titling**: For PDF output, suppress YAML `title`/`author`/`date` fields (they produce an academic title block via `\maketitle`). Use a raw LaTeX minipage inline header instead. Use `##` markdown headings for section headings (NOT raw LaTeX `\noindent{\large\textbf{...}}` blocks — those fight with Quarto's float placement). Exception: only use raw LaTeX headings for the document title line itself.
+13. **PDF Figure Sizing**: Every chart chunk MUST have `#| fig-pos: "H"`, `#| fig-width: N`, `#| fig-height: N`, `#| out-width: 100%`. Always end chunks with `plt.close('all')`. Set `ax.text(...).set_clip_on(True)` on all annotation labels. Never use mixed coordinate transforms. See "PDF Figure Sizing — Critical Patterns" section for full details.
+
+## PDF Figure Sizing — Critical Patterns
+
+**CRITICAL: Matplotlib figure sizing in Quarto PDF output is failure-prone. Follow these rules exactly.**
+
+### The Working Pattern (copy verbatim)
+
+Every chart chunk that renders to PDF must have ALL of these chunk options:
+
+```python
+#| label: fig-my-chart
+#| fig-pos: "H"          # force-here via float.sty — prevents deferral/stacking
+#| fig-width: 6.5        # must match figsize width in Python code
+#| fig-height: 3.5       # must match figsize height in Python code
+#| out-width: 100%       # tells LaTeX to scale to full text column width
+#| fig-cap: "Caption text with no bare % characters — write 'percent' instead."
+```
+
+And in the Python code:
+
+```python
+fig, ax = plt.subplots(figsize=(6.5, 3.5))  # must match chunk fig-width/fig-height
+# ... chart code ...
+plt.tight_layout()
+plt.show()
+plt.close('all')   # REQUIRED — prevents state leaking between chunks
+```
+
+### rcParams That Must Not Be Changed
+
+```python
+plt.rcParams.update({
+    'savefig.bbox': None,        # fills declared figsize exactly — do NOT set to 'tight'
+    'savefig.pad_inches': 0,
+    'figure.dpi': 200,
+    'savefig.dpi': 300,
+})
+```
+
+**`savefig.bbox: None`** is counterintuitive but correct for PDF output. Setting it to `'tight'` causes matplotlib to auto-expand the canvas, which fights against the declared figsize and produces malformed figure PDFs.
+
+### Root Causes of "Comically Small" Figures
+
+These are the diagnosed failure modes, in order of frequency:
+
+**1. Text labels extending beyond xlim/ylim — MOST COMMON**
+
+```python
+# ❌ BROKEN: annotation text positioned beyond axis limits
+for bar, row in zip(bars, df.itertuples()):
+    ax.text(bar.get_width() + 4, ..., f"{row.value}")  # +4 may push past xlim
+ax.set_xlim(0, 380)  # text at bar.width+4 can exceed 380 → bbox explosion
+
+# ✅ FIX: clip text labels to axes, OR increase xlim to accommodate labels
+for bar, row in zip(bars, df.itertuples()):
+    t = ax.text(bar.get_width() + 4, ..., f"{row.value}")
+    t.set_clip_on(True)   # ← prevents bbox from expanding to include clipped text
+# OR: ax.set_xlim(0, 420)  # ensure xlim accommodates largest label
+```
+
+When `ax.text()` labels are placed at `bar.get_width() + offset` in data coordinates and those labels extend beyond `xlim`, the PDF backend measures the full artist bounding box (including out-of-bounds text) when computing the figure's page size. This causes the figure PDF to be output at **half or less of the declared figsize** — which LaTeX then renders at postage-stamp size even though `out-width: 100%` is set.
+
+**Rule:** After setting `xlim`, add `t.set_clip_on(True)` to ALL `ax.text()` calls, or add enough xlim headroom to fit the longest annotation.
+
+**2. Mixed coordinate transforms on annotations**
+
+```python
+# ❌ BROKEN: mixes data coordinates with axis-fraction transform
+ax.annotate("", xy=(x0, y0 + 3), xytext=(x1, y1 + 3), ...)  # data coords
+ax.text(0.5, max_val + 9, "label", transform=ax.get_xaxis_transform())  # mixed!
+
+# ✅ FIX: use pure axes fraction for floating annotations
+ax.annotate("label text",
+            xy=(0.5, 0.85), xycoords='axes fraction',
+            ha='center', va='center', fontsize=9, ...)
+```
+
+`ax.get_xaxis_transform()` mixes x=axis-fraction with y=data coordinates. When the y-value in data coords exceeds ylim, the PDF backend's bounding box measurement goes pathological, producing figures that are 10-30× taller than declared. **Always use pure coordinate systems** — either all data coords or all `xycoords='axes fraction'`.
+
+**3. Missing `plt.close('all')` between chunks**
+
+Without `plt.close('all')` after each `plt.show()`, matplotlib figure state (transforms, layout engines, bounding boxes) leaks between Jupyter/Quarto execution chunks. This can cause later charts to inherit corrupt layout state from earlier ones. Always end every chart chunk with:
+
+```python
+plt.tight_layout()
+plt.show()
+plt.close('all')
+```
+
+**4. `fig-pos: "!ht"` instead of `"H"`**
+
+`"!ht"` (try-here, then top-of-page) causes LaTeX to defer figures when there's insufficient space, stacking them at awkward positions. `"H"` (force-here via `float.sty`) places the figure exactly where declared. Requires `\usepackage{float}` in the LaTeX header.
+
+**5. Missing `#| fig-width` / `#| fig-height` on chunk**
+
+Without explicit chunk-level sizing, Quarto uses YAML defaults and may not pre-allocate the correct float box size before Python renders into it. Always specify both per-chunk.
+
+### Diagnosing Figure Size Issues
+
+To identify which figures are malformed without waiting for a full visual review:
+
+```bash
+# Add keep-tex to render temporarily
+cd /path/to/doc && uv run quarto render doc.qmd --to pdf -M keep-tex:true
+
+# Check actual page dimensions of each generated figure PDF
+for f in doc_files/figure-pdf/*.pdf; do
+  echo -n "$f: "
+  pdfinfo "$f" 2>/dev/null | grep "Page size"
+done
+
+# A correct 6.5×3.5in figure should be ~468×252 pts (at 72 pts/in)
+# A figure with width << 440 pts or height >> 400 pts is malformed
+```
+
+### The Nuclear Option
+
+If a figure keeps rendering incorrectly despite all fixes, force PNG raster output:
+
+```python
+#| label: fig-problematic
+#| fig-pos: "H"
+#| dev: png            # ← bypass the PDF vector pipeline entirely
+#| dpi: 150
+#| fig-width: 6.5
+#| fig-height: 3.5
+#| out-width: 100%
+```
+
+PNG output is immune to all the bbox/transform issues because matplotlib renders to a fixed-size raster and Quarto embeds it directly. Use as a last resort since vector PDF is crisper.
+
+### Caption Numbering
+
+```latex
+% Restore default numbering (Figure 1., Figure 2., etc.) with bold prefix:
+\captionsetup{font={small,it},justification=centering,skip=6pt,labelfont=bf}
+
+% Suppress numbering (caption text only, no "Figure N." prefix):
+\captionsetup{font={small,it},justification=centering,skip=6pt,labelformat=empty,labelsep=none}
+```
+
+**Never use bare `%` in `fig-cap` strings** — write "percent" or "percentage points" instead. LaTeX may fail to compile depending on pandoc version.
+
+### Reference Lines (axvline/axhline) Opacity
+
+Reference lines (baselines, averages) should be visible context, not dominant elements. Always set `alpha=0.4`:
+
+```python
+ax.axvline(48.9, color=NAVY,  linestyle=":",  linewidth=1.6, alpha=0.4, label="Baseline", zorder=3)
+ax.axhline(37.8, color=SLATE, linestyle="--", linewidth=1.4, alpha=0.4, label="Avg", zorder=3)
+```
+
+At `alpha=1.0` (default), reference lines dominate the chart and compete with the data bars. `alpha=0.4` keeps them readable without visual dominance.
+
+---
 
 ## Visual Expression Philosophy
 
@@ -621,6 +778,95 @@ execute:
 - Large projects with many collaborators
 - Documents with environment-specific dependencies
 - When you want cached results portable across machines (commit `_freeze/`)
+
+### Cache-Read-or-Query Pattern (BigQuery / Expensive APIs)
+
+Use this pattern when `cache: true` is insufficient — specifically when:
+
+- Querying BigQuery or other expensive external APIs
+- Cache must survive Quarto kernel restarts (Jupyter cache does not)
+- You want explicit control over cache invalidation (not tied to source changes)
+- Cache files are machine-specific and should be gitignored
+
+Set `execute: cache: false` in frontmatter when using this pattern (disable Jupyter cache to avoid double-caching).
+
+**Helper functions** (add once per document, in a setup cell):
+
+```python
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+_CACHE_DIR = Path('data/cache')
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+def _cache_path(name):
+    return _CACHE_DIR / f"{name}.json"
+
+def _read_cache(name):
+    p = _cache_path(name)
+    if p.exists():
+        return json.loads(p.read_text())
+    return None
+
+def _write_cache(name, records, scalars=None):
+    p = _cache_path(name)
+    p.write_text(json.dumps({
+        '_queried_at': datetime.now(timezone.utc).isoformat(),
+        'records': records,
+        'scalars': scalars or {}
+    }, default=str))
+```
+
+**Per-dataset usage template** (repeat for each dataset):
+
+```python
+_c = _read_cache('my_dataset')
+if _c:
+    df = pd.DataFrame(_c['records'])
+    my_scalar = float(_c['scalars']['my_scalar'])
+else:
+    df = run_bq_query(my_query)
+    my_scalar = float(df['col'].values[0])
+    _write_cache('my_dataset', df.to_dict(orient='records'), {
+        'my_scalar': my_scalar,
+    })
+```
+
+**Cache hit** → reads DataFrame and scalars from JSON; no BigQuery call.
+**Cache miss** → queries BigQuery live, writes cache, continues render.
+**Query failure on miss** → render fails loudly (intentional — no silent fallback).
+
+**Never do:**
+
+- `except Exception: my_scalar = 42` — silent fallback masks broken queries
+- Assign a constant inside `try:` without a preceding query call — hidden constant, not a live value
+- Omit `_write_cache()` in the else branch — next render re-queries unnecessarily
+
+**Cache file format:**
+
+```json
+{
+    "_queried_at": "2026-02-20T16:00:00Z",
+    "records": [...],
+    "scalars": {...}
+}
+```
+
+Serialization notes:
+- Numpy arrays → store as lists (`df['col'].tolist()`), reconstruct with `np.array(...)`
+- Dates → use `default=str` in `json.dumps` to handle non-serializable types
+
+**Cache invalidation:**
+
+```
+# .gitignore
+data/cache/
+
+# Justfile recipe
+delete-cache:
+    rm -rf data/cache/
+```
 
 ### Complete Example: Reproducible Analysis
 
@@ -1764,6 +2010,67 @@ format:
         \fancyhead[R]{\thepage}
 ---
 ```
+
+### Minimal PDF Header Style (DEFAULT for Reports)
+
+**CRITICAL: Suppress Quarto's auto-generated title block for PDF output.** The default `title`/`author`/`date` YAML fields trigger LaTeX's `\maketitle`, producing an academic-style centered title block that is too formal for most reports. Markdown `#`/`##` headings produce `\section{}`/`\subsection{}` with large font, bold, and extra spacing — also unwanted for dense reports.
+
+**Use this pattern instead:**
+
+**YAML frontmatter** — omit `title`, `author`, `date`; suppress page number on page 1:
+
+```yaml
+---
+format:
+  pdf:
+    toc: false
+    number-sections: false
+    geometry: margin=1in
+    fontsize: 11pt
+    documentclass: article
+    pdf-engine: lualatex
+    include-before-body:
+      text: |
+        \thispagestyle{empty}
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+```
+
+**Inline header** — put this immediately after the YAML block as the first content:
+
+````markdown
+```{=latex}
+\begin{minipage}[t]{0.65\textwidth}
+  {\large\textbf{Document Title · Subtitle}}
+\end{minipage}%
+\begin{minipage}[t]{0.35\textwidth}
+  \raggedleft{\small Josh Lane · Feb 2026}
+\end{minipage}
+\vspace{3pt}
+\hrule
+\vspace{10pt}
+```
+````
+
+**Section headings** — replace all Markdown `#`/`##` headings with raw LaTeX:
+
+````markdown
+```{=latex}
+\noindent{\large\textbf{Section Title}}
+\vspace{6pt}
+```
+````
+
+**Why this is better:**
+- Single-line compact header — title and author/date on one row
+- No wasted vertical space from `\maketitle`
+- Section labels match body font size — no jarring size jumps
+- Looks like a professional memo/report, not an academic paper
+
+**When to use Markdown headings instead:** Only for long documents (>10 pages) where readers need a rendered TOC or cross-references (`@sec-name`). In that case, restore `number-sections: true` and `toc: true`.
 
 ### HTML Themes
 
