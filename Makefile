@@ -167,7 +167,7 @@ claude:
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 opencode: claude
 	@mkdir -p $(HOME)/.config/opencode
-	@ln -fs $(DOTFILES)/.opencode/opencode.json $(HOME)/.config/opencode/opencode.json
+	@rm -f $(HOME)/.config/opencode/opencode.json && envsubst < $(DOTFILES)/.opencode/opencode.json > $(HOME)/.config/opencode/opencode.json
 	@ln -fns $(DOTFILES)/.opencode/commands $(HOME)/.config/opencode/commands
 	@ln -fns $(DOTFILES)/.opencode/plugins $(HOME)/.config/opencode/plugins
 	@ln -fns $(HOME)/.claude/skills $(HOME)/.config/opencode/skills

@@ -156,13 +156,13 @@
       "/tmp/**": "allow",
       "/private/tmp/**": "allow",
       "/var/folders/**": "allow",
-      "/Users/joshlane/.claude/plans/**": "allow"
+      "$HOME/.claude/plans/**": "allow"
     },
     "read": {
       "/tmp/*": "allow",
       "/private/tmp/*": "allow",
       "/var/folders/*": "allow",
-      "/Users/joshlane/.claude/plans/*": "allow"
+      "$HOME/.claude/plans/*": "allow"
     },
     "write": "allow",
     "bash": {
@@ -254,7 +254,7 @@
       ],
       "enabled": true,
       "environment": {
-        "MEMORY_FILE_PATH": "/Users/joshane/memory.json"
+        "MEMORY_FILE_PATH": "$HOME/memory.json"
       }
     }
   }
