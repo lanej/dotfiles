@@ -68,3 +68,18 @@ The pattern is already employed for several commands:
 - Use `git add -f` to force-add specific commands when ready to version
 
 This pattern mirrors the approach used elsewhere in this repository (e.g., experimental scripts in `bin/` that are selectively versioned).
+
+## OpenCode Configuration
+
+`~/.config/opencode/opencode.json` is **generated** by `make opencode` — do not edit it directly.
+
+The source template is `.opencode/opencode.json`. It uses `$HOME` placeholders that are expanded via `envsubst` at install time. Always edit the template, then run `make opencode` to regenerate.
+
+```
+.opencode/opencode.json          ← EDIT THIS (template with $HOME placeholders)
+~/.config/opencode/opencode.json ← GENERATED (do not edit)
+```
+
+Running `make opencode` will:
+1. Remove the old file/symlink at `~/.config/opencode/opencode.json`
+2. Run `envsubst` to expand `$HOME` and write the result
