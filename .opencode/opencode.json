@@ -155,12 +155,14 @@
     "external_directory": {
       "/tmp/**": "allow",
       "/private/tmp/**": "allow",
-      "/var/folders/**": "allow"
+      "/var/folders/**": "allow",
+      "/Users/joshlane/.claude/plans/**": "allow"
     },
     "read": {
       "/tmp/*": "allow",
       "/private/tmp/*": "allow",
-      "/var/folders/*": "allow"
+      "/var/folders/*": "allow",
+      "/Users/joshlane/.claude/plans/*": "allow"
     },
     "write": "allow",
     "bash": {
