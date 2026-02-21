@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# STRATEGY MEMO — Justfile
+# Copy to project root alongside your .qmd file.
+# Rename DOC below to match your .qmd filename (without extension).
+# ─────────────────────────────────────────────────────────────────────────────
+
+DOC := "pre-read"   # ← change to your .qmd filename (without .qmd)
+
+# Render to PDF + HTML, validate, and sync to Drive
+render: _render_pdf _render_html check sync
+
+# Internal: PDF render (clears Jupyter cache first)
+_render_pdf:
+    rm -rf .jupyter_cache/ && quarto render {{DOC}}.qmd --to pdf
+
+# Internal: HTML render (reuses cached outputs from PDF render)
+_render_html:
+    quarto render {{DOC}}.qmd --to html
+
+# Open HTML preview in browser (fast — no PDF render, no Drive sync)
+preview:
+    quarto render {{DOC}}.qmd --to html && open {{DOC}}.html
+
+# Scan rendered PDF for unrendered Python inline code (e.g. "{python} var_name")
+check:
+    ./scripts/check-pdf.sh
+
+# Upload PDF to Google Drive (reads file ID from .drive-file-id)
+sync:
+    ./scripts/sync-drive.sh
+
+# Render, validate, and sync (full release cycle)
+publish: render check sync
+
+# Screenshot a specific figure for visual iteration
+# Usage: just preview-fig fig1
+# Renders HTML only (~15s), screenshots the figure, opens it.
+# Edit figure code → screenshot → inspect → repeat → just render when done.
+preview-fig fig='fig1':
+    quarto render {{DOC}}.qmd --to html --quiet
+    /tmp/pw-venv/bin/python3 scripts/preview-fig.py {{fig}}
+    open /tmp/{{DOC}}-{{fig}}.png
+
+# Render presentation slides (if presentation.qmd exists)
+slides:
+    quarto render presentation.qmd
+
+# Wipe query cache — next render re-queries all BigQuery sources
+delete-cache:
+    rm -rf data/cache/
+    mkdir -p data/cache/
+    @echo "Cache cleared. Next render will re-query all BigQuery sources."
+
+# Compare cache to live BigQuery — fails if any value drifts > 5%
+validate:
+    uv run python scripts/validate-cache.py
