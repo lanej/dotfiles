@@ -110,12 +110,20 @@
     "document-summarizer": {
       "description": "Analyze and condense documents. Extract key points, action items, and insights from long content.",
       "mode": "subagent",
-      "model": "anthropic/claude-haiku-4-20250514",
       "prompt": "{file:~/.claude/agents/document-summarizer.md}",
       "tools": {
         "write": false,
         "edit": false,
         "bash": false,
+        "todowrite": true,
+        "todoread": true
+      }
+    },
+    "follower": {
+      "description": "Executes delegated pipeline phases for the team-leader command. Applies layered reasoning and continuous phased execution.",
+      "mode": "subagent",
+      "prompt": "{file:~/.claude/agents/follower.md}",
+      "tools": {
         "todowrite": true,
         "todoread": true
       }
@@ -203,16 +211,9 @@
     "jira": {
       "type": "local",
       "command": [
-        "podman",
-        "run",
-        "-i",
-        "--rm",
-        "-v",
-        "$HOME/.config/mcp/jira.env:/etc/mcp/jira.env",
-        "ghcr.io/sooperset/mcp-atlassian:latest",
-        "-vv",
-        "--env-file",
-        "/etc/mcp/jira.env"
+        "jira",
+        "mcp",
+        "stdio"
       ],
       "enabled": false
     },
@@ -251,36 +252,8 @@
       ],
       "enabled": true,
       "environment": {
-        "MEMORY_FILE_PATH": "$HOME/memory.json"
+        "MEMORY_FILE_PATH": "/Users/joshane/memory.json"
       }
-    },
-    "mcp-atlassian": {
-      "type": "local",
-      "command": [
-        "podman",
-        "run",
-        "-i",
-        "--rm",
-        "-v",
-        "/Users/joshlane/.config/mcp/jira.env:/etc/mcp/jira.env",
-        "ghcr.io/sooperset/mcp-atlassian:latest",
-        "-vv",
-        "--env-file",
-        "/etc/mcp/jira.env"
-      ],
-      "enabled": true
-    },
-    "kb": {
-      "type": "local",
-      "command": [
-        "uvx",
-        "chroma-mcp",
-        "--client-type",
-        "persistent",
-        "--data-dir",
-        "$HOME/src/kb-md"
-      ],
-      "enabled": false
     }
   }
 }
