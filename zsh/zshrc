@@ -118,13 +118,28 @@ if command -v fzf >/dev/null; then
 		fi
 	}
 	
-	# Override fzf-cd-widget (Alt-C) with dynamic preview
+	# Override fzf-cd-widget (Alt-C / Ctrl+U) with toggle for hidden dirs
+	# Default: no hidden dirs, respects .gitignore/.ignore
+	# Press Ctrl+U inside fzf to toggle hidden/ignored dirs on/off
 	fzf-cd-widget() {
 		setopt localoptions pipefail no_aliases 2> /dev/null
-		local dir="$(
-			FZF_DEFAULT_COMMAND=${FZF_ALT_C_COMMAND:-} \
-			FZF_DEFAULT_OPTS=$(__fzf_defaults "--reverse --walker=dir,follow,hidden --scheme=path" "${FZF_ALT_C_OPTS-} +m") \
-			FZF_DEFAULT_OPTS_FILE='' $(__fzfcmd) --preview-window="$(__fzf_dynamic_preview_window)" < /dev/tty)"
+
+		local cmd_normal='fd --type d --follow --exclude .git'
+		local cmd_hidden='fd --type d --hidden --follow --no-ignore --exclude .git'
+		local preview_window="$(__fzf_dynamic_preview_window)"
+
+		local dir
+		dir=$(
+			FZF_DEFAULT_COMMAND="$cmd_normal" \
+			FZF_DEFAULT_OPTS=$(__fzf_defaults "--reverse --scheme=path +m" "${FZF_ALT_C_OPTS-}") \
+			FZF_DEFAULT_OPTS_FILE='' \
+			fzf \
+				--prompt='📁 > ' \
+				--preview-window="$preview_window" \
+				--bind="ctrl-u:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(📁 > )\" || echo \"reload($cmd_hidden)+change-prompt(📁 [hidden] > )\"" \
+			< /dev/tty
+		)
+
 		if [[ -z "$dir" ]]; then
 			zle redisplay
 			return 0
