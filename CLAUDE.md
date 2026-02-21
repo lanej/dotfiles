@@ -73,7 +73,7 @@ This pattern mirrors the approach used elsewhere in this repository (e.g., exper
 
 `~/.config/opencode/opencode.json` is **generated** by `make opencode` — do not edit it directly.
 
-The source template is `.opencode/opencode.json`. It uses `$HOME` placeholders that are expanded via `envsubst` at install time. Always edit the template, then run `make opencode` to regenerate.
+The source template is `.opencode/opencode.json`. It uses `$HOME` placeholders that are expanded via `envsubst '$HOME'` at install time (scoped to only `$HOME` to preserve other `$`-prefixed JSON keys like `$schema`). Always edit the template, then run `make opencode` to regenerate.
 
 ```
 .opencode/opencode.json          ← EDIT THIS (template with $HOME placeholders)
