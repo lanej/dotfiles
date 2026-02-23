@@ -146,6 +146,38 @@
         }
       },
       "prompt": "{file:~/.claude/agents/orchestrator.md}"
+    },
+    "todo": {
+      "description": "Manages the todo list. Use to add, update, complete, or clear todos without triggering any other work.",
+      "mode": "subagent",
+      "tools": {
+        "todowrite": true,
+        "todoread": true,
+        "write": false,
+        "edit": false,
+        "bash": false,
+        "webfetch": false
+      },
+      "prompt": "{file:~/.claude/agents/todo.md}"
+    },
+    "team-leader": {
+      "description": "Full discovery-plan-reflect-review-execute pipeline. Use for complex tasks that need structured exploration and planning before implementation. Phases: discover → plan → reflect → tweak → review (human gate) → orchestrated execution.",
+      "mode": "subagent",
+      "tools": {
+        "todowrite": true,
+        "todoread": true,
+        "question": true
+      },
+      "permission": {
+        "task": {
+          "*": "allow",
+          "team-leader": "deny",
+          "compaction": "deny",
+          "title": "deny",
+          "summary": "deny"
+        }
+      },
+      "prompt": "{file:~/.claude/agents/team-leader.md}"
     }
   },
   "permission": {
