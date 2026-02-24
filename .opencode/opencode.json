@@ -91,7 +91,6 @@
       "tools": {
         "write": false,
         "edit": false,
-        "bash": false,
         "todowrite": true,
         "todoread": true
       },
