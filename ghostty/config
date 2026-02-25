@@ -3,4 +3,24 @@ font-size = 13
 adjust-cell-width = -5%
 theme = nord
 quit-after-last-window-closed = true
-macos-titlebar-style = "tabs"
+macos-titlebar-style = transparent
+window-show-tab-bar = always
+
+shell-integration = detect
+scrollback-limit = 314572800
+
+cursor-style = block
+cursor-style-blink = true
+
+window-padding-x = 2
+window-padding-y = 2
+
+keybind = cmd+n=new_tab
+keybind = cmd+t=new_tab
+keybind = cmd+p=previous_tab
+keybind = cmd+1=goto_tab:1
+keybind = cmd+2=goto_tab:2
+keybind = cmd+3=goto_tab:3
+keybind = cmd+4=goto_tab:4
+keybind = cmd+q=quit
+keybind = cmd+w=close_surface

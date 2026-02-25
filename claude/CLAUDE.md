@@ -555,7 +555,6 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **pdf** - PDF extraction, creation, merging, form filling
 - **xlsx-python** - Programmatic Excel creation with Python
 - **quarto** - Render computational documents to markdown (DEFAULT), PDF, HTML, Word, presentations; PREFER markdown output for composability; Use for static reports (no interactivity), multi-format publishing, scientific documents with citations/cross-references
-- **strategy-memo** - Create Amazon 6-pager-style data-backed strategy memos as Quarto PDF documents. Provides: interview-then-scaffold workflow, complete template QMD with BigQuery caching + matplotlib + LaTeX patterns pre-wired, Justfile build system, figure preview loop, and cache validation tooling. Use when creating strategy pre-reads, director briefings, leadership memos, or any executive narrative report.
 
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
@@ -563,6 +562,20 @@ Use the `skill` tool to load detailed guidance for specific technologies and wor
 - **lancer** - LanceDB semantic and vector search; **CLI** (`lancer search -t table "query"`) for scripts/pipelines, **MCP tools** (pkm_search_documents) for in-session queries; auto-loads for knowledge base queries, document search, RAG operations, and document ingestion/indexing
 - **epist** - Epistemological tracking system; auto-loads for data analysis from multiple sources, tracking facts, recording conclusions, tracing provenance, working with metrics/research/surveys, and managing knowledge with Git integrity
 - **epq** - EasyPost Quarto analysis library (`~/src/analysis-doc`). Scaffold new QMD analysis projects (`epq scaffold`), audit for anti-patterns (`epq audit` — JSON output), generate fix diffs (`epq fix`), check BQ cache freshness (`epq check-cache`). Shared Python library: `from epq import style, cache, bq, fmt`. Auto-load when creating or retrofitting QMD analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, working with `.qmd` files or `figures/fig_*.py` modules, or diagnosing PDF render issues (double titles, unrendered markdown, whitespace, figure placement).
+
+  **Strategy memo / 6-pager workflow** (replaces the former `strategy-memo` skill):
+
+  1. **Interview first** — before generating anything, ask: (1) company/domain, (2) audience, (3) strategic thesis in one sentence, (4) 3–5 strategic choices the doc must resolve, (5) BigQuery project + key tables, (6) target length (6 pages canonical, 8 max), (7) tone.
+
+  2. **Scaffold** — `epq scaffold ~/workspace/projects/<name>` generates all boilerplate. Name the QMD after the project directory (e.g. `carrier-economics.qmd`), never `pre-read.qmd`. Add Drive sync extras to the generated Justfile: `check` (`pdftotext {{DOC}}.pdf - | grep -c '{python}' && exit 1 || echo "✓"`), `sync` (reads `.drive-file-id`), `publish: render check sync`.
+
+  3. **Document structure** — 4 parts: (1) Introduction with 3 intent declarations ("I intend to…") + "How These Sessions Work", (2) The Situation — diagnosis + primary figure + evidence quote, (3) Why This Intent — strategic rationale + revenue/product data, (4) Questions to Refine Intent — exactly 3–5 strategic choices, never action items. Never add: bullets in narrative prose, "Risks and Mitigations", appendices, >5 strategic choices, self-blame tone.
+
+  4. **Figure iteration** — `just dev-fig NAME` (runs `figures/fig_NAME.py` directly, ~1s, writes PNG to `{project-dir}_files/figure-pdf/`). Read PNG inline. Full render only when figures are finalized.
+
+  5. **Writing rules** — no hardcoded numbers in prose (all via `{python}` inline expressions); `\needspace{(height+0.5)in}` before every figure cell; insight-first captions ("The dominant flow: customers who stayed put" not "Sankey diagram of deal flow"); add `# CAPTION-SYNC: val={val}` comment for any hardcoded caption number.
+
+  6. **Authoring reference** — `~/src/analysis-doc/docs/AGENTS.md` is the source of truth for palette, cache pattern, BQ pattern, figure module contract, and `\needspace` rules. Do not duplicate those here.
 - **webapp-testing** - Playwright-based web application testing
 
 **Creative & Design:**
@@ -609,7 +622,7 @@ Skills should be loaded proactively when specific patterns are detected in user 
 - **Static report rendering** - Rendering markdown/notebooks to publication-quality PDF, HTML, or Word (no interactivity) → load `quarto` skill
 - **Multi-format publishing** - Need single source rendered to multiple output formats (PDF + HTML + Word) → load `quarto` skill
 - **Scientific documents** - Documents requiring citations, cross-references, equation numbering, academic formatting → load `quarto` skill
-- **Strategy memo / 6-pager** - Creating a strategy pre-read, director briefing, leadership memo, 6-pager, or any data-backed executive narrative document → load `strategy-memo` skill
+- **Strategy memo / 6-pager** - Creating a strategy pre-read, director briefing, leadership memo, 6-pager, or any data-backed executive narrative document → load `epq` skill; follow the strategy memo workflow in the epq skill description above
 - **QMD analysis project (new)** - When creating a new analysis project in `~/workspace/projects/` or `~/workspace/analysis/` → load `epq` skill; run `epq scaffold` first; do NOT manually create pyproject.toml, _quarto.yml, justfile, or figures/_style.py
 - **QMD audit / retrofit** - When asked to audit QMDs for anti-patterns, check palette compliance, inspect cache patterns, or migrate legacy documents → load `epq` skill; invoke `epq audit <path>` before manual inspection; `epq fix <path>` for diffs
 - **`.qmd` files** - Any work involving `.qmd` files → load `epq` skill
@@ -686,9 +699,9 @@ The `/reflection-harder` command integrates with tmux status bar to notify when 
 - Semi-transparent fills produce mid-tone backgrounds; the text fallback must be dark enough. `SLATE` on a grey fill often fails contrast. Use the darkest available neutral (e.g. `NAVY`) as the fallback.
 - `plt.savefig()` must run before `plt.close()` — calling savefig after close saves a blank PNG.
 
-**Do NOT use `just preview-fig` / Playwright.** Use `just dev-fig NAME` → Read the PNG directly from `{project}_files/figure-pdf/fig-NAME-output-1.png`. Playwright screenshots HTML chrome, not the raw figure.
+**Do NOT use `just preview-fig` / Playwright.** Use `just dev-fig NAME` → Read the PNG directly from `{project-dir}_files/figure-pdf/{LABEL}-output-1.png`. The path uses the **project root directory name** (not the QMD stem). For a project at `~/workspace/projects/carrier-economics/`, figures write to `carrier-economics_files/figure-pdf/`. Playwright screenshots HTML chrome, not the raw figure.
 
-**See `CLAUDE.md` "Figure and Visualization Audit Protocol" for the full workspace-specific checklist, palette contrast table, dimension rules, and `__main__` save pattern.**
+**Authoring reference** — `~/src/analysis-doc/docs/AGENTS.md` is the source of truth for the full checklist, palette contrast table, dimension rules, and `__main__` save pattern.
 
 ## Development Best Practices
 

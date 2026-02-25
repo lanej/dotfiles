@@ -74,7 +74,8 @@
         "edit": false,
         "bash": false,
         "todowrite": true,
-        "todoread": true
+        "todoread": true,
+        "question": true
       },
       "prompt": "{file:~/.claude/agents/prompts/plan-mode.md}"
     },
@@ -82,7 +83,8 @@
       "mode": "subagent",
       "tools": {
         "todowrite": true,
-        "todoread": true
+        "todoread": true,
+        "question": true
       },
       "prompt": "{file:~/.claude/agents/prompts/continuous-phased.md}"
     },
@@ -94,6 +96,56 @@
         "todowrite": true,
         "todoread": true
       },
+      "permission": {
+        "pkm_list_tables": "allow",
+        "pkm_query_relationships": "allow",
+        "pkm_search_titles": "allow",
+        "pkm_query_backlinks": "allow",
+        "pkm_list_titles": "allow",
+        "pkm_search_documents": "allow",
+        "pkm_get_table_info": "allow",
+        "pkm_ingest_documents": "allow",
+        "pkm_index_document": "allow",
+        "bigquery_query": "allow",
+        "bigquery_dry_run": "allow",
+        "bigquery_list_datasets": "allow",
+        "bigquery_list_tables": "allow",
+        "bigquery_describe_table": "allow",
+        "gspace_drive_check_auth": "allow",
+        "gspace_gmail_check_auth": "allow",
+        "gspace_calendar_check_auth": "allow",
+        "gspace_tasks_check_auth": "allow",
+        "gspace_gspace_report_issue": "allow",
+        "gspace_drive_files_search": "allow",
+        "gspace_drive_files_download": "allow",
+        "gspace_drive_files_metadata": "allow",
+        "gspace_drive_files_list": "allow",
+        "gspace_drive_files_list_tabs": "allow",
+        "gspace_permissions_list": "allow",
+        "gspace_docs_download": "allow",
+        "gspace_docs_comments_list": "allow",
+        "gspace_docs_comments_get": "allow",
+        "gspace_sheets_get": "allow",
+        "gspace_sheets_get_values": "allow",
+        "gspace_calendar_list": "allow",
+        "gspace_calendar_search": "allow",
+        "gspace_calendar_query_freebusy": "allow",
+        "gspace_calendar_list_acl": "allow",
+        "gspace_gmail_search": "allow",
+        "gspace_gmail_get": "allow",
+        "gspace_gmail_thread": "allow",
+        "gspace_gmail_list_labels": "allow",
+        "gspace_gmail_download_body": "allow",
+        "gspace_gmail_download_attachment": "allow",
+        "gspace_tasks_list_lists": "allow",
+        "gspace_tasks_get_list": "allow",
+        "gspace_tasks_list": "allow",
+        "gspace_tasks_get": "allow",
+        "memory_read_graph": "allow",
+        "memory_search_nodes": "allow",
+        "memory_open_nodes": "allow",
+        "sequential-thinking_sequentialthinking": "allow"
+      },
       "prompt": "{file:~/.claude/agents/prompts/continuous-phased.md}\n\nYou are in read-only exploration mode. Use todos to track multi-step searches and codebase discovery tasks."
     },
     "human-writer": {
@@ -103,7 +155,12 @@
       "prompt": "{file:~/.claude/agents/human-writer.md}",
       "tools": {
         "todowrite": true,
-        "todoread": true
+        "todoread": true,
+        "read": true,
+        "write": true,
+        "edit": true,
+        "glob": true,
+        "grep": true
       }
     },
     "document-summarizer": {
