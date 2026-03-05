@@ -258,6 +258,20 @@ YAML `title:` + `# H1` in body = two titles in PDF. Always use `{=latex}` instea
 
 `epq scaffold` generates QMDs without `title:` key — this is handled automatically.
 
+## Agent Edit Protocol
+
+**After every batch of edits, run `just render` before returning to the user.**
+
+```bash
+cd ~/workspace/projects/<name> && just render
+```
+
+This is non-negotiable — code review alone is insufficient. Render errors surface LaTeX
+issues, missing imports, broken figure paths, and cell execution failures that are
+invisible from the source.
+
+If render fails: fix the error, re-render, verify clean before stopping.
+
 ## Dev Loop
 
 ```bash
