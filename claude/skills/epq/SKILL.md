@@ -260,17 +260,24 @@ YAML `title:` + `# H1` in body = two titles in PDF. Always use `{=latex}` instea
 
 ## Agent Edit Protocol
 
-**After every batch of edits, run `just render` before returning to the user.**
+**After every batch of edits, run a render before returning to the user.**
+
+Decision (check in order):
+1. Project justfile has a recipe targeting the QMD you edited → `just render-<docname>`
+2. Single QMD in project → `just render`
+3. Multiple QMDs or no specific recipe → `epq render .` (renders all)
 
 ```bash
-cd ~/workspace/projects/<name> && just render
+cd ~/workspace/projects/<name>
+just render              # single-QMD projects
+just render-<docname>    # multi-QMD: recipe targeting the doc you edited
+epq render .             # fallback: always works, renders all QMDs
 ```
 
 This is non-negotiable — code review alone is insufficient. Render errors surface LaTeX
-issues, missing imports, broken figure paths, and cell execution failures that are
-invisible from the source.
+issues, missing imports, broken figure paths, and cell execution failures invisible from source.
 
-If render fails: fix the error, re-render, verify clean before stopping.
+If render fails: fix, re-render, verify clean before stopping.
 
 ## Dev Loop
 
