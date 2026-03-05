@@ -252,6 +252,7 @@ YAML `title:` + `# H1` in body = two titles in PDF. Always use `{=latex}` instea
 \renewcommand{\DOCTITLE}{My Analysis}
 \renewcommand{\DOCDATE}{Feb 2026}
 \renewcommand{\DOCAUTHOR}{Josh Lane}
+\renewcommand{\DOCROLE}{}
 \input{title-block-standard.tex}
 ```
 ```
