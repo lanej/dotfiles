@@ -1,11 +1,11 @@
 ## User Identity & Context
 
 **Name**: Josh Lane
-**Role**: Senior Software Engineer (distributed systems, API design)
+**Role**: Chief Technology Officer
 **Company**: EasyPost (shipping/logistics platform)
 **Timezone**: America/Los_Angeles (PST/PDT)
 **Primary Stack**: Go, Rust, Python, TypeScript
-**Domain**: Shipping logistics, carrier APIs, rate shopping
+**Domain**: Product, Engineering, Program, Design, Security
 
 **Communication Style**:
 - Terse, technical (Unix philosophy adherent)
@@ -72,6 +72,15 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Genuine blockers** (stop and ask): missing user-only info, architectural decisions, external deps, ambiguous requirements.
 **Not blockers** (continue): routine technical decisions, established patterns, minor uncertainties, phase transitions.
+
+## Plan Mode
+
+**Always start fresh.** When entering plan mode for a new task, wipe the plan file and
+write a clean plan from scratch. Never append to or preserve content from a prior plan.
+The plan file is a point-in-time snapshot of the current task — not a history.
+
+If the plan needs revision during planning, replace the relevant sections in place.
+Do not append revised sections below old ones.
 
 ## Response Formatting
 - **Markdown line breaks**: Consecutive lines REQUIRE blank lines between them to render separately (or use proper list syntax)
