@@ -1,62 +1,110 @@
 #!/usr/bin/env bash
-# Claude Code status line with git status information (like starship)
+# Claude Code status line (starship-style)
 
 set -euo pipefail
 
-# Read JSON input from stdin
+# Read JSON input and extract fields
 input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir')
+model=$(echo "$input" | jq -r '.model.display_name')
+model_id=$(echo "$input" | jq -r '.model.id')
+context_used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+total_input=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
+total_output=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
+vim_mode=$(echo "$input" | jq -r '.vim.mode // empty')
+effort=$(jq -r '.effortLevel // empty' ~/.claude/settings.json 2>/dev/null || true)
 
-# Change to the working directory
+# Change to working directory for git operations
 cd "$cwd" 2>/dev/null || true
 
-# Base info: user@host directory
+# User and hostname
 user=$(whoami)
 host=$(hostname -s)
+ssh_sym=$'\uf817'
+ssh_indicator=""
+if [ -n "${SSH_CLIENT:-}" ] || [ -n "${SSH_TTY:-}" ]; then
+  ssh_indicator="${ssh_sym} "
+fi
+
+# Directory (basename)
 dir=$(basename "$cwd")
 
-# Start building the status line
-printf '\033[36m%s@%s \033[32m%s' "$user" "$host" "$dir"
+# Build status line: user@host in directory [model]
+printf '\033[36m%s\033[33m@\033[32;1m%s%s\033[0m in \033[34;1m%s\033[0m \033[35m[%s]\033[0m' "$user" "$ssh_indicator" "$host" "$dir" "$model"
 
-# Git information (if in a git repo)
+# Git information (if in repo)
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  # Get current branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
   if [ -n "$branch" ]; then
-    # Branch name in blue
-    printf ' \033[34m(%s' "$branch"
+    git_sym=$'\ue0a0'
+    printf ' on \033[34m%s %s\033[0m' "$git_sym" "$branch"
 
-    # Check for upstream and ahead/behind counts
+    # Ahead/behind tracking
     upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null || echo "")
     if [ -n "$upstream" ]; then
       ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo "0")
       behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo "0")
 
       if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
-        printf ' \033[36m⇕⇡%s⇣%s\033[34m' "$ahead" "$behind"
+        printf ' \033[33m⇕⇡%s⇣%s\033[0m' "$ahead" "$behind"
       elif [ "$ahead" -gt 0 ]; then
-        printf ' \033[36m⇡%s\033[34m' "$ahead"
+        printf ' \033[33m⇡%s\033[0m' "$ahead"
       elif [ "$behind" -gt 0 ]; then
-        printf ' \033[33m⇣%s\033[34m' "$behind"
+        printf ' \033[33m⇣%s\033[0m' "$behind"
       fi
     fi
 
-    # Count modified/staged files
-    modified=$(git diff --name-only 2>/dev/null | wc -l | tr -d ' ')
+    # Staged/modified/untracked counts
     staged=$(git diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')
+    modified=$(git diff --name-only 2>/dev/null | wc -l | tr -d ' ')
     untracked=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
 
-    if [ "$modified" -gt 0 ] || [ "$staged" -gt 0 ] || [ "$untracked" -gt 0 ]; then
+    if [ "$staged" -gt 0 ] || [ "$modified" -gt 0 ] || [ "$untracked" -gt 0 ]; then
       printf ' '
-      [ "$staged" -gt 0 ] && printf '\033[32m+%s\033[34m' "$staged"        # Green for staged
-      [ "$modified" -gt 0 ] && printf '\033[33m~%s\033[34m' "$modified"    # Yellow for modified
-      [ "$untracked" -gt 0 ] && printf '\033[31m?%s\033[34m' "$untracked"  # Red for untracked
+      [ "$staged" -gt 0 ]    && printf '\033[32m+%s\033[0m' "$staged"
+      [ "$modified" -gt 0 ]  && printf '\033[33m~%s\033[0m' "$modified"
+      [ "$untracked" -gt 0 ] && printf '\033[31m?%s\033[0m' "$untracked"
     fi
-
-    printf ')'
   fi
 fi
 
-# Reset colors
-printf '\033[0m'
+# Context usage indicator (always show when available)
+if [ -n "$context_used" ]; then
+  context_int="${context_used%.*}"
+  if [ "$context_int" -ge 90 ]; then
+    printf ' \033[31m%d%%\033[0m' "$context_int"
+  elif [ "$context_int" -ge 70 ]; then
+    printf ' \033[33m%d%%\033[0m' "$context_int"
+  else
+    printf ' \033[37m%d%%\033[0m' "$context_int"
+  fi
+fi
+
+# Session cost estimate from cumulative token counts
+if [ "$total_input" -gt 0 ] || [ "$total_output" -gt 0 ]; then
+  # Pricing per million tokens (input/output) — approximate, Vertex may differ
+  case "$model_id" in
+    *opus*)  in_price="15"; out_price="75" ;;
+    *haiku*) in_price="0.8"; out_price="4" ;;
+    *)       in_price="3"; out_price="15" ;;  # sonnet default
+  esac
+  cost=$(awk "BEGIN { printf \"%.2f\", ($total_input * $in_price / 1000000 + $total_output * $out_price / 1000000) }")
+  printf ' \033[37m$%s\033[0m' "$cost"
+fi
+
+# Vim mode indicator
+if [ -n "$vim_mode" ]; then
+  vim_sym=$'\ue62b'
+  case "$vim_mode" in
+    "NORMAL") printf ' \033[33m%s\033[0m' "$vim_sym" ;;
+    "INSERT") ;;
+  esac
+fi
+
+# Effort level indicator
+case "$effort" in
+  "low")    printf ' \033[33m↓low\033[0m' ;;
+  "medium") printf ' \033[90mmid\033[0m' ;;
+  "high")   printf ' \033[32m↑high\033[0m' ;;
+esac
