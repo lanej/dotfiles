@@ -74,7 +74,8 @@ style.GOLD, style.GREEN, style.WHITE, style.PURPLE, style.LIGHT_BG
 tc = style.text_color_for(fill)   # WHITE for dark fills, NAVY for light
 
 # BQ cache (24h TTL, data/cache/*.json)
-data = cache.read_cache("name")   # None if missing or stale
+data = cache.read_cache("name")                  # None if missing; raises StaleCache if stale
+data = cache.read_cache("name", on_stale="none") # None if missing OR stale (extraction scripts)
 cache.write_cache("name", df.to_dict(orient="records"), scalars={"total": n})
 cache.cache_fresh("name")         # bool
 
@@ -152,6 +153,21 @@ data["my_query"] = cached["records"]
 ```
 
 **Never:** `except Exception: total = 42` — silent fallback masks broken queries.
+
+**QMD vs extraction script convention:**
+- Figure/QMD cells: use default `read_cache("name")` — stale raises `StaleCache`, which `render_with_refresh.py` catches to trigger a re-run of the extraction script.
+- Extraction scripts (`scripts/data/`): use `read_cache("name", on_stale="none")` — stale returns `None`, falling through to re-query BQ naturally.
+
+```python
+# scripts/data/extract_foo.py — extraction script pattern
+def extract_foo() -> dict:
+    cached = cache.read_cache("foo", on_stale="none")  # None on miss OR stale
+    if cached is not None:
+        return cached
+    df = bq.run_bq_query(SQL, on_empty="raise")
+    cache.write_cache("foo", df.to_dict(orient="records"), scalars={...})
+    return cache.read_cache("foo")
+```
 
 ## Figure Module Contract
 
@@ -298,6 +314,81 @@ HTML chrome, not the raw figure.
 - [ ] Pale fills (LIGHT_BG, LIGHT_SLATE) → NAVY text (SLATE fails contrast)
 - [ ] Bar labels within xlim — `set_clip_on(True)` makes them invisible
 - [ ] `plt.savefig()` called before `plt.close()` (wrong order = blank PNG)
+
+## Conform Extraction Pattern
+
+Conform batch jobs take hours. They cannot run at render time. Use the three-phase
+extract script pattern: cache hit → job in flight → job succeeded/submit new.
+
+**The QMD never calls Conform.** It reads `cache.read_cache()` with a long TTL.
+
+```python
+# QMD data-load cell (pending-safe):
+try:
+    cached = cache.read_cache("name", ttl_hours=168)
+except cache.StaleCache:
+    cached = None
+
+if cached is None:
+    if cache.is_conform_pending("name"):
+        print("  conform: name job in progress — using placeholder")
+    data["name"] = None   # figure modules handle None → placeholder
+else:
+    data["name"] = cached["records"]
+```
+
+**Figure module** — handle `None` so the document renders while Conform is running:
+
+```python
+def render(data: dict) -> None:
+    import matplotlib.pyplot as plt
+    style.apply_style()
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+    records = data.get("name")
+    if records is None:
+        style.render_pending_placeholder(ax, "Conform extraction in progress")
+        return
+    df = pd.DataFrame(records)
+    # ... viz ...
+    plt.tight_layout()
+```
+
+`cache.is_conform_pending(name, *, project_root=None)` — returns `True` if
+`data/conform/<name>_job.json` exists (job submitted, not yet downloaded).
+
+`style.render_pending_placeholder(ax, message="Analysis pending")` — draws a
+`LIGHT_BG`-filled panel with centered `SLATE` text, no ticks, no spines.
+
+**Extract script** (`scripts/data/extract_<name>.py`) — copy from scaffold template
+`scripts/data/_extract_conform_example.py`. It manages:
+- **Phase 1**: cache fresh → exit 0
+- **Phase 2**: job running → print status, exit 0 (non-blocking)
+- **Phase 3a**: job SUCCEEDED → download, `write_cache(ttl_hours=168)`, clear state
+- **Phase 3b**: no job → `conform batch submit`, write `data/conform/<name>_job.json`
+
+**Write TTL at write time** (for observability — `epq check-cache` shows intended TTL):
+```python
+cache.write_cache(_NAME, records, ttl_hours=168)
+```
+
+**Input hash invalidation**: schema + source file hashes are stored in job state.
+If either changes, old job is discarded and a new submission is triggered.
+
+**Job state file** (`data/conform/<name>_job.json`) — gitignored, ephemeral.
+Cleared after successful download.
+
+**Schemas**: `schemas/<name>.json` — add alongside the extract script.
+
+**Polling recipe** (add to project justfile):
+```just
+wait-conform name:
+    #!/usr/bin/env bash
+    while true; do
+        uv run python scripts/data/extract_{{name}}.py
+        python -c "from epq import cache; cache.read_cache('{{name}}', ttl_hours=168)" 2>/dev/null && break
+        echo "Still running, sleeping 5m..."; sleep 300
+    done
+```
 
 ## Common Mistakes
 
