@@ -83,8 +83,8 @@ else
 fi
 
 # Set up completion for aliases
-compdef _just just-hack
-compdef _just just
+(( $+functions[compdef] )) && compdef _just just-hack
+(( $+functions[compdef] )) && compdef _just just
 
 if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
@@ -450,3 +450,7 @@ fi
 # if [[ -x ~/.files/bin/opencode-cleanup-cache ]]; then
 #     ~/.files/bin/opencode-cleanup-cache
 # fi
+export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"
+
+# opencode
+export PATH=/Users/joshlane/.opencode/bin:$PATH
