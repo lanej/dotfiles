@@ -59,6 +59,8 @@ Exit codes: `0` = clean, `1` = violations/warnings, `2` = CLI error.
 | `cache/no-ttl` | info | no | `_read_cache` without TTL check |
 | `cache/dot-dir` | info | yes | Cache in `.cache/` instead of `data/cache/` |
 | `output/newpage-before-heading` | info | yes | `\newpage` before heading — prefer `\needspace` |
+| `format/header-includes-latex` | error | yes | `latex-header.tex` in `header-includes:` — fontspec not loaded yet; `\setsansfont` silently fails → wrong font in PDF |
+| `format/koma-section-sans` | error | yes | `\addtokomafont{section}{\bfseries}` in `latex-header.tex` — inherits KOMA sans default; headings become LMSans Bold, mismatching LM Roman body |
 
 `epq audit` also scans `figures/fig_*.py` (not just `.qmd` files).
 
@@ -405,6 +407,9 @@ wait-conform name:
 | `suptitle(y=1.02)` | `y=1.0` + `subplots_adjust(top=0.85)` |
 | `pdf-engine: xelatex` | `lualatex` |
 | `#3498db` etc | `style.TEAL`, `style.CORAL` etc |
+| `header-includes: - \input{latex-header.tex}` | Use `include-in-header: - file: latex-header.tex` — `header-includes` is placed before Pandoc's package loading |
+| `\usepackage{fontspec}` / `\setsansfont` in `latex-header.tex` | Do NOT add font config — body text uses LaTeX default (LM Roman); figures use Helvetica Neue via `style.apply_style()` |
+| `\addtokomafont{section}{\bfseries}` in `latex-header.tex` | Use `\setkomafont{section}{\normalfont\bfseries}` — `addtokomafont` inherits KOMA's sans default, producing LMSans headings that mismatch LM Roman body |
 
 ## Scaffold Output
 
