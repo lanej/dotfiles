@@ -22,6 +22,7 @@
     "defaultMode": "acceptEdits",
     "additionalDirectories": []
   },
+  "model": "claude-sonnet-4-6[1m]",
   "hooks": {
     "Notification": [
       {
@@ -29,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.files/bin/claude-notification-hook"
+            "command": "$HOME/.files/bin/claude-notification-hook"
           }
         ]
       }
@@ -40,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.files/bin/claude-auto-continue-hook"
+            "command": "$HOME/.files/bin/claude-auto-continue-hook"
           }
         ]
       }
@@ -48,19 +49,20 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.files/bin/claude-statusline"
+    "command": "$HOME/.files/bin/claude-statusline"
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
-  }
+  },
+  "effortLevel": "high"
 }

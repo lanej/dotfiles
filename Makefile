@@ -161,7 +161,7 @@ superwhisper:
 claude:
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
-	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
+	@rm -f $(HOME)/.claude/settings.json && envsubst '$$HOME' < $(DOTFILES)/.claude/settings.json > $(HOME)/.claude/settings.json
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
