@@ -161,6 +161,20 @@ vim.keymap.set({ "n", "v" }, "<leader>p", '"+p', { noremap = true, silent = true
 -- NOTE: Map <leader>P to paste before cursor from system clipboard in normal and visual modes
 vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { noremap = true, silent = true })
 
+-- Strip trailing newlines from clipboard register after every yank
+vim.api.nvim_create_autocmd("TextYankPost", {
+	callback = function()
+		local reg = vim.v.event.regname
+		if reg == "+" or reg == "*" then
+			local text = vim.fn.getreg(reg)
+			local stripped = text:gsub("\n+$", "")
+			if stripped ~= text then
+				vim.fn.setreg(reg, stripped)
+			end
+		end
+	end,
+})
+
 -- Set leader key
 vim.g.mapleader = ","
 
@@ -1029,69 +1043,6 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"yetone/avante.nvim",
-		event = "VeryLazy",
-		version = false, -- Never set this value to "*"! Never!
-		enabled = false,
-		opts = {
-			provider = "gemini",
-			gemini = {
-				api_key_name = "GEMINI_API_KEY",
-				model = "gemini-2.5-pro-preview-03-25", -- your desired model (or use gpt-4o, etc.)
-				timeout = 30000, -- Timeout in milliseconds, increase this for reasoning models
-				temperature = 0,
-				max_completion_tokens = 8192, -- Increase this to include reasoning tokens (for reasoning models)
-				--reasoning_effort = "medium", -- low|medium|high, only used for reasoning models
-			},
-		},
-		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-		build = "make",
-		-- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
-		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
-			"stevearc/dressing.nvim",
-			"nvim-lua/plenary.nvim",
-			"MunifTanjim/nui.nvim",
-			--- The below dependencies are optional,
-			"echasnovski/mini.pick", -- for file_selector provider mini.pick
-			-- "nvim-telescope/telescope.nvim", -- for file_selector provider telescope
-			"hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
-			"ibhagwan/fzf-lua", -- for file_selector provider fzf
-			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
-			"zbirenbaum/copilot.lua", -- for providers='copilot'
-			{
-				-- support for image pasting
-				"HakonHarnes/img-clip.nvim",
-				event = "VeryLazy",
-				opts = {
-					-- recommended settings
-					default = {
-						embed_image_as_base64 = false,
-						prompt_for_file_name = false,
-						drag_and_drop = {
-							insert_mode = true,
-						},
-						-- required for Windows users
-						use_absolute_path = true,
-					},
-				},
-			},
-			{
-				-- Make sure to set this up properly if you have lazy=true
-				"MeanderingProgrammer/render-markdown.nvim",
-				opts = {
-					file_types = { "markdown", "Avante" },
-				},
-				ft = { "markdown", "Avante" },
-			},
-		},
-		config = function(opts)
-			require("avante").setup(opts)
-
-			-- Removed in favor of CodeCompanion commit message generation
-		end,
-	},
-	{
 		"quarto-dev/quarto-nvim",
 		dependencies = {
 			"jmbuhr/otter.nvim",
@@ -1130,24 +1081,24 @@ require("lazy").setup({
 				quarto.quartoClosePreview()
 			end, { desc = "Quarto: Close preview", silent = true, noremap = true })
 
-		-- Quick render commands
-		vim.keymap.set("n", "<leader>qm", ":!quarto render % --to gfm<CR>", {
-			desc = "Quarto: Render to Markdown (GFM)",
-			silent = false,
-			noremap = true,
-		})
+			-- Quick render commands
+			vim.keymap.set("n", "<leader>qm", ":!quarto render % --to gfm<CR>", {
+				desc = "Quarto: Render to Markdown (GFM)",
+				silent = false,
+				noremap = true,
+			})
 
-		vim.keymap.set("n", "<leader>qh", ":!quarto render % --to html<CR>", {
-			desc = "Quarto: Render to HTML",
-			silent = false,
-			noremap = true,
-		})
+			vim.keymap.set("n", "<leader>qh", ":!quarto render % --to html<CR>", {
+				desc = "Quarto: Render to HTML",
+				silent = false,
+				noremap = true,
+			})
 
-		vim.keymap.set("n", "<leader>qd", ":!quarto render % --to pdf<CR>", {
-			desc = "Quarto: Render to PDF",
-			silent = false,
-			noremap = true,
-		})
+			vim.keymap.set("n", "<leader>qd", ":!quarto render % --to pdf<CR>", {
+				desc = "Quarto: Render to PDF",
+				silent = false,
+				noremap = true,
+			})
 		end,
 	},
 	{
@@ -1245,7 +1196,8 @@ require("lazy").setup({
 									if not ignored[client.name] then
 										local ext = lsp_to_ext[client.name]
 										if ext then
-											local icon, hl_group = webdevicons.get_icon("file." .. ext, ext, { default = true })
+											local icon, hl_group =
+												webdevicons.get_icon("file." .. ext, ext, { default = true })
 											if icon and hl_group then
 												-- Use the highlight group from nvim-web-devicons directly
 												table.insert(result, string.format("%%#%s#%s%%*", hl_group, icon))
@@ -1409,7 +1361,6 @@ require("lazy").setup({
 			"saghen/blink.cmp",
 			"nvim-tree/nvim-web-devicons",
 			"onsails/lspkind.nvim",
-			"netmute/ctags-lsp.nvim",
 			"Decodetalkers/csharpls-extended-lsp.nvim",
 			"williamboman/mason-lspconfig.nvim",
 		},
@@ -1557,6 +1508,7 @@ require("lazy").setup({
 				},
 				zls = {},
 				tinymist = {},
+				texlab = {},
 				lemminx = {
 					-- XML Language Server
 					init_options = {
@@ -1694,16 +1646,19 @@ require("lazy").setup({
 	},
 	{
 		"nvim-treesitter/nvim-treesitter",
+		branch = "main",
 		config = function()
 			require("treesitter")
 		end,
 	},
 	{
 		"nvim-treesitter/nvim-treesitter-textobjects",
+		branch = "main",
 		dependencies = { "nvim-treesitter/nvim-treesitter" },
 	},
 	{
 		"nvim-treesitter/playground",
+		enabled = false,
 		dependencies = { "nvim-treesitter/nvim-treesitter" },
 	},
 	{
@@ -2213,8 +2168,8 @@ require("lazy").setup({
 	},
 	{
 		"nvim-treesitter/nvim-treesitter-context",
+		enabled = true, -- Enable this plugin (Can be enabled/disabled later via commands) # broken for v12
 		opts = {
-			enable = true, -- Enable this plugin (Can be enabled/disabled later via commands)
 			multiwindow = true, -- Enable multiwindow support.
 			max_lines = 0, -- How many lines the window should span. Values <= 0 mean no limit.
 			min_window_height = 32, -- Minimum editor window height to enable context. Values <= 0 mean no limit.
@@ -2621,24 +2576,6 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 		end,
 	},
 	{
-		-- Make sure to set this up properly if you have lazy=true
-		"MeanderingProgrammer/render-markdown.nvim",
-		opts = {
-			file_types = { "markdown", "Avante" },
-			render_modes = { "n", "c", "i" },
-			anti_conceal = {
-				enabled = true,
-			},
-			html = {
-				enabled = true,
-				comment = {
-					conceal = false, -- Don't conceal HTML comments - keep them always visible
-				},
-			},
-		},
-		ft = { "markdown", "Avante" },
-	},
-	{
 		"3rd/image.nvim",
 		build = false,
 		-- Disable in tmux due to known issues with allow-passthrough and session switching
@@ -2726,64 +2663,6 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 		},
 		init = function()
 			vim.g.db_ui_use_nerd_fonts = 1
-		end,
-	},
-	{
-		"NickvanDyke/opencode.nvim",
-		dependencies = {
-			{
-				"folke/snacks.nvim",
-				opts = {
-					input = {},
-					picker = {},
-					terminal = {},
-				},
-			},
-		},
-		config = function()
-			---@type opencode.Opts
-			vim.g.opencode_opts = {
-				-- Use snacks provider for terminal integration
-				provider = {
-					enabled = "snacks",
-				},
-			}
-
-			-- Required for opts.events.reload
-			vim.o.autoread = true
-
-			-- Keymaps for opencode integration
-			vim.keymap.set({ "n", "x" }, "<C-a>", function()
-				require("opencode").ask("@this: ", { submit = true })
-			end, { desc = "Ask opencode…" })
-
-			vim.keymap.set({ "n", "x" }, "<C-x>", function()
-				require("opencode").select()
-			end, { desc = "Execute opencode action…" })
-
-			vim.keymap.set({ "n", "t" }, "<C-.>", function()
-				require("opencode").toggle()
-			end, { desc = "Toggle opencode" })
-
-			vim.keymap.set({ "n", "x" }, "go", function()
-				return require("opencode").operator("@this ")
-			end, { desc = "Add range to opencode", expr = true })
-
-			vim.keymap.set("n", "goo", function()
-				return require("opencode").operator("@this ") .. "_"
-			end, { desc = "Add line to opencode", expr = true })
-
-			vim.keymap.set("n", "<S-C-u>", function()
-				require("opencode").command("session.half.page.up")
-			end, { desc = "Scroll opencode up" })
-
-			vim.keymap.set("n", "<S-C-d>", function()
-				require("opencode").command("session.half.page.down")
-			end, { desc = "Scroll opencode down" })
-
-			-- Restore original <C-a> and <C-x> functionality to + and -
-			vim.keymap.set("n", "+", "<C-a>", { desc = "Increment under cursor", noremap = true })
-			vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement under cursor", noremap = true })
 		end,
 	},
 })
