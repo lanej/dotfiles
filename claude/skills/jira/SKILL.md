@@ -1,356 +1,162 @@
 ---
 name: jira
-description: Use jira CLI for Jira operations including issue management, project queries, transitions, and JQL search
+description: Use jira CLI and MCP tools (mcp__jira__*) for Jira Cloud operations — issue management, project queries, JQL search, transitions, worklogs, plans, and more. Use when working with Jira issues, projects, sprints, filters, dashboards, or any Jira Cloud resource via CLI or MCP.
 ---
-# Jira Skill
+# Jira CLI & MCP Server
 
-You are a Jira specialist. This skill covers two interfaces for working with Jira:
-1. **Jira CLI** - Command-line tool for terminal operations
-2. **Jira MCP Server** - MCP tools for programmatic access (mcp__jira__* functions)
-
-## Jira MCP Server
-
-When using MCP tools (mcp__jira__*), follow these patterns:
-
-### User Management and Assignment
-
-**Search for users before assigning:**
-```
-1. Search: mcp__jira__jira_users_search(query="Full Name")
-2. Extract account_id from results
-3. Assign: mcp__jira__jira_issues_assign(issue_key, account_id)
-```
-
-### Error Handling - Empty Response Pattern
-
-**CRITICAL: Empty response errors are often successes**
-
-The Jira API returns HTTP 204 (No Content) for successful operations that don't return data. The MCP server may report these as errors:
-```
-Error: Invalid Response Payload (b""): EOF while parsing a value at line 1 column 0
-Error: Some(204)
-```
-
-**Best Practice: Always verify operations with GET requests**
-```
-# After assign/update that returns empty response error:
-1. Call mcp__jira__jira_issues_get(issue_key)
-2. Check if the operation actually succeeded
-3. Report success based on verification, not error message
-```
-
-**Example Pattern:**
-```
-# Try to assign
-assign_result = mcp__jira__jira_issues_assign("PROJ-123", account_id)
-# May return error but succeed
-
-# Verify the assignment worked
-issue = mcp__jira__jira_issues_get("PROJ-123")
-if issue.assignee.account_id == account_id:
-    # Assignment succeeded despite error message
-```
-
-### Issue Links
-
-**Creating links between issues:**
-```
-mcp__jira__jira_issuelinks_create(
-    inward_issue="PROJ-123",
-    outward_issue="OTHER-456",
-    link_type="Relates"  # or "Blocks", "Duplicates", etc.
-)
-```
-
-### Common Workflows
-
-**Create issue with all details:**
-```
-1. Search for assignee: mcp__jira__jira_users_search(query="Name")
-2. Create issue: mcp__jira__jira_issues_create(...)
-3. Verify with: mcp__jira__jira_issues_get(issue_key)
-```
-
-**Update existing issue:**
-```
-1. Update: mcp__jira__jira_issues_update(issue_key, fields...)
-2. Verify: mcp__jira__jira_issues_get(issue_key)
-```
-
-**Link related issues:**
-```
-1. Create link: mcp__jira__jira_issuelinks_create(...)
-2. Verify: mcp__jira__jira_issues_get(issue_key) # check links in response
-```
-
-## Jira CLI
-
-The Jira CLI provides command-line access to Jira for terminal operations.
-
-### Core Commands
-
-#### Authentication
+## Configuration
 
 ```bash
-# Check authentication status
-jira auth check
-
-# Login to Jira
-jira auth login
+jira config init      # interactive setup → ~/.config/jira-cli/config.toml
+jira config validate  # test connection
 ```
 
-#### Issue Management
+**No env vars.** `JIRA_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` are intentionally ignored. Use CLI flags `--url`/`--email`/`--token` for one-off overrides.
+
+## Output Formats
+
+```
+--format table    # default
+--format json     # array
+--format jsonl    # one object per line, auto-paginates all results
+```
+
+JSONL is preferred for scripting — pipe directly to `jq`.
+
+## CLI Command Pattern
+
+All resources follow: `jira <resource> <verb> [args] [flags]`
+
+Resources: `issues`, `projects`, `comments`, `attachments`, `worklogs`, `versions`, `components`, `filters`, `dashboards`, `issuetypes`, `statuses`, `issuelinks`, `remotelinks`, `development`, `plans`, `users`
+
+For full command reference: see `references/commands.md`.
+
+## Critical Gotchas
+
+**204 empty response ≠ error.** Mutating operations (assign, transition, delete) return HTTP 204. The MCP layer may surface this as an error. Always verify with a GET:
+
+```
+mcp__jira__jira_issues_assign(issue_key, account_id)
+issue = mcp__jira__jira_issues_get(issue_key)   # verify assignee
+```
+
+**Users require account_id.** Display names don't work for assignment. Lookup pattern:
+
+```
+1. mcp__jira__jira_users_search(query="Name")
+2. extract account_id
+3. mcp__jira__jira_issues_assign(issue_key, account_id)
+```
+
+**Development API needs numeric ID.** `jira development *` and `mcp__jira__jira_development_summary` require the internal numeric issue ID, not the key:
 
 ```bash
-# View issue details
-jira issue get ISSUE-123
-
-# Create new issue
-jira issue create --project PROJ --type Bug --summary "Issue summary" --description "Description"
-
-# Update issue
-jira issue update ISSUE-123 --summary "New summary"
-
-# Add comment to issue
-jira comment add ISSUE-123 "Comment text"
-
-# List comments on issue
-jira comment list ISSUE-123
+ISSUE_ID=$(jira issues get PROJ-123 --format json | jq -r '.id')
+jira development pull-requests $ISSUE_ID --application-type github
 ```
 
-#### Issue Transitions
+**MCP returns minimal fields by default** (~70% token reduction). Use `fields` param to request additional data.
+
+## Linking Documents to Issues
+
+**Always use remote links, never file attachments.** File attachments do not render correctly in Jira — they appear as raw downloads. Remote links render as clickable chips with the correct application icon.
 
 ```bash
-# List available transitions for an issue
-jira transition list ISSUE-123
+# Link a Google Doc (renders with Docs icon)
+jira remotelinks add PROJ-123 "https://docs.google.com/document/d/..." "Doc Title"
 
-# Transition issue to new status
-jira transition ISSUE-123 "In Progress"
+# Link a Google Sheet (renders with Sheets icon)
+jira remotelinks add PROJ-123 "https://docs.google.com/spreadsheets/d/..." "Sheet Title"
+
+# Link a Google Drive folder
+jira remotelinks add PROJ-123 "https://drive.google.com/drive/folders/..." "Folder Title"
+
+# List remote links on an issue
+jira remotelinks list PROJ-123
+
+# Delete a remote link
+jira remotelinks delete PROJ-123 <linkId>
 ```
 
-#### Searching with JQL
+Google Drive URLs are auto-detected: Docs, Sheets, and Folders each get the correct icon and application type. Non-Google URLs are linked as generic web links.
+
+**Never use `jira attachments upload` for documents** — use `jira remotelinks add` instead.
+
+## Common Patterns
 
 ```bash
-# Search issues with JQL
-jira search "project = PROJ AND status = Open"
+# Search + stream to jq
+jira issues search "project = PROJ AND status = Open" --format jsonl | jq '.fields.status.name'
 
-# Search with output format
-jira search "assignee = currentUser()" --format json
+# Count by status
+jira issues search "project = PROJ" --format jsonl \
+  | jq -r '.fields.status.name' | sort | uniq -c | sort -rn
 
-# Search with field selection
-jira search "project = PROJ" --fields summary,status,assignee
+# Extract issue link edges (for dependency graphs)
+jira issues search "issuelinktype is not EMPTY" --fields issuelinks --format jsonl \
+  | jq -r '.key as $k | .fields.issuelinks[]? |
+      if .outwardIssue then "\($k),\(.type.outward),\(.outwardIssue.key)"
+      else "\(.inwardIssue.key),\(.type.inward),\($k)" end'
 ```
 
-#### Project Operations
+## JQL Quick Reference
+
+```
+assignee = currentUser() AND status != Done
+updated >= -7d ORDER BY updated DESC
+type = Bug AND priority in (Highest, High)
+sprint in openSprints() AND project = PROJ
+issuelinktype is not EMPTY AND project = PROJ
+```
+
+## Goals (jira goals CLI — not available via MCP)
+
+Goals use a separate `jira goals` command group backed by the Atlassian GraphQL API.
 
 ```bash
-# List all projects
-jira project list
+jira goals list --format json                          # list all goals
+jira goals get <goalARI>                               # get goal details
+jira goals list-types --format json                    # show available goal types (workspace-specific ARIs)
 
-# Get project details
-jira project get PROJ
+# Create a top-level Goal
+jira goals create --name "My Goal" \
+  --goal-type-id <GOAL-type-ARI> \
+  --target-date 2026-12-31 --confidence QUARTER
+
+# Create a child Success Measure under a parent Goal
+jira goals create --name "My Success Measure" \
+  --goal-type-id <SUCCESS_MEASURE-type-ARI> \
+  --parent-goal-id <parent-goal-ARI> \
+  --target-date 2026-09-30
+
+# Add a metric to a goal
+jira goals add-metric <goalARI> \
+  --name "Metric name" --type NUMERIC \
+  --start 0 --value 0 --target 100
+
+# Rename a goal
+jira goals edit <goalARI> --name "New name"
+
+# Archive a goal
+jira goals archive <goalARI>
 ```
 
-#### Watching and Assigning
+**Hierarchy rules:**
+- Two levels only: `GOAL` → `SUCCESS_MEASURE`
+- `SUCCESS_MEASURE` cannot have children
+- Goal type ARIs are workspace-specific — use `jira goals list-types` to get them
+
+**Linking goals to issues:**
+- The Goals field on issues is `customfield_10025`
+- Cannot be set via the Jira REST API — every attempt clears the field
+- Link issues to goals through the **Jira UI** only
+
+## Raw API Access
 
 ```bash
-# Watch an issue
-jira watch add ISSUE-123
-
-# Stop watching an issue
-jira watch remove ISSUE-123
-
-# Assign issue
-jira assign ISSUE-123 username
-
-# Assign to self
-jira assign ISSUE-123 me
+jira api GET  "/rest/api/3/issue/PROJ-123?fields=summary,status"
+jira api POST "/rest/api/3/search/jql" --data '{"jql":"project=PROJ","fields":["summary"]}'
+jira api PUT  "/rest/api/3/issue/PROJ-123" --data '{"fields":{"summary":"New title"}}'
 ```
 
-### Common Workflows
-
-#### Viewing Your Work
-
-```bash
-# View issues assigned to you
-jira search "assignee = currentUser() AND status != Done"
-
-# View issues you're watching
-jira search "watcher = currentUser()"
-
-# View recent activity
-jira search "updatedDate >= -7d AND assignee = currentUser()"
-```
-
-#### Creating and Updating Issues
-
-```bash
-# Create a bug
-jira issue create --project PROJ --type Bug \
-  --summary "Login button not working" \
-  --description "Steps to reproduce..."
-
-# Update priority
-jira issue update ISSUE-123 --priority High
-
-# Add labels
-jira issue update ISSUE-123 --labels bug,frontend
-
-# Link issues
-jira link add ISSUE-123 ISSUE-456 "blocks"
-```
-
-#### Moving Issues Through Workflow
-
-```bash
-# Start work on issue
-jira transition ISSUE-123 "In Progress"
-
-# Mark as done
-jira transition ISSUE-123 "Done"
-
-# Reopen issue
-jira transition ISSUE-123 "Reopen"
-```
-
-### JQL Reference
-
-#### Common JQL Patterns
-
-```bash
-# Issues in specific project
-jira search "project = MYPROJ"
-
-# Open issues assigned to you
-jira search "assignee = currentUser() AND status in (Open, 'In Progress')"
-
-# High priority bugs
-jira search "type = Bug AND priority = High"
-
-# Recently updated issues
-jira search "updated >= -1w"
-
-# Issues created this sprint
-jira search "sprint in openSprints() AND created >= startOfWeek()"
-
-# Issues with specific label
-jira search "labels = urgent"
-
-# Issues in epic
-jira search "'Epic Link' = EPIC-123"
-```
-
-#### JQL Field Reference
-
-- `project` - Project key or name
-- `status` - Issue status (Open, In Progress, Done, etc.)
-- `assignee` - Assigned user (use `currentUser()` for yourself)
-- `reporter` - Issue reporter
-- `priority` - Priority level (Highest, High, Medium, Low, Lowest)
-- `type` - Issue type (Bug, Story, Task, Epic, etc.)
-- `labels` - Issue labels
-- `created` - Creation date
-- `updated` - Last update date
-- `resolution` - Resolution status
-
-#### JQL Functions
-
-- `currentUser()` - Current logged-in user
-- `startOfDay()`, `startOfWeek()`, `startOfMonth()` - Date functions
-- `now()` - Current timestamp
-- `openSprints()` - Currently active sprints
-- `closedSprints()` - Completed sprints
-
-### Output Formats
-
-```bash
-# JSON output (for scripting)
-jira search "project = PROJ" --format json
-
-# Table output (human-readable, default)
-jira search "project = PROJ" --format table
-
-# CSV output
-jira search "project = PROJ" --format csv
-```
-
-### Best Practices
-
-1. **Always authenticate first**: Run `jira auth check` before operations
-2. **Use JQL for complex queries**: More powerful than simple filters
-3. **Specify output format**: Use `--format json` for scripting
-4. **Include field selection**: Use `--fields` to limit returned data
-5. **Test transitions**: Use `jira transition list` before transitioning
-6. **Be specific with JQL**: Use quotes for multi-word values
-
-### Common Use Cases
-
-#### Daily Standup Prep
-
-```bash
-# What you worked on yesterday
-jira search "assignee = currentUser() AND updated >= -1d"
-
-# What you're working on today
-jira search "assignee = currentUser() AND status = 'In Progress'"
-```
-
-#### Bug Triage
-
-```bash
-# Unassigned bugs
-jira search "type = Bug AND assignee is EMPTY AND status = Open"
-
-# Critical bugs in project
-jira search "project = PROJ AND type = Bug AND priority in (Highest, High)"
-```
-
-#### Sprint Planning
-
-```bash
-# Issues in backlog
-jira search "project = PROJ AND status = 'To Do' AND sprint is EMPTY"
-
-# Issues in current sprint
-jira search "project = PROJ AND sprint in openSprints()"
-
-# Completed this sprint
-jira search "project = PROJ AND sprint in openSprints() AND status = Done"
-```
-
-### Error Handling
-
-If you encounter authentication errors:
-```bash
-jira auth login
-```
-
-If JQL syntax errors occur:
-- Check for proper quoting of multi-word values
-- Verify field names are correct
-- Use `AND`, `OR`, `NOT` operators (uppercase)
-
-### Quick Reference
-
-```bash
-# View issue
-jira issue get ISSUE-123
-
-# Search
-jira search "JQL query here"
-
-# Create
-jira issue create --project PROJ --type TYPE --summary "text"
-
-# Update
-jira issue update ISSUE-123 --field value
-
-# Transition
-jira transition ISSUE-123 "Status Name"
-
-# Comment
-jira comment add ISSUE-123 "Comment text"
-
-# Assign
-jira assign ISSUE-123 username
-```
+**Gotcha:** `/rest/api/3/search` is removed — use `POST /rest/api/3/search/jql` with body `{"jql":"...","fields":[...],"maxResults":50}`.
