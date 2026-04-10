@@ -19,6 +19,18 @@ gcloud auth login --enable-gdrive-access
 
 ## Docs Commands
 
+### Creating a new doc
+
+**CLI:**
+```bash
+gspace docs create "Document Name" /tmp/doc.md
+gspace docs create "Document Name" /tmp/doc.md --folder-id <folder_id>
+```
+
+**MCP:** `docs_create` — pass `name` and `content` (Markdown string). Returns `{ id, name, url }`.
+
+Always include `title:` and `subtitle:` in YAML frontmatter. **Do not use `drive_files_upload` with `convert_to_google_format` for Markdown files** — it bypasses pandoc and produces stock Google styles without the reference stylesheet.
+
 ### Reading a doc
 
 **CLI:**
@@ -127,8 +139,8 @@ All elements round-trip cleanly through DOCX:
 gspace drive files list
 gspace drive files search "query"
 gspace drive files download <id> /tmp/out.md --export markdown
-gspace drive files upload /tmp/file.docx "Name" --convert
-gspace drive files upsert /tmp/file.docx "Name"   # update in place by name
+gspace drive files upload /tmp/file.docx "Name" --convert   # NOT for .md files — use docs create
+gspace drive files upsert /tmp/file.docx "Name"             # NOT for .md files — use docs update
 gspace drive files metadata <id>
 gspace drive files copy <id> "New Name"
 gspace drive files rename <id> "New Name"
@@ -174,6 +186,7 @@ gspace calendar find-availability --calendars user@example.com --duration 60
 
 | Tool | Description |
 |------|-------------|
+| `docs_create` | Create a new Google Doc from Markdown. Use instead of `drive_files_upload` for Markdown. |
 | `docs_download` | Download doc as Markdown (inline, no file path). Read before writing. |
 | `docs_update` | Replace doc content with Markdown. Strips gspace: block automatically. |
 | `docs_find_replace` | Find and replace text. Use for surgical edits. |
@@ -185,8 +198,8 @@ gspace calendar find-availability --calendars user@example.com --duration 60
 | `drive_files_list` | List files in a folder |
 | `drive_files_search` | Search by name or content |
 | `drive_files_download` | Download to local path with export format |
-| `drive_files_upload` | Upload file, optionally converting to Google format |
-| `drive_files_upsert` | Upload, replacing existing file by name (preserves ID) |
+| `drive_files_upload` | Upload file, optionally converting to Google format. **Not for Markdown** — use `docs_create`. |
+| `drive_files_upsert` | Upload, replacing existing file by name (preserves ID). **Not for Markdown** — use `docs_update`. |
 | `drive_files_metadata` | Get file metadata including headRevisionId |
 | `drive_files_copy` | Copy a file |
 | `drive_files_rename` | Rename a file |
