@@ -31,6 +31,18 @@ gspace docs create "Document Name" /tmp/doc.md --folder-id <folder_id>
 
 Always include `title:` and `subtitle:` in YAML frontmatter. **Do not use `drive_files_upload` with `convert_to_google_format` for Markdown files** — it bypasses pandoc and produces stock Google styles without the reference stylesheet.
 
+**Custom stylesheet (optional):** Pass a local `.docx` file path as `--style-sheet` (CLI) or `style_sheet` (MCP) to override the default `google-reference.docx`. The default stylesheet is always used when this is omitted — it is never required.
+
+```bash
+# Default stylesheet (google-reference.docx) — no flag needed
+gspace docs create "Report" report.md
+
+# Custom stylesheet
+gspace docs create "Report" report.md --style-sheet ~/styles/corporate.docx
+```
+
+The easiest way to create a custom stylesheet: style a Google Doc the way you want, export it as DOCX (`gspace drive files download FILE_ID style.docx --export docx`), and use that file.
+
 ### Reading a doc
 
 **CLI:**
@@ -47,7 +59,7 @@ gspace docs download <file_id_or_url> /tmp/doc.md
 gspace docs update <file_id_or_url> /tmp/doc.md
 ```
 
-**MCP:** `docs_update` — accepts Markdown string. Replaces the entire document via DOCX intermediary (pandoc → DOCX → Drive). Preserves Google Docs native styles.
+**MCP:** `docs_update` — accepts Markdown string. Replaces the entire document via DOCX intermediary (pandoc → DOCX → Drive). Preserves Google Docs native styles. Optional `style_sheet` param overrides the default stylesheet.
 
 ### Editing interactively
 
