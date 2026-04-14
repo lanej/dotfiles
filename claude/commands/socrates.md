@@ -67,16 +67,16 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 
 ### Session File Location
 
-Files live in `.claude/socrates/` within the current working directory (gitignored, no
-permission prompts). Named by timestamp at creation: `YYYYMMDD-HHMMSS.md`. A pointer
-file at `.claude/socrates/.current` contains the filename of the active session.
-One active session per project — starting a new one replaces the pointer.
+Files live in `.socrates/` within the current working directory. Named by timestamp at
+creation: `YYYYMMDD-HHMMSS.md`. A pointer file at `.socrates/.current` contains the
+filename of the active session. One active session per project — starting a new one
+replaces the pointer. Add `.socrates/` to `.gitignore` if not already present.
 
 ### Initialization (`$ARGUMENTS` is a task title)
 
 1. Generate a timestamp (use Bash: `date +%Y%m%d-%H%M%S`).
-2. Create `.claude/socrates/TIMESTAMP.md` with the title and scaffold below.
-3. Write the filename (e.g. `20260414-101638.md`) to `.claude/socrates/.current`.
+2. Create `.socrates/TIMESTAMP.md` with the title and scaffold below.
+3. Write the filename (e.g. `20260414-101638.md`) to `.socrates/.current`.
 4. Pre-fill every section you can infer from the title and domain. Leave `_[open]_` only
    where genuine ambiguity exists. Do not ask what you can answer yourself.
 5. Score commandments: **covered** / **thin** / **open**.
@@ -85,8 +85,8 @@ One active session per project — starting a new one replaces the pointer.
 
 ### Continuation (no `$ARGUMENTS`)
 
-1. Read `.claude/socrates/.current` to get the active session filename.
-2. Read `.claude/socrates/FILENAME.md`.
+1. Read `.socrates/.current` to get the active session filename.
+2. Read `.socrates/FILENAME.md`.
 3. Print a one-line coverage summary per commandment (name + status only).
 4. Prefer closing existing open questions over opening new ones.
 5. Ask 1–3 interrogation questions targeting the highest-risk uncovered commandments.
@@ -195,8 +195,8 @@ _[open]_
 ## Usage
 
 ```
-/socrates "Unified rate card API for carrier negotiation"   # init: creates .claude/socrates/TIMESTAMP.md
-/socrates                                                   # continue: reads .claude/socrates/.current
+/socrates "Unified rate card API for carrier negotiation"   # init: creates .socrates/TIMESTAMP.md
+/socrates                                                   # continue: reads .socrates/.current
 /socrates                                                   # continue until all commandments covered
 ```
 
