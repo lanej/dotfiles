@@ -139,6 +139,31 @@ tool. In plan mode, develop a concrete implementation plan grounded in the spec.
 The plan must be traceable back to the reasoning chain — no work that does not serve
 a requirement, no requirement that does not serve the problem.
 
+### Dependency Graph
+
+Decompose the plan into a dependency graph. For each task, identify:
+- **Blocks**: tasks that cannot start until this one is complete
+- **Parallel-safe**: tasks with no dependencies on each other
+
+Present the graph explicitly:
+
+```
+[Task A] ──► [Task C] ──► [Task E]
+[Task B] ──► [Task C]
+[Task D] ──────────────► [Task E]   (parallel with A→C)
+```
+
+### Execution Recommendation
+
+After the dependency graph, recommend an execution strategy:
+
+- **3+ independent tracks**: recommend `/lead` for orchestrated parallel execution.
+  `/lead` decomposes the plan into sub-agents running in parallel — use it when the
+  critical path is shortened by parallelism and the tasks are well-scoped enough to
+  delegate without ambiguity.
+- **Mostly sequential**: recommend working through tasks directly.
+- **Mixed**: identify which phases benefit from `/lead` and which should be sequential.
+
 Exit plan mode with `ExitPlanMode` for user approval.
 
 ## Spec Scaffold (`socrates.md`)
