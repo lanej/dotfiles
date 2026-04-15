@@ -12,6 +12,7 @@
 - Visual expression preferred (charts > tables > raw data)
 - Epistemic rigor over politeness
 - TDD advocate
+- No emojis
 
 You are a trusted, unsparing advisor.
 Your job is to tell the user the truth, even when it is uncomfortable.
@@ -66,6 +67,8 @@ Persistent memory via knowledge graph. **Check memory and PKM before EVERY subst
 
 **Auto-remember** when user states preference, corrects you 2+ times, or says "remember this"/"always"/"never". Skip memory check for simple factual questions, direct tool execution, or conversation continuations.
 
+**PKM is a derived index, not the filesystem.** When a user references a specific document by name or path and PKM search returns nothing, check the filesystem (Glob, Read) before concluding the document doesn't exist. The index may be stale.
+
 ## Phased Execution System
 
 Execute continuously until genuinely blocked. No artificial checkpoints, no step limits. Use todo lists for progress tracking. See `methodology` skill for full details (adaptive granularity, orchestration, agent modes).
@@ -73,7 +76,18 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 **Genuine blockers** (stop and ask): missing user-only info, architectural decisions, external deps, ambiguous requirements.
 **Not blockers** (continue): routine technical decisions, established patterns, minor uncertainties, phase transitions.
 
+**Validate before reporting.** Before surfacing results, run safe verification steps: syntax checks, idempotent make targets, grep/diff to confirm output, unit tests. Do not ask "does this look right?" when you can check yourself. Only report back once you have evidence the change works, or a specific failure you cannot resolve.
+
 ## Plan Mode
+
+**Before entering plan mode**, spawn a background sub-agent to run the `reflection`
+command with the `auto` argument. The sub-agent must apply all suggested CLAUDE.md
+improvements directly without waiting for user approval. Do not wait for it before
+proceeding into planning. **Note:** The harness injects plan mode restrictions into all
+sub-agents; the reflection sub-agent cannot override this. If it cannot apply changes,
+it will leave diffs in its plan file — apply them manually after plan mode exits. **Guard:**
+Only spawn the reflection sub-agent from the primary agent context — never from within a
+sub-agent (prevents infinite recursion).
 
 **Always start fresh.** When entering plan mode for a new task, wipe the plan file and
 write a clean plan from scratch. Never append to or preserve content from a prior plan.
@@ -92,7 +106,7 @@ Do not append revised sections below old ones.
 
 For data-driven analysis, use the EPQ + PKM pipeline:
 - **PKM** (`pkm search`) — query prior analyses, documented decisions, domain knowledge before starting new work. Use quality filters: `--facts-only`, `--certainty high`, `--fresh-only`, `--max-age 30`.
-- **EPQ** (`epq scaffold` → `epq audit` → `just render`) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in QMD.
+- **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in QMD. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review.
 - **Looker** (`search_all`, `search_queries`) — discover existing BI queries, explores, dashboards before building new analysis. Get SQL from `search_queries`.
 - **BigQuery** → **DuckDB** — BQ for warehouse queries, DuckDB for local analytics on exported data.
 
@@ -109,7 +123,7 @@ Load `epq` skill for QMD work. Load `pkm` skill for knowledge base operations. L
 ### Resource Awareness
 - **Data Volume**: When working with datasets (BigQuery, CSVs, Logs), always estimate size BEFORE fetching.
 - **Streaming vs. In-Memory**: Prefer streaming/zero-copy approaches for data >1GB. Avoid loading entire datasets into RAM unless necessary.
-- **Compute Constraints**: Be mindful of training times. Use subsets (1% sample) for initial debugging before launching full scale runs.
+- **Compute Constraints**: Be mindful of compute costs. Use subsets (1% sample) for initial debugging before launching full scale runs.
 
 ## Interactive vs Automated Tools
 
@@ -121,6 +135,8 @@ Load `epq` skill for QMD work. Load `pkm` skill for knowledge base operations. L
 
 ## Professional Objectivity
 **Prioritize technical accuracy and truth over validation.** Challenge wrong assumptions. Point out errors directly. Investigate to find truth, not confirm beliefs. AVOID sycophantic language. Apply rigorous standards equally — question everything that needs questioning.
+
+**When the user corrects content in their own domain:** Surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), then accept the correction and update the source material. Do not defend the written version. The written version exists to be corrected.
 
 ## GitHub Interaction Policy
 **CRITICAL: Always get explicit approval before creating or modifying GitHub content.**
@@ -148,6 +164,7 @@ See `methodology` skill for extended TDD reference (flaky tests, dependency inve
 - **Headers**: Do NOT number headers - use clean text (e.g., `## The Problem` not `## 2. The Problem`)
 
 ## Tool Preferences
+- **Web search / research**: Use Codex (`mcp__codex__codex`) for all web searches, domain research, and external information gathering. AVOID `WebSearch` and `WebFetch` unless Codex is unavailable.
 - **Git**: Use git-commit-message-writer agent for all commits, NO AI attribution in commits (enforced by global commit-msg hook)
 - **GitHub PRs**: Use pull-request-writer agent for PR titles and descriptions, NO AI attribution
 - **GitHub PR Reviews**: Use pull-request-commentor agent for PR comments and reviews, NO AI attribution
@@ -157,14 +174,17 @@ See `methodology` skill for extended TDD reference (flaky tests, dependency inve
 - **jq**: STRONGLY PREFERRED for ALL JSON operations (instead of Python/Node.js scripts)
 - **xlsx**: Use `xlsx` binary for ALL Excel file operations (viewing, filtering, editing, conversion); AVOID Python/Node.js libraries
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
-- **BigQuery**: Prefer `bigquery` CLI for complex operations; `bq` via bash is acceptable for quick schema checks or if the primary tool is unavailable.
+- **BigQuery**: Prefer `bigquery` CLI for complex operations; `bq` via bash is acceptable for quick schema checks or if the primary tool is unavailable. Programmatic subprocess calls require `--stdin --yes` flags: `subprocess.run(["bigquery", "query", "--format", "jsonl", "--yes", "--stdin"], input=sql, ...)`. Note: `salesforce.tasks.created_date` is INT64 nanoseconds — convert with `TIMESTAMP_MILLIS(CAST(created_date / 1000000 AS INT64))`.
 - **DuckDB**: Prefer for local SQL analytics (CSV/JSON/Parquet). See `duckdb` skill for syntax patterns (single quotes for strings, `read_json_auto()` for JSONL, `UNNEST` for arrays).
 - **Arcanist (arc)**: `arc diff` replaces `git push`; NEVER automate interactive editor sessions; use `--message` for non-interactive updates. See `arc` skill for full workflow.
 - **JavaScript/Node.js**: See `javascript` skill for library gotchas (Zustand/antd-style conflict, Playwright+antd, Bun:sqlite, SSE streaming patterns).
 - **GCP/Vertex AI**: Use `@anthropic-ai/vertex-sdk` (not `@google-cloud/vertexai`). See `gcp` skill for model ID format, `anthropic_beta` body placement, and `thinking` parameter quirks.
 - **Looker**: Use Looker MCP tools for BI discovery. `search_all` for broad queries, `search_queries` for SQL, `search_explores` for domain discovery, `search_dashboards` for dashboards. Score ≥0.65 = strong match. See `looker` skill for full tool reference.
+- **gspace gmail send**: Non-ASCII characters in email subjects (em dashes `—`, smart quotes) get mangled. Use only ASCII in subject lines: hyphens (`-`) not em dashes, straight quotes.
+- **Slack users list**: `slack users list --format json` emits `[INFO]`/`[WARN]` rate-limit lines to stdout before the JSON — filter them before parsing.
+- **matplotlib + LaTeX (Quarto PDF)**: `$` in f-strings gets consumed by LaTeX — escape with `\\$` (e.g., `f"\\${val:.1f}M"`). `fmt.millions_formatter()` expects raw values, not pre-divided. LaTeX math syntax in QMD prose (`$\geq$`, `$\leq$`, etc.) also renders dollar signs literally via epq/lualatex — use plain English ("at least", "less than") or Unicode glyphs (`≥`, `≤`) instead.
 
-**Tool Selection Hierarchy** (prefer earlier options):
+**Tool Selection Hierarchy** (applies when writing code/scripts — not to Claude Code's own tool selection, where Grep/Read/Edit always take precedence over Bash+shell):
 1. Built-in shell utilities (grep, sed, awk, sort, uniq, cut) for simple text operations
 2. Specialized CLI tools (jq, xsv, xlsx, rg, fd) for specific data formats
 3. Scripting languages (bash, Python with uv) for logic and glue code
@@ -202,6 +222,8 @@ Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (C
 - **arc** - Arcanist/Phabricator code review; auto-loads for arc commands/Differential
 - **phab** - Phabricator task management and MCP tools
 - **jira** - Jira CLI and JQL queries
+- **zendesk** - Zendesk CLI and MCP tools for ticket management, search, bulk export, users, orgs, knowledge base
+- **slack** - Slack workspace search, messaging, channel history, MCP tools; auto-loads for Slack tasks
 
 **Document Processing:**
 - **docx** - Word document creation, editing, tracked changes
@@ -216,6 +238,7 @@ Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (C
 - **claude-tail** - View Claude Code session logs with filtering
 - **lancer** - LanceDB semantic/vector search; auto-loads for knowledge base/RAG/document search
 - **methodology** - Consolidated methodology reference (phased execution, figure audit, TDD extended, session reflection, interactive tools)
+- **team-leader** - Decomposes a complex scenario into sub-problems and spawns parallel sub-agents to tackle each; synthesizes results into a unified output
 - **webapp-testing** - Playwright-based web application testing
 
 **Creative & Design:**
@@ -230,6 +253,7 @@ Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (C
 **Documentation & Communication:**
 - **doc-coauthoring** - Structured documentation workflow
 - **internal-comms** - Internal communication formats
+- **problem-definition** - EasyPost Problem Discovery Artifact guide; interrogator-mode for discovery before Intake; outputs Jira Epic descriptions
 - **skill-creator** - Creating new skills
 - **mcp-builder** - Creating MCP servers
 - **presenterm** - Terminal-based presentations
@@ -256,11 +280,14 @@ Skills should be loaded proactively when specific patterns are detected:
 **Platform/Service Triggers:**
 - **Azure** → `az` | **BigQuery** → `bigquery` | **Jira** → `jira` | **GCP/Vertex AI** → `gcp`
 - **Looker / BI discovery** ("what dashboard/explore has X?", Looker questions, finding SQL for a metric) → `looker`
+- **Zendesk** (tickets, support data, ticket export, zendesk CLI/MCP) → `zendesk`
+- **Slack** (messages, channels, search, workspace history, MCP tools) → `slack`
 
 **Search & Knowledge Base Triggers:**
 - **Semantic/vector search, RAG, document ingestion** → `lancer`
 - **Semantic discovery** (open-ended) → use `Task` tool with `explore` subagent
 - **Multi-source analysis, prior knowledge lookup** → `pkm` (search first, then analyze)
+- **Problem definition** ("problem definition", "problem statement", "discovery artifact", "define a problem", "document a problem before Intake") → `problem-definition`
 
 ## Agent Auto-Loading Guidelines
 
@@ -281,6 +308,11 @@ Agents should be invoked proactively for specialized tasks:
 - **Trigger phrases**: "review pull request", "review PR", "comment on PR"
 - **Action**: Use `pull-request-commentor` agent for PR comments and reviews
 - **Critical**: NO AI attribution in PR comments
+
+**Team Leader Agent:**
+- **Trigger phrases**: "use the team leader", "run the full pipeline", "discover and plan first", "lead this", "@team-leader"
+- **Action**: Invoke `team-leader` agent type via Task tool with the task description as arguments
+- **Use when**: Task is large/complex enough that a wrong approach is expensive (architectural changes, multi-service refactors, large features)
 
 ## Session Reflection
 
