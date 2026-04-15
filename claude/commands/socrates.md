@@ -65,6 +65,13 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 
 ## Phase 1 — Interrogation
 
+### Plan Mode
+
+This command manages its own phased execution. If plan mode is active at the start of
+Phase 1 or Phase 2, exit it immediately using `ExitPlanMode` before proceeding — plan
+mode is only entered intentionally at Phase 3. Do not let plan mode block session file
+writes or interrogation.
+
 ### Session File Location
 
 Files live in `.socrates/` within the current working directory. Named by timestamp at
