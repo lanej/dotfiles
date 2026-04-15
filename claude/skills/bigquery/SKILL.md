@@ -763,6 +763,29 @@ cat results.jsonl | while IFS= read -r line; do
 done
 ```
 
+## Append-Only Raw Table Pattern
+
+Use this architecture when a table needs to track evolving state over time without destructive updates.
+
+**Structure:**
+- `table_raw` — append-only write target; never UPDATE or DELETE rows in-place
+- `table` (VIEW) — the read surface; deduplicates raw via `ROW_NUMBER() OVER (PARTITION BY <natural_key> ORDER BY loaded_at DESC) = 1`
+
+**Write rules:**
+- All INSERT operations target `table_raw` only; never INSERT into the view (BigQuery rejects DML on views)
+- Include a `loaded_at TIMESTAMP REQUIRED` column on the raw table; always set it to `CURRENT_TIMESTAMP()` at write time
+- To "update" a record: INSERT a new row with corrected values and a fresh `loaded_at`; the view surfaces the newest row automatically
+- Validate domain constraints before writing (e.g., expected ID prefixes, enum values, FK existence); skip invalid rows with a warning rather than failing the batch
+
+**Read rules:**
+- Always query the view, never the raw table directly
+- Apply domain-validity guards in the view's inner WHERE clause to prevent corrupt rows from surfacing even if they reach the raw table
+
+**Integrity checks:**
+- Verify periodically: row count on view == `COUNT(DISTINCT <natural_key>)` on raw (filtered to valid rows only)
+- Within-version duplicates (same `(<natural_key>, version_tag)` appearing more than once in raw) indicate a write path ran more than once; clean with `MERGE … WHEN NOT MATCHED BY SOURCE THEN DELETE` using a `MAX(loaded_at)` keeper subquery
+- Foreign key validation: LEFT JOIN the raw table to the referenced source table; rows where the join produces NULL are orphans and should be investigated or deleted
+
 ## Best Practices
 
 ### Query Development
@@ -782,6 +805,15 @@ done
 4. **Limit result sets**: Use LIMIT for exploratory queries
 5. **Select only needed columns**: `SELECT col1, col2` not `SELECT *`
 6. **Set cost thresholds**: Use `BIGQUERY_COST_THRESHOLD_GB` environment variable
+
+### Table Architecture
+
+1. **Raw + view split**: Use an append-only `*_raw` table for writes and a dedup VIEW for reads; never write to the view, never read from raw directly
+2. **`loaded_at` as dedup key**: The `loaded_at TIMESTAMP REQUIRED` column determines which row wins in the view; always write `CURRENT_TIMESTAMP()` at INSERT time
+3. **Updates via INSERT**: To correct a row, INSERT a new version with corrected values and a fresh `loaded_at`; do not UPDATE the raw table in-place
+4. **Validate before INSERT**: Check domain constraints (ID format, enum values, FK existence) before writing; skip bad rows with a logged warning rather than allowing them to corrupt the raw table
+5. **Guard the view**: Add a WHERE clause to the view's inner query enforcing domain invariants as a last-resort filter against rows that bypass write-time validation
+6. **Never target a view for DML**: BigQuery rejects INSERT/UPDATE/DELETE on views; always use the underlying raw table name in write code paths
 
 ### Authentication
 

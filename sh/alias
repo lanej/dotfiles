@@ -471,3 +471,5 @@ cargo-install-github() {
 	shift 2
 	CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --git "ssh://git@github.com/$org/$repo" "$@"
 }
+alias occ="opencode-custom -c"
+alias oc="opencode-custom"

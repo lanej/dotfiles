@@ -1,5 +1,5 @@
 ---
-description: "Alias for /team-leader — orchestrate complex tasks through discover, plan, reflect, tweak, review, execute"
+description: "Alias for /team-leader — decompose a scenario into sub-problems and tackle them with parallel sub-agents"
 argument-hint: <task description>
 tags:
   - orchestration

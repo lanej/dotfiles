@@ -7,6 +7,316 @@ description: Render computational documents to markdown (DEFAULT), PDF, HTML, Wo
 
 Quarto is an open-source scientific and technical publishing system built on Pandoc. It renders computational documents (with Python, R, Julia code) to publication-quality output in multiple formats.
 
+## Bootstrap with `epq scaffold` (PREFERRED for new projects)
+
+New QMD analysis projects must be created via the `epq` CLI — do NOT manually create
+pyproject.toml, _quarto.yml, justfile, figures/_style.py, or latex-header.tex:
+
+```bash
+epq scaffold ~/workspace/projects/my-analysis   # generates all boilerplate
+cd ~/workspace/projects/my-analysis
+just bootstrap                                   # uv sync + ipykernel install
+epq audit .                                      # verify clean (0 warnings)
+```
+
+`epq scaffold` generates: `_quarto.yml` (with `jupyter:` set), `latex-header.tex` (local
+copy — no external path dep at render time), `justfile` (thin import wrapper for canonical
+recipes), `pyproject.toml` (`package = false`, epq editable install), `.gitignore`,
+`figures/fig_example.py` (canonical dev loop), `{name}_files/figure-pdf/` pre-created.
+
+To audit or retrofit an existing project:
+```bash
+epq audit <path>    # JSON violations with file/line/suggestion
+epq fix <path>      # unified diffs for auto-fixable issues (LLM reviews and applies)
+epq list-rules      # enumerate all rule IDs
+```
+
+Shared library — import in every analysis QMD setup cell:
+```python
+from epq import style, cache, bq, fmt
+
+style.apply_style()          # canonical rcParams (150/200 DPI, sans-serif fallbacks)
+style.NAVY, style.TEAL, ...  # workspace palette — never redefine inline
+cache.read_cache("name")     # 24h TTL file-based cache → None if stale/missing
+bq.run_bq_query(SQL)         # subprocess bigquery CLI wrapper, max_results=10000
+fmt.millions_formatter()     # FuncFormatter for ax.yaxis.set_major_formatter()
+```
+
+Full authoring reference: `~/src/analysis-doc/docs/AGENTS.md`
+Retrofit guide: `~/src/analysis-doc/docs/RETROFIT.md`
+
+---
+
+## External Python Figures Pattern (PREFERRED for complex documents)
+
+For documents with multiple visualizations, **extract all matplotlib code into standalone
+Python modules** in `figures/`. The QMD becomes a thin shell with stub cells only.
+
+### Architecture
+
+```
+{name}.qmd          ← thin shell: prose + data-load cells + stub figure cells only
+_quarto.yml         ← jupyter: {name} (set by epq scaffold)
+latex-header.tex    ← local copy (set by epq scaffold)
+justfile            ← imports ~/src/analysis-doc/tools/justfile
+figures/
+  __init__.py
+  fig_NAME.py       ← one module per figure; render(data) contract
+scripts/data/
+  extract_NAME.py   ← standalone BigQuery extractor; writes data/cache/*.json
+data/cache/         ← JSON cache files (gitignored)
+{name}_files/
+  figure-pdf/       ← dev loop writes here (pre-created by epq scaffold)
+```
+
+### Figure Module Contract
+
+One file per figure (not a dispatcher). `render(data: dict)` is the only public function.
+
+```python
+# figures/fig_revenue.py
+from pathlib import Path
+from epq import style, fmt  # palette and formatters from epq — never local _style.py
+
+LABEL = "fig-revenue"       # matches QMD #| label: fig-revenue
+FIG_WIDTH = 8.5
+FIG_HEIGHT = 4.0
+FIG_CAP = "Insight-focused caption — not a data description."
+
+
+def render(data: dict) -> None:
+    """Render figure. Called from QMD stub cell with shared data dict.
+
+    Do NOT call plt.show() or plt.savefig() here — Quarto handles capture.
+    Do NOT call plt.close() here — handled in __main__ and between QMD cells.
+    """
+    import matplotlib.pyplot as plt
+    style.apply_style()
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
+
+    # ... all matplotlib code, reading from data dict ...
+    df = data.get("revenue", _load_sample_data())
+    ax.bar(df["month"], df["revenue"], color=style.NAVY)
+    ax.yaxis.set_major_formatter(fmt.millions_formatter())
+    ax.set_title(FIG_CAP.rstrip("."))
+    plt.tight_layout()
+
+
+def _load_sample_data():
+    """Synthetic fallback for dev loop (no BQ needed)."""
+    import pandas as pd
+    return pd.DataFrame({"month": ["Q1", "Q2", "Q3", "Q4"],
+                         "revenue": [1.2e6, 1.4e6, 1.3e6, 1.6e6]})
+
+
+if __name__ == "__main__":
+    """Dev loop — saves to {project}_files/figure-pdf/{LABEL}-output-1.png.
+
+    Writes to the same path Quarto uses, so visual inspection is against the
+    real render artifact. Run via: just dev-fig revenue
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    _project_root = Path(__file__).parent.parent
+    _out_dir = _project_root / f"{_project_root.name}_files" / "figure-pdf"
+    _out_dir.mkdir(parents=True, exist_ok=True)
+    out = str(_out_dir / f"{LABEL}-output-1.png")
+
+    render({})                                          # synthetic data fallback
+    plt.savefig(out, dpi=150, bbox_inches="tight")     # savefig BEFORE close
+    print(f"Saved {out}")
+    plt.close("all")
+```
+
+### QMD Stub Cell
+
+```python
+#| label: fig-revenue
+#| fig-cap: "Revenue by stream."
+#| fig-height: 4.0
+#| fig-width: 8.5
+#| fig-pos: "H"
+#| out-width: 100%
+import sys; sys.path.insert(0, str(Path("."))) if "." not in sys.path else None
+from figures import fig_revenue
+fig_revenue.render(data)
+```
+
+### Justfile (generated by `epq scaffold`)
+
+Projects get a thin justfile that imports the canonical recipe library:
+
+```just
+# Project-local overrides go here. Canonical recipes imported below.
+import? '~/src/analysis-doc/tools/justfile'
+```
+
+The canonical justfile provides:
+```just
+# Render figure to {project}_files/figure-pdf/fig-NAME-output-1.png
+dev-fig NAME:
+    PYTHONPATH=. uv run python figures/fig_{{NAME}}.py
+    @echo "→ $(basename $PWD)_files/figure-pdf/fig-{{NAME}}-output-1.png"
+
+# Full render (clears Jupyter cache)
+render:
+    rm -rf .jupyter_cache/
+    quarto render *.qmd
+```
+
+### Figure Audit and Visual Iteration Protocol
+
+**CRITICAL: Any task involving figures — iteration, audit, or review — MUST render and
+visually inspect the PNG before reporting. Code-only review is incomplete.**
+
+**Required sequence for every figure change or audit:**
+
+1. `just dev-fig NAME` → `{project}_files/figure-pdf/fig-NAME-output-1.png`
+2. **Read the PNG using the Read tool** — do not skip this step
+3. Apply the visual readability checklist to what you see in the PNG
+4. Fix issues, re-render, re-inspect until checklist passes
+5. Only then check factual accuracy against prose/data
+
+**Do NOT use `just preview-fig` / Playwright** — it screenshots HTML chrome, not the raw
+figure. Read the PNG directly from `{project}_files/figure-pdf/`.
+
+**Visual Readability Checklist (inspect the rendered PNG, not the code):**
+
+- [ ] **Suptitle not clipped** — `suptitle(y=1.02)` ALWAYS clips in PDF. Use `y=1.0` +
+      `fig.subplots_adjust(top=0.82–0.88)`. Never use `y > 1.0`.
+- [ ] **No text collisions** — suptitle and panel titles have clear separation
+- [ ] **Text readable at print scale** — PDF page is 6.5in wide; >1.5× zoom = illegible
+- [ ] **Panels not squished** — 3-panel: FIG_HEIGHT ≥ 4.0; single-panel ≥ 3.0; swim-lane ≥ 4.5
+- [ ] **Bar labels within bounds** — `set_clip_on(True)` makes labels invisible, not small
+- [ ] **No partial annotations** — text near ylim/xlim edges fully in frame
+- [ ] **Text contrast correct** — see color guard below
+
+**Text contrast rule (most common source of invisible text):**
+
+```python
+# Use epq.style helper — covers all palette fills correctly:
+from epq import style
+tc = style.text_color_for(fill_color)   # WHITE for dark fills, NAVY for light
+
+# Manual guard if needed:
+DARK_FILLS = (style.NAVY, style.TEAL, style.CORAL, style.PURPLE, style.GOLD)
+tc = style.WHITE if fill in DARK_FILLS else style.NAVY
+#                                               ^^^^ NAVY, never SLATE
+# SLATE on LIGHT_SLATE = 2.6:1 contrast — fails AA, looks muddy at print scale
+```
+
+Verified contrast ratios:
+- NAVY/TEAL/CORAL/PURPLE/GOLD fills → WHITE text (8–16:1 ✅)
+- LIGHT_SLATE fill → NAVY text (5.5:1 ✅); SLATE fails (2.6:1 ❌)
+- Pale backgrounds (LIGHT_BG, NAVY_BG) → NAVY text; WHITE is invisible (~1.07:1 ❌)
+
+**Common visual defects invisible in code:**
+- Suptitle bleeding into panel titles → increase FIG_HEIGHT, use `subplots_adjust`
+- Bar labels extending past xlim → invisible (not small); expand xlim or reduce offset
+- Blank/white PNG → `plt.savefig()` called after `plt.close()`. Fix: call savefig first:
+  ```python
+  render({})
+  plt.savefig(out, dpi=150, bbox_inches="tight")
+  plt.close("all")
+  ```
+
+### Key Rules
+
+- **Edit `figures/fig_NAME.py`, not the QMD** — QMD stubs never change unless label/caption/dimensions change
+- **One module per figure** — `render(data: dict) -> None`, no dispatcher pattern
+- **`from epq import style, fmt`** — never a local `_style.py` copy
+- **`PYTHONPATH=.`** required when running modules directly: `PYTHONPATH=. uv run python figures/fig_NAME.py`
+- **`render()` must NOT call `plt.show()`, `plt.close()`, or `plt.savefig()`** — Quarto handles capture; `__main__` handles save
+- **`matplotlib.use("Agg")`** before any pyplot import in `__main__`
+- **`data` dict** is the only input — never read cache files inside figure modules; provide synthetic fallback in `_load_sample_data()`
+- **Dev loop output**: `{project}_files/figure-pdf/{LABEL}-output-1.png` (pre-created by `epq scaffold`)
+- **Reference implementation**: `~/workspace/projects/luma-revenue-forecast/` and `~/workspace/projects/revenue-forecast-2026/`
+
+---
+
+## PDF Project Bootstrap
+
+Use `epq scaffold` — it handles all of the following automatically:
+
+```bash
+epq scaffold ~/workspace/projects/my-project
+cd ~/workspace/projects/my-project
+just bootstrap    # runs: uv sync + ipykernel install + mkdir data/cache
+```
+
+Manual checklist (only if NOT using `epq scaffold`):
+1. Create `pyproject.toml` with `[tool.uv] package = false` and run `uv sync`
+2. Register kernel: `uv run python -m ipykernel install --user --name=<project>`
+3. `_quarto.yml`: set `jupyter: <project>` (must match registered kernel name exactly)
+4. Copy `latex-header.tex` locally from `~/src/analysis-doc/templates/` (do not reference it via external path)
+5. Never borrow another project's venv or kernel — each project must own its own
+
+## PDF Title Suppression
+
+- **Never use YAML `title:` or `subtitle:`** — they produce `\maketitle` which double-renders with any custom header
+- Use a raw LaTeX inline header in the document body instead:
+
+```{=latex}
+{\large\textbf{Document Title}}
+\hfill
+{\small\color{gray} Author \quad\textbullet\quad \today}
+\vspace{4pt}
+\hrule
+\vspace{8pt}
+```
+
+- Add `pagetitle: " "` to YAML to suppress the HTML `<title>` without breaking Pandoc
+
+## PDF Figure Rules
+
+### Split multi-story panels
+If a combined figure has two sub-panels telling different insights, split into separate `fig-*` cells with their own captions. Ask upfront whether panels should be split — this is cheaper than rework after the fact.
+
+### Legend placement
+- Top-right (`loc='upper right'`) when data occupies the bottom portion of the chart
+- Below chart when dense: `fig.legend(loc='lower center', ncol=N, bbox_to_anchor=(0.5, -0.02))` + `fig.subplots_adjust(bottom=0.20)`
+- Never place legend over data area
+
+### Date axes — always explicit
+Never rely on `AutoDateLocator` — it overcrowds on multi-year spans:
+
+```python
+ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 7]))
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+ax.tick_params(axis='x', labelsize=8)
+```
+
+### Never auto-open artifacts
+Justfile render recipes must not include `&& open <file>`. The user opens files manually.
+
+## LaTeX Max-Runs Warning
+
+"WARN: maximum number of runs (9) reached" is **cosmetically harmless** when there are no `\ref{}` cross-references in prose. It is caused by `fancyhdr` + many figures creating layout oscillation. Mitigations:
+
+- Use `\needspace` not `\clearpage` (see needspace sizing table in the `\needspace` section)
+- Remove `labelformat=empty` from `\captionsetup` — caption numbering churn drives oscillation
+- Use `htbp` float placement rather than forced `H`
+
+`\needspace` sizing reference — X = figure height + 1.2in overhead:
+
+| Figure height | `\needspace` |
+|---|---|
+| 3.2in | `\needspace{4.5in}` |
+| 4.0in | `\needspace{5.2in}` |
+| 5.5in | `\needspace{6.8in}` |
+| Prose only | `\needspace{2.5in}` |
+
+## BigQuery + Pandas Gotchas (in Quarto Documents)
+
+- BigQuery returns nullable `Int64` for integer columns — always `.astype('float64')` before `fillna()`
+- Quarterly data on a monthly x-axis: `df.set_index('quarter').reindex(monthly_idx, method='ffill')` + `ax.step(..., where='post')`
+- Never put `\n` inside BigQuery SQL string literals in Python f-strings — use spaces instead
+- Always define intermediate variables BEFORE the `Markdown(f"""...""")` call — f-strings evaluate at call time, not definition time
+
+---
+
 ## Best Practices (TL;DR)
 
 1. **Markdown-First**: Default to `format: gfm` with `wrap: none` for composability, portability, and archival
@@ -2945,3 +3255,24 @@ format:
 - Guide: https://quarto.org/docs/guide/
 - Extensions: https://quarto.org/docs/extensions/
 - Publishing: https://quarto.org/docs/publishing/
+
+## Document & Report Writing Principles
+
+### Data Sources Stay in Code, Not Prose
+
+When writing Quarto documents, strategy memos, or any analytical report:
+
+- **Never name data sources in prose** — table names (`all_customers_revenue_final`), field names (`salesforce_account_id`, `recognized_revenue_c`), database names (`ep-core-data`), query tools (`BigQuery`, `Prophet`), or internal implementation details belong in code cells only
+- **Describe the data, not where it came from** — write "actual revenue from those accounts" not "revenue from `all_customers_revenue_final` joined via `salesforce_account_id`"
+- **Describe the method, not the tool** — write "trend model with yearly seasonality" not "Prophet with `changepoint_prior_scale`"
+- **The code is the documentation** — readers who need provenance can read the code cells; prose is for interpretation and insight
+
+### What Belongs in Prose vs. Code
+
+| Prose | Code |
+|---|---|
+| "actual revenue from sales-linked accounts" | `JOIN all_customers_revenue_final ON salesforce_account_id` |
+| "trend model incorporating deal count" | `Prophet.add_regressor('won_count_norm')` |
+| "CRM-linked accounts" | `WHERE salesforce_account_id IS NOT NULL` |
+| "80% of revenue is attributable" | `sf_corr_attributed_pct = ...` |
+| "pipeline data available since April 2024" | cache TTL, query date bounds |

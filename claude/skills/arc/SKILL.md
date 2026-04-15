@@ -441,3 +441,21 @@ git diff origin/master..HEAD
 **View diff**: `arc export D123`
 
 **Remember**: Arc is interactive by default. Use `--message` or `--message-file` for automation.
+
+## EasyPost Workflow Policy
+
+These rules apply specifically to EasyPost's Phabricator setup:
+
+- **arc diff replaces git push** — NEVER `git push` branches being reviewed in Phabricator
+- **arc lint** and **arc unit** run automatically during `arc diff` (lint errors don't block, but fix them)
+- **arc diff** (no flags) opens an editor interactively — don't try to automate it with `EDITOR=cat` tricks
+- **arc land** merges approved revisions to master
+
+### Never Do This
+
+```bash
+❌ EDITOR=cat arc diff              # Bypass interactive editor
+❌ echo "..." | arc diff            # Pipe to interactive command
+❌ git push origin feature-branch   # Use arc diff instead
+❌ arc diff --verbatim --message-file  # Incompatible flags
+```

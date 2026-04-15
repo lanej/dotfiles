@@ -76,12 +76,12 @@ For multi-workstream projects, Build agent may **suggest** orchestration:
 - **Plan (Tab to switch):** Read-only analysis, creates implementation plans as adaptive todo lists
 - **Orchestrator (subagent):** Coordinates parallel workstreams
 
-### Integration with Memory/PKM
+### Integration with Memory/Search
 
-1. **Before starting**: Check memory/PKM for relevant patterns
+1. **Before starting**: Check memory and qmd workspace search for relevant patterns
 2. **During execution**: Focus on completing work, don't interrupt flow
-3. **After completion**: Record key learnings to memory/PKM
-4. **At blockers**: May query memory/PKM for context before asking user
+3. **After completion**: Record key learnings to memory
+4. **At blockers**: May query qmd for workspace context before asking user
 
 ## Interactive vs Automated Tools
 
@@ -156,7 +156,7 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 ## Dependency Installation
 
 - If `uv add` hangs building from source (>60 seconds): (1) system Python, (2) PyPI, (3) CLI tool instead
-- AVOID installing Python bindings from source when CLI alternatives exist (e.g., `lancer` CLI not `lancer-py`)
+- AVOID installing Python bindings from source when CLI alternatives exist
 
 ## TDD Extended Reference
 

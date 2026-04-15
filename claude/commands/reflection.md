@@ -1,6 +1,6 @@
 ---
 description: Analyze and improve Claude Code instructions
-argument-hint: none
+argument-hint: [auto]
 allowed-tools: Read, Edit, TodoWrite, Bash(git:*)
 ---
 
@@ -22,12 +22,17 @@ Analyze the chat history and instructions to identify areas that could be improv
    Document your findings using the TodoWrite tool to track each identified improvement area and create a structured approach.
 
 3. Interaction Phase:
-   Present your findings and improvement ideas to the human. For each suggestion:
+   If `$ARGUMENTS` contains `auto` (unattended/background mode):
+   - Skip the interactive approval loop entirely
+   - Proceed directly to step 4 and apply all identified improvements
+   - Document each change made in the output
+
+   Otherwise (interactive mode), present your findings and improvement ideas to the human. For each suggestion:
    a) Explain the current issue you've identified
    b) Propose a specific change or addition to the instructions
    c) Describe how this change would improve Claude's performance
 
-Wait for feedback from the human on each suggestion before proceeding. If the human approves a change, move it to the implementation phase. If not, refine your suggestion or move on to the next idea.
+   Wait for feedback from the human on each suggestion before proceeding. If the human approves a change, move it to the implementation phase. If not, refine your suggestion or move on to the next idea.
 
 4. Implementation Phase:
    For each approved change:

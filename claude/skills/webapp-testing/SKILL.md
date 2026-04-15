@@ -88,6 +88,35 @@ with sync_playwright() as p:
 - Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
 - Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
 
+## Rendering HTML to PNG
+
+Use `uv run --with playwright` — no venv setup required. Install the browser once with `uv run --with playwright python3 -m playwright install chromium`.
+
+```python
+from playwright.sync_api import sync_playwright
+import os
+
+html_path = os.path.abspath('path/to/file.html')
+out_path = os.path.abspath('path/to/output.png')
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page(device_scale_factor=4)   # 4–5x for sharp output
+    page.set_viewport_size({'width': 1400, 'height': 900})
+    page.goto(f'file://{html_path}')
+    page.wait_for_load_state('networkidle')
+    # Screenshot a specific element to avoid body padding:
+    page.locator('.my-container').screenshot(path=out_path)
+    # Or full page:
+    # page.screenshot(path=out_path, full_page=True)
+    browser.close()
+```
+
+**Key decisions:**
+- `device_scale_factor=4` or `5` — required for sharp text; 1x (default) looks blurry
+- **Element screenshot** (`locator.screenshot()`) crops to content, avoids body padding
+- **`full_page=True`** captures everything but includes body margins — use only if you want the full document
+
 ## Reference Files
 
 - **examples/** - Examples showing common patterns:

@@ -1,8 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "opencode-gemini-auth@latest"
-  ],
+  "plugin": ["opencode-gemini-auth@latest"],
   "provider": {
     "google": {
       "options": {
@@ -97,15 +95,10 @@
         "todoread": true
       },
       "permission": {
-        "pkm_list_tables": "allow",
-        "pkm_query_relationships": "allow",
-        "pkm_search_titles": "allow",
-        "pkm_query_backlinks": "allow",
-        "pkm_list_titles": "allow",
-        "pkm_search_documents": "allow",
-        "pkm_get_table_info": "allow",
-        "pkm_ingest_documents": "allow",
-        "pkm_index_document": "allow",
+        "mcp__qmd__query": "allow",
+        "mcp__qmd__get": "allow",
+        "mcp__qmd__multi_get": "allow",
+        "mcp__qmd__status": "allow",
         "bigquery_query": "allow",
         "bigquery_dry_run": "allow",
         "bigquery_list_datasets": "allow",
@@ -266,80 +259,52 @@
     "edit": "allow"
   },
   "mcp": {
-    "gspace": {
+    "looker": {
       "type": "local",
-      "command": [
-        "gspace",
-        "mcp",
-        "stdio"
-      ],
+      "command": ["looker", "mcp", "stdio"],
       "enabled": true
     },
-    "pkm": {
+    "gspace": {
       "type": "local",
-      "command": [
-        "pkm",
-        "mcp"
-      ],
+      "command": ["gspace", "mcp", "stdio"],
+      "enabled": true
+    },
+    "qmd": {
+      "type": "local",
+      "command": ["/Users/joshlane/.bun/bin/qmd", "mcp"],
       "enabled": true,
       "environment": {
-        "WORKSPACE_KNOWLEDGE_DB_PATH": "$HOME/workspace/lancedb",
-        "WORKSPACE_KNOWLEDGE_ROOT": "$HOME/workspace",
-        "PKM_DB_PATH": "$HOME/workspace/lancedb",
-        "PKM_ROOT": "$HOME/workspace"
+        "QMD_RERANK_MODEL": "hf:pyarn/Qwen3-Reranker-4B-Q4_K_M-GGUF/qwen3-reranker-4b-q4_k_m.gguf"
       }
     },
     "bigquery": {
       "type": "local",
-      "command": [
-        "bigquery",
-        "mcp",
-        "stdio"
-      ],
+      "command": ["bigquery", "mcp", "stdio"],
       "enabled": true
     },
     "jira": {
       "type": "local",
-      "command": [
-        "jira",
-        "mcp",
-        "stdio"
-      ],
+      "command": ["jira", "mcp", "stdio"],
       "enabled": false
     },
     "sequential-thinking": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
       "enabled": true
     },
     "phab": {
       "type": "local",
-      "command": [
-        "phab",
-        "mcp",
-        "stdio"
-      ],
+      "command": ["phab", "mcp", "stdio"],
       "enabled": false
     },
     "time": {
       "type": "local",
-      "command": [
-        "uvx",
-        "mcp-server-time"
-      ],
+      "command": ["uvx", "mcp-server-time"],
       "enabled": false
     },
     "memory": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
       "enabled": true,
       "environment": {
         "MEMORY_FILE_PATH": "$HOME/memory.json"

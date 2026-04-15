@@ -454,3 +454,7 @@ export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"
 
 # opencode
 export PATH=/Users/joshlane/.opencode/bin:$PATH
+
+# bun
+export PATH="/Users/joshlane/.bun/bin:$PATH"
+export EIA_API_KEY="RG9rvJaxloaCe9hhYh2wfVfVMk2Ler75agl3sXDd"

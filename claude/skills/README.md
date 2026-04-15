@@ -94,15 +94,10 @@ This directory contains the following skills. Each skill is in its own directory
 
 ### Specialized Tools
 
-- **lancer/** - LanceDB vector database
-  - Vector database operations and queries
-  - Embedding management
-  - Search and retrieval patterns
-
-- **pkm/** - Personal Knowledge Management
-  - Note-taking and knowledge organization
-  - Linking and cross-referencing
-  - Search and retrieval workflows
+- **qmd/** - Workspace Search
+  - Hybrid BM25+vector search with Qwen3-4B reranking
+  - Searches across 5,000+ indexed workspace documents
+  - MCP tools: query, get, multi_get, status
 
 ## Usage in CLAUDE.md
 

@@ -54,7 +54,14 @@ Exit codes: `0` = clean, `1` = violations/warnings, `2` = CLI error.
 | `output/raw-markdown` | warn | yes | `display(Markdown(...))` without `#\| output: asis` → literal text in PDF |
 | `output/double-title` | warn | yes | YAML `title:` + `# H1` in body → two titles in PDF |
 | `output/float-without-needspace` | warn | yes | `fig-pos: H` without `\needspace{Xin}` → figure separates from prose |
+| `output/needspace-value-mismatch` | warn | yes | `\needspace` value < `fig-height + 2.5` → insufficient for heading + prose + figure as atomic unit; increase further for multi-paragraph sections |
+| `output/needspace-placed-after-prose` | warn | no | `\needspace` between prose and figure (must be before the prose) |
+| `figure/synthetic-data` | error | no | Fallback/sample data in figure module — `_load_sample_data`, `render({})`, or any function/var prefixed `sample*`, `fallback*`, `mock*`, `dummy*`, `fake*`, `synthetic*` |
 | `figure/wrong-devloop-path` | warn | yes | `/tmp/` in `__main__` block → inspection against wrong file |
+| `figure/no-style-import` | warn | yes | `fig_*.py` missing `from epq import style` → uncontrolled colors and rcParams |
+| `figure/palette-hex` | warn | yes | Workspace palette hex literal in `fig_*.py` — use `style.CONST` instead |
+| `figure/nonpalette-color` | warn | no | Hex literal in `fig_*.py` not in any recognized palette (presentation or marketing) |
+| `figure/named-color` | warn | no | Matplotlib named color (`"blue"`, `"steelblue"`, `"b"`, etc.) in a `color=` kwarg — use palette constants |
 | `engine/xelatex` | info | yes | Using xelatex (canonical: lualatex) |
 | `cache/no-ttl` | info | no | `_read_cache` without TTL check |
 | `cache/dot-dir` | info | yes | Cache in `.cache/` instead of `data/cache/` |
@@ -104,7 +111,7 @@ _quarto.yml           ← jupyter: {name} set by epq scaffold
 latex-header.tex      ← local copy (no external path dependency)
 figures/
   __init__.py
-  fig_NAME.py         ← one module per figure; render(data: dict) contract
+  fig_NAME.py         ← one module per figure; render(data: Data) contract
 data/cache/
   *.json              ← BQ cache files (gitignored, 24h TTL)
 {name}_files/
@@ -173,9 +180,16 @@ def extract_foo() -> dict:
 
 ## Figure Module Contract
 
+Each figure module defines a typed `Data` dataclass — the explicit contract between
+the QMD data-load cell and the figure. The QMD constructs the dataclass; `render()`
+receives it. No untyped dict access inside `render()`. No fallback/sample data.
+
 ```python
 # figures/fig_revenue.py
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
 from epq import style, fmt
 
 LABEL = "fig-revenue"    # matches QMD #| label: fig-revenue
@@ -184,38 +198,52 @@ FIG_HEIGHT = 4.0
 FIG_CAP = "Insight-focused caption — not a data description."
 
 
-def render(data: dict) -> None:
+@dataclass
+class Data:
+    """Typed input for render(). Lists every field this figure consumes."""
+    records: list[dict[str, Any]]
+    total: float  # example scalar — add only what render() needs
+
+
+def render(data: Data) -> None:
     """Called from QMD stub. Do NOT call plt.show/savefig/close here."""
     import matplotlib.pyplot as plt
+    import pandas as pd
     style.apply_style()
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    # ... all viz code using data dict ...
+    df = pd.DataFrame(data.records)
+    # ... all viz code ...
     plt.tight_layout()
-
-
-def _load_sample_data(data: dict):
-    """Synthetic fallback for dev loop (no BQ needed)."""
-    import pandas as pd
-    if "my_query" in data:
-        return pd.DataFrame(data["my_query"])
-    return pd.DataFrame({"month": ["Q1", "Q2"], "revenue": [1.2e6, 1.4e6]})
 
 
 if __name__ == "__main__":
     """Dev loop — saves to {project}_files/figure-pdf/{LABEL}-output-1.png."""
     import matplotlib; matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from epq import cache
+
+    cached = cache.read_cache("my_query")
+    if cached is None:
+        raise RuntimeError("Cache miss — run scripts/data/extract_my_query.py first")
+
+    fig_data = Data(
+        records=cached["records"],
+        total=cached["scalars"]["total"],
+    )
 
     _project_root = Path(__file__).parent.parent
     _out_dir = _project_root / f"{_project_root.name}_files" / "figure-pdf"
     _out_dir.mkdir(parents=True, exist_ok=True)
     out = str(_out_dir / f"{LABEL}-output-1.png")
 
-    render({})                                         # synthetic data fallback
+    render(fig_data)
     plt.savefig(out, dpi=150, bbox_inches="tight")    # savefig BEFORE close
     print(f"Saved {out}")
     plt.close("all")
 ```
+
+**Never:** `_load_sample_data`, `render({})`, hardcoded rows, or any synthetic fallback.
+The dev loop requires real cached data. Cache miss → `RuntimeError`. Always.
 
 ## QMD Figure Stub Cell
 
@@ -228,32 +256,62 @@ if __name__ == "__main__":
 #| out-width: 100%
 import sys; sys.path.insert(0, str(Path("."))) if "." not in sys.path else None
 from figures import fig_revenue
-fig_revenue.render(data)
+fig_revenue.render(fig_revenue.Data(records=data["my_query"], total=total_revenue))
 ```
 
 ## Whitespace Control
 
-**Always `\needspace` before figure cells with `fig-pos: H`.**
+**Core principle: section + intro prose + figure = atomic unit.**
 
-Formula: `\needspace{(FIG_HEIGHT + 0.5)in}`
+If the unit cannot fit on the current page, it must start clean at the top of the next
+page. Never let heading, prose, and figure split across pages. A clean page break is
+always better than any partial fit.
+
+**`\needspace` must appear BEFORE the section heading** — not after it, and not between
+prose and figure.
 
 ```markdown
-The following chart shows revenue by stream. Note the divergence after Q3.
+\needspace{8.0in}
 
-\needspace{4.5in}
+## Section Heading
+
+One or two sentences of intro prose that set up the figure.
 
 ```{python}
-#| label: fig-revenue
+#| label: fig-name
+#| fig-height: 4.0
 #| fig-pos: "H"
 ...
 ```
 ```
 
-| FIG_HEIGHT | needspace value |
+**Sizing formula — be generous:**
+
+`\needspace{(FIG_HEIGHT + prose_lines + heading)in}`
+
+- Heading alone: ~0.5in
+- Each prose paragraph: ~0.75–1.0in
+- Figure: `FIG_HEIGHT`in
+- Caption + buffer: ~0.5in
+
+**When in doubt, go larger.** The cost of a slightly early page break is a small white
+gap at the bottom of the previous page. The cost of going too small is prose and figures
+on separate pages — which is always worse.
+
+**Practical reference:**
+
+| Section contents | needspace value |
 |---|---|
-| 3.0in | `\needspace{3.5in}` |
-| 4.0in | `\needspace{4.5in}` |
-| 5.0in | `\needspace{5.5in}` |
+| Heading + 1 prose para + 3.0in fig | `\needspace{5.5in}` |
+| Heading + 1 prose para + 4.0in fig | `\needspace{6.5in}` |
+| Heading + 2 prose paras + 4.0in fig | `\needspace{8.0in}` |
+| Heading + 3+ prose paras + 4.0in fig | `\needspace{9.0in}` |
+| Heading + 1 prose para + 5.0in fig | `\needspace{7.5in}` |
+
+**`\needspace` placement rules (all three required):**
+1. BEFORE the section heading — not after it
+2. BEFORE the intro prose — not between prose and figure
+3. Value large enough to cover heading + all prose + figure + caption
 
 **Never `\newpage` before a figure** — use `\needspace` (soft break, not forced).
 **Never `\clearpage`** — always forces a break and flushes all floats.
@@ -308,7 +366,10 @@ Read the PNG with the Read tool. **Never use Playwright/HTML preview** — it sc
 HTML chrome, not the raw figure.
 
 **Visual checklist (inspect PNG, not code):**
-- [ ] `\needspace` present before this figure's stub cell
+- [ ] `\needspace` present BEFORE the section heading (not after it, not between prose and figure)
+- [ ] `\needspace` value ≥ fig-height + 2.5 (use more for multi-paragraph sections)
+- [ ] Section heading is on the same page as its figure (check PDF, not source)
+- [ ] No prose paragraph appears alone on a page without its figure
 - [ ] `suptitle(y=1.0)` not `y=1.02` (clips in PDF)
 - [ ] All text readable without zooming (>1.5× zoom = illegible at print scale)
 - [ ] 3-panel figures: `FIG_HEIGHT ≥ 4.0`
@@ -339,18 +400,26 @@ else:
     data["name"] = cached["records"]
 ```
 
-**Figure module** — handle `None` so the document renders while Conform is running:
+**Figure module** — handle `None` so the document renders while Conform is running.
+The `Data` dataclass uses `Optional` for fields that may be pending:
 
 ```python
-def render(data: dict) -> None:
+from dataclasses import dataclass
+from typing import Any, Optional
+
+@dataclass
+class Data:
+    records: Optional[list[dict[str, Any]]]  # None while Conform job is running
+
+def render(data: Data) -> None:
     import matplotlib.pyplot as plt
+    import pandas as pd
     style.apply_style()
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
-    records = data.get("name")
-    if records is None:
+    if data.records is None:
         style.render_pending_placeholder(ax, "Conform extraction in progress")
         return
-    df = pd.DataFrame(records)
+    df = pd.DataFrame(data.records)
     # ... viz ...
     plt.tight_layout()
 ```
@@ -392,17 +461,37 @@ wait-conform name:
     done
 ```
 
+## Report vs. Internal Document
+
+EPQ documents are **reports**, not instruction manuals. Never include operational content in the QMD body:
+
+- No "Refreshing This Document" sections with shell commands
+- No cache invalidation instructions
+- No internal file paths (`areas/staffing/staffing.duckdb`)
+- No `just`, `rm`, or CLI snippets aimed at the document author
+
+Operational instructions belong in the project `README.md` or `.claude/CLAUDE.md`, not in content that will be read by stakeholders or published to Google Drive.
+
+**Test:** Would you hand this page to a VP of Sales? If not, it does not belong in the QMD.
+
 ## Common Mistakes
 
 | Mistake | Fix |
 |---|---|
 | `title: "My Doc"` in YAML | Remove — use `{=latex}` block. YAML title + H1 = two titles |
-| `fig-pos: H` without `\needspace` | `\needspace{(FIG_HEIGHT+0.5)in}` before the cell |
+| `fig-pos: H` without `\needspace` | `\needspace{Xin}` BEFORE the section heading; X = FIG_HEIGHT + prose + heading (see Whitespace Control) |
+| `\needspace` after the heading | Move BEFORE the heading — heading at page bottom means the entire section is broken |
+| `\needspace` between prose and figure | Move before the heading; reserve for heading + all prose + figure together |
+| `\needspace` value too small | Use generous values — a slightly early page break beats any prose/figure separation |
 | `\newpage` before figure | `\needspace{Xin}` — soft break, not forced |
 | `display(Markdown(...))` | Add `#\| output: asis` or markdown renders as literal text |
 | `/tmp/fig-NAME.png` in `__main__` | Write to `{project}_files/figure-pdf/{LABEL}-output-1.png` |
+| `fig_*.py` without `from epq import style` | Add import + `style.apply_style()` in `render()` — or run `epq fix --apply --rule figure/no-style-import` |
+| Hardcoded `"#1e3a5f"` etc in `fig_*.py` | Use `style.NAVY` etc — or run `epq fix --apply --rule figure/palette-hex` |
 | `bq.run_bq_query()` + cache, no `on_empty='raise'` | Empty BQ result silently cached → KeyError at render |
-| `plt.savefig()` after `plt.close()` | `render({})` → `savefig()` → `close("all")` |
+| `plt.savefig()` after `plt.close()` | `render(data)` → `savefig()` → `close("all")` |
+| `_load_sample_data`, `render({})`, hardcoded rows | Use real cache — `RuntimeError` on miss |
+| `render(data: dict)` signature | Use typed `@dataclass class Data` — no dict access in render() |
 | Inline `ax.bar()` in QMD | Extract to `figures/fig_*.py` |
 | `suptitle(y=1.02)` | `y=1.0` + `subplots_adjust(top=0.85)` |
 | `pdf-engine: xelatex` | `lualatex` |
@@ -445,5 +534,5 @@ Tools: `epq_audit`, `epq_fix`, `epq_scaffold`, `epq_list_rules`, `epq_check_cach
 - Authoring guide: `~/src/analysis-doc/docs/AGENTS.md`
 - Retrofit guide: `~/src/analysis-doc/docs/RETROFIT.md`
 - Contributor guide: `~/src/analysis-doc/AGENTS.md`
-- Tests: `cd ~/src/analysis-doc && uv run pytest` (281 tests)
+- Tests: `cd ~/src/analysis-doc && uv run pytest` (300 tests)
 - Reinstall: `uv tool install --editable /Users/joshlane/src/analysis-doc`

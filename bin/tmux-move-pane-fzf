@@ -5,7 +5,7 @@ PANE_ID=$(tmux display-message -p "#{pane_id}")
 SESSION_NAME=$(tmux display-message -p "#{session_name}")
 
 # Use fzf to select destination window and move the pane
-DEST_WINDOW=$(tmux list-windows -t "$SESSION_NAME" -F "#{window_index}|#{window_name} #{?window_active,[active],}" | \
+DEST_WINDOW=$({ echo "new|New Window"; tmux list-windows -t "$SESSION_NAME" -F "#{window_index}|#{window_name} #{?window_active,[active],}"; } | \
 fzf --height=100% --reverse \
     --header="Move pane to window" \
     --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
@@ -15,7 +15,12 @@ cut -d'|' -f1 || true)
 
 # Only move if a window was selected
 if [ -n "$DEST_WINDOW" ]; then
-    tmux move-pane -s "$PANE_ID" -t "$SESSION_NAME:$DEST_WINDOW"
+    if [ "$DEST_WINDOW" = "new" ]; then
+        NEW_WIN=$(tmux break-pane -s "$PANE_ID" -P -F "#{window_index}")
+        tmux select-window -t "$SESSION_NAME:$NEW_WIN"
+    else
+        tmux move-pane -s "$PANE_ID" -t "$SESSION_NAME:$DEST_WINDOW"
+    fi
 fi
 
 exit 0

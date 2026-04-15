@@ -34,17 +34,6 @@
         ]
       }
     ],
-    "SubagentStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.files/bin/claude-subagent-pane"
-          }
-        ]
-      }
-    ],
     "WorktreeCreate": [
       {
         "matcher": "",

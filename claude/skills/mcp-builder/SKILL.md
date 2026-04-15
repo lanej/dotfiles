@@ -234,3 +234,42 @@ Load these resources as needed during development:
   - XML format specifications
   - Example questions and answers
   - Running an evaluation with the provided scripts
+
+## Stdio MCP Server Client Patterns
+
+When building a Node.js/TypeScript **client** that connects to stdio MCP servers (e.g., `pkm mcp`, `memory`):
+
+### Spawn Once at Startup
+
+Create the transport once at app startup — not per-request. stdio processes are expensive to spawn:
+
+```typescript
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+const transport = new StdioClientTransport({ command: 'pkm', args: ['mcp'] });
+const client = new Client({ name: 'my-app', version: '1.0' }, { capabilities: {} });
+await client.connect(transport);
+```
+
+### Auto-Respawn
+
+Set `transport.onclose` to clear the cached session so it gets re-created on next access:
+
+```typescript
+transport.onclose = () => sessions.delete(serverName);
+```
+
+### Environment Inheritance
+
+Always spread `process.env` first, then overlay custom env vars. This ensures the child process inherits `PATH` and other critical variables:
+
+```typescript
+new StdioClientTransport({
+  command: 'pkm',
+  args: ['mcp', '--workspace-root', '/path/to/workspace'],
+  env: { ...process.env, ...server.env }  // process.env FIRST
+});
+```
+
+Omitting `process.env` spread causes the child to inherit a bare environment, making `pkm`, `lancer`, and other tools unfindable via `PATH`.

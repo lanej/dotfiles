@@ -54,7 +54,7 @@ Never create analysis project boilerplate manually — always start with `epq sc
 
 ## Session Memory (MCP)
 
-Persistent memory via knowledge graph. **Check memory and PKM before EVERY substantive response.**
+Persistent memory via knowledge graph. **Check memory before EVERY substantive response.**
 
 **Three scopes:**
 - **Global** (`~/memory.json`) — user preferences, tool patterns, cross-project learnings
@@ -67,7 +67,7 @@ Persistent memory via knowledge graph. **Check memory and PKM before EVERY subst
 
 **Auto-remember** when user states preference, corrects you 2+ times, or says "remember this"/"always"/"never". Skip memory check for simple factual questions, direct tool execution, or conversation continuations.
 
-**PKM is a derived index, not the filesystem.** When a user references a specific document by name or path and PKM search returns nothing, check the filesystem (Glob, Read) before concluding the document doesn't exist. The index may be stale.
+**qmd is a derived index, not the filesystem.** When a user references a specific document by name or path and qmd search returns nothing, check the filesystem (Glob, Read) before concluding the document doesn't exist. The index may be stale.
 
 ## Phased Execution System
 
@@ -102,15 +102,15 @@ Do not append revised sections below old ones.
 - **Conciseness**: Say only what's necessary
 - **Epistemic rigor**: State only verifiable facts; cite sources for claims
 
-## Analysis Toolchain (EPQ + PKM)
+## Analysis Toolchain (EPQ + QMD)
 
-For data-driven analysis, use the EPQ + PKM pipeline:
-- **PKM** (`pkm search`) — query prior analyses, documented decisions, domain knowledge before starting new work. Use quality filters: `--facts-only`, `--certainty high`, `--fresh-only`, `--max-age 30`.
-- **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in QMD. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review.
+For data-driven analysis, use the EPQ + QMD pipeline:
+- **QMD** (`mcp__qmd__query`) — query prior analyses, documented decisions, domain knowledge before starting new work. Use lex+vec searches with intent for best recall.
+- **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in Quarto documents. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review.
 - **Looker** (`search_all`, `search_queries`) — discover existing BI queries, explores, dashboards before building new analysis. Get SQL from `search_queries`.
 - **BigQuery** → **DuckDB** — BQ for warehouse queries, DuckDB for local analytics on exported data.
 
-Load `epq` skill for QMD work. Load `pkm` skill for knowledge base operations. Load `looker` skill for BI discovery.
+Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search. Load `looker` skill for BI discovery.
 
 ## Operational Guidelines
 **CRITICAL: Never limit work based on token usage, cost, or computational resources.**
@@ -215,7 +215,7 @@ Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (C
 - **az** - Azure CLI operations
 - **gspace** - Google Workspace via CLI and MCP; auto-loads for Google URLs/file IDs
 - **gcp** - GCP/Vertex AI patterns and SDK quirks; auto-loads for GCP/Vertex work
-- **pkm** - Personal knowledge management with semantic search
+- **qmd** - Workspace search (hybrid BM25+vector, Qwen3-4B reranking over indexed workspace documents)
 
 **Version Control & Project Management:**
 - **git** - Git workflows, GitHub CLI, commit practices
@@ -236,7 +236,7 @@ Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (C
 **Development Tools:**
 - **claude-cli** - Claude CLI session management, MCP servers, plugins
 - **claude-tail** - View Claude Code session logs with filtering
-- **lancer** - LanceDB semantic/vector search; auto-loads for knowledge base/RAG/document search
+- **qmd** - Workspace search; auto-loads when searching workspace knowledge base
 - **methodology** - Consolidated methodology reference (phased execution, figure audit, TDD extended, session reflection, interactive tools)
 - **team-leader** - Decomposes a complex scenario into sub-problems and spawns parallel sub-agents to tackle each; synthesizes results into a unified output
 - **webapp-testing** - Playwright-based web application testing
@@ -271,7 +271,7 @@ Skills should be loaded proactively when specific patterns are detected:
 
 **Data Format Triggers:**
 - **JSON operations** → `jq` | **CSV operations** → `xsv`
-- **JSONL** — PREFERRED for bulk data interchange (DuckDB, streaming, lancer output)
+- **JSONL** — PREFERRED for bulk data interchange (DuckDB, streaming, pipeline output)
 - **SQL analytics / data analysis** (statistics, aggregations, joins, window functions) → `duckdb`
 - **Data extraction** (unstructured → structured, AI parsing) → `conform`; use `conform` for qualitative analysis, then `duckdb` for statistical analysis
 - **Quarto rendering** (static reports, multi-format, scientific docs, .qmd, .ipynb) → `quarto`
@@ -284,9 +284,9 @@ Skills should be loaded proactively when specific patterns are detected:
 - **Slack** (messages, channels, search, workspace history, MCP tools) → `slack`
 
 **Search & Knowledge Base Triggers:**
-- **Semantic/vector search, RAG, document ingestion** → `lancer`
+- **Workspace search, prior analyses, context retrieval** → `qmd`
 - **Semantic discovery** (open-ended) → use `Task` tool with `explore` subagent
-- **Multi-source analysis, prior knowledge lookup** → `pkm` (search first, then analyze)
+- **Multi-source analysis, prior knowledge lookup** → `qmd` (search first, then analyze)
 - **Problem definition** ("problem definition", "problem statement", "discovery artifact", "define a problem", "document a problem before Intake") → `problem-definition`
 
 ## Agent Auto-Loading Guidelines

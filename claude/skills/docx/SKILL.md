@@ -153,6 +153,86 @@ Example - Changing "30 days" to "60 days" in a sentence:
    - Check that no unintended changes were introduced
 
 
+## Creating Documents for Google Drive / Google Docs Publishing
+
+When the target is a Google Doc (published via `gspace drive_files_upsert` with `convert_to_google_format: true`), use **python-docx** instead of docx-js. python-docx produces cleaner conversion output for Google's import pipeline.
+
+**Critical:** python-docx's default paragraph spacing is zero, which renders as wall-of-text in Google Docs. Always set spacing explicitly.
+
+### Canonical pattern
+
+```python
+uv run --with python-docx python3 - <<'EOF'
+from docx import Document
+from docx.shared import Pt
+
+doc = Document()
+
+# Set document-level defaults — always do this first
+style = doc.styles['Normal']
+style.paragraph_format.space_after = Pt(8)
+style.paragraph_format.line_spacing = Pt(14)
+
+def h1(doc, text):
+    p = doc.add_heading(text, level=1)
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(10)
+
+def h2(doc, text):
+    p = doc.add_heading(text, level=2)
+    p.paragraph_format.space_before = Pt(16)
+    p.paragraph_format.space_after = Pt(6)
+
+def body(doc, text):
+    p = doc.add_paragraph(text)
+    p.paragraph_format.space_after = Pt(8)
+
+def bullet(doc, text):
+    p = doc.add_paragraph(text, style='List Bullet')
+    p.paragraph_format.space_after = Pt(4)
+
+def bold_field(doc, label, rest):
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(6)
+    p.add_run(label).bold = True
+    p.add_run(rest)
+
+# Build document...
+h1(doc, "Title")
+h2(doc, "Section")
+body(doc, "Paragraph text.")
+bold_field(doc, "Term", " — definition text.")
+bullet(doc, "List item")
+
+doc.save("/tmp/output.docx")
+EOF
+```
+
+Then publish:
+```python
+# Upload and convert to Google Doc in-place (preserves file ID on re-runs)
+gspace drive_files_upsert \
+  local_path=/tmp/output.docx \
+  name="Document Title" \
+  parent_folder_id=FOLDER_ID \
+  convert_to_google_format=true
+```
+
+### Spacing reference
+
+| Element | space_before | space_after | line_spacing |
+|---------|-------------|-------------|--------------|
+| H1 | 0 | Pt(10) | (heading default) |
+| H2 | Pt(16) | Pt(6) | (heading default) |
+| Body paragraph | (default) | Pt(8) | Pt(14) |
+| Bold field entry | (default) | Pt(6) | Pt(14) |
+| Bullet | (default) | Pt(4) | Pt(14) |
+
+### Notes
+
+- Do **not** use file links in the References section — Google Docs won't resolve local `.md` paths. Use plain text names only, or full URLs if the remote documents have them.
+- `drive_files_upsert` matches by filename within the folder. Use a stable name to update in-place rather than creating duplicates.
+
 ## Converting Documents to Images
 
 To visually analyze Word documents, convert them to images using a two-step process:
