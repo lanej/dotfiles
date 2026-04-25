@@ -1,1 +1,0 @@
-/Users/joshlane/src/operating-model/skills/problem-definition.md
