@@ -18,3 +18,6 @@ data/snapshots/
 # MCP Memory (personal context, not shared)
 memory.json
 .memory.json
+
+# Socrates session files (ephemeral, not shared)
+.socrates/
