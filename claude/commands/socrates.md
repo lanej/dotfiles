@@ -104,6 +104,7 @@ replaces the pointer. Add `.socrates/` to `.gitignore` if not already present.
 - One topic per question.
 - Ask "why" to surface unstated assumptions.
 - Ask "what happens when X fails" to probe robustness.
+- Ask "What happens if we don't do this?" for do-nothing risk — never embed a timeframe in the question; let the user name the consequence and the timeline.
 - Ask "who decides" to surface missing stakeholders.
 - Ask "what is explicitly excluded" to sharpen scope.
 - Challenge vague answers — either sharpen them or record as open question.

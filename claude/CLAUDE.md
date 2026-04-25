@@ -102,6 +102,33 @@ Do not append revised sections below old ones.
 - **Conciseness**: Say only what's necessary
 - **Epistemic rigor**: State only verifiable facts; cite sources for claims
 
+## Knowledge Base
+
+**`~/workspace` is the canonical knowledge base** — prior analyses, domain decisions, headcount, strategy, customer context, BQ data dictionary, and more. Query it first, regardless of current working directory.
+
+**First-look protocol:** Before answering domain questions or starting substantive work, search the workspace with `mcp__qmd__query`. This applies in any working directory (`~/src/*`, `~/workspace/*`, anywhere).
+
+**Always pass `rerank: false`** when calling `mcp__qmd__query`. The Qwen3 reranker scores markdown table rows near zero (no natural language context), which silently drops roster entries, schema tables, and other structured data from results. BM25+vector RRF scores are reliable without reranking.
+
+## Research Protocol
+
+When gathering context, work through sources in this order — stop when you have sufficient confidence. Fastest and cheapest first; live/external last.
+
+1. **Auto-memory** — preferences, project state, key decisions already in context
+2. **Workspace KB** (`mcp__qmd__query`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context
+3. **Looker** (`mcp__looker__search_all`) — existing BI queries, dashboards, SQL for metrics; score ≥0.65 = strong match
+4. **Codebase** (Glob/Grep/Read) — source of truth for implementation details
+5. **BigQuery** (`mcp__bigquery__query`) — live warehouse data; always `dry_run` first
+6. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
+7. **Web** (`mcp__codex__codex`) — external docs, standards, anything not internal
+
+**What lives where:**
+- Past analyses, decisions, strategy, headcount → qmd
+- Metrics, dashboards, existing SQL → Looker → BQ
+- Code behavior, implementation → codebase tools
+- Project/ticket status → Jira
+- External standards, current events → Codex
+
 ## Analysis Toolchain (EPQ + QMD)
 
 For data-driven analysis, use the EPQ + QMD pipeline:
@@ -180,7 +207,9 @@ See `methodology` skill for extended TDD reference (flaky tests, dependency inve
 - **JavaScript/Node.js**: See `javascript` skill for library gotchas (Zustand/antd-style conflict, Playwright+antd, Bun:sqlite, SSE streaming patterns).
 - **GCP/Vertex AI**: Use `@anthropic-ai/vertex-sdk` (not `@google-cloud/vertexai`). See `gcp` skill for model ID format, `anthropic_beta` body placement, and `thinking` parameter quirks.
 - **Looker**: Use Looker MCP tools for BI discovery. `search_all` for broad queries, `search_queries` for SQL, `search_explores` for domain discovery, `search_dashboards` for dashboards. Score ≥0.65 = strong match. See `looker` skill for full tool reference.
+- **Jira Goals**: Use `jira goals list --format jsonl` (CLI, GraphQL API) — NOT MCP tools. `issuetype = Goal` in JQL returns zero results; Goals are not Jira issue types. Goal links on Epics (`customfield_10025`) cannot be set via API — UI only; every API attempt clears the field.
 - **gspace gmail send**: Non-ASCII characters in email subjects (em dashes `—`, smart quotes) get mangled. Use only ASCII in subject lines: hyphens (`-`) not em dashes, straight quotes.
+- **gspace Google Docs workflow**: `docs_sync` supports a `style_sheet` field in the gspace frontmatter — stylesheets persist across edits automatically. Correct workflow: (1) `docs_create` to bootstrap with `style_sheet` param; (2) add `style_sheet: /path/to/stylesheet.docx` to the `gspace:` frontmatter block; (3) all future edits use `docs_sync` which reads stylesheet from frontmatter. Always `docs_download` before `docs_sync` to get a fresh revision token. Never delete and recreate a doc to reapply a stylesheet — that's unnecessary.
 - **Slack users list**: `slack users list --format json` emits `[INFO]`/`[WARN]` rate-limit lines to stdout before the JSON — filter them before parsing.
 - **matplotlib + LaTeX (Quarto PDF)**: `$` in f-strings gets consumed by LaTeX — escape with `\\$` (e.g., `f"\\${val:.1f}M"`). `fmt.millions_formatter()` expects raw values, not pre-divided. LaTeX math syntax in QMD prose (`$\geq$`, `$\leq$`, etc.) also renders dollar signs literally via epq/lualatex — use plain English ("at least", "less than") or Unicode glyphs (`≥`, `≤`) instead.
 
@@ -311,7 +340,7 @@ Agents should be invoked proactively for specialized tasks:
 
 **Team Leader Agent:**
 - **Trigger phrases**: "use the team leader", "run the full pipeline", "discover and plan first", "lead this", "@team-leader"
-- **Action**: Invoke `team-leader` agent type via Task tool with the task description as arguments
+- **Action**: Invoke the `team-leader` **Skill** (NOT a Task tool subagent_type — `subagent_type: "team-leader"` does not exist and will fail). Decompose into parallel sub-problems and spawn multiple `general-purpose` agents via the Agent tool, then synthesize results.
 - **Use when**: Task is large/complex enough that a wrong approach is expensive (architectural changes, multi-service refactors, large features)
 
 ## Session Reflection
