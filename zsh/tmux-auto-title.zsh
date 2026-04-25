@@ -69,6 +69,15 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
+		# If Claude named this window, re-apply its title and leave it alone
+		local claude_name
+		claude_name=$(tmux show-options -w -v @claude_named 2>/dev/null)
+		if [[ -n "$claude_name" ]]; then
+			tmux rename-window -t ":$window_index" "$claude_name" 2>/dev/null
+			_release_lock "$lock_dir"
+			return
+		fi
+
 		# Get directory name
 		local dir_name=$(basename "$PWD")
 
@@ -114,8 +123,14 @@ if [[ -n "$TMUX" ]]; then
 		} &!
 	}
 
+	# Clear Claude's title lock when the user runs a new command
+	function _tmux_clear_claude_named() {
+		tmux set-option -w -u @claude_named 2>/dev/null
+	}
+
 	# Add to precmd hooks - use debounced version
 	autoload -Uz add-zsh-hook
 	add-zsh-hook chpwd _tmux_auto_window_title_debounced
 	add-zsh-hook precmd _tmux_auto_window_title_debounced
+	add-zsh-hook preexec _tmux_clear_claude_named
 fi
