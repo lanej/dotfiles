@@ -25,6 +25,28 @@ jira projects update PROJ --name "New Name"
 jira projects delete PROJ
 ```
 
+## Boards
+
+```bash
+jira boards list [--max-results N] [--type scrum|kanban]
+jira boards get <id>
+jira boards get-config <id>
+jira boards backlog <id> [--max-results N]
+jira boards issues <id> [--max-results N]
+jira boards epics <id> [--max-results N]
+```
+
+## Sprints
+
+```bash
+jira sprints list --board <id> [--state future|active|closed] [--max-results N]
+jira sprints get <id>
+jira sprints create --board <id> --name "Sprint 1" [--goal "..."] [--start-date ISO] [--end-date ISO]
+jira sprints update <id> [--name "..."] [--goal "..."] [--start-date ISO] [--end-date ISO]
+jira sprints start <id>
+jira sprints complete <id>
+```
+
 ## Comments
 
 ```bash
@@ -44,6 +66,18 @@ jira attachments upload PROJ-123 --file document.pdf
 jira attachments download <attachment-id> --output file.pdf
 jira attachments delete <attachment-id>
 ```
+
+## Remote Links
+
+Prefer remote links over attachments for documents — they render as clickable chips with application icons.
+
+```bash
+jira remotelinks list PROJ-123
+jira remotelinks add PROJ-123 <url> [title]
+jira remotelinks delete PROJ-123 <linkId>
+```
+
+Google Drive URLs (Docs, Sheets, Folders) are auto-detected and get the correct icon.
 
 ## Worklogs
 
@@ -73,6 +107,16 @@ jira components get <id>
 jira components create --project PROJ --name "Backend"
 jira components update <id> --name "Frontend"
 jira components delete <id>
+```
+
+## Fields
+
+```bash
+jira fields list
+jira fields contexts <fieldId>
+jira fields options <fieldId> <contextId>
+jira fields options-add <fieldId> <contextId> --value "Option A" [--value "Option B"]
+jira fields options-update <fieldId> <contextId> --id <optionId> --value "New Value" [--disabled]
 ```
 
 ## Filters / Dashboards
@@ -136,6 +180,33 @@ jira plans duplicate <id>
 jira plans teams-list <id>
 ```
 
+## Screens
+
+```bash
+jira screens list [--max-results N]
+jira screens get <id>
+jira screens create --name "Screen Name" [--description "..."]
+jira screens update <id> [--name "..."] [--description "..."]
+jira screens delete <id>
+jira screens tabs <id>
+jira screens fields <id> <tabId>
+```
+
+## Automations
+
+```bash
+jira automations list
+jira automations get <uuid>
+jira automations enable <uuid>
+jira automations disable <uuid>
+```
+
+## Audit Log
+
+```bash
+jira auditlog list [--from ISO] [--to ISO] [--category <category>] [--max-results N]
+```
+
 ## Users
 
 ```bash
@@ -146,11 +217,26 @@ jira users create --email user@example.com --display-name "Name"
 jira users delete <account-id>
 ```
 
+## Goals
+
+Goals use the Atlassian GraphQL API — not available via MCP.
+
+```bash
+jira goals list [--format json]
+jira goals get <goalARI>
+jira goals list-types [--format json]
+jira goals create --name "..." --goal-type-id <ARI> --target-date YYYY-MM-DD [--confidence QUARTER] [--parent-goal-id <ARI>]
+jira goals edit <goalARI> --name "New name"
+jira goals add-metric <goalARI> --name "Metric" --type NUMERIC --start 0 --value 0 --target 100
+jira goals archive <goalARI>
+```
+
 ## Raw API
 
 ```bash
 jira api GET /rest/api/3/issue/PROJ-123
-jira api POST /rest/api/3/issue --body '{"fields":{"summary":"Test"}}'
+jira api POST /rest/api/3/search/jql --data '{"jql":"project=PROJ","fields":["summary"]}'
+jira api PUT /rest/api/3/issue/PROJ-123 --data '{"fields":{"summary":"New title"}}'
 ```
 
 ## MCP Server

@@ -1,6 +1,6 @@
 ---
 name: jira
-description: Use jira CLI and MCP tools (mcp__jira__*) for Jira Cloud operations — issue management, project queries, JQL search, transitions, worklogs, plans, and more. Use when working with Jira issues, projects, sprints, filters, dashboards, or any Jira Cloud resource via CLI or MCP.
+description: Use jira CLI and MCP tools (mcp__jira__*) for Jira Cloud operations — issue management, project queries, JQL search, transitions, worklogs, plans, and more. Use when working with Jira issues, projects, sprints, boards, filters, dashboards, or any Jira Cloud resource via CLI or MCP.
 ---
 # Jira CLI & MCP Server
 
@@ -27,9 +27,9 @@ JSONL is preferred for scripting — pipe directly to `jq`.
 
 All resources follow: `jira <resource> <verb> [args] [flags]`
 
-Resources: `issues`, `projects`, `comments`, `attachments`, `worklogs`, `versions`, `components`, `filters`, `dashboards`, `issuetypes`, `statuses`, `issuelinks`, `remotelinks`, `development`, `plans`, `users`
+Resources: `issues`, `projects`, `comments`, `attachments`, `worklogs`, `versions`, `components`, `filters`, `dashboards`, `issuetypes`, `statuses`, `issuelinks`, `remotelinks`, `development`, `plans`, `users`, `boards`, `sprints`, `fields`, `goals`, `screens`, `automations`, `auditlog`
 
-For full command reference: see `references/commands.md`.
+Read `references/commands.md` whenever you need exact flags or syntax for any resource.
 
 ## Critical Gotchas
 
@@ -57,30 +57,15 @@ jira development pull-requests $ISSUE_ID --application-type github
 
 **MCP returns minimal fields by default** (~70% token reduction). Use `fields` param to request additional data.
 
+**Goals field cannot be set via REST API.** `customfield_10025` returns `204 No Content` but the field is never updated — `/editmeta` exposes `allowedValues: []`. Known bug: [JRACLOUD-97866](https://jira.atlassian.com/browse/JRACLOUD-97866). Link issues to goals through the Jira UI only.
+
 ## Linking Documents to Issues
 
 **Always use remote links, never file attachments.** File attachments do not render correctly in Jira — they appear as raw downloads. Remote links render as clickable chips with the correct application icon.
 
-```bash
-# Link a Google Doc (renders with Docs icon)
-jira remotelinks add PROJ-123 "https://docs.google.com/document/d/..." "Doc Title"
+Google Drive URLs are auto-detected: Docs, Sheets, and Folders each get the correct icon. Non-Google URLs are linked as generic web links.
 
-# Link a Google Sheet (renders with Sheets icon)
-jira remotelinks add PROJ-123 "https://docs.google.com/spreadsheets/d/..." "Sheet Title"
-
-# Link a Google Drive folder
-jira remotelinks add PROJ-123 "https://drive.google.com/drive/folders/..." "Folder Title"
-
-# List remote links on an issue
-jira remotelinks list PROJ-123
-
-# Delete a remote link
-jira remotelinks delete PROJ-123 <linkId>
-```
-
-Google Drive URLs are auto-detected: Docs, Sheets, and Folders each get the correct icon and application type. Non-Google URLs are linked as generic web links.
-
-**Never use `jira attachments upload` for documents** — use `jira remotelinks add` instead.
+**Never use `jira attachments upload` for documents** — use `jira remotelinks add` instead. See `references/commands.md` for syntax.
 
 ## Common Patterns
 
@@ -97,6 +82,12 @@ jira issues search "issuelinktype is not EMPTY" --fields issuelinks --format jso
   | jq -r '.key as $k | .fields.issuelinks[]? |
       if .outwardIssue then "\($k),\(.type.outward),\(.outwardIssue.key)"
       else "\(.inwardIssue.key),\(.type.inward),\($k)" end'
+
+# List active sprint issues on a board
+BOARD_ID=$(jira boards list --format jsonl | jq -r 'select(.name=="My Board") | .id')
+jira sprints list --board $BOARD_ID --state active --format jsonl \
+  | jq -r '.id' \
+  | xargs -I{} jira issues search "sprint = {}" --format jsonl
 ```
 
 ## JQL Quick Reference
@@ -111,45 +102,11 @@ issuelinktype is not EMPTY AND project = PROJ
 
 ## Goals (jira goals CLI — not available via MCP)
 
-Goals use a separate `jira goals` command group backed by the Atlassian GraphQL API.
+Goals use a separate `jira goals` command group backed by the Atlassian GraphQL API — not Jira REST. Goal type ARIs are workspace-specific; run `jira goals list-types` to get them.
 
-```bash
-jira goals list --format json                          # list all goals
-jira goals get <goalARI>                               # get goal details
-jira goals list-types --format json                    # show available goal types (workspace-specific ARIs)
+**Hierarchy:** Two levels only: `GOAL` → `SUCCESS_MEASURE`. A `SUCCESS_MEASURE` cannot have children.
 
-# Create a top-level Goal
-jira goals create --name "My Goal" \
-  --goal-type-id <GOAL-type-ARI> \
-  --target-date 2026-12-31 --confidence QUARTER
-
-# Create a child Success Measure under a parent Goal
-jira goals create --name "My Success Measure" \
-  --goal-type-id <SUCCESS_MEASURE-type-ARI> \
-  --parent-goal-id <parent-goal-ARI> \
-  --target-date 2026-09-30
-
-# Add a metric to a goal
-jira goals add-metric <goalARI> \
-  --name "Metric name" --type NUMERIC \
-  --start 0 --value 0 --target 100
-
-# Rename a goal
-jira goals edit <goalARI> --name "New name"
-
-# Archive a goal
-jira goals archive <goalARI>
-```
-
-**Hierarchy rules:**
-- Two levels only: `GOAL` → `SUCCESS_MEASURE`
-- `SUCCESS_MEASURE` cannot have children
-- Goal type ARIs are workspace-specific — use `jira goals list-types` to get them
-
-**Linking goals to issues:**
-- The Goals field on issues is `customfield_10025`
-- Cannot be set via the Jira REST API — every attempt clears the field
-- Link issues to goals through the **Jira UI** only
+See `references/commands.md` for full goal command syntax.
 
 ## Raw API Access
 
