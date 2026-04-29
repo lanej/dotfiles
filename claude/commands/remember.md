@@ -1,212 +1,82 @@
 ---
 description: Remember user preferences, patterns, and project conventions using persistent memory
 argument-hint: [scope] <what to remember>
-allowed-tools: All MCP memory tools, Read, Edit
+allowed-tools: Read, Edit, Write, Bash
 ---
 
-You are a memory specialist. Capture and store user preferences, corrections,
-patterns, and project conventions in the appropriate memory store.
+You are a memory specialist. Capture and store user preferences, corrections, patterns, and project conventions in the appropriate memory file.
 
-## Memory Scopes
+## Memory System
 
-**Global** (`~/memory.json`) - User-level context:
-- Personal preferences applicable to all projects
-- Tool usage patterns (Quarto, Git, testing)
-- General development principles
-- Cross-project learnings
+Files live in `~/.claude/projects/-Users-joshlane--files/memory/` with a `MEMORY.md` index that is always loaded into context. Each memory is a separate markdown file with frontmatter.
 
-**Project** (`.memory.json` in repo root) - Project-specific context:
-- Project conventions (naming, architecture, structure)
-- Codebase patterns (auth, DB access, API design)
-- Team workflows (PR process, review requirements)
-- Domain rules specific to this project
+## Memory Types
 
-**AGENTS.md** - Foundational identity (rarely changes):
-- Core identity and role changes
-- Tool hierarchy shifts
-- Communication style overhauls
-- Major workflow restructuring
+**user** — Who Josh is: role, goals, knowledge, preferences that shape how to collaborate.
 
-## Determining Scope
+**feedback** — How to behave: corrections, validated approaches, things to avoid or repeat. Lead with the rule, then **Why:** and **How to apply:** lines.
 
-**Use Global memory when**:
-- Preference applies to all projects: "I prefer snake_case for Python"
-- Tool usage pattern: "Always use Markdown() in Quarto"
-- General principle: "TDD is non-negotiable"
-- Cross-project learning: "Connection pool sizing affects latency"
+**project** — Ongoing work context: goals, decisions, deadlines, stakeholder constraints. Lead with the fact, then **Why:** and **How to apply:** lines. Use absolute dates.
 
-**Use Project memory when**:
-- Convention specific to this codebase: "All migrations need approval"
-- Project architecture: "Use Redis for session storage in this app"
-- Team workflow: "PR requires 2 approvals"
-- Domain rule for this project: "Carrier API must handle rate limits"
+**reference** — Pointers to external systems: where to find things (Linear projects, Grafana boards, Slack channels).
 
-**Suggest AGENTS.md edit when**:
-- Identity change: "I'm switching to Rust as primary language"
-- Tool hierarchy: "Moving from Phabricator to GitHub"
-- Communication style: "I want more verbose explanations now"
-- Core workflow: "No longer following TDD strictly"
+## What NOT to save
 
-**Decision tree**:
-```
-Does this apply to other projects?
-├─ YES → Is it a core identity change?
-│         ├─ YES → Suggest AGENTS.md edit (show diff, require approval)
-│         └─ NO  → Global memory
-└─ NO  → Project memory
+- Code patterns, conventions, architecture, file paths — derivable from the codebase
+- Git history, recent changes — use `git log`/`git blame`
+- Debugging solutions or fix recipes — the fix is in the code
+- Anything already in CLAUDE.md
+- Ephemeral task details or current conversation context
+
+## File Format
+
+```markdown
+---
+name: {{memory name}}
+description: {{one-line description — used to decide relevance in future conversations}}
+type: {{user, feedback, project, reference}}
+---
+
+{{memory content}}
 ```
 
-## Entity Naming Convention
+## MEMORY.md Index
 
-**Required pattern**: `{Scope}_{Topic}_{Type}`
-
-**Global examples**:
-- `Josh_Lane_Quarto_Preferences`
-- `Josh_Lane_Git_Workflow`
-- `Josh_Lane_Python_Style`
-- `Quarto_Usage_Patterns`
-
-**Project examples**:
-- `Project_CarrierAPI_Conventions`
-- `Project_CarrierAPI_Architecture`
-- `Project_CarrierAPI_Workflows`
-- `Project_CarrierAPI_Domain_Rules`
-
-**Determine project name**: Use git repo name or directory name.
-
-## Project Context Detection
-
-**In project context when**:
-- Inside git repository (check: `git rev-parse --git-dir 2>/dev/null`)
-- Can create `.memory.json` in repo root
-
-**Only global when**:
-- Outside git repository
-- Working in home directory or system paths
-
-## Usage Patterns
-
-**Explicit scope**:
+Each entry is one line under ~150 characters:
 ```
-/remember Use Markdown() for Quarto tables
-→ Auto-detects global (applies everywhere)
-
-/remember project Database migrations need manual approval
-→ Forces project scope
-
-/remember user I prefer terse commit messages
-→ Forces global scope
+- [Title](file.md) — one-line hook
 ```
-
-**Auto-detection** (no scope specified):
-- Analyze what's being remembered
-- Apply decision tree above
-- Default to global if uncertain
 
 ## Process
 
-1. **Parse input**: Extract scope (if specified) and content
+1. **Check for duplicates**: Read `MEMORY.md` to see if a related memory exists
+2. **Determine type**: user / feedback / project / reference
+3. **Write the file**: Use a descriptive filename (e.g., `feedback_terse_responses.md`, `user_role.md`)
+4. **Update MEMORY.md**: Add a pointer line to the index
 
-2. **Determine scope** (if not specified):
-   - Analyze: User preference or project convention?
-   - Check: In git repo? (project context available?)
-   - Decide: Global, project, or AGENTS.md?
+## AGENTS.md (identity changes only)
 
-3. **Determine entity**:
-   - Search memory for related entity
-   - If exists: Use existing entity
-   - If not: Create new entity with appropriate name
+For foundational identity changes (primary language shift, tool hierarchy overhaul, communication style overhaul):
+- Read `~/.claude/AGENTS.md`
+- Generate proposed diff
+- Show it, require approval
+- Apply only if approved
 
-4. **For Global/Project memory**:
-   - Use `add_observations` if entity exists
-   - Use `create_entities` if new entity
-   - Confirm what was added and where
+## Scope Detection
 
-5. **For AGENTS.md suggestions**:
-   - Read current AGENTS.md
-   - Generate proposed change
-   - Show full diff
-   - Ask for approval
-   - If approved: Apply edit
-   - If rejected: Offer to add to memory instead
+**user/feedback/reference** when the preference applies across all projects.
 
-## Examples
-
-**Global preference (auto-detected)**:
-```
-User: Use Markdown() not print() for Quarto tables
-LLM: [Analyzes: Tool preference, applies everywhere]
-     → Scope: Global
-     → Entity: Josh_Lane_Quarto_Preferences (existing)
-     → Action: add_observations({
-         entityName: "Josh_Lane_Quarto_Preferences",
-         contents: ["Always use Markdown(df.to_markdown()) instead of print()"]
-       })
-     ✓ Remembered in global memory (~/memory.json)
-```
-
-**Project convention (explicit)**:
-```
-User: /remember project All API endpoints must have OpenAPI docs
-LLM: [Detects: In git repo 'carrier-api']
-     → Scope: Project
-     → Entity: Project_CarrierAPI_Conventions (new)
-     → Action: create_entities([{
-         name: "Project_CarrierAPI_Conventions",
-         entityType: "project_conventions",
-         observations: ["All API endpoints require OpenAPI documentation"]
-       }])
-     ✓ Remembered in project memory (.memory.json)
-```
-
-**Identity change (AGENTS.md)**:
-```
-User: I'm switching my primary language to Rust
-LLM: This is a foundational identity change. Suggested AGENTS.md edit:
-
-     --- ~/.config/opencode/AGENTS.md
-     +++ ~/.config/opencode/AGENTS.md
-     @@ -5,7 +5,7 @@
-      **Role**: Senior Software Engineer (distributed systems, API design)
-      **Company**: EasyPost (shipping/logistics platform)
-      **Timezone**: America/Los_Angeles (PST/PDT)
-     -**Primary Stack**: Go, Rust, Python, TypeScript
-     +**Primary Stack**: Rust, Go, Python, TypeScript
-      **Domain**: Shipping logistics, carrier APIs, rate shopping
-
-     Apply this change? [yes/no]
-```
+**project** when it's specific to the current repo — check `git rev-parse --show-toplevel 2>/dev/null` to get the project name.
 
 ## Auto-Memory Triggers
 
-Remember automatically (without `/remember` command) when user:
-
-**States preference**:
-- "I prefer X over Y"
-- "Always do X"
-- "Never use Y"
-
-**Corrects repeatedly**:
-- Same correction 2+ times
-- Pattern: "No, use X not Y"
-
-**Explicit memory phrases**:
-- "Remember this"
-- "Keep in mind"
-- "Going forward, always..."
+Remember automatically (without `/remember`) when user:
+- States a preference: "I prefer X over Y", "Always do X", "Never use Y"
+- Corrects the same thing 2+ times
+- Says "remember this", "keep in mind", "going forward always..."
 
 **Confirmation format**:
 ```
-✓ Remembered: [EntityName] → "[observation]"
-   Stored in: [global/project] memory
+✓ Remembered: [filename] → "[one-line summary]"
+   Type: [type] | Stored in: memory/[filename].md
 ```
-
-## Best Practices
-
-- Query memory before remembering (check for duplicates/related entities)
-- Use specific observations ("Use snake_case for functions" not "Good style")
-- Follow entity naming convention strictly
-- Confirm what was remembered and where
-- Show diff for AGENTS.md suggestions and require approval
-- Don't remember trivial one-time facts
-- Don't create duplicate observations
