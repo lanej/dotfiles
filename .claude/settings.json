@@ -82,10 +82,12 @@
     "lua-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "playwright@claude-plugins-official": false,
-    "claude-md-management@claude-plugins-official": true
+    "claude-md-management@claude-plugins-official": true,
+    "claude-mem@thedotmack": true
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "enableAllProjectMcpServers": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
   },
