@@ -52,20 +52,22 @@ Load the `epq` skill for ANY work involving `.qmd` files, `figures/fig_*.py` mod
 analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, or PDF render issues.
 Never create analysis project boilerplate manually — always start with `epq scaffold`.
 
-## Session Memory (MCP)
+## Session Memory
 
-Persistent memory via knowledge graph. **Check memory before EVERY substantive response.**
+Two complementary systems — use both.
 
-**Three scopes:**
-- **Global** (`~/memory.json`) — user preferences, tool patterns, cross-project learnings
-- **Project** (`.memory.json` in repo root) — project conventions, codebase patterns, team workflows
-- **AGENTS.md** — foundational identity (rarely changes, requires approval)
+**Auto-memory (file-based)**: Claude Code persists preferences, feedback, and project decisions to `.claude/projects/…/memory/` as markdown files with a `MEMORY.md` index. The index is always loaded into context. Write new memories when the user states a preference, corrects you 2+ times, or says "remember this"/"always"/"never". Skip for simple factual questions, direct tool execution, or conversation continuations.
 
-**Scope rule:** Cross-project → global memory. Single-project → project memory. Identity change → AGENTS.md edit (show diff, get approval).
+**Claude-mem (MCP plugin)**: Automatically captures session observations — discoveries, decisions, features built. Use for cross-session retrieval when starting work on an established project or when the user references prior sessions.
 
-**Entity naming:** `{Scope}_{Topic}_{Type}` (e.g., `Josh_Lane_Quarto_Preferences`, `Project_Looker_Architecture`)
+Tools: `mcp__plugin_claude-mem_mcp-search__search`, `timeline`, `get_observations`
 
-**Auto-remember** when user states preference, corrects you 2+ times, or says "remember this"/"always"/"never". Skip memory check for simple factual questions, direct tool execution, or conversation continuations.
+3-layer retrieval workflow (always follow — never fetch full details without filtering first):
+1. `search(query)` → index with observation IDs (~50–100 tokens/result)
+2. `timeline(anchor=ID)` → context around interesting results
+3. `get_observations([IDs])` → full details for filtered IDs only
+
+**Sub-agent gap**: The startup hook (session timeline) fires only for the primary agent. Sub-agents start cold — they have the tools but not the pre-loaded context. When briefing sub-agents on established projects, include explicit domain context and claude-mem search framing.
 
 **qmd is a derived index, not the filesystem.** When a user references a specific document by name or path and qmd search returns nothing, check the filesystem (Glob, Read) before concluding the document doesn't exist. The index may be stale.
 
@@ -181,10 +183,12 @@ Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search
 1. **Run existing tests first** — establish baseline before changes
 2. **Write tests first** — for new features, write failing tests defining expected behavior; for bug fixes, write regression test reproducing the bug
 3. **Run tests after changes** — never commit without running full test suite
+4. **Design the feedback loop first** — before writing code, identify what "verifiably done" looks like: which test, which lint pass, which diff confirms the output. On new test files or new harnesses, break the implementation after writing the failing test to confirm the test can actually go red before trusting any green result.
 
-See `methodology` skill for extended TDD reference (flaky tests, dependency inversion, acceptance testing, pytest framework preferences).
+See `methodology` skill for extended TDD reference (feedback loop design + harness verification, flaky tests, dependency inversion, acceptance testing, pytest framework preferences).
 
 ## Markdown File Standards (Editing Codebase Files)
+- **Line wrapping**: Do NOT hard-wrap markdown lines at 80 columns. Write prose and list items as single long lines. Let the viewer wrap.
 - **Paragraph spacing**: Single line breaks between paragraphs (no extra blank lines)
 - **Section separators**: Use headers, NOT `---` horizontal rules (except YAML frontmatter)
 - **List formatting**: No blank lines between list items (except for multi-paragraph items)

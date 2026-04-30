@@ -160,6 +160,20 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 
 ## TDD Extended Reference
 
+### Feedback Loop Design
+
+**Design the feedback loop before writing code.** Before the first line of implementation, identify what "verifiably done" looks like: which test suite runs, which lint/type-check passes, which grep/diff confirms the output is correct. The verification path is part of the design, not an afterthought.
+
+**Harness verification (false-red / false-green discipline).** When writing tests in new test files, new packages, or any setup where harness wiring is uncertain:
+1. Write the failing test
+2. Break the implementation in a targeted way (wrong return value, removed function body, inverted condition) to confirm the test catches that specific failure
+3. Restore the implementation and confirm green
+4. Only then proceed — a green result you haven't confirmed can turn red is a false green and tells you nothing
+
+This applies to new harnesses, not to every test in an established suite.
+
+**Return only when self-validated.** Do not surface results, ask for human confirmation, or request feedback on something you can verify yourself. Run the full suite, confirm the diff, check the output — then return with evidence of completion, not a question.
+
 ### Flaky Tests
 **Flaky tests are serious bugs — fix immediately.**
 - NEVER ignore, skip, or work around flaky tests
