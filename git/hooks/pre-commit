@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Global pre-commit hook: detect unexpanded shell variables in staged file paths.
+# A path component like $HOME or $USER as a literal directory name is always a bug.
+
+set -euo pipefail
+
+bad_paths=$(git diff --cached --name-only 2>/dev/null | grep -E '(^|/)\$[A-Z_][A-Z0-9_]*(\/|$)' || true)
+
+if [ -n "$bad_paths" ]; then
+    echo "error: staged paths contain unexpanded shell variable:" >&2
+    echo "$bad_paths" | sed 's/^/  /' >&2
+    echo "" >&2
+    echo "Fix: git rm -r --cached -- '\$HOME' (or the relevant variable)" >&2
+    exit 1
+fi
+
+exit 0
