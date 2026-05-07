@@ -52,6 +52,8 @@ Load the `epq` skill for ANY work involving `.qmd` files, `figures/fig_*.py` mod
 analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, or PDF render issues.
 Never create analysis project boilerplate manually — always start with `epq scaffold`.
 
+**Domain corrections**: When the user corrects content in their own domain, surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), accept the correction, and update the source material. Do not defend the written version.
+
 ## Session Memory
 
 Two complementary systems — use both.
@@ -80,6 +82,22 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Validate before reporting.** Before surfacing results, run safe verification steps: syntax checks, idempotent make targets, grep/diff to confirm output, unit tests. Do not ask "does this look right?" when you can check yourself. Only report back once you have evidence the change works, or a specific failure you cannot resolve.
 
+## Orchestration by Default
+
+**Assess before executing.** On every non-trivial task, decide: execute directly or orchestrate.
+
+**Orchestrate when the task is:**
+- **Long**: touches 5+ files, or expected to span multiple execution rounds
+- **Complex**: 2+ independent parallelizable concerns, ambiguous requirements, or crosses service/system boundaries
+- **Exploratory**: requires multi-step research, involves unknown territory, or needs 2+ searches to answer (the `/delegate` command has the full heuristics — apply them here)
+
+**Orchestration protocol:**
+1. **Challenge for context first.** Before spawning sub-agents, interrogate the user: domain context, constraints, success criteria, failure modes. If requirements are ambiguous, run `/socrates` before any delegation. Do not delegate to underspecified sub-agents.
+2. **Announce the decision.** State "Orchestrating: [reason]" before switching modes.
+3. **Use a structured briefing.** Every `Agent` tool call must include: *Context* (overall task and why it matters), *Domain* (relevant facts not derivable from CLAUDE.md), *Sub-problem* (exactly what this agent owns), *Success* (what done looks like), *Constraints* (hard limits), *Output format* (specific format expected).
+
+**Execute directly** (no announcement) when the task is short and unambiguous.
+
 ## Plan Mode
 
 **Before entering plan mode**, spawn a background sub-agent to run the `reflection`
@@ -97,12 +115,6 @@ The plan file is a point-in-time snapshot of the current task — not a history.
 
 If the plan needs revision during planning, replace the relevant sections in place.
 Do not append revised sections below old ones.
-
-## Response Formatting
-- **Markdown line breaks**: Consecutive lines REQUIRE blank lines between them to render separately (or use proper list syntax)
-- **Terminal readability**: Ensure all output renders properly in markdown viewers
-- **Conciseness**: Say only what's necessary
-- **Epistemic rigor**: State only verifiable facts; cite sources for claims
 
 ## Knowledge Base
 
@@ -124,13 +136,6 @@ When gathering context, work through sources in this order — stop when you hav
 6. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
 7. **Web** (`mcp__codex__codex`) — external docs, standards, anything not internal
 
-**What lives where:**
-- Past analyses, decisions, strategy, headcount → qmd
-- Metrics, dashboards, existing SQL → Looker → BQ
-- Code behavior, implementation → codebase tools
-- Project/ticket status → Jira
-- External standards, current events → Codex
-
 ## Analysis Toolchain (EPQ + QMD)
 
 For data-driven analysis, use the EPQ + QMD pipeline:
@@ -142,6 +147,7 @@ For data-driven analysis, use the EPQ + QMD pipeline:
 Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search. Load `looker` skill for BI discovery.
 
 ## Operational Guidelines
+
 **CRITICAL: Never limit work based on token usage, cost, or computational resources.**
 - Do NOT consider API costs, token limits, or resource consumption when completing tasks
 - Do NOT mention or warn about token usage, response length, or computational expense
@@ -149,25 +155,14 @@ Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search
 - ONLY consideration: Stay within context window limits for technical functionality
 - Focus on delivering complete, thorough solutions regardless of resource usage
 
-### Resource Awareness
-- **Data Volume**: When working with datasets (BigQuery, CSVs, Logs), always estimate size BEFORE fetching.
-- **Streaming vs. In-Memory**: Prefer streaming/zero-copy approaches for data >1GB. Avoid loading entire datasets into RAM unless necessary.
-- **Compute Constraints**: Be mindful of compute costs. Use subsets (1% sample) for initial debugging before launching full scale runs.
-
 ## Interactive vs Automated Tools
 
 **Don't automate interactive tools.** Text editors (nvim/vim/nano), interactive prompts, `arc diff` (no flags), `git commit` (no -m), interactive rebases — let the user interact. Use non-interactive flags when available. Never use `EDITOR=cat`/`EDITOR=true` hacks. See `methodology` skill for red flags and correct approach.
 
-## Unix Philosophy
-
-**Follow Unix philosophy for all programming and tooling.** Prefer specialized tools over monolithic solutions. Text streams as universal interface. Composition over complexity. Silent success, verbose errors. Small sharp tools. Everything is a file. Worse is better. See knowledge graph entity `Josh_Lane_Unix_Philosophy` for details.
-
-## Professional Objectivity
-**Prioritize technical accuracy and truth over validation.** Challenge wrong assumptions. Point out errors directly. Investigate to find truth, not confirm beliefs. AVOID sycophantic language. Apply rigorous standards equally — question everything that needs questioning.
-
-**When the user corrects content in their own domain:** Surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), then accept the correction and update the source material. Do not defend the written version. The written version exists to be corrected.
+**`gh pr checkout` is not worktree-safe — never use it in sub-agent briefings.** It operates against the main git directory regardless of CWD, switching the main working directory's branch and overwriting files there. When a sub-agent needs to work on a PR branch (e.g., to fix review issues), instruct it to use `git fetch origin <branch> && git checkout -b fix/<name> origin/<branch>` inside the worktree instead.
 
 ## GitHub Interaction Policy
+
 **CRITICAL: Always get explicit approval before creating or modifying GitHub content.**
 - NEVER create pull requests without explicit user approval
 - NEVER create issues without explicit user approval
@@ -188,13 +183,21 @@ Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search
 See `methodology` skill for extended TDD reference (feedback loop design + harness verification, flaky tests, dependency inversion, acceptance testing, pytest framework preferences).
 
 ## Markdown File Standards (Editing Codebase Files)
+
 - **Line wrapping**: Do NOT hard-wrap markdown lines at 80 columns. Write prose and list items as single long lines. Let the viewer wrap.
-- **Paragraph spacing**: Single line breaks between paragraphs (no extra blank lines)
-- **Section separators**: Use headers, NOT `---` horizontal rules (except YAML frontmatter)
-- **List formatting**: No blank lines between list items (except for multi-paragraph items)
-- **Headers**: Do NOT number headers - use clean text (e.g., `## The Problem` not `## 2. The Problem`)
+
+### Document Editing Rule
+
+Before finalizing any edit, identify every claim, section, or statement in the document that depends on or relates to what you changed. Address all of them in the same edit. Never make a locally coherent change that creates global inconsistency.
+
+If you cannot resolve all dependencies in one pass, say so before editing.
+
+### Citations in Written Artifacts
+
+In any written artifact — memos, reports, analyses, proposals, strategy docs, comms — cite sources for claims that are quantitative, comparative, describe external behavior or market conditions, or could be challenged if communicated outside the company. Citations must be remote references (URLs) so they are followable by any reader the document is shared with. Internal-only references (Confluence pages, internal dashboards) do not satisfy this when external communication risk exists. When external risk is even modest, err toward over-citing with public or publicly-accessible links. Apply to EPQ analyses, 6-pagers, org announcements, anything that might be forwarded or published. Unsourced or un-linkable claims in externally-facing artifacts are a trust and accuracy liability.
 
 ## Tool Preferences
+
 - **Web search / research**: Use Codex (`mcp__codex__codex`) for all web searches, domain research, and external information gathering. AVOID `WebSearch` and `WebFetch` unless Codex is unavailable.
 - **Git**: Use git-commit-message-writer agent for all commits, NO AI attribution in commits (enforced by global commit-msg hook)
 - **GitHub PRs**: Use pull-request-writer agent for PR titles and descriptions, NO AI attribution
@@ -213,160 +216,13 @@ See `methodology` skill for extended TDD reference (feedback loop design + harne
 - **Looker**: Use Looker MCP tools for BI discovery. `search_all` for broad queries, `search_queries` for SQL, `search_explores` for domain discovery, `search_dashboards` for dashboards. Score ≥0.65 = strong match. See `looker` skill for full tool reference.
 - **Jira Goals**: Use `jira goals list --format jsonl` (CLI, GraphQL API) — NOT MCP tools. `issuetype = Goal` in JQL returns zero results; Goals are not Jira issue types. Goal links on Epics (`customfield_10025`) cannot be set via API — UI only; every API attempt clears the field.
 - **gspace gmail send**: Non-ASCII characters in email subjects (em dashes `—`, smart quotes) get mangled. Use only ASCII in subject lines: hyphens (`-`) not em dashes, straight quotes.
-- **gspace Google Docs workflow**: `docs_sync` supports a `style_sheet` field in the gspace frontmatter — stylesheets persist across edits automatically. Correct workflow: (1) `docs_create` to bootstrap with `style_sheet` param; (2) add `style_sheet: /path/to/stylesheet.docx` to the `gspace:` frontmatter block; (3) all future edits use `docs_sync` which reads stylesheet from frontmatter. Always `docs_download` before `docs_sync` to get a fresh revision token. Never delete and recreate a doc to reapply a stylesheet — that's unnecessary.
+- **gspace Google Docs workflow**: `docs_sync` supports a `style_sheet` field in the gspace frontmatter — stylesheets persist across edits automatically. Correct workflow: (1) `docs_create` to bootstrap with `style_sheet` param; (2) add `style_sheet: /path/to/stylesheet.docx` to the `gspace:` frontmatter block; (3) all future edits use `docs_sync` which reads stylesheet from frontmatter. Always `docs_download` before `docs_sync` to get a fresh revision token. Never delete and recreate a doc to reapply a stylesheet — that's unnecessary. After editing a local file with `gspace:` frontmatter, offer to run `docs_sync` before closing the task — the doc is live and the user may expect the edit to propagate.
 - **Slack users list**: `slack users list --format json` emits `[INFO]`/`[WARN]` rate-limit lines to stdout before the JSON — filter them before parsing.
 - **matplotlib + LaTeX (Quarto PDF)**: `$` in f-strings gets consumed by LaTeX — escape with `\\$` (e.g., `f"\\${val:.1f}M"`). `fmt.millions_formatter()` expects raw values, not pre-divided. LaTeX math syntax in QMD prose (`$\geq$`, `$\leq$`, etc.) also renders dollar signs literally via epq/lualatex — use plain English ("at least", "less than") or Unicode glyphs (`≥`, `≤`) instead.
-
-**Tool Selection Hierarchy** (applies when writing code/scripts — not to Claude Code's own tool selection, where Grep/Read/Edit always take precedence over Bash+shell):
-1. Built-in shell utilities (grep, sed, awk, sort, uniq, cut) for simple text operations
-2. Specialized CLI tools (jq, xsv, xlsx, rg, fd) for specific data formats
-3. Scripting languages (bash, Python with uv) for logic and glue code
-4. Full programs only when simpler tools cannot achieve the goal
-
-## Available Skills
-
-Use the `skill` tool to load detailed guidance. Skills at `~/.claude/skills/` (Claude Code) or `~/.config/opencode/skills/` (OpenCode).
-
-**Core Development:**
-- **python** - uv-based development, package management, virtual environments
-- **rust** - Cargo workflows, testing, clippy, build optimization
-- **go** - Go development with gotestsum
-- **javascript** - Node.js/JS library gotchas; auto-loads for Node.js/TypeScript/Playwright
-- **ruby** - RSpec patterns and EasyPost mock adapter testing; auto-loads for Ruby/Rails
-- **just** - Task automation with Justfiles
-
-**Data & CLI Tools:**
-- **jq** - JSON processing, filtering, transformations
-- **xsv** - Fast CSV data manipulation
-- **xlsx** - Excel file operations (viewing, editing, conversion)
-- **duckdb** - SQL analytics on local files; auto-loads for data analysis/statistics/aggregations
-- **bigquery** - Google BigQuery CLI operations and queries
-- **conform** - AI-powered data extraction/transformation; auto-loads for structured data extraction
-- **looker** - Semantic search over EasyPost Looker BI (queries, explores, dashboards); auto-loads for Looker/BI discovery questions
-
-**Cloud & Infrastructure:**
-- **az** - Azure CLI operations
-- **gspace** - Google Workspace via CLI and MCP; auto-loads for Google URLs/file IDs
-- **gcp** - GCP/Vertex AI patterns and SDK quirks; auto-loads for GCP/Vertex work
-- **qmd** - Workspace search (hybrid BM25+vector, Qwen3-4B reranking over indexed workspace documents)
-
-**Version Control & Project Management:**
-- **git** - Git workflows, GitHub CLI, commit practices
-- **arc** - Arcanist/Phabricator code review; auto-loads for arc commands/Differential
-- **phab** - Phabricator task management and MCP tools
-- **jira** - Jira CLI and JQL queries
-- **zendesk** - Zendesk CLI and MCP tools for ticket management, search, bulk export, users, orgs, knowledge base
-- **slack** - Slack workspace search, messaging, channel history, MCP tools; auto-loads for Slack tasks
-
-**Document Processing:**
-- **docx** - Word document creation, editing, tracked changes
-- **pptx** - PowerPoint manipulation
-- **pdf** - PDF extraction, creation, merging, form filling
-- **xlsx-python** - Programmatic Excel creation with Python
-- **quarto** - Render computational documents; PREFER markdown output; auto-loads for .qmd/.ipynb rendering
-- **epq** - EasyPost Quarto analysis library (`~/src/analysis-doc`). `epq scaffold`, `epq audit`, `epq fix`, `epq check-cache`. Shared library: `from epq import style, cache, bq, fmt`. Strategy memo/6-pager workflow built in. Auto-loads for QMD projects, `figures/fig_*.py`, PDF render issues.
-
-**Development Tools:**
-- **claude-cli** - Claude CLI session management, MCP servers, plugins
-- **claude-tail** - View Claude Code session logs with filtering
-- **qmd** - Workspace search; auto-loads when searching workspace knowledge base
-- **methodology** - Consolidated methodology reference (phased execution, figure audit, TDD extended, session reflection, interactive tools)
-- **team-leader** - Decomposes a complex scenario into sub-problems and spawns parallel sub-agents to tackle each; synthesizes results into a unified output
-- **webapp-testing** - Playwright-based web application testing
-
-**Creative & Design:**
-- **frontend-design** - Production-grade UI design
-- **canvas-design** - Visual art in PNG/PDF
-- **algorithmic-art** - Generative art with p5.js
-- **web-artifacts-builder** - Complex React/Tailwind artifacts
-- **slack-gif-creator** - Animated GIFs for Slack
-- **brand-guidelines** - Anthropic brand colors/typography
-- **theme-factory** - Styling artifacts with pre-set themes
-
-**Documentation & Communication:**
-- **doc-coauthoring** - Structured documentation workflow
-- **internal-comms** - Internal communication formats
-- **problem-definition** - EasyPost Problem Discovery Artifact guide; interrogator-mode for discovery before Intake; outputs Jira Epic descriptions
-- **skill-creator** - Creating new skills
-- **mcp-builder** - Creating MCP servers
-- **presenterm** - Terminal-based presentations
-
-## Skill Auto-Loading Guidelines
-
-Skills should be loaded proactively when specific patterns are detected:
-
-**URL-Based Triggers:**
-- **Google Workspace URLs** (docs/drive/sheets/slides/mail.google.com) → `gspace`
-- **Google Drive file IDs** → `gspace`
-
-**File Type Triggers:**
-- **.docx** → `docx` | **.pdf** → `pdf` | **.xlsx** → `xlsx` (read) or `xlsx-python` (create) | **.pptx** → `pptx`
-
-**Data Format Triggers:**
-- **JSON operations** → `jq` | **CSV operations** → `xsv`
-- **JSONL** — PREFERRED for bulk data interchange (DuckDB, streaming, pipeline output)
-- **SQL analytics / data analysis** (statistics, aggregations, joins, window functions) → `duckdb`
-- **Data extraction** (unstructured → structured, AI parsing) → `conform`; use `conform` for qualitative analysis, then `duckdb` for statistical analysis
-- **Quarto rendering** (static reports, multi-format, scientific docs, .qmd, .ipynb) → `quarto`
-- **EPQ projects** (.qmd files, `figures/fig_*.py`, PDF render issues, strategy memo/6-pager, QMD scaffold/audit/retrofit) → `epq`
-
-**Platform/Service Triggers:**
-- **Azure** → `az` | **BigQuery** → `bigquery` | **Jira** → `jira` | **GCP/Vertex AI** → `gcp`
-- **Looker / BI discovery** ("what dashboard/explore has X?", Looker questions, finding SQL for a metric) → `looker`
-- **Zendesk** (tickets, support data, ticket export, zendesk CLI/MCP) → `zendesk`
-- **Slack** (messages, channels, search, workspace history, MCP tools) → `slack`
-
-**Search & Knowledge Base Triggers:**
-- **Workspace search, prior analyses, context retrieval** → `qmd`
-- **Semantic discovery** (open-ended) → use `Task` tool with `explore` subagent
-- **Multi-source analysis, prior knowledge lookup** → `qmd` (search first, then analyze)
-- **Problem definition** ("problem definition", "problem statement", "discovery artifact", "define a problem", "document a problem before Intake") → `problem-definition`
-
-## Agent Auto-Loading Guidelines
-
-Agents should be invoked proactively for specialized tasks:
-
-**Git Commit Agent:**
-- **Trigger phrases**: "commit", "create a commit", "git commit", "commit these changes", "commit message"
-- **Action**: Use `git-commit-message-writer` agent to generate Commitizen-compliant commit messages
-- **Process**: Agent analyzes changes, generates properly formatted message following conventional commits format
-- **Critical**: NEVER add AI attribution or "Co-Authored-By: Claude" to commit messages
-
-**Pull Request Agent:**
-- **Trigger phrases**: "create pull request", "create PR", "open a PR", "pull request"
-- **Action**: Use `pull-request-writer` agent to generate PR titles and descriptions
-- **Critical**: NO AI attribution in PR descriptions
-
-**PR Review Agent:**
-- **Trigger phrases**: "review pull request", "review PR", "comment on PR"
-- **Action**: Use `pull-request-commentor` agent for PR comments and reviews
-- **Critical**: NO AI attribution in PR comments
-
-**Team Leader Agent:**
-- **Trigger phrases**: "use the team leader", "run the full pipeline", "discover and plan first", "lead this", "@team-leader"
-- **Action**: Invoke the `team-leader` **Skill** (NOT a Task tool subagent_type — `subagent_type: "team-leader"` does not exist and will fail). Decompose into parallel sub-problems and spawn multiple `general-purpose` agents via the Agent tool, then synthesize results.
-- **Use when**: Task is large/complex enough that a wrong approach is expensive (architectural changes, multi-service refactors, large features)
-
-## Session Reflection
-
-`/reflection` — interactive CLAUDE.md improvement suggestions. `/reflection-harder` — comprehensive analysis with tmux notification. See `methodology` skill for implementation details.
-
-## Figure and Visualization Audit
-
-**Render and visually inspect before reporting.** Code-only review is incomplete. See `methodology` skill and `epq` skill (`~/src/analysis-doc/docs/AGENTS.md`) for full protocol, path conventions, and contrast rules.
+- **epq cache empty-result pattern**: A 0-row cache raises `StaleCache` on `read_cache()` at render time, which surfaces as a confusing `KeyError` on a column name. Fix: return the dict directly from the extract function (`write_cache(..., data); return data`) rather than calling `read_cache()` at the end. Run `epq_check_cache` before debugging render KeyErrors.
+- **Quarto gfm output quirks** (when generating markdown for docs_sync): Quarto emits a pandoc title block at the top (title h1 + author + date lines) and wraps figures in `<div>` HTML with non-breaking space (`\xa0`) in "Figure N". A post-render fixup script (`scripts/inject_frontmatter.py`) handles both: strips the title block, converts figure divs to bare `![](path.png)`, and injects YAML frontmatter from the `.qmd` source. When building similar pipelines, budget for this fixup step.
+- **luma_select_requests (BQ VIEW)**: Partition filter required: `postage_label_created_dt >= TIMESTAMP('2025-06-01')`. Cost regret field: `selected_rate_usd` (top-level, not nested). SLA field: `selected_predicted_deliver_by_date`. Join key: `selected_rate_id = selected_rate_public_id`. The VIEW times out in 120s subprocess calls — query via `mcp__bigquery__query` and seed cache manually if extract scripts time out.
 
 ## Development Best Practices
 
-### File Modification Protocol
-- **Read before Edit**: ALWAYS read the target file immediately before editing
-- **Unique Context**: Ensure `oldString` includes enough surrounding lines to be unique
-- **Incremental Changes**: For large refactors, prefer `write` tool or smaller verifiable edits
-
-### Configuration Files
 - **TOML files** (Cargo.toml, pyproject.toml): Place comments on separate lines above config (NOT inline after values)
-
-See `methodology` skill for iterative task tracking, error resolution, and dependency installation gotchas. See project auto memory for SSE streaming debugging notes.
-
-## Project-Specific Testing Patterns
-
-For EasyPost monolith Ruby/Rails testing patterns (mock adapter pattern for rUSERS/rUSPS microservice interactions), see the `ruby` skill.
