@@ -58,7 +58,6 @@ See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/
 ├── zsh/           # Zsh config and plugins
 ├── git/           # Git config and global gitignore
 ├── kitty/         # Kitty terminal config
-├── ghostty/       # Ghostty terminal config (not default; see docs/why-not.md)
 ├── tmux/          # Tmux config
 ├── yabai/         # macOS tiling WM config
 ├── claude/        # Claude commands and agents (selectively versioned)

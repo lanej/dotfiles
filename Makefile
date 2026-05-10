@@ -1,4 +1,4 @@
-.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty ghostty bash
+.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
 DOTFILES := $(shell pwd)
 
@@ -20,7 +20,6 @@ shell:
 	@mkdir -p $(HOME)/.config/btop
 	@ln -fs $(DOTFILES)/btop/btop.conf $(HOME)/.config/btop/btop.conf
 	@mkdir -p $(HOME)/.local/share/z
-	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@mkdir -p $(HOME)/.config/atuin
@@ -118,8 +117,6 @@ kitty:
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
 	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
-ghostty:
-	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
