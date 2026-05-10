@@ -1,5 +1,5 @@
 ---
-description: "Interrogate a task through Socratic dialogue to build a layered specification, then enter plan mode"
+description: "Interrogate a task through Socratic dialogue to produce an execution-ready specification, then enter plan mode"
 argument-hint: ["Task Title" (init) or empty (continue)]
 allowed-tools:
   - Read
@@ -13,12 +13,18 @@ tags:
   - socratic
 ---
 
-# /socrates — Socratic Interrogation to Plan
+# /socrates — Socratic Interrogation to Execution-Ready Plan
 
-Three phases: **Interrogate** → **Reason** → **Plan**.
+Three phases: **Interrogate** → **Validate** → **Plan**.
 
-Interrogate to surface and challenge assumptions. Build a layered reasoning chain where
-each conclusion is grounded by the one below it. Enter plan mode once the chain holds.
+Purpose: convert ambiguous task intent into an execution-ready specification. The Socratic dialogue is the means, not the end. Interrogate until the problem, success criteria, validation strategy, and necessary context are sufficiently clear that an agent can execute the task without optimizing for the wrong outcome.
+
+Optimize for semantic alignment:
+- Avoid **false positives**: apparent clarity that hides a misunderstood, invalid, or under-specified task.
+- Avoid **false negatives**: missed requirements, constraints, risks, or context that should have shaped execution.
+- Strive for **true positives**: the task is understood correctly, bounded explicitly, validated against its intended outcome, and ready for successful execution.
+
+Build a layered reasoning chain where each conclusion is grounded by the one below it. Enter plan mode once the chain holds.
 
 ## Commandments
 
@@ -36,32 +42,37 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 
 **Universal (all tasks):**
 1. **Problem First** — Is the problem defined before any solution is mentioned?
-2. **Clarity** — Is the goal unambiguous? Two people must read it identically.
-3. **Scope** — Is out-of-scope explicitly named? Silence implies inclusion.
-4. **Parsimony** — Minimum viable scope. Every element must justify its existence.
-5. **Success** — Is "done" measurable and verifiable?
-6. **Constraints** — Are time, team, resources, and compliance limits surfaced?
-7. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
-8. **Risk** — Is the riskiest assumption identified? What would invalidate this?
+2. **Interpretation** — Is the current interpretation stated plainly enough that the user can reject it?
+3. **Clarity** — Is the goal unambiguous? Two people must read it identically.
+4. **Scope** — Is out-of-scope explicitly named? Silence implies inclusion.
+5. **Context** — Is the necessary background, environment, history, and domain context available?
+6. **Parsimony** — Minimum viable scope. Every element must justify its existence.
+7. **Success** — Is "done" measurable and verifiable?
+8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive?
+9. **Constraints** — Are time, team, resources, and compliance limits surfaced?
+10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
+11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
+12. **Execution Readiness** — Are inputs, outputs, authority boundaries, and escalation conditions clear?
 
 **Engineering (add when task is engineering):**
-9. **Modularity** — Does this decompose into independent parts with clean interfaces?
-10. **Separation** — Is policy (what) separated from mechanism (how)?
-11. **Robustness** — Are failure modes named? Partial failure has a defined path.
-12. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
-13. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
+13. **Modularity** — Does this decompose into independent parts with clean interfaces?
+14. **Separation** — Is policy (what) separated from mechanism (how)?
+15. **Robustness** — Are failure modes named? Partial failure has a defined path.
+16. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
+17. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
+18. **Regression Protection** — What prevents this task from silently failing again later?
 
 **Research/Analysis (add when task is research or analysis):**
-9. **Falsifiability** — What evidence would prove the hypothesis wrong?
-10. **Reproducibility** — Can another person reach the same conclusion from the same inputs?
-11. **Bias** — What sampling, selection, or confirmation biases are present?
-12. **Causation** — Is correlation being conflated with causation anywhere?
+13. **Falsifiability** — What evidence would prove the hypothesis wrong?
+14. **Reproducibility** — Can another person reach the same conclusion from the same inputs?
+15. **Bias** — What sampling, selection, or confirmation biases are present?
+16. **Causation** — Is correlation being conflated with causation anywhere?
 
 **Writing (add when task is writing):**
-9. **Audience** — Is the reader explicitly defined? Assumed knowledge is stated.
-10. **Argument** — Is there a single clear thesis? Does every section serve it?
-11. **Evidence** — Are claims backed by sources or data, not assertion?
-12. **Action** — Is the desired reader action or decision explicit?
+13. **Audience** — Is the reader explicitly defined? Assumed knowledge is stated.
+14. **Argument** — Is there a single clear thesis? Does every section serve it?
+15. **Evidence** — Are claims backed by sources or data, not assertion?
+16. **Action** — Is the desired reader action or decision explicit?
 
 ## Phase 1 — Interrogation
 
@@ -86,18 +97,51 @@ replaces the pointer. Add `.socrates/` to `.gitignore` if not already present.
 3. Write the filename (e.g. `20260414-101638.md`) to `.socrates/.current`.
 4. Pre-fill every section you can infer from the title and domain. Leave `_[open]_` only
    where genuine ambiguity exists. Do not ask what you can answer yourself.
-5. Score commandments: **covered** / **thin** / **open**.
-6. Ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose
-   a flawed assumption or an under-scoped problem. Challenge, do not confirm.
+5. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
+6. Record the current interpretation of the task in one paragraph.
+7. Ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose
+   a false positive, false negative, flawed assumption, under-scoped problem, or weak validation strategy. Challenge, do not confirm.
 
 ### Continuation (no `$ARGUMENTS`)
 
 1. Read `.socrates/.current` to get the active session filename.
 2. Read `.socrates/FILENAME.md`.
-3. Print a one-line coverage summary per commandment (name + status only).
-4. Prefer closing existing open questions over opening new ones.
-5. Ask 1–3 interrogation questions targeting the highest-risk uncovered commandments.
-6. Update the session file: incorporate answers, resolve closed questions, add new ones.
+3. Print a one-line alignment summary per commandment (name + state only).
+4. Restate the current interpretation before asking more questions when material ambiguity remains.
+5. Prefer closing existing open questions over opening new ones.
+6. Ask 1–3 interrogation questions targeting the highest-risk false-positive, false-negative, or unverifiable-success paths.
+7. Update the session file: incorporate answers, resolve closed questions, add new ones.
+
+### Alignment States
+
+Use these states instead of optimistic coverage labels:
+- **Stable** — likely understood correctly and backed by explicit spec content.
+- **Fragile** — appears understood but depends on assumptions or missing context.
+- **Ambiguous** — multiple plausible interpretations remain.
+- **Contradictory** — goals, constraints, requirements, or success criteria conflict.
+- **Open** — not yet addressed.
+
+Do not mark a commandment **stable** unless the session file contains explicit content supporting it. A fragile item is not a blocker by default, but it must be named so the executor knows where interpretation risk remains.
+
+### Interpretation Check
+
+On each pass, maintain a short interpretation check:
+
+```markdown
+## Current Interpretation
+
+[The task as currently understood, stated in executable terms.]
+
+## Misclassification Risks
+
+### Potential False Positives
+- [What might appear clear but be wrong?]
+
+### Potential False Negatives
+- [What important requirement, constraint, or context might still be missing?]
+```
+
+Use this to validate semantic alignment. The goal is not to ask endless questions; the goal is to eliminate the most dangerous ways the agent could execute the wrong task.
 
 ### Interrogation Principles
 
@@ -107,13 +151,32 @@ replaces the pointer. Add `.socrates/` to `.gitignore` if not already present.
 - Ask "What happens if we don't do this?" for do-nothing risk — never embed a timeframe in the question; let the user name the consequence and the timeline.
 - Ask "who decides" to surface missing stakeholders.
 - Ask "what is explicitly excluded" to sharpen scope.
-- Challenge vague answers — either sharpen them or record as open question.
+- Ask "how would we know this worked?" to expose weak success criteria.
+- Ask "what could appear successful while actually being wrong?" to expose false positives.
+- Ask "what must not break?" to surface regression boundaries.
+- Ask "how would this fail silently?" to identify weak observability.
+- Challenge vague answers — either sharpen them or record as ambiguous, fragile, or open.
+- Ask "what would a successful but wrong execution look like?" to expose false positives.
+- Ask "what would be missing from an apparently good answer?" to expose false negatives.
 - Prefer one question that closes two commandments over two that close one each.
 
-## Phase 2 — Layered Reasoning
+## Phase 2 — Validation and Layered Reasoning
 
-Triggered when all 14 commandments are **covered** and Open Questions is empty or
-contains only acknowledged non-blockers.
+Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and Open Questions is empty or contains only acknowledged non-blockers.
+
+A task is not execution-ready until:
+- success conditions exist
+- there is a defined method to verify them
+- and there is a strategy to detect regressions or silent failure
+
+Before entering plan mode, validate that the current interpretation is execution-ready:
+- The problem statement identifies what is broken or missing.
+- Success criteria define how to recognize a true positive.
+- Validation strategy defines how success is verified.
+- Regression checks define what must continue working after completion.
+- Context is sufficient for an agent to avoid predictable false positives and false negatives.
+- Scope, constraints, and authority boundaries are explicit.
+- Remaining ambiguities are classified as blocking, non-blocking, or intentional.
 
 Synthesize the spec into an explicit reasoning chain. Each layer is derived from the
 one below it. Present this chain before entering plan mode so the grounding is visible
@@ -135,6 +198,17 @@ Layer 4 — Risks
 
 Layer 5 — Success
   [Measurable criteria that confirm Layer 1 is resolved within Layer 3.]
+  False positive guard: [what would look successful but be wrong]
+  False negative guard: [what missing work/context would make the result incomplete]
+
+Layer 6 — Validation
+  Acceptance tests: [how success will be verified]
+  Regression checks: [what must continue working after completion]
+  Failure signals: [what indicates incomplete or incorrect execution]
+  Verification method: [automated | manual | observational | comparative | statistical]
+
+Layer 7 — Execution Readiness
+  [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
 ```
 
 If any layer does not hold up under scrutiny, return to interrogation for that layer
@@ -204,7 +278,47 @@ _[open]_
 
 _[open]_
 
+## Validation
+
+### Acceptance Tests
+
+_[open]_
+
+### Regression Checks
+
+_[open]_
+
+### Failure Signals
+
+_[open]_
+
+### Verification Method
+
+_[open]_
+
 ## Tasks
+
+_[open]_
+
+## Inputs
+
+_[open]_
+
+## Outputs
+
+_[open]_
+
+## Authority Boundaries
+
+### Executor May Decide
+
+_[open]_
+
+### Executor Must Escalate
+
+_[open]_
+
+### Executor Must Not Change
 
 _[open]_
 
@@ -217,6 +331,34 @@ _[open]_
 _[open]_
 
 ## Risks
+
+_[open]_
+
+## Current Interpretation
+
+_[open]_
+
+## Misclassification Risks
+
+### Potential False Positives
+
+_[open]_
+
+### Potential False Negatives
+
+_[open]_
+
+## Ambiguities
+
+### Blocking
+
+_[open]_
+
+### Non-Blocking
+
+_[open]_
+
+### Intentional
 
 _[open]_
 
@@ -233,4 +375,4 @@ _[open]_
 /socrates                                                   # continue until all commandments covered
 ```
 
-Each invocation interrogates, updates the session file, and converges toward plan mode.
+Each invocation interrogates, updates the session file, and converges toward an execution-ready specification before plan mode.
