@@ -9,5 +9,3 @@ yabai -m config window_gap     15
 yabai -m config window_topmost on
 
 yabai -m config window_opacity off
-yabai -m signal --add app='^Ghostty$' event=window_created action='yabai -m space --layout bsp'
-yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m space --layout bsp'

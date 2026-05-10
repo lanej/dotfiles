@@ -1,1 +1,0 @@
-../../claude/commands/think-harder.md

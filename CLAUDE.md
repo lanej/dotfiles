@@ -69,17 +69,27 @@ The pattern is already employed for several commands:
 
 This pattern mirrors the approach used elsewhere in this repository (e.g., experimental scripts in `bin/` that are selectively versioned).
 
-## OpenCode Configuration
+## Tech Radar
 
-`~/.config/opencode/opencode.json` is **generated** by `make opencode` — do not edit it directly.
+Tool and technology decisions are tracked in [`docs/radar.md`](docs/radar.md) using a four-ring model:
 
-The source template is `.opencode/opencode.json`. It uses `$HOME` placeholders that are expanded via `envsubst '$HOME'` at install time (scoped to only `$HOME` to preserve other `$`-prefixed JSON keys like `$schema`). Always edit the template, then run `make opencode` to regenerate.
+| Ring | Meaning |
+|---|---|
+| **Adopt** | In active use; recommended |
+| **Trial** | Being evaluated in real workflows |
+| **Assess** | Worth watching; not yet trialed |
+| **Hold** | Deliberately not adopted; rationale documented |
 
-```
-.opencode/opencode.json          ← EDIT THIS (template with $HOME placeholders)
-~/.config/opencode/opencode.json ← GENERATED (do not edit)
-```
+### When to update the radar
 
-Running `make opencode` will:
-1. Remove the old file/symlink at `~/.config/opencode/opencode.json`
-2. Run `envsubst` to expand `$HOME` and write the result
+- **New tool added to the stack** → move it to **Adopt** (or **Trial** if still evaluating)
+- **Tool being evaluated** → add to **Trial** or **Assess**
+- **Tool rejected** → add to **Hold** with a concise rationale
+- **Trial concludes** → promote to **Adopt** or demote to **Hold**
+- **Adopted tool retired** → move to **Hold** (or remove if fully purged)
+
+### How to update
+
+Edit `docs/radar.md` directly. Each entry lives under its ring heading as a `###` subsection. Cross-link related entries when one tool's fate depends on another (e.g., "Revisit if X resolves issue Y").
+
+Use the `tech-radar` agent to make updates conversationally.

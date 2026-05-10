@@ -14,7 +14,7 @@ Even outside Quarto documents:
 
 ## Phased Execution System
 
-OpenCode agents use continuous phased processing for complex multi-step work.
+Claude agents use continuous phased processing for complex multi-step work.
 
 ### Execution Model
 
@@ -130,12 +130,7 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 - `/reflection` — Analyze session and suggest CLAUDE.md improvements (interactive)
 - `/reflection-harder` — Comprehensive session analysis with learning capture
 
-**Integration:** `/reflection-harder` integrates with tmux status bar:
-1. Signal file: `/tmp/opencode-reflection-ready` created on completion
-2. Status indicator: Tmux shows "Reflection Ready" (magenta on brightblack)
-3. Clear: `rm /tmp/opencode-reflection-ready`
-
-**Implementation:** Command at `~/.files/claude/commands/reflection-harder.md`, status script at `~/.files/bin/opencode-reflection-status`, tmux at `~/.files/rc/tmux.conf` (line 183). File-based signaling, on-demand only, ephemeral.
+**Implementation:** Command at `~/.files/claude/commands/reflection-harder.md`. On-demand only; no tmux status bar integration.
 
 ## Iterative Task Tracking
 

@@ -1,5 +1,5 @@
-.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty ghostty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail opencode quarto
+.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -20,7 +20,6 @@ shell:
 	@mkdir -p $(HOME)/.config/btop
 	@ln -fs $(DOTFILES)/btop/btop.conf $(HOME)/.config/btop/btop.conf
 	@mkdir -p $(HOME)/.local/share/z
-	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@mkdir -p $(HOME)/.config/atuin
@@ -118,8 +117,6 @@ kitty:
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
 	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
-ghostty:
-	@ln -fns $(DOTFILES)/ghostty $(HOME)/.config/ghostty
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
@@ -169,14 +166,6 @@ claude:
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
-opencode: claude
-	@mkdir -p $(HOME)/.config/opencode
-	@rm -f $(HOME)/.config/opencode/opencode.json && envsubst '$$HOME' < $(DOTFILES)/.opencode/opencode.json > $(HOME)/.config/opencode/opencode.json
-	@ln -fns $(DOTFILES)/.opencode/commands $(HOME)/.config/opencode/commands
-	@ln -fns $(DOTFILES)/.opencode/plugins $(HOME)/.config/opencode/plugins
-	@ln -fns $(HOME)/.claude/skills $(HOME)/.config/opencode/skills
-	@ln -fs $(HOME)/.claude/CLAUDE.md $(HOME)/.config/opencode/AGENTS.md
-	@$(DOTFILES)/bin/claude-to-opencode || true
 quarto:
 	@mkdir -p $(HOME)/.config/quarto
 	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles

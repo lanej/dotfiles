@@ -1,1 +1,0 @@
-../../../claude/commands/dotfiles/sync.md

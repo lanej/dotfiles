@@ -440,21 +440,6 @@ fi
 # source /opt/homebrew/share/google-cloud-sdk/path.zsh.inc
 # source /opt/homebrew/share/google-cloud-sdk/completion.zsh.inc
 
-# OpenCode with automatic .mcp.json conversion
-if [[ -f ~/.files/shell/functions/opencode.zsh ]]; then
-    source ~/.files/shell/functions/opencode.zsh
-fi
-
-# OpenCode cache cleanup (remove leaked tmp files on shell startup)
-# DISABLED: Too slow with 166k files (587ms), run manually or via cron instead
-# if [[ -x ~/.files/bin/opencode-cleanup-cache ]]; then
-#     ~/.files/bin/opencode-cleanup-cache
-# fi
 export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"
-
-# opencode
-export PATH=/Users/joshlane/.opencode/bin:$PATH
-
-# bun
 export PATH="/Users/joshlane/.bun/bin:$PATH"
-export EIA_API_KEY="RG9rvJaxloaCe9hhYh2wfVfVMk2Ler75agl3sXDd"
+# EIA_API_KEY is loaded from a non-versioned secrets file (e.g. ~/.env)
