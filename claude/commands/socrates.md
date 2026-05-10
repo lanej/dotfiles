@@ -108,40 +108,106 @@ Quality gates applied to the current specification.
 
 Files live in `.socrates/` within the current working directory.
 
-Session files:
+Each Socrates session lives in a timestamped directory:
+
+```text
+.socrates/YYYYMMDD-HHMMSS/
+```
+
+Session artifacts:
 - `spec.md` — authoritative specification
 - `critique.md` — critique findings
 - `verification.md` — verification results
+- `plan.md` — downstream execution plan
 
 Pointer file:
 - `.socrates/.current`
 
+`.socrates/.current` contains the active session directory name.
+
+Example:
+
+```text
+.socrates/
+├── .current
+├── 20260510-154233/
+│   ├── spec.md
+│   ├── critique.md
+│   ├── verification.md
+│   └── plan.md
+```
+
+Timestamped sessions are intentionally preserved:
+- historical reasoning matters
+- critique evolution matters
+- validation history matters
+- reopening specifications should retain prior state
+
+Do not overwrite older session directories.
+
 ## Initialization (`$ARGUMENTS` is a task title)
 
-1. Generate `.socrates/spec.md`
-2. Set status to `Interrogating`
-3. Classify task type
-4. Pre-fill inferable sections
-5. Score commandment states:
+1. Generate timestamp using:
+
+```bash
+ date +%Y%m%d-%H%M%S
+```
+
+2. Create:
+
+```text
+.socrates/TIMESTAMP/
+```
+
+3. Create:
+
+```text
+.socrates/TIMESTAMP/spec.md
+```
+
+4. Write the timestamp directory name to:
+
+```text
+.socrates/.current
+```
+
+5. Set status to `Interrogating`
+6. Classify task type
+7. Pre-fill inferable sections
+8. Score commandment states:
    - stable
    - fragile
    - ambiguous
    - contradictory
    - open
-6. Generate initial interpretation
-7. Ask 2–3 high-leverage interrogation questions
+9. Generate initial interpretation
+10. Ask 2–3 high-leverage interrogation questions
 
 ## Continuation (no `$ARGUMENTS`)
 
-1. Load `.socrates/spec.md`
-2. If `.socrates/critique.md` exists:
-   - enter `Reconciling`
-   - adjudicate critique findings
-   - revise specification
-   - classify unresolved disagreements
-3. Re-score commandment states
-4. Ask additional questions only where semantic risk remains
-5. Update specification
+1. Read `.socrates/.current`
+2. Resolve active session directory
+3. Load:
+
+```text
+.socrates/TIMESTAMP/spec.md
+```
+
+4. If critique exists:
+
+```text
+.socrates/TIMESTAMP/critique.md
+```
+
+then:
+- enter `Reconciling`
+- adjudicate critique findings
+- revise specification
+- classify unresolved disagreements
+
+5. Re-score commandment states
+6. Ask additional questions only where semantic risk remains
+7. Update specification
 
 ## Alignment States
 
@@ -193,6 +259,8 @@ If:
 then:
 - reopen the specification
 - transition back to `Interrogating` or `Reconciling`
+
+Do not destroy prior validation or critique artifacts when reopening.
 
 ## Interpretation Check
 
