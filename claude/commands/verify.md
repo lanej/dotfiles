@@ -5,7 +5,7 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash
+  - Bash(cat:*)
   - Task
 tags:
   - verification
@@ -38,12 +38,15 @@ A task is only a true positive if:
 ## Inputs
 
 If `$ARGUMENTS` is empty:
-1. Resolve the active Socrates session from `.socrates/.current`
-2. Read the associated specification.
+1. Read `.socrates/.current`.
+2. Treat its contents as the active session directory name.
+3. Read `.socrates/<active-session>/spec.md`.
+4. Write verification output to `.socrates/<active-session>/verification.md`.
 
-Otherwise:
+If `$ARGUMENTS` is provided:
 1. Read the provided artifact or execution output.
-2. Resolve the nearest matching specification if possible.
+2. Resolve the nearest matching Socrates `spec.md` if possible.
+3. Write verification output next to the resolved specification as `verification.md`.
 
 ## Verification Procedure
 
@@ -89,9 +92,17 @@ Classification:
 
 ## Output
 
-Write results to:
+Write results to the current session artifact:
 
-`.socrates/verification.md`
+```text
+.socrates/<active-session>/verification.md
+```
+
+Or, when `$ARGUMENTS` resolved a specific specification:
+
+```text
+verification.md
+```
 
 Structure:
 
