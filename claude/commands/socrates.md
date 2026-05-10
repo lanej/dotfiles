@@ -1,5 +1,5 @@
 ---
-description: "Interrogate a task through Socratic dialogue to produce an execution-ready specification, then enter plan mode"
+description: "Interrogate a task through Socratic dialogue to produce a validated execution-ready specification"
 argument-hint: ["Task Title" (init) or empty (continue)]
 allowed-tools:
   - Read
@@ -9,370 +9,335 @@ allowed-tools:
   - Bash(mkdir:*)
 tags:
   - specification
-  - planning
+  - validation
   - socratic
 ---
 
-# /socrates — Socratic Interrogation to Execution-Ready Plan
+# /socrates — Semantic Alignment and Specification Compilation
 
-Three phases: **Interrogate** → **Validate** → **Plan**.
+Purpose: convert ambiguous task intent into a validated execution-ready specification.
 
-Purpose: convert ambiguous task intent into an execution-ready specification. The Socratic dialogue is the means, not the end. Interrogate until the problem, success criteria, validation strategy, and necessary context are sufficiently clear that an agent can execute the task without optimizing for the wrong outcome.
+The Socratic dialogue is the means, not the end.
 
-Optimize for semantic alignment:
-- Avoid **false positives**: apparent clarity that hides a misunderstood, invalid, or under-specified task.
-- Avoid **false negatives**: missed requirements, constraints, risks, or context that should have shaped execution.
-- Strive for **true positives**: the task is understood correctly, bounded explicitly, validated against its intended outcome, and ready for successful execution.
+This command does NOT:
+- generate implementation plans
+- orchestrate execution
+- enter plan mode automatically
+- mutate requirements during execution
 
-Build a layered reasoning chain where each conclusion is grounded by the one below it. Enter plan mode once the chain holds.
+This command DOES:
+- interrogate ambiguity
+- surface hidden assumptions
+- define success semantics
+- define validation contracts
+- establish execution boundaries
+- reconcile critique findings
+- produce a validated specification artifact
+
+## Lifecycle
+
+Specifications move through explicit states:
+
+```text
+Interrogating
+→ Critiquing
+→ Reconciling
+→ Validated
+→ Planned
+→ Executing
+→ Verified
+```
+
+Planning and execution occur in downstream commands.
+
+## Semantic Alignment Goals
+
+Optimize for:
+- minimizing false positives
+- minimizing false negatives
+- maximizing true positives
+
+Definitions:
+- False positive: execution appears successful while violating actual intent.
+- False negative: critical requirements, constraints, or context were omitted.
+- True positive: the task is understood correctly and validated against explicit success semantics.
 
 ## Commandments
 
-Quality gates applied to the current state of the session file on each pass.
-Use judgment — infer what's obvious, interrogate what's genuinely ambiguous or risky.
-These are not a script; they are a checklist.
+Quality gates applied to the current specification.
 
-**On initialization, classify the task type from the title:**
-- **Engineering** — APIs, systems, infrastructure, data pipelines, code, tooling
-- **Research/Analysis** — competitive analysis, investigations, data studies, experiments
-- **Writing** — docs, memos, proposals, strategy, communications
-- **General** — anything that doesn't clearly fit the above
+### Universal
 
-Apply the universal commandments to all task types. Add the domain-specific set on top.
+1. Problem First
+2. Interpretation
+3. Clarity
+4. Scope
+5. Context
+6. Parsimony
+7. Success
+8. Verification
+9. Constraints
+10. Stakeholders
+11. Risk
+12. Execution Readiness
 
-**Universal (all tasks):**
-1. **Problem First** — Is the problem defined before any solution is mentioned?
-2. **Interpretation** — Is the current interpretation stated plainly enough that the user can reject it?
-3. **Clarity** — Is the goal unambiguous? Two people must read it identically.
-4. **Scope** — Is out-of-scope explicitly named? Silence implies inclusion.
-5. **Context** — Is the necessary background, environment, history, and domain context available?
-6. **Parsimony** — Minimum viable scope. Every element must justify its existence.
-7. **Success** — Is "done" measurable and verifiable?
-8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive?
-9. **Constraints** — Are time, team, resources, and compliance limits surfaced?
-10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
-11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
-12. **Execution Readiness** — Are inputs, outputs, authority boundaries, and escalation conditions clear?
+### Engineering
 
-**Engineering (add when task is engineering):**
-13. **Modularity** — Does this decompose into independent parts with clean interfaces?
-14. **Separation** — Is policy (what) separated from mechanism (how)?
-15. **Robustness** — Are failure modes named? Partial failure has a defined path.
-16. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
-17. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
-18. **Regression Protection** — What prevents this task from silently failing again later?
+13. Modularity
+14. Separation
+15. Robustness
+16. Repair
+17. Least Surprise
+18. Regression Protection
 
-**Research/Analysis (add when task is research or analysis):**
-13. **Falsifiability** — What evidence would prove the hypothesis wrong?
-14. **Reproducibility** — Can another person reach the same conclusion from the same inputs?
-15. **Bias** — What sampling, selection, or confirmation biases are present?
-16. **Causation** — Is correlation being conflated with causation anywhere?
+### Research/Analysis
 
-**Writing (add when task is writing):**
-13. **Audience** — Is the reader explicitly defined? Assumed knowledge is stated.
-14. **Argument** — Is there a single clear thesis? Does every section serve it?
-15. **Evidence** — Are claims backed by sources or data, not assertion?
-16. **Action** — Is the desired reader action or decision explicit?
+13. Falsifiability
+14. Reproducibility
+15. Bias
+16. Causation
 
-## Phase 1 — Interrogation
+### Writing
 
-### Plan Mode
+13. Audience
+14. Argument
+15. Evidence
+16. Action
 
-This command manages its own phased execution. If plan mode is active at the start of
-Phase 1 or Phase 2, exit it immediately using `ExitPlanMode` before proceeding — plan
-mode is only entered intentionally at Phase 3. Do not let plan mode block session file
-writes or interrogation.
+## Session File Location
 
-### Session File Location
+Files live in `.socrates/` within the current working directory.
 
-Files live in `.socrates/` within the current working directory. Named by timestamp at
-creation: `YYYYMMDD-HHMMSS.md`. A pointer file at `.socrates/.current` contains the
-filename of the active session. One active session per project — starting a new one
-replaces the pointer. Add `.socrates/` to `.gitignore` if not already present.
+Session files:
+- `spec.md` — authoritative specification
+- `critique.md` — critique findings
+- `verification.md` — verification results
 
-### Initialization (`$ARGUMENTS` is a task title)
+Pointer file:
+- `.socrates/.current`
 
-1. Generate a timestamp (use Bash: `date +%Y%m%d-%H%M%S`).
-2. Create `.socrates/TIMESTAMP.md` with the title and scaffold below.
-3. Write the filename (e.g. `20260414-101638.md`) to `.socrates/.current`.
-4. Pre-fill every section you can infer from the title and domain. Leave `_[open]_` only
-   where genuine ambiguity exists. Do not ask what you can answer yourself.
-5. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
-6. Record the current interpretation of the task in one paragraph.
-7. Ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose
-   a false positive, false negative, flawed assumption, under-scoped problem, or weak validation strategy. Challenge, do not confirm.
+## Initialization (`$ARGUMENTS` is a task title)
 
-### Continuation (no `$ARGUMENTS`)
+1. Generate `.socrates/spec.md`
+2. Set status to `Interrogating`
+3. Classify task type
+4. Pre-fill inferable sections
+5. Score commandment states:
+   - stable
+   - fragile
+   - ambiguous
+   - contradictory
+   - open
+6. Generate initial interpretation
+7. Ask 2–3 high-leverage interrogation questions
 
-1. Read `.socrates/.current` to get the active session filename.
-2. Read `.socrates/FILENAME.md`.
-3. Print a one-line alignment summary per commandment (name + state only).
-4. Restate the current interpretation before asking more questions when material ambiguity remains.
-5. Prefer closing existing open questions over opening new ones.
-6. Ask 1–3 interrogation questions targeting the highest-risk false-positive, false-negative, or unverifiable-success paths.
-7. Update the session file: incorporate answers, resolve closed questions, add new ones.
+## Continuation (no `$ARGUMENTS`)
 
-### Alignment States
+1. Load `.socrates/spec.md`
+2. If `.socrates/critique.md` exists:
+   - enter `Reconciling`
+   - adjudicate critique findings
+   - revise specification
+   - classify unresolved disagreements
+3. Re-score commandment states
+4. Ask additional questions only where semantic risk remains
+5. Update specification
 
-Use these states instead of optimistic coverage labels:
-- **Stable** — likely understood correctly and backed by explicit spec content.
-- **Fragile** — appears understood but depends on assumptions or missing context.
-- **Ambiguous** — multiple plausible interpretations remain.
-- **Contradictory** — goals, constraints, requirements, or success criteria conflict.
-- **Open** — not yet addressed.
+## Alignment States
 
-Do not mark a commandment **stable** unless the session file contains explicit content supporting it. A fragile item is not a blocker by default, but it must be named so the executor knows where interpretation risk remains.
+- Stable
+- Fragile
+- Ambiguous
+- Contradictory
+- Open
 
-### Interpretation Check
+Do not mark a section stable unless:
+- explicit specification text exists
+- validation semantics exist where applicable
 
-On each pass, maintain a short interpretation check:
+## Specification Freeze
+
+When:
+- commandment states are stable or explicitly accepted as fragile
+- validation semantics exist
+- ambiguity is bounded
+- execution readiness is explicit
+
+then:
+- set status to `Validated`
+- freeze the specification
+- assign a specification version
+
+Example:
+
+```markdown
+Status: Validated
+Specification Version: v3
+Frozen: true
+```
+
+A frozen specification may not be silently mutated by:
+- planners
+- executors
+- verifiers
+- critics
+
+## Reopen Semantics
+
+If:
+- critique exposes unresolved ambiguity
+- execution changes assumptions
+- validation fails
+- regression checks fail
+
+then:
+- reopen the specification
+- transition back to `Interrogating` or `Reconciling`
+
+## Interpretation Check
+
+Maintain:
 
 ```markdown
 ## Current Interpretation
 
-[The task as currently understood, stated in executable terms.]
+[The task as currently understood in executable terms]
 
 ## Misclassification Risks
 
 ### Potential False Positives
-- [What might appear clear but be wrong?]
 
 ### Potential False Negatives
-- [What important requirement, constraint, or context might still be missing?]
 ```
 
-Use this to validate semantic alignment. The goal is not to ask endless questions; the goal is to eliminate the most dangerous ways the agent could execute the wrong task.
+## Interrogation Principles
 
-### Interrogation Principles
+- One topic per question
+- Challenge vague answers
+- Prefer semantic precision over conversational flow
+- Ask "how would we know this worked?"
+- Ask "what could appear successful while actually be wrong?"
+- Ask "what must not break?"
+- Ask "how would this fail silently?"
+- Ask "what assumptions are being treated as obvious?"
+- Prefer high-leverage clarification questions
 
-- One topic per question.
-- Ask "why" to surface unstated assumptions.
-- Ask "what happens when X fails" to probe robustness.
-- Ask "What happens if we don't do this?" for do-nothing risk — never embed a timeframe in the question; let the user name the consequence and the timeline.
-- Ask "who decides" to surface missing stakeholders.
-- Ask "what is explicitly excluded" to sharpen scope.
-- Ask "how would we know this worked?" to expose weak success criteria.
-- Ask "what could appear successful while actually being wrong?" to expose false positives.
-- Ask "what must not break?" to surface regression boundaries.
-- Ask "how would this fail silently?" to identify weak observability.
-- Challenge vague answers — either sharpen them or record as ambiguous, fragile, or open.
-- Ask "what would a successful but wrong execution look like?" to expose false positives.
-- Ask "what would be missing from an apparently good answer?" to expose false negatives.
-- Prefer one question that closes two commandments over two that close one each.
+## Validation and Layered Reasoning
 
-## Phase 2 — Validation and Layered Reasoning
+A specification is not execution-ready until:
+- success criteria exist
+- validation semantics exist
+- regression semantics exist
+- authority boundaries exist
+- ambiguity is bounded
 
-Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and Open Questions is empty or contains only acknowledged non-blockers.
+Generate:
 
-A task is not execution-ready until:
-- success conditions exist
-- there is a defined method to verify them
-- and there is a strategy to detect regressions or silent failure
-
-Before entering plan mode, validate that the current interpretation is execution-ready:
-- The problem statement identifies what is broken or missing.
-- Success criteria define how to recognize a true positive.
-- Validation strategy defines how success is verified.
-- Regression checks define what must continue working after completion.
-- Context is sufficient for an agent to avoid predictable false positives and false negatives.
-- Scope, constraints, and authority boundaries are explicit.
-- Remaining ambiguities are classified as blocking, non-blocking, or intentional.
-
-Synthesize the spec into an explicit reasoning chain. Each layer is derived from the
-one below it. Present this chain before entering plan mode so the grounding is visible
-and challengeable.
-
-```
+```text
 Layer 1 — Problem
-  [One-sentence statement of what is broken or missing, and why it matters now.]
-
 Layer 2 — Requirements
-  [What must be true. Derived from Layer 1. Each prefixed with "shall".]
-  Challenged by: [what would make these requirements wrong]
-
 Layer 3 — Constraints
-  [What limits the solution space. Bounds Layers 2 and 4.]
-
 Layer 4 — Risks
-  [Top assumptions whose failure would invalidate Layers 1–3.]
-
 Layer 5 — Success
-  [Measurable criteria that confirm Layer 1 is resolved within Layer 3.]
-  False positive guard: [what would look successful but be wrong]
-  False negative guard: [what missing work/context would make the result incomplete]
-
 Layer 6 — Validation
-  Acceptance tests: [how success will be verified]
-  Regression checks: [what must continue working after completion]
-  Failure signals: [what indicates incomplete or incorrect execution]
-  Verification method: [automated | manual | observational | comparative | statistical]
-
 Layer 7 — Execution Readiness
-  [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
 ```
 
-If any layer does not hold up under scrutiny, return to interrogation for that layer
-before proceeding.
+Validation must include:
+- acceptance tests
+- regression checks
+- failure signals
+- verification methods
+- known blind spots
 
-## Phase 3 — Plan Mode
+## Critique Integration
 
-After presenting the layered reasoning chain, enter plan mode using the `EnterPlanMode`
-tool. In plan mode, develop a concrete implementation plan grounded in the spec.
-The plan must be traceable back to the reasoning chain — no work that does not serve
-a requirement, no requirement that does not serve the problem.
+`/socrates` owns reconciliation.
 
-### Dependency Graph
+Critics:
+- identify findings
+- do not mutate specifications directly
 
-Decompose the plan into a dependency graph. For each task, identify:
-- **Blocks**: tasks that cannot start until this one is complete
-- **Parallel-safe**: tasks with no dependencies on each other
+Socrates:
+- adjudicates findings
+- revises the specification
+- preserves authoritative intent
 
-Present the graph explicitly:
-
-```
-[Task A] ──► [Task C] ──► [Task E]
-[Task B] ──► [Task C]
-[Task D] ──────────────► [Task E]   (parallel with A→C)
-```
-
-### Execution Recommendation
-
-After the dependency graph, recommend an execution strategy:
-
-- **3+ independent tracks**: recommend `/lead` for orchestrated parallel execution.
-  `/lead` decomposes the plan into sub-agents running in parallel — use it when the
-  critical path is shortened by parallelism and the tasks are well-scoped enough to
-  delegate without ambiguity.
-- **Mostly sequential**: recommend working through tasks directly.
-- **Mixed**: identify which phases benefit from `/lead` and which should be sequential.
-
-Exit plan mode with `ExitPlanMode` for user approval.
-
-## Spec Scaffold (`socrates.md`)
+## Spec Scaffold (`spec.md`)
 
 ```markdown
 # [Title]
 
-**Status**: Interrogating
-**Type**: [Engineering | Research/Analysis | Writing | General]
-**Owner**: _[open]_
-**Last Updated**: YYYY-MM-DD
+Status: Interrogating
+Specification Version: v1
+Frozen: false
+Type: [Engineering | Research/Analysis | Writing | General]
 
 ## Problem Statement
 
-_[open]_
-
 ## Requirements
 
-_[open]_
-
-## Preferences
-
-_[open]_
+### R1
 
 ## Constraints
 
-_[open]_
+### C1
 
 ## Success Criteria
 
-_[open]_
+### S1
 
-## Validation
+## Validation Contract
 
 ### Acceptance Tests
 
-_[open]_
-
 ### Regression Checks
-
-_[open]_
 
 ### Failure Signals
 
-_[open]_
+### Verification Methods
 
-### Verification Method
-
-_[open]_
-
-## Tasks
-
-_[open]_
+### Known Blind Spots
 
 ## Inputs
 
-_[open]_
-
 ## Outputs
-
-_[open]_
 
 ## Authority Boundaries
 
 ### Executor May Decide
 
-_[open]_
-
 ### Executor Must Escalate
-
-_[open]_
 
 ### Executor Must Not Change
 
-_[open]_
-
-## Out of Scope
-
-_[open]_
-
-## Open Questions
-
-_[open]_
-
-## Risks
-
-_[open]_
-
 ## Current Interpretation
-
-_[open]_
 
 ## Misclassification Risks
 
 ### Potential False Positives
 
-_[open]_
-
 ### Potential False Negatives
-
-_[open]_
 
 ## Ambiguities
 
 ### Blocking
 
-_[open]_
-
 ### Non-Blocking
-
-_[open]_
 
 ### Intentional
 
-_[open]_
+## Risks
 
 ## Stakeholders
-
-_[open]_
 ```
 
-## Usage
+## Downstream Commands
 
-```
-/socrates "Unified rate card API for carrier negotiation"   # init: creates .socrates/TIMESTAMP.md
-/socrates                                                   # continue: reads .socrates/.current
-/socrates                                                   # continue until all commandments covered
-```
+After validation:
+- `/critique` → adversarial specification review
+- `/plan` → execution decomposition
+- `/lead` → orchestration
+- `/verify` → validation and regression verification
 
-Each invocation interrogates, updates the session file, and converges toward an execution-ready specification before plan mode.
+`/socrates` ends at validated specification generation.
