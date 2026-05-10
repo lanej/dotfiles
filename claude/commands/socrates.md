@@ -22,17 +22,31 @@ The Socratic dialogue is the means, not the end.
 This command does NOT:
 - generate implementation plans
 - orchestrate execution
-- enter plan mode automatically
 - mutate requirements during execution
 
 This command DOES:
 - interrogate ambiguity
-- surface hidden assumptions
-- define success semantics
+- challenge assumptions
+- surface hidden constraints
 - define validation contracts
 - establish execution boundaries
 - reconcile critique findings
-- produce a validated specification artifact
+- decompose problems into legible requirement layers
+- produce a validated specification artifact suitable for downstream planning
+
+## Core Principle
+
+Challenge assumptions rather than validating them.
+
+The goal is semantic precision, not conversational agreement.
+
+Interrogate until:
+- ambiguity is bounded
+- validation semantics exist
+- false-positive paths are identified
+- false-negative risks are surfaced
+- execution boundaries are explicit
+- the problem is decomposed into stable, independently understandable requirement layers
 
 ## Lifecycle
 
@@ -48,7 +62,7 @@ Interrogating
 → Verified
 ```
 
-Planning and execution occur in downstream commands.
+Planning and orchestration occur in downstream commands.
 
 ## Semantic Alignment Goals
 
@@ -124,18 +138,6 @@ Pointer file:
 - `.socrates/.current`
 
 `.socrates/.current` contains the active session directory name.
-
-Example:
-
-```text
-.socrates/
-├── .current
-├── 20260510-154233/
-│   ├── spec.md
-│   ├── critique.md
-│   ├── verification.md
-│   └── plan.md
-```
 
 Timestamped sessions are intentionally preserved:
 - historical reasoning matters
@@ -221,6 +223,101 @@ Do not mark a section stable unless:
 - explicit specification text exists
 - validation semantics exist where applicable
 
+## Interrogation Principles
+
+- One topic per question.
+- Ask "why" to surface unstated assumptions.
+- Ask "what happens when X fails" to probe robustness.
+- Ask "what happens if we don't do this?" to expose necessity and timing assumptions.
+- Ask "who decides?" to surface ownership and escalation boundaries.
+- Ask "what is explicitly excluded?" to sharpen scope.
+- Ask "how would we know this worked?" to expose weak validation semantics.
+- Ask "what could appear successful while actually be wrong?" to expose false positives.
+- Ask "what would be missing from an apparently good result?" to expose false negatives.
+- Ask "what must not break?" to surface regression boundaries.
+- Ask "how would this fail silently?" to identify observability gaps.
+- Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
+- Prefer one question that resolves multiple ambiguities.
+- Prefer high-leverage clarification over exhaustive questioning.
+
+## Contradiction Detection
+
+Actively identify:
+- conflicting goals
+- conflicting constraints
+- requirements that invalidate each other
+- success criteria that undermine requirements
+- validation semantics that can be gamed
+
+Do not normalize contradictions into the specification.
+Resolve them, bound them, or classify them explicitly.
+
+## Interpretation Check
+
+Maintain:
+
+```markdown
+## Current Interpretation
+
+[The task as currently understood in executable terms]
+
+## Misclassification Risks
+
+### Potential False Positives
+
+### Potential False Negatives
+```
+
+## Validation and Layered Reasoning
+
+A specification is not execution-ready until:
+- success criteria exist
+- validation semantics exist
+- regression semantics exist
+- authority boundaries exist
+- ambiguity is bounded
+
+Generate:
+
+```text
+Layer 1 — Problem
+Layer 2 — Requirements
+Layer 3 — Constraints
+Layer 4 — Risks
+Layer 5 — Success
+Layer 6 — Validation
+Layer 7 — Execution Readiness
+```
+
+Each layer must be justified by the layer below it.
+
+If a layer fails scrutiny:
+- return to interrogation
+- revise the specification
+- re-evaluate downstream layers
+
+### Problem Decomposition
+
+The specification must decompose the problem into independently understandable requirement layers.
+
+Requirements should:
+- have stable identifiers (`R1`, `R2`, etc.)
+- be traceable to the problem statement
+- support downstream execution planning
+- expose dependency relationships where meaningful
+- separate policy from implementation mechanism
+
+This decomposition exists to support downstream `/plan` usage.
+
+### Validation Requirements
+
+Validation must include:
+- acceptance tests
+- regression checks
+- failure signals
+- verification methods
+- known blind spots
+
 ## Specification Freeze
 
 When:
@@ -261,62 +358,6 @@ then:
 - transition back to `Interrogating` or `Reconciling`
 
 Do not destroy prior validation or critique artifacts when reopening.
-
-## Interpretation Check
-
-Maintain:
-
-```markdown
-## Current Interpretation
-
-[The task as currently understood in executable terms]
-
-## Misclassification Risks
-
-### Potential False Positives
-
-### Potential False Negatives
-```
-
-## Interrogation Principles
-
-- One topic per question
-- Challenge vague answers
-- Prefer semantic precision over conversational flow
-- Ask "how would we know this worked?"
-- Ask "what could appear successful while actually be wrong?"
-- Ask "what must not break?"
-- Ask "how would this fail silently?"
-- Ask "what assumptions are being treated as obvious?"
-- Prefer high-leverage clarification questions
-
-## Validation and Layered Reasoning
-
-A specification is not execution-ready until:
-- success criteria exist
-- validation semantics exist
-- regression semantics exist
-- authority boundaries exist
-- ambiguity is bounded
-
-Generate:
-
-```text
-Layer 1 — Problem
-Layer 2 — Requirements
-Layer 3 — Constraints
-Layer 4 — Risks
-Layer 5 — Success
-Layer 6 — Validation
-Layer 7 — Execution Readiness
-```
-
-Validation must include:
-- acceptance tests
-- regression checks
-- failure signals
-- verification methods
-- known blind spots
 
 ## Critique Integration
 
@@ -404,7 +445,7 @@ Type: [Engineering | Research/Analysis | Writing | General]
 
 After validation:
 - `/critique` → adversarial specification review
-- `/plan` → execution decomposition
+- `/plan` → execution decomposition and dependency topology
 - `/lead` → orchestration
 - `/verify` → validation and regression verification
 
