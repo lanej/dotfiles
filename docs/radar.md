@@ -39,6 +39,12 @@ _Nothing here yet._
 
 ## Hold
 
+### OpenCode
+
+AI coding assistant with a TUI interface. Put on hold due to memory leaks during long sessions and persistent lag in supporting new model releases — discovered while working around a Vertex AI 1M context window bug that required a [upstream PR](https://github.com/anomalyco/opencode/pull/14055) to fix.
+
+Revisit if memory stability improves and model support keeps pace with provider releases.
+
 ### Ghostty
 
 Configured (`ghostty/`) but not used as the default terminal. Ghostty implements tabs as native macOS `NSWindowTabGroup` windows — `tabbingMode` is set to `.preferred`/`.automatic` in the source regardless of `macos-titlebar-style`. Yabai sees each tab as a separate managed window, causing the active window to jump and resize on every tab switch. There is no config option to set `tabbingMode = .disallowed`.
