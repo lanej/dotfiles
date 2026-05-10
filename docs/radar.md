@@ -57,3 +57,9 @@ yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m sp
 ```
 
 Revisit if AeroSpace (see **Trial**) proves able to handle native tab groups transparently.
+
+### sccache
+
+Rust compiler cache. Grows unboundedly on disk — even with `max_cache_size` set, the cache frequently bloats to tens of gigabytes across multiple projects and toolchain versions. The disk pressure outweighs the incremental build-time savings for typical dotfiles/personal project usage.
+
+Revisit if Mozilla ships more aggressive eviction or if a per-project cache isolation story emerges.
