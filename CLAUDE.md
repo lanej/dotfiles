@@ -69,6 +69,31 @@ The pattern is already employed for several commands:
 
 This pattern mirrors the approach used elsewhere in this repository (e.g., experimental scripts in `bin/` that are selectively versioned).
 
+## Tech Radar
+
+Tool and technology decisions are tracked in [`docs/radar.md`](docs/radar.md) using a four-ring model:
+
+| Ring | Meaning |
+|---|---|
+| **Adopt** | In active use; recommended |
+| **Trial** | Being evaluated in real workflows |
+| **Assess** | Worth watching; not yet trialed |
+| **Hold** | Deliberately not adopted; rationale documented |
+
+### When to update the radar
+
+- **New tool added to the stack** → move it to **Adopt** (or **Trial** if still evaluating)
+- **Tool being evaluated** → add to **Trial** or **Assess**
+- **Tool rejected** → add to **Hold** with a concise rationale
+- **Trial concludes** → promote to **Adopt** or demote to **Hold**
+- **Adopted tool retired** → move to **Hold** (or remove if fully purged)
+
+### How to update
+
+Edit `docs/radar.md` directly. Each entry lives under its ring heading as a `###` subsection. Cross-link related entries when one tool's fate depends on another (e.g., "Revisit if X resolves issue Y").
+
+Use the `tech-radar` agent to make updates conversationally.
+
 ## OpenCode Configuration
 
 `~/.config/opencode/opencode.json` is **generated** by `make opencode` — do not edit it directly.
