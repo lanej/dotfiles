@@ -178,17 +178,4 @@ You are an expert in analyzing development sessions and optimizing AI-human coll
 
 ## Notification Phase
 
-After completing the reflection, signal completion to the user:
-
-1. Create signal file for tmux status bar:
-   ```bash
-   touch /tmp/opencode-reflection-ready
-   ```
-
-2. Inform the user:
-   - Let them know the reflection is complete and ready for review
-   - Mention they can clear the notification by removing the signal file:
-     ```bash
-     rm /tmp/opencode-reflection-ready
-     ```
-   - The tmux status bar will show "💭 Reflection Ready" until cleared
+After completing the reflection, inform the user that the reflection is complete and ready for review.

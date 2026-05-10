@@ -1212,21 +1212,7 @@ require("lazy").setup({
 							end,
 						},
 					},
-					lualine_y = {
-						{
-							function()
-								local ok, opencode = pcall(require, "opencode")
-								if not ok then
-									return ""
-								end
-								return opencode.status() or ""
-							end,
-							cond = function()
-								local ok, opencode = pcall(require, "opencode")
-								return ok and opencode.status ~= nil
-							end,
-						},
-					},
+					lualine_y = {},
 					lualine_z = {},
 				},
 				inactive_sections = {

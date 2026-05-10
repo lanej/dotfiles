@@ -45,7 +45,6 @@ See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/
 |---|---|
 | `make` | Symlink all configuration files |
 | `make claude` | Set up Claude commands/agents symlinks |
-| `make opencode` | Generate `~/.config/opencode/opencode.json` |
 | `make git` | Symlink git configuration |
 | `make tmux` | Symlink tmux configuration |
 | `make zsh` | Symlink zsh configuration |

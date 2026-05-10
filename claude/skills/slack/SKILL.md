@@ -157,4 +157,4 @@ bun run dev --help    # CLI help
 just install          # Build + install to ~/.local/bin/slack
 ```
 
-Base directory for this skill: file:///Users/joshlane/.config/opencode/skills/slack
+Base directory for this skill: file:///Users/joshlane/.claude/skills/slack

@@ -93,18 +93,3 @@ Tool and technology decisions are tracked in [`docs/radar.md`](docs/radar.md) us
 Edit `docs/radar.md` directly. Each entry lives under its ring heading as a `###` subsection. Cross-link related entries when one tool's fate depends on another (e.g., "Revisit if X resolves issue Y").
 
 Use the `tech-radar` agent to make updates conversationally.
-
-## OpenCode Configuration
-
-`~/.config/opencode/opencode.json` is **generated** by `make opencode` — do not edit it directly.
-
-The source template is `.opencode/opencode.json`. It uses `$HOME` placeholders that are expanded via `envsubst '$HOME'` at install time (scoped to only `$HOME` to preserve other `$`-prefixed JSON keys like `$schema`). Always edit the template, then run `make opencode` to regenerate.
-
-```
-.opencode/opencode.json          ← EDIT THIS (template with $HOME placeholders)
-~/.config/opencode/opencode.json ← GENERATED (do not edit)
-```
-
-Running `make opencode` will:
-1. Remove the old file/symlink at `~/.config/opencode/opencode.json`
-2. Run `envsubst` to expand `$HOME` and write the result
