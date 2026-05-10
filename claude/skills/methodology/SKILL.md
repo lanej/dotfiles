@@ -130,9 +130,7 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 - `/reflection` — Analyze session and suggest CLAUDE.md improvements (interactive)
 - `/reflection-harder` — Comprehensive session analysis with learning capture
 
-**Integration:** `/reflection-harder` integrates with tmux status bar via a signal file at `/tmp/reflection-ready`.
-
-**Implementation:** Command at `~/.files/claude/commands/reflection-harder.md`. File-based signaling, on-demand only, ephemeral.
+**Implementation:** Command at `~/.files/claude/commands/reflection-harder.md`. On-demand only; no tmux status bar integration.
 
 ## Iterative Task Tracking
 
