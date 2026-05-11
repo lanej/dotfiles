@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
   - Task
-  - Bash
+  - Bash(cat:*)
   - ExitPlanMode
   - EnterPlanMode
 tags:
@@ -30,29 +30,7 @@ It coordinates:
 - optional orchestration
 - verification preparation
 
-It does NOT replace:
-- `/socrates`
-- `/critique`
-- `/plan`
-- `/lead`
-- `/verify`
-
-Instead, it composes them into a staged workflow.
-
-## Workflow Philosophy
-
-The goal is not:
-- maximum questioning
-- maximum detail
-- maximum planning
-
-The goal is:
-- bounded semantic alignment before execution commitment.
-
-Optimize for:
-- minimizing false positives
-- minimizing false negatives
-- producing validated execution-ready specifications
+The goal is bounded semantic alignment before execution commitment.
 
 ## Lifecycle
 
@@ -66,6 +44,67 @@ Intent
 → Execute
 → Verify
 ```
+
+Lifecycle semantics are authoritative here.
+
+## Artifact Model
+
+All stages operate on explicit artifacts inside:
+
+```text
+.socrates/YYYYMMDD-HHMMSS/
+```
+
+Primary artifacts:
+- `spec.md`
+- `critique.md`
+- `plan.md`
+- `verification.md`
+
+Artifacts are authoritative.
+Conversation is transient.
+
+## Adaptive Rigor
+
+Do not apply full shaping rigor to every task.
+
+### Trivial Tasks
+
+Examples:
+- typo fixes
+- tiny refactors
+- isolated edits
+
+Behavior:
+- bypass shaping workflow
+- execute directly
+
+### Moderate Tasks
+
+Examples:
+- localized features
+- medium refactors
+- bounded analysis
+
+Behavior:
+- use `/socrates`
+- optionally use `/critique`
+- proceed to planning
+
+### Complex or High-Risk Tasks
+
+Examples:
+- infrastructure migrations
+- architectural changes
+- multi-system coordination
+- ambiguous strategic work
+- high regression risk
+
+Behavior:
+- require full shaping workflow
+- require critique
+- require explicit validation semantics
+- require verification after execution
 
 ## Workflow Stages
 
@@ -84,6 +123,7 @@ Goal:
 - define requirements
 - define validation semantics
 - establish execution boundaries
+- decompose the problem into legible requirement layers
 
 ### Stage 2 — Critique
 
@@ -100,6 +140,12 @@ Goal:
 - expose semantic ambiguity
 - identify false-positive risks
 - identify weak validation semantics
+
+Critics should receive:
+- the specification
+- minimal surrounding context
+
+Low-context confusion is diagnostic.
 
 ### Stage 3 — Reconciliation
 
@@ -118,7 +164,7 @@ Transition only when:
 
 ### Stage 4 — Planning
 
-Run `/plan`.
+Use Claude Code built-in `/plan` behavior.
 
 Output:
 
@@ -138,7 +184,12 @@ Planning may not:
 
 ### Stage 5 — Optional Orchestration
 
-If parallel execution is beneficial:
+If:
+- 3+ independent execution tracks exist
+- execution can safely parallelize
+- interfaces are well-defined
+
+then:
 - recommend `/lead`
 
 Otherwise:
@@ -161,6 +212,11 @@ Do not proceed to planning until:
 - validation contract exists
 - authority boundaries exist
 
+Pause automatically:
+- after specification freeze
+- before orchestration
+- before irreversible execution
+
 If:
 - critique reveals unresolved ambiguity
 - execution changes assumptions
@@ -170,38 +226,6 @@ If:
 then:
 - reopen the specification
 - transition back to Socrates reconciliation
-
-## Artifact Discipline
-
-All stages operate on explicit artifacts.
-
-Do not rely on conversational history when structured artifacts exist.
-
-Primary artifacts:
-
-```text
-spec.md
-critique.md
-plan.md
-verification.md
-```
-
-Artifacts are authoritative.
-Conversation is transient.
-
-## Low-Context Critique Principle
-
-Critics should receive:
-- the specification
-- minimal surrounding context
-
-This intentionally surfaces:
-- hidden assumptions
-- overloaded terminology
-- missing interfaces
-- ambiguous execution semantics
-
-Low-context confusion is diagnostic.
 
 ## Recommended Usage
 
@@ -220,13 +244,6 @@ Typical flow:
 6. optional /lead
 7. /verify
 ```
-
-## Review Checkpoints
-
-`/shape` should pause at:
-- validated specification freeze
-- before orchestration
-- before irreversible execution
 
 Do not optimize for full autonomy by default.
 
