@@ -36,7 +36,7 @@ The goal is bounded semantic alignment before execution commitment.
 
 ```text
 Intent
-→ Socrates
+→ Specify
 → Critique
 → Reconcile
 → Freeze
@@ -110,7 +110,7 @@ Behavior:
 
 ### Stage 1 — Specification
 
-Run `/socrates`.
+Run `/specify`.
 
 Output:
 
@@ -149,7 +149,7 @@ Low-context confusion is diagnostic.
 
 ### Stage 3 — Reconciliation
 
-Run `/socrates` again.
+Run `/specify` again.
 
 Goal:
 - adjudicate critique findings
@@ -225,7 +225,7 @@ If:
 
 then:
 - reopen the specification
-- transition back to Socrates reconciliation
+- transition back to specification reconciliation
 
 ## Recommended Usage
 
@@ -236,9 +236,9 @@ then:
 Typical flow:
 
 ```text
-1. /socrates
+1. /specify
 2. /critique
-3. /socrates
+3. /specify
 4. STOP + review
 5. /plan
 6. optional /lead
