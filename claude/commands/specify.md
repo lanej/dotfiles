@@ -1,5 +1,5 @@
 ---
-description: "Interrogate a task through Socratic dialogue to produce a validated execution-ready specification"
+description: "Compile ambiguous intent into a validated execution-ready specification"
 argument-hint: ["Task Title" (init) or empty (continue)]
 allowed-tools:
   - Read
@@ -10,14 +10,14 @@ allowed-tools:
 tags:
   - specification
   - validation
-  - socratic
+  - shaping
 ---
 
-# /socrates — Semantic Alignment and Specification Compilation
+# /specify — Semantic Alignment and Specification Compilation
 
 Purpose: convert ambiguous task intent into a validated execution-ready specification.
 
-The Socratic dialogue is the means, not the end.
+The interrogation is the means, not the end.
 
 This command does NOT:
 - generate implementation plans
@@ -122,7 +122,7 @@ Quality gates applied to the current specification.
 
 Files live in `.socrates/` within the current working directory.
 
-Each Socrates session lives in a timestamped directory:
+Each specification session lives in a timestamped directory:
 
 ```text
 .socrates/YYYYMMDD-HHMMSS/
@@ -361,13 +361,13 @@ Do not destroy prior validation or critique artifacts when reopening.
 
 ## Critique Integration
 
-`/socrates` owns reconciliation.
+`/specify` owns reconciliation.
 
 Critics:
 - identify findings
 - do not mutate specifications directly
 
-Socrates:
+Specify:
 - adjudicates findings
 - revises the specification
 - preserves authoritative intent
@@ -445,8 +445,8 @@ Type: [Engineering | Research/Analysis | Writing | General]
 
 After validation:
 - `/critique` → adversarial specification review
-- `/plan` → execution decomposition and dependency topology
+- Claude Code built-in `/plan` → execution decomposition and dependency topology
 - `/lead` → orchestration
 - `/verify` → validation and regression verification
 
-`/socrates` ends at validated specification generation.
+`/specify` ends at validated specification generation.
