@@ -18,6 +18,9 @@ __pycache__
 
 # Local symlinks to external repos (machine-specific)
 claude/skills/problem-definition/SKILL.md
+claude/skills/epq
+claude/skills/gspace/SKILL.md
+claude/skills/gspace/references
 .socrates/
 
 # Unexpanded shell variable paths (accidental git adds)
