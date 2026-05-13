@@ -129,22 +129,20 @@ Do not append revised sections below old ones.
 When gathering context, work through sources in this order — stop when you have sufficient confidence. Fastest and cheapest first; live/external last.
 
 1. **Auto-memory** — preferences, project state, key decisions already in context
-2. **Workspace KB** (`mcp__qmd__query`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context
-3. **Looker** (`mcp__looker__search_all`) — existing BI queries, dashboards, SQL for metrics; score ≥0.65 = strong match
-4. **Codebase** (Glob/Grep/Read) — source of truth for implementation details
-5. **BigQuery** (`mcp__bigquery__query`) — live warehouse data; always `dry_run` first
-6. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
-7. **Web** (`mcp__codex__codex`) — external docs, standards, anything not internal
+2. **Workspace KB** (`mcp__qmd__query`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context; Looker explore docs in `resources/looker-queries/`
+3. **Codebase** (Glob/Grep/Read) — source of truth for implementation details
+4. **BigQuery** (`mcp__bigquery__query`) — live warehouse data; always `dry_run` first
+5. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
+6. **Web** (`mcp__codex__codex`) — external docs, standards, anything not internal
 
 ## Analysis Toolchain (EPQ + QMD)
 
 For data-driven analysis, use the EPQ + QMD pipeline:
 - **QMD** (`mcp__qmd__query`) — query prior analyses, documented decisions, domain knowledge before starting new work. Use lex+vec searches with intent for best recall.
 - **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in Quarto documents. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review. **Never hardcode data values in extract scripts or figure modules** — any numeric value that could come from a real data source must come from a BQ query and flow through the cache. Static reference data (labels, provider names, flag constants) is acceptable; metric values, counts, medians, and dollar amounts are not.
-- **Looker** (`search_all`, `search_queries`) — discover existing BI queries, explores, dashboards before building new analysis. Get SQL from `search_queries`.
 - **BigQuery** → **DuckDB** — BQ for warehouse queries, DuckDB for local analytics on exported data.
 
-Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search. Load `looker` skill for BI discovery.
+Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search.
 
 ## Operational Guidelines
 
@@ -213,11 +211,14 @@ In any written artifact — memos, reports, analyses, proposals, strategy docs, 
 - **Arcanist (arc)**: `arc diff` replaces `git push`; NEVER automate interactive editor sessions; use `--message` for non-interactive updates. See `arc` skill for full workflow.
 - **JavaScript/Node.js**: See `javascript` skill for library gotchas (Zustand/antd-style conflict, Playwright+antd, Bun:sqlite, SSE streaming patterns).
 - **GCP/Vertex AI**: Use `@anthropic-ai/vertex-sdk` (not `@google-cloud/vertexai`). See `gcp` skill for model ID format, `anthropic_beta` body placement, and `thinking` parameter quirks.
-- **Looker**: Use Looker MCP tools for BI discovery. `search_all` for broad queries, `search_queries` for SQL, `search_explores` for domain discovery, `search_dashboards` for dashboards. Score ≥0.65 = strong match. See `looker` skill for full tool reference.
 - **Jira Goals**: Use `jira goals list --format jsonl` (CLI, GraphQL API) — NOT MCP tools. `issuetype = Goal` in JQL returns zero results; Goals are not Jira issue types. Goal links on Epics (`customfield_10025`) cannot be set via API — UI only; every API attempt clears the field.
+- **Slack DMs**: Never open a Slack message with the recipient's name (e.g., "Lewis —" or "Hi John,"). Lead with the first substantive sentence — the recipient knows who they are.
 - **gspace gmail send**: Non-ASCII characters in email subjects (em dashes `—`, smart quotes) get mangled. Use only ASCII in subject lines: hyphens (`-`) not em dashes, straight quotes.
-- **gspace Google Docs workflow**: `docs_sync` supports a `style_sheet` field in the gspace frontmatter — stylesheets persist across edits automatically. Correct workflow: (1) `docs_create` to bootstrap with `style_sheet` param; (2) add `style_sheet: /path/to/stylesheet.docx` to the `gspace:` frontmatter block; (3) all future edits use `docs_sync` which reads stylesheet from frontmatter. Always `docs_download` before `docs_sync` to get a fresh revision token. Never delete and recreate a doc to reapply a stylesheet — that's unnecessary. After editing a local file with `gspace:` frontmatter, offer to run `docs_sync` before closing the task — the doc is live and the user may expect the edit to propagate.
+- **gspace Google Docs workflow**: `docs_sync` is the only sync tool — `docs_download` has been removed. `docs_sync` supports a `style_sheet` field in the gspace frontmatter — stylesheets persist across edits automatically. Correct workflow: (1) `docs_create` to bootstrap with `style_sheet` param; (2) add `style_sheet: /path/to/stylesheet.docx` to the `gspace:` frontmatter block; (3) all future edits use `docs_sync` which reads stylesheet from frontmatter. Never delete and recreate a doc to reapply a stylesheet — that's unnecessary. After editing a local file with `gspace:` frontmatter, offer to run `docs_sync` before closing the task — the doc is live and the user may expect the edit to propagate.
+- **gspace docs_create frontmatter**: Use `url:` not `file_id:` in the `gspace:` frontmatter block (`file_id:` is deprecated). For stylesheets that require `{{author}}` or `{{date}}` (e.g., `easypost`), embed them in the `gspace:` frontmatter block inside the markdown content — `docs_create` has no `author` parameter; the placeholder is substituted post-upload from `gspace: author` frontmatter.
+- **gspace Google Slides**: Do NOT edit slide content via the Slides API (batchUpdate or any programmatic approach). Formatting, styling, and layout don't survive API writes. When slide content needs to be added or updated, produce the content for the user to paste manually into the deck.
 - **Slack users list**: `slack users list --format json` emits `[INFO]`/`[WARN]` rate-limit lines to stdout before the JSON — filter them before parsing.
+- **NetSuite product segmentation**: Do NOT use `product_family` for product segmentation — it is miscategorized (EPE products appear under `product_family = 'EasyPost Analytics'`). Filter on `product_code` prefixes instead: EPA warehouse: `LIKE 'ELE-PV%'`; EPE: `LIKE 'EPE-%'`; Luma: `LIKE 'LUMA-%'`; Core API data: `LIKE 'DATA-%'`. Prefer pre-built canonical tables `epa_financials` / `epe_financials` in `ep-core-data.easypost_ba_published`; fall back to `easypost-finance.easypost_netsuite_published.netsuite_transaction_invoice_snapshots` only for line-item detail.
 - **matplotlib + LaTeX (Quarto PDF)**: `$` in f-strings gets consumed by LaTeX — escape with `\\$` (e.g., `f"\\${val:.1f}M"`). `fmt.millions_formatter()` expects raw values, not pre-divided. LaTeX math syntax in QMD prose (`$\geq$`, `$\leq$`, etc.) also renders dollar signs literally via epq/lualatex — use plain English ("at least", "less than") or Unicode glyphs (`≥`, `≤`) instead. `ax.text()` does not accept `set_clip_on` as a kwarg — capture the returned Text object and call the method: `t = ax.text(...); t.set_clip_on(True)`.
 - **epq cache empty-result pattern**: A 0-row cache raises `StaleCache` on `read_cache()` at render time, which surfaces as a confusing `KeyError` on a column name. Fix: return the dict directly from the extract function (`write_cache(..., data); return data`) rather than calling `read_cache()` at the end. Run `epq_check_cache` before debugging render KeyErrors.
 - **Quarto gfm output quirks** (when generating markdown for docs_sync): Quarto emits a pandoc title block at the top (title h1 + author + date lines) and wraps figures in `<div>` HTML with non-breaking space (`\xa0`) in "Figure N". A post-render fixup script (`scripts/inject_frontmatter.py`) handles both: strips the title block, converts figure divs to bare `![](path.png)`, and injects YAML frontmatter from the `.qmd` source. When building similar pipelines, budget for this fixup step.
