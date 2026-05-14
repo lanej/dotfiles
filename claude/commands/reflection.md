@@ -1,23 +1,33 @@
 ---
-description: Analyze and improve Claude Code instructions
+description: Analyze session behavior against CLAUDE.md and apply improvements. Spawned as a background sub-agent by plan mode with argument 'auto' to apply changes without user interaction. Also invoke manually after a session where Claude misunderstood requests, ignored instructions, or needed repeated correction.
 argument-hint: [auto]
 allowed-tools: Read, Edit, Skill, TodoWrite, Bash(git:*)
 ---
 
-Analyze the chat history in your context window. Identify patterns that suggest missing, inconsistent, or incorrect instructions in CLAUDE.md:
+## Step 1 — Analyze Chat History
 
-- Misunderstandings of user requests
-- Behaviors the user had to correct
-- Tool preferences or workflows invoked repeatedly without being in CLAUDE.md
-- Edge cases that caused wrong behavior
+Review the conversation history in your context window. Identify patterns indicating missing, incomplete, or incorrect CLAUDE.md instructions:
 
-Then invoke the `claude-md-management:claude-md-improver` skill to audit and apply improvements to all CLAUDE.md files.
+- Requests Claude misunderstood
+- Behaviors the user had to correct more than once
+- Tool preferences or workflows used repeatedly that are absent from CLAUDE.md
+- Instructions that exist but were ignored or applied inconsistently
+- Edge cases that produced wrong behavior
 
-If `$ARGUMENTS` contains `auto` (unattended/background mode):
-- Pass your findings from the chat history analysis as context to the skill
-- Apply all improvements without interactive approval
-- The skill runs autonomously and applies changes directly
+Structure your findings as a brief:
 
-Otherwise (interactive mode):
-- Present your chat history findings first
-- Then invoke the skill and let it guide the interactive improvement flow
+```
+Missing instructions: <list or "none">
+Incorrect instructions: <list or "none">
+Ignored instructions: <list or "none">
+```
+
+## Step 2 — Invoke the CLAUDE.md Improver
+
+Invoke the `claude-md-management:claude-md-improver` skill, passing your findings brief as the `args` so the skill has session signal beyond just reading the current CLAUDE.md.
+
+If `$ARGUMENTS` contains `auto`:
+- Run the skill autonomously — apply all improvements without interactive approval
+
+Otherwise:
+- Present your findings to the user first, then invoke the skill interactively
