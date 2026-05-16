@@ -23,29 +23,48 @@ jira config validate  # test connection
 
 JSONL is preferred for scripting — pipe directly to `jq`.
 
-## CLI Command Pattern
+## CLI vs MCP
+
+**The CLI is the full interface. MCP tools are a subset.**
+
+Most resources and verbs are only available via CLI. MCP exposes the most common read/write operations but does not cover: bulk operations, boards, sprints, development info, goals, screens, automations, audit log, or raw API access.
+
+**Default to CLI** (`jira <resource> <verb>`) for any operation not explicitly listed in an MCP tool. Use MCP when an agent needs structured tool call semantics or is already in an MCP session.
 
 All resources follow: `jira <resource> <verb> [args] [flags]`
 
 Resources: `issues`, `projects`, `comments`, `attachments`, `worklogs`, `versions`, `components`, `filters`, `dashboards`, `issuetypes`, `statuses`, `issuelinks`, `remotelinks`, `development`, `plans`, `users`, `boards`, `sprints`, `fields`, `goals`, `screens`, `automations`, `auditlog`
 
-Read `references/commands.md` whenever you need exact flags or syntax for any resource.
+Read `references/commands.md` for exact flags and syntax for every resource.
+
+## Name Resolution
+
+All parameters that previously required opaque IDs now accept human-readable names. Resolution is case-insensitive exact match; IDs pass through unchanged.
+
+| Parameter | Accepts |
+|---|---|
+| `transition` (issues transition) | transition name or ID |
+| `user` / `accountId` / `assigneeAccountId` / `leadAccountId` | email, display name, or account ID |
+| `fieldId` (fields commands) | field name (e.g. `"Story Points"`) or ID (e.g. `customfield_12497`) |
+| `--field "Name=Value"` / `customFields` on create & update | field name as key; value resolved by type (see below) |
+
+**Custom field value resolution** (`--field` on CLI, `customFields` on MCP):
+Keys are resolved from field name → `customfield_*`. Values are resolved by field type:
+option names → `{value}`, user names/emails → accountId, sprint names → sprint ID (all boards searched), numbers parsed from strings. Unknown types pass through; Jira surfaces errors.
+
+**Sprint name lookup** searches all boards — may be slow on large instances. Error on non-unique sprint names across boards.
+
+**Non-unique match errors.** If a name matches 2+ candidates, the call fails with a list of all matches and their IDs. Use an ID to be precise.
+
+**User resolution fallback.** If `searchUsers(query)` returns no results, the value is treated as a raw account ID. Empty string always passes through (used to unassign).
 
 ## Critical Gotchas
 
 **204 empty response ≠ error.** Mutating operations (assign, transition, delete) return HTTP 204. The MCP layer may surface this as an error. Always verify with a GET:
 
 ```
-mcp__jira__jira_issues_assign(issue_key, account_id)
-issue = mcp__jira__jira_issues_get(issue_key)   # verify assignee
-```
-
-**Users require account_id.** Display names don't work for assignment. Lookup pattern:
-
-```
-1. mcp__jira__jira_users_search(query="Name")
-2. extract account_id
-3. mcp__jira__jira_issues_assign(issue_key, account_id)
+mcp__jira__jira_issues_assign(key="PROJ-1", user="alice@example.com")
+issue = mcp__jira__jira_issues_get(key="PROJ-1")   # verify assignee
 ```
 
 **Development API needs numeric ID.** `jira development *` and `mcp__jira__jira_development_summary` require the internal numeric issue ID, not the key:
@@ -58,6 +77,49 @@ jira development pull-requests $ISSUE_ID --application-type github
 **MCP returns minimal fields by default** (~70% token reduction). Use `fields` param to request additional data.
 
 **Goals field cannot be set via REST API.** `customfield_10025` returns `204 No Content` but the field is never updated — `/editmeta` exposes `allowedValues: []`. Known bug: [JRACLOUD-97866](https://jira.atlassian.com/browse/JRACLOUD-97866). Link issues to goals through the Jira UI only.
+
+## Issue Sync (Markdown ↔ Jira)
+
+Keep a local `.md` file in sync with a Jira issue description — same pattern as `gspace docs sync`.
+
+```bash
+jira issues pull PROJ-123 [file.md]   # download description → local file (default: PROJ-123.md)
+jira issues sync file.md              # push local file → Jira description
+```
+
+**File format** — YAML frontmatter + markdown body:
+```markdown
+---
+jira:
+  key: PROJ-123
+  url: https://yourorg.atlassian.net/browse/PROJ-123
+  updated: "2026-05-13T08:00:00.000+0000"
+---
+
+Description body goes here.
+```
+
+**Conflict detection**: `sync` compares `jira.updated` against the remote timestamp. If remote is more than 60s newer, aborts with a message and suggests `pull` to refresh. **Any Jira API operation that touches a ticket** (MCP link create/delete, `jira_issues_update`, `jira_issues_transition`) updates the remote `updated` timestamp — triggering a conflict on the next sync. Resolution: `jira issues pull <KEY> <file.md>` to refresh the local timestamp, then re-render and sync.
+
+**File locking**: both commands acquire `file.md.lock` before any I/O. Stale locks (>60s) are overridden with a warning.
+
+**Local images**: `![alt](./local.png)` in the markdown body is base64-encoded and embedded in the ADF on sync. On pull, base64 data URLs are decoded to `./images/{KEY}-img-{n}.png` and referenced as relative paths.
+
+**What syncs**: description only. Summary, status, assignee, labels are Jira-managed and not written to the file.
+
+**Known limitations**:
+- `code` mark cannot be combined with other marks (bold/italic) — ADF spec constraint, Jira rejects it
+- Round-trip introduces minor whitespace differences in tables and blockquotes
+- Nested bold+italic (`**bold _italic_**`) emits redundant `**` on pull — cosmetic, content preserved
+
+## Issue Links vs. Inline Hyperlinks
+
+These are distinct operations — do not conflate them:
+
+- **Inline hyperlink in prose**: `[EP-23](https://simplerpostage.atlassian.net/browse/EP-23)` in a description body. Use when the text *references* another ticket. This is what "link to a Jira ticket" means in the context of writing or editing a description.
+- **Issue link edge**: a structural relationship (Blocks, Relates, Cloners) created via `jira issuelinks create` or `mcp__jira__jira_issuelinks_create`. Use only when explicitly asked to set a dependency or relationship between tickets.
+
+When asked to "link to EP-XX" or "reference EP-XX" while working on a description, use the inline hyperlink. Only create an issue link edge when the request is explicitly about ticket relationships.
 
 ## Linking Documents to Issues
 
