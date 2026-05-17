@@ -17,20 +17,33 @@ Read the entire document before cutting anything. Identify:
 
 - **Purpose**: What is this document for? What decision, action, or understanding does it enable?
 - **Audience**: Who reads this and what do they already know?
+
+  Before continuing, answer: *What can this audience be assumed to know?* List 2–4 things. These become the cut floor — content the audience already holds is cuttable regardless of how well it's written.
+
 - **Core concepts**: What are the 3–5 ideas the document cannot work without?
 - **Key claims**: What assertions must survive for the document to remain true?
 
-### 2. Plan Cuts
+### 2. Map Dependencies
 
-Before editing, produce a cut plan. For each section or major block, classify:
+Before classifying anything, for each section or major block, identify:
 
-- **Keep**: Essential to purpose or core concepts — cannot be removed
-- **Compress**: Carries real signal but overwritten — shorten in place
-- **Cut**: Redundant, decorative, transitional, or already implied
+- **What it enables**: Which later sections depend on this one to be interpretable?
+- **What depends on it**: Which claims or arguments earlier in the document does this section require to land?
+
+A section with no downstream dependents is a Cut candidate. A section that multiple later sections require is Keep regardless of local salience. Write the map as a brief list: `[Section] → unlocks [Section(s)]` or `[Section] ← requires [Section(s)]`. If no dependencies exist, say so explicitly.
+
+### 3. Plan Cuts
+
+Before editing, produce a cut plan. For each section or major block, apply in order — first matching rule wins:
+
+- **Cut** if: redundant with another section, decorative/transitional only, or audience can be assumed to know it (from step 1)
+- **Cut** if: has no downstream dependents (from step 2) AND doesn't directly establish a key claim
+- **Compress** if: carries signal the audience needs but is overwritten — ask "can this say the same thing in half the words?"
+- **Keep** if: a downstream section requires it to be interpretable, OR it states a key claim that cannot be paraphrased without distortion
 
 State the target reduction (e.g., "~60% of current length") and what you expect to lose vs. preserve.
 
-### 3. Apply
+### 4. Apply
 
 Rewrite the document according to the plan:
 
@@ -38,15 +51,14 @@ Rewrite the document according to the plan:
 - Compress kept material: one idea per sentence, no hedging, no throat-clearing
 - Preserve structure only where it aids navigation; collapse trivial sections
 
-### 4. Verify
+### 5. Verify
 
-Read the distilled version cold. Ask:
+Before reading the distilled version, generate 5–8 questions a reader would need the original to answer — questions that test the key claims, dependencies, and core concepts identified in steps 1–2. Write them down. Then read the distilled version and answer each question from it alone.
 
-- Does it still serve the original purpose?
-- Are all core concepts present and clear?
-- Is anything load-bearing missing?
+- If all questions are answerable: distillation is complete.
+- If a question is unanswerable: restore the minimum content required to answer it, then re-run only the failed questions.
 
-If yes to the last question, restore the minimum needed and re-verify.
+The questions must be specific and falsifiable — not "is the concept clear?" but "what is the threshold for X?" or "what happens if Y fails?" Generic yes/no questions about purpose are insufficient; they pass even when load-bearing specifics are lost.
 
 ## Constraints
 
@@ -59,6 +71,6 @@ If yes to the last question, restore the minimum needed and re-verify.
 
 Return:
 
-1. **Cut plan** (brief — 3–10 lines): what you're keeping, compressing, and cutting, and why
+1. **Cut plan** (brief — 5–12 lines): dependency map (section → unlocks), audience assumptions, classification decisions with rationale
 2. **Distilled document**: the rewritten content
 3. **Stats**: original word count → distilled word count
