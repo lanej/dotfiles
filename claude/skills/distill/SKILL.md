@@ -66,6 +66,7 @@ The questions must be specific and falsifiable — not "is the concept clear?" b
 - **Never paraphrase inaccurately** — if you can't shorten a claim without distorting it, keep it verbatim
 - **Preserve precision** — vague compression is worse than verbosity
 - **Respect the audience** — don't add explanation the audience doesn't need, don't remove explanation they do
+- **Never write to disk** — return the distilled document in the conversation; do not overwrite or create any file unless the user explicitly directs you to
 
 ## Output Format
 
