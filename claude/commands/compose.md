@@ -81,13 +81,14 @@ Behavior: full workflow, no stages skipped.
 
 Conduct Socratic interrogation before any writing. Surface hidden assumptions now, not in revision.
 
-Ask all five questions. Do not proceed until all are answered:
+Ask all six questions. Do not proceed until all are answered:
 
 1. **Reader**: Who specifically will read this? What is their role, context, and prior knowledge? What objections will they arrive with?
 2. **Purpose**: What must the reader believe, decide, or do after reading? One sentence.
 3. **Success**: What does "this document worked" look like, concretely? What changes downstream?
 4. **Evidence**: What facts, data, or reasoning support the core claim? What is not yet known?
 5. **Constraints**: Length, tone, format, deadline, sensitivity, distribution scope?
+6. **Cost of inaction**: What is the measurable cost of NOT making this change or decision? If this document is a budget or approval request, what does the ask produce in quantifiable return? If the answer is "unclear," that is evidence the thesis needs tightening before drafting.
 
 Record answers in `brief.md` under `## Interrogation`.
 
@@ -104,8 +105,9 @@ Search for evidence before drafting. Do not write claims you cannot support.
 
 **Classification of claim types** (established now, enforced in Stage 4):
 - **Sourced**: has a `sources.md` entry with a footnote reference in the draft
-- **First-principles**: derived by reasoning, no external source needed — labeled `[^fp: reasoning]` in the draft
-- **Unsourced**: neither — inaccuracy risk, flagged in critique
+- **First-principles** (`[^fp: reasoning]`): derivable by logic from stated facts alone. The test: could a reader with no additional information derive this claim from facts already in the document? If not, it is not first-principles. Empirical observations (dashboard readings, trend data, internal measurements) and product feature claims about external tools are NOT first-principles — they require a source entry or `[^org:]` label.
+- **Organizational** (`[^org: description]`): facts about EasyPost's own infrastructure, team composition, or internal state that are author-attested but not externally sourced. Not unsourced — but must be explicitly labeled. Example: `[^org: EasyPost runs Envoy as its internal proxy]`.
+- **Unsourced**: none of the above — inaccuracy risk, flagged in critique
 
 ### Stage 3 — Brief
 
@@ -157,9 +159,9 @@ Run two independent reader attacks plus a source audit. Critics receive only `dr
 
 **Source Audit** (primary agent — requires access to sources.md):
 - Every `[^Sxxx]` reference in the draft must resolve to an entry in `sources.md`
-- Any claim without `[^Sxxx]` or `[^fp:]` annotation is unsourced
+- Any claim without `[^Sxxx]`, `[^fp:]`, or `[^org:]` annotation is unsourced
 - Source entries older than 90 days with confidence < high: flag as potentially stale
-- Quantitative claims with only `[^fp:]`: flag — numbers need sources
+- Quantitative claims with only `[^fp:]` or `[^org:]`: flag — numbers need an external source entry
 
 Write findings to `critique.md`:
 
@@ -175,7 +177,7 @@ Write findings to `critique.md`:
 [Sources older than 90 days at medium/low confidence]
 
 ## Distillation Check
-[5 specific falsifiable questions; answer from draft alone; flag failures]
+[Generate 5 specific falsifiable questions from the Brief's thesis and section claims — BEFORE re-reading draft.md. Write them down. Then read draft.md and answer each from the text alone. Flag any question the draft cannot answer.]
 ```
 
 **Pause here.** Do not revise until findings are reviewed.

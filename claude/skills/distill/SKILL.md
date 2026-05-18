@@ -38,8 +38,10 @@ Before editing, produce a cut plan. For each section or major block, apply in or
 
 - **Cut** if: redundant with another section, decorative/transitional only, or audience can be assumed to know it (from step 1)
 - **Cut** if: has no downstream dependents (from step 2) AND doesn't directly establish a key claim
-- **Compress** if: carries signal the audience needs but is overwritten — ask "can this say the same thing in half the words?"
+- **Compress** if: carries signal the audience needs but is overwritten. Compression is complete when no sentence can be removed without losing a key claim, and no sentence can be shortened without distorting its meaning.
 - **Keep** if: a downstream section requires it to be interpretable, OR it states a key claim that cannot be paraphrased without distortion
+
+For each section marked **Cut**: before finalizing the cut, list any key claims or load-bearing numbers it contains and relocate them to a surviving section. Then apply the cut.
 
 State the target reduction (e.g., "~60% of current length") and what you expect to lose vs. preserve.
 
