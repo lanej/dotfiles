@@ -324,17 +324,3 @@ After creating and rendering the Quarto document:
 ✓ Added to memory:
   - Project_CarrierAPI_Patterns → "Login errors correlate with traffic spikes"
 ```
-
-## Integration with EPIST
-
-**Optional**: If the user has an EPIST knowledge base, offer to add observations/conclusions:
-
-```bash
-# Add key observations to EPIST
-epist add fact
-
-# Add conclusions to EPIST
-epist add conclusion
-```
-
-This makes the epistemological chain persistent and searchable across sessions.
