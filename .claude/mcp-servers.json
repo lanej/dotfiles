@@ -1,6 +1,5 @@
 {
   "gspace":   { "command": "gspace",   "args": ["mcp", "stdio"] },
-  "qmd":      { "command": "/Users/joshlane/.bun/bin/qmd", "args": ["mcp"], "env": { "QMD_RERANK_MODEL": "hf:pyarn/Qwen3-Reranker-4B-Q4_K_M-GGUF/qwen3-reranker-4b-q4_k_m.gguf" } },
   "bigquery": { "command": "bigquery", "args": ["mcp", "stdio"] },
   "jira":     { "command": "jira",     "args": ["mcp", "stdio"] },
   "looker":   { "command": "looker",   "args": ["mcp", "stdio"] },

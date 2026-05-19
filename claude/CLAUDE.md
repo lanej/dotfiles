@@ -98,6 +98,8 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Execute directly** (no announcement) when the task is short and unambiguous.
 
+**After a delegated or background task completes**, always summarize what it accomplished before continuing — even if the user just says "continue." Never respond with "No response requested." — that leaves the user without closure and forces a re-prompt.
+
 ## Plan Mode
 
 **Before entering plan mode**, spawn a background sub-agent to run the `reflection`
@@ -120,16 +122,16 @@ Do not append revised sections below old ones.
 
 **`~/workspace` is the canonical knowledge base** — prior analyses, domain decisions, headcount, strategy, customer context, BQ data dictionary, and more. Query it first, regardless of current working directory.
 
-**First-look protocol:** Before answering domain questions or starting substantive work, search the workspace with `mcp__qmd__query`. This applies in any working directory (`~/src/*`, `~/workspace/*`, anywhere).
+**First-look protocol:** Before answering domain questions or starting substantive work, search the workspace with `qmd query` via Bash. This applies in any working directory (`~/src/*`, `~/workspace/*`, anywhere).
 
-**Always pass `rerank: false`** when calling `mcp__qmd__query`. The Qwen3 reranker scores markdown table rows near zero (no natural language context), which silently drops roster entries, schema tables, and other structured data from results. BM25+vector RRF scores are reliable without reranking.
+**Always pass `--no-rerank`** when calling `qmd query`. The Qwen3 reranker is slow and degrades quality: it silently drops structured data (tables, rosters, schema) and does not fix bad top-1 hits. Example: `qmd query --no-rerank "your query here"`
 
 ## Research Protocol
 
 When gathering context, work through sources in this order — stop when you have sufficient confidence. Fastest and cheapest first; live/external last.
 
 1. **Auto-memory** — preferences, project state, key decisions already in context
-2. **Workspace KB** (`mcp__qmd__query`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context; Looker explore docs in `resources/looker-queries/`
+2. **Workspace KB** (`qmd query --no-rerank`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context; Looker explore docs in `resources/looker-queries/`
 3. **Codebase** (Glob/Grep/Read) — source of truth for implementation details
 4. **BigQuery** (`mcp__bigquery__query`) — live warehouse data; always `dry_run` first
 5. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
@@ -138,11 +140,11 @@ When gathering context, work through sources in this order — stop when you hav
 ## Analysis Toolchain (EPQ + QMD)
 
 For data-driven analysis, use the EPQ + QMD pipeline:
-- **QMD** (`mcp__qmd__query`) — query prior analyses, documented decisions, domain knowledge before starting new work. Use lex+vec searches with intent for best recall.
+- **QMD** (`qmd query --no-rerank` via Bash) — query prior analyses, documented decisions, domain knowledge before starting new work. Use lex+vec searches with intent for best recall.
 - **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in Quarto documents. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review. **Never hardcode data values in extract scripts or figure modules** — any numeric value that could come from a real data source must come from a BQ query and flow through the cache. Static reference data (labels, provider names, flag constants) is acceptable; metric values, counts, medians, and dollar amounts are not.
 - **BigQuery** → **DuckDB** — BQ for warehouse queries, DuckDB for local analytics on exported data.
 
-Load `epq` skill for Quarto document work. Load `qmd` skill for workspace search.
+Load `epq` skill for Quarto document work.
 
 ## Operational Guidelines
 
