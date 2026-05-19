@@ -92,7 +92,7 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 - **Exploratory**: requires multi-step research, involves unknown territory, or needs 2+ searches to answer (the `/delegate` command has the full heuristics — apply them here)
 
 **Orchestration protocol:**
-1. **Challenge for context first.** Before spawning sub-agents, interrogate the user: domain context, constraints, success criteria, failure modes. If requirements are ambiguous, run `/socrates` before any delegation. Do not delegate to underspecified sub-agents.
+1. **Challenge for context first.** Before spawning sub-agents, interrogate the user: domain context, constraints, success criteria, failure modes. If requirements are ambiguous, run `/spec/socrates` before any delegation. Do not delegate to underspecified sub-agents.
 2. **Announce the decision.** State "Orchestrating: [reason]" before switching modes.
 3. **Use a structured briefing.** Every `Agent` tool call must include: *Context* (overall task and why it matters), *Domain* (relevant facts not derivable from CLAUDE.md), *Sub-problem* (exactly what this agent owns), *Success* (what done looks like), *Constraints* (hard limits), *Output format* (specific format expected).
 
@@ -100,7 +100,7 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 ## Plan Mode
 
-**Before entering plan mode**, spawn a background sub-agent to run the `reflection`
+**Before entering plan mode**, spawn a background sub-agent to run the `/memory/reflection`
 command with the `auto` argument. The sub-agent must apply all suggested CLAUDE.md
 improvements directly without waiting for user approval. Do not wait for it before
 proceeding into planning. **Note:** The harness injects plan mode restrictions into all

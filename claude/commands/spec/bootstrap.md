@@ -62,7 +62,7 @@ git rev-parse --git-dir 2>/dev/null
 
 1. **Ask clarifying questions** about the project (see questions below)
 2. **Synthesize a constitution** based on universal practices + project-specific needs
-3. **Use `/speckit.constitution [short-name]`** to generate and save the constitution file
+3. **Use `/speckit/constitution [short-name]`** to generate and save the constitution file
 
 ### Step 4: Install Pre-Commit Hooks
 
@@ -696,7 +696,7 @@ After gathering project context from the user:
    - Each principle MUST have a clear "if we violate this, bad things happen" statement
    - Rationale should reference the specific project type and constraints
 
-7. **Generate constitution**: Use `/speckit.constitution [short-name]`
+7. **Generate constitution**: Use `/speckit/constitution [short-name]`
 
 **Remember**: The constitution should feel essential, not bureaucratic. Only include principles that have clear, project-specific justifications.
 
@@ -742,16 +742,16 @@ To bypass temporarily (not recommended): git commit --no-verify
 **Next steps**:
 1. Review the constitution: .specify/memory/constitution.md
 2. Make initial commit: git add . && git commit -m "Initial project setup with speckit"
-3. Start your first feature: /speckit.specify [feature-name]
-4. Generate implementation plan: /speckit.plan
-5. Create task breakdown: /speckit.tasks
+3. Start your first feature: /speckit/specify [feature-name]
+4. Generate implementation plan: /speckit/plan
+5. Create task breakdown: /speckit/tasks
 
 **Available speckit commands**:
-- /speckit.specify - Create feature specification
-- /speckit.plan - Generate implementation plan
-- /speckit.tasks - Break down into tasks
-- /speckit.implement - Execute the implementation
-- /speckit.constitution - Update constitution (if needed)
+- /speckit/specify - Create feature specification
+- /speckit/plan - Generate implementation plan
+- /speckit/tasks - Break down into tasks
+- /speckit/implement - Execute the implementation
+- /speckit/constitution - Update constitution (if needed)
 
 For more help: https://github.com/github/spec-kit
 ```

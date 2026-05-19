@@ -240,7 +240,7 @@ Proceeding autonomously:
 
 Don't use `/continue` for:
 - Exploratory work where direction is unclear
-- Planning phase (use `/speckit.plan` or similar instead)
+- Planning phase (use `/speckit/plan` or similar instead)
 - When user wants to review each step
 - High-risk operations requiring careful oversight
 - Initial project setup where user preferences are unknown

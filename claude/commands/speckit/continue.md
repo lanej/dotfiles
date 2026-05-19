@@ -1,5 +1,5 @@
 ---
-description: Resume Speckit implementation autonomously without prompts - use when /speckit.implement paused
+description: Resume Speckit implementation autonomously without prompts - use when /speckit/implement paused
 ---
 
 # Speckit Continue
@@ -116,7 +116,7 @@ You're in the middle of a Speckit implementation:
 - plan.md defines the architecture
 - spec.md defines the requirements
 - All the planning is complete - you're in execution mode
-- The user ran `/speckit.continue` because they want autonomous completion
+- The user ran `/speckit/continue` because they want autonomous completion
 - Honor that by actually working autonomously
 
 ## Now Resume
