@@ -163,6 +163,25 @@ GROUP BY 1 ORDER BY avg_salary DESC;
 
 The `departures` table stores `departure_type` as the full string `'Voluntary'` or `'Involuntary'`. Always display it as-is in query output — never abbreviate to V/I.
 
+**Dedup pattern**: A person can appear in multiple weeks (pending → confirmed transition). To get each person's most recent confirmed departure record, use:
+```sql
+WITH deduped AS (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY full_name ORDER BY week_date DESC) AS rn
+    FROM departures
+    WHERE is_pending = false
+)
+SELECT * FROM deduped WHERE rn = 1;
+```
+
+**Supervisor ILIKE matching**: The `supervisor` column stores full legal names (`"Banbury, Matthew"`, `"Sutkus, Matthew"`). Joining via `last_name || ', ' || first_name` from `current_headcount` fails when `first_name` is a preferred name (Matt ≠ Matthew). Use last-name-only matching instead:
+```sql
+-- Resolve a manager's direct reports by last name only (safe)
+WHERE supervisor ILIKE '%banbury%'
+-- or for director attribution across departures:
+WHERE d.supervisor ILIKE '%' || split_part(m.last_name, ' ', 1) || '%'
+```
+
 ```sql
 -- All departures with type
 SELECT week_date, full_name, title, departure_type, departure_date
