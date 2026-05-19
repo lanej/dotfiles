@@ -104,10 +104,11 @@ Search for evidence before drafting. Do not write claims you cannot support.
 4. Record what was searched and NOT found — note gaps in `brief.md` under `## Evidence Gaps`.
 
 **Classification of claim types** (established now, enforced in Stage 4):
-- **Sourced**: has a `sources.md` entry with a footnote reference in the draft
-- **First-principles** (`[^fp: reasoning]`): derivable by logic from stated facts alone. The test: could a reader with no additional information derive this claim from facts already in the document? If not, it is not first-principles. Empirical observations (dashboard readings, trend data, internal measurements) and product feature claims about external tools are NOT first-principles — they require a source entry or `[^org:]` label.
+- **Sourced**: has a `sources.md` entry with a footnote reference in the draft (`[^S001]`)
 - **Organizational** (`[^org: description]`): facts about EasyPost's own infrastructure, team composition, or internal state that are author-attested but not externally sourced. Not unsourced — but must be explicitly labeled. Example: `[^org: EasyPost runs Envoy as its internal proxy]`.
-- **Unsourced**: none of the above — inaccuracy risk, flagged in critique
+- **Unsourced**: neither of the above — inaccuracy risk, flagged in critique
+
+There is no first-principles exemption. If a claim is genuinely definitional (a protocol property, a language semantic, a mathematical fact), write the reasoning into the prose — the sentence itself is the justification. If you cannot write the reasoning naturally into the prose, that is a signal the claim needs a source. The Skeptic in Stage 5 is the backstop for anything that feels asserted.
 
 ### Stage 3 — Brief
 
@@ -142,8 +143,7 @@ Write against the Brief. Every section fulfills its stated claim.
 Rules:
 - One idea per sentence
 - No hedging, no throat-clearing, no summaries of what you just said
-- Every quantitative or comparative claim annotated: `[^S001]` for sourced, `[^fp: reasoning]` for first-principles
-- Numbers always need a source — a first-principles label is not sufficient for quantitative claims
+- Every quantitative or comparative claim annotated: `[^S001]` for sourced, `[^org: description]` for internal organizational facts
 - If a claim lacks either annotation: stop, return to Stage 2, record the source before continuing
 - Preserve structure only where it aids navigation
 
@@ -159,9 +159,9 @@ Run two independent reader attacks plus a source audit. Critics receive only `dr
 
 **Source Audit** (primary agent — requires access to sources.md):
 - Every `[^Sxxx]` reference in the draft must resolve to an entry in `sources.md`
-- Any claim without `[^Sxxx]`, `[^fp:]`, or `[^org:]` annotation is unsourced
+- Any claim without `[^Sxxx]` or `[^org:]` annotation is unsourced
 - Source entries older than 90 days with confidence < high: flag as potentially stale
-- Quantitative claims with only `[^fp:]` or `[^org:]`: flag — numbers need an external source entry
+- Quantitative claims with only `[^org:]`: flag — numbers need an external source entry, not just author attestation
 
 Write findings to `critique.md`:
 
@@ -194,7 +194,7 @@ Classify every critique finding before touching the draft:
 
 No finding may silently disappear.
 
-For each Unsourced Claim finding: either (a) return to Stage 2 and record the source, then annotate the claim, or (b) reclassify the claim as first-principles and label it explicitly, or (c) cut the claim.
+For each Unsourced Claim finding: either (a) return to Stage 2 and record the source, then annotate the claim, or (b) rewrite the claim so the reasoning is self-evident in the prose and no annotation is needed, or (c) cut the claim.
 
 For each Stale Source finding: update the source entry with current information or lower the claim's confidence level in the draft.
 
