@@ -202,9 +202,13 @@ Apply `distill` skill to any section flagged for compression. Update status to `
 
 ### Stage 7 — Release
 
-Write final document to `release/doc.md`.
+Determine the release path before writing:
+- If invoked with an existing file path (`/compose path/to/doc.md`): write the release back to that path, overwriting it.
+- If invoked with a description: derive a slug from the thesis (e.g., `eng-org-consolidation-memo.md`) and write to the current working directory, or a path the user specifies.
 
-`release/doc.md` contains only the document — no status headers, no `[^Sxxx]` annotations (these live in sources.md), no metadata beyond what belongs in the document itself. Where citations are appropriate for the audience (external docs, academic-style memos), convert `[^Sxxx]` to standard footnotes with the source URL.
+Write the release to that path — not inside `.compose/`. The `.compose/` directory is scaffolding (artifact trail, sources, critique); it stays hidden. The released document is a normal file at a real path.
+
+The release document contains only the document — no status headers, no `[^Sxxx]` or `[^org:]` annotations (these live in sources.md), no metadata beyond what belongs in the document itself. Where citations are appropriate for the audience (external docs, academic-style memos), convert `[^Sxxx]` references to standard footnotes with the source URL from sources.md.
 
 ## Transition Rules
 
