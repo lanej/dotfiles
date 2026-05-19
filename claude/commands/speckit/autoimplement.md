@@ -1,16 +1,16 @@
 ---
-description: Execute /speckit.implement with full autonomous execution - no prompts between phases or tasks
+description: Execute /speckit/implement with full autonomous execution - no prompts between phases or tasks
 ---
 
 # Speckit Auto-Implementation
 
-Execute `/speckit.implement` with full autonomous mode.
+Execute `/speckit/implement` with full autonomous mode.
 
-You are about to execute `/speckit.implement` with **full autonomous mode** enabled.
+You are about to execute `/speckit/implement` with **full autonomous mode** enabled.
 
 ## Critical Instructions
 
-Execute `/speckit.implement` immediately, then follow these rules during the ENTIRE implementation:
+Execute `/speckit/implement` immediately, then follow these rules during the ENTIRE implementation:
 
 ### FORBIDDEN PROMPTS - NEVER ASK:
 
@@ -85,8 +85,8 @@ Think of this as `/continue` mode but specifically for Speckit implementation:
 - The path forward is defined
 - Just execute everything without asking permission
 
-The user ran `/speckit.autoimplement` because they want the ENTIRE implementation done autonomously. Honor that by actually working autonomously through all phases and tasks.
+The user ran `/speckit/autoimplement` because they want the ENTIRE implementation done autonomously. Honor that by actually working autonomously through all phases and tasks.
 
 ## Now Execute
 
-Run `/speckit.implement` and follow the autonomous execution rules above throughout the entire process.
+Run `/speckit/implement` and follow the autonomous execution rules above throughout the entire process.
