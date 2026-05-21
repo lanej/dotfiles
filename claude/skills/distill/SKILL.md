@@ -82,6 +82,8 @@ When the input is a `.qmd` file, apply these rules before the standard cut proce
 
 Apply the standard distill process only to the prose sections between these structural elements.
 
+**Figure verification**: After identifying which figure cells to keep, locate the rendered PNGs in `{project}_files/figure-pdf/` and read each one using the Read tool. Verify that what the figure actually shows supports the claims made in the distilled prose. If a figure contradicts or fails to support a claim, surface the discrepancy rather than silently keeping both.
+
 ## Output Format
 
 Return:
