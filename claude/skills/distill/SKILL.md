@@ -70,6 +70,18 @@ The questions must be specific and falsifiable — not "is the concept clear?" b
 - **Respect the audience** — don't add explanation the audience doesn't need, don't remove explanation they do
 - **Never write to disk** — return the distilled document in the conversation; do not overwrite or create any file unless the user explicitly directs you to
 
+## QMD Files
+
+When the input is a `.qmd` file, apply these rules before the standard cut process:
+
+- **Frontmatter** (YAML between `---` delimiters): always keep — it is configuration, not prose
+- **Setup/library cells** (imports, `style.apply_style()`, `data = {}`): cut — boilerplate with no content value
+- **Data-loading cells** (`cache.read_cache()`, scalar extraction): keep — they feed inline `{python}` expressions in the prose; removing them breaks the document
+- **Figure rendering cells**: keep — figures carry visual evidence the prose references
+- **LaTeX blocks** (`{=latex}` raw blocks, `\needspace`, title block inputs, etc.): ignore and leave untouched — they are required for PDF layout and identity
+
+Apply the standard distill process only to the prose sections between these structural elements.
+
 ## Output Format
 
 Return:
