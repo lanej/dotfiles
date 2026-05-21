@@ -8,6 +8,20 @@ tools: Read, Write, Edit, Glob, Grep
 
 ---
 
+## Session Start Protocol
+
+**Before writing anything on an existing document**, execute this protocol:
+
+1. **Check for `doc-state.md`** in the same directory as the target document (or a `<basename>-state.md` alongside it).
+   - If found: read it. State the locked outline. Confirm the next section. Do not deviate from the locked outline without explicit user approval.
+   - If not found and the document exists: read the document, note its current structure, proceed normally.
+
+2. **Long-form gate**: if the document has 3+ major sections or is expected to span multiple sessions, require outline approval before writing prose — apply the two-pass discipline from `/write-doc`.
+
+3. **Session end**: after any session involving structural changes, write or update `doc-state.md` using the `/checkpoint-doc` command. State this to the user before closing.
+
+---
+
 ## Writing-Specific Todo Usage
 
 Use adaptive todo lists for complex writing projects:
