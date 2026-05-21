@@ -1,18 +1,19 @@
 ---
 description: Analyze session behavior against CLAUDE.md and apply improvements. Spawned as a background sub-agent by plan mode with argument 'auto' to apply changes without user interaction. Also invoke manually after a session where Claude misunderstood requests, ignored instructions, or needed repeated correction.
 argument-hint: [auto]
-allowed-tools: Read, Edit, Skill, TodoWrite, Bash(git:*), mcp__plugin_claude-mem_mcp-search__search, mcp__plugin_claude-mem_mcp-search__get_observations
+allowed-tools: Read, Edit, Glob, Bash(find:*), Bash(which:*), Skill, Agent, TodoWrite, Bash(git:*), mcp__plugin_claude-mem_mcp-search__search, mcp__plugin_claude-mem_mcp-search__get_observations
 ---
 
 ## Step 1 — Analyze Chat History
 
-Review the conversation history in your context window. Identify patterns indicating missing, incomplete, or incorrect CLAUDE.md instructions:
+Review the conversation history in your context window. Identify patterns indicating missing, incomplete, or incorrect instructions across all eligible targets: **user-level CLAUDE.md, project-level CLAUDE.md, and skill files** (`~/.files/claude/skills/*/SKILL.md`). Skill files and CLAUDE.md are equally valid targets — the goal is putting guidance where it will be read, not stuffing everything into CLAUDE.md.
 
 - Requests Claude misunderstood
 - Behaviors the user had to correct more than once
-- Tool preferences or workflows used repeatedly that are absent from CLAUDE.md
+- Tool preferences or workflows used repeatedly that are absent from any config file
 - Instructions that exist but were ignored or applied inconsistently
 - Edge cases that produced wrong behavior
+- Tool-specific patterns that belong in a skill file rather than CLAUDE.md
 
 Structure your initial findings as a brief:
 
@@ -42,13 +43,34 @@ Add the classification to each finding in your brief. Deprioritize one-offs unle
 
 ## Step 3 — Scope Each Finding
 
-Before invoking the improver, classify each finding by which CLAUDE.md it belongs in:
+Before invoking any improver, classify each finding by where it belongs. Ask the critical question first: **is this a bug/gap in the tool itself, or is it a documentation gap in how Claude uses the tool?**
 
-**User-level** (`~/.claude/CLAUDE.md`) — global, applies across all projects:
-- Tool preferences and CLI patterns
-- Communication style corrections
-- Cross-project workflow behaviors
-- Operational guidelines that should always apply
+**Tool repo** — the finding is a fixable bug, missing feature, or incorrect behavior in a locally-installed tool:
+- The tool itself does the wrong thing, is missing a flag/option, or has a defect
+- A workaround currently lives in CLAUDE.md or a skill file because the tool wasn't fixed
+- Fix belongs in the tool's source repo, not in documentation
+
+Local tool repos (canonical mapping):
+| Tool | Repo path |
+|---|---|
+| `epq` | `~/src/analysis-doc` |
+| `qmd` | check `which qmd` to find install path; if local repo, use it |
+
+If the tool has no local repo (e.g., `xlsx`, `bigquery` CLI, external SaaS), the fix cannot go here — document the workaround in the skill file instead.
+
+**Skill file** (`~/.files/claude/skills/<name>/SKILL.md`) — usage guidance, gotchas, patterns, and workarounds for things that can't be fixed upstream:
+- Usage details and edge cases for a specific tool (epq, gspace, jira, bigquery, qmd, etc.)
+- Patterns that only apply when that skill is active
+- Workarounds for tool behaviors that are correct but surprising
+- **Rule**: if a finding is about how to use a specific tool and that tool has a skill file, it goes in the skill file — not CLAUDE.md. CLAUDE.md should only contain the trigger/invocation rule (when to load the skill), not the tool's usage detail.
+- **Do NOT add a caveat to the skill file for something that should be fixed in the tool** — document → fix, not document → workaround.
+
+**User-level** (`~/.claude/CLAUDE.md`) — global, applies unconditionally across all sessions:
+- Session-wide behaviors that must be active before any skill loads (e.g., first-look protocol, `--no-rerank` rule)
+- Tool preferences without a dedicated skill (CLI flags, command substitutions)
+- Communication style and operational guidelines
+- Cross-project workflows that apply regardless of context
+- **Not**: tool-specific detail that already has a skill home
 
 **Project-level** (`~/.files/CLAUDE.md`) — dotfiles repo only, checked in:
 - Conventions specific to this repository
@@ -59,7 +81,11 @@ Before invoking the improver, classify each finding by which CLAUDE.md it belong
 - Machine-specific setup or paths
 - Local development commands
 
-If a finding could apply anywhere, it belongs at user-level. Only put findings at project-level if they are meaningless outside this repo.
+**Decision order**:
+1. Is this a fixable bug/gap in a locally-installed tool? → `tool-repo:<path>`
+2. Does a skill file exist for this tool? → `skill:<name>`
+3. Must it apply before any skill loads or has no skill home? → `user-claude-md`
+4. Is it dotfiles-repo-specific? → `project-claude-md` or `project-local`
 
 Add the scoping classification to your findings brief:
 
@@ -68,15 +94,32 @@ Missing instructions: <list or "none">
 Incorrect instructions: <list or "none">
 Ignored instructions: <list or "none">
 Classification: <finding → one-off | recurring | regressed>
-Scope decisions: <finding → file>
+Scope decisions: <finding → tool-repo:<path> | skill:<name> | user-claude-md | project-claude-md | project-local>
 ```
 
-## Step 4 — Invoke the CLAUDE.md Improver
+## Step 4 — Apply Improvements to the Right Target
 
-Invoke the `claude-md-management:claude-md-improver` skill, passing your findings brief (including scope decisions) as the `args`.
+Split findings by scope and dispatch each group appropriately.
+
+**For tool-repo findings** — spawn a sub-agent into the tool's repo to fix the issue directly. Brief the sub-agent with:
+- **Context**: what the reflection found; why this is a bug or gap in the tool, not just a documentation issue
+- **Domain**: the tool's purpose, the project's conventions (read its CLAUDE.md first), its test/lint workflow
+- **Sub-problem**: exactly what to change — the specific behavior to add, fix, or correct
+- **Success**: the fix is implemented, tests pass (or tests are added), and the change is committed
+- **Constraints**: follow the repo's own protocols; do not just add a workaround — actually fix the root cause
+- **Output**: report what was changed and the commit SHA
+
+Do NOT add a corresponding caveat to the skill file after fixing the tool — the fix is the artifact, not the note.
+
+**For skill file findings** — invoke `skill-creator`, passing:
+- Which skill file to update (path)
+- The specific finding and what to add/change
+- Whether to run autonomously (if `$ARGUMENTS` contains `auto`)
+
+**For CLAUDE.md findings** — invoke `claude-md-management:claude-md-improver`, passing your findings brief (including scope decisions) as the `args`.
 
 If `$ARGUMENTS` contains `auto`:
-- Run the skill autonomously — apply all improvements without interactive approval
+- Run all dispatches autonomously — apply all improvements without interactive approval
 
 Otherwise:
-- Present your findings and scope decisions to the user first, then invoke the skill interactively
+- Present your findings and scope decisions to the user first, then dispatch the appropriate agents interactively
