@@ -82,6 +82,18 @@ After adding or committing new files, the post-commit hook runs `qmd update` aut
 To force a full re-embed (e.g., after adding many new files): `qmd embed`.
 Log: `/tmp/qmd-post-commit.log`
 
+## Sub-Agent Briefings
+
+When briefing a sub-agent to search the workspace, give it the CLI command explicitly — do not just say "search the workspace." MCP tools can be unavailable in sub-agent contexts (disconnected server, cold-start).
+
+Include in the briefing:
+
+```
+Search the workspace using the qmd CLI:
+  qmd query --no-rerank "your topic here"
+Do NOT use mcp__qmd__* tools — they may be unavailable.
+```
+
 ## When to Load This Skill
 
 Auto-load when the user:

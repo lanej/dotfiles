@@ -451,7 +451,10 @@ reauth-gcloud() {
 				gspace auth login
 }
 alias dc='claude --dangerously-skip-permissions'
-alias dcc='claude --dangerously-skip-permissions --continue'
+
+dcc() {
+				claude --dangerously-skip-permissions --continue || dc
+}
 
 # Rust/Cargo disk space management
 alias cargo-clean-all='find ~/src -name "target" -type d -prune -exec echo "Cleaning: {}" \; -exec rm -rf {} \;'
@@ -459,7 +462,6 @@ alias cargo-clean-debug='find ~/src -name "target" -type d -exec sh -c "[ -d \"{
 alias cargo-clean-old='fd --type d --max-depth 2 "^target$" ~/src --exec cargo-sweep -t 30 {//}'
 alias cargo-cache-clean='command -v cargo-cache >/dev/null && cargo cache --autoclean || echo "Install cargo-cache: cargo install cargo-cache"'
 alias rust-disk='du -sh ~/src/*/target 2>/dev/null | sort -hr | head -20'
-alias sccache-stats='sccache --show-stats'
 alias cargo-install-ssh='CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --git'
 cargo-install-github() {
 	if [ $# -lt 2 ]; then

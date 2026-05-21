@@ -158,6 +158,32 @@ vim.keymap.set("n", "<leader>Y", '"+yg_', { noremap = true, silent = true })
 -- NOTE: Map <leader>p to paste from system clipboard in normal and visual modes
 vim.keymap.set({ "n", "v" }, "<leader>p", '"+p', { noremap = true, silent = true })
 
+-- gspace docs sync current buffer (debounced 1s)
+local _gspace_sync_timer = nil
+vim.keymap.set("n", "<leader>gD", function()
+  vim.cmd("w")
+  local file = vim.fn.expand("%:p")
+  if _gspace_sync_timer then
+    _gspace_sync_timer:stop()
+    _gspace_sync_timer:close()
+  end
+  _gspace_sync_timer = vim.uv.new_timer()
+  _gspace_sync_timer:start(1000, 0, function()
+    _gspace_sync_timer:close()
+    _gspace_sync_timer = nil
+    vim.system({ "gspace", "docs", "sync", file }, {}, function(result)
+      vim.schedule(function()
+        if result.code == 0 then
+          vim.notify("gspace: synced", vim.log.levels.INFO)
+        else
+          local msg = vim.trim((result.stderr ~= "" and result.stderr) or result.stdout or "unknown error")
+          vim.notify("gspace: " .. msg, vim.log.levels.ERROR)
+        end
+      end)
+    end)
+  end)
+end, { noremap = true, silent = true, desc = "gspace docs sync" })
+
 -- NOTE: Map <leader>P to paste before cursor from system clipboard in normal and visual modes
 vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { noremap = true, silent = true })
 
@@ -453,6 +479,96 @@ vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
+})
+
+local function align_pipe_table(lines)
+	local rows = {}
+	for _, line in ipairs(lines) do
+		if not line:match("^%s*|") then
+			return nil
+		end
+		local parts = vim.split(line, "|", { plain = true })
+		local cells = {}
+		for i = 2, #parts - 1 do
+			table.insert(cells, vim.trim(parts[i]))
+		end
+		table.insert(rows, cells)
+	end
+
+	local ncols = 0
+	for _, row in ipairs(rows) do
+		ncols = math.max(ncols, #row)
+	end
+	if ncols == 0 then
+		return nil
+	end
+
+	local widths = {}
+	for c = 1, ncols do
+		widths[c] = 3
+		for _, row in ipairs(rows) do
+			if row[c] then
+				widths[c] = math.max(widths[c], #row[c])
+			end
+		end
+	end
+
+	local result = {}
+	for _, row in ipairs(rows) do
+		local parts = {}
+		for c = 1, ncols do
+			local cell = row[c] or ""
+			local w = widths[c]
+			if cell:match("^:?%-+:?$") then
+				local lc = cell:sub(1, 1) == ":" and ":" or "-"
+				local rc = (cell:sub(-1) == ":" and #cell > 1) and ":" or ""
+				table.insert(parts, lc .. string.rep("-", w - #lc - #rc) .. rc)
+			else
+				table.insert(parts, cell .. string.rep(" ", w - #cell))
+			end
+		end
+		table.insert(result, "| " .. table.concat(parts, " | ") .. " |")
+	end
+	return result
+end
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+	group = "filetype_markdown",
+	pattern = { "*.md", "*.qmd" },
+	callback = function()
+		local ok, parser = pcall(vim.treesitter.get_parser, 0, "markdown")
+		if not ok or not parser then
+			return
+		end
+		local tree = parser:parse()[1]
+		if not tree then
+			return
+		end
+		local qok, query = pcall(vim.treesitter.query.parse, "markdown", "(pipe_table) @table")
+		if not qok or not query then
+			return
+		end
+		local ranges = {}
+		for _, node in query:iter_captures(tree:root(), 0) do
+			local sr, _, er, ec = node:range()
+			-- tree-sitter end positions are exclusive; if end_col==0 the last line isn't included
+			if ec == 0 and er > sr then
+				er = er - 1
+			end
+			table.insert(ranges, { sr, er })
+		end
+		if #ranges == 0 then
+			return
+		end
+		for i = #ranges, 1, -1 do
+			local sr, er = ranges[i][1], ranges[i][2]
+			local lines = vim.api.nvim_buf_get_lines(0, sr, er + 1, false)
+			local aligned = align_pipe_table(lines)
+			if aligned then
+				vim.api.nvim_buf_set_lines(0, sr, er + 1, false, aligned)
+			end
+		end
+	end,
 })
 
 -- Treat .jsonl files as JSON (JSON Lines format)

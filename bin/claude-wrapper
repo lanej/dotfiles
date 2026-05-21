@@ -18,41 +18,16 @@ if ! command -v claude &> /dev/null; then
   exit 1
 fi
 
-# Display cached privacy check status
+# Display cached privacy status — silent when clean, loud when prompts are being logged
 if [ -f "$CACHE_FILE" ]; then
-  # Get cache age
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    CACHE_AGE=$(($(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null)))
-  else
-    CACHE_AGE=$(($(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null)))
+  PROMPT_LOGGED=$(jq -r '.prompt_logged // "NO"' "$CACHE_FILE" 2>/dev/null)
+  if [ "$PROMPT_LOGGED" = "YES" ]; then
+    PROJECT=$(jq -r '.project' "$CACHE_FILE" 2>/dev/null)
+    CHECKED=$(jq -r '.checked_at' "$CACHE_FILE" 2>/dev/null)
+    echo -e "${RED}🔍 ALERT: Claude Code prompts are being logged in GCP (${PROJECT}, checked ${CHECKED})${NC}"
+    echo -e "${RED}   Run '/privacy-check' for details and remediation steps.${NC}"
+    echo ""
   fi
-
-  HOURS_AGO=$((CACHE_AGE / 3600))
-  MINUTES_AGO=$((CACHE_AGE / 60))
-
-  # Display status based on age
-  if [ "$CACHE_AGE" -lt 3600 ]; then
-    echo -e "${GRAY}🔍 Privacy status (${MINUTES_AGO}m ago):${NC}"
-  elif [ "$CACHE_AGE" -lt 86400 ]; then
-    echo -e "${GRAY}🔍 Privacy status (${HOURS_AGO}h ago):${NC}"
-  else
-    echo -e "${YELLOW}🔍 Privacy status ($(($CACHE_AGE / 86400))d ago - may be stale):${NC}"
-  fi
-
-  # Show cached status
-  cat "$CACHE_FILE"
-
-  # Add hint for full check
-  EXIT_CODE=$(cat "$CACHE_EXITCODE_FILE" 2>/dev/null || echo "0")
-  if [ "$EXIT_CODE" != "0" ]; then
-    echo -e "${GRAY}   Run '/privacy-check' in Claude for full details${NC}"
-  fi
-  echo ""
-else
-  # No cache file exists yet
-  echo -e "${YELLOW}🔍 Privacy check not yet run${NC}"
-  echo -e "${GRAY}   The daily check will run automatically, or use '/privacy-check' now${NC}"
-  echo ""
 fi
 
 # Launch Claude Code with all original arguments

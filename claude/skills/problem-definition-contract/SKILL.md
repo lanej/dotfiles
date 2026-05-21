@@ -1,0 +1,1 @@
+/Users/joshlane/src/operating-model/skills/problem-definition-contract.md

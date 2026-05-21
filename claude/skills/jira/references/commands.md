@@ -5,14 +5,34 @@
 ```bash
 jira issues search "<jql>" [--max-results N] [--fields f1,f2]
 jira issues get PROJ-123
-jira issues create --project PROJ --type Bug --summary "Title"
-jira issues update PROJ-123 --summary "New title"
+jira issues create --project PROJ --type Bug --summary "Title" \
+  [--assignee <user>] [--description <md>] [--priority High] [--labels a,b] [--parent KEY] \
+  [--field "Story Points=5"] [--field "Sprint=Sprint 42"]   # repeatable, custom fields by name
+jira issues update PROJ-123 [--summary "New title"] [--assignee <user>] \
+  [--description <md>] [--priority High] [--labels a,b] \
+  [--field "Story Points=8"] [--field "Priority Reason=Blocking"]
 jira issues delete PROJ-123
-jira issues get-transitions PROJ-123
-jira issues transition PROJ-123 --transition-id 21
-jira issues assign PROJ-123 --account-id <id>
+jira issues transitions PROJ-123                       # list available transitions (ID + name)
+jira issues transition PROJ-123 "In Progress"         # by name (case-insensitive)
+jira issues transition PROJ-123 21                     # by ID
+jira issues assign PROJ-123 alice@example.com          # by email
+jira issues assign PROJ-123 "Alice Smith"              # by display name
+jira issues assign PROJ-123 5b10ac8d82e05b22cc7d4ef5  # by account ID
+jira issues assign PROJ-123 ""                         # unassign
 jira issues bulk-create --file issues.json
+jira issues pull PROJ-123 [file.md]                    # download description to local markdown
+jira issues sync file.md                               # push local markdown to Jira description
 ```
+
+`<user>` accepts email address, display name, or account ID — resolved at call time. Non-unique display names error with a candidate list; use email or account ID for precision.
+
+`--field "Name=Value"` sets custom fields by name. Values are resolved by field type:
+- **Number fields**: `"Story Points=5"` → numeric
+- **Option/select**: `"Priority Reason=Blocking"` → `{value: "Blocking"}`
+- **Multi-select**: `"Tags=bug"` → `[{value: "bug"}]`
+- **User fields**: `"Dev Lead=alice@example.com"` → accountId (resolved)
+- **Sprint**: `"Sprint=Sprint 42"` → sprint ID (searches all boards; error on non-unique)
+- **Unknown types**: passed through as-is, Jira surfaces errors
 
 ## Projects
 
@@ -113,11 +133,13 @@ jira components delete <id>
 
 ```bash
 jira fields list
-jira fields contexts <fieldId>
-jira fields options <fieldId> <contextId>
-jira fields options-add <fieldId> <contextId> --value "Option A" [--value "Option B"]
-jira fields options-update <fieldId> <contextId> --id <optionId> --value "New Value" [--disabled]
+jira fields contexts <field>                           # field name or ID
+jira fields options <field> <contextId>
+jira fields options-add <field> <contextId> --value "Option A" [--value "Option B"]
+jira fields options-update <field> <contextId> --id <optionId> --value "New Value" [--disabled]
 ```
+
+`<field>` accepts field name (e.g. `"Story Points"`) or field ID (e.g. `customfield_12497`).
 
 ## Filters / Dashboards
 

@@ -22,6 +22,7 @@ NEVER use:
 - "I'm proud of the team..."
 - Any closing line expressing gratitude, optimism, or encouragement
 - A signature or sign-off on either channel
+- A colon after standalone interjections — write "fwiw" not "fwiw:", "fyi" not "fyi:", "btw" not "btw:"
 
 ALWAYS:
 - Open with a declarative statement of what is changing — no wind-up

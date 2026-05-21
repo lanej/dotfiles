@@ -929,6 +929,16 @@ bigquery query "SELECT * FROM my-project.my-dataset.my-table"
 bigquery query "SELECT * FROM \`my-project.my-dataset.my-table\`"
 ```
 
+### Issue: Numeric columns arrive as strings in Python
+
+**Symptom**: `COUNT(*)`, `INT64`, and `FLOAT64` columns have `str` dtype after `bq.run_bq_query()` or the `bigquery` CLI. `groupby().sum()` concatenates strings instead of adding integers — a team with 132 services may produce `alert_count ≈ 5e102` instead of a real number. The failure is silent and produces astronomically wrong results.
+
+**Solution**: Cast every numeric column before aggregation:
+```python
+df["col"] = pd.to_numeric(df["col"], errors="coerce").fillna(0).astype("int64")
+```
+For scalar use: `int(float(row["col"]))` — the `float()` intermediate handles scientific notation strings (`"9.85e7"`). Apply defensively to all numeric columns immediately after loading BQ results into a DataFrame.
+
 ### Issue: "Query too expensive"
 
 **Solution**: Check cost with dry-run and optimize

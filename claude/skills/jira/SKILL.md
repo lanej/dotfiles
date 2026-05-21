@@ -94,32 +94,24 @@ jira:
   key: PROJ-123
   url: https://yourorg.atlassian.net/browse/PROJ-123
   updated: "2026-05-13T08:00:00.000+0000"
+  summary: "Issue title"
 ---
 
 Description body goes here.
 ```
 
-**Conflict detection**: `sync` compares `jira.updated` against the remote timestamp. If remote is more than 60s newer, aborts with a message and suggests `pull` to refresh. **Any Jira API operation that touches a ticket** (MCP link create/delete, `jira_issues_update`, `jira_issues_transition`) updates the remote `updated` timestamp — triggering a conflict on the next sync. Resolution: `jira issues pull <KEY> <file.md>` to refresh the local timestamp, then re-render and sync.
+**Conflict detection**: `sync` compares `jira.updated` against the remote timestamp. If remote is more than 60s newer, aborts with a message and suggests `pull` to refresh.
 
 **File locking**: both commands acquire `file.md.lock` before any I/O. Stale locks (>60s) are overridden with a warning.
 
 **Local images**: `![alt](./local.png)` in the markdown body is base64-encoded and embedded in the ADF on sync. On pull, base64 data URLs are decoded to `./images/{KEY}-img-{n}.png` and referenced as relative paths.
 
-**What syncs**: description only. Summary, status, assignee, labels are Jira-managed and not written to the file.
+**What syncs**: description and summary. Status, assignee, labels are Jira-managed and not written to the file. Edit `jira.summary` in the frontmatter to rename the issue on next sync.
 
 **Known limitations**:
 - `code` mark cannot be combined with other marks (bold/italic) — ADF spec constraint, Jira rejects it
 - Round-trip introduces minor whitespace differences in tables and blockquotes
 - Nested bold+italic (`**bold _italic_**`) emits redundant `**` on pull — cosmetic, content preserved
-
-## Issue Links vs. Inline Hyperlinks
-
-These are distinct operations — do not conflate them:
-
-- **Inline hyperlink in prose**: `[EP-23](https://simplerpostage.atlassian.net/browse/EP-23)` in a description body. Use when the text *references* another ticket. This is what "link to a Jira ticket" means in the context of writing or editing a description.
-- **Issue link edge**: a structural relationship (Blocks, Relates, Cloners) created via `jira issuelinks create` or `mcp__jira__jira_issuelinks_create`. Use only when explicitly asked to set a dependency or relationship between tickets.
-
-When asked to "link to EP-XX" or "reference EP-XX" while working on a description, use the inline hyperlink. Only create an issue link edge when the request is explicitly about ticket relationships.
 
 ## Linking Documents to Issues
 
