@@ -16,7 +16,7 @@ if command -v jq >/dev/null 2>&1; then
 
         # Add tmux window name if available
         if [ -n "$TMUX_PANE" ]; then
-            window_name=$(tmux display-message -p '#W' 2>/dev/null)
+            window_name=$(tmux display-message -pt "$TMUX_PANE" '#W' 2>/dev/null)
             if [ -n "$window_name" ]; then
                 message="Claude waiting: $project_name [$window_name]"
             else
@@ -38,7 +38,7 @@ if [ -n "$TMUX_PANE" ]; then
     printf '\a' >&2
 
     # Also write directly to the tty to ensure bell is visible
-    tty=$(tmux display-message -p '#{pane_tty}' 2>/dev/null)
+    tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
     if [ -n "$tty" ]; then
         printf '\a' > "$tty" 2>/dev/null
     fi

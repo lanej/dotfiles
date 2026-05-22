@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Claude Code Stop hook: ring tmux bell when Claude finishes and auto-continue won't fire."""
+
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+def extract_latest_todos(transcript_path):
+    try:
+        with open(transcript_path, 'r') as f:
+            content = f.read()
+        todo_pattern = r'"name":\s*"TodoWrite".*?"parameters":\s*({[^}]*"todos":\s*\[[^\]]*\][^}]*})'
+        matches = list(re.finditer(todo_pattern, content, re.DOTALL))
+        if not matches:
+            return None
+        params = json.loads(matches[-1].group(1))
+        return params.get('todos', [])
+    except Exception:
+        return None
+
+
+def would_auto_continue(todos):
+    if not todos:
+        return False
+    return any(t.get('status') in ('pending', 'in_progress') for t in todos)
+
+
+def ring_bell(pane):
+    try:
+        tty = subprocess.check_output(
+            ['tmux', 'display-message', '-pt', pane, '#{pane_tty}'],
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
+        if tty:
+            with open(tty, 'w') as f:
+                f.write('\a')
+    except Exception as e:
+        print(f"claude-stop-bell-hook: bell failed: {e}", file=sys.stderr)
+
+
+def main():
+    pane = os.environ.get('TMUX_PANE', '')
+    if not pane:
+        print("claude-stop-bell-hook: TMUX_PANE not set, skipping", file=sys.stderr)
+        sys.exit(0)
+
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        ring_bell(pane)
+        sys.exit(0)
+
+    transcript_path = input_data.get('transcript_path', '')
+    if not transcript_path or not Path(transcript_path).exists():
+        ring_bell(pane)
+        sys.exit(0)
+
+    todos = extract_latest_todos(transcript_path)
+    if would_auto_continue(todos):
+        sys.exit(0)
+
+    ring_bell(pane)
+
+
+if __name__ == '__main__':
+    main()
