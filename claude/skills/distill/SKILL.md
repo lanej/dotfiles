@@ -1,6 +1,6 @@
 ---
 name: distill
-description: Reduce a document to its minimum effective dose — the least information needed to fully convey the purpose and key concepts. Use when asked to simplify, condense, distill, or strip a document down to essentials. Triggers on: "simplify this", "distill this", "trim this down", "what's the minimum I need", "make this shorter without losing anything important".
+description: 'Reduce a document to its minimum effective dose — the least information needed to fully convey the purpose and key concepts. Use when asked to simplify, condense, distill, or strip a document down to essentials. Triggers on: "simplify this", "distill this", "trim this down", "what''s the minimum I need", "make this shorter without losing anything important".'
 ---
 
 # Distill
