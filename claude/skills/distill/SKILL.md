@@ -71,7 +71,7 @@ Questions must be specific and falsifiable — not "is the concept clear?" but "
 - **Never paraphrase inaccurately** — if you can't shorten a claim without distorting it, keep it verbatim
 - **Preserve precision** — vague compression is worse than verbosity
 - **Respect the audience** — don't add explanation the audience doesn't need, don't remove explanation they do
-- **Never write to disk** — return the distilled document in the conversation; do not overwrite or create any file unless the user explicitly directs you to
+- **Write to disk, don't echo** — after plan approval, overwrite the source file in place. Do not return the full document text in the conversation. If the input was pasted inline (no file path), ask the user for a destination path before applying.
 
 ## QMD Files
 
@@ -91,5 +91,5 @@ Apply the standard distill process only to the prose sections between these stru
 
 After plan approval and apply:
 
-1. **Distilled document**: the rewritten content (in conversation, not written to disk unless the user asks)
+1. **Edit summary**: one line per section showing action and word-count delta — e.g., `Cut §1 Intro (−120w)`, `Compressed §3 Background: 200→80w`, `Merged §6+§7 (−60w)`
 2. **Stats**: `original_words → distilled_words (X% reduction)`
