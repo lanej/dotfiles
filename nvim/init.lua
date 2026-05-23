@@ -508,7 +508,7 @@ local function align_pipe_table(lines)
 		widths[c] = 3
 		for _, row in ipairs(rows) do
 			if row[c] then
-				widths[c] = math.max(widths[c], #row[c])
+				widths[c] = math.max(widths[c], vim.fn.strdisplaywidth(row[c]))
 			end
 		end
 	end
@@ -524,7 +524,7 @@ local function align_pipe_table(lines)
 				local rc = (cell:sub(-1) == ":" and #cell > 1) and ":" or ""
 				table.insert(parts, lc .. string.rep("-", w - #lc - #rc) .. rc)
 			else
-				table.insert(parts, cell .. string.rep(" ", w - #cell))
+				table.insert(parts, cell .. string.rep(" ", w - vim.fn.strdisplaywidth(cell)))
 			end
 		end
 		table.insert(result, "| " .. table.concat(parts, " | ") .. " |")
