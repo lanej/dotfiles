@@ -2,1022 +2,253 @@
 name: bigquery
 description: Use bigquery CLI (instead of `bq`) for all Google BigQuery and GCP data warehouse operations including SQL query execution, data ingestion (streaming insert, bulk load, JSONL/CSV/Parquet), data extraction/export, dataset/table management, cost estimation with dry-run, authentication with gcloud, data pipelines, ETL workflows, and MCP server integration for AI-assisted querying. Modern TypeScript/Bun implementation replacing the Python `bq` CLI with instant startup (~10ms vs ~500ms), automatic cost awareness with confirmation prompts, and native streaming support (JSONL). Handles both small-scale streaming inserts (<1000 rows) and large-scale bulk loading (>10MB files) from Cloud Storage.
 ---
-# BigQuery CLI Skill
+# BigQuery CLI & MCP Server
 
-You are a BigQuery specialist using the `bigquery` CLI tool. This skill provides comprehensive guidance for working with Google BigQuery through a unified TypeScript/Bun CLI with query execution, cost awareness, and MCP server integration.
+## CLI vs MCP
 
-## Core Capabilities
+**The CLI is the full interface. MCP tools are a subset.**
 
-The `bigquery` CLI provides:
-
-1. **Authentication**: Check status and gcloud integration
-2. **Query Execution**: Run SQL queries with automatic cost estimation and confirmation prompts
-3. **Dry Run**: Estimate query costs ($0 to run)
-4. **Dataset Operations**: List, create, update, delete, describe datasets
-5. **Table Operations**: List, describe, insert, load, extract, create, update, delete, copy tables
-6. **Job Management**: List, get, and cancel BigQuery jobs
-7. **MCP Server**: Built-in stdio and HTTP modes for AI integration (read-only by default, `--enable-writes` flag)
-8. **Streaming Support**: Native `--stream` flag for large result sets (outputs JSONL)
-9. **Output Formats**: JSON (default), JSONL (streaming), and text (human-readable)
+Default to the `bigquery` CLI for any operation not listed in the MCP tools section below. Use MCP when an agent needs structured tool call semantics.
 
 ## Authentication
 
-### Check Authentication Status
+Uses Google Cloud SDK (`gcloud`) ADC — no separate BigQuery auth required.
 
 ```bash
-# Check if authenticated and verify required scopes
-bigquery auth check
-
-# Output shows:
-# - Authentication status
-# - Active account
-# - Token expiration
-# - BigQuery scopes availability
+bigquery auth check   # verify status and scopes
 ```
-
-### Authentication Methods
-
-Uses Google Cloud SDK (`gcloud`) authentication:
-1. Application Default Credentials (ADC)
-2. OAuth access tokens
-3. Service account keys (via `GOOGLE_APPLICATION_CREDENTIALS`)
-
-**No separate BigQuery authentication required** - uses existing gcloud credentials.
-
-**Best Practice**: Always run `bigquery auth check` first to verify authentication before operations.
 
 ## Output Format Defaults
 
-Different commands have different default output formats:
+| Command | Default | Notes |
+|---------|---------|-------|
+| `query` | JSON | includes metadata (bytes, cost, cacheHit) |
+| `datasets list` | text | human-readable |
+| `tables list` | text | human-readable |
 
-| Command | Default Format | Notes |
-|---------|----------------|-------|
-| `query` | **JSON** | Machine-readable for pipelines, includes metadata |
-| `datasets list` | text | Human-readable |
-| `tables list` | text | Human-readable |
-| `tables describe` | text | Human-readable |
-| `jobs list` | text | Human-readable |
-
-All commands support `--format json` or `--format text` to override defaults.
-
-**Available Formats:**
-- **JSON**: Structured output with metadata (rows, bytesProcessed, cost, cacheHit)
-- **Text**: Human-readable formatted output
-- **JSONL**: Newline-delimited JSON (one object per line), ideal for streaming and pipelines
+All commands accept `--format json|text|jsonl`.
 
 ## Query Operations
 
-### Running Queries
-
 ```bash
-# Basic query execution (automatic dry-run + cost confirmation)
+# Basic (automatic dry-run + cost confirmation)
 bigquery query "SELECT * FROM dataset.table LIMIT 10"
 
-# Skip cost confirmation for automation
+# Skip cost confirmation (required for automation)
 bigquery query --yes "SELECT COUNT(*) FROM dataset.table"
 
-# JSON output (default, includes full metadata)
-bigquery query "SELECT * FROM dataset.table LIMIT 5"
+# JSONL output (one object per line — for pipelines/DuckDB)
+bigquery query --jsonl "SELECT * FROM dataset.table"
 
-# JSONL output (one JSON object per line, ideal for pipelines)
-bigquery query "SELECT * FROM dataset.table" --jsonl
-
-# Stream large results (implies JSONL format)
+# Stream large results
 bigquery query "SELECT * FROM large_table" --stream > results.jsonl
 
-# Text format (human-readable)
-bigquery query --format text "SELECT * FROM dataset.table LIMIT 5"
-
-# Query from file
+# From file / stdin
 bigquery query --file query.sql
-
-# Query from stdin
 cat query.sql | bigquery query --stdin --yes
 
-# Custom project
-bigquery query --project my-other-project "SELECT 1"
+# Dry run (cost estimate, $0 to run)
+bigquery dry-run "SELECT * FROM large_table WHERE date >= '2025-01-01'"
 ```
 
-**Cost Awareness**: The query command automatically:
-1. Runs a dry-run to estimate cost before execution (costs $0)
-2. Displays bytes to be processed and estimated cost
-3. Prompts for confirmation if cost exceeds threshold (default: 1 GB)
-4. Skips confirmation for queries below threshold or when `--yes` is used
-5. Includes cost metadata in response (bytesProcessed, estimatedCostUSD, cacheHit)
+**Cost Awareness**: auto dry-run before every query; prompts if cost > threshold (default: 1 GB); response includes `bytesProcessed`, `estimatedCostUSD`, `cacheHit`.
 
-### Query Options
+Key flags: `--yes`, `--format`, `--jsonl`, `--stream`, `--cost-threshold`, `--max-results`, `--project`
 
-```bash
-# Skip cost confirmation (REQUIRED for automation/scripts)
-bigquery query --yes "SELECT * FROM dataset.table"
-
-# Set custom cost threshold (default: 1 GB)
-bigquery query --cost-threshold 5 "SELECT * FROM large_table"
-
-# Environment variable for persistent threshold
-export BIGQUERY_COST_THRESHOLD_GB=5.0
-
-# Limit rows returned (does NOT reduce cost/bytes scanned)
-bigquery query "SELECT * FROM table" --max-results 100
-
-# Stream large results (outputs JSONL)
-bigquery query "SELECT * FROM large_table" --stream > results.jsonl
-```
-
-**Query Flags:**
-
-| Flag | Description |
-|------|-------------|
-| `--yes` / `-y` | Skip cost confirmation prompt (for automation) |
-| `--format <format>` | Output format: `json` (default), `text`, `jsonl` |
-| `--jsonl` | Shorthand for `--format jsonl` |
-| `--stream` | Stream results as they arrive (implies JSONL) |
-| `--cost-threshold <gb>` | Cost confirmation threshold in GB (default: 1) |
-| `--max-results <n>` | Max rows to return (does NOT reduce cost) |
-| `--file <path>` | Read query from file |
-| `--stdin` | Read query from stdin |
-| `-p, --project <id>` | GCP project ID |
-
-**Important Notes:**
-- `--max-results` only limits returned rows, NOT bytes scanned (no cost reduction)
-- Use `LIMIT` in SQL to reduce scanned data
-- Use `--yes` for automation (not `--force`, which doesn't exist)
-
-### Query Output Formats
-
-```bash
-# JSON output (default, machine-readable)
-bigquery query "SELECT * FROM dataset.table"
-
-# Returns:
-# {
-#   "rows": [...],
-#   "totalRows": 123,
-#   "bytesProcessed": 1048576,
-#   "bytesProcessedGB": 0.001,
-#   "estimatedCostUSD": 0.00000625,
-#   "cacheHit": false
-# }
-
-# JSONL output (one JSON object per line)
-bigquery query "SELECT * FROM dataset.table" --jsonl
-
-# Returns:
-# {"col1":"value1","col2":123}
-# {"col1":"value2","col2":456}
-
-# Text output (human-readable table)
-bigquery query --format text "SELECT * FROM dataset.table"
-```
-
-### Dry Run (Cost Estimation)
-
-```bash
-# Estimate cost without executing
-bigquery dry-run "SELECT * FROM large_dataset.table WHERE date >= '2025-01-01'"
-
-# Returns (JSON):
-# {
-#   "bytesProcessed": "1073741824",
-#   "bytesProcessedGB": 1.0,
-#   "bytesProcessedMB": 1024.0,
-#   "estimatedCostUSD": 0.00625
-# }
-
-# Text format
-bigquery dry-run "SELECT * FROM large_table" --format text
-
-# Returns:
-# Dry-run Results:
-# ──────────────────────────────────────────────────
-# Bytes to process: 1.00 GB
-# Estimated cost:   $0.0063
-```
-
-**Use dry-run to**:
-- Estimate costs before running expensive queries
-- Validate query syntax
-- Check partition pruning effectiveness
-- Test queries in CI/CD pipelines
-
-**Cost Formula**: `(bytesProcessed / 1TB) * $6.25`
+**Important**: `--max-results` limits returned rows, NOT bytes scanned (no cost reduction). Use `LIMIT` in SQL instead.
 
 ## Dataset Operations
 
-### Listing Datasets
-
 ```bash
-# List datasets in current project (text format, default)
-bigquery datasets list
-
-# List datasets in another project
-bigquery datasets list --project other-project
-
-# JSON output
-bigquery datasets list --format json
-
-# Example output shows:
-# - Dataset ID
-# - Location
-# - Creation time
-# - Labels (if any)
-```
-
-### Describing Datasets
-
-```bash
-# Show dataset metadata
-bigquery datasets describe project.dataset
-
-# JSON output
-bigquery datasets describe project.dataset --format json
-```
-
-### Creating Datasets
-
-```bash
-# Create dataset in default location
-bigquery datasets create my-project.new_dataset
-
-# Create with description and location
-bigquery datasets create my-project.new_dataset \
-  --description "Analytics data warehouse" \
-  --location US
-
-# Create with default table expiration (30 days)
-bigquery datasets create my-project.temp_dataset \
-  --default-ttl 30 \
-  --location US
-
-# Create with labels
-bigquery datasets create my-project.new_dataset \
-  --labels "env=prod,team=analytics"
-```
-
-### Updating Datasets
-
-```bash
-# Update description
-bigquery datasets update my-project.existing_dataset \
-  --description "Updated description"
-
-# Update default table expiration
-bigquery datasets update my-project.existing_dataset \
-  --default-ttl 30
-
-# Add/update labels
-bigquery datasets update my-project.existing_dataset \
-  --labels env=staging \
-  --labels team=data
-```
-
-### Deleting Datasets
-
-```bash
-# Delete empty dataset (prompts for confirmation)
-bigquery datasets delete my-project.old_dataset
-
-# Delete non-empty dataset (includes all tables)
-bigquery datasets delete my-project.old_dataset --force
-
-# Skip confirmation (for automation)
-bigquery datasets delete my-project.old_dataset --force --yes
+bigquery datasets list [--project PROJECT]
+bigquery datasets describe PROJECT.DATASET
+bigquery datasets create PROJECT.DATASET [--description "..." --location US --default-ttl 30]
+bigquery datasets update PROJECT.DATASET --description "..."
+bigquery datasets delete PROJECT.DATASET [--force --yes]
 ```
 
 ## Table Operations
 
-### Listing Tables
-
 ```bash
-# List tables in a dataset (text format, first 10)
-bigquery tables list my-project.my-dataset
+# Read
+bigquery tables list PROJECT.DATASET [--max-results 20]
+bigquery tables describe PROJECT.DATASET.TABLE
 
-# JSON output
-bigquery tables list my-project.my-dataset --format json
+# Write
+bigquery tables create TABLE --schema '[{"name":"id","type":"STRING"}]'
+bigquery tables update TABLE --description "..."
 
-# With pagination
-bigquery tables list my-project.my-dataset --max-results 20 --page-token <token>
+# Insert (streaming, <1000 rows)
+bigquery tables insert TABLE file.jsonl --format jsonl
+cat data.jsonl | bigquery tables insert TABLE - --format jsonl
+
+# Load (bulk, >10MB — from Cloud Storage)
+bigquery tables load TABLE gs://bucket/data.csv --format csv --write-disposition WRITE_TRUNCATE
+
+# Copy / extract / delete
+bigquery tables copy SOURCE DEST [--write-disposition WRITE_TRUNCATE]
+bigquery tables extract TABLE gs://bucket/output.csv --format csv
+bigquery tables delete TABLE
 ```
 
-### Describing Table Schema
-
-```bash
-# Show table schema and metadata (text format)
-bigquery tables describe my-project.my-dataset.my-table
-
-# JSON output
-bigquery tables describe my-project.my-dataset.my-table --format json
-
-# Output includes:
-# - Column names and types
-# - Nullability (NULLABLE, REQUIRED, REPEATED)
-# - Mode information
-# - Table metadata (row count, size, location)
-```
-
-### Creating Tables
-
-```bash
-# Create table with JSON schema
-bigquery tables create my-project.dataset.users \
-  --schema '[{"name":"id","type":"STRING"},{"name":"email","type":"STRING"}]' \
-  --description "User data"
-```
-
-### Updating Tables
-
-```bash
-# Update description
-bigquery tables update my-project.dataset.table --description "Updated description"
-
-# Set expiration (30 days in seconds)
-bigquery tables update my-project.dataset.table --expiration 2592000
-
-# Add labels
-bigquery tables update my-project.dataset.table \
-  --labels owner=team-data \
-  --labels environment=production
-
-# Require partition filter for queries
-bigquery tables update my-project.dataset.table --require-partition-filter true
-```
-
-### Copying Tables
-
-```bash
-# Copy table within same project
-bigquery tables copy my-project.source.table my-project.dest.table_copy
-
-# Copy to different dataset
-bigquery tables copy my-project.source.table my-project.archive.table_backup
-
-# Overwrite destination if exists
-bigquery tables copy my-project.source.table my-project.dest.existing_table \
-  --write-disposition WRITE_TRUNCATE
-```
-
-### Deleting Tables
-
-```bash
-# Delete table
-bigquery tables delete my-project.dataset.old_table
-```
-
-### Inserting Rows (Small Datasets)
-
-**Best for <1000 rows**. Uses streaming insert API for immediate availability.
-
-#### JSONL (Newline-Delimited JSON) Format
-
-**From JSONL File:**
-
-```bash
-# Create sample JSONL file
-cat > users.jsonl <<EOF
-{"id": "1", "name": "Alice Johnson", "email": "alice@example.com", "age": 30}
-{"id": "2", "name": "Bob Smith", "email": "bob@example.com", "age": 25}
-{"id": "3", "name": "Charlie Brown", "email": "charlie@example.com", "age": 35}
-EOF
-
-# Insert from JSONL file
-bigquery tables insert my-project.dataset.users users.jsonl --format jsonl
-```
-
-**From JSONL Stream (stdin):**
-
-```bash
-# Stream from command output
-echo '{"id": "1", "name": "Alice", "email": "alice@example.com"}' | \
-  bigquery tables insert my-project.dataset.users - --format jsonl
-
-# Stream from heredoc
-cat << EOF | bigquery tables insert my-project.dataset.users - --format jsonl
-{"id": "1", "name": "Alice", "email": "alice@example.com", "age": 30}
-{"id": "2", "name": "Bob", "email": "bob@example.com", "age": 25}
-{"id": "3", "name": "Charlie", "email": "charlie@example.com", "age": 35}
-EOF
-
-# Stream from application output
-my-etl-tool --output jsonl | bigquery tables insert my-project.dataset.events -
-
-# Stream from jq transformation
-cat raw_data.json | jq -c '.records[]' | \
-  bigquery tables insert my-project.dataset.processed -
-```
-
-**JSONL Format Requirements:**
-- Each line is a separate JSON object
-- Empty lines are automatically skipped
-- No commas between objects
-- Ideal for streaming and large datasets
-- Format: `{"field1":"value1","field2":"value2"}\n`
-
-#### Additional Insert Options
-
-```bash
-# Skip invalid rows instead of failing
-bigquery tables insert my-project.dataset.users users.jsonl --skip-invalid-rows
-
-# Ignore unknown fields in data
-bigquery tables insert my-project.dataset.users users.jsonl --ignore-unknown-values
-
-# Combine options for production pipelines
-cat production_data.jsonl | \
-  bigquery tables insert my-project.dataset.production - \
-    --format jsonl \
-    --skip-invalid-rows \
-    --ignore-unknown-values
-```
-
-**Insert Options:**
-- `--format <FORMAT>`: Data format (json or jsonl)
-- `--skip-invalid-rows`: Skip invalid rows instead of failing
-- `--ignore-unknown-values`: Ignore unknown fields in data
-
-### Loading Data (Large Datasets)
-
-**Best for >10MB files or >1000 rows**. Uses BigQuery load jobs.
-
-```bash
-# Load from Cloud Storage URI (RECOMMENDED)
-bigquery tables load my-project.dataset.users \
-  gs://my-bucket/data.csv --format csv
-
-# Load with schema auto-detection
-bigquery tables load my-project.dataset.new_table \
-  gs://my-bucket/data.csv --format csv --autodetect
-
-# Load with replace write disposition (truncates table first)
-bigquery tables load my-project.dataset.users \
-  gs://my-bucket/data.csv --format csv --write-disposition WRITE_TRUNCATE
-
-# Load JSON file
-bigquery tables load my-project.dataset.events \
-  gs://my-bucket/events.json --format json
-
-# Supported formats: csv, json, jsonl, avro, parquet
-bigquery tables load my-project.dataset.table \
-  gs://my-bucket/data.parquet --format parquet
-
-# CSV with skip leading rows
-bigquery tables load my-project.dataset.table \
-  gs://my-bucket/data.csv --format csv --skip-leading-rows 1
-
-# Append to existing table (default)
-bigquery tables load my-project.dataset.table \
-  gs://my-bucket/data.json --format json --write-disposition WRITE_APPEND
-```
-
-**Load Options:**
-- `--format <FORMAT>`: Source format (csv, json, jsonl, parquet, avro)
-- `--autodetect`: Auto-detect schema from source
-- `--skip-leading-rows <N>`: Skip N leading rows (CSV)
-- `--write-disposition <MODE>`: WRITE_TRUNCATE (replace), WRITE_APPEND (default), WRITE_EMPTY
-- `--create-disposition <MODE>`: CREATE_IF_NEEDED (default), CREATE_NEVER
-
-**When to Use:**
-- Large datasets (>1000 rows or >10MB)
-- Data already in Cloud Storage
-- Bulk data migrations
-
-**When NOT to Use:**
-- Small datasets (<1000 rows) → Use `tables insert` instead
-
-### Extracting Data
-
-Export table data to Cloud Storage in various formats:
-
-```bash
-# Extract table to Cloud Storage as CSV
-bigquery tables extract my-project.dataset.users \
-  gs://my-bucket/exports/users.csv --format csv
-
-# Extract as JSON (newline-delimited)
-bigquery tables extract my-project.dataset.events \
-  gs://my-bucket/exports/events-*.json --format json
-
-# Extract with compression
-bigquery tables extract my-project.dataset.large_table \
-  gs://my-bucket/exports/data-*.csv.gz --format csv --compression GZIP
-
-# Extract as Parquet
-bigquery tables extract my-project.dataset.analytics \
-  gs://my-bucket/exports/analytics.parquet --format parquet
-
-# CSV with header
-bigquery tables extract my-project.dataset.data \
-  gs://my-bucket/data.csv --format csv --print-header
-```
-
-**Supported Formats:** CSV, JSON (newline-delimited), Parquet, Avro
-**Compression:** NONE (default), GZIP
+**`tables load` gotcha**: does NOT accept `--yes`; `--write-disposition` requires uppercase (`WRITE_APPEND`, not `append`).
 
 ## Job Management
 
-BigQuery jobs are asynchronous operations for queries, loads, exports, and copies.
-
-### Listing Jobs
-
 ```bash
-# List recent jobs
-bigquery jobs list
-
-# List with pagination
-bigquery jobs list --max-results 20 --page-token <token>
-
-# Filter by state
-bigquery jobs list --state-filter running
-bigquery jobs list --state-filter done
-
-# Show jobs from all users
-bigquery jobs list --all-users
-
-# JSON output
-bigquery jobs list --format json
+bigquery jobs list [--state-filter running|done --all-users]
+bigquery jobs get JOB_ID
+bigquery jobs cancel JOB_ID
 ```
 
-### Showing Job Details
+## Python Subprocess Patterns
 
-```bash
-# Show job details
-bigquery jobs get job_abc123xyz
+```python
+# query via stdin
+result = subprocess.run(
+    ["bigquery", "query", "--format", "jsonl", "--yes", "--stdin"],
+    input=sql, capture_output=True, text=True, check=True
+)
 
-# JSON output
-bigquery jobs get job_abc123xyz --format json
+# bulk load (no --yes for tables load)
+subprocess.run(
+    ["bigquery", "tables", "load", "--format", "json",
+     "--write-disposition", "WRITE_APPEND", table, tmpfile],
+    check=True
+)
 ```
 
-### Canceling Jobs
+## MCP Server
+
+### Starting
 
 ```bash
-# Cancel a running job
-bigquery jobs cancel job_abc123xyz
+bigquery mcp stdio                 # read-only (default)
+bigquery mcp stdio --enable-writes # with write tools
+bigquery mcp http --port 3000      # HTTP mode
 ```
 
-## MCP Server Integration
+### MCP Tools (read-only by default)
 
-The BigQuery MCP server provides AI integration via Model Context Protocol.
+In Claude Code the full identifiers are `mcp__bigquery__*`.
 
-### Starting MCP Server
+**Read tools** (always available):
 
-**STDIO Mode** (for local clients):
+| Tool | Description |
+|------|-------------|
+| `query` | Execute SQL with auto dry-run and cost guard |
+| `dry_run` | Estimate cost without executing ($0) |
+| `list_datasets` | List datasets; returns `bigquery://project.dataset` URIs |
+| `list_tables` | List tables; returns `bigquery://project.dataset.table` URIs |
+| `describe_table` | Full schema, row count, metadata |
 
-```bash
-# Start MCP server in stdio mode (read-only)
-bigquery mcp stdio
+**Write tools** (require `--enable-writes`):
 
-# Start with write operations enabled
-bigquery mcp stdio --enable-writes
+| Tool | Description |
+|------|-------------|
+| `create_dataset` | Create a new dataset |
+| `create_table` | Create table with schema, partitioning, clustering |
+| `insert_rows` | Streaming insert (<1000 rows) |
+| `load_data` | Load from GCS URI (bulk) |
+| `execute_ddl` | Run DDL/DML (CREATE, INSERT, UPDATE, etc.) |
 
-# Server will:
-# - Accept MCP protocol messages on stdin
-# - Send responses on stdout
-# - Expose BigQuery tools to MCP clients
+### MCP Resources
+
+Tables are exposed as resources via `bigquery://{project.dataset.table}`. Fetching a resource returns the same output as `describe_table` — schema, row count, metadata — without consuming a tool call slot.
+
+```
+bigquery://easypost-platform.DORA.ai_attribution
 ```
 
-**HTTP Mode** (for network clients):
+### Workflow (MCP)
 
-```bash
-# Start HTTP MCP server on default port 8080
-bigquery mcp http
+1. `list_datasets` → discover datasets (returns URI list)
+2. `list_tables` → explore tables (returns URI list)
+3. Read resource `bigquery://project.dataset.table` → get schema
+4. `dry_run` → estimate cost
+5. `query` → execute
 
-# Specify custom port
-bigquery mcp http --port 3000
-
-# With OAuth and email domain restriction
-bigquery mcp http \
-  --google-client-id <id> \
-  --google-client-secret <secret> \
-  --domain example.com
-
-# Enable write operations
-bigquery mcp http --enable-writes
-
-# Server provides:
-# - HTTP endpoint for MCP protocol
-# - JSON-RPC over HTTP
-# - Remote access to BigQuery tools
-```
-
-### MCP Configuration
-
-Configure in Claude Code or other MCP-enabled applications:
-
-**STDIO Mode** (`.claude/mcp.json` or similar):
+### MCP Config
 
 ```json
 {
   "mcpServers": {
     "bigquery": {
       "command": "bigquery",
-      "args": ["mcp", "stdio"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "my-project"
-      }
+      "args": ["mcp", "stdio"]
     }
   }
 }
-```
-
-**STDIO Mode with Writes Enabled**:
-
-```json
-{
-  "mcpServers": {
-    "bigquery": {
-      "command": "bigquery",
-      "args": ["mcp", "stdio", "--enable-writes"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "my-project"
-      }
-    }
-  }
-}
-```
-
-**HTTP Mode**:
-
-```json
-{
-  "mcpServers": {
-    "bigquery": {
-      "url": "http://localhost:8080",
-      "transport": "http"
-    }
-  }
-}
-```
-
-## Common Workflows
-
-### Workflow 1: Exploratory Data Analysis
-
-```bash
-# 1. Verify authentication
-bigquery auth check
-
-# 2. List available datasets
-bigquery datasets list
-
-# 3. List tables in dataset
-bigquery tables list my-project.analytics
-
-# 4. Check table schema
-bigquery tables describe my-project.analytics.events
-
-# 5. Preview data (text format for readability)
-bigquery query --format text \
-  "SELECT * FROM my-project.analytics.events LIMIT 10"
-
-# 6. Get row count
-bigquery query "SELECT COUNT(*) as total FROM my-project.analytics.events"
-
-# 7. Check data distribution
-bigquery query --format text "
-  SELECT
-    DATE(timestamp) as date,
-    COUNT(*) as events
-  FROM my-project.analytics.events
-  GROUP BY date
-  ORDER BY date DESC
-  LIMIT 30
-"
-```
-
-### Workflow 2: Cost-Aware Query Development
-
-```bash
-# 1. Dry run to estimate cost
-bigquery dry-run "
-  SELECT *
-  FROM my-project.large_dataset.table
-  WHERE date >= '2025-01-01'
-"
-
-# 2. If cost is acceptable, run query
-bigquery query "
-  SELECT *
-  FROM my-project.large_dataset.table
-  WHERE date >= '2025-01-01'
-"
-
-# 3. For automation, skip confirmation
-bigquery query --yes "
-  SELECT *
-  FROM my-project.large_dataset.table
-  WHERE date >= '2025-01-01'
-" > results.json
-```
-
-### Workflow 3: Data Loading Pipeline
-
-```bash
-# 1. Load initial data
-bigquery tables load my-project.dataset.events \
-  gs://bucket/events-2025-01-01.csv \
-  --format csv \
-  --write-disposition WRITE_TRUNCATE
-
-# 2. Append incremental data
-bigquery tables load my-project.dataset.events \
-  gs://bucket/events-2025-01-02.csv \
-  --format csv \
-  --write-disposition WRITE_APPEND
-
-# 3. Verify data loaded
-bigquery query "
-  SELECT
-    DATE(timestamp) as date,
-    COUNT(*) as count
-  FROM my-project.dataset.events
-  GROUP BY date
-  ORDER BY date
-"
-```
-
-### Workflow 4: Real-Time Data Insertion
-
-```bash
-# 1. Stream JSONL from application
-my-app --output jsonl | bigquery tables insert my-project.dataset.events -
-
-# 2. Stream with transformation and error handling
-cat raw_events.json | jq -c '.events[]' | \
-  bigquery tables insert my-project.dataset.events - \
-    --skip-invalid-rows \
-    --ignore-unknown-values
-```
-
-### Workflow 5: Streaming Large Results
-
-```bash
-# 1. Stream query results to JSONL file
-bigquery query "SELECT * FROM my-project.dataset.large_table" \
-  --stream > results.jsonl
-
-# 2. Process with DuckDB
-duckdb -c "SELECT user_id, COUNT(*) FROM read_json_auto('results.jsonl') GROUP BY user_id"
-
-# 3. Or process line-by-line
-cat results.jsonl | while IFS= read -r line; do
-  echo "$line" | jq '.field'
-done
 ```
 
 ## Append-Only Raw Table Pattern
 
-Use this architecture when a table needs to track evolving state over time without destructive updates.
+- `table_raw` — append-only write target; never UPDATE/DELETE in-place
+- `table` (VIEW) — read surface; deduplicates via `ROW_NUMBER() OVER (PARTITION BY <key> ORDER BY loaded_at DESC) = 1`
+- Always include `loaded_at TIMESTAMP REQUIRED`; set to `CURRENT_TIMESTAMP()` at write time
+- To "update" a record: INSERT a new row with corrected values and fresh `loaded_at`
+- Never target a VIEW for DML — always write to the raw table
 
-**Structure:**
-- `table_raw` — append-only write target; never UPDATE or DELETE rows in-place
-- `table` (VIEW) — the read surface; deduplicates raw via `ROW_NUMBER() OVER (PARTITION BY <natural_key> ORDER BY loaded_at DESC) = 1`
+## Known Gotchas
 
-**Write rules:**
-- All INSERT operations target `table_raw` only; never INSERT into the view (BigQuery rejects DML on views)
-- Include a `loaded_at TIMESTAMP REQUIRED` column on the raw table; always set it to `CURRENT_TIMESTAMP()` at write time
-- To "update" a record: INSERT a new row with corrected values and a fresh `loaded_at`; the view surfaces the newest row automatically
-- Validate domain constraints before writing (e.g., expected ID prefixes, enum values, FK existence); skip invalid rows with a warning rather than failing the batch
+**Free-text fields (description, notes, summary) can contain embedded newlines or control chars** that break line-based JSONL parsing — the row spans multiple physical lines and `json.loads(line)` raises `JSONDecodeError`. Two fixes required:
 
-**Read rules:**
-- Always query the view, never the raw table directly
-- Apply domain-validity guards in the view's inner WHERE clause to prevent corrupt rows from surfacing even if they reach the raw table
+1. Sanitize in SQL before returning:
+   ```sql
+   REGEXP_REPLACE(description, r'[\x00-\x09\x0b-\x1f\x7f]', ' ') AS description
+   ```
+2. Skip non-JSON lines in the parser (also filters `[INFO]`/`[WARN]` CLI messages):
+   ```python
+   for line in result.stdout.splitlines():
+       if line.strip().startswith("{"):
+           rows.append(json.loads(line))
+   ```
 
-**Integrity checks:**
-- Verify periodically: row count on view == `COUNT(DISTINCT <natural_key>)` on raw (filtered to valid rows only)
-- Within-version duplicates (same `(<natural_key>, version_tag)` appearing more than once in raw) indicate a write path ran more than once; clean with `MERGE … WHEN NOT MATCHED BY SOURCE THEN DELETE` using a `MAX(loaded_at)` keeper subquery
-- Foreign key validation: LEFT JOIN the raw table to the referenced source table; rows where the join produces NULL are orphans and should be investigated or deleted
+**Null bytes in SQL passed as argv** — if the SQL string contains a `\x00` byte (e.g., from a key with a null byte embedded in an IN clause), `subprocess.Popen` raises `ValueError: embedded null byte`. This is another reason to always pass SQL via `--stdin` (`input=sql`) rather than as a positional argument.
 
-## Best Practices
+**DATE columns in JSONL output** return `{"value": "YYYY-MM-DD"}` dicts, not strings. TIMESTAMP columns return epoch float strings (`"1.760730316667E9"`), not ISO strings.
 
-### Query Development
+```python
+def _parse_date(v) -> str:
+    if isinstance(v, dict): return str(v["value"])[:10]
+    return str(v)[:10]
 
-1. **Always dry-run first**: Use `bigquery dry-run` to estimate costs
-2. **Validate before running**: Check syntax and cost before execution
-3. **Use text format for exploration**: `--format text` for human-readable tables
-4. **Use JSON for automation**: `--format json` for machine processing
-5. **Use JSONL for streaming**: `--jsonl` or `--stream` for large results
-6. **Skip confirmations in scripts**: Use `--yes` flag for automation
-
-### Cost Management
-
-1. **Dry run expensive queries**: Always estimate with `bigquery dry-run`
-2. **Monitor bytes processed**: Check query cost estimates before running
-3. **Use partition pruning**: Filter on partitioned columns in WHERE clauses
-4. **Limit result sets**: Use LIMIT for exploratory queries
-5. **Select only needed columns**: `SELECT col1, col2` not `SELECT *`
-6. **Set cost thresholds**: Use `BIGQUERY_COST_THRESHOLD_GB` environment variable
-
-### Table Architecture
-
-1. **Raw + view split**: Use an append-only `*_raw` table for writes and a dedup VIEW for reads; never write to the view, never read from raw directly
-2. **`loaded_at` as dedup key**: The `loaded_at TIMESTAMP REQUIRED` column determines which row wins in the view; always write `CURRENT_TIMESTAMP()` at INSERT time
-3. **Updates via INSERT**: To correct a row, INSERT a new version with corrected values and a fresh `loaded_at`; do not UPDATE the raw table in-place
-4. **Validate before INSERT**: Check domain constraints (ID format, enum values, FK existence) before writing; skip bad rows with a logged warning rather than allowing them to corrupt the raw table
-5. **Guard the view**: Add a WHERE clause to the view's inner query enforcing domain invariants as a last-resort filter against rows that bypass write-time validation
-6. **Never target a view for DML**: BigQuery rejects INSERT/UPDATE/DELETE on views; always use the underlying raw table name in write code paths
-
-### Authentication
-
-1. **Check auth first**: Run `bigquery auth check` before operations
-2. **Use service accounts**: For automation and CI/CD
-3. **Verify scopes**: Ensure all required BigQuery scopes are granted
-4. **Re-authenticate when needed**: If check fails
-
-### Data Loading
-
-1. **Choose the right method**:
-   - Use `insert` for <1000 rows (streaming insert API, immediate availability)
-   - Use `load` for >10MB files or >1000 rows (load jobs with Cloud Storage)
-2. **Use JSONL for streaming**: Newline-delimited JSON is ideal for streaming pipelines
-3. **Stream from stdin**: Use `-` as file argument to pipe data from applications
-4. **Handle bad records**: Use `--skip-invalid-rows` for messy data
-5. **Choose write disposition**: `WRITE_TRUNCATE` for full refresh, `WRITE_APPEND` for incremental
-6. **Use appropriate formats**: CSV for simple data, JSON/JSONL for complex, Parquet for large datasets
-
-### Output Format Selection
-
-- **JSON** (`--format json`): Default, full metadata, parsing with `jq`
-- **Text** (`--format text`): Human-readable, terminal inspection
-- **JSONL** (`--jsonl` or `--stream`): Streaming, pipelines, DuckDB ingestion
-
-**Examples:**
-
-```bash
-# Parse with jq
-bigquery query "SELECT * FROM table" | jq '.rows[] | select(.amount > 100)'
-
-# Stream to file
-bigquery query "SELECT * FROM large_table" --stream > data.jsonl
-
-# Load into DuckDB
-bigquery query "SELECT * FROM table" --jsonl | \
-  duckdb -c "SELECT * FROM read_json_auto('/dev/stdin')"
+def _parse_ts(v) -> datetime:
+    try: return datetime.fromisoformat(str(v))
+    except ValueError: return datetime.fromtimestamp(float(v), tz=timezone.utc)
 ```
 
-### MCP Server
-
-1. **Use stdio for local**: Prefer stdio mode for local MCP clients
-2. **Use HTTP for remote**: Use HTTP mode for networked deployments
-3. **Read-only by default**: Only enable writes when needed (`--enable-writes`)
-4. **Secure HTTP endpoints**: Put HTTP server behind authentication/firewall
-5. **Monitor server logs**: Check for errors and performance issues
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Set default project
-export GOOGLE_CLOUD_PROJECT=my-project
-
-# Set cost threshold (in GB, default: 1)
-export BIGQUERY_COST_THRESHOLD_GB=5.0
-
-# Set credentials (for service accounts)
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-
-# Add to ~/.zshrc or ~/.bashrc for persistence
-echo 'export GOOGLE_CLOUD_PROJECT=my-project' >> ~/.zshrc
-echo 'export BIGQUERY_COST_THRESHOLD_GB=5.0' >> ~/.zshrc
-```
-
-### Authentication Methods
-
-**User Credentials** (interactive):
-```bash
-gcloud auth application-default login
-bigquery auth check
-```
-
-**Service Account** (automation):
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json
-bigquery auth check
-```
-
-## Troubleshooting
-
-### Issue: "Not authenticated" or "Permission denied"
-
-**Solution**: Check authentication and scopes
-
-```bash
-# Check current auth status
-bigquery auth check
-
-# Re-authenticate if needed
-gcloud auth application-default login
-
-# Verify gcloud is set to correct project
-gcloud config get-value project
-
-# Set project if needed
-gcloud config set project my-project
-```
-
-### Issue: "Table not found"
-
-**Solution**: Use fully qualified table names
-
-```bash
-# Wrong - missing project/dataset
-bigquery query "SELECT * FROM table"
-
-# Correct - fully qualified
-bigquery query "SELECT * FROM my-project.my-dataset.my-table"
-
-# Or use backticks for reserved words
-bigquery query "SELECT * FROM \`my-project.my-dataset.my-table\`"
-```
-
-### Issue: Numeric columns arrive as strings in Python
-
-**Symptom**: `COUNT(*)`, `INT64`, and `FLOAT64` columns have `str` dtype after `bq.run_bq_query()` or the `bigquery` CLI. `groupby().sum()` concatenates strings instead of adding integers — a team with 132 services may produce `alert_count ≈ 5e102` instead of a real number. The failure is silent and produces astronomically wrong results.
-
-**Solution**: Cast every numeric column before aggregation:
+**Numeric columns arrive as strings.** Cast before aggregation:
 ```python
 df["col"] = pd.to_numeric(df["col"], errors="coerce").fillna(0).astype("int64")
 ```
-For scalar use: `int(float(row["col"]))` — the `float()` intermediate handles scientific notation strings (`"9.85e7"`). Apply defensively to all numeric columns immediately after loading BQ results into a DataFrame.
 
-### Issue: "Query too expensive"
+**`carrier_accounts` join fan-out**: `ep-core-data.raw.carrier_accounts` has ~77K duplicate IDs. Always deduplicate with `SELECT DISTINCT id, ...` before joining. Validate: COUNT(*) after join ≈ COUNT(*) before join.
 
-**Solution**: Check cost with dry-run and optimize
+**CTE/column alias collision**: BQ resolves `ORDER BY col` to the CTE (a STRUCT) if a CTE and column alias share the same name → "Ordering by expressions of type STRUCT is not allowed." Rename the column alias.
 
-```bash
-# Check estimated cost
-bigquery dry-run "SELECT * FROM large_table WHERE date >= '2025-01-01'"
+**Pre-resolve dimension lookups**: `shipments` (4.2TB) is not clustered by `user_id`. Joining to `dim.users` to filter by SF account scans the full date partition (77GB+). Instead: resolve dim IDs in a cheap query first, then use IN clause on the fact table — no join needed.
 
-# Optimize with partition filters
-bigquery dry-run "
-  SELECT * FROM large_table
-  WHERE _PARTITIONDATE = '2025-01-15'
-"
-```
+**Salesforce `created_date`** is the Polytomic sync timestamp (Feb 2025+), not the SF creation date. Use `close_date` or SF-native date fields for historical queries.
+
+**`salesforce.tasks.created_date`** is INT64 nanoseconds — convert with `TIMESTAMP_MILLIS(CAST(created_date / 1000000 AS INT64))`.
+
+**NULL-safe joins — use `IS NOT DISTINCT FROM`**: Standard `col1 = col2` returns NULL (not TRUE) when both sides are NULL, silently dropping rows. Use `col1 IS NOT DISTINCT FROM col2` when join keys can be NULL on both sides. Common case: engineer/assignee columns that fail a `unified_identity` lookup produce NULL — a subsequent `JOIN ... ON s.engineer = a.engineer` drops all NULL-engineer rows.
+
+**BQ inline VALUES via UNNEST STRUCT — named-field syntax required**: `STRUCT<type>(val1, val2)` is INVALID and produces silent data corruption (no error, wrong results — rows disappear or join incorrectly). Always use named-field syntax: `STRUCT('val1' AS field1, DATE 'val2' AS field2)`. Example: `FROM UNNEST([STRUCT('USPS' AS carrier_family, DATE '2011-01-01' AS first_label_date), STRUCT('FedEx' AS carrier_family, DATE '2020-10-27' AS first_label_date)]) AS t`.
+
+**TTM window must exclude the current in-progress month**: Filter `WHERE month < DATE_TRUNC(CURRENT_DATE(), MONTH)` to exclude the partial current month. Without this, the incomplete month dilutes the average — in one case producing `avg_monthly=21` when the correct value was 29. Derive `avg_monthly` as `ttm_total / 12` (fixed denominator), not `total / count_of_months`.
 
 ## Quick Reference
 
 ```bash
-# Authentication
-bigquery auth check                          # Check auth status
-
-# Queries (default: JSON output)
-bigquery query "SELECT ..."                  # Execute query (JSON)
-bigquery query --yes "SELECT ..."            # Skip confirmation
-bigquery query --format text "SELECT ..."    # Human-readable table
-bigquery query --jsonl "SELECT ..."          # JSONL output
-bigquery query --stream "SELECT ..."         # Stream large results
-bigquery dry-run "SELECT ..."                # Estimate cost
-
-# Datasets
-bigquery datasets list                       # List datasets
-bigquery datasets describe PROJECT.DATASET   # Describe dataset
-bigquery datasets create PROJECT.DATASET     # Create dataset
-bigquery datasets update PROJECT.DATASET --description "..." # Update dataset
-bigquery datasets delete PROJECT.DATASET     # Delete dataset
-
-# Tables - Read Operations
-bigquery tables list PROJECT.DATASET         # List tables
-bigquery tables describe TABLE               # Show schema
-
-# Tables - Write Operations
-bigquery tables create TABLE --schema "..."  # Create table
-bigquery tables insert TABLE file.jsonl --format jsonl  # Insert from file
-cat data.jsonl | bigquery tables insert TABLE -         # Stream insert
-bigquery tables load TABLE gs://bucket/file.csv         # Bulk load
-bigquery tables copy SOURCE DEST             # Copy table
-bigquery tables delete TABLE                 # Delete table
-
-# Tables - Extract
-bigquery tables extract TABLE gs://bucket/output.csv    # Export to GCS
-
-# Jobs
-bigquery jobs list                           # List jobs
-bigquery jobs get JOB_ID                     # Job details
-bigquery jobs cancel JOB_ID                  # Cancel job
-
-# MCP Server
-bigquery mcp stdio                           # MCP server (stdio, read-only)
-bigquery mcp stdio --enable-writes           # MCP server (stdio, with writes)
-bigquery mcp http --port 3000                # MCP server (HTTP)
+bigquery auth check
+bigquery query --yes "SELECT ..."
+bigquery dry-run "SELECT ..."
+bigquery datasets list
+bigquery tables list PROJECT.DATASET
+bigquery tables describe TABLE
+bigquery tables insert TABLE file.jsonl --format jsonl
+bigquery tables load TABLE gs://bucket/file.csv --write-disposition WRITE_TRUNCATE
+bigquery mcp stdio
 ```
-
-## Summary
-
-**Primary commands:**
-- `bigquery auth check` - Authentication management
-- `bigquery query` - Execute SQL with automatic cost awareness
-- `bigquery dry-run` - Estimate query costs ($0 to run)
-- `bigquery datasets {list,describe,create,update,delete}` - Dataset operations
-- `bigquery tables {list,describe,insert,load,extract,create,update,delete,copy}` - Table operations
-- `bigquery jobs {list,get,cancel}` - Job management
-- `bigquery mcp {stdio,http}` - MCP server modes
-
-**Key features:**
-- Cost-aware query execution with automatic dry-run and confirmation prompts
-- Configurable cost thresholds (`BIGQUERY_COST_THRESHOLD_GB`)
-- Streaming insert API for real-time data (<1000 rows)
-- Bulk load from Cloud Storage (>10MB files)
-- Native streaming support for large results (`--stream` flag outputs JSONL)
-- Built-in MCP server for AI integration (stdio and HTTP modes)
-- Three output formats: JSON (default, full metadata), JSONL (streaming), text (human-readable)
-- Instant startup with TypeScript/Bun (~10ms vs ~500ms for Python `bq`)
