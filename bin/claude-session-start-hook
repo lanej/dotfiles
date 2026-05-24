@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Claude Code SessionStart hook: name tmux window to cwd basename on session start."""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def tmux_window_option(pane, option):
+    try:
+        result = subprocess.run(
+            ['tmux', 'show-window-options', '-vt', pane, option],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip()
+    except Exception:
+        return ''
+
+
+def set_title(pane, name):
+    try:
+        subprocess.run(['tmux', 'rename-window', '-t', pane, name], check=False)
+        subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
+    except Exception:
+        pass
+
+
+def main():
+    pane = os.environ.get('TMUX_PANE', '')
+    if not pane or not os.environ.get('TMUX'):
+        sys.exit(0)
+
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        sys.exit(0)
+
+    # Skip if user manually named the window (automatic-rename off, not set by us)
+    auto_rename = tmux_window_option(pane, 'automatic-rename')
+    claude_named = tmux_window_option(pane, '@claude_named')
+    if auto_rename == 'off' and not claude_named:
+        sys.exit(0)
+
+    session_id = input_data.get('session_id', '')
+    cwd = input_data.get('cwd', '')
+    if not cwd:
+        sys.exit(0)
+
+    names_dir = Path.home() / '.claude' / 'session-names'
+    names_dir.mkdir(parents=True, exist_ok=True)
+
+    name_file = names_dir / session_id if session_id else None
+    if name_file and name_file.exists():
+        name = name_file.read_text().strip()
+    else:
+        name = Path(cwd).name or 'claude'
+        if name_file:
+            name_file.write_text(name)
+
+    set_title(pane, name)
+
+
+if __name__ == '__main__':
+    main()

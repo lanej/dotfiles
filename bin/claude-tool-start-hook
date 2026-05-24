@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Claude Code PreToolUse hook: prefix tmux window name with * while tool runs."""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def main():
+    pane = os.environ.get('TMUX_PANE', '')
+    if not pane or not os.environ.get('TMUX'):
+        sys.exit(0)
+
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        sys.exit(0)
+
+    session_id = input_data.get('session_id', '')
+    name_file = Path.home() / '.claude' / 'session-names' / session_id
+    if session_id and name_file.exists():
+        base = name_file.read_text().strip()
+    else:
+        cwd = input_data.get('cwd', '')
+        base = Path(cwd).name if cwd else 'claude'
+
+    try:
+        subprocess.run(['tmux', 'rename-window', '-t', pane, f'*{base}'], check=False)
+    except Exception:
+        pass
+
+
+if __name__ == '__main__':
+    main()

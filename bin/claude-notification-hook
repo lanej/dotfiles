@@ -32,6 +32,16 @@ else
     message="Claude waiting"
 fi
 
+# Set window indicator
+if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
+    session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
+    name_file="$HOME/.claude/session-names/$session_id"
+    if [ -n "$session_id" ] && [ -f "$name_file" ]; then
+        base=$(cat "$name_file")
+        tmux rename-window -t "$TMUX_PANE" "!${base}" 2>/dev/null
+    fi
+fi
+
 # Trigger tmux bell
 if [ -n "$TMUX_PANE" ]; then
     # Print bell character to stderr (goes to the pane)
