@@ -106,7 +106,7 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Execute directly** (no announcement) when the task is short and unambiguous.
 
-**After a delegated or background task completes**, always summarize what it accomplished before continuing — even if the user just says "continue." Never respond with "No response requested." — that leaves the user without closure and forces a re-prompt.
+**After a delegated or background task completes**, always summarize what it accomplished before continuing — even if the user just says "continue." Never respond with "No response requested." — that leaves the user without closure and forces a re-prompt. If there is nothing left to do after the task completes, still acknowledge it explicitly — e.g., "Nothing left to pick up — [what was completed]." — rather than going silent.
 
 **Sub-agent data availability claims must be verified with a COUNT query.** Explore agents routinely hallucinate row counts — reporting "0 rows" or "data not available" based on documentation, schema metadata, or inference rather than actually running `SELECT COUNT(*) FROM table`. Before accepting any sub-agent claim that a table is empty or data is absent, run the COUNT yourself. This applies especially to: BQ tables populated by async pipelines (Polytomic, pulse-etl, etc.), tables the agent couldn't directly query, and any "0 rows" finding that contradicts user expectation.
 
