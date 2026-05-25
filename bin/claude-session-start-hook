@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code SessionStart hook: name tmux window to cwd basename on session start."""
+"""Claude Code SessionStart hook: name tmux window to repo_branch or cwd basename."""
 
 import json
 import os
@@ -25,6 +25,26 @@ def set_title(pane, name):
         subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
     except Exception:
         pass
+
+
+def git_window_name(cwd):
+    try:
+        repo_root = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            capture_output=True, text=True, cwd=cwd
+        ).stdout.strip()
+        if not repo_root:
+            return Path(cwd).name or 'claude'
+        branch = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True, text=True, cwd=cwd
+        ).stdout.strip()
+        repo_name = Path(repo_root).name
+        if branch and branch != 'HEAD':
+            return f"{repo_name}_{branch}"
+        return repo_name
+    except Exception:
+        return Path(cwd).name or 'claude'
 
 
 def main():
@@ -55,7 +75,7 @@ def main():
     if name_file and name_file.exists():
         name = name_file.read_text().strip()
     else:
-        name = Path(cwd).name or 'claude'
+        name = git_window_name(cwd)
         if name_file:
             name_file.write_text(name)
 

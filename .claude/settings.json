@@ -23,6 +23,17 @@
   },
   "model": "claude-sonnet-4-6[1m]",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-session-start-hook"
+          }
+        ]
+      }
+    ],
     "Notification": [
       {
         "matcher": "",
