@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Pre-save hook for tmux-resurrect.
+# Reads @claude-session-id pane user option from all panes and writes
+# ~/.tmux/resurrect/claude-sessions.txt for the claude restore strategy.
+set -euo pipefail
+
+output_file="$HOME/.tmux/resurrect/claude-sessions.txt"
+mkdir -p "$(dirname "$output_file")"
+: > "$output_file"
+
+while IFS= read -r line; do
+    pane_id=$(echo "$line" | awk '{print $1}')
+    pane_dir=$(echo "$line" | awk '{print $2}')
+    session_id=$(tmux show-options -pv -t "$pane_id" @claude-session-id 2>/dev/null || true)
+    if [ -n "$session_id" ]; then
+        printf '%s\t%s\n' "$pane_dir" "$session_id" >> "$output_file"
+    fi
+done < <(tmux list-panes -a -F '#{pane_id} #{pane_current_path}')

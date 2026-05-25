@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# tmux-resurrect strategy for Claude Code panes.
+# Called by resurrect with args: pane_id window_id window_name window_index pane_index dir pane_current_command
+# Outputs the command to run in the restored pane.
+
+main() {
+    local dir="${6:-}"
+
+    local sessions_file="$HOME/.tmux/resurrect/claude-sessions.txt"
+
+    if [ -n "$dir" ] && [ -f "$sessions_file" ]; then
+        local session_id
+        session_id=$(grep -F "$(printf '%s\t' "$dir")" "$sessions_file" 2>/dev/null | tail -1 | cut -f2)
+        if [ -n "$session_id" ]; then
+            echo "claude --resume $session_id"
+            return
+        fi
+    fi
+
+    echo "claude --continue"
+}
+
+main "$@"

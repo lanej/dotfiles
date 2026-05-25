@@ -81,6 +81,13 @@ def main():
 
     set_title(pane, name)
 
+    # Tag pane with Claude session ID for tmux-resurrect restore
+    if session_id and pane:
+        subprocess.run(
+            ['tmux', 'set-option', '-p', '-t', pane, '@claude-session-id', session_id],
+            check=False
+        )
+
 
 if __name__ == '__main__':
     main()
