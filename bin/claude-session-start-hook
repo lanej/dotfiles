@@ -23,6 +23,8 @@ def set_title(pane, name):
     try:
         subprocess.run(['tmux', 'rename-window', '-t', pane, name], check=False)
         subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
+        # Block OSC title sequences from overriding the name while Claude runs
+        subprocess.run(['tmux', 'set-option', '-w', '-t', pane, 'allow-rename', 'off'], check=False)
     except Exception:
         pass
 
