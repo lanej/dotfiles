@@ -195,7 +195,9 @@ Before finalizing any edit, identify every claim, section, or statement in the d
 
 If you cannot resolve all dependencies in one pass, say so before editing.
 
-**When removing or renaming terminology** (e.g., stripping an external attribution, renaming a cohort): grep ALL files in the project for the term before declaring the sweep complete. Then additionally check figure modules (`figures/fig_*.py`) for that term in axis labels, titles, annotations, and legend text — these are not caught by prose sweeps and will survive into rendered PDFs.
+**When any string, label, or term is changing** — whether the user says "rename X to Y", "ditch X", "remove X", or you are changing a concept name as part of a scope change — grep the full project for the old term BEFORE touching any file. This is a pre-edit step, not a completion check. Do not start editing until you know every location that needs to change.
+
+Figure modules (`figures/fig_*.py`) require an explicit grep pass: chart titles, axis labels, annotations, and legend text are not found by QMD or markdown prose sweeps and will silently survive into rendered PDFs. A clean `just render` exit does not mean the term is gone from visuals.
 
 ### Citations in Written Artifacts
 

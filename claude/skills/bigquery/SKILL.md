@@ -191,21 +191,6 @@ bigquery://easypost-platform.DORA.ai_attribution
 
 ## Known Gotchas
 
-**Free-text fields (description, notes, summary) can contain embedded newlines or control chars** that break line-based JSONL parsing — the row spans multiple physical lines and `json.loads(line)` raises `JSONDecodeError`. Two fixes required:
-
-1. Sanitize in SQL before returning:
-   ```sql
-   REGEXP_REPLACE(description, r'[\x00-\x09\x0b-\x1f\x7f]', ' ') AS description
-   ```
-2. Skip non-JSON lines in the parser (also filters `[INFO]`/`[WARN]` CLI messages):
-   ```python
-   for line in result.stdout.splitlines():
-       if line.strip().startswith("{"):
-           rows.append(json.loads(line))
-   ```
-
-**Null bytes in SQL passed as argv** — if the SQL string contains a `\x00` byte (e.g., from a key with a null byte embedded in an IN clause), `subprocess.Popen` raises `ValueError: embedded null byte`. This is another reason to always pass SQL via `--stdin` (`input=sql`) rather than as a positional argument.
-
 **DATE columns in JSONL output** return `{"value": "YYYY-MM-DD"}` dicts, not strings. TIMESTAMP columns return epoch float strings (`"1.760730316667E9"`), not ISO strings.
 
 ```python
@@ -232,12 +217,6 @@ df["col"] = pd.to_numeric(df["col"], errors="coerce").fillna(0).astype("int64")
 **Salesforce `created_date`** is the Polytomic sync timestamp (Feb 2025+), not the SF creation date. Use `close_date` or SF-native date fields for historical queries.
 
 **`salesforce.tasks.created_date`** is INT64 nanoseconds — convert with `TIMESTAMP_MILLIS(CAST(created_date / 1000000 AS INT64))`.
-
-**NULL-safe joins — use `IS NOT DISTINCT FROM`**: Standard `col1 = col2` returns NULL (not TRUE) when both sides are NULL, silently dropping rows. Use `col1 IS NOT DISTINCT FROM col2` when join keys can be NULL on both sides. Common case: engineer/assignee columns that fail a `unified_identity` lookup produce NULL — a subsequent `JOIN ... ON s.engineer = a.engineer` drops all NULL-engineer rows.
-
-**BQ inline VALUES via UNNEST STRUCT — named-field syntax required**: `STRUCT<type>(val1, val2)` is INVALID and produces silent data corruption (no error, wrong results — rows disappear or join incorrectly). Always use named-field syntax: `STRUCT('val1' AS field1, DATE 'val2' AS field2)`. Example: `FROM UNNEST([STRUCT('USPS' AS carrier_family, DATE '2011-01-01' AS first_label_date), STRUCT('FedEx' AS carrier_family, DATE '2020-10-27' AS first_label_date)]) AS t`.
-
-**TTM window must exclude the current in-progress month**: Filter `WHERE month < DATE_TRUNC(CURRENT_DATE(), MONTH)` to exclude the partial current month. Without this, the incomplete month dilutes the average — in one case producing `avg_monthly=21` when the correct value was 29. Derive `avg_monthly` as `ttm_total / 12` (fixed denominator), not `total / count_of_months`.
 
 ## Quick Reference
 
