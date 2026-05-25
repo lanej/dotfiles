@@ -73,6 +73,61 @@ gcloud config set project YOUR_PROJECT_ID
 
 The Vertex SDK picks up ADC automatically. No explicit token management needed for local development.
 
+## Secret Manager — Env Var Injection Includes Raw Bytes
+
+When Cloud Run (or any GCP service) injects a Secret Manager secret as an environment variable, the raw bytes are used verbatim — including any trailing newline if the secret was stored with one.
+
+`os.environ.get("MY_SECRET")` returns `"value\n"` not `"value"`. This causes silent bugs: API validators that check token length reject the value; string comparisons fail; authentication breaks.
+
+**Store secrets without trailing newlines:**
+
+```bash
+# Wrong — echo appends \n
+echo "my-token" | gcloud secrets versions add my-secret --data-file=-
+
+# Correct
+printf '%s' "my-token" | gcloud secrets versions add my-secret --data-file=-
+echo -n "my-token" | gcloud secrets versions add my-secret --data-file=-
+```
+
+**Verify:** `gcloud secrets versions access latest --secret=NAME | wc -c` should equal exactly the token length (no +1).
+
+**In Python**, `.strip()` secrets from env when used in length-sensitive or comparison contexts:
+
+```python
+token = os.environ.get("MY_SECRET", "").strip()
+```
+
+## Cloud Monitoring — `notification_rate_limit` Only for Log-Based Alerts
+
+`alert_strategy.notification_rate_limit` inside `google_monitoring_alert_policy` (Terraform / OpenTofu) is **only valid for log-based alert policies**. Applying it to metric-based policies returns HTTP 400:
+
+```
+Error creating AlertPolicy: googleapi: Error 400: Field alertStrategy.notificationRateLimit
+had an invalid value: only log-based alert policies may specify a notification rate limit
+```
+
+**Fix:** omit the `alert_strategy` block entirely for metric-based policies (e.g., alerting on Cloud Run `completed_execution_count`):
+
+```hcl
+# ❌ Wrong for metric-based
+resource "google_monitoring_alert_policy" "my_alert" {
+  alert_strategy {
+    notification_rate_limit {
+      period = "3600s"
+    }
+  }
+}
+
+# ✅ Correct — no alert_strategy for metric-based
+resource "google_monitoring_alert_policy" "my_alert" {
+  display_name = "My Alert"
+  combiner     = "OR"
+  conditions { ... }
+  notification_channels = [...]
+}
+```
+
 ## BigQuery + Vertex AI
 
 When combining BigQuery data with Vertex AI Claude calls, prefer the `bigquery` CLI skill for queries and pass results as structured context in the Claude API request body.

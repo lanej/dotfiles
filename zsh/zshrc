@@ -443,3 +443,7 @@ fi
 export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"
 export PATH="/Users/joshlane/.bun/bin:$PATH"
 # EIA_API_KEY is loaded from a non-versioned secrets file (e.g. ~/.env)
+#
+if [ -r "$HOME/.env" ]; then
+  source "$HOME/.env"
+fi

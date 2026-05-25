@@ -43,7 +43,7 @@ All search tools accept: `query` (required), `limit` (default 5, max 20), `catal
 
 ## Admin Tools (Credentials Required)
 
-Run in sequence when the index is missing or stale:
+Run in sequence when the index is missing (tool says "No Looker index found") or after the Looker instance has changed (new explores, dashboards added):
 
 1. **`mcp__looker__verify_auth`** — Confirm API connectivity before crawling.
 2. **`mcp__looker__catalog`** — Crawl the instance; writes JSONL to `~/.looker/catalog/`. Incremental (checkpoint-aware).
@@ -67,8 +67,14 @@ Run in sequence when the index is missing or stale:
 **"I need to build a query about X — what fields exist?"**
 → `search_queries` for similar queries → inspect `fields[]` to see available dimensions/measures
 
-**Search returns weak results (low scores or wrong domain)**
-→ Index may be stale. Run: `verify_auth` → `catalog` → `enrich` → `index_build`
+**Search returns "No Looker results — run looker enrich and qmd update first" error**
+→ Catalog exists but embeddings are missing. Check the `index_build` log for "N unique hashes need vectors". If non-zero, run `qmd embed` via Bash before searching. Full sequence for a stale index: `verify_auth` → `catalog` → `enrich` → `index_build` → `qmd embed` (if "N unique hashes need vectors").
+
+**Search returns "No Looker index found" error**
+→ Index doesn't exist. Run: `verify_auth` → `catalog` → `enrich` → `index_build` → `qmd embed`
+
+**Search returns no results or low scores**
+→ The query didn't match. Rephrase or try a different search term. Do NOT assume the index is stale — the tool now distinguishes "missing index" from "no match" explicitly.
 
 ## Storage Paths
 

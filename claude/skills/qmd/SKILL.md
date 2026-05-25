@@ -82,6 +82,12 @@ After adding or committing new files, the post-commit hook runs `qmd update` aut
 To force a full re-embed (e.g., after adding many new files): `qmd embed`.
 Log: `/tmp/qmd-post-commit.log`
 
+## Batch Similarity — use sentence-transformers, not qmd
+
+For N × M pairwise similarity (duplicate detection, question-to-document coverage over 1,000+ items), qmd CLI is the wrong tool. Even with `--no-rerank`, `qmd query` still runs HyDE expansion (LLM call, ~25s/query). Use `vec:` prefix to skip expansion, but even then per-call overhead makes 1,000+ queries take hours.
+
+For batch operations: use `sentence-transformers` directly. `all-MiniLM-L6-v2` is already cached at `~/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/`. Embed in batch, compute pairwise similarity with numpy — handles 2,000 × 2,000 in under 5 minutes. qmd's index is for search/discovery; for bulk similarity, read source files directly.
+
 ## Sub-Agent Briefings
 
 When briefing a sub-agent to search the workspace, give it the CLI command explicitly — do not just say "search the workspace." MCP tools can be unavailable in sub-agent contexts (disconnected server, cold-start).

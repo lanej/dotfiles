@@ -95,6 +95,14 @@ jira:
   url: https://yourorg.atlassian.net/browse/PROJ-123
   updated: "2026-05-13T08:00:00.000+0000"
   summary: "Issue title"
+  duedate: 2026-12-31          # or ~ if unset
+  sprint: Sprint 42            # or ~ if unset
+  fix_versions:
+    - v2.0
+  assignee: Josh Lane          # or ~ if unset
+  custom_fields:               # editable custom fields only (filtered by edit screen)
+    strategic_alignment: 3
+    problem_classification: Operational Risk
 ---
 
 Description body goes here.
@@ -106,12 +114,15 @@ Description body goes here.
 
 **Local images**: `![alt](./local.png)` in the markdown body is base64-encoded and embedded in the ADF on sync. On pull, base64 data URLs are decoded to `./images/{KEY}-img-{n}.png` and referenced as relative paths.
 
-**What syncs**: description and summary. Status, assignee, labels are Jira-managed and not written to the file. Edit `jira.summary` in the frontmatter to rename the issue on next sync.
+**What syncs**: description, summary, duedate, sprint (name), fix_versions (list of version names), assignee (display name, `~` to unassign), and any editable custom fields in the `custom_fields:` block. Custom field keys are snake_case; values are pushed via the fields cache (direct field ID lookup — no name-ambiguity errors). Calculated/view-only fields may appear in `custom_fields:` if the Jira instance doesn't configure a separate edit screen; writes to such fields are silently ignored by Jira.
+
+**Mermaid diagrams**: ` ```mermaid ``` ` blocks are automatically rendered to PNG via `mmdc` (Mermaid CLI) and uploaded as attachments. The Jira description shows the rendered image; the mermaid source block is preserved only in the local file. Install `mmdc` with `npm install -g @mermaid-js/mermaid-cli`. If `mmdc` is absent or fails, the sync completes without error and the diagram is omitted from Jira.
 
 **Known limitations**:
 - `code` mark cannot be combined with other marks (bold/italic) — ADF spec constraint, Jira rejects it
 - Round-trip introduces minor whitespace differences in tables and blockquotes
 - Nested bold+italic (`**bold _italic_**`) emits redundant `**` on pull — cosmetic, content preserved
+- `pull` does not restore mermaid source blocks — local file is authoritative for mermaid content
 
 ## Linking Documents to Issues
 

@@ -53,7 +53,7 @@ Load the `epq` skill for ANY work involving `.qmd` files, `figures/fig_*.py` mod
 analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, or PDF render issues.
 Never create analysis project boilerplate manually — always start with `epq scaffold`.
 
-**Domain corrections**: When the user corrects content in their own domain, surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), accept the correction, and update the source material. Do not defend the written version.
+**Domain corrections**: When the user corrects content in their own domain, surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), accept the correction, and update the source material. Do not defend the written version. Exception: when the assertion concerns BQ-verifiable data and you are already querying that data source in the same session, run the verification query before applying the change — the user's recollection may be stale.
 
 ## Session Memory
 

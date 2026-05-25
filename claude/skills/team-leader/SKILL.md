@@ -5,12 +5,12 @@ description: Decomposes a complex problem or scenario into distinct sub-problems
 
 # Team Leader
 
-Invokes the `team-leader` agent type to decompose a scenario into parallel sub-problems.
+Decomposes a scenario into parallel sub-problems and spawns one `general-purpose` (or `Explore`) agent per sub-problem directly via the Agent tool. **`team-leader` is not a valid `subagent_type`** — it is a decomposition pattern, not an agent type. Never pass `subagent_type: "team-leader"` to the Agent tool; it will fail with "Agent type 'team-leader' not found."
 
 ## Pattern
 
 1. **Decompose** — identify 2–6 bounded sub-problems with no overlap
-2. **Spawn in parallel** — one agent per sub-problem (`explore` or `general-purpose`)
+2. **Spawn in parallel** — call the Agent tool N times simultaneously, once per sub-problem, each with `subagent_type: "general-purpose"` (or `"Explore"` for pure research tasks)
 3. **Synthesize** — integrate findings into a coherent unified output
 
 ## When to use
@@ -32,7 +32,15 @@ Invokes the `team-leader` agent type to decompose a scenario into parallel sub-p
 @team-leader <scenario description>
 ```
 
-Or via Task tool with `subagent_type: "team-leader"` and the scenario as the prompt.
+Claude (the primary agent) performs the decomposition itself, then spawns parallel agents via the Agent tool:
+
+```
+Agent tool call 1: subagent_type="general-purpose", prompt="<sub-problem A briefing>"
+Agent tool call 2: subagent_type="general-purpose", prompt="<sub-problem B briefing>"
+Agent tool call 3: subagent_type="Explore",         prompt="<sub-problem C briefing>"
+```
+
+All three calls are issued in the same turn so they execute in parallel. Collect results, then synthesize.
 
 ## Example decompositions
 

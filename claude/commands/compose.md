@@ -198,7 +198,7 @@ For each Unsourced Claim finding: either (a) return to Stage 2 and record the so
 
 For each Stale Source finding: update the source entry with current information or lower the claim's confidence level in the draft.
 
-Apply `distill` skill to any section flagged for compression. Update status to `Reconciling`, then `Released`.
+Once all findings are classified and sourcing is resolved, run the `distill` skill on the full `draft.md` as a mandatory whole-document pass — not section-by-section. This catches cross-section redundancy that per-section cuts miss. Distill runs after accuracy is settled so brevity doesn't obscure remaining problems. Update status to `Reconciling` before distill, `Released` after.
 
 ### Stage 7 — Release
 
@@ -220,7 +220,8 @@ Do not proceed to Release until:
 - Every critique finding is classified
 - No Unsourced Claims remain
 - Stale sources are updated or claims are downgraded
-- Distillation check passes
+- Distillation check passes (Stage 5 verification probe)
+- Full-document `distill` pass is complete (Stage 6 editorial cut)
 
 If critique reveals a thesis-level problem (wrong audience, wrong purpose, core claim unsupportable by available evidence): reopen Stage 1. Do not patch a structural problem in revision.
 

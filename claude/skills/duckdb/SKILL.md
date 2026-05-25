@@ -1,5 +1,5 @@
 ---
-description: Fast SQL analytics and data analysis with DuckDB CLI. Use when analyzing data files (CSV, JSON, Parquet), performing statistical analysis, aggregations, joins, window functions, or complex SQL queries on local datasets. Triggers on "analyze data", "statistics", "aggregate", "query CSV/JSON/Parquet", "data analysis", "SQL query", "join datasets", "calculate metrics", or analytical operations on structured data.
+description: DuckDB for SQL analytics, data analysis, and persistent local databases. Use when: (1) analyzing local files (CSV, JSON, Parquet) with SQL — aggregations, joins, window functions, statistics; (2) working with a .duckdb file as a pipeline storage layer — reading, writing, updating records; (3) using the Python DuckDB API — duckdb.connect(), con.execute(), .df(), UPDATE/DELETE/INSERT via Python; (4) querying a project-specific database such as staffing.duckdb, slack_qa.duckdb, or any *.duckdb file. Triggers on: "analyze data", "query CSV/JSON/Parquet", "duckdb.connect", ".duckdb file", "UPDATE … DuckDB", "INSERT INTO", "read_json_auto", "con.execute", or any SQL operation on a local dataset or .duckdb database.
 ---
 
 # DuckDB Skill
@@ -23,7 +23,11 @@ DuckDB is an in-process SQL OLAP database designed for fast analytical queries o
 - Simple file viewing (use `xlsx`, `xsv`, or `cat` instead)
 - Single-row lookups (use `grep` or `jq`)
 - Basic CSV filtering (use `xsv` for simpler cases)
-- Persistent database operations (DuckDB is in-memory by default)
+
+**Common project databases in this workspace:**
+- `areas/staffing/staffing.duckdb` — org headcount (use `staffing` skill)
+- `data/slack_qa.duckdb` — Slack Q&A analysis pipeline storage
+- `data/*.duckdb` — project-specific pipeline databases
 
 ## Core Concepts
 
@@ -472,6 +476,24 @@ SELECT
 FROM 'metrics.csv'
 GROUP BY bin
 ORDER BY bin;
+```
+
+## Python API Gotchas
+
+### `rowcount` is unreliable for UPDATE/DELETE
+When running `UPDATE` or `DELETE` via the Python DuckDB API (`con.execute(sql)`), `.rowcount` always returns `-1` (or a negative multiple if called in a loop), not the actual number of affected rows. The update *did* execute correctly. To verify affected rows, run a follow-up `SELECT COUNT(*)` with the same WHERE clause before and after, or query the changed rows directly. This is distinct from `SELECT` queries where `.fetchall()` / `.df()` return the actual result.
+
+```python
+# Bad: rowcount is always -1 for UPDATE/DELETE
+con.execute("UPDATE users SET active = false WHERE last_login < '2024-01-01'")
+print(con.rowcount)  # -1, not the actual affected row count
+
+# Good: verify with a follow-up query
+affected = con.execute(
+    "SELECT COUNT(*) FROM users WHERE last_login < '2024-01-01'"
+).fetchone()[0]
+con.execute("UPDATE users SET active = false WHERE last_login < '2024-01-01'")
+print(f"Updated {affected} rows")
 ```
 
 ## Troubleshooting

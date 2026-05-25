@@ -127,7 +127,9 @@ Write instructions for using the skill and its bundled resources.
 
 ### Step 5: Packaging a Skill
 
-Once development of the skill is complete, it must be packaged into a distributable .skill file that gets shared with the user. The packaging process automatically validates the skill first to ensure it meets all requirements:
+**Skip this step if you are building a skill for your own use.** Packaging is for distributing a skill to other users. If the skill lives in your own `~/.claude/skills/` or a project's `.claude/skills/`, work directly in that directory — no packaging needed.
+
+Once development of the skill is complete and you need to distribute it, package it into a distributable .skill file. The packaging process automatically validates the skill first to ensure it meets all requirements:
 
 ```bash
 scripts/package_skill.py <path/to/skill-folder>
@@ -160,5 +162,5 @@ After testing the skill, users may request improvements. Often this happens righ
 
 1. Use the skill on real tasks
 2. Notice struggles or inefficiencies
-3. Identify how SKILL.md or bundled resources should be updated
-4. Implement changes and test again
+3. Edit the installed skill directory directly (`~/.claude/skills/skill-name/` or the project `.claude/skills/` equivalent) — do not extract a zip to a temp directory
+4. Re-package only if distributing the updated skill to others; the live install is the directory, not the zip
