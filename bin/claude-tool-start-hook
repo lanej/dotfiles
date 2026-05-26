@@ -19,6 +19,7 @@ def main():
 
     try:
         subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude-state', 'tool'], check=False)
+        subprocess.run(['tmux', 'refresh-client', '-S'], check=False)
     except Exception:
         pass
 
