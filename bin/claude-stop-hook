@@ -14,9 +14,10 @@ if [ -f "$state_file" ]; then
 
     # If more than 10 seconds have passed since last Stop, notify
     if [ "$elapsed" -ge 10 ]; then
-        # Trigger tmux bell in the current pane
+        # Ring bell directly on the TTY — never goes through tmux input processing
         if [ -n "$TMUX_PANE" ]; then
-            tmux send-keys -t "$TMUX_PANE" C-g 2>/dev/null
+            tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
+            [ -n "$tty" ] && printf '\a' >> "$tty"
         fi
 
         # Desktop notification (background, non-blocking)
