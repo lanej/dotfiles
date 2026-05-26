@@ -31,4 +31,9 @@ fi
 # Record this Stop event timestamp
 date +%s > "$state_file"
 
+# Clear tool-running color
+if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
+    tmux set-option -w -t "$TMUX_PANE" @claude-state "" 2>/dev/null || true
+fi
+
 exit 0
