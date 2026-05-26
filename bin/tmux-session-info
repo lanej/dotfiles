@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Print a formatted summary of the current tmux-resurrect save."""
+import sys
+from pathlib import Path
+from collections import defaultdict
+
+HOME = Path.home()
+src = Path(sys.argv[1]) if len(sys.argv) > 1 else HOME / '.tmux/resurrect/last'
+
+if not src.exists():
+    print("no resurrect data found")
+    sys.exit(1)
+
+windows = {}   # (session, widx) -> (name, active)
+panes   = defaultdict(list)  # (session, widx) -> [pane_dict, ...]
+
+for line in src.read_text().splitlines():
+    f = line.split('\t')
+    if not f:
+        continue
+
+    if f[0] == 'window':
+        session, widx, name, wactive = f[1], int(f[2]), f[3].lstrip(':'), f[4] == '1'
+        windows[(session, widx)] = (name, wactive)
+
+    elif f[0] == 'pane':
+        session = f[1]
+        widx    = int(f[2])
+        panes[(session, widx)].append({
+            'idx':    int(f[5]),
+            'title':  f[6],
+            'path':   f[7].lstrip(':').replace(str(HOME), '~'),
+            'active': f[8] == '1',
+            'cmd':    f[9],
+            'full':   f[10].lstrip(':') if len(f) > 10 else '',
+        })
+
+def classify(p):
+    cmd, full = p['cmd'], p['full']
+    if cmd in ('nvim', 'vim'):             return 'nvim'
+    if cmd in ('zsh', 'bash') and 'claude' not in full: return 'shell'
+    if 'claude' in full and '--continue' in full:        return 'claude'
+    if 'claude' in full:                   return 'sub'
+    return cmd
+
+TYPE_COLOR = {
+    'claude': '\033[32m',   # green
+    'nvim':   '\033[34m',   # blue
+    'sub':    '\033[33m',   # yellow
+    'shell':  '\033[90m',   # gray
+}
+RESET = '\033[0m'
+BOLD  = '\033[1m'
+DIM   = '\033[2m'
+
+def fmt_pane(p):
+    t     = classify(p)
+    color = TYPE_COLOR.get(t, '')
+    label = f'{t:<6}'
+    title = p['title'] if t != 'shell' else p['path']
+    title = title[:55] + '…' if len(title) > 55 else title
+    dot   = f'{BOLD}*{RESET}' if p['active'] else ' '
+    return f"    {p['idx']}{dot} {color}{label}{RESET}  {title}"
+
+sessions = sorted(set(s for s, _ in windows), key=lambda s: (s != '0', s))
+
+for session in sessions:
+    print(f"\n{BOLD}{'─' * 52}{RESET}")
+    print(f"{BOLD}  session: {session}{RESET}")
+    print(f"{BOLD}{'─' * 52}{RESET}")
+
+    for widx in sorted(w for s, w in windows if s == session):
+        name, wactive = windows[(session, widx)]
+        marker = f' {BOLD}[active]{RESET}' if wactive else ''
+        print(f"\n  {DIM}{widx}{RESET}  {BOLD}{name}{RESET}{marker}")
+        for p in sorted(panes[(session, widx)], key=lambda x: x['idx']):
+            print(fmt_pane(p))
+
+print()
