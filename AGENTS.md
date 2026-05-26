@@ -1,46 +1,24 @@
 <claude-mem-context>
 # Memory Context
 
-# [.files] recent context, 2026-05-25 1:45pm PDT
+# [.files] recent context, 2026-05-25 8:31pm PDT
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (16,990t read) | 315,944t work | 95% savings
+Stats: 50 obs (17,336t read) | 346,076t work | 95% savings
 
 ### May 18, 2026
-5199 10:42a 🚨 git-crypt symmetric key potentially exposed in public dotfiles repo
-5202 10:46a 🔐 git-crypt key file in dotfiles repo — safe to commit
-5203 10:47a 🔐 git-crypt key exposure audit in public dotfiles repo
-5204 " 🔵 ~/workspace repo has no git-crypt encrypted files
-5205 10:48a 🔵 ~/.files is the only git-crypt-enabled repo across 70+ local repositories
-5206 " 🔵 Sensitive-named files tracked unencrypted in public dotfiles repo
-5207 10:49a 🔵 git-crypt key file confirmed as PGP RSA encrypted — not a raw key leak
-5208 " 🔐 superwhisper/settings/settings.json was committed in plaintext before encryption — history still public
-5209 " 🔵 superwhisper/settings.json encryption boundary confirmed: one plaintext commit before encryption took effect
-5210 10:51a 🔵 ~/workspace repo contains sensitive organizational content with zero encryption
-5211 " 🔵 git-crypt key scope confirmed: ~/.files only, not ~/workspace — user's belief was incorrect
-5212 10:53a ⚖️ Git-crypt remediation plan written: Option A (remove git-crypt from dotfiles) recommended
-5283 1:25p 🚨 git-crypt private key potentially exposed in public dotfiles repo
-5284 1:26p 🔵 ~/workspace uses git-crypt but has no .git-crypt/ directory
-5290 1:28p 🔵 ~/workspace uses git-remote-gcrypt (GPG-based), not git-crypt
-5294 1:29p 🔵 ~/workspace has no git-crypt encrypted files — confirmed
-5295 1:30p ⚖️ Git-crypt remediation plan: remove git-crypt from dotfiles, no key rotation needed
-5296 1:32p ⚖️ Dotfiles git-crypt plan revised: keep encryption, just delete stale claude/* branches
 5378 3:11p 🔵 qmd skill exists in dotfiles; lancer/pkm skills removed
-S3005 Update qmd skill file to make CLI the primary interface after qmd MCP was removed (May 18 at 3:12 PM)
 5380 3:13p ✅ qmd skill file updated: CLI promoted to primary interface, MCP demoted
-S3030 Migrate qmd interface from MCP to CLI-first, update CLAUDE.md and skill file, commit changes to dotfiles repo (May 18 at 3:14 PM)
 5536 7:01p 🔵 Global settings.json has invalid WorktreeCreate/WorktreeRemove hook keys
-S3272 Improve the xlsx skill file — fix broken examples, add gotchas, trim bloat (May 18 at 7:02 PM)
 ### May 20, 2026
 6445 10:52a 🔵 xlsx binary stats subcommand requires COLUMN argument
 6446 " 🔵 xlsx filter supports --offset pagination and 0-based sheet index
 6447 " 🔵 xlsx slice uses --start/--end flags, not positional arguments
 6448 10:53a 🔵 xlsx advanced subcommands are full sub-command groups with rich functionality
 6451 " ✅ xlsx SKILL.md rewritten — 383 lines collapsed to 117 with correctness fixes
-S3351 Upgrade /reflection skill to dispatch sub-agents that fix issues in local tool repos rather than documenting workarounds (May 20 at 10:54 AM)
 6752 4:14p ⚖️ Reflection skill should dispatch sub-agents to fix issues, not add caveats
 6754 4:15p 🔵 reflection.md skill current structure: 4-step analyze-scope-apply workflow
 6755 " 🟣 reflection.md upgraded: tool-repo scope added, sub-agent dispatch for local fixes
@@ -68,13 +46,43 @@ S3506 Fix tmux bell misattribution in Claude hooks so bell always rings in the C
 7481 " ✅ tmux bell attribution changes committed to .files dotfiles repo
 S3516 Commit distill skill YAML fix and packaged .skill file to dotfiles repo (May 22 at 10:36 AM)
 7502 11:15a ✅ Dotfiles repo has multiple staged modifications across CLAUDE.md and skills
+S3712 Fix claude-session-start-hook to preserve manually-set session names (via /name) across session restarts instead of overwriting with cwd basename (May 22 at 11:15 AM)
 ### May 24, 2026
-S3712 Fix claude-session-start-hook to preserve manually-set session names (via /name) across session restarts instead of overwriting with cwd basename (May 24 at 9:59 AM)
+S3948 Persistent tmux session management: windows/panes/layout survive restarts; neovim restores files; Claude Code resumes exact conversation per pane (May 24 at 9:59 AM)
 ### May 25, 2026
 8820 1:43p ⚖️ Persistent tmux session management investigation initiated
 8821 1:44p 🔵 No existing tmux plugin manager or persistence config in dotfiles
 8822 " 🔵 Josh's tmux dotfiles structure and config baseline
 8823 " 🔵 tmux.conf uses @prefix_highlight variables indicating partial plugin awareness
+8826 " ⚖️ Persistent tmux restoration spec written with three blocking ambiguities
+8833 1:49p ⚖️ Persistent tmux session management with neovim and Claude Code resume
+8834 " 🔵 Persistent tmux session research: tool landscape and capability limits on macOS
+8838 1:52p ⚖️ Persistent tmux restoration spec v2: architecture finalized with Claude Code session ID approach
+8842 1:54p 🔵 Critical spec flaws found: tmux pane env doesn't exist, resurrect won't save user options natively, vim-prosession path incompatible with resurrect
+8844 1:55p 🔵 Blocking ambiguity A1 resolved: session_id IS available in SessionStart hook stdin JSON
+8846 " 🔵 vim-prosession stores sessions in ~/.vim/session/ with encoded paths — not in cwd, confirming C-3 critique
+8847 " 🔵 vim-prosession auto-loads session on startup when nvim launched with no args (prosession_on_startup=1 default)
+8848 1:57p ⚖️ Persistent tmux restoration spec frozen at v3 — all critique findings resolved, implementation ready
+8849 1:58p 🔵 Dotfiles codebase audit: tmux target exists but is minimal, TPM not installed, bin/ has rich tmux script ecosystem
+8850 " ⚖️ Implementation plan written: Claude session ID keyed by working directory in side-car file, not pane coordinates
+8854 2:04p 🟣 Persistent tmux restoration implemented: 3 new files created, claude-session-start-hook modified
+8855 2:05p 🟣 TPM block added to rc/tmux.conf — persistent tmux restoration fully wired in config
+S3953 Persistent tmux session management — designing and implementing cross-reboot tmux/neovim/claude-code session restoration (May 25 at 2:05 PM)
+8895 2:28p ⚖️ Persistent tmux session management requirement defined
+S3963 Commit pending dotfiles changes — CLAUDE.md and BigQuery skill edits (May 25 at 2:29 PM)
+8898 2:37p 🔵 Dotfiles repo has unstaged changes and 11 unpushed commits
+8899 2:38p ✅ CLAUDE.md document-editing rule strengthened to require pre-edit grep
+8900 " ✅ BigQuery skill pruned: five gotcha sections removed
+8901 " ✅ Committed dotfiles: CLAUDE.md rename-sweep rule and BigQuery skill trim
+S3986 User reaction to Claude Code Neovim integration — "it's just a terminal manager? that sucks" (May 25 at 7:38 PM)
+**Investigated**: The nature and capabilities of the Claude Code Neovim plugin that was added to the user's Neovim config
 
-Access 316k tokens of past work via get_observations([IDs]) or mem-search skill.
+**Learned**: The Claude Code Neovim integration is limited to: terminal splitting, a file-opening hook so `claude` CLI can jump to Neovim buffers, and diff accept/deny wired to Neovim's diff view. It does NOT provide inline completions, ghost text, or context-aware editing. The VS Code extension is significantly richer. Undefined-global `vim` Lua LSP diagnostics are pre-existing false positives across the config, not introduced by this change.
+
+**Completed**: Added the Claude Code Neovim plugin to the user's config. User is now evaluating whether to keep it.
+
+**Next Steps**: User may ask to revert the plugin addition, given their disappointment with its limited capabilities compared to VS Code's Claude integration.
+
+
+Access 346k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

@@ -442,6 +442,34 @@ git diff origin/master..HEAD
 
 **Remember**: Arc is interactive by default. Use `--message` or `--message-file` for automation.
 
+## Conduit API (`arc call-conduit`)
+
+Arc can call Phabricator's Conduit REST API directly. Required for batch operations not exposed by the `phab` CLI (e.g., `edge.search`).
+
+```bash
+# Always include '--' before the method name (noninteractive requirement)
+echo '{"limit": 5}' | arc call-conduit -- differential.revision.search
+
+# Conduit ping (connectivity check)
+echo '{}' | arc call-conduit -- conduit.ping
+```
+
+**Gotcha: `--` separator is mandatory in noninteractive contexts.** Without it, arc exits with a usage error even for simple calls.
+
+**Gotcha: response JSON uses spaces after colons** — `"error": null`, not `"error":null`. Always parse with `json.loads()`, never string-match:
+```python
+response = json.loads(result.stdout)
+if response.get('error') is not None:
+    raise ValueError(response.get('errorMessage', ''))
+```
+
+**Gotcha: arc PATH in Python subprocesses** — `arc` installs to `/Users/joshlane/lib/arcanist/bin/arc`, which may not be on the PATH inherited by `subprocess.run()` (e.g., when called from `uv run`). Always resolve with a fallback:
+```python
+import shutil
+ARC = shutil.which('arc') or '/Users/joshlane/lib/arcanist/bin/arc'
+result = subprocess.run([ARC, 'call-conduit', '--', method], input=payload, ...)
+```
+
 ## EasyPost Workflow Policy
 
 These rules apply specifically to EasyPost's Phabricator setup:

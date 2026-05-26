@@ -1,5 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_USE_VERTEX": "1",
+    "ANTHROPIC_VERTEX_PROJECT_ID": "easypost-platform"
+  },
   "permissions": {
     "allow": [
       "Bash"
@@ -18,6 +22,7 @@
     "additionalDirectories": []
   },
   "model": "claude-sonnet-4-6[1m]",
+  "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
       {
@@ -63,6 +68,17 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-tool-start-hook"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
@@ -74,6 +90,10 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-autoname-hook"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-stop-hook"
           }
         ]
       }
@@ -94,7 +114,6 @@
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
-  "enableAllProjectMcpServers": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
   }

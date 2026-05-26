@@ -5,6 +5,8 @@
   "blink-emoji.nvim": { "branch": "master", "commit": "066013e4c98a9318408ee3f1ca2dbcb6fa3e4c06" },
   "blink-ripgrep.nvim": { "branch": "main", "commit": "f1e2f0132d4d8b8591e29f4f86f518f6d463371d" },
   "blink.cmp": { "branch": "main", "commit": "78336bc89ee5365633bcf754d93df01678b5c08f" },
+  "cc-adapter-vertex-ai.nvim": { "branch": "master", "commit": "cb14556c9f0df581aed00b40114ae790e4bfe9af" },
+  "claudecode.nvim": { "branch": "main", "commit": "102d835c964069c9c5e37abaf05ae4f9c3ee6f00" },
   "codecompanion.nvim": { "branch": "main", "commit": "cb287525006eadc40b7c012bf711b06215cca367" },
   "colorful-menu.nvim": { "branch": "master", "commit": "b51a659459df8d078201aefc995db8175ed55e84" },
   "conform.nvim": { "branch": "master", "commit": "086a40dc7ed8242c03be9f47fbcee68699cc2395" },

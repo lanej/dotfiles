@@ -83,7 +83,7 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Validate before reporting.** Before surfacing results, run safe verification steps: syntax checks, idempotent make targets, grep/diff to confirm output, unit tests. Do not ask "does this look right?" when you can check yourself. Only report back once you have evidence the change works, or a specific failure you cannot resolve. Never claim a before/after delta for a number you didn't measure before the change — if you don't have the pre-change baseline, say so rather than inferring direction or magnitude from secondary reasoning. **When reporting aggregate counts (N matches, N rows, N unattributed), spot-check that the specific case that motivated the investigation is actually in the population before surfacing the number.** Example failure mode: reporting "211 matches, 61 active" without verifying the motivating case was one of them — the user had to catch it.
 
-**replace_all safety** — Before using `replace_all: true` in the Edit tool, grep all occurrences of the search string in the file to confirm every match should change. Common failure mode: replacing a short word that appears as a substring of others (e.g., replacing "Carrier" mutated "Carrier Bug"→"Carriers Bug", "Core Carriers"→"Core Carrierss"). If any occurrences should not change, use targeted replacements with more surrounding context instead of replace_all.
+**replace_all safety** — Before using `replace_all: true` in the Edit tool or a global `sed -i` substitution, grep all occurrences of the search string in the file to confirm every match should change. Common failure mode: a short pattern that appears in other contexts changed unintended occurrences (e.g., a sed substitution changed 4 DHL Cases when only 1 was intended). If any occurrences should not change, use targeted replacements with more surrounding context, or line-targeted `sed -i "" "Ns/old/new/"` instead of a global substitution.
 
 **Script argument verification** — Before calling a script with custom CLI arguments, read the script's argument-handling code (sys.argv, argparse, click) to confirm it actually uses those arguments. Scripts that ignore their argv silently return success. This extends the "Validate before reporting" rule: if you can't verify the arg is consumed without reading the source, read the source first.
 
@@ -163,6 +163,8 @@ Load `epq` skill for Quarto document work.
 **Don't automate interactive tools.** Text editors (nvim/vim/nano), interactive prompts, `arc diff` (no flags), `git commit` (no -m), interactive rebases — let the user interact. Use non-interactive flags when available. Never use `EDITOR=cat`/`EDITOR=true` hacks. See `methodology` skill for red flags and correct approach.
 
 **`gh pr checkout` is not worktree-safe — never use it in sub-agent briefings.** It operates against the main git directory regardless of CWD, switching the main working directory's branch and overwriting files there. When a sub-agent needs to work on a PR branch (e.g., to fix review issues), instruct it to use `git fetch origin <branch> && git checkout -b fix/<name> origin/<branch>` inside the worktree instead.
+
+**`git checkout <file>` is destructive — requires user confirmation.** The single-file form silently discards all uncommitted changes to that file with no recovery path. Unlike branch switching, it cannot be undone. Confirm with the user before running it, even when "resetting" a file for reformatting or debugging.
 
 ## GitHub Interaction Policy
 

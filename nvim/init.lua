@@ -2289,6 +2289,7 @@ require("lazy").setup({
 			"nvim-treesitter/nvim-treesitter",
 			"echasnovski/mini.diff",
 			"copilot.lua",
+			"viespejo/cc-adapter-vertex-ai.nvim",
 		},
 		enabled = true,
 		config = function()
@@ -2317,6 +2318,19 @@ require("lazy").setup({
 								},
 							})
 						end,
+						vertex_claude = function()
+							return require("codecompanion.adapters").extend("vertex-anthropic", {
+								env = {
+									project_id = vim.env.GOOGLE_CLOUD_PROJECT,
+									region = "us-central1",
+								},
+								schema = {
+									model = {
+										default = "claude-sonnet-4-6",
+									},
+								},
+							})
+						end,
 					},
 				},
 				strategies = {
@@ -2334,7 +2348,7 @@ require("lazy").setup({
 						},
 					},
 					chat = {
-						adapter = "copilot",
+						adapter = "vertex_claude",
 						slash_commands = {
 							["file"] = {
 								callback = "strategies.chat.slash_commands.file",
@@ -2766,6 +2780,25 @@ Provide ONLY the raw commit message text with NO code fences, NO markdown format
 		init = function()
 			vim.g.db_ui_use_nerd_fonts = 1
 		end,
+	},
+	{
+		"coder/claudecode.nvim",
+		config = true,
+		opts = {
+			terminal_cmd = "/Users/joshlane/.local/bin/claude",
+			terminal = {
+				provider = "native",
+				split_side = "right",
+				split_width_percentage = 0.35,
+			},
+		},
+		keys = {
+			{ "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
+			{ "<leader>af", "<cmd>ClaudeCodeFocus<cr>", desc = "Focus Claude" },
+			{ "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send to Claude" },
+			{ "<leader>aa", "<cmd>ClaudeCodeDiffAccept<cr>", desc = "Accept diff" },
+			{ "<leader>ad", "<cmd>ClaudeCodeDiffDeny<cr>", desc = "Deny diff" },
+		},
 	},
 })
 
