@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Trigger a tmux-resurrect save. Used by structural event hooks.
+# Trigger a tmux-resurrect save. Used by structural event hooks and tmux-sessions save.
+# Captures Claude session IDs first (pre-save semantics), then invokes save.sh.
 plugin_path=$(tmux show-environment -g TMUX_PLUGIN_MANAGER_PATH 2>/dev/null | cut -d= -f2)
 plugin_path="${plugin_path:-$HOME/.config/tmux/plugins/}"
+~/.files/bin/tmux-resurrect-save-hook 2>/dev/null || true
 exec "${plugin_path}tmux-resurrect/scripts/save.sh" quiet
