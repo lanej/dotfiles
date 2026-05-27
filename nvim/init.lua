@@ -2300,8 +2300,7 @@ require("lazy").setup({
 					},
 					chat = {
 						window = {
-							layout = "float",
-							border = "double",
+							layout = "vertical",
 						},
 						icons = {
 							pinned_buffer = " ",
@@ -2371,34 +2370,24 @@ require("lazy").setup({
 				},
 			})
 
-			vim.keymap.set({ "n", "v" }, "<leader>co", ":CodeCompanionChat<CR>", { silent = true, noremap = true })
-			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
-			vim.keymap.set({ "n", "v" }, "<leader>ccx", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
+			vim.keymap.set({ "n", "v" }, "<leader>ccc", ":CodeCompanionChat<CR>", { silent = true, noremap = true })
+			vim.keymap.set({ "n", "v" }, "<leader>ccl", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
+			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
 
-			-- Generate commit message using CodeCompanion with Copilot
 			vim.keymap.set("n", "<leader>ccm", function()
-				local bufname = vim.api.nvim_buf_get_name(0)
-				local is_commit_buffer = bufname:match("COMMIT_EDITMSG$") or vim.bo.filetype == "gitcommit"
-
-				if not is_commit_buffer then
-					vim.notify("Use this in a git commit buffer (run 'git commit' first)", vim.log.levels.WARN)
+				if vim.bo.filetype ~= "gitcommit" then
+					vim.notify("Not a git commit buffer", vim.log.levels.WARN)
 					return
 				end
-
-				-- Check if there are staged changes
-				local diff_check = vim.fn.system("git diff --cached --quiet")
+				vim.fn.system("git diff --cached --quiet")
 				if vim.v.shell_error == 0 then
-					vim.notify("No staged changes to commit", vim.log.levels.WARN)
+					vim.notify("No staged changes", vim.log.levels.WARN)
 					return
 				end
-
-				vim.notify("Generating commit message with Copilot...", vim.log.levels.INFO)
-
-				-- Save current git comments before clearing
-				local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+				vim.notify("Generating commit message...", vim.log.levels.INFO)
 				local comment_lines = {}
 				local found_comment = false
-				for _, line in ipairs(lines) do
+				for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
 					if line:match("^#") then
 						found_comment = true
 					end
@@ -2406,198 +2395,48 @@ require("lazy").setup({
 						table.insert(comment_lines, line)
 					end
 				end
-
-				-- Get current buffer content (may have partial message)
-				-- Filter out git comment lines (starting with #)
-				local all_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-				local content_lines = {}
-				for _, line in ipairs(all_lines) do
-					if not line:match("^#") then
-						table.insert(content_lines, line)
-					end
-				end
-				local current_content = table.concat(content_lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
-
-				-- Debug: show what content was found
-				if current_content ~= "" then
-					vim.notify(
-						"Found existing content ("
-							.. #current_content
-							.. " chars): "
-							.. vim.fn.trim(current_content:sub(1, 60))
-							.. (#current_content > 60 and "..." or ""),
-						vim.log.levels.INFO
-					)
-				else
-					vim.notify("No existing content found, generating fresh message", vim.log.levels.INFO)
-				end
-
-				-- Get the git repository root
-				local git_root = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
-				if vim.v.shell_error ~= 0 then
-					vim.notify("Failed to find git root", vim.log.levels.ERROR)
-					return
-				end
-
-				-- Get the staged diff from git root
-				local diff = vim.fn.system("git -C " .. vim.fn.shellescape(git_root) .. " diff --cached")
-
-				-- Debug: show diff info
-				vim.notify("Git root: " .. git_root .. " | Diff length: " .. #diff .. " chars", vim.log.levels.INFO)
-				if #diff < 200 then
-					vim.notify("Full diff: " .. vim.fn.trim(diff):gsub("\n", "\\n"), vim.log.levels.WARN)
-				end
-
-				-- Build prompt with buffer content and diff
-				local has_existing_content = current_content ~= ""
-				local prompt
-				if has_existing_content then
-					prompt = string.format(
-						[[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
-
-**IMPORTANT:** The user has started writing a commit message. Use their draft as context and improve it while preserving their intent and any specific details they included.
-
-Existing draft in buffer:
-%s
-
-Staged changes:
-%s
-
-**Commit Message Structure:**
-- Format: `<type>(<scope>): <subject>`
-- Subject line: Maximum 50 characters
-- Body (when needed): Wrap at 72 characters
-
-**Valid Types:**
-- feat: New features
-- fix: Bug fixes
-- docs: Documentation changes
-- style: Code style changes
-- refactor: Code refactoring
-- perf: Performance improvements
-- test: Adding/updating tests
-- build: Build system or dependency changes
-- ci: CI/CD configuration
-- chore: Maintenance tasks
-
-**Scope Guidelines:**
-- Use lowercase
-- Be specific but concise (e.g., 'auth', 'api', 'cli', 'config')
-- Omit scope if change affects multiple areas broadly
-
-**Subject Line Rules:**
-- Use imperative mood ('add', 'fix', 'update', not 'added', 'fixed', 'updated')
-- Start with lowercase letter
-- No period at the end
-- Focus on what the change does, not how
-
-**Quality Standards:**
-- Subject must be under 50 characters
-- Use present tense, imperative mood
-- Be specific about what changed
-- Avoid generic terms when more specific verbs apply
-- NEVER mention AI, Claude, or automated generation
-
-**Output Format:**
-Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]],
-						current_content,
-						diff
-					)
-				else
-					prompt = string.format(
-						[[You are an expert Git commit message specialist. Generate a commit message following Commitizen conventional format.
-
-Staged changes:
-%s
-
-**Commit Message Structure:**
-- Format: `<type>(<scope>): <subject>`
-- Subject line: Maximum 50 characters
-- Body (when needed): Wrap at 72 characters
-
-**Valid Types:**
-- feat: New features
-- fix: Bug fixes
-- docs: Documentation changes
-- style: Code style changes
-- refactor: Code refactoring
-- perf: Performance improvements
-- test: Adding/updating tests
-- build: Build system or dependency changes
-- ci: CI/CD configuration
-- chore: Maintenance tasks
-
-**Scope Guidelines:**
-- Use lowercase
-- Be specific but concise (e.g., 'auth', 'api', 'cli', 'config')
-- Omit scope if change affects multiple areas broadly
-
-**Subject Line Rules:**
-- Use imperative mood ('add', 'fix', 'update', not 'added', 'fixed', 'updated')
-- Start with lowercase letter
-- No period at the end
-- Focus on what the change does, not how
-
-**Quality Standards:**
-- Subject must be under 50 characters
-- Use present tense, imperative mood
-- Be specific about what changed
-- Avoid generic terms when more specific verbs apply
-- NEVER mention AI, Claude, or automated generation
-
-**Output Format:**
-Provide ONLY the raw commit message text with NO code fences, NO markdown formatting, NO commentary.]],
-						diff
-					)
-				end
-
-				-- Use CodeCompanion's inline strategy with Copilot adapter
-				require("codecompanion").inline({
-					adapter = "copilot",
-					prompt = prompt,
-					callback = function(result)
-						local output = result
-
-						-- Strip code fences if present
-						output = output:gsub("^```%w*\n", "") -- Remove opening fence
-						output = output:gsub("\n```$", "") -- Remove closing fence
-						output = output:gsub("^%s+", ""):gsub("%s+$", "") -- Trim whitespace
-
-						if output == "" then
-							vim.notify("Copilot returned empty response", vim.log.levels.ERROR)
-							return
-						end
-
-						-- Split message into lines and add blank line separator
-						local msg_lines = vim.split(output, "\n", { plain = true })
-						table.insert(msg_lines, "")
-
-						-- Combine with preserved git comments
-						for _, line in ipairs(comment_lines) do
-							table.insert(msg_lines, line)
-						end
-
-						-- Replace entire buffer content
-						vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
-						vim.api.nvim_win_set_cursor(0, { 1, 0 })
-						vim.notify("Commit message generated!", vim.log.levels.INFO)
-					end,
-				})
-			end, { desc = "Generate commit message with Copilot" })
+				local diff = vim.fn.system("git diff --cached")
+				vim.fn.jobstart(
+					{ "claude", "-p", "--agent", "git-commit-message-writer", diff },
+					{
+						stdout_buffered = true,
+						on_stdout = function(_, data)
+							local output = vim.fn.trim(table.concat(data, "\n"))
+							if output == "" then
+								vim.notify("No output from claude", vim.log.levels.ERROR)
+								return
+							end
+							local msg_lines = vim.split(output, "\n", { plain = true })
+							table.insert(msg_lines, "")
+							for _, line in ipairs(comment_lines) do
+								table.insert(msg_lines, line)
+							end
+							vim.schedule(function()
+								vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
+								vim.api.nvim_win_set_cursor(0, { 1, 0 })
+								vim.notify("Commit message generated", vim.log.levels.INFO)
+							end)
+						end,
+						on_stderr = function(_, data)
+							local err = vim.fn.trim(table.concat(data, "\n"))
+							if err ~= "" then
+								vim.notify("claude: " .. err, vim.log.levels.ERROR)
+							end
+						end,
+					}
+				)
+			end, { desc = "Generate commit message via claude agent" })
 
 			vim.keymap.set(
 				{ "n", "v" },
-				"<leader>ccu",
+				"<leader>ccb",
 				":CodeCompanion @editor #buffer",
 				{ silent = true, noremap = true }
 			)
 
-			-- NOTE: This keymap sets a command to request a comment for the selected code.
-			-- The comment should provide clarity and remove surprises, using tags like `NOTE:`, `PERF:`, `WTF:`, `WARN:`, etc.
-			-- The command is executed in visual mode with the leader key followed by `cco`.
 			vim.keymap.set(
 				{ "v" },
-				"<leader>cco",
+				"<leader>ccn",
 				":CodeCompanion #buffer @editor You are a software engineer that is committed to commenting code to provide clarity and remove suprises.  Please provide a comment for this code, using `NOTE:`, `PERF:`, `WTF:`, `WARN:`, etc where appropriate.  If an entire method or function is detected, provide a comment only for the top-level entity.<CR>",
 				{ silent = true, noremap = true }
 			)
