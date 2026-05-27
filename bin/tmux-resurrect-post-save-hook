@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Post-save hook for tmux-resurrect.
+# 1. Deduplicates: removes the new snapshot if its content matches the previous last.
+# 2. Caps history: prunes non-degenerate snapshots beyond the most recent KEEP.
+set -euo pipefail
+
+RESURRECT_DIR="$HOME/.tmux/resurrect"
+DEGENERATE_BYTES=100
+KEEP=50
+
+# The snapshot resurrect just wrote is the current target of `last`.
+new_snapshot=$(readlink "$RESURRECT_DIR/last" 2>/dev/null) || exit 0
+new_path="$RESURRECT_DIR/$new_snapshot"
+[[ -f "$new_path" ]] || exit 0
+
+# Collect non-degenerate snapshots sorted newest-first, excluding the new one.
+prev_snapshots=()
+while IFS= read -r f; do
+    [[ "$(basename "$f")" == "$new_snapshot" ]] && continue
+    size=$(wc -c < "$f")
+    (( size >= DEGENERATE_BYTES )) && prev_snapshots+=("$f")
+done < <(ls -1 "$RESURRECT_DIR"/tmux_resurrect_*.txt 2>/dev/null | sort -r)
+
+# Deduplication: if the new snapshot is identical to the most recent previous one, remove it.
+if [[ ${#prev_snapshots[@]} -gt 0 ]]; then
+    prev_hash=$(md5 -q "${prev_snapshots[0]}" 2>/dev/null || md5sum "${prev_snapshots[0]}" | cut -d' ' -f1)
+    new_hash=$(md5 -q "$new_path" 2>/dev/null || md5sum "$new_path" | cut -d' ' -f1)
+    if [[ "$prev_hash" == "$new_hash" ]]; then
+        rm "$new_path"
+        # Restore `last` to the previous snapshot.
+        ln -sf "$(basename "${prev_snapshots[0]}")" "$RESURRECT_DIR/last"
+        exit 0
+    fi
+fi
+
+# History cap: prune non-degenerate snapshots beyond KEEP (newest first, keep new snapshot).
+all_real=("$new_path")
+for f in "${prev_snapshots[@]}"; do
+    all_real+=("$f")
+done
+
+if [[ ${#all_real[@]} -gt $KEEP ]]; then
+    for f in "${all_real[@]:$KEEP}"; do
+        rm -f "$f"
+    done
+fi
