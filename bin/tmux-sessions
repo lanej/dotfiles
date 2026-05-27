@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# tmux session snapshot manager — list, show, save, restore.
+set -euo pipefail
+
+RESURRECT_DIR="$HOME/.tmux/resurrect"
+DEGENERATE_BYTES=100
+
+BOLD=$(tput bold 2>/dev/null || true)
+RESET=$(tput sgr0 2>/dev/null || true)
+
+die() { echo "${BOLD}error:${RESET} $*" >&2; exit 1; }
+
+fmt_timestamp() {
+  local ts="${1##tmux_resurrect_}"
+  ts="${ts%.txt}"
+  echo "${ts:0:4}-${ts:4:2}-${ts:6:2} ${ts:9:2}:${ts:11:2}"
+}
+
+fmt_size() {
+  local bytes="$1"
+  if   (( bytes >= 1048576 )); then printf '%.1fM' "$(echo "scale=1; $bytes/1048576" | bc)"
+  elif (( bytes >= 1024 ));    then printf '%.1fK' "$(echo "scale=1; $bytes/1024" | bc)"
+  else printf '%dB' "$bytes"
+  fi
+}
+
+# Prints non-degenerate snapshot paths, newest first.
+snapshots() {
+  while IFS= read -r f; do
+    local size
+    size=$(wc -c < "$f")
+    (( size >= DEGENERATE_BYTES )) && echo "$f"
+  done < <(ls -1 "$RESURRECT_DIR"/tmux_resurrect_*.txt 2>/dev/null | sort -r)
+}
+
+# Read snapshots into a global array (bash 3.2 compat — no mapfile).
+load_snapshots() {
+  SNAPSHOTS=()
+  while IFS= read -r f; do
+    SNAPSHOTS+=("$f")
+  done < <(snapshots)
+}
+
+# Resolve a snapshot arg (1-based index or filename) to an absolute path.
+resolve_snapshot() {
+  local arg="$1"
+  local path
+
+  if [[ "$arg" =~ ^[0-9]+$ ]]; then
+    load_snapshots
+    local idx=$(( arg - 1 ))
+    [[ $idx -ge 0 && $idx -lt ${#SNAPSHOTS[@]} ]] \
+      || die "index $arg out of range (1–${#SNAPSHOTS[@]})"
+    path="${SNAPSHOTS[$idx]}"
+  elif [[ "$arg" == /* ]]; then
+    path="$arg"
+  else
+    path="$RESURRECT_DIR/$arg"
+  fi
+
+  [[ -f "$path" ]] || die "snapshot not found: $path"
+  echo "$path"
+}
+
+current_last() {
+  readlink "$RESURRECT_DIR/last" 2>/dev/null || true
+}
+
+cmd_list() {
+  load_snapshots
+  [[ ${#SNAPSHOTS[@]} -gt 0 ]] || { echo "no snapshots found" >&2; exit 1; }
+
+  local last
+  last=$(current_last)
+
+  printf '%s%-5s  %-19s  %6s  %7s  %5s%s\n' \
+    "$BOLD" "#" "TIMESTAMP" "SIZE" "WINDOWS" "PANES" "$RESET"
+
+  local i=1
+  for f in "${SNAPSHOTS[@]}"; do
+    local base ts size windows panes marker
+    base=$(basename "$f")
+    ts=$(fmt_timestamp "$base")
+    size=$(fmt_size "$(wc -c < "$f")")
+    windows=$(grep -c '^window' "$f" 2>/dev/null || echo 0)
+    panes=$(grep -c '^pane' "$f" 2>/dev/null || echo 0)
+    marker=$([[ "$base" == "$last" ]] && echo " ${BOLD}*${RESET}" || echo "")
+
+    printf '%-5s  %-19s  %6s  %7s  %5s%s\n' \
+      "$i" "$ts" "$size" "$windows" "$panes" "$marker"
+    (( i++ ))
+  done
+}
+
+cmd_show() {
+  if [[ $# -eq 0 ]]; then
+    exec ~/.files/bin/tmux-session-info
+  else
+    local path
+    path=$(resolve_snapshot "$1")
+    exec ~/.files/bin/tmux-session-info "$path"
+  fi
+}
+
+cmd_save() {
+  exec ~/.files/bin/tmux-resurrect-save
+}
+
+cmd_restore() {
+  local path
+
+  if [[ $# -eq 0 ]]; then
+    load_snapshots
+    [[ ${#SNAPSHOTS[@]} -gt 0 ]] || die "no snapshots found"
+
+    local last lines=() i=1
+    last=$(current_last)
+
+    for f in "${SNAPSHOTS[@]}"; do
+      local base ts size windows panes marker
+      base=$(basename "$f")
+      ts=$(fmt_timestamp "$base")
+      size=$(fmt_size "$(wc -c < "$f")")
+      windows=$(grep -c '^window' "$f" 2>/dev/null || echo 0)
+      panes=$(grep -c '^pane' "$f" 2>/dev/null || echo 0)
+      marker=$([[ "$base" == "$last" ]] && echo " *" || echo "")
+      # Tab-delimited: display fields TAB full-path (for preview extraction)
+      lines+=("$(printf '%-5s  %-19s  %6s  %7s  %5s%s\t%s' \
+        "$i" "$ts" "$size" "$windows" "$panes" "$marker" "$f")")
+      (( i++ ))
+    done
+
+    local chosen
+    chosen=$(printf '%s\n' "${lines[@]}" | \
+      fzf --header "$(printf '%-5s  %-19s  %6s  %7s  %5s' "#" "TIMESTAMP" "SIZE" "WINDOWS" "PANES")" \
+          --delimiter $'\t' \
+          --with-nth 1 \
+          --preview '~/.files/bin/tmux-session-info {2}' \
+          --preview-window 'right:60%' \
+          --no-sort) || exit 0
+
+    path=$(echo "$chosen" | cut -f2)
+  else
+    path=$(resolve_snapshot "$1")
+  fi
+
+  echo "Snapshot: $(fmt_timestamp "$(basename "$path")")  ($path)"
+  printf 'Restore this snapshot? [y/N] '
+  read -r reply
+  [[ "$reply" =~ ^[Yy]$ ]] || { echo "aborted"; exit 0; }
+
+  ln -sf "$(basename "$path")" "$RESURRECT_DIR/last"
+  exec ~/.files/bin/tmux-resurrect-restore
+}
+
+usage() {
+  cat >&2 <<EOF
+usage: tmux-sessions <subcommand> [arg]
+
+subcommands:
+  list               list available snapshots
+  show [n|file]      show snapshot contents (default: current)
+  save               save current session
+  restore [n|file]   restore a snapshot (default: fzf picker)
+EOF
+  exit 1
+}
+
+case "${1:-}" in
+  list)    shift; cmd_list    "$@" ;;
+  show)    shift; cmd_show    "$@" ;;
+  save)    shift; cmd_save    "$@" ;;
+  restore) shift; cmd_restore "$@" ;;
+  *)       usage ;;
+esac
