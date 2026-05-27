@@ -37,7 +37,7 @@ $ bash bootstrap.sh # install packages and tools
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder |
 | [skim](https://github.com/skim-rs/skim) | Rust-native fuzzy finder |
 
-See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools.
+See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
 
 ## Key Makefile Targets
 
