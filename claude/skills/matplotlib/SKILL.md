@@ -52,6 +52,23 @@ Use as `handler_map={MySentinel: _InvisibleHandler()}`. The zero-size invisible 
 
 **`bbox_inches="tight"` breaks series consistency**: `tight` trims each figure to its content bounds independently, producing different output dimensions across figures with different content extents. For a series that must be identical pixel dimensions, use `fig.subplots_adjust(left=0, right=1, top=1, bottom=0)` to fill the full figure area and omit `bbox_inches` entirely: `fig.savefig(path, dpi=N, facecolor=bg)`.
 
+**Legend below the x-axis (outside axes) for dense charts**: When the chart body is too dense for an inside legend (Gantt timelines, many-row bar charts), place the legend below the x-axis with `bbox_to_anchor`:
+```python
+ncols = min(len(handles), 4)
+ax.legend(
+    handles=handles,
+    loc="upper center",          # anchors the TOP of the legend box
+    bbox_to_anchor=(0.5, -0.04), # 0.5 = centered, -0.04 = just below x-axis
+    ncols=ncols,
+    fontsize=6,
+    frameon=False,
+    handlelength=1.2,
+    handleheight=0.9,
+)
+plt.tight_layout()  # compatible here; bbox_inches="tight" in savefig captures the legend
+```
+Use `loc="upper center"` (not `"lower center"`) — it anchors the TOP of the legend box at the `bbox_to_anchor` point, which places the legend just below the axis. With `bbox_inches="tight"` in `savefig`, the out-of-axes legend is captured automatically. **Do not add `subplots_adjust(bottom=...)` alongside `tight_layout`** — they fight (see rule below). For ≤3 entries use `ncols=3` to keep it single-row.
+
 **`tight_layout` and `subplots_adjust` conflict — use one, not both**: `fig.tight_layout(rect=[...])` called after `fig.subplots_adjust(...)` silently overrides the manual adjustment. For charts that need precise margins (waterfalls, bar charts where the legend should align with bar edges), drop `tight_layout` entirely and use a single `fig.subplots_adjust`:
 
 ```python
