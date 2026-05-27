@@ -58,6 +58,10 @@ yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m sp
 
 Revisit if AeroSpace (see **Trial**) proves able to handle native tab groups transparently.
 
+### andrej-karpathy-skills
+
+A Claude Code plugin packaging four behavioral principles (think before coding, simplicity, surgical edits, goal-driven execution) attributed to Karpathy's coding agent guidelines. Evaluated and skipped — the global CLAUDE.md already covers all four principles, often more precisely and with harder edges. No executable tooling, MCP servers, or commands; purely policy text.
+
 ### sccache
 
 Rust compiler cache. Grows unboundedly on disk — even with `max_cache_size` set, the cache frequently bloats to tens of gigabytes across multiple projects and toolchain versions. The disk pressure outweighs the incremental build-time savings for typical dotfiles/personal project usage.
