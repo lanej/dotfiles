@@ -42,6 +42,12 @@ if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
     fi
 fi
 
+# Mark window as needing input (cleared by PreToolUse / Stop)
+if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
+    tmux set-option -w -t "$TMUX_PANE" @claude-state "waiting" 2>/dev/null || true
+    tmux refresh-client -S 2>/dev/null || true
+fi
+
 # Trigger tmux bell
 if [ -n "$TMUX_PANE" ]; then
     # Print bell character to stderr (goes to the pane)

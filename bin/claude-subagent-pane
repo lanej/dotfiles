@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Claude Code SubagentStart hook: open tmux pane to monitor sub-agent transcript
+
+[[ -z "${TMUX:-}" ]] && exit 0
+
+INPUT=$(cat)
+AGENT_ID=$(printf '%s' "$INPUT" | jq -r '.agent_id // empty')
+AGENT_TYPE=$(printf '%s' "$INPUT" | jq -r '.agent_type // "Agent"')
+TRANSCRIPT_PATH=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty')
+
+# Debug: log raw input to help diagnose hook field names
+printf '%s\n' "$INPUT" >> /tmp/claude-subagent-debug.jsonl
+
+[[ -z "$AGENT_ID" ]] && exit 0
+
+# Open a 35%-wide right pane without stealing focus
+PANE_ID=$(tmux split-window -h -d -p 35 -P -F '#{pane_id}' -- \
+    "$HOME/.files/bin/claude-subagent-watch" \
+    "$AGENT_ID" "$AGENT_TYPE" "$TRANSCRIPT_PATH")
+
+# Save pane ID for potential future cleanup
+mkdir -p /tmp/claude-subagent-panes
+printf '%s\n' "$PANE_ID" > "/tmp/claude-subagent-panes/${AGENT_ID}"
+
+exit 0

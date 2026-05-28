@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# claude-worktree-remove-hook: restore tmux window title after worktree removal
+
+[[ -n "${TMUX:-}" ]] || exit 0
+
+payload=$(cat)
+
+# cwd should be back in the main repo after worktree removal
+cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null || true)
+if [[ -n "$cwd" ]]; then
+  name=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null \
+    || basename "$cwd" 2>/dev/null || true)
+  [[ -n "$name" ]] && tmux rename-window "$name" 2>/dev/null
+fi
+
+# Re-enable automatic renaming so the shell can take over
+tmux set-window-option automatic-rename on 2>/dev/null
+exit 0

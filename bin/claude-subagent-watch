@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Watches for a sub-agent's JSONL transcript and tails it
+
+AGENT_ID="${1:-unknown}"
+AGENT_TYPE="${2:-Agent}"
+TRANSCRIPT_PATH="${3:-}"
+SHORT_ID="${AGENT_ID:0:8}"
+
+# Set pane title
+printf '\033]2;%s\033\\' "${AGENT_TYPE} [${SHORT_ID}]"
+printf '\033]0;%s\033\\' "${AGENT_TYPE} [${SHORT_ID}]"
+
+echo "==> ${AGENT_TYPE} agent [${SHORT_ID}] starting..."
+echo "    Waiting for transcript..."
+echo ""
+
+# Poll for the agent's transcript file (max 30s)
+DEADLINE=$(( $(date +%s) + 30 ))
+AGENT_FILE=""
+while [[ $(date +%s) -lt $DEADLINE ]]; do
+    FOUND=$(find "$HOME/.claude" -type f -name "*.jsonl" \
+        \( -path "*${AGENT_ID}*" \) 2>/dev/null | head -1)
+    if [[ -n "$FOUND" && "$FOUND" != "$TRANSCRIPT_PATH" ]]; then
+        AGENT_FILE="$FOUND"
+        break
+    fi
+    sleep 0.3
+done
+
+if [[ -z "$AGENT_FILE" ]]; then
+    echo "==> Transcript not found after 30s."
+    echo "    Falling back to main session transcript..."
+    echo ""
+    AGENT_FILE="$TRANSCRIPT_PATH"
+fi
+
+if [[ -z "$AGENT_FILE" ]]; then
+    echo "==> No transcript path available. Exiting."
+    read -r -p "Press Enter to close pane..."
+    exit 0
+fi
+
+echo "==> Tailing: $(basename "$AGENT_FILE")"
+echo ""
+
+# Follow the transcript, rendering each JSONL line
+tail -n 0 -F "$AGENT_FILE" 2>/dev/null | while IFS= read -r line; do
+    role=$(printf '%s' "$line" | jq -r '.message.role // empty' 2>/dev/null)
+    tool=$(printf '%s' "$line" | jq -r '.message.content[]?.name // empty' 2>/dev/null | head -1)
+    text=$(printf '%s' "$line" | jq -r '
+        .message.content |
+        if type == "array" then
+          [.[] | select(.type=="text") | .text] | join(" ")
+        elif type == "string" then .
+        else empty end' 2>/dev/null | head -c 200)
+
+    if [[ -n "$tool" ]]; then
+        printf '\033[36m[tool]\033[0m %s\n' "$tool"
+    elif [[ "$role" == "assistant" && -n "$text" ]]; then
+        printf '\033[32m[asst]\033[0m %s\n' "${text:0:120}"
+    elif [[ "$role" == "user" && -n "$text" ]]; then
+        printf '\033[33m[user]\033[0m %s\n' "${text:0:120}"
+    fi
+done
+
+echo ""
+echo "==> Agent [${SHORT_ID}] transcript stream ended."
+read -r -p "Press Enter to close pane..."

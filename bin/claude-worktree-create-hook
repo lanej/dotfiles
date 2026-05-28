@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# claude-worktree-create-hook: rename tmux window to worktree branch on creation
+
+[[ -n "${TMUX:-}" ]] || exit 0
+
+payload=$(cat)
+
+# Try payload fields (unknown order - cover common names)
+name=$(printf '%s' "$payload" | jq -r '
+  .branch // .worktree_branch // .worktree_name // .name // empty
+' 2>/dev/null || true)
+
+# Try running git in the worktree path from payload
+if [[ -z "$name" ]]; then
+  wt_path=$(printf '%s' "$payload" | jq -r '.worktree_path // .path // empty' 2>/dev/null || true)
+  if [[ -n "$wt_path" && -d "$wt_path" ]]; then
+    name=$(git -C "$wt_path" branch --show-current 2>/dev/null || true)
+  fi
+fi
+
+# Fallback: cwd from payload
+if [[ -z "$name" ]]; then
+  cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null || true)
+  if [[ -n "$cwd" ]]; then
+    name=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
+  fi
+fi
+
+[[ -n "$name" ]] && tmux rename-window "$name" 2>/dev/null
+printf '{"continue":true}\n'
+exit 0
