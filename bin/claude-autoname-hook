@@ -73,6 +73,12 @@ def main():
     if not cwd:
         sys.exit(0)
 
+    # Skip internal tool sessions (e.g. claude-mem observer)
+    home = str(Path.home())
+    internal_prefixes = (home + '/.claude-mem/', home + '/.claude/')
+    if any(cwd.startswith(p) for p in internal_prefixes):
+        sys.exit(0)
+
     name = Path(cwd).name
 
     names_dir.mkdir(parents=True, exist_ok=True)
