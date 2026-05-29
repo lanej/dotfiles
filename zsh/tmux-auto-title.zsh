@@ -78,6 +78,15 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
+		# If nvim (prosession) named this window, preserve it until the next command
+		local nvim_name
+		nvim_name=$(tmux show-options -w -v @nvim_named 2>/dev/null)
+		if [[ -n "$nvim_name" ]]; then
+			tmux rename-window -t ":$window_index" "$nvim_name" 2>/dev/null
+			_release_lock "$lock_dir"
+			return
+		fi
+
 		# Get directory name
 		local dir_name=$(basename "$PWD")
 
@@ -123,9 +132,10 @@ if [[ -n "$TMUX" ]]; then
 		} &!
 	}
 
-	# Clear Claude's title lock when the user runs a new command
+	# Clear Claude's and nvim's title lock when the user runs a new command
 	function _tmux_clear_claude_named() {
 		tmux set-option -w -u @claude_named 2>/dev/null
+		tmux set-option -w -u @nvim_named 2>/dev/null
 	}
 
 	# Add to precmd hooks - use debounced version

@@ -1,6 +1,6 @@
 ---
 name: mcp-builder
-description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).
+description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK). Covers production patterns: usage tracking, resources vs tools, stdio transport gotcha, tool config gating, and testing without a real client.
 license: Complete terms in LICENSE.txt
 ---
 
@@ -226,6 +226,14 @@ Load these resources as needed during development:
   - Tool registration with `server.registerTool`
   - Complete working examples
   - Quality checklist
+
+### Production Patterns (Load When Building or Hardening a Server)
+- [⚙️ Production Patterns](./reference/production_patterns.md) - Battle-tested patterns from a production TypeScript MCP server:
+  - **Usage tracking** — monkey-patch `server.tool` to count calls per tool; `jira stats`-style display command; use data to inform tool group defaults
+  - **Resources vs. tools** — when to use each, `registerResource` + `ResourceTemplate` pattern, URI scheme conventions, Markdown rendering, aligned table format for relationship types
+  - **Tool config gating** — `isToolEnabled`/`toolConfig` pattern; sharing the same gate for a domain's tools and resources; `--only`/`--without` CLI flags
+  - **stdio transport gotcha** — `SafeStdioTransport` pattern for Bun (avoid `StdioServerTransport` from the SDK; it silently switches stdout to block-buffered mode and truncates large piped output)
+  - **Testing without a real client** — Python `threading` pattern for sending JSON-RPC over stdin and reading responses before closing stdin (closing stdin prematurely fires `onclose` and kills the server mid-async-operation)
 
 ### Evaluation Guide (Load During Phase 4)
 - [✅ Evaluation Guide](./reference/evaluation.md) - Complete evaluation creation guide with:

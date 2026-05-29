@@ -34,6 +34,7 @@ style = 'bold yellow'
 [git_branch]
 style = "blue"
 symbol = " "
+format = "[$symbol$branch(:$remote_branch)]($style) "
 
 [status]
 symbol = "!"
@@ -46,7 +47,7 @@ format = "[$user]($style)@"
 [hostname]
 disabled = false
 ssh_symbol = " "
-format = "[$hostname](bold green) in "
+format = "[$hostname](bold green) "
 
 [aws]
 symbol = "  "

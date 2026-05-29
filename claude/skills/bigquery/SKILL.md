@@ -189,6 +189,50 @@ bigquery://easypost-platform.DORA.ai_attribution
 - To "update" a record: INSERT a new row with corrected values and fresh `loaded_at`
 - Never target a VIEW for DML — always write to the raw table
 
+## Writing Data — Insert and Load Patterns
+
+### A: `tables load` silently ignores local file paths
+
+`bigquery tables load` requires a Cloud Storage URI (`gs://...`). Passing a local path returns exit code 0 and prints nothing — the table is not written and downstream reads return 0 rows. **Use `tables insert` for local files.**
+
+### B: Streaming insert command
+
+```bash
+bigquery tables insert --format jsonl --yes <project.dataset.table> <local-file.jsonl>
+```
+
+`bigquery insert` (without `tables`) does not exist — returns "unknown command". File must be JSONL. `--yes` skips the cost confirmation prompt.
+
+### C: New table propagation delay
+
+After `bigquery tables create`, metadata takes up to ~50 seconds to propagate. Calling `tables insert` immediately returns a "Not found: Table" error. Wrap the insert in a retry loop:
+
+```python
+for attempt in range(10):
+    result = subprocess.run([...tables insert...], capture_output=True, text=True)
+    if result.returncode == 0:
+        break
+    if "Not found" in result.stderr:
+        time.sleep(5)
+        continue
+    raise RuntimeError(result.stderr)
+else:
+    raise RuntimeError("table not available after 50s")
+```
+
+### D: Streaming buffer blocks DELETE/TRUNCATE for ~90 minutes
+
+After a streaming insert, `DELETE FROM table WHERE TRUE` and `TRUNCATE TABLE` fail:
+> `UPDATE or DELETE statement over table would affect rows in the streaming buffer, which is not supported`
+
+This window lasts up to 90 minutes. For WRITE_TRUNCATE semantics (replace all rows on each run), drop and recreate:
+
+```python
+subprocess.run(["bigquery", "tables", "delete", table], capture_output=True)
+_ensure_table(table)  # recreate with schema
+# propagation delay applies after recreate — use retry loop from (C)
+```
+
 ## Known Gotchas
 
 **DATE columns in JSONL output** return `{"value": "YYYY-MM-DD"}` dicts, not strings. TIMESTAMP columns return epoch float strings (`"1.760730316667E9"`), not ISO strings.
@@ -217,6 +261,10 @@ df["col"] = pd.to_numeric(df["col"], errors="coerce").fillna(0).astype("int64")
 **Salesforce `created_date`** is the Polytomic sync timestamp (Feb 2025+), not the SF creation date. Use `close_date` or SF-native date fields for historical queries.
 
 **`salesforce.tasks.created_date`** is INT64 nanoseconds — convert with `TIMESTAMP_MILLIS(CAST(created_date / 1000000 AS INT64))`.
+
+**UNNEST literal size limit**: When building a SQL query that passes a large set of keys via `UNNEST([key1, key2, ...])` as a literal array in the SQL string (e.g., 50k+ values), the `bigquery` CLI subprocess fails with a JSON parse error like "Expecting ',' delimiter: line 1 column 1517". The SQL itself may be syntactically valid but the CLI hits an input/output limit.
+
+Fix: Don't embed large key sets in SQL literals. Instead, fetch all rows from the target table (with a REGEXP_CONTAINS or similar pre-filter if possible) and do key matching client-side in Python. This is the same approach used in `extract_phab.py`'s `_build_revision_lookup` — fetch all revisions, parse ticket refs in Python, intersect with the target key set.
 
 ## Quick Reference
 

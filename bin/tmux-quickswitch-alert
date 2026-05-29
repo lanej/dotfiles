@@ -1,25 +1,63 @@
 #!/usr/bin/env bash
-# Jump to the most urgent window (bell > activity, then lowest index).
-# Within the window, selects the pane with a bell flag if identifiable.
+# Cycle to the next interesting window in the current session (wraps around).
+# Interesting: bell flag, ! prefix (Claude waiting), or @claude-state set.
+# Excludes the current window. Popup session searches session 0.
 
-target=$(tmux list-windows -F "#{window_bell_flag}|#{window_activity_flag}|#{window_index}" \
-  | sort -t'|' -k1,1 -rn -k2,2 -rn -k3,3 -n \
-  | head -1)
+LOG=/tmp/tmux-quickswitch-alert.log
+log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >> "$LOG"; }
 
-[[ -z "$target" ]] && exit 0
+current_session=$(tmux display-message -p '#{session_name}')
+current_idx=$(tmux display-message -p '#{window_index}')
+[[ "$current_session" == "popup" ]] && search_flags="-t 0" || search_flags=""
 
-bell=$(printf '%s' "$target" | cut -d'|' -f1)
-activity=$(printf '%s' "$target" | cut -d'|' -f2)
-win=$(printf '%s' "$target" | cut -d'|' -f3)
+log "--- invoked session=$current_session current_idx=$current_idx ---"
 
-[[ "$bell" == "0" && "$activity" == "0" ]] && exit 0
+# Collect interesting windows: index|id, sorted by index ascending
+# Interesting = bell OR ! prefix OR non-empty @claude-state
+candidates=()
+while IFS= read -r line; do
+  candidates+=("$line")
+done < <(
+  tmux list-windows $search_flags \
+    -F "#{window_index}|#{window_id}|#{window_bell_flag}|#{@claude-state}|#{window_name}" \
+  | awk -F'|' -v cur="$current_idx" '{
+      idx=$1; id=$2; bell=$3; claude=$4; name=$5;
+      waiting=(substr(name,1,1)=="!") ? 1 : 0;
+      if (idx!=cur && (bell=="1" || waiting || claude!="")) print idx "|" id
+    }' \
+  | sort -t'|' -k1,1 -n
+)
 
-tmux select-window -t ":$win"
+log "candidates: ${candidates[*]}"
 
-# Select the pane with the bell flag; fall back to lowest-index pane
-pane=$(tmux list-panes -t ":$win" -F "#{pane_bell_flag}|#{pane_index}" \
+if [[ ${#candidates[@]} -eq 0 ]]; then
+  log "no interesting windows"
+  exit 0
+fi
+
+# Next = first candidate with index > current; wrap to first if none
+win_id=""
+for c in "${candidates[@]}"; do
+  idx="${c%%|*}"
+  if (( idx > current_idx )); then
+    win_id="${c##*|}"
+    break
+  fi
+done
+[[ -z "$win_id" ]] && win_id="${candidates[0]##*|}"
+
+log "selecting win_id=$win_id"
+
+if [[ "$current_session" == "popup" ]]; then
+  client=$(tmux display-message -p '#{client_name}')
+  tmux switch-client -c "$client" -t 0
+fi
+
+tmux select-window -t "$win_id"
+
+pane=$(tmux list-panes -t "$win_id" -F "#{pane_bell_flag}|#{pane_index}" \
   | sort -t'|' -k1,1 -rn -k2,2 -n \
   | head -1 \
   | cut -d'|' -f2)
-
-[[ -n "$pane" ]] && tmux select-pane -t ":$win.$pane"
+[[ -n "$pane" ]] && tmux select-pane -t "${win_id}.${pane}"
+log "done pane=$pane"

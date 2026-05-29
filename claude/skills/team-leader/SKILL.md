@@ -26,6 +26,24 @@ Decomposes a scenario into parallel sub-problems and spawns one `general-purpose
 - The problem is simple enough for a single agent
 - Discovery must precede decomposition (run `explore` first, then team-leader)
 
+## Same-File Edit Constraint
+
+When all sub-problems require editing the **same file**, parallel agents will clobber each other — the second agent's `old_string` may no longer exist after the first agent modified it. Do NOT spawn parallel write agents in this case.
+
+**Pattern to use instead:**
+
+1. **Decompose into read-only research agents** (spawn in parallel using `subagent_type: "Explore"`) — each agent identifies the exact `old_string` → `new_string` patch for its sub-problem. Research agents read the file but make no edits.
+2. **Collect all patches** from the agent results.
+3. **Apply all patches sequentially in a single pass** — either directly with the Edit tool or via one agent briefed with all patches.
+
+Example decomposition for "fix 6 prose issues in the same QMD":
+- Agent A (Explore): find exact text for issues 1, 2, 3 — return verbatim old/new strings
+- Agent B (Explore): find exact text for issues 4, 5, 6 — return verbatim old/new strings
+- [collect results]
+- Apply all 6 Edit calls sequentially
+
+**How to detect this situation before spawning:** Before issuing the Agent tool calls, check: do any two sub-problems write to the same file? If yes, switch to the research-first pattern.
+
 ## Invocation
 
 ```

@@ -39,6 +39,16 @@ vim.opt.smartcase = true
 vim.opt.smarttab = true
 vim.opt.tabpagemax = 15
 vim.opt.title = true
+vim.opt.titlestring = "󰅷 %t"
+
+vim.api.nvim_create_autocmd("VimLeave", {
+  callback = function()
+    if vim.env.TMUX then
+      local title = vim.fn.system("tmux display-message -p '#{window_name}'"):gsub("\n", "")
+      vim.fn.system(string.format("tmux set-option -w @nvim_named '%s'", title))
+    end
+  end,
+})
 vim.opt.ttimeout = true
 vim.opt.ttimeoutlen = 50
 vim.opt.vb = false

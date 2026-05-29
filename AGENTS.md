@@ -1,34 +1,21 @@
 <claude-mem-context>
 # Memory Context
 
-# [.files] recent context, 2026-05-25 8:31pm PDT
+# [.files] recent context, 2026-05-26 10:45am PDT
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (17,336t read) | 346,076t work | 95% savings
+Stats: 50 obs (17,225t read) | 529,451t work | 97% savings
 
-### May 18, 2026
-5378 3:11p 🔵 qmd skill exists in dotfiles; lancer/pkm skills removed
-5380 3:13p ✅ qmd skill file updated: CLI promoted to primary interface, MCP demoted
-5536 7:01p 🔵 Global settings.json has invalid WorktreeCreate/WorktreeRemove hook keys
 ### May 20, 2026
-6445 10:52a 🔵 xlsx binary stats subcommand requires COLUMN argument
-6446 " 🔵 xlsx filter supports --offset pagination and 0-based sheet index
-6447 " 🔵 xlsx slice uses --start/--end flags, not positional arguments
-6448 10:53a 🔵 xlsx advanced subcommands are full sub-command groups with rich functionality
-6451 " ✅ xlsx SKILL.md rewritten — 383 lines collapsed to 117 with correctness fixes
-6752 4:14p ⚖️ Reflection skill should dispatch sub-agents to fix issues, not add caveats
 6754 4:15p 🔵 reflection.md skill current structure: 4-step analyze-scope-apply workflow
 6755 " 🟣 reflection.md upgraded: tool-repo scope added, sub-agent dispatch for local fixes
-S3411 Update /compose and distill skill: make distill a mandatory whole-document pass; fix YAML quoting bug in distill SKILL.md (May 20 at 4:16 PM)
 ### May 21, 2026
 6981 8:50a ✅ /compose skill: distill made mandatory whole-document pass in Stage 6
 6982 8:51a 🔴 distill skill: fixed YAML parse error from unescaped apostrophe in description field
-S3417 Should reflection skill treat claude-mem as a valid output target for capturing session findings? (May 21 at 8:52 AM)
 7003 9:24a ⚖️ Reflection skill should consult claude-mem for session context
-S3418 Integrate claude-mem (auto-memory) as a first-class output target for the reflection skill (May 21 at 9:25 AM)
 7004 9:25a 🟣 Reflection skill updated to include claude-mem cross-reference step
 7006 " ✅ Reflection skill granted Write tool permission for direct memory file writes
 7007 9:26a ✅ Auto-memory elevated to first-class reflection target alongside CLAUDE.md and skill files
@@ -74,15 +61,28 @@ S3963 Commit pending dotfiles changes — CLAUDE.md and BigQuery skill edits (Ma
 8899 2:38p ✅ CLAUDE.md document-editing rule strengthened to require pre-edit grep
 8900 " ✅ BigQuery skill pruned: five gotcha sections removed
 8901 " ✅ Committed dotfiles: CLAUDE.md rename-sweep rule and BigQuery skill trim
-S3986 User reaction to Claude Code Neovim integration — "it's just a terminal manager? that sucks" (May 25 at 7:38 PM)
-**Investigated**: The nature and capabilities of the Claude Code Neovim plugin that was added to the user's Neovim config
+S3986 User reaction to Claude Code Neovim integration — "it's just a terminal manager? that sucks" (May 25 at 2:38 PM)
+S4004 Configure CodeCompanion.nvim to use Claude (via Vertex AI) as an adapter (May 25 at 7:38 PM)
+### May 26, 2026
+9183 6:58a 🔵 CodeCompanion.nvim already installed and configured in neovim
+9185 6:59a 🔵 Global Claude Code settings.json configuration
+9184 " 🔵 CodeCompanion.nvim detailed configuration: adapters, strategies, and keymaps
+9186 " ✅ Removed Vertex AI env vars from global Claude Code settings
+S4005 Remove hardcoded Vertex AI env vars from dotfiles Claude Code settings (May 26 at 6:59 AM)
+9195 7:18a ⚖️ User preference: no avoidable clarifying questions
+9196 " 🔵 GCP project and region confirmed: easypost-platform / us-central1
+9197 " ✅ Added viespejo/cc-adapter-vertex-ai.nvim as codecompanion dependency
+9198 " 🟣 codecompanion chat strategy switched from Copilot to Claude on Vertex AI
+9199 7:57a ✅ CodeCompanion Vertex AI adapter uses dynamic GCP project ID
+S4008 Neovim CodeCompanion Vertex AI adapter: replace hardcoded GCP project ID with environment variable (May 26 at 7:57 AM)
+**Investigated**: The CodeCompanion adapter configuration in ~/.files/nvim/init.lua, specifically the vertex_claude adapter's env block which had project_id hardcoded as "easypost-platform".
 
-**Learned**: The Claude Code Neovim integration is limited to: terminal splitting, a file-opening hook so `claude` CLI can jump to Neovim buffers, and diff accept/deny wired to Neovim's diff view. It does NOT provide inline completions, ghost text, or context-aware editing. The VS Code extension is significantly richer. Undefined-global `vim` Lua LSP diagnostics are pre-existing false positives across the config, not introduced by this change.
+**Learned**: Neovim inherits the shell environment, so vim.env.GOOGLE_CLOUD_PROJECT is accessible at runtime if the variable is set in the shell. The user's question "doesn't the env get inherited?" confirmed this is the correct approach. Region ("us-central1") stays hardcoded as there is no standard env var for GCP region and it's unlikely to change.
 
-**Completed**: Added the Claude Code Neovim plugin to the user's config. User is now evaluating whether to keep it.
+**Completed**: Updated /Users/joshlane/.files/nvim/init.lua to replace hardcoded project_id = "easypost-platform" with project_id = vim.env.GOOGLE_CLOUD_PROJECT in the vertex_claude CodeCompanion adapter configuration.
 
-**Next Steps**: User may ask to revert the plugin addition, given their disappointment with its limited capabilities compared to VS Code's Claude integration.
+**Next Steps**: No further work indicated — the change was a single targeted edit and the session appears complete.
 
 
-Access 346k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 529k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
