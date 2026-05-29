@@ -52,9 +52,6 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
-		# Ensure we release the lock on exit
-		trap "_release_lock '$lock_dir'" EXIT INT TERM
-
 		# Double-check pane is still active after acquiring lock
 		local is_active=$(tmux display-message -p '#{pane_active}' 2>/dev/null)
 		if [[ "$is_active" != "1" ]]; then
@@ -78,11 +75,8 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
-		# If nvim (prosession) named this window, preserve it until the next command
-		local nvim_name
-		nvim_name=$(tmux show-options -w -v @nvim_named 2>/dev/null)
-		if [[ -n "$nvim_name" ]]; then
-			tmux rename-window -t ":$window_index" "$nvim_name" 2>/dev/null
+		# If we just returned from nvim/vim, preserve the prosession-set window name
+		if [[ "$_tmux_last_cmd" == "nvim" || "$_tmux_last_cmd" == "vim" ]]; then
 			_release_lock "$lock_dir"
 			return
 		fi
@@ -111,36 +105,15 @@ if [[ -n "$TMUX" ]]; then
 		_release_lock "$lock_dir"
 	}
 
-	# Debounced version using async job control
-	# This prevents rapid-fire updates when switching windows quickly
-	typeset -g _tmux_title_update_pending=0
+	typeset -g _tmux_last_cmd=""
 
-	function _tmux_auto_window_title_debounced() {
-		# If an update is already pending, don't schedule another
-		if (( _tmux_title_update_pending )); then
-			return
-		fi
-
-		_tmux_title_update_pending=1
-
-		# Schedule the actual update to run after a short delay
-		# This coalesces multiple rapid calls into a single update
-		{
-			sleep 0.05
-			_tmux_auto_window_title
-			_tmux_title_update_pending=0
-		} &!
-	}
-
-	# Clear Claude's and nvim's title lock when the user runs a new command
-	function _tmux_clear_claude_named() {
+	function _tmux_on_preexec() {
+		_tmux_last_cmd="${1%% *}"
 		tmux set-option -w -u @claude_named 2>/dev/null
-		tmux set-option -w -u @nvim_named 2>/dev/null
 	}
 
-	# Add to precmd hooks - use debounced version
 	autoload -Uz add-zsh-hook
-	add-zsh-hook chpwd _tmux_auto_window_title_debounced
-	add-zsh-hook precmd _tmux_auto_window_title_debounced
-	add-zsh-hook preexec _tmux_clear_claude_named
+	add-zsh-hook chpwd _tmux_auto_window_title
+	add-zsh-hook precmd _tmux_auto_window_title
+	add-zsh-hook preexec _tmux_on_preexec
 fi
