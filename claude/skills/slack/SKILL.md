@@ -105,6 +105,17 @@ slack reactions remove C123ABC 1234567890.000001 thumbsup
 slack mcp stdio
 ```
 
+## Gotchas
+
+**`channels history --format json` returns empty** — `--format json` piped to jq produces empty output for `channels history`. Use the default text format for reading, or `--format jsonl` for machine-readable output. Confirmed broken across multiple sessions.
+
+**`--oldest`/`--latest` epoch flags are unreliable** — Passing a Unix epoch timestamp to `--oldest` or `--latest` either returns wrong results (messages from months prior) or exits with code 5. Do not use these flags for date filtering. Instead, fetch without them and filter post-retrieval:
+```bash
+slack channels history #general --limit 100 | jq '.messages[] | select(.ts | tonumber | . > EPOCH_START)'
+```
+
+**`slack thread` on DM channels returns empty** — For DM channel IDs (starting with `D`), `slack thread D080Q3DNRBR <ts>` returns no output. Use `slack channels history <DM_channel_id>` instead.
+
 ## Common Patterns
 
 ### Search then read thread
