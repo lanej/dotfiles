@@ -70,7 +70,9 @@ def main():
     if not cwd:
         sys.exit(0)
 
-    # Skip internal tool sessions (e.g. claude-mem observer)
+    # Skip internal tool sessions (e.g. claude-mem observer running in ~/.claude-mem/observer-sessions/).
+    # Those processes inherit TMUX/TMUX_PANE and would otherwise write session-names entries
+    # that propagate bogus titles ("observer-sessions") to tmux windows via the notification hook.
     home = str(Path.home())
     internal_prefixes = (home + '/.claude-mem/', home + '/.claude/')
     if any(cwd.startswith(p) for p in internal_prefixes):

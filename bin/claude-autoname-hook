@@ -73,7 +73,8 @@ def main():
     if not cwd:
         sys.exit(0)
 
-    # Skip internal tool sessions (e.g. claude-mem observer)
+    # Skip internal tool sessions (e.g. claude-mem observer running in ~/.claude-mem/observer-sessions/).
+    # Same guard as claude-session-start-hook — prevents bogus window names from propagating.
     home = str(Path.home())
     internal_prefixes = (home + '/.claude-mem/', home + '/.claude/')
     if any(cwd.startswith(p) for p in internal_prefixes):
