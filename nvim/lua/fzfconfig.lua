@@ -578,6 +578,32 @@ end, {
 	silent = true,
 })
 
+-- Jump into a git worktree
+vim.keymap.set("n", "<leader>gw", function()
+	local git_root = vim.fn.systemlist("git rev-parse --show-toplevel 2>/dev/null")[1]
+	if vim.v.shell_error ~= 0 or not git_root or git_root == "" then
+		vim.notify("Not in a git repository", vim.log.levels.ERROR)
+		return
+	end
+
+	require("fzf-lua").fzf_exec("git worktree list", {
+		prompt = "Worktrees❯ ",
+		preview = "path=$(echo {} | cut -d' ' -f1); git -C \"$path\" log --oneline --color -15",
+		actions = {
+			["default"] = function(selected)
+				if not selected or #selected == 0 then
+					return
+				end
+				local path = selected[1]:match("^(%S+)")
+				if path then
+					vim.cmd("cd " .. vim.fn.fnameescape(path))
+					vim.notify("cwd → " .. path)
+				end
+			end,
+		},
+	})
+end, { noremap = true, silent = true, desc = "fzf git worktrees" })
+
 -- Git status files relative to current buffer directory
 vim.keymap.set({ "n" }, "<leader>sr", function()
 	local current_dir = vim.fn.expand("%:p:h")
