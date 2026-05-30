@@ -2189,6 +2189,9 @@ require("lazy").setup({
 				},
 				log_level = vim.log.levels.DEBUG,
 				formatters = {
+					sql_formatter = {
+						args = { "--config", vim.fn.expand("~/.sql-formatter.json") },
+					},
 					rubocop = {
 						command = "rubocop",
 						inherit = false,
@@ -2462,7 +2465,7 @@ require("lazy").setup({
 	{
 		"greggh/claude-code.nvim",
 		dependencies = { "nvim-lua/plenary.nvim" },
-		cmd = { "ClaudeCode", "ClaudeCodeContinue", "ClaudeCodeResume", "ClaudeCodeVerbose" },
+		lazy = false,
 		config = function()
 			require("claude-code").setup({
 				command = "/Users/joshlane/.local/bin/claude",
