@@ -1067,7 +1067,6 @@ require("lazy").setup({
 				sources = {
 					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
 					per_filetype = {
-						codecompanion = { "codecompanion" },
 						sql = { "dadbod", "snippets", "buffer" },
 						mysql = { "dadbod", "snippets", "buffer" },
 						plsql = { "dadbod", "snippets", "buffer" },
@@ -2146,7 +2145,7 @@ require("lazy").setup({
 		},
 		opts = {
 			preview = {
-				filetypes = { "markdown", "codecompanion" },
+				filetypes = { "markdown" },
 				ignore_buftypes = {},
 			},
 			markdown = {
@@ -2287,173 +2286,6 @@ require("lazy").setup({
 			trim_scope = "outer", -- Which context lines to discard if `max_lines` is exceeded. Choices: 'inner', 'outer'
 			mode = "cursor", -- Line used to calculate context. Choices: 'cursor', 'topline'
 		},
-	},
-	{
-		"olimorris/codecompanion.nvim",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-treesitter/nvim-treesitter",
-			"echasnovski/mini.diff",
-			"copilot.lua",
-			"viespejo/cc-adapter-vertex-ai.nvim",
-		},
-		enabled = true,
-		config = function()
-			require("codecompanion").setup({
-				display = {
-					diff = {
-						provider = "mini_diff",
-					},
-					chat = {
-						window = {
-							layout = "vertical",
-						},
-						icons = {
-							pinned_buffer = " ",
-							watched_buffer = "👀 ",
-						},
-					},
-				},
-				adapters = {
-					http = {
-						openai = function()
-							return require("codecompanion.adapters").extend("openai", {
-								env = {
-									api_key = os.getenv("OPENAI_API_KEY"),
-								},
-							})
-						end,
-						vertex_claude = function()
-							return require("codecompanion.adapters").extend("vertex-anthropic", {
-								env = {
-									project_id = vim.env.GOOGLE_CLOUD_PROJECT,
-									region = "us-central1",
-								},
-								schema = {
-									model = {
-										default = "claude-sonnet-4-6",
-									},
-								},
-							})
-						end,
-					},
-				},
-				strategies = {
-					inline = {
-						adapter = "copilot",
-						keymaps = {
-							accept_change = {
-								modes = { n = "ga" },
-								description = "Accept the suggested change",
-							},
-							reject_change = {
-								modes = { n = "gr" },
-								description = "Reject the suggested change",
-							},
-						},
-					},
-					chat = {
-						adapter = "vertex_claude",
-						slash_commands = {
-							["file"] = {
-								callback = "strategies.chat.slash_commands.file",
-								description = "Select a file using fzf-lua",
-								opts = {
-									-- provider = "fzf_lua", -- Other options include 'default', 'mini_pick', 'fzf_lua', snacks
-									contains_code = true,
-								},
-							},
-						},
-						keymaps = {
-							send = {
-								modes = { n = "<C-s>", i = "<C-s>" },
-							},
-							close = {
-								modes = { n = "<C-c>", i = "<C-c>" },
-							},
-						},
-					},
-				},
-			})
-
-			vim.keymap.set({ "n", "v" }, "<leader>ccc", ":CodeCompanionChat<CR>", { silent = true, noremap = true })
-			vim.keymap.set({ "n", "v" }, "<leader>ccl", ":CodeCompanion /lsp<CR>", { silent = true, noremap = true })
-			vim.keymap.set({ "n", "v" }, "<leader>ccf", ":CodeCompanion /fix<CR>", { silent = true, noremap = true })
-
-			vim.keymap.set("n", "<leader>ccm", function()
-				if vim.bo.filetype ~= "gitcommit" then
-					vim.notify("Not a git commit buffer", vim.log.levels.WARN)
-					return
-				end
-				vim.fn.system("git diff --cached --quiet")
-				if vim.v.shell_error == 0 then
-					vim.notify("No staged changes", vim.log.levels.WARN)
-					return
-				end
-				vim.notify("Generating commit message...", vim.log.levels.INFO)
-				local comment_lines = {}
-				local found_comment = false
-				for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-					if line:match("^#") then
-						found_comment = true
-					end
-					if found_comment then
-						table.insert(comment_lines, line)
-					end
-				end
-				local diff = vim.fn.system("git diff --cached")
-				vim.fn.jobstart(
-					{ "claude", "-p", "--agent", "git-commit-message-writer", diff },
-					{
-						stdout_buffered = true,
-						on_stdout = function(_, data)
-							local output = vim.fn.trim(table.concat(data, "\n"))
-							if output == "" then
-								vim.notify("No output from claude", vim.log.levels.ERROR)
-								return
-							end
-							local msg_lines = vim.split(output, "\n", { plain = true })
-							table.insert(msg_lines, "")
-							for _, line in ipairs(comment_lines) do
-								table.insert(msg_lines, line)
-							end
-							vim.schedule(function()
-								vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
-								vim.api.nvim_win_set_cursor(0, { 1, 0 })
-								vim.notify("Commit message generated", vim.log.levels.INFO)
-							end)
-						end,
-						on_stderr = function(_, data)
-							local err = vim.fn.trim(table.concat(data, "\n"))
-							if err ~= "" then
-								vim.notify("claude: " .. err, vim.log.levels.ERROR)
-							end
-						end,
-					}
-				)
-			end, { desc = "Generate commit message via claude agent" })
-
-			vim.keymap.set(
-				{ "n", "v" },
-				"<leader>ccb",
-				":CodeCompanion @editor #buffer",
-				{ silent = true, noremap = true }
-			)
-
-			vim.keymap.set(
-				{ "v" },
-				"<leader>ccn",
-				":CodeCompanion #buffer @editor You are a software engineer that is committed to commenting code to provide clarity and remove suprises.  Please provide a comment for this code, using `NOTE:`, `PERF:`, `WTF:`, `WARN:`, etc where appropriate.  If an entire method or function is detected, provide a comment only for the top-level entity.<CR>",
-				{ silent = true, noremap = true }
-			)
-
-			vim.keymap.set(
-				{ "n", "v" },
-				"<leader>cce",
-				":CodeCompanion /explain<CR>",
-				{ silent = true, noremap = true }
-			)
-		end,
 	},
 	{
 		"epwalsh/obsidian.nvim",
@@ -2627,23 +2459,86 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"coder/claudecode.nvim",
-		config = true,
-		opts = {
-			terminal_cmd = "/Users/joshlane/.local/bin/claude",
-			terminal = {
-				provider = "native",
-				split_side = "right",
-				split_width_percentage = 0.35,
-			},
-		},
-		keys = {
-			{ "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
-			{ "<leader>af", "<cmd>ClaudeCodeFocus<cr>", desc = "Focus Claude" },
-			{ "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send to Claude" },
-			{ "<leader>aa", "<cmd>ClaudeCodeDiffAccept<cr>", desc = "Accept diff" },
-			{ "<leader>ad", "<cmd>ClaudeCodeDiffDeny<cr>", desc = "Deny diff" },
-		},
+		"greggh/claude-code.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		cmd = { "ClaudeCode", "ClaudeCodeContinue", "ClaudeCodeResume", "ClaudeCodeVerbose" },
+		config = function()
+			require("claude-code").setup({
+				command = "/Users/joshlane/.local/bin/claude",
+				window = {
+					position = "vertical",
+					split_ratio = 0.35,
+					enter_insert = true,
+					hide_numbers = true,
+					hide_signcolumn = true,
+				},
+				keymaps = {
+					toggle = {
+						normal = "<leader>ac",
+						terminal = "<leader>ac",
+						variants = {
+							continue = "<leader>aC",
+							verbose = "<leader>aV",
+						},
+					},
+					window_navigation = true,
+					scrolling = true,
+				},
+			})
+
+			vim.keymap.set("n", "<leader>ccm", function()
+				if vim.bo.filetype ~= "gitcommit" then
+					vim.notify("Not a git commit buffer", vim.log.levels.WARN)
+					return
+				end
+				vim.fn.system("git diff --cached --quiet")
+				if vim.v.shell_error == 0 then
+					vim.notify("No staged changes", vim.log.levels.WARN)
+					return
+				end
+				vim.notify("Generating commit message...", vim.log.levels.INFO)
+				local comment_lines = {}
+				local found_comment = false
+				for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+					if line:match("^#") then
+						found_comment = true
+					end
+					if found_comment then
+						table.insert(comment_lines, line)
+					end
+				end
+				local diff = vim.fn.system("git diff --cached")
+				vim.fn.jobstart(
+					{ "claude", "-p", "--agent", "git-commit-message-writer", diff },
+					{
+						stdout_buffered = true,
+						on_stdout = function(_, data)
+							local output = vim.fn.trim(table.concat(data, "\n"))
+							if output == "" then
+								vim.notify("No output from claude", vim.log.levels.ERROR)
+								return
+							end
+							local msg_lines = vim.split(output, "\n", { plain = true })
+							table.insert(msg_lines, "")
+							for _, l in ipairs(comment_lines) do
+								table.insert(msg_lines, l)
+							end
+							vim.schedule(function()
+								vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
+								vim.api.nvim_win_set_cursor(0, { 1, 0 })
+								vim.notify("Commit message generated", vim.log.levels.INFO)
+							end)
+						end,
+						on_stderr = function(_, data)
+							local err = vim.fn.trim(table.concat(data, "\n"))
+							if err ~= "" then
+								vim.notify("claude: " .. err, vim.log.levels.ERROR)
+							end
+						end,
+					}
+				)
+			end, { desc = "Generate commit message via claude agent" })
+		end,
 	},
 })
 
