@@ -2490,17 +2490,8 @@ require("lazy").setup({
 				},
 			})
 
-			vim.keymap.set("v", "<leader>as", function()
-				local start_pos = vim.fn.getpos("'<")
-				local end_pos = vim.fn.getpos("'>")
-				local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
-				if #lines == 0 then return end
-				lines[#lines] = lines[#lines]:sub(1, end_pos[3])
-				lines[1] = lines[1]:sub(start_pos[3])
-				local text = table.concat(lines, "\n") .. "\n"
-
-				local claude = require("claude-code")
-				local instances = claude.claude_code and claude.claude_code.instances
+			local function send_to_claude(text)
+				local instances = require("claude-code").claude_code and require("claude-code").claude_code.instances
 				if not instances then
 					vim.notify("Claude terminal not open", vim.log.levels.WARN)
 					return
@@ -2515,7 +2506,45 @@ require("lazy").setup({
 					end
 				end
 				vim.notify("No active Claude terminal", vim.log.levels.WARN)
+			end
+
+			vim.keymap.set("v", "<leader>as", function()
+				local start_pos = vim.fn.getpos("'<")
+				local end_pos = vim.fn.getpos("'>")
+				local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
+				if #lines == 0 then return end
+				lines[#lines] = lines[#lines]:sub(1, end_pos[3])
+				lines[1] = lines[1]:sub(start_pos[3])
+				send_to_claude(table.concat(lines, "\n") .. "\n")
 			end, { desc = "Send selection to Claude" })
+
+			vim.keymap.set("n", "<leader>af", function()
+				local filepath = vim.fn.expand("%:p")
+				if filepath == "" then
+					vim.notify("No file in current buffer", vim.log.levels.WARN)
+					return
+				end
+				send_to_claude("@" .. filepath .. " ")
+			end, { desc = "Send file reference to Claude" })
+
+			vim.keymap.set("n", "<leader>ad", function()
+				local lnum = vim.api.nvim_win_get_cursor(0)[1] - 1
+				local diags = vim.diagnostic.get(0, { lnum = lnum })
+				if #diags == 0 then
+					diags = vim.diagnostic.get(0)
+				end
+				if #diags == 0 then
+					vim.notify("No diagnostics in buffer", vim.log.levels.WARN)
+					return
+				end
+				local filepath = vim.fn.expand("%:p")
+				local d = diags[1]
+				local severity = vim.diagnostic.severity[d.severity]:lower()
+				send_to_claude(string.format(
+					"Fix this %s in @%s line %d: %s\n",
+					severity, filepath, d.lnum + 1, d.message
+				))
+			end, { desc = "Send LSP diagnostic to Claude" })
 
 			vim.keymap.set("n", "<leader>ccm", function()
 				if vim.bo.filetype ~= "gitcommit" then
