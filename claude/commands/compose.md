@@ -50,16 +50,17 @@ The current state must be determinable from the artifact alone — never from th
 
 ### sources.md Format
 
+A research evidence ledger — one entry per source found during Stage 2. Used as a scratch pad during drafting and as the audit target in Stage 5.
+
 ```markdown
 ## [S001] [Title of source]
-- **Source**: [where it came from]
-- **URL**: [link if available]
+- **URL**: [link]
 - **Date**: YYYY-MM-DD
 - **Confidence**: low|medium|high
 - **Claim**: [what this source supports]
 ```
 
-Each entry gets a sequential ID (S001, S002, ...). Draft claims reference these IDs via footnotes: `[^S001]`. Claims without a footnote reference are unsourced.
+Each entry gets a sequential ID (S001, S002, ...) for internal tracking. In the draft, claims are cited with inline markdown links — not footnotes. The audit checks that every inline link in the draft resolves to an entry in sources.md.
 
 ## Adaptive Rigor
 
@@ -104,9 +105,9 @@ Search for evidence before drafting. Do not write claims you cannot support.
 4. Record what was searched and NOT found — note gaps in `brief.md` under `## Evidence Gaps`.
 
 **Classification of claim types** (established now, enforced in Stage 4):
-- **Sourced**: has a `sources.md` entry with a footnote reference in the draft (`[^S001]`)
-- **Organizational** (`[^org: description]`): facts about EasyPost's own infrastructure, team composition, or internal state that are author-attested but not externally sourced. Not unsourced — but must be explicitly labeled. Example: `[^org: EasyPost runs Envoy as its internal proxy]`.
-- **Unsourced**: neither of the above — inaccuracy risk, flagged in critique
+- **Sourced**: has a `sources.md` entry and appears in the draft as an inline markdown link — `[claim text](url)`. The URL must match the sources.md entry.
+- **Organizational**: facts about EasyPost's own infrastructure, team composition, or internal state that are author-attested but not externally sourced. Write these as prose attribution rather than a link — e.g., "EasyPost runs Envoy as its internal proxy." Flag in the brief if the claim is quantitative; numbers need an external source, not just author attestation.
+- **Unsourced**: neither of the above — inaccuracy risk, flagged in critique.
 
 There is no first-principles exemption. If a claim is genuinely definitional (a protocol property, a language semantic, a mathematical fact), write the reasoning into the prose — the sentence itself is the justification. If you cannot write the reasoning naturally into the prose, that is a signal the claim needs a source. The Skeptic in Stage 5 is the backstop for anything that feels asserted.
 
@@ -143,8 +144,8 @@ Write against the Brief. Every section fulfills its stated claim.
 Rules:
 - One idea per sentence
 - No hedging, no throat-clearing, no summaries of what you just said
-- Every quantitative or comparative claim annotated: `[^S001]` for sourced, `[^org: description]` for internal organizational facts
-- If a claim lacks either annotation: stop, return to Stage 2, record the source before continuing
+- Every quantitative or comparative claim cited inline: `[claim text](url)` for sourced claims; organizational facts written as prose attribution
+- If a claim lacks a link and is not an organizational attestation: stop, return to Stage 2, record the source before continuing
 - Preserve structure only where it aids navigation
 
 Draft is complete when every section in the Section Map is addressed and no unannotated claims remain. Set status to `Drafted`.
@@ -158,10 +159,10 @@ Run two independent reader attacks plus a source audit. Critics receive only `dr
 **Reader 2 — Skeptic**: Adversarial. Finds: claims that feel asserted without support, sections that could be cut without loss, hedging that undermines authority.
 
 **Source Audit** (primary agent — requires access to sources.md):
-- Every `[^Sxxx]` reference in the draft must resolve to an entry in `sources.md`
-- Any claim without `[^Sxxx]` or `[^org:]` annotation is unsourced
+- Every inline link `[text](url)` in the draft must resolve to an entry in `sources.md`
+- Any quantitative or comparative claim without an inline link is unsourced — flag it
 - Source entries older than 90 days with confidence < high: flag as potentially stale
-- Quantitative claims with only `[^org:]`: flag — numbers need an external source entry, not just author attestation
+- Quantitative claims attributed as organizational facts (no link): flag — numbers need an external source entry, not just author attestation
 
 Write findings to `critique.md`:
 
@@ -208,7 +209,7 @@ Determine the release path before writing:
 
 Write the release to that path — not inside `.compose/`. The `.compose/` directory is scaffolding (artifact trail, sources, critique); it stays hidden. The released document is a normal file at a real path.
 
-The release document contains only the document — no status headers, no `[^Sxxx]` or `[^org:]` annotations (these live in sources.md), no metadata beyond what belongs in the document itself. Where citations are appropriate for the audience (external docs, academic-style memos), convert `[^Sxxx]` references to standard footnotes with the source URL from sources.md.
+The release document contains only the document — no status headers, no metadata beyond what belongs in the document itself. Inline markdown links pass through as-is. Strip only the draft scaffolding (status header, section-map annotations); preserve all citation links.
 
 ## Transition Rules
 
