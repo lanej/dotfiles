@@ -2185,6 +2185,7 @@ require("lazy").setup({
 					},
 					javascript = { "prettierd", "prettier", stop_after_first = true },
 					typescript = { "prettierd", "prettier", stop_after_first = true },
+					sql = { "sql_formatter" },
 				},
 				log_level = vim.log.levels.DEBUG,
 				formatters = {
@@ -2485,6 +2486,33 @@ require("lazy").setup({
 					scrolling = true,
 				},
 			})
+
+			vim.keymap.set("v", "<leader>as", function()
+				local start_pos = vim.fn.getpos("'<")
+				local end_pos = vim.fn.getpos("'>")
+				local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
+				if #lines == 0 then return end
+				lines[#lines] = lines[#lines]:sub(1, end_pos[3])
+				lines[1] = lines[1]:sub(start_pos[3])
+				local text = table.concat(lines, "\n") .. "\n"
+
+				local claude = require("claude-code")
+				local instances = claude.claude_code and claude.claude_code.instances
+				if not instances then
+					vim.notify("Claude terminal not open", vim.log.levels.WARN)
+					return
+				end
+				for _, bufnr in pairs(instances) do
+					if vim.api.nvim_buf_is_valid(bufnr) then
+						local job_id = vim.b[bufnr].terminal_job_id
+						if job_id and vim.fn.jobwait({ job_id }, 0)[1] == -1 then
+							vim.fn.chansend(job_id, text)
+							return
+						end
+					end
+				end
+				vim.notify("No active Claude terminal", vim.log.levels.WARN)
+			end, { desc = "Send selection to Claude" })
 
 			vim.keymap.set("n", "<leader>ccm", function()
 				if vim.bo.filetype ~= "gitcommit" then
