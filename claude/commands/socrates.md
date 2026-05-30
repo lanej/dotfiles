@@ -183,7 +183,13 @@ Assumptions are distinct from findings. Findings come from stated user input or 
 
 ### Source Citations
 
-When making claims about external systems, domain behavior, tooling, standards, or prior decisions, cite the source. Acceptable sources: user statements in the current session, memory/prior session notes, codebase (file:line), documentation URL, or explicitly labeled inference. Do not assert domain facts as if they are established without grounding. If no source exists, label the claim as an assumption.
+When making claims about external systems, domain behavior, tooling, standards, or prior decisions, cite the source inline using markdown links. Acceptable sources: documentation URLs, codebase references (`file:line`), or prior session/memory notes. Format:
+
+```markdown
+[source text](URL or file:line reference)
+```
+
+Do not assert domain facts as if they are established without grounding. If no linkable source exists, label the claim as an assumption using the **Assumed** format above.
 
 ### Interrogation Principles
 
