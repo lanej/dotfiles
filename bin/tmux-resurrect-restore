@@ -1,5 +1,26 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Trigger a tmux-resurrect restore. Invoke explicitly; not bound to a tmux key.
+
 plugin_path=$(tmux show-environment -g TMUX_PLUGIN_MANAGER_PATH 2>/dev/null | cut -d= -f2)
 plugin_path="${plugin_path:-$HOME/.config/tmux/plugins/}"
-exec "${plugin_path}tmux-resurrect/scripts/restore.sh"
+
+restore_script="${plugin_path}tmux-resurrect/scripts/restore.sh"
+
+lockfile="$HOME/.tmux/resurrect/.restore-lock"
+trap 'rm -f "$lockfile"' EXIT
+touch "$lockfile"
+
+if [[ -z "${TMUX:-}" ]]; then
+    # Running outside tmux — resurrect's tmux_socket() reads $TMUX for the
+    # socket path, so without it every tmux call gets -S "" and fails.
+    # Start the server and provide the socket so the restore script works,
+    # then attach once sessions are rebuilt.
+    socket="${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)/default"
+    tmux start-server
+    export TMUX="${socket},0,0"
+    "$restore_script"
+    exec tmux attach-session
+else
+    exec "$restore_script"
+fi

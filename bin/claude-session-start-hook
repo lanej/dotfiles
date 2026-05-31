@@ -59,12 +59,6 @@ def main():
     except Exception:
         sys.exit(0)
 
-    # Skip if user manually named the window (automatic-rename off, not set by us)
-    auto_rename = tmux_window_option(pane, 'automatic-rename')
-    claude_named = tmux_window_option(pane, '@claude_named')
-    if auto_rename == 'off' and not claude_named:
-        sys.exit(0)
-
     session_id = input_data.get('session_id', '')
     cwd = input_data.get('cwd', '')
     if not cwd:
@@ -76,6 +70,22 @@ def main():
     home = str(Path.home())
     internal_prefixes = (home + '/.claude-mem/', home + '/.claude/')
     if any(cwd.startswith(p) for p in internal_prefixes):
+        sys.exit(0)
+
+    # Always tag the pane with the session ID — needed for tmux-resurrect restore even
+    # when we skip window renaming. After a resurrect restore, automatic-rename is off
+    # (set by resurrect) but @claude_named is unset (pane options aren't saved in the
+    # snapshot), so the early-exit below would otherwise prevent the ID from being set.
+    if session_id:
+        subprocess.run(
+            ['tmux', 'set-option', '-p', '-t', pane, '@claude-session-id', session_id],
+            check=False
+        )
+
+    # Skip window rename if user manually named it (automatic-rename off, not set by us).
+    auto_rename = tmux_window_option(pane, 'automatic-rename')
+    claude_named = tmux_window_option(pane, '@claude_named')
+    if auto_rename == 'off' and not claude_named:
         sys.exit(0)
 
     names_dir = Path.home() / '.claude' / 'session-names'
@@ -90,13 +100,6 @@ def main():
             name_file.write_text(name)
 
     set_title(pane, name)
-
-    # Tag pane with Claude session ID for tmux-resurrect restore
-    if session_id and pane:
-        subprocess.run(
-            ['tmux', 'set-option', '-p', '-t', pane, '@claude-session-id', session_id],
-            check=False
-        )
 
 
 if __name__ == '__main__':
