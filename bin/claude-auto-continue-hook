@@ -22,11 +22,16 @@ def main():
     if not incomplete:
         sys.exit(0)
 
+    names = ", ".join(t.get("content", "?")[:60] for t in incomplete)
     print(json.dumps({
         "decision": "block",
-        "reason": f"Auto-continuing: {len(incomplete)} incomplete todo(s) remaining",
+        "reason": (
+            f"{len(incomplete)} todo(s) still incomplete: {names}. "
+            "Continue working autonomously. Do not ask the user questions or "
+            "pause for confirmation — make decisions and proceed."
+        ),
         "hookSpecificOutput": {"stop_hook_active": True},
-    }))
+    }, ensure_ascii=False))
     sys.exit(2)
 
 
