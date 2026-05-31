@@ -266,6 +266,12 @@ df["col"] = pd.to_numeric(df["col"], errors="coerce").fillna(0).astype("int64")
 
 Fix: Don't embed large key sets in SQL literals. Instead, fetch all rows from the target table (with a REGEXP_CONTAINS or similar pre-filter if possible) and do key matching client-side in Python. This is the same approach used in `extract_phab.py`'s `_build_revision_lookup` — fetch all revisions, parse ticket refs in Python, intersect with the target key set.
 
+**View-layer JOIN cost**: When proposing to move computation from application code (Python, Go, etc.) to a BQ view, note the per-query cost implications of any JOINs that will execute on every view read. Example: moving cycle time computation from Python to a BQ view added a ~29k row DORA join that runs on every `classified_tickets` query. The cost is acceptable when immediate effect (no re-processing required) outweighs per-query efficiency, but surface it as a trade-off: "This adds a [N]-row JOIN on every query. Acceptable for [reason], but increases query cost by [estimate]."
+
+**Reserved word aliases**: `ROWS`, `DATE`, `TIME`, `TIMESTAMP`, `VALUE`, `TYPE`, `SCHEMA`, `STATUS`, `NAME` are BigQuery reserved words and cannot be used as column aliases. Using them causes a runtime syntax error ("Unexpected keyword ROWS at ..."). Use neutral aliases: `cnt`, `row_cnt`, `ts`, `val`, `tbl_type`, etc.
+
+**`_PARTITIONTIME` pseudo-column**: Only available on tables partitioned by ingestion time (no explicit partition column — the default DAY or HOUR partition). Tables with an explicit partition column (e.g., `call_date DATE`, `submitted_at TIMESTAMP`) do NOT expose `_PARTITIONTIME` — use the actual column directly (e.g., `WHERE call_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)`).
+
 ## Quick Reference
 
 ```bash

@@ -5,6 +5,7 @@ allowed-tools:
   - Read
   - Write
   - Edit
+  - AskUserQuestion
   - Bash(date:*)
   - Bash(mkdir:*)
 tags:
@@ -117,7 +118,7 @@ This command manages its own phased execution. If plan mode is active at the sta
 7. Pre-fill every section inferable from the title and domain. Leave `_[open]_` only where genuine ambiguity exists. Do not ask what you can answer yourself.
 8. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
 9. Record the current interpretation of the task in one paragraph.
-10. Ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose a false positive, false negative, flawed assumption, under-scoped problem, or weak validation strategy. Challenge, do not confirm.
+10. Use the `AskUserQuestion` tool to ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose a false positive, false negative, flawed assumption, under-scoped problem, or weak validation strategy. For each question, provide 2–4 concrete options drawn from the most plausible interpretations; the user may also type a custom answer via "Other". Use `multiSelect: true` only when multiple things can genuinely co-apply (e.g. listing applicable constraints). Challenge, do not confirm.
 
 ### Continuation (no `$ARGUMENTS`)
 
@@ -127,7 +128,7 @@ This command manages its own phased execution. If plan mode is active at the sta
 4. Print a one-line alignment summary per commandment (name + state only).
 5. Restate the current interpretation before asking more questions when material ambiguity remains.
 6. Prefer closing existing open questions over opening new ones.
-7. Ask 1–3 interrogation questions targeting the highest-risk false-positive, false-negative, or unverifiable-success paths.
+7. Use the `AskUserQuestion` tool to ask 1–3 interrogation questions targeting the highest-risk false-positive, false-negative, or unverifiable-success paths. Frame 2–4 options per question from the most plausible interpretations; "Other" is always available for open-ended answers.
 8. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
@@ -192,6 +193,8 @@ When making claims about external systems, domain behavior, tooling, standards, 
 Do not assert domain facts as if they are established without grounding. If no linkable source exists, label the claim as an assumption using the **Assumed** format above.
 
 ### Interrogation Principles
+
+**Question framing with `AskUserQuestion`**: Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions.
 
 - One topic per question.
 - Ask "why" to surface unstated assumptions.
@@ -282,7 +285,7 @@ If critique exposes unresolved ambiguity, execution changes assumptions, or vali
 
 ## Phase 3 — Plan Mode
 
-After presenting the layered reasoning chain, enter plan mode using the `EnterPlanMode` tool. Develop a concrete implementation plan grounded in the spec. Every task must trace back to a requirement; every requirement must trace back to the problem.
+After presenting the layered reasoning chain, immediately enter plan mode using the `EnterPlanMode` tool — do not pause, do not suggest downstream commands, do not ask the user to invoke `/critique` or anything else. Proceed automatically. Develop a concrete implementation plan grounded in the spec. Every task must trace back to a requirement; every requirement must trace back to the problem.
 
 ### Dependency Graph
 
@@ -415,12 +418,14 @@ _[open]_
 _[open]_
 ```
 
-## Downstream Commands
+## Downstream Commands (optional, user-invoked)
 
-After planning:
+After the plan is approved:
 - `/critique` → adversarial specification review
 - `/lead` → orchestrated parallel execution
 - `/verify` → validation and regression verification
+
+Do not suggest these at the end of Phase 2 or Phase 3. They are available to the user on demand.
 
 ## Usage
 

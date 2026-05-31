@@ -21,8 +21,7 @@
     "defaultMode": "acceptEdits",
     "additionalDirectories": []
   },
-  "model": "claude-sonnet-4-6[1m]",
-  "enableAllProjectMcpServers": true,
+"enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
       {

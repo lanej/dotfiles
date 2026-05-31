@@ -19,5 +19,5 @@ data/snapshots/
 memory.json
 .memory.json
 
-# Socrates session files (ephemeral, not shared)
-.socrates/
+# Socrates active-session pointer (ephemeral, machine-local)
+.socrates/.current
