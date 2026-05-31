@@ -233,6 +233,14 @@ _ensure_table(table)  # recreate with schema
 # propagation delay applies after recreate — use retry loop from (C)
 ```
 
+## Schema Verification Protocol
+
+Run `describe_table` before writing any query against a table not already described in the current session. No exceptions for "familiar" tables — schemas diverge silently between tables assumed to share a shape. This applies equally during **spec and planning phases**: if a spec references a specific column name, run `describe_table` before writing the spec line, not at implementation time. Deferring embeds false assumptions into written requirements. Failure mode: spec assumed `CONVERSATION_START` on `gong_landing.CALL_TRANSCRIPTS`; column didn't exist; discovered at implementation.
+
+When a query fails with a column-not-found error, use `describe_table` immediately — do not guess alternate names.
+
+**Join propagation**: a column on a base table does not automatically propagate through a JOIN. A field may exist on the raw table but be absent from a view that joins it, or return NULL when accessed through a LEFT JOIN. Verify by running a sample query with the actual join before building on it. Failure mode: `unified_identity.team_display_name` exists on the base table but returns NULL through `task_event_durations LEFT JOIN unified_identity` because the column is computed in a view layer that doesn't expose it through that join path.
+
 ## Known Gotchas
 
 **DATE columns in JSONL output** return `{"value": "YYYY-MM-DD"}` dicts, not strings. TIMESTAMP columns return epoch float strings (`"1.760730316667E9"`), not ISO strings.
