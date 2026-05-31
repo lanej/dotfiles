@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Bail during active restore — saves triggered by after-new-session/window hooks would
 # overwrite the snapshot before process restoration reads it.
-[[ -f "$HOME/.tmux/resurrect/.restore-lock" ]] && exit 0
+[[ -f "${RESURRECT_LOCK_FILE:-$HOME/.tmux/resurrect/.restore-lock}" ]] && exit 0
 
 plugin_path=$(tmux show-environment -g TMUX_PLUGIN_MANAGER_PATH 2>/dev/null | cut -d= -f2)
 plugin_path="${plugin_path:-$HOME/.config/tmux/plugins/}"

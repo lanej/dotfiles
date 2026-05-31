@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Trigger a tmux-resurrect restore. Invoke explicitly; not bound to a tmux key.
+# Flags: --no-attach  skip 'tmux attach-session' after cold-start restore (useful in tests)
+# Env:   RESURRECT_SOCKET   override default socket path (for testing)
+#        RESURRECT_LOCK_FILE override default lock file path (for testing)
+
+no_attach=false
+for arg in "$@"; do
+    [[ "$arg" == "--no-attach" ]] && no_attach=true
+done
 
 plugin_path=$(tmux show-environment -g TMUX_PLUGIN_MANAGER_PATH 2>/dev/null | cut -d= -f2)
 plugin_path="${plugin_path:-$HOME/.config/tmux/plugins/}"
 
 restore_script="${plugin_path}tmux-resurrect/scripts/restore.sh"
 
-lockfile="$HOME/.tmux/resurrect/.restore-lock"
+lockfile="${RESURRECT_LOCK_FILE:-$HOME/.tmux/resurrect/.restore-lock}"
 trap 'rm -f "$lockfile"' EXIT
 touch "$lockfile"
 
@@ -16,10 +24,17 @@ if [[ -z "${TMUX:-}" ]]; then
     # socket path, so without it every tmux call gets -S "" and fails.
     # Start the server and provide the socket so the restore script works,
     # then attach once sessions are rebuilt.
-    socket="${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)/default"
-    tmux start-server
+    # RESURRECT_SOCKET lets tests redirect to an isolated server (macOS tmux
+    # ignores TMUX_TMPDIR and always uses /tmp/tmux-<uid>/default).
+    socket="${RESURRECT_SOCKET:-/tmp/tmux-$(id -u)/default}"
+    if [[ -n "${RESURRECT_SOCKET:-}" ]]; then
+        tmux -S "$socket" start-server
+    else
+        tmux start-server
+    fi
     export TMUX="${socket},0,0"
     "$restore_script"
+    "$no_attach" && exit 0
     exec tmux attach-session
 else
     exec "$restore_script"

@@ -6,7 +6,7 @@
 main() {
     local dir="${2:-}"
 
-    local sessions_file="$HOME/.tmux/resurrect/claude-sessions.txt"
+    local sessions_file="${RESURRECT_SESSIONS_FILE:-$HOME/.tmux/resurrect/claude-sessions.txt}"
 
     if [ -n "$dir" ] && [ -f "$sessions_file" ]; then
         local session_id

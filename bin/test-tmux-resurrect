@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Integration + unit tests for the tmux-resurrect restore pipeline.
+# Runs entirely in an isolated tmux server — safe to run inside a live session.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+pass=0; fail=0
+ok()    { printf 'ok   %s\n' "$*"; pass=$(( pass + 1 )); }
+not_ok() { printf 'FAIL %s\n' "$*" >&2; fail=$(( fail + 1 )); }
+
+assert() {
+    local desc="$1"; shift
+    if "$@"; then
+        ok "$desc"
+    else
+        not_ok "$desc"
+    fi
+}
+
+# ── Isolated environment ──────────────────────────────────────────────────────
+
+TMP="$(mktemp -d)"
+SOCKET="$TMP/tmux.sock"
+RESURRECT_DIR="$TMP/resurrect"
+LOCK_FILE="$TMP/resurrect/.restore-lock"
+SESSIONS_FILE="$TMP/resurrect/claude-sessions.txt"
+mkdir -p "$RESURRECT_DIR"
+
+cleanup() {
+    tmux -S "$SOCKET" kill-server 2>/dev/null || true
+    tmux -S "$TMP/test-resurrect.sock" kill-server 2>/dev/null || true
+    rm -rf "$TMP"
+    echo ""
+    printf '%d passed, %d failed\n' "$pass" "$fail"
+    (( fail == 0 ))
+}
+trap cleanup EXIT
+
+# Minimal two-window snapshot: one plain shell, one claude pane.
+SNAPSHOT="$RESURRECT_DIR/tmux_resurrect_test.txt"
+cat > "$SNAPSHOT" << 'SNAP'
+pane	work	0	1	:*	0	shell	:/tmp	1	zsh	:
+pane	work	1	0	:	0	editor	:/tmp	1	zsh	:claude --continue
+window	work	0	:shell	1	:*	5af3,80x24,0,0,0	:
+window	work	1	:editor	0	:	5af3,80x24,0,0,1	:
+state	work
+SNAP
+ln -sf "$(basename "$SNAPSHOT")" "$RESURRECT_DIR/last"
+printf '/tmp\ttest-session-abc-123\n' > "$SESSIONS_FILE"
+
+# ── Unit: lockfile suppresses save ────────────────────────────────────────────
+
+touch "$LOCK_FILE"
+snapshot_before=$(find "$RESURRECT_DIR" -name '*.txt' | wc -l)
+RESURRECT_LOCK_FILE="$LOCK_FILE" \
+    "$SCRIPT_DIR/tmux-resurrect-save" >/dev/null 2>&1 || true
+snapshot_after=$(find "$RESURRECT_DIR" -name '*.txt' | wc -l)
+assert "lockfile: save bails without touching snapshots" \
+    test "$snapshot_before" -eq "$snapshot_after"
+rm -f "$LOCK_FILE"
+
+# ── Unit: strategy script ─────────────────────────────────────────────────────
+
+out=$(RESURRECT_SESSIONS_FILE="$SESSIONS_FILE" \
+    "$SCRIPT_DIR/tmux-resurrect-claude" "claude --continue" "/tmp")
+assert "strategy: known dir → --resume <id>" \
+    test "$out" = "claude --resume test-session-abc-123"
+
+out=$(RESURRECT_SESSIONS_FILE="$SESSIONS_FILE" \
+    "$SCRIPT_DIR/tmux-resurrect-claude" "claude --continue" "/no/such/path")
+assert "strategy: unknown dir → --continue fallback" \
+    test "$out" = "claude --continue"
+
+# ── Unit: session-start-hook sets pane option unconditionally ─────────────────
+
+# Start a minimal server just to have a pane we can query.
+tmux -S "$SOCKET" new-session -d -s test -x 80 -y 24
+test_pane=$(tmux -S "$SOCKET" list-panes -t test -F '#{pane_id}')
+
+# Simulate post-restore state: auto-rename off, @claude_named unset.
+tmux -S "$SOCKET" set-option -w -t "test:0" automatic-rename off
+
+echo '{"session_id":"hook-test-id","cwd":"/tmp","hook_event_name":"SessionStart"}' \
+    | TMUX="$SOCKET,0,0" TMUX_PANE="$test_pane" \
+      python3 "$SCRIPT_DIR/claude-session-start-hook" 2>/dev/null || true
+stored=$(tmux -S "$SOCKET" show-options -pv -t "$test_pane" @claude-session-id 2>/dev/null || echo "")
+assert "session-start-hook: sets @claude-session-id despite auto-rename=off" \
+    test "$stored" = "hook-test-id"
+
+tmux -S "$SOCKET" kill-server 2>/dev/null || true
+
+# ── Integration: cold-start restore ──────────────────────────────────────────
+# Run the restore wrapper with TMUX="" so it takes the cold-start branch.
+# macOS tmux ignores TMUX_TMPDIR, so we use RESURRECT_SOCKET to redirect the
+# server to an isolated socket. --no-attach skips exec at the end.
+#
+# macOS note: start-server -f does not source the config file, so we must set
+# options manually after the server starts. We also need one session (1 pane)
+# so resurrect's detect_if_restoring_from_scratch triggers correctly.
+
+plugin_path="$HOME/.config/tmux/plugins/"
+test_socket="$TMP/test-resurrect.sock"
+
+tmux -S "$test_socket" new-session -d -s _boot -x 80 -y 24
+tmux -S "$test_socket" set-option -g @resurrect-dir "$RESURRECT_DIR"
+tmux -S "$test_socket" set-option -g "@resurrect-processes" 'zsh ~claude'
+tmux -S "$test_socket" set-option -g "@resurrect-strategy-claude" 'default'
+
+TMUX="" \
+RESURRECT_SOCKET="$test_socket" \
+RESURRECT_LOCK_FILE="$LOCK_FILE" \
+TMUX_PLUGIN_MANAGER_PATH="$plugin_path" \
+    "$SCRIPT_DIR/tmux-resurrect-restore" --no-attach 2>/dev/null || true
+
+sessions=$(tmux -S "$test_socket" list-sessions -F '#{session_name}' 2>/dev/null || echo "")
+assert "cold-start: session 'work' created from snapshot" \
+    bash -c "[[ '$sessions' == *'work'* ]]"
+
+window_count=$(tmux -S "$test_socket" list-windows -t work 2>/dev/null | wc -l | tr -d ' ')
+assert "cold-start: both windows restored (expected 2, got $window_count)" \
+    test "$window_count" -eq 2
+
+assert "cold-start: lockfile cleaned up after restore" \
+    test ! -f "$LOCK_FILE"
