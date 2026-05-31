@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
-# Global pre-commit hook: detect unexpanded shell variables in staged file paths.
-# A path component like $HOME or $USER as a literal directory name is always a bug.
-
+# Pre-commit hook for the .files repo.
 set -euo pipefail
 
-bad_paths=$(git diff --cached --name-only 2>/dev/null | grep -E '(^|/)\$[A-Z_][A-Z0-9_]*(\/|$)' || true)
+# ── 1. Unexpanded shell variables in staged paths ─────────────────────────────
+# A literal $HOME or $USER as a directory component is always a bug.
+bad_paths=$(git diff --cached --name-only 2>/dev/null \
+    | grep -E '(^|/)\$[A-Z_][A-Z0-9_]*(\/|$)' || true)
 
 if [ -n "$bad_paths" ]; then
     echo "error: staged paths contain unexpanded shell variable:" >&2
-    echo "$bad_paths" | sed 's/^/  /' >&2
-    echo "" >&2
+    printf '  %s\n' "$bad_paths" >&2
     echo "Fix: git rm -r --cached -- '\$HOME' (or the relevant variable)" >&2
     exit 1
+fi
+
+# ── 2. Shellcheck staged shell scripts ───────────────────────────────────────
+# mapfile requires bash 4+; macOS ships bash 3.2, so use a while loop.
+if command -v shellcheck >/dev/null 2>&1; then
+    shell_files=()
+    while IFS= read -r f; do
+        [[ -f "$f" ]] || continue
+        shebang=$(head -1 "$f" 2>/dev/null || true)
+        case "$shebang" in
+            '#!/usr/bin/env bash'|'#!/bin/bash'|'#!/usr/bin/env sh'|'#!/bin/sh')
+                shell_files+=("$f") ;;
+        esac
+    done < <(git diff --cached --name-only --diff-filter=ACM)
+    if [[ ${#shell_files[@]} -gt 0 ]]; then
+        shellcheck "${shell_files[@]}"
+    fi
 fi
 
 exit 0

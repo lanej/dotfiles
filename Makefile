@@ -94,6 +94,9 @@ git:
 	@ln -fs $(DOTFILES)/git/gitignore $(HOME)/.gitignore
 	@ln -fs $(DOTFILES)/git/gitcommit $(HOME)/.gitcommit
 	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
+	@ln -fs $(DOTFILES)/git/hooks/pre-commit $(DOTFILES)/.git/hooks/pre-commit
+	@ln -fs $(DOTFILES)/git/hooks/commit-msg $(DOTFILES)/.git/hooks/commit-msg
+	@chmod +x $(DOTFILES)/git/hooks/pre-commit $(DOTFILES)/git/hooks/commit-msg
 gpg:
 	@mkdir -p $(HOME)/.gnupg
 	@ln -fs $(DOTFILES)/rc/gpg.conf $(HOME)/.gnupg/gpg.conf
