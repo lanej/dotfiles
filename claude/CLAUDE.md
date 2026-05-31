@@ -102,7 +102,7 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 **Orchestration protocol:**
 1. **Challenge for context first.** Before spawning sub-agents, interrogate the user: domain context, constraints, success criteria, failure modes. If requirements are ambiguous, run `/socrates` before any delegation. Do not delegate to underspecified sub-agents. (Skip this step for off-topic side tasks — they are self-contained by definition.)
 2. **Announce the decision.** State "Orchestrating: [reason]" before switching modes.
-3. **Use a structured briefing.** Every `Agent` tool call must include: *Context* (overall task and why it matters), *Domain* (relevant facts not derivable from CLAUDE.md), *Sub-problem* (exactly what this agent owns), *Success* (what done looks like), *Constraints* (hard limits), *Output format* (specific format expected).
+3. **Use a structured briefing.** Every `Agent` tool call must include: *Context* (overall task and why it matters), *Domain* (relevant facts not derivable from CLAUDE.md), *Sub-problem* (exactly what this agent owns), *Success* (what done looks like — for implementation work, must include: "write tests first, all tests pass"), *Constraints* (hard limits), *Output format* (specific format expected).
 
 **Execute directly** (no announcement) when the task is short and unambiguous.
 
