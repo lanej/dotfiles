@@ -84,6 +84,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "$HOME/.files/bin/claude-auto-continue-hook"
+          },
+          {
+            "type": "command",
             "command": "$HOME/.files/bin/claude-autoname-hook"
           },
           {
