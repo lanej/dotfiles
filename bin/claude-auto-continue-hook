@@ -3,6 +3,16 @@
 
 import json
 import sys
+from datetime import datetime
+from pathlib import Path
+
+LOG_FILE = Path.home() / ".claude" / "auto-continue.log"
+
+
+def log(session_id: str, msg: str) -> None:
+    ts = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    with LOG_FILE.open("a") as f:
+        f.write(f"{ts} [{session_id[:8]}] {msg}\n")
 
 
 def main():
@@ -11,18 +21,24 @@ def main():
     except Exception:
         sys.exit(0)
 
-    # Only auto-continue on natural/turn-limit stops, not errors or pauses
+    session_id = data.get("session_id", "unknown")
     stop_reason = data.get("stop_reason", "")
+
+    # Only auto-continue on natural/turn-limit stops, not errors or pauses
     if stop_reason not in ("end_turn", "max_turns"):
+        log(session_id, f"skip stop_reason={stop_reason}")
         sys.exit(0)
 
     todos = data.get("todos", [])
     incomplete = [t for t in todos if t.get("status") in ("pending", "in_progress")]
 
     if not incomplete:
+        log(session_id, f"stop stop_reason={stop_reason} todos=0_incomplete")
         sys.exit(0)
 
     names = ", ".join(t.get("content", "?")[:60] for t in incomplete)
+    log(session_id, f"continue stop_reason={stop_reason} incomplete={len(incomplete)} todos=[{names}]")
+
     print(json.dumps({
         "decision": "block",
         "reason": (
