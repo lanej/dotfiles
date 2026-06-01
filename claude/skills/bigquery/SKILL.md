@@ -280,6 +280,8 @@ Fix: Don't embed large key sets in SQL literals. Instead, fetch all rows from th
 
 **`_PARTITIONTIME` pseudo-column**: Only available on tables partitioned by ingestion time (no explicit partition column — the default DAY or HOUR partition). Tables with an explicit partition column (e.g., `call_date DATE`, `submitted_at TIMESTAMP`) do NOT expose `_PARTITIONTIME` — use the actual column directly (e.g., `WHERE call_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)`).
 
+**`TIMESTAMP_SUB` does not support MONTH/YEAR**: `TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 12 MONTH)` raises a runtime error — MONTH and YEAR date parts are only valid for DATE arithmetic, not TIMESTAMP. For rolling lookback windows on TIMESTAMP columns, use DAY units: `TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 365 DAY)`. Alternatively, cast to DATE first: `DATE_SUB(CURRENT_DATE(), INTERVAL 12 MONTH)` then compare against `DATE(timestamp_col)` (but note this defeats partition pruning on the raw TIMESTAMP column — prefer the DAY approach).
+
 ## Quick Reference
 
 ```bash
