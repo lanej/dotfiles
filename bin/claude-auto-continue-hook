@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code Stop hook — auto-continue when incomplete todos remain."""
+"""Claude Code Stop hook — auto-continue when incomplete tasks remain."""
 
 import json
 import sys
@@ -15,6 +15,41 @@ def log(session_id: str, msg: str) -> None:
         f.write(f"{ts} [{session_id[:8]}] {msg}\n")
 
 
+def get_incomplete_tasks(transcript_path: str) -> list[dict]:
+    """Replay TaskCreate/TaskUpdate calls to build current task state."""
+    tasks: dict[str, dict] = {}
+    try:
+        with open(transcript_path) as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if obj.get("type") != "assistant":
+                    continue
+                for block in obj.get("message", {}).get("content", []):
+                    if not isinstance(block, dict) or block.get("type") != "tool_use":
+                        continue
+                    name = block.get("name", "")
+                    inp = block.get("input", {})
+                    if name == "TaskCreate":
+                        task_id = inp.get("taskId") or str(len(tasks) + 1)
+                        tasks[task_id] = {
+                            "id": task_id,
+                            "subject": inp.get("subject", ""),
+                            "status": "pending",
+                        }
+                    elif name == "TaskUpdate":
+                        task_id = inp.get("taskId")
+                        if task_id and task_id in tasks:
+                            if "status" in inp:
+                                tasks[task_id]["status"] = inp["status"]
+    except Exception:
+        pass
+
+    return [t for t in tasks.values() if t["status"] in ("pending", "in_progress")]
+
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -22,27 +57,30 @@ def main():
         sys.exit(0)
 
     session_id = data.get("session_id", "unknown")
-    stop_reason = data.get("stop_reason", "")
 
-    # Only auto-continue on natural/turn-limit stops, not errors or pauses
-    if stop_reason not in ("end_turn", "max_turns"):
-        log(session_id, f"skip stop_reason={stop_reason}")
+    # Skip if we already re-entered from a prior hook block (prevent runaway)
+    if data.get("stop_hook_active"):
+        log(session_id, "skip stop_hook_active=true")
         sys.exit(0)
 
-    todos = data.get("todos", [])
-    incomplete = [t for t in todos if t.get("status") in ("pending", "in_progress")]
+    transcript_path = data.get("transcript_path", "")
+    if not transcript_path or not Path(transcript_path).exists():
+        log(session_id, "skip no_transcript")
+        sys.exit(0)
+
+    incomplete = get_incomplete_tasks(transcript_path)
 
     if not incomplete:
-        log(session_id, f"stop stop_reason={stop_reason} todos=0_incomplete")
+        log(session_id, "stop tasks=0_incomplete")
         sys.exit(0)
 
-    names = ", ".join(t.get("content", "?")[:60] for t in incomplete)
-    log(session_id, f"continue stop_reason={stop_reason} incomplete={len(incomplete)} todos=[{names}]")
+    names = ", ".join(t["subject"][:60] for t in incomplete)
+    log(session_id, f"continue incomplete={len(incomplete)} tasks=[{names}]")
 
     print(json.dumps({
         "decision": "block",
         "reason": (
-            f"{len(incomplete)} todo(s) still incomplete: {names}. "
+            f"{len(incomplete)} task(s) still incomplete: {names}. "
             "Continue working autonomously. Do not ask the user questions or "
             "pause for confirmation — make decisions and proceed."
         ),
