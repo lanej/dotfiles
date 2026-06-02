@@ -2,35 +2,20 @@
 # Claude Code notification hook
 # Triggers tmux bell and desktop notification when Claude needs input
 
+# Logging function
+log_window_action() {
+    local logfile="$HOME/.claude/logs/window-naming.log"
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local current_window; current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
+    printf '[%s] [notification] TMUX_PANE=%s current=%s action=%s\n' \
+        "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
+}
+
 # Read stdin
 input=$(cat)
 
 # Debug: log the input (uncomment to debug)
 # echo "$input" > /tmp/claude-notification-debug.log
-
-# Extract project/directory information from JSON input
-if command -v jq >/dev/null 2>&1; then
-    project=$(echo "$input" | jq -r '.cwd // .workspace.current_dir // empty' 2>/dev/null)
-    if [ -n "$project" ] && [ "$project" != "null" ] && [ "$project" != "" ]; then
-        project_name=$(basename "$project")
-
-        # Add tmux window name if available
-        if [ -n "$TMUX_PANE" ]; then
-            window_name=$(tmux display-message -pt "$TMUX_PANE" '#W' 2>/dev/null)
-            if [ -n "$window_name" ]; then
-                message="Claude waiting: $project_name [$window_name]"
-            else
-                message="Claude waiting: $project_name"
-            fi
-        else
-            message="Claude waiting: $project_name"
-        fi
-    else
-        message="Claude waiting"
-    fi
-else
-    message="Claude waiting"
-fi
 
 # Set window indicator
 if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
@@ -38,12 +23,14 @@ if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
     name_file="$HOME/.claude/session-names/$session_id"
     if [ -n "$session_id" ] && [ -f "$name_file" ]; then
         base=$(cat "$name_file")
+        log_window_action "rename-window -t $TMUX_PANE '!${base}' (add ! prefix)"
         tmux rename-window -t "$TMUX_PANE" "!${base}" 2>/dev/null
     fi
 fi
 
 # Mark window as needing input (cleared by PreToolUse / Stop)
 if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
+    log_window_action "set-option -w -t $TMUX_PANE @claude-state waiting"
     tmux set-option -w -t "$TMUX_PANE" @claude-state "waiting" 2>/dev/null || true
     tmux refresh-client -S 2>/dev/null || true
 fi

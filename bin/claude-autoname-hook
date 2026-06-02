@@ -5,7 +5,32 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
+
+
+def log_window_action(action):
+    """Log window naming operations to ~/.claude/logs/window-naming.log"""
+    try:
+        logfile = Path.home() / '.claude' / 'logs' / 'window-naming.log'
+        logfile.parent.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        tmux_pane = os.environ.get('TMUX_PANE', 'unset')
+
+        try:
+            result = subprocess.run(
+                ['tmux', 'display-message', '-p', '#{window_id}:#{window_name}'],
+                capture_output=True, text=True, timeout=1
+            )
+            current_window = result.stdout.strip() if result.returncode == 0 else 'unknown'
+        except Exception:
+            current_window = 'unknown'
+
+        with open(logfile, 'a') as f:
+            f.write(f'[{timestamp}] [stop] TMUX_PANE={tmux_pane} current={current_window} action={action}\n')
+    except Exception:
+        pass  # Silent failure - logging should never break the hook
 
 
 def get_cwd(transcript_path):
@@ -32,9 +57,11 @@ def set_title(name):
         try:
             pane = os.environ.get('TMUX_PANE', '')
             if pane:
+                log_window_action(f"rename-window -t {pane} '{name}'")
                 subprocess.run(['tmux', 'rename-window', '-t', pane, name], check=False)
                 subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
             else:
+                log_window_action(f"rename-window '{name}' (missing -t, will rename current window)")
                 subprocess.run(['tmux', 'rename-window', name], check=False)
                 subprocess.run(['tmux', 'set-option', '-w', '@claude_named', name], check=False)
         except Exception:

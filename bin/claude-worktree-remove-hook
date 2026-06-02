@@ -3,6 +3,15 @@
 
 [[ -n "${TMUX:-}" ]] || exit 0
 
+# Logging function
+log_window_action() {
+    local logfile="$HOME/.claude/logs/window-naming.log"
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local current_window; current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
+    printf '[%s] [worktree-remove] TMUX_PANE=%s current=%s action=%s\n' \
+        "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
+}
+
 payload=$(cat)
 
 # cwd should be back in the main repo after worktree removal
@@ -10,9 +19,13 @@ cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null || true)
 if [[ -n "$cwd" ]]; then
   name=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null \
     || basename "$cwd" 2>/dev/null || true)
-  [[ -n "$name" ]] && tmux rename-window "$name" 2>/dev/null
+  if [[ -n "$name" ]]; then
+    log_window_action "rename-window '$name' (missing -t, will rename current window)"
+    tmux rename-window "$name" 2>/dev/null
+  fi
 fi
 
 # Re-enable automatic renaming so the shell can take over
+log_window_action "set-window-option automatic-rename on (global)"
 tmux set-window-option automatic-rename on 2>/dev/null
 exit 0

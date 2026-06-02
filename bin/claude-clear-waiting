@@ -1,8 +1,23 @@
 #!/bin/bash
 # Args passed from hook at fire time: window_id, window_name
 # Both are expanded synchronously by tmux before run-shell launches.
+
+# Logging function
+log_window_action() {
+    local logfile="$HOME/.claude/logs/window-naming.log"
+    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local current_window; current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
+    printf '[%s] [clear-waiting] TMUX_PANE=%s current=%s action=%s\n' \
+        "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
+}
+
 window_id="$1"
 window_name="$2"
+
+log_window_action "set-option -w -t $window_id @claude-state '' (clear waiting)"
 tmux set-option -w -t "$window_id" @claude-state ""
+
+log_window_action "rename-window -t $window_id '${window_name#!}' (remove ! prefix)"
 tmux rename-window -t "$window_id" "${window_name#!}"
+
 tmux refresh-client -S
