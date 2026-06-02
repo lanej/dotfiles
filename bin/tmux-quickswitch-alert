@@ -18,6 +18,7 @@ candidates=()
 while IFS= read -r line; do
   candidates+=("$line")
 done < <(
+  # shellcheck disable=SC2086
   tmux list-windows $search_flags \
     -F "#{window_index}|#{window_id}|#{window_bell_flag}|#{@claude-state}|#{window_name}" \
   | awk -F'|' -v cur="$current_idx" '{
@@ -54,10 +55,4 @@ if [[ "$current_session" == "popup" ]]; then
 fi
 
 tmux select-window -t "$win_id"
-
-pane=$(tmux list-panes -t "$win_id" -F "#{pane_bell_flag}|#{pane_index}" \
-  | sort -t'|' -k1,1 -rn -k2,2 -n \
-  | head -1 \
-  | cut -d'|' -f2)
-[[ -n "$pane" ]] && tmux select-pane -t "${win_id}.${pane}"
-log "done pane=$pane"
+log "done"
