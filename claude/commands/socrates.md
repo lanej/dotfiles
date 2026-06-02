@@ -5,9 +5,12 @@ allowed-tools:
   - Read
   - Write
   - Edit
+  - Glob
   - AskUserQuestion
   - Bash(date:*)
   - Bash(mkdir:*)
+  - Bash(grep:*)
+  - Bash(find:*)
 tags:
   - specification
   - planning
@@ -93,7 +96,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 
 ## Session File Location
 
-Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. A pointer file at `.socrates/.current` contains the active session directory name. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter.
+Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. There is no pointer file — on continuation, the most recent session is found by sorting the timestamped directories. Multiple concurrent sessions in the same project are supported. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter.
 
 Session artifacts:
 - `spec.md` — authoritative specification
@@ -112,23 +115,30 @@ This command manages its own phased execution. If plan mode is active at the sta
 1. Generate a timestamp (use Bash: `date +%Y%m%d-%H%M%S`).
 2. Create `.socrates/TIMESTAMP/` directory.
 3. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
-4. Write the directory name to `.socrates/.current`.
-5. Set status to `Interrogating`.
+4. Set status to `Interrogating`.
 6. Classify task type.
-7. Pre-fill every section inferable from the title and domain. Leave `_[open]_` only where genuine ambiguity exists. Do not ask what you can answer yourself.
-8. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
-9. Record the current interpretation of the task in one paragraph.
-10. Use the `AskUserQuestion` tool to ask 2–3 pointed interrogation questions — prioritize the gaps most likely to expose a false positive, false negative, flawed assumption, under-scoped problem, or weak validation strategy. For each question, provide 2–4 concrete options drawn from the most plausible interpretations; the user may also type a custom answer via "Other". Use `multiSelect: true` only when multiple things can genuinely co-apply (e.g. listing applicable constraints). Challenge, do not confirm.
+7. **Research** — before writing or asking anything, investigate the problem space. Read relevant files, grep for related code or config, check what already exists. The goal is to answer as many potential questions as possible from evidence before involving the user. For each candidate question, classify it:
+   - **Self-answerable** (high confidence from evidence): answer it; record as **Assumed** with source citation. Do not ask.
+   - **Probable** (medium confidence): answer it tentatively; mark as **Assumed**, flag it as fragile, and surface it to the user as a confirm-or-correct item rather than an open question.
+   - **User-only** (requires intent, priority, or knowledge only the user holds): ask.
+8. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains after research. Cite evidence or mark claims as **Assumed**.
+9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
+10. Record the current interpretation of the task in one paragraph.
+11. Use the `AskUserQuestion` tool to ask only user-only questions (those research couldn't resolve). For probable-answer questions being surfaced for confirmation, set the best-guess answer as the first (Recommended) option. Aim for 1–3 questions total — fewer if research was thorough. Use `multiSelect: true` only when multiple things can genuinely co-apply. Challenge, do not confirm.
 
 ### Continuation (no `$ARGUMENTS`)
 
-1. Read `.socrates/.current` to get the active session directory.
-2. Load `.socrates/TIMESTAMP/spec.md`.
+1. Find all session directories: `find .socrates -maxdepth 1 -mindepth 1 -type d | sort -r` (newest first).
+2. If none: tell the user no sessions exist and suggest `/socrates "Task Title"` to start one. Stop.
+3. If exactly one: use it.
+4. If multiple: use `AskUserQuestion` to let the user pick. For each session, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description). Present in reverse-chronological order.
+5. Load `SESSION_DIR/spec.md`.
 3. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
-4. Print a one-line alignment summary per commandment (name + state only).
-5. Restate the current interpretation before asking more questions when material ambiguity remains.
-6. Prefer closing existing open questions over opening new ones.
-7. Use the `AskUserQuestion` tool to ask 1–3 interrogation questions targeting the highest-risk false-positive, false-negative, or unverifiable-success paths. Frame 2–4 options per question from the most plausible interpretations; "Other" is always available for open-ended answers.
+4. **Research** any remaining open questions before asking the user. Apply the same classification: self-answerable → answer and cite; probable → surface as confirm-or-correct with a recommended option; user-only → ask.
+5. Print a one-line alignment summary per commandment (name + state only).
+6. Restate the current interpretation before asking more questions when material ambiguity remains.
+7. Prefer closing existing open questions over opening new ones.
+8. Use the `AskUserQuestion` tool for user-only and probable-answer questions only. Frame 2–4 options per question; pre-populate best guesses as the Recommended option. "Other" is always available.
 8. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
@@ -194,7 +204,9 @@ Do not assert domain facts as if they are established without grounding. If no l
 
 ### Interrogation Principles
 
-**Question framing with `AskUserQuestion`**: Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions.
+**Research before asking**: Every potential question must be classified before it reaches the user. If it can be answered from the codebase, docs, memory, or domain knowledge — answer it. Only ask what genuinely requires user intent or context that can't be observed. A question asked when the answer was findable is a waste of the user's time and signals weak preparation.
+
+**Question framing with `AskUserQuestion`**: Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. For probable-answer questions, set the best guess as the first (Recommended) option so the user can confirm with one click. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions.
 
 - One topic per question.
 - Ask "why" to surface unstated assumptions.
@@ -431,6 +443,6 @@ Do not suggest these at the end of Phase 2 or Phase 3. They are available to the
 
 ```
 /socrates "Unified rate card API for carrier negotiation"   # init: creates .socrates/TIMESTAMP/spec.md
-/socrates                                                   # continue: reads .socrates/.current
+/socrates                                                   # continue: resumes most recent session
 /socrates                                                   # continue until validated and planned
 ```
