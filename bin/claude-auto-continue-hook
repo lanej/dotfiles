@@ -70,20 +70,25 @@ def main():
 
     incomplete = get_incomplete_tasks(transcript_path)
 
-    if not incomplete:
-        log(session_id, "stop tasks=0_incomplete")
-        sys.exit(0)
-
-    names = ", ".join(t["subject"][:60] for t in incomplete)
-    log(session_id, f"continue incomplete={len(incomplete)} tasks=[{names}]")
-
-    print(json.dumps({
-        "decision": "block",
-        "reason": (
+    if incomplete:
+        names = ", ".join(t["subject"][:60] for t in incomplete)
+        log(session_id, f"continue incomplete={len(incomplete)} tasks=[{names}]")
+        reason = (
             f"{len(incomplete)} task(s) still incomplete: {names}. "
             "Continue working autonomously. Do not ask the user questions or "
             "pause for confirmation — make decisions and proceed."
-        ),
+        )
+    else:
+        log(session_id, "continue tasks=0 next-step-check")
+        reason = (
+            "All tasks complete. Assess whether there are obvious next steps "
+            "with no blockers — if so, continue autonomously. "
+            "If you are genuinely done or blocked, stop and summarize what was accomplished."
+        )
+
+    print(json.dumps({
+        "decision": "block",
+        "reason": reason,
         "hookSpecificOutput": {"stop_hook_active": True},
     }, ensure_ascii=False))
     sys.exit(2)
