@@ -18,22 +18,16 @@ This repository uses a selective versioning pattern for Claude commands and agen
 
 ~/.claude/            # User's global Claude directory
 ├── commands/         # Symlinked to ~/.files/claude/commands/
-└── agents/           # Symlinked to ~/.files/claude/agents/
+├── agents/           # Symlinked to ~/.files/claude/agents/
+├── skills/           # Symlinked to ~/.files/claude/skills/
+└── CLAUDE.md         # Symlinked to ~/.files/claude/CLAUDE.md
 ```
 
 ### Setup via Makefile
 
-The `make claude` target (Makefile:155-161) establishes the symlinks:
+Run `make claude` (Makefile:168-178). Links commands, agents, skills, and CLAUDE.md into `~/.claude/`, processes `settings.json` via `envsubst`, and wires MCP servers into `~/.claude.json`.
 
-```makefile
-claude:
-	@mkdir -p $(HOME)/.claude
-	@mkdir -p $(HOME)/.claude/local
-	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
-	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
-	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
-	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
-```
+EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from there after cloning to symlink them into `~/.files/claude/skills/`.
 
 ### Workflow
 
