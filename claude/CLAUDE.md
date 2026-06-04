@@ -45,16 +45,6 @@ Keep your responses short and relevant.
 
 **Internal Tools**: Phabricator (code review), Jira (project management), BigQuery, GCP/Vertex AI
 
-**Document Authorship**: Use "Josh Lane" as author for Quarto documents, reports, and analyses
-
-**Analysis Tooling**: `epq` is the canonical EasyPost Quarto analysis library at `~/src/analysis-doc`.
-It is globally installed (`epq` CLI), has an MCP server (`epq mcp`), and a skill file.
-Load the `epq` skill for ANY work involving `.qmd` files, `figures/fig_*.py` modules,
-analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, or PDF render issues.
-Never create analysis project boilerplate manually — always start with `epq scaffold`.
-
-**Domain corrections**: When the user corrects content in their own domain, surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), accept the correction, and update the source material. Do not defend the written version. Exception: when the assertion concerns BQ-verifiable data and you are already querying that data source in the same session, run the verification query before applying the change — the user's recollection may be stale.
-
 ## Session Memory
 
 Two complementary systems — use both.
@@ -119,34 +109,6 @@ The plan file is a point-in-time snapshot of the current task — not a history.
 If the plan needs revision during planning, replace the relevant sections in place.
 Do not append revised sections below old ones.
 
-## Knowledge Base
-
-**`~/workspace` is the canonical knowledge base** — prior analyses, domain decisions, headcount, strategy, customer context, BQ data dictionary, and more. Query it first, regardless of current working directory.
-
-**First-look protocol:** Before answering domain questions or starting substantive work, search the workspace with `qmd query` via Bash. This applies in any working directory (`~/src/*`, `~/workspace/*`, anywhere).
-
-**Always pass `--no-rerank`** when calling `qmd query`. Example: `qmd query --no-rerank "your query here"`
-
-## Research Protocol
-
-When gathering context, work through sources in this order — stop when you have sufficient confidence. Fastest and cheapest first; live/external last.
-
-1. **Auto-memory** — preferences, project state, key decisions already in context
-2. **Workspace KB** (`qmd query --no-rerank`) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context; Looker explore docs in `resources/looker-queries/`
-3. **Codebase** (Glob/Grep/Read) — source of truth for implementation details
-4. **BigQuery** (`mcp__bigquery__query`) — live warehouse data; always `dry_run` first
-5. **Jira** (`mcp__jira__jira_issues_search`) — ticket status, project decisions, delivery context
-6. **Web** (`mcp__codex__codex`) — external docs, standards, anything not internal
-
-## Analysis Toolchain (EPQ + QMD)
-
-For data-driven analysis, use the EPQ + QMD pipeline:
-- **QMD** (`qmd query --no-rerank` via Bash) — query prior analyses, documented decisions, domain knowledge before starting new work. Use lex+vec searches with intent for best recall.
-- **EPQ** (`epq scaffold` → `epq audit` → `just render`; `just full-render` for CI/review submissions; run `epq check-cache` after render failures) — scaffold analysis projects, audit for anti-patterns, render to PDF. All figures in `figures/fig_*.py` modules, never inline in Quarto documents. **Always invoke `just render` (not `quarto render` directly)**; use `just full-render` (`epq render` — full audit + extract + render + PDF check pipeline) before sending for external review. **Never hardcode data values in extract scripts, figure modules, or QMD prose** — any numeric value that could come from a real data source must come from a BQ query and flow through the cache. This applies equally to markdown text in `.qmd` files: never write a data-derived number (count, percent, dollar amount) as a literal string in prose — use `{python}` inline expressions that read from cache scalars instead. Static reference data (labels, provider names, flag constants) is acceptable; metric values, counts, medians, and dollar amounts are not. Two audit rules enforce this and block the render pipeline: `figure/hardcoded-metric` (module-level float/int assignments and Data dataclass field defaults) and `extract/hardcoded-scalar` (literal values in `write_cache()` scalars dict). Bad: `GROWTH_RATE = 0.147` in a figure module. Good: derive from `cache.read_cache(CACHE_NAME)["scalars"]["growth_rate"]` in `load()`. Layout constants are excluded: variable names containing `alpha`, `linewidth`, `fontsize`, `dpi`, `width`, `height`, `hspace`, `wspace`, `zorder`, `markersize`, `rotation`, and similar matplotlib parameter names are never flagged; integers ≤ 10 are also excluded. To suppress a line that is genuinely a style constant: `# epq: noqa figure/hardcoded-metric`.
-- **BigQuery** → **DuckDB** — BQ for warehouse queries, DuckDB for local analytics on exported data.
-
-Load `epq` skill for Quarto document work.
-
 ## Operational Guidelines
 
 **CRITICAL: Never limit work based on token usage, cost, or computational resources.**
@@ -162,7 +124,7 @@ Load `epq` skill for Quarto document work.
 
 ## Interactive vs Automated Tools
 
-**Don't automate interactive tools.** Text editors (nvim/vim/nano), interactive prompts, `arc diff` (no flags), `git commit` (no -m), interactive rebases — let the user interact. Use non-interactive flags when available. Never use `EDITOR=cat`/`EDITOR=true` hacks. See `methodology` skill for red flags and correct approach.
+**Don't automate interactive tools.** Text editors (nvim/vim/nano), interactive prompts, `git commit` (no -m), interactive rebases — let the user interact. Use non-interactive flags when available. Never use `EDITOR=cat`/`EDITOR=true` hacks. See `methodology` skill for red flags and correct approach.
 
 **`gh pr checkout` is not worktree-safe — never use it in sub-agent briefings.** It operates against the main git directory regardless of CWD, switching the main working directory's branch and overwriting files there. When a sub-agent needs to work on a PR branch (e.g., to fix review issues), instruct it to use `git fetch origin <branch> && git checkout -b fix/<name> origin/<branch>` inside the worktree instead.
 
@@ -207,7 +169,7 @@ Figure modules (`figures/fig_*.py`) require an explicit grep pass: chart titles,
 
 ### Citations in Written Artifacts
 
-In any written artifact — memos, reports, analyses, proposals, strategy docs, comms — cite sources for claims that are quantitative, comparative, describe external behavior or market conditions, or could be challenged if communicated outside the company. Citations must be remote references (URLs) so they are followable by any reader the document is shared with. Internal-only references (Confluence pages, internal dashboards) do not satisfy this when external communication risk exists. When external risk is even modest, err toward over-citing with public or publicly-accessible links. Apply to EPQ analyses, 6-pagers, org announcements, anything that might be forwarded or published. Unsourced or un-linkable claims in externally-facing artifacts are a trust and accuracy liability.
+In any written artifact — memos, reports, analyses, proposals, strategy docs, comms — cite sources for claims that are quantitative, comparative, describe external behavior or market conditions, or could be challenged if communicated outside the company. Citations must be remote references (URLs) so they are followable by any reader the document is shared with. Internal-only references (Confluence pages, internal dashboards) do not satisfy this when external communication risk exists. When external risk is even modest, err toward over-citing with public or publicly-accessible links. Apply to analyses, 6-pagers, org announcements, anything that might be forwarded or published. Unsourced or un-linkable claims in externally-facing artifacts are a trust and accuracy liability.
 
 ## Tool Preferences
 
@@ -221,24 +183,15 @@ In any written artifact — memos, reports, analyses, proposals, strategy docs, 
 - **jq**: STRONGLY PREFERRED for ALL JSON operations (instead of Python/Node.js scripts)
 - **xlsx**: Use `xlsx` binary for ALL Excel file operations (viewing, filtering, editing, conversion); AVOID Python/Node.js libraries
 - **Just**: PREFERRED command runner over Make; keep recipes simple (1-3 lines)
-- **BigQuery**: Prefer `bigquery` CLI; see `bigquery` skill for output format quirks, SQL patterns, and Python subprocess patterns. EasyPost-specific table gotchas (classified_tickets, DORA, ironclad, luma_select_requests, NetSuite) are in `~/workspace/CLAUDE.md`.
-
 - **DuckDB**: Prefer for local SQL analytics (CSV/JSON/Parquet). See `duckdb` skill for syntax patterns (single quotes for strings, `read_json_auto()` for JSONL, `UNNEST` for arrays). **`duckdb -json` LIST/ARRAY column gotcha**: `-json` serializes LIST columns as a JSON string (`'[676599]'`), not a proper JSON array. When consuming DuckDB JSON output via Python subprocess, always parse with `json.loads(val)` before iterating — never iterate the raw field or call `.update(val)` on it directly (iterates characters, not elements).
-- **Arcanist (arc)**: `arc diff` replaces `git push`; NEVER automate interactive editor sessions; use `--message` for non-interactive updates. See `arc` skill for full workflow.
 - **JavaScript/Node.js**: See `javascript` skill for library gotchas (Zustand/antd-style conflict, Playwright+antd, Bun:sqlite, SSE streaming patterns).
 - **GCP/Vertex AI**: Use `@anthropic-ai/vertex-sdk` (not `@google-cloud/vertexai`). See `gcp` skill for model ID format, `anthropic_beta` body placement, `thinking` parameter quirks, Secret Manager env var trailing-newline gotcha, and Cloud Monitoring `notification_rate_limit` (log-based only).
 - **`gcloud builds submit` and `.gitignore` negations**: `gcloud builds submit` silently drops `!file` negation patterns when reading `.gitignore` as a fallback. Fix: always create a `.gcloudignore` with explicit per-file exclusions (no negations). Files not listed are included; list only what to exclude (e.g., `data/*-cache.json`).
-- **Jira Goals**: Use `jira goals list --format jsonl` (CLI, GraphQL API) — NOT MCP tools. `issuetype = Goal` in JQL returns zero results; Goals are not Jira issue types. Goal links on Epics (`customfield_10025`) cannot be set via API — UI only; every API attempt clears the field.
 - **Slack DMs**: Never open a Slack message with the recipient's name (e.g., "Lewis —" or "Hi John,"). Lead with the first substantive sentence — the recipient knows who they are.
 - **gspace**: See `gspace` skill for Google Workspace gotchas (Docs frontmatter, Gmail, Slides, Drive).
 - **Slack users list**: `slack users list --format json` emits `[INFO]`/`[WARN]` rate-limit lines to stdout before the JSON — filter them before parsing.
 - **CLAUDE.local.md pending tasks**: One line per task, imperative. No steps, no SQL, no context that belongs in code. If more than two lines are needed, it belongs in a Jira ticket or spec, not a project rule file.
-- **matplotlib**: See `matplotlib` skill for figure gotchas (LaTeX `$` escaping, Unicode rendering, `savefig`/`close` ordering, shape boundary math, series consistency) and for standalone figure scripts outside the epq pipeline.
-- **epq cache empty-result pattern**: 0-row cache raises `StaleCache` → `KeyError` at render. Fix: return data from extract function directly; never call `read_cache()` at the end. Scalars-only caches: `write_cache(records=[])` also counts as empty — include at least one summary record. Run `epq check-cache` after render failures.
-
-- **EPQ scaffold artifact `fig_example.py` blocks CLI render**: `epq scaffold` generates `figures/fig_example.py` without a `load()` function. The CLI `epq render` audits ALL `fig_*.py` files and blocks on `figure/missing-load`. The MCP `epq_audit` tool may exclude unreferenced modules and report passing — do NOT trust MCP audit as confirmation of CLI render readiness. Fix: delete `figures/fig_example.py` immediately after scaffolding before writing any real figure modules.
-- **`epq render` re-runs all extract scripts, overwriting custom-window data**: `epq render` (the full pipeline) unconditionally re-executes all `scripts/data/extract_*.py` with default arguments, overwriting any manually-loaded data (e.g., a custom 90-day window). To skip re-extraction and render only, use `just render` (which calls `quarto render` directly without the extract stage).
-
+- **matplotlib**: See `matplotlib` skill for figure gotchas (LaTeX `$` escaping, Unicode rendering, `savefig`/`close` ordering, shape boundary math, series consistency) and for standalone figure scripts.
 ## Development Best Practices
 
 - **TOML files** (Cargo.toml, pyproject.toml): Place comments on separate lines above config (NOT inline after values)
