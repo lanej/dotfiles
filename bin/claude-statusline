@@ -8,6 +8,7 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir')
 worktree_name=$(echo "$input" | jq -r '.worktree.name // empty')
 model_id=$(echo "$input" | jq -r '.model.id')
+model_name=$(echo "$input" | jq -r '.model.display_name')
 total_input=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
 total_output=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
 vim_mode=$(echo "$input" | jq -r '.vim.mode // empty')
@@ -33,6 +34,7 @@ _min_prefix() {
   while [ "$len" -lt "${#name}" ]; do
     prefix="${name:0:$len}"
     # awk avoids pipefail issues from grep exiting 1 on no-match
+    # shellcheck disable=SC2012
     others=$(ls -1A "$parent" 2>/dev/null | awk -v p="$prefix" -v n="$name" 'substr($0,1,length(p))==p && $0!=n{c++} END{print c+0}')
     [ "$others" -eq 0 ] && break
     len=$((len + 1))
@@ -107,7 +109,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
     if [ "$cwd" = "$git_root" ]; then
       dir="$root_display"
     else
-      within="${cwd#${git_root}/}"
+      within="${cwd#"${git_root}"/}"
       dir="${root_display}:$(_fish_path_rel "$within" "$git_root")"
     fi
   fi
@@ -133,9 +135,12 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       printf ' \033[34m%s %s\033[0m' "$git_sym" "$branch"
 
       # Ahead/behind tracking
+      # shellcheck disable=SC1083
       upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null || echo "")
       if [ -n "$upstream" ]; then
+        # shellcheck disable=SC1083
         ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo "0")
+        # shellcheck disable=SC1083
         behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo "0")
 
         if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
@@ -182,6 +187,11 @@ if [ -n "$vim_mode" ]; then
     "NORMAL") printf ' \033[33m%s\033[0m' "$vim_sym" ;;
     "INSERT") ;;
   esac
+fi
+
+# Model name
+if [ -n "$model_name" ] && [ "$model_name" != "null" ]; then
+  printf ' \033[90m%s\033[0m' "$model_name"
 fi
 
 # Mode indicators: thinking + effort
