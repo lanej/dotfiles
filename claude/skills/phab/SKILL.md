@@ -1,1 +1,0 @@
-/Users/joshlane/src/phab/skill/SKILL.md
