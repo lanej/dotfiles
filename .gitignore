@@ -16,6 +16,9 @@ memory.json
 .memory.json
 __pycache__
 
+# Socrates interrogation session artifacts (transient work product)
+.socrates/
+
 # Local symlinks to external repos (machine-specific)
 claude/skills/problem-definition/SKILL.md
 claude/skills/epq
