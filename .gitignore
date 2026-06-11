@@ -21,5 +21,7 @@ claude/skills/problem-definition/SKILL.md
 claude/skills/epq
 claude/skills/gspace/SKILL.md
 claude/skills/gspace/references
+claude/skills/slack/SKILL.md
+CLAUDE.local.md
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
