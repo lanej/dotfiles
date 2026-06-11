@@ -1,24 +1,46 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["anthropic[vertex]>=0.40"]
+# ///
 """Evaluate pick-model heuristic accuracy against labeled test cases.
 
 Mirrors the real Claude Code execution context: loads the ## Model Selection
 section from claude/CLAUDE.md plus the body of pick-model.md (frontmatter
 stripped) as the system prompt, then sends each task as a user message.
 
-Usage: uv run claude/eval/pick-model-eval.py
-Requires: ANTHROPIC_API_KEY
+Runs against Claude on Vertex AI, authenticated with the active gcloud access
+token (gcloud auth print-access-token) — no ANTHROPIC_API_KEY needed.
+
+Usage:    uv run claude/eval/pick-model-eval.py
+Requires: an active gcloud session with Vertex AI access.
+Env:      VERTEX_PROJECT (default easypost-platform),
+          VERTEX_REGION  (default us-east5),
+          EVAL_MODEL     (default claude-sonnet-4-6).
 """
+import os
 import re
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
-import anthropic
+
+from anthropic import AnthropicVertex
 
 REPO = Path(__file__).parent.parent
 CLAUDE_MD = REPO / "CLAUDE.md"
 PICK_MODEL_MD = REPO / "commands" / "pick-model.md"
 
 PASS_THRESHOLD = 0.90
+PROJECT = os.environ.get("VERTEX_PROJECT", "easypost-platform")
+REGION = os.environ.get("VERTEX_REGION", "us-east5")
+EVAL_MODEL = os.environ.get("EVAL_MODEL", "claude-sonnet-4-6")
+
+
+def gcloud_access_token() -> str:
+    return subprocess.check_output(
+        ["gcloud", "auth", "print-access-token"], text=True
+    ).strip()
 
 
 def extract_model_selection_section(text: str) -> str:
@@ -71,7 +93,7 @@ CASES: list[tuple[str, str | list[str]]] = [
 
 
 def evaluate(
-    client: anthropic.Anthropic,
+    client: AnthropicVertex,
     system: str,
     task: str,
     expected: str | list[str],
@@ -79,7 +101,7 @@ def evaluate(
     """Returns (got, passed, parse_error)."""
     try:
         resp = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=EVAL_MODEL,
             max_tokens=256,
             temperature=0,
             system=system,
@@ -103,7 +125,9 @@ def evaluate(
 
 if __name__ == "__main__":
     system = build_system_prompt()
-    client = anthropic.Anthropic()
+    client = AnthropicVertex(
+        project_id=PROJECT, region=REGION, access_token=gcloud_access_token()
+    )
 
     results = []
     per_class: dict[str, list[bool]] = defaultdict(list)
