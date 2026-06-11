@@ -88,7 +88,7 @@ No hard-wrapping at 80 columns. Write prose as single long lines.
 - **Git**: git-commit-message-writer agent. No AI attribution.
 - **GitHub PRs**: pull-request-writer agent. No AI attribution.
 - **GitHub PR Reviews**: pull-request-commentor agent. No AI attribution.
-- **Python**: `uv run`; avoid pip. `json.dumps` defaults to `ensure_ascii=True` — use `ensure_ascii=False` for any JSON containing non-ASCII user text.
+- **Python**: `uv run`; avoid pip. `json.dumps` defaults to `ensure_ascii=True` — use `ensure_ascii=False` for any JSON containing non-ASCII user text. Use `@dataclass` (or `@dataclass(frozen=True)`) for structured data — not dicts, not NamedTuples. Type-annotate all function signatures (parameters and return types). Prefer `dataclasses.field(default_factory=...)` over mutable defaults.
 - **Go**: `gotestsum` for all tests.
 - **Rust**: `cargo test --quiet` → `cargo check --quiet` → `cargo clippy`. Never `cargo build` for validation.
 - **jq**: strongly preferred for all JSON operations.
