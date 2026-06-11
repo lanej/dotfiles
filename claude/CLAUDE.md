@@ -160,33 +160,11 @@ Load `epq` skill for Quarto document work.
 
 ## Model Selection
 
-**At task start, briefly assess whether the current model is appropriate.** If not, say so in one sentence before proceeding — the user can restart with `claude --model <id>`. Do not refuse to work; complete the task regardless of model.
+Haiku (`claude-haiku-4-5`, $1/$5/MTok) — trivial: lookups, classification, single-turn Q&A.
+Sonnet (`claude-sonnet-4-6`, $3/$15/MTok) — default.
+Opus (`claude-opus-4-8`, $5/$25/MTok) — upgrade when: multi-stage coherence across 5+ files, novel architecture tradeoffs, subtle concurrency bugs, high rework-if-wrong cost, or complex data modeling. Opus wins economically when Sonnet would need 2+ iterations.
 
-**Available models** (cheapest to most capable):
-
-| Model | ID | $/MTok in | $/MTok out | Best for |
-|---|---|---|---|---|
-| Haiku 4.5 | `claude-haiku-4-5` | $1 | $5 | Simple lookups, classification |
-| Sonnet 4.6 | `claude-sonnet-4-6` | $3 | $15 | Default — most tasks |
-| Opus 4.8 | `claude-opus-4-8` | $5 | $25 | Complex reasoning, multi-stage coherence |
-
-**The economic insight**: Opus costs ~1.7× Sonnet per token but can be cheaper in total if it solves the problem in fewer attempts. If Sonnet takes 3 passes at 5K tokens each ($0.045), Opus solving it in 1 pass at 8K tokens costs $0.040. Fewer iterations beats the per-token rate.
-
-**Default to Sonnet for**:
-- Boilerplate generation, scaffolding, well-known API usage
-- Simple refactors with clear mechanical steps
-- Documentation, commit messages, PR descriptions
-- Search/grep/exploration tasks, format conversions
-- Single-file bug fixes with obvious root causes
-
-**Switch to Opus when any of these apply**:
-- **Multi-stage coherence**: later steps must stay logically consistent with earlier decisions across 5+ files or phases
-- **Novel architecture**: no established pattern in the codebase; evaluating design tradeoffs
-- **Subtle bugs**: race conditions, cross-system state, or bugs requiring multiple execution paths held in mind simultaneously
-- **High correction cost**: wrong answer requires significant rework (architectural decisions, security design, migration plans)
-- **Complex data modeling**: non-trivial joins, window functions, or query performance optimization across large schemas
-
-**Use `/pick-model` command** for an explicit pre-flight assessment before starting a multi-step task.
+Wrong model for the task? Say so in one line, then proceed. Use `/pick-model <task>` for pre-flight.
 
 ## Interactive vs Automated Tools
 
