@@ -160,8 +160,8 @@ Load `epq` skill for Quarto document work.
 
 ## Model Selection
 
-Haiku (`claude-haiku-4-5`, $1/$5/MTok) — trivial: lookups, classification, single-turn Q&A.
-Sonnet (`claude-sonnet-4-6`, $3/$15/MTok) — default.
+Haiku (`claude-haiku-4-5`, $1/$5/MTok) — trivial and read-only only: factual lookups, syntax recall, classification, format conversion, single-turn Q&A. Haiku never produces output that lands in the repo — no code, config, docstrings, or commit messages, even one-liners.
+Sonnet (`claude-sonnet-4-6`, $3/$15/MTok) — default for anything that writes to a file or commit: edits, refactors, bug fixes, new flags/functions/tests, renames, scripts, Makefiles, docstrings, commit messages. When in doubt, Sonnet.
 Opus (`claude-opus-4-8`, $5/$25/MTok) — upgrade when: multi-stage coherence across 5+ files, novel architecture tradeoffs, subtle concurrency bugs, high rework-if-wrong cost, or complex data modeling. Opus wins economically when Sonnet would need 2+ iterations.
 
 Wrong model for the task? Say so in one line, then proceed. Use `/pick-model <task>` for pre-flight.
