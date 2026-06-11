@@ -186,7 +186,7 @@ Load `epq` skill for Quarto document work.
 - **High correction cost**: wrong answer requires significant rework (architectural decisions, security design, migration plans)
 - **Complex data modeling**: non-trivial joins, window functions, or query performance optimization across large schemas
 
-**Use `/model` command** for an explicit pre-flight assessment before starting a multi-step task.
+**Use `/pick-model` command** for an explicit pre-flight assessment before starting a multi-step task.
 
 ## Interactive vs Automated Tools
 

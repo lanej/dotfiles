@@ -4,7 +4,7 @@ argument-hint: [task description]
 allowed-tools: []
 ---
 
-# /model — Pre-flight Model Assessment
+# /pick-model — Pre-flight Model Assessment
 
 Evaluate the task described in `$ARGUMENTS` (or the most recent user request if no arguments) against the model selection heuristics below, then output a single recommendation block.
 
@@ -44,5 +44,5 @@ Reason:  [One sentence: the specific signal that drove this recommendation]
 
 If no task is described, output:
 ```
-No task described. Usage: /model <task description>
+No task described. Usage: /pick-model <task description>
 ```
