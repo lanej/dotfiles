@@ -117,10 +117,10 @@ This command manages its own phased execution. If plan mode is active at the sta
 3. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
 4. Set status to `Interrogating`.
 6. Classify task type.
-7. **Research** — before writing or asking anything, investigate the problem space. Read relevant files, grep for related code or config, check what already exists. The goal is to answer as many potential questions as possible from evidence before involving the user. For each candidate question, classify it:
+7. **Research** — treat every candidate question as self-answerable until proven otherwise. Exhaust available evidence before forming any question. Investigate: relevant source files (Read, Glob, grep), existing configs and scripts, memory and prior session context, domain conventions and patterns. For each candidate question, attempt to answer it from evidence first. A question only qualifies for the user after a genuine research attempt has failed. When a question does reach the user, you must be able to state in one sentence what you looked for and why research didn't resolve it — if you can't state this, keep researching. Classify each post-research question:
    - **Self-answerable** (high confidence from evidence): answer it; record as **Assumed** with source citation. Do not ask.
-   - **Probable** (medium confidence): answer it tentatively; mark as **Assumed**, flag it as fragile, and surface it to the user as a confirm-or-correct item rather than an open question.
-   - **User-only** (requires intent, priority, or knowledge only the user holds): ask.
+   - **Probable** (medium confidence): answer it tentatively; mark as **Assumed**, flag as fragile, surface as confirm-or-correct — not an open question.
+   - **User-only** (genuinely unresolvable from evidence — requires intent, priorities, or institutional knowledge only the user holds): ask.
 8. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains after research. Cite evidence or mark claims as **Assumed**.
 9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
 10. Record the current interpretation of the task in one paragraph.
@@ -204,7 +204,7 @@ Do not assert domain facts as if they are established without grounding. If no l
 
 ### Interrogation Principles
 
-**Research before asking**: Every potential question must be classified before it reaches the user. If it can be answered from the codebase, docs, memory, or domain knowledge — answer it. Only ask what genuinely requires user intent or context that can't be observed. A question asked when the answer was findable is a waste of the user's time and signals weak preparation.
+**Research before asking — hard rule**: The burden of proof is on asking, not on answering. Every question must survive a research attempt before it reaches the user. If you haven't checked the codebase, configs, memory, and domain conventions for an answer, the question isn't ready to ask. Asking something resolvable from evidence is a failure of preparation, not a neutral choice. The user's time is the scarcest resource in this workflow — spend your own first.
 
 **Question framing with `AskUserQuestion`**: Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. For probable-answer questions, set the best guess as the first (Recommended) option so the user can confirm with one click. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions.
 
