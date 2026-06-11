@@ -1,8 +1,20 @@
 require("nvim-treesitter").setup()
 
+-- MDX: custom parser combining Markdown + JSX (not in nvim-treesitter built-in list)
+-- Install/update with :TSInstall mdx
+local parsers = require("nvim-treesitter.parsers")
+parsers["mdx"] = {
+	install_info = {
+		url = "https://github.com/srazzak/tree-sitter-mdx",
+		files = { "src/parser.c", "src/scanner.c" },
+		branch = "main",
+	},
+	filetype = "mdx",
+}
+
 -- Install parsers that aren't already present
 require("nvim-treesitter.install").install(
-	{ "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst", "xml", "regex" },
+	{ "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst", "xml", "regex", "markdown", "markdown_inline", "mdx" },
 	{ skip = { installed = true } }
 )
 

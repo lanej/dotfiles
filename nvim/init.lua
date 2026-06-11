@@ -581,7 +581,15 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 vim.filetype.add({
 	extension = {
 		jsonl = "json",
+		mdx = "mdx",
 	},
+})
+
+vim.api.nvim_create_augroup("filetype_mdx", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
+	group = "filetype_mdx",
+	pattern = "mdx",
+	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
 })
 
 -- XML-specific configuration
