@@ -98,6 +98,31 @@ echo -n "my-token" | gcloud secrets versions add my-secret --data-file=-
 token = os.environ.get("MY_SECRET", "").strip()
 ```
 
+
+## Cloud Run Job Creation — Secret Version Required at Deployment Time
+
+When a `google_cloud_run_v2_job` Terraform/OpenTofu resource mounts a Secret Manager secret as an env var (`value_source.secret_key_ref`), GCP validates that the secret version exists at job *creation* time — not at execution time. If the secret resource exists but has no versions yet (just created by TF, not yet populated), the job creation fails with:
+
+```
+Permission denied on secret: projects/.../secrets/<name>/versions/latest for Revision service account ...
+```
+
+This also fails even if the IAM binding (`secretmanager.secretAccessor`) was just created in the same `tofu apply` run — GCP IAM propagation lag means the binding may not have taken effect before the job creation validation runs.
+
+**The fix:** Omit the secret env var from the TF `google_cloud_run_v2_job` resource entirely. Manage it outside TF with:
+
+```bash
+# 1. Populate the secret version first
+gcloud secrets versions add <secret-name> --data-file=- <<< "$VALUE"
+
+# 2. Wire the mount onto the job
+gcloud run jobs update <job-name> \
+  --update-secrets ENV_VAR_NAME=<secret-name>:latest \
+  --region <region> --project <project>
+```
+
+Use `lifecycle { ignore_changes = [...containers[0].env] }` on the Cloud Run Job resource so TF doesn't clobber the secret mount on subsequent applies.
+
 ## Cloud Monitoring — `notification_rate_limit` Only for Log-Based Alerts
 
 `alert_strategy.notification_rate_limit` inside `google_monitoring_alert_policy` (Terraform / OpenTofu) is **only valid for log-based alert policies**. Applying it to metric-based policies returns HTTP 400:
