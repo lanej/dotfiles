@@ -496,6 +496,34 @@ con.execute("UPDATE users SET active = false WHERE last_login < '2024-01-01'")
 print(f"Updated {affected} rows")
 ```
 
+### `.df().to_dict(orient="records")` type coercion
+
+SQL NULL values survive into pandas as typed NA, not Python `None`, and several DuckDB types land as non-JSON-serializable objects:
+
+| DuckDB type | pandas representation | symptom |
+|---|---|---|
+| NULL VARCHAR/INTEGER | `float('nan')` | `AttributeError: 'float' object has no attribute 'lower'` on string ops |
+| NULL TIMESTAMP | `pd.NaT` | `fromisoformat: argument must be str`; not JSON serializable |
+| Non-null TIMESTAMP | `pd.Timestamp` | not JSON serializable — call `.isoformat()` |
+| ARRAY/LIST | `numpy.ndarray` | not JSON serializable — call `.tolist()` |
+
+Sanitize before passing row dicts downstream or to `json.dumps`:
+
+```python
+import math, numpy as np
+import pandas as pd
+
+row = {
+    k: (None if (isinstance(v, float) and math.isnan(v)) or v is pd.NaT
+        else v.isoformat() if isinstance(v, pd.Timestamp)
+        else v.tolist() if isinstance(v, np.ndarray)
+        else v)
+    for k, v in row.items()
+}
+```
+
+Use `json.dumps(row, allow_nan=False)` as a safety net — it raises on any remaining NaN float rather than silently emitting `NaN`.
+
 ## Troubleshooting
 
 ### Quote Handling
