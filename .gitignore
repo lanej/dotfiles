@@ -19,15 +19,9 @@ __pycache__
 # Socrates interrogation session artifacts (transient work product)
 .socrates/
 
-# Local symlinks to external repos (machine-specific)
-claude/skills/problem-definition/SKILL.md
-claude/skills/epq
-claude/skills/gspace/SKILL.md
-claude/skills/gspace/references
-claude/skills/slack/SKILL.md
-claude/skills/conform/SKILL.md
-claude/skills/phab/SKILL.md
-claude/skills/phab/references
+# Skills are ignored by default (symlinked external skills are machine-specific).
+# Real, repo-owned skills are force-added: git add -f claude/skills/<name>
+claude/skills/*
 CLAUDE.local.md
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
