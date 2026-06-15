@@ -56,7 +56,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 	desc = "Reapply gitsigns inline diff highlights after colorscheme changes",
 })
 
-vim.keymap.set("n", "<leader>gw", require("gitsigns").stage_buffer, { silent = true, noremap = true })
+vim.keymap.set("n", "<leader>gW", require("gitsigns").stage_buffer, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>gl", require("gitsigns").blame_line, { silent = true, noremap = true })
 vim.keymap.set("n", "]c", function()
 	require("gitsigns").nav_hunk("next")
@@ -87,12 +87,12 @@ vim.keymap.set(
 )
 
 -- Toggle between comparing against HEAD (uncommitted changes) and merge-base (branch changes)
-vim.keymap.set("n", "<leader>gb", function()
+vim.keymap.set("n", "<leader>gx", function()
 	require("gitsigns").change_base(nil, true) -- Reset to default (HEAD/index)
 	vim.notify("Gitsigns: comparing against HEAD (uncommitted changes)", vim.log.levels.INFO)
 end, { silent = true, noremap = true, desc = "Compare against HEAD" })
 
-vim.keymap.set("n", "<leader>gB", function()
+vim.keymap.set("n", "<leader>gX", function()
 	local origin_head = vim.fn.systemlist("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")[1]
 	if origin_head and origin_head ~= "" then
 		local default_branch = origin_head:match("refs/remotes/(.*)")

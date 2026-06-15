@@ -238,8 +238,6 @@ vim.keymap.set("n", "<leader>bl", builtin.current_buffer_fuzzy_find, { noremap =
 vim.keymap.set("n", "<leader>bb", builtin.buffers, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>bt", builtin.current_buffer_tags, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>bc", builtin.git_bcommits, { noremap = true, silent = true })
-vim.keymap.set("n", "<leader>gf", builtin.git_files, { noremap = true, silent = true })
-vim.keymap.set("n", "<leader>gc", builtin.git_commits, { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>bp", function()
 	builtin.git_branches({
 		prompt_title = "Git Branches (checkout)",
