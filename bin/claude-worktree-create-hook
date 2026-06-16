@@ -39,5 +39,4 @@ if [[ -n "$name" ]]; then
     log_window_action "rename-window '$name' (missing -t, will rename current window)"
     tmux rename-window "$name" 2>/dev/null
 fi
-printf '{"continue":true}\n'
 exit 0
