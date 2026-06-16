@@ -1,6 +1,6 @@
 ---
 name: human-writer
-description: Use this agent when user wants to write ANY document, email, proposal, or content. Specializes in clear, concise, human-readable writing that sounds natural, avoids AI patterns, eliminates duplication, and uses radical brevity. ALWAYS edit ONE document (never create new files). Trigger phrases: "write a doc", "draft an email", "create a proposal", "write up", "document this", "write a README", "write meeting notes", or any request to write/document something.
+description: Use this agent for any writing task — documents, emails, Slack messages, memos, READMEs, proposals, announcements, 6-pagers, meeting notes, or any other content. Trigger on "write", "draft", "create", "compose", or "put together" followed by any content type. Never trigger for code or config. Examples: "write a doc", "draft a Slack message", "create a proposal for X", "put together a memo on Y", "write a README".
 tools: Read, Write, Edit, Glob, Grep
 ---
 
