@@ -134,9 +134,15 @@ Bare query execution where results are not subsequently discussed does NOT quali
 **If qualifying:**
 1. Append to `~/workspace/resources/query-patterns/capture-log.md`:
    `<ISO8601> | session: <ID> | action: spawn-capture | reason: BQ query + results discussed`
-2. Spawn the `query-pattern-capture` agent, briefing it with:
-   - The qualifying observation IDs
-   - A note that this was triggered by reflection after a BQ session
+2. Use the **Agent tool** (NOT Codex, NOT any MCP tool) with `subagent_type: "query-pattern-capture"`:
+   ```
+   Agent(
+     subagent_type="query-pattern-capture",
+     description="Capture BQ query patterns from session",
+     prompt="<qualifying observation IDs and session context>"
+   )
+   ```
+   Brief the agent with: the qualifying observation IDs, the session ID, and a note that this was triggered by reflection after a BQ session. Do not use mcp__codex__codex or any other tool as a substitute for spawning this agent.
 
 **If not qualifying:**
 Append to `~/workspace/resources/query-patterns/capture-log.md`:
