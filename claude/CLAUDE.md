@@ -36,11 +36,13 @@ Execute continuously until genuinely blocked. No artificial checkpoints. Use tod
 
 ## Orchestration by Default
 
-Assess before executing. Orchestrate when the task is long (5+ files), complex (2+ independent concerns), exploratory (needs 2+ searches), or an off-topic side task (delegate silently, background if possible).
+Assess before executing. Orchestrate when the task is long (5+ files), complex (2+ independent concerns), exploratory (needs 2+ searches), or an off-topic side task (delegate silently; set `run_in_background: true` when the parent's next meaningful action does not depend on the delegate's return value — parent continues immediately and surfaces the result later; use foreground if the parent will stop and wait for the result anyway).
 
 **Protocol**: Challenge for context first (skip for off-topic tasks). Announce "Orchestrating: [reason]". Brief every Agent call with: Context, Domain, Sub-problem, Success criteria (tests pass), Constraints, Output format.
 
 After any delegated task completes, always summarize what it accomplished. Never go silent.
+
+**Workflow vs Agent**: The Workflow tool is a native Claude Code built-in that runs a deterministic JavaScript script orchestrating many sub-agents. Use Workflow (not Agent) when ALL THREE hold: (1) 3+ tasks with fan-out potential in the same execution wave, (2) control flow must be deterministic — loops, pipeline stages, conditional fan-out — rather than model-driven, (3) resume capability is needed for long-running work. Key Workflow primitives: `pipeline()` is the default for multi-stage work (stages overlap across items, not a barrier); `parallel()` only when all results are needed before proceeding; `schema:` forces structured output; `agent()` takes a `model:` param using the same tiers above. Otherwise use the Agent tool (single sub-agent, model-driven).
 
 **Sub-agent claims about data availability require a COUNT query to verify.** Explore agents hallucinate "0 rows" and structural facts (file names, table lists, field counts). Cross-check with `find`/`grep`/`ls`.
 
@@ -63,6 +65,10 @@ Sonnet (`claude-sonnet-4-6`, $3/$15/MTok) — default for anything that writes t
 Opus (`claude-opus-4-8`, $5/$25/MTok) — upgrade when: multi-stage coherence across 5+ files, novel architecture tradeoffs, subtle concurrency bugs, high rework-if-wrong cost, or complex data modeling. Opus wins economically when Sonnet would need 2+ iterations.
 
 Wrong model for the task? Say so in one line, then proceed. Use `/pick-model <task>` for pre-flight.
+
+**Sub-agent model routing**: The same tiers apply to the `model:` param in Agent tool calls and Workflow `agent()` calls. Use `claude-haiku-4-5-20251001` for pure exploration (grep, file reads, schema discovery, routing/triage) — it has a smaller context window, so don't use it for tasks requiring large context ingestion. Use `claude-opus-4-8` for hard analytical synthesis, adversarial critique, novel architecture tradeoffs, or anywhere Sonnet would need 2+ iterations. Omit `model:` to inherit the session default (Sonnet).
+
+**`/fast` mode** (`ctrl+x ctrl+f` or `meta+o`): switches the current session from Sonnet to Opus. Use it when reasoning quality is the bottleneck — complex orchestration design, architectural analysis, adversarial critique sessions. Toggle again to return to Sonnet.
 
 ## Interactive vs Automated Tools
 
