@@ -85,6 +85,14 @@ Produce a dense, imperative briefing for your replacement. Not a summary for hum
 
 ## After writing the file
 
+Print the full brief to the user. Then ask:
+
+> "Does this brief accurately capture the context? Approve to spawn the sub-agent, or tell me what to correct."
+
+Do not spawn the sub-agent until the user explicitly approves. Accept corrections and update the brief (and file) before re-presenting.
+
+## On approval
+
 Spawn a sub-agent using the Agent tool. Pass the full brief content as the sub-agent's prompt verbatim — do not summarize or truncate it. The sub-agent should treat the brief as its complete starting context and begin executing the **Next action** immediately.
 
 The parent session receives the sub-agent's result and surfaces it to the user. Do not re-derive or re-execute work the sub-agent already completed — just forward the result.
