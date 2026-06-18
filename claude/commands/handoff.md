@@ -1,19 +1,20 @@
 ---
-description: "Distill the current session into a dense continuation brief for a fresh agent. Writes .claude/handoffs/<task-slug>.md with everything a replacement needs to act — discoveries, decisions, current state, next action."
+description: "Delegate remaining work to a fresh sub-agent to escape context pollution and reduce cost. Distills current session into a dense brief, writes it to .claude/handoffs/<task-slug>.md, then immediately spawns a sub-agent with that brief as its prompt. Sub-agent does the work in clean context; parent receives the result."
 argument-hint: "<task-name> (used as filename slug; derived from session goal if omitted)"
 allowed-tools:
   - Write
   - Read
   - Bash
+  - Agent
 tags:
   - workflow
   - context
   - handoff
 ---
 
-# /handoff - Session Context Handoff
+# /handoff - Context Delegation to Sub-Agent
 
-Write a continuation brief that a fresh agent can load to pick up exactly where this session left off.
+Escape context pollution by delegating remaining work to a fresh sub-agent. Write a dense brief, then spawn the sub-agent with it — work continues in clean context immediately.
 
 ## Filename
 
@@ -82,12 +83,10 @@ Produce a dense, imperative briefing for your replacement. Not a summary for hum
 - **No ambiguity in next action**: It must be specific enough to execute without additional context.
 - **Flag unresolved blockers**: If something is unknown or risky, say so explicitly with the recommended resolution path.
 
-## After writing
+## After writing the file
 
-Print the path: `.claude/handoffs/<slug>.md`
+Spawn a sub-agent using the Agent tool. Pass the full brief content as the sub-agent's prompt verbatim — do not summarize or truncate it. The sub-agent should treat the brief as its complete starting context and begin executing the **Next action** immediately.
 
-Then print a one-line instruction the user can paste to bootstrap the fresh session:
+The parent session receives the sub-agent's result and surfaces it to the user. Do not re-derive or re-execute work the sub-agent already completed — just forward the result.
 
-```
-Read .claude/handoffs/<slug>.md then continue from the handoff.
-```
+If the sub-agent cannot complete the task (blocked on a genuine blocker), surface the blocker directly. Do not spawn another sub-agent without user instruction.
