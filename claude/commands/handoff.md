@@ -1,9 +1,10 @@
 ---
-description: "Distill the current session into a dense continuation brief for a fresh agent. Writes .claude/handoff.md with everything a replacement needs to act — discoveries, decisions, current state, next action."
-argument-hint: "[optional: focus area or remaining task description]"
+description: "Distill the current session into a dense continuation brief for a fresh agent. Writes .claude/handoffs/<task-slug>.md with everything a replacement needs to act — discoveries, decisions, current state, next action."
+argument-hint: "<task-name> (used as filename slug; derived from session goal if omitted)"
 allowed-tools:
   - Write
   - Read
+  - Bash
 tags:
   - workflow
   - context
@@ -14,11 +15,19 @@ tags:
 
 Write a continuation brief that a fresh agent can load to pick up exactly where this session left off.
 
+## Filename
+
+Derive a short kebab-case slug from the task name:
+- If an argument was passed (e.g., `/handoff refactor-auth`), use it directly: `refactor-auth`
+- Otherwise derive from the session goal: e.g., "migrate DORA tables to BQ" → `dora-bq-migration`
+
+Write to: `.claude/handoffs/<slug>.md`
+
+Create the directory if it doesn't exist: `mkdir -p .claude/handoffs`
+
 ## Instructions
 
 Produce a dense, imperative briefing for your replacement. Not a summary for human reading — a bootstrap prompt for an agent starting cold. Every sentence must either change a decision, constrain an action, or describe current state. No narrative, no preamble, no "we explored X."
-
-Write the brief to `.claude/handoff.md`.
 
 ## Brief Structure
 
@@ -64,10 +73,10 @@ Write the brief to `.claude/handoff.md`.
 
 ## After writing
 
-Print the path: `.claude/handoff.md`
+Print the path: `.claude/handoffs/<slug>.md`
 
 Then print a one-line instruction the user can paste to bootstrap the fresh session:
 
 ```
-> Read .claude/handoff.md then continue the handoff task.
+Read .claude/handoffs/<slug>.md then continue from the handoff.
 ```
