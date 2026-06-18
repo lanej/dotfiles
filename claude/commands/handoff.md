@@ -95,22 +95,37 @@ The brief is the minimal fast-start. Every sentence must change a decision, cons
 - [hard limit or known unknown with resolution path]
 ```
 
-## Step 4: Present for approval
+## Step 4: Spawn the sub-agent immediately in the background
 
-Print the full brief to the user. Then ask:
+Spawn using the Agent tool with `run_in_background: true`. Pass the full brief as the sub-agent's prompt verbatim. Do not wait for user approval first — the sub-agent performs its own context check.
 
-> "Does this brief accurately capture the context? Approve to spawn the sub-agent, or tell me what to correct."
+Tell the user: "Sub-agent spawned. You'll be notified when it completes or if it needs more context."
 
-Do not spawn until the user explicitly approves. Accept corrections, update both files, re-present.
+### Sub-agent instructions (include verbatim in the prompt)
 
-## Step 5: On approval — spawn the sub-agent
+```
+BEFORE doing any work:
 
-Spawn a sub-agent using the Agent tool. Pass the full brief as the sub-agent's prompt verbatim.
+1. Read this brief.
+2. Read the session context file at the path listed in the brief.
+3. Assess: can you execute the Next action without making assumptions that could be wrong?
 
-The sub-agent should:
-1. Read the brief
-2. If it hits a gap the brief doesn't cover, read `.claude/sessions/<session-id>.md` — do not ask the parent first
-3. Execute the **Next action** and continue until done or genuinely blocked
-4. Return a structured summary: what was completed, what changed, any blockers
+If YES: proceed. Return a structured summary when done:
+  - completed: [what was done]
+  - changed: [files modified and how]
+  - blockers: [anything you couldn't resolve]
 
-The parent receives that summary and forwards it to the user. Do not re-execute work the sub-agent completed.
+If NO: return this immediately and do nothing else:
+  - status: context-insufficient
+  - gaps: [what's missing and what decision each blocks]
+  - assumptions-if-forced: [what you'd assume if told to proceed anyway, and the risk]
+
+Do not guess. Do not begin execution if the context is insufficient.
+```
+
+### When the sub-agent completes
+
+- If it returns a summary: forward it to the user. Done.
+- If it returns `context-insufficient`: surface the gaps to the user, collect answers, update the session file with the new information, and re-spawn.
+
+Do not re-execute work the sub-agent completed.
