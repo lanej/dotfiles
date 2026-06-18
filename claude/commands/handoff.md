@@ -30,10 +30,10 @@ Create the directory if it doesn't exist: `mkdir -p .claude/handoffs`
 Before writing, capture the originating session ID:
 
 ```bash
-echo "${CLAUDE_SESSION_ID:-${TERM_SESSION_ID:-unknown}}"
+echo "${CLAUDE_CODE_SESSION_ID:-unknown}"
 ```
 
-Use whatever value that produces. If both are empty, use `unknown`.
+Use whatever value that produces. If empty, use `unknown`.
 
 ## Instructions
 
