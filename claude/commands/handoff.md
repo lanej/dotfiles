@@ -25,6 +25,16 @@ Write to: `.claude/handoffs/<slug>.md`
 
 Create the directory if it doesn't exist: `mkdir -p .claude/handoffs`
 
+## Session ID
+
+Before writing, capture the originating session ID:
+
+```bash
+echo "${CLAUDE_SESSION_ID:-${TERM_SESSION_ID:-unknown}}"
+```
+
+Use whatever value that produces. If both are empty, use `unknown`.
+
 ## Instructions
 
 Produce a dense, imperative briefing for your replacement. Not a summary for human reading — a bootstrap prompt for an agent starting cold. Every sentence must either change a decision, constrain an action, or describe current state. No narrative, no preamble, no "we explored X."
@@ -34,6 +44,7 @@ Produce a dense, imperative briefing for your replacement. Not a summary for hum
 ```markdown
 # Handoff: [task name — one line]
 
+**Handed off from session**: [session ID captured above]
 **Context**: [repo or project path, tech stack, 1-2 sentences max]
 
 ## Goal
