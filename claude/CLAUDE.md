@@ -68,7 +68,7 @@ Wrong model for the task? Say so in one line, then proceed. Use `/pick-model <ta
 
 **Sub-agent model routing**: The same tiers apply to the `model:` param in Agent tool calls and Workflow `agent()` calls. Use `claude-haiku-4-5-20251001` for pure exploration (grep, file reads, schema discovery, routing/triage) — it has a smaller context window, so don't use it for tasks requiring large context ingestion. Use `claude-opus-4-8` for hard analytical synthesis, adversarial critique, novel architecture tradeoffs, or anywhere Sonnet would need 2+ iterations. Omit `model:` to inherit the session default (Sonnet).
 
-**`/fast` mode** (`ctrl+x ctrl+f` or `meta+o`): switches the current session from Sonnet to Opus. Use it when reasoning quality is the bottleneck — complex orchestration design, architectural analysis, adversarial critique sessions. Toggle again to return to Sonnet.
+**Switching to Opus** (`meta+p` model picker): fast mode (`/fast`) requires direct Anthropic API and is unavailable on Vertex. Use the model picker instead to switch to Opus for sessions where reasoning quality is the bottleneck — complex orchestration design, architectural analysis, adversarial critique. Switch back via model picker.
 
 ## Interactive vs Automated Tools
 
