@@ -189,9 +189,13 @@ if [ -n "$vim_mode" ]; then
   esac
 fi
 
-# Model name
+# Model name — bright yellow + bolt when Opus (fast mode), gray otherwise
+bolt=$(printf '\xe2\x9a\xa1')   # U+26A1 LIGHTNING
 if [ -n "$model_name" ] && [ "$model_name" != "null" ]; then
-  printf ' \033[90m%s\033[0m' "$model_name"
+  case "$model_id" in
+    *opus*) printf ' \033[33;1m%s%s\033[0m' "$bolt" "$model_name" ;;
+    *)      printf ' \033[90m%s\033[0m' "$model_name" ;;
+  esac
 fi
 
 # Mode indicators: thinking + effort
