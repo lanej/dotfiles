@@ -75,8 +75,28 @@ if [[ -n "$TMUX" ]]; then
 			return
 		fi
 
-		# If we just returned from nvim/vim, preserve the prosession-set window name
+		# If we just returned from nvim/vim, preserve the window name
 		if [[ "$_tmux_last_cmd" == "nvim" || "$_tmux_last_cmd" == "vim" ]]; then
+			_release_lock "$lock_dir"
+			return
+		fi
+
+		# Only rename if we own this window's title or it's still the shell default.
+		# @auto_titled_name stores the last title we set. If the current name no longer
+		# matches it, something else renamed the window — leave it alone.
+		local current_name
+		current_name=$(tmux display-message -p '#{window_name}' 2>/dev/null)
+		local auto_titled_name
+		auto_titled_name=$(tmux show-options -w -v @auto_titled_name 2>/dev/null)
+
+		if [[ -n "$auto_titled_name" && "$current_name" != "$auto_titled_name" ]]; then
+			# Another tool renamed this window since we last set it
+			_release_lock "$lock_dir"
+			return
+		fi
+
+		if [[ -z "$auto_titled_name" && "$current_name" != "zsh" && "$current_name" != "bash" && "$current_name" != "sh" ]]; then
+			# We've never named this window and it's not the shell default
 			_release_lock "$lock_dir"
 			return
 		fi
@@ -98,8 +118,8 @@ if [[ -n "$TMUX" ]]; then
 		current_window=$(tmux display-message -p '#{window_index}' 2>/dev/null)
 
 		if [[ "$is_active" == "1" ]] && [[ "$current_window" == "$window_index" ]]; then
-			# Use -t to target specific window, not current
 			tmux rename-window -t ":$window_index" "$title" 2>/dev/null
+			tmux set-option -w @auto_titled_name "$title" 2>/dev/null
 		fi
 
 		_release_lock "$lock_dir"
