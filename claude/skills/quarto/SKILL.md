@@ -38,7 +38,7 @@ from epq import style, cache, bq, fmt
 style.apply_style()          # canonical rcParams (150/200 DPI, sans-serif fallbacks)
 style.NAVY, style.TEAL, ...  # workspace palette — never redefine inline
 cache.read_cache("name")     # 24h TTL file-based cache → None if stale/missing
-bq.run_bq_query(SQL)         # subprocess bigquery CLI wrapper, max_results=10000
+bq.run_bq_query(SQL)         # BigQuery client library wrapper → Iterator[DataFrame]
 fmt.millions_formatter()     # FuncFormatter for ax.yaxis.set_major_formatter()
 ```
 
@@ -965,20 +965,16 @@ data = load_data('extracted_metrics.jsonl')  # Non-portable!
 ✅ **PREFERRED: Document defines where data comes from**
 ```python
 #| cache: true
-import subprocess
-import io
 import pandas as pd
+from epq import bq
 
-# Extract from BigQuery - cached to avoid re-running on every render
-result = subprocess.run([
-    'bigquery', 'query',
-    '''SELECT * FROM production.orders 
-       WHERE date >= '2024-01-01' 
-       AND status = 'completed' ''',
-    '--format', 'jsonl'
-], capture_output=True, text=True, check=True)
-
-df = pd.read_json(io.StringIO(result.stdout), lines=True)
+# Extract from BigQuery via client library — cached to avoid re-running on every render
+chunks = list(bq.run_bq_query("""
+    SELECT * FROM production.orders
+    WHERE date >= '2024-01-01'
+    AND status = 'completed'
+"""))
+df = pd.concat(chunks, ignore_index=True)
 ```
 
 ✅ **ALSO GOOD: Canonical external sources**
@@ -1048,7 +1044,7 @@ Use `cache: true` to avoid re-running expensive operations during iteration.
 
 **Requires jupyter-cache** (one-time install):
 ```bash
-uv pip install jupyter-cache
+uv add jupyter-cache
 ```
 
 **Per-cell caching:**
@@ -1057,8 +1053,10 @@ uv pip install jupyter-cache
 #| label: data-extraction
 
 # This cell only re-executes if the code changes
-result = subprocess.run(['bigquery', 'query', ...], capture_output=True, text=True)
-df = pd.read_json(io.StringIO(result.stdout), lines=True)
+from epq import bq
+import pandas as pd
+chunks = list(bq.run_bq_query("SELECT ..."))
+df = pd.concat(chunks, ignore_index=True)
 ```
 
 **Document-wide caching in YAML frontmatter:**
