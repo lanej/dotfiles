@@ -44,15 +44,9 @@ Your loyalty is to clarity and truth, not the user's ego.
 
 Keep your responses short and relevant.
 
-**Internal Tools**: Phabricator (code review), Jira (project management), BigQuery, GCP/Vertex AI, Stitch (ELT/CDC replication, now part of Talend — replicates SaaS sources like Zendesk into BQ; watermark columns are `_sdc_received_at`, `_sdc_batched_at`, `_sdc_sequence`; Zendesk replica lands in `ep-data-migration.easypost_support.*`)
+**Internal Tools**: Phabricator (code review), Jira (project management), BigQuery, GCP/Vertex AI
 
 **Document Authorship**: Use "Josh Lane" as author for Quarto documents, reports, and analyses
-
-**Analysis Tooling**: `epq` is the canonical EasyPost Quarto analysis library at `~/src/analysis-doc`.
-It is globally installed (`epq` CLI), has an MCP server (`epq mcp`), and a skill file.
-Load the `epq` skill for ANY work involving `.qmd` files, `figures/fig_*.py` modules,
-analysis projects in `~/workspace/projects/` or `~/workspace/analysis/`, or PDF render issues.
-Never create analysis project boilerplate manually — always start with `epq scaffold`.
 
 **Domain corrections**: When the user corrects content in their own domain, surface the discrepancy clearly ("the spec says X, you're saying Y — which should it be?"), accept the correction, and update the source material. Do not defend the written version. Exception: when the assertion concerns BQ-verifiable data and you are already querying that data source in the same session, run the verification query before applying the change — the user's recollection may be stale.
 
@@ -75,8 +69,6 @@ Tools: `mcp__plugin_claude-mem_mcp-search__search`, `timeline`, `get_observation
 
 **Sub-agent gap**: The startup hook (session timeline) fires only for the primary agent. Sub-agents start cold — they have the tools but not the pre-loaded context. When briefing sub-agents on established projects, include explicit domain context and claude-mem search framing.
 
-**qmd index is derived, not the filesystem.** If a document isn't found by qmd, check the filesystem before concluding it doesn't exist.
-
 ## Phased Execution System
 
 Execute continuously until genuinely blocked. No artificial checkpoints, no step limits. Use todo lists for progress tracking. See `methodology` skill for full details (adaptive granularity, orchestration, agent modes).
@@ -91,8 +83,6 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 **replace_all safety** — Before using `replace_all: true` in the Edit tool or a global `sed -i` substitution, grep all occurrences of the search string in the file to confirm every match should change. Common failure mode: a short pattern that appears in other contexts changed unintended occurrences (e.g., a sed substitution changed 4 DHL Cases when only 1 was intended). Second failure mode: **parallel/nested code paths at different indentation levels** — files with dual serial/parallel dispatch (e.g., runner.py) have the same logical call at two different indent depths; replacing with surrounding context from the serial path silently misses the parallel closure. Always grep the short pattern alone (not the full surrounding context) to count all occurrences before committing to replace_all. If any occurrences should not change, use targeted replacements with more surrounding context, or line-targeted `sed -i "" "Ns/old/new/"` instead of a global substitution.
 
 **Script argument verification** — Before calling a script with custom CLI arguments, read the script's argument-handling code (sys.argv, argparse, click) to confirm it actually uses those arguments. Scripts that ignore their argv silently return success. This extends the "Validate before reporting" rule: if you can't verify the arg is consumed without reading the source, read the source first.
-
-**BQ table migration predicate check** — When migrating queries from one BigQuery table to another with matching column names, verify that filter predicate VALUES also match the new table's data taxonomy. Column compatibility is necessary but not sufficient. Example failure mode: migrating 13 IC activity queries from `autonomy_scoring.unified_identity` to `DORA.unified_identity` — columns matched, but `department LIKE 'Engineering%'` produced 0 rows because DORA uses resolved display names ('Carriers', 'Applications') not the old taxonomy ('Engineering EasyPost core'). Run a COUNT against the new table with each predicate before reporting the migration complete.
 
 ## Orchestration by Default
 
@@ -127,9 +117,9 @@ Execute continuously until genuinely blocked. No artificial checkpoints, no step
 
 **Sub-agent data availability claims must be verified with a COUNT query.** Explore agents routinely hallucinate row counts — reporting "0 rows" or "data not available" based on documentation, schema metadata, or inference rather than actually running `SELECT COUNT(*) FROM table`. Before accepting any sub-agent claim that a table is empty or data is absent, run the COUNT yourself. This applies especially to: BQ tables populated by async pipelines (Polytomic, pulse-etl, etc.), tables the agent couldn't directly query, and any "0 rows" finding that contradicts user expectation.
 
-**Sub-agent numeric claims also require verification — before surfacing to the user, not after.** When a delegate agent returns specific metric values from BQ (rates, counts, dollar amounts), verify at least the order of magnitude with a direct query before relaying the number. Do not present the sub-agent's figure first and verify only if the user challenges it — that puts the verification burden on the user. Plausible-looking numbers are not self-validating. The failure mode (recurring): a delegate returned $6.58M TTM Forge platform revenue (broken into tidy tier buckets); actual was $326K — a 20x fabrication. An earlier instance: $0.010–$0.015/label effective fee rates; actual was $0.0025–$0.0044 — a 4–6x error. In both cases verification was only run after the user pushed back.
+**Sub-agent numeric claims also require verification — before surfacing to the user, not after.** When a delegate agent returns specific metric values from BQ (rates, counts, dollar amounts), verify at least the order of magnitude with a direct query before relaying the number. Do not present the sub-agent's figure first and verify only if the user challenges it — that puts the verification burden on the user. Plausible-looking numbers are not self-validating.
 
-**Event-level table join fanout — verify aggregate grain before presenting.** When a query joins an event-level table (trackers, scan events, log entries, audit records — any table with multiple rows per entity) to a billing/invoice/charge table, the result inflates aggregates by the average event count per entity. This causes plausible-looking but completely wrong figures (e.g., $79K × 16 events/code = $1.27M phantom total). Before presenting any dollar sum, row count, or rate from such a join: (1) confirm the join grain — DISTINCT tracking_code/shipment_id/entity on the event side before joining; (2) sanity-check the result against the known entity count (if you have 607 delivered codes, the sum should come from ≤607 rows, not 15K). This applies to both sub-agent output AND queries run directly. The join fanout failure mode recurs across projects (commission tables, tracker×invoice joins) because the column names match and the error is silent.
+**Event-level table join fanout — verify aggregate grain before presenting.** When a query joins an event-level table (trackers, scan events, log entries, audit records — any table with multiple rows per entity) to a billing/invoice/charge table, the result inflates aggregates by the average event count per entity. This causes plausible-looking but completely wrong figures (e.g., $79K × 16 events/code = $1.27M phantom total). Before presenting any dollar sum, row count, or rate from such a join: (1) confirm the join grain — DISTINCT tracking_code/shipment_id/entity on the event side before joining; (2) sanity-check the result against the known entity count (if you have 607 delivered codes, the sum should come from ≤607 rows, not 15K). This applies to both sub-agent output AND queries run directly. The join fanout failure mode recurs because column names match and the error is silent.
 
 **Explore agents also hallucinate structural facts** — file names, TF resource names, table name lists, field counts, and directory structures are fabricated when the agent can't locate them directly. Cross-check structural findings from Explore agents against `find`/`grep`/`ls` before trusting them. Example: an Explore agent returned three invented TF filenames (`ai_attribution.tf`, `clean.tf`, `pr_size.tf`) that don't exist; caught by comparing against a prior `grep` in the same conversation.
 
@@ -147,10 +137,6 @@ If the plan needs revision during planning, replace the relevant sections in pla
 Do not append revised sections below old ones.
 
 **`/shape` plan critique gate (MUST NOT SKIP — this rule has been violated 3 times)**: After writing `plan.md` in Stage 4, before calling ExitPlanMode, spawn `Agent(model="opus")` with the full plan text and ask for implementation-focused critique: can the plan be executed correctly from the text alone? Are edit targets unambiguous? Are acceptance criteria falsifiable? Reconcile any findings into the plan, then call ExitPlanMode. Skipping this gate has produced rejected plans requiring full rewrites (Jun 16 2026, Jun 22 2026, Jun 26 2026). The gate is not optional even when the plan "looks complete." ExitPlanMode is blocked until the Opus agent has returned and its findings have been addressed.
-
-## EasyPost Research
-
-For EP domain questions, prior analysis survey, or EPQ work, invoke the `easypost-research` agent — it owns the workspace KB, BQ data dictionary, research order, Looker, and EPQ pipeline context. Load the `epq` skill for active Quarto document work (scaffold, audit, render).
 
 ## Model Selection
 
@@ -173,9 +159,9 @@ Wrong model for the task? Say so in one line, then proceed. Use `/pick-model <ta
 - ONLY consideration: Stay within context window limits for technical functionality
 - Focus on delivering complete, thorough solutions regardless of resource usage
 
-**Architectural layer analysis** — When proposing implementation approaches for new features, proactively analyze which architectural layer is optimal (Python vs BQ view vs middleware vs application layer) based on access patterns, join costs, update frequency, and data freshness requirements before implementing. Don't default to a particular layer just because existing related code lives there. Surface the trade-offs: Python offers flexibility and backward compatibility; BQ views offer immediate effect without re-processing but add per-query join costs; middleware offers caching and transformation. Example: Cycle time computation was initially proposed for Python (where classify logic lives), but user challenged "why would classify care about cycle time changes?" — refactored to BQ view layer for immediate effect without re-classification, accepting the ~29k row DORA join cost on every query.
+**Architectural layer analysis** — When proposing implementation approaches for new features, proactively analyze which architectural layer is optimal (Python vs BQ view vs middleware vs application layer) based on access patterns, join costs, update frequency, and data freshness requirements before implementing. Don't default to a particular layer just because existing related code lives there. Surface the trade-offs: Python offers flexibility and backward compatibility; BQ views offer immediate effect without re-processing but add per-query join costs; middleware offers caching and transformation.
 
-**Data-driven design** — When designing conditional logic involving data distributions (thresholds, caps, filters, bucketing boundaries), query the actual distribution first rather than proposing arbitrary values or round numbers. Surface percentile breakdowns (p50, p75, p90, p95, max) to the user so they can make informed decisions about where to draw the line. This prevents both under-engineering (missing important edge cases) and over-engineering (overly conservative guards that discard valid data). Example: Initially proposed `GREATEST(created, first_revision_dt)` to prevent negative cycle times, but after analyzing distribution (4.5% of cases had revisions before task creation, median 4 days early, p90 37 days, max 503 days), switched to 30-day cap that captures p90 of legitimate early work while filtering extreme outliers.
+**Data-driven design** — When designing conditional logic involving data distributions (thresholds, caps, filters, bucketing boundaries), query the actual distribution first rather than proposing arbitrary values or round numbers. Surface percentile breakdowns (p50, p75, p90, p95, max) to the user so they can make informed decisions about where to draw the line. This prevents both under-engineering (missing important edge cases) and over-engineering (overly conservative guards that discard valid data).
 
 ## Interactive vs Automated Tools
 
@@ -224,11 +210,9 @@ If you cannot resolve all dependencies in one pass, say so before editing.
 
 **When any string, label, or term is changing** — whether the user says "rename X to Y", "ditch X", "remove X", or you are changing a concept name as part of a scope change — grep the full project for the old term BEFORE touching any file. This is a pre-edit step, not a completion check. Do not start editing until you know every location that needs to change.
 
-Figure modules (`figures/fig_*.py`) require an explicit grep pass: chart titles, axis labels, annotations, and legend text are not found by QMD or markdown prose sweeps and will silently survive into rendered PDFs. A clean `just render` exit does not mean the term is gone from visuals.
-
 ### Citations in Written Artifacts
 
-In any written artifact — memos, reports, analyses, proposals, strategy docs, comms — cite sources for claims that are quantitative, comparative, describe external behavior or market conditions, or could be challenged if communicated outside the company. Citations must be remote references (URLs) so they are followable by any reader the document is shared with. Internal-only references (Confluence pages, internal dashboards) do not satisfy this when external communication risk exists. When external risk is even modest, err toward over-citing with public or publicly-accessible links. Apply to EPQ analyses, 6-pagers, org announcements, anything that might be forwarded or published. Unsourced or un-linkable claims in externally-facing artifacts are a trust and accuracy liability.
+In any written artifact — memos, reports, analyses, proposals, strategy docs, comms — cite sources for claims that are quantitative, comparative, describe external behavior or market conditions, or could be challenged if communicated outside the company. Citations must be remote references (URLs) so they are followable by any reader the document is shared with. Internal-only references (Confluence pages, internal dashboards) do not satisfy this when external communication risk exists. When external risk is even modest, err toward over-citing with public or publicly-accessible links. Apply to any externally-shareable artifact. Unsourced or un-linkable claims in externally-facing artifacts are a trust and accuracy liability.
 
 ## Tool Preferences
 
@@ -236,8 +220,7 @@ In any written artifact — memos, reports, analyses, proposals, strategy docs, 
 - **Git**: Use git-commit-message-writer agent for all commits, NO AI attribution in commits (enforced by global commit-msg hook)
 - **GitHub PRs**: Use pull-request-writer agent for PR titles and descriptions, NO AI attribution
 - **GitHub PR Reviews**: Use pull-request-commentor agent for PR comments and reviews, NO AI attribution
-- **GCP/Vertex AI**: `@anthropic-ai/vertex-sdk`. See `gcp` skill for model ID format and quirks.
-- **Python**: Use `uv run` for executing scripts; AVOID pip, use `uv add`, `uv sync`, `uv run`. Use `@dataclass` (or `@dataclass(frozen=True)`) for structured data — not dicts, not NamedTuples. Type-annotate all function signatures (parameters and return types). Prefer `dataclasses.field(default_factory=...)` over mutable defaults. **`json.dumps` defaults to `ensure_ascii=True`** — silently converts non-ASCII characters (em-dashes `—`, arrows `→`, smart quotes) to `—`/`→` escape sequences. Any script writing JSON from user-authored text or field descriptions must use `ensure_ascii=False`: `json.dumps(data, indent=2, ensure_ascii=False)`. **`uv run` in Dockerfile CMD re-syncs deps at startup** — `uv sync --no-dev` at build time excludes dev deps, but bare `uv run python -m ...` in the CMD re-syncs the full environment at container startup, pulling in dev deps (including git-sourced packages that fail without git). Always use `uv run --no-dev python -m ...` in Dockerfile CMD. The `--no-dev` flag is required at BOTH the build step AND the runtime step. **Cloud Run v2 `command` field overrides ENTRYPOINT, not CMD** — if the Dockerfile uses `uv run` as the entrypoint wrapper, the Terraform `containers` `command` field must include `["uv", "run", "--no-dev", "python", "-m", "..."]`, not bare `["python", "-m", "..."]`. Omitting `uv run` causes execution outside the venv (`ModuleNotFoundError` for all installed packages). Safest pattern: omit `command` entirely and use `args` only when the Dockerfile CMD already contains the full invocation.
+- **Python**: Use `uv run` for executing scripts; AVOID pip, use `uv add`, `uv sync`, `uv run`. Use `@dataclass` (or `@dataclass(frozen=True)`) for structured data — not dicts, not NamedTuples. Type-annotate all function signatures (parameters and return types). Prefer `dataclasses.field(default_factory=...)` over mutable defaults. **`json.dumps` defaults to `ensure_ascii=True`** — silently converts non-ASCII characters (em-dashes `—`, arrows `→`, smart quotes) to `—`/`→` escape sequences. Any script writing JSON from user-authored text or field descriptions must use `ensure_ascii=False`: `json.dumps(data, indent=2, ensure_ascii=False)`.
 - **Go**: Use `gotestsum` for all test execution (watch mode: `gotestsum --watch ./...`)
 - **Rust**: Workflow: `cargo test --quiet` → `cargo check --quiet` → `cargo clippy`; Use `cargo check` NOT `cargo build` for validation; AVOID release builds
 - **jq**: STRONGLY PREFERRED for ALL JSON operations (instead of Python/Node.js scripts)
@@ -246,7 +229,6 @@ In any written artifact — memos, reports, analyses, proposals, strategy docs, 
 
 - **DuckDB**: Prefer for local SQL analytics (CSV/JSON/Parquet). See `duckdb` skill for syntax patterns (single quotes for strings, `read_json_auto()` for JSONL, `UNNEST` for arrays). **`duckdb -json` LIST/ARRAY column gotcha**: `-json` serializes LIST columns as a JSON string (`'[676599]'`), not a proper JSON array. When consuming DuckDB JSON output via Python subprocess, always parse with `json.loads(val)` before iterating — never iterate the raw field or call `.update(val)` on it directly (iterates characters, not elements).
 - **JavaScript/Node.js**: See `javascript` skill for library gotchas (Zustand/antd-style conflict, Playwright+antd, Bun:sqlite, SSE streaming patterns).
-- **`gcloud builds submit` and `.gitignore` negations**: `gcloud builds submit` silently drops `!file` negation patterns when reading `.gitignore` as a fallback. Fix: always create a `.gcloudignore` with explicit per-file exclusions (no negations). Files not listed are included; list only what to exclude (e.g., `data/*-cache.json`).
 - **gspace**: see `gspace` skill for Google Workspace gotchas.
 - **matplotlib**: see `matplotlib` skill for figure gotchas.
 - **Slack DMs**: lead with the first substantive sentence. Never open with the recipient's name.
