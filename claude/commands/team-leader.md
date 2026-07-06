@@ -8,4 +8,6 @@ tags:
   - team-leader
 ---
 
-Run the `team-leader` agent pipeline with this task: $ARGUMENTS
+Invoke the Workflow tool with name "team-leader" and args set to the task description below.
+
+Task: $ARGUMENTS
