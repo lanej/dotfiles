@@ -1,5 +1,5 @@
 ---
-description: "Delegate remaining work to a fresh sub-agent to escape context pollution and reduce cost. Writes a rich session context file and a minimal brief, presents the brief for user approval, then spawns a sub-agent. The sub-agent reads the brief to start and can pull the full session context on demand if it needs more."
+description: "Delegate remaining work to a fresh sub-agent to escape context pollution and reduce cost. The main session writes only a short pointer brief and spawns the sub-agent immediately — the sub-agent reconstructs full context itself by reading the on-disk session transcript, so the expensive synthesis work happens in the disposable sub-agent context instead of the main one."
 argument-hint: "<task-name> (used as filename slug; derived from session goal if omitted)"
 allowed-tools:
   - Write
@@ -14,100 +14,85 @@ tags:
 
 # /handoff - Context Delegation to Sub-Agent
 
-Escape context pollution by delegating remaining work to a fresh sub-agent. Write a rich session context file and a minimal brief, get user approval, then spawn — the sub-agent starts lean and can self-serve more context if it hits a gap.
+Escape context pollution by delegating remaining work to a fresh sub-agent — without paying for a full context recap in the main session first.
 
-## Step 1: Capture session ID and set paths
+**Core principle**: the main session already has a perfect, complete record of this conversation sitting on disk — the JSONL transcript. Re-narrating that record into a "rich session context" document inside the main session (the old approach) burns exactly the tokens you're trying to escape, and you pay for it right before discarding the session anyway. Instead, hand the sub-agent the transcript path and let IT read and synthesize — that work happens in a fresh, disposable context where it's free.
+
+The main session's only job is: capture the pointer, write one short paragraph of steering, and spawn.
+
+## Step 1: Capture session ID and transcript path
 
 ```bash
-echo "${CLAUDE_CODE_SESSION_ID:-unknown}"
+SESSION_ID="${CLAUDE_CODE_SESSION_ID:-unknown}"
+CWD="$(pwd)"
+PROJECT_DIR="$(echo "$CWD" | sed 's/[\/.]/-/g')"
+TRANSCRIPT="$HOME/.claude/projects/${PROJECT_DIR}/${SESSION_ID}.jsonl"
+ls -la "$TRANSCRIPT"
+mkdir -p .claude/handoffs
 ```
+
+Verify the transcript file exists and is non-trivial in size before proceeding — if it's missing, fall back to writing context by hand (rare: e.g. session started outside a normal Claude Code invocation).
 
 Derive a short kebab-case slug from the task name:
 - If an argument was passed (e.g., `/handoff refactor-auth`), use it directly
-- Otherwise derive from the session goal: e.g., "migrate DORA tables to BQ" → `dora-bq-migration`
+- Otherwise derive from the session goal in one glance — do not re-derive it from a full recap
 
-```bash
-mkdir -p .claude/sessions .claude/handoffs
-```
+## Step 2: Write a short pointer brief — NOT a rich context dump
 
-Paths:
-- Session context file: `.claude/sessions/<session-id>.md`
-- Brief: `.claude/handoffs/<slug>.md`
+This is the only writing step in the main session, and it must stay short (under ~15 lines). Its job is steering, not context transfer — the transcript is the context transfer mechanism.
 
-## Step 2: Write the session context file
-
-This is the comprehensive record — everything you know. The sub-agent reads this only if the brief doesn't cover something. Write it first because the brief is derived from it.
-
-```markdown
-# Session context: <session-id>
-
-**Task**: [task name]
-**Date**: [date]
-
-## Full goal
-[Complete description of what we are trying to accomplish]
-
-## Everything discovered
-[All findings, research results, failed approaches, gotchas — with why each matters]
-
-## All decisions made
-[Every decision, with the reasoning and what was ruled out]
-
-## Complete file state
-[Every file touched: what it contains now, what changed, what was removed]
-
-## Open questions
-[Anything unresolved, with current best guess and confidence]
-
-## Failed approaches
-[What was tried and why it didn't work — so the sub-agent doesn't repeat them]
-```
-
-## Step 3: Write the brief
-
-The brief is the minimal fast-start. Every sentence must change a decision, constrain an action, or describe current state. No narrative.
+`.claude/handoffs/<slug>.md`:
 
 ```markdown
 # Handoff: [task name]
 
 **Session**: <session-id>
-**Session context**: `.claude/sessions/<session-id>.md`
-**Brief**: `.claude/handoffs/<slug>.md`
-
-> If this brief doesn't cover something you need, read the session context file at the path above before asking or assuming.
+**Transcript**: `<transcript-path>`
 
 ## Goal
-[One tight paragraph]
-
-## Key discoveries
-- [fact]: [why it matters]
-
-## Decisions — do not revisit
-- [decision]: [reason]
-
-## Current state
-- `[file]`: [what it does now]
+[One or two sentences — what we're trying to accomplish]
 
 ## Next action
-[Exact first thing to do — specific enough to act on without reading anything else]
+[Exact first thing to do, if known — specific enough to act on. If not obviously known, write "Determine from transcript."]
 
 ## Constraints
-- [hard limit or known unknown with resolution path]
+- [Only hard limits that a transcript read wouldn't make obvious, e.g. "do not touch prod config"]
 ```
 
-## Step 4: Spawn the sub-agent immediately in the background
+Do not write: a "full goal" essay, a "complete file state" inventory, a "failed approaches" catalog, or an "all decisions" ledger. All of that lives in the transcript already — reconstructing it in prose here duplicates work the sub-agent is about to do more cheaply itself.
 
-Spawn using the Agent tool with `run_in_background: true`. Pass the full brief as the sub-agent's prompt verbatim. Do not wait for user approval first — the sub-agent performs its own context check.
+## Step 3: Spawn the sub-agent immediately
 
-Tell the user: "Sub-agent spawned. You'll be notified when it completes or if it needs more context."
+Spawn using the Agent tool with `run_in_background: true` (transcript reading + synthesis takes real work — let it run async). Pass the brief plus explicit transcript-reading instructions as the sub-agent's prompt verbatim.
 
-### Sub-agent instructions (include verbatim in the prompt)
+Tell the user: "Sub-agent spawned — reconstructing context from the session transcript. You'll be notified when it completes or if it needs more context."
 
-```
-BEFORE doing any work:
+### Sub-agent instructions (include verbatim in the prompt, after the brief)
 
-1. Read this brief.
-2. Read the session context file at the path listed in the brief.
+````
+BEFORE doing any work, reconstruct context from the session transcript yourself:
+
+1. Read the transcript at <transcript-path>. It is large — do NOT `cat` or `Read` it raw. Extract a compact digest first with jq:
+
+   jq -r '
+     select(.type=="user" or .type=="assistant")
+     | .message.content as $c
+     | if ($c|type)=="string" then $c
+       else
+         [$c[] |
+           if .type=="text" then .text
+           elif .type=="thinking" then "[thinking] " + (.thinking // "")
+           elif .type=="tool_use" then "[tool_use] " + .name + " " + ((.input | tostring)[0:150])
+           elif .type=="tool_result" then "[tool_result] " + ((.content | tostring)[0:150])
+           else empty end
+         ] | join("\n")
+       end
+   ' <transcript-path>
+
+   Read the digest to reconstruct: the full goal, key discoveries, decisions made (and what was ruled out), current file state, failed approaches, and open questions. If the digest is still too large, grep it for filenames/keywords relevant to the brief's "Next action" first, then widen only if needed.
+
+2. Cross-check anything load-bearing against actual file/repo state (`git diff`, `git log`, `Read` the specific files mentioned) rather than trusting the transcript's account of file contents — the transcript may predate later edits.
+
 3. Assess: can you execute the Next action without making assumptions that could be wrong?
 
 If YES: proceed. Return a structured summary when done:
@@ -121,11 +106,11 @@ If NO: return this immediately and do nothing else:
   - assumptions-if-forced: [what you'd assume if told to proceed anyway, and the risk]
 
 Do not guess. Do not begin execution if the context is insufficient.
-```
+````
 
 ### When the sub-agent completes
 
 - If it returns a summary: forward it to the user. Done.
-- If it returns `context-insufficient`: surface the gaps to the user, collect answers, update the session file with the new information, and re-spawn.
+- If it returns `context-insufficient`: surface the gaps to the user, collect answers, append them to the brief file, and re-spawn — the transcript hasn't changed, so the re-spawned sub-agent re-reads the same transcript plus the new answers.
 
 Do not re-execute work the sub-agent completed.
