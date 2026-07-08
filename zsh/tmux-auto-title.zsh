@@ -17,7 +17,14 @@ if [[ -n "$TMUX" ]]; then
 		while ! mkdir "$lock_dir" 2>/dev/null; do
 			# Lock exists, check if it's stale (older than 5 seconds)
 			if [[ -d "$lock_dir" ]]; then
-				local lock_age=$(($(date +%s) - $(stat -f %m "$lock_dir" 2>/dev/null || stat -c %Y "$lock_dir" 2>/dev/null)))
+				local lock_mtime
+				lock_mtime=$(stat -f %m "$lock_dir" 2>/dev/null || stat -c %Y "$lock_dir" 2>/dev/null)
+				if [[ -z "$lock_mtime" ]]; then
+					# Lock dir vanished between the -d check and stat (race with
+					# another shell's cleanup) -- just retry
+					continue
+				fi
+				local lock_age=$(( $(date +%s) - lock_mtime ))
 				if [[ $lock_age -gt 5 ]]; then
 					# Stale lock, remove it
 					rmdir "$lock_dir" 2>/dev/null
