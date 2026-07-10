@@ -814,6 +814,32 @@ gh pr update-branch 123
 4. **Always check before amending**: Verify authorship and push status
 5. **Use --force-with-lease**: Instead of --force when needed
 
+## Worktree Gotchas
+
+### `gh pr checkout` is not worktree-safe
+
+`gh pr checkout` operates against the main git directory regardless of the shell's current working directory — it doesn't respect "which worktree am I in." Running it from inside a worktree switches the **main** working directory's branch and overwrites files there, not the worktree you're standing in.
+
+If a sub-agent needs to work on a PR branch inside a worktree, don't use `gh pr checkout`. Do this instead, run from inside the worktree:
+
+```bash
+git fetch origin <branch>
+git checkout -b fix/<name> origin/<branch>
+```
+
+### `core.hooksPath` is shared across all worktrees
+
+`core.hooksPath` lives in the repo's shared `.git/config` — it is a single value, not per-worktree. If a sibling worktree runs `husky init` (or reinstalls husky), it can silently overwrite this value repo-wide with a path relative to *its own* worktree. Every other worktree's pre-commit hook then fires and does nothing — no error, the commit just lands as if lint-staged never existed.
+
+Fix per worktree that needs isolated hooks:
+
+```bash
+git config extensions.worktreeConfig true
+git config --worktree core.hooksPath <relative-path-to-hooks-dir>
+```
+
+Applies to any repo using git worktrees + husky (or any hooks manager that writes `core.hooksPath`), not just one project.
+
 ## Integration with Commit Message Writer
 
 After validation and before committing:

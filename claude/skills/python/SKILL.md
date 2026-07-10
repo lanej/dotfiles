@@ -798,6 +798,16 @@ uv run --python 3.11 script.py
 uv tool run ruff check .  # Installs if needed, then runs
 ```
 
+## Common Gotchas
+
+### JSON serialization drops non-ASCII characters by default
+
+`json.dumps` defaults to `ensure_ascii=True`, which silently converts non-ASCII characters (em-dashes `—`, arrows `→`, smart quotes) to `\uXXXX` escape sequences instead of raising or warning. Any script writing JSON from user-authored text or field descriptions must pass `ensure_ascii=False`:
+
+```python
+json.dumps(data, indent=2, ensure_ascii=False)
+```
+
 ## Summary
 
 **Primary directive**: Use `uv run` for executing Python scripts and commands.
