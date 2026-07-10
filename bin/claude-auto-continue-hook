@@ -2,11 +2,19 @@
 """Claude Code Stop hook — auto-continue when incomplete tasks remain."""
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
 LOG_FILE = Path.home() / ".claude" / "auto-continue.log"
+
+# Matches <task-notification>...<task-id>ID</task-id>...<status>STATUS</status>...
+# blocks emitted for background Agent-tool launches (run_in_background: true).
+_NOTIFICATION_RE = re.compile(
+    r"<task-id>([a-f0-9]+)</task-id>.*?<status>(\w+)</status>", re.DOTALL
+)
+_TERMINAL_STATUSES = {"completed", "failed", "killed"}
 
 
 def log(session_id: str, msg: str) -> None:
@@ -50,6 +58,52 @@ def get_incomplete_tasks(transcript_path: str) -> list[dict]:
     return [t for t in tasks.values() if t["status"] in ("pending", "in_progress")]
 
 
+def get_pending_background_agents(transcript_path: str) -> list[str]:
+    """Return agentIds launched via Agent(run_in_background=True) that have not
+    yet reported a terminal <task-notification> status (completed/failed/killed).
+
+    Launch signal: a line's top-level toolUseResult has isAsync=True and
+    status="async_launched", carrying the assigned agentId.
+
+    Resolution signal: a later line's text (queue-operation "content", or a
+    "user" message whose content is the injected notification string) contains
+    a <task-notification> block with a matching <task-id> and terminal <status>.
+    """
+    launched: set[str] = set()
+    resolved: set[str] = set()
+
+    try:
+        with open(transcript_path) as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                tool_result = obj.get("toolUseResult")
+                if isinstance(tool_result, dict) and tool_result.get("isAsync") and tool_result.get("status") == "async_launched":
+                    agent_id = tool_result.get("agentId")
+                    if agent_id:
+                        launched.add(agent_id)
+
+                blob = None
+                if obj.get("type") == "queue-operation":
+                    blob = obj.get("content")
+                elif obj.get("type") == "user":
+                    content = obj.get("message", {}).get("content")
+                    if isinstance(content, str):
+                        blob = content
+
+                if isinstance(blob, str) and "<task-notification>" in blob:
+                    for task_id, status in _NOTIFICATION_RE.findall(blob):
+                        if status in _TERMINAL_STATUSES:
+                            resolved.add(task_id)
+    except Exception:
+        pass
+
+    return sorted(launched - resolved)
+
+
 def main():
     try:
         data = json.load(sys.stdin)
@@ -72,6 +126,15 @@ def main():
 
     if not incomplete:
         log(session_id, "skip tasks=0")
+        sys.exit(0)
+
+    pending_agents = get_pending_background_agents(transcript_path)
+    if pending_agents:
+        log(
+            session_id,
+            f"skip incomplete={len(incomplete)} pending_background_agents={pending_agents} "
+            "(harness will re-invoke on completion)",
+        )
         sys.exit(0)
 
     names = ", ".join(t["subject"][:60] for t in incomplete)
