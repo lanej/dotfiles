@@ -89,6 +89,8 @@ Decision order:
 4. Dotfiles-repo-specific? → `project-claude-md` or `project-local`
 5. Soft preference, one-off correction, or project context? → `memory:<type>`
 
+**A finding motivated by a specific dated incident is never `user-claude-md` alone — it is `memory` plus, optionally, `user-claude-md`.** Write the incident (dates, project names, "recurred N times", root-cause detail) to a memory file first, always. Only ALSO add a CLAUDE.md line if the rule needs to be actively resident every turn — it guards against a silent or irreversible failure (nothing errors, the action can't be undone, or the model won't think to check a skill before acting). If the rule is a softer "good to know" correction, the memory file plus its one-line `MEMORY.md` index entry (already always-loaded) is sufficient on its own — do not also add a CLAUDE.md line just because a correction happened. Default to memory-only; add to CLAUDE.md only when you can articulate the specific silent/irreversible failure it prevents.
+
 Add scope decisions to your findings brief.
 
 ## Step 4 — Apply improvements
@@ -99,7 +101,11 @@ Split findings by scope and dispatch:
 
 **Skill file findings** — invoke `skill-creator`, passing the skill path, the finding, and whether to run autonomously.
 
-**CLAUDE.md findings** — invoke `claude-md-management:claude-md-improver`, passing your findings brief (including scope decisions) as args.
+**CLAUDE.md findings** — for the common case (one or a few rule additions/edits arising from this session), write the change directly yourself rather than delegating:
+1. Write the incident to a memory file first, using the Memory findings procedure below — this happens even if the rule also gets a CLAUDE.md line.
+2. If the rule needs CLAUDE.md residency (per the decision-order note above), add or edit a terse rule — the enforceable instruction only, no dates, no project names, no "recurred N times" — ending in `(detail: memory "‹slug›")` where `‹slug›` is the memory file's `name`. Match the existing terse style already in the file; do not restate the incident narrative inline.
+3. Before adding a new line, run `wc -l ~/.claude/CLAUDE.md` (resolve the symlink to `~/.files/claude/CLAUDE.md` — writes through the symlink itself fail). If the file is at or above ~195 lines, the finding must be memory-only (skip the CLAUDE.md line) unless the silent/irreversible-failure test clearly requires residency — flag this tradeoff in your output rather than silently exceeding the 200-line budget.
+4. Reserve invoking `claude-md-management:claude-md-improver` for a full structural audit (multiple files, reorganizing sections) — not for routine single-finding additions. It is a third-party plugin skill with no knowledge of the backlink convention or the 200-line budget; if you do invoke it, its brief must explicitly state both constraints, since it will not apply them on its own. Verify it still resolves before relying on it — its plugin cache directory carries an `.orphaned_at` marker as of this writing.
 
 **Memory findings** — write directly:
 - Memory directory: `~/.claude/projects/<escaped-cwd>/memory/` where `<escaped-cwd>` = `echo "$PWD" | tr '/.' '-'`
