@@ -44,12 +44,14 @@ elif [[ "$os_type" =~ 'darwin' ]]; then
 	alias ls='ls -Gp'
 fi
 
-if command -v xsel >/dev/null; then
-	alias pbcopy='xsel --clipboard --input'
-	alias pbpaste='xsel --clipboard --output'
-elif [ -n "$TMUX" ]; then
-	alias pbcopy='tmux loadb -'
-	alias pbpaste='tmux saveb'
+if [ "$os_type" = "Linux" ]; then
+	if command -v xsel >/dev/null; then
+		alias pbcopy='xsel --clipboard --input'
+		alias pbpaste='xsel --clipboard --output'
+	elif [ -n "$TMUX" ]; then
+		alias pbcopy='tmux loadb -'
+		alias pbpaste='tmux saveb'
+	fi
 fi
 
 if command -v bat >/dev/null 2>&1; then
@@ -130,7 +132,7 @@ current_version() {
 }
 
 current_semver() {
-	git tag -l | egrep '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
+	git tag -l | grep -E '[0-9]+\.[0-9]+\.[0-9]+' | sort -g | tail -n 1
 }
 
 next_version() {
@@ -138,6 +140,7 @@ next_version() {
 }
 
 f() {
+	# shellcheck disable=SC2016
 	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
 }
 
@@ -146,20 +149,22 @@ lsearch() {
 }
 
 fkill() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
+	local pids
+	pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | xargs pstree || awk '{ print \$2 }'" | awk '{ print $2 }')
 
 	if [ -n "$pids" ]; then
-		for pid in $pids; do pstree $pid; done
+		for pid in $pids; do pstree "$pid"; done
 
-		echo $pids | xargs kill -s ${1:-"KILL"}
+		echo "$pids" | xargs kill -s "${1:-"KILL"}"
 	fi
 }
 
 fpstree() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | xargs pstree -g 3 || awk '{ print \$2 }'" | awk '{ print $2 }')
+	local pids
+	pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | xargs pstree -g 3 || awk '{ print \$2 }'" | awk '{ print $2 }')
 
 	if [ -n "$pids" ]; then
-		for pid in $pids; do pstree $pid; done
+		for pid in $pids; do pstree "$pid"; done
 	fi
 }
 
@@ -168,7 +173,8 @@ fps() {
 }
 
 flsof() {
-	local pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | tr -s ' ' ',' | xargs lsof -p")
+	local pids
+	pids=$(ps aux | sed 1d | fzf -m --reverse --bind alt-j:preview-down,alt-k:preview-up --preview-window="$(fzf_preview_window)" --preview "echo {} | awk '{ print \$2 }' | tr -s ' ' ',' | xargs lsof -p")
 
 	if [ ! -z "$pids" ]; then
 		echo "$pids" | xargs lsof -p
@@ -177,11 +183,11 @@ flsof() {
 
 git_checkout_branch() {
 	target=$(git for-each-ref --format='%(refname:short)' --sort=-committerdate refs/heads/ | grep -v 'phabricator' | fzf --reverse --bind alt-j:preview-down,alt-k:preview-up --preview "git diff --stat --summary --color -p $(git symbolic-ref refs/remotes/origin/HEAD --short | xargs git merge-base --fork-point)...{} | delta" --preview-window="$(fzf_preview_window)") || return
-	git switch "$(echo "$target")"
+	git switch "$target"
 }
 
 git_search_log() {
-	git log --oneline --color=always --decorate --decorate-refs-exclude="tags/$(basename $PWD)*" --decorate-refs-exclude="refs/tags/phabricator/*" --exclude="refs/tags/phabricator/*" | fzf --ansi --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} --color=always | delta" | awk "{ print \$1 }" | xargs --no-run-if-empty git show
+	git log --oneline --color=always --decorate --decorate-refs-exclude="tags/$(basename "$PWD")*" --decorate-refs-exclude="refs/tags/phabricator/*" --exclude="refs/tags/phabricator/*" | fzf --ansi --reverse +m --tiebreak=index --bind alt-j:preview-down,alt-k:preview-up --preview "git show {+1} --color=always | delta" | awk "{ print \$1 }" | xargs --no-run-if-empty git show
 }
 
 i() {
@@ -204,6 +210,7 @@ zz() {
     else
         # Use fzf with length-based sorting and progressive filtering
         # Ctrl-Space: Narrow down - select all visible items and search within them
+        # shellcheck disable=SC2154
         cd "$(_z -l 2>&1 \
             | sed 's/^[0-9,.]* *//' \
             | awk '{ print length($0), $0 }' \
@@ -260,6 +267,7 @@ phab_diffs() {
 	echo "{\"attachments\":{\"projects\":true},\"constraints\": {\"authorPHIDs\": [\"$1\"]}}" | arc call-conduit -- differential.revision.search | jq -r '.response.data | sort_by(.fields.dateModified)  | .[] | "**" + (.fields.dateModified|todate) + "** [" + .fields.title  + "](" + .fields.uri + ") -> " + .fields.status.name + "\n" + .fields.summary' | bat -l md
 }
 
+# shellcheck disable=SC2329
 phab_diff() {
 	echo "{\"objectIdentifier\":\"$1\"}" | arc call-conduit -- transaction.search | jq -sr '[ .[] | .response.data | .[] | select(.authorPHID | test("PHID-USER")) ] | reverse | group_by(.groupID) | .[] | .[] | { .comments[].content.raw, .fields }' | rg -v '\[\]' | rg --passthru '\{.*\}' -r '' | bat -l md
 }
@@ -279,6 +287,7 @@ grm() {
 }
 
 phab_repo_files() {
+	# shellcheck disable=SC2034
 	page=$(echo "{\"queryKey\":\"5K12TorDVnuo\"}" | arc call-conduit -- diffusion.repository.search | jq -c '.response.data[].fields.name')
 	for repo in $(); do
 		result=$(arc call-conduit -- diffusion.filecontentquery <<<"{\"path\":\"$1\",\"repository\":$repo}" 2>/dev/null | jq -ec '.response.filePHID')
@@ -313,12 +322,12 @@ api-request-trace() {
 
 	# request
 	jq -r '"\u001b[36m" + .msg.request.method + " " + .msg.request.url + "\u001b[0m \n" + (.msg.request.headers | to_entries | map("\u001b[34m" + .key + "\u001b[0m: " + .value) | join("\n"))' <<<"$entry"
-	jq $2 '.msg.params_full|fromjson?' <<<"$entry"
+	jq "$2" '.msg.params_full|fromjson?' <<<"$entry"
 
 	echo ""
 	# response
 	jq -r '"\u001b[36m" +(.msg.response.http_status|tostring) + " [user_id:" + (.msg.user.id|tostring)  + ", network_ms:" + (.msg.network_time_ms|floor|tostring) + ", query_ms: " + (.msg.query_time_ms|floor|tostring) + ", duration_ms:" + (.msg.duration_ms|floor|tostring) + "]\u001b[0m \n" + (.msg.response.headers | to_entries | map("\u001b[34m" + .key + "\u001b[0m: " + .value) | join("\n"))' <<<"$entry"
-	jq $2 '.msg.response.body|fromjson?' <<<"$entry"
+	jq "$2" '.msg.response.body|fromjson?' <<<"$entry"
 }
 
 monitor-deploy() {
@@ -326,6 +335,7 @@ monitor-deploy() {
 }
 
 lookup-tracker() {
+	# shellcheck disable=SC2016
 	curl -s -H "Accept: application/json" "http://localhost:9292/admin/v1/trackers?is_filters=tracking_code+$1" | jq -rc '[.trackers[0,2]] | sort_by(.created_at) | .[] | (.user_id|tostring) + " " + .tracking_code' | xargs bash -c 'curl -s -H "Accept: application/json" -H "X-EasyPost-User-ID: $2" "http://localhost:9292/v1/trackers/$1?user_id=$2" | jq'
 }
 
@@ -374,7 +384,7 @@ open_webui() {
 
 # Override glow to always use nord style
 glow() {
-	command glow --style ~/.config/glow/nord.json "$@"
+	command glow -p -w 0 --style ~/.config/glow/nord.json "$@"
 }
 
 # https://github.com/bcspragu/kagi/pull/2
@@ -426,6 +436,7 @@ gh-clone() {
 
 phab-clone() {
 	local selected
+	# shellcheck disable=SC2016
 	selected=$(phab repository search --output jsonl 2>&1 |
 		grep -v "^Error:" |
 		jq -r 'select(.fields != null) | .fields.shortName' |
