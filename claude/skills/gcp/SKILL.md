@@ -1,9 +1,9 @@
 ---
 name: gcp
-description: Google Cloud Platform and Vertex AI patterns, quirks, and SDK usage for Claude/Anthropic models on Vertex AI. Use when working with GCP, Vertex AI, the Anthropic Vertex SDK, or deploying Claude models on Google Cloud.
+description: Google Cloud Platform patterns and quirks — general GCP infra (IAM roles, Cloud Run deploy mechanics, Secret Manager, Cloud Monitoring) plus Vertex AI specifics for Claude/Anthropic models. Use when working with GCP infrastructure generally (IAM, Cloud Run, Secret Manager, monitoring), not only when Vertex AI or Claude-on-Vertex is involved. For OpenTofu/Terraform resource authoring see the opentofu skill; for GitHub Actions CI/CD auth and deploy workflows see the github-actions skill; for BigQuery query cost discipline see the bigquery skill — this skill covers the GCP service-level behavior those skills build on top of.
 ---
 
-# GCP / Vertex AI Skill
+# GCP Skill
 
 ## Anthropic on Vertex AI — Critical Quirks
 
@@ -156,3 +156,15 @@ resource "google_monitoring_alert_policy" "my_alert" {
 ## BigQuery + Vertex AI
 
 When combining BigQuery data with Vertex AI Claude calls, prefer the `bigquery` CLI skill for queries and pass results as structured context in the Claude API request body.
+
+## Cloud Run IAM Roles for Deploy Automation
+
+Distinguish these three roles precisely when granting any automation identity (CI service account, another Cloud Run service's SA, etc.) access to deploy or invoke Cloud Run — they are commonly conflated and each under- or over-provisioning shows up as a different failure:
+
+- **`roles/run.developer`** (scoped to the specific service/job) — required to *deploy*: `gcloud run deploy` / `gcloud run jobs update`, including changing the image, env vars, or resource limits. Does not include invoking a Job with per-run argument overrides.
+- **`roles/run.invoker`** (scoped to the specific service/job) — required only to *call* an already-deployed service or trigger an already-deployed job with its existing configuration. Insufficient for deploy.
+- **`roles/iam.serviceAccountUser`** on the *runtime* service account (not the automation identity's own SA) — required alongside `run.developer` whenever the deploy command needs to keep an existing runtime identity attached to the resource. Without this, deploy fails trying to re-set the service/job's own SA, even though the automation identity isn't changing anything about the SA itself.
+
+For the Workload Identity Federation (keyless OIDC) setup that a GitHub Actions runner needs to hold `run.developer` in the first place, see the `github-actions` skill — that skill covers the WIF pool/provider Terraform and the workflow-side auth step; this section is the GCP-side role vocabulary those grants use.
+
+**Cloud Run does not redeploy on a bare image push.** Pushing a new `:latest` tag to Artifact Registry does not create a new revision — Cloud Run only redeploys when a `gcloud run deploy`/`jobs update` command actually runs with a resolved image reference. Prefer deploying by content digest (`@sha256:...`) over `:latest` — it makes "what's actually serving" independently verifiable (`gcloud run services describe --format='value(status.latestReadyRevision... image)'` compared against what was just pushed) rather than trusted on faith. If Terraform also manages the same resource with a floating-tag `image` value, expect `tofu plan` to show drift after any out-of-band digest deploy — that's expected divergence between two different deploy mechanisms touching the same field, not a misconfiguration to chase down.
