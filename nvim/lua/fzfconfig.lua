@@ -586,9 +586,13 @@ vim.keymap.set("n", "<leader>gw", function()
 		return
 	end
 
-	require("fzf-lua").fzf_exec("git worktree list", {
+	local root_esc = vim.fn.shellescape(git_root)
+	local list_cmd = "git worktree list | sed " .. vim.fn.shellescape("s|^" .. git_root .. "|.|")
+	local resolve = "path=$(echo {} | cut -d' ' -f1); case \"$path\" in .*) path=" .. root_esc .. "\"${path#.}\";; esac"
+
+	require("fzf-lua").fzf_exec(list_cmd, {
 		prompt = "Worktrees❯ ",
-		preview = "path=$(echo {} | cut -d' ' -f1); git -C \"$path\" log --oneline --color -15",
+		preview = resolve .. "; git -C \"$path\" log --oneline --color -15",
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -596,6 +600,9 @@ vim.keymap.set("n", "<leader>gw", function()
 				end
 				local path = selected[1]:match("^(%S+)")
 				if path then
+					if path:sub(1, 1) == "." then
+						path = git_root .. path:sub(2)
+					end
 					vim.cmd("cd " .. vim.fn.fnameescape(path))
 					vim.notify("cwd → " .. path)
 				end
