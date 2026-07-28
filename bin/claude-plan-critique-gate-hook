@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# PreToolUse:ExitPlanMode — enforce the Opus-tier plan-critique gate
+#
+# Scope: only applies to /shape (and /socrates) plans, identified by a prior
+# Write to .socrates/*/plan.md or a Skill invocation of shape/socrates this
+# session. Ordinary plan mode (plan file under ~/.claude/plans/) is exempt —
+# it was never subject to the CLAUDE.md rule this hook enforces.
+#
+# When in scope, blocks ExitPlanMode unless a prior Agent(model="opus")
+# tool_use call is found earlier in this session's transcript. This is a
+# workflow-discipline aid, not a security boundary: if the transcript can't be
+# located or parsed at all, fail open (allow) rather than permanently trap the
+# session in plan mode.
+
+set -uo pipefail
+
+payload=$(cat)
+
+tool_name=$(printf '%s' "$payload" | jq -r '.tool_name // empty' 2>/dev/null)
+[[ "$tool_name" == "ExitPlanMode" ]] || exit 0
+
+session_id=$(printf '%s' "$payload" | jq -r '.session_id // empty' 2>/dev/null)
+transcript_path=$(printf '%s' "$payload" | jq -r '.transcript_path // empty' 2>/dev/null)
+
+deny() {
+  local reason='No Opus-tier plan-critique Agent call found this session. Dispatch Agent(model="opus") to critique the plan before calling ExitPlanMode again.'
+  jq -n --arg reason "$reason" '{
+    continue: false,
+    stopReason: $reason,
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $reason
+    }
+  }'
+  exit 0
+}
+
+# Resolve transcript file: prefer the field on the payload, fall back to the
+# same lookup pattern used by /reflection.
+transcript_file="$transcript_path"
+if [[ -z "$transcript_file" || ! -r "$transcript_file" ]]; then
+  if [[ -n "$session_id" ]]; then
+    transcript_file=$(find ~/.claude/projects -name "${session_id}.jsonl" 2>/dev/null | head -1)
+  fi
+fi
+
+# Fail open: no transcript found at all.
+[[ -n "$transcript_file" && -r "$transcript_file" ]] || exit 0
+
+# Fail open: transcript file exists but is entirely unparseable JSONL
+# (as opposed to just not containing a matching Agent call).
+total_lines=$(wc -l < "$transcript_file" 2>/dev/null | tr -d ' ')
+parseable_lines=$(jq -c . "$transcript_file" 2>/dev/null | wc -l | tr -d ' ')
+if [[ "${total_lines:-0}" -gt 0 && "${parseable_lines:-0}" -eq 0 ]]; then
+  exit 0
+fi
+
+# Gate only applies to /shape or /socrates plans. Detect via a Write to
+# .socrates/*/plan.md, or a Skill invocation naming shape/socrates (handles
+# the namespaced "plugin:shape" form too).
+in_scope_write=$(jq -r '
+  select(.type == "assistant")
+  | .message.content[]?
+  | select(.type == "tool_use" and .name == "Write")
+  | (.input.file_path // empty)
+' "$transcript_file" 2>/dev/null | grep -qE '(^|/)\.socrates/[^/]+/plan\.md$' && echo yes)
+
+in_scope_skill=$(jq -r '
+  select(.type == "assistant")
+  | .message.content[]?
+  | select(.type == "tool_use" and .name == "Skill")
+  | (.input.skill // empty)
+' "$transcript_file" 2>/dev/null | grep -qiE '(^|:)(shape|socrates)$' && echo yes)
+
+[[ "$in_scope_write" == "yes" || "$in_scope_skill" == "yes" ]] || exit 0
+
+# Search for any prior assistant tool_use block: name == "Agent" with
+# input.model matching "opus" (case-insensitive substring).
+model_hits=$(jq -r '
+  select(.type == "assistant")
+  | .message.content[]?
+  | select(.type == "tool_use" and .name == "Agent")
+  | (.input.model // empty)
+' "$transcript_file" 2>/dev/null)
+
+if printf '%s\n' "$model_hits" | grep -qi 'opus'; then
+  exit 0
+fi
+
+deny
