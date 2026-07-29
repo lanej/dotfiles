@@ -60,6 +60,26 @@ assert "lockfile: save bails without touching snapshots" \
     test "$snapshot_before" -eq "$snapshot_after"
 rm -f "$LOCK_FILE"
 
+# ── Unit: claude-wrapper pins argv[0] to "claude" ─────────────────────────────
+# Regression test: `exec command claude "$@"` used to resolve `command`
+# externally to macOS's /usr/bin/command (a #!/bin/sh script), leaving the
+# pane's process as "/bin/sh /usr/bin/command claude ..." instead of a clean
+# "claude ...". tmux-resurrect's strategy lookup matches on the literal first
+# word of the pane's captured command, so that detour made the claude_default.sh
+# strategy miss intermittently, depending on exactly when ps snapshotted it.
+
+FAKE_BIN="$TMP/fakebin"
+mkdir -p "$FAKE_BIN"
+ln -sf /bin/sleep "$FAKE_BIN/claude"
+
+PATH="$FAKE_BIN:$PATH" "$SCRIPT_DIR/claude-wrapper" 2 >/dev/null 2>&1 &
+wrapper_pid=$!
+sleep 0.3
+captured=$(ps -o args= -p "$wrapper_pid" 2>/dev/null | awk '{print $1}')
+wait "$wrapper_pid" 2>/dev/null || true
+assert "claude-wrapper: pane process argv[0] is 'claude', not a /usr/bin/command detour" \
+    test "$captured" = "claude"
+
 # ── Unit: strategy script ─────────────────────────────────────────────────────
 
 out=$(RESURRECT_SESSIONS_FILE="$SESSIONS_FILE" \

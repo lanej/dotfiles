@@ -3,13 +3,9 @@
 
 # Configuration
 CACHE_FILE="$HOME/.claude/local/.privacy-check-cache"
-CACHE_EXITCODE_FILE="$HOME/.claude/local/.privacy-check-cache.exitcode"
 
 # Color codes for output
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 # Verify claude binary is available in PATH
@@ -30,5 +26,12 @@ if [ -f "$CACHE_FILE" ]; then
   fi
 fi
 
-# Launch Claude Code with all original arguments
-exec command claude "$@"
+# Launch Claude Code with all original arguments.
+# exec -a pins argv[0] to "claude" so process-snapshot tools (tmux-resurrect)
+# see a stable "claude ..." command line. Plain `exec command claude "$@"`
+# resolves `command` externally (exec can't hand off to a builtin), landing on
+# /usr/bin/command — a #!/bin/sh script on macOS — which shows up in `ps` as
+# "/bin/sh /usr/bin/command claude ..." until it finishes re-exec'ing, making
+# tmux-resurrect's restore strategy match intermittently.
+real_claude="$(command -v claude)"
+exec -a claude "$real_claude" "$@"
