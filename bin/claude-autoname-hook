@@ -52,24 +52,28 @@ def get_cwd(transcript_path):
     return None
 
 
+GLYPH = '✻'  # matches Claude Code's own CLI spinner frame (U+273B)
+
+
 def set_title(name):
+    display_name = f'{GLYPH} {name}'
     if os.environ.get('TMUX'):
         try:
             pane = os.environ.get('TMUX_PANE', '')
             if pane:
-                log_window_action(f"rename-window -t {pane} '{name}'")
-                subprocess.run(['tmux', 'rename-window', '-t', pane, name], check=False)
-                subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
+                log_window_action(f"rename-window -t {pane} '{display_name}'")
+                subprocess.run(['tmux', 'rename-window', '-t', pane, display_name], check=False)
+                subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', display_name], check=False)
             else:
-                log_window_action(f"rename-window '{name}' (missing -t, will rename current window)")
-                subprocess.run(['tmux', 'rename-window', name], check=False)
-                subprocess.run(['tmux', 'set-option', '-w', '@claude_named', name], check=False)
+                log_window_action(f"rename-window '{display_name}' (missing -t, will rename current window)")
+                subprocess.run(['tmux', 'rename-window', display_name], check=False)
+                subprocess.run(['tmux', 'set-option', '-w', '@claude_named', display_name], check=False)
         except Exception:
             pass
     else:
         try:
             with open('/dev/tty', 'w') as tty:
-                tty.write(f'\033]0;{name}\007')
+                tty.write(f'\033]0;{display_name}\007')
         except Exception:
             pass
 

@@ -44,11 +44,15 @@ def tmux_window_option(pane, option):
         return ''
 
 
+GLYPH = '✻'  # matches Claude Code's own CLI spinner frame (U+273B)
+
+
 def set_title(pane, name):
+    display_name = f'{GLYPH} {name}'
     try:
-        log_window_action(f"rename-window -t {pane} '{name}'")
-        subprocess.run(['tmux', 'rename-window', '-t', pane, name], check=False)
-        subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', name], check=False)
+        log_window_action(f"rename-window -t {pane} '{display_name}'")
+        subprocess.run(['tmux', 'rename-window', '-t', pane, display_name], check=False)
+        subprocess.run(['tmux', 'set-option', '-w', '-t', pane, '@claude_named', display_name], check=False)
         # Block OSC title sequences from overriding the name while Claude runs
         subprocess.run(['tmux', 'set-option', '-w', '-t', pane, 'allow-rename', 'off'], check=False)
     except Exception:

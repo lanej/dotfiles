@@ -1,31 +1,16 @@
 #!/usr/bin/env bash
-# claude-worktree-remove-hook: restore tmux window title after worktree removal
+# PreToolUse:ExitWorktree — restore tmux window title to the main repo name
 
-[[ -n "${TMUX:-}" ]] || exit 0
+[[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] || exit 0
 
-# Logging function
-log_window_action() {
-    local logfile="$HOME/.claude/logs/window-naming.log"
-    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local current_window; current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
-    printf '[%s] [worktree-remove] TMUX_PANE=%s current=%s action=%s\n' \
-        "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
-}
+# At ExitWorktree time we're still inside the worktree; the main worktree is
+# the first entry from git worktree list.
+main_path=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+name=$(basename "${main_path:-$(git rev-parse --show-toplevel 2>/dev/null)}")
 
-payload=$(cat)
-
-# cwd should be back in the main repo after worktree removal
-cwd=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null || true)
-if [[ -n "$cwd" ]]; then
-  name=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null \
-    || basename "$cwd" 2>/dev/null || true)
-  if [[ -n "$name" ]]; then
-    log_window_action "rename-window '$name' (missing -t, will rename current window)"
-    tmux rename-window "$name" 2>/dev/null
-  fi
+if [[ -n "$name" ]]; then
+    tmux rename-window -t "$TMUX_PANE" "$name" 2>/dev/null || true
+    tmux set-window-option -t "$TMUX_PANE" automatic-rename on 2>/dev/null || true
 fi
 
-# Re-enable automatic renaming so the shell can take over
-log_window_action "set-window-option automatic-rename on (global)"
-tmux set-window-option automatic-rename on 2>/dev/null
 exit 0

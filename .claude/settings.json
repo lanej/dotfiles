@@ -18,7 +18,9 @@
       "Bash(mkfs:*)",
       "Bash(fdisk:*)",
       "Bash(parted:*)",
-      "Bash(wipefs:*)"
+      "Bash(wipefs:*)",
+      "WebSearch",
+      "WebFetch"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": []
@@ -127,19 +129,12 @@
     "playwright@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "claude-mem@thedotmack": true,
-    "dagster-expert@dagster": true,
     "superpowers@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "dagster": {
-      "source": {
-        "source": "github",
-        "repo": "dagster-io/skills"
-      }
-    },
     "agent-plugins-for-aws": {
       "source": {
         "source": "github",
