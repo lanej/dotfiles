@@ -447,3 +447,6 @@ export PATH="/Users/joshlane/.bun/bin:$PATH"
 if [ -r "$HOME/.env" ]; then
   source "$HOME/.env"
 fi
+
+# Azure Functions Core Tools
+export FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
