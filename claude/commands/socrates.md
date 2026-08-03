@@ -117,14 +117,14 @@ This command manages its own phased execution. If plan mode is active at the sta
 3. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
 4. Set status to `Interrogating`.
 6. Classify task type.
-7. **Research** — treat every candidate question as self-answerable until proven otherwise. Exhaust available evidence before forming any question. Investigate: relevant source files (Read, Glob, grep), existing configs and scripts, memory and prior session context, domain conventions and patterns. For each candidate question, attempt to answer it from evidence first. A question only qualifies for the user after a genuine research attempt has failed. When a question does reach the user, you must be able to state in one sentence what you looked for and why research didn't resolve it — if you can't state this, keep researching. Classify each post-research question:
-   - **Self-answerable** (high confidence from evidence): answer it; record as **Assumed** with source citation. Do not ask.
-   - **Probable** (medium confidence): answer it tentatively; mark as **Assumed**, flag as fragile, surface as confirm-or-correct — not an open question.
-   - **User-only** (genuinely unresolvable from evidence — requires intent, priorities, or institutional knowledge only the user holds): ask.
+7. **Research** — before forming any question, investigate: relevant source files (Read, Glob, grep), existing configs and scripts, memory and prior session context, domain conventions and patterns. The point of this research isn't to avoid asking — it's to arm the question. A question backed by "here's what I found, and here's why it might matter" gives the user something real to decide against; that's what makes it informed rather than a blind ask. Classify each post-research question:
+   - **Self-answerable** (mechanical, non-interpretive facts with no bearing on intent — language, file layout, existing syntax, established conventions): answer it silently; record as **Assumed** with source citation. Asking these wastes the user's time.
+   - **Probable** (a real finding exists, but it touches goals, tradeoffs, risk, or scope): bring it into the dialogue as the opening move of a question — state the finding, then ask whether it holds and why/why not. Do not silently fold it into the spec as Assumed, and do not reduce it to a one-click confirmation; the user reasoning about your finding is the point, not just their approval of it.
+   - **User-only** (genuinely unresolvable from evidence — requires intent, priorities, or institutional knowledge only the user holds): ask, and follow through per the Dialogue Loop below — don't accept the first answer at face value if it's vague, unexamined, or contradicts something already established.
 8. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains after research. Cite evidence or mark claims as **Assumed**.
 9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
 10. Record the current interpretation of the task in one paragraph.
-11. Use the `AskUserQuestion` tool to ask only user-only questions (those research couldn't resolve). For probable-answer questions being surfaced for confirmation, set the best-guess answer as the first (Recommended) option. Aim for 1–3 questions total — fewer if research was thorough. Use `multiSelect: true` only when multiple things can genuinely co-apply. Challenge, do not confirm.
+11. Begin the Dialogue Loop (below) on the highest-leverage open commandment first. Default to a plain, open-ended prose question — reach for `AskUserQuestion` only when the answer space is a small, genuinely enumerable set of known options. There is no target question count: continue, topic by topic, until the commandments relevant to this task are stable or explicitly accepted as fragile. A single well-researched question that resolves a topic cleanly is success, not a shortfall — depth is earned by real ambiguity, not manufactured by a quota.
 
 ### Continuation (no `$ARGUMENTS`)
 
@@ -134,11 +134,11 @@ This command manages its own phased execution. If plan mode is active at the sta
 4. If multiple: use `AskUserQuestion` to let the user pick. For each session, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description). Present in reverse-chronological order.
 5. Load `SESSION_DIR/spec.md`.
 3. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
-4. **Research** any remaining open questions before asking the user. Apply the same classification: self-answerable → answer and cite; probable → surface as confirm-or-correct with a recommended option; user-only → ask.
+4. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
 5. Print a one-line alignment summary per commandment (name + state only).
 6. Restate the current interpretation before asking more questions when material ambiguity remains.
 7. Prefer closing existing open questions over opening new ones.
-8. Use the `AskUserQuestion` tool for user-only and probable-answer questions only. Frame 2–4 options per question; pre-populate best guesses as the Recommended option. "Other" is always available.
+8. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
 8. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
@@ -204,9 +204,25 @@ Do not assert domain facts as if they are established without grounding. If no l
 
 ### Interrogation Principles
 
-**Research before asking — hard rule**: The burden of proof is on asking, not on answering. Every question must survive a research attempt before it reaches the user. If you haven't checked the codebase, configs, memory, and domain conventions for an answer, the question isn't ready to ask. Asking something resolvable from evidence is a failure of preparation, not a neutral choice. The user's time is the scarcest resource in this workflow — spend your own first.
+**Research to arm the question, not to gatekeep it**: Research just as thoroughly as ever — check the codebase, configs, memory, and domain conventions before forming any question. But the point of that research is to make the question worth asking, not to earn the right to ask it. A question backed by a real finding ("I found X, which suggests Y") gives the user something concrete to decide against; that's what "informed" means here. Skip a question only when research settles a mechanical, non-interpretive fact outright — never skip one because research produced a plausible guess, if that guess touches goals, tradeoffs, risk, or scope.
 
-**Question framing with `AskUserQuestion`**: Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. For probable-answer questions, set the best guess as the first (Recommended) option so the user can confirm with one click. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions.
+### Dialogue Loop
+
+Interrogation proceeds one open commandment at a time, in order of leverage:
+
+1. Research the topic first — unconditional, not optional-if-thorough.
+2. Ask **one** question. Default to a plain, open-ended prose question — Socratic dialogue is not a multiple-choice form. Reach for `AskUserQuestion` only when the answer space is a small, genuinely enumerable set of known options (see "Question framing with `AskUserQuestion`" below).
+3. If research surfaced a relevant finding, lead with it: state what you found and why it might matter, then ask whether it holds, why/why not, or what's different this time. Don't silently fold a finding into the spec as Assumed when it touches anything the user should weigh in on.
+4. Judge the answer before moving on:
+   - Vague or hedged → ask them to make it concrete.
+   - Confident but unexamined → probe it ("what would prove that wrong?" / "what's broken this assumption before?").
+   - Contradicts something already established → surface the contradiction directly and ask which one holds.
+   - Clear and load-bearing → record it, close the topic, move to the next.
+5. No fixed question budget in either direction. Continue until the commandments relevant to this task are stable or explicitly accepted as fragile — that's the stop condition, not a round count. A well-researched question that resolves a topic in one exchange is a success; a follow-up is earned by the answer actually being vague, unexamined, or contradictory, not by a target exchange count.
+
+This doesn't license over-interrogating trivial tasks — "use judgment, infer what is obvious" (Commandments, above) still applies, so a task with few genuinely open or risky commandments produces a short dialogue on its own. What changes is quality — research-backed, decision-ready questions — and removing the artificial ceiling that used to cut a topic off before it was actually resolved.
+
+**Question framing with `AskUserQuestion`**: Reserve this tool for genuinely bounded questions — a small, enumerable set of known options where forcing a choice sharpens the answer. Each question must have 2–4 options that represent the most distinct, plausible positions — not exhaustive, not false choices. A good option set forces the user to pick a side; a bad one presents overlapping or obvious alternatives. For probable-answer questions carrying a research-backed lean, set the best guess as the first (Recommended) option — but the question still has to explain the finding behind it, not just present it as a checkbox. Use `multiSelect` for constraint enumeration or capability checklists, not for interpretive questions. For anything interpretive — open-ended by nature, no natural enumerable option set — ask in plain prose instead.
 
 - One topic per question.
 - Ask "why" to surface unstated assumptions.
@@ -221,7 +237,7 @@ Do not assert domain facts as if they are established without grounding. If no l
 - Ask "how would this fail silently?" to identify observability gaps.
 - Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
 - Prefer one question that resolves multiple ambiguities.
-- Prefer high-leverage clarification over exhaustive questioning.
+- Prefer resolving the most consequential ambiguity first.
 
 ## Phase 2 — Validation and Layered Reasoning
 
