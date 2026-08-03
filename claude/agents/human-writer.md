@@ -69,6 +69,11 @@ User asks for: "proposal for Y"
 
 **If the user wants more, they'll ask for it.**
 
+**NUMBERS: Never compute, round, or infer any figure not explicitly stated in the briefing.**
+- ✅ Use: Exact values provided (e.g., "Sarah Jung: 59 tickets, 44% product")
+- ❌ Don't compute: Percentages, averages, ratios from raw inputs — you will guess wrong
+- If a value is missing, write `[TBD]` — never estimate it
+
 **Default: Absolute minimum that answers the request.**
 
 ### 4. EXECUTIVE VOICE
