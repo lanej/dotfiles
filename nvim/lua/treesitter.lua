@@ -14,7 +14,7 @@ parsers["mdx"] = {
 
 -- Install parsers that aren't already present
 require("nvim-treesitter.install").install(
-	{ "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst", "xml", "regex", "markdown", "markdown_inline", "mdx" },
+	{ "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst", "xml", "regex", "markdown", "markdown_inline" },
 	{ skip = { installed = true } }
 )
 

@@ -42,8 +42,10 @@ vim.opt.title = true
 vim.opt.titlestring = "󰅷 %t"
 
 vim.api.nvim_create_autocmd("VimEnter", {
-  once = true,
-  callback = function() vim.opt.titleold = "" end,
+	once = true,
+	callback = function()
+		vim.opt.titleold = ""
+	end,
 })
 vim.opt.ttimeout = true
 vim.opt.ttimeoutlen = 50
@@ -167,27 +169,27 @@ vim.keymap.set({ "n", "v" }, "<leader>p", '"+p', { noremap = true, silent = true
 -- gspace docs sync current buffer (debounced 1s)
 local _gspace_sync_timer = nil
 vim.keymap.set("n", "<leader>gD", function()
-  vim.cmd("w")
-  local file = vim.fn.expand("%:p")
-  if _gspace_sync_timer then
-    _gspace_sync_timer:stop()
-    _gspace_sync_timer:close()
-  end
-  _gspace_sync_timer = vim.uv.new_timer()
-  _gspace_sync_timer:start(1000, 0, function()
-    _gspace_sync_timer:close()
-    _gspace_sync_timer = nil
-    vim.system({ "gspace", "docs", "sync", file }, {}, function(result)
-      vim.schedule(function()
-        if result.code == 0 then
-          vim.notify("gspace: synced", vim.log.levels.INFO)
-        else
-          local msg = vim.trim((result.stderr ~= "" and result.stderr) or result.stdout or "unknown error")
-          vim.notify("gspace: " .. msg, vim.log.levels.ERROR)
-        end
-      end)
-    end)
-  end)
+	vim.cmd("w")
+	local file = vim.fn.expand("%:p")
+	if _gspace_sync_timer then
+		_gspace_sync_timer:stop()
+		_gspace_sync_timer:close()
+	end
+	_gspace_sync_timer = vim.uv.new_timer()
+	_gspace_sync_timer:start(1000, 0, function()
+		_gspace_sync_timer:close()
+		_gspace_sync_timer = nil
+		vim.system({ "gspace", "docs", "sync", file }, {}, function(result)
+			vim.schedule(function()
+				if result.code == 0 then
+					vim.notify("gspace: synced", vim.log.levels.INFO)
+				else
+					local msg = vim.trim((result.stderr ~= "" and result.stderr) or result.stdout or "unknown error")
+					vim.notify("gspace: " .. msg, vim.log.levels.ERROR)
+				end
+			end)
+		end)
+	end)
 end, { noremap = true, silent = true, desc = "gspace docs sync" })
 
 -- NOTE: Map <leader>P to paste before cursor from system clipboard in normal and visual modes
@@ -1881,7 +1883,7 @@ require("lazy").setup({
 		dependencies = "nvim-treesitter/nvim-treesitter",
 	},
 	{
-		"phaazon/hop.nvim",
+		"smoka7/hop.nvim",
 		config = function()
 			require("hopconfig")
 		end,
@@ -1915,7 +1917,11 @@ require("lazy").setup({
 		cond = vim.fn.executable("ctags") == 1,
 		dependencies = { "nvim-lua/plenary.nvim" },
 		config = function()
-			require("gentags").setup({})
+			local ctags_bin = "/opt/homebrew/bin/ctags"
+			if vim.fn.executable(ctags_bin) == 0 then
+				ctags_bin = "ctags"
+			end
+			require("gentags").setup({ bin = ctags_bin })
 		end,
 		event = "VeryLazy",
 	},
@@ -2066,29 +2072,6 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>ta", require("neotest").run.attach, { silent = true, noremap = true })
 			vim.keymap.set("n", "]t", require("neotest").jump.next, { silent = true, noremap = true })
 			vim.keymap.set("n", "[t", require("neotest").jump.prev, { silent = true, noremap = true })
-		end,
-	},
-	{
-		name = "copilot.lua",
-		url = "git@github.com:zbirenbaum/copilot.lua",
-		cmd = "Copilot",
-		event = "InsertEnter",
-		cond = function()
-			-- check that node is installed and is greater >= 20.x
-			return vim.fn.executable("node") == 1 and vim.fn.system("node -v") >= "v20.0.0"
-		end,
-		config = function()
-			require("copilot").setup({
-				suggestion = { enabled = false },
-				panel = { enabled = false },
-			})
-		end,
-	},
-	{
-		"github/copilot.vim",
-		cond = function()
-			-- check that node is installed and is greater >= 20.x
-			return vim.fn.executable("node") == 1 and vim.fn.system("node -v") >= "v20.0.0"
 		end,
 	},
 	{
@@ -2520,7 +2503,9 @@ require("lazy").setup({
 				local start_pos = vim.fn.getpos("'<")
 				local end_pos = vim.fn.getpos("'>")
 				local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
-				if #lines == 0 then return end
+				if #lines == 0 then
+					return
+				end
 				lines[#lines] = lines[#lines]:sub(1, end_pos[3])
 				lines[1] = lines[1]:sub(start_pos[3])
 				send_to_claude(table.concat(lines, "\n") .. "\n")
@@ -2548,10 +2533,9 @@ require("lazy").setup({
 				local filepath = vim.fn.expand("%:p")
 				local d = diags[1]
 				local severity = vim.diagnostic.severity[d.severity]:lower()
-				send_to_claude(string.format(
-					"Fix this %s in @%s line %d: %s\n",
-					severity, filepath, d.lnum + 1, d.message
-				))
+				send_to_claude(
+					string.format("Fix this %s in @%s line %d: %s\n", severity, filepath, d.lnum + 1, d.message)
+				)
 			end, { desc = "Send LSP diagnostic to Claude" })
 
 			vim.keymap.set("n", "<leader>ccm", function()
@@ -2576,35 +2560,32 @@ require("lazy").setup({
 					end
 				end
 				local diff = vim.fn.system("git diff --cached")
-				vim.fn.jobstart(
-					{ "claude", "-p", "--agent", "git-commit-message-writer", diff },
-					{
-						stdout_buffered = true,
-						on_stdout = function(_, data)
-							local output = vim.fn.trim(table.concat(data, "\n"))
-							if output == "" then
-								vim.notify("No output from claude", vim.log.levels.ERROR)
-								return
-							end
-							local msg_lines = vim.split(output, "\n", { plain = true })
-							table.insert(msg_lines, "")
-							for _, l in ipairs(comment_lines) do
-								table.insert(msg_lines, l)
-							end
-							vim.schedule(function()
-								vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
-								vim.api.nvim_win_set_cursor(0, { 1, 0 })
-								vim.notify("Commit message generated", vim.log.levels.INFO)
-							end)
-						end,
-						on_stderr = function(_, data)
-							local err = vim.fn.trim(table.concat(data, "\n"))
-							if err ~= "" then
-								vim.notify("claude: " .. err, vim.log.levels.ERROR)
-							end
-						end,
-					}
-				)
+				vim.fn.jobstart({ "claude", "-p", "--agent", "git-commit-message-writer", diff }, {
+					stdout_buffered = true,
+					on_stdout = function(_, data)
+						local output = vim.fn.trim(table.concat(data, "\n"))
+						if output == "" then
+							vim.notify("No output from claude", vim.log.levels.ERROR)
+							return
+						end
+						local msg_lines = vim.split(output, "\n", { plain = true })
+						table.insert(msg_lines, "")
+						for _, l in ipairs(comment_lines) do
+							table.insert(msg_lines, l)
+						end
+						vim.schedule(function()
+							vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
+							vim.api.nvim_win_set_cursor(0, { 1, 0 })
+							vim.notify("Commit message generated", vim.log.levels.INFO)
+						end)
+					end,
+					on_stderr = function(_, data)
+						local err = vim.fn.trim(table.concat(data, "\n"))
+						if err ~= "" then
+							vim.notify("claude: " .. err, vim.log.levels.ERROR)
+						end
+					end,
+				})
 			end, { desc = "Generate commit message via claude agent" })
 		end,
 	},
