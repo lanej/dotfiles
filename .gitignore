@@ -22,6 +22,10 @@ __pycache__
 # Skills are ignored by default (symlinked external skills are machine-specific).
 # Real, repo-owned skills are force-added: git add -f claude/skills/<name>
 claude/skills/*
+
+# Agents are ignored by default (some are symlinked from ~/src/ep-dotfiles).
+# Real, repo-owned agents are force-added: git add -f claude/agents/<name>
+claude/agents/*
 CLAUDE.local.md
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
