@@ -421,6 +421,25 @@ import 'deploy.just'
 all: ci-check deploy-staging
 ```
 
+**Gotcha — redefining an imported recipe is a hard error, not a silent override.** Defining a local recipe with the same name as one pulled in via `import`/`import?` fails by default, regardless of definition order:
+
+```
+error: Recipe `render` first defined on line 8 is redefined on line 46
+```
+
+To make a local recipe actually replace an imported one, opt in with `set allow-duplicate-recipes := true` and define the local recipe *before* the `import` line — `just` uses whichever definition it sees first once duplicates are allowed:
+
+```just
+set allow-duplicate-recipes := true
+
+render:
+    echo "local override wins"
+
+import? 'canonical.just'  # also defines `render`, but this one loses
+```
+
+This setting is only needed when replacing a recipe's behavior under the same name. Adding a new, differently-named recipe alongside imported ones needs no special setting — only same-name conflicts are affected.
+
 ## Integration with Other Tools
 
 ### With Cargo (Rust)

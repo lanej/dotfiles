@@ -1,3 +1,8 @@
+---
+name: methodology
+description: "Consolidated methodology reference covering phased execution (continuous work through genuine blockers only, adaptive todo granularity), visual communication requirements (Mermaid diagrams, formatted tables, LaTeX math instead of raw data/plain-text math), and other process guidance relocated from CLAUDE.md for space efficiency. Load when working through multi-step tasks needing phased-execution guidance, or when producing analytical/quantitative output that should follow visual communication standards."
+---
+
 # Methodology Reference
 
 Consolidated methodology, frameworks, and detailed process guidance relocated from CLAUDE.md for space efficiency.

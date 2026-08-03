@@ -85,9 +85,15 @@ When Cloud Run (or any GCP service) injects a Secret Manager secret as an enviro
 # Wrong — echo appends \n
 echo "my-token" | gcloud secrets versions add my-secret --data-file=-
 
+# Wrong — jq -r also appends \n (the most common real-world trigger: extracting
+# a client_secret/private_key field from a downloaded OAuth or service-account
+# JSON file and piping it straight into gcloud)
+jq -r '.web.client_secret' client_secret.json | gcloud secrets create my-secret --data-file=-
+
 # Correct
 printf '%s' "my-token" | gcloud secrets versions add my-secret --data-file=-
 echo -n "my-token" | gcloud secrets versions add my-secret --data-file=-
+jq -rj '.web.client_secret' client_secret.json | gcloud secrets create my-secret --data-file=-
 ```
 
 **Verify:** `gcloud secrets versions access latest --secret=NAME | wc -c` should equal exactly the token length (no +1).

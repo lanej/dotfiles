@@ -80,6 +80,20 @@ with sync_playwright() as p:
 ❌ **Don't** inspect the DOM before waiting for `networkidle` on dynamic apps
 ✅ **Do** wait for `page.wait_for_load_state('networkidle')` before inspection
 
+## Debugging CSS Layout Bugs (sticky, scroll containers, height chains)
+
+A screenshot or a plausible-sounding root cause is not sufficient confirmation for a layout bug (sticky positioning, scroll containers, flex/grid height chains). These bugs frequently have root causes stacked across the DOM ancestor chain — a locally correct fix (e.g. `position: sticky` on the target element) can still fail because a parent or the shared app shell constrains it (e.g. `align-items: start` collapsing the grid item's height, or a shell using `min-height: 100vh` instead of `height: 100vh` so no ancestor ever actually becomes a scrolling container).
+
+Protocol:
+1. **Pin down the exact failing measurement before attempting a fix** — not "does it look right," but a specific `getBoundingClientRect()` / computed-style / `scrollTop` value at a specific scroll position that demonstrates the bug. Example:
+   ```python
+   page.evaluate("window.scrollTo(0, 1200)")
+   rect = page.locator(".rightColumn").evaluate("el => el.getBoundingClientRect()")
+   scroll_top = page.locator(".content").evaluate("el => el.scrollTop")
+   ```
+2. **Re-run that identical measurement after every fix attempt.** Only declare the bug fixed when that specific measurement now passes — not when a new theory sounds more precise than the last one, and not from a screenshot alone.
+3. **Expect to walk up the ancestor chain.** If a fix is syntactically correct but the measurement still fails, the real constraint is usually one level higher (grid/flex alignment → the element's own overflow container → a shared shell's height model). Don't stop at the first plausible explanation; keep measuring until the failure condition itself is gone.
+
 ## Best Practices
 
 - **Use bundled scripts as black boxes** - To accomplish a task, consider whether one of the scripts available in `scripts/` can help. These scripts handle common, complex workflows reliably without cluttering the context window. Use `--help` to see usage, then invoke directly. 

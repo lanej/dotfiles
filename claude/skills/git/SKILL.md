@@ -840,6 +840,23 @@ git config --worktree core.hooksPath <relative-path-to-hooks-dir>
 
 Applies to any repo using git worktrees + husky (or any hooks manager that writes `core.hooksPath`), not just one project.
 
+## Diff and Patch Gotchas
+
+### `git apply` fails with "does not exist in index" — check `diff.noprefix`
+
+This machine has `diff.noprefix = true` set globally in `~/.gitconfig` (confirm with `git config --get diff.noprefix`) — it applies to **every repo**, not one project. It strips the `a/`/`b/` prefixes from diff headers, so patches look like:
+
+```
+--- projects/foo/bar.qmd
++++ projects/foo/bar.qmd
+```
+
+instead of the usual `--- a/projects/foo/bar.qmd`. `git apply` defaults to `-p1` (strip one leading path component), which is correct for prefixed diffs but wrong here — it eats a real path segment (e.g. `projects/`) and produces "does not exist in index" or "does not exist on disk" even though the file is tracked at exactly that path.
+
+**Fix**: always pass `-p0` when applying a hand-crafted or sub-agent-generated diff on this machine — `git apply --cached -p0 <patch>` (no path stripping needed since the header is already relative to repo root). This is the standard fix for selective/partial-hunk staging (e.g. isolating one hunk of a file from other unrelated in-flight changes before a commit).
+
+Recurred across unrelated repos (a standalone project repo, and the `~/workspace` monorepo) because the root cause — a global gitconfig setting — wasn't written down after the first occurrence. Check `diff.noprefix` first before troubleshooting a "file not in index" apply failure; don't rediscover it by trial and error.
+
 ## Integration with Commit Message Writer
 
 After validation and before committing:
