@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Prints a short-lived (<=12h) AWS Bedrock bearer token to stdout, derived locally
+# from the current AWS credential chain via aws-bedrock-token-generator (no AWS API
+# call, no special IAM permission beyond what's needed to invoke Bedrock itself).
+#
+# Usage: export AWS_BEARER_TOKEN_BEDROCK=$(bedrock-mantle-token)                    # us-west-2 (default, low-latency)
+#        export AWS_BEARER_TOKEN_BEDROCK_USE1=$(bedrock-mantle-token "" us-east-1)  # us-east-1 (gpt-5.5, gpt-5.6-sol only)
+# Requires: a non-expired SSO session for the profile (aws sso login --profile <profile>)
+# Tokens are region-scoped (SigV4) - a us-west-2 token will not authenticate against us-east-1.
+
+set -euo pipefail
+
+PROFILE="${1:-EasyPostAIHubEngineering}"
+REGION="${2:-us-west-2}"
+
+AWS_PROFILE="$PROFILE" uv run --with aws-bedrock-token-generator python3 -c "
+from aws_bedrock_token_generator import provide_token
+print(provide_token(region='$REGION'))
+"
