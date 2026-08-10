@@ -169,7 +169,7 @@ alt - s : yabai -m window --toggle split
 
 # float / unfloat window and center on screen
 shift + alt - c : yabai -m window --toggle float;\
-	 yabai -m window --grid 4:4:1:1:2:2
+	 yabai -m window --grid 8:8:1:1:6:6
 shift + alt - v : yabai -m window --toggle float;\
 	 yabai -m window --grid 12:12:0:0:12:6
 shift + alt - n : yabai -m window --toggle float;\
