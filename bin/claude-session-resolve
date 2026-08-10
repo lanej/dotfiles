@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Resolve the current Claude Code session ID and transcript path."""
+
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+def encode_cwd_to_project_dir(cwd):
+    return cwd.replace('/', '-').replace('.', '-')
+
+
+def project_dir_for_cwd(cwd):
+    return Path.home() / '.claude' / 'projects' / encode_cwd_to_project_dir(cwd)
+
+
+def session_id_from_tmux_pane_option(pane):
+    if not pane:
+        return None
+    try:
+        result = subprocess.run(
+            ['tmux', 'show-options', '-p', '-v', '-t', pane, '@claude-session-id'],
+            capture_output=True, text=True
+        )
+        value = result.stdout.strip()
+        return value or None
+    except Exception:
+        return None
+
+
+def newest_jsonl(paths):
+    existing = [p for p in paths if p.exists()]
+    if not existing:
+        return None
+    return max(existing, key=lambda p: p.stat().st_mtime)
+
+
+def newest_transcript_in_dir(project_dir):
+    if not project_dir.is_dir():
+        return None
+    return newest_jsonl(project_dir.glob('*.jsonl'))
+
+
+def newest_transcript_cross_project():
+    projects_dir = Path.home() / '.claude' / 'projects'
+    if not projects_dir.is_dir():
+        return None
+    return newest_jsonl(projects_dir.glob('*/*.jsonl'))
+
+
+def resolve_session():
+    cwd = os.environ.get('PWD') or os.getcwd()
+    project_dir = project_dir_for_cwd(cwd)
+
+    session_id = session_id_from_tmux_pane_option(os.environ.get('TMUX_PANE', ''))
+    if not session_id:
+        newest = newest_transcript_in_dir(project_dir)
+        if newest is not None:
+            session_id = newest.stem
+
+    if session_id:
+        transcript_path = project_dir / f'{session_id}.jsonl'
+        if transcript_path.exists():
+            return session_id, transcript_path
+
+    fallback = newest_transcript_cross_project()
+    if fallback is not None:
+        return fallback.stem, fallback
+
+    return None, None
+
+
+def main():
+    session_id, transcript_path = resolve_session()
+    if session_id is None or transcript_path is None:
+        sys.exit(1)
+
+    print(f'SESSION_ID={shlex.quote(session_id)}')
+    print(f'TRANSCRIPT_PATH={shlex.quote(str(transcript_path))}')
+
+
+if __name__ == '__main__':
+    main()
