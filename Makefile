@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto test
 DOTFILES := $(shell pwd)
 
 all: .PHONY
@@ -226,3 +226,5 @@ mail:
 	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
 	@echo "  2. Follow the prompts to configure your Gmail account"
 	@echo "  3. Launch neomutt when done"
+test:
+	@pytest bin/*_test.py
