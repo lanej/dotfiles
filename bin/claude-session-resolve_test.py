@@ -10,6 +10,7 @@ side effect of importing it.
 
 import importlib.util
 import os
+import re
 import subprocess
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -69,6 +70,47 @@ def test_encode_cwd_regression_2026_08_07_broken_reference_produces_wrong_value(
     assert _broken_encode_2026_08_07(cwd) != resolver.encode_cwd_to_project_dir(cwd)
 
 
+def test_encode_cwd_replaces_underscore():
+    """Ground-truthed against a real Claude Code project directory on this
+    machine: `/Users/joshlane/src/ep_cassandra` (which exists on disk) has
+    the real project dir `~/.claude/projects/-Users-joshlane-src-ep-cassandra`
+    (underscore replaced with dash) — verify with:
+    `ls -d ~/.claude/projects/-Users-joshlane-src-ep-cassandra`.
+    No directory with the underscore preserved exists."""
+    assert (
+        resolver.encode_cwd_to_project_dir('/Users/joshlane/src/ep_cassandra')
+        == '-Users-joshlane-src-ep-cassandra'
+    )
+
+
+def test_encode_cwd_replaces_space_and_special_chars():
+    assert (
+        resolver.encode_cwd_to_project_dir('/tmp/my project (v2)')
+        == '-tmp-my-project--v2-'
+    )
+
+
+def test_encode_cwd_truncates_long_paths():
+    """No real >200-char project directory exists on this machine to compare
+    against, so this only verifies the truncation *contract* (deterministic,
+    correct length, valid base36 hash suffix) — not an exact known hash value
+    ground-truthed against real Claude Code output."""
+    cwd = '/Users/joshlane/src/' + ('a' * 250)
+    fully_encoded = re.sub(r'[^a-zA-Z0-9]', '-', cwd)
+
+    result = resolver.encode_cwd_to_project_dir(cwd)
+
+    assert result.startswith(fully_encoded[:200])
+    prefix, _, suffix = result.rpartition('-')
+    assert prefix == fully_encoded[:200]
+    assert suffix != ''
+    assert re.fullmatch(r'[0-9a-z]+', suffix)
+    assert len(result) <= 200 + 1 + len(suffix)
+
+    # Deterministic: same input always produces the same hash suffix.
+    assert resolver.encode_cwd_to_project_dir(cwd) == result
+
+
 # ---------------------------------------------------------------------------
 # project_dir_for_cwd()
 # ---------------------------------------------------------------------------
@@ -112,6 +154,27 @@ def test_session_id_from_tmux_pane_option_subprocess_raises_returns_none(monkeyp
     monkeypatch.setattr(resolver.subprocess, 'run', raise_error)
 
     assert resolver.session_id_from_tmux_pane_option('%3') is None
+
+
+def test_session_id_from_tmux_pane_option_subprocess_timeout_returns_none(monkeypatch):
+    """A wedged tmux server must not hang /name indefinitely — subprocess.run
+    is called with timeout=2, and TimeoutExpired is caught by the existing
+    broad `except Exception` alongside other subprocess failures."""
+    def raise_timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd='tmux', timeout=2)
+
+    monkeypatch.setattr(resolver.subprocess, 'run', raise_timeout)
+
+    assert resolver.session_id_from_tmux_pane_option('%3') is None
+
+
+def test_session_id_from_tmux_pane_option_passes_timeout_to_subprocess_run(monkeypatch):
+    mock_run = MagicMock(return_value=MagicMock(returncode=0, stdout='abc123\n'))
+    monkeypatch.setattr(resolver.subprocess, 'run', mock_run)
+
+    resolver.session_id_from_tmux_pane_option('%3')
+
+    assert mock_run.call_args.kwargs.get('timeout') == 2
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +353,64 @@ def test_resolve_session_pane_stale_session_id_falls_through_to_cross_project(mo
     monkeypatch.setattr(resolver, 'session_id_from_tmux_pane_option', lambda pane: 'stale-session')
 
     assert resolver.resolve_session() == ('session-cross', cross)
+
+
+def test_resolve_session_cross_project_fallback_prints_stderr_warning(monkeypatch, tmp_path, capsys):
+    cwd = '/some/project'
+    _setup_cwd_and_home(monkeypatch, tmp_path, cwd)
+    project_dir = resolver.project_dir_for_cwd(cwd)
+    project_dir.mkdir(parents=True)  # exists but empty
+
+    other_proj = tmp_path / '.claude' / 'projects' / 'other-project'
+    other_proj.mkdir(parents=True)
+    cross = other_proj / 'session-cross.jsonl'
+    cross.write_text('{}')
+
+    monkeypatch.setattr(resolver, 'session_id_from_tmux_pane_option', lambda pane: None)
+
+    result = resolver.resolve_session()
+
+    assert result == ('session-cross', cross)
+    captured = capsys.readouterr()
+    assert 'cross-project' in captured.err
+
+
+def test_resolve_session_pane_lookup_success_prints_no_stderr_warning(monkeypatch, tmp_path, capsys):
+    cwd = '/some/project'
+    _setup_cwd_and_home(monkeypatch, tmp_path, cwd)
+    project_dir = resolver.project_dir_for_cwd(cwd)
+    project_dir.mkdir(parents=True)
+    transcript = project_dir / 'session-a.jsonl'
+    transcript.write_text('{}')
+
+    monkeypatch.setattr(resolver, 'session_id_from_tmux_pane_option', lambda pane: 'session-a')
+
+    result = resolver.resolve_session()
+
+    assert result == ('session-a', transcript)
+    captured = capsys.readouterr()
+    assert captured.err == ''
+
+
+def test_resolve_session_same_dir_fallback_prints_no_stderr_warning(monkeypatch, tmp_path, capsys):
+    cwd = '/some/project'
+    _setup_cwd_and_home(monkeypatch, tmp_path, cwd)
+    project_dir = resolver.project_dir_for_cwd(cwd)
+    project_dir.mkdir(parents=True)
+    older = project_dir / 'session-old.jsonl'
+    newer = project_dir / 'session-new.jsonl'
+    older.write_text('{}')
+    newer.write_text('{}')
+    os.utime(older, (1000, 1000))
+    os.utime(newer, (2000, 2000))
+
+    monkeypatch.setattr(resolver, 'session_id_from_tmux_pane_option', lambda pane: None)
+
+    result = resolver.resolve_session()
+
+    assert result == ('session-new', newer)
+    captured = capsys.readouterr()
+    assert captured.err == ''
 
 
 def test_resolve_session_nothing_resolvable_returns_none_none(monkeypatch, tmp_path):

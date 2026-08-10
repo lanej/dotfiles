@@ -2,14 +2,39 @@
 """Resolve the current Claude Code session ID and transcript path."""
 
 import os
+import re
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 
+PROJECT_DIR_MAX_LEN = 200
+
+
+def _path_hash(cwd):
+    """Reproduce Claude Code's int32 rolling hash (classic Java String.hashCode),
+    base36-encoded, used to disambiguate truncated long-path project dirs."""
+    h = 0
+    for ch in cwd:
+        h = ((h << 5) - h + ord(ch)) & 0xFFFFFFFF
+        if h >= 0x80000000:
+            h -= 0x100000000
+    n = abs(h)
+    if n == 0:
+        return '0'
+    digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+    out = ''
+    while n:
+        out = digits[n % 36] + out
+        n //= 36
+    return out
+
 
 def encode_cwd_to_project_dir(cwd):
-    return cwd.replace('/', '-').replace('.', '-')
+    encoded = re.sub(r'[^a-zA-Z0-9]', '-', cwd)
+    if len(encoded) <= PROJECT_DIR_MAX_LEN:
+        return encoded
+    return f'{encoded[:PROJECT_DIR_MAX_LEN]}-{_path_hash(cwd)}'
 
 
 def project_dir_for_cwd(cwd):
@@ -22,7 +47,7 @@ def session_id_from_tmux_pane_option(pane):
     try:
         result = subprocess.run(
             ['tmux', 'show-options', '-p', '-v', '-t', pane, '@claude-session-id'],
-            capture_output=True, text=True
+            capture_output=True, text=True, timeout=2
         )
         value = result.stdout.strip()
         return value or None
@@ -67,6 +92,10 @@ def resolve_session():
 
     fallback = newest_transcript_cross_project()
     if fallback is not None:
+        print(
+            'warning: claude-session-resolve fell back to a cross-project session — this may be the wrong session',
+            file=sys.stderr
+        )
         return fallback.stem, fallback
 
     return None, None

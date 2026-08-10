@@ -16,10 +16,10 @@ You are naming a Claude Code session for tmux/session-list display. Do the whole
 1. Resolve the session ID and transcript path using the extracted resolver script. Do not
    reimplement this logic inline — it was pulled out of this file because embedded bash here
    caused the 2026-08-07 regression (a `sed` cwd-encoding bug plus an `ls -t | head -1` race
-   across same-cwd sessions).
-     resolved="$($HOME/.files/bin/claude-session-resolve)" || { echo "resolve failed"; exit 1; }
-     eval "$resolved"
-     echo "session_id=$SESSION_ID transcript_path=$TRANSCRIPT_PATH"
+   across same-cwd sessions). Run this as a single Bash invocation — this environment does not
+   persist shell state (env vars) between separate tool calls, so splitting these statements
+   across multiple invocations would lose `$resolved` and silently produce empty values:
+     resolved="$($HOME/.files/bin/claude-session-resolve)" || { echo "Session naming failed: could not resolve session"; exit 1; }; eval "$resolved"; echo "session_id=$SESSION_ID transcript_path=$TRANSCRIPT_PATH"
    If the resolver exits non-zero, stop and report failure rather than guessing — do not fall
    through to steps 2-6 with empty values. Otherwise use the exact `session_id`/`transcript_path`
    values from the echoed line verbatim below.
