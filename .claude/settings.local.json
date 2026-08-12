@@ -26,5 +26,10 @@
       "~/.local/share/"
     ]
   },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": true
+  },
   "spinnerTipsEnabled": false
 }

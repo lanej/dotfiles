@@ -19,6 +19,18 @@
       "Bash(fdisk:*)",
       "Bash(parted:*)",
       "Bash(wipefs:*)",
+      "Bash(diskutil:eraseDisk:*)",
+      "Bash(diskutil:eraseVolume:*)",
+      "Bash(diskutil:zeroDisk:*)",
+      "Bash(diskutil:partitionDisk:*)",
+      "Bash(asr:restore:*)",
+      "Bash(dd*of=/dev/disk*)",
+      "Bash(dd*of=/dev/rdisk*)",
+      "Bash(csrutil:disable*)",
+      "Bash(spctl:--master-disable*)",
+      "Bash(security dump-keychain*)",
+      "Bash(security find-generic-password*)",
+      "Bash(security find-internet-password*)",
       "WebSearch",
       "WebFetch"
     ],
@@ -75,6 +87,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-plan-critique-gate-hook"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-haiku-repo-write-gate-hook"
           }
         ]
       },
@@ -142,10 +163,22 @@
       }
     }
   },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "enableWeakerNetworkIsolation": true,
+    "filesystem": {
+      "allowWrite": ["/tmp", "/private/tmp"]
+    }
+  },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
+  "autoCompactWindow": 600000,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
+  },
+  "worktree": {
+    "baseRef": "fresh"
   }
 }
