@@ -24,6 +24,9 @@ Explore agents fabricate file/resource/table names and directory structures when
 ### Hook diagnostics
 "Cannot find module"/missing-file diagnostics from a `PreToolUse` hook can be stale or wrong in concurrent multi-worktree/multi-session setups. Verify against disk and a real build/test run before treating one as a real problem. (detail: memory "feedback_hook_diagnostic_unreliable")
 
+### Killed-agent status
+A task-notification with `status: killed` has its `result` field populated from the agent's last in-flight message — narrated intent ("let's check X now"), not a completed or verified finding, no matter how conclusive it reads. Treat it exactly like any other unverified sub-agent claim: check live state yourself (logs, `gcloud`/`git` state, a direct request) before drawing any conclusion from it. (undocumented in memory as of this writing — first observed instance)
+
 ### Git push/merge
 Verify with `git log origin/main -1` or `git remote show origin` after any push/merge — don't rely on the exit code alone. (detail: memory "feedback_git_push_verification")
 
@@ -44,6 +47,9 @@ Unexplained repo/file state with no task-notification is often a concurrent huma
 ### `gh pr checkout` is not worktree-safe
 It operates against the main git directory regardless of CWD, switching the main working directory's branch. For a sub-agent working a PR branch inside a worktree, use `git fetch origin <branch> && git checkout -b fix/<name> origin/<branch>` instead.
 
+### Re-briefing after a decision reversal
+When a brief asks a subagent to do something that contradicts a decision it might already hold as settled — a frozen/validated spec, its own earlier refusal, a documented prior PASS/FAIL verdict, a checked-in convention — include the user's verbatim words plus a pointer to the updated authoritative record (e.g., an amended spec revision), not just an instruction. A subagent correctly applying standing injection-defense skepticism can't distinguish a bare assertion of reversed authority from a hallucinated or injected one; only checkable evidence resolves that. (detail: memory "feedback_reopen_decision_subagent_briefing_evidence")
+
 ### npm/yarn workspaces in a fresh worktree
 A freshly created worktree has no `node_modules` until `npm install` runs there — until then, workspace-package resolution silently walks up to the *parent checkout's* `node_modules` instead of erroring, so a worktree's edits to a shared package can appear to have no effect. Run `npm install` at the worktree root immediately after creating it, before any dev server or test command. (detail: memory "feedback_worktree_npm_workspaces_stale_resolution")
 
@@ -53,8 +59,14 @@ A freshly created worktree has no `node_modules` until `npm install` runs there 
 ### `core.hooksPath` collision across worktrees
 It's a single value in the shared `.git/config`, not per-worktree — a sibling worktree running `husky init` can silently overwrite it repo-wide, defeating the pre-commit hook everywhere else with no error at commit time. Fix per worktree needing isolation: `git config extensions.worktreeConfig true && git config --worktree core.hooksPath <relative-path>`. (detail: memory "project_hookspath_worktree_collision"; mechanism also documented in `git` skill)
 
+### `gh repo edit --default-branch` doesn't retroactively fix existing clones
+It changes GitHub's server-side setting only — it does not push an update to any already-existing local clone's cached `refs/remotes/origin/HEAD` (a local, per-clone value set at clone time or by an explicit `git remote set-head origin -a`, not auto-refreshed by a plain `git fetch`). In a repo with concurrent same-day worktree activity, a worktree created before the fix lands can still branch from the old stale default even though the same clone's `origin/HEAD` checks out fine minutes later. Don't treat a one-time `gh repo edit` as sufficient — after creating any new worktree, verify freshness directly (`git fetch origin main && git log --oneline HEAD..origin/main | wc -l` should be `0`) before dispatching implementation work, rather than trusting that a same-day default-branch fix already propagated. (detail: memory "project_worktree_stale_default_branch" — three occurrences in `logistics-services`, the third *after* the repo setting was already confirmed fixed)
+
 ### `git worktree remove` ordering
 Never run it via Bash before `ExitWorktree` — it deletes the directory the session's CWD points at, and Node then fails to spawn any subsequent hook with a misleading `ENOENT: posix_spawn '/bin/sh'` error. Use `ExitWorktree` with `action: "remove"` — it handles the git-level removal itself.
+
+### Merging/pushing a worktree branch into `main`
+A worktree-isolated session's git commands are refused if they redirect to the shared checkout — both `git -C <main-repo-path> ...` (harness refuses: "this command redirects git to the shared checkout... a worktree-isolated session's git operations must target its own worktree") and `git fetch . <branch>:main` (git itself refuses: "fatal: refusing to fetch into branch 'refs/heads/main' checked out at '<path>'") fail. Don't try further workarounds — call `ExitWorktree(action: "keep")` first (preserves the worktree and its branch on disk, does not discard anything), then run the merge/rebase/push from the primary checkout once the session lands back there.
 
 ## Verification-before-reporting family
 

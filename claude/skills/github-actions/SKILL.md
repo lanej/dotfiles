@@ -27,8 +27,8 @@ resource "google_iam_workload_identity_pool_provider" "github_actions" {
     "attribute.repository" = "assertion.repository"
   }
 
-  # Lock the provider to exactly one repo — do not leave this open.
-  attribute_condition = "assertion.repository == \"org/repo-name\""
+  # Lock the provider to exactly one repo AND one ref — repo-only is not enough (see below).
+  attribute_condition = "assertion.repository == \"org/repo-name\" && assertion.ref == \"refs/heads/main\""
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -47,6 +47,8 @@ resource "google_service_account_iam_member" "wif_binding" {
 ```
 
 The `attribute_condition` is the actual security boundary — without it, *any* repo in your GitHub org (or on GitHub entirely, depending on pool config) could mint tokens against this SA. Always scope it to the exact `org/repo` string.
+
+**Repo-scoping alone is not sufficient for any workflow that supports `workflow_dispatch`, `workflow_call`, or another manually/remotely-triggerable event.** Matching `assertion.repository` only confirms *which repo* — it does not confine *which code runs*: a workflow triggered via `workflow_dispatch` executes as defined on whatever branch the caller picks, not necessarily the reviewed default branch, and still satisfies a repo-only condition. Anyone with repo write access (not necessarily merge/branch-protection rights) can push an unreviewed branch with a modified workflow or payload and dispatch it to mint credentials under the real condition. Add an explicit ref check — `assertion.ref == "refs/heads/main"` (adjust for the actual protected branch) — to every WIF provider whose workflow has any trigger besides a plain `push`/`pull_request` restricted to that branch. Treat ref-scoping as the default hardening for all new WIF providers, not an opt-in for ones you happen to remember support manual dispatch.
 
 **Workflow-side auth** (`google-github-actions/auth`):
 

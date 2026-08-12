@@ -62,6 +62,14 @@ Clean run = diagnostic was stale, proceed. Reproduced failure = real, fix it. A 
 2. If the collision is a real duplicate in the UI (e.g. a title and a label legitimately share the same string), stop using `getByText` for that assertion and query more specifically: `getByRole("heading", { name: "X" })` to target only the semantic heading, or `getAllByText("X")` with a length assertion if multiple matches are actually expected and desired.
 Don't "fix" a real UI duplication by making the test pass via `getAllByText()[0]` without checking which element you actually got — that hides which of the two elements is under test.
 
+### jsdom Doesn't Catch Real-Browser CSS Layout/Intrinsic-Sizing Bugs
+
+A 100%-green vitest/jsdom run is not sufficient evidence a CSS sizing or layout change renders correctly — jsdom doesn't perform real layout. Confirmed instance: an inline `<svg>` with no `width`/`height` attribute, sized via `width: auto; height: auto; max-width: 116px; max-height: 27px` to fit a bounding box, rendered as an invisible 0×0 box in a real browser while 611/611 vitest tests, lint, and build all passed. Unlike `<img>`, an inline `<svg>` with no `width`/`height` attribute has no browser-default intrinsic size — with both axes `auto` inside a shrink-to-fit container, it resolves to zero, a real layout computation jsdom never runs. Component structure, props, and test assertions were all correct; only actual browser layout exposed the failure.
+
+**Fix:** give the element a real fixed `width` baseline (mirroring how a same-page `<img>` is already sized) plus `max-height` to reflow for a wider aspect ratio, rather than relying on `auto`/`auto` for both axes.
+
+**Verify:** for any change touching inline SVG sizing, `auto` width/height on a non-`<img>` element, or other CSS layout mechanics, do a manual browser/Playwright check — a screenshot plus `getBoundingClientRect()` on the affected element — before calling the change done. Re-running vitest alone does not confirm it.
+
 ### Bun:sqlite in Vitest
 
 `bun:sqlite` is a Bun built-in unavailable in Node.js/Vitest. Tests using it must run via `bun test`.
