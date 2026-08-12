@@ -329,9 +329,17 @@ Decompose the plan into a dependency graph. For each task, identify blocks and p
 
 After the dependency graph, recommend an execution strategy:
 
-- **3+ independent tracks**: recommend `/lead` for orchestrated parallel execution.
+- **3+ independent tracks**: recommend invoking `Workflow` directly for orchestrated parallel execution.
 - **Mostly sequential**: recommend working through tasks directly.
-- **Mixed**: identify which phases benefit from `/lead` and which should be sequential.
+- **Mixed**: identify which phases benefit from a `Workflow` script and which should be sequential.
+
+### Write the Plan
+
+Write the dependency graph and execution recommendation above to `.socrates/TIMESTAMP/plan.md` — the same session timestamp directory already used for `spec.md`/`critique.md` — as a real file, using the `Write` tool. This is not optional and not satisfied by presenting the plan in conversation only: the plan is not complete until it exists on disk at this path.
+
+### Plan Critique
+
+Immediately after writing `plan.md`, before any other tool call, dispatch `Agent(model="opus")` to critique the plan file. Give the sub-agent the `plan.md` path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. This dispatch is mandatory on every pass through Phase 3, not conditional on suspecting a weak plan.
 
 Exit plan mode with `ExitPlanMode` for user approval.
 
@@ -450,7 +458,7 @@ _[open]_
 
 After the plan is approved:
 - `/critique` → adversarial specification review
-- `/lead` → orchestrated parallel execution
+- `Workflow` → orchestrated parallel execution (author a script directly)
 - `/verify` → validation and regression verification
 
 Do not suggest these at the end of Phase 2 or Phase 3. They are available to the user on demand.
