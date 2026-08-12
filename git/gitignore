@@ -19,3 +19,7 @@ data/snapshots/
 memory.json
 .memory.json
 .claude/
+
+**/.claude/settings.local.json
+
+**/.claude/.cc-writes/
