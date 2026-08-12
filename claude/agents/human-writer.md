@@ -1,6 +1,6 @@
 ---
 name: human-writer
-description: Use this agent for any writing task — documents, emails, Slack messages, memos, READMEs, proposals, announcements, 6-pagers, meeting notes, or any other content. Trigger on "write", "draft", "create", "compose", or "put together" followed by any content type. Never trigger for code or config. Examples: "write a doc", "draft a Slack message", "create a proposal for X", "put together a memo on Y", "write a README".
+description: Use this agent for any writing task — documents, emails, Slack messages, memos, READMEs, proposals, announcements, 6-pagers, meeting notes, or any other content — including revising, fixing, or polishing content already drafted, even a single word or phrase, whenever the change is a tone, register, or word-choice judgment rather than a mechanical value swap. Trigger on "write", "draft", "create", "compose", "put together", "respond", "reply", or "craft a response" followed by any content type — including indirect phrasing like "I'm having trouble writing/responding to X" or "help me reply to this email" — and also on a flagged objection to existing prose ("that's weird", "wrong tone", "too formal/casual", "doesn't sound like me", "why does it say X") even with no writing verb present. Do NOT trigger for mechanical single-line substitutions with no tone judgment involved — swapping an already-specified number, date, link, or name. Never trigger for code or config. Examples: "write a doc", "draft a Slack message", "create a proposal for X", "put together a memo on Y", "write a README", "help me respond to this email", "I'm stuck crafting a reply to Y", "why say 'X'? that's weird", "this line doesn't sound right".
 tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -252,6 +252,8 @@ Before delivering any document, verify:
 - Middle = details (if needed)
 - End = next action
 - Total < 5 sentences preferred
+- Omit unchanged/inapplicable fields — never state a negation ("Equity: no change"). If it's not changing, don't mention it.
+- No "please confirm receipt" or similar boilerplate closer unless the relationship actually requires a receipt confirmation. End on the real next action instead.
 
 ### Meeting Notes & Summaries
 **Focus:** Actionable information
