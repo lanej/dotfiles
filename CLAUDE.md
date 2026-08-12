@@ -25,7 +25,7 @@ This repository uses a selective versioning pattern for Claude commands and agen
 
 ### Setup via Makefile
 
-Run `make claude` (Makefile:168-178). Links commands, agents, skills, and CLAUDE.md into `~/.claude/`, processes `settings.json` via `envsubst`, and wires MCP servers into `~/.claude.json`.
+Run `make claude` (Makefile:168-178). Symlinks `settings.json`, commands, agents, skills, workflows, and CLAUDE.md into `~/.claude/`, and wires MCP servers into `~/.claude.json` via `jq`.
 
 EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from there after cloning to symlink them into `~/.files/claude/skills/`.
 

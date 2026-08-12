@@ -446,7 +446,7 @@ Type: [Engineering | Research/Analysis | Writing | General]
 After validation:
 - `/critique` → adversarial specification review
 - Claude Code built-in `/plan` → execution decomposition and dependency topology
-- `/lead` → orchestration
+- `Workflow` → orchestration (author a script directly)
 - `/verify` → validation and regression verification
 
 `/specify` ends at validated specification generation.

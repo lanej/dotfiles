@@ -241,7 +241,7 @@ Planning may not:
 
 Read the dependency plan from Stage 4. Do not re-evaluate parallelizability here — Stage 4 already resolved it.
 
-Recommend `/lead` if and only if all three conditions hold:
+Recommend invoking `Workflow` directly (author a script matching Stage 4's task graph — `parallel()` for the concurrent wave, sequential `agent()` calls for the rest) if and only if all three conditions hold:
 1. Stage 4's plan contains 3+ tasks with `Parallel with: <others>` in the same execution wave
 2. each parallel task can be fully briefed to a sub-agent without referencing another parallel task's internals — if briefing one requires explaining another, collapse them into a sequential dependency in Stage 4 before proceeding
 3. execution can safely parallelize (no shared mutable state, no ordering assumptions between parallel tasks)
@@ -295,7 +295,7 @@ Typical flow:
 3. /specify
 4. STOP + review
 5. /plan
-6. optional /lead
+6. optional Workflow
 7. /verify
 ```
 
