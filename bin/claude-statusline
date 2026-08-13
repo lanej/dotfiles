@@ -23,6 +23,8 @@ ssh_sym=$(printf '\xef\xa0\x97')   # U+F817 nf-mdi-ssh
 git_sym=$(printf '\xee\x82\xa0')   # U+E0A0 nf-pl-branch
 wt_sym=$(printf '\xef\x84\xa6')    # U+F126 nf-fa-code_fork (worktree)
 vim_sym=$(printf '\xee\x98\xab')   # U+E62B nf-dev-vim
+lock_sym=$(printf '\xef\x80\xa3')  # U+F023 nf-fa-lock (sandbox enabled)
+unlock_sym=$(printf '\xef\x82\x9c') # U+F09C nf-fa-unlock (sandbox disabled)
 
 # User and hostname
 user=$(whoami)
@@ -88,6 +90,24 @@ _fish_path_rel() {
     i=$((i+1))
   done
   printf '%s' "$result"
+}
+
+# Effective `sandbox.enabled` from Claude Code settings, checked in precedence order
+# (project local > project shared > user local > user shared). Prints "true"/"false",
+# or nothing if unset anywhere.
+_sandbox_setting() {
+  local files=(
+    "$cwd/.claude/settings.local.json"
+    "$cwd/.claude/settings.json"
+    "$HOME/.claude/settings.local.json"
+    "$HOME/.claude/settings.json"
+  )
+  local f val
+  for f in "${files[@]}"; do
+    [ -f "$f" ] || continue
+    val=$(jq -r 'if has("sandbox") and (.sandbox.enabled != null) then .sandbox.enabled else empty end' "$f" 2>/dev/null)
+    [ -n "$val" ] && { printf '%s' "$val"; return; }
+  done
 }
 
 # Directory: fish-style unique-truncated path; git worktrees show main repo path
@@ -188,6 +208,13 @@ if [ -n "$vim_mode" ]; then
     "INSERT") ;;
   esac
 fi
+
+# Sandbox status: green lock when Bash sandboxing is enabled, red unlock when disabled
+sandbox_setting=$(_sandbox_setting)
+case "$sandbox_setting" in
+  "true")  printf ' \033[32m%s\033[0m' "$lock_sym" ;;
+  "false") printf ' \033[31m%s\033[0m' "$unlock_sym" ;;
+esac
 
 # Model name — bright yellow + bolt when Opus (fast mode), gray otherwise
 bolt=$(printf '\xe2\x9a\xa1')   # U+26A1 LIGHTNING
