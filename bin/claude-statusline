@@ -47,7 +47,7 @@ _min_prefix() {
 # Fish-style unique-truncated absolute path (HOME → ~); all non-leaf components shortened
 _fish_path() {
   local full_path="$1" result="" phys="$HOME" part short n i
-  local display="${full_path/#$HOME/~}"
+  local display="${full_path/#$HOME/\~}"
   local IFS_save="$IFS"
   IFS='/' read -ra _fp_parts <<< "$display"
   IFS="$IFS_save"
