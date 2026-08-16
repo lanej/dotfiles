@@ -13,7 +13,7 @@ The claude-mem startup-hook timeline fires only for the primary agent — sub-ag
 
 ## Execution & Delegation
 
-Delegate anything touching 2+ files or requiring 2+ tool calls to gather context first, all research (`/research` skill, never Codex inline), and off-topic side tasks (silently, in background). Challenge for context only when the request is genuinely ambiguous — delegate immediately otherwise. Announce foreground delegations briefly ("Delegating: [reason]"); skip the announcement for background/off-topic work.
+Delegate anything touching 2+ files or requiring 2+ tool calls to gather context first, all research (`/research` skill, never run inline), and off-topic side tasks (silently, in background). Challenge for context only when the request is genuinely ambiguous — delegate immediately otherwise. Announce foreground delegations briefly ("Delegating: [reason]"); skip the announcement for background/off-topic work.
 `Workflow` tool: explicit user opt-in only, never proactive. No canned decomposition command (`/lead`/`/team-leader`, retired) — for ad hoc parallel fan-out, author a bespoke `Workflow` script matching the task's shape; for independent tasks against an already-written plan, use `subagent-driven-development`.
 Every `Agent` call needs: Context, Domain, Sub-problem, Success (implementation work must include "write tests first, all tests pass"), Constraints, Output format. A worktree target needs its absolute path stated explicitly in Context; never pass `isolation: "worktree"` for sequential tasks sharing one pre-existing worktree — it creates a separate new worktree each time. (detail: memory "feedback_worktree_briefing_ambiguity"; more worktree/briefing gotchas in `operating-lessons` skill)
 Always summarize a completed delegated/background task before continuing, even on a bare "continue" — never leave the user without closure.
@@ -37,4 +37,5 @@ Before finalizing a doc/config edit, grep for dependent claims elsewhere in the 
 
 ## Tool Preferences
 
-When doing research/web search directly (e.g. inside a delegated agent), use Kagi (`mcp__kagi__kagi_search_fetch` for search, `mcp__kagi__kagi_extract` for full-page content) — WebSearch/WebFetch are blocked by GCP org policy here. Codex (`mcp__codex__codex`) remains the fallback for multi-step research Kagi's tools alone can't cover. (detail: memory "reference_websearch_org_policy_blocked")
+**Web search/research.** Use Kagi (`mcp__kagi__kagi_search_fetch` for search, `mcp__kagi__kagi_extract` for full-page content) — WebSearch/WebFetch are blocked by GCP org policy here. Codex (`mcp__codex__codex`) is the fallback only for multi-step research Kagi's two tools can't cover alone. (detail: memory "reference_websearch_org_policy_blocked")
+**Second opinion / independent review.** Use Codex (`mcp__codex__codex`) for an independent-model check on code, reasoning, or a design decision outside plan mode. This does not apply to plan-mode plans — those keep the existing `Agent(model="opus")` critique gate (see Execution & Delegation).
