@@ -100,7 +100,7 @@ Record answers in `brief.md` under `## Interrogation`.
 Search for evidence before drafting. Do not write claims you cannot support.
 
 1. Search workspace KB (`mcp__qmd__query`, `rerank: false`) for prior analysis, domain context, existing positions.
-2. Search external sources (`mcp__codex__codex`) for data, benchmarks, precedents — only for external claims.
+2. Search external sources (`mcp__kagi__kagi_search_fetch` / `mcp__kagi__kagi_extract`, falling back to `mcp__codex__codex` for multi-step research) for data, benchmarks, precedents — only for external claims.
 3. Record each piece of evidence in `sources.md` with its full citation (see format above).
 4. Record what was searched and NOT found — note gaps in `brief.md` under `## Evidence Gaps`.
 

@@ -30,7 +30,7 @@ The sub-agent should work through these sources in order, stopping when it has s
 2. **Codebase** — Glob/Grep/Read — source of truth for implementation details
 3. **BigQuery** — `mcp__bigquery__query` — live warehouse data; always `dry_run` first
 4. **Jira** — `mcp__jira__jira_issues_search` JQL — ticket status, project decisions, delivery context
-5. **Web** — `mcp__codex__codex` — external docs, standards, anything not internal
+5. **Web** — `mcp__kagi__kagi_search_fetch` (search) / `mcp__kagi__kagi_extract` (full-page content) — external docs, standards, anything not internal. Fall back to `mcp__codex__codex` only for multi-step research Kagi's two tools can't cover alone.
 
 ## Sub-agent Briefing Template
 

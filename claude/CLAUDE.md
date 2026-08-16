@@ -32,8 +32,9 @@ Don't automate interactive tools (editors, `git commit` without `-m`, interactiv
 ## Code Changes
 
 Break new test harnesses post-red to confirm they can actually fail before trusting green. See `methodology` skill for extended reference.
+A break-check must never use `git checkout`/`git restore` or `cd` outside the target dir — break manually (stub/comment out, confirm red, undo) instead; recurred 3x as irrecoverable-work-loss risk despite memory-only mitigation. (detail: memory "project_subagent_git_checkout_breakcheck")
 Before finalizing a doc/config edit, grep for dependent claims elsewhere in the same and sibling files, and — for any renamed/removed term — grep the full project before touching any file. A locally coherent change that creates global inconsistency isn't done. (`operating-lessons` skill: specific failure patterns)
 
 ## Tool Preferences
 
-When doing research/web search directly (e.g. inside a delegated agent), use Codex (`mcp__codex__codex`) — WebSearch/WebFetch are blocked by GCP org policy here. (detail: memory "reference_websearch_org_policy_blocked")
+When doing research/web search directly (e.g. inside a delegated agent), use Kagi (`mcp__kagi__kagi_search_fetch` for search, `mcp__kagi__kagi_extract` for full-page content) — WebSearch/WebFetch are blocked by GCP org policy here. Codex (`mcp__codex__codex`) remains the fallback for multi-step research Kagi's tools alone can't cover. (detail: memory "reference_websearch_org_policy_blocked")
