@@ -170,6 +170,7 @@ claude:
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
+	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
 	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
 	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
 	@ln -fns $(DOTFILES)/claude/skills $(HOME)/.claude/skills
