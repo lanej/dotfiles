@@ -121,8 +121,8 @@ if command -v fzf >/dev/null; then
 	# Override fzf-cd-widget (Alt-C / Ctrl+U) with toggle for hidden dirs
 	# Default: no hidden dirs, respects .gitignore/.ignore
 	# Press Ctrl+U inside fzf to toggle hidden/ignored dirs on/off
-	# Press Tab to load the highlighted path into the query, narrowing to it and its
-	# children (e.g. jump to a parent dir, Tab to drill into it, keep narrowing, then Enter)
+	# Press Ctrl+B to load the highlighted path into the query, narrowing to it and its
+	# children (e.g. jump to a parent dir, Ctrl+B to drill into it, keep narrowing, then Enter)
 	fzf-cd-widget() {
 		setopt localoptions pipefail no_aliases 2> /dev/null
 
@@ -139,7 +139,7 @@ if command -v fzf >/dev/null; then
 				--prompt='📁 > ' \
 				--preview-window="$preview_window" \
 				--bind="ctrl-u:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(📁 > )\" || echo \"reload($cmd_hidden)+change-prompt(📁 [hidden] > )\"" \
-				--bind="tab:replace-query" \
+				--bind="ctrl-b:replace-query" \
 			< /dev/tty
 		)
 
@@ -158,7 +158,7 @@ if command -v fzf >/dev/null; then
 
 	fzf-directory-widget() {
 		local selected_dir
-		selected_dir=$(fd --type d 2>/dev/null | fzf --bind='tab:replace-query') && LBUFFER+="$selected_dir"
+		selected_dir=$(fd --type d 2>/dev/null | fzf --bind='ctrl-b:replace-query') && LBUFFER+="$selected_dir"
 		let ret=$?
 		zle reset-prompt
 		return $ret
