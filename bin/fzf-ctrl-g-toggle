@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# ctrl-u hidden-file toggle for the Ctrl+G fzf path/dir completion widget
+# (zsh/zshrc). Invoked by fzf's own `transform:` bind action, which spawns
+# this as a plain command — delegating here avoids re-escaping a dynamic
+# fd invocation through zsh's FZF_COMPLETION_{PATH,DIR}_OPTS reparsing
+# (${(Z+n+)}/${(Q)}) followed by fzf's own bind grammar.
+#
+# Args: $1=dirfile (written by _fzf_compgen_path/_fzf_compgen_dir with the
+# base directory being completed), $2=prompt icon, $3=fd type flag (empty
+# or "--type d"). Reads $FZF_PROMPT (set by fzf) to detect current state.
+
+dirfile="$1"
+icon="$2"
+typeflag="$3"
+base="$(cat "$dirfile" 2>/dev/null || echo .)"
+qbase="'${base//\'/\'\\\'\'}'"
+
+if [[ "$FZF_PROMPT" == *hidden* ]]; then
+	echo "reload(fd $typeflag --follow --exclude .git . $qbase 2>/dev/null | sed 's@^\\./@@')+change-prompt($icon > )"
+else
+	echo "reload(fd $typeflag --hidden --no-ignore --follow --exclude .git . $qbase 2>/dev/null | sed 's@^\\./@@')+change-prompt($icon [hidden] > )"
+fi

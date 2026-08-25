@@ -252,6 +252,67 @@ if command -v fzf >/dev/null; then
 		# switch group using `<` and `>`
 		zstyle ':fzf-tab:*' switch-group '<' '>'
 	fi
+
+	# ------------------------------------------------------------------
+	# Ctrl+G: recursive fzf path/dir completion, on fzf's own native
+	# fzf-completion widget (defined by `source <(fzf --zsh)` above).
+	# Tab / fzf-tab is untouched — this binds a separate key directly to
+	# the widget fzf-tab stole `^I` from.
+	# ------------------------------------------------------------------
+
+	# Per-shell state file: lets the Ctrl+U hidden-toggle (which runs in a
+	# separate process spawned later by fzf's `transform` action) recover
+	# the base directory the initial fd scan was rooted at. `$$` here is
+	# this interactive shell's real PID, so concurrent terminals don't collide.
+	__fzf_ctrl_g_dirfile="${TMPDIR:-/tmp}/.zsh-fzf-ctrl-g-dir.$$"
+
+	# Builds FZF_COMPLETION_{DIR,PATH}_OPTS: a --prompt plus a ctrl-u:transform
+	# bind delegating to bin/fzf-ctrl-g-toggle, which reads $FZF_PROMPT (fzf's
+	# own convention, same [[ $FZF_PROMPT =~ hidden ]] check fzf-cd-widget/
+	# fzf-file-widget-toggle use for their own ctrl-u/ctrl-o toggles) and the
+	# dirfile to print the right reload(...)+change-prompt(...) action. A real
+	# script here (rather than inlining the fd/sed pipeline into this string)
+	# avoids re-escaping a dynamic value through FZF_COMPLETION_*_OPTS's own
+	# ${(Z+n+)}/${(Q)} reparsing on top of fzf's bind grammar.
+	__fzf_ctrl_g_opts() {
+		local icon=$1 typeflag=$2
+		printf '%s' "--prompt=\"$icon > \" --bind=\"ctrl-u:transform:$HOME/.files/bin/fzf-ctrl-g-toggle '$__fzf_ctrl_g_dirfile' '$icon' '$typeflag'\""
+	}
+
+	# _fzf_compgen_path / _fzf_compgen_dir are fzf's own documented override
+	# hooks: defining them replaces the native recursive walker used by
+	# _fzf_path_completion / _fzf_dir_completion with fd, matching this
+	# repo's fd conventions (follow symlinks, exclude .git, respect
+	# .gitignore, hidden files off by default).
+	_fzf_compgen_path() {
+		setopt localoptions pipefail no_aliases 2> /dev/null
+		print -r -- "$1" > "$__fzf_ctrl_g_dirfile" 2>/dev/null
+		echo "$1"
+		fd --follow --exclude .git . "$1" 2>/dev/null | sed 's@^\./@@'
+	}
+
+	_fzf_compgen_dir() {
+		setopt localoptions pipefail no_aliases 2> /dev/null
+		print -r -- "$1" > "$__fzf_ctrl_g_dirfile" 2>/dev/null
+		fd --type d --follow --exclude .git . "$1" 2>/dev/null | sed 's@^\./@@'
+	}
+
+	# Applies to both _fzf_path_completion and _fzf_dir_completion (both
+	# funnel through __fzf_generic_path_completion). --scheme=path (set
+	# upstream) implies --tiebreak=pathname,length; reorder to favor the
+	# shortest match first.
+	export FZF_COMPLETION_OPTS='--tiebreak=length,pathname'
+	export FZF_COMPLETION_DIR_OPTS="$(__fzf_ctrl_g_opts '📁' '--type d')"
+	export FZF_COMPLETION_PATH_OPTS="$(__fzf_ctrl_g_opts '🔍' '')"
+
+	# Empty trigger = show the recursive picker immediately on Ctrl+G, no
+	# need to type `**` first. Global setting for the fzf-completion widget —
+	# safe today only because fzf-tab owns `^I` and nothing else invokes it.
+	export FZF_COMPLETION_TRIGGER=''
+
+	# fzf-completion is zle -N'd by `source <(fzf --zsh)` above; bind it
+	# directly to Ctrl+G instead of Tab.
+	bindkey '^G' fzf-completion
 fi
 
 # yank to the system clipboard
