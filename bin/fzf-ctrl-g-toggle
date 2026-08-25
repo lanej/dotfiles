@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ctrl-u hidden-file toggle for the Ctrl+G fzf path/dir completion widget
+# ctrl-g hidden-file toggle for the Ctrl+G fzf path/dir completion widget
 # (zsh/zshrc). Invoked by fzf's own `transform:` bind action, which spawns
 # this as a plain command — delegating here avoids re-escaping a dynamic
 # fd invocation through zsh's FZF_COMPLETION_{PATH,DIR}_OPTS reparsing

@@ -260,23 +260,28 @@ if command -v fzf >/dev/null; then
 	# the widget fzf-tab stole `^I` from.
 	# ------------------------------------------------------------------
 
-	# Per-shell state file: lets the Ctrl+U hidden-toggle (which runs in a
+	# Per-shell state file: lets the Ctrl+G hidden-toggle (which runs in a
 	# separate process spawned later by fzf's `transform` action) recover
 	# the base directory the initial fd scan was rooted at. `$$` here is
 	# this interactive shell's real PID, so concurrent terminals don't collide.
 	__fzf_ctrl_g_dirfile="${TMPDIR:-/tmp}/.zsh-fzf-ctrl-g-dir.$$"
 
-	# Builds FZF_COMPLETION_{DIR,PATH}_OPTS: a --prompt plus a ctrl-u:transform
+	# Builds FZF_COMPLETION_{DIR,PATH}_OPTS: a --prompt plus a ctrl-g:transform
 	# bind delegating to bin/fzf-ctrl-g-toggle, which reads $FZF_PROMPT (fzf's
 	# own convention, same [[ $FZF_PROMPT =~ hidden ]] check fzf-cd-widget/
 	# fzf-file-widget-toggle use for their own ctrl-u/ctrl-o toggles) and the
-	# dirfile to print the right reload(...)+change-prompt(...) action. A real
-	# script here (rather than inlining the fd/sed pipeline into this string)
-	# avoids re-escaping a dynamic value through FZF_COMPLETION_*_OPTS's own
-	# ${(Z+n+)}/${(Q)} reparsing on top of fzf's bind grammar.
+	# dirfile to print the right reload(...)+change-prompt(...) action. Ctrl+G
+	# (not Ctrl+U) matches this repo's own convention: the SAME key that
+	# launches a widget also toggles hidden files inside it (cf. fzf-cd-widget
+	# and fzf-file-widget-toggle, both bound to their own toggle key) — it also
+	# overrides fzf's built-in ctrl-g:abort default for this popup, so a second
+	# Ctrl+G toggles hidden files instead of silently closing the picker. A
+	# real script here (rather than inlining the fd/sed pipeline into this
+	# string) avoids re-escaping a dynamic value through FZF_COMPLETION_*_OPTS's
+	# own ${(Z+n+)}/${(Q)} reparsing on top of fzf's bind grammar.
 	__fzf_ctrl_g_opts() {
 		local icon=$1 typeflag=$2
-		printf '%s' "--prompt=\"$icon > \" --bind=\"ctrl-u:transform:$HOME/.files/bin/fzf-ctrl-g-toggle '$__fzf_ctrl_g_dirfile' '$icon' '$typeflag'\""
+		printf '%s' "--prompt=\"$icon > \" --bind=\"ctrl-g:transform:$HOME/.files/bin/fzf-ctrl-g-toggle '$__fzf_ctrl_g_dirfile' '$icon' '$typeflag'\""
 	}
 
 	# _fzf_compgen_path / _fzf_compgen_dir are fzf's own documented override
