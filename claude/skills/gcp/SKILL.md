@@ -173,4 +173,25 @@ Distinguish these three roles precisely when granting any automation identity (C
 
 For the Workload Identity Federation (keyless OIDC) setup that a GitHub Actions runner needs to hold `run.developer` in the first place, see the `github-actions` skill — that skill covers the WIF pool/provider Terraform and the workflow-side auth step; this section is the GCP-side role vocabulary those grants use.
 
+## Ephemeral Cloud Run Job for One-off Server-Side GCS Analysis
+
+When a one-off analysis needs to read a GCS bucket too large to download locally (tens of GB/day
+across many days), don't download it — run a scoped, disposable Cloud Run Job against it and tear
+the job down afterward:
+
+1. If the bucket lives in a different project than your deploy target, that's a cross-project IAM
+   grant and needs explicit user approval first — not a same-project additive apply (see the
+   infra-apply-approval-scope rule).
+2. Create a **new, dedicated** service account for this job only — never the shared default
+   compute SA — and grant it read access (`roles/storage.objectViewer`) on the **specific bucket
+   only**, not project-wide.
+3. Stream directly against GCS (`gsutil cat` piped to your processor) — nothing should land on
+   local disk or in a persistent bucket. Parallelize with one task per unit of work.
+4. After collecting results, delete the job, the service account, and the IAM binding, and
+   **independently verify each deletion** (`gcloud run jobs describe` → not found,
+   `gcloud iam service-accounts list` → zero matches, `gsutil iam get` on the bucket → binding
+   gone) rather than trusting a sub-agent's cleanup report.
+
+(detail: memory "project_ep67_cloud_run_ephemeral_analysis_job")
+
 **Cloud Run does not redeploy on a bare image push.** Pushing a new `:latest` tag to Artifact Registry does not create a new revision — Cloud Run only redeploys when a `gcloud run deploy`/`jobs update` command actually runs with a resolved image reference. Prefer deploying by content digest (`@sha256:...`) over `:latest` — it makes "what's actually serving" independently verifiable (`gcloud run services describe --format='value(status.latestReadyRevision... image)'` compared against what was just pushed) rather than trusted on faith. If Terraform also manages the same resource with a floating-tag `image` value, expect `tofu plan` to show drift after any out-of-band digest deploy — that's expected divergence between two different deploy mechanisms touching the same field, not a misconfiguration to chase down.
