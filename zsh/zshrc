@@ -252,12 +252,29 @@ if command -v fzf >/dev/null; then
 		zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 		# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
 		zstyle ':completion:*' menu no
+		# press / on a candidate to accept it AND immediately reopen completion
+		# for the next argument, without leaving the popup — lets you drill
+		# through subcommand levels (e.g. `jira components<Tab>` -> select
+		# components, press / -> `list`/`create`/... appear right away)
+		zstyle ':fzf-tab:*' continuous-trigger '/'
 		# preview directory's content with eza when completing cd
 		zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+		# general-purpose preview for any other completion that resolves to a
+		# real path: dir listing via eza, file contents via bat. $realpath is
+		# only set by fzf-tab for path-like completions; anything else (git
+		# subcommands, flags, variable names, ...) just shows no preview.
+		zstyle ':fzf-tab:complete:*:*' fzf-preview '
+			if [[ -d $realpath ]]; then
+				eza -1 --color=always $realpath
+			elif [[ -f $realpath ]]; then
+				bat --color=always --style=numbers --line-range=:200 $realpath
+			fi'
 		# custom fzf flags
 		# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
-		# -i makes fzf case-insensitive
-		zstyle ':fzf-tab:*' fzf-flags --color=fg:1,fg+:2 --bind=tab:accept -i
+		# -i makes fzf case-insensitive; no --color here so it inherits
+		# fzf's own default palette, same as every other picker in this
+		# config (none of them set --color explicitly either).
+		zstyle ':fzf-tab:*' fzf-flags --bind=tab:accept -i --preview-window="$(__fzf_dynamic_preview_window)"
 		# To make fzf-tab follow FZF_DEFAULT_OPTS.
 		# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
 		zstyle ':fzf-tab:*' use-fzf-default-opts yes
