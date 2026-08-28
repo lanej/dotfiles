@@ -1,4 +1,28 @@
 {
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >> /tmp/ups-debug.log"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >> /tmp/subagent-stop-debug.log"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(find:*)",
@@ -27,8 +51,8 @@
     ]
   },
   "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false,
     "allowUnsandboxedCommands": true
   },
   "spinnerTipsEnabled": false

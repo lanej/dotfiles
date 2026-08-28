@@ -82,15 +82,6 @@
         ]
       },
       {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.files/bin/claude-plan-critique-gate-hook"
-          }
-        ]
-      },
-      {
         "matcher": "Agent",
         "hooks": [
           {
@@ -138,6 +129,9 @@
       }
     ]
   },
+  "worktree": {
+    "baseRef": "fresh"
+  },
   "statusLine": {
     "type": "command",
     "command": "$HOME/.files/bin/claude-statusline"
@@ -153,7 +147,10 @@
     "superpowers@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true
+    "code-simplifier@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "agent-plugins-for-aws": {
@@ -166,10 +163,14 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "enableWeakerNetworkIsolation": true,
     "filesystem": {
-      "allowWrite": ["/tmp", "/private/tmp"]
-    }
+      "allowWrite": [
+        "/tmp",
+        "/private/tmp",
+        "/Users/joshlane/.cache/uv"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
@@ -178,7 +179,5 @@
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
   },
-  "worktree": {
-    "baseRef": "fresh"
-  }
+  "tui": "fullscreen"
 }

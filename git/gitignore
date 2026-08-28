@@ -15,6 +15,9 @@ data/snapshots/
 .idea/
 *.swp
 
+# Playwright MCP artifacts (screenshots/snapshots, not project content)
+.playwright-mcp/
+
 # MCP Memory (personal context, not shared)
 memory.json
 .memory.json

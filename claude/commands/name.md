@@ -11,7 +11,7 @@ Delegate session naming entirely to a sub-agent. The main session must not read 
 Spawn `Agent(subagent_type: "general-purpose", model: "haiku", run_in_background: false)` with this prompt verbatim:
 
 ````
-You are naming a Claude Code session for tmux/session-list display. Do the whole thing yourself — no clarifying questions.
+You are naming a Claude Code session for tmux/session-list display. This writes only to ~/.claude/session-names/ and tmux window state — never to a git repo. NO-REPO-WRITES. Do the whole thing yourself — no clarifying questions.
 
 1. Resolve the session ID and transcript path using the extracted resolver script. Do not
    reimplement this logic inline — it was pulled out of this file because embedded bash here

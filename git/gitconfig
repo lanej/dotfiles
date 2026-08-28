@@ -166,6 +166,12 @@
 [merge]
 	autoStash = true
 	conflictstyle = zdiff3
+	tool = fugitive
+[mergetool]
+	prompt = false
+	keepBackup = false
+[mergetool "fugitive"]
+	cmd = nvim -f -c \"Gvdiffsplit!\" \"$MERGED\"
 [advice]
 	detatchedHead = false
 [core]

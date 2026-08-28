@@ -228,6 +228,18 @@ if command -v fzf >/dev/null; then
 		bindkey '^B' zzz
 
 	if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
+		# `source <(fzf --zsh)` above already rebound ^I to its own
+		# fzf-completion widget. fzf-tab's init captures whatever ^I is
+		# CURRENTLY bound to as its internal fallback engine, expecting
+		# zsh's plain expand-or-complete; if it captures fzf-completion
+		# instead, it skips routing through _main_complete entirely and
+		# every Tab press falls through to fzf-completion's generic
+		# file/path completion (context-blind, and immediate given
+		# FZF_COMPLETION_TRIGGER='' below) instead of fzf-tab's real
+		# context-aware completion. Restore the plain default first so
+		# fzf-tab captures the right fallback; fzf-completion itself is
+		# untouched and gets rebound to Ctrl+G later.
+		bindkey '^I' expand-or-complete
 		source "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh"
 
 		zstyle ':fzf-tab:*' switch-group ',' '.'
@@ -465,6 +477,31 @@ claude-personal() {
     echo "🔒 Claude Code → Personal Vertex AI (joshlane-claude-private)"
     echo "   Privacy: HIGH (you control all access)"
     echo "   Run 'claude-check' to verify logging status"
+}
+
+claude-bedrock() {
+    local profile="EasyPostAIHubEngineering"
+    local region="us-west-2"
+    local token
+
+    AWS_PROFILE="$profile" aws sts get-caller-identity >/dev/null 2>&1 \
+        || aws sso login --profile "$profile" \
+        || return 1
+
+    token="$(bedrock-mantle-token "$profile" "$region")" || return 1
+
+    echo "🟠 Claude Code → AWS Bedrock ($region, profile $profile)"
+    echo "   Bearer token expires <=12h; re-run claude-bedrock to refresh"
+
+    AWS_BEARER_TOKEN_BEDROCK="$token" AWS_REGION="$region" \
+        claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":"","ANTHROPIC_DEFAULT_SONNET_MODEL":"us.anthropic.claude-sonnet-5","ANTHROPIC_DEFAULT_OPUS_MODEL":"us.anthropic.claude-opus-5"}}' "$@"
+}
+cbd() {
+    if [ "$#" -gt 0 ]; then
+        echo "cbd: no arguments allowed (use claude-bedrock directly for custom flags)" >&2
+        return 1
+    fi
+    claude-bedrock --dangerously-skip-permissions
 }
 
 claude-status() {

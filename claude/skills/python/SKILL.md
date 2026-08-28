@@ -630,6 +630,12 @@ uv cache clean
 uv run --no-cache script.py
 ```
 
+### Issue: `uv run` fails with a `~/.cache/uv` permission error inside a sandboxed shell
+
+Was a sandbox filesystem-allowlist gap, not a corrupted cache — `~/.cache/uv` wasn't in `sandbox.filesystem.allowWrite` in Claude Code's `settings.json`. Fixed 2026-08-25 by adding it alongside the existing `/tmp` entries. `uv cache clean` never fixed this and just wasted a step.
+
+**If it recurs**: check `sandbox.filesystem.allowWrite` in `~/.claude/settings.json` first — the fix may have reverted, or `uv cache dir` may point somewhere new. Only fall back to `dangerouslyDisableSandbox: true` as a stopgap.
+
 ### Issue: Lock file out of sync
 
 **Solution**: Regenerate lock

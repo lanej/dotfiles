@@ -99,13 +99,16 @@ Split findings by scope and dispatch:
 
 **Tool-repo findings** — spawn a sub-agent into the tool's repo. Brief with: what the reflection found and why it's a tool bug (not a doc issue), the tool's conventions and test workflow, exactly what to change, success = fix committed with passing tests. Do NOT add a corresponding caveat to the skill file.
 
-**Skill file findings** — invoke `skill-creator`, passing the skill path, the finding, and whether to run autonomously.
+**Skill file findings** — write the change directly yourself rather than delegating:
+1. Write the incident to a memory file first, using the Memory findings procedure below.
+2. Edit the skill file (`~/.files/claude/skills/<name>/SKILL.md`) directly — add or edit the usage guidance/gotcha/pattern under the relevant section, ending with `(detail: memory "‹slug›")` where `‹slug›` is the memory file's `name`. Match the file's existing terse style; do not restate the incident narrative inline.
+3. This agent has no `Skill` tool, so `skill-creator` is not callable here regardless of task size — do a routine single-finding addition via step 2 directly. A genuine new-skill creation or full skill restructure is out of scope for reflection; escalate that to the user instead of attempting it.
 
 **CLAUDE.md findings** — for the common case (one or a few rule additions/edits arising from this session), write the change directly yourself rather than delegating:
 1. Write the incident to a memory file first, using the Memory findings procedure below — this happens even if the rule also gets a CLAUDE.md line.
 2. If the rule needs CLAUDE.md residency (per the decision-order note above), add or edit a terse rule — the enforceable instruction only, no dates, no project names, no "recurred N times" — ending in `(detail: memory "‹slug›")` where `‹slug›` is the memory file's `name`. Match the existing terse style already in the file; do not restate the incident narrative inline.
 3. Before adding a new line, run `wc -l ~/.claude/CLAUDE.md` (resolve the symlink to `~/.files/claude/CLAUDE.md` — writes through the symlink itself fail). If the file is at or above ~195 lines, the finding must be memory-only (skip the CLAUDE.md line) unless the silent/irreversible-failure test clearly requires residency — flag this tradeoff in your output rather than silently exceeding the 200-line budget.
-4. Reserve invoking `claude-md-management:claude-md-improver` for a full structural audit (multiple files, reorganizing sections) — not for routine single-finding additions. It is a third-party plugin skill with no knowledge of the backlink convention or the 200-line budget; if you do invoke it, its brief must explicitly state both constraints, since it will not apply them on its own. Verify it still resolves before relying on it — its plugin cache directory carries an `.orphaned_at` marker as of this writing.
+4. This agent has no `Skill` tool, so `claude-md-management:claude-md-improver` is not callable here. A full structural CLAUDE.md audit (multiple files, reorganizing sections) is out of scope for reflection's routine single-finding work — escalate it to the user or handle it via a direct `Agent` dispatch instead, not by invoking this skill.
 
 **Memory findings** — write directly:
 - Memory directory: `~/.claude/projects/<escaped-cwd>/memory/` where `<escaped-cwd>` = `echo "$PWD" | tr '/.' '-'`
@@ -115,15 +118,10 @@ Split findings by scope and dispatch:
   - `reference`: pointer + purpose
 - Link related memories with `[[slug]]`
 - Append one-line pointer to `MEMORY.md` (under 150 chars)
-- In interactive mode, invoke the `remember` skill and let the user review first
 
 **If briefed with `auto`**: run all dispatches autonomously without presenting findings first.
 
 **Otherwise**: present findings and scope decisions to the user, then dispatch interactively.
-
-## Output
-
-Report what was written or dispatched (target + one-line summary). List any CLAUDE.md suggestions separately — the user decides whether to apply them. Keep output under 20 lines.
 
 ## Step 5 — Query Pattern Capture (BQ Sessions)
 
@@ -136,6 +134,8 @@ After dispatching behavioral improvements, check whether this session qualifies 
 Bare query execution where results are not subsequently discussed does NOT qualify.
 
 **How to check:** Search claude-mem for this session's observations using `mcp__plugin_claude-mem_mcp-search__search` with the session context. Look for BQ tool use followed by result-referencing observations.
+
+**ID format warning:** `search()` results mix two ID formats — plain numeric IDs (raw observations, valid input to `get_observations`) and `S`-prefixed IDs (session-summary markers, e.g. `S14015`, NOT valid `get_observations` input). Passing an `S`-prefixed ID to `get_observations` as if it were numeric returns an unrelated observation from a different project with no error — a silent wrong-data bug, not a failure you'll notice. Before using any ID from a search result (here or when briefing query-pattern-capture below), confirm it's plain-numeric; resolve an `S`-prefixed one via `timeline` or a further `search` first. (First observed 2026-08-20, `usps-ship-pilot-cohort` session: this step's own briefing passed `S`-prefixed IDs straight through, and the query-pattern-capture agent caught and self-corrected it.)
 
 **If qualifying:**
 1. Append to `~/workspace/resources/query-patterns/capture-log.md`:
@@ -154,4 +154,8 @@ Bare query execution where results are not subsequently discussed does NOT quali
 Append to `~/workspace/resources/query-patterns/capture-log.md`:
 `<ISO8601> | session: <ID> | action: skip | reason: <no-bq-query|no-result-discussion>`
 
-This step is additive — it does not replace or modify any existing reflection behavior.
+This step is additive — it does not replace or modify any existing reflection behavior. Run it *before* writing the Output report below, not after — if it runs last, its own trailing note ("logged to capture-log.md...") becomes the final thing you say, and a caller reading only your last message (e.g. a task-notification `result` field) will see just the query-pattern sub-step and miss the actual reflection findings, forcing a confused follow-up round-trip. This happened once (2026-08-16, `tracking-path-predictions` session `1a5bf445`): the parent had to explicitly ask "that's not the full reflection, please restate" before getting the real report.
+
+## Output
+
+Report what was written or dispatched (target + one-line summary), **including the Step 5 outcome as one of the lines** — don't let it trail off as a separate message after this report. List any CLAUDE.md suggestions separately — the user decides whether to apply them. Keep output under 20 lines. This must be your last message before going idle; if Step 5 is dispatched as a background `Agent` call whose result hasn't arrived yet, say so explicitly here ("query-pattern-capture dispatched, pending") rather than waiting silently and letting its eventual completion note stand alone as your final output.
