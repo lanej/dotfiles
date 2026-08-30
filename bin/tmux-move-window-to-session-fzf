@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Move the current window into a different session, picked via fzf.
+# Offers a "new session" pseudo-option to create-and-move in one step.
+
+SESSION_NAME=$(tmux display-message -p "#{session_name}")
+
+DEST_SESSION=$({ echo "new|New Session"; tmux list-sessions -F "#{session_name}|#{session_name}: #{session_windows} windows#{?session_attached, (attached),}" | grep -v "^${SESSION_NAME}|"; } | \
+fzf --height=100% --reverse \
+    --header="Move window to session" \
+    --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
+    --delimiter='|' --with-nth=2.. \
+    --preview "echo {} | cut -d'|' -f1 | xargs -I {} sh -c 'echo \"Windows in session {}:\"; tmux list-windows -t {} -F \"  #I: #W\" 2>/dev/null; echo; echo \"Current pane content:\"; tmux capture-pane -ep -t {} -S -30 2>/dev/null' || echo 'Preview unavailable'" \
+    --preview-window=right:60% | \
+cut -d'|' -f1 || true)
+
+if [ -n "$DEST_SESSION" ]; then
+    if [ "$DEST_SESSION" = "new" ]; then
+        read -r -p "New session name: " NEW_SESSION
+        if [ -n "$NEW_SESSION" ]; then
+            tmux new-session -d -s "$NEW_SESSION"
+            tmux move-window -s "$SESSION_NAME" -t "$NEW_SESSION"
+        fi
+    else
+        tmux move-window -s "$SESSION_NAME" -t "$DEST_SESSION"
+    fi
+fi
+
+exit 0
