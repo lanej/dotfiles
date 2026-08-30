@@ -24,6 +24,7 @@ if [ -n "$DEST_SESSION" ]; then
     else
         tmux move-window -s "$SESSION_NAME" -t "$DEST_SESSION"
     fi
+    tmux move-window -r -t "$SESSION_NAME"
 fi
 
 exit 0
