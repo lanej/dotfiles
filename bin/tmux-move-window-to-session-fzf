@@ -19,10 +19,10 @@ if [ -n "$DEST_SESSION" ]; then
         read -r -p "New session name: " NEW_SESSION
         if [ -n "$NEW_SESSION" ]; then
             tmux new-session -d -s "$NEW_SESSION"
-            tmux move-window -s "$SESSION_NAME" -t "$NEW_SESSION"
+            tmux move-window -s "$SESSION_NAME" -t "$NEW_SESSION:"
         fi
     else
-        tmux move-window -s "$SESSION_NAME" -t "$DEST_SESSION"
+        tmux move-window -s "$SESSION_NAME" -t "$DEST_SESSION:"
     fi
     tmux move-window -r -t "$SESSION_NAME"
 fi
