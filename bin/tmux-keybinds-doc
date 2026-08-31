@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+# Extract every bind/bind-key from rc/tmux.conf and regenerate
+# docs/tmux-keybinds.md as a set of readable markdown tables.
+# Deterministic, read-only w.r.t. tmux.conf — safe to re-run any time.
+
+from __future__ import annotations
+
+import re
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent
+CONF_PATH = REPO_ROOT / "rc" / "tmux.conf"
+DOC_PATH = REPO_ROOT / "docs" / "tmux-keybinds.md"
+
+BIND_RE = re.compile(r"^\s*bind(?:-key)?\b(.*)$")
+COMMENT_RE = re.compile(r"^\s*#\s?(.*)$")
+COMMENTED_OUT_BIND_RE = re.compile(r"^bind(-key)?\b")
+PREFIX_RE = re.compile(r"^\s*set(?:-option)?\s+-g\s+prefix\s+(\S+)")
+
+# Table cells: anything longer than this gets truncated in the table and
+# spelled out in full in a "Long commands" block below the table.
+LONG_COMMAND_THRESHOLD = 90
+
+
+@dataclass
+class BindEntry:
+    key: str
+    table: str  # "prefix", "root", or a named table like "copy-mode-vi"
+    repeat: bool
+    command: str
+    description: Optional[str] = None
+    line_no: int = 0
+    multiline: bool = False
+
+
+def find_prefix_key(lines: list[str]) -> str:
+    for line in lines:
+        m = PREFIX_RE.match(line)
+        if m:
+            return m.group(1)
+    return "C-b"  # tmux default, if the config never overrides it
+
+
+def _strip_quotes(tok: str) -> str:
+    if len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in ("'", '"'):
+        return tok[1:-1]
+    return tok
+
+
+def _next_token(s: str) -> tuple[Optional[str], int]:
+    """Return (token, chars_consumed_including_leading_whitespace) or (None, 0)."""
+    s_lstripped = s.lstrip()
+    lead_ws = len(s) - len(s_lstripped)
+    if not s_lstripped:
+        return None, 0
+    if s_lstripped[0] in ("'", '"'):
+        quote = s_lstripped[0]
+        end = s_lstripped.find(quote, 1)
+        if end == -1:
+            end = len(s_lstripped) - 1
+        return s_lstripped[: end + 1], lead_ws + end + 1
+    end = 0
+    while end < len(s_lstripped) and not s_lstripped[end].isspace():
+        end += 1
+    return s_lstripped[:end], lead_ws + end
+
+
+def _split_flags_and_key(rest: str) -> tuple[bool, str, str, str]:
+    """Parse the text after 'bind'/'bind-key' into (repeat, table, key, command).
+
+    Recognizes the flags this config actually uses: -r (repeatable),
+    -n (root/no-prefix table), -T <table> (named table). The remainder
+    after the key token is returned verbatim (not re-tokenized) so
+    embedded quoting/pipes/format-strings in the command survive intact.
+    """
+    remaining = rest
+    repeat = False
+    table = "prefix"
+    key = None
+
+    while True:
+        tok, adv = _next_token(remaining)
+        if tok is None:
+            break
+        stripped = _strip_quotes(tok)
+        if stripped == "-r":
+            repeat = True
+            remaining = remaining[adv:]
+            continue
+        if stripped == "-n":
+            table = "root"
+            remaining = remaining[adv:]
+            continue
+        if stripped == "-T":
+            remaining = remaining[adv:]
+            tname, adv2 = _next_token(remaining)
+            table = _strip_quotes(tname) if tname else "prefix"
+            remaining = remaining[adv2:]
+            continue
+        key = stripped
+        remaining = remaining[adv:]
+        break
+
+    command = remaining.strip()
+    return repeat, table, key or "", command
+
+
+def parse_binds(lines: list[str]) -> list[BindEntry]:
+    """Parse bind/bind-key statements, including multi-line if-shell {...} blocks.
+
+    A statement is considered complete once its cumulative brace count
+    balances (tmux's block syntax always balances braces within a single
+    statement in this config; #{...} format-string braces are always
+    balanced within the same line they appear on).
+    """
+    entries: list[BindEntry] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        m = BIND_RE.match(line)
+        if not m:
+            i += 1
+            continue
+
+        start_line_no = i + 1
+        block_lines = [line]
+        brace_balance = line.count("{") - line.count("}")
+        j = i
+        while brace_balance != 0 and j + 1 < n:
+            j += 1
+            block_lines.append(lines[j])
+            brace_balance += lines[j].count("{") - lines[j].count("}")
+        multiline = len(block_lines) > 1
+
+        rest = m.group(1)
+        if multiline:
+            rest = rest + "\n" + "\n".join(block_lines[1:])
+        repeat, table, key, command = _split_flags_and_key(rest)
+
+        # Description: the immediately preceding line, only if it's a
+        # genuine "#" comment — not a section-header comment separated by
+        # a blank line, and not a commented-out bind/bind-key line.
+        description = None
+        if i - 1 >= 0:
+            prev = lines[i - 1]
+            cm = COMMENT_RE.match(prev)
+            if cm:
+                comment_body = cm.group(1).strip()
+                if comment_body and not COMMENTED_OUT_BIND_RE.match(comment_body):
+                    description = comment_body
+
+        entries.append(
+            BindEntry(
+                key=key,
+                table=table,
+                repeat=repeat,
+                command=command,
+                description=description,
+                line_no=start_line_no,
+                multiline=multiline,
+            )
+        )
+        i = j + 1
+    return entries
+
+
+def _escape_cell(text: str) -> str:
+    """Neutralize characters that would break a markdown table cell."""
+    text = text.replace("\n", " ").replace("\r", "")
+    text = re.sub(r"\s+", " ", text).strip()
+    text = text.replace("|", "\\|")
+    return text
+
+
+def _code_cell(command: str) -> tuple[str, Optional[str]]:
+    """Return (table_cell_text, full_command_or_None_if_not_truncated)."""
+    flat = _escape_cell(command)
+    fence = "``" if "`" in flat else "`"
+    if len(flat) <= LONG_COMMAND_THRESHOLD:
+        return f"{fence}{flat}{fence}", None
+    truncated = flat[: LONG_COMMAND_THRESHOLD - 1].rstrip() + "…"
+    return f"{fence}{truncated}{fence} *(see Long commands below)*", command
+
+
+def _table_order(tables: list[str]) -> list[str]:
+    ordered = []
+    if "prefix" in tables:
+        ordered.append("prefix")
+    if "root" in tables:
+        ordered.append("root")
+    for t in tables:
+        if t not in ("prefix", "root") and t not in ordered:
+            ordered.append(t)
+    return ordered
+
+
+def _section_title(table: str, prefix_key: str) -> str:
+    if table == "prefix":
+        return f"Prefix Table (prefix: `{prefix_key}`)"
+    if table == "root":
+        return "Root Table (no prefix)"
+    return f"Table: `{table}`"
+
+
+def render_markdown(entries: list[BindEntry], prefix_key: str) -> str:
+    tables: dict[str, list[BindEntry]] = {}
+    for e in entries:
+        tables.setdefault(e.table, []).append(e)
+
+    lines: list[str] = []
+    lines.append("# tmux Keybindings")
+    lines.append("")
+    lines.append(
+        "Generated by `bin/tmux-keybinds-doc` from `rc/tmux.conf`. "
+        "Do not edit by hand — re-run the script after changing the config."
+    )
+    lines.append("")
+
+    for table in _table_order(list(tables.keys())):
+        table_entries = tables[table]
+        lines.append(f"## {_section_title(table, prefix_key)}")
+        lines.append("")
+        lines.append("| Key | Repeat | Command | Description |")
+        lines.append("|-----|--------|---------|-------------|")
+
+        long_commands: list[tuple[str, str]] = []
+        for e in table_entries:
+            key_cell = f"`{e.key}`" if e.key else ""
+            repeat_cell = "yes" if e.repeat else ""
+            cmd_cell, full = _code_cell(e.command)
+            if full is not None:
+                long_commands.append((e.key, full))
+            desc_cell = _escape_cell(e.description) if e.description else ""
+            lines.append(f"| {key_cell} | {repeat_cell} | {cmd_cell} | {desc_cell} |")
+
+        lines.append("")
+
+        if long_commands:
+            lines.append("#### Long commands")
+            lines.append("")
+            for key, full in long_commands:
+                lines.append(f"**Key:** `{key}`")
+                lines.append("")
+                lines.append("```sh")
+                lines.append(full)
+                lines.append("```")
+                lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def main() -> int:
+    if not CONF_PATH.exists():
+        print(f"error: tmux config not found at {CONF_PATH}", file=sys.stderr)
+        return 1
+
+    text = CONF_PATH.read_text()
+    lines = text.splitlines()
+
+    prefix_key = find_prefix_key(lines)
+    entries = parse_binds(lines)
+    doc = render_markdown(entries, prefix_key)
+
+    DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DOC_PATH.write_text(doc)
+
+    print(f"wrote {len(entries)} keybindings to {DOC_PATH}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
