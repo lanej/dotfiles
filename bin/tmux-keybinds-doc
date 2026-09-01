@@ -187,6 +187,20 @@ def _code_cell(command: str) -> tuple[str, Optional[str]]:
     return f"{fence}{truncated}{fence} *(see Long commands below)*", command
 
 
+def detect_collisions(entries: list[BindEntry]) -> list[list[BindEntry]]:
+    """Group entries sharing the same (table, key). Groups of 2+ are
+    collisions: tmux's last-bind-wins means every entry but the last in
+    file order is silently shadowed and never fires."""
+    groups: dict[tuple[str, str], list[BindEntry]] = {}
+    for e in entries:
+        if not e.key:
+            continue
+        groups.setdefault((e.table, e.key), []).append(e)
+    collisions = [sorted(g, key=lambda e: e.line_no) for g in groups.values() if len(g) > 1]
+    collisions.sort(key=lambda g: g[0].line_no)
+    return collisions
+
+
 def _table_order(tables: list[str]) -> list[str]:
     ordered = []
     if "prefix" in tables:
@@ -207,7 +221,7 @@ def _section_title(table: str, prefix_key: str) -> str:
     return f"Table: `{table}`"
 
 
-def render_markdown(entries: list[BindEntry], prefix_key: str) -> str:
+def render_markdown(entries: list[BindEntry], prefix_key: str, collisions: list[list[BindEntry]]) -> str:
     tables: dict[str, list[BindEntry]] = {}
     for e in entries:
         tables.setdefault(e.table, []).append(e)
@@ -220,6 +234,25 @@ def render_markdown(entries: list[BindEntry], prefix_key: str) -> str:
         "Do not edit by hand — re-run the script after changing the config."
     )
     lines.append("")
+
+    if collisions:
+        lines.append("## ⚠ Key Collisions")
+        lines.append("")
+        lines.append(
+            "Same key bound more than once in the same table. tmux's "
+            "last-bind-wins means every row but the last one shown is "
+            "silently shadowed and never fires."
+        )
+        lines.append("")
+        for group in collisions:
+            table = group[0].table
+            key = group[0].key
+            lines.append(f"- `{key}` in **{table}** table:")
+            for idx, e in enumerate(group):
+                status = "**wins**" if idx == len(group) - 1 else "shadowed"
+                cmd_cell, _ = _code_cell(e.command)
+                lines.append(f"  - line {e.line_no} ({status}): {cmd_cell}")
+        lines.append("")
 
     for table in _table_order(list(tables.keys())):
         table_entries = tables[table]
@@ -264,12 +297,28 @@ def main() -> int:
 
     prefix_key = find_prefix_key(lines)
     entries = parse_binds(lines)
-    doc = render_markdown(entries, prefix_key)
+    collisions = detect_collisions(entries)
+    doc = render_markdown(entries, prefix_key, collisions)
 
     DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOC_PATH.write_text(doc)
 
     print(f"wrote {len(entries)} keybindings to {DOC_PATH}")
+
+    if collisions:
+        print(f"warning: {len(collisions)} key collision(s) found:", file=sys.stderr)
+        for group in collisions:
+            table = group[0].table
+            key = group[0].key
+            winner = group[-1]
+            shadowed = ", ".join(f"line {e.line_no}" for e in group[:-1])
+            print(
+                f"  '{key}' in {table} table: {shadowed} shadowed by "
+                f"line {winner.line_no} ({winner.command[:60]})",
+                file=sys.stderr,
+            )
+        return 1
+
     return 0
 
 
