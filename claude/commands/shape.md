@@ -213,24 +213,38 @@ Goal:
 ### T1: <name>
 Depends on: none
 Parallel with: T2, T3
+Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
 
 ### T2: <name>
 Depends on: none
 Parallel with: T1, T3
+Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
 
 ### T3: <name>
 Depends on: none
 Parallel with: T1, T2
+Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
 
 ### T4: <name>
 Depends on: T1, T2, T3
 Parallel with: none
+Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
+```
+
+Example:
+
+```
+### T7: Add rate-limit header parsing
+Depends on: none
+Parallel with: T8
+Feedback signal: unit test asserting `parse_headers()` returns the documented `Retry-After` value for a captured 429 response fixture
 ```
 
 Rules:
 - A task may only run in parallel with another if neither depends on the other's output
 - A task that depends on another must be sequenced after it, even if the dependency is indirect
 - Circular dependencies are a planning failure — surface them and return to Stage 3
+- A task's `Feedback signal:` must name a check specific to that task's own deliverable — never a pointer to the final whole-plan review
 
 Planning may not:
 - redefine requirements

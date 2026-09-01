@@ -58,6 +58,7 @@ Extract:
 - regression checks
 - failure signals
 - verification methods
+- Feedback Loop Design (from spec.md), cross-referenced against per-task `Feedback signal:` lines in the session's plan.md if present
 
 ### Step 2 — Evaluate Acceptance Criteria
 
@@ -75,14 +76,23 @@ Determine:
 - whether regression checks actually ran
 - whether any silent failure paths remain
 
-### Step 4 — Evaluate False Positive Risk
+### Step 4 — Evaluate Feedback Loop Design Usage
+
+Determine:
+- whether the spec's Feedback Loop Design (signal, cost/cadence, fallback) was actually invoked during execution
+- whether plan.md's per-task `Feedback signal:` entries (if present) were actually run, not just written
+- if not invoked, whether that's a spec gap (no Feedback Loop Design was ever specified) or an execution gap (designed but skipped)
+
+Surface "loop skipped" as its own failure category, distinct from "acceptance test failed."
+
+### Step 5 — Evaluate False Positive Risk
 
 Specifically identify:
 - outputs that appear successful but violate intent
 - metrics that can be satisfied while producing incorrect outcomes
 - weak or gameable validation semantics
 
-### Step 5 — Produce Verification Result
+### Step 6 — Produce Verification Result
 
 Classification:
 - VERIFIED
@@ -120,6 +130,9 @@ Structure:
 
 ## Regression Check Results
 [What was validated and what remains uncertain]
+
+## Feedback Loop Design Usage
+[Was the designed in-progress signal actually invoked? Spec gap or execution gap if not?]
 
 ## Failure Signals
 [Any triggered failure indicators]

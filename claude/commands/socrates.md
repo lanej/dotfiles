@@ -65,7 +65,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 5. **Context** — Is the necessary background, environment, history, and domain context available?
 6. **Parsimony** — Minimum viable scope. Every element must justify its existence.
 7. **Success** — Is "done" measurable and verifiable?
-8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive?
+8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive — both at completion (a validation contract) and *while work is in progress* (a fast, cheap signal invoked on a defined cadence, or a deliberately constructed fallback when no fast signal exists)?
 9. **Constraints** — Are time, team, resources, and compliance limits surfaced?
 10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
 11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
@@ -234,6 +234,7 @@ This doesn't license over-interrogating trivial tasks — "use judgment, infer w
 - Ask "what could appear successful while actually being wrong?" to expose false positives.
 - Ask "what would be missing from an apparently good result?" to expose false negatives.
 - Ask "what must not break?" to surface regression boundaries.
+- Ask "what tells you mid-flight that you're still on track, and what does that check cost?" to expose a missing Feedback Loop Design.
 - Ask "how would this fail silently?" to identify observability gaps.
 - Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
 - Prefer one question that resolves multiple ambiguities.
@@ -276,6 +277,7 @@ Layer 6 — Validation
   Regression checks: [what must continue working after completion]
   Failure signals: [what indicates incomplete or incorrect execution]
   Verification method: [automated | manual | observational | comparative | statistical]
+  Feedback Loop Design: [signal, cost/cadence, fallback if no fast signal exists]
 
 Layer 7 — Execution Readiness
   [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
@@ -288,6 +290,7 @@ If any layer does not hold under scrutiny, return to interrogation for that laye
 When:
 - commandment states are stable or explicitly accepted as fragile
 - validation semantics exist
+- Feedback Loop Design is populated for at least the load-bearing requirements (not left `_[open]_`)
 - ambiguity is bounded
 - execution readiness is explicit
 
@@ -384,6 +387,10 @@ _[open]_
 _[open]_
 
 ### Verification Methods
+
+_[open]_
+
+### Feedback Loop Design
 
 _[open]_
 

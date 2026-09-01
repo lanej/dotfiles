@@ -79,6 +79,8 @@ Focus on:
 - silent failure paths
 - false positives that could appear successful
 - observability gaps
+- unrealistic feedback-signal assumptions (infra, live-trigger, cross-service, human-gated review treated as if fast/cheap)
+- unpopulated "Feedback Loop Design"
 
 ### Optional Critics
 

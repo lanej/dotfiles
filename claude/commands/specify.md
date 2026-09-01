@@ -89,7 +89,7 @@ Quality gates applied to the current specification.
 5. Context
 6. Parsimony
 7. Success
-8. Verification
+8. Verification (completion + in-progress signal/cadence + fallback if no fast signal exists)
 9. Constraints
 10. Stakeholders
 11. Risk
@@ -235,6 +235,7 @@ Do not mark a section stable unless:
 - Ask "what could appear successful while actually be wrong?" to expose false positives.
 - Ask "what would be missing from an apparently good result?" to expose false negatives.
 - Ask "what must not break?" to surface regression boundaries.
+- Ask "what tells you mid-flight that you're still on track, and what does that check cost?" to expose a missing Feedback Loop Design.
 - Ask "how would this fail silently?" to identify observability gaps.
 - Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
 - Prefer one question that resolves multiple ambiguities.
@@ -316,6 +317,7 @@ Validation must include:
 - regression checks
 - failure signals
 - verification methods
+- Feedback Loop Design (in-progress signal, cost/cadence, fallback if no fast signal exists)
 - known blind spots
 
 ## Specification Freeze
@@ -323,6 +325,7 @@ Validation must include:
 When:
 - commandment states are stable or explicitly accepted as fragile
 - validation semantics exist
+- Feedback Loop Design is populated for at least the load-bearing requirements (not left unpopulated)
 - ambiguity is bounded
 - execution readiness is explicit
 
@@ -405,6 +408,8 @@ Type: [Engineering | Research/Analysis | Writing | General]
 ### Failure Signals
 
 ### Verification Methods
+
+### Feedback Loop Design
 
 ### Known Blind Spots
 
