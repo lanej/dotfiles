@@ -4,6 +4,7 @@
 # Offers a "new session" pseudo-option to create-and-move in one step.
 
 SESSION_NAME=$(tmux display-message -p "#{session_name}")
+WINDOW_ID=$(tmux display-message -p "#{window_id}")
 
 DEST_SESSION=$({ echo "new|New Session"; tmux list-sessions -F "#{session_name}|#{session_name}: #{session_windows} windows#{?session_attached, (attached),}" | grep -v "^${SESSION_NAME}|"; } | \
 fzf --height=100% --reverse \
@@ -19,10 +20,10 @@ if [ -n "$DEST_SESSION" ]; then
         read -r -p "New session name: " NEW_SESSION
         if [ -n "$NEW_SESSION" ]; then
             tmux new-session -d -s "$NEW_SESSION"
-            tmux move-window -s "$SESSION_NAME" -t "$NEW_SESSION:"
+            tmux move-window -s "$WINDOW_ID" -t "$NEW_SESSION:"
         fi
     else
-        tmux move-window -s "$SESSION_NAME" -t "$DEST_SESSION:"
+        tmux move-window -s "$WINDOW_ID" -t "$DEST_SESSION:"
     fi
     tmux move-window -r -t "$SESSION_NAME"
 fi
