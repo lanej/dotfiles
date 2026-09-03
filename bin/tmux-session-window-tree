@@ -1,0 +1,36 @@
+#!/bin/bash
+# Print a windows->panes tree for a tmux session (used as an fzf preview).
+# Usage: tmux-session-window-tree <session-name>[:]
+
+session="${1%:}"
+[ -n "$session" ] || exit 0
+
+tmux list-windows -t "$session" -F '#{window_index}|#{window_name}|#{window_active}' 2>/dev/null | \
+while IFS='|' read -r widx wname wactive; do
+  marker=""
+  [ "$wactive" = "1" ] && marker=" *"
+  echo "${widx}: ${wname}${marker}"
+
+  panes=()
+  while IFS='|' read -r pane_line; do
+    panes+=("$pane_line")
+  done < <(tmux list-panes -t "${session}:${widx}" -F '#{pane_index}|#{pane_current_command}|#{pane_title}|#{pane_active}' 2>/dev/null)
+
+  count=${#panes[@]}
+  i=0
+  for p in "${panes[@]}"; do
+    IFS='|' read -r pidx pcmd ptitle pactive <<< "$p"
+    i=$((i + 1))
+    if [ "$i" -eq "$count" ]; then
+      connector="└─"
+    else
+      connector="├─"
+    fi
+    label="${pidx}: ${pcmd}"
+    if [ -n "$ptitle" ] && [ "$ptitle" != "$pcmd" ]; then
+      label="${label} — ${ptitle}"
+    fi
+    [ "$pactive" = "1" ] && label="${label} *"
+    echo "  ${connector} ${label}"
+  done
+done

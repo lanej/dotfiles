@@ -11,7 +11,7 @@ fzf --height=100% --reverse \
     --header="Move window to session" \
     --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf \
     --delimiter='|' --with-nth=2.. \
-    --preview "echo {} | cut -d'|' -f1 | xargs -I {} sh -c 'echo \"Windows in session {}:\"; tmux list-windows -t {} -F \"  #I: #W\" 2>/dev/null; echo; echo \"Current pane content:\"; tmux capture-pane -ep -t {} -S -30 2>/dev/null' || echo 'Preview unavailable'" \
+    --preview "echo {} | cut -d'|' -f1 | xargs -I {} ~/.files/bin/tmux-session-window-tree {}" \
     --preview-window=right:60% | \
 cut -d'|' -f1 || true)
 
