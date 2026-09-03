@@ -1076,16 +1076,7 @@ require("lazy").setup({
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
 					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
-					per_filetype = {
-						sql = { "dadbod", "snippets", "buffer" },
-						mysql = { "dadbod", "snippets", "buffer" },
-						plsql = { "dadbod", "snippets", "buffer" },
-					},
 					providers = {
-						dadbod = {
-							name = "Dadbod",
-							module = "vim_dadbod_completion.blink",
-						},
 						lazydev = {
 							name = "LazyDev",
 							module = "lazydev.integrations.blink",
@@ -1598,25 +1589,6 @@ require("lazy").setup({
 				-- 					},
 				-- 					settings = {},
 				-- 				},
-				bigquery_lsp = {
-					cmd = { "bigquery", "lsp" },
-					filetypes = { "sql", "bq", "bigquery" },
-					autostart = true,
-					single_file_support = true,
-					root_dir = function(fname)
-						-- Look for BigQuery project markers or fall back to git root / cwd
-						return vim.fs.root(
-							fname,
-							{ ".bigqueryrc", ".bqproject", ".git", "pyproject.toml", "Cargo.toml" }
-						) or vim.fn.getcwd()
-					end,
-					init_options = {},
-					settings = {},
-					on_attach = function(client, bufnr)
-						-- Optional: Add buffer-specific keymaps here
-						vim.notify("BigQuery LSP attached to buffer " .. bufnr, vim.log.levels.INFO)
-					end,
-				},
 				pylsp = {},
 				html = {},
 				yamlls = {},
@@ -1711,52 +1683,6 @@ require("lazy").setup({
 			-- 				end,
 			-- 			})
 			-- NOTE: Smart LSP selection for pkm-lsp and Marksman moved to ~/.config/nvim/lua/pkm-lsp.lua (loaded via require)
-
-			-- Auto-start BigQuery LSP for SQL files
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = { "sql", "bq", "bigquery" },
-				callback = function(args)
-					local bigquery_config = opts.servers.bigquery_lsp
-					if bigquery_config then
-						local root_dir = bigquery_config.root_dir and bigquery_config.root_dir(args.file)
-							or vim.fn.getcwd()
-						local config = vim.tbl_deep_extend("force", {
-							name = "bigquery_lsp",
-							cmd = bigquery_config.cmd,
-							filetypes = bigquery_config.filetypes,
-							root_dir = root_dir,
-							init_options = bigquery_config.init_options,
-							settings = bigquery_config.settings,
-							on_attach = bigquery_config.on_attach,
-						}, {
-							capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities),
-						})
-
-						vim.lsp.start(config)
-					end
-				end,
-			})
-
-			-- User command to manually enable BigQuery LSP for current buffer
-			vim.api.nvim_create_user_command("BigQueryLspStart", function()
-				local bigquery_config = opts.servers.bigquery_lsp
-				if bigquery_config then
-					local config = vim.tbl_deep_extend("force", {
-						name = "bigquery_lsp",
-						cmd = bigquery_config.cmd,
-						filetypes = bigquery_config.filetypes,
-						root_dir = vim.fn.getcwd(),
-						init_options = bigquery_config.init_options,
-						settings = bigquery_config.settings,
-						on_attach = bigquery_config.on_attach,
-					}, { capabilities = require("blink.cmp").get_lsp_capabilities(bigquery_config.capabilities) })
-
-					vim.lsp.start(config)
-					vim.notify("BigQuery LSP started", vim.log.levels.INFO)
-				else
-					vim.notify("BigQuery LSP config not found", vim.log.levels.ERROR)
-				end
-			end, { desc = "Manually start BigQuery LSP for current buffer" })
 
 			require("csharpls_extended").buf_read_cmd_bind()
 		end,
@@ -2438,19 +2364,18 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"kristijanhusak/vim-dadbod-ui",
-		dependencies = {
-			{ "tpope/vim-dadbod", lazy = true },
-			{ "kristijanhusak/vim-dadbod-completion", ft = { "sql", "mysql", "plsql" }, lazy = true },
-		},
-		cmd = {
-			"DBUI",
-			"DBUIToggle",
-			"DBUIAddConnection",
-			"DBUIFindBuffer",
+		"joryeugene/dadbod-grip.nvim",
+		opts = {
+			completion = true,
+			keymaps = {
+				-- <C-CR> requires tmux `extended-keys on` to disambiguate from
+				-- plain <CR>; this tmux config has it off, so bind a plain key
+				-- instead of depending on that terminal capability.
+				qpad_execute = "<leader>dr",
+			},
 		},
 		init = function()
-			vim.g.db_ui_use_nerd_fonts = 1
+			require("duckdb-picker")
 		end,
 	},
 	{
