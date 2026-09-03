@@ -103,4 +103,19 @@ vim.api.nvim_create_autocmd("BufReadCmd", {
 	end,
 })
 
+-- lanej/focus.nvim's autoresize/equalise (see nvim/init.lua's focus.nvim
+-- spec) ignores `winfixwidth` entirely -- it only preserves windows/buffers
+-- flagged with its own vim.w/vim.b.focus_disable (see focus.nvim's
+-- resizer.lua save_fixed_win_dims/restore_fixed_win_dims, used by both its
+-- golden-ratio autoresize and its `wincmd =` equalise path). dadbod-grip
+-- already sets winfixwidth on its own schema/table sidebar
+-- (lua/dadbod-grip/schema.lua), but that has no effect on focus.nvim, so the
+-- sidebar still gets squeezed on every resize/equalise without this.
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "grip_schema",
+	callback = function(args)
+		vim.b[args.buf].focus_disable = true
+	end,
+})
+
 return M
