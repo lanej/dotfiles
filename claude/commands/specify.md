@@ -94,29 +94,30 @@ Quality gates applied to the current specification.
 10. Stakeholders
 11. Risk
 12. Execution Readiness
+13. Harmony (evaluated every pass, not only when touched — see Commandment Scoring below)
 
 ### Engineering
 
-13. Modularity
-14. Separation
-15. Robustness
-16. Repair
-17. Least Surprise
-18. Regression Protection
+14. Modularity
+15. Separation
+16. Robustness
+17. Repair
+18. Least Surprise
+19. Regression Protection
 
 ### Research/Analysis
 
-13. Falsifiability
-14. Reproducibility
-15. Bias
-16. Causation
+14. Falsifiability
+15. Reproducibility
+16. Bias
+17. Causation
 
 ### Writing
 
-13. Audience
-14. Argument
-15. Evidence
-16. Action
+14. Audience
+15. Argument
+16. Evidence
+17. Action
 
 ## Session File Location
 
@@ -173,7 +174,7 @@ Do not overwrite older session directories.
 .socrates/.current
 ```
 
-5. Set status to `Interrogating`
+5. Set status to `Interrogating` and `Current Pass: 1`
 6. Classify task type
 7. Pre-fill inferable sections
 8. Score commandment states:
@@ -182,6 +183,11 @@ Do not overwrite older session directories.
    - ambiguous
    - contradictory
    - open
+
+   For each commandment touched this pass, also append a Pass 1 row to spec.md's `## Commandment
+   Scores` table — state, confidence score (0-100%), Why, Why not 100%, Escalated, Resolution (see
+   Commandment Scoring below). Harmony always gets a Pass 1 row, whether or not it was otherwise
+   discussed.
 9. Generate initial interpretation
 10. Ask 2–3 high-leverage interrogation questions
 
@@ -207,9 +213,13 @@ then:
 - revise specification
 - classify unresolved disagreements
 
-5. Re-score commandment states
-6. Ask additional questions only where semantic risk remains
-7. Update specification
+5. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row
+   this pass
+6. Re-score commandment states — for each commandment touched this pass, append a new row to the
+   Commandment Scores table. Harmony always gets a new row this pass, whether or not it was
+   otherwise discussed.
+7. Ask additional questions only where semantic risk remains
+8. Update specification
 
 ## Alignment States
 
@@ -222,6 +232,37 @@ then:
 Do not mark a section stable unless:
 - explicit specification text exists
 - validation semantics exist where applicable
+
+## Commandment Scoring
+
+In addition to its alignment state, every commandment touched in a pass gets a row in spec.md's
+`## Commandment Scores` table (see Spec Scaffold) — never overwrite a prior row, always append:
+
+- **Score** — a confidence percentage (0-100%) in the current alignment-state assessment.
+- **Why** — the causal/historical reason the underlying requirement, constraint, or existing
+  behavior is the way it is. Sourced from research, not from uncertainty about the score.
+- **Why not 100%** — what's driving the confidence gap in the score itself.
+- **Escalated** — Yes/No: was a sub-70% score surfaced to the user as a dialogue question this
+  pass?
+- **Resolution** — if Escalated is Yes, a one-line note of how it was resolved, or a pointer to
+  where the resolution is recorded elsewhere in the spec.
+
+**Harmony always runs.** Unlike every other commandment — scored only when touched — Harmony is
+evaluated and given a new row every single pass, whether or not it came up in discussion, because
+consistency can break silently in parts of the spec nobody is actively discussing.
+
+**Deferral rule.** Any commandment (including Harmony) scoring below 70% must be surfaced to the
+user as a dialogue question — framed as sharpening the user's own thinking and the assistant's
+understanding, not just closing a spec gap — never silently recorded as an assumption. Record
+`Escalated: Yes` and the `Resolution` once answered.
+
+**Pass counter.** `Current Pass` (see Spec Scaffold) is an independent counter: set to 1 on
+Initialization, incremented by 1 on every Continuation invocation, regardless of whether anything
+gets a row that pass. This is what makes Harmony's cadence auditable later — verification checks
+that every integer from 1 to `Current Pass` has a corresponding Harmony row.
+
+A specification may not transition to `Validated`/`Frozen: true` while any row in the Commandment
+Scores table has `Score < 70%` and `Escalated: No` (see Specification Freeze below).
 
 ## Interrogation Principles
 
@@ -237,6 +278,7 @@ Do not mark a section stable unless:
 - Ask "what must not break?" to surface regression boundaries.
 - Ask "what tells you mid-flight that you're still on track, and what does that check cost?" to expose a missing Feedback Loop Design.
 - Ask "how would this fail silently?" to identify observability gaps.
+- Ask "why is this the way it is" before scoring a commandment — the rationale, not just the state, is the point.
 - Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
 - Prefer one question that resolves multiple ambiguities.
 - Prefer high-leverage clarification over exhaustive questioning.
@@ -328,6 +370,7 @@ When:
 - Feedback Loop Design is populated for at least the load-bearing requirements (not left unpopulated)
 - ambiguity is bounded
 - execution readiness is explicit
+- no row in the Commandment Scores table has `Score < 70%` and `Escalated: No`
 
 then:
 - set status to `Validated`
@@ -384,6 +427,12 @@ Status: Interrogating
 Specification Version: v1
 Frozen: false
 Type: [Engineering | Research/Analysis | Writing | General]
+Current Pass: 1
+
+## Commandment Scores
+
+| Pass | Commandment | State | Score | Why | Why not 100% | Escalated | Resolution |
+|---|---|---|---|---|---|---|---|
 
 ## Problem Statement
 

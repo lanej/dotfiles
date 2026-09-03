@@ -70,33 +70,34 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
 11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
 12. **Execution Readiness** — Are inputs, outputs, authority boundaries, and escalation conditions clear?
+13. **Harmony** — Does this specification avoid contradicting itself or creating inconsistency elsewhere? What would this change break somewhere else in the spec that nobody is currently discussing? Unlike every other commandment, Harmony is evaluated on every interrogation pass, not only when touched — see Commandment Scoring below.
 
 ### Engineering (add when task is engineering)
 
-13. **Modularity** — Does this decompose into independent parts with clean interfaces?
-14. **Separation** — Is policy (what) separated from mechanism (how)?
-15. **Robustness** — Are failure modes named? Partial failure has a defined path.
-16. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
-17. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
-18. **Regression Protection** — What prevents this task from silently failing again later?
+14. **Modularity** — Does this decompose into independent parts with clean interfaces?
+15. **Separation** — Is policy (what) separated from mechanism (how)?
+16. **Robustness** — Are failure modes named? Partial failure has a defined path.
+17. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
+18. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
+19. **Regression Protection** — What prevents this task from silently failing again later?
 
 ### Research/Analysis (add when task is research or analysis)
 
-13. **Falsifiability** — What evidence would prove the hypothesis wrong?
-14. **Reproducibility** — Can another person reach the same conclusion from the same inputs?
-15. **Bias** — What sampling, selection, or confirmation biases are present?
-16. **Causation** — Is correlation being conflated with causation anywhere?
+14. **Falsifiability** — What evidence would prove the hypothesis wrong?
+15. **Reproducibility** — Can another person reach the same conclusion from the same inputs?
+16. **Bias** — What sampling, selection, or confirmation biases are present?
+17. **Causation** — Is correlation being conflated with causation anywhere?
 
 ### Writing (add when task is writing)
 
-13. **Audience** — Is the reader explicitly defined? Assumed knowledge is stated.
-14. **Argument** — Is there a single clear thesis? Does every section serve it?
-15. **Evidence** — Are claims backed by sources or data, not assertion?
-16. **Action** — Is the desired reader action or decision explicit?
+14. **Audience** — Is the reader explicitly defined? Assumed knowledge is stated.
+15. **Argument** — Is there a single clear thesis? Does every section serve it?
+16. **Evidence** — Are claims backed by sources or data, not assertion?
+17. **Action** — Is the desired reader action or decision explicit?
 
 ## Session File Location
 
-Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. There is no pointer file — on continuation, the most recent session is found by sorting the timestamped directories. Multiple concurrent sessions in the same project are supported. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter.
+Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. `.socrates/.current` holds the timestamp of the most recently active session — the same pointer file `/specify`, `/critique`, and `/verify` already rely on — written on Initialization and, once resolved, on Continuation. Multiple concurrent sessions in the same project are supported; on continuation with more than one candidate, resolve via the picker below before updating `.current`. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter.
 
 Session artifacts:
 - `spec.md` — authoritative specification
@@ -115,14 +116,15 @@ This command manages its own phased execution. If plan mode is active at the sta
 1. Generate a timestamp (use Bash: `date +%Y%m%d-%H%M%S`).
 2. Create `.socrates/TIMESTAMP/` directory.
 3. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
-4. Set status to `Interrogating`.
+4. Write TIMESTAMP to `.socrates/.current`.
+5. Set status to `Interrogating` and `Current Pass: 1`.
 6. Classify task type.
 7. **Research** — before forming any question, investigate: relevant source files (Read, Glob, grep), existing configs and scripts, memory and prior session context, domain conventions and patterns. The point of this research isn't to avoid asking — it's to arm the question. A question backed by "here's what I found, and here's why it might matter" gives the user something real to decide against; that's what makes it informed rather than a blind ask. Classify each post-research question:
    - **Self-answerable** (mechanical, non-interpretive facts with no bearing on intent — language, file layout, existing syntax, established conventions): answer it silently; record as **Assumed** with source citation. Asking these wastes the user's time.
    - **Probable** (a real finding exists, but it touches goals, tradeoffs, risk, or scope): bring it into the dialogue as the opening move of a question — state the finding, then ask whether it holds and why/why not. Do not silently fold it into the spec as Assumed, and do not reduce it to a one-click confirmation; the user reasoning about your finding is the point, not just their approval of it.
    - **User-only** (genuinely unresolvable from evidence — requires intent, priorities, or institutional knowledge only the user holds): ask, and follow through per the Dialogue Loop below — don't accept the first answer at face value if it's vague, unexamined, or contradicts something already established.
 8. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains after research. Cite evidence or mark claims as **Assumed**.
-9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**.
+9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**. For each commandment touched this pass, also append a Pass 1 row to spec.md's `## Commandment Scores` table — state, confidence score (0-100%), Why, Why not 100%, Escalated, Resolution (see Commandment Scoring below). Harmony always gets a Pass 1 row, whether or not it was otherwise discussed.
 10. Record the current interpretation of the task in one paragraph.
 11. Begin the Dialogue Loop (below) on the highest-leverage open commandment first. Default to a plain, open-ended prose question — reach for `AskUserQuestion` only when the answer space is a small, genuinely enumerable set of known options. There is no target question count: continue, topic by topic, until the commandments relevant to this task are stable or explicitly accepted as fragile. A single well-researched question that resolves a topic cleanly is success, not a shortfall — depth is earned by real ambiguity, not manufactured by a quota.
 
@@ -132,14 +134,15 @@ This command manages its own phased execution. If plan mode is active at the sta
 2. If none: tell the user no sessions exist and suggest `/socrates "Task Title"` to start one. Stop.
 3. If exactly one: use it.
 4. If multiple: use `AskUserQuestion` to let the user pick. For each session, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description). Present in reverse-chronological order.
-5. Load `SESSION_DIR/spec.md`.
-3. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
-4. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
-5. Print a one-line alignment summary per commandment (name + state only).
-6. Restate the current interpretation before asking more questions when material ambiguity remains.
-7. Prefer closing existing open questions over opening new ones.
-8. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
-8. Update the session file: incorporate answers, resolve closed questions, add new ones.
+5. Load `SESSION_DIR/spec.md`. Write SESSION_DIR's timestamp to `.socrates/.current` — only now that the session is actually resolved, so a non-newest pick from step 4 doesn't get overwritten by an earlier guess.
+6. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row this pass.
+7. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
+8. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
+9. Print a one-line alignment summary per commandment touched this pass (name, state, and score — full rationale lives in the Commandment Scores table). Harmony always gets a new row this pass, whether or not it was otherwise discussed.
+10. Restate the current interpretation before asking more questions when material ambiguity remains.
+11. Prefer closing existing open questions over opening new ones.
+12. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
+13. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
 
@@ -150,6 +153,24 @@ This command manages its own phased execution. If plan mode is active at the sta
 - **Open** — not yet addressed.
 
 Do not mark a commandment **stable** unless the session file contains explicit content supporting it. A fragile item is not a blocker by default, but it must be named so the executor knows where interpretation risk remains.
+
+### Commandment Scoring
+
+In addition to its alignment state, every commandment touched in a pass gets a row in spec.md's `## Commandment Scores` table (see Spec Scaffold) — never overwrite a prior row, always append:
+
+- **Score** — a confidence percentage (0-100%) in the current alignment-state assessment.
+- **Why** — the causal/historical reason the underlying requirement, constraint, or existing behavior is the way it is. Sourced from research, not from uncertainty about the score.
+- **Why not 100%** — what's driving the confidence gap in the score itself.
+- **Escalated** — Yes/No: was a sub-70% score surfaced to the user as a dialogue question this pass?
+- **Resolution** — if Escalated is Yes, a one-line note of how it was resolved, or a pointer to where the resolution is recorded elsewhere in the spec.
+
+**Harmony always runs.** Unlike every other commandment — scored only when touched, preserving the open-ended dialogue-loop design — Harmony is evaluated and given a new row every single pass, whether or not it came up in discussion, because consistency can break silently in parts of the spec nobody is actively discussing.
+
+**Deferral rule.** Any commandment (including Harmony) scoring below 70% must be surfaced to the user as a dialogue question — framed as sharpening the user's own thinking and the assistant's understanding, not just closing a spec gap — never silently recorded as Assumed. Record `Escalated: Yes` and the `Resolution` once answered.
+
+**Pass counter.** `Current Pass` (see Spec Scaffold) is an independent counter: set to 1 on Initialization, incremented by 1 on every Continuation invocation, regardless of whether anything gets a row that pass. This is what makes Harmony's cadence auditable later — verification checks that every integer from 1 to `Current Pass` has a corresponding Harmony row.
+
+A specification may not transition to `Validated`/`Frozen: true` while any row in the Commandment Scores table has `Score < 70%` and `Escalated: No` (see Specification Freeze below).
 
 ### Contradiction Detection
 
@@ -236,6 +257,7 @@ This doesn't license over-interrogating trivial tasks — "use judgment, infer w
 - Ask "what must not break?" to surface regression boundaries.
 - Ask "what tells you mid-flight that you're still on track, and what does that check cost?" to expose a missing Feedback Loop Design.
 - Ask "how would this fail silently?" to identify observability gaps.
+- Ask "why is this the way it is" before scoring a commandment — the rationale, not just the state, is the point.
 - Challenge vague answers — sharpen them or classify them as ambiguous or fragile.
 - Prefer one question that resolves multiple ambiguities.
 - Prefer resolving the most consequential ambiguity first.
@@ -293,6 +315,7 @@ When:
 - Feedback Loop Design is populated for at least the load-bearing requirements (not left `_[open]_`)
 - ambiguity is bounded
 - execution readiness is explicit
+- no row in the Commandment Scores table has `Score < 70%` and `Escalated: No`
 
 then:
 - set status to `Validated`
@@ -355,6 +378,12 @@ Status: Interrogating
 Specification Version: v1
 Frozen: false
 Type: [Engineering | Research/Analysis | Writing | General]
+Current Pass: 1
+
+## Commandment Scores
+
+| Pass | Commandment | State | Score | Why | Why not 100% | Escalated | Resolution |
+|---|---|---|---|---|---|---|---|
 
 ## Problem Statement
 

@@ -69,7 +69,8 @@ Conversation is transient.
 Every `spec.md` must begin with a status line:
 
 ```
-Status: Draft | Under Critique | Reconciling | Frozen
+Status: Interrogating | Critiquing | Reconciling | Validated | Planned | Executing | Verified
+Frozen: true | false
 ```
 
 The current state must be determinable from the artifact alone — never from the conversation.
@@ -185,7 +186,7 @@ Transition only when all three tests pass:
 2. Two engineers reading the spec independently would implement the same thing
 3. Every critique finding is classified
 
-Update spec status to `Frozen` before proceeding.
+Update spec status to `Validated` and set `Frozen: true` before proceeding.
 
 ### Stage 4 — Planning
 
@@ -274,7 +275,7 @@ Goal:
 ## Transition Rules
 
 Do not proceed to planning until:
-- spec status is `Frozen`
+- spec status is `Validated` and `Frozen: true`
 - every requirement has a falsifiable acceptance criterion
 - every critique finding is classified (accepted / rejected / deferred)
 - validation contract exists

@@ -66,6 +66,7 @@ Focus on:
 - missing interfaces
 - unclear execution boundaries
 - places where literal execution could diverge from intent
+- internal contradictions (Harmony violations)
 
 ### Critic 2 — Verification Critic
 
@@ -81,6 +82,7 @@ Focus on:
 - observability gaps
 - unrealistic feedback-signal assumptions (infra, live-trigger, cross-service, human-gated review treated as if fast/cheap)
 - unpopulated "Feedback Loop Design"
+- unescalated sub-70% commandment scores
 
 ### Optional Critics
 

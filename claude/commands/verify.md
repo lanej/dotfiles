@@ -85,14 +85,28 @@ Determine:
 
 Surface "loop skipped" as its own failure category, distinct from "acceptance test failed."
 
-### Step 5 — Evaluate False Positive Risk
+### Step 5 — Evaluate Harmony Cadence and Deferral
+
+Reading only spec.md's `## Commandment Scores` table (no conversation access needed):
+
+- Collect the set of distinct `Pass` numbers across all rows. Confirm a Harmony row exists for
+  every integer from 1 to `Current Pass`. Any gap is a cadence failure — Harmony was skipped on at
+  least one pass.
+- For every row with `Score < 70%`, confirm `Escalated: Yes` and a non-empty `Resolution`. Any
+  miss is a deferral-rule failure — a low-confidence score was recorded without ever being
+  surfaced to the user.
+
+Both are self-contained checks against spec.md alone. Surface either failure as its own category,
+distinct from "acceptance test failed."
+
+### Step 6 — Evaluate False Positive Risk
 
 Specifically identify:
 - outputs that appear successful but violate intent
 - metrics that can be satisfied while producing incorrect outcomes
 - weak or gameable validation semantics
 
-### Step 6 — Produce Verification Result
+### Step 7 — Produce Verification Result
 
 Classification:
 - VERIFIED
@@ -133,6 +147,10 @@ Structure:
 
 ## Feedback Loop Design Usage
 [Was the designed in-progress signal actually invoked? Spec gap or execution gap if not?]
+
+## Harmony Cadence and Deferral
+[Does every pass 1..Current Pass have a Harmony row? Does every sub-70% row show Escalated: Yes
+with a non-empty Resolution?]
 
 ## Failure Signals
 [Any triggered failure indicators]
