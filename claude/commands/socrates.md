@@ -11,6 +11,8 @@ allowed-tools:
   - Bash(mkdir:*)
   - Bash(grep:*)
   - Bash(find:*)
+  - Bash(printenv:*)
+  - Bash(sort:*)
 tags:
   - specification
   - planning
@@ -97,7 +99,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 
 ## Session File Location
 
-Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. `.socrates/.current` holds the timestamp of the most recently active session — the same pointer file `/specify`, `/critique`, and `/verify` already rely on — written on Initialization and, once resolved, on Continuation. Multiple concurrent sessions in the same project are supported; on continuation with more than one candidate, resolve via the picker below before updating `.current`. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter.
+Files live in `.socrates/` within the current working directory. Each session lives in a timestamped directory: `.socrates/YYYYMMDD-HHMMSS/`. Each running Claude session is bound to its own session directory via a per-session pointer file, `.socrates/.current-<CLAUDE_CODE_SESSION_ID>` (content: `TIMESTAMP:PID`) — this replaces an earlier single global pointer, which broke when two Claude sessions worked in the same repo concurrently. `$CLAUDE_CODE_SESSION_ID` and `$CLAUDE_PID` are read via `printenv` (never `$$`, which inside a Bash tool call is the spawned subshell's PID, not the running Claude process's). The pointer is written on Initialization and refreshed on every Continuation. If a Claude session's own pointer doesn't exist yet (or its target directory has been removed), Continuation falls back to the picker below, then claims whichever session gets resolved. Timestamped sessions are preserved — historical reasoning, critique evolution, and validation history matter — and so are their pointer files, even once stale.
 
 Session artifacts:
 - `spec.md` — authoritative specification
@@ -116,7 +118,7 @@ This command manages its own phased execution. If plan mode is active at the sta
 1. Generate a timestamp (use Bash: `date +%Y%m%d-%H%M%S`).
 2. Create `.socrates/TIMESTAMP/` directory.
 3. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
-4. Write TIMESTAMP to `.socrates/.current`.
+4. `printenv CLAUDE_CODE_SESSION_ID` and `printenv CLAUDE_PID`; write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID`.
 5. Set status to `Interrogating` and `Current Pass: 1`.
 6. Classify task type.
 7. **Research** — before forming any question, investigate: relevant source files (Read, Glob, grep), existing configs and scripts, memory and prior session context, domain conventions and patterns. The point of this research isn't to avoid asking — it's to arm the question. A question backed by "here's what I found, and here's why it might matter" gives the user something real to decide against; that's what makes it informed rather than a blind ask. Classify each post-research question:
@@ -130,19 +132,22 @@ This command manages its own phased execution. If plan mode is active at the sta
 
 ### Continuation (no `$ARGUMENTS`)
 
-1. Find all session directories: `find .socrates -maxdepth 1 -mindepth 1 -type d | sort -r` (newest first).
-2. If none: tell the user no sessions exist and suggest `/socrates "Task Title"` to start one. Stop.
-3. If exactly one: use it.
-4. If multiple: use `AskUserQuestion` to let the user pick. For each session, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description). Present in reverse-chronological order.
-5. Load `SESSION_DIR/spec.md`. Write SESSION_DIR's timestamp to `.socrates/.current` — only now that the session is actually resolved, so a non-newest pick from step 4 doesn't get overwritten by an earlier guess.
-6. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row this pass.
-7. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
-8. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
-9. Print a one-line alignment summary per commandment touched this pass (name, state, and score — full rationale lives in the Commandment Scores table). Harmony always gets a new row this pass, whether or not it was otherwise discussed.
-10. Restate the current interpretation before asking more questions when material ambiguity remains.
-11. Prefer closing existing open questions over opening new ones.
-12. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
-13. Update the session file: incorporate answers, resolve closed questions, add new ones.
+**Fast-path principle**: if this Claude session already has its own pointer, resolve directly and run every step that follows session-resolution in its normal, unmodified order — the fast path only ever replaces the discovery/picker steps (2-5 below), never anything after.
+
+1. `printenv CLAUDE_CODE_SESSION_ID`. If `.socrates/.current-$CLAUDE_CODE_SESSION_ID` exists and `find .socrates/<its TIMESTAMP> -maxdepth 0 -type d` confirms that directory still exists, resolve SESSION_DIR directly from the pointer and skip to step 6. Otherwise (no pointer, or its target directory is gone — treat identically), continue to step 2.
+2. Find all session directories: `find .socrates -maxdepth 1 -mindepth 1 -type d | sort -r` (newest first).
+3. If none: tell the user no sessions exist and suggest `/socrates "Task Title"` to start one. Stop.
+4. If exactly one: use it as SESSION_DIR.
+5. If multiple: use `AskUserQuestion` to let the user pick SESSION_DIR. For each candidate, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description); annotate a candidate "active in another session right now" if `find .socrates -maxdepth 1 -name '.current-*'` turns up another pointer, `Read`ing it shows it targets this candidate, and `find /tmp/cc-socks -maxdepth 1 -name '<that pointer's PID>.sock'` returns output. Present in reverse-chronological order.
+6. Load `SESSION_DIR/spec.md`. `printenv CLAUDE_PID`; write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` for SESSION_DIR — refreshing the pointer whether it was resolved directly (step 1) or via the fallback (steps 2-5).
+7. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row this pass.
+8. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
+9. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
+10. Print a one-line alignment summary per commandment touched this pass (name, state, and score — full rationale lives in the Commandment Scores table). Harmony always gets a new row this pass, whether or not it was otherwise discussed.
+11. Restate the current interpretation before asking more questions when material ambiguity remains.
+12. Prefer closing existing open questions over opening new ones.
+13. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
+14. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
 

@@ -7,6 +7,9 @@ allowed-tools:
   - Edit
   - Bash(cat:*)
   - Task
+  - Bash(find:*)
+  - Bash(printenv:*)
+  - Bash(sort:*)
 tags:
   - verification
   - validation
@@ -38,10 +41,9 @@ A task is only a true positive if:
 ## Inputs
 
 If `$ARGUMENTS` is empty:
-1. Read `.socrates/.current`.
-2. Treat its contents as the active session directory name.
-3. Read `.socrates/<active-session>/spec.md`.
-4. Write verification output to `.socrates/<active-session>/verification.md`.
+1. `printenv CLAUDE_CODE_SESSION_ID`. If `.socrates/.current-$CLAUDE_CODE_SESSION_ID` exists and `find .socrates/<its TIMESTAMP> -maxdepth 0 -type d` confirms that directory still exists, use it as the active session directory. Otherwise: `find .socrates -maxdepth 1 -mindepth 1 -type d | wc -l` — if exactly 1, use it as the active session directory and `printenv CLAUDE_PID`; write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` for it (claiming it, since no Claude session owned it yet). If more than 1, stop and tell the user: "multiple `.socrates` sessions exist and none is bound to this Claude session — run `/socrates` first, or pass a specific artifact/execution output as `$ARGUMENTS`."
+2. Read `.socrates/<active-session>/spec.md`.
+3. Write verification output to `.socrates/<active-session>/verification.md`.
 
 If `$ARGUMENTS` is provided:
 1. Read the provided artifact or execution output.

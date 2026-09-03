@@ -5,8 +5,12 @@ allowed-tools:
   - Read
   - Write
   - Edit
+  - AskUserQuestion
   - Bash(date:*)
   - Bash(mkdir:*)
+  - Bash(find:*)
+  - Bash(printenv:*)
+  - Bash(sort:*)
 tags:
   - specification
   - validation
@@ -136,9 +140,11 @@ Session artifacts:
 - `plan.md` — downstream execution plan
 
 Pointer file:
-- `.socrates/.current`
-
-`.socrates/.current` contains the active session directory name.
+- `.socrates/.current-<CLAUDE_CODE_SESSION_ID>`, one per running Claude session (content:
+  `TIMESTAMP:PID`) — replaces an earlier single global pointer, which broke when two Claude
+  sessions worked in the same repo concurrently. Read/write `$CLAUDE_CODE_SESSION_ID` and
+  `$CLAUDE_PID` via `printenv` (never `$$`, which inside a Bash tool call is the spawned
+  subshell's PID, not the running Claude process's).
 
 Timestamped sessions are intentionally preserved:
 - historical reasoning matters
@@ -168,11 +174,13 @@ Do not overwrite older session directories.
 .socrates/TIMESTAMP/spec.md
 ```
 
-4. Write the timestamp directory name to:
+4. `printenv CLAUDE_CODE_SESSION_ID` and `printenv CLAUDE_PID`; write the timestamp directory name and PID to:
 
 ```text
-.socrates/.current
+.socrates/.current-<CLAUDE_CODE_SESSION_ID>
 ```
+
+as `TIMESTAMP:PID`.
 
 5. Set status to `Interrogating` and `Current Pass: 1`
 6. Classify task type
@@ -193,15 +201,21 @@ Do not overwrite older session directories.
 
 ## Continuation (no `$ARGUMENTS`)
 
-1. Read `.socrates/.current`
-2. Resolve active session directory
-3. Load:
+**Fast-path principle**: if this Claude session already has its own pointer, resolve directly and run every step that follows session-resolution in its normal, unmodified order (including the critique-check *before* the pass-increment, as below) — the fast path only ever replaces the discovery/picker steps (2-4), never anything after.
+
+1. `printenv CLAUDE_CODE_SESSION_ID`. If `.socrates/.current-$CLAUDE_CODE_SESSION_ID` exists and `find .socrates/<its TIMESTAMP> -maxdepth 0 -type d` confirms that directory still exists, resolve SESSION_DIR directly from the pointer and skip to step 5. Otherwise (no pointer, or its target directory is gone), continue to step 2.
+2. `find .socrates -maxdepth 1 -mindepth 1 -type d | sort -r` (newest first). If none: tell the user no sessions exist and suggest `/socrates "Task Title"` to start one. Stop.
+3. If exactly one: use it as SESSION_DIR.
+4. If multiple: use `AskUserQuestion` to let the user pick SESSION_DIR. For each candidate, read the title from the first line of its `spec.md` (label) and derive the timestamp from the directory name (description); annotate a candidate "active in another session right now" if `find .socrates -maxdepth 1 -name '.current-*'` turns up another pointer, `Read`ing it shows it targets this candidate, and `find /tmp/cc-socks -maxdepth 1 -name '<that pointer's PID>.sock'` returns output.
+5. Load:
 
 ```text
 .socrates/TIMESTAMP/spec.md
 ```
 
-4. If critique exists:
+Then `printenv CLAUDE_PID`; write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` for SESSION_DIR — this file never wrote a pointer back before this change; it now refreshes one whether SESSION_DIR was resolved directly (step 1) or via the fallback (steps 2-4).
+
+6. If critique exists:
 
 ```text
 .socrates/TIMESTAMP/critique.md
@@ -213,13 +227,13 @@ then:
 - revise specification
 - classify unresolved disagreements
 
-5. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row
+7. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row
    this pass
-6. Re-score commandment states — for each commandment touched this pass, append a new row to the
+8. Re-score commandment states — for each commandment touched this pass, append a new row to the
    Commandment Scores table. Harmony always gets a new row this pass, whether or not it was
    otherwise discussed.
-7. Ask additional questions only where semantic risk remains
-8. Update specification
+9. Ask additional questions only where semantic risk remains
+10. Update specification
 
 ## Alignment States
 
