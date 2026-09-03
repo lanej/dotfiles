@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+# Mechanical worker for the bugfix-dispatcher skill. Subcommands after `start`
+# take the fixer session's <id> and read everything else from the state file
+# written at `start` time — see ~/.cache/bugfix-dispatcher/<id>.json.
+#
+# This script pushes to `main` unattended on the easypost-sandbox allowlist,
+# so it uses strict mode rather than this repo's usual fail-soft bin/ style.
+set -euo pipefail
+
+STATE_DIR="$HOME/.cache/bugfix-dispatcher"
+SRC_DIR="$HOME/src"
+mkdir -p "$STATE_DIR"
+
+usage() {
+  echo "Usage: bugfix-worker <start|check|verify|finish|unlock> ..." >&2
+  exit 1
+}
+
+agent_record() {
+  # Print the claude agents --json record for $1 (an id), or nothing.
+  claude agents --json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for o in data:
+    if o.get('id') == '$1':
+        print(json.dumps(o))
+        break
+"
+}
+
+state_field() {
+  # state_field <state_file> <key>
+  python3 -c "import json; print(json.load(open('$1')).get('$2', ''))"
+}
+
+cmd="${1:-}"; shift || true
+
+case "$cmd" in
+  start)
+    repo="${1:?repo required}"; slug="${2:?slug required}"; prompt_file="${3:?prompt file required}"
+    repo_path="$SRC_DIR/$repo"
+
+    [ -d "$repo_path/.git" ] || { echo "ERROR: $repo_path is not a git repo" >&2; exit 1; }
+
+    origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
+    if ! printf '%s' "$origin_url" | grep -qi "easypost-sandbox"; then
+      echo "ERROR: $repo is not in the easypost-sandbox allowlist (origin: $origin_url)" >&2
+      exit 1
+    fi
+
+    lock_dir="$repo_path/.git/bugfix.lock"
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+      echo "BUSY: $repo already has a fix in flight ($lock_dir exists)" >&2
+      exit 2
+    fi
+
+    [ -f "$prompt_file" ] || { rmdir "$lock_dir" 2>/dev/null || true; echo "ERROR: prompt file $prompt_file not found" >&2; exit 1; }
+    prompt_content="$(cat "$prompt_file")"
+
+    session_name="bugfix-${repo}-${slug}"
+    launch_output="$(cd "$repo_path" && claude -w "$slug" --bg -n "$session_name" --permission-mode bypassPermissions "$prompt_content" 2>&1)" || {
+      rmdir "$lock_dir" 2>/dev/null || true
+      echo "ERROR: launch failed: $launch_output" >&2
+      exit 1
+    }
+
+    id="$(printf '%s\n' "$launch_output" | grep -oE '· [a-f0-9]{6,} ·' | head -1 | tr -d ' ·')"
+    if [ -z "$id" ]; then
+      rmdir "$lock_dir" 2>/dev/null || true
+      echo "ERROR: could not parse session id from launch output: $launch_output" >&2
+      exit 1
+    fi
+
+    cat > "$STATE_DIR/$id.json" <<EOF
+{"repo":"$repo","slug":"$slug","lockPath":"$lock_dir","sessionName":"$session_name"}
+EOF
+    echo "$id"
+    ;;
+
+  check)
+    id="${1:?id required}"
+    record="$(agent_record "$id")"
+    if [ -z "$record" ]; then
+      echo '{"result":"unknown"}'
+      exit 0
+    fi
+    # Empirically confirmed (2026-09-03, two controlled A/B tests): `state`
+    # does NOT reliably become "done" for a resident --bg session that
+    # finishes a turn without actually exiting — it stays "working" even
+    # after visible completion (confirmed via `claude logs` + a stuck-idle
+    # `status`). The real signal is `status`: "idle" means the turn has
+    # ended either way; `state: blocked` is what distinguishes "stuck
+    # waiting for input" from "genuinely done for now." Do not trust `state`
+    # alone or assume a "done" value will ever appear.
+    status="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")"
+    state="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('state',''))")"
+    if [ "$status" != "idle" ]; then
+      echo '{"result":"working"}'
+    elif [ "$state" = "blocked" ]; then
+      echo '{"result":"blocked"}'
+    else
+      echo '{"result":"done"}'
+    fi
+    ;;
+
+  verify)
+    id="${1:?id required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
+
+    record="$(agent_record "$id")"
+    [ -n "$record" ] || { echo "ERROR: no live agent record for $id" >&2; exit 1; }
+    cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+    [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: worktree cwd '$cwd' not found for $id" >&2; exit 1; }
+
+    # Exclude bugs/ from both checks below — it always appears in the diff
+    # (the bug-report commit) and its slug can coincidentally contain
+    # "test"/"spec" (e.g. a report titled "smoketest"), which would
+    # otherwise false-positive the repro-test-touched heuristic.
+    changed_paths="$(git -C "$cwd" diff --name-only origin/main...HEAD 2>/dev/null | grep -v '^bugs/' || true)"
+    risky_paths="$(printf '%s\n' "$changed_paths" | grep -E '(^|/)\.github/|\.env|Dockerfile|\.gitlab-ci|\.circleci/' || true)"
+    # Real test-file conventions only: a tests/spec directory, or a
+    # test_*/*_test.*/*.test.*/*_spec.* filename — not a bare substring match.
+    test_touched="$(printf '%s\n' "$changed_paths" | grep -iE '(^|/)(tests?|specs?)/|(^|/)test_[^/]+$|_test\.[^/]+$|\.test\.[^/]+$|_spec\.[^/]+$' || true)"
+
+    suite_pass="false"
+    log_file="/tmp/bugfix-verify-$id.log"
+    # `set -e` would otherwise abort the script on a failing (expected!) test
+    # run, so every branch here is explicitly `|| true`-guarded.
+    if [ -f "$cwd/package.json" ] && grep -q '"test"' "$cwd/package.json"; then
+      { ( cd "$cwd" && npm test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+    elif [ -f "$cwd/Makefile" ] && grep -qE '^test:' "$cwd/Makefile"; then
+      { ( cd "$cwd" && make test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+    elif [ -f "$cwd/justfile" ] && grep -qE '^test( |:)' "$cwd/justfile"; then
+      { ( cd "$cwd" && just test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+    else
+      echo "WARN: no recognized test command in $cwd — cannot verify suite" >&2
+    fi
+
+    python3 -c "
+import json
+print(json.dumps({
+    'cwd': '''$cwd''',
+    'suitePass': $( [ "$suite_pass" = "true" ] && echo True || echo False ),
+    'testTouched': bool('''$test_touched'''.strip()),
+    'riskyPaths': [p for p in '''$risky_paths'''.strip().splitlines() if p],
+    'logFile': '''$log_file''',
+}))
+"
+    ;;
+
+  finish)
+    id="${1:?id required}"; action="${2:?merge|pr required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
+    repo="$(state_field "$state_file" repo)"
+    slug="$(state_field "$state_file" slug)"
+    repo_path="$SRC_DIR/$repo"
+
+    record="$(agent_record "$id")"
+    cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))" 2>/dev/null || true)"
+
+    case "$action" in
+      merge)
+        [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
+        git -C "$cwd" push origin HEAD:main
+        # Empirically confirmed (2026-09-03): `claude rm` deliberately REFUSES
+        # to delete a worktree with unpushed commits — "kept <id> — worktree
+        # has commits that are not pushed anywhere" — rather than erroring or
+        # silently failing. That refusal is a real data-loss guard, so never
+        # force past it here: by this point the push above already succeeded,
+        # so a refusal now means something unexpected (partial/failed push
+        # that still exited 0, or a genuine edge case) and should surface as
+        # a warning for the dispatcher skill to escalate, not be overridden.
+        if ! rm_output="$(claude rm "$id" 2>&1)"; then
+          echo "WARN: claude rm $id did not complete cleanly after a successful push: $rm_output" >&2
+        elif printf '%s' "$rm_output" | grep -qi '^kept'; then
+          echo "WARN: claude rm $id refused despite a successful push — investigate before assuming cleanup: $rm_output" >&2
+        fi
+        ;;
+      pr)
+        [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
+        branch="bugfix/$slug"
+        git -C "$cwd" push origin "HEAD:$branch"
+        ( cd "$cwd" && gh pr create --fill --head "$branch" )
+        claude stop "$id" || true
+        ;;
+      *)
+        echo "Usage: bugfix-worker finish <id> merge|pr" >&2; exit 1 ;;
+    esac
+    ;;
+
+  unlock)
+    id="${1:?id required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || exit 0
+    lock_path="$(state_field "$state_file" lockPath)"
+    [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+    rm -f "$state_file"
+    ;;
+
+  *)
+    usage
+    ;;
+esac
