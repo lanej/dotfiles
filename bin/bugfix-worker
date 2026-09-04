@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Mechanical worker for the bugfix-dispatcher skill. Subcommands after `start`
 # take the fixer session's <id> and read everything else from the state file
-# written at `start` time — see ~/.cache/bugfix-dispatcher/<id>.json.
+# written at `start` time — see ~/.local/state/bugfix-dispatcher/<id>.json.
+# XDG_STATE_HOME, not XDG_CACHE_HOME: this is recovery state, not disposable
+# cache — losing it means losing the ability to recover in-flight work.
 #
 # This script pushes to `main` unattended on the easypost-sandbox allowlist,
 # so it uses strict mode rather than this repo's usual fail-soft bin/ style.
 set -euo pipefail
 
-STATE_DIR="$HOME/.cache/bugfix-dispatcher"
+STATE_DIR="$HOME/.local/state/bugfix-dispatcher"
 SRC_DIR="$HOME/src"
 mkdir -p "$STATE_DIR"
 
 usage() {
-  echo "Usage: bugfix-worker <start|check|verify|finish|unlock> ..." >&2
+  echo "Usage: bugfix-worker <start|check|verify|finish|unlock|recover> ..." >&2
   exit 1
 }
 
@@ -200,6 +202,38 @@ print(json.dumps({
     lock_path="$(state_field "$state_file" lockPath)"
     [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
     rm -f "$state_file"
+    ;;
+
+  recover)
+    # Run once at dispatcher startup (including after a restart) to find
+    # in-flight work orphaned by the previous dispatcher instance dying —
+    # e.g. Josh restarting the session mid-fix. For each cached state file:
+    # if its session is still alive, it's resumable (the fixer keeps running
+    # independently of the dispatcher; just re-subscribe and continue from
+    # `check`). If the session is gone, it's truly orphaned — release the
+    # lock and remove the state file, but leave any worktree/branch alone
+    # for manual inspection rather than deleting real work.
+    found_any=false
+    shopt -s nullglob
+    for f in "$STATE_DIR"/*.json; do
+      found_any=true
+      id="$(basename "$f" .json)"
+      repo="$(state_field "$f" repo)"
+      slug="$(state_field "$f" slug)"
+      session_name="$(state_field "$f" sessionName)"
+      if [ -n "$(agent_record "$id")" ]; then
+        printf '{"id":"%s","result":"resumable","repo":"%s","slug":"%s","sessionName":"%s"}\n' \
+          "$id" "$repo" "$slug" "$session_name"
+      else
+        lock_path="$(state_field "$f" lockPath)"
+        [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+        rm -f "$f"
+        printf '{"id":"%s","result":"orphaned_cleaned","repo":"%s","slug":"%s","sessionName":"%s"}\n' \
+          "$id" "$repo" "$slug" "$session_name"
+      fi
+    done
+    shopt -u nullglob
+    [ "$found_any" = false ] && echo '{"result":"none"}'
     ;;
 
   *)

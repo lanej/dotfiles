@@ -11,7 +11,18 @@ Full design record: `/Users/joshlane/.files/.socrates/20260903-070152/spec.md` (
 
 **Start this session via `bin/bugfix-dispatcher-launch`, not a bare `claude -n bugfix-dispatcher`.** The launcher pins `--settings '{"crossSessionInbound":"accept"}'` — without it, a report from a session in a different permission-mode class gets held for manual terminal approval and silently expires if nobody's watching, which defeats the point of an unattended dispatcher.
 
-**Once you invoke this skill, just wait.** Incoming `<cross-session-message>` reports deliver into your normal turn automatically — there's no polling loop to run. Process each report through the protocol below as it arrives.
+**Before waiting for anything, recover.** A previous dispatcher instance may have died mid-fix — restarted by Josh, crashed, whatever — leaving in-flight work behind. Run:
+
+```
+bin/bugfix-worker recover
+```
+
+For each entry it reports:
+- **`resumable`**: the fixer session referenced is still alive and working independently of any dispatcher — it doesn't know or care that its dispatcher restarted. Re-subscribe (`SendMessage({ to: <sessionName>, notify_when_idle: true })`) and rejoin the protocol at Step 4 (check) for that report.
+- **`orphaned_cleaned`**: the fixer session is gone too — `recover` already released the lock and removed the state file for you. The repo is usable again; no further action needed unless you want to check whether a stray worktree/branch was left behind (`recover` does not delete those — only the lock and state tracking).
+- **`none`**: nothing to recover, proceed normally.
+
+**Once recovery is handled, just wait.** Incoming `<cross-session-message>` reports deliver into your normal turn automatically — there's no polling loop to run. Process each report through the protocol below as it arrives.
 
 ## Per-report protocol
 
