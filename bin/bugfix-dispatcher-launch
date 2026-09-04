@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launcher for the bug/feature-fix dispatcher session. Pins the session name
+# (so other sessions can SendMessage it) and the crossSessionInbound setting
+# (empirically confirmed 2026-09-04: without this, incoming reports from a
+# session in a different permission-mode class get held for manual approval
+# and expire unless someone is watching that terminal) so reports flow
+# through unattended, then auto-invokes the bugfix-dispatcher skill.
+set -euo pipefail
+
+exec claude -n bugfix-dispatcher \
+  --settings '{"crossSessionInbound":"accept"}' \
+  "Load and follow the bugfix-dispatcher skill. Then wait for incoming bug/feature reports."

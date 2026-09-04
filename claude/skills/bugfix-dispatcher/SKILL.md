@@ -1,19 +1,23 @@
 ---
 name: bugfix-dispatcher
-description: Operating protocol for a session designated as Josh's bug-fix dispatcher — receives bug reports via SendMessage from other Claude Code sessions, fixes them in a real attachable claude background session scoped to Josh's easypost-sandbox repos, independently re-verifies, and auto-merges or opens a PR. Invoke once in a session started specifically to act as the dispatcher (e.g. `claude -n bugfix-dispatcher`).
+description: Operating protocol for a session designated as Josh's bug/feature-fix dispatcher — receives bug reports and small feature requests via SendMessage from other Claude Code sessions, builds them in a real attachable claude background session scoped to Josh's easypost-sandbox repos, independently re-verifies, and auto-merges or opens a PR. Start via `bin/bugfix-dispatcher-launch` (pins the session name and the crossSessionInbound setting so reports don't get held for manual approval).
 ---
 
-# Bug Fix Dispatcher
+# Bug/Feature Dispatcher
 
-You are acting as Josh's resident bug-fix dispatcher. Other Claude Code sessions `SendMessage` you bug reports (see the `report-tool-bug` skill for their side of this). For each one, you fix it in an isolated, real, attachable `claude` background session, independently verify the fix yourself before trusting it, and either merge it or open a PR — scoped strictly to Josh's `easypost-sandbox` GitHub-org repos under `~/src`.
+You are acting as Josh's resident dispatcher for scoped, mechanically-verifiable work on his `easypost-sandbox` repos: bug fixes and small feature requests alike. Other Claude Code sessions `SendMessage` you reports (see the `report-tool-work` skill for their side of this). For each one, you build it in an isolated, real, attachable `claude` background session, independently verify the result yourself before trusting it, and either merge it or open a PR — scoped strictly to Josh's `easypost-sandbox` GitHub-org repos under `~/src`.
 
-Full design record: `/Users/joshlane/.files/.socrates/20260903-070152/spec.md` (frozen v4) and `/Users/joshlane/.files/.socrates/20260903-070152/plan.md`.
+Full design record: `/Users/joshlane/.files/.socrates/20260903-070152/spec.md` (frozen; Pass 3 generalized bugs-only to bugs+features) and `/Users/joshlane/.files/.socrates/20260903-070152/plan.md`.
 
-**Once you invoke this skill, just wait.** Incoming `<cross-session-message>` bug reports deliver into your normal turn automatically — there's no polling loop to run. Process each report through the protocol below as it arrives.
+**Start this session via `bin/bugfix-dispatcher-launch`, not a bare `claude -n bugfix-dispatcher`.** The launcher pins `--settings '{"crossSessionInbound":"accept"}'` — without it, a report from a session in a different permission-mode class gets held for manual terminal approval and silently expires if nobody's watching, which defeats the point of an unattended dispatcher.
+
+**Once you invoke this skill, just wait.** Incoming `<cross-session-message>` reports deliver into your normal turn automatically — there's no polling loop to run. Process each report through the protocol below as it arrives.
 
 ## Per-report protocol
 
-Generate one identifier up front for the whole report: **`slug = <YYYYMMDD-HHMMSS>-<short-kebab-description>`** (e.g. `20260903-141502-worktree-path-bug`). Reuse this exact string everywhere below — bug-report filename, worktree name, session name — so nothing has to be re-derived, and re-reports of "the same" bug never collide (fresh timestamp each time).
+Generate one identifier up front for the whole report: **`slug = <YYYYMMDD-HHMMSS>-<short-kebab-description>`** (e.g. `20260903-141502-worktree-path-bug`). Reuse this exact string everywhere below — report filename, worktree name, session name — so nothing has to be re-derived, and re-reports of "the same" thing never collide (fresh timestamp each time).
+
+Determine whether the report is a **bug** or a **feature request** — the reporting agent should say so explicitly (per the `report-tool-work` skill); if genuinely ambiguous, treat it as a feature request (the stricter reading: no bug to reproduce means no repro-test requirement to satisfy).
 
 ### 1. Validate scope + lock
 
@@ -32,51 +36,55 @@ If it exits with BUSY: wait ~30s and retry `start` again (a second `mkdir` attem
 Before calling `start`, write the prompt content to a temp file — **never inline it into command argv** (multi-line bug reports containing quotes/backticks are a shell-quoting hazard). Template:
 
 ```markdown
-This is an automated bug-fix task from the bugfix-dispatcher. Work autonomously — do not wait for further input unless you are genuinely stuck and need a decision only a human can make.
+This is an automated <bug-fix|feature> task from the bugfix-dispatcher. Work autonomously — do not wait for further input unless you are genuinely stuck and need a decision only a human can make.
 
-## Step 1 — commit the bug report
+## Step 1 — commit the report
 
 Write a file at exactly `bugs/<slug>.md` with this content, then commit it (this is the first commit of your work):
 
 ---
-# <bug title>
+# <bug title | feature title>
 
+**Type:** <Bug | Feature>
 **Reported by:** <caller session name/id>
 **Reported at:** <ISO timestamp>
 
 ## Expected
 
-<expected behavior, from the report>
+<expected behavior / desired behavior, from the report>
 
 ## Actual
 
-<actual behavior, from the report>
+<actual behavior / what's missing today, from the report>
 
 ## Repro / context
 
 <repro steps and any error output from the report>
 ---
 
-Commit message: `docs: record bug report for <slug>`
+Commit message: `docs: record <bug report|feature request> for <slug>`
 
-## Step 2 — reproduce
+## Step 2 — reproduce (bugs only) / scope (features only)
 
-Write a failing test that reproduces the bug described above. Confirm it actually fails before proceeding (do not skip this — a test that was never confirmed red proves nothing).
+**If this is a bug**: write a failing test that reproduces it. Confirm it actually fails before proceeding (do not skip this — a test that was never confirmed red proves nothing).
 
-## Step 3 — fix
+**If this is a feature**: there's nothing to reproduce — write test(s) that will demonstrate the new behavior working once built (these will fail until Step 3 is done, same discipline as a repro test).
 
-Fix the underlying bug. Prefer the root-cause fix over a workaround.
+## Step 3 — fix / build
+
+**Bug**: fix the underlying issue. Prefer the root-cause fix over a workaround.
+**Feature**: build the requested behavior, scoped to exactly what was asked — no speculative extras.
 
 ## Step 4 — verify
 
-Confirm your new test now passes, and run the repo's full existing test suite to confirm nothing else broke.
+Confirm your new test(s) now pass, and run the repo's full existing test suite to confirm nothing else broke.
 
 ## Step 5 — done
 
-Reply with a one-line summary of what you fixed and stop. Do not push, merge, or open a PR yourself — the dispatcher handles that after independently verifying your work.
+Reply with a one-line summary of what you did and stop. Do not push, merge, or open a PR yourself — the dispatcher handles that after independently verifying your work.
 ```
 
-Fill in `<slug>`, the bug title, and the report's expected/actual/repro content literally — you (the dispatcher) compute `bugs/<slug>.md`'s exact filename, don't leave it for the fixer to invent, so step 5 below can reference it reliably.
+Fill in `<slug>`, the title, `<Bug|Feature>`, and the report's expected/actual/repro content literally — you (the dispatcher) compute `bugs/<slug>.md`'s exact filename, don't leave it for the fixer to invent, so step 5 below can reference it reliably. (The `bugs/` directory name predates the feature-request scope; feature reports live there too rather than splitting into a second directory.)
 
 ### 3. Launch, then subscribe before it can go idle
 
@@ -124,11 +132,13 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 
 ### 7. Decide
 
-**Merge bar** — all four required:
+**Merge bar** — all four required, for bugs and features alike:
 1. `verify`'s `suitePass` is `true`
-2. `verify`'s `testTouched` is `true` (a real repro test was actually added, per the test-file-convention check — not just any file with "test" in its name)
+2. `verify`'s `testTouched` is `true` (a real test was actually added, per the test-file-convention check — not just any file with "test" in its name; a repro test for a bug, a demonstration test for a feature)
 3. `verify`'s `riskyPaths` is empty (nothing touched under `.github/`, `.env*`, `Dockerfile`, CI config)
 4. `code-reviewer`'s verdict is `APPROVE`
+
+There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
 All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 8).
 
@@ -142,7 +152,7 @@ bin/bugfix-worker unlock <id>
 
 ### 9. Reply to the caller
 
-`SendMessage` back to whoever originally reported the bug, with the outcome: merged (link the commit), PR opened (link the PR), or rejected as out of scope.
+`SendMessage` back to whoever originally reported it, with the outcome: merged (link the commit), PR opened (link the PR), or rejected as out of scope.
 
 ### 10. Notify Josh on any non-clean outcome
 
