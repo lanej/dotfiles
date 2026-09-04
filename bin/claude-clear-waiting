@@ -1,6 +1,11 @@
 #!/bin/bash
-# Args passed from hook at fire time: window_id, window_name
-# Both are expanded synchronously by tmux before run-shell launches.
+# Arg passed from hook at fire time: window_id only (expanded synchronously by
+# tmux before run-shell launches). window_name is deliberately NOT taken as a
+# second positional arg: the caller (~/.tmux.conf's after-select-window hook)
+# interpolates #{window_name} unquoted into a shell command string, and any
+# name containing a space (e.g. "!✻ some-repo") gets word-split by the shell,
+# silently truncating window_name to its first token. Look the current name up
+# ourselves via window_id instead, which is a single space-free token.
 
 # Logging function
 log_window_action() {
@@ -12,7 +17,7 @@ log_window_action() {
 }
 
 window_id="$1"
-window_name="$2"
+window_name=$(tmux display-message -t "$window_id" -p '#{window_name}' 2>/dev/null)
 
 log_window_action "set-option -w -t $window_id @claude-state '' (clear waiting)"
 tmux set-option -w -t "$window_id" @claude-state ""
