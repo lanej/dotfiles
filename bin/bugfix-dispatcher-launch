@@ -5,7 +5,29 @@
 # session in a different permission-mode class get held for manual approval
 # and expire unless someone is watching that terminal) so reports flow
 # through unattended, then auto-invokes the bugfix-dispatcher skill.
+#
+# Only one dispatcher may run at a time: a second one sharing the name
+# "bugfix-dispatcher" would make SendMessage's name-based addressing
+# ambiguous for every reporting agent. Refuse to start a duplicate.
 set -euo pipefail
+
+existing="$(claude agents --json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for o in data:
+    if o.get('name') == 'bugfix-dispatcher':
+        print(o.get('id') or o.get('pid') or 'unknown')
+        break
+")"
+
+if [ -n "$existing" ]; then
+  echo "ERROR: a bugfix-dispatcher session is already running (id/pid: $existing)." >&2
+  echo "Only one may run at a time — stop it first (claude stop $existing, or exit its terminal) before starting another." >&2
+  exit 1
+fi
 
 exec claude -n bugfix-dispatcher \
   --settings '{"crossSessionInbound":"accept"}' \
