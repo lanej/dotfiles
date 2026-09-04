@@ -31,4 +31,5 @@ fi
 
 exec claude -n bugfix-dispatcher \
   --settings '{"crossSessionInbound":"accept"}' \
+  --permission-mode bypassPermissions \
   "Load and follow the bugfix-dispatcher skill. Then wait for incoming bug/feature reports."
