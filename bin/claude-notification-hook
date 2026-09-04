@@ -17,14 +17,18 @@ input=$(cat)
 # Debug: log the input (uncomment to debug)
 # echo "$input" > /tmp/claude-notification-debug.log
 
+GLYPH='✻'  # matches Claude Code's own CLI spinner frame (U+273B) — must match
+           # claude-session-start-hook / claude-autoname-hook's GLYPH constant,
+           # since session-names/<id> stores the plain name without it.
+
 # Set window indicator
 if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
     session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
     name_file="$HOME/.claude/session-names/$session_id"
     if [ -n "$session_id" ] && [ -f "$name_file" ]; then
         base=$(cat "$name_file")
-        log_window_action "rename-window -t $TMUX_PANE '!${base}' (add ! prefix)"
-        tmux rename-window -t "$TMUX_PANE" "!${base}" 2>/dev/null
+        log_window_action "rename-window -t $TMUX_PANE '!${GLYPH} ${base}' (add ! prefix)"
+        tmux rename-window -t "$TMUX_PANE" "!${GLYPH} ${base}" 2>/dev/null
     fi
 fi
 
