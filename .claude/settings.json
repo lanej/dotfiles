@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-haiku-repo-write-gate-hook"
+            "command": "$HOME/.files/bin/claude-fork-no-write-gate-hook"
           }
         ]
       },
