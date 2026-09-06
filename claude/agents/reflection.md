@@ -123,9 +123,19 @@ Split findings by scope and dispatch:
 
 **Otherwise**: present findings and scope decisions to the user, then dispatch interactively.
 
-## Step 5 — Query Pattern Capture (BQ Sessions)
+## Step 5 — Query Pattern Capture (BQ Sessions) — DISABLED 2026-09-06
 
-After dispatching behavioral improvements, check whether this session qualifies for query pattern capture.
+**Do not dispatch this step.** 5 consecutive runs (2026-09-01, 09-03, 09-05, 09-06 ×2) produced zero
+pending templates for the identical reason: claude-mem's observation store never persists verbatim
+SQL alongside its narrative summary, so every `mcp__bigquery__query` tool use is only ever
+recoverable as an LLM-paraphrased summary — there is no query text left to capture, regardless of
+session quality. This is a structural gap in claude-mem's tool-use capture, not a per-session
+anomaly; see `reference_query_pattern_capture_no_sql_gap.md`. Per Josh's explicit call (2026-09-06,
+"this can't work inside claude-mem then"): skip Step 5 entirely until claude-mem itself is changed to
+store actual query text, not just narrative summaries. Leave the rest of this step's instructions
+below intact (don't delete them) so it's a one-line revert once that gap is fixed upstream.
+
+~~After dispatching behavioral improvements, check whether this session qualifies for query pattern capture.~~
 
 **Qualifying condition — BOTH must be true:**
 - The session contains a `mcp__bigquery__query` tool use (a BQ query was executed)
