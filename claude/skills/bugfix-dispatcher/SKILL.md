@@ -79,6 +79,8 @@ Commit message: `docs: record <bug report|feature request> for <slug>`
 
 **If this is a bug**: write a failing test that reproduces it. Confirm it actually fails before proceeding (do not skip this — a test that was never confirmed red proves nothing).
 
+If you cannot reproduce the bug after genuinely attempting the exact repro steps given, do not write a speculative fix or a test that doesn't actually reproduce the behavior. Stop and make your final reply start with the literal token `UNABLE_TO_REPRODUCE:`, followed by exactly what you tried (including any deviation from the given steps) and what happened instead.
+
 **If this is a feature**: there's nothing to reproduce — write test(s) that will demonstrate the new behavior working once built (these will fail until Step 3 is done, same discipline as a repro test).
 
 ## Step 3 — fix / build
@@ -116,10 +118,20 @@ bin/bugfix-worker check <id>
 Returns one of `{"result":"working"}`, `{"result":"blocked"}`, or `{"result":"done"}`.
 
 - **`working`**: the notification fired but the session isn't actually idle yet (or fired for an unrelated reason) — re-subscribe with `notify_when_idle` and wait again. Do not proceed.
-- **`blocked`**: the fixer is stuck asking a question or otherwise needs human input. **This is not a failure and not the PR-fallback path** — it's the interactive design's actual purpose case. Do **not** `rm` or `stop` this session. Notify Josh directly (see Step 8's mechanism) with: `"bugfix-<repo>-<slug> needs your attention — claude attach <id>"`. Leave the lock held. Stop processing this report until Josh resolves it (he may re-message you once he's handled it, or you may periodically re-`check` it).
+- **`blocked`**: the fixer is stuck asking a question or otherwise needs human input. **This is not a failure and not the PR-fallback path** — it's the interactive design's actual purpose case. Do **not** `rm` or `stop` this session. Notify Josh directly (see Step 10's mechanism) with: `"bugfix-<repo>-<slug> needs your attention — claude attach <id>"`. Leave the lock held. Stop processing this report until Josh resolves it (he may re-message you once he's handled it, or you may periodically re-`check` it).
 - **`done`**: genuinely finished. Proceed to step 5.
 
 Note: `check`'s `done` result does not mean the underlying `state` field literally says `"done"` — empirically, a resident `--bg` session that finishes a turn without exiting shows `status: "idle"` with `state` staying `"working"`. `check` already accounts for this; don't second-guess its output by inspecting `claude agents --json` yourself.
+
+### 4a. Check for an unable-to-reproduce signal before verifying
+
+Before running `verify`, read the fixer's final assistant message (`claude logs <id>`). Check whether that message *begins with* the literal token `UNABLE_TO_REPRODUCE:` — not merely contains it, since `claude logs` can echo the fixer prompt template, which itself now contains that string.
+
+If it does not begin with the token: proceed normally to step 5 (`verify`).
+
+If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD | grep -v '^bugs/'` should be empty (only the `bugs/<slug>.md` report commit exists). If that's non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
+
+If the diff is empty: skip `verify` and code review entirely. Call `claude stop <id>` (not `claude rm`) to keep the session attachable — Josh is being notified anyway (step 10) and may want to inspect what was tried. Release the lock (step 8) and go to step 9 with outcome `indeterminate`.
 
 ### 5. Independently re-verify — never trust the fixer's self-report
 
@@ -151,7 +163,7 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 
 There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
-All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 8).
+All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
 
 Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
 
@@ -163,11 +175,15 @@ bin/bugfix-worker unlock <id>
 
 ### 9. Reply to the caller
 
-`SendMessage` back to whoever originally reported it, with the outcome: merged (link the commit), PR opened (link the PR), or rejected as out of scope.
+`SendMessage` back to whoever originally reported it, with the outcome:
+
+- **Merged**: state the commit/repo, and ask the reporter to re-run their original repro against the merged fix and reply back confirming it's resolved. A "not resolved" reply is a fresh report (new slug), not a reopen.
+- **Indeterminate (unable to reproduce)**: state plainly it couldn't be reproduced, quote what the fixer tried, and ask a structured follow-up: exact command/invocation, environment (repo path, branch, commit SHA, sandboxed vs. real shell), when it occurred, and any raw error/log output not already in the original report. Ask if it's still reproducible right now.
+- **PR opened** / **rejected as out-of-scope**: unchanged from today's wording — link the PR, or state the repo is out of scope.
 
 ### 10. Notify Josh on any non-clean outcome
 
-"Non-clean" = PR opened, rejected, a `verify`/`finish` failure, a step-4 `blocked` escalation, or a `finish merge` warning about `claude rm` refusing unexpectedly. Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
+"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or a `finish merge` warning about `claude rm` refusing unexpectedly. Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
 
 ```bash
 tmux set-option -w -t "$TMUX_PANE" @claude-state bugfix-alert 2>/dev/null || true
