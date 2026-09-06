@@ -178,6 +178,23 @@ print(json.dumps({
       merge)
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
         git -C "$cwd" push origin HEAD:main
+        # Best-effort post-merge install: some tool repos install a compiled
+        # binary (e.g. to ~/.local/bin) that a plain `git push` to main does
+        # not refresh — the fix wouldn't actually take effect in daily use
+        # until reinstalled. Convention: run `just install` / `make install`
+        # if the repo defines one. Run it from the worktree (which already
+        # has the fixed, tested code checked out) rather than the primary
+        # checkout, whose sync below is best-effort and may fail/diverge.
+        # Never fails finish merge — surfaces as a warning only.
+        if [ -f "$cwd/justfile" ] && grep -qE '^install( |:)' "$cwd/justfile"; then
+          if ! install_output="$(cd "$cwd" && just install 2>&1)"; then
+            echo "WARN: post-merge 'just install' failed for $repo — install manually: $install_output" >&2
+          fi
+        elif [ -f "$cwd/Makefile" ] && grep -qE '^install:' "$cwd/Makefile"; then
+          if ! install_output="$(cd "$cwd" && make install 2>&1)"; then
+            echo "WARN: post-merge 'make install' failed for $repo — install manually: $install_output" >&2
+          fi
+        fi
         # Empirically confirmed (2026-09-03): `claude rm` deliberately REFUSES
         # to delete a worktree with unpushed commits — "kept <id> — worktree
         # has commits that are not pushed anywhere" — rather than erroring or
