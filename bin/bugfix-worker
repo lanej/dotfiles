@@ -182,6 +182,19 @@ print(json.dumps({
         elif printf '%s' "$rm_output" | grep -qi '^kept'; then
           echo "WARN: claude rm $id refused despite a successful push — investigate before assuming cleanup: $rm_output" >&2
         fi
+        # Sync the primary checkout's local main forward, best-effort — never fails finish merge.
+        if [ -d "$repo_path/.git" ]; then
+          branch="$(git -C "$repo_path" symbolic-ref --short -q HEAD || true)"
+          if [ "$branch" = "main" ]; then
+            if git -C "$repo_path" fetch origin && git -C "$repo_path" merge --ff-only origin/main; then
+              :
+            else
+              echo "WARN: primary-checkout sync of $repo_path failed (fetch or non-ff-only) — sync manually" >&2
+            fi
+          else
+            echo "WARN: $repo_path not on main (branch=$branch) — skipped primary-checkout sync" >&2
+          fi
+        fi
         ;;
       pr)
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
