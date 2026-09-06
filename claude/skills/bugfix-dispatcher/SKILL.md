@@ -163,7 +163,7 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 
 There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
-All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, syncs the primary checkout's local `main` to match, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
+All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`; if the repo defines a `just install`/`make install` target, runs it from the fixer's worktree — best-effort, warns rather than fails — since a plain push doesn't refresh an installed compiled binary like `~/.local/bin/bigquery`; syncs the primary checkout's local `main` to match; then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
 
 Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
 
@@ -183,7 +183,7 @@ bin/bugfix-worker unlock <id>
 
 ### 10. Notify Josh on any non-clean outcome
 
-"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or any `finish merge` warning (`claude rm` refusing unexpectedly, or a primary-checkout sync failure/skip). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
+"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or any `finish merge` warning (`claude rm` refusing unexpectedly, a primary-checkout sync failure/skip, or a post-merge install failure). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
 
 ```bash
 tmux set-option -w -t "$TMUX_PANE" @claude-state bugfix-alert 2>/dev/null || true
