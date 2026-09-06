@@ -129,7 +129,7 @@ Before running `verify`, read the fixer's final assistant message (`claude logs 
 
 If it does not begin with the token: proceed normally to step 5 (`verify`).
 
-If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD | grep -v '^bugs/'` should be empty (only the `bugs/<slug>.md` report commit exists). If that's non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
+If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD | grep -v '^bugs/'` should be empty (only the `bugs/<slug>.md` report commit exists). `<cwd>` isn't available yet at this point (it's first produced by `verify` in step 5) — get it here via `claude agents --json`, filtered by `<id>`, reading its `cwd` field. This is a sanctioned exception to step 4's caution against inspecting `claude agents --json` yourself: that caution is specifically about not second-guessing `check`'s `working`/`blocked`/`done` verdict, not about resolving `cwd`, which has no other source before step 5. If the diff is non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
 
 If the diff is empty: skip `verify` and code review entirely. Call `claude stop <id>` (not `claude rm`) to keep the session attachable — Josh is being notified anyway (step 10) and may want to inspect what was tried. Release the lock (step 8) and go to step 9 with outcome `indeterminate`.
 
@@ -163,7 +163,7 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 
 There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
-All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
+All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, syncs the primary checkout's local `main` to match, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
 
 Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
 
@@ -183,7 +183,7 @@ bin/bugfix-worker unlock <id>
 
 ### 10. Notify Josh on any non-clean outcome
 
-"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or a `finish merge` warning about `claude rm` refusing unexpectedly. Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
+"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or any `finish merge` warning (`claude rm` refusing unexpectedly, or a primary-checkout sync failure/skip). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
 
 ```bash
 tmux set-option -w -t "$TMUX_PANE" @claude-state bugfix-alert 2>/dev/null || true
