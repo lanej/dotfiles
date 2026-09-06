@@ -130,10 +130,19 @@ EOF
 
     suite_pass="false"
     log_file="/tmp/bugfix-verify-$id.log"
+    # A fresh git worktree never inherits build output (e.g. a compiled
+    # binary from `bun build --compile`), which is gitignored — so if the
+    # repo's test script depends on one (e.g. a CLI/acceptance suite that
+    # shells out to a compiled binary), it fails with a false "regression"
+    # in every worktree regardless of the fix's correctness. Build first
+    # when a build script exists.
+    if [ -f "$cwd/package.json" ] && grep -q '"build"' "$cwd/package.json"; then
+      ( cd "$cwd" && npm run build ) >"$log_file" 2>&1 || true
+    fi
     # `set -e` would otherwise abort the script on a failing (expected!) test
     # run, so every branch here is explicitly `|| true`-guarded.
     if [ -f "$cwd/package.json" ] && grep -q '"test"' "$cwd/package.json"; then
-      { ( cd "$cwd" && npm test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+      { ( cd "$cwd" && npm test ) >>"$log_file" 2>&1 && suite_pass="true"; } || true
     elif [ -f "$cwd/Makefile" ] && grep -qE '^test:' "$cwd/Makefile"; then
       { ( cd "$cwd" && make test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
     elif [ -f "$cwd/justfile" ] && grep -qE '^test( |:)' "$cwd/justfile"; then
