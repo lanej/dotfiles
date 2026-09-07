@@ -5,7 +5,7 @@ command scanner doesn't register it as a slash command.
 
 ## Phase 2 — Validation and Layered Reasoning
 
-Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and Open Questions is empty or contains only acknowledged non-blockers.
+Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and the spec's `Ambiguities → Blocking` section is empty. Non-blocking and intentional ambiguities do not gate.
 
 A specification is not execution-ready until success conditions exist, there's a defined method to verify them, there's a strategy to detect regressions or silent failure, scope/constraints/authority boundaries are explicit, and remaining ambiguities are classified as blocking, non-blocking, or intentional.
 

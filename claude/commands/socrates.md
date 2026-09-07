@@ -254,7 +254,7 @@ Other prompts worth reaching for:
 
 ## Phases 2–3 — Validation and Plan Mode
 
-Read `$HOME/.claude/commands/socrates/phases-2-3.txt` and follow it when Phase 1 reaches its stop condition (Dialogue Loop step 5), or on a Continuation pass whose spec Status is already `Validated` or later. It holds the layered reasoning chain, Specification Freeze criteria, Reopen Semantics, the plan-mode procedure, and the downstream commands. Don't run either phase from memory — Read the file first.
+Read `$HOME/.claude/commands/socrates/phases-2-3.txt` and follow it when Phase 1 reaches its stop condition — all applicable commandments **stable** or explicitly accepted as **fragile** (Dialogue Loop step 5) *and* the spec's `Ambiguities → Blocking` empty — or on a Continuation pass whose spec Status is already `Validated` or later. It holds the layered reasoning chain, Specification Freeze criteria, Reopen Semantics, the plan-mode procedure, and the downstream commands. Don't run either phase from memory — Read the file first.
 
 ## Usage
 
