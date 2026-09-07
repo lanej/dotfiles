@@ -1,0 +1,101 @@
+# /socrates — Phases 2 and 3
+
+Loaded on demand by `socrates.md`. Markdown content in a `.txt` file so Claude Code's
+command scanner doesn't register it as a slash command.
+
+## Phase 2 — Validation and Layered Reasoning
+
+Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and Open Questions is empty or contains only acknowledged non-blockers.
+
+A specification is not execution-ready until success conditions exist, there's a defined method to verify them, there's a strategy to detect regressions or silent failure, scope/constraints/authority boundaries are explicit, and remaining ambiguities are classified as blocking, non-blocking, or intentional.
+
+Synthesize the spec into an explicit reasoning chain, each layer derived from the one below it. Present this chain before entering plan mode so the grounding is visible and challengeable.
+
+```
+Layer 1 — Problem
+  [One-sentence statement of what is broken or missing, and why it matters now.]
+
+Layer 2 — Requirements
+  [What must be true. Derived from Layer 1. Each prefixed with "shall".]
+  Challenged by: [what would make these requirements wrong]
+
+Layer 3 — Constraints
+  [What limits the solution space. Bounds Layers 2 and 4.]
+
+Layer 4 — Risks
+  [Top assumptions whose failure would invalidate Layers 1–3.]
+
+Layer 5 — Success
+  [Measurable criteria that confirm Layer 1 is resolved within Layer 3.]
+  False positive guard: [what would look successful but be wrong]
+  False negative guard: [what missing work/context would make the result incomplete]
+
+Layer 6 — Validation
+  Acceptance tests: [how success will be verified]
+  Regression checks: [what must continue working after completion]
+  Failure signals: [what indicates incomplete or incorrect execution]
+  Verification method: [automated | manual | observational | comparative | statistical]
+  Feedback Loop Design: [signal, cost/cadence, fallback if no fast signal exists]
+
+Layer 7 — Execution Readiness
+  [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
+```
+
+If any layer doesn't hold under scrutiny, return to interrogation for that layer before proceeding.
+
+### Specification Freeze
+
+When commandment states are stable or explicitly accepted as fragile, validation semantics exist, Feedback Loop Design is populated for at least the load-bearing requirements (not `_[open]_`), ambiguity is bounded, execution readiness is explicit, and no Commandment Scores row has `Score < 70%` and `Escalated: No`:
+
+- set status to `Validated`, freeze the specification, assign a specification version:
+
+```markdown
+Status: Validated
+Specification Version: v3
+Frozen: true
+```
+
+A frozen specification may not be silently mutated by planners, executors, verifiers, or critics.
+
+### Reopen Semantics
+
+If critique exposes unresolved ambiguity, execution changes assumptions, or validation fails: reopen the specification, transition back to `Interrogating` or `Reconciling`, and don't destroy prior validation or critique artifacts.
+
+## Phase 3 — Plan Mode
+
+After presenting the layered reasoning chain, immediately enter plan mode with `EnterPlanMode` — don't pause, suggest downstream commands, or ask the user to invoke `/critique` first. Develop a concrete implementation plan grounded in the spec; every task must trace back to a requirement, every requirement back to the problem.
+
+### Dependency Graph
+
+Decompose the plan into a dependency graph. For each task, identify blocks and parallel-safe work:
+
+```
+[Task A] ──► [Task C] ──► [Task E]
+[Task B] ──► [Task C]
+[Task D] ──────────────► [Task E]   (parallel with A→C)
+```
+
+### Execution Recommendation
+
+- **3+ independent tracks**: recommend invoking `Workflow` directly for orchestrated parallel execution.
+- **Mostly sequential**: recommend working through tasks directly.
+- **Mixed**: identify which phases benefit from a `Workflow` script and which should be sequential.
+
+### Write the Plan
+
+Write the dependency graph and execution recommendation to `SESSION_DIR/plan.md` — the timestamped session directory already holding `spec.md`/`critique.md` — using the `Write` tool. Presenting the plan in conversation only does not satisfy this — it must exist on disk at this path.
+
+### Plan Critique
+
+Immediately after writing `plan.md`, before any other tool call, dispatch `Agent(model="opus")` to critique it — give it the `plan.md` path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Mandatory every pass through Phase 3, not conditional on suspecting a weak plan.
+
+Exit plan mode with `ExitPlanMode` for user approval.
+
+## Downstream Commands (optional, user-invoked)
+
+After the plan is approved:
+- `/critique` → adversarial specification review
+- `Workflow` → orchestrated parallel execution (author a script directly)
+- `/verify` → validation and regression verification
+
+Do not suggest these at the end of Phase 2 or Phase 3. They are available to the user on demand.
