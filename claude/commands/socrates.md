@@ -125,9 +125,9 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 4. Set status to `Interrogating`, `Current Pass: 1`, and classify task type.
 5. Research and classify candidate questions (see Research & Question Classification, above).
 6. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains. Cite evidence or mark claims **Assumed**.
-7. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**. For each commandment touched this pass, append a Pass 1 row to spec.md's `## Commandment Scores` table (see Commandment Scoring). Harmony always gets a Pass 1 row.
+7. Score commandments using the Alignment States (below). For each commandment touched this pass, append a Pass 1 row to spec.md's `## Commandment Scores` table (see Commandment Scoring). Harmony always gets a Pass 1 row.
 8. Record the current interpretation of the task in one paragraph.
-9. Begin the Dialogue Loop (below) on the highest-leverage open commandment first. No target question count: continue, topic by topic, until the commandments relevant to this task are stable or explicitly accepted as fragile — a single well-researched question that cleanly resolves a topic is success, not a shortfall.
+9. Begin the Dialogue Loop (below) on the highest-leverage open commandment first, running it to its stop condition (Dialogue Loop step 5).
 
 ### Continuation (no `$ARGUMENTS`)
 
@@ -145,7 +145,7 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 10. Print a one-line alignment summary per commandment touched this pass (name, state, score). Harmony always gets a new row.
 11. Restate the current interpretation before asking more questions if material ambiguity remains.
 12. Prefer closing existing open questions over opening new ones.
-13. Resume the Dialogue Loop on the most valuable open commandment. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
+13. Resume the Dialogue Loop on the most valuable open commandment, to its stop condition (Dialogue Loop step 5).
 14. Update the session file: incorporate answers, resolve closed questions, add new ones.
 
 ### Alignment States
