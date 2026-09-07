@@ -120,7 +120,7 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 ### Initialization (`$ARGUMENTS` is a task title)
 
 1. Generate a timestamp (`date +%Y%m%d-%H%M%S`) and create `.socrates/TIMESTAMP/`.
-2. Create `.socrates/TIMESTAMP/spec.md` with the title and scaffold below.
+2. Resolve `$HOME` via `printenv`, Read `$HOME/.claude/commands/socrates/spec-scaffold.tpl` (see Spec Scaffold), substitute the title for `[Title]`, and write the result to `.socrates/TIMESTAMP/spec.md`.
 3. Write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` (via `printenv`).
 4. Set status to `Interrogating`, `Current Pass: 1`, and classify task type.
 5. Research and classify candidate questions (see Research & Question Classification, above).
@@ -342,124 +342,7 @@ Exit plan mode with `ExitPlanMode` for user approval.
 
 ## Spec Scaffold (`spec.md`)
 
-```markdown
-# [Title]
-
-Status: Interrogating
-Specification Version: v1
-Frozen: false
-Type: [Engineering | Research/Analysis | Writing | General]
-Current Pass: 1
-
-## Commandment Scores
-
-| Pass | Commandment | State | Score | Why | Why not 100% | Escalated | Resolution |
-|---|---|---|---|---|---|---|---|
-
-## Problem Statement
-
-_[open]_
-
-## Requirements
-
-_[open]_
-
-## Constraints
-
-_[open]_
-
-## Success Criteria
-
-_[open]_
-
-## Validation Contract
-
-### Acceptance Tests
-
-_[open]_
-
-### Regression Checks
-
-_[open]_
-
-### Failure Signals
-
-_[open]_
-
-### Verification Methods
-
-_[open]_
-
-### Feedback Loop Design
-
-_[open]_
-
-### Known Blind Spots
-
-_[open]_
-
-## Inputs
-
-_[open]_
-
-## Outputs
-
-_[open]_
-
-## Out of Scope
-
-_[open]_
-
-## Authority Boundaries
-
-### Executor May Decide
-
-_[open]_
-
-### Executor Must Escalate
-
-_[open]_
-
-### Executor Must Not Change
-
-_[open]_
-
-## Current Interpretation
-
-_[open]_
-
-## Misclassification Risks
-
-### Potential False Positives
-
-_[open]_
-
-### Potential False Negatives
-
-_[open]_
-
-## Ambiguities
-
-### Blocking
-
-_[open]_
-
-### Non-Blocking
-
-_[open]_
-
-### Intentional
-
-_[open]_
-
-## Risks
-
-_[open]_
-
-## Stakeholders
-
-_[open]_
-```
+Template: `$HOME/.claude/commands/socrates/spec-scaffold.tpl` (repo path: `claude/commands/socrates/spec-scaffold.tpl`). Sections: title/status header, Commandment Scores table, Problem Statement, Requirements, Constraints, Success Criteria, Validation Contract (Acceptance Tests, Regression Checks, Failure Signals, Verification Methods, Feedback Loop Design, Known Blind Spots), Inputs, Outputs, Out of Scope, Authority Boundaries (Executor May Decide / Must Escalate / Must Not Change), Current Interpretation, Misclassification Risks (Potential False Positives / Negatives), Ambiguities (Blocking / Non-Blocking / Intentional), Risks, Stakeholders — every field starts `_[open]_`.
 
 ## Downstream Commands (optional, user-invoked)
 
