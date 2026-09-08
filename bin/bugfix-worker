@@ -226,6 +226,18 @@ print(json.dumps({
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
         branch="bugfix/$slug"
         git -C "$cwd" push origin "HEAD:$branch"
+        # `gh pr create --fill` computes its title/body defaults from a local
+        # diff against origin/main, which requires that remote-tracking ref
+        # to actually be fetched in this worktree — a fixer worktree can sit
+        # for a while without ever fetching, so origin/main may be missing
+        # or stale by the time we get here. Fetch first so this doesn't fail.
+        git -C "$cwd" fetch origin main
+        # The worktree's own local branch is named worktree-<slug> (set by
+        # `claude -w`), not $branch — we only push HEAD to $branch on the
+        # remote, we never check it out locally. `gh pr create --fill` needs
+        # a local ref named exactly $branch to diff against, so create one
+        # pointing at HEAD (no checkout needed, the worktree stays as-is).
+        git -C "$cwd" branch -f "$branch" HEAD
         ( cd "$cwd" && gh pr create --fill --head "$branch" )
         claude stop "$id" || true
         ;;
