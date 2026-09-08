@@ -105,6 +105,10 @@ Session artifacts:
 
 This command manages its own phased execution. If plan mode is active at the start of Phase 1 or Phase 2, exit it immediately with `ExitPlanMode` before proceeding — plan mode is only entered intentionally at Phase 3. Don't let plan mode block session file writes or interrogation.
 
+### Companion Files
+
+This command reads two files from `$HOME/.claude/commands/socrates/` — `spec-scaffold.tpl` (Initialization) and `phases-2-3.txt` (Phases 2–3) — which exist only once `make claude` has symlinked this repo's `claude/commands/` into `~/.claude/commands`. If either Read fails, stop and tell the user: the socrates command's companion files aren't linked — run `make claude` from the dotfiles repo, then retry. Never reconstruct either file's content from memory — a regenerated scaffold or phase procedure that quietly drifts from the real file is worse than stopping.
+
 ### Research & Question Classification
 
 Before forming any question, research: relevant source files (Read, Glob, grep), existing configs/scripts, memory and prior session context, domain conventions. The point is to arm the question, not to gatekeep it — skip a question only when research settles a mechanical, non-interpretive fact outright; never skip one because research produced a plausible guess that touches goals, tradeoffs, risk, or scope. Classify each candidate question:
@@ -120,7 +124,7 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 ### Initialization (`$ARGUMENTS` is a task title)
 
 1. Generate a timestamp (`date +%Y%m%d-%H%M%S`) and create `.socrates/TIMESTAMP/`.
-2. Resolve `$HOME` via `printenv`, Read `$HOME/.claude/commands/socrates/spec-scaffold.tpl`, substitute the title for `[Title]`, and write the result to `.socrates/TIMESTAMP/spec.md`.
+2. Resolve `$HOME` via `printenv`, Read `$HOME/.claude/commands/socrates/spec-scaffold.tpl` (see Companion Files if this fails), substitute the title for `[Title]`, and write the result to `.socrates/TIMESTAMP/spec.md`.
 3. Write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` (via `printenv`).
 4. Set status to `Interrogating`, `Current Pass: 1`, and classify task type.
 5. Research and classify candidate questions (see Research & Question Classification, above).
@@ -137,7 +141,7 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 2. Find all session directories: `find .socrates -maxdepth 1 -mindepth 1 -type d | sort -r` (newest first).
 3. If none: tell the user no sessions exist and suggest `/socrates "Task Title"`. Stop.
 4. If exactly one: use it as SESSION_DIR.
-5. If multiple: use `AskUserQuestion` to let the user pick. For each candidate, show the title (first line of its `spec.md`) and the timestamp from the directory name; annotate "active in another session right now" if another `.socrates/.current-*` pointer targets it and `find /tmp/cc-socks -maxdepth 1 -name '<that pointer's PID>.sock'` returns output. Present newest first.
+5. If multiple: use `AskUserQuestion` to let the user pick. For each candidate, show the title (first line of its `spec.md`) and the timestamp from the directory name; if another `.socrates/.current-*` pointer targets it, check liveness with `find /tmp/cc-socks -maxdepth 1 -name '<that pointer's PID>.sock'` — annotate "active in another session right now" if it returns output, "activity unknown" if `/tmp/cc-socks` itself doesn't exist on this machine, and nothing if it exists but the socket doesn't. Present newest first.
 6. Load `SESSION_DIR/spec.md`. Refresh `.socrates/.current-$CLAUDE_CODE_SESSION_ID` to `TIMESTAMP:PID` for SESSION_DIR.
 7. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row this pass.
 8. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
@@ -156,7 +160,7 @@ Default to a plain, open-ended prose question — Socratic dialogue is not a mul
 - **Contradictory** — goals, constraints, requirements, or success criteria conflict.
 - **Open** — not yet addressed.
 
-Don't mark a commandment **stable** unless the session file contains explicit content supporting it. A fragile item isn't a blocker by default, but it must be named so the executor knows where interpretation risk remains.
+Don't mark a commandment **stable** unless the session file contains explicit content supporting it. A fragile item isn't a blocker by default, but it must be named so the executor knows where interpretation risk remains. **Ambiguous**, **contradictory**, and **open** never block the current pass from ending — the Dialogue Loop keeps running passes regardless — but they always block Phase 2 (the trigger in `phases-2-3.txt` requires every applicable commandment stable-or-fragile).
 
 ### Commandment Scoring
 
@@ -166,15 +170,15 @@ Every commandment touched in a pass gets an appended row (never overwritten) in 
 - **Why** — the causal/historical reason the underlying requirement, constraint, or behavior is the way it is, sourced from research.
 - **Why not 100%** — what's driving the confidence gap in the score itself.
 - **Escalated** — Yes/No: was a sub-70% score surfaced to the user as a dialogue question this pass?
-- **Resolution** — if Escalated is Yes, how it was resolved (or a pointer to where it's recorded elsewhere).
+- **Resolution** — `—` while unescalated. Once escalated: `Pending — <where the open question is recorded, e.g. Ambiguities → Blocking>` until answered. The pass that answers it appends a fresh row for the same commandment (per the append-only rule above) with `Resolution` stating how it was resolved.
 
 **Harmony always runs** — scored on every pass whether or not it came up in discussion, because consistency can break silently in parts of the spec nobody is actively discussing.
 
-**Deferral rule.** Any commandment scoring below 70% must be surfaced as a dialogue question — framed as sharpening understanding, not just closing a spec gap — never silently recorded as Assumed. Record `Escalated: Yes` and the `Resolution` once answered.
+**Deferral rule.** A commandment scoring below 70% must be surfaced as a dialogue question, not silently recorded as Assumed — framed as sharpening understanding, not just closing a spec gap. Dialogue Loop step 2 still asks one question at a time: surface the highest-leverage sub-70% commandment this pass, and roll any other sub-70% commandment sharing the same root cause into that same question rather than asking a second one. A sub-70% score that doesn't share the pass's question stays open for a later pass — the Specification Freeze gate (not this rule) is what actually blocks the spec from validating while it's unresolved.
 
 **Pass counter.** `Current Pass` is set to 1 on Initialization and incremented on every Continuation, regardless of whether anything gets a row that pass — this makes Harmony's cadence auditable later (verification checks that every integer from 1 to `Current Pass` has a Harmony row).
 
-A specification may not transition to `Validated`/`Frozen: true` while any row has `Score < 70%` and `Escalated: No` (Specification Freeze, in `phases-2-3.txt`).
+A specification may not transition to `Validated`/`Frozen: true` while the most recent row for any commandment has `Score < 70%` and `Resolution` unresolved (`—` or `Pending — …`) — escalating a question is not the same as answering it (Specification Freeze, in `phases-2-3.txt`).
 
 ### Contradiction Detection
 
@@ -254,7 +258,7 @@ Other prompts worth reaching for:
 
 ## Phases 2–3 — Validation and Plan Mode
 
-Read `$HOME/.claude/commands/socrates/phases-2-3.txt` and follow it when Phase 1 reaches its stop condition — all applicable commandments **stable** or explicitly accepted as **fragile** (Dialogue Loop step 5) *and* the spec's `Ambiguities → Blocking` empty — or on a Continuation pass whose spec Status is already `Validated` or later. It holds the layered reasoning chain, Specification Freeze criteria, Reopen Semantics, the plan-mode procedure, and the downstream commands. Don't run either phase from memory — Read the file first.
+Read `$HOME/.claude/commands/socrates/phases-2-3.txt` (see Companion Files if this fails) and follow it when Phase 1 reaches its stop condition — all applicable commandments **stable** or explicitly accepted as **fragile** (Dialogue Loop step 5) *and* the spec's `Ambiguities → Blocking` empty — or on a Continuation pass whose spec Status is already `Validated` or later. It holds the layered reasoning chain, Specification Freeze criteria, Reopen Semantics, the plan-mode procedure, and the downstream commands. Don't run either phase from memory — Read the file first.
 
 ## Usage
 

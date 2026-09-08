@@ -45,13 +45,13 @@ If any layer doesn't hold under scrutiny, return to interrogation for that layer
 
 ### Specification Freeze
 
-When commandment states are stable or explicitly accepted as fragile, validation semantics exist, Feedback Loop Design is populated for at least the load-bearing requirements (not `_[open]_`), ambiguity is bounded, execution readiness is explicit, and no Commandment Scores row has `Score < 70%` and `Escalated: No`:
+When commandment states are stable or explicitly accepted as fragile, validation semantics exist, Feedback Loop Design is populated for at least the load-bearing requirements (not `_[open]_`), ambiguity is bounded, execution readiness is explicit, and the most recent Commandment Scores row for every commandment has either `Score >= 70%` or a resolved `Resolution` (not `—`, not `Pending — …`):
 
-- set status to `Validated`, freeze the specification, assign a specification version:
+- set status to `Validated` and freeze the specification. `Specification Version` is *stamped*, not bumped here — it keeps whatever value it already holds (v1 on a first freeze; whatever Reopen Semantics last incremented it to otherwise):
 
 ```markdown
 Status: Validated
-Specification Version: v3
+Specification Version: v1
 Frozen: true
 ```
 
@@ -59,7 +59,7 @@ A frozen specification may not be silently mutated by planners, executors, verif
 
 ### Reopen Semantics
 
-If critique exposes unresolved ambiguity, execution changes assumptions, or validation fails: reopen the specification, transition back to `Interrogating` or `Reconciling`, and don't destroy prior validation or critique artifacts.
+If critique exposes unresolved ambiguity, execution changes assumptions, or validation fails: increment `Specification Version` (v1 → v2, marking a new generation), reopen the specification, transition back to `Interrogating` or `Reconciling`, and don't destroy prior validation or critique artifacts. The next freeze of that generation stamps the incremented version — a spec on its second freeze reads `Specification Version: v2`.
 
 ## Phase 3 — Plan Mode
 
