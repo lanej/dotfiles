@@ -1,4 +1,5 @@
 ---
+name: duckdb
 description: DuckDB for SQL analytics, data analysis, and persistent local databases. Use when: (1) analyzing local files (CSV, JSON, Parquet) with SQL — aggregations, joins, window functions, statistics; (2) working with a .duckdb file as a pipeline storage layer — reading, writing, updating records; (3) using the Python DuckDB API — duckdb.connect(), con.execute(), .df(), UPDATE/DELETE/INSERT via Python; (4) querying a project-specific database such as staffing.duckdb, slack_qa.duckdb, or any *.duckdb file. Triggers on: "analyze data", "query CSV/JSON/Parquet", "duckdb.connect", ".duckdb file", "UPDATE … DuckDB", "INSERT INTO", "read_json_auto", "con.execute", or any SQL operation on a local dataset or .duckdb database.
 ---
 
