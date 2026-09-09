@@ -194,4 +194,15 @@ the job down afterward:
 
 (detail: memory "project_ep67_cloud_run_ephemeral_analysis_job")
 
+## Cloud Run — Multi-Container & Job Gotchas
+
+Discovered self-hosting OSRM + Nominatim on Cloud Run (Jobs + Services, multi-container, Cloud SQL-backed):
+
+- **Cloud Run's native `cloud_sql_instance` volume mount does NOT perform IAM database authentication** — using it alone against a Cloud SQL instance configured for `CLOUD_IAM_SERVICE_ACCOUNT` auth produces an infinite password-prompt retry loop with zero progress. Add an explicit **Cloud SQL Auth Proxy sidecar container** instead (`gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.0`, args `["--auto-iam-authn", "--address=0.0.0.0", "--port=5432", <connection_name>]`); the app container then connects to `127.0.0.1:5432`. The `--address=0.0.0.0` is required — the proxy binds `127.0.0.1` by default, which Cloud Run's own container-level `startup_probe` (a separate process, even within the same task) cannot reach.
+- **Multi-container tasks have three interacting resource caps**: total CPU across all containers in a task is capped at 8000 millicpu (a 6+1 vCPU split works, 8+1 doesn't); CPU must be a discrete value from a fixed set (`.08-1`, `1`, `2`, `4`, `6`, `8` — `7` is rejected); and there's a CPU-to-memory ratio ceiling (6 vCPU → max 24Gi, not simply "however much you asked for").
+- **`gcloud run jobs update`/`execute` flag ordering for multi-container jobs**: `--container <name>` must precede `--image <image>`; non-container-specific flags (`--async`) must precede `--container`, container-specific flags (`--update-env-vars`/`--args`) must follow it.
+- **A Cloud Run Job execution's `timeout` is fixed at launch from the job spec at that moment** — widening the Terraform-managed `timeout` field and re-applying does NOT retroactively extend an already-running execution, only future ones. A killed in-flight execution must be re-launched (ideally via the workload's own resume mechanism, if it has one), not just waited on longer after the config fix lands.
+
+(detail: memory "project_usps_route_cloudrun_multicontainer_gotchas")
+
 **Cloud Run does not redeploy on a bare image push.** Pushing a new `:latest` tag to Artifact Registry does not create a new revision — Cloud Run only redeploys when a `gcloud run deploy`/`jobs update` command actually runs with a resolved image reference. Prefer deploying by content digest (`@sha256:...`) over `:latest` — it makes "what's actually serving" independently verifiable (`gcloud run services describe --format='value(status.latestReadyRevision... image)'` compared against what was just pushed) rather than trusted on faith. If Terraform also manages the same resource with a floating-tag `image` value, expect `tofu plan` to show drift after any out-of-band digest deploy — that's expected divergence between two different deploy mechanisms touching the same field, not a misconfiguration to chase down.

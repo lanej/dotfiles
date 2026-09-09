@@ -104,6 +104,15 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-git-stash-guard-hook"
+          }
+        ]
+      },
+      {
         "matcher": "",
         "hooks": [
           {
@@ -175,9 +184,12 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "autoCompactWindow": 600000,
+  "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
+  "theme": "auto",
+  "editorMode": "vim",
+  "verbose": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
-  },
-  "tui": "fullscreen"
+  }
 }

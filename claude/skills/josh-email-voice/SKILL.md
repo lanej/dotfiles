@@ -22,6 +22,23 @@ judgment that a draft "looks ready" does not count.
 line entirely; never "Equity: no change." Professional correspondence omits what isn't relevant
 rather than calling out its absence.
 
+**Never assert legitimacy the recipient hasn't questioned — negated or affirmed.** Don't write "not
+a mockup," "not fake," "not a one-off exercise" (negated form) — denying an objection nobody voiced
+plants it. But the affirmative form is the same failure: "a real, fully-built product working
+today" also plants the doubt, because asserting it unprompted implies there was a reason to wonder.
+Answer the actual question asked and stop — don't add a summary clause asserting the conclusion
+itself, negated or affirmed. If a fact needs no defense, it doesn't need a sentence saying so.
+
+**In a sales/pitch email, cut internal deployment/rollout mechanics even when true and even when
+offered as a supporting fact, not a defensive claim.** "Internal-only right now," "gated to my own
+account" — these are true, unprompted, and read as hedging rather than confidence in a pitch
+context. (An earlier draft of this rule used exactly these two phrases as the *good* example of
+"underlying facts that carry the point" — that was wrong; corrected 2026-08-29.) The test isn't
+"is this true" or "does this support the claim" — it's "does the recipient need to know EasyPost's
+internal rollout status to evaluate the pitch." If the answer is no, cut it regardless of framing.
+State capability and readiness ("ready to stand up for USPS as part of this partnership") without
+narrating how far along internal rollout currently is.
+
 **No "please confirm receipt" or other boilerplate closers.** Not a convention people actually use.
 
 ## Workflow
