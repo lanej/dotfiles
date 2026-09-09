@@ -7,6 +7,9 @@ allowed-tools:
   - Edit
   - Glob
   - AskUserQuestion
+  - Task
+  - ExitPlanMode
+  - EnterPlanMode
   - Bash(date:*)
   - Bash(mkdir:*)
   - Bash(grep:*)
