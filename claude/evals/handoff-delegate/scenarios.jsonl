@@ -1,0 +1,19 @@
+{"id":"h1","truth":"HANDOFF","s":"Context window is at 82%. The remaining work is a refactor of two files whose approach we already agreed on."}
+{"id":"h2","truth":"HANDOFF","s":"You have spent 40 turns debugging a flaky test and tried six approaches, four of which failed. You now know the fix. Context is heavy with those dead ends."}
+{"id":"h3","truth":"HANDOFF","s":"You are about to /clear this session. The plan file documents the exact next step and it is still unfinished."}
+{"id":"h4","truth":"HANDOFF","s":"Context is nearly full. What remains is writing the tests that were already specified earlier in this same session."}
+{"id":"h5","truth":"HANDOFF","s":"A long incident-response thread has filled context with log dumps. The remediation steps are decided and written down but not yet applied."}
+{"id":"d1","truth":"DELEGATE","s":"The user asks how rate limiting works in this codebase. You have not read any of it yet."}
+{"id":"d2","truth":"DELEGATE","s":"You need to know which files import the Logger class before you can edit them. Context is at 15%."}
+{"id":"d3","truth":"DELEGATE","s":"You must review a 3000-line PR diff, then use the findings to write the release notes yourself in this session."}
+{"id":"d4","truth":"DELEGATE","s":"The task is large: migrate 30 files to a new API. Your context is fresh, at about 10%."}
+{"id":"d5","truth":"DELEGATE","s":"You grepped once for handleAuth and got nothing. You are about to try authenticate, signIn, and login."}
+{"id":"d6","truth":"DELEGATE","s":"You need current documentation for an unfamiliar library, after which you will write the integration yourself."}
+{"id":"d7","truth":"DELEGATE","s":"You need key points from three 1500-line design docs, then you will make an architecture decision in this session."}
+{"id":"d8","truth":"DELEGATE","s":"Context is heavy. The user just asked an unrelated one-off question about a different repo, and you will return to the main thread afterward."}
+{"id":"d9","truth":"DELEGATE","s":"You will finish the work yourself once you know where the config file lives. Context is fine."}
+{"id":"s1","truth":"SELF","s":"The user says: change line 42 of src/auth.ts to use bcrypt."}
+{"id":"s2","truth":"SELF","s":"The user asks you to read CONTRIBUTING.md, a single 200-line file, and follow it."}
+{"id":"s3","truth":"SELF","s":"You need the definition of the function parseConfig. You know it is in src/config.ts, which you already read this session."}
+{"id":"e1","truth":"ASK","s":"You have been working three hours, context is near its limit, and you genuinely do not know what the user wants done next."}
+{"id":"e2","truth":"MANUAL","s":"Context is spent and real work remains, but this session began outside a normal Claude Code invocation and no JSONL transcript file exists on disk."}

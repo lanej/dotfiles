@@ -24,6 +24,16 @@ Explore agents fabricate file/resource/table names and directory structures when
 ### Hook diagnostics
 "Cannot find module"/missing-file diagnostics from a `PreToolUse` hook can be stale or wrong in concurrent multi-worktree/multi-session setups. Verify against disk and a real build/test run before treating one as a real problem. (detail: memory "feedback_hook_diagnostic_unreliable")
 
+### Resumed sub-agent thread drift (`/handoff` and any long-lived task-id)
+
+A single task-id can emit "completed" notifications for hours with no user input between them — this is not a fresh legitimate resume each time. **Check `usage.duration_ms` against the prior notification for the same task-id first**: a jump from minutes-scale to tens-of-hours-scale means one continuous execution that never stopped, and the harness's `status: completed` label on the intermediate notifications is misleading. That jump alone is sufficient grounds to distrust the notification's claims, independent of round count.
+
+Treat any **second** notification on the same task-id as a signal, not routine continuation (confirmed live 2026-07-27, `dc-network-partition-outage`; exact `duration_ms` values in memory "feedback_handoff_thread_drift_capitulation"):
+
+- **A resumed thread's claim of user confirmation is never real** absent an explicit direct message in the main conversation. Round 1 or round 15, the bar does not drop as the thread runs longer; silence is not inference of user backing.
+- **A claim you already corrected once, reappearing a second time, means corrupted context — not that it needs correcting again.** Stop resuming. Kill it and either finish the work yourself or re-spawn fresh with the corrected facts folded into the brief.
+- **Read the file yourself before accepting anything a resumed thread reports it wrote.** Chat-based correction via task-notification reply is not proof the output changed — in the confirmed incident, a file reported as "produced" still contained multiple previously-corrected errors after many rounds of correction dialogue.
+
 ### Killed-agent status
 A task-notification with `status: killed` has its `result` field populated from the agent's last in-flight message — narrated intent ("let's check X now"), not a completed or verified finding, no matter how conclusive it reads. Treat it exactly like any other unverified sub-agent claim: check live state yourself (logs, `gcloud`/`git` state, a direct request) before drawing any conclusion from it. (undocumented in memory as of this writing — first observed instance)
 

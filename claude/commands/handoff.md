@@ -1,6 +1,6 @@
 ---
-description: "Delegate remaining work to a fresh sub-agent to escape context pollution and reduce cost. The main session writes only a short pointer brief and spawns the sub-agent immediately — the sub-agent reconstructs full context itself by reading the on-disk session transcript, so the expensive synthesis work happens in the disposable sub-agent context instead of the main one."
-argument-hint: "<task-name> (used as filename slug; derived from session goal if omitted)"
+description: "Hand the REMAINING work of a spent session to a fresh sub-agent. Writes a short pointer brief (not a context dump) and spawns immediately — the sub-agent rebuilds context by reading this session's on-disk JSONL transcript, so synthesis happens in a disposable context instead of the polluted one. Use when the session itself is the problem; use /delegate when only a sub-task is."
+argument-hint: "<task-name> (filename slug; derived from session goal if omitted)"
 allowed-tools:
   - Write
   - Read
@@ -12,67 +12,82 @@ tags:
   - handoff
 ---
 
-# /handoff - Context Delegation to Sub-Agent
+# /handoff — Session-Terminal Context Escape
 
-Escape context pollution by delegating remaining work to a fresh sub-agent — without paying for a full context recap in the main session first.
+## When to use this
 
-**Core principle**: the main session already has a perfect, complete record of this conversation sitting on disk — the JSONL transcript. Re-narrating that record into a "rich session context" document inside the main session (the old approach) burns exactly the tokens you're trying to escape, and you pay for it right before discarding the session anyway. Instead, hand the sub-agent the transcript path and let IT read and synthesize — that work happens in a fresh, disposable context where it's free.
+Use `/handoff` when **the session is the problem**, not the task:
 
-The main session's only job is: capture the pointer, write one short paragraph of steering, and spawn.
+- Context is large enough that the next step is expensive or degraded
+- Long debugging thread with many dead ends still occupying context
+- You are about to `/clear` or `/compact` but the remaining work is well-defined
+- The remaining work is a *continuation*, not a discrete side-quest
 
-## Step 1: Capture session ID and transcript path
+**Do NOT use `/handoff` when:**
+
+| Situation | Use instead |
+|---|---|
+| One sub-task would pollute context (search, research, review) | plain `Agent` dispatch — see `/delegate` |
+| You will keep driving the session afterward | plain `Agent` dispatch |
+| Context is fine, task is just big | plain `Agent` dispatch, or `subagent-driven-development` |
+| Remaining work is unclear even to you | resolve it with the user first — a handoff cannot invent a goal |
+| No JSONL transcript exists (non-standard invocation) | write the brief by hand, then dispatch normally |
+
+### `/handoff` vs `/delegate` in one line
+
+- **`/delegate`** — shed a *sub-task*. You stay in the driver's seat. Context is protected going forward.
+- **`/handoff`** — shed the *remaining task*. You stop driving. Context already spent; the transcript becomes the payload.
+
+`/delegate` is a routing decision made dozens of times per session. `/handoff` is a session-terminal decision made once, if at all.
+
+## Core principle
+
+The complete record of this conversation is already on disk as JSONL. Re-narrating it into a "rich context document" inside the main session burns exactly the tokens you are trying to escape — and you pay right before discarding the session. Hand over the *transcript path*, not a prose recap. The main session's only job: capture the pointer, write one paragraph of steering, spawn.
+
+## Step 1 — Capture transcript path
 
 ```bash
 SESSION_ID="${CLAUDE_CODE_SESSION_ID:-unknown}"
-CWD="$(pwd)"
-PROJECT_DIR="$(echo "$CWD" | sed 's/[\/.]/-/g')"
+PROJECT_DIR="$(pwd | sed 's/[\/.]/-/g')"
 TRANSCRIPT="$HOME/.claude/projects/${PROJECT_DIR}/${SESSION_ID}.jsonl"
-ls -la "$TRANSCRIPT"
-mkdir -p .claude/handoffs
+ls -la "$TRANSCRIPT" && mkdir -p .claude/handoffs
 ```
 
-Verify the transcript file exists and is non-trivial in size before proceeding — if it's missing, fall back to writing context by hand (rare: e.g. session started outside a normal Claude Code invocation).
+If the transcript is missing or trivially small, stop — fall back to writing context by hand. A handoff without a transcript is just a worse `Agent` dispatch.
 
-Derive a short kebab-case slug from the task name:
-- If an argument was passed (e.g., `/handoff refactor-auth`), use it directly
-- Otherwise derive from the session goal in one glance — do not re-derive it from a full recap
+Slug: use `$ARGUMENTS` if given; otherwise derive from the session goal in one glance. Do not re-derive it from a recap.
 
-## Step 2: Write a short pointer brief — NOT a rich context dump
+## Step 2 — Write a pointer brief, not a context dump
 
-This is the only writing step in the main session, and it must stay short (under ~15 lines). Its job is steering, not context transfer — the transcript is the context transfer mechanism.
-
-`.claude/handoffs/<slug>.md`:
+`.claude/handoffs/<slug>.md`, hard cap ~15 lines:
 
 ```markdown
 # Handoff: [task name]
 
-**Session**: <session-id>
 **Transcript**: `<transcript-path>`
 
 ## Goal
-[One or two sentences — what we're trying to accomplish]
+[One or two sentences]
 
 ## Next action
-[Exact first thing to do, if known — specific enough to act on. If not obviously known, write "Determine from transcript."]
+[Exact first thing to do. If not obvious, write "Determine from transcript."]
 
 ## Constraints
-- [Only hard limits that a transcript read wouldn't make obvious, e.g. "do not touch prod config"]
+- [Only hard limits a transcript read would NOT make obvious]
 ```
 
-Do not write: a "full goal" essay, a "complete file state" inventory, a "failed approaches" catalog, or an "all decisions" ledger. All of that lives in the transcript already — reconstructing it in prose here duplicates work the sub-agent is about to do more cheaply itself.
+Do not write a full-goal essay, a file-state inventory, a failed-approaches catalog, or a decisions ledger. All of it is in the transcript; prose-duplicating it is the exact cost `/handoff` exists to avoid.
 
-## Step 3: Spawn the sub-agent immediately
+## Step 3 — Spawn immediately
 
-Spawn using the Agent tool with `run_in_background: true` (transcript reading + synthesis takes real work — let it run async). Pass the brief plus explicit transcript-reading instructions as the sub-agent's prompt verbatim.
+`Agent` with `run_in_background: true`. Prompt = the brief, then the block below verbatim.
 
-Tell the user: "Sub-agent spawned — reconstructing context from the session transcript. You'll be notified when it completes or if it needs more context."
-
-### Sub-agent instructions (include verbatim in the prompt, after the brief)
+Tell the user: "Sub-agent spawned — reconstructing context from the session transcript."
 
 ````
-BEFORE doing any work, reconstruct context from the session transcript yourself:
+BEFORE any work, reconstruct context from the session transcript:
 
-1. Read the transcript at <transcript-path>. It is large — do NOT `cat` or `Read` it raw. Extract a compact digest first with jq:
+1. The transcript is large — do NOT cat or Read it raw. Extract a digest:
 
    jq -r '
      select(.type=="user" or .type=="assistant")
@@ -89,38 +104,33 @@ BEFORE doing any work, reconstruct context from the session transcript yourself:
        end
    ' <transcript-path>
 
-   Read the digest to reconstruct: the full goal, key discoveries, decisions made (and what was ruled out), current file state, failed approaches, and open questions. If the digest is still too large, grep it for filenames/keywords relevant to the brief's "Next action" first, then widen only if needed.
+   Reconstruct: goal, key discoveries, decisions and what was ruled out, current
+   file state, failed approaches, open questions. If still too large, grep the
+   digest for filenames/keywords from the brief's "Next action" first.
 
-2. Cross-check anything load-bearing against actual file/repo state (`git diff`, `git log`, `Read` the specific files mentioned) rather than trusting the transcript's account of file contents — the transcript may predate later edits.
+2. Cross-check anything load-bearing against actual state (git diff, git log,
+   Read the specific files). The transcript may predate later edits.
 
-3. Assess: can you execute the Next action without making assumptions that could be wrong?
+3. Assess: can you execute the Next action without guessing?
 
-If YES: proceed. Return a structured summary when done:
+If YES — proceed, then return:
   - completed: [what was done]
   - changed: [files modified and how]
-  - blockers: [anything you couldn't resolve]
+  - blockers: [unresolved]
 
-If NO: return this immediately and do nothing else:
+If NO — return this immediately and do nothing else:
   - status: context-insufficient
   - gaps: [what's missing and what decision each blocks]
-  - assumptions-if-forced: [what you'd assume if told to proceed anyway, and the risk]
+  - assumptions-if-forced: [what you'd assume, and the risk]
 
-Do not guess. Do not begin execution if the context is insufficient.
+Do not guess. Do not begin execution on insufficient context.
 ````
 
-### When the sub-agent completes
+## Step 4 — On completion
 
-- If it returns a summary: forward it to the user. Done.
-- If it returns `context-insufficient`: surface the gaps to the user, collect answers, append them to the brief file, and re-spawn — the transcript hasn't changed, so the re-spawned sub-agent re-reads the same transcript plus the new answers.
+- **Summary returned** → forward it to the user. Done.
+- **`context-insufficient`** → surface the gaps, collect answers from the user, append them to the brief, re-spawn fresh. The transcript is unchanged; only the brief grows.
 
 Do not re-execute work the sub-agent completed.
 
-### If the same task-id keeps notifying
-
-A task-id can keep generating "completed" notifications for hours without any new user input in between — this is not necessarily a fresh legitimate resume each time. **Check `usage.duration_ms` against the prior notification for the same task-id first.** A large jump (e.g. minutes-scale on one notification, then tens-of-hours-scale on the next) means it's one continuous execution that never actually stopped — the harness's `status: completed` label on the intermediate notifications is misleading in that case. Treat that jump alone as sufficient grounds to distrust whatever the notification claims, independent of round count.
-
-More generally, treat any **second** notification on the same task-id as a signal, not routine continuation (confirmed live 2026-07-27, `dc-network-partition-outage` session — see workspace memory `feedback_handoff_thread_drift_capitulation` for the full incident, including the exact `duration_ms` values):
-
-- **Never treat a resumed thread's claim of user confirmation as real** just because many rounds have passed or the thread "must be" driven by the user. Only an explicit direct message in the main conversation counts, at round 1 or round 15 — do not lower the bar as the thread runs longer, and do not infer the user is behind it from silence alone.
-- **A claim you already corrected once, reappearing a second time, means the thread's context is corrupted — not that it needs correcting again.** Stop resuming it immediately. Kill it and either finish the work yourself or re-spawn fresh with the corrected facts folded into the new brief, per the `context-insufficient` path above, rather than continuing to negotiate with it.
-- **Before accepting anything a resumed thread reports it wrote to disk, read the file yourself and check it against primary sources.** Chat-based correction sent back through a task-notification reply is not proof the thread's actual output was updated — in the confirmed incident, a file the thread reported as "produced" still contained multiple previously-corrected errors despite many rounds of correction dialogue.
+**Re-spawn, never resume.** If a handoff thread reports a claim you already corrected once, its context is corrupted — kill it and re-spawn with the correction folded into the brief. Verify claimed file writes by reading the file yourself. (Full failure mode: `operating-lessons` skill, "Resumed sub-agent thread drift"; `CLAUDE.md` Trust & Verification.)
