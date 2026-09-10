@@ -14,7 +14,7 @@ SRC_DIR="$HOME/src"
 mkdir -p "$STATE_DIR"
 
 usage() {
-  echo "Usage: bugfix-worker <start|check|verify|finish|ci|unlock|recover> ..." >&2
+  echo "Usage: bugfix-worker <start|check|verify|finish|ci|ci-main|unlock|recover> ..." >&2
   exit 1
 }
 
@@ -215,7 +215,26 @@ print(json.dumps({
     case "$action" in
       merge)
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
+        # Record the pre-push main SHA as the CI comparison baseline, and
+        # the merged SHA once pushed, so a later `ci-main <id>` can classify
+        # post-merge CI failures the same way step 7.5 does for the PR path.
+        # This exists because a merge-path push was once reported "done"
+        # without ever checking whether it actually left CI green — a
+        # `verify`-passing local run is not proof of that (confirmed
+        # 2026-09-10: a merged fix's own new regression test failed in CI
+        # while passing locally both for the fixer and this dispatcher).
+        pre_merge_sha="$(git -C "$cwd" rev-parse origin/main 2>/dev/null || true)"
         git -C "$cwd" push origin HEAD:main
+        merged_sha="$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)"
+        if [ -n "$merged_sha" ]; then
+          python3 -c "
+import json
+d = json.load(open('$state_file'))
+d['mergedSha'] = '$merged_sha'
+d['preMergeSha'] = '''$pre_merge_sha'''
+json.dump(d, open('$state_file', 'w'))
+"
+        fi
         # Best-effort post-merge install: some tool repos install a compiled
         # binary (e.g. to ~/.local/bin) that a plain `git push` to main does
         # not refresh — the fix wouldn't actually take effect in daily use
@@ -297,6 +316,60 @@ json.dump(d, open('$state_file', 'w'))
     esac
     ;;
 
+  ci-main)
+    # Post-merge CI follow-through — the merge-path equivalent of `ci`.
+    # Classifies failures on the just-pushed main commit against the
+    # pre-merge main commit's own check-runs. Requires `finish merge` to
+    # have run first (needs the recorded mergedSha/preMergeSha).
+    id="${1:?id required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
+    repo="$(state_field "$state_file" repo)"
+    merged_sha="$(state_field "$state_file" mergedSha)"
+    pre_merge_sha="$(state_field "$state_file" preMergeSha)"
+    [ -n "$merged_sha" ] || { echo "ERROR: no mergedSha recorded for $id — was 'finish merge' run?" >&2; exit 1; }
+    repo_path="$SRC_DIR/$repo"
+    origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
+    owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
+
+    # Poll the merged commit's check-runs directly (no PR to query here).
+    checks_json="[]"
+    for _attempt in $(seq 1 30); do
+      checks_json="$(gh api "repos/$owner_repo/commits/$merged_sha/check-runs" --jq '[.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('status') != 'completed' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+      [ -z "$still_pending" ] && break
+      sleep 30
+    done
+
+    base_checks_json="[]"
+    if [ -n "$pre_merge_sha" ]; then
+      base_checks_json="$(gh api "repos/$owner_repo/commits/$pre_merge_sha/check-runs" --jq '[.check_runs[] | {name: .name, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+    fi
+
+    python3 -c "
+import json
+checks = json.loads('''$checks_json''' or '[]')
+base = json.loads('''$base_checks_json''' or '[]')
+base_fail = {c['name'] for c in base if c.get('conclusion') not in ('success', 'skipped', 'neutral', None)}
+failing = [c['name'] for c in checks if c.get('conclusion') not in ('success', 'skipped', 'neutral')]
+pending = [c['name'] for c in checks if c.get('status') != 'completed']
+pre_existing = [n for n in failing if n in base_fail]
+new = [n for n in failing if n not in base_fail]
+print(json.dumps({
+    'allPassing': len(failing) == 0 and len(pending) == 0 and len(checks) > 0,
+    'stillPending': pending,
+    'failingChecks': failing,
+    'preExistingAtPreMergeSha': pre_existing,
+    'newFailures': new,
+    'preMergeSha': '''$pre_merge_sha''',
+}))
+"
+    ;;
+
   ci)
     # CI follow-through for the PR path: wait for the opened PR's checks to
     # reach a terminal state, then classify any failures as pre-existing
@@ -317,10 +390,25 @@ json.dump(d, open('$state_file', 'w'))
     origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
     owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
 
-    # Bounded wait for terminal check state — --watch polls internally;
-    # if it times out (still pending), fall through to a final snapshot.
-    checks_json="$(cd "$repo_path" && timeout 900 gh pr checks "$pr_number" --repo "$owner_repo" --watch --json name,bucket 2>/dev/null || true)"
-    [ -n "$checks_json" ] || checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
+    # `gh pr checks --watch` was tried first but returns immediately (not
+    # an error, just an empty/incomplete result) when called right after PR
+    # creation, before GitHub Actions has registered any checks yet —
+    # confirmed 2026-09-10, this produced a false 'allPassing: true' on a
+    # PR whose checks were still pending/one already failed. Poll explicitly
+    # instead: never treat an empty check list, or any check still
+    # 'pending', as done — only stop once every check present has reached a
+    # terminal bucket (pass/fail/skipping/cancel), or the bound is hit.
+    checks_json="[]"
+    for _attempt in $(seq 1 30); do
+      checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
+      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('bucket') == 'pending' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+      [ -z "$still_pending" ] && break
+      sleep 30
+    done
 
     head_sha="$(cd "$repo_path" && gh pr view "$pr_number" --repo "$owner_repo" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
     base_sha=""
@@ -330,16 +418,20 @@ json.dump(d, open('$state_file', 'w'))
       base_checks_json="$(gh api "repos/$owner_repo/commits/$base_sha/check-runs" --jq '[.check_runs[] | {name: .name, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
     fi
 
-    python3 -c "
+python3 -c "
 import json
 checks = json.loads('''$checks_json''' or '[]')
 base = json.loads('''$base_checks_json''' or '[]')
 base_fail = {c['name'] for c in base if c.get('conclusion') not in ('success', 'skipped', 'neutral', None)}
 failing = [c['name'] for c in checks if c.get('bucket') == 'fail']
+pending = [c['name'] for c in checks if c.get('bucket') == 'pending']
 pre_existing = [n for n in failing if n in base_fail]
 new = [n for n in failing if n not in base_fail]
 print(json.dumps({
-    'allPassing': len(failing) == 0,
+    # False unless every check is both present and terminal — never claim
+    # clean while something is still pending or the check list is empty.
+    'allPassing': len(failing) == 0 and len(pending) == 0 and len(checks) > 0,
+    'stillPending': pending,
     'failingChecks': failing,
     'preExistingAtMergeBase': pre_existing,
     'newFailures': new,
