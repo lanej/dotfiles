@@ -69,10 +69,31 @@ case "$cmd" in
       exit 1
     }
 
-    id="$(printf '%s\n' "$launch_output" | grep -oE '· [a-f0-9]{6,} ·' | head -1 | tr -d ' ·')"
+    # Regex-scraping launch_output's freeform banner text for a hex-looking
+    # token is fragile — confirmed 2026-09-10 to occasionally grab the wrong
+    # value (some other hex-like token in the banner, not the actual session
+    # id), silently poisoning every later check/verify/finish call for that
+    # report. Look the session up by its name instead — $session_name is
+    # already unique (embeds the slug), so this is unambiguous.
+    id=""
+    for _attempt in 1 2 3 4 5; do
+      id="$(claude agents --json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for o in data:
+    if o.get('name') == '$session_name':
+        print(o.get('id', ''))
+        break
+")"
+      [ -n "$id" ] && break
+      sleep 1
+    done
     if [ -z "$id" ]; then
       rmdir "$lock_dir" 2>/dev/null || true
-      echo "ERROR: could not parse session id from launch output: $launch_output" >&2
+      echo "ERROR: could not find launched session '$session_name' in 'claude agents --json' after launch: $launch_output" >&2
       exit 1
     fi
 
@@ -114,8 +135,18 @@ EOF
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
 
     record="$(agent_record "$id")"
-    [ -n "$record" ] || { echo "ERROR: no live agent record for $id" >&2; exit 1; }
-    cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+    if [ -n "$record" ]; then
+      cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+    else
+      # A --bg fixer session isn't guaranteed to stay resident after
+      # finishing — confirmed 2026-09-10, one exited entirely between its
+      # self-report and this check. The worktree path is fully determined
+      # by repo+slug (both in state) regardless of whether the process is
+      # still alive, so fall back to it rather than stranding real work.
+      repo="$(state_field "$state_file" repo)"; slug="$(state_field "$state_file" slug)"
+      cwd="$SRC_DIR/$repo/.claude/worktrees/$slug"
+      echo "WARN: no live agent record for $id — falling back to worktree path $cwd" >&2
+    fi
     [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: worktree cwd '$cwd' not found for $id" >&2; exit 1; }
 
     # Exclude bugs/ from both checks below — it always appears in the diff
@@ -173,6 +204,13 @@ print(json.dumps({
 
     record="$(agent_record "$id")"
     cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))" 2>/dev/null || true)"
+    if [ -z "$cwd" ]; then
+      # Same fallback as `verify` — a --bg fixer session can exit entirely
+      # before finish runs; the worktree path is deterministic from repo+slug.
+      cwd="$SRC_DIR/$repo/.claude/worktrees/$slug"
+      [ -d "$cwd" ] || cwd=""
+      [ -n "$cwd" ] && echo "WARN: no live agent record for $id — falling back to worktree path $cwd" >&2
+    fi
 
     case "$action" in
       merge)
