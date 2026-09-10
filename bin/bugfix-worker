@@ -74,14 +74,18 @@ case "$cmd" in
     # untrusted repo/slug values before they touch any path, lock, or
     # session name. Reject anything else outright.
     case "$repo" in
-      ''|*[!a-zA-Z0-9._-]*)
-        echo "ERROR: repo '$repo' must match ^[a-zA-Z0-9._-]+\$" >&2; exit 1 ;;
+      ''|.|..|*[!a-zA-Z0-9._-]*)
+        echo "ERROR: repo '$repo' must match ^[a-zA-Z0-9._-]+\$ and not be '.' or '..'" >&2; exit 1 ;;
+    esac
+    case "$repo" in
+      *..*)
+        echo "ERROR: repo '$repo' must not contain '..'" >&2; exit 1 ;;
     esac
     case "$slug" in
       [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*)
         case "$slug" in
           *[!a-zA-Z0-9-]*)
-            echo "ERROR: slug '$slug' must match ^[0-9]{8}-[0-9]{6}-[a-z0-9-]+\$ (bad character)" >&2; exit 1 ;;
+            echo "ERROR: slug '$slug' must match ^[0-9]{8}-[0-9]{6}-[a-zA-Z0-9-]+\$ (bad character)" >&2; exit 1 ;;
         esac
         ;;
       *)
