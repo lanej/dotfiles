@@ -84,22 +84,22 @@ Determine:
 - whether the spec's Feedback Loop Design (signal, cost/cadence, fallback) was actually invoked during execution
 - whether plan.md's per-task `Feedback signal:` entries (if present) were actually run, not just written
 - if not invoked, whether that's a spec gap (no Feedback Loop Design was ever specified) or an execution gap (designed but skipped)
+- whether the **branch-level gate** ran once after the last task (full suite + full lint/type-check) — per-task signals are deliberately scoped (tier V1) and do not substitute for it. A run of per-task signals with no branch gate is an execution gap, not a pass
+- whether any escalation trip-wire fired during execution (see `CLAUDE.md`, Proportional Verification) and, if so, whether remaining tasks were actually promoted to full-suite checks
+- whether a **wave review (V3a)** ran at each dependency-graph wave boundary, and whether its findings were fixed before the next wave started rather than carried forward — a carried-forward finding is the compounding case the checkpoint exists to prevent
+- whether each review dispatch was briefed with the `methodology` skill's Review Fault Classes, or was an unguided "review this diff"
 
 Surface "loop skipped" as its own failure category, distinct from "acceptance test failed."
 
 ### Step 5 — Evaluate Harmony Cadence and Deferral
 
-Reading only spec.md's `## Commandment Scores` table (no conversation access needed):
+Audit spec.md's `## Commandment Scores` table and, for carry-forward rows, the available pass history:
 
-- Collect the set of distinct `Pass` numbers across all rows. Confirm a Harmony row exists for
-  every integer from 1 to `Current Pass`. Any gap is a cadence failure — Harmony was skipped on at
-  least one pass.
-- For every row with `Score < 70%`, confirm `Escalated: Yes` and a non-empty `Resolution`. Any
-  miss is a deferral-rule failure — a low-confidence score was recorded without ever being
-  surfaced to the user.
+- Confirm a Harmony row exists for every integer from 1 to `Current Pass`. Any gap is a cadence failure.
+- A row with `Why: no spec mutation this pass; carried from pass N` must preserve that earlier row's State, Score, Why not 100%, Escalated, and Resolution. Pass 1 must be a full evaluation. Check the recorded edits and new evidence before accepting a carry-forward; if that history is unavailable, report this check as unverifiable rather than assuming no change.
+- Evaluate the **most recent row per commandment**, not every historical row. Earlier low scores may be deliberately queued for a later dialogue pass and remain in the append-only history after resolution. A latest `Score < 70%` requires `Escalated: Yes` and an actual resolved `Resolution`; empty text, `—`, and `Pending — …` are unresolved. A low score still awaiting its question or answer is a deferral failure at verification time, even if a question was previously escalated.
 
-Both are self-contained checks against spec.md alone. Surface either failure as its own category,
-distinct from "acceptance test failed."
+Surface cadence and deferral failures separately from acceptance-test failures. The table establishes cadence and current resolution; proving that a carry-forward was justified also needs the pass history.
 
 ### Step 6 — Evaluate False Positive Risk
 
@@ -151,8 +151,8 @@ Structure:
 [Was the designed in-progress signal actually invoked? Spec gap or execution gap if not?]
 
 ## Harmony Cadence and Deferral
-[Does every pass 1..Current Pass have a Harmony row? Does every sub-70% row show Escalated: Yes
-with a non-empty Resolution?]
+[Does every pass 1..Current Pass have a Harmony row? Is each carry-forward row's pass genuinely
+free of spec mutation? Does each latest sub-70% assessment show Escalated: Yes and an actual resolved Resolution?]
 
 ## Failure Signals
 [Any triggered failure indicators]
