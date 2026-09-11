@@ -4,12 +4,21 @@ Status: Interrogating
 Specification Version: v1
 Frozen: false
 Type: [Engineering | Research/Analysis | Writing | General]
-Current Pass: 1
+Readiness Contract: evidence-v1
 
-## Commandment Scores
+## Decision Record
 
-| Pass | Commandment | State | Score | Why | Why not 100% | Escalated | Resolution |
-|---|---|---|---|---|---|---|---|
+| ID | Decision | Basis / evidence | Remaining uncertainty, consequence, and check | Disposition |
+|---|---|---|---|---|
+
+## Decision History
+
+_No superseded decisions._
+
+## Critique Reconciliation
+
+| Finding ID | Source / specification version | Disposition | Reason / incorporated change |
+|---|---|---|---|
 
 ## Problem Statement
 
@@ -17,7 +26,8 @@ _[open]_
 
 ## Requirements
 
-_[open]_
+| ID | Requirement | Observable acceptance criterion | Decision / evidence |
+|---|---|---|---|
 
 ## Constraints
 

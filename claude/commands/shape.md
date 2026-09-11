@@ -1,11 +1,11 @@
 ---
 description: "Run the semantic alignment workflow from specification through validation-ready execution planning"
-argument-hint: [task description]
+argument-hint: "task description"
 allowed-tools:
   - Read
   - Write
   - Edit
-  - Task
+  - Agent
   - Bash(cat:*)
   - ExitPlanMode
   - EnterPlanMode
@@ -45,7 +45,10 @@ Intent
 → Verify
 ```
 
-Lifecycle semantics are authoritative here.
+This command owns orchestration. Read `$HOME/.claude/commands/socrates/dialogue.txt`
+for the canonical dialogue, session, evidence, readiness, reconciliation, and reopen
+semantics. Do not duplicate those gates here. Read `phases-2-3.txt` beside it for
+plan-mode writing and approval rules before Stage 4.
 
 ## Artifact Model
 
@@ -61,8 +64,7 @@ Primary artifacts:
 - `plan.md`
 - `verification.md`
 
-Artifacts are authoritative.
-Conversation is transient.
+Artifacts preserve decisions and evidence across sessions. A new user instruction can revise an earlier decision; record the change through the shared reopen procedure.
 
 ### Spec Status Header
 
@@ -99,7 +101,7 @@ Examples:
 - bounded analysis
 
 Behavior:
-- use `/socrates`
+- use `/specify` for the shared dialogue, stopping before planning
 - optionally use `/critique`
 - proceed to planning
 - write one-line skip justification to `.socrates/YYYYMMDD-HHMMSS/skip.md` for any omitted stages
@@ -155,7 +157,7 @@ Goal:
 - identify weak validation semantics
 
 Critics receive exactly:
-- `spec.md` — nothing else
+- `spec.md` plus the shared evidence/readiness contract — no additional task facts
 - no conversation history
 - no task framing
 - no surrounding context
@@ -171,26 +173,15 @@ Goal:
 - revise specification
 - freeze the specification
 
-Every finding from `critique.md` must be explicitly classified in the reconciled spec or in a `reconciliation.md` addendum:
-
-| Classification | Meaning |
-|---|---|
-| `accepted` | incorporated into spec |
-| `rejected` | explicitly dismissed, reason recorded |
-| `deferred` | out of scope, reason recorded |
-
-No finding may silently disappear.
-
-Transition only when all three tests pass:
-1. Every requirement has a one-sentence falsifiable acceptance criterion — if you cannot write it, the requirement is not ready
-2. Two engineers reading the spec independently would implement the same thing
-3. Every critique finding is classified
-
-Update spec status to `Validated` and set `Frozen: true` before proceeding.
+Use the shared critique reconciliation procedure and readiness gate. Process only
+unresolved relevant findings, record each disposition and its reason/change, and
+preserve prior artifacts. A rejected or deferred finding must not conceal a blocker.
+Freeze the spec only when the shared gate passes; classification alone is not
+resolution. Proceed to planning without a redundant approval pause for the freeze.
 
 ### Stage 4 — Planning
 
-Call `EnterPlanMode` now. Do not proceed to planning without entering plan mode first.
+Call `EnterPlanMode` after the shared readiness gate passes. Follow the planning companion: write only the harness plan file while in plan mode, seek plan approval through `ExitPlanMode`, and persist the approved version as the session plan only after writes are permitted. Record the specification version in the plan and set the spec to `Planned` only after approval. Preserve any previous plan before replacing it.
 
 Output:
 
@@ -290,27 +281,14 @@ If step 1 or 2 surfaces a fault a per-task `Feedback signal:` should have caught
 
 ## Transition Rules
 
-Do not proceed to planning until:
-- spec status is `Validated` and `Frozen: true`
-- every requirement has a falsifiable acceptance criterion
-- every critique finding is classified (accepted / rejected / deferred)
-- validation contract exists
-- authority boundaries exist
+Proceed to planning only when the shared evidence/readiness gate passes. Readiness
+is not execution authorization. Obtain approval of the resulting plan before
+execution and honor applicable authority boundaries for orchestration or irreversible
+actions. No extra pause is required merely because specification freeze completed.
 
-Pause automatically:
-- after specification freeze
-- before orchestration
-- before irreversible execution
-
-If:
-- critique reveals unresolved ambiguity
-- execution changes assumptions
-- validation fails
-- regression checks fail
-
-then:
-- reopen the specification
-- transition back to specification reconciliation
+If critique, changed evidence, scope, or verification invalidates a frozen decision,
+use the shared reopen procedure, including versioning and preservation. Revisit only
+the affected decisions; do not restart the interview.
 
 ## Recommended Usage
 

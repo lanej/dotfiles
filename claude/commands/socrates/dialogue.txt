@@ -1,0 +1,226 @@
+# Shared Socrates dialogue and readiness procedure
+
+Canonical procedure for `/socrates` and `/specify`. Markdown in a `.txt` companion
+file keeps it out of the slash-command scanner. The invoking command chooses the
+endpoint: `/specify` returns a validated specification; `/socrates` then plans.
+`/shape` owns orchestration, not a separate definition of readiness.
+
+## Purpose
+
+Develop an executable understanding of the user's intent through deep, open-ended
+dialogue. Ask questions that change a consequential decision. Do not optimize for
+agreement, a short conversation, a filled template, or a question quota.
+
+## Session storage and resolution
+
+Keep `.socrates/YYYYMMDD-HHMMSS/` in the working directory and the per-session
+pointer `.socrates/.current-<CLAUDE_CODE_SESSION_ID>` containing `TIMESTAMP:PID`.
+Read session ID and Claude PID with `printenv`; never substitute a shell's `$$`.
+Never invent a missing ID/PID or treat an absent liveness socket as proof of safety.
+
+Initialization (a task title was supplied):
+
+1. Generate the timestamp and create a new directory. If it already exists, obtain
+   a fresh timestamp; never reuse it for a new task.
+2. Read `spec-scaffold.tpl` beside this file, replace its title, and populate the
+   spec from the request and established evidence. Set `Status: Interrogating`,
+   `Specification Version: v1`, `Frozen: false`, and `Readiness Contract: evidence-v1`.
+3. Write this session's pointer when both identity values are available. Without
+   them, retain the explicit session path in context and use the picker on resume.
+4. Identify the task type from the request and evidence, correcting it if later
+   information warrants. Types can combine; do not force a mixed task into one box.
+5. Apply the dialogue loop below. A fully specified request can reach readiness
+   immediately; do not manufacture an opening question.
+
+Continuation (no task title):
+
+1. Resolve the current session's pointer if its target exists. Otherwise list
+   session directories newest first. Use the sole session; if several exist, let
+   the user choose by title and timestamp. If none exist, explain how to initialize.
+   Annotate another session's live pointer using `/tmp/cc-socks/<PID>.sock` when
+   available; a missing socket directory means activity is unknown.
+2. Read `spec.md`, the decision record, and any critique/reconciliation artifacts.
+   Refresh the pointer for the selected session when identity values are available.
+3. Apply Legacy Sessions below when needed. Inspect critique dispositions before
+   changing status: a critique file's existence alone never means new work.
+4. Preserve settled decisions. Incorporate new evidence or answers, reconcile only
+   unresolved relevant findings, then evaluate readiness. Do not automatically
+   re-interrogate, regenerate a plan, or move a later lifecycle state backwards.
+
+Respect the harness's active write and approval restrictions. A command cannot
+override plan-only mode to write session files. If writes are restricted, keep the
+draft in the permitted plan artifact or conversation, state that persistence is
+pending, and persist only once permitted. Never report an unwritten artifact as saved.
+
+## Evidence and the decision record
+
+Use these labels in `Basis / evidence`:
+
+- **Observed**: a directly inspected fact, with its source or file reference.
+- **Decided**: an explicit user choice, with the relevant statement or answer.
+- **Assumed**: a provisional inference; include the reason and what would falsify it.
+
+Observed facts are not assumptions. A plausible inference about priorities, risk,
+scope, or authority is not a user decision. Cite external claims inline; label
+unsupported inferences rather than presenting them as settled facts.
+
+Maintain one compact `## Decision Record` table:
+
+| ID | Decision | Basis / evidence | Remaining uncertainty, consequence, and check | Disposition |
+|---|---|---|---|---|
+
+Use stable D1, D2, ... IDs. Dispositions are `resolved`, `accepted-uncertainty`,
+`open`, or `superseded`. Record meaningful choices, not every sentence or checklist
+item. Link open decisions to `Ambiguities → Blocking` or `Non-Blocking`; an open
+non-blocking detail must say why it cannot change the goal, scope, approach,
+authority, or acceptance criteria. It may remain delegated to the executor.
+
+`accepted-uncertainty` requires the user's explicit acceptance of the uncertainty,
+its implications, and how/when it will be checked. Cite that acceptance; silence,
+a high confidence score, or an unanswered question does not qualify. Acceptance
+does not grant authority beyond the user's actual instruction or waive hard limits.
+
+Keep current decisions concise. Before replacing a settled decision, preserve its
+old value, basis, and the reason for the change in `## Decision History`; mark the
+old decision superseded and link its replacement. Do not append an audit row on
+every turn. Questions are not decisions until answered.
+
+## Dialogue loop
+
+1. **Select the decision before the question.** Identify what different answers
+   would change: goal, scope, approach, authority, or acceptance criteria. If no
+   answer changes any of these, resolve the detail from evidence or delegate it
+   within the executor's authority; do not ask for ceremony's sake.
+2. **Prioritize consequences.** Address conflicting goals, irreversible choices,
+   authority, and costly-to-reverse assumptions before reversible implementation
+   details. Prefer a question that resolves several uncertainties with one cause.
+3. **Research to inform.** Reuse evidence already inspected. Investigate when a
+   missing fact or changed environment could alter the decision. Settle mechanical
+   facts directly; use findings about tradeoffs to inform the question, not to
+   silently decide the user's intent. Never rerun research merely because another
+   dialogue turn began.
+4. **Ask one natural question.** Lead with a relevant finding when there is one,
+   then ask the consequential question. Do not fabricate a finding as a preamble.
+   Prefer prose. Use `AskUserQuestion` only for distinct, bounded alternatives with
+   meaningful tradeoffs. Do not bundle unrelated questions or expose the internal
+   checklist as a form to fill out.
+5. **Examine the answer.** Clarify vagueness that affects the decision. Challenge
+   an unsupported premise by naming the evidence gap and the consequence if it is
+   wrong. Surface contradictions explicitly. A clear user preference or explicitly
+   accepted tradeoff is sufficient: do not demand repeated justification just
+   because another choice is possible.
+6. **Show what changed.** Incorporate a consequential answer into the decision
+   record and affected requirements, then briefly explain its effect before the
+   next question. Do not recite the full spec or score every commandment aloud.
+7. **Respect closure.** Reopen a settled decision only for new evidence, a concrete
+   contradiction, or changed scope. State that trigger and exactly which decision
+   it affects. Resume from open decisions; a restart is not a reason to ask again.
+8. **Check readiness.** Continue as long as consequential ambiguity remains. There
+   is no minimum, maximum, or target question count. Do not infer readiness from
+   user impatience; explain the remaining blocker concisely or record a genuinely
+   accepted uncertainty. If no blockers remain, advance without asking permission
+   merely to start drafting the plan.
+
+## Internal coverage checklist
+
+Use the commandments to find omissions, not as scored interview questions. Check
+only applicable concerns and revisit those affected by a substantive change or new
+evidence. No numerical confidence scores, per-pass rows, or Harmony cadence audit.
+
+Universal:
+
+1. **Problem First**: what is broken or missing, and why it matters.
+2. **Interpretation**: a plain statement the user can correct.
+3. **Clarity**: consequential terms and outcomes mean one thing.
+4. **Scope**: included work and meaningful exclusions are explicit; silence is not authorization.
+5. **Context**: necessary background and evidence are available.
+6. **Parsimony**: each proposed element earns its place.
+7. **Success**: observable criteria distinguish success from apparent success.
+8. **Verification**: completion evidence and a proportionate in-progress signal.
+9. **Constraints**: relevant time, resources, and hard limits.
+10. **Stakeholders**: affected people, beneficiaries, and decision-makers when relevant.
+11. **Risk**: assumptions whose failure changes the outcome.
+12. **Execution Readiness**: inputs, outputs, dependencies, authority, and escalation.
+13. **Harmony**: decisions, requirements, constraints, and acceptance criteria agree.
+
+Engineering adds Modularity, Separation of policy and mechanism, Robustness,
+Repair, Least Surprise, and Regression Protection. Research/analysis adds
+Falsifiability, Reproducibility, Bias, and Causation. Writing adds Audience,
+Argument, Evidence, and Action. Apply the relevant sets to mixed tasks.
+
+## Critique reconciliation
+
+Each critique identifies its reviewed specification version and stable finding IDs.
+In `## Critique Reconciliation`, record finding ID, source/version, disposition,
+and reason or incorporated change. Read a legacy `reconciliation.md` too if present.
+Use `pending`, `accepted`, `rejected`, or `deferred`; accepted means the change was
+actually incorporated, not merely agreed to. Reject with a reason; defer with a
+reason and scope/risk treatment. Deferring a blocking finding does not make it safe
+to proceed unless the underlying decision satisfies the readiness gate.
+
+Do not reprocess a finding already disposed of against the same source content.
+For older unnumbered critiques, identify findings by artifact path, heading, and a
+short exact excerpt; do not rewrite the old report just to assign IDs. A new critique
+revision, changed evidence, or changed requirements can make an old finding relevant
+again; identify that change before reopening it. A version mismatch means inspect
+relevance, not silently accept or discard the report.
+
+Enter `Reconciling` only when relevant findings actually need adjudication. If they
+expose a change to a frozen spec, use Reopen Semantics first. A resolved critique
+does not itself trigger new questions, version increments, or repeated planning.
+
+## Readiness gate and specification freeze
+
+A spec is ready only when all of the following hold:
+
+- Intent, scope, constraints, and authority are clear and supported by the request,
+  decisions, or evidence. Necessary inputs, outputs, and dependencies are named.
+- Every requirement has a stable R1, R2, ... ID and an observable acceptance
+  criterion. Match verification to the task: a document or analysis need not invent
+  a software test suite. Define regression boundaries, failure signals, the cheapest
+  useful in-progress check/cadence, and known blind spots where relevant.
+- No blocking decision or contradiction remains. Consequential uncertainty is either
+  resolved or explicitly accepted with its implications and a concrete check.
+- Relevant critique findings have dispositions and none leaves a blocker untreated.
+- A fresh executor can follow the spec without guessing the user's intent or making
+  a consequential choice the user has not delegated.
+
+Check that problem → requirements → constraints/risks → success/validation →
+execution boundaries are coherent. Keep this reasoning in the artifact; summarize
+only what helps the user assess readiness, rather than printing seven boilerplate
+layers. If a link fails, return to the specific unresolved decision.
+
+Set `Status: Validated` and `Frozen: true` when these conditions hold. Keep the
+current `Specification Version`: first freeze is v1, subsequent freezes stamp the
+version established by reopening. Readiness is not plan approval or execution
+authorization. `/specify` stops here; `/socrates` proceeds directly to its planning
+companion. A later lifecycle state that still satisfies the gate stays later.
+
+## Reopen semantics
+
+Before substantively changing a frozen spec, preserve an exact copy in a new,
+non-overwriting `history/spec-vN-<timestamp>.md` inside its session directory.
+Increment the specification version once, set `Frozen: false`, and move to
+`Interrogating` or `Reconciling`. Record the trigger and affected decisions. Preserve
+prior plans, critiques, and verification reports; they remain evidence about their
+original version, not automatic approval or verification of the new one. Do not
+increment again for each edit while the reopened version is still unfrozen.
+
+## Legacy sessions
+
+A session without `Readiness Contract: evidence-v1` uses the old record format.
+Preserve its original spec in a new `history/spec-vN-<timestamp>.md` before adapting
+it. Keep old `Commandment Scores` and `Current Pass` material as clearly labeled
+historical content; do not delete, rescore, or manufacture missing history.
+
+Derive current decisions from actual source evidence and recorded user answers.
+Never translate a percentage, `Stable`, or `Escalated: Yes` alone into a resolved
+decision or accepted uncertainty. Explicit recorded risk acceptance can carry over;
+ask only about consequential gaps whose answers are absent. Reuse disposed critique
+findings when their source and rationale still apply.
+
+Add the evidence contract marker and decision/reconciliation sections. Metadata-only
+adaptation does not reopen a supported frozen spec. If the new gate exposes a real
+gap or a decision must change, reopen once using the preserved original snapshot.
+Do not discard the session, ask the user to restate settled answers, or silently
+declare it ready on the strength of its old score.
