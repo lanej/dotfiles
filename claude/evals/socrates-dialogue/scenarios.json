@@ -121,22 +121,23 @@
         "question_topic": "reopen only the 30-day choice due to the new 7-day limit"
       },
       {
-        "user": "Change retention to 7 days, and keep every other settled choice. Day 6 must remain and day 8 must be purged. Preserve the previous decision and why it changed. No extra feature or implementation choice is needed.",
+        "user": "Change retention to 5 days, below the new 7-day cap, and keep every other settled choice. Day 4 must remain and day 6 must be purged. Preserve the previous decision and why it changed. No extra feature or implementation choice is needed.",
         "action": "ready_to_plan",
         "question_topic": null
       }
     ],
     "required_facts": [
       "7",
+      "5",
+      "4",
       "6",
-      "8",
       "30",
       "v3",
       "policy",
       "R2",
       "deployment"
     ],
-    "rubric": "Name the new evidence as the trigger, preserve the former decision as history, reopen/version once, and do not re-ask unrelated settled choices. Keep R2 and its settled implementation/deployment boundary explicit in the current spec, without invented exclusions or carry-over placeholders."
+    "rubric": "Name the new evidence as the trigger, preserve the former decision as history, reopen/version once, and do not re-ask unrelated settled choices. Keep R2 and its settled implementation/deployment boundary explicit in the current spec, without invented exclusions or carry-over placeholders. The owner chooses 5 days below the 7-day ceiling: a cap must not silently select the target or authorize planning before that choice."
   },
   {
     "id": "resolved_critique",
