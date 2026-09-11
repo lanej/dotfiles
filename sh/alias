@@ -80,12 +80,6 @@ if ! command -v tmx >/dev/null 2>&1; then
 	alias tmx="tmux attach || tmux new"
 fi
 
-if command -v btop >/dev/null 2>&1; then
-	alias htop="btop"
-elif command -v btm >/dev/null 2>&1; then
-	alias htop="btm -b"
-fi
-
 if command -v eza >/dev/null 2>&1; then
 	# Only alias ls to eza in login shells
 	# Rationale: Scripts and non-interactive shells expect POSIX-compliant ls behavior.

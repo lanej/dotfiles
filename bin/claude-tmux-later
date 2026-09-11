@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""Archive idle Claude tmux windows after 1h; close after 24h total idle.
+
+Configured by make claude; hooks start one monitor per tmux server.
+Inspect inside tmux: ~/.files/bin/claude-tmux-later status
+See docs/tmux.md for configuration, safety limits, and resuming conversations.
+"""
+import argparse
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+ROOT = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "claude-tmux-later"
+CONFIG = Path.home() / ".config/claude-tmux-later/config.json"
+EVENTS = ("SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse",
+          "PostToolUse", "PostToolUseFailure", "PreCompact", "Stop",
+          "StopFailure", "SubagentStart", "SubagentStop")
+DEFAULTS = {"enabled": True, "archive_seconds": 3600, "close_seconds": 86400,
+            "poll_seconds": 60, "later_session": "later", "dry_run": False}
+
+
+def read_json(path, default):
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError:
+        return default
+
+
+def write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temp = path.with_name(path.name + ".tmp")
+    with temp.open("w") as stream:
+        os.chmod(temp, 0o600)
+        json.dump(data, stream, indent=2)
+        stream.write("\n")
+    temp.replace(path)
+
+
+@contextlib.contextmanager
+def locked(path, nonblocking=False):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with path.open("a") as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX | (fcntl.LOCK_NB if nonblocking else 0))
+        yield
+
+
+def settings():
+    cfg = DEFAULTS | read_json(CONFIG, {})
+    if not all(isinstance(cfg[k], bool) for k in ("enabled", "dry_run")):
+        raise ValueError("enabled and dry_run must be JSON booleans")
+    if not (0 < cfg["archive_seconds"] < cfg["close_seconds"]):
+        raise ValueError("Require 0 < archive_seconds < close_seconds")
+    if not (1 <= cfg["poll_seconds"] <= 60):
+        raise ValueError("poll_seconds must be between 1 and 60")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", cfg["later_session"]):
+        raise ValueError("later_session must contain letters, digits, _ or -")
+    return cfg
+
+
+class Tmux:
+    def __init__(self, socket, executable="tmux"):
+        self.socket, self.executable = socket, executable
+
+    def call(self, *args):
+        result = subprocess.run([self.executable, "-S", self.socket, *args],
+                                text=True, capture_output=True, timeout=3)
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip() or "tmux command failed")
+        return result.stdout.rstrip("\n")
+
+    def identity(self):
+        return self.call("display-message", "-p", "#{pid}:#{start_time}")
+
+    def panes(self):
+        fields = ("session_id", "session_name", "window_id", "pane_id",
+                  "pane_current_command", "pane_dead", "pane_in_mode",
+                  "window_linked", "@claude_later_pin", "pane_tty")
+        fmt = "\t".join("#{" + field + "}" for field in fields)
+        rows = self.call("list-panes", "-a", "-F", fmt)
+        return [dict(zip(fields, row.split("\t"))) for row in rows.splitlines()]
+
+    def visible_windows(self):
+        return set(self.call("list-clients", "-F", "#{window_id}").splitlines())
+
+    def move(self, row, name):
+        # Resolve exact session names, then use IDs. Never overwrite a window.
+        sessions = self.call("list-sessions", "-F", "#{session_id}\t#{session_name}")
+        target = next((s.split("\t")[0] for s in sessions.splitlines()
+                       if s.split("\t", 1)[1] == name), None)
+        placeholder = None
+        if target is None:
+            created = self.call("new-session", "-d", "-s", name, "-n", "holding",
+                                "-P", "-F", "#{session_id}\t#{window_id}",
+                                "/bin/sh", "-c", "exec sleep 2147483647")
+            target, placeholder = created.split("\t")
+        self.call("move-window", "-d", "-s", row["window_id"], "-t", target + ":")
+        if placeholder:
+            self.call("kill-window", "-t", placeholder)
+
+
+def connection():
+    raw = os.environ.get("TMUX", "")
+    if not raw:
+        raise RuntimeError("Run this command inside tmux")
+    socket = raw.rsplit(",", 2)[0]
+    tmux = Tmux(socket)
+    ident = tmux.identity()
+    key = hashlib.sha256((socket + "\0" + ident).encode()).hexdigest()[:24]
+    folder = ROOT / key
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return tmux, ident, folder
+
+
+def process(pid):
+    result = subprocess.run(["ps", "-ww", "-p", str(pid), "-o",
+                             "ppid=,pgid=,tpgid=,tty=,lstart=,args="],
+                            capture_output=True, text=True, timeout=2,
+                            env=os.environ | {"LC_ALL": "C"})
+    parts = result.stdout.strip().split(None, 9)
+    if result.returncode or len(parts) != 10:
+        return None
+    return {"pid": int(pid), "ppid": int(parts[0]),
+            "pgid": int(parts[1]), "tpgid": int(parts[2]), "tty": parts[3],
+            # claude-wrapper pins argv[0]; the native executable's comm can
+            # instead be a versioned binary name on macOS. Never log the args.
+            "started": " ".join(parts[4:9]), "command": parts[9].split()[0]}
+
+
+def claude_ancestor():
+    pid = os.getppid()
+    for _ in range(16):
+        p = process(pid)
+        if not p:
+            return None
+        if Path(p["command"]).name == "claude":
+            return {"pid": pid, "started": p["started"]}
+        pid = p["ppid"]
+        if pid <= 1:
+            return None
+    return None
+
+
+def foreground_owner(row, state):
+    """Require the recorded native Claude process to own the pane foreground."""
+    owner = state.get("owner")
+    if not owner:
+        return False
+    p = process(owner["pid"])
+    if not p or p["started"] != owner["started"] or Path(p["command"]).name != "claude":
+        return False
+    # A detached monitor cannot tcgetpgrp() another session's controlling
+    # terminal on Linux. ps exposes the foreground group without opening it.
+    tty = p["tty"].removeprefix("/dev/")
+    # A nested observer may share its parent's foreground process group. Only
+    # the group leader is the interactive CLI launched by claude-wrapper.
+    return (p["pid"] == p["pgid"] == p["tpgid"] and p["tpgid"] > 0 and
+            tty == row["pane_tty"].removeprefix("/dev/"))
+
+
+def transition(previous, event, now, owner=None):
+    """Pure hook state transition; no transcript or prompt content is retained."""
+    kind, sid = event.get("hook_event_name"), event.get("session_id")
+    agent = event.get("agent_id")
+    if not sid or (agent and kind not in ("SubagentStart", "SubagentStop")):
+        return previous
+    if not previous or previous.get("session_id") != sid:
+        if kind != "SessionStart" or owner is None:
+            return previous
+        previous = {"session_id": sid, "owner": owner, "phase": "idle",
+                    "agents": [], "background": True}
+    s = dict(previous)
+    if kind == "SessionEnd":
+        return None
+    s["last_activity"] = now
+    s["cwd"] = event.get("cwd", s.get("cwd", ""))
+    s["transcript_path"] = event.get("transcript_path", s.get("transcript_path", ""))
+    if kind == "SessionStart":
+        # No work has started on a fresh interactive session; on compaction
+        # retain busy state until an actual Stop confirms completion.
+        if event.get("source") != "compact":
+            s.update(phase="idle", background=False, agents=[], owner=owner)
+    elif kind in ("UserPromptSubmit", "PreToolUse", "PostToolUse",
+                  "PostToolUseFailure", "PreCompact"):
+        s["phase"] = "busy"
+    elif kind == "Stop":
+        s["phase"] = "idle"
+        # Missing registry fields mean activity cannot be established safely.
+        s["background"] = (event.get("background_tasks") != [] or
+                           event.get("session_crons") != [])
+    elif kind == "StopFailure":
+        s["phase"] = "unknown"
+    elif kind in ("SubagentStart", "SubagentStop"):
+        agents = set(s.get("agents", []))
+        if kind == "SubagentStart":
+            agents.add(agent or "unknown")
+        else:
+            agents.discard(agent)
+        s["agents"] = sorted(agents)
+    return s
+
+
+def decision(rows, states, visible, now, cfg):
+    """All panes must be idle, managed Claude panes before acting on a window."""
+    if rows[0]["window_id"] in visible:
+        return None, "viewed"
+    if any(r["window_linked"] != "0" or r["@claude_later_pin"] in ("1", "on", "true")
+           or r["pane_dead"] != "0" or r["pane_in_mode"] != "0" for r in rows):
+        return None, "pinned, linked, dead, or in copy mode"
+    tracked = [states.get(r["pane_id"]) for r in rows]
+    if any(not s for s in tracked):
+        return None, "contains an unmanaged pane"
+    if any(s["phase"] != "idle" or s.get("background", True) or s.get("agents")
+           for s in tracked):
+        return None, "busy or activity unknown"
+    age = min(now - s["last_activity"] for s in tracked)
+    if age < cfg["archive_seconds"]:
+        return None, f"idle {max(0, int(age))}s"
+    if rows[0]["session_name"] != cfg["later_session"]:
+        return "move", f"idle {int(age)}s"
+    if age >= cfg["close_seconds"]:
+        return "close", f"idle {int(age)}s"
+    return None, f"parked; idle {int(age)}s"
+
+
+def record(folder, action, rows, states):
+    entry = {"at": time.time(), "action": action, "window_id": rows[0]["window_id"],
+             "session": rows[0]["session_name"],
+             "conversations": [{k: states[r["pane_id"]].get(k)
+                                 for k in ("session_id", "cwd", "transcript_path")}
+                                for r in rows]}
+    with (folder / "history.jsonl").open("a") as stream:
+        stream.write(json.dumps(entry) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def sweep(tmux, folder, cfg, inspect=False):
+    with locked(folder / "state.lock"):
+        states = read_json(folder / "state.json", {})
+        panes, visible = tmux.panes(), tmux.visible_windows()
+        windows = {}
+        for row in panes:
+            windows.setdefault(row["window_id"], []).append(row)
+        for wid, rows in windows.items():
+            if not any(r["pane_id"] in states for r in rows):
+                continue
+            action, reason = decision(rows, states, visible, time.time(), cfg)
+            if action and not all(foreground_owner(r, states[r["pane_id"]]) for r in rows):
+                action, reason = None, "Claude process ownership unverified"
+            if inspect:
+                print(f'{rows[0]["session_name"]}:{wid} {action or "keep"}: {reason}')
+            if not action or inspect:
+                continue
+            if cfg["dry_run"]:
+                record(folder, "would-" + action, rows, states)
+                continue
+            # Recheck client selection and pane composition immediately before
+            # mutation. The same lock serializes prompt hooks with this sweep.
+            fresh = [r for r in tmux.panes() if r["window_id"] == wid]
+            if fresh != rows or wid in tmux.visible_windows():
+                continue
+            if not all(foreground_owner(r, states[r["pane_id"]]) for r in fresh):
+                continue
+            record(folder, action + "-requested", rows, states)
+            if action == "move":
+                tmux.move(rows[0], cfg["later_session"])
+            else:
+                tmux.call("kill-window", "-t", wid)
+                for row in rows:
+                    states.pop(row["pane_id"], None)
+            record_states = read_json(folder / "state.json", {})
+            record(folder, action + "-completed", rows, record_states)
+        live = {r["pane_id"] for r in panes}
+        states = {pane: s for pane, s in states.items() if pane in live}
+        if not inspect:
+            write_json(folder / "state.json", states)
+
+
+def ensure_daemon(tmux, ident, folder):
+    try:
+        with locked(folder / "daemon.lock", nonblocking=True):
+            pass
+    except BlockingIOError:
+        return
+    with (folder / "daemon.log").open("a") as log:
+        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "daemon",
+                          "--socket", tmux.socket, "--identity", ident,
+                          "--folder", str(folder), "--tmux", shutil.which("tmux") or "tmux"],
+                         stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                         start_new_session=True, close_fds=True,
+                         env={k: v for k, v in os.environ.items()
+                              if k not in ("TMUX", "TMUX_PANE")})
+
+
+def hook():
+    cfg = settings()
+    if not cfg["enabled"] or not os.environ.get("TMUX_PANE"):
+        return
+    event = json.load(sys.stdin)
+    tmux, ident, folder = connection()
+    pane = os.environ["TMUX_PANE"]
+    owner = claude_ancestor() if event.get("hook_event_name") == "SessionStart" else None
+    if event.get("hook_event_name") == "SessionStart":
+        # claude-mem and other nested processes inherit TMUX_PANE. Never let
+        # their SessionStart replace the actual foreground conversation.
+        row = next((r for r in tmux.panes() if r["pane_id"] == pane), None)
+        if row is None or not foreground_owner(row, {"owner": owner}):
+            return
+    with locked(folder / "state.lock"):
+        states = read_json(folder / "state.json", {})
+        updated = transition(states.get(pane), event, time.time(), owner)
+        if updated:
+            states[pane] = updated
+        else:
+            states.pop(pane, None)
+        write_json(folder / "state.json", states)
+    ensure_daemon(tmux, ident, folder)
+
+
+def daemon(args):
+    tmux, folder = Tmux(args.socket, args.tmux), Path(args.folder)
+    try:
+        with locked(folder / "daemon.lock", nonblocking=True):
+            while True:
+                cfg = settings()
+                if not cfg["enabled"]:
+                    return
+                try:
+                    if tmux.identity() != args.identity:
+                        return
+                except (RuntimeError, subprocess.TimeoutExpired):
+                    return
+                try:
+                    sweep(tmux, folder, cfg)
+                except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired) as exc:
+                    print(f"Sweep skipped: {exc}", file=sys.stderr, flush=True)
+                time.sleep(cfg["poll_seconds"])
+    except BlockingIOError:
+        return
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("hook")
+    sub.add_parser("status")
+    sub.add_parser("sweep")
+    p = sub.add_parser("daemon")
+    for name in ("socket", "identity", "folder", "tmux"):
+        p.add_argument("--" + name, required=True)
+    args = parser.parse_args()
+    if args.command == "hook":
+        # A cleanup problem must not block Claude or inject text into its context.
+        try:
+            hook()
+        except Exception as exc:
+            print(f"claude-tmux-later hook skipped: {type(exc).__name__}", file=sys.stderr)
+    elif args.command == "daemon":
+        daemon(args)
+    else:
+        tmux, _, folder = connection()
+        cfg = settings()
+        if cfg["enabled"] or args.command == "status":
+            sweep(tmux, folder, cfg, inspect=args.command == "status")
+
+
+if __name__ == "__main__":
+    main()

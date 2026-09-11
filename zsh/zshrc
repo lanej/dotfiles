@@ -479,6 +479,13 @@ fi
 # Quick privacy check before starting Claude Code
 alias claude-check="~/.claude/local/claude-privacy-check"
 
+# Bypass permissions + accept unsolicited cross-session agent messages without
+# manual approval. Opt-in per-session (not a global default) since it removes
+# the protection that normally holds another agent's inbound message for you
+# to approve before the session acts on it -- use for a session you intend to
+# run as unattended automation, not your everyday interactive dev session.
+alias dca="claude --permission-mode bypassPermissions --settings '{\"crossSessionInbound\":\"accept\"}'"
+
 # Context switching (for future personal GCP project setup)
 claude-work() {
     export ANTHROPIC_VERTEX_PROJECT_ID=easypost-platform

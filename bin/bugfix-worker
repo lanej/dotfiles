@@ -7,6 +7,17 @@
 #
 # This script pushes to `main` unattended on the easypost-sandbox allowlist,
 # so it uses strict mode rather than this repo's usual fail-soft bin/ style.
+#
+# Security note (2026-09-10 review): `repo`/`slug` ultimately originate from
+# an LLM-generated bug-report slug and a caller-supplied repo name — this
+# system's own CLAUDE.md treats cross-session messages as untrusted input,
+# so this script is the boundary that has to actually neutralize that. Two
+# rules follow throughout this file: (1) `repo`/`slug` are validated against
+# a strict allowlist the moment they're received in `start`, before they
+# touch any path or lock; (2) no dynamic value is ever spliced as literal
+# text into a python -c script — every value crosses the bash/python
+# boundary via an environment variable (or stdin, for larger JSON blobs),
+# which cannot be broken out of regardless of its content.
 set -euo pipefail
 
 STATE_DIR="$HOME/.local/state/bugfix-dispatcher"
@@ -14,20 +25,21 @@ SRC_DIR="$HOME/src"
 mkdir -p "$STATE_DIR"
 
 usage() {
-  echo "Usage: bugfix-worker <start|check|verify|finish|unlock|recover> ..." >&2
+  echo "Usage: bugfix-worker <start|check|verify|finish|ci|ci-main|unlock|recover> ..." >&2
   exit 1
 }
 
 agent_record() {
   # Print the claude agents --json record for $1 (an id), or nothing.
-  claude agents --json 2>/dev/null | python3 -c "
-import json, sys
+  claude agents --json 2>/dev/null | BFW_ID="$1" python3 -c "
+import json, os, sys
 try:
     data = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
+target = os.environ['BFW_ID']
 for o in data:
-    if o.get('id') == '$1':
+    if o.get('id') == target:
         print(json.dumps(o))
         break
 "
@@ -35,7 +47,21 @@ for o in data:
 
 state_field() {
   # state_field <state_file> <key>
-  python3 -c "import json; print(json.load(open('$1')).get('$2', ''))"
+  BFW_STATE_FILE="$1" BFW_KEY="$2" python3 -c "
+import json, os
+print(json.load(open(os.environ['BFW_STATE_FILE'])).get(os.environ['BFW_KEY'], ''))
+"
+}
+
+state_set_field() {
+  # state_set_field <state_file> <key> <value>
+  BFW_STATE_FILE="$1" BFW_KEY="$2" BFW_VALUE="$3" python3 -c "
+import json, os
+p = os.environ['BFW_STATE_FILE']
+d = json.load(open(p))
+d[os.environ['BFW_KEY']] = os.environ['BFW_VALUE']
+json.dump(d, open(p, 'w'))
+"
 }
 
 cmd="${1:-}"; shift || true
@@ -43,6 +69,29 @@ cmd="${1:-}"; shift || true
 case "$cmd" in
   start)
     repo="${1:?repo required}"; slug="${2:?slug required}"; prompt_file="${3:?prompt file required}"
+
+    # Strict allowlists — this is the actual neutralization point for
+    # untrusted repo/slug values before they touch any path, lock, or
+    # session name. Reject anything else outright.
+    case "$repo" in
+      ''|.|..|*[!a-zA-Z0-9._-]*)
+        echo "ERROR: repo '$repo' must match ^[a-zA-Z0-9._-]+\$ and not be '.' or '..'" >&2; exit 1 ;;
+    esac
+    case "$repo" in
+      *..*)
+        echo "ERROR: repo '$repo' must not contain '..'" >&2; exit 1 ;;
+    esac
+    case "$slug" in
+      [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-*)
+        case "$slug" in
+          *[!a-zA-Z0-9-]*)
+            echo "ERROR: slug '$slug' must match ^[0-9]{8}-[0-9]{6}-[a-zA-Z0-9-]+\$ (bad character)" >&2; exit 1 ;;
+        esac
+        ;;
+      *)
+        echo "ERROR: slug '$slug' must match ^[0-9]{8}-[0-9]{6}-<kebab-description>\$" >&2; exit 1 ;;
+    esac
+
     repo_path="$SRC_DIR/$repo"
 
     [ -d "$repo_path/.git" ] || { echo "ERROR: $repo_path is not a git repo" >&2; exit 1; }
@@ -63,22 +112,73 @@ case "$cmd" in
     prompt_content="$(cat "$prompt_file")"
 
     session_name="bugfix-${repo}-${slug}"
+
+    # A session with this exact name could already exist in `claude agents
+    # --json` from a prior report that reused this repo+slug (a retry, a
+    # `finish merge`'s `claude rm` having been refused/"kept", or a PR-path
+    # session that `finish pr` only ever `stop`s, never removes — its record
+    # persists indefinitely). Snapshot existing ids for this name BEFORE
+    # launching, so the post-launch lookup below can positively identify the
+    # NEW session rather than risk matching a stale one and silently binding
+    # this report's state to someone else's worktree.
+    pre_launch_ids="$(claude agents --json 2>/dev/null | BFW_NAME="$session_name" python3 -c "
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+name = os.environ['BFW_NAME']
+for o in data:
+    if o.get('name') == name:
+        print(o.get('id', ''))
+" || true)"
+
     launch_output="$(cd "$repo_path" && claude -w "$slug" --bg -n "$session_name" --permission-mode bypassPermissions "$prompt_content" 2>&1)" || {
       rmdir "$lock_dir" 2>/dev/null || true
       echo "ERROR: launch failed: $launch_output" >&2
       exit 1
     }
 
-    id="$(printf '%s\n' "$launch_output" | grep -oE '· [a-f0-9]{6,} ·' | head -1 | tr -d ' ·')"
+    # Regex-scraping launch_output's freeform banner text for a hex-looking
+    # token is fragile — confirmed 2026-09-10 to occasionally grab the wrong
+    # value (some other hex-like token in the banner, not the actual session
+    # id). Look the session up by name instead, excluding any id that
+    # already existed before this launch (see snapshot above) and, if
+    # somehow more than one new match exists, preferring the most recently
+    # started.
+    id=""
+    for _attempt in 1 2 3 4 5; do
+      id="$(claude agents --json 2>/dev/null | BFW_NAME="$session_name" BFW_EXCLUDE="$pre_launch_ids" python3 -c "
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+name = os.environ['BFW_NAME']
+exclude = set(os.environ.get('BFW_EXCLUDE', '').split())
+candidates = [o for o in data if o.get('name') == name and o.get('id', '') not in exclude]
+candidates.sort(key=lambda o: o.get('startedAt', 0))
+if candidates:
+    print(candidates[-1].get('id', ''))
+" || true)"
+      [ -n "$id" ] && break
+      sleep 1
+    done
     if [ -z "$id" ]; then
       rmdir "$lock_dir" 2>/dev/null || true
-      echo "ERROR: could not parse session id from launch output: $launch_output" >&2
+      echo "ERROR: could not find a NEW launched session named '$session_name' in 'claude agents --json' after launch (pre-existing ids for this name: '$pre_launch_ids'): $launch_output" >&2
       exit 1
     fi
 
-    cat > "$STATE_DIR/$id.json" <<EOF
-{"repo":"$repo","slug":"$slug","lockPath":"$lock_dir","sessionName":"$session_name"}
-EOF
+    BFW_REPO="$repo" BFW_SLUG="$slug" BFW_LOCK_DIR="$lock_dir" BFW_SESSION_NAME="$session_name" BFW_STATE_PATH="$STATE_DIR/$id.json" python3 -c "
+import json, os
+json.dump({
+    'repo': os.environ['BFW_REPO'],
+    'slug': os.environ['BFW_SLUG'],
+    'lockPath': os.environ['BFW_LOCK_DIR'],
+    'sessionName': os.environ['BFW_SESSION_NAME'],
+}, open(os.environ['BFW_STATE_PATH'], 'w'))
+"
     echo "$id"
     ;;
 
@@ -114,42 +214,84 @@ EOF
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
 
     record="$(agent_record "$id")"
-    [ -n "$record" ] || { echo "ERROR: no live agent record for $id" >&2; exit 1; }
-    cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+    if [ -n "$record" ]; then
+      cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+    else
+      # A --bg fixer session isn't guaranteed to stay resident after
+      # finishing — confirmed 2026-09-10, one exited entirely between its
+      # self-report and this check. The worktree path is fully determined
+      # by repo+slug (both in state, both validated at `start` time)
+      # regardless of whether the process is still alive, so fall back to
+      # it rather than stranding real work.
+      repo="$(state_field "$state_file" repo)"; slug="$(state_field "$state_file" slug)"
+      cwd="$SRC_DIR/$repo/.claude/worktrees/$slug"
+      echo "WARN: no live agent record for $id — falling back to worktree path $cwd" >&2
+    fi
     [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: worktree cwd '$cwd' not found for $id" >&2; exit 1; }
+
+    # Fetch before diffing so a worktree that's never independently fetched
+    # doesn't silently diff against a stale (or, before the first fetch,
+    # entirely absent) origin/main — best-effort, the diff below still
+    # fails loudly if origin/main can't be resolved at all.
+    git -C "$cwd" fetch origin main >/dev/null 2>&1 || true
 
     # Exclude bugs/ from both checks below — it always appears in the diff
     # (the bug-report commit) and its slug can coincidentally contain
     # "test"/"spec" (e.g. a report titled "smoketest"), which would
     # otherwise false-positive the repro-test-touched heuristic.
-    changed_paths="$(git -C "$cwd" diff --name-only origin/main...HEAD 2>/dev/null | grep -v '^bugs/' || true)"
-    risky_paths="$(printf '%s\n' "$changed_paths" | grep -E '(^|/)\.github/|\.env|Dockerfile|\.gitlab-ci|\.circleci/' || true)"
+    #
+    # This must fail LOUDLY, not silently, if the diff itself can't be
+    # computed (e.g. origin/main missing/unresolvable in this worktree) —
+    # confirmed 2026-09-10: swallowing that error via `2>/dev/null` made
+    # `riskyPaths` compute as `[]` (fail OPEN) whenever this happened, which
+    # is exactly backwards for the one gate meant to catch a CI-config/
+    # secrets-adjacent change. testTouched failing closed (false) was safe;
+    # riskyPaths failing open was not.
+    if ! diff_output="$(git -C "$cwd" diff --name-only origin/main...HEAD 2>&1)"; then
+      echo "ERROR: could not diff $cwd against origin/main — cannot safely compute riskyPaths, refusing to report a possibly-false-clean result: $diff_output" >&2
+      exit 1
+    fi
+    changed_paths="$(printf '%s\n' "$diff_output" | grep -v '^bugs/' || true)"
+    risky_paths="$(printf '%s\n' "$changed_paths" | grep -E '(^|/)\.github/|(^|/)\.env|Dockerfile|\.gitlab-ci|\.circleci/' || true)"
     # Real test-file conventions only: a tests/spec directory, or a
     # test_*/*_test.*/*.test.*/*_spec.* filename — not a bare substring match.
     test_touched="$(printf '%s\n' "$changed_paths" | grep -iE '(^|/)(tests?|specs?)/|(^|/)test_[^/]+$|_test\.[^/]+$|\.test\.[^/]+$|_spec\.[^/]+$' || true)"
 
     suite_pass="false"
     log_file="/tmp/bugfix-verify-$id.log"
+    # A fresh git worktree never inherits build output (e.g. a compiled
+    # binary from `bun build --compile`), which is gitignored — so if the
+    # repo's test script depends on one (e.g. a CLI/acceptance suite that
+    # shells out to a compiled binary), it fails with a false "regression"
+    # in every worktree regardless of the fix's correctness. Build first
+    # when a build script exists. Always append to log_file from here on —
+    # a truncating redirect in one of the test-runner branches below would
+    # otherwise silently clobber this build output.
+    if [ -f "$cwd/package.json" ] && grep -q '"build"' "$cwd/package.json"; then
+      ( cd "$cwd" && npm run build ) >"$log_file" 2>&1 || true
+    else
+      : >"$log_file"
+    fi
     # `set -e` would otherwise abort the script on a failing (expected!) test
     # run, so every branch here is explicitly `|| true`-guarded.
     if [ -f "$cwd/package.json" ] && grep -q '"test"' "$cwd/package.json"; then
-      { ( cd "$cwd" && npm test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+      { ( cd "$cwd" && npm test ) >>"$log_file" 2>&1 && suite_pass="true"; } || true
     elif [ -f "$cwd/Makefile" ] && grep -qE '^test:' "$cwd/Makefile"; then
-      { ( cd "$cwd" && make test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+      { ( cd "$cwd" && make test ) >>"$log_file" 2>&1 && suite_pass="true"; } || true
     elif [ -f "$cwd/justfile" ] && grep -qE '^test( |:)' "$cwd/justfile"; then
-      { ( cd "$cwd" && just test ) >"$log_file" 2>&1 && suite_pass="true"; } || true
+      { ( cd "$cwd" && just test ) >>"$log_file" 2>&1 && suite_pass="true"; } || true
     else
       echo "WARN: no recognized test command in $cwd — cannot verify suite" >&2
     fi
 
-    python3 -c "
-import json
+    BFW_CWD="$cwd" BFW_SUITE_PASS="$suite_pass" BFW_TEST_TOUCHED="$test_touched" BFW_RISKY_PATHS="$risky_paths" BFW_LOG_FILE="$log_file" python3 -c "
+import json, os
 print(json.dumps({
-    'cwd': '''$cwd''',
-    'suitePass': $( [ "$suite_pass" = "true" ] && echo True || echo False ),
-    'testTouched': bool('''$test_touched'''.strip()),
-    'riskyPaths': [p for p in '''$risky_paths'''.strip().splitlines() if p],
-    'logFile': '''$log_file''',
+    'cwd': os.environ['BFW_CWD'],
+    'suitePass': os.environ['BFW_SUITE_PASS'] == 'true',
+    'testTouched': bool(os.environ['BFW_TEST_TOUCHED'].strip()),
+    'riskyPaths': [p for p in os.environ['BFW_RISKY_PATHS'].strip().splitlines() if p],
+    'logFile': os.environ['BFW_LOG_FILE'],
 }))
 "
     ;;
@@ -164,11 +306,49 @@ print(json.dumps({
 
     record="$(agent_record "$id")"
     cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))" 2>/dev/null || true)"
+    if [ -z "$cwd" ]; then
+      # Same fallback as `verify` — a --bg fixer session can exit entirely
+      # before finish runs; the worktree path is deterministic from repo+slug.
+      cwd="$SRC_DIR/$repo/.claude/worktrees/$slug"
+      [ -d "$cwd" ] || cwd=""
+      [ -n "$cwd" ] && echo "WARN: no live agent record for $id — falling back to worktree path $cwd" >&2
+    fi
 
     case "$action" in
       merge)
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
+        # Record the pre-push main SHA as the CI comparison baseline, and
+        # the merged SHA once pushed, so a later `ci-main <id>` can classify
+        # post-merge CI failures the same way step 7.5 does for the PR path.
+        # This exists because a merge-path push was once reported "done"
+        # without ever checking whether it actually left CI green — a
+        # `verify`-passing local run is not proof of that (confirmed
+        # 2026-09-10: a merged fix's own new regression test failed in CI
+        # while passing locally both for the fixer and this dispatcher).
+        pre_merge_sha="$(git -C "$cwd" rev-parse origin/main 2>/dev/null || true)"
         git -C "$cwd" push origin HEAD:main
+        merged_sha="$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)"
+        if [ -n "$merged_sha" ]; then
+          state_set_field "$state_file" mergedSha "$merged_sha"
+          state_set_field "$state_file" preMergeSha "$pre_merge_sha"
+        fi
+        # Best-effort post-merge install: some tool repos install a compiled
+        # binary (e.g. to ~/.local/bin) that a plain `git push` to main does
+        # not refresh — the fix wouldn't actually take effect in daily use
+        # until reinstalled. Convention: run `just install` / `make install`
+        # if the repo defines one. Run it from the worktree (which already
+        # has the fixed, tested code checked out) rather than the primary
+        # checkout, whose sync below is best-effort and may fail/diverge.
+        # Never fails finish merge — surfaces as a warning only.
+        if [ -f "$cwd/justfile" ] && grep -qE '^install( |:)' "$cwd/justfile"; then
+          if ! install_output="$(cd "$cwd" && just install 2>&1)"; then
+            echo "WARN: post-merge 'just install' failed for $repo — install manually: $install_output" >&2
+          fi
+        elif [ -f "$cwd/Makefile" ] && grep -qE '^install:' "$cwd/Makefile"; then
+          if ! install_output="$(cd "$cwd" && make install 2>&1)"; then
+            echo "WARN: post-merge 'make install' failed for $repo — install manually: $install_output" >&2
+          fi
+        fi
         # Empirically confirmed (2026-09-03): `claude rm` deliberately REFUSES
         # to delete a worktree with unpushed commits — "kept <id> — worktree
         # has commits that are not pushed anywhere" — rather than erroring or
@@ -200,12 +380,168 @@ print(json.dumps({
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
         branch="bugfix/$slug"
         git -C "$cwd" push origin "HEAD:$branch"
-        ( cd "$cwd" && gh pr create --fill --head "$branch" )
+        # `gh pr create --fill` computes its title/body defaults from a local
+        # diff against origin/main, which requires that remote-tracking ref
+        # to actually be fetched in this worktree — a fixer worktree can sit
+        # for a while without ever fetching, so origin/main may be missing
+        # or stale by the time we get here. Fetch first so this doesn't fail.
+        git -C "$cwd" fetch origin main
+        # The worktree's own local branch is named worktree-<slug> (set by
+        # `claude -w`), not $branch — we only push HEAD to $branch on the
+        # remote, we never check it out locally. `gh pr create --fill` needs
+        # a local ref named exactly $branch to diff against, so create one
+        # pointing at HEAD (no checkout needed, the worktree stays as-is).
+        # This push has already happened by this point, so a failure here
+        # (e.g. $branch is checked out elsewhere — shouldn't happen given
+        # slug's timestamp-uniqueness, but fail loudly rather than let a
+        # bare `set -e` abort with no guidance) must say so explicitly.
+        if ! git -C "$cwd" branch -f "$branch" HEAD; then
+          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh pr create --fill --head $branch" >&2
+          exit 1
+        fi
+        pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        echo "$pr_url"
+        pr_number="$(printf '%s' "$pr_url" | grep -oE '[0-9]+$')"
+        # Record the PR number so a later `bugfix-worker ci <id>` call (the
+        # CI follow-through step) can find it — state isn't unlocked until
+        # that step completes, so it's still here to read.
+        [ -n "$pr_number" ] && state_set_field "$state_file" prNumber "$pr_number"
         claude stop "$id" || true
         ;;
       *)
         echo "Usage: bugfix-worker finish <id> merge|pr" >&2; exit 1 ;;
     esac
+    ;;
+
+  ci-main)
+    # Post-merge CI follow-through — the merge-path equivalent of `ci`.
+    # Classifies failures on the just-pushed main commit against the
+    # pre-merge main commit's own check-runs. Requires `finish merge` to
+    # have run first (needs the recorded mergedSha/preMergeSha).
+    id="${1:?id required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
+    repo="$(state_field "$state_file" repo)"
+    merged_sha="$(state_field "$state_file" mergedSha)"
+    pre_merge_sha="$(state_field "$state_file" preMergeSha)"
+    [ -n "$merged_sha" ] || { echo "ERROR: no mergedSha recorded for $id — was 'finish merge' run?" >&2; exit 1; }
+    repo_path="$SRC_DIR/$repo"
+    origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
+    owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
+
+    # Poll the merged commit's check-runs directly (no PR to query here).
+    checks_json="[]"
+    for _attempt in $(seq 1 30); do
+      checks_json="$(gh api "repos/$owner_repo/commits/$merged_sha/check-runs" --jq '[.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('status') != 'completed' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+      [ -z "$still_pending" ] && break
+      sleep 30
+    done
+
+    base_checks_json="[]"
+    if [ -n "$pre_merge_sha" ]; then
+      base_checks_json="$(gh api "repos/$owner_repo/commits/$pre_merge_sha/check-runs" --jq '[.check_runs[] | {name: .name, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+    fi
+
+    BFW_CHECKS="$checks_json" BFW_BASE_CHECKS="$base_checks_json" BFW_PRE_MERGE_SHA="$pre_merge_sha" python3 -c "
+import json, os
+checks = json.loads(os.environ['BFW_CHECKS'] or '[]')
+base = json.loads(os.environ['BFW_BASE_CHECKS'] or '[]')
+base_fail = {c['name'] for c in base if c.get('conclusion') not in ('success', 'skipped', 'neutral', None)}
+failing = [c['name'] for c in checks if c.get('conclusion') not in ('success', 'skipped', 'neutral')]
+pending = [c['name'] for c in checks if c.get('status') != 'completed']
+pre_existing = [n for n in failing if n in base_fail]
+new = [n for n in failing if n not in base_fail]
+print(json.dumps({
+    'allPassing': len(failing) == 0 and len(pending) == 0 and len(checks) > 0,
+    'stillPending': pending,
+    'failingChecks': failing,
+    'preExistingAtPreMergeSha': pre_existing,
+    'newFailures': new,
+    'preMergeSha': os.environ.get('BFW_PRE_MERGE_SHA', ''),
+}))
+"
+    ;;
+
+  ci)
+    # CI follow-through for the PR path: wait for the opened PR's checks to
+    # reach a terminal state, then classify any failures as pre-existing
+    # (already failing at the PR's merge-base commit) or new. A job that's
+    # merely "already failing on main" can still have picked up an
+    # additional new failure alongside the old one — this only classifies
+    # at job granularity, so treat 'preExisting' as "worth a manual log
+    # read to confirm the specific failures didn't change," not as a free
+    # pass. Requires `finish pr` to have run first (needs the recorded
+    # prNumber).
+    id="${1:?id required}"
+    state_file="$STATE_DIR/$id.json"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
+    repo="$(state_field "$state_file" repo)"
+    pr_number="$(state_field "$state_file" prNumber)"
+    [ -n "$pr_number" ] || { echo "ERROR: no prNumber recorded for $id — was 'finish pr' run?" >&2; exit 1; }
+    repo_path="$SRC_DIR/$repo"
+    origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
+    owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
+
+    # `gh pr checks --watch` was tried first but returns immediately (not
+    # an error, just an empty/incomplete result) when called right after PR
+    # creation, before GitHub Actions has registered any checks yet —
+    # confirmed 2026-09-10, this produced a false 'allPassing: true' on a
+    # PR whose checks were still pending/one already failed. Poll explicitly
+    # instead: never treat an empty check list, or any check still
+    # 'pending', as done — only stop once every check present has reached a
+    # terminal bucket (pass/fail/skipping/cancel), or the bound is hit.
+    checks_json="[]"
+    for _attempt in $(seq 1 30); do
+      checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
+      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('bucket') == 'pending' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+      [ -z "$still_pending" ] && break
+      sleep 30
+    done
+
+    # `merge-base` here must be computed against a freshly-fetched
+    # origin/main in the PRIMARY checkout, not whatever it happened to
+    # point at last time someone fetched there — `finish pr` only fetches
+    # inside the fixer's own worktree, not $repo_path, so a stale primary
+    # checkout would silently poison this classification's baseline
+    # (confirmed as a gap in review, 2026-09-10).
+    git -C "$repo_path" fetch origin main >/dev/null 2>&1 || true
+    head_sha="$(cd "$repo_path" && gh pr view "$pr_number" --repo "$owner_repo" --json headRefOid --jq .headRefOid 2>/dev/null || true)"
+    base_sha=""
+    [ -n "$head_sha" ] && base_sha="$(git -C "$repo_path" merge-base origin/main "$head_sha" 2>/dev/null || true)"
+    base_checks_json="[]"
+    if [ -n "$base_sha" ]; then
+      base_checks_json="$(gh api "repos/$owner_repo/commits/$base_sha/check-runs" --jq '[.check_runs[] | {name: .name, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+    fi
+
+    BFW_CHECKS="$checks_json" BFW_BASE_CHECKS="$base_checks_json" BFW_BASE_SHA="$base_sha" python3 -c "
+import json, os
+checks = json.loads(os.environ['BFW_CHECKS'] or '[]')
+base = json.loads(os.environ['BFW_BASE_CHECKS'] or '[]')
+base_fail = {c['name'] for c in base if c.get('conclusion') not in ('success', 'skipped', 'neutral', None)}
+failing = [c['name'] for c in checks if c.get('bucket') == 'fail']
+pending = [c['name'] for c in checks if c.get('bucket') == 'pending']
+pre_existing = [n for n in failing if n in base_fail]
+new = [n for n in failing if n not in base_fail]
+print(json.dumps({
+    # False unless every check is both present and terminal — never claim
+    # clean while something is still pending or the check list is empty.
+    'allPassing': len(failing) == 0 and len(pending) == 0 and len(checks) > 0,
+    'stillPending': pending,
+    'failingChecks': failing,
+    'preExistingAtMergeBase': pre_existing,
+    'newFailures': new,
+    'mergeBaseSha': os.environ.get('BFW_BASE_SHA', ''),
+}))
+"
     ;;
 
   unlock)
@@ -235,15 +571,23 @@ print(json.dumps({
       slug="$(state_field "$f" slug)"
       session_name="$(state_field "$f" sessionName)"
       if [ -n "$(agent_record "$id")" ]; then
-        printf '{"id":"%s","result":"resumable","repo":"%s","slug":"%s","sessionName":"%s"}\n' \
-          "$id" "$repo" "$slug" "$session_name"
+        result="resumable"
       else
         lock_path="$(state_field "$f" lockPath)"
         [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
         rm -f "$f"
-        printf '{"id":"%s","result":"orphaned_cleaned","repo":"%s","slug":"%s","sessionName":"%s"}\n' \
-          "$id" "$repo" "$slug" "$session_name"
+        result="orphaned_cleaned"
       fi
+      BFW_ID="$id" BFW_REPO="$repo" BFW_SLUG="$slug" BFW_SESSION_NAME="$session_name" BFW_RESULT="$result" python3 -c "
+import json, os
+print(json.dumps({
+    'id': os.environ['BFW_ID'],
+    'result': os.environ['BFW_RESULT'],
+    'repo': os.environ['BFW_REPO'],
+    'slug': os.environ['BFW_SLUG'],
+    'sessionName': os.environ['BFW_SESSION_NAME'],
+}))
+"
     done
     shopt -u nullglob
     [ "$found_any" = false ] && echo '{"result":"none"}'
