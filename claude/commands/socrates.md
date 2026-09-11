@@ -359,10 +359,10 @@ Decompose the plan into a dependency graph. For each task, identify blocks and p
 ### Per-Task Verification Budget
 
 Each task in the plan carries:
-- **Feedback signal** — the narrowest check that would catch a fault in that task's own deliverable (tier T1: changed-file/package tests, type-check on the diff, a targeted grep). Never the full suite; never a pointer to the final review.
+- **Feedback signal** — the narrowest check that would catch a fault in that task's own deliverable (tier V1: changed-file/package tests, type-check on the diff, a targeted grep). Never the full suite; never a pointer to the final review.
 - **Commit** — every task ends in its own commit. This, not suite breadth, is what preserves attribution when the branch-level gate later surfaces a fault.
 
-The full suite, full lint/type-check, and the whole-branch review run **once**, after the last task — not between tasks. See the `methodology` skill's Verification Rigor Tiers and `CLAUDE.md`'s Proportional Verification, including the trip-wire that promotes remaining tasks to full-suite checks when evidence justifies it.
+The full suite, full lint/type-check, and the whole-branch review run **once**, after the last task — not between tasks. A *bounded* review of the diff since the last checkpoint does run at each wave boundary (V3a): review is the only thing that reliably detects the faults this codebase actually produces, so review cadence — not test breadth — is what keeps a fault from compounding across the plan. See the `methodology` skill's Verification Rigor Tiers and `CLAUDE.md`'s Proportional Verification, including the trip-wire that promotes remaining tasks to full-suite checks when evidence justifies it.
 
 ### Execution Recommendation
 

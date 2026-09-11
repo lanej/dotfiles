@@ -246,7 +246,7 @@ Rules:
 - A task that depends on another must be sequenced after it, even if the dependency is indirect
 - Circular dependencies are a planning failure — surface them and return to Stage 3
 - A task's `Feedback signal:` must name a check specific to that task's own deliverable — never a pointer to the final whole-plan review
-- It must be the *narrowest* such check (tier T1, see the `methodology` skill's Verification Rigor Tiers). A full-suite run is not a valid per-task Feedback signal: the full suite is a branch-level gate (T2) that runs once, in Stage 6. Widening a per-task signal does not catch cross-task faults — only the Stage 6 whole-branch review does
+- It must be the *narrowest* such check (tier V1, see the `methodology` skill's Verification Rigor Tiers). A full-suite run is not a valid per-task Feedback signal: the full suite is a branch-level gate (V2) that runs once, in Stage 6. Widening a per-task signal does not catch cross-task faults — only the Stage 6 whole-branch review does
 - Every task ends in its own commit. That, not suite breadth, is what preserves attribution when Stage 6 surfaces a fault
 
 Planning may not:
@@ -265,20 +265,28 @@ Recommend invoking `Workflow` directly (author a script matching Stage 4's task 
 
 Otherwise use `/subagent-driven-development` to execute sequentially following Stage 4's dependency order. Never use inline execution.
 
+**Wave review checkpoint (V3a).** At each wave boundary in Stage 4's graph — after the last task of a parallel wave completes, or after each task in a fully sequential plan's natural grouping — dispatch a review agent over **only the diff since the last checkpoint**, briefed with the `methodology` skill's Review Fault Classes. Do not re-review the whole branch here; that is Stage 6's job and its cost grows with the branch, while this one stays bounded.
+
+This is the cadence lever on compounding. Per-task tests do not catch the faults that actually occur in this codebase — review does — so a fault introduced in wave 1 goes undetected until Stage 6 unless something reviews wave 1 when it lands. A wave-boundary checkpoint also keeps attribution tight: a finding traces to the two or three tasks in that wave, not to a forty-file branch diff.
+
+Fix wave-review findings before starting the next wave. A finding carried forward is the compounding case this checkpoint exists to prevent.
+
 ### Stage 6 — Verification
 
-Runs **once**, after the last task — not between tasks. Three steps in order, each gating the next:
+Runs **once**, after the last task. This is the *full-suite and whole-branch* pass — it does not run between tasks. (Incremental review does, at Stage 5's wave checkpoints; that is a different, bounded thing.) Three steps in order, each gating the next:
 
-1. **Branch gate (T2)** — full test suite, full lint/type-check, on the complete branch. First point in the flow where the whole suite runs.
-2. **Whole-branch review (T3)** — review agent over the complete diff against `spec.md`. This is the stage that catches what per-task checks structurally cannot: cross-task interaction faults, pattern-level bug classes, spec drift. Budget rigor here, not in Stages 4–5.
+1. **Branch gate (V2)** — full test suite, full lint/type-check, on the complete branch. First point in the flow where the whole suite runs.
+2. **Whole-branch review (V3b)** — review agent over the complete diff against `spec.md`. This is the stage that catches what per-task checks structurally cannot: cross-task interaction faults, pattern-level bug classes, spec drift. Budget rigor here, not in Stages 4–5.
 3. **`/verify`** — validate the spec's validation contract.
+
+Where the branch merges into a repo with CI, **V4** follows: poll the merged commit's own check-runs and classify against the pre-merge commit. A clean local V2 is not a CI pass — one audited fault was a task's own regression test passing locally and failing on main's post-merge CI.
 
 Goal:
 - validate true-positive completion
 - evaluate regression boundaries
 - detect silent failure
 
-If step 1 or 2 surfaces a fault a per-task `Feedback signal:` should have caught, the trip-wire in `CLAUDE.md` (Proportional Verification) applies to any remaining or follow-up work: promote per-task checks to T2 and say so.
+If step 1 or 2 surfaces a fault a per-task `Feedback signal:` should have caught, the trip-wire in `CLAUDE.md` (Proportional Verification) applies to any remaining or follow-up work: promote per-task checks to V2 and say so.
 
 ## Transition Rules
 
