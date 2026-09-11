@@ -1,6 +1,6 @@
 # The Dispatcher Model
 
-A design for keeping the main session a coordinator, not a worker.
+A proposed design for keeping the main session a coordinator. The ledger, pointer briefs, and freshness hook below are not implemented; only the receipt return contract has been adopted. The cycle estimates below are illustrative, distinct from the measured receipt-only results in `../evals/receipt-contract/RESULTS.md`.
 
 ## The measurement this is built on
 
