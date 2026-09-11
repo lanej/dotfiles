@@ -1,13 +1,13 @@
 ---
 description: "Interrogate a task through Socratic dialogue to produce a validated execution-ready specification, then enter plan mode"
-argument-hint: ["Task Title" (init) or empty (continue)]
+argument-hint: '"Task Title" (init) or empty (continue)'
 allowed-tools:
   - Read
   - Write
   - Edit
   - Glob
   - AskUserQuestion
-  - Task
+  - Agent
   - ExitPlanMode
   - EnterPlanMode
   - Bash(date:*)
