@@ -93,20 +93,13 @@ Surface "loop skipped" as its own failure category, distinct from "acceptance te
 
 ### Step 5 — Evaluate Harmony Cadence and Deferral
 
-Reading only spec.md's `## Commandment Scores` table (no conversation access needed):
+Audit spec.md's `## Commandment Scores` table and, for carry-forward rows, the available pass history:
 
-- Collect the set of distinct `Pass` numbers across all rows. Confirm a Harmony row exists for
-  every integer from 1 to `Current Pass`. Any gap is a cadence failure — Harmony was skipped on at
-  least one pass. A row reading `State: unchanged` / `Why: no spec mutation this pass` satisfies
-  this: it is the deliberate carry-forward for a pass that changed nothing, not a skipped
-  evaluation. It is a failure only if that pass did mutate spec content — check the pass's actual
-  edits before accepting a carry-forward row.
-- For every row with `Score < 70%`, confirm `Escalated: Yes` and a non-empty `Resolution`. Any
-  miss is a deferral-rule failure — a low-confidence score was recorded without ever being
-  surfaced to the user.
+- Confirm a Harmony row exists for every integer from 1 to `Current Pass`. Any gap is a cadence failure.
+- A row with `Why: no spec mutation this pass; carried from pass N` must preserve that earlier row's State, Score, Why not 100%, Escalated, and Resolution. Pass 1 must be a full evaluation. Check the recorded edits and new evidence before accepting a carry-forward; if that history is unavailable, report this check as unverifiable rather than assuming no change.
+- Evaluate the **most recent row per commandment**, not every historical row. Earlier low scores may be deliberately queued for a later dialogue pass and remain in the append-only history after resolution. A latest `Score < 70%` requires `Escalated: Yes` and an actual resolved `Resolution`; empty text, `—`, and `Pending — …` are unresolved. A low score still awaiting its question or answer is a deferral failure at verification time, even if a question was previously escalated.
 
-Both are self-contained checks against spec.md alone. Surface either failure as its own category,
-distinct from "acceptance test failed."
+Surface cadence and deferral failures separately from acceptance-test failures. The table establishes cadence and current resolution; proving that a carry-forward was justified also needs the pass history.
 
 ### Step 6 — Evaluate False Positive Risk
 
@@ -159,7 +152,7 @@ Structure:
 
 ## Harmony Cadence and Deferral
 [Does every pass 1..Current Pass have a Harmony row? Is each carry-forward row's pass genuinely
-free of spec mutation? Does every sub-70% row show Escalated: Yes with a non-empty Resolution?]
+free of spec mutation? Does each latest sub-70% assessment show Escalated: Yes and an actual resolved Resolution?]
 
 ## Failure Signals
 [Any triggered failure indicators]
