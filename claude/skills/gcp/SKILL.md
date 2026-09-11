@@ -73,6 +73,37 @@ gcloud config set project YOUR_PROJECT_ID
 
 The Vertex SDK picks up ADC automatically. No explicit token management needed for local development.
 
+**`gspace auth` and `gcloud auth application-default login` write the same on-disk ADC file**
+(`~/.config/gcloud/application_default_credentials.json`). If ADC is missing a specific scope
+(e.g. `sqlservice.login` for Cloud SQL IAM auth), widening `gspace`'s own requested-scope list and
+re-running its OAuth flow is a legitimate alternative to a raw `gcloud auth application-default
+login --scopes=...` re-auth — but only once the scope has actually been added to gspace's request
+list. Don't assume a narrow scope is covered just because the broad `cloud-platform` scope is
+already present; check `gspace_check_auth`'s actual scope list for the specific scope needed before
+relying on it. (detail: memory "reference_gspace_gcloud_shared_adc_credential")
+
+## Cloud SQL — Schema-Level Grants Don't Cascade to Tables
+
+`GRANT ALL PRIVILEGES ON SCHEMA public TO <role>` only grants `CREATE`/`USAGE` on the schema
+itself — it does **not** cascade to privileges on tables that already exist inside it. A role with
+this grant can still get `permission denied for table` on every DML statement against
+pre-existing tables.
+
+Compounding trap: Cloud SQL's `postgres`/`cloudsqlsuperuser` role is **not** a true Postgres
+superuser — it cannot `GRANT` on a table it doesn't own, even though it otherwise behaves like one.
+If migration DDL originally ran as a different IAM identity (e.g. a specific `user@domain.com`),
+that identity owns the tables, and only it (or a role it grants) can fix table-level access.
+
+**Fix:** connect as the actual table-owning IAM identity and run explicit table-level grants, plus
+default privileges so future tables inherit them automatically:
+
+```sql
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "<role>";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "<role>";
+```
+
+(detail: memory "reference_cloudsql_schema_grant_not_cascading_to_tables")
+
 ## Secret Manager — Env Var Injection Includes Raw Bytes
 
 When Cloud Run (or any GCP service) injects a Secret Manager secret as an environment variable, the raw bytes are used verbatim — including any trailing newline if the secret was stored with one.
@@ -202,7 +233,8 @@ Discovered self-hosting OSRM + Nominatim on Cloud Run (Jobs + Services, multi-co
 - **Multi-container tasks have three interacting resource caps**: total CPU across all containers in a task is capped at 8000 millicpu (a 6+1 vCPU split works, 8+1 doesn't); CPU must be a discrete value from a fixed set (`.08-1`, `1`, `2`, `4`, `6`, `8` — `7` is rejected); and there's a CPU-to-memory ratio ceiling (6 vCPU → max 24Gi, not simply "however much you asked for").
 - **`gcloud run jobs update`/`execute` flag ordering for multi-container jobs**: `--container <name>` must precede `--image <image>`; non-container-specific flags (`--async`) must precede `--container`, container-specific flags (`--update-env-vars`/`--args`) must follow it.
 - **A Cloud Run Job execution's `timeout` is fixed at launch from the job spec at that moment** — widening the Terraform-managed `timeout` field and re-applying does NOT retroactively extend an already-running execution, only future ones. A killed in-flight execution must be re-launched (ideally via the workload's own resume mechanism, if it has one), not just waited on longer after the config fix lands.
+- **`gcloud run jobs execute <job> --args=<value>` REPLACES the job's entire container `args` array** — it does not append to or override just one element. A job whose default `args` embeds a script/entrypoint path (e.g. `["path/to/main.ts", "refresh"]`, common for a `tsx`-run TypeScript job) loses that path entirely if you pass a bare subcommand override (`--args=migrate`) — the container then fails with something like `ERR_MODULE_NOT_FOUND: Cannot find module '/app/migrate'`. gcloud accepts the flag without any warning, so the failure only surfaces after the job's own cold start, in the execution's logs. **Fix:** read the job's actual default `args` (its Terraform/YAML spec, or `gcloud run jobs describe --format='value(spec.template.spec.template.spec.containers[0].args)'`) and pass the full array back, comma-separated: `--args="path/to/main.ts,migrate"`.
 
-(detail: memory "project_usps_route_cloudrun_multicontainer_gotchas")
+(detail: memory "project_usps_route_cloudrun_multicontainer_gotchas", "project_gcloud_run_jobs_args_full_array_gotcha")
 
 **Cloud Run does not redeploy on a bare image push.** Pushing a new `:latest` tag to Artifact Registry does not create a new revision — Cloud Run only redeploys when a `gcloud run deploy`/`jobs update` command actually runs with a resolved image reference. Prefer deploying by content digest (`@sha256:...`) over `:latest` — it makes "what's actually serving" independently verifiable (`gcloud run services describe --format='value(status.latestReadyRevision... image)'` compared against what was just pushed) rather than trusted on faith. If Terraform also manages the same resource with a floating-tag `image` value, expect `tofu plan` to show drift after any out-of-band digest deploy — that's expected divergence between two different deploy mechanisms touching the same field, not a misconfiguration to chase down.
