@@ -85,6 +85,11 @@ Delegating implementation mechanics does not accept uncertainty about the requir
 behavior. Do not label a detail `accepted-uncertainty` when it is merely delegated;
 use `resolved` for an explicit delegation, or `open` for a remaining detail with its
 non-consequential rationale. Neither disposition can conceal a consequential gap.
+Apply this distinction throughout the artifact, including Risks and Known Blind
+Spots. Do not call a limitation "accepted" or "out of scope per the user" unless
+their actual statement supports it. A speculative limitation may be labeled
+Assumed and assessed for consequence; it is not automatically a blocker or an
+accepted tradeoff merely because the template has a risk section.
 
 Keep current decisions concise. Before replacing a settled decision, preserve its
 old value, basis, and the reason for the change in `## Decision History`; mark the
@@ -241,3 +246,8 @@ adaptation does not reopen a supported frozen spec. If the new gate exposes a re
 gap or a decision must change, reopen once using the preserved original snapshot.
 Do not discard the session, ask the user to restate settled answers, or silently
 declare it ready on the strength of its old score.
+
+After adaptation and any necessary revalidation, return to the invoking command's
+endpoint: `/specify` stops at the validated spec, while `/socrates` immediately
+enters planning unless a matching later lifecycle state already exists. Legacy
+migration is not an exception to the normal handoff.

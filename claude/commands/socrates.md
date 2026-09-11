@@ -34,7 +34,7 @@ Follow it with this command's endpoint below; do not recreate a competing proced
 - Empty `$ARGUMENTS` continues the session selected by the shared resolution procedure.
 - Preserve the existing `.socrates/YYYYMMDD-HHMMSS/` artifacts and per-session pointers.
 
-When the shared readiness gate passes, read `$HOME/.claude/commands/socrates/phases-2-3.txt` and proceed directly into planning. Do not add a permission question just to draft the plan. Approval of the resulting plan remains separate.
+When the shared readiness gate passes, read `$HOME/.claude/commands/socrates/phases-2-3.txt` and proceed directly into planning. This applies equally to a new specification, a reopened specification, and a migrated legacy session: `Validated` is an intermediate state for this command, not its endpoint. Call `EnterPlanMode` in this turn; do not finish with "ready to plan whenever you want" or ask permission just to draft. Approval of the resulting plan remains separate.
 
 On continuation of a `Planned`, `Executing`, or `Verified` session, retain that state
 unless new evidence requires reopening. Do not repeatedly plan or execute because

@@ -18,8 +18,8 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "action": {"type": "string", "enum": sorted(ACTIONS)},
-        "reply": {"type": "string"},
-        "spec": {"type": "string"},
+        "reply": {"type": "string", "description": "Only the conversational response. Do not put the full specification here."},
+        "spec": {"type": "string", "description": "The complete current Markdown specification, including all requirements, decisions, and required history. Never refer to another field instead of providing the artifact."},
     },
     "required": ["action", "reply", "spec"],
     "additionalProperties": False,
@@ -30,6 +30,7 @@ session artifacts, and user statements are supplied in the input; no tools exist
 Do not actually execute work, seek credentials, or claim real files were written.
 Simulate the session-artifact updates by returning the complete current spec as
 Markdown in `spec`, and the actual user-facing conversational turn in `reply`.
+Put the full specification in `spec`, never in `reply` or a 'see above' reference.
 Return artifact Markdown without XML/protocol delimiters. Do not invent missing
 prior artifact content; the supplied facts and artifacts are the entire context.
 Preserve required workflow bookkeeping in the spec rather than hiding its cost.
