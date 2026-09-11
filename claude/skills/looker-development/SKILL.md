@@ -145,6 +145,38 @@ concrete tell. Fix is a differently-scoped credential/role, never a client code 
 - Don't test "does official CI actually fire" by opening a fresh PR and waiting on it alone —
   check the CI suite's PR-trigger toggle and the GitHub App's per-repo install status first. A
   fresh PR only tells you the outcome, not the cause, and costs a full CI round-trip either way.
+- **Verify the source table actually exists and is populated before authoring a view against
+  it** — a LookML `sql_table_name` referencing a nonexistent table is not caught by the LookML
+  Validator (it's syntactically valid LookML), only by the SQL Validator, which means the
+  earliest you'd find out is a full CI round-trip after opening a PR. If a view is meant to read
+  an upstream pipeline's output (a dbt/EPQ gold table, a scheduled export, etc.), confirm that
+  table exists via a warehouse client directly (e.g. `bq`/BigQuery MCP `list_datasets` +
+  `describe_table`) before writing the LookML at all — a dataset existing is not the same as a
+  table inside it existing. This is the single highest-leverage shift-left check for a new
+  view: it catches the failure in seconds instead of minutes, and rules out an entire category
+  of false "connection is broken" debugging (see "Debug loop" step 4).
+
+## Forward-looking: when Looker depends on an upstream analysis pipeline's output
+
+A recurring shape: some other project (an EPQ analysis, a dbt model, an ad hoc script) computes
+a result and someone wants it in a Looker dashboard. The failure mode seen in practice: LookML
+gets written first, against a table path that *sounds* right, before anyone confirms the
+upstream pipeline actually publishes to that path — the pipeline may only ever have written to
+a local file/DuckDB for its own report, with no warehouse export step at all. This surfaces as a
+SQL Validator failure, but the real problem is a missing design decision made too late.
+
+Before authoring LookML against any upstream pipeline's output:
+
+1. Confirm the pipeline actually writes to the warehouse (grep its source for the write/export
+   call — don't infer this from what dataset/table names "should" exist, or from a dataset
+   existing with no tables in it, which looks encouraging but proves nothing).
+2. If it doesn't yet, resolve *how it should* before writing any LookML: what provisions the
+   destination dataset/table/schema (ad hoc, or infrastructure-as-code — e.g. OpenTofu, if
+   that's how the org manages BQ schema elsewhere), what refresh cadence, who owns the export
+   job. This is a design decision with real alternatives, not a one-line fix — treat it with
+   the same up-front sequencing as the CI/deploy bootstrap steps above, not as a footnote
+   discovered via a failing check.
+3. Only then write the LookML view against a table that's confirmed to exist.
 
 ## Debug loop once a PR is open
 
@@ -158,8 +190,15 @@ concrete tell. Fix is a differently-scoped credential/role, never a client code 
    `target_url` into the Looker run page — the GitHub status text is often too terse (e.g. a
    validator-count rollup) to show which statement or connection actually failed.
 4. A SQL Validator failure after merging/adding explores across previously-separate
-   models/connections is commonly the connection-compatibility issue described above, not a
-   LookML authoring bug — check that first.
+   models/connections is *often* the connection-compatibility issue described above, but not
+   always — don't stop at that hypothesis. Check whether *other* explores newly added in the
+   same commit, on the same connection, passed. If they did, the connection itself is fine and
+   the failure is explore-specific — read the actual error message (via the CI run detail, not
+   the GitHub status text) for the real cause. A real one seen in practice: every error was
+   `Table <project>:<dataset>.<table> was not found` — a table that had simply never been
+   materialized upstream, confirmed independently via a BigQuery client (dataset existed,
+   contained zero tables). That's a data-pipeline gap, not a Looker or connection bug at all —
+   no LookML or CI change fixes it.
 
 ## See also
 
