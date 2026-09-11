@@ -1,0 +1,46 @@
+name: Claude tmux idle cleanup
+
+on:
+  pull_request:
+    paths:
+      - 'bin/claude-tmux-later*'
+      - '.claude/settings.json'
+      - 'claude/tmux-later.json'
+      - 'Makefile'
+      - '.github/workflows/claude-tmux-later.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bin/claude-tmux-later*'
+      - '.claude/settings.json'
+      - 'claude/tmux-later.json'
+      - 'Makefile'
+      - '.github/workflows/claude-tmux-later.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install tmux on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tmux
+      - name: Install tmux on macOS
+        if: runner.os == 'macOS'
+        run: command -v tmux || brew install tmux
+      - run: python -m pip install pytest
+      - name: Unit and isolated live-tmux tests
+        run: python -m pytest -v bin/*_test.py
+        env:
+          REQUIRE_TMUX_TESTS: '1'

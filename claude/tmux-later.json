@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "archive_seconds": 3600,
+  "close_seconds": 86400,
+  "poll_seconds": 60,
+  "later_session": "later",
+  "dry_run": false
+}
