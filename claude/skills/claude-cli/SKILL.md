@@ -12,8 +12,8 @@ covers the flags that matter for scripting and the configuration shapes that are
 
 ```bash
 claude -p "summarize errors in app.log"
-claude -p --output-format json "count TODO comments" | jq -r '.response'
-claude -p --output-format stream-json "long task"      # incremental
+claude -p "count TODO comments" --output-format json | jq -r '.result'
+claude -p "long task" --output-format stream-json --verbose  # incremental
 claude -p --fallback-model haiku "analyze this"        # print mode only
 ```
 
@@ -38,12 +38,16 @@ stale and silently fail or resolve to something unintended.
 ## Tool and permission control
 
 ```bash
-claude --allowed-tools "Bash(git:*)" -p "show recent commits"
-claude --disallowed-tools "Bash(rm:*)" "Bash(mv:*)" "clean project"
+claude -p "show recent commits" --allowed-tools "Bash(git:*)"
+claude -p "clean project" --disallowed-tools "Bash(rm:*)" "Bash(mv:*)"
 claude --permission-mode acceptEdits|plan|bypassPermissions|default
 ```
 
 `--dangerously-skip-permissions` skips every check — sandboxes only.
+
+Put the prompt before variadic tool flags so it is not consumed as another tool name.
+`--allowed-tools` pre-approves matching calls; it is not a tool-availability sandbox.
+Output fields and streaming flags: <https://code.claude.com/docs/en/headless>.
 
 ## MCP configuration
 
