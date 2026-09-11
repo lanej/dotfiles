@@ -1,0 +1,18 @@
+{
+  "comparison_valid": true,
+  "models": [
+    "claude-sonnet-5[1m]"
+  ],
+  "infrastructure_errors": 0,
+  "manual_review": "pending: inspect questions and specs against scenario rubrics",
+  "arms": {
+    "old": {
+      "completed": 8,
+      "mechanical_passes": 5
+    },
+    "new": {
+      "completed": 8,
+      "mechanical_passes": 6
+    }
+  }
+}

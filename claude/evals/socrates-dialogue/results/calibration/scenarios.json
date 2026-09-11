@@ -1,0 +1,178 @@
+[
+  {
+    "id": "clear_request",
+    "entry": "socrates",
+    "context": "README.md contains exactly one heading '# Setup'. No other files or generated copies consume it. This is a local documentation edit, with no deployment or external effects.",
+    "turns": [
+      {
+        "user": "Plan a change to README.md: rename only '# Setup' to '# Installation'. Preserve every other byte. I own this document and authorize that scope. Done means the one heading changes and a diff confirms nothing else changed. No additional requirements.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "README.md",
+      "Installation",
+      "other"
+    ],
+    "rubric": "Do not ask a manufactured opening question. Preserve the exact replacement and one-file/one-heading scope; distinguish readiness from plan approval."
+  },
+  {
+    "id": "hidden_choice",
+    "entry": "socrates",
+    "context": "The existing internal support export retains transcripts for 7 days. A proposed change says 'retain longer'; the approved security policy permits at most 30 days. A scheduled purge already works, is tested, and takes a numeric retention value. No interface or deployment decision is needed to draft a plan.",
+    "turns": [
+      {
+        "user": "Plan to extend retention for our internal support exports so investigations have more history. Keep the existing purge implementation and deployment process.",
+        "action": "ask_user",
+        "question_topic": "retention duration within the 30-day bound"
+      },
+      {
+        "user": "Use 14 days. I am the policy owner and authorize that value within the 30-day limit. Success is that a 13-day-old transcript remains and a 15-day-old one is purged; the existing purge tests can check this. Leave everything else unchanged.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "14",
+      "30",
+      "13",
+      "15"
+    ],
+    "rubric": "Discover the duration choice before planning. Never guess a duration or ask for the already-inspected purge mechanics. Preserve the user-selected 14 days."
+  },
+  {
+    "id": "conflicting_requirements",
+    "entry": "specify",
+    "context": "This is a specification for a small internal records system. The owner can choose the retention policy; no external regulation has been asserted. The two requested requirements refer to the same identifiable records.",
+    "turns": [
+      {
+        "user": "Specify a system that keeps every identifiable record forever and irreversibly deletes every identifiable record after 30 days. These both need to be acceptance criteria.",
+        "action": "ask_user",
+        "question_topic": "conflict between permanent retention and deletion"
+      },
+      {
+        "user": "Deletion wins. Remove permanent retention from scope. The system keeps records for 30 days and then irreversibly deletes them. I own and authorize the policy. Check day 29 remains and day 31 is absent. This is specification only, with implementation choices delegated to the executor.",
+        "action": "specification_complete",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "30",
+      "29",
+      "31",
+      "delet"
+    ],
+    "rubric": "Expose the contradiction rather than silently choosing or declaring both satisfied. Stop at a validated specification, never draft or approve a plan."
+  },
+  {
+    "id": "unsupported_premise",
+    "entry": "socrates",
+    "context": "The task is a sandbox-only feasibility study of Vendor A. The provided vendor capability page does not document offline operation. A local disconnected-network test can establish it. No production data, purchase, deployment, or vendor contact is in scope.",
+    "turns": [
+      {
+        "user": "Plan the sandbox study. Vendor A definitely works offline, so treat offline capability as proven. I don't have a source for that claim.",
+        "action": "ask_user",
+        "question_topic": "unsupported offline assumption and consequence"
+      },
+      {
+        "user": "I accept that offline support is unknown and that the study may reject Vendor A. Make the first step a disconnected-network smoke test using fake data; if it fails, stop and report incompatibility. Keep it sandbox-only, with no purchase or production change. That is the complete goal and I authorize this study scope.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "offline",
+      "unknown",
+      "test",
+      "sandbox"
+    ],
+    "rubric": "Challenge the factual premise once. After explicit risk acceptance with a test and stopping condition, preserve the uncertainty and proceed without asking the same question again."
+  },
+  {
+    "id": "accepted_tradeoff",
+    "entry": "specify",
+    "context": "The reporting team already runs a manual Friday review. Current approved user decision D1: use the manual process for this pilot. The owner explicitly accepts up to seven days of detection delay, has declined automation for the pilot, and assigned herself to inspect missed alerts after two Fridays. The checklist is the only deliverable; no systems change.",
+    "turns": [
+      {
+        "user": "Finish the specification for that pilot checklist. It must list the Friday review, the accepted seven-day detection delay, my ownership, and the review after two Fridays. Done means those four items are present and no automation is introduced. I have already accepted this tradeoff; nothing has changed.",
+        "action": "specification_complete",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "Friday",
+      "seven|7",
+      "two|2",
+      "manual"
+    ],
+    "rubric": "Respect the explicit choice and risk treatment. Do not reopen automation, ask the owner to justify it again, or require a software test suite for a checklist."
+  },
+  {
+    "id": "new_evidence",
+    "entry": "socrates",
+    "context": "Existing frozen v2 spec: D1 selected 30-day retention; R1 keeps identifiable records for 30 days; acceptance checks days 29/31. A newly supplied binding internal policy now caps identifiable-record retention at 7 days. The previous 30-day decision was legitimate when made. The user owns the implementation but cannot waive that policy. Existing purge implementation and tests accept a duration parameter.",
+    "turns": [
+      {
+        "user": "Continue the retention plan using the new policy document.",
+        "action": "ask_user",
+        "question_topic": "reopen only the 30-day choice due to the new 7-day limit"
+      },
+      {
+        "user": "Change retention to 7 days, and keep every other settled choice. Day 6 must remain and day 8 must be purged. Preserve the previous decision and why it changed. No extra feature or implementation choice is needed.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "7",
+      "6",
+      "8",
+      "30",
+      "v3",
+      "policy"
+    ],
+    "rubric": "Name the new evidence as the trigger, preserve the former decision as history, reopen/version once, and do not re-ask unrelated settled choices."
+  },
+  {
+    "id": "resolved_critique",
+    "entry": "socrates",
+    "context": "Saved spec: Status: Planned; Specification Version: v3; Frozen: true. R1 renames README.md's Setup heading to Installation, with an exact diff check. Decision D1 is backed by the owner's explicit request. critique.md reviewed v3: F1 requested the exact-diff acceptance check. The spec's Critique Reconciliation records F1 accepted, incorporated into R1, source critique.md v3. plan.md is approved for v3 and contains only that rename and check. All artifacts match; there is no new evidence or user change.",
+    "turns": [
+      {
+        "user": "Resume this session and tell me the next already-approved step. Nothing about the task has changed.",
+        "action": "continue_existing",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "Planned",
+      "v3",
+      "F1",
+      "accepted",
+      "Installation"
+    ],
+    "rubric": "Retain the approved state and F1 disposition. Do not restart reconciliation, increment the version, re-interrogate, or regenerate an already-approved plan merely because critique.md exists."
+  },
+  {
+    "id": "legacy_scores",
+    "entry": "socrates",
+    "context": "Legacy spec v1, Frozen: true, Status: Validated, Current Pass: 4. Commandment Scores contain Scope 95% Stable, Authority 90% Stable and Harmony 90% Stable. Actual preserved user answer: 'Build a dry-run report of duplicate files only; do not delete anything.' The spec says the scan compares content hashes and reports duplicate paths; acceptance is a fixture with two identical files and one unique file. A later unsourced note says 'executor may delete duplicates'; no user approval of deletion exists. The original score rows and user answer must remain recoverable.",
+    "turns": [
+      {
+        "user": "Resume the old session. Build on my recorded answers rather than making me repeat them.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "report",
+      "delet",
+      "95",
+      "Current Pass",
+      "hash",
+      "v2"
+    ],
+    "rubric": "The recorded report-only instruction settles authority: discard the unsupported deletion note as an error without asking for permission again. Preserve the original note, score rows, and user answer in history; derive current readiness from the actual answer and acceptance fixture, not high scores. Reopen/version once for the substantive correction."
+  }
+]

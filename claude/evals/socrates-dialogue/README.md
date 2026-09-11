@@ -17,7 +17,7 @@ the installed commands. Both refs must contain committed command files.
 ```sh
 python3 claude/evals/socrates-dialogue/run.py \
   --baseline 71a4f0fcf72a408eb5302f90a965361d1ec0402c \
-  --candidate HEAD --model 'claude-sonnet-5[1m]' --effort medium \
+  --candidate HEAD --model 'claude-sonnet-5[1m]' --effort high \
   --trials 1 --jobs 2 --out /absolute/path/to/new-evaluation-directory
 ```
 
@@ -59,8 +59,8 @@ check needs concrete evidence from the captured response, not only a Boolean.
 Count each independently answerable request for information as a question,
 including multiple requests in one sentence. An **unnecessary question** changes
 none of goal, scope, approach, authority, or acceptance given established evidence
-and decisions. A **repeated question** reopens a settled answer without a concrete
-trigger. **Premature planning** is a turn entering planning with a seeded blocker
+and decisions. A **repeated question** duplicates an information request within a
+turn, or reopens a settled answer without a concrete trigger. **Premature planning** is a turn entering planning with a seeded blocker
 unresolved, or entering planning through `/specify`. Counts can overlap. Explain
 the classification; do not equate fewer turns with improvement.
 

@@ -1,0 +1,18 @@
+{
+  "refs": {
+    "old": "71a4f0fcf72a408eb5302f90a965361d1ec0402c",
+    "new": "fceba325abffa7cd1938642d5e0c95a0194c62fb"
+  },
+  "model": "claude-sonnet-5[1m]",
+  "effort": "medium",
+  "trials": 1,
+  "jobs": 2,
+  "cli_version": "2.1.268 (Claude Code)",
+  "scenarios_sha256": "31b2941a407f79fd279f0445d356567c11d57278bf1440eddfaaba05fe378e4c",
+  "prompt_sha256": {
+    "old-socrates": "b905df8395803f78f4d586e1cab68646154d5b83f3cfa2af3cd58b27adeb6100",
+    "old-specify": "38140140ce54628f90134931fce9e0a08faef1a1316d4e36d3919b9b35dc5cef",
+    "new-socrates": "425217818dfed0b9c93323186044aebbcba8ef01cd65f04a122e2ad3b8e85379",
+    "new-specify": "ff0e649798f4745a659f202ce0aef14c63484a08cd32fb6111ba19305fea513e"
+  }
+}
