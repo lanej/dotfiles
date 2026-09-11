@@ -136,8 +136,17 @@ def run_case(arm, ref, scenario, trial, args, system_prompt):
                   "elapsed_seconds": round(time.monotonic() - start, 2),
                   "manual_review": "pending"}
     except (OSError, ValueError, KeyError, RuntimeError, subprocess.TimeoutExpired) as error:
+        if isinstance(error, subprocess.TimeoutExpired):
+            for stream, value in (("stdout.json", error.stdout), ("stderr.txt", error.stderr)):
+                if value is not None:
+                    if isinstance(value, bytes):
+                        value = value.decode(errors="replace")
+                    (folder / f"turn-{index + 1}.{stream}").write_text(value)
+            message = f"CLI timed out after {args.timeout} seconds; inspect captured output"
+        else:
+            message = str(error)
         record = {"arm": arm, "ref": ref, "scenario": scenario["id"], "trial": trial,
-                  "error": str(error), "responses": responses}
+                  "error": message, "responses": responses}
     (folder / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False))
     return record
 
@@ -167,7 +176,7 @@ def main():
     parser.add_argument("--effort", default="medium", choices=["low", "medium", "high", "xhigh", "max"])
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--jobs", type=int, default=2)
-    parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument("--timeout", type=int, default=360)
     parser.add_argument("--claude", default="claude")
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()

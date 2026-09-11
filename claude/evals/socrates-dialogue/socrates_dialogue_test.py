@@ -114,6 +114,18 @@ def test_failed_process_keeps_diagnostics_but_no_success(tmp_path):
     assert "mechanical_failures" not in result
 
 
+def test_timeout_keeps_partial_output_without_dumping_the_command(tmp_path):
+    args = SimpleNamespace(out=tmp_path, claude="stub", model="fixture-model", effort="high", timeout=1)
+    scenario = {"id": "case", "entry": "specify", "context": "", "turns": [{"user": "Hi"}]}
+    error = app.subprocess.TimeoutExpired(["stub", "private prompt"], 1, output=b"partial", stderr=b"late")
+    with patch.object(app.subprocess, "run", side_effect=error):
+        result = app.run_case("old", "sha", scenario, 1, args, "workflow")
+    assert "timed out" in result["error"] and "private prompt" not in result["error"]
+    assert (tmp_path / "old-case-1/turn-1.stdout.json").read_text() == "partial"
+    assert (tmp_path / "old-case-1/turn-1.stderr.txt").read_text() == "late"
+    assert "mechanical_failures" not in result
+
+
 def test_scenario_coverage_and_expected_endpoints():
     scenarios = json.loads((HERE / "scenarios.json").read_text())
     assert len(scenarios) == len({s["id"] for s in scenarios}) == 8

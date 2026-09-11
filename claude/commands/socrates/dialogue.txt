@@ -135,6 +135,11 @@ every turn. Questions are not decisions until answered.
 7. **Respect closure.** Reopen a settled decision only for new evidence, a concrete
    contradiction, or changed scope. State that trigger and exactly which decision
    it affects. Resume from open decisions; a restart is not a reason to ask again.
+   A new constraint is not itself the replacement decision. For example, a new
+   maximum of 7 days invalidates a settled 30-day retention value but permits many
+   new values. Ask for the new target if choosing it remains the user's authority;
+   do not silently choose the maximum or invent its acceptance tests. Derive an
+   exact replacement only when the stated goal entails it or selection was delegated.
 8. **Check readiness.** Continue as long as consequential ambiguity remains. There
    is no minimum, maximum, or target question count. Do not infer readiness from
    user impatience; explain the remaining blocker concisely or record a genuinely
@@ -255,6 +260,14 @@ adaptation does not reopen a supported frozen spec. If the new gate exposes a re
 gap or a decision must change, reopen once using the preserved original snapshot.
 Do not discard the session, ask the user to restate settled answers, or silently
 declare it ready on the strength of its old score.
+
+Correcting a contradiction or erroneous authority statement in a frozen spec is a
+substantive artifact change and **must** reopen/version once, even if the correct
+answer is already recorded and no new user decision is needed. For example,
+rejecting an unsourced note permitting deletion against a recorded report-only
+instruction changes the frozen artifact from contradictory to coherent: preserve
+v1 and freeze the corrected record as v2. Metadata-only adaptation is limited to
+adding the evidence format when no such correction is required.
 
 After adaptation and any necessary revalidation, return to the invoking command's
 endpoint: `/specify` stops at the validated spec, while `/socrates` immediately
