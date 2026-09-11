@@ -1,12 +1,14 @@
 ---
 description: "Verify execution results against a Socrates validation contract"
-argument-hint: [artifact path, task output, or empty]
+argument-hint: "artifact path, task output, or empty"
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash(cat:*)
-  - Task
+  - Bash(date:*)
+  - Bash(mkdir:*)
+  - Agent
   - Bash(find:*)
   - Bash(printenv:*)
   - Bash(sort:*)
@@ -40,15 +42,23 @@ A task is only a true positive if:
 
 ## Inputs
 
-If `$ARGUMENTS` is empty:
-1. `printenv CLAUDE_CODE_SESSION_ID`. If `.socrates/.current-$CLAUDE_CODE_SESSION_ID` exists and `find .socrates/<its TIMESTAMP> -maxdepth 0 -type d` confirms that directory still exists, use it as the active session directory. Otherwise: `find .socrates -maxdepth 1 -mindepth 1 -type d | wc -l` — if exactly 1, use it as the active session directory and `printenv CLAUDE_PID`; write `.socrates/.current-$CLAUDE_CODE_SESSION_ID` containing `TIMESTAMP:PID` for it (claiming it, since no Claude session owned it yet). If more than 1, stop and tell the user: "multiple `.socrates` sessions exist and none is bound to this Claude session — run `/socrates` first, or pass a specific artifact/execution output as `$ARGUMENTS`."
-2. Read `.socrates/<active-session>/spec.md`.
-3. Write verification output to `.socrates/<active-session>/verification.md`.
+Read `$HOME/.claude/commands/socrates/dialogue.txt` for the canonical session,
+evidence, and readiness contract. With no arguments use its resolver, without
+running its interview. For an explicit execution artifact, resolve its associated
+spec using an explicit session/version reference; if the match is ambiguous, ask
+which spec rather than guessing from proximity or recency. Do not reconstruct a
+missing companion; name the file and the `make claude` link remedy.
 
-If `$ARGUMENTS` is provided:
-1. Read the provided artifact or execution output.
-2. Resolve the nearest matching Socrates `spec.md` if possible.
-3. Write verification output next to the resolved specification as `verification.md`.
+Read the spec, decision and reconciliation records, the approved plan, and execution
+evidence. Record the specification version and artifact/commit being verified. An
+old plan or result is evidence only for the version/content it actually covers;
+inspect relevance after reopening instead of inheriting its approval or success.
+
+Write `verification.md` beside the resolved spec. Preserve a previous report in a
+new non-overwriting timestamped `history/` file before replacing it. Verification
+must not silently migrate a legacy spec or rewrite its decisions: evaluate the
+actual recorded evidence, flag unresolved gaps, and leave adaptation to the shared
+Socrates procedure.
 
 ## Verification Procedure
 
@@ -84,22 +94,34 @@ Determine:
 - whether the spec's Feedback Loop Design (signal, cost/cadence, fallback) was actually invoked during execution
 - whether plan.md's per-task `Feedback signal:` entries (if present) were actually run, not just written
 - if not invoked, whether that's a spec gap (no Feedback Loop Design was ever specified) or an execution gap (designed but skipped)
-- whether the **branch-level gate** ran once after the last task (full suite + full lint/type-check) — per-task signals are deliberately scoped (tier V1) and do not substitute for it. A run of per-task signals with no branch gate is an execution gap, not a pass
+- for engineering execution, whether the **branch-level gate** ran on the final code after the last task and any review fixes (full suite + full lint/type-check) — per-task signals are deliberately scoped (tier V1) and do not substitute for it. A run of per-task signals with no branch gate is an execution gap, not a pass
 - whether any escalation trip-wire fired during execution (see `CLAUDE.md`, Proportional Verification) and, if so, whether remaining tasks were actually promoted to full-suite checks
 - whether a **wave review (V3a)** ran at each dependency-graph wave boundary, and whether its findings were fixed before the next wave started rather than carried forward — a carried-forward finding is the compounding case the checkpoint exists to prevent
 - whether each review dispatch was briefed with the `methodology` skill's Review Fault Classes, or was an unguided "review this diff"
 
-Surface "loop skipped" as its own failure category, distinct from "acceptance test failed."
+For writing, analysis, or other non-code work, apply the equivalent checks actually specified in the validation contract; do not invent a software suite or dependency graph. Surface "loop skipped" separately from "acceptance test failed."
 
-### Step 5 — Evaluate Harmony Cadence and Deferral
+### Step 5 — Evaluate Decisions and Readiness
 
-Audit spec.md's `## Commandment Scores` table and, for carry-forward rows, the available pass history:
+Apply `dialogue.txt`'s readiness gate to the current specification and decision
+record. Check that accepted decisions survive in the delivered result, each
+requirement has observable acceptance evidence, and no blocking contradiction or
+undelegated consequential choice was silently made during execution.
 
-- Confirm a Harmony row exists for every integer from 1 to `Current Pass`. Any gap is a cadence failure.
-- A row with `Why: no spec mutation this pass; carried from pass N` must preserve that earlier row's State, Score, Why not 100%, Escalated, and Resolution. Pass 1 must be a full evaluation. Check the recorded edits and new evidence before accepting a carry-forward; if that history is unavailable, report this check as unverifiable rather than assuming no change.
-- Evaluate the **most recent row per commandment**, not every historical row. Earlier low scores may be deliberately queued for a later dialogue pass and remain in the append-only history after resolution. A latest `Score < 70%` requires `Escalated: Yes` and an actual resolved `Resolution`; empty text, `—`, and `Pending — …` are unresolved. A low score still awaiting its question or answer is a deferral failure at verification time, even if a question was previously escalated.
+For accepted uncertainty, locate the actual user acceptance, its implications, and
+the promised check. Determine whether that check ran when due and whether its
+result requires reopening. A scheduled future check can remain a named limitation;
+it cannot support a present-tense claim that its unknown outcome already passed.
 
-Surface cadence and deferral failures separately from acceptance-test failures. The table establishes cadence and current resolution; proving that a carry-forward was justified also needs the pass history.
+Check critique dispositions against the actual incorporated changes or recorded
+rejection/deferral rationale. A disposed finding needs a new concrete trigger to
+reopen. Legacy confidence scores, `Escalated: Yes`, and an old `Frozen: true` header
+alone are not evidence of a resolved decision. Missing evidence is unverifiable,
+not success; no percentage threshold or per-pass cadence audit applies.
+
+Report decision drift, unresolved blockers, and unverifiable acceptance separately
+from acceptance-test failures. Do not start a new interview for already settled
+choices just to complete this audit.
 
 ### Step 6 — Evaluate False Positive Risk
 
@@ -135,6 +157,9 @@ Structure:
 ```markdown
 # Verification Result
 
+Specification Version: vN
+Verified Artifact / Commit: <exact target>
+
 ## Classification
 [VERIFIED | PARTIALLY VERIFIED | UNVERIFIABLE | FAILED]
 
@@ -150,9 +175,9 @@ Structure:
 ## Feedback Loop Design Usage
 [Was the designed in-progress signal actually invoked? Spec gap or execution gap if not?]
 
-## Harmony Cadence and Deferral
-[Does every pass 1..Current Pass have a Harmony row? Is each carry-forward row's pass genuinely
-free of spec mutation? Does each latest sub-70% assessment show Escalated: Yes and an actual resolved Resolution?]
+## Decisions and Readiness
+[Were settled choices preserved? Are blockers resolved, critique findings disposed,
+and accepted uncertainties backed by user acceptance and the promised checks?]
 
 ## Failure Signals
 [Any triggered failure indicators]

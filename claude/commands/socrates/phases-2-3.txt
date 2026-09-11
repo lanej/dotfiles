@@ -1,69 +1,13 @@
-# /socrates — Phases 2 and 3
+# /socrates — Validation and Planning Handoff
 
-Loaded on demand by `socrates.md`. Markdown content in a `.txt` file so Claude Code's
-command scanner doesn't register it as a slash command.
-
-## Phase 2 — Validation and Layered Reasoning
-
-Triggered when all applicable commandments are **stable** or explicitly accepted as **fragile**, and the spec's `Ambiguities → Blocking` section is empty. Non-blocking and intentional ambiguities do not gate.
-
-A specification is not execution-ready until success conditions exist, there's a defined method to verify them, there's a strategy to detect regressions or silent failure, scope/constraints/authority boundaries are explicit, and remaining ambiguities are classified as blocking, non-blocking, or intentional.
-
-Synthesize the spec into an explicit reasoning chain, each layer derived from the one below it. Present this chain before entering plan mode so the grounding is visible and challengeable.
-
-```
-Layer 1 — Problem
-  [One-sentence statement of what is broken or missing, and why it matters now.]
-
-Layer 2 — Requirements
-  [What must be true. Derived from Layer 1. Each prefixed with "shall".]
-  Challenged by: [what would make these requirements wrong]
-
-Layer 3 — Constraints
-  [What limits the solution space. Bounds Layers 2 and 4.]
-
-Layer 4 — Risks
-  [Top assumptions whose failure would invalidate Layers 1–3.]
-
-Layer 5 — Success
-  [Measurable criteria that confirm Layer 1 is resolved within Layer 3.]
-  False positive guard: [what would look successful but be wrong]
-  False negative guard: [what missing work/context would make the result incomplete]
-
-Layer 6 — Validation
-  Acceptance tests: [how success will be verified]
-  Regression checks: [what must continue working after completion]
-  Failure signals: [what indicates incomplete or incorrect execution]
-  Verification method: [automated | manual | observational | comparative | statistical]
-  Feedback Loop Design: [cheapest fault-localizing signal, its cost/cadence, fallback if no fast signal exists, and the escalation trigger that widens it]
-
-Layer 7 — Execution Readiness
-  [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
-```
-
-If any layer doesn't hold under scrutiny, return to interrogation for that layer before proceeding.
-
-### Specification Freeze
-
-When commandment states are stable or explicitly accepted as fragile, validation semantics exist, Feedback Loop Design is populated for at least the load-bearing requirements (not `_[open]_`), ambiguity is bounded, execution readiness is explicit, and the most recent Commandment Scores row for every commandment has either `Score >= 70%` or a resolved `Resolution` (not `—`, not `Pending — …`):
-
-- set status to `Validated` and freeze the specification. `Specification Version` is *stamped*, not bumped here — it keeps whatever value it already holds (v1 on a first freeze; whatever Reopen Semantics last incremented it to otherwise):
-
-```markdown
-Status: Validated
-Specification Version: v1
-Frozen: true
-```
-
-A frozen specification may not be silently mutated by planners, executors, verifiers, or critics.
-
-### Reopen Semantics
-
-If critique exposes unresolved ambiguity, execution changes assumptions, or validation fails: increment `Specification Version` (v1 → v2, marking a new generation), reopen the specification, transition back to `Interrogating` or `Reconciling`, and don't destroy prior validation or critique artifacts. The next freeze of that generation stamps the incremented version — a spec on its second freeze reads `Specification Version: v2`.
+The filename remains stable for existing installations. Phase 2, the readiness gate,
+and reopen semantics are owned exclusively by `dialogue.txt` beside this file. Read
+that procedure first. This companion only governs Phase 3 after readiness; it does
+not replace the gate or authorize execution.
 
 ## Phase 3 — Plan Mode
 
-After presenting the layered reasoning chain, immediately enter plan mode with `EnterPlanMode` — don't pause, suggest downstream commands, or ask the user to invoke `/critique` first. Develop a concrete implementation plan grounded in the spec; every task must trace back to a requirement, every requirement back to the problem.
+After the shared readiness gate passes, immediately enter plan mode with `EnterPlanMode` — don't pause, suggest downstream commands, or ask the user to invoke `/critique` first. Develop a concrete implementation plan grounded in the spec; every task must trace back to a requirement, every requirement back to the problem.
 
 ### Dependency Graph
 
@@ -97,11 +41,11 @@ The harness also injects its own plan-mode workflow on entry (explore → design
 
 ### Plan Critique
 
-After writing the harness plan file, dispatch `Agent(model="opus")` to critique the plan file when the plan is complex or high-stakes — a dependency graph with parallel waves, irreversible or shared-state changes, or a spec with fragile load-bearing commandments. Give the sub-agent the harness plan file's path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Skip it for small, sequential, low-risk plans; the critique is a real dispatch with real latency and it does not earn its cost on every pass. This matches `CLAUDE.md`'s "Plan Mode" rule, which governs — an earlier version of this file made the dispatch mandatory on every pass and contradicted it. When dispatched, the critique must be scored independently by the critique agent, not self-assessed by the plan's author. Agent dispatch is permitted inside plan mode; file writes beyond the harness plan file are not.
+After writing the harness plan file, dispatch `Agent(model="opus")` to critique the plan file when the plan is complex or high-stakes — a dependency graph with parallel waves, irreversible or shared-state changes, or a spec with consequential accepted uncertainty. Give the sub-agent the harness plan file's path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Skip it for small, sequential, low-risk plans; the critique is a real dispatch with real latency and it does not earn its cost on every pass. This matches `CLAUDE.md`'s "Plan Mode" rule, which governs — an earlier version of this file made the dispatch mandatory on every pass and contradicted it. When dispatched, the critique agent must assess the plan independently and support findings with evidence. Agent dispatch is permitted inside plan mode; file writes beyond the harness plan file are not.
 
 ### Approval and Persistence
 
-Exit plan mode with `ExitPlanMode` for user approval. Once approved — writes are unblocked again — copy the approved plan to `SESSION_DIR/plan.md`, the timestamped session directory already holding `spec.md`/`critique.md`, so the session keeps the artifact `/verify` and `/critique` read. If the user rejects the plan, don't write it: revise and re-enter plan mode.
+Exit plan mode with `ExitPlanMode` for user approval. Once approved — writes are unblocked again — preserve any previous `SESSION_DIR/plan.md` in a new timestamped file under `SESSION_DIR/history/`, then copy the approved plan to `SESSION_DIR/plan.md`, the timestamped session directory already holding `spec.md`/`critique.md`, so the session keeps the artifact `/verify` and `/critique` read. Record the specification version in the approved plan and set the matching spec to `Status: Planned` while keeping it frozen. If the user rejects the plan, preserve the draft in the harness plan file and revise it; do not label it approved. If the plan would change a settled requirement, return to the shared reopen procedure instead of silently editing the frozen spec.
 
 ## Downstream Commands (optional, user-invoked)
 

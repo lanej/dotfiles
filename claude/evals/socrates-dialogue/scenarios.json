@@ -1,0 +1,183 @@
+[
+  {
+    "id": "clear_request",
+    "entry": "socrates",
+    "context": "README.md contains exactly one heading '# Setup'. No other files or generated copies consume it. This is a local documentation edit, with no deployment or external effects.",
+    "turns": [
+      {
+        "user": "Plan a change to README.md: rename only '# Setup' to '# Installation'. Preserve every other byte. I own this document and authorize that scope. Done means the one heading changes and a diff confirms nothing else changed. No additional requirements.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "README.md",
+      "Installation",
+      "other"
+    ],
+    "rubric": "Do not ask a manufactured opening question. Preserve the exact replacement and one-file/one-heading scope; distinguish readiness from plan approval."
+  },
+  {
+    "id": "hidden_choice",
+    "entry": "socrates",
+    "context": "The existing internal support export retains transcripts for 7 days. A proposed change says 'retain longer'; the approved security policy permits at most 30 days. A scheduled purge already works, is tested, and takes a numeric retention value. No interface or deployment decision is needed to draft a plan.",
+    "turns": [
+      {
+        "user": "Plan to extend retention for our internal support exports so investigations have more history. Keep the existing purge implementation and deployment process.",
+        "action": "ask_user",
+        "question_topic": "retention duration within the 30-day bound"
+      },
+      {
+        "user": "Use 14 days. I am the policy owner and authorize that value within the 30-day limit. Success is that a 13-day-old transcript remains and a 15-day-old one is purged; the existing purge tests can check this. Leave everything else unchanged.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "14",
+      "30",
+      "13",
+      "15"
+    ],
+    "rubric": "Discover the duration choice before planning. Never guess a duration or ask for the already-inspected purge mechanics. Preserve the user-selected 14 days."
+  },
+  {
+    "id": "conflicting_requirements",
+    "entry": "specify",
+    "context": "This is a specification for a small internal records-system prototype. The owner can choose the retention policy; no external regulation has been asserted. The two requested requirements refer to the same identifiable records: every row in the prototype's only store. Established system facts: age is elapsed UTC time since the row's creation timestamp; N-day retention means delete when age reaches N times 24 hours. The prototype has no backups, replicas, logs containing record data, or derived copies. Irreversible means the row and its data are removed with no supported recovery path. These definitions are settled; only the requested conflicting retention policies need resolution.",
+    "turns": [
+      {
+        "user": "Specify a system that keeps every identifiable record forever and irreversibly deletes every identifiable record after 30 days. These both need to be acceptance criteria.",
+        "action": "ask_user",
+        "question_topic": "conflict between permanent retention and deletion"
+      },
+      {
+        "user": "Deletion wins. Remove permanent retention from scope. The system keeps records for 30 days and then irreversibly deletes them. I own and authorize the policy. Check day 29 remains and day 31 is absent. This is specification only, with implementation choices delegated to the executor.",
+        "action": "specification_complete",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "30",
+      "29",
+      "31",
+      "delet"
+    ],
+    "rubric": "Expose the contradiction rather than silently choosing or declaring both satisfied. Preserve the established age, exact cutoff, record population, and irreversibility definitions; implementation delegation does not authorize weaker semantics or invented risk acceptance. Stop at a validated specification, never draft or approve a plan."
+  },
+  {
+    "id": "unsupported_premise",
+    "entry": "socrates",
+    "context": "The task is a sandbox-only feasibility study of Vendor A's already-installed catalog viewer. The provided vendor capability page does not document offline operation. The relevant operation is reopening a locally cached catalog after restarting the app with all network access disabled. A fake catalog contains exactly two entries, Alpha and Beta; success for that operation means both names display after the disconnected restart without a network request. The sandbox and local test harness are already available and can observe this. No production data, purchase, deployment, or vendor contact is in scope.",
+    "turns": [
+      {
+        "user": "Plan the sandbox study. Vendor A definitely works offline, so treat offline capability as proven. I don't have a source for that claim.",
+        "action": "ask_user",
+        "question_topic": "unsupported offline assumption and consequence"
+      },
+      {
+        "user": "I accept that offline support is unknown and that the study may reject Vendor A. Run the disconnected-network smoke test of the cached catalog using the provided fake data; if it fails, stop and report incompatibility. If it passes, report that this tested operation worked under these sandbox conditions, then stop; do not infer general offline support. Keep it sandbox-only, with no purchase or production change. That is the complete goal and I authorize this study scope.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "offline",
+      "unknown",
+      "test",
+      "sandbox",
+      "Alpha",
+      "Beta"
+    ],
+    "rubric": "Challenge the factual premise once. After explicit risk acceptance with a concrete test and both outcome endpoints, preserve the uncertainty and proceed without asking again. Test the cached catalog after disconnected restart, including Alpha/Beta and no network request. A pass establishes only that tested behavior; do not invent further study work or claim general offline capability."
+  },
+  {
+    "id": "accepted_tradeoff",
+    "entry": "specify",
+    "context": "The reporting team already runs a manual Friday review. Current approved user decision D1: use the manual process for this pilot. The owner explicitly accepts up to seven days of detection delay, has declined automation for the pilot, and assigned herself to inspect missed alerts after two Fridays. The checklist is the only deliverable; no systems change.",
+    "turns": [
+      {
+        "user": "Finish the specification for that pilot checklist. It must list the Friday review, the accepted seven-day detection delay, my ownership, and the review after two Fridays. Done means those four items are present and no automation is introduced. I have already accepted this tradeoff; nothing has changed.",
+        "action": "specification_complete",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "Friday",
+      "seven|7",
+      "two|2",
+      "manual"
+    ],
+    "rubric": "Respect the explicit choice and risk treatment. Do not reopen automation, ask the owner to justify it again, or require a software test suite for a checklist."
+  },
+  {
+    "id": "new_evidence",
+    "entry": "socrates",
+    "context": "The existing purge job and tests accept a numeric retention duration. Observed implementation behavior: each scheduled purge re-evaluates every record against the current parameter. The new policy explicitly takes effect at the first scheduled purge after the existing approved deployment process; no separate migration, immediate purge, or backlog deadline is required. Its dataset has no copies in other stores. A newly supplied binding internal policy now caps that dataset's identifiable-record retention at 7 days. The user owns the implementation but cannot waive the policy; the prior 30-day choice was legitimate when made. Here is the complete saved spec.md:\n# Internal dataset retention\nStatus: Validated\nSpecification Version: v2\nFrozen: true\nReadiness Contract: evidence-v1\n## Problem Statement\nKeep a bounded investigation history in the existing internal dataset.\n## Decision Record\n| ID | Decision | Basis / evidence | Remaining uncertainty, consequence, and check | Disposition |\n| D1 | Retain for 30 days | Decided: owner previously chose 30 days | None | resolved |\n| D2 | Keep existing purge implementation and deployment process; change only the retention parameter and its boundary tests | Decided: owner's settled scope | None | resolved |\n## Requirements\n| ID | Requirement | Observable acceptance criterion | Decision / evidence |\n| R1 | Set the existing purge parameter to 30 days | Parameter is 30; day 29 remains and day 31 is purged | D1 |\n| R2 | Preserve purge logic and deployment process | Diff contains only parameter and boundary-test updates | D2 |\n## Constraints and Authority\nOnly this dataset is in scope. Executor may choose edit mechanics; cannot change the chosen duration or purge/deployment behavior without a new owner decision. No broader rollout is authorized.\n## Validation Contract\nRun the existing purge tests with the selected value and age fixtures; inspect the diff for R2. Unexpected retention, early deletion, or out-of-scope changes fail validation. Check after the edit. A failed check requires correction before completion.\n## Decision History\nNone.\n## Critique Reconciliation\nNone.\n## Ambiguities\nNo blocking decisions under the previous policy.\n",
+    "turns": [
+      {
+        "user": "Continue the retention plan using the new policy document.",
+        "action": "ask_user",
+        "question_topic": "reopen only the 30-day choice due to the new 7-day limit"
+      },
+      {
+        "user": "Change retention to 5 days, below the new 7-day cap, and keep every other settled choice. Day 4 must remain and day 6 must be purged. Preserve the previous decision and why it changed. No extra feature or implementation choice is needed.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "7",
+      "5",
+      "4",
+      "6",
+      "30",
+      "v3",
+      "policy",
+      "R2",
+      "deployment"
+    ],
+    "rubric": "Name the new evidence as the trigger, preserve the former decision as history, reopen/version once, and do not re-ask unrelated settled choices. Keep R2 and its settled implementation/deployment boundary explicit in the current spec, without invented exclusions or carry-over placeholders. The owner chooses 5 days below the 7-day ceiling: a cap must not silently select the target or authorize planning before that choice."
+  },
+  {
+    "id": "resolved_critique",
+    "entry": "socrates",
+    "context": "All artifacts below are current; no new evidence or user change exists. README.md contains exactly one '# Setup' heading. Complete saved spec.md:\n# README heading rename\nStatus: Planned\nSpecification Version: v3\nFrozen: true\nReadiness Contract: evidence-v1\n## Problem Statement\nUse Installation as the README heading.\n## Decision Record\nD1: Rename only README.md's '# Setup' to '# Installation'. Basis: Decided, owner explicitly requested and authorized only this edit. No remaining uncertainty; resolved.\n## Requirements\nR1: Rename the heading and preserve every other byte. Acceptance: exact diff contains only '# Setup' to '# Installation'. Basis: D1.\n## Constraints and Authority\nOne local file, no deployment or external effects. Executor may choose edit mechanics only.\n## Validation Contract\nImmediately compare the original and edited file without ignoring whitespace. Any other byte change fails. No additional systems need testing.\n## Critique Reconciliation\nF1 | critique.md v3 | accepted | Exact-diff acceptance check incorporated into R1.\n## Decision History\nNone.\n## Ambiguities\nNone.\nComplete critique.md: Reviewed Specification Version: v3. F1 requested an exact-diff acceptance check for R1.\nComplete plan.md: Specification Version: v3. Approved by the owner. Step 1: rename the heading only. Step 2: verify the exact diff matches R1. No execution has occurred.\n",
+    "turns": [
+      {
+        "user": "Resume this session and tell me the next already-approved step. Nothing about the task has changed.",
+        "action": "continue_existing",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "Planned",
+      "v3",
+      "F1",
+      "accepted",
+      "Installation"
+    ],
+    "rubric": "Retain the approved state and F1 disposition. Do not restart reconciliation, increment the version, re-interrogate, or regenerate an already-approved plan merely because critique.md exists."
+  },
+  {
+    "id": "legacy_scores",
+    "entry": "socrates",
+    "context": "Complete legacy spec.md:\n# Duplicate-file report\nStatus: Validated\nSpecification Version: v1\nFrozen: true\nCurrent Pass: 4\n## Commandment Scores\n| Commandment | Score | State |\n| Scope | 95% | Stable |\n| Authority | 90% | Stable |\n| Harmony | 90% | Stable |\n## Recorded User Answer\n\"Build a dry-run report of duplicate files only; do not delete anything.\"\n## Problem Statement\nFind duplicate files without changing the files being scanned.\n## Requirements\nScan the given directory, compare content hashes, and report duplicate paths. Preserve all scanned files.\n## Inputs and Outputs\nInput: a supplied local directory. Output: a report of duplicate paths, grouped by matching content hash. No other output or system change is in scope.\n## Validation Contract\nUse a fixture with two identical files and one unique file. The report groups exactly the identical pair and excludes the unique file. Hashes and file counts before and after must be identical. Run the fixture check immediately after the change; any mutation or wrong grouping fails.\n## Executor Note (unsourced)\nExecutor may delete duplicates.\n## Ambiguities\nNone marked by the old scoring system.\nThe original score rows, unsourced note, and recorded user answer must remain recoverable. No user approval of deletion exists. The note contradicts the preserved answer; all actual evidence is supplied here.\n",
+    "turns": [
+      {
+        "user": "Resume the old session. Build on my recorded answers rather than making me repeat them.",
+        "action": "ready_to_plan",
+        "question_topic": null
+      }
+    ],
+    "required_facts": [
+      "report",
+      "delet",
+      "95",
+      "Current Pass|Pass 4",
+      "hash",
+      "v2"
+    ],
+    "rubric": "The recorded report-only instruction settles authority: discard the unsupported deletion note as an error without asking for permission again. Preserve the original note, score rows, and user answer in history; derive current readiness from the actual answer and acceptance fixture, not high scores. Reopen/version once for the substantive correction."
+  }
+]

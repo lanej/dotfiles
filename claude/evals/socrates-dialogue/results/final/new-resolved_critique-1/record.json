@@ -1,0 +1,19 @@
+{
+  "arm": "new",
+  "ref": "6cbd3a45d80802f75d6a7a2d60f762157a301424",
+  "scenario": "resolved_critique",
+  "trial": 1,
+  "models": [
+    "claude-sonnet-5[1m]"
+  ],
+  "responses": [
+    {
+      "action": "continue_existing",
+      "reply": "This session is already `Planned` and frozen at v3, and nothing about the task has changed, so I'm not reopening or re-planning — just reporting saved state.\n\nPer the approved plan.md (v3, owner-approved), no execution has occurred yet. The next step is:\n\n**Step 1: Rename the heading only** — change README.md's `# Setup` to `# Installation`, with every other byte preserved exactly.\n\nAfter that, Step 2 is the verification: an exact diff comparison (no whitespace ignored) confirming the only change is that heading text, per R1's acceptance criterion.",
+      "spec": "# README heading rename\n\nStatus: Planned\nSpecification Version: v3\nFrozen: true\nReadiness Contract: evidence-v1\n\n## Decision Record\n\n| ID | Decision | Basis / evidence | Remaining uncertainty, consequence, and check | Disposition |\n|---|---|---|---|---|\n| D1 | Rename only README.md's `# Setup` to `# Installation`. | Decided: owner explicitly requested and authorized only this edit. | No remaining uncertainty. | resolved |\n\n## Decision History\n\nNone.\n\n## Critique Reconciliation\n\n| Finding ID | Source / specification version | Disposition | Reason / incorporated change |\n|---|---|---|---|\n| F1 | critique.md v3 | accepted | Exact-diff acceptance check incorporated into R1. |\n\n## Problem Statement\n\nUse \"Installation\" as the README heading.\n\n## Requirements\n\n| ID | Requirement | Observable acceptance criterion | Decision / evidence |\n|---|---|---|---|\n| R1 | Rename the heading and preserve every other byte. | Exact diff contains only the change from `# Setup` to `# Installation`. | D1 |\n\n## Constraints\n\nOne local file, no deployment or external effects. Executor may choose edit mechanics only.\n\n## Validation Contract\n\nImmediately compare the original and edited file without ignoring whitespace. Any other byte change fails. No additional systems need testing.\n\n## Authority Boundaries\n\nExecutor may choose edit mechanics only; no other scope is authorized.\n\n## Ambiguities\n\nNone.\n\n---\n\n## Plan (plan.md)\n\nSpecification Version: v3. Approved by the owner.\n\n- Step 1: Rename the heading only (README.md: `# Setup` → `# Installation`).\n- Step 2: Verify the exact diff matches R1's acceptance criterion.\n\nNo execution has occurred.\n\n## Critique (critique.md)\n\nReviewed Specification Version: v3. F1 requested an exact-diff acceptance check for R1 (accepted and incorporated above).\n"
+    }
+  ],
+  "mechanical_failures": [],
+  "elapsed_seconds": 17.04,
+  "manual_review": "pending"
+}

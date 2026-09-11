@@ -1,0 +1,22 @@
+{
+  "refs": {
+    "old": "71a4f0fcf72a408eb5302f90a965361d1ec0402c",
+    "new": "52edfa3917b966a9d0ac6521eb59e8f1295ba654"
+  },
+  "model": "claude-sonnet-5[1m]",
+  "effort": "medium",
+  "trials": 1,
+  "jobs": 4,
+  "cli_version": "2.1.268 (Claude Code)",
+  "scenarios_sha256": "35ee152021d9347652c8c269bc52186c782c1e2fff6c70b1ff7c3856bafd95c7",
+  "prompt_sha256": {
+    "old-socrates": "ff857bbb403ff66c64290197c3bcc0c92d3eef5ca49c7e9d40cea45668e56f44",
+    "old-specify": "ce9bb6dc23f30ec132f5f9e408523a9be7cd2927a008131ba7dd02ca426eb103",
+    "new-socrates": "636d4b905a2422f99e7af0c88b167a07e606252ab1aa2d9c9a7c13ea7d304e17",
+    "new-specify": "8ef0f40614f35a79fb35c1259410576e1b4deb86a77590b80c2de88b870b74d1"
+  },
+  "retry_reason": "new-hidden_choice-1 failed at the CLI structured-output boundary; rerun the entire pair once, not just the candidate.",
+  "selected_scenarios": [
+    "hidden_choice"
+  ]
+}
