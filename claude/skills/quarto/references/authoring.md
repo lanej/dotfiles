@@ -10,6 +10,7 @@ data provenance, and the prose/code boundary. Read when writing or reviewing doc
 - [LLM Self-Reasoning with Quarto](#llm-self-reasoning-with-quarto) — graduated-detail structure for `/think` documents
 - [Data Provenance and Portability](#data-provenance-and-portability) — embedded extraction, caching, freeze, heavy dependencies
 - [Document & Report Writing Principles](#document--report-writing-principles) — the prose/code boundary
+- [Google Docs Handoff](#google-docs-handoff-html-copy-paste) — `gdocs.css`, when to use it over PDF
 
 ## Visual Expression Philosophy
 
@@ -541,3 +542,47 @@ When writing Quarto documents, strategy memos, or any analytical report:
 | "CRM-linked accounts" | `WHERE salesforce_account_id IS NOT NULL` |
 | "80% of revenue is attributable" | `sf_corr_attributed_pct = ...` |
 | "pipeline data available since April 2024" | cache TTL, query date bounds |
+
+## Google Docs Handoff (HTML copy-paste)
+
+PDF is the default for sharing, but when the recipient must **edit** the content — or tables must
+arrive as real, editable tables rather than images — render to HTML with the Google Docs-matched
+stylesheet and copy-paste.
+
+The stylesheet ships with this dotfiles repo: `~/.files/quarto/styles/gdocs.css`, symlinked to
+`~/.config/quarto/styles/`. It matches Google Docs defaults (Arial 11pt, line-height 1.15; H1 20pt
+/ H2 16pt / H3 14pt; 1pt black table borders with 2pt 6pt padding and no extra cell whitespace).
+
+```yaml
+---
+format:
+  html:
+    css: ~/.config/quarto/styles/gdocs.css
+    embed-resources: true
+    minimal: true
+---
+```
+
+`embed-resources: true` is required — it inlines images so they survive the copy. For a project
+that must be self-contained, `cp ~/.files/quarto/styles/gdocs.css .quarto/styles/` and reference
+the local path instead.
+
+Then: `quarto render analysis.qmd --to html`, open it, select all, paste into Google Docs.
+
+### Choosing between the two
+
+| HTML copy-paste | PDF |
+|---|---|
+| Tables must be editable | Read-only sharing is fine |
+| Iterating between Quarto and Google Docs | External stakeholders, archival |
+| Complex multi-table layouts needing format control | Professional appearance is the priority |
+
+### When the paste comes out wrong
+
+- **Extra whitespace in tables** → cells need `line-height: 1`, `padding: 2pt 6pt`, and
+  `vertical-align: middle`.
+- **Fonts don't match** → use `Arial, sans-serif`; web fonts do not survive the copy.
+- **Tables don't come through as tables** → needs `border-collapse: collapse` and explicit
+  `border: 1pt solid #000`.
+- **Images missing** → `embed-resources: true`. Charts always copy as images; some may need
+  manual re-insertion.

@@ -58,7 +58,11 @@ Each project owns its own venv and kernel. Never borrow another project's.
    headings fight Quarto's float placement.
 8. **Data sources stay in code, not prose** — table, field, database, and tool names belong in
    code cells; prose describes the data and the method.
-9. **Never auto-open artifacts** — no `&& open <file>` in render recipes.
+9. **Professional tables**: booktabs for PDF, Great Tables for HTML.
+10. **Blank line before every list**, bullet or numbered — no exceptions.
+11. **No appendix for sources** — data sources live in code blocks. The appendix carries only
+    external sources the code doesn't already reference.
+12. **Never auto-open artifacts** — no `&& open <file>` in render recipes.
 
 ## Every PDF chart chunk
 
@@ -91,7 +95,8 @@ see `references/pdf.md` for the full diagnosis.
 - **`references/pdf.md`** — PDF rendering: title suppression, figure sizing root causes,
   `\needspace` sizing, caption numbering, LaTeX max-runs.
 - **`references/authoring.md`** — document content: visual expression, narrative structure,
-  `/think` document shape, data provenance and caching, the prose/code boundary.
+  `/think` document shape, data provenance and caching, the prose/code boundary, and the
+  Google Docs handoff via this repo's `gdocs.css`.
 
 Full authoring reference: `~/src/analysis-doc/docs/AGENTS.md`.
 Retrofit guide: `~/src/analysis-doc/docs/RETROFIT.md`.

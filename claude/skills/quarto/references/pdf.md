@@ -9,7 +9,6 @@ Read before rendering any QMD to PDF, and when diagnosing a malformed or mis-siz
 - [PDF Title Suppression](#pdf-title-suppression) — never use YAML `title:`
 - [PDF Figure Rules](#pdf-figure-rules) — panel splitting, legends, date axes
 - [LaTeX Max-Runs Warning](#latex-max-runs-warning) — `\needspace` sizing table
-- [BigQuery + Pandas Gotchas](#bigquery--pandas-gotchas-in-quarto-documents)
 - [PDF Figure Sizing — Critical Patterns](#pdf-figure-sizing--critical-patterns) — the five root causes of tiny figures
 
 ## PDF Project Bootstrap
@@ -83,31 +82,6 @@ Justfile render recipes must not include `&& open <file>`. The user opens files 
 | 4.0in | `\needspace{5.2in}` |
 | 5.5in | `\needspace{6.8in}` |
 | Prose only | `\needspace{2.5in}` |
-
-## BigQuery + Pandas Gotchas (in Quarto Documents)
-
-- BigQuery returns nullable `Int64` for integer columns — always `.astype('float64')` before `fillna()`
-- Quarterly data on a monthly x-axis: `df.set_index('quarter').reindex(monthly_idx, method='ffill')` + `ax.step(..., where='post')`
-- Never put `\n` inside BigQuery SQL string literals in Python f-strings — use spaces instead
-- Always define intermediate variables BEFORE the `Markdown(f"""...""")` call — f-strings evaluate at call time, not definition time
-
----
-
-## Best Practices (TL;DR)
-
-1. **Markdown-First**: Default to `format: gfm` with `wrap: none` for composability, portability, and archival
-2. **No Line Wrapping**: Always use `wrap: none` for GFM output (avoids artificial line breaks)
-3. **Dark Mode**: Always use `auto-dark` filter with dual themes for HTML output (accessibility and modern UX)
-4. **Visual Expression**: Use charts and formatted tables, NEVER raw data dumps (`df.head()`, `print(dict)`)
-5. **LaTeX for Math**: Use LaTeX notation for ALL mathematical expressions ($\alpha = 0.15$, not "alpha = 0.15")
-6. **Professional Tables**: Use LaTeX tables (booktabs) for PDF, Great Tables for HTML
-7. **No TOC**: Table of contents is usually noise - use clear section headings instead
-8. **PDF for Sharing**: Use `--to pdf` for Google Drive sharing (read-only, professional)
-9. **Blank Lines Before Lists**: ALWAYS include a blank line before every list (bullet or numbered) - no exceptions
-10. **No Appendix for Sources**: Data sources belong in code blocks, not appendix - only add external sources not directly referenced in code to appendix
-11. **Use Markdown() Class**: ALWAYS use `Markdown()` for text output in code blocks - NEVER use `print()` or `printf()` (output must render as formatted markdown)
-12. **Minimal PDF Titling**: For PDF output, suppress YAML `title`/`author`/`date` fields (they produce an academic title block via `\maketitle`). Use a raw LaTeX minipage inline header instead. Use `##` markdown headings for section headings (NOT raw LaTeX `\noindent{\large\textbf{...}}` blocks — those fight with Quarto's float placement). Exception: only use raw LaTeX headings for the document title line itself.
-13. **PDF Figure Sizing**: Every chart chunk MUST have `#| fig-pos: "H"`, `#| fig-width: N`, `#| fig-height: N`, `#| out-width: 100%`. Always end chunks with `plt.close('all')`. Set `ax.text(...).set_clip_on(True)` on all annotation labels. Never use mixed coordinate transforms. See "PDF Figure Sizing — Critical Patterns" section for full details.
 
 ## PDF Figure Sizing — Critical Patterns
 

@@ -11,7 +11,8 @@ the failure modes on this machine that have actually cost time.
 ## Commits
 
 - **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
-  Do not hand-write commit messages.
+  Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
+  automatic naming.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - **No AI attribution.** Never emit `Generated with Claude Code` or `Co-Authored-By: Claude`.
 - Atomic commits; the message explains *why*.

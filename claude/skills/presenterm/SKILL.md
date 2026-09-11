@@ -54,7 +54,9 @@ presenterm --validate-snippets file.md   # typecheck without running
 ## Diagram and formula rendering
 
 `+render` on `mermaid`, `d2`, `latex`, or `typst` blocks converts them to images at load time.
-Requires the corresponding binary on PATH. Tune output in `config.yaml`:
+A missing renderer fails quietly, so install what the block needs: `mermaid` →
+`@mermaid-js/mermaid-cli` (npm), `d2` → `d2`, `typst` → `typst`, `latex` → `typst` **and**
+`pandoc` (pandoc converts the LaTeX to typst, typst rasterizes it). Tune output in `config.yaml`:
 
 ```yaml
 typst:

@@ -64,7 +64,9 @@ claude --permission-mode acceptEdits|plan|bypassPermissions|default
 Management:
 
 ```bash
-claude mcp list | get <name> | remove <name>
+claude mcp list
+claude mcp get <name>
+claude mcp remove <name>
 claude mcp add --transport stdio|sse|http <name> [--env K=V] -- <command...>
 claude mcp add-json <name> '{"command":"node","args":["server.js"]}'
 claude mcp add-from-claude-desktop [--name <server>]

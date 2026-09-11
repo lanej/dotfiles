@@ -4,6 +4,8 @@ Tool, query, document, and design-judgment corrections that fire in specific cir
 Read when double-checking a specific procedure, or when the index in SKILL.md names one that matches the task at hand.
 
 
+## Tool and Bash gotchas
+
 ### `replace_all` safety
 Grep the short pattern alone (not surrounding context) to count all occurrences before committing to `replace_all: true` or a global `sed -i`. (detail: memory "feedback_replace_all_safety")
 
