@@ -22,6 +22,14 @@ judgment that a draft "looks ready" does not count.
 line entirely; never "Equity: no change." Professional correspondence omits what isn't relevant
 rather than calling out its absence.
 
+**State what something is, never what it isn't — in any sentence, not just field values.** "X isn't
+Y — it's Z," "no third-party vendor is involved," "doesn't affect," "unaffected by" — collapse
+straight to the affirmative fact. If a negative must be stated at all, state it once and move on;
+don't restate the same "not yet confirmed" idea three different ways in one paragraph. Corrected
+2026-09-11 ("don't say what it isn't, just say what it is... there's no point in saying things that
+aren't relevant") after a draft was correct on substance but bloated with negation chains. See
+memory `feedback_negation_prose_affirmative_only` for the full incident.
+
 **Never assert legitimacy the recipient hasn't questioned — negated or affirmed.** Don't write "not
 a mockup," "not fake," "not a one-off exercise" (negated form) — denying an objection nobody voiced
 plants it. But the affirmative form is the same failure: "a real, fully-built product working
