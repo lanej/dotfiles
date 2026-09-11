@@ -83,13 +83,17 @@ Decompose the plan into a dependency graph. For each task, identify blocks and p
 
 ### Write the Plan
 
-Write the dependency graph and execution recommendation to `SESSION_DIR/plan.md` — the timestamped session directory already holding `spec.md`/`critique.md` — using the `Write` tool. Presenting the plan in conversation only does not satisfy this — it must exist on disk at this path.
+Plan mode permits writes to exactly one file: the plan file the harness names on entry (e.g. `~/.claude/plans/<name>.md`). `SESSION_DIR/plan.md` is **not** writable yet — attempting it stalls Phase 3. Write the dependency graph and execution recommendation to the harness plan file now; `SESSION_DIR/plan.md` is written after approval (below). Presenting the plan in conversation only satisfies neither step.
+
+The harness also injects its own plan-mode workflow on entry (explore → design → write the plan file → `ExitPlanMode`). Follow its file-write rules; the plan's *content* is still governed by this file — the dependency graph, the execution recommendation, and the requirement that every task trace back to a requirement and every requirement to the problem.
 
 ### Plan Critique
 
-Immediately after writing `plan.md`, before any other tool call, dispatch `Agent(model="opus")` to critique it — give it the `plan.md` path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Mandatory every pass through Phase 3, not conditional on suspecting a weak plan.
+Immediately after writing the harness plan file, before any other tool call, dispatch `Agent(model="opus")` to critique it — give it that file's path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Mandatory every pass through Phase 3, not conditional on suspecting a weak plan. Agent dispatch is permitted inside plan mode; file writes beyond the plan file are not.
 
-Exit plan mode with `ExitPlanMode` for user approval.
+### Approval and Persistence
+
+Exit plan mode with `ExitPlanMode` for user approval. Once approved — writes are unblocked again — copy the approved plan to `SESSION_DIR/plan.md`, the timestamped session directory already holding `spec.md`/`critique.md`, so the session keeps the artifact `/verify` and `/critique` read. If the user rejects the plan, don't write it: revise and re-enter plan mode.
 
 ## Downstream Commands (optional, user-invoked)
 
