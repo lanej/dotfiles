@@ -16,7 +16,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
+          # Keep checkout's default end-of-job credential cleanup. Early cleanup
+          # fails on the repo's pre-existing incomplete hotreload.nvim submodule.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

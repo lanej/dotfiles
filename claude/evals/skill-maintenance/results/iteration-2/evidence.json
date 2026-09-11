@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "sources": {
+    "AGENTS.md": "0652eaad1c21f97ffd13e743719141973525a3ca6a83a3c549c6b2cfc41ca5e8",
+    "CLAUDE.md": "694b6c84f822e99c37b24644650425215b748c295eeb94bbbf9f98a64372fbd5",
+    "docs/skill-maintenance.md": "dd5b7fac12e8838048c4ea36212de7cb4f5a89abc16df69f387ce90a5435974f",
+    ".github/workflows/skill-maintenance.yml": "ca50b724e25ce813b0c0f36a93e4bd6c493698da46e4f6feb180d06c4e0debdb",
+    "claude/evals/skill-maintenance/check_evidence.py": "5714c7f052deedda47115d03f9b79e375e22529a1aeb55fb262249d5c5a77437",
+    "claude/evals/skill-maintenance/check_size.py": "d9902aecd226d1ac061e2f9679f45649af0f081d6094336174a46ffe4c9cc29f",
+    "claude/evals/skill-maintenance/size-budgets.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "claude/evals/skill-maintenance/evidence_test.py": "a787c2c033f782fc1801103f888d1dcd60d2f721a531d577dc941ad39462c7de",
+    "claude/evals/skill-maintenance/size_test.py": "e80d74b0eadf041265a8326a13e8690631e821bc0d6d069821423bfa3ab3d2ca"
+  },
+  "artifacts": {
+    "baseline": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/baseline.md",
+      "sha256": "c3134ca088f205bbd349457441c7f8cfb2db27d25afc533fc0815ee37dc07f63"
+    },
+    "candidate": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/maintenance-tests.txt",
+      "sha256": "4c98dc88d8ad4b35cb449ad53a11f191f45e861872dce2df1a383dd421415bdf"
+    },
+    "review": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/review.md",
+      "sha256": "ea9f0389fe09d8c71eabb913792b684f13f2c79124a619d336ca37ec934e0d6b"
+    },
+    "size_report": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/size-report.txt",
+      "sha256": "a125a57718925ae82ec21ed51189c1a20c487a1fcee0572327b49bbbb32a735f"
+    },
+    "repository_tests": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/tests.txt",
+      "sha256": "dbbc6c7e26a90b31746dd0dd10218b6f8dc1c730b154fa5b3039ff662b029365"
+    },
+    "master_control": {
+      "path": "claude/evals/skill-maintenance/results/iteration-2/master-test.txt",
+      "sha256": "54c8b237bf1489a7c91fca4770253d6e140c2f8bda9ebb130833d76b4de2b6dd"
+    },
+    "prior_baseline": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/baseline.md",
+      "sha256": "3fe6d727623aadc6d0c34debd0acd15fa80ac76a90ddfb4d3f95588826a2e053"
+    },
+    "prior_candidate": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/candidate.md",
+      "sha256": "fab362255d1c417848e29747c4d773cbc9f7cbcb49dfd458e1b7658152dd6c6d"
+    },
+    "prior_review": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/review.md",
+      "sha256": "468a42ee17baa5241dc7f4030c5f56d7b2bfad49d20ca8cfb7f404e484508eb0"
+    },
+    "prior_code_review": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/code-review.md",
+      "sha256": "7cefed9d7dce0b8b5ea90f7b7d55be634e09821e15b9302144f8a7b58fed9a42"
+    },
+    "prior_code_recheck": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/code-recheck.md",
+      "sha256": "f9c914bc5c205b3f8c957243193c4a75c378e8728f817ebc7af8222cdc20c6f4"
+    },
+    "prior_tests": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/tests.txt",
+      "sha256": "b0839eb3e8a3628ba6720eeb27e2d9a3c9efb0c72f20757f7b82534ca975d1ac"
+    },
+    "prior_size_report": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/size-report.txt",
+      "sha256": "c7ef7f16bf5fab0e83500397a3804a0e38e7cdf482a5442068eb935f510ebce6"
+    },
+    "prior_context": {
+      "path": "claude/evals/skill-maintenance/results/iteration-1/context.json",
+      "sha256": "2330d67b768c04fc5fea5022691f507f271cdd1385105f3cb5cad70dc616cbc0"
+    }
+  },
+  "checks": [
+    {
+      "name": "Checkout follows existing successful repository configuration",
+      "passed": true,
+      "evidence": "baseline.md records the early-cleanup failure and the successful end-of-job-cleanup control. The updated workflow retains read-only permissions."
+    },
+    {
+      "name": "Maintenance gates still pass",
+      "passed": true,
+      "evidence": "maintenance-tests.txt records 43 passing checks; size-report.txt records no size failures."
+    },
+    {
+      "name": "Unchanged routing and code review evidence retained",
+      "passed": true,
+      "evidence": "All instruction and gate-source hashes from iteration 1 remain identical except the workflow. Prior advisory outputs and resolved independent findings are attached."
+    },
+    {
+      "name": "Broader-suite failure isolated to master",
+      "passed": true,
+      "evidence": "tests.txt and master-test.txt reproduce the same unrelated missing PostToolUse hook; no passing-full-suite claim is made."
+    }
+  ]
+}

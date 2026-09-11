@@ -1,0 +1,20 @@
+EXISTING claude/commands/bootstrap.md: 757 lines, ~6519 tokens; allowed 757 / ~6519
+EXISTING claude/commands/speckit.checklist.md: 294 lines, ~4203 tokens; allowed 500 / ~4203
+EXISTING claude/commands/testing/pytest-shell.md: 503 lines, ~3332 tokens; allowed 503 / ~4000
+EXISTING claude/commands/write-minimal.md: 639 lines, ~4053 tokens; allowed 639 / ~4053
+EXISTING claude/skills/algorithmic-art/SKILL.md: 405 lines, ~4943 tokens; allowed 500 / ~4943
+EXISTING claude/skills/bugfix-dispatcher/SKILL.md: 220 lines, ~5097 tokens; allowed 500 / ~5097
+EXISTING claude/skills/methodology/SKILL.md: 265 lines, ~5010 tokens; allowed 500 / ~5010
+EXISTING claude/skills/pptx/SKILL.md: 484 lines, ~6388 tokens; allowed 500 / ~6388
+EXISTING gemini/skills/az/SKILL.md: 1403 lines, ~8684 tokens; allowed 1403 / ~8684
+EXISTING gemini/skills/bigquery/SKILL.md: 1317 lines, ~9306 tokens; allowed 1317 / ~9306
+EXISTING gemini/skills/git/SKILL.md: 876 lines, ~4017 tokens; allowed 876 / ~4017
+EXISTING gemini/skills/gspace/SKILL.md: 1436 lines, ~9252 tokens; allowed 1436 / ~9252
+EXISTING gemini/skills/just/SKILL.md: 731 lines, ~3221 tokens; allowed 731 / ~4000
+EXISTING gemini/skills/lancer/SKILL.md: 680 lines, ~3751 tokens; allowed 680 / ~4000
+EXISTING gemini/skills/phab/SKILL.md: 941 lines, ~5204 tokens; allowed 941 / ~5204
+EXISTING gemini/skills/presenterm/SKILL.md: 1289 lines, ~5809 tokens; allowed 1289 / ~5809
+EXISTING gemini/skills/python/SKILL.md: 815 lines, ~3914 tokens; allowed 815 / ~4000
+EXISTING gemini/skills/rust/SKILL.md: 591 lines, ~3739 tokens; allowed 591 / ~4000
+EXISTING gemini/skills/xsv/SKILL.md: 855 lines, ~4082 tokens; allowed 855 / ~4082
+Checked 124 entrypoints. Token estimates use ceil(UTF-8 bytes / 4), not the Claude tokenizer.
