@@ -9,6 +9,9 @@ The candidate must pass **every scenario's readiness and preservation checks**.
 Question count is not a readiness measure. Record unnecessary questions, repeated
 questions, and premature planning separately, including when a scenario passes.
 
+See [the recorded comparison](RESULTS.md) for reviewed results, captured evidence,
+and the unsuccessful calibration runs.
+
 ## Run the comparison
 
 Use an already configured Claude CLI. This does not provision credentials or change
@@ -18,7 +21,7 @@ the installed commands. Both refs must contain committed command files.
 python3 claude/evals/socrates-dialogue/run.py \
   --baseline 71a4f0fcf72a408eb5302f90a965361d1ec0402c \
   --candidate HEAD --model 'claude-sonnet-5[1m]' --effort high \
-  --trials 1 --jobs 2 --out /absolute/path/to/new-evaluation-directory
+  --trials 1 --jobs 4 --timeout 360 --out /absolute/path/to/new-evaluation-directory
 ```
 
 Use the same explicit model and effort for both arms. The manifest captures resolved
@@ -60,8 +63,9 @@ Count each independently answerable request for information as a question,
 including multiple requests in one sentence. An **unnecessary question** changes
 none of goal, scope, approach, authority, or acceptance given established evidence
 and decisions. A **repeated question** duplicates an information request within a
-turn, or reopens a settled answer without a concrete trigger. **Premature planning** is a turn entering planning with a seeded blocker
-unresolved, or entering planning through `/specify`. Counts can overlap. Explain
+turn, or reopens a settled answer without a concrete trigger. **Premature planning**
+is a turn entering planning with a blocking decision or contradiction unresolved,
+or entering planning through `/specify`. Counts can overlap. Explain
 the classification; do not equate fewer turns with improvement.
 
 Create `reviews.json` keyed by `<arm>-<scenario>-<trial>`. Each entry has:

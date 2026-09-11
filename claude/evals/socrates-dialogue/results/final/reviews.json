@@ -1,0 +1,434 @@
+{
+  "new-clear_request-1": {
+    "record_sha256": "cbf9766861d0c4b2f576d5a2293530e6b9d43ff73a0c2482581aeae2b2479872",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns ready_to_plan immediately with Validated/Frozen v1; does not claim plan approval."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "No seeded blocker exists; asks no manufactured opening question."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D1/R1 preserve the exact Setup-to-Installation change and every-other-byte constraint; D2 cites owner authorization."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "Validation defines exact diff, pass/fail conditions, and correction of an imprecise edit. No user intent remains to guess."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No questions. Exact scope, authority, and acceptance are supplied."
+  },
+  "old-clear_request-1": {
+    "record_sha256": "0b2181138cb4ea4ea2c087d0a3a3230f650496befb3de33b9a40e503a581f016",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": false,
+        "evidence": "Returns ask_user rather than entering planning for the fully bounded edit."
+      },
+      "seeded_blockers": {
+        "passed": false,
+        "evidence": "Adds a hypothetical internal-anchor blocker, despite explicit byte-preservation scope and no evidence of such a dependency."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "The draft retains the requested heading, byte preservation, and owner authorization; it does not actually grant another edit."
+      },
+      "executable_spec": {
+        "passed": false,
+        "evidence": "Leaves the otherwise executable task blocked on inspecting an anchor and reconfirming the stated scope."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 2,
+      "repeated_questions": 1,
+      "premature_planning": 0
+    },
+    "question_notes": "Two requests: whether an internal anchor exists (a mechanical inspection), and whether fixing it is in scope despite the explicit every-other-byte/no-additional-requirements instruction. Both are unnecessary; the latter repeats settled scope."
+  },
+  "new-hidden_choice-1": {
+    "record_sha256": "441c9475b48a4c605a5a7c5daf58d6140318de1a57e8be18295bfbc0794b05ca",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Asks for the duration first, then returns ready_to_plan and freezes v1 after the owner answers."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Names the 7-day baseline and 30-day ceiling and identifies the target as the missing user choice."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D5 sets 14 days with owner authorization; D4 preserves the purge implementation and deployment process."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1/D6 specify day 13 retained and day 15 purged using the existing suite; scope remains a parameter change."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "One necessary duration question changes the configured value and acceptance criteria. The answer visibly resolves it, with no repeat."
+  },
+  "new-conflicting_requirements-1": {
+    "record_sha256": "daf20aee225f35603cefe6f6dea23fa9493e81c2f6fa69ce47f67799d67d3417",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Exposes the conflict before drafting coherent criteria; returns specification_complete after deletion wins."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Identifies that permanent retention and irreversible deletion cannot both govern the same rows."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D1 removes permanent retention; R1/R2 preserve UTC creation age, the exact 720-hour threshold, all rows, and no recovery path."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "The day-29/day-31 checks are observable; D2 and Known Blind Spots explicitly require full threshold behavior despite the sampled checks and delegated mechanics."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "One consequential question asks which retention behavior is intended. No additional question after the policy owner resolves it."
+  },
+  "new-unsupported_premise-1": {
+    "record_sha256": "f9fa888bf24c2d084ea3cbabd3ee04fe76d59ad1fe9a32dc37eb759106bc1007",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Asks about the unsupported premise first; advances only after the user explicitly accepts the unknown outcome and authorizes the bounded study."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Names the missing vendor evidence and distinguishes an empirical study from assuming capability is proven."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D1/D4 quote the accepted uncertainty and both stop/report branches. No production, purchase, deployment, vendor contact, or general offline claim is authorized."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1 defines the operation pass condition (Alpha/Beta display and zero network requests after disconnected restart); the Validation Contract explicitly gives terminal study actions for both pass and fail, including either entry missing."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "One necessary question resolves whether the run supplies evidence or merely assumes the premise. No repeat after the acceptance, and no contradictory escalation for a defined failure."
+  },
+  "new-accepted_tradeoff-1": {
+    "record_sha256": "2075321194b62e907d6afa61d601918b6544766072b10e38b6f55e68d7834c3f",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns specification_complete at Validated/Frozen v1; explicitly stops without planning or execution."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "No unresolved blocker exists: the four checklist facts and accepted tradeoff are already supplied."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D2 retains explicit seven-day delay acceptance and its two-Friday check; D1/D3 retain manual-only scope, and D4 retains the owner."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1\u2013R5 map to document inspection. Validation explicitly preserves a one-time checkpoint and introduces no recurring commitment or software suite."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No questions. The restated decision closes the specification without reopening automation or asking for justification."
+  },
+  "new-new_evidence-1": {
+    "record_sha256": "585572fa5af753b8648add90daa29cbabc38032af61d59dee9b02b6093ace214",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Asks for the replacement target before planning, then validates/freezes v3 after the owner chooses 5 days."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Explicitly distinguishes the mandatory 7-day ceiling from the still-open target: the policy invalidates 30 but does not choose its replacement."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "D1/history retain the legitimate old 30-day choice and policy trigger; D6 records 5 days; D2/R2 preserve implementation/deployment. Reopens v2 to v3 once."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1 specifies parameter 5, day 4 retained/day 6 purged; R2 and authority retain scope and the 7-day hard limit. Current spec retains concrete content, not carry-over placeholders."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "One necessary question asks which value within the new cap the owner wants. Research settles timing and full-scan mechanics; no unrelated question is reopened. The interim reply has a snapshot-filename typo, while final history uses the required spec-v2 path; physical writes are outside this simulation."
+  },
+  "new-resolved_critique-1": {
+    "record_sha256": "2aead38d7f5766aa0ea52d50ee81d43777b0d553987afb03d30b99840327c2c5",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns continue_existing and retains Planned/Frozen v3; reports the already-approved next step."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "No new blocker or evidence exists; critique file presence does not restart reconciliation."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "F1 remains accepted/incorporated into R1, with the approved plan still bound to v3 and no version increment."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1 and the approved plan retain the exact rename and whitespace-sensitive diff, with no extra work or missing intent."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No questions, no re-interrogation, and no regeneration of the approved plan."
+  },
+  "old-conflicting_requirements-1": {
+    "record_sha256": "cc2da7b84a6b5460e4da6d27528302280f2586f780ff9fdb6982e0ca254584f7",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": false,
+        "evidence": "Turn 2 asks more questions instead of completing the specification after the owner resolves the policy."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Correctly discovers the initial keep-forever/delete-at-30 contradiction."
+      },
+      "decision_preservation": {
+        "passed": false,
+        "evidence": "S3 and Executor May Decide introduce a deletion-latency window up to day 31, weakening the settled exact 720-hour threshold despite R2 still stating it."
+      },
+      "executable_spec": {
+        "passed": false,
+        "evidence": "Leaves feedback and failure handling open, assumes a month-long test cycle, and contradicts the exact cutoff with its inferred latency window."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 4,
+      "repeated_questions": 1,
+      "premature_planning": 0
+    },
+    "question_notes": "Beyond the necessary governing-policy question, it asks how to archive the rejected policy, what fast feedback to use, how to handle failed attempts, and whether a row past day 31 can be silently tolerated. These are housekeeping, delegated mechanics, or a reopening of the fixed acceptance policy; the last also counts as repeated."
+  },
+  "new-legacy_scores-1": {
+    "record_sha256": "2af2c4a3289e7c77af2628e2fb763d90941885cb66c20389b4142a5a79773b7e",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns ready_to_plan without re-asking the recorded answer; corrects the frozen artifact once and freezes v2."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Finds the unsupported deletion note contradicting the recorded report-only instruction; scores do not establish authority."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "Preserves the v1 snapshot, Current Pass 4, 95/90/90 score rows, original user answer, and rejected note. D1/D2 and R3 prohibit mutation/deletion."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "R1\u2013R3 and the fixture contract specify hash grouping, exactly the duplicate pair, exclusion of the unique file, and unchanged file counts/hashes."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No question is needed: the recorded answer already resolves authority. The correction versions the artifact without demanding a new user decision."
+  },
+  "old-hidden_choice-1": {
+    "record_sha256": "02fe10cd0a5baffc5dc35f626a466fa919fb17b1b545a1a5246143550f41d4a3",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": false,
+        "evidence": "Turn 2 remains ask_user despite explicitly saying the target, authority, success criteria, and test applicability are resolved."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Correctly discovers the duration choice and authority question before choosing a number."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "Preserves 14 days, the 30-day cap, day-13/day-15 checks, and implementation/deployment boundaries."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "The core parameter change and tests are executable; the draft labels the additional notification concern non-blocking but still delays planning to ask about it."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 1,
+      "repeated_questions": 1,
+      "premature_planning": 0
+    },
+    "question_notes": "Initial lookback/default-duration alternatives and final authority are consequential. The second-turn question reopens whether the policy-owner sign-off covers the change or others need notice, despite settled authorization and the unchanged deployment process. Count this as one unnecessary, repeated authority/notification question."
+  },
+  "old-accepted_tradeoff-1": {
+    "record_sha256": "0498b688a6bf0277588290cda5ccd8c31ed54f76ae781c72513abe51a0448e3f",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns specification_complete at Validated/Frozen v1 with no further question or planning."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "No seeded blocker exists; it treats the four required items and manual-process decision as sufficient."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "R1\u2013R4 and authority preserve manual review, seven-day delay, self-assigned owner, and the single two-Friday checkpoint; no automation is introduced."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "AT1\u2013AT5 inspect the checklist and delivered artifacts. Speculative owner-availability risk language does not authorize a change to this document-only deliverable."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No questions. It does not reopen the accepted tradeoff. Its additional sole-owner risk labels are weakly grounded but do not alter the required checklist."
+  },
+  "old-resolved_critique-1": {
+    "record_sha256": "248436b94e5d7387a6e3986c79b5b7a1b7790806b976fc0bfa0a56e0bfe7b8c0",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Returns continue_existing with Planned/Frozen v3 and identifies the next already-approved step."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "No new evidence or blocker; it does not restart reconciliation merely because critique.md exists."
+      },
+      "decision_preservation": {
+        "passed": true,
+        "evidence": "F1 remains accepted/incorporated; D1, R1, the v3 plan, and no-execution-yet state remain intact."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "The exact rename and byte-preserving diff check remain concrete; it adds only a continuation-history note."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 0
+    },
+    "question_notes": "No questions, repeated planning, or resumed reconciliation."
+  },
+  "old-unsupported_premise-1": {
+    "record_sha256": "5eb93fb653dbe6b054e03ae0a8f42b09a2f96b69d47caf2b8f0f8a8341b61f7c",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": false,
+        "evidence": "Returns ready_to_plan with a frozen spec while its defined failure outcomes still conflict with escalation instructions."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Correctly challenges the unsupported offline claim and obtains explicit acceptance of the empirical study and bounded result."
+      },
+      "decision_preservation": {
+        "passed": false,
+        "evidence": "Keeps sandbox scope and narrow reporting, but treats partial display and failure to start as escalation cases despite the authorized stop/report failure branch."
+      },
+      "executable_spec": {
+        "passed": false,
+        "evidence": "Failure Signals, Requirements, and Acceptance Tests say to stop/report on missing entries; Executor Must Escalate also names partial display. A cold executor must choose between conflicting terminal actions."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 0,
+      "repeated_questions": 0,
+      "premature_planning": 1
+    },
+    "question_notes": "The opening alternatives and question about what a bad result would mean are consequential to the unsupported premise. No repeated question after acceptance. Planning is premature because the frozen artifact contradicts the accepted outcome handling."
+  },
+  "old-new_evidence-1": {
+    "record_sha256": "9dd21c0690f2790228f75d677eb3e45b97ea854f6b726172df2a8961d19f0546",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": true,
+        "evidence": "Uses ask_user then ready_to_plan; final specification is Validated/Frozen v3 with the chosen 5-day parameter."
+      },
+      "seeded_blockers": {
+        "passed": false,
+        "evidence": "Recognizes that the new policy invalidates 30 days, but assumes the 7-day ceiling selects the target and asks about dataset composition instead of the remaining owner choice."
+      },
+      "decision_preservation": {
+        "passed": false,
+        "evidence": "First-turn D2 reopens the settled implementation boundary on an invented segmentation requirement. The final turn restores D2 and retains the old 30-day decision and policy reason, but the conversation did not preserve the settled choice throughout."
+      },
+      "executable_spec": {
+        "passed": true,
+        "evidence": "The final R1/R2 define 5 days, day 4 retained/day 6 purged, unchanged purge/deployment, and the parameter-only diff. They support execution after the supplied owner correction."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 1,
+      "repeated_questions": 1,
+      "premature_planning": 0
+    },
+    "question_notes": "One unnecessary composition question reopens the already settled uniform-parameter scope; the policy ceiling can be met uniformly regardless of composition. It also repeats that settled implementation choice. No planning occurs before the owner supplies 5 days."
+  },
+  "old-legacy_scores-1": {
+    "record_sha256": "957584e74dc1d9deee1e5ee653a537aac56047f5cb0741dc64165c04f01c670e",
+    "checks": {
+      "readiness_and_endpoint": {
+        "passed": false,
+        "evidence": "Returns ask_user and remains Interrogating instead of correcting the unsupported note and proceeding from the recorded answer."
+      },
+      "seeded_blockers": {
+        "passed": true,
+        "evidence": "Finds the no-deletion/deletion-note contradiction and does not rely on the old high scores to claim readiness."
+      },
+      "decision_preservation": {
+        "passed": false,
+        "evidence": "Retains the original answer, score rows, and note, but reopens the explicitly settled deletion prohibition for user confirmation and leaves the unsourced note unresolved."
+      },
+      "executable_spec": {
+        "passed": false,
+        "evidence": "Hash grouping and no-mutation fixture checks remain concrete, but the artifact leaves executor deletion authority open and contradictory."
+      }
+    },
+    "counts": {
+      "unnecessary_questions": 1,
+      "repeated_questions": 1,
+      "premature_planning": 0
+    },
+    "question_notes": "One unnecessary, repeated question asks whether the recorded no-deletion instruction still stands despite explicit evidence that no deletion approval exists. No new user decision was needed."
+  }
+}

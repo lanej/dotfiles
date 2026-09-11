@@ -1,0 +1,27 @@
+{
+  "comparison_valid": true,
+  "models": [
+    "claude-sonnet-5[1m]"
+  ],
+  "infrastructure_errors": 0,
+  "manual_review": "complete; see evidence and question notes in reviews.json",
+  "arms": {
+    "old": {
+      "completed": 8,
+      "mechanical_passes": 4,
+      "scenario_passes": 2,
+      "premature_planning": 1,
+      "unnecessary_questions": 9,
+      "repeated_questions": 5
+    },
+    "new": {
+      "completed": 8,
+      "mechanical_passes": 8,
+      "scenario_passes": 8,
+      "premature_planning": 0,
+      "unnecessary_questions": 0,
+      "repeated_questions": 0
+    }
+  },
+  "candidate_passes_all_checks": true
+}
