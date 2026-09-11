@@ -1,0 +1,40 @@
+name: Socrates dialogue contract
+
+on:
+  pull_request:
+    paths:
+      - 'claude/commands/socrates.md'
+      - 'claude/commands/socrates/**'
+      - 'claude/commands/specify.md'
+      - 'claude/commands/shape.md'
+      - 'claude/commands/critique.md'
+      - 'claude/commands/verify.md'
+      - 'claude/evals/socrates-dialogue/**'
+      - '.github/workflows/socrates-dialogue.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'claude/commands/socrates.md'
+      - 'claude/commands/socrates/**'
+      - 'claude/commands/specify.md'
+      - 'claude/commands/shape.md'
+      - 'claude/commands/critique.md'
+      - 'claude/commands/verify.md'
+      - 'claude/evals/socrates-dialogue/**'
+      - '.github/workflows/socrates-dialogue.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pytest PyYAML
+      - name: Contract and evaluation harness tests (no model calls)
+        run: python -m pytest -q claude/evals/socrates-dialogue/run_test.py
