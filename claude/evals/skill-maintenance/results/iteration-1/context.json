@@ -1,0 +1,29 @@
+{
+  "baseline_commit": "eeb7d8b9d48a4e4c85a4a56bb796f860afbd2a0b",
+  "implementation_commit": "af1cfb611d392e792480e02cd4394232acde23c8",
+  "target_plugins": [
+    "superpowers:writing-skills",
+    "skill-creator:skill-creator"
+  ],
+  "target_also_has": "Older repo-owned claude/skills/skill-creator/SKILL.md",
+  "baseline_instruction_sha256": {
+    "AGENTS.md": "2b62263321654b29ac1fcf77bb2ccd69caba4908cf65940e857b3dbcd12f38f7",
+    "CLAUDE.md": "3db57f9f815b9e75304f47d4d384e1efc35bcc3bab51aa38ed82b8e022c4e943"
+  },
+  "questions": [
+    "Update /socrates and /specify so they ask one final confirmation before entering planning; keep the current session paths.",
+    "The duplicate-file skill sometimes deletes duplicates even though the owner asked for a report only. Fix it. Existing tests are green.",
+    "I changed a shared template used by a skill. Last week's reviewed model comparison passed. Can that evidence validate this revision?"
+  ],
+  "requested_response": "Concrete first actions, authoring guidance to load, verification/evidence needed to finish; advisory only, no implementation.",
+  "runtime": "Separate Codex agents with inherited parent settings and no model/effort override. Resolved per-run model identity not exposed.",
+  "baseline_access": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "candidate_access": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "directly required maintainer policy"
+  ]
+}
