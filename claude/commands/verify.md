@@ -6,6 +6,8 @@ allowed-tools:
   - Write
   - Edit
   - Bash(cat:*)
+  - Bash(date:*)
+  - Bash(mkdir:*)
   - Agent
   - Bash(find:*)
   - Bash(printenv:*)

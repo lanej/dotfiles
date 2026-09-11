@@ -7,6 +7,8 @@ allowed-tools:
   - Edit
   - Agent
   - Bash(cat:*)
+  - Bash(date:*)
+  - Bash(mkdir:*)
   - Bash(find:*)
   - Bash(printenv:*)
   - Bash(sort:*)
