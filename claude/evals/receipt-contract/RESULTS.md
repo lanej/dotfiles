@@ -44,3 +44,7 @@ claims against primary state rather than against your own instrumentation.
   tool name and the run returns zero bytes with exit 0.
 - Headless runs need the workspace trusted or `Write` is silently denied.
 - Parallel `claude` processes must have stdin redirected from `/dev/null`.
+
+## Harness validation after review
+
+The current harness rejects failed or empty CLI replies, requires a real non-empty findings file and an exact receipt, reserves trial IDs against stale reuse, resolves output paths before changing directory, and counts UTF-8 bytes from the saved reply. The historical measurements above have not been rerun with these stricter checks; they are not fresh evidence from the revised harness. Run `python3 -m pytest claude/evals/receipt-contract/run_test.py` for deterministic harness regression checks without making model calls.

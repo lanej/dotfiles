@@ -131,7 +131,7 @@ orchestrator pays it on every single one.
 So unless the caller explicitly asks for the summary inline:
 
 1. Write the full summary to a file. Use the path the caller gave you. If the
-   caller gave none, use `.claude/work/findings-<short-slug>.md` and use that
+   caller gave none, use `.claude/work/findings-<short-slug>-<unique-dispatch-id>.md` and use that
    exact absolute path in your reply — do not invent a different one.
 2. Reply with at most three lines, nothing else:
 
