@@ -22,7 +22,7 @@ _No superseded decisions._
 
 ## Problem Statement
 
-_[open]_
+<!-- State the executable intent, necessary context, and named inputs/outputs. -->
 
 ## Requirements
 
@@ -31,96 +31,23 @@ _[open]_
 
 ## Constraints
 
-_[open]_
-
-## Success Criteria
-
-_[open]_
+<!-- Record actual scope limits and exclusions. Do not invent missing limits. -->
 
 ## Validation Contract
 
-### Acceptance Tests
-
-_[open]_
-
-### Regression Checks
-
-_[open]_
-
-### Failure Signals
-
-_[open]_
-
-### Verification Methods
-
-_[open]_
-
-### Feedback Loop Design
-
-_[open]_
-
-### Known Blind Spots
-
-_[open]_
-
-## Inputs
-
-_[open]_
-
-## Outputs
-
-_[open]_
-
-## Out of Scope
-
-_[open]_
+<!-- Name concrete requirement checks, evidence, and defined outcome actions.
+Add Feedback Loop Design, Regression Checks, Failure Signals, Known Blind Spots,
+or other subsections only when they carry relevant information. Keep future checks
+distinct from completed evidence. No speculative filler or invented commitments. -->
 
 ## Authority Boundaries
 
-### Executor May Decide
-
-_[open]_
-
-### Executor Must Escalate
-
-_[open]_
-
-### Executor Must Not Change
-
-_[open]_
-
-## Current Interpretation
-
-_[open]_
-
-## Misclassification Risks
-
-### Potential False Positives
-
-_[open]_
-
-### Potential False Negatives
-
-_[open]_
+<!-- State delegated choices and actual limits. Add escalation only for unresolved
+outcomes; do not reopen a pass/fail action the user already specified. -->
 
 ## Ambiguities
 
-### Blocking
-
-_[open]_
-
-### Non-Blocking
-
-_[open]_
-
-### Intentional
-
-_[open]_
-
-## Risks
-
-_[open]_
-
-## Stakeholders
-
-_[open]_
+<!-- Link remaining blocking/non-blocking decisions by ID, or state none.
+Record accepted uncertainty in the decision table with its implications/check.
+Add other sections only for actual task needs. Remove these authoring comments
+from the populated spec; they are not checklist items to expose to the user. -->

@@ -88,7 +88,7 @@ Focus on:
 - false positives that could appear successful
 - observability gaps
 - unrealistic feedback-signal assumptions (infra, live-trigger, cross-service, human-gated review treated as if fast/cheap)
-- unpopulated "Feedback Loop Design"
+- missing or unusable in-progress feedback where the task needs it; an omitted optional heading alone is not a finding
 - unresolved consequential decisions or unsupported claims of user acceptance
 - accepted uncertainty without its implications and a concrete check
 - contradiction between the decision record and requirements/acceptance criteria

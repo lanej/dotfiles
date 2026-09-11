@@ -25,6 +25,8 @@ Initialization (a task title was supplied):
 2. Read `spec-scaffold.tpl` beside this file, replace its title, and populate the
    spec from the request and established evidence. Set `Status: Interrogating`,
    `Specification Version: v1`, `Frozen: false`, and `Readiness Contract: evidence-v1`.
+   Remove authoring comments. Add optional sections only for real task information;
+   do not fill a template slot by inventing risks, stakeholders, or decisions.
 3. Write this session's pointer when both identity values are available. Without
    them, retain the explicit session path in context and use the picker on resume.
 4. Identify the task type from the request and evidence, correcting it if later
@@ -206,6 +208,13 @@ A spec is ready only when all of the following hold:
 - Relevant critique findings have dispositions and none leaves a blocker untreated.
 - A fresh executor can follow the spec without guessing the user's intent or making
   a consequential choice the user has not delegated.
+
+Before freezing, cross-check each defined outcome across requirements, validation,
+and authority. A result already defined as failure must take its stated failure
+action; do not also classify that same result as ambiguous and requiring a new
+question. An escalation path covers genuinely unspecified outcomes. Likewise,
+delegated mechanics must still satisfy the full requirement, not only a few sample
+test points. Correct these contradictions before declaring readiness.
 
 Check that problem → requirements → constraints/risks → success/validation →
 execution boundaries are coherent. Keep this reasoning in the artifact; summarize
