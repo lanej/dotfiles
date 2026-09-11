@@ -72,7 +72,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
 11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
 12. **Execution Readiness** — Are inputs, outputs, authority boundaries, and escalation conditions clear?
-13. **Harmony** — Does this specification avoid contradicting itself or creating inconsistency elsewhere? What would this change break somewhere else in the spec that nobody is currently discussing? Unlike every other commandment, Harmony is evaluated on every interrogation pass, not only when touched — see Commandment Scoring below.
+13. **Harmony** — Does this specification avoid contradicting itself or creating inconsistency elsewhere? What would this change break somewhere else in the spec that nobody is currently discussing? Unlike every other commandment, Harmony gets a row on every interrogation pass, not only when touched — fully evaluated when the pass mutated spec content, carried forward when it did not. See Commandment Scoring below.
 
 ### Engineering (add when task is engineering)
 
@@ -126,7 +126,7 @@ This command manages its own phased execution. If plan mode is active at the sta
    - **Probable** (a real finding exists, but it touches goals, tradeoffs, risk, or scope): bring it into the dialogue as the opening move of a question — state the finding, then ask whether it holds and why/why not. Do not silently fold it into the spec as Assumed, and do not reduce it to a one-click confirmation; the user reasoning about your finding is the point, not just their approval of it.
    - **User-only** (genuinely unresolvable from evidence — requires intent, priorities, or institutional knowledge only the user holds): ask, and follow through per the Dialogue Loop below — don't accept the first answer at face value if it's vague, unexamined, or contradicts something already established.
 8. Pre-fill every section inferable from the title, domain, and research findings. Leave `_[open]_` only where genuine ambiguity remains after research. Cite evidence or mark claims as **Assumed**.
-9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**. For each commandment touched this pass, also append a Pass 1 row to spec.md's `## Commandment Scores` table — state, confidence score (0-100%), Why, Why not 100%, Escalated, Resolution (see Commandment Scoring below). Harmony always gets a Pass 1 row, whether or not it was otherwise discussed.
+9. Score commandments using the alignment states: **stable** / **fragile** / **ambiguous** / **contradictory** / **open**. For each commandment touched this pass, also append a Pass 1 row to spec.md's `## Commandment Scores` table — state, confidence score (0-100%), Why, Why not 100%, Escalated, Resolution (see Commandment Scoring below). Harmony always gets a Pass 1 row, whether or not it was otherwise discussed. Pass 1 is always a full evaluation — initialization creates the spec, so there is always something to check.
 10. Record the current interpretation of the task in one paragraph.
 11. Begin the Dialogue Loop (below) on the highest-leverage open commandment first. Default to a plain, open-ended prose question — reach for `AskUserQuestion` only when the answer space is a small, genuinely enumerable set of known options. There is no target question count: continue, topic by topic, until the commandments relevant to this task are stable or explicitly accepted as fragile. A single well-researched question that resolves a topic cleanly is success, not a shortfall — depth is earned by real ambiguity, not manufactured by a quota.
 
@@ -143,7 +143,7 @@ This command manages its own phased execution. If plan mode is active at the sta
 7. Increment `Current Pass` by 1, regardless of whether anything gets a Commandment Scores row this pass.
 8. If `critique.md` exists, enter `Reconciling` — adjudicate findings, revise spec, classify unresolved disagreements.
 9. **Research** any remaining open questions before resuming the dialogue. Apply the same classification: self-answerable → answer and cite; probable → bring the finding into the next question rather than silently assuming it; user-only → ask, with follow-through.
-10. Print a one-line alignment summary per commandment touched this pass (name, state, and score — full rationale lives in the Commandment Scores table). Harmony always gets a new row this pass, whether or not it was otherwise discussed.
+10. Print a one-line alignment summary per commandment touched this pass (name, state, and score — full rationale lives in the Commandment Scores table). Harmony always gets a new row this pass, whether or not it was otherwise discussed — fully evaluated if this pass mutated spec content, otherwise a carry-forward row (see Commandment Scoring).
 11. Restate the current interpretation before asking more questions when material ambiguity remains.
 12. Prefer closing existing open questions over opening new ones.
 13. Resume the Dialogue Loop (below) on the most valuable open commandment. Default to prose; reach for `AskUserQuestion` only for genuinely bounded option sets, pre-populating the best guess as Recommended. No fixed question count — continue until remaining open commandments are stable or explicitly accepted as fragile.
@@ -169,7 +169,12 @@ In addition to its alignment state, every commandment touched in a pass gets a r
 - **Escalated** — Yes/No: was a sub-70% score surfaced to the user as a dialogue question this pass?
 - **Resolution** — if Escalated is Yes, a one-line note of how it was resolved, or a pointer to where the resolution is recorded elsewhere in the spec.
 
-**Harmony always runs.** Unlike every other commandment — scored only when touched, preserving the open-ended dialogue-loop design — Harmony is evaluated and given a new row every single pass, whether or not it came up in discussion, because consistency can break silently in parts of the spec nobody is actively discussing.
+**Harmony always gets a row; it does not always get re-derived.** Unlike every other commandment — scored only when touched, preserving the open-ended dialogue-loop design — Harmony gets a new row every single pass, because consistency can break silently in parts of the spec nobody is actively discussing. But the *evaluation* is conditional on there being something that could have broken:
+
+- **Pass mutated spec content** (any section rewritten, any requirement/constraint/criterion added, changed, or removed): evaluate Harmony fully and write a complete row.
+- **Pass mutated nothing** (a question asked and answered without yet changing a section, a resumed session, a pass that only closed an open question by confirming existing content): write the row as `State: unchanged`, carry the prior Score forward, `Why: no spec mutation this pass`. Do not re-derive.
+
+A pass that changed nothing cannot have broken consistency, so re-deriving Harmony there is the specification-side version of running the full test suite after a no-op — cost with no detection. The carry-forward row preserves the audit invariant (`/verify` Step 5 still finds a Harmony row for every integer from 1 to `Current Pass`) without paying for the evaluation. A carried-forward score below 70% that was already escalated stays escalated; it does not re-trigger the Deferral rule.
 
 **Deferral rule.** Any commandment (including Harmony) scoring below 70% must be surfaced to the user as a dialogue question — framed as sharpening the user's own thinking and the assistant's understanding, not just closing a spec gap — never silently recorded as Assumed. Record `Escalated: Yes` and the `Resolution` once answered.
 

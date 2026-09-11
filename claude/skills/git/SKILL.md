@@ -29,6 +29,7 @@ The `git-commit-message-writer` agent loads automatically when:
 - **NO AI attribution**: Never include "Generated with Claude Code" or "Co-Authored-By: Claude"
 - Follow project conventions
 - Clear, descriptive, focused on the "why" not just the "what"
+- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution, and is unaffected by the no-AI-attribution rule above.
 
 ### GitHub Access
 

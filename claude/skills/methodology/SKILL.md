@@ -209,6 +209,24 @@ What V3a/V3b should actively hunt for. Derived from the 14 audited faults — ev
 
 When a review finds a fault outside all eight, add it here — that is how the list stays worth briefing.
 
+### Recording the Detector
+
+Any commit that fixes a fault found *after* the code was written carries a trailer naming what found it:
+
+```
+Detected-By: V3b
+```
+
+Valid values are the tier names (`V0`–`V4`), or `user` when a person caught it. One trailer per commit; if a commit fixes findings from two tiers, name the earliest one that caught anything.
+
+This exists because the tier model rests on an audit that had to be reconstructed by reading commit prose and inferring — workable only because the messages happened to say things like "independent code review (BLOCK verdict) found" and "reported done after a clean local verify." That is archaeology, not measurement. With the trailer, the next audit is `git log --grep="Detected-By"` and the questions that are currently guesses become queries:
+
+- Does V3a find anything V3b would not have found anyway? If not, V3a is pure cost and should be removed.
+- Does V1 ever catch anything in a repo with a real test suite? The audit says no for this repo, but this repo has almost no tests — that number may be an artifact, not a finding.
+- Is the fault-class list above still covering what actually occurs, or has the distribution moved?
+
+Do not defend a tier that the trailer data shows catches nothing. The whole point of this section is that the model was wrong once already — the per-task full suite was defended on reasoning for as long as nobody counted.
+
 **Harness verification (false-red / false-green discipline).** When writing tests in new test files, new packages, or any setup where harness wiring is uncertain:
 1. Write the failing test
 2. Break the implementation in a targeted way (wrong return value, removed function body, inverted condition) to confirm the test catches that specific failure

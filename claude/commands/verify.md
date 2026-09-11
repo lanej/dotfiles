@@ -97,7 +97,10 @@ Reading only spec.md's `## Commandment Scores` table (no conversation access nee
 
 - Collect the set of distinct `Pass` numbers across all rows. Confirm a Harmony row exists for
   every integer from 1 to `Current Pass`. Any gap is a cadence failure — Harmony was skipped on at
-  least one pass.
+  least one pass. A row reading `State: unchanged` / `Why: no spec mutation this pass` satisfies
+  this: it is the deliberate carry-forward for a pass that changed nothing, not a skipped
+  evaluation. It is a failure only if that pass did mutate spec content — check the pass's actual
+  edits before accepting a carry-forward row.
 - For every row with `Score < 70%`, confirm `Escalated: Yes` and a non-empty `Resolution`. Any
   miss is a deferral-rule failure — a low-confidence score was recorded without ever being
   surfaced to the user.
@@ -155,8 +158,8 @@ Structure:
 [Was the designed in-progress signal actually invoked? Spec gap or execution gap if not?]
 
 ## Harmony Cadence and Deferral
-[Does every pass 1..Current Pass have a Harmony row? Does every sub-70% row show Escalated: Yes
-with a non-empty Resolution?]
+[Does every pass 1..Current Pass have a Harmony row? Is each carry-forward row's pass genuinely
+free of spec mutation? Does every sub-70% row show Escalated: Yes with a non-empty Resolution?]
 
 ## Failure Signals
 [Any triggered failure indicators]
