@@ -295,23 +295,26 @@ class LiveTmuxTests(unittest.TestCase):
     def setUp(self):
         # Short socket path also fits Darwin's sockaddr_un limit.
         self.temp = tempfile.TemporaryDirectory(prefix="claude-later-", dir="/tmp")
+        self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name)
         self.tmux = app.Tmux(str(self.folder / "server.sock"))
+        self.client = None
+        self.addCleanup(self.stop_server)
         env = {k: v for k, v in os.environ.items() if k not in ("TMUX", "TMUX_PANE")}
         subprocess.run(["tmux", "-S", self.tmux.socket, "-f", "/dev/null",
                         "new-session", "-d", "-s", "main", "-n", "keep", "sleep 300"],
                        check=True, capture_output=True, env=env, timeout=5)
         self.claude = self.folder / "claude"
-        shutil.copy2(shutil.which("sleep"), self.claude)
-        self.client = None
+        # Copy executable bytes, not macOS's protected system-file flags.
+        shutil.copyfile(shutil.which("sleep"), self.claude)
+        self.claude.chmod(0o755)
 
-    def tearDown(self):
+    def stop_server(self):
         # This cannot reach the user's default server or any unrelated socket.
         subprocess.run(["tmux", "-S", self.tmux.socket, "kill-server"],
                        capture_output=True, timeout=5)
         if self.client:
             self.client.communicate(timeout=5)
-        self.temp.cleanup()
 
     def new_claude(self, age=3600):
         pane_id = self.tmux.call("new-window", "-d", "-t", "main:", "-P", "-F", "#{pane_id}",

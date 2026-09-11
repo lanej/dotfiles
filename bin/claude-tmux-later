@@ -120,7 +120,7 @@ def connection():
 
 
 def process(pid):
-    result = subprocess.run(["ps", "-p", str(pid), "-o",
+    result = subprocess.run(["ps", "-ww", "-p", str(pid), "-o",
                              "ppid=,pgid=,tpgid=,tty=,lstart=,args="],
                             capture_output=True, text=True, timeout=2,
                             env=os.environ | {"LC_ALL": "C"})
