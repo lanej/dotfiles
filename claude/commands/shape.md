@@ -214,22 +214,22 @@ Goal:
 ### T1: <name>
 Depends on: none
 Parallel with: T2, T3
-Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
+Feedback signal: <the cheapest concrete check that would catch a fault in this task's own deliverable — scoped to the changed file/package, not the full suite, and not a pointer to the final review>
 
 ### T2: <name>
 Depends on: none
 Parallel with: T1, T3
-Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
+Feedback signal: <the cheapest concrete check that would catch a fault in this task's own deliverable — scoped to the changed file/package, not the full suite, and not a pointer to the final review>
 
 ### T3: <name>
 Depends on: none
 Parallel with: T1, T2
-Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
+Feedback signal: <the cheapest concrete check that would catch a fault in this task's own deliverable — scoped to the changed file/package, not the full suite, and not a pointer to the final review>
 
 ### T4: <name>
 Depends on: T1, T2, T3
 Parallel with: none
-Feedback signal: <the concrete, task-specific check run for this task alone — not a pointer to the final review>
+Feedback signal: <the cheapest concrete check that would catch a fault in this task's own deliverable — scoped to the changed file/package, not the full suite, and not a pointer to the final review>
 ```
 
 Example:
@@ -246,6 +246,8 @@ Rules:
 - A task that depends on another must be sequenced after it, even if the dependency is indirect
 - Circular dependencies are a planning failure — surface them and return to Stage 3
 - A task's `Feedback signal:` must name a check specific to that task's own deliverable — never a pointer to the final whole-plan review
+- It must be the *narrowest* such check (tier T1, see the `methodology` skill's Verification Rigor Tiers). A full-suite run is not a valid per-task Feedback signal: the full suite is a branch-level gate (T2) that runs once, in Stage 6. Widening a per-task signal does not catch cross-task faults — only the Stage 6 whole-branch review does
+- Every task ends in its own commit. That, not suite breadth, is what preserves attribution when Stage 6 surfaces a fault
 
 Planning may not:
 - redefine requirements
@@ -265,12 +267,18 @@ Otherwise use `/subagent-driven-development` to execute sequentially following S
 
 ### Stage 6 — Verification
 
-Run `/verify` after execution.
+Runs **once**, after the last task — not between tasks. Three steps in order, each gating the next:
+
+1. **Branch gate (T2)** — full test suite, full lint/type-check, on the complete branch. First point in the flow where the whole suite runs.
+2. **Whole-branch review (T3)** — review agent over the complete diff against `spec.md`. This is the stage that catches what per-task checks structurally cannot: cross-task interaction faults, pattern-level bug classes, spec drift. Budget rigor here, not in Stages 4–5.
+3. **`/verify`** — validate the spec's validation contract.
 
 Goal:
 - validate true-positive completion
 - evaluate regression boundaries
 - detect silent failure
+
+If step 1 or 2 surfaces a fault a per-task `Feedback signal:` should have caught, the trip-wire in `CLAUDE.md` (Proportional Verification) applies to any remaining or follow-up work: promote per-task checks to T2 and say so.
 
 ## Transition Rules
 

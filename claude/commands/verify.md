@@ -84,6 +84,8 @@ Determine:
 - whether the spec's Feedback Loop Design (signal, cost/cadence, fallback) was actually invoked during execution
 - whether plan.md's per-task `Feedback signal:` entries (if present) were actually run, not just written
 - if not invoked, whether that's a spec gap (no Feedback Loop Design was ever specified) or an execution gap (designed but skipped)
+- whether the **branch-level gate** ran once after the last task (full suite + full lint/type-check) — per-task signals are deliberately scoped (tier T1) and do not substitute for it. A run of per-task signals with no branch gate is an execution gap, not a pass
+- whether any escalation trip-wire fired during execution (see `CLAUDE.md`, Proportional Verification) and, if so, whether remaining tasks were actually promoted to full-suite checks
 
 Surface "loop skipped" as its own failure category, distinct from "acceptance test failed."
 

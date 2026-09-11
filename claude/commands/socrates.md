@@ -67,7 +67,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 5. **Context** — Is the necessary background, environment, history, and domain context available?
 6. **Parsimony** — Minimum viable scope. Every element must justify its existence.
 7. **Success** — Is "done" measurable and verifiable?
-8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive — both at completion (a validation contract) and *while work is in progress* (a fast, cheap signal invoked on a defined cadence, or a deliberately constructed fallback when no fast signal exists)?
+8. **Verification** — Is there a reliable way to determine whether the outcome is a true positive — both at completion (a validation contract) and *while work is in progress* (a fast, cheap signal invoked on a defined cadence, or a deliberately constructed fallback when no fast signal exists)? The in-progress signal must be the **cheapest** check that still localizes a fault to the task that caused it — not the broadest available check. Breadth belongs in the completion contract, which runs once.
 9. **Constraints** — Are time, team, resources, and compliance limits surfaced?
 10. **Stakeholders** — Are beneficiaries, affected parties, and decision-makers named?
 11. **Risk** — Is the riskiest assumption identified? What would invalidate this?
@@ -81,7 +81,7 @@ Apply the universal commandments to all task types. Add the domain-specific set 
 16. **Robustness** — Are failure modes named? Partial failure has a defined path.
 17. **Repair** — Does it fail fast and noisily? Recovery paths are explicit.
 18. **Least Surprise** — Does behavior match caller expectations? Deviations documented.
-19. **Regression Protection** — What prevents this task from silently failing again later?
+19. **Regression Protection** — What prevents this task from silently failing again later? This is a branch-level and CI-level concern — do not satisfy it by widening the in-progress signal in Commandment 8.
 
 ### Research/Analysis (add when task is research or analysis)
 
@@ -304,7 +304,7 @@ Layer 6 — Validation
   Regression checks: [what must continue working after completion]
   Failure signals: [what indicates incomplete or incorrect execution]
   Verification method: [automated | manual | observational | comparative | statistical]
-  Feedback Loop Design: [signal, cost/cadence, fallback if no fast signal exists]
+  Feedback Loop Design: [cheapest fault-localizing signal, its cost/cadence, fallback if no fast signal exists, and the escalation trigger that widens it]
 
 Layer 7 — Execution Readiness
   [Inputs, outputs, authority boundaries, dependencies, and escalation conditions.]
@@ -356,6 +356,14 @@ Decompose the plan into a dependency graph. For each task, identify blocks and p
 [Task D] ──────────────► [Task E]   (parallel with A→C)
 ```
 
+### Per-Task Verification Budget
+
+Each task in the plan carries:
+- **Feedback signal** — the narrowest check that would catch a fault in that task's own deliverable (tier T1: changed-file/package tests, type-check on the diff, a targeted grep). Never the full suite; never a pointer to the final review.
+- **Commit** — every task ends in its own commit. This, not suite breadth, is what preserves attribution when the branch-level gate later surfaces a fault.
+
+The full suite, full lint/type-check, and the whole-branch review run **once**, after the last task — not between tasks. See the `methodology` skill's Verification Rigor Tiers and `CLAUDE.md`'s Proportional Verification, including the trip-wire that promotes remaining tasks to full-suite checks when evidence justifies it.
+
 ### Execution Recommendation
 
 After the dependency graph, recommend an execution strategy:
@@ -370,7 +378,7 @@ Write the dependency graph and execution recommendation above to `.socrates/TIME
 
 ### Plan Critique
 
-Immediately after writing `plan.md`, before any other tool call, dispatch `Agent(model="opus")` to critique the plan file. Give the sub-agent the `plan.md` path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. This dispatch is mandatory on every pass through Phase 3, not conditional on suspecting a weak plan.
+After writing `plan.md`, dispatch `Agent(model="opus")` to critique the plan file when the plan is complex or high-stakes — a dependency graph with parallel waves, irreversible or shared-state changes, or a spec with fragile load-bearing commandments. Give the sub-agent the `plan.md` path plus enough spec context (or a pointer to `spec.md`) to judge whether the dependency graph and execution recommendation are sound. Skip it for small, sequential, low-risk plans; the critique is a real dispatch with real latency and it does not earn its cost on every pass. This matches `CLAUDE.md`'s "Plan Mode" rule, which governs — an earlier version of this file made the dispatch mandatory on every pass and contradicted it. When dispatched, the critique must be scored independently by the critique agent, not self-assessed by the plan's author.
 
 Exit plan mode with `ExitPlanMode` for user approval.
 

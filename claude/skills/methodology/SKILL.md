@@ -162,7 +162,28 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 
 ### Feedback Loop Design
 
-**Design the feedback loop before writing code.** Before the first line of implementation, identify what "verifiably done" looks like: which test suite runs, which lint/type-check passes, which grep/diff confirms the output is correct. The verification path is part of the design, not an afterthought.
+**Design the feedback loop before writing code.** Before the first line of implementation, identify what "verifiably done" looks like: which tests run, which lint/type-check passes, which grep/diff confirms the output is correct. The verification path is part of the design, not an afterthought.
+
+### Verification Rigor Tiers
+
+Rigor is a budget spent where it buys detection, not a level to maximize. Pick the cheapest tier that would catch a fault in the deliverable at hand.
+
+| Tier | When | What runs | Typical cost |
+|---|---|---|---|
+| **T0 — Inline** | Within a task, after each edit | Type-check / compile / lint on the changed files; read the diff | seconds |
+| **T1 — Scoped** | Task exit gate (the default) | Tests covering the changed file or package only, plus the task's own `Feedback signal:` from `plan.md` | seconds–low minutes |
+| **T2 — Branch** | Once, after the last task, before the final review | Full test suite + full lint/type-check | minutes |
+| **T3 — Review** | Once, after T2 passes | Whole-branch review agent over the complete diff | one dispatch |
+
+Rules:
+- **T1 is the per-task default. Do not run T2 between tasks.** A full suite per task is near-pure duplication of T2: it re-verifies untouched code N times to catch regressions that a per-task commit plus T2 already localizes by bisect.
+- **Commit per task.** This is what preserves attribution when T2 or T3 finds something. Without it, the argument for T1-only collapses and you owe a fuller check per task.
+- **T3 finds what T1 cannot.** Cross-task interaction faults, pattern-level bugs, and spec drift are invisible to any per-task check regardless of its breadth. Widening T1 does not substitute for T3 — it just spends the budget in the wrong place.
+- **Escalate on evidence, not on anxiety.** Promote the remaining tasks from T1 to T2 when: T2/T3 surfaces a fault a scoped check should have caught; two consecutive tasks fail their scoped check; or a task touches shared/global state (schema, config loader, build system, auth, a widely-imported module). State the escalation and its trigger in narration.
+- **De-escalate too.** Once the trigger's cause is fixed and one task passes clean at T2, drop back to T1.
+- **Break-checks are per harness, not per test.** Falsifiability (Constitution IV) is satisfied by one break-check the first time a harness is wired up — not by re-breaking an established suite each task.
+
+The accepted tradeoff: a local, short-lived error rate is cheaper than uniform maximum rigor. A *compounding* error rate, or one whose cause can no longer be attributed, is not.
 
 **Harness verification (false-red / false-green discipline).** When writing tests in new test files, new packages, or any setup where harness wiring is uncertain:
 1. Write the failing test
@@ -170,9 +191,9 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 3. Restore the implementation and confirm green
 4. Only then proceed — a green result you haven't confirmed can turn red is a false green and tells you nothing
 
-This applies to new harnesses, not to every test in an established suite.
+This applies once per new harness, not to every test in an established suite and not repeated on each task that adds tests to a harness already break-checked.
 
-**Return only when self-validated.** Do not surface results, ask for human confirmation, or request feedback on something you can verify yourself. Run the full suite, confirm the diff, check the output — then return with evidence of completion, not a question.
+**Return only when self-validated.** Do not surface results, ask for human confirmation, or request feedback on something you can verify yourself. Run the tier the task calls for (T1 by default, see Verification Rigor Tiers), confirm the diff, check the output — then return with evidence of completion, not a question.
 
 ### Flaky Tests
 **Flaky tests are serious bugs — fix immediately.**
