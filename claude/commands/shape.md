@@ -301,10 +301,10 @@ Typical flow:
 ```text
 1. /specify
 2. /critique
-3. /specify
-4. STOP + review
-5. /plan
-6. optional Workflow
+3. /specify — reconcile findings and validate using the shared gate
+4. EnterPlanMode — draft the implementation plan automatically
+5. ExitPlanMode — obtain approval of the completed plan
+6. Execute the approved plan; optional Workflow when appropriate
 7. /verify
 ```
 
