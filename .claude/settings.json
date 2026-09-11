@@ -49,6 +49,15 @@
             "command": "$HOME/.files/bin/claude-session-start-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Notification": [
@@ -120,6 +129,15 @@
             "command": "$HOME/.files/bin/claude-tool-start-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Stop": [
@@ -133,6 +151,103 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-stop-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
           }
         ]
       }
