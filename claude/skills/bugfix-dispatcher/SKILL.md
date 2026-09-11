@@ -163,9 +163,31 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 
 There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
-All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (pushes to `main`, syncs the primary checkout's local `main` to match, then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10).
+All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (records the pre-merge/merged SHAs into state, pushes to `main`; if the repo defines a `just install`/`make install` target, runs it from the fixer's worktree — best-effort, warns rather than fails — since a plain push doesn't refresh an installed compiled binary like `~/.local/bin/bigquery`; syncs the primary checkout's local `main` to match; then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10). Do not `claude rm`-then-forget — step 7.5 below still applies to this path.
 
-Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
+Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, records the PR number into state, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
+
+### 7.5. Follow through on CI, don't just fire-and-forget — merge and PR paths both
+
+Neither pushing straight to `main` nor opening a PR is the finish line — a change sitting on red CI with nobody checking it is worse than not shipping it (Josh's explicit instruction, 2026-09-08: agents that open PRs — and by extension, push fixes at all — must "follow through and make sure tests/validation/lints etc pass"). This applies to the merge path too, not just PR: confirmed 2026-09-10, a merge-path fix was reported "done" off a clean local `verify` alone, and its own new regression test was failing on `main`'s post-merge CI the whole time — a local pass is not proof of a CI pass for a repo that has ever shown local/CI divergence. Keep the lock held through this step — do not `unlock` until it resolves.
+
+**PR path:**
+```
+bin/bugfix-worker ci <id>
+```
+
+**Merge path:**
+```
+bin/bugfix-worker ci-main <id>
+```
+
+Same shape either way (`ci` polls `gh pr checks`; `ci-main` polls the merged commit's check-runs directly and compares against the pre-merge commit) — both return `{"allPassing", "stillPending", "failingChecks", "newFailures", ...}` and never report `allPassing: true` while anything is still pending or the check list is empty (confirmed 2026-09-10: calling this immediately after push/PR-creation, before GitHub Actions has registered checks yet, is a real race — poll until every check is actually terminal, don't trust an early empty result).
+
+- **`allPassing: true`** → clean. Proceed to step 8.
+- **`newFailures` non-empty** → a check is failing that wasn't failing at the baseline commit — this means `verify`'s local run missed something CI catches (environment/dependency drift, or a real regression the fixer/reviewer missed). Investigate root cause using the actual CI logs (`gh run view <run-id> --log-failed`), not just the pass/fail summary — a local repro attempt is worth trying (build/test in a scratch worktree matching CI's OS/toolchain if the discrepancy looks environment-shaped) before concluding it's a real regression. PR path: push the fix commit directly to the PR branch (the worktree is still present — `claude stop` doesn't remove it) and re-run `ci <id>`. Merge path: do NOT push a follow-up fix straight to `main` again — route it through a PR this time, so the fix itself gets a real CI check before landing (this is exactly the failure mode that motivated this step). Cap at 2 follow-up fix attempts either way; if still unresolved, stop and escalate to Josh with the full diagnostic trail rather than leaving it silently red.
+- **pre-existing failures (`preExistingAtMergeBase` / `preExistingAtPreMergeSha`) non-empty, no new failures** → the job-level classification says this check was already failing before the diff. This is only a job-granularity signal, not proof the *specific* failures are unchanged — a job that was already red can still pick up an additional new failure alongside the old one, or (confirmed 2026-09-10) a "fix" for that exact pre-existing failure can land, still show the same job-level "pre-existing" classification on the next PR, and turn out not to have fixed anything — job-level "unchanged" is not the same as "actually fixed" or "actually benign." Do a manual sanity check every time: pull the actual failing test/step names from the CI log for this run and diff them against the baseline commit's own run. Two full CI reruns of the identical commit producing *different* failing-test sets (via `gh run rerun <run-id> --failed`) is evidence of some kind of non-local-reproducible instability — but don't over-conclude "harmless flakiness" from that alone; an *identical, stable* failure set recurring across multiple runs (including after a supposed fix) is closer to a real, deterministic, CI-environment-specific defect (e.g. a resource limit on the runner) than to random flakiness, and a code-level "fix" for the wrong theory (e.g. a test-isolation race) can pass locally while doing nothing for the real cause. If a genuine pre-existing test-infra bug turns up, that's a new bug report through this same dispatcher pipeline (fresh slug) — but don't declare it fixed until a *real CI run* on the fix itself (via this same step 7.5) confirms it, not just a local `verify`.
+
+Either way, the reply to the caller and the Josh notification (steps 9–10) must state the CI outcome explicitly — "opened/merged, CI green" is a materially different message than "opened/merged, CI has N pre-existing failures unrelated to this diff (see analysis)" or "CI red with an unresolved new failure — needs your attention." Never report a bug as "fixed" on the strength of `verify` alone if the bug being fixed is itself a CI-specific/flaky one — that claim is only earned by this step actually passing.
 
 ### 8. Release the lock
 
@@ -183,7 +205,7 @@ bin/bugfix-worker unlock <id>
 
 ### 10. Notify Josh on any non-clean outcome
 
-"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, or any `finish merge` warning (`claude rm` refusing unexpectedly, or a primary-checkout sync failure/skip). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
+"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, an unresolved step-7.5 CI `newFailures` after 2 follow-up attempts, or any `finish merge` warning (`claude rm` refusing unexpectedly, a primary-checkout sync failure/skip, or a post-merge install failure). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
 
 ```bash
 tmux set-option -w -t "$TMUX_PANE" @claude-state bugfix-alert 2>/dev/null || true

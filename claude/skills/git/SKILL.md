@@ -857,6 +857,14 @@ instead of the usual `--- a/projects/foo/bar.qmd`. `git apply` defaults to `-p1`
 
 Recurred across unrelated repos (a standalone project repo, and the `~/workspace` monorepo) because the root cause — a global gitconfig setting — wasn't written down after the first occurrence. Check `diff.noprefix` first before troubleshooting a "file not in index" apply failure; don't rediscover it by trial and error.
 
+### `git commit -m "..." -- <pathspec>` implicitly stages the full working tree for those paths
+
+`git commit -- <pathspec>` is not "commit whatever's already staged, scoped to these paths" — it implicitly runs the equivalent of `git add <pathspec>` first, pulling in the *current working-tree content* of every listed path regardless of what was actually staged. In a shared/monorepo working tree with unrelated uncommitted changes sitting in the same files (a concurrent session's WIP, your own earlier unstaged edits), this can silently fold that unrelated content into a commit meant to be scoped to a specific change.
+
+Near-miss: a sub-agent ran `git commit -m "..." -- epq/charts.py tests/test_charts.py` intending to commit only its own diff, but an unrelated in-progress feature sitting unstaged in the same files came along with it. Caught via `git show --stat` on the resulting commit before pushing; fixed non-destructively with `git reset --soft HEAD^` (working tree untouched) followed by hand-staging just the intended hunks (`git apply --cached` against extracted patches, or `git add -p`).
+
+**Before any `git commit -- <pathspec>` on a file that might carry unrelated uncommitted content**: stage explicitly first (`git add -p` or a hand-built patch), commit with a bare `git commit` (no pathspec) against the index, and verify with `git show --stat`/`git diff --staged` before it lands — don't rely on the pathspec argument to scope what gets committed.
+
 ## Integration with Commit Message Writer
 
 After validation and before committing:

@@ -127,15 +127,30 @@ Split findings by scope and dispatch:
 
 After dispatching behavioral improvements, check whether this session qualifies for query pattern capture.
 
+**Root-cause fix (2026-09-06):** this step previously relied on claude-mem observations containing
+the verbatim SQL. They never do — claude-mem only ever stores an LLM-narrated summary of a tool use,
+never its raw input, so 5 consecutive dispatches (2026-09-01 through 09-06) all produced zero pending
+templates for the identical reason, regardless of session quality. Fix: use the session transcript
+JSONL you already loaded in Step 0 — it's the ground-truth record of every tool call's exact input,
+with zero dependency on claude-mem's summarization layer. Do not call any
+`mcp__plugin_claude-mem_mcp-search__*` tool for this step.
+
 **Qualifying condition — BOTH must be true:**
-- The session contains a `mcp__bigquery__query` tool use (a BQ query was executed)
-- A subsequent observation in the same session references specific values from the result: row counts, dollar amounts, named entities (customer names, rep names, carrier names), or percentage figures from the output
+- The transcript contains a `mcp__bigquery__query` tool use (a BQ query was executed — NOT
+  `mcp__bigquery__dry_run`, which is cost estimation only, never a result-producing query)
+- A subsequent message in the same transcript references specific values from that query's result:
+  row counts, dollar amounts, named entities (customer names, rep names, carrier names), or
+  percentage figures
 
-Bare query execution where results are not subsequently discussed does NOT qualify.
+Bare query execution where results are not subsequently discussed does NOT qualify. You already read
+the full transcript in Step 1 — use that understanding to judge qualification directly; this is a
+judgment call on what you already read, not a new retrieval step.
 
-**How to check:** Search claude-mem for this session's observations using `mcp__plugin_claude-mem_mcp-search__search` with the session context. Look for BQ tool use followed by result-referencing observations.
-
-**ID format warning:** `search()` results mix two ID formats — plain numeric IDs (raw observations, valid input to `get_observations`) and `S`-prefixed IDs (session-summary markers, e.g. `S14015`, NOT valid `get_observations` input). Passing an `S`-prefixed ID to `get_observations` as if it were numeric returns an unrelated observation from a different project with no error — a silent wrong-data bug, not a failure you'll notice. Before using any ID from a search result (here or when briefing query-pattern-capture below), confirm it's plain-numeric; resolve an `S`-prefixed one via `timeline` or a further `search` first. (First observed 2026-08-20, `usps-ship-pilot-cohort` session: this step's own briefing passed `S`-prefixed IDs straight through, and the query-pattern-capture agent caught and self-corrected it.)
+**Extract verbatim SQL directly from the transcript** (never from memory/recall — exact text matters):
+```bash
+jq -c 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="mcp__bigquery__query") | {id: .id, query: .input.query}' "<session JSONL path from Step 0>"
+```
+This lists every BQ query tool use in the session with its exact `input.query` text and tool_use `id`. Cross-reference against your own read of the transcript to judge which ones qualify (results discussed) vs. don't.
 
 **If qualifying:**
 1. Append to `~/workspace/resources/query-patterns/capture-log.md`:
@@ -145,10 +160,10 @@ Bare query execution where results are not subsequently discussed does NOT quali
    Agent(
      subagent_type="query-pattern-capture",
      description="Capture BQ query patterns from session",
-     prompt="<qualifying observation IDs and session context>"
+     prompt="<session JSONL path>, qualifying tool_use id(s): <...>, session ID: <...>, one-line note per query on what result value was discussed and where"
    )
    ```
-   Brief the agent with: the qualifying observation IDs, the session ID, and a note that this was triggered by reflection after a BQ session. Do not use mcp__codex__codex or any other tool as a substitute for spawning this agent.
+   Brief the agent with: the session JSONL path (not claude-mem observation IDs), the qualifying tool_use `id`(s) from the jq output above, the session ID, and a note on why each qualified. Do not use mcp__codex__codex or any other tool as a substitute for spawning this agent.
 
 **If not qualifying:**
 Append to `~/workspace/resources/query-patterns/capture-log.md`:
