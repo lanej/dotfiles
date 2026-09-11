@@ -237,4 +237,3 @@ ax.axhline(37.8, color=SLATE, linestyle="--", linewidth=1.4, alpha=0.4, label="A
 At `alpha=1.0` (default), reference lines dominate the chart and compete with the data bars. `alpha=0.4` keeps them readable without visual dominance.
 
 ---
-
