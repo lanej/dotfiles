@@ -1,0 +1,32 @@
+name: Skill maintenance
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  skill-maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Keep checkout's default end-of-job credential cleanup. Early cleanup
+          # fails on the repo's pre-existing incomplete hotreload.nvim submodule.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pytest
+      - name: Exercise evidence and size gates
+        run: python -m pytest -q claude/evals/skill-maintenance
+      - name: Check current evidence and entrypoint budgets
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python claude/evals/skill-maintenance/check_evidence.py --base "$BASE_REF"
+          python claude/evals/skill-maintenance/check_size.py --base "$BASE_REF"
