@@ -1,3 +1,10 @@
+# Maintaining agent instructions
+
+Before changing skills, commands, agents, or their supporting resources, read
+[the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
+through the installed writing-skills and skill-creator workflows and defines
+this repository's regression-evidence and size checks.
+
 <claude-mem-context>
 # Memory Context
 

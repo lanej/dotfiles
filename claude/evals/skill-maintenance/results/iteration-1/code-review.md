@@ -1,0 +1,7 @@
+# Independent skill-maintenance code review
+
+Reviewed the policy, evidence and size gates, their tests, and the CI workflow. All 41 existing tests passed. Two concrete actionable bugs were reproduced:
+
+1. **[P2] Root Gemini instructions bypass the evidence gate** — `claude/evals/skill-maintenance/check_evidence.py:11`. The repository tracks its Gemini instructions at `GEMINI.md`, but `CONTROL_FILES` contains only `gemini/GEMINI.md`. Thus an edit or deletion of the actual root instruction file requires no evidence, contrary to the policy applying to shared instructions. Reproduction: `governed("GEMINI.md")` is `False` and `check(root, ["GEMINI.md"])` returns `[]` without a record. Add the actual root path to the governed set and its parameterized coverage test.
+
+2. **[P2] Universal newline conversion undercounts the documented byte budget** — `claude/evals/skill-maintenance/check_size.py:56–58`. `Path.read_text()` and `subprocess.run(..., text=True)` normalize CRLF to LF before `metrics()` re-encodes the text. The resulting estimate is not `ceil(UTF-8 bytes / 4)` for CRLF files and can allow a new entrypoint over budget or growth of an existing overage. Reproduction: a file containing `(b"x" * 31 + b"\r\n") * 500` has 500 lines and 16,500 bytes (4,125 estimated tokens), but the gate assesses it as 4,000 tokens and passes. Preserve the original bytes for both the working file and base blob when calculating metrics, and add a CRLF regression test.

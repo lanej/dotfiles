@@ -2,6 +2,11 @@
 
 This document contains project-specific guidelines for working with this dotfiles repository in Claude Code.
 
+Before changing skills, commands, agents, or their supporting resources, read
+[the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
+through the installed writing-skills and skill-creator workflows and defines
+this repository's regression-evidence and size checks.
+
 ## Claude Commands & Agents Versioning Pattern
 
 This repository uses a selective versioning pattern for Claude commands and agents that allows for experimentation without polluting version control.
