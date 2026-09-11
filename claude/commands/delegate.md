@@ -30,7 +30,7 @@ If you'll still be working after the agent returns, it's delegation. If you're l
 
 Dispatch with the `Agent` tool. Every call needs the six briefing fields from `CLAUDE.md`: Context, Domain, Sub-problem, Success, Constraints, Output format. Search breadth for `Explore` goes in the prompt prose ("medium", "very thorough") — there is no `thoroughness` parameter.
 
-**Never dispatch `fork` when the brief depends on it not writing** — see `CLAUDE.md`; a `PreToolUse` gate now enforces it.
+**Never dispatch `fork` when the brief depends on it not writing** — see `CLAUDE.md`. The attempted `PreToolUse` gate was removed; verify the output independently.
 
 ## Borderline calls
 
