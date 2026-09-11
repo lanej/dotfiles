@@ -63,3 +63,11 @@ escapes with no error or warning. Any script serializing user-authored text must
 ```python
 json.dumps(data, indent=2, ensure_ascii=False)
 ```
+
+### pg8000 has two identically-named `paramstyle` attributes — only one is load-bearing
+
+Setting the package-level `pg8000.paramstyle` attribute is a silent no-op; `cursor.execute()`
+actually reads `pg8000.dbapi.paramstyle` at call time. Getting this wrong produces real param-
+substitution failures with no exception pointing at the cause. Set `pg8000.dbapi.paramstyle`, not
+`pg8000.paramstyle`. A unit test built against a mocked cursor cannot catch this — verify with a
+real (or at least real-shaped) `pg8000` connection. (detail: memory "reference_pg8000_paramstyle_aliasing")

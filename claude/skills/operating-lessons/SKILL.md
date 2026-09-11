@@ -16,7 +16,7 @@ Read before surfacing a delegate's output, and before reporting any result you h
 - Sub-agent numeric, cost, data-availability and infra-completion claims are unverified intent until you run the check yourself
 - Resumed sub-agent threads drift; killed agents misreport status; git push/merge and "clean fast-forward" claims need direct confirmation
 - Unattributed repo changes: a second session on the same repo is the mundane cause — resolve provenance before committing
-- Verification-before-reporting family: aggregate counts, refactor output, multi-file refactors, architectural pivots, full-stack wiring, parallel frontend/backend contracts, single-example metrics, pricing generations, and **rendered document/page content** (a clean exit code is not proof — read the rendered output; recurred 4× across three projects)
+- Verification-before-reporting family: aggregate counts, refactor output, multi-file refactors, architectural pivots, full-stack wiring, parallel frontend/backend contracts, single-example metrics, pricing generations, and **rendered document/page content** (a clean exit code is not proof — read the rendered output; recurred 5× across three projects)
 - Bug attribution: a familiar-looking failure is not confirmed to share the old root cause; a dead field in a user's hint doesn't mean the lead was wrong
 
 ## `references/worktrees.md` — worktrees, briefings, concurrent sessions
@@ -36,8 +36,8 @@ Read when double-checking a procedure this index names.
 - `replace_all` safety; script argv verification; double-backgrounding inside `run_in_background`; interactive prompts in non-interactive Bash (and when `--quiet` is legitimate)
 - API result ownership; **BigQuery event-level join fanout** (silent aggregate inflation); Vertex has no `/fast`
 - Document editing: dependency/sibling-doc grep after *every* change that moves a number, including rebases; citations in externally-shareable artifacts
-- Architecture: extend the existing codebase idiom before proposing a new layer; name the optimal layer explicitly; query the real distribution before picking a threshold
-- Misc: Dockerfile `COPY`, TOML comment placement, `subagent-driven-development` brief/workspace/BASE pitfalls, monorepo git pathspec double-prefixing, cross-task bug-class propagation, no hard-wrapping markdown
+- Architecture: extend the existing codebase idiom before proposing a new layer; name the optimal layer explicitly; query the real distribution before picking a threshold; validate a new classification bar against a known-good example before scaling it
+- Misc: Dockerfile `COPY`, TOML comment placement, `subagent-driven-development` brief/workspace/BASE pitfalls, monorepo git pathspec double-prefixing, cross-task bug-class propagation, no hard-wrapping markdown, `subagent-driven-development` implementer-prompt.md gaps (git-staging discipline, evidentiary rigor)
 
 ## Error Handling
 
