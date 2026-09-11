@@ -46,6 +46,8 @@ Continuation (no task title):
 4. Preserve settled decisions. Incorporate new evidence or answers, reconcile only
    unresolved relevant findings, then evaluate readiness. Do not automatically
    re-interrogate, regenerate a plan, or move a later lifecycle state backwards.
+   Keep the actual unchanged content in the current spec; do not replace it with
+   "carried over from vN" placeholders that force an executor to reconstruct it.
 
 Respect the harness's active write and approval restrictions. A command cannot
 override plan-only mode to write session files. If writes are restricted, keep the
@@ -79,6 +81,10 @@ authority, or acceptance criteria. It may remain delegated to the executor.
 its implications, and how/when it will be checked. Cite that acceptance; silence,
 a high confidence score, or an unanswered question does not qualify. Acceptance
 does not grant authority beyond the user's actual instruction or waive hard limits.
+Delegating implementation mechanics does not accept uncertainty about the required
+behavior. Do not label a detail `accepted-uncertainty` when it is merely delegated;
+use `resolved` for an explicit delegation, or `open` for a remaining detail with its
+non-consequential rationale. Neither disposition can conceal a consequential gap.
 
 Keep current decisions concise. Before replacing a settled decision, preserve its
 old value, basis, and the reason for the change in `## Decision History`; mark the
@@ -109,9 +115,16 @@ every turn. Questions are not decisions until answered.
    wrong. Surface contradictions explicitly. A clear user preference or explicitly
    accepted tradeoff is sufficient: do not demand repeated justification just
    because another choice is possible.
+   An answer settles only what it actually addresses. Do not invent acceptance of
+   a different uncertainty, change a requirement's meaning to fit its sample tests,
+   or treat missing evidence as an observed absence. For example, "irreversible"
+   does not silently become "deleted from the live store only" because backups
+   were not mentioned. Resolve a consequential boundary from evidence or ask.
 6. **Show what changed.** Incorporate a consequential answer into the decision
    record and affected requirements, then briefly explain its effect before the
    next question. Do not recite the full spec or score every commandment aloud.
+   Describe the consequence in the user's terms; keep decision IDs and readiness
+   bookkeeping in the artifact. A sentence or two is usually enough.
 7. **Respect closure.** Reopen a settled decision only for new evidence, a concrete
    contradiction, or changed scope. State that trigger and exactly which decision
    it affects. Resume from open decisions; a restart is not a reason to ask again.
@@ -179,6 +192,10 @@ A spec is ready only when all of the following hold:
   criterion. Match verification to the task: a document or analysis need not invent
   a software test suite. Define regression boundaries, failure signals, the cheapest
   useful in-progress check/cadence, and known blind spots where relevant.
+  Name the behavior a test actually exercises; "core functionality works" alone
+  is not an observable criterion. A passing smoke test establishes only the tested
+  behavior and conditions, not a general capability. Preserve agreed timing: a
+  one-time follow-up does not become a recurring commitment without a decision.
 - No blocking decision or contradiction remains. Consequential uncertainty is either
   resolved or explicitly accepted with its implications and a concrete check.
 - Relevant critique findings have dispositions and none leaves a blocker untreated.

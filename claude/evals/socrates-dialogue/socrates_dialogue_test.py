@@ -1,7 +1,9 @@
 """Deterministic checks of the evaluation boundary and installed command contract."""
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -13,6 +15,10 @@ HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("dialogue_eval", HERE / "run.py")
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
+review_spec = importlib.util.spec_from_file_location("dialogue_review", HERE / "review.py")
+review_app = importlib.util.module_from_spec(review_spec)
+with patch.dict(sys.modules, {"run": app}):
+    review_spec.loader.exec_module(review_app)
 
 
 def envelope(response=None, **overrides):
@@ -140,3 +146,54 @@ def test_shared_scaffold_and_planning_companion_do_not_restore_old_gate():
     phases = (root / "phases-2-3.txt").read_text()
     assert "dialogue.txt" in phases and "Score <" not in phases
     assert "SESSION_DIR/plan.md" in phases and "Once approved" in phases
+
+
+@pytest.fixture
+def reviewed_run(tmp_path):
+    scenarios = json.loads((HERE / "scenarios.json").read_text())
+    (tmp_path / "scenarios.json").write_bytes((HERE / "scenarios.json").read_bytes())
+    manifest = {"scenarios_sha256": hashlib.sha256((HERE / "scenarios.json").read_bytes()).hexdigest(),
+                "refs": {"old": "before", "new": "after"}, "trials": 1}
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    reviews = {}
+    for arm in ("old", "new"):
+        for scenario in scenarios:
+            key = f"{arm}-{scenario['id']}-1"
+            folder = tmp_path / key
+            folder.mkdir()
+            data = json.dumps({"arm": arm, "ref": manifest["refs"][arm], "models": ["fixture"],
+                               "mechanical_failures": []}).encode()
+            (folder / "record.json").write_bytes(data)
+            reviews[key] = {"record_sha256": hashlib.sha256(data).hexdigest(),
+                            "checks": {c: {"passed": True, "evidence": "Fixture evidence"}
+                                       for c in review_app.CHECKS},
+                            "counts": {c: 0 for c in review_app.COUNTS},
+                            "question_notes": "Fixture: no unnecessary question"}
+    return tmp_path, reviews
+
+
+def test_review_requires_all_candidate_checks_to_pass(reviewed_run):
+    folder, reviews = reviewed_run
+    assert review_app.assess(folder, reviews)["candidate_passes_all_checks"]
+    reviews["new-legacy_scores-1"]["checks"]["decision_preservation"]["passed"] = False
+    result = review_app.assess(folder, reviews)
+    assert not result["candidate_passes_all_checks"]
+    assert result["arms"]["new"]["scenario_passes"] == 7
+
+
+@pytest.mark.parametrize("change", ["missing_case", "stale_record", "missing_check", "no_evidence", "invalid_count"])
+def test_incomplete_or_stale_reviews_cannot_pass(reviewed_run, change):
+    folder, reviews = reviewed_run
+    item = reviews["new-clear_request-1"]
+    if change == "missing_case":
+        del reviews["old-legacy_scores-1"]
+    elif change == "stale_record":
+        item["record_sha256"] = "wrong"
+    elif change == "missing_check":
+        del item["checks"]["seeded_blockers"]
+    elif change == "no_evidence":
+        item["checks"]["readiness_and_endpoint"]["evidence"] = ""
+    else:
+        item["counts"]["unnecessary_questions"] = True
+    with pytest.raises(ValueError):
+        review_app.assess(folder, reviews)

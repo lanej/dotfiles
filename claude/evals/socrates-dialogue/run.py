@@ -30,6 +30,8 @@ session artifacts, and user statements are supplied in the input; no tools exist
 Do not actually execute work, seek credentials, or claim real files were written.
 Simulate the session-artifact updates by returning the complete current spec as
 Markdown in `spec`, and the actual user-facing conversational turn in `reply`.
+Return artifact Markdown without XML/protocol delimiters. Do not invent missing
+prior artifact content; the supplied facts and artifacts are the entire context.
 Preserve required workflow bookkeeping in the spec rather than hiding its cost.
 Represent the next workflow action as `ask_user`, `ready_to_plan` (enter planning,
 not approval or execution), `specification_complete` (specify endpoint), or
@@ -173,6 +175,7 @@ def main():
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=False)
     scenarios = json.loads((HERE / "scenarios.json").read_text())
+    (args.out / "scenarios.json").write_bytes((HERE / "scenarios.json").read_bytes())
     refs = {"old": git("rev-parse", args.baseline + "^{commit}"),
             "new": git("rev-parse", args.candidate + "^{commit}")}
     prompts = {(arm, entry): bundle(ref, entry) for arm, ref in refs.items()
