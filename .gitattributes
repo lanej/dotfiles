@@ -1,2 +1,5 @@
 # Encrypt SuperWhisper settings containing sensitive vocabulary and name replacements
 superwhisper/settings/settings.json filter=git-crypt diff=git-crypt
+
+# Collapse captured model transcripts in PR diffs; reviews and result notes stay visible.
+claude/evals/socrates-dialogue/results/**/record.json linguist-generated=true
