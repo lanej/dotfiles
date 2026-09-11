@@ -151,7 +151,7 @@ Each base fact is an independent observation with its own data and evidence. Use
 
 Analysis of the past 7 days shows significant tail latency:
 - p50: 45ms
-- p95: 230ms  
+- p95: 230ms
 - p99: 890ms (concerning)
 
 ```{python}
@@ -169,9 +169,9 @@ Synthesis sections **explicitly reference** which earlier sections they build up
 
 \needspace{4in}
 
-Building on the response time distribution and traffic patterns above, we 
-observe a clear correlation: p99 latency spikes to 2.3s during the 2-4pm 
-peak traffic window. The system handles baseline load well but degrades 
+Building on the response time distribution and traffic patterns above, we
+observe a clear correlation: p99 latency spikes to 2.3s during the 2-4pm
+peak traffic window. The system handles baseline load well but degrades
 significantly under peak conditions.
 ```
 

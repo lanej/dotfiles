@@ -190,4 +190,3 @@ Verified contrast ratios:
 - **Reference implementation**: `~/workspace/projects/luma-revenue-forecast/` and `~/workspace/projects/revenue-forecast-2026/`
 
 ---
-
