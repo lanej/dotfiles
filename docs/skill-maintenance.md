@@ -5,22 +5,17 @@ shared instructions, and their scripts, templates, and references. A command suc
 as `/socrates` is instructional behavior even though its entrypoint is not named
 `SKILL.md`. Existing user instructions and authorization remain authoritative.
 
-## Use the installed authoring workflows
+## Use the installed authoring workflow
 
-Before editing, load **superpowers:writing-skills** and its required TDD background.
-Use its failing-baseline → minimal correction → passing scenario → refactor cycle,
-including its guidance for matching the instruction's form to the observed failure.
-For an existing skill, retain the old version and its failure before changing it.
+Before editing, load the enabled Anthropic **skill-creator:skill-creator** for its
+applicable authoring, paired evaluations, captured outputs, grading, and
+user-review workflow. Scope those mechanics to the task. For an existing skill,
+retain the old version and its observed failure before changing it, then make
+the minimal correction and compare against the captured old version. A new skill
+compares against no skill. Follow the actual loaded guidance for the relevant
+skill type, including pressure tests where it calls for them.
 
-Use the enabled Anthropic **skill-creator:skill-creator** for its applicable paired
-evaluations, captured outputs, grading, and user-review workflow. Writing-skills
-governs the baseline-before-edit sequence; skill-creator supplies the evaluation
-and review mechanics. Scope those mechanics to the task rather than duplicating
-both workflows. A new skill compares against no skill; an improvement compares
-against its captured old version. Follow the actual loaded guidance for the
-relevant skill type, including pressure tests where it calls for them.
-
-Resolve these qualified names through the runtime's installed skill/plugin
+Resolve this qualified name through the runtime's installed skill/plugin
 catalog. Record the versions or source locations used in the evaluation notes.
 The older repo-owned `claude/skills/skill-creator` is not a substitute for the
 enabled Anthropic plugin merely because its name matches. Do not edit plugin

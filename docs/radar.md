@@ -39,6 +39,12 @@ _Nothing here yet._
 
 ## Hold
 
+### Superpowers
+
+Claude Code workflow plugin. Removed from the shared settings at the owner's
+request in favor of the remaining official plugins and custom skills. Skill
+maintenance uses the official Anthropic skill-creator workflow.
+
 ### OpenCode
 
 AI coding assistant with a TUI interface. Put on hold due to memory leaks during long sessions and persistent lag in supporting new model releases — discovered while working around a Vertex AI 1M context window bug that required a [upstream PR](https://github.com/anomalyco/opencode/pull/14055) to fix.

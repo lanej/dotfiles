@@ -1,0 +1,39 @@
+Initial maintenance test attempt with the default Python:
+No module named pytest (exit 1).
+Installed pytest 9.1.1 in an isolated scratch virtual environment.
+
+Maintenance suite:
+...........................................                              [100%]
+43 passed in 0.30s
+
+Bin suite:
+........................................................................ [ 76%]
+.........F........ssss                                                   [100%]
+=================================== FAILURES ===================================
+__________ ConfigurationTests.test_all_lifecycle_hooks_are_wired_once __________
+
+self = <claude-tmux-later_test.ConfigurationTests testMethod=test_all_lifecycle_hooks_are_wired_once>
+
+    def test_all_lifecycle_hooks_are_wired_once(self):
+        doc = app.read_json(SCRIPT.parent.parent / ".claude/settings.json", {})
+        for event in app.EVENTS:
+            hooks = [h for entry in doc["hooks"][event] for h in entry["hooks"]
+                     if "claude-tmux-later" in h.get("command", "")]
+>           self.assertEqual(len(hooks), 1, event)
+E           AssertionError: 0 != 1 : PostToolUse
+
+bin/claude-tmux-later_test.py:225: AssertionError
+=========================== short test summary info ============================
+FAILED bin/claude-tmux-later_test.py::ConfigurationTests::test_all_lifecycle_hooks_are_wired_once
+1 failed, 89 passed, 4 skipped in 0.23s
+
+Base-commit reproduction in a separate worktree:
+939036cea8495be4cc06a4969c02c1e528a4a64d
+python -m pytest -q bin/claude-tmux-later_test.py::ConfigurationTests::test_all_lifecycle_hooks_are_wired_once
+AssertionError: 0 != 1 : PostToolUse
+1 failed in 0.06s (exit 1).
+
+Configuration review:
+Settings parse; only Superpowers removed; other settings identical; authoring routes have no writing-skills dependency.
+
+
