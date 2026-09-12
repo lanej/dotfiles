@@ -1,21 +1,33 @@
-name: Claude tmux idle cleanup
+name: Claude feature regressions
 
 on:
   pull_request:
     paths:
+      - 'bin/claude-autoname-hook*'
+      - 'bin/claude-session-resolve*'
       - 'bin/claude-tmux-later*'
+      - 'bin/claude-plugin-converge_test.py'
+      - 'bin/claude-remove-blocked-plugins'
+      - 'bin/conftest.py'
+      - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'claude/tmux-later.json'
       - 'Makefile'
-      - '.github/workflows/claude-tmux-later.yml'
+      - '.github/workflows/claude-features.yml'
   push:
     branches: [master]
     paths:
+      - 'bin/claude-autoname-hook*'
+      - 'bin/claude-session-resolve*'
       - 'bin/claude-tmux-later*'
+      - 'bin/claude-plugin-converge_test.py'
+      - 'bin/claude-remove-blocked-plugins'
+      - 'bin/conftest.py'
+      - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'claude/tmux-later.json'
       - 'Makefile'
-      - '.github/workflows/claude-tmux-later.yml'
+      - '.github/workflows/claude-features.yml'
 
 permissions:
   contents: read
@@ -40,7 +52,7 @@ jobs:
         if: runner.os == 'macOS'
         run: command -v tmux || brew install tmux
       - run: python -m pip install pytest
-      - name: Unit and isolated live-tmux tests
+      - name: One regression detector per feature
         run: python -m pytest -v bin/*_test.py
         env:
           REQUIRE_TMUX_TESTS: '1'
