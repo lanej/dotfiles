@@ -5,7 +5,7 @@ description: Review rendered web UIs against project layout rules and Josh's des
 
 # UI review
 
-Use the `ui-review` CLI from Josh's dotfiles. If it is not on PATH, use
+Use Viewrule through the `ui-review` compatibility wrapper in Josh's dotfiles. If it is not on PATH, use
 `~/.files/bin/ui-review`. Setup and rule types are documented in
 `~/.files/docs/ui-review.md`. This supplements the project's design system.
 

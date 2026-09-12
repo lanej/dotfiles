@@ -1,26 +1,22 @@
-name: UI review
+name: Viewrule integration
 on:
   pull_request:
-    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', 'docs/design-rules.md', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'claude/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
   push:
     branches: [master]
-    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', 'docs/design-rules.md', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'claude/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
 permissions:
   contents: read
 jobs:
-  test:
+  integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: share/ui-review/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: npm ci --prefix share/ui-review
-      - run: npm exec --prefix share/ui-review -- playwright install --with-deps chromium
-      - run: npm test --prefix share/ui-review
+      - run: make test-ui-review

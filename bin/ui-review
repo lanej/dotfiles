@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve dotfiles symlinks portably on macOS/Linux, then launch the Node CLI."""
+"""Launch standalone Viewrule with personal defaults; keep unconfigured hooks cheap."""
 import json
 import os
 from pathlib import Path
@@ -8,6 +8,12 @@ import subprocess
 import sys
 
 root = Path(__file__).resolve().parent.parent
+os.environ.setdefault("VIEWRULE_CONFIG_DIR", os.environ.get("UI_REVIEW_GLOBAL_DIR", str(root / "claude/ui-review")))
+if os.environ.get("VIEWRULE_DEV_DIR"):
+    launcher = Path(os.environ["VIEWRULE_DEV_DIR"]).expanduser().resolve() / "bin/viewrule.mjs"
+else:
+    install_root = Path(os.environ.get("VIEWRULE_INSTALL_ROOT", Path.home() / ".local/share/viewrule")).expanduser()
+    launcher = install_root / "current/node_modules/viewrule/bin/viewrule.mjs"
 if sys.argv[1:] == ["hook"]:
     # Unconfigured projects pay no browser/Node startup cost and never get blocked.
     raw = sys.stdin.read()
@@ -24,14 +30,14 @@ if sys.argv[1:] == ["hook"]:
     except (ValueError, OSError) as exc:
         print(json.dumps({"decision": "block", "reason": f"UI review configuration error: {exc}"}))
         sys.exit(0)
-    result = subprocess.run(["node", str(root / "share/ui-review/cli.mjs"), "hook"], input=raw, text=True, capture_output=True) if shutil.which("node") else None
+    result = subprocess.run(["node", str(launcher), "hook"], input=raw, text=True, capture_output=True) if shutil.which("node") and launcher.is_file() else None
     if result is not None and result.returncode == 0:
         print(result.stdout, end="")
     else:
         print(json.dumps({"decision": "block", "reason": "UI review could not verify this project. Run make ui-review in your dotfiles and ui-review check in the project; report any setup failure."}))
     sys.exit(0)
 
-if not shutil.which("node") or not (root / "share/ui-review/node_modules").is_dir():
-    print("ui-review: install Node 22+ and run make ui-review in your dotfiles.", file=sys.stderr)
+if not shutil.which("node") or not launcher.is_file():
+    print("ui-review: install Node 22+ and run make ui-review, or set VIEWRULE_DEV_DIR to a prepared Viewrule checkout.", file=sys.stderr)
     sys.exit(2)
-os.execvp("node", ["node", str(root / "share/ui-review/cli.mjs"), *sys.argv[1:]])
+os.execvp("node", ["node", str(launcher), *sys.argv[1:]])

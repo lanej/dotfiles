@@ -237,10 +237,10 @@ test:
 
 .PHONY: ui-review test-ui-review
 ui-review:
-	@npm ci --prefix $(DOTFILES)/share/ui-review
-	@npm exec --prefix $(DOTFILES)/share/ui-review -- playwright install chromium
+	@python3 $(DOTFILES)/scripts/install-viewrule.py
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/ui-review
-	@echo "UI review installed. Use /ui-review in Claude Code or ui-review --help."
+	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/viewrule
+	@echo "Viewrule installed. Use /ui-review in Claude Code or viewrule --help."
 test-ui-review:
-	@npm test --prefix $(DOTFILES)/share/ui-review
+	@python3 $(DOTFILES)/scripts/test-viewrule.py
