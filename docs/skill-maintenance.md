@@ -33,9 +33,10 @@ studies and their supporting artifacts require an explicit owner request.
 
 ## Entrypoint size budget
 
-CI checks tracked `SKILL.md` files in the Claude/Gemini skill trees and Markdown
-command/agent entrypoints against **500 lines and approximately 4,000 tokens**.
-The estimate is `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
+CI checks tracked `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` files at
+any depth, plus Markdown entrypoints under `claude/commands/` and
+`claude/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
+are skipped. The estimate is `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
 
 Each limit is the larger of that budget and the file's size on the PR base.
 Existing overages may stay the same size or shrink; new entrypoints must meet

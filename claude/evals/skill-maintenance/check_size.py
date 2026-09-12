@@ -31,7 +31,7 @@ def assess(text, previous, override):
 
 
 def is_entrypoint(path):
-    return (path.startswith(("claude/skills/", "gemini/skills/")) and path.endswith("/SKILL.md")
+    return (Path(path).name in {"SKILL.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md"}
             or path.startswith(("claude/commands/", "claude/agents/")) and path.endswith(".md"))
 
 

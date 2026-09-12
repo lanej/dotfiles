@@ -3,8 +3,10 @@ name: Skill maintenance
 on:
   pull_request:
     paths:
-      - 'claude/skills/**'
-      - 'gemini/skills/**'
+      - '**/SKILL.md'
+      - '**/AGENTS.md'
+      - '**/CLAUDE.md'
+      - '**/GEMINI.md'
       - 'claude/commands/**'
       - 'claude/agents/**'
       - 'claude/evals/skill-maintenance/check_size.py'
@@ -14,8 +16,10 @@ on:
   push:
     branches: [master]
     paths:
-      - 'claude/skills/**'
-      - 'gemini/skills/**'
+      - '**/SKILL.md'
+      - '**/AGENTS.md'
+      - '**/CLAUDE.md'
+      - '**/GEMINI.md'
       - 'claude/commands/**'
       - 'claude/agents/**'
       - 'claude/evals/skill-maintenance/check_size.py'

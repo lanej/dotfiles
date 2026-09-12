@@ -5,30 +5,38 @@ import subprocess
 import sys
 
 
-def test_entrypoint_budget_rejects_new_overage_but_accepts_existing(tmp_path):
-    """A 490-line file is 16,170 bytes, not its normalized 15,680 bytes."""
+def test_entrypoint_budget_requires_trimming_new_and_growing_files(tmp_path):
+    """Trim new agent instructions and skill growth to their respective budgets."""
     def git(*args):
         return subprocess.check_output(["git", "-C", str(tmp_path), *args], text=True).strip()
     git("init", "-q")
     git("config", "user.name", "Fixture")
     git("config", "user.email", "fixture@example.invalid")
     git("config", "core.autocrlf", "false")
-    git("commit", "--allow-empty", "-qm", "baseline")
-    base = git("rev-parse", "HEAD")
     folder = tmp_path / "claude/evals/skill-maintenance"
     folder.mkdir(parents=True)
     for name in ["check_size.py", "size-budgets.json"]:
         shutil.copyfile(Path(__file__).with_name(name), folder / name)
     skill = tmp_path / "claude/skills/example/SKILL.md"
     skill.parent.mkdir(parents=True)
+    # CRLF must count: this existing skill is ~4043 tokens, below 500 lines.
     skill.write_bytes((b"x" * 31 + b"\r\n") * 490)
     git("add", "claude/skills/example/SKILL.md")
-    result = subprocess.run([sys.executable, str(folder / "check_size.py"), "--base", base],
+    git("commit", "-qm", "baseline")
+
+    skill.write_bytes((b"x" * 31 + b"\r\n") * 491)
+    agents = tmp_path / "AGENTS.md"
+    agents.write_text("x\n" * 501)
+    git("add", "AGENTS.md")
+    result = subprocess.run([sys.executable, str(folder / "check_size.py"), "--base", "HEAD"],
                             capture_output=True, text=True)
     assert result.returncode == 1, result.stdout + result.stderr
-    assert "490 lines, ~4043 tokens" in result.stdout
-    # The identical pre-existing overage must subsequently be grandfathered.
-    git("commit", "-qm", "existing overage")
+    assert "FAIL AGENTS.md: 501 lines" in result.stdout
+    assert "FAIL claude/skills/example/SKILL.md: 491 lines, ~4051 tokens" in result.stdout
+
+    # Restore the existing skill's size and bring new instructions within budget.
+    skill.write_bytes((b"x" * 31 + b"\r\n") * 490)
+    agents.write_text("x\n" * 500)
     result = subprocess.run([sys.executable, str(folder / "check_size.py"), "--base", "HEAD"],
                             capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
