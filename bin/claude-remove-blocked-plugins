@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Remove blocklisted user-scope Claude plugins; safe to run repeatedly."""
+import argparse
+import json
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+DEFAULT_BLOCKLIST = Path(__file__).resolve().parent.parent / "claude/blocked-plugins.json"
+
+
+def converge(blocklist_path):
+    claude = shutil.which("claude")
+    if claude is None:
+        print("claude: skipping plugin cleanup (Claude CLI not installed)")
+        return
+
+    blocked = json.loads(blocklist_path.read_text())
+    if not isinstance(blocked, list) or any(
+        not isinstance(plugin, str)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9._-]*", plugin)
+        for plugin in blocked
+    ):
+        raise ValueError("Blocklist must be an array of marketplace-qualified plugin IDs")
+    if not blocked:
+        return
+
+    result = subprocess.run([claude, "plugin", "list", "--json"],
+                            check=True, stdout=subprocess.PIPE, text=True)
+    installed = json.loads(result.stdout)
+    if not isinstance(installed, list) or any(
+        not isinstance(plugin, dict)
+        or not isinstance(plugin.get("id"), str)
+        or not isinstance(plugin.get("scope"), str)
+        for plugin in installed
+    ):
+        raise ValueError("Expected a Claude plugin array with id and scope fields")
+
+    matches = sorted({plugin["id"] for plugin in installed
+                      if plugin["scope"] == "user" and plugin["id"] in blocked})
+    for plugin in matches:
+        subprocess.run([claude, "plugin", "uninstall", plugin, "--scope", "user"], check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--blocklist", type=Path, default=DEFAULT_BLOCKLIST)
+    args = parser.parse_args()
+    try:
+        converge(args.blocklist)
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"claude: plugin cleanup failed: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
