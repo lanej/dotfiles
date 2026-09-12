@@ -6,6 +6,10 @@ The Claude skill is `/ui-review`. Tufte-inspired guidance lives in
 `claude/ui-review/preferences.json`; reusable executable rules live next to it.
 Neither a passing run nor an approved screenshot proves a design is effective.
 
+[Design rules](design-rules.md) defines the intended requirements for analytical
+screens. It is the reference for the next detection and enforcement design;
+the rules listed there are not all implemented by this tool.
+
 ## Setup and first review
 
 Requires Node 22+, npm, and Python 3 (the portable symlink launcher).
