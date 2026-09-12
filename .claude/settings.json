@@ -188,11 +188,11 @@
         ]
       },
       {
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
+            "command": "$HOME/.files/bin/claude-agent-model-narration-hook"
           }
         ]
       }
@@ -248,17 +248,6 @@
             "type": "command",
             "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
             "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.files/bin/claude-agent-model-narration-hook"
           }
         ]
       }
