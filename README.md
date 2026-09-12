@@ -25,6 +25,13 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
+`make` (or `make claude`) also removes installed Claude Code plugins listed in
+[`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
+the Claude CLI is available. Add a marketplace-qualified plugin ID to that list
+to retire another plugin; Superpowers is the initial entry. Already-absent
+installations are a no-op; invalid configuration, inspection, or uninstall
+failures stop the task so they can be fixed.
+
 ## Stack
 
 | Tool | Description |

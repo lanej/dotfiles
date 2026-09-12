@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "sources": {
+    ".claude/settings.json": "ffac0962e6ffb7b99b8b5fb07ce081d40cd35d1f35df744a9f61a25e614fac9a",
+    "AGENTS.md": "1acecfd459e9fe4fd9fd405c45db3df5a5805aed3ae56231765caff56d415763",
+    "CLAUDE.md": "e53970bc052413cb5a64868d4158f197708769c6f866adbf2224924a83c64fbf",
+    "docs/skill-maintenance.md": "2f01ade286c587aea6c62eccffc26ce45f2190afadfd0f37e26f9a1001360b52",
+    "docs/radar.md": "57a1b66e7aa3c48f750032767b3af4f70c34dbcb2a99f273693c6b8035ee75a9",
+    "Makefile": "da6e257ac853961e2146d28230a3581ef544419945fa53e40b9f30e402c7ed68",
+    ".github/workflows/skill-maintenance.yml": "ca50b724e25ce813b0c0f36a93e4bd6c493698da46e4f6feb180d06c4e0debdb",
+    "claude/evals/skill-maintenance/check_evidence.py": "5714c7f052deedda47115d03f9b79e375e22529a1aeb55fb262249d5c5a77437",
+    "claude/evals/skill-maintenance/check_size.py": "d9902aecd226d1ac061e2f9679f45649af0f081d6094336174a46ffe4c9cc29f",
+    "claude/evals/skill-maintenance/size-budgets.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "README.md": "8d2d80410cf4707b855cce29165d040d0a1bbd110bf64ea2098ba533efffc8a3",
+    "bin/claude-plugin-converge_test.py": "d21a5bae32ded72f3f1fe70c21c9782ca880d395e1fb27fbc10ea5f982d45a41"
+  },
+  "artifacts": {
+    "baseline": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers/baseline.md",
+      "sha256": "440449477bfcfac37c51a0a911694dfa0f5bc28eaebd3d3a1ffa2d65445bf8a7"
+    },
+    "baseline_sources": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers/baseline-sources.json",
+      "sha256": "f1db4d50c2d86ccf670fd61ab3161ad6d211a72a2c6641b01b6b3e2d2fa48508"
+    },
+    "candidate": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers-converge/candidate.md",
+      "sha256": "8f0354be64b584f00b75525295b05512b5e155367d598098bfaf11e0a9e068ae"
+    },
+    "review": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers-converge/review.md",
+      "sha256": "420a0af6056173cdd7b611362b78d9fbbd5f309ff670c3e9ef08c60a8a62e374"
+    },
+    "tests": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers/tests.txt",
+      "sha256": "0389ed429132dc332577519ba534f7a748df4f566e825b908ea301726f31a9de"
+    },
+    "prior_review": {
+      "path": "claude/evals/skill-maintenance/results/remove-superpowers/review.md",
+      "sha256": "d6083f99ec5ac4c564bb229d62a2ffdbfb5a3d8596c3be817bac6e57add650ab"
+    }
+  },
+  "checks": [
+    {
+      "name": "Only the requested plugin configuration was removed",
+      "passed": true,
+      "evidence": "Parsed settings comparison in tests.txt confirms all other values are identical."
+    },
+    {
+      "name": "Maintenance routes no longer require the removed plugin",
+      "passed": true,
+      "evidence": "Manual baseline/candidate routing walkthrough and review.md; no live model behavior claim."
+    },
+    {
+      "name": "Maintenance gate regression suite",
+      "passed": true,
+      "evidence": "tests.txt records 43 passing maintenance tests; broader-suite failure is disclosed separately and reproduced on the untouched base."
+    },
+    {
+      "name": "Make plugin convergence",
+      "passed": true,
+      "evidence": "review.md records seven passing isolated command-integration tests, including repeat execution and error propagation."
+    }
+  ]
+}

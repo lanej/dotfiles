@@ -165,7 +165,10 @@ superwhisper:
 		ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json; \
 		echo "✓ SuperWhisper configuration linked"; \
 	fi
-claude:
+.PHONY: claude-plugins
+claude-plugins:
+	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
+claude: claude-plugins
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@mkdir -p $(HOME)/.config/claude-tmux-later
