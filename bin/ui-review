@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Resolve dotfiles symlinks portably on macOS/Linux, then launch the Node CLI."""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+root = Path(__file__).resolve().parent.parent
+if sys.argv[1:] == ["hook"]:
+    # Unconfigured projects pay no browser/Node startup cost and never get blocked.
+    raw = sys.stdin.read()
+    try:
+        payload = json.loads(raw)
+        if payload.get("stop_hook_active") or not payload.get("cwd"):
+            sys.exit(0)
+        config_file = Path(payload["cwd"]) / ".ui-review/config.json"
+        if not config_file.exists():
+            sys.exit(0)
+        config = json.loads(config_file.read_text())
+        if config.get("enforceOnStop") is False:
+            sys.exit(0)
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"decision": "block", "reason": f"UI review configuration error: {exc}"}))
+        sys.exit(0)
+    result = subprocess.run(["node", str(root / "share/ui-review/cli.mjs"), "hook"], input=raw, text=True, capture_output=True) if shutil.which("node") else None
+    if result is not None and result.returncode == 0:
+        print(result.stdout, end="")
+    else:
+        print(json.dumps({"decision": "block", "reason": "UI review could not verify this project. Run make ui-review in your dotfiles and ui-review check in the project; report any setup failure."}))
+    sys.exit(0)
+
+if not shutil.which("node") or not (root / "share/ui-review/node_modules").is_dir():
+    print("ui-review: install Node 22+ and run make ui-review in your dotfiles.", file=sys.stderr)
+    sys.exit(2)
+os.execvp("node", ["node", str(root / "share/ui-review/cli.mjs"), *sys.argv[1:]])

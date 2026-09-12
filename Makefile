@@ -234,3 +234,13 @@ mail:
 	@echo "  3. Launch neomutt when done"
 test:
 	@pytest bin/*_test.py
+
+.PHONY: ui-review test-ui-review
+ui-review:
+	@npm ci --prefix $(DOTFILES)/share/ui-review
+	@npm exec --prefix $(DOTFILES)/share/ui-review -- playwright install chromium
+	@mkdir -p $(HOME)/.local/bin
+	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/ui-review
+	@echo "UI review installed. Use /ui-review in Claude Code or ui-review --help."
+test-ui-review:
+	@npm test --prefix $(DOTFILES)/share/ui-review
