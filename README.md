@@ -25,6 +25,10 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
+`make` (or `make claude`) also removes the retired Superpowers plugin from Claude
+Code's user scope when the Claude CLI is available. Already-absent installations
+are a no-op; inspection or uninstall failures stop the task so they can be fixed.
+
 ## Stack
 
 | Tool | Description |

@@ -165,7 +165,18 @@ superwhisper:
 		ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json; \
 		echo "✓ SuperWhisper configuration linked"; \
 	fi
-claude:
+.PHONY: claude-plugins
+claude-plugins:
+	@if command -v claude >/dev/null 2>&1; then \
+		plugins=$$(claude plugin list --json) || exit $$?; \
+		installed=$$(printf '%s\n' "$$plugins" | jq -r 'if type == "array" then any(.[]; .id == "superpowers@claude-plugins-official" and .scope == "user") else error("Expected a Claude plugin array") end') || exit $$?; \
+		if [ "$$installed" = true ]; then \
+			claude plugin uninstall superpowers@claude-plugins-official --scope user; \
+		fi; \
+	else \
+		echo "claude: skipping plugin cleanup (Claude CLI not installed)"; \
+	fi
+claude: claude-plugins
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@mkdir -p $(HOME)/.config/claude-tmux-later
