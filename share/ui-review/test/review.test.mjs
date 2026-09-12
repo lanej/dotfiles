@@ -5,10 +5,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createServer } from "node:http";
 import { execFile } from "node:child_process";
-import { config, rules, html } from "./fixtures.mjs";
+import { config, rules, reviewHtml } from "./fixtures.mjs";
 
 // One user workflow through the installed entrypoint; no helper/edge-case matrix.
-test("UI review rejects a sparse layout, learns feedback, and accepts a repaired 4K page", { timeout: 60000 }, async (t) => {
+test("UI review cites design violations, learns feedback, and accepts a repaired responsive comparison", { timeout: 60000 }, async (t) => {
   const project = await mkdtemp(path.join(tmpdir(), "ui-review-"));
   t.after(() => rm(project, { recursive: true, force: true }));
   const globalDir = path.join(project, "global");
@@ -16,7 +16,7 @@ test("UI review rejects a sparse layout, learns feedback, and accepts a repaired
   await mkdir(path.join(project, "src"));
   await mkdir(path.join(project, ".ui-review"));
   const source = path.join(project, "src/page.html");
-  await writeFile(source, html(true).replace("<style>", "<style>table{max-width:600px}"));
+  await writeFile(source, reviewHtml(true));
   const server = createServer(async (_req, res) => {
     res.setHeader("Content-Type", "text/html");
     res.end(await readFile(source));
@@ -25,7 +25,8 @@ test("UI review rejects a sparse layout, learns feedback, and accepts a repaired
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const cfg = {
     ...config(`http://127.0.0.1:${server.address().port}`),
-    viewports: [{ name: "4k", width: 3840, height: 2160 }],
+    viewports: [{ name: "desktop", width: 1280, height: 800 }, { name: "4k", width: 3840, height: 2160 }],
+    requiredDesignRules: ["DR-001", "DR-003", "DR-006", "DR-007"],
   };
   const density = {
     id: "density", type: "region-density", region: "viewport",
@@ -33,7 +34,16 @@ test("UI review rejects a sparse layout, learns feedback, and accepts a repaired
     severity: "error", reason: "Use the comparison workspace.",
   };
   await writeFile(path.join(project, ".ui-review/config.json"), JSON.stringify(cfg));
-  await writeFile(path.join(project, ".ui-review/rules.json"), JSON.stringify([...rules, density]));
+  await writeFile(path.join(project, ".ui-review/rules.json"), JSON.stringify([...rules, density, {
+    id: "comparison", type: "comparison-set", selector: "tbody tr",
+    keyAttribute: "data-comparison", requiredKeys: ["carrier-1", "carrier-2"],
+    minVisibleByViewport: { desktop: 8, "4k": 12 }, preserveFrom: "desktop", minFontSize: 14,
+    severity: "error", reason: "Keep alternatives visible and use the larger screen for additional carriers.",
+  }, {
+    id: "period", type: "consistent", selector: "table", keyAttribute: "data-measure",
+    properties: [], attributes: ["data-period"], designRules: ["DR-001"],
+    severity: "error", reason: "Resizing must preserve the reporting period.",
+  }]));
   const launcher = path.resolve(import.meta.dirname, "../../../bin/ui-review");
   const cli = (args, input = "") => new Promise((resolve, reject) => {
     const child = execFile(launcher, args, {
@@ -52,8 +62,12 @@ test("UI review rejects a sparse layout, learns feedback, and accepts a repaired
   assert.equal(bad.code, 1, bad.stderr);
   const badOutput = JSON.parse(bad.stdout);
   const badReport = JSON.parse(await readFile(badOutput.report));
-  assert.ok(badReport.pages[0].findings.some((finding) => finding.rule === "density"));
-  assert.equal((await hook()).decision, "block");
+  const wide = badReport.pages.find((page) => page.viewport.name === "4k");
+  assert.ok(wide.findings.some((finding) => finding.designRules.includes("DR-001")));
+  assert.ok(wide.findings.some((finding) => finding.message.includes("lost previously visible") && finding.actual.includes("carrier-8")));
+  const blocked = await hook();
+  assert.equal(blocked.decision, "block");
+  assert.match(blocked.reason, /DR-007/);
 
   const note = await cli(["feedback", "--report", badOutput.report,
     "--decision", "adjust", "--note", "Give the comparison more of the viewport."]);
@@ -65,20 +79,22 @@ test("UI review rejects a sparse layout, learns feedback, and accepts a repaired
   const savedRules = JSON.parse(await readFile(path.join(project, ".ui-review/rules.json")));
   assert.equal(savedRules.find((rule) => rule.id === "density").feedbackId, JSON.parse(note.stdout).id);
 
-  await writeFile(source, html(false));
+  await writeFile(source, reviewHtml(false));
   const good = await cli(["check"]);
   assert.equal(good.code, 0, good.stderr || good.stdout);
   assert.deepEqual(await hook(), {});
   const output = JSON.parse(good.stdout);
   const report = JSON.parse(await readFile(output.report));
-  const details = report.pages[0].details;
+  const details = report.pages.find((page) => page.viewport.name === "4k").details;
   assert.equal(details.complete, true);
   const last = details.tiles.at(-1);
   assert.deepEqual([last.x + last.width, last.y + last.height], [3840, 2160]);
   const png = await readFile(path.join(path.dirname(output.report), last.file));
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1024, 800]);
   assert.match(await readFile(output.html, "utf8"), /capture-1-detail-/);
+  assert.equal(report.pages[0].designCoverage.find((rule) => rule.id === "DR-002").status, "unassessed");
+  assert.match(await readFile(path.join(path.dirname(output.report), "design-rules.html"), "utf8"), /id="DR-007"/);
 
-  await writeFile(source, html(true));
+  await writeFile(source, reviewHtml(true));
   assert.equal((await hook()).decision, "block", "Source changes invalidate the passing review");
 });

@@ -98,6 +98,10 @@ try {
         ...result.report.summary,
         report: result.reportFile,
         html: path.join(path.dirname(result.reportFile), "index.html"),
+        designRules: path.join(path.dirname(result.reportFile), "design-rules.html"),
+        findings: result.report.pages.flatMap((page) => page.findings.map((finding) => ({
+          page: page.name, viewport: page.viewport.name, ...finding,
+        }))),
       }),
     );
     process.exitCode = result.report.status === "pass" ? 0 : 1;

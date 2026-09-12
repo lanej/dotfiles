@@ -78,3 +78,20 @@ table{border-collapse:collapse;width:100%;margin-top:20px}td,th{padding:10px;tex
 <p class="label">Carrier service and delivery window</p><table><caption>Comparable service levels · illustrative data</caption><thead><tr><th>Carrier</th><th>On time</th><th>Cost</th></tr></thead><tbody>
 ${Array.from({ length: 8 }, (_, i) => `<tr><td>Carrier ${i + 1}</td><td>98.${i}%</td><td>$${(5 + i / 10).toFixed(2)}</td></tr>`).join("")}
 </tbody></table></main></body></html>`;
+
+// One responsive comparison for the CLI regression. The demo keeps its simpler
+// eight-row fixture. Metadata and its visible period label share one value.
+export function reviewHtml(broken) {
+  return html(false)
+    .replace("<style>", `<style>${broken ? "table{max-width:600px}" : ""}
+      tbody tr:nth-child(n+9){display:none}
+      @media(min-width:2000px){tbody tr:nth-child(n+9){display:table-row}${broken ? "tbody tr:nth-child(8){display:none}" : ""}}`)
+    .replace("</tbody>", Array.from({ length: 4 }, (_, i) => `<tr><td>Carrier ${i + 9}</td><td>97.${i}%</td><td>$6.${i}0</td></tr>`).join("") + "</tbody>")
+    .replace(/<tr><td>Carrier (\d+)/g, '<tr data-comparison="carrier-$1"><td>Carrier $1')
+    .replace("<table>", '<table data-measure="carrier-comparison">')
+    .replace("</body>", `<script>
+      const period = ${broken} && innerWidth >= 2000 ? "7 days" : "30 days";
+      document.querySelector("table").dataset.period = period;
+      document.querySelector("caption").textContent += " · Last " + period;
+    </script></body>`);
+}

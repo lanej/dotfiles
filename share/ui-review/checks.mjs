@@ -3,6 +3,7 @@
 export function inspectPage(rules) {
   const findings = [];
   const density = [];
+  const comparisons = [], consistency = [], evaluations = [];
   const rect = (el) => el.getBoundingClientRect();
   const visible = (el) => {
     const r = rect(el);
@@ -63,6 +64,7 @@ export function inspectPage(rules) {
   for (const rule of rules) {
     const els = [...document.querySelectorAll(rule.selector)].filter(visible);
     evaluated++;
+    evaluations.push({ rule: rule.id, matched: els.length, status: els.length ? "checked" : rule.optional ? "skipped" : "missing" });
     if (!els.length) {
       if (!rule.optional)
         add(
@@ -74,7 +76,55 @@ export function inspectPage(rules) {
         );
       continue;
     }
-    if (rule.type === "region-density") {
+    if (rule.type === "comparison-set" || rule.type === "consistent") {
+      const items = [];
+      for (const el of els) {
+        const key = el.getAttribute(rule.keyAttribute)?.trim();
+        if (!key) {
+          add(rule, `Missing stable identity: ${rule.keyAttribute}.`, el, null, "nonempty identity");
+          continue;
+        }
+        if (rule.type === "consistent") {
+          const values = {};
+          for (const property of rule.properties)
+            values[`css:${property}`] = getComputedStyle(el).getPropertyValue(property).trim();
+          for (const attribute of rule.attributes)
+            values[`attr:${attribute}`] = el.getAttribute(attribute)?.trim() ?? "";
+          if (Object.values(values).some((value) => !value))
+            add(rule, `Incomplete comparison metadata for ${key}.`, el, values, "nonempty declared properties and attributes");
+          items.push({ key, values });
+        } else {
+          const r = rect(el);
+          let fits = r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= width;
+          for (let ancestor = el.parentElement; fits && ancestor; ancestor = ancestor.parentElement) {
+            const style = getComputedStyle(ancestor), a = rect(ancestor);
+            const left = a.left + ancestor.clientLeft, top = a.top + ancestor.clientTop;
+            if (style.overflowX !== "visible" && (r.left < left - 1 || r.right > left + ancestor.clientWidth + 1)) fits = false;
+            if (style.overflowY !== "visible" && (r.top < top - 1 || r.bottom > top + ancestor.clientHeight + 1)) fits = false;
+          }
+          if (fits) {
+            items.push(key);
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const sizes = [];
+            let textNode;
+            while ((textNode = walker.nextNode()))
+              if (textNode.textContent.trim() && visible(textNode.parentElement))
+                sizes.push(parseFloat(getComputedStyle(textNode.parentElement).fontSize));
+            const size = sizes.length ? Math.min(...sizes) : parseFloat(getComputedStyle(el).fontSize);
+            if (size < rule.minFontSize)
+              add(rule, `${key} is below the configured readable type size.`, el, size, rule.minFontSize);
+          }
+        }
+      }
+      if (rule.type === "consistent") consistency.push({ rule: rule.id, items });
+      else {
+        const keys = [...new Set(items)];
+        comparisons.push({ rule: rule.id, keys });
+        const missing = rule.requiredKeys.filter((key) => !keys.includes(key));
+        if (missing.length)
+          add(rule, "Critical comparisons are not visible together.", null, missing, rule.requiredKeys);
+      }
+    } else if (rule.type === "region-density") {
       const regions =
         rule.region === "viewport"
           ? [document.documentElement]
@@ -284,6 +334,11 @@ export function inspectPage(rules) {
               rule.allowed,
             );
         }
+        if (rule.type === "attribute") {
+          const value = el.getAttribute(rule.attribute);
+          if (!rule.allowed.includes(value))
+            add(rule, `Unapproved or missing ${rule.attribute}.`, el, value, rule.allowed);
+        }
         if (rule.type === "context")
           for (const selector of rule.required) {
             const matches = [...el.querySelectorAll(selector)].filter(visible);
@@ -328,6 +383,9 @@ export function inspectPage(rules) {
       pageHeight: document.documentElement.scrollHeight,
       evaluatedRules: evaluated,
       density,
+      comparisons,
+      consistency,
+      evaluations,
     },
   };
 }

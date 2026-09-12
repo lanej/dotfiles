@@ -5,6 +5,7 @@ import path from "node:path";
 const text = { type: "string", minLength: 1 };
 const names = { type: "array", minItems: 1, uniqueItems: true, items: text };
 const positive = { type: "integer", minimum: 1 };
+const designIds = { type: "array", uniqueItems: true, items: { enum: Array.from({ length: 8 }, (_, i) => `DR-00${i + 1}`) } };
 const object = (properties, required) => ({
   type: "object",
   additionalProperties: false,
@@ -18,6 +19,7 @@ export const configSchema = object(
     enforceOnStop: { type: "boolean" },
     sourcePaths: names,
     accessibility: { type: "boolean" },
+    requiredDesignRules: designIds,
     storageState: text,
     timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
     detailCapture: object(
@@ -67,6 +69,7 @@ const common = {
   viewports: names,
   optional: { type: "boolean" },
   feedbackId: text,
+  designRules: { ...designIds, minItems: 1 },
 };
 const types = {
   align: {
@@ -78,6 +81,19 @@ const types = {
   "visible-count": { min: positive },
   "max-height": { max: { type: "number", exclusiveMinimum: 0 } },
   style: { property: text, allowed: names },
+  attribute: { attribute: text, allowed: names },
+  consistent: {
+    keyAttribute: text,
+    properties: { type: "array", uniqueItems: true, items: text },
+    attributes: { type: "array", uniqueItems: true, items: text },
+  },
+  "comparison-set": {
+    keyAttribute: text,
+    requiredKeys: names,
+    minVisibleByViewport: { type: "object", minProperties: 1, additionalProperties: positive },
+    preserveFrom: text,
+    minFontSize: { type: "number", exclusiveMinimum: 0 },
+  },
   context: { required: names },
   "region-density": {
     region: text,
@@ -140,6 +156,11 @@ export function validateRules(rules) {
     rules.map((r) => r.id),
     "rule ID",
   );
+  for (const rule of rules)
+    if (rule.type === "consistent" && !rule.properties.length && !rule.attributes.length)
+      throw new Error(`Rule ${rule.id}: choose at least one property or attribute to compare`);
+    else if (rule.type === "attribute" && !rule.designRules)
+      throw new Error(`Rule ${rule.id}: attribute checks must cite designRules`);
   return rules;
 }
 export function mergeRules(global, local) {
@@ -173,6 +194,17 @@ export async function loadProject(project, globalDir) {
     for (const n of r.viewports ?? [])
       if (!config.viewports.some((v) => v.name === n))
         throw new Error(`Rule ${r.id}: unknown viewport ${n}`);
+    if (r.type === "comparison-set") {
+      const active = config.viewports.filter((v) => !r.viewports || r.viewports.includes(v.name));
+      if (!active.some((v) => v.name === r.preserveFrom))
+        throw new Error(`Rule ${r.id}: preserveFrom must name an active viewport`);
+      for (const name of Object.keys(r.minVisibleByViewport))
+        if (!active.some((v) => v.name === name))
+          throw new Error(`Rule ${r.id}: count targets an inactive viewport ${name}`);
+      for (const v of active)
+        if (!r.minVisibleByViewport[v.name])
+          throw new Error(`Rule ${r.id}: missing visible count for ${v.name}`);
+    }
   }
   return { config, rules };
 }

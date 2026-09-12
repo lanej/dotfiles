@@ -1,10 +1,10 @@
 name: UI review
 on:
   pull_request:
-    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', 'docs/design-rules.md', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
   push:
     branches: [master]
-    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['share/ui-review/**', 'bin/ui-review', 'claude/ui-review/**', 'claude/skills/ui-review/**', 'docs/design-rules.md', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
 permissions:
   contents: read
 jobs:

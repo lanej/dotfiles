@@ -8,9 +8,9 @@ These are our application of Edward Tufte's *The Visual Display of Quantitative
 Information*, supplemented by his later writing. They are design requirements
 for quantitative screens, not quotations or universal rules for every interface.
 
-This file defines the intended behavior. Detection and enforcement are a separate
-design step; listing a rule here does not mean the current tool checks it.
-See [UI review](ui-review.md) for existing capabilities and limitations.
+This file defines the intended behavior. [Detection and enforcement](ui-review-enforcement.md)
+describes the implemented checks and their limits; listing a rule here does not
+mean the tool checks every part of it. See [UI review](ui-review.md) for setup.
 
 ## How to apply the rules
 

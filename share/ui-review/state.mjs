@@ -14,6 +14,7 @@ import {
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { readJSON, loadProject, validateRules } from "./config.mjs";
+import { policyPath } from "./design.mjs";
 
 export async function writeJSON(file, value) {
   await mkdir(path.dirname(file), { recursive: true });
@@ -95,11 +96,13 @@ export async function fingerprint(project, config, globalDir) {
     "config.mjs",
     "capture.mjs",
     "checks.mjs",
+    "design.mjs",
     "review.mjs",
     "state.mjs",
     "package-lock.json",
   ])
     hash.update(await readFile(path.join(import.meta.dirname, file)));
+  hash.update(await readFile(policyPath));
   return hash.digest("hex");
 }
 export async function feedbackEntries(dir) {
@@ -230,7 +233,9 @@ export async function hookDecision(payload, globalDir) {
     return {
       decision: "block",
       reason:
-        "UI review is missing, failing, or stale. Run ui-review check in the project, read report.json and its screenshots, and fix the findings. If blocked by environment or application state, report that limitation; do not weaken rules to pass.",
+        "UI review is missing, failing, or stale. Run ui-review check, then inspect the cited design rules and full-resolution details. Repair the app and rerun; do not weaken checks or edit evidence to pass. " +
+        (latest?.reportFile ? `Last report: ${latest.reportFile}. ` : "") +
+        (latest?.blockingFindings?.join("\n") ?? ""),
     };
   } catch (err) {
     return {

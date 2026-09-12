@@ -6,8 +6,9 @@ import path from "node:path";
 import { loadProject, readJSON } from "./config.mjs";
 import { fingerprint, writeJSON, feedbackEntries } from "./state.mjs";
 import { inspectPage } from "./checks.mjs";
-import { renderReport } from "./report.mjs";
+import { renderReport, renderDesignPolicy } from "./report.mjs";
 import { captureDetails } from "./capture.mjs";
+import { readDesignPolicy, evaluateDesign } from "./design.mjs";
 
 export async function runReview(project, globalDir) {
   project = await realpath(project);
@@ -32,6 +33,7 @@ export async function runReview(project, globalDir) {
     status: "fail",
     summary: { errors: 0, warnings: 0 },
     pages: [],
+    designPolicy: await readDesignPolicy(),
   };
   let browser;
   try {
@@ -169,6 +171,7 @@ export async function runReview(project, globalDir) {
       severity: "error",
       message: "Source or rules changed during capture. Rerun the review.",
     });
+  evaluateDesign(report, rules, config);
   for (const page of report.pages)
     for (const f of page.findings)
       report.summary[f.severity === "error" ? "errors" : "warnings"]++;
@@ -200,6 +203,7 @@ export async function runReview(project, globalDir) {
   ];
   const reportFile = path.join(dir, "report.json");
   await writeJSON(reportFile, report);
+  await writeFile(path.join(dir, "design-rules.html"), renderDesignPolicy(report.designPolicy));
   await writeFile(
     path.join(dir, "index.html"),
     renderReport(report, preferences, reference),
@@ -208,6 +212,9 @@ export async function runReview(project, globalDir) {
     status: report.status,
     fingerprint: before,
     reportFile,
+    blockingFindings: report.pages.flatMap((page) => page.findings
+      .filter((f) => f.severity === "error")
+      .map((f) => `${f.designRules.join(", ") || f.rule} · ${page.name}/${page.viewport.name}: ${f.message}`)).slice(0, 5),
   });
   return { report, reportFile };
 }

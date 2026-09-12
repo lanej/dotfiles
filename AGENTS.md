@@ -1,9 +1,29 @@
+# Testing
+
+Keep one regression detector per user-visible feature. Prefer one representative
+workflow through the real entrypoint and observable result. A helper, branch,
+input variant, or failure mode is not a separate feature.
+
+When repairing a regression, improve that feature's existing detector. Multiple
+assertions may describe the same workflow; do not hide a case matrix in loops,
+parameterization, or one oversized test. Add broader coverage only when the
+owner explicitly requests it.
+
+Run the affected detector once after the change; rerun it to resolve a failure
+or after changing the implementation. Use syntax checks and diff review for
+simple configuration/documentation edits. Do not add tests that mirror code,
+check exact source strings, or merely count configured hooks.
+
+Routine maintenance needs no evaluation bundles, source snapshots, provenance
+receipts, or separate review narratives. Put the change and validation result
+in the PR. Keep CI scoped to the features it exercises.
+
 # Maintaining agent instructions
 
 Before changing skills, commands, agents, or their supporting resources, read
 [the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
 through the installed Anthropic skill-creator workflow and defines
-this repository's regression-evidence and size checks.
+this repository's focused regression checks and entrypoint size budget.
 
 <claude-mem-context>
 # Memory Context
