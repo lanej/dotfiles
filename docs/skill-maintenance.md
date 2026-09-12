@@ -39,6 +39,8 @@ any depth, plus Markdown entrypoints under `claude/commands/` and
 are skipped in the source scan; the installed scan follows them. The installed
 `claude/CONSTITUTION.md` import is also covered in both scans. The estimate is
 `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
+The Bash checker uses `wc -l` and `wc -c`, including a final unterminated line.
+It needs Git, standard Unix tools, and the same `jq` already used by setup.
 
 Default `make` checks both the repository instructions (meta) and the installed
 instructions (applied) after setup finishes. Installed coverage matches the
@@ -67,13 +69,13 @@ When a larger entrypoint is justified, add `max_lines` and/or
 For an entrypoint change, run:
 
 ```sh
-python3 claude/evals/skill-maintenance/check_size.py --base origin/master
+bash claude/evals/skill-maintenance/check_size.sh --base origin/master
 ```
 
 To check both source and installed instructions without running setup:
 
 ```sh
-python3 claude/evals/skill-maintenance/check_size.py --base origin/master --installed-home "$HOME"
+bash claude/evals/skill-maintenance/check_size.sh --base origin/master --installed-home "$HOME"
 ```
 
 CI scans the tracked sources and exercises installed coverage in the single
@@ -82,5 +84,5 @@ regression detector using a temporary home with a real symlinked skill tree.
 When changing the size checker itself, run its single regression detector:
 
 ```sh
-python3 -m pytest -q claude/evals/skill-maintenance/size_test.py
+bash claude/evals/skill-maintenance/size_test.sh
 ```

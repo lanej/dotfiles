@@ -4,7 +4,7 @@ DOTFILES := $(shell pwd)
 INSTRUCTION_SIZE_BASE ?= HEAD
 
 all: .PHONY
-	@python3 "$(DOTFILES)/claude/evals/skill-maintenance/check_size.py" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
+	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
 banner:
 	@cat banner.txt
