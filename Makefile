@@ -1,8 +1,10 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
 DOTFILES := $(shell pwd)
+INSTRUCTION_SIZE_BASE ?= HEAD
 
 all: .PHONY
+	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
 banner:
 	@cat banner.txt
