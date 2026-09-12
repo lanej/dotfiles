@@ -214,7 +214,7 @@ iteration aid, not an unbypassable enforcement boundary.
 For a required merge gate, install the pinned dependencies, install Chromium,
 start the app with fixtures, and run `ui-review check` in CI. Preserve the run
 directory as an artifact on failure. This repository's `ui-review.yml` exercises
-the tool and its broken/corrected fixtures on Linux and macOS.
+one representative CLI regression workflow on Linux.
 
 ## Development
 
@@ -224,8 +224,10 @@ npm exec --prefix share/ui-review -- playwright install chromium
 npm test --prefix share/ui-review
 ```
 
-Tests cover broken/corrected rendered layouts, feedback-to-rule promotion,
-reference preservation, stale results, invalid configurations, and CLI errors.
+Keep one regression test for the UI review workflow: a sparse 4K page fails,
+feedback becomes a rule, the repaired page passes with full-resolution details,
+and a later source change invalidates that pass. Improve this detector when a
+regression occurs instead of adding a helper or edge-case test matrix.
 Use concrete rejected/accepted examples to calibrate new rules. Do not promote a
 rule because it passes only the example used to invent it.
 
