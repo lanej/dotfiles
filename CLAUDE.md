@@ -2,10 +2,12 @@
 
 This document contains project-specific guidelines for working with this dotfiles repository in Claude Code.
 
-Before changing skills, commands, agents, or their supporting resources, read
+Follow the testing policy in [AGENTS.md](AGENTS.md): one regression detector per
+user-visible feature. Before changing skills, commands, agents, or their
+supporting resources, read
 [the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
 through the installed Anthropic skill-creator workflow and defines
-this repository's regression-evidence and size checks.
+this repository's focused regression checks and entrypoint size budget.
 
 ## Claude Commands & Agents Versioning Pattern
 

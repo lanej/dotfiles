@@ -186,6 +186,15 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [

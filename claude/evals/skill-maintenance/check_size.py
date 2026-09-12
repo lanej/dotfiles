@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from check_evidence import ROOT
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def metrics(text):
