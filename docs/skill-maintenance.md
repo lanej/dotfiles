@@ -36,11 +36,25 @@ studies and their supporting artifacts require an explicit owner request.
 CI checks tracked `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` files at
 any depth, plus Markdown entrypoints under `claude/commands/` and
 `claude/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
-are skipped. The estimate is `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
+are skipped in the source scan; the installed scan follows them. The installed
+`claude/CONSTITUTION.md` import is also covered in both scans. The estimate is
+`ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
+
+Default `make` checks both the repository instructions (meta) and the installed
+instructions (applied) after setup finishes. Installed coverage matches the
+Makefile's destinations: `~/.claude/CLAUDE.md`, `~/.claude/CONSTITUTION.md`,
+`~/.claude/{commands,agents,skills}`, and `~/.gemini/skills`. It follows file and
+directory symlinks, includes local untracked additions in those trees, and
+reports source and installed results separately. Absent destinations are
+skipped; broken links or unreadable instructions fail the check.
 
 Each limit is the larger of that budget and the file's size on the PR base.
 Existing overages may stay the same size or shrink; new entrypoints must meet
 both limits. This does not require rewriting existing vendored skills.
+Installed files use their corresponding repository source's base size and
+override. Local additions or external symlink targets without a regular tracked
+source use the default limits. Default `make` compares against `HEAD`; use
+`make INSTRUCTION_SIZE_BASE=origin/master` to compare against the PR base.
 
 Use progressive disclosure for conditional detail; moving always-loaded text
 to another file does not reduce runtime context. Size checks measure entrypoints,
@@ -55,6 +69,15 @@ For an entrypoint change, run:
 ```sh
 python3 claude/evals/skill-maintenance/check_size.py --base origin/master
 ```
+
+To check both source and installed instructions without running setup:
+
+```sh
+python3 claude/evals/skill-maintenance/check_size.py --base origin/master --installed-home "$HOME"
+```
+
+CI scans the tracked sources and exercises installed coverage in the single
+regression detector using a temporary home with a real symlinked skill tree.
 
 When changing the size checker itself, run its single regression detector:
 

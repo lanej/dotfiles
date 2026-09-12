@@ -6,7 +6,7 @@ import sys
 
 
 def test_entrypoint_budget_requires_trimming_new_and_growing_files(tmp_path):
-    """Trim new agent instructions and skill growth to their respective budgets."""
+    """Trim source and installed instructions, including a linked skill tree."""
     def git(*args):
         return subprocess.check_output(["git", "-C", str(tmp_path), *args], text=True).strip()
     git("init", "-q")
@@ -24,19 +24,28 @@ def test_entrypoint_budget_requires_trimming_new_and_growing_files(tmp_path):
     git("add", "claude/skills/example/SKILL.md")
     git("commit", "-qm", "baseline")
 
+    home = tmp_path / "home"
+    installed = home / ".claude"
+    installed.mkdir(parents=True)
+    (installed / "skills").symlink_to(tmp_path / "claude/skills", target_is_directory=True)
+    applied = installed / "CLAUDE.md"
+    applied.write_text("x\n" * 501)
+    command = [sys.executable, str(folder / "check_size.py"), "--base", "HEAD",
+               "--installed-home", str(home)]
     skill.write_bytes((b"x" * 31 + b"\r\n") * 491)
     agents = tmp_path / "AGENTS.md"
     agents.write_text("x\n" * 501)
     git("add", "AGENTS.md")
-    result = subprocess.run([sys.executable, str(folder / "check_size.py"), "--base", "HEAD"],
-                            capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 1, result.stdout + result.stderr
     assert "FAIL AGENTS.md: 501 lines" in result.stdout
-    assert "FAIL claude/skills/example/SKILL.md: 491 lines, ~4051 tokens" in result.stdout
+    assert f"FAIL installed {applied}: 501 lines" in result.stdout
+    assert (f"FAIL installed {installed / 'skills/example/SKILL.md'}: "
+            "491 lines, ~4051 tokens") in result.stdout
 
     # Restore the existing skill's size and bring new instructions within budget.
     skill.write_bytes((b"x" * 31 + b"\r\n") * 490)
     agents.write_text("x\n" * 500)
-    result = subprocess.run([sys.executable, str(folder / "check_size.py"), "--base", "HEAD"],
-                            capture_output=True, text=True)
+    applied.write_text("x\n" * 500)
+    result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
