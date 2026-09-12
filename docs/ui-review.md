@@ -1,12 +1,11 @@
 # Viewrule integration
 
-The UI-review engine is now **Viewrule**, an independent tool intended for
+The UI-review engine is now **Viewrule**, an independent tool at
 [lanej/viewrule](https://github.com/lanej/viewrule). This repository owns the
 installer, version pin, personal preferences, and Claude integration.
 
-**Publication pending:** the first standalone release must exist before the
-remote installer or its CI check can succeed. The source archive and local checkout
-mode are usable now. Keep the extraction PR in draft until publication and pin validation.
+**Current pin:** [Viewrule v0.1.0](https://github.com/lanej/viewrule/releases/tag/v0.1.0).
+The installer verifies the published archive against the checksum in `tool.json`.
 
 ## Install and use
 
@@ -87,4 +86,3 @@ Engine documentation lives in the package under `docs/` and upstream:
 [architecture](https://github.com/lanej/viewrule/blob/main/docs/architecture.md),
 [lifecycle](https://github.com/lanej/viewrule/blob/main/docs/lifecycle.md), and
 [density roadmap](https://github.com/lanej/viewrule/blob/main/ROADMAP.md).
-These URLs become available after initial publication.

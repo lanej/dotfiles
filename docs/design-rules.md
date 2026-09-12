@@ -10,5 +10,4 @@ of Quantitative Information*, not quotations or universal numerical thresholds.
 Personal preferences stay in `claude/ui-review/preferences.json` and application
 constraints stay in each app's `.ui-review/rules.json`.
 
-See [installation and local development](ui-review.md). The upstream link becomes
-available after initial publication.
+See [installation and local development](ui-review.md).

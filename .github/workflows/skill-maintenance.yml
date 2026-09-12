@@ -3,23 +3,31 @@ name: Skill maintenance
 on:
   pull_request:
     paths:
-      - 'claude/skills/**'
-      - 'gemini/skills/**'
+      - '**/SKILL.md'
+      - '**/AGENTS.md'
+      - '**/CLAUDE.md'
+      - '**/GEMINI.md'
+      - 'claude/CONSTITUTION.md'
+      - 'Makefile'
       - 'claude/commands/**'
       - 'claude/agents/**'
-      - 'claude/evals/skill-maintenance/check_size.py'
-      - 'claude/evals/skill-maintenance/size_test.py'
+      - 'claude/evals/skill-maintenance/check_size.sh'
+      - 'claude/evals/skill-maintenance/size_test.sh'
       - 'claude/evals/skill-maintenance/size-budgets.json'
       - '.github/workflows/skill-maintenance.yml'
   push:
     branches: [master]
     paths:
-      - 'claude/skills/**'
-      - 'gemini/skills/**'
+      - '**/SKILL.md'
+      - '**/AGENTS.md'
+      - '**/CLAUDE.md'
+      - '**/GEMINI.md'
+      - 'claude/CONSTITUTION.md'
+      - 'Makefile'
       - 'claude/commands/**'
       - 'claude/agents/**'
-      - 'claude/evals/skill-maintenance/check_size.py'
-      - 'claude/evals/skill-maintenance/size_test.py'
+      - 'claude/evals/skill-maintenance/check_size.sh'
+      - 'claude/evals/skill-maintenance/size_test.sh'
       - 'claude/evals/skill-maintenance/size-budgets.json'
       - '.github/workflows/skill-maintenance.yml'
 
@@ -36,13 +44,9 @@ jobs:
           fetch-depth: 0
           # Keep checkout's default end-of-job credential cleanup. Early cleanup
           # fails on the repo's pre-existing incomplete hotreload.nvim submodule.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: python -m pip install pytest
       - name: Entrypoint size regression detector
-        run: python -m pytest -q claude/evals/skill-maintenance
+        run: bash claude/evals/skill-maintenance/size_test.sh
       - name: Check entrypoint budgets
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: python claude/evals/skill-maintenance/check_size.py --base "$BASE_REF"
+        run: bash claude/evals/skill-maintenance/check_size.sh --base "$BASE_REF"
