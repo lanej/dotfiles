@@ -236,3 +236,13 @@ mail:
 	@echo "  3. Launch neomutt when done"
 test:
 	@pytest bin/*_test.py
+
+.PHONY: ui-review test-ui-review
+ui-review:
+	@python3 $(DOTFILES)/scripts/install-viewrule.py
+	@mkdir -p $(HOME)/.local/bin
+	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/ui-review
+	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/viewrule
+	@echo "Viewrule installed. Use /ui-review in Claude Code or viewrule --help."
+test-ui-review:
+	@python3 $(DOTFILES)/scripts/test-viewrule.py
