@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Prune podman: stop/remove all containers, pods, images, volumes, and
+# networks, then restart the podman machine to clear runtime state.
+# Does not remove the podman machine VM or uninstall podman itself.
+# Run with: podman-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+if ! command -v podman &>/dev/null; then
+    echo "ERROR: podman not found" >&2
+    exit 1
+fi
+
+run() {
+    echo "+ $*"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        "$@"
+    fi
+}
+
+HAS_MACHINE=false
+if podman machine list --format '{{.Name}}' 2>/dev/null | grep -q .; then
+    HAS_MACHINE=true
+fi
+
+# The machine can report itself as running while its socket is stale/down
+# (e.g. after sleep/wake) — get it actually reachable before pruning.
+if [[ "$HAS_MACHINE" == "true" ]] && ! podman info &>/dev/null; then
+    echo "== Podman machine unreachable, starting it =="
+    run podman machine start
+fi
+
+echo "== Disk usage before =="
+podman system df || echo "(unreachable)"
+
+echo
+echo "== Containers =="
+run podman stop --all --time 10
+run podman rm --all --force
+
+echo
+echo "== Pods =="
+run podman pod rm --all --force
+
+echo
+echo "== Images, volumes, networks, build cache =="
+run podman system prune --all --volumes --force
+
+if [[ "$HAS_MACHINE" == "true" ]]; then
+    echo
+    echo "== Restarting podman machine =="
+    run podman machine stop
+    run podman machine start
+else
+    echo
+    echo "no podman machine configured, skipping restart"
+fi
+
+echo
+echo "== Disk usage after =="
+if [[ "$DRY_RUN" == "false" ]]; then
+    podman system df
+else
+    echo "(skipped in dry run)"
+fi
