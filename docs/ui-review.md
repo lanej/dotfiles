@@ -4,7 +4,8 @@ The UI-review engine is now **Viewrule**, an independent tool at
 [lanej/viewrule](https://github.com/lanej/viewrule). This repository owns the
 installer, version pin, personal preferences, and Claude integration.
 
-**Current pin:** [Viewrule v0.1.0](https://github.com/lanej/viewrule/releases/tag/v0.1.0).
+**Current pin:** [Viewrule v0.3.1](https://github.com/lanej/viewrule/releases/tag/v0.3.1).
+This is the newest published release and is marked as a prerelease upstream.
 The installer verifies the published archive against the checksum in `tool.json`.
 
 ## Install and use
@@ -75,11 +76,11 @@ install, launch, and verify an opted-in project blocks without a current review.
 It does not rerun the engine's browser regression. For an unpublished local archive:
 
 ```sh
-VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.1.0.tgz make test-ui-review
+VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.3.1.tgz make test-ui-review
 ```
 
 The archive must match the checksum pin. `python3 scripts/install-viewrule.py
---archive /absolute/path/to/viewrule-0.1.0.tgz` installs that same archive locally.
+--archive /absolute/path/to/viewrule-0.3.1.tgz` installs that same archive locally.
 
 Engine documentation lives in the package under `docs/` and upstream:
 [manual](https://github.com/lanej/viewrule/blob/main/docs/ui-review.md),
