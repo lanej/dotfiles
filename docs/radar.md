@@ -25,6 +25,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### UI review
+
+[UI review](ui-review.md): local Playwright layout checks, screenshot references, and a feedback-to-rule workflow for Claude Code. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
+
 ### AeroSpace
 
 [AeroSpace](https://github.com/nikitabobko/AeroSpace) is a tiling WM that operates at the app level rather than hooking into the macOS window server. It may handle Ghostty's native `NSWindowTabGroup` tab grouping without the window-jumping issue that currently blocks a Ghostty migration (see **Hold: Ghostty**).

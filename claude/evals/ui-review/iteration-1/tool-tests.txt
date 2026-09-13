@@ -1,0 +1,27 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> dotfiles-ui-review@0.1.0 test
+> node --test test/*.test.mjs
+
+✔ configuration rejects typos, invalid scopes, missing thresholds and duplicate IDs (7.153307ms)
+✔ freshness changes on source and rule changes, not generated reports (63.713713ms)
+✔ render, feedback, rule learning, and Stop enforcement work end to end (2295.241119ms)
+✔ CLI rejects unknown options and emits an actionable setup error (480.76457ms)
+✔ scoped DOM checks distinguish intentional scroll, hidden variants, and missing evidence (105.711302ms)
+✔ HTTP errors and missing ready selectors fail capture instead of yielding a green report (1224.089932ms)
+✔ global feedback is reusable without copying project screenshots and approval never clears failure (17.260933ms)
+✔ report escapes page content and feedback rather than executing it (0.469829ms)
+✔ symlink launcher and hook preserve unrelated projects and reject malformed opted-in configuration (680.456537ms)
+✔ global page scopes can target other projects while local scope typos fail (7.580654ms)
+✔ density measures selected regions without double-counting and detects sparse large-screen layouts (131.823287ms)
+✔ detail captures retain 1:1 pixels and cover the far edge of a 4K page (836.866671ms)
+✔ incomplete detail evidence fails the review gate (642.10856ms)
+✔ viewport density includes whitespace outside content wrappers (111.925842ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7207.276978

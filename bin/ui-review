@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Launch standalone Viewrule with personal defaults; keep unconfigured hooks cheap."""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+root = Path(__file__).resolve().parent.parent
+os.environ.setdefault("VIEWRULE_CONFIG_DIR", os.environ.get("UI_REVIEW_GLOBAL_DIR", str(root / "claude/ui-review")))
+if os.environ.get("VIEWRULE_DEV_DIR"):
+    launcher = Path(os.environ["VIEWRULE_DEV_DIR"]).expanduser().resolve() / "bin/viewrule.mjs"
+else:
+    install_root = Path(os.environ.get("VIEWRULE_INSTALL_ROOT", Path.home() / ".local/share/viewrule")).expanduser()
+    launcher = install_root / "current/node_modules/viewrule/bin/viewrule.mjs"
+if sys.argv[1:] == ["hook"]:
+    # Unconfigured projects pay no browser/Node startup cost and never get blocked.
+    raw = sys.stdin.read()
+    try:
+        payload = json.loads(raw)
+        if payload.get("stop_hook_active") or not payload.get("cwd"):
+            sys.exit(0)
+        config_file = Path(payload["cwd"]) / ".ui-review/config.json"
+        if not config_file.exists():
+            sys.exit(0)
+        config = json.loads(config_file.read_text())
+        if config.get("enforceOnStop") is False:
+            sys.exit(0)
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"decision": "block", "reason": f"UI review configuration error: {exc}"}))
+        sys.exit(0)
+    result = subprocess.run(["node", str(launcher), "hook"], input=raw, text=True, capture_output=True) if shutil.which("node") and launcher.is_file() else None
+    if result is not None and result.returncode == 0:
+        print(result.stdout, end="")
+    else:
+        print(json.dumps({"decision": "block", "reason": "UI review could not verify this project. Run make ui-review in your dotfiles and ui-review check in the project; report any setup failure."}))
+    sys.exit(0)
+
+if not shutil.which("node") or not launcher.is_file():
+    print("ui-review: install Node 22+ and run make ui-review, or set VIEWRULE_DEV_DIR to a prepared Viewrule checkout.", file=sys.stderr)
+    sys.exit(2)
+os.execvp("node", ["node", str(launcher), *sys.argv[1:]])

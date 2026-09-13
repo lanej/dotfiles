@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "sources": {
+    ".claude/settings.json": "9fb0c4874d1cb2463e5a8dbbd621fa8eb7547ebbb1a55f1a24002c75a25c7c65",
+    ".github/workflows/ui-review.yml": "187b0df58dd6f3b2a525d6d7145ecb9a8e1e6b2447be5b76faf2985b3cc2cf31",
+    "Makefile": "245aedab610227a0663c2dd27e7305e0d8f4331aa6c2e3be5f6e59acc40c5c97",
+    "bin/ui-review": "caca0de270e8a2b2dbb4ff6561d81154af05eb1ba34d13115a786707180770ca",
+    "claude/skills/ui-review/SKILL.md": "5ce76fdde24b702a951b7ecb9e45f4d07e88df1a17d9f9b965ca21f6329946f8",
+    "claude/ui-review/preferences.json": "ecfdc0a202d8b49109dee7f04c87575db1bb63a2f27d3aa8b60775c6d0578616",
+    "claude/ui-review/rules.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "docs/radar.md": "348d2c4f2cc103bc875e3b7e2c6cffe69af6d3dfead94de4c4d8acd4ba9b36a6",
+    "docs/ui-review.md": "78fc46da0fe8b46e51274c71d51f7a5072a5316e42346efab40da80a4bce22c0",
+    "share/ui-review/.gitignore": "4d56952b0fb13bf8f9b6c13a6d4c34a075bac3af447636a1df4335d7576e2f97",
+    "share/ui-review/capture.mjs": "247409655bd202dc8d2b444a582c8f930cc54986e93c0d1ba24070a7bb37f130",
+    "share/ui-review/checks.mjs": "d22bc03715a1c0acd4c9cdaa4fa54829fc10e55e421c2638d969bb160892c40c",
+    "share/ui-review/cli.mjs": "d3572c1e24563ede022e82f8a72a3cabdf9bfa51c7f4c5d33c7770ed86060ccb",
+    "share/ui-review/config.mjs": "c61304be9c97cd1bb8e4ce3b54279ef7470cc257b0660b04d724daa266698544",
+    "share/ui-review/demo.mjs": "6fe548e3c593e9ef584e94cb9220448c02619c6a3ddfc36c45a55186cc4ddeb2",
+    "share/ui-review/package-lock.json": "28f4339c42b8c31a78ab0a889f9b758c8126cc46e2a8cb992d8fa49b0d1675b2",
+    "share/ui-review/package.json": "45c0e4f30a7211988fa3e95a47aae122dfd30e6fad8f54edf4e0e27f9694a918",
+    "share/ui-review/report.mjs": "3f60db5f0665677951274a573a38d222eb02fe92d76928853933729f80e32138",
+    "share/ui-review/review.mjs": "716e8285d2d75b5e10c196e2972d159b348d06a0ec1fd408bcc52dd0988957b8",
+    "share/ui-review/state.mjs": "a299be8a6d8ba683094b167e5777489693a7375ba944a0cdf6f97ca383d8606c",
+    "share/ui-review/test/fixtures.mjs": "041540652c2bfbc09242100e1da66ae82620102a29e056359a15c71c0d861373",
+    "share/ui-review/test/review.test.mjs": "153c990b2d832c1cb1827f33697391e671edd0966e5143c54f89a6012184825e"
+  },
+  "artifacts": {
+    "baseline": {
+      "path": "claude/evals/ui-review/iteration-1/baseline.md",
+      "sha256": "43e6b21669031e17016c372298aca969f29a111e68306d4c3cd5bd249fef1bde"
+    },
+    "candidate": {
+      "path": "claude/evals/ui-review/iteration-1/candidate.md",
+      "sha256": "5ce76fdde24b702a951b7ecb9e45f4d07e88df1a17d9f9b965ca21f6329946f8"
+    },
+    "review": {
+      "path": "claude/evals/ui-review/iteration-1/review.md",
+      "sha256": "cf8eb547d40fc381a3e6a95cd3a576e8e896086d788bb63564946037546188c2"
+    },
+    "tool_tests": {
+      "path": "claude/evals/ui-review/iteration-1/tool-tests.txt",
+      "sha256": "444e690c64a1fde7106535ec6440fa97ed33f94b1b9b65d65604dc6d851fbf05"
+    },
+    "maintenance_tests": {
+      "path": "claude/evals/ui-review/iteration-1/maintenance-tests.txt",
+      "sha256": "7b928b8c7e9f5a7c5acf98504be2d9012fc5a7481c7ba7a738364ffaecb1fabe"
+    },
+    "initial_trial": {
+      "path": "claude/evals/ui-review/iteration-1/initial-trial.md",
+      "sha256": "6b3dffc9c9521922785f5bbdc3e0bb4087838b5b670d68c5b8a94d53bd89b062"
+    },
+    "4k-detail": {
+      "path": "docs/examples/ui-review/4k-detail.png",
+      "sha256": "c5a45e47a41b45722a1ca0120f6f1010f7d7a35b4b4771ccf2d8c0d5d785bca1"
+    },
+    "4k-overview": {
+      "path": "docs/examples/ui-review/4k-overview.png",
+      "sha256": "eadbef023bdd9a673f76c29cc6548c15230fadfb825146d4e7b180a81ed7e553"
+    },
+    "broken": {
+      "path": "docs/examples/ui-review/broken.png",
+      "sha256": "19eedbe2f4ca0b20ba34e1402a144deaa035c9f93378a354c4d848ac4b1814c1"
+    },
+    "corrected": {
+      "path": "docs/examples/ui-review/corrected.png",
+      "sha256": "af362136e9cd3227281aba34e1eb4f66bb0bc6fb0788d26a099a0590d6cd3828"
+    },
+    "skill-trial": {
+      "path": "docs/examples/ui-review/skill-trial.png",
+      "sha256": "707f189a588aaf63fac652b6863481a51db5214c57004388eba62ef37f613ed8"
+    }
+  },
+  "checks": [
+    {
+      "name": "Program regression and large-screen fidelity",
+      "passed": true,
+      "evidence": "tool-tests.txt records 14 passing tests, including actual bottom-right 4K image pixels and incomplete-capture failure."
+    },
+    {
+      "name": "Maintenance gate regressions",
+      "passed": true,
+      "evidence": "maintenance-tests.txt records the actual passing provenance and size-gate tests."
+    },
+    {
+      "name": "Current instruction scope reviewed",
+      "passed": true,
+      "evidence": "review.md documents current candidate review, historical trial scope, missing native authoring workflow, and unmeasured Sonnet/Opus behavior."
+    }
+  ]
+}
