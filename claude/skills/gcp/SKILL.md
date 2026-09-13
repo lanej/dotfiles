@@ -7,7 +7,7 @@ description: Google Cloud Platform patterns and quirks — general GCP infra (IA
 
 ## Anthropic on Vertex AI — Critical Quirks
 
-These are failure modes discovered through direct use. Follow exactly.
+Failure modes found in direct use — follow exactly.
 
 ### Model IDs
 
@@ -77,10 +77,9 @@ The Vertex SDK picks up ADC automatically. No explicit token management needed f
 (`~/.config/gcloud/application_default_credentials.json`). If ADC is missing a specific scope
 (e.g. `sqlservice.login` for Cloud SQL IAM auth), widening `gspace`'s own requested-scope list and
 re-running its OAuth flow is a legitimate alternative to a raw `gcloud auth application-default
-login --scopes=...` re-auth — but only once the scope has actually been added to gspace's request
-list. Don't assume a narrow scope is covered just because the broad `cloud-platform` scope is
-already present; check `gspace_check_auth`'s actual scope list for the specific scope needed before
-relying on it. (detail: memory "reference_gspace_gcloud_shared_adc_credential")
+login --scopes=...` re-auth — but only once that scope is in gspace's request list. Don't assume a
+narrow scope is covered by the broad `cloud-platform` scope; check `gspace_check_auth`'s actual
+scope list first. (detail: memory "reference_gspace_gcloud_shared_adc_credential")
 
 ## Cloud SQL — Schema-Level Grants Don't Cascade to Tables
 
@@ -108,7 +107,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "<ro
 
 When Cloud Run (or any GCP service) injects a Secret Manager secret as an environment variable, the raw bytes are used verbatim — including any trailing newline if the secret was stored with one.
 
-`os.environ.get("MY_SECRET")` returns `"value\n"` not `"value"`. This causes silent bugs: API validators that check token length reject the value; string comparisons fail; authentication breaks.
+`os.environ.get("MY_SECRET")` returns `"value\n"` not `"value"`. This causes silent bugs: length validators reject the value, comparisons fail, auth breaks.
 
 **Store secrets without trailing newlines:**
 
@@ -144,7 +143,7 @@ When a `google_cloud_run_v2_job` Terraform/OpenTofu resource mounts a Secret Man
 Permission denied on secret: projects/.../secrets/<name>/versions/latest for Revision service account ...
 ```
 
-This also fails even if the IAM binding (`secretmanager.secretAccessor`) was just created in the same `tofu apply` run — GCP IAM propagation lag means the binding may not have taken effect before the job creation validation runs.
+This also fails even if the IAM binding (`secretmanager.secretAccessor`) was created in the same `tofu apply` run — IAM propagation lag can leave it ineffective when the creation validation runs.
 
 **The fix:** Omit the secret env var from the TF `google_cloud_run_v2_job` resource entirely. Manage it outside TF with:
 
@@ -190,19 +189,30 @@ resource "google_monitoring_alert_policy" "my_alert" {
 }
 ```
 
+## Cost-Attribution Labels — Per-Resource-Type Gotchas
+
+`labels` don't reach Cloud Billing uniformly:
+
+- **`google_dataplex_asset` on a BQ dataset strips that dataset's own Terraform labels** (provider issue #13198) — label the asset, not the dataset.
+- **Cloud Run billing reads only `template.labels`** (`google_cloud_run_v2_service`/`_job`); a top-level `labels` shows in the Console, never in billing export.
+- **`google_bigquery_data_transfer_config`/`TransferRun` and `google_cloud_scheduler_job` have no `labels` field.** Billing export carries BQ *job* labels, not dataset labels — lead a scheduled query's script with `SET @@query_label = "component:<name>";`.
+- **A Terraform/OPA cost policy sees only `tofu plan` JSON** — a runtime client-library job (`createQueryJob({ query })`) is invisible however declared resources are labeled; the fix is app-code `job.labels`, not a stronger policy.
+
+(detail: memory "project_dataplex_billing_label_cost_attribution_gotchas")
+
 ## BigQuery + Vertex AI
 
 When combining BigQuery data with Vertex AI Claude calls, prefer the `bigquery` CLI skill for queries and pass results as structured context in the Claude API request body.
 
 ## Cloud Run IAM Roles for Deploy Automation
 
-Distinguish these three roles precisely when granting any automation identity (CI service account, another Cloud Run service's SA, etc.) access to deploy or invoke Cloud Run — they are commonly conflated and each under- or over-provisioning shows up as a different failure:
+Distinguish these three roles when granting an automation identity (CI service account, another Cloud Run service's SA) access to deploy or invoke Cloud Run — they're commonly conflated, and under- or over-provisioning each fails differently:
 
 - **`roles/run.developer`** (scoped to the specific service/job) — required to *deploy*: `gcloud run deploy` / `gcloud run jobs update`, including changing the image, env vars, or resource limits. Does not include invoking a Job with per-run argument overrides.
 - **`roles/run.invoker`** (scoped to the specific service/job) — required only to *call* an already-deployed service or trigger an already-deployed job with its existing configuration. Insufficient for deploy.
 - **`roles/iam.serviceAccountUser`** on the *runtime* service account (not the automation identity's own SA) — required alongside `run.developer` whenever the deploy command needs to keep an existing runtime identity attached to the resource. Without this, deploy fails trying to re-set the service/job's own SA, even though the automation identity isn't changing anything about the SA itself.
 
-For the Workload Identity Federation (keyless OIDC) setup that a GitHub Actions runner needs to hold `run.developer` in the first place, see the `github-actions` skill — that skill covers the WIF pool/provider Terraform and the workflow-side auth step; this section is the GCP-side role vocabulary those grants use.
+For the Workload Identity Federation (keyless OIDC) setup a GitHub Actions runner needs to hold `run.developer` — the WIF pool/provider Terraform and workflow-side auth step — see the `github-actions` skill; this section is the GCP-side role vocabulary those grants use.
 
 ## Ephemeral Cloud Run Job for One-off Server-Side GCS Analysis
 
