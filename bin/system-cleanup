@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Higher-order cleanup: runs every bin/*-cleanup script in sequence.
+# A missing tool or failed step is recorded, not fatal — the rest still run.
+# Run with: system-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+resolve() {
+    local name="$1"
+    if [[ -x "$SCRIPT_DIR/$name" ]]; then
+        echo "$SCRIPT_DIR/$name"
+    else
+        command -v "$name" 2>/dev/null || true
+    fi
+}
+
+ran=()
+skipped=()
+failed=()
+
+# name, supports-dry-run
+STEPS=(
+    "disk-cleanup:yes"
+    "cargo-sweep-cleanup:no"
+    "rust-dev-cleanup:yes"
+    "podman-cleanup:yes"
+    "opencode-cleanup-cache:no"
+    "opencode-cleanup-snapshots:no"
+    "tmp-cleanup:yes"
+)
+
+for step in "${STEPS[@]}"; do
+    name="${step%%:*}"
+    supports_dry_run="${step##*:}"
+
+    echo
+    echo "== $name =="
+
+    path=$(resolve "$name")
+    if [[ -z "$path" ]]; then
+        echo "skipping $name — not found on PATH or in $SCRIPT_DIR"
+        skipped+=("$name (not found)")
+        continue
+    fi
+
+    if [[ "$DRY_RUN" == "true" && "$supports_dry_run" == "no" ]]; then
+        echo "skipping $name — no dry-run support"
+        skipped+=("$name (no dry-run support)")
+        continue
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        if "$path" --dry-run; then
+            ran+=("$name")
+        else
+            echo "FAILED: $name"
+            failed+=("$name")
+        fi
+    else
+        if "$path"; then
+            ran+=("$name")
+        else
+            echo "FAILED: $name"
+            failed+=("$name")
+        fi
+    fi
+done
+
+echo
+echo "=========================================="
+echo "Summary"
+echo "=========================================="
+echo "Ran: ${ran[*]:-none}"
+echo "Skipped: ${skipped[*]:-none}"
+echo "Failed: ${failed[*]:-none}"
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+    exit 1
+fi

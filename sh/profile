@@ -121,10 +121,7 @@ if [ -r "$HOME/.env" ]; then
 	. "$HOME/.env"
 fi
 
-# Set RUSTC_WRAPPER to sccache if installed and not already set
-if [ -z "$RUSTC_WRAPPER" ] && command -v sccache >/dev/null 2>&1; then
-	export RUSTC_WRAPPER=sccache
-fi
+# sccache intentionally disabled — see docs/radar.md Hold: sccache (unbounded disk growth)
 
 test -r "$HOME/.dir_colors" && eval "$(dircolors "$HOME/.dir_colors")"
 

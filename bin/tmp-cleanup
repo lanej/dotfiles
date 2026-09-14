@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Sweep stale entries out of /tmp, mirroring macOS's own periodic /tmp cleaner
+# (3+ day idle threshold), but explicit and on-demand.
+# Run with: tmp-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+format_size() {
+    numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"
+}
+
+run() {
+    echo "+ $*"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        "$@"
+    fi
+}
+
+REAL_TMP=$(readlink -f /tmp)
+if [[ "$REAL_TMP" != "/private/tmp" ]]; then
+    echo "ERROR: /tmp resolves to $REAL_TMP, not /private/tmp — refusing to sweep" >&2
+    exit 1
+fi
+
+echo "== Disk usage before =="
+size_before=$(du -sk /tmp 2>/dev/null | cut -f1)
+echo "/tmp: $(format_size $((size_before * 1024)))"
+
+echo
+echo "== Stale entries (mtime > 3 days, owned by $(id -un)) =="
+mapfile -d '' -t entries < <(find /tmp -mindepth 1 -maxdepth 1 -mtime +3 -user "$(id -un)" -print0 2>/dev/null)
+
+if [[ ${#entries[@]} -eq 0 ]]; then
+    echo "nothing to clean"
+else
+    for entry in "${entries[@]}"; do
+        run rm -rf "$entry"
+    done
+fi
+
+echo
+echo "== Disk usage after =="
+if [[ "$DRY_RUN" == "false" ]]; then
+    size_after=$(du -sk /tmp 2>/dev/null | cut -f1)
+    echo "/tmp: $(format_size $((size_after * 1024)))"
+else
+    echo "(skipped in dry run)"
+fi
+
+echo
+echo "Removed ${#entries[@]} entries"
