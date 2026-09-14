@@ -22,8 +22,10 @@ echo "=========================================="
 echo "This preserves debug builds and recent work"
 echo
 
-# Find all Cargo.toml projects in ~/src
-while IFS= read -r cargo_toml; do
+# Find all Cargo.toml projects in ~/src (cap at first 20 found)
+processed=0
+while IFS= read -r -d '' cargo_toml && [[ $processed -lt 20 ]]; do
+    processed=$((processed + 1))
     project_dir=$(dirname "$cargo_toml")
     project_name=$(basename "$project_dir")
 
@@ -80,7 +82,7 @@ while IFS= read -r cargo_toml; do
     fi
     echo
 
-done < <(find ~/src -name "Cargo.toml" -print0 | head -z -20)
+done < <(find ~/src -name "Cargo.toml" -print0)
 
 echo "=========================================="
 echo "Summary"
