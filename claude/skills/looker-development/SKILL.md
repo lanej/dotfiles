@@ -45,11 +45,19 @@ webhooks for that repo — it does not create a suite or turn on PR-triggering.
   to suspect it didn't (e.g. a live Explore-UI error) — check via the Looker UI/API or a known
   ground-truth credential (see "API/CLI permission-ceiling trap" below), not by re-reading the
   green check.
-- **A validator's rollup state can mislead.** One validator's real failure can bleed into a
-  sibling's pass/fail *label* even when the sibling's own count is zero — e.g. `LookML
-  Validator: fail` shown with `0 LookML validation failures` in its own description, because
-  Assert Validator was the one actually erroring. Always read the check's description text,
-  not just the red/green rollup.
+- **A validator's rollup state can mislead — in two distinct ways, both confirmed in
+  practice.** (1) One validator's real failure can bleed into a sibling's pass/fail *label*
+  even when the sibling's own count is zero — e.g. `LookML Validator: fail` shown with `0
+  LookML validation failures` in its own description, because Assert Validator was the one
+  actually erroring. (2) **The description's own count for its own validator can simply be
+  wrong**, with no sibling involved at all — a real run showed `LookML Validator: fail` /
+  `0 LookML validation failures` in the terse GitHub status, while `assert_result` was `null`
+  (not even run) and the full run detail's `lookml_result` had `error_count: 2` with two real,
+  actionable errors (a filtered LookML measure referencing a sibling measure — see
+  `references/lookml-measure-gotchas.md`). Because both failure modes produce the *identical*
+  surface text, don't try to distinguish them from the GitHub status alone — always pull full
+  run detail (`scripts/ci-run-detail.py <pr> <looker-project>`, or manually via `looker project
+  get-continuous-integration-run`) before trusting any check's description, green or red.
 - **Assert Validator errors instead of skipping cleanly on a project with zero data tests.** If
   `grep -rn "^test:"` across the project returns nothing, this validator is structurally
   inapplicable — don't chase it as a regression from your latest change. Root-cause fix:
@@ -205,3 +213,13 @@ Before authoring LookML against any upstream pipeline's output:
 `references/ci-and-deploy-setup.md` — step-by-step first-time setup checklist (GitHub App
 install, CI suite creation, deploy webhook + merge-strategy config) for an instance/repo that
 doesn't have any of this wired up yet.
+
+`references/lookml-measure-gotchas.md` — the named-filtered-measure pattern for key/value
+("EAV") metric tables, and the specific "measure referencing measure" LookML Validator error
+it's easy to introduce by analogy.
+
+`scripts/ci-run-detail.py <pr-number> <looker-project-id> [--repo owner/repo]` — collapses the
+manual "extract run_id from `gh api .../statuses` → `looker project
+get-continuous-integration-run`" dance into one command, and prints only the parts worth
+reading (overall status, per-explore failures, full error detail) instead of the misleading
+terse label. Requires `gh` and `looker` CLIs already authenticated.
