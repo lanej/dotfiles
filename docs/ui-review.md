@@ -4,13 +4,15 @@ The UI-review engine is now **Viewrule**, an independent tool at
 [lanej/viewrule](https://github.com/lanej/viewrule). This repository owns the
 installer, version pin, personal preferences, and Claude integration.
 
-**Current pin:** [Viewrule v0.3.1](https://github.com/lanej/viewrule/releases/tag/v0.3.1).
-This is the newest published release and is marked as a prerelease upstream.
+**Current pin:** [Viewrule v0.6.0](https://github.com/lanej/viewrule/releases/tag/v0.6.0).
+This release is marked as experimental upstream. It bundles Impeccable source
+diagnostics and adds `ui-review lint --target src` for source-only checks. Rendered
+requirements still use `check`; source-only results cannot satisfy the Stop hook.
 The installer verifies the published archive against the checksum in `tool.json`.
 
 ## Install and use
 
-Requires Node 22+, npm, and Python 3 for the dotfiles wrapper/installer.
+Requires Node 22.18+, npm, and Python 3 for the dotfiles wrapper/installer.
 
 ```sh
 cd ~/.files
@@ -76,11 +78,11 @@ install, launch, and verify an opted-in project blocks without a current review.
 It does not rerun the engine's browser regression. For an unpublished local archive:
 
 ```sh
-VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.3.1.tgz make test-ui-review
+VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.6.0.tgz make test-ui-review
 ```
 
 The archive must match the checksum pin. `python3 scripts/install-viewrule.py
---archive /absolute/path/to/viewrule-0.3.1.tgz` installs that same archive locally.
+--archive /absolute/path/to/viewrule-0.6.0.tgz` installs that same archive locally.
 
 Engine documentation lives in the package under `docs/` and upstream:
 [manual](https://github.com/lanej/viewrule/blob/main/docs/ui-review.md),
