@@ -34,6 +34,7 @@ STEPS=(
     "podman-cleanup:yes"
     "opencode-cleanup-cache:no"
     "opencode-cleanup-snapshots:no"
+    "npm-cleanup:yes"
     "tmp-cleanup:yes"
 )
 

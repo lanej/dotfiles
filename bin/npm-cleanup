@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Clean the npm package cache (~/.npm). Safe to run any time — npm
+# repopulates the cache from the registry on demand.
+# Run with: npm-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+if ! command -v npm &>/dev/null; then
+    echo "ERROR: npm not found" >&2
+    exit 1
+fi
+
+cache_dir="$(npm config get cache 2>/dev/null || echo "$HOME/.npm")"
+
+size_of() {
+    if [[ -d "$1" ]]; then
+        du -sh "$1" 2>/dev/null | cut -f1
+    else
+        echo "0B"
+    fi
+}
+
+echo "== Cache size before =="
+echo "$cache_dir: $(size_of "$cache_dir")"
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo
+    echo "Would run: npm cache clean --force"
+    exit 0
+fi
+
+echo
+echo "== Cleaning npm cache =="
+npm cache clean --force
+
+echo
+echo "== Cache size after =="
+echo "$cache_dir: $(size_of "$cache_dir")"
