@@ -171,7 +171,7 @@ Rigor is a budget spent where it buys detection, not a level to maximize. Pick t
 | Tier | When | What runs | Typical cost |
 |---|---|---|---|
 | **V0 — Inline** | Within a task, after each edit | Type-check / compile / lint on the changed files; read the diff | seconds |
-| **V1 — Scoped** | Task exit gate (the default) | Tests covering the changed file or package only, plus the task's own `Feedback signal:` from `plan.md` | seconds–low minutes |
+| **V1 — Acceptance** | Task exit gate (the default) | The affected feature's acceptance check — real entrypoint, observable outcome — plus the task's own `Feedback signal:` from `plan.md` | seconds–low minutes |
 | **V2 — Branch** | Once, after the last task, before the final review | Full test suite + full lint/type-check | minutes |
 | **V3a — Wave review** | At each dependency-graph wave boundary (see `shape.md` Stage 4) | Review agent over the diff **since the last review checkpoint** only | one bounded dispatch |
 | **V3b — Branch review** | Once, after V2 passes | Review agent over the complete branch diff | one dispatch |
@@ -193,6 +193,8 @@ undeclared across a few real plans, or is declared and then followed by faults
 V1 would have caught.
 
 Rules:
+- **What counts as the acceptance check.** Three properties: it enters through the real entrypoint a caller uses, not an internal helper; it asserts an observable outcome (exit code and output, response body, file written, state changed — never a mock call count); and **it goes red if you delete the behavior**. Only the third cannot be faked by a plausible-looking test — verify it by deleting the implementation and rerunning. One check per user-visible feature, per AGENTS.md; a branch, input variant, or failure mode is not another feature.
+  The unit-vs-acceptance distinction is the point: of the eight fault classes below, a test over the changed file catches roughly none, while an acceptance check through the real entrypoint reaches 2, 3, 4 and 7.
 - **V1 is the per-task default. Do not run V2 between tasks unless the escalation rule below applies.** A full suite per task is near-pure duplication of V2: it re-verifies untouched code N times to catch regressions that a per-task commit plus V2 already localizes by bisect.
 - **Recheck changed results.** Once-per-branch means no redundant full runs during ordinary tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the branch gate before merge.
 - **Commit per task.** This is what preserves attribution when V2 or V3 finds something. Without it, the argument for V1-only collapses and you owe a fuller check per task.
@@ -204,7 +206,7 @@ Rules:
 - **A clean local verify is not a CI pass.** One audited fault (`31a6d52`) was a task's own regression test passing locally and failing on main's post-merge CI. Local rigor of any tier cannot catch an environment difference — that is what V4 is for.
 - **Escalate on evidence, not on anxiety.** Promote the remaining tasks from V1 to V2 when V2/V3 surfaces a fault a scoped check should have caught, or a task touches shared/global state (schema, config loader, build, auth, a widely-imported module). State the escalation and its trigger in narration. Never invent a numeric trip-wire without validating it against run history first — a prior draft's "two consecutive scoped-check failures" trigger had never once fired.
 - **Keep escalation for the remainder of the current plan**, as required by CLAUDE.md. A new plan can default to V1 after the cause is fixed; one clean task does not cancel the active plan's trip-wire.
-- **Where the suite is thin, V1 and V2 are the same empty check.** `bin/bugfix-worker` carried 9 of the 14 audited faults and has no test file. Before budgeting tiers, confirm the tier you are relying on actually covers the changed code — if it does not, detection falls entirely on V3 and the review is not optional.
+- **Where no acceptance check exists, V1 is to write the one.** `bin/bugfix-worker` carried 9 of the 14 audited faults and has no test file — under the old file-scoped V1 that read as "run nothing, pass." Confirm the tier you are relying on actually covers the changed behavior; where it does not, write the check or accept that detection falls entirely on V3, and say which.
 - **Brief the reviewer with the fault classes below.** An unguided "review this diff" dispatch relies on the reviewer happening to look in the right place. Each class below is derived from a fault that actually shipped past a green check, so none is speculative.
 - **Break-checks are per harness, not per test.** Falsifiability (Constitution IV) is satisfied by one break-check the first time a harness is wired up — not by re-breaking an established suite each task.
 

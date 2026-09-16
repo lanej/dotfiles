@@ -1,1 +1,6 @@
-{}
+{
+  "claude/skills/methodology/SKILL.md": {
+    "max_estimated_tokens": 5250,
+    "reason": "Verification Rigor Tiers carries the V0-V4 table, the acceptance-check definition, the declared posture, and eight fault classes derived from audited faults. Roughly 1,600 bytes of incident provenance were compressed out of this file in 2026-09 to fund those additions; further squeezing would cut operative content to hold a number. Revisit by moving the fault classes to a reference file if this section grows again."
+  }
+}

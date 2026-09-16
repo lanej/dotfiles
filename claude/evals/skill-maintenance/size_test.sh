@@ -9,7 +9,11 @@ repo="$fixture/repo"
 installed="$fixture/home/.claude"
 folder="$repo/claude/evals/skill-maintenance"
 mkdir -p "$folder" "$repo/claude/skills/example" "$installed"
-cp "$suite/check_size.sh" "$suite/size-budgets.json" "$folder/"
+cp "$suite/check_size.sh" "$folder/"
+# Fixture-local budgets. Copying the repo's own file coupled this detector to
+# it: check_size.sh rejects a budget key it cannot `git ls-files`, so the first
+# real override made every assertion below fail for the wrong reason.
+printf '{}\n' > "$folder/size-budgets.json"
 cd "$repo"
 git init -q
 git config user.name Fixture
@@ -41,4 +45,16 @@ head -n 500 AGENTS.md > "$fixture/trimmed"
 mv "$fixture/trimmed" AGENTS.md
 cp AGENTS.md "$installed/CLAUDE.md"
 "${command[@]}" > "$fixture/result" 2>&1 || { cat "$fixture/result"; exit 1; }
+
+# An override raises the limit for the entrypoint it names, source and installed.
+awk 'BEGIN { for (i=0; i<520; i++) printf "%031d\r\n", 0 }' > "$skill"
+if "${command[@]}" > "$fixture/result" 2>&1; then
+    echo 'Expected the oversize skill to fail without an override'; exit 1
+fi
+grep -Fq "FAIL $skill: 520 lines" "$fixture/result"
+cat > "$folder/size-budgets.json" <<'JSON'
+{"claude/skills/example/SKILL.md": {"max_lines": 600, "max_estimated_tokens": 5000, "reason": "fixture"}}
+JSON
+"${command[@]}" > "$fixture/result" 2>&1 || { cat "$fixture/result"; exit 1; }
+
 echo 'PASS: source and installed instruction size budgets'
