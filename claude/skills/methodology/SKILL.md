@@ -162,7 +162,7 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 
 ### Feedback Loop Design
 
-**Design the feedback loop before writing code.** Before the first line of implementation, identify what "verifiably done" looks like: which tests run, which lint/type-check passes, which grep/diff confirms the output is correct. The verification path is part of the design, not an afterthought.
+**Design the feedback loop before writing code.** Before the first line, identify what "verifiably done" looks like: which tests run, which lint/type-check passes, which grep/diff confirms the output. The verification path is part of the design, not an afterthought.
 
 ### Verification Rigor Tiers
 
@@ -177,19 +177,34 @@ Rigor is a budget spent where it buys detection, not a level to maximize. Pick t
 | **V3b — Branch review** | Once, after V2 passes | Review agent over the complete branch diff | one dispatch |
 | **V4 — Post-merge CI** | After merge, where CI exists | The merged commit's own check-runs, classified against the pre-merge commit | polled, async |
 
+**Posture sets the per-task floor. Josh declares it; you never select it** —
+absent a declaration it is `default`, and it scopes a plan, not a task.
+`explore` (spikes and shape-finding: code written to answer a question,
+expected to be thrown away) floors at V0 plus a smoke check that it runs; `default` at V1; `harden` (productionizing a path that already
+works, or pre-release) at V2. Three limits stop this becoming a universal
+rigor-skip: inferring `explore` because a task feels small is exactly the
+failure it exists to prevent; `explore` does not survive a merge, so code
+leaving it owes V2 and V3b before landing on the default branch; and escalation
+still overrides upward from any posture, so a spike touching auth, a schema, or
+the build sits at V2 for the rest of the plan. **Unvalidated, unlike every
+other rule here** — the audit found no labeled exploratory work to check it
+against (1 of 118 commits reads as a spike). Delete it if `explore` goes
+undeclared across a few real plans, or is declared and then followed by faults
+V1 would have caught.
+
 Rules:
 - **V1 is the per-task default. Do not run V2 between tasks unless the escalation rule below applies.** A full suite per task is near-pure duplication of V2: it re-verifies untouched code N times to catch regressions that a per-task commit plus V2 already localizes by bisect.
-- **Recheck changed results.** Once-per-branch means no redundant full runs during ordinary tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the final branch gate on the resulting branch before merge.
+- **Recheck changed results.** Once-per-branch means no redundant full runs during ordinary tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the branch gate before merge.
 - **Commit per task.** This is what preserves attribution when V2 or V3 finds something. Without it, the argument for V1-only collapses and you owe a fuller check per task.
 - **V3 covers gaps in V1.** Cross-task interaction faults, pattern-level bugs, and spec drift can escape scoped tests. Broader tests can detect interactions they exercise, but cannot substitute for review of assumptions and consistency. Keep V3 alongside V2.
-- **Review is the detector, so review cadence — not test breadth — is the lever on compounding.** In the small historical sample below, review found faults that the existing tests missed. That supports wave reviews here; it does not establish that tests cannot detect faults or interactions in a repo with better coverage. Hence V3a: at each wave boundary, review only the diff since the last checkpoint. That diff is bounded (it does not grow with the branch), so the cost is roughly constant per checkpoint, and a finding is attributable to the handful of tasks in that wave rather than to the whole branch.
-- **V3a does not replace V3b.** The audited cross-task drift fault (`c19fe01`) was three gaps that appeared only once Task 1 and Task 3 were both merged — each task locally coherent, jointly inconsistent. An incremental review that never sees the assembled whole cannot find that class. Run both.
+- **Review cadence — not test breadth — is the lever on compounding.** In the small sample below, review found faults the existing tests missed; that supports wave reviews here, not a claim that tests cannot catch interactions. Hence V3a: at each wave boundary review only the diff since the last checkpoint. That diff is bounded, so cost stays roughly constant and a finding is attributable to that wave's few tasks rather than the whole branch.
+- **V3a does not replace V3b.** The audited cross-task drift fault was three gaps that appeared only once two tasks were both merged — each locally coherent, jointly inconsistent. An incremental review that never sees the assembled whole cannot find that class. Run both.
 - **Anchor the checkpoint to structure, not to a count.** Wave boundaries come from the plan's own dependency graph. Do not substitute "every N tasks" — that is an invented threshold of exactly the kind this section warns about below.
-- **V3 and V4 are where faults are actually found — do not skip them to save time.** Audited against this repo's own history (14 post-implementation faults over ~6 months, commits `51c57bd`, `331d3af`, `31a6d52`, `c19fe01`): 12 were found by review reading the diff, 2 by post-merge CI, and **0 by a test suite run at any breadth**. The faults were injection vectors, a fail-open safety gate, stale cross-invocation state, error-path ordering, and cross-task doc drift — none of which a test written for the task's happy path catches, regardless of how wide it runs. V1 is where the *time* is saved; V3/V4 are where the *quality* is preserved. Trading V3 or V4 away for speed is not the same trade as narrowing V1, and is not authorized by this section.
+- **V3 and V4 are where faults are actually found — do not skip them to save time.** Of 14 audited post-implementation faults, 12 were found by review reading the diff, 2 by post-merge CI, and **0 by a test suite at any breadth**: injection vectors, a fail-open gate, stale cross-invocation state, error-path ordering, cross-task doc drift — none of which a happy-path test catches at any width. V1 saves *time*; V3/V4 preserve *quality*. Trading V3 or V4 away is not the same trade as narrowing V1, and is not authorized here.
 - **A clean local verify is not a CI pass.** One audited fault (`31a6d52`) was a task's own regression test passing locally and failing on main's post-merge CI. Local rigor of any tier cannot catch an environment difference — that is what V4 is for.
-- **Escalate on evidence, not on anxiety.** Promote the remaining tasks from V1 to V2 when: V2/V3 surfaces a fault a scoped check should have caught, or a task touches shared/global state (schema, config loader, build system, auth, a widely-imported module). State the escalation and its trigger in narration. Do not invent additional numeric trip-wires without validating them against real run history first — an earlier draft of this section carried a "two consecutive tasks fail their scoped check" trigger that the audit showed had never once fired, because scoped checks were not what was failing.
+- **Escalate on evidence, not on anxiety.** Promote the remaining tasks from V1 to V2 when V2/V3 surfaces a fault a scoped check should have caught, or a task touches shared/global state (schema, config loader, build, auth, a widely-imported module). State the escalation and its trigger in narration. Never invent a numeric trip-wire without validating it against run history first — a prior draft's "two consecutive scoped-check failures" trigger had never once fired.
 - **Keep escalation for the remainder of the current plan**, as required by CLAUDE.md. A new plan can default to V1 after the cause is fixed; one clean task does not cancel the active plan's trip-wire.
-- **Where the suite is thin, V1 and V2 are the same empty check.** `bin/bugfix-worker` carried 9 of the 14 audited faults and has no test file; the available pytest coverage does not exercise that worker. Before budgeting tiers, confirm the tier you are relying on actually covers the changed code — if it does not, the detection load falls entirely on V3, and the review is not optional.
+- **Where the suite is thin, V1 and V2 are the same empty check.** `bin/bugfix-worker` carried 9 of the 14 audited faults and has no test file. Before budgeting tiers, confirm the tier you are relying on actually covers the changed code — if it does not, detection falls entirely on V3 and the review is not optional.
 - **Brief the reviewer with the fault classes below.** An unguided "review this diff" dispatch relies on the reviewer happening to look in the right place. Each class below is derived from a fault that actually shipped past a green check, so none is speculative.
 - **Break-checks are per harness, not per test.** Falsifiability (Constitution IV) is satisfied by one break-check the first time a harness is wired up — not by re-breaking an established suite each task.
 
@@ -220,7 +235,7 @@ Detected-By: V3b
 
 Valid values are `V0`, `V1`, `V2`, `V3a`, `V3b`, and `V4`, or `user` when a person caught it. One trailer per commit; if a commit fixes findings from two tiers, name the earliest one that caught anything.
 
-This exists because the tier model rests on an audit that had to be reconstructed by reading commit prose and inferring — workable only because the messages happened to say things like "independent code review (BLOCK verdict) found" and "reported done after a clean local verify." That is archaeology, not measurement. With the trailer, the next audit is `git log --grep="Detected-By"` and the questions that are currently guesses become queries:
+This exists because the tier model rests on an audit reconstructed by reading commit prose — archaeology, not measurement. With the trailer the next audit is `git log --grep="Detected-By"`, and questions that are currently guesses become queries:
 
 - Does V3a find anything V3b would not have found anyway? If not, V3a is pure cost and should be removed.
 - Does V1 ever catch anything in a repo with a real test suite? The audit says no for this repo, but this repo has almost no tests — that number may be an artifact, not a finding.
@@ -228,22 +243,18 @@ This exists because the tier model rests on an audit that had to be reconstructe
 
 Do not defend a tier that the trailer data shows catches nothing. The whole point of this section is that the model was wrong once already — the per-task full suite was defended on reasoning for as long as nobody counted.
 
-**Harness verification (false-red / false-green discipline).** When writing tests in new test files, new packages, or any setup where harness wiring is uncertain:
+**Harness verification (false-red / false-green discipline).** For a new test file or package, or any setup where harness wiring is uncertain:
 1. Write the failing test
-2. Break the implementation in a targeted way (wrong return value, removed function body, inverted condition) to confirm the test catches that specific failure
+2. Break the implementation in a targeted way (wrong return value, removed body, inverted condition) and confirm the test catches that specific failure
 3. Restore the implementation and confirm green
-4. Only then proceed — a green result you haven't confirmed can turn red is a false green and tells you nothing
+4. Only then proceed — a green you haven't confirmed can turn red tells you nothing
 
-This applies once per new harness, not to every test in an established suite and not repeated on each task that adds tests to a harness already break-checked.
+Once per new harness — not per test, and not repeated for tasks adding tests to a harness already break-checked.
 
-**Return only when self-validated.** Do not surface results, ask for human confirmation, or request feedback on something you can verify yourself. Run the tier the task calls for (V1 by default, see Verification Rigor Tiers), confirm the diff, check the output — then return with evidence of completion, not a question.
+**Return only when self-validated.** Never ask for confirmation on something you can verify yourself. Run the tier the task calls for (see Verification Rigor Tiers), confirm the diff, check the output — then return with evidence of completion, not a question.
 
 ### Flaky Tests
-**Flaky tests are serious bugs — fix immediately.**
-- NEVER ignore, skip, or work around flaky tests
-- NEVER add retries or sleeps to mask flakiness
-- ALWAYS refactor code to eliminate non-determinism
-- Common causes: race conditions, shared state, timing dependencies, external dependencies
+**Flaky tests are serious bugs — fix immediately.** Never ignore, skip, or work around one, and never mask it with a retry or a sleep: refactor out the non-determinism. Common causes: race conditions, shared state, timing dependencies, external dependencies.
 - Fix by: dependency injection, deterministic mocks, proper test isolation
 
 ### Dependency Inversion for Testability
