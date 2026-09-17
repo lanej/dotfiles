@@ -4,6 +4,12 @@ Keep one regression detector per user-visible feature. Prefer one representative
 workflow through the real entrypoint and observable result. A helper, branch,
 input variant, or failure mode is not a separate feature.
 
+A detector is sufficient when it goes red if you delete the behavior it covers.
+Establish falsifiability once when wiring a new harness: delete representative
+behavior, confirm red, restore it, and confirm green. Do not repeat this mutation
+check for each test or task in an established harness. See `methodology`'s V1
+acceptance definition and harness verification procedure.
+
 When repairing a regression, improve that feature's existing detector. Multiple
 assertions may describe the same workflow; do not hide a case matrix in loops,
 parameterization, or one oversized test. Add broader coverage only when the
