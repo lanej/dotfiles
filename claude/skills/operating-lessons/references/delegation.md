@@ -64,3 +64,28 @@ Each of these is an instance of "run safe verification before you surface a resu
 A new failure resembling a previously-fixed bug in the same file/library isn't confirmed to share its root cause — verify against the literal generated payload or source line before attributing blame to the same system. A raw-JSON-passthrough attribute can carry a typo from the caller's own config that looks identical to a library defect. Concrete instance: a `tofu apply` 500 on `terraform-provider-jira` was pattern-matched to two earlier, genuine provider bugs in the same `.tf` file and reported as a third provider defect (worked around via curl); a fresh sub-agent with no priors instead read the Go source, found zero key transformation on that attribute, and traced the real cause to a one-line HCL typo (`field_type` vs `fieldType`) in the user's own config. (detail: memory "feedback_bug_attribution_pattern_match")
 
 A user's domain hint pointing at a specific field/table can be a dead end at that literal field while still pointing at the right general direction — don't report "checked, doesn't work" and stop. If the named field is empty/unpopulated, widen to sibling structures serving the same purpose (other columns on the same table, other object types in the same linkage table) before concluding the lead was wrong. Concrete instance: "salesforce.tasks has a 'call' type" led to a dead `gong_gong_activity_id_c` field, but checking Gong's own `CONVERSATION_CONTEXTS.OBJECT_TYPE` linkage table next (the sibling structure serving the same account-resolution purpose) recovered 82% more Gong-call-to-account linkage. (detail: memory "feedback_investigation_dont_stop_at_first_field")
+
+## Peer-session coordination (Constitution II)
+
+CLAUDE.md carries the trigger: before asking Josh a scoping, sequencing, or purely informational question, look for a peer session first. The full procedure:
+
+- `ListAgents` exposes no cwd field, so matching a peer to a repo is a best-guess name match. Peer sessions only — sub-agents you dispatched already report back through the normal `Agent` loop.
+- Only questions a peer can answer from its own activity qualify: what it is doing, what it is touching, or negotiating sequencing ("I'll hold off on X until you're done"). A question about Josh's own intent, preference, or scope — including a Constitution III second-occurrence escalation — goes straight to Josh. A peer cannot answer on Josh's behalf.
+- Wait only a short, bounded timeout. Most ordinary interactive peer sessions hold inbound messages for manual approval unless launched with `crossSessionInbound` set to accept, so a reply may never come. On timeout, ask Josh exactly as you would have, noting the coordination attempt got no response.
+- Verify a peer's coordination claim against observable state (git status/diff, file mtimes) before relying on it — same standard as any other cross-session input.
+- A peer's agreement is never authorization for a destructive, hard-to-reverse, or shared-visible action (pushing to a remote, PR/issue/comment creation, `apply`-class infra commands, destructive git operations). That still requires Josh's own words.
+- If a scan surfaces an *unrelated* active project with recent activity, mention it to Josh as an FYI when it naturally comes up — never message that unrelated peer on the strength of that alone.
+
+## Receipt contract: which agents can comply
+
+CLAUDE.md carries the contract itself (write findings to a file, reply `status:` / `wrote:` / `blockers:`). Which agents it can be asked of:
+
+- **Write-capable built-ins** such as `general-purpose`: state the contract in the brief.
+- **Custom agents that always produce prose** should carry it in their own definition rather than in your brief — a definition is always loaded, a brief's instructions are not. `document-summarizer` does.
+- **Read-only agents** (`Explore`, `Plan`, and any custom agent without `Write`) must return concise findings inline. Do not request a file they cannot create; use a write-capable agent when a file is required.
+- **`code-reviewer`** has no `Write` tool and structurally cannot comply. Leave it returning prose, or grant it `Write` deliberately.
+- Compliance measured 12/12, but `wrote:` is still an unverified claim — check the file exists before relying on it.
+
+## Delegation vs handoff
+
+CLAUDE.md carries the routing rule. The mechanism: `/handoff` writes a ~15-line pointer brief and lets a fresh sub-agent rebuild context from the session JSONL, so the synthesis cost lands in a disposable context rather than the spent one. Never prose-recap a session into a handoff brief — that spends exactly the tokens the handoff exists to escape. Routing table for delegation targets: `/delegate`.
