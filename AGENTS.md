@@ -5,9 +5,10 @@ workflow through the real entrypoint and observable result. A helper, branch,
 input variant, or failure mode is not a separate feature.
 
 A detector is sufficient when it goes red if you delete the behavior it covers.
-Check that by deleting the implementation and rerunning — a test that still
-passes was never testing the feature. This is the V1 acceptance bar in the
-`methodology` skill's Verification Rigor Tiers; the two say the same thing.
+Establish falsifiability once when wiring a new harness: delete representative
+behavior, confirm red, restore it, and confirm green. Do not repeat this mutation
+check for each test or task in an established harness. See `methodology`'s V1
+acceptance definition and harness verification procedure.
 
 When repairing a regression, improve that feature's existing detector. Multiple
 assertions may describe the same workflow; do not hide a case matrix in loops,

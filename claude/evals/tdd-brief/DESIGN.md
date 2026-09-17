@@ -47,8 +47,16 @@ only instructional difference between arms.
 ## Outcome measure
 
 Observed, not self-reported. The run is captured as `--output-format
-stream-json`; `classify.py` reads the ordered `Write`/`Edit` tool calls and
-classifies by which path was touched first:
+stream-json`; `classify.py` matches `Write`/`Edit` requests to successful tool
+results and classifies by which path was touched first. Failed or missing write
+results, overlapping writes, incomplete streams, and unobserved mutation tools
+make a run unclassifiable: the runner fails without appending a measurement.
+
+Both arms use Write/Edit for file changes and Read/Grep/Glob for inspection.
+Bash is limited to `python -m pytest` or `python3 -m pytest`, optionally with
+`-q`/`-v`; any other shell command is unclassifiable. The fixture's tests must
+remain assertions about string helpers, not programs that modify source files.
+This is a constrained write-order experiment, not a general shell-write tracer.
 
 | outcome | meaning |
 |---|---|
@@ -58,6 +66,10 @@ classifies by which path was touched first:
 | `no_impl` | no implementation written (degenerate; excluded, and the run is re-drawn) |
 
 Primary metric: `test_first` rate per arm, over 20 runs.
+
+The analyzer requires exactly 20 scored runs per arm. It rejects oversized
+datasets rather than silently lowering the 18/20 bar or selecting a subset.
+Additional trials require a new design and a separate output directory.
 
 `no_test` and `impl_first` both count as failures of test-first. They are
 recorded separately because they mean different things — `no_test` is the more
@@ -116,6 +128,10 @@ contamination this control exists to prevent.
 
 ## Pipeline smoke, 2026-09-16 (NOT a result)
 
+This historical smoke predates successful-write validation. Its classifications
+are unverified; reclassify the original event logs with the current classifier
+or rerun it before using these numbers as evidence.
+
 One trial per arm, 8 live runs, `claude-sonnet-5`, to validate the harness end
 to end before spending the full 40.
 
@@ -126,8 +142,7 @@ to end before spending the full 40.
 
 Fisher p = 0.0286. `analyze.py` correctly refused a verdict (exit 1, INCOMPLETE).
 
-This is 8 runs against one model with one draw per task. It is a pipeline check,
-not the ablation, and the pre-registered rule deliberately does not let it become
-one. It is directionally against the "models do this by default" hypothesis: the
-`omit` arm did not merely test after implementing, it wrote no test at all in
-4 of 4. Run the full 20 per arm before concluding anything.
+This is 8 historical runs against one model with one draw per task, not the
+ablation. No conclusion about the clause follows from these unverified counts.
+Run the full 20 scored runs per arm with the repaired observer before concluding
+anything.

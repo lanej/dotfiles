@@ -12,6 +12,7 @@ import sys
 ARMS = ("omit", "state")
 OUTCOMES = ("test_first", "impl_first", "no_test", "no_impl")
 DELETE_BAR = 18  # test_first runs out of 20 the omit arm must clear
+SAMPLE_SIZE = 20
 ALPHA = 0.05
 
 
@@ -67,7 +68,12 @@ def main(argv=None):
     p = fisher_exact(a, b, c, d)
     print(f"\nFisher exact (two-sided): p = {p:.4f}")
 
-    incomplete = [arm for arm in ARMS if scored[arm] < 20]
+    oversized = [arm for arm in ARMS if scored[arm] > SAMPLE_SIZE]
+    if oversized:
+        print(f"\nINVALID — {', '.join(oversized)} exceeds the pre-registered 20 scored runs. "
+              "Do not select a favorable subset; a larger study needs a new design.")
+        return 1
+    incomplete = [arm for arm in ARMS if scored[arm] < SAMPLE_SIZE]
     if incomplete:
         print(f"\nINCOMPLETE — {', '.join(incomplete)} has fewer than 20 scored runs. "
               "Re-draw degenerate runs before reading a verdict.")
@@ -77,8 +83,8 @@ def main(argv=None):
     p_state = c / scored["state"]
     if a >= DELETE_BAR and p > ALPHA:
         verdict = ("DELETE — the omit arm cleared the absolute bar and the arms are "
-                   "not distinguishable. This bounds the failure rate near 15%, it "
-                   "does not establish safety.")
+                   "not distinguishable in this sample. This does not establish "
+                   "safety or equivalence.")
     elif p <= ALPHA and p_state > p_omit:
         verdict = "KEEP — the clause changes behavior."
     else:

@@ -43,7 +43,7 @@ for i in "${!SUBPROBLEMS[@]}"; do
 Domain: Python library code.
 Sub-problem: ${SUBPROBLEMS[$i]}
 Success: $success
-Constraints: Do not modify existing functions or existing tests. Do not create files outside $work.
+Constraints: Do not modify existing functions or existing tests. Do not create files outside $work. Use Write or Edit for file changes and Read/Grep/Glob for inspection. Bash is only for python -m pytest (optionally with -q or -v); other shell commands make the measurement unclassifiable.
 Output format: Reply with one line naming the files you changed."
 
   events="$OUT/$ARM/events-t$T-$i.jsonl"
@@ -61,6 +61,7 @@ Output format: Reply with one line naming the files you changed."
     exit "$rc"
   fi
 
-  python3 "$HERE/classify.py" --events "$events" --root "$work" \
-    --arm "$ARM" --trial "$((10#$T))" --task "$i" >> "$OUT/$ARM/t$T.jsonl"
+  record="$(python3 "$HERE/classify.py" --events "$events" --root "$work" \
+    --arm "$ARM" --trial "$((10#$T))" --task "$i")"
+  printf '%s\n' "$record" >> "$OUT/$ARM/t$T.jsonl"
 done

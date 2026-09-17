@@ -7,11 +7,6 @@ import sys
 
 import pytest
 
-def writes_expected(mode):
-    """Files written inside the fixture — one per file, not per stream event."""
-    return {"test_first": 2, "impl_first": 2, "no_test": 1}[mode]
-
-
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 RUN = HERE / "run.sh"
@@ -31,12 +26,25 @@ prompt = sys.argv[sys.argv.index("-p") + 1]
 Path(os.environ["STUB_PROMPTS"]).open("a").write(prompt.replace("\\n", " | ") + "\\n")
 
 order = {"test_first": ["tests/test_new.py", "textkit/core.py"],
+         "failed_write": ["tests/test_new.py", "textkit/core.py"],
+         "bash_write": ["tests/test_new.py", "textkit/core.py"],
          "impl_first": ["textkit/core.py", "tests/test_new.py"],
          "no_test": ["textkit/core.py"],
          "stray": ["../escaped.py", "tests/test_new.py", "textkit/core.py"]}[mode]
 
 print(json.dumps({"type": "system", "subtype": "init"}))
-for path in order:
+if mode == "bash_write":
+    Path("textkit/core.py").write_text("implementation before the test")
+    print(json.dumps({"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "shell-write", "name": "Bash",
+         "input": {"command": "printf implementation > textkit/core.py"}}]}}))
+    print(json.dumps({"type": "user", "message": {"content": [
+        {"type": "tool_result", "tool_use_id": "shell-write", "content": "ok"}]}}))
+for i, path in enumerate(order):
+    tool_id = f"write-{i}"
+    failed = mode == "failed_write" and i == 0
+    if not failed:
+        Path(path).write_text("x")
     # The real CLI emits a partial tool_use in stream_event BEFORE the complete
     # one in the assistant message: same name, no input yet. Reproduce both, so
     # a classifier that scans indiscriminately double-counts and fails here.
@@ -46,15 +54,16 @@ for path in order:
     # the partial staying empty.
     print(json.dumps({"type": "stream_event", "event": {
         "type": "content_block_start", "index": 0,
-        "content_block": {"type": "tool_use", "id": "t1", "name": "Write",
+        "content_block": {"type": "tool_use", "id": tool_id, "name": "Write",
                           "input": {"file_path": path, "content": "x"}}}}))
     print(json.dumps({"type": "assistant", "message": {
         "model": "stub-model-1", "content": [
             {"type": "text", "text": "working"},
-            {"type": "tool_use", "name": "Write",
+            {"type": "tool_use", "id": tool_id, "name": "Write",
              "input": {"file_path": path, "content": "x"}}]}}))
     print(json.dumps({"type": "user", "message": {"content": [
-        {"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}}))
+        {"type": "tool_result", "tool_use_id": tool_id,
+         "is_error": failed, "content": "failed" if failed else "ok"}]}}))
 print(json.dumps({"type": "result", "subtype": "success"}))
 '''
 
@@ -99,22 +108,24 @@ def test_arm_briefs_differ_only_in_the_clause_under_test(harness):
 
 
 def test_write_order_is_read_from_the_event_stream(harness):
-    for mode, expected in (("test_first", "test_first"),
-                           ("impl_first", "impl_first"),
-                           ("no_test", "no_test")):
-        result, out, _ = harness(mode=mode, trial={"test_first": "1",
-                                                   "impl_first": "2",
-                                                   "no_test": "3"}[mode])
-        assert result.returncode == 0, result.stderr
-        records = [json.loads(l) for l in
-                   (out / f"t{ {'test_first':1,'impl_first':2,'no_test':3}[mode] }.jsonl"
-                    ).read_text().splitlines()]
-        assert len(records) == 4
-        assert {r["outcome"] for r in records} == {expected}
-        assert {r["task"] for r in records} == {0, 1, 2, 3}
-        # One write per file, not one per stream_event/assistant pair.
-        assert all(r["writes"] == writes_expected(mode) for r in records)
-        assert {r["model"] for r in records} == {"stub-model-1"}
+    # A failed test write followed by a successful implementation write cannot
+    # become evidence for deleting the tests-first instruction.
+    failed, out, _ = harness(mode="failed_write")
+    assert failed.returncode != 0
+    assert not (out / "t1.jsonl").exists()
+    # Moving the write into Bash cannot turn that retry into a scored result.
+    shell, out, _ = harness(mode="bash_write", trial="2")
+    assert shell.returncode != 0
+    assert not (out / "t2.jsonl").exists()
+    # Retry as a fresh trial after fixing the write failure.
+    result, out, _ = harness(trial="3")
+    assert result.returncode == 0, result.stderr
+    records = [json.loads(line) for line in (out / "t3.jsonl").read_text().splitlines()]
+    assert len(records) == 4
+    assert {r["outcome"] for r in records} == {"test_first"}
+    assert {r["task"] for r in records} == {0, 1, 2, 3}
+    assert all(r["writes"] == 2 for r in records)
+    assert {r["model"] for r in records} == {"stub-model-1"}
 
 
 def test_writes_outside_the_fixture_are_not_counted(harness):
@@ -176,3 +187,8 @@ def test_verdict_follows_the_preregistered_rule(tmp_path):
     short = _dataset(tmp_path / "d", omit_hits=10, state_hits=10, n=12)
     assert short.returncode == 1 and "INCOMPLETE" in short.stdout
     assert "VERDICT" not in short.stdout
+
+    # Additional trials cannot lower the binding 18/20 bar to 18/40.
+    oversized = _dataset(tmp_path / "e", omit_hits=18, state_hits=18, n=40)
+    assert oversized.returncode == 1 and "INVALID" in oversized.stdout
+    assert "VERDICT" not in oversized.stdout

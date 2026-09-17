@@ -172,7 +172,7 @@ Rigor is a budget spent where it buys detection, not a level to maximize. Pick t
 |---|---|---|---|
 | **V0 — Inline** | Within a task, after each edit | Type-check / compile / lint on the changed files; read the diff | seconds |
 | **V1 — Acceptance** | Task exit gate (the default) | The affected feature's acceptance check — real entrypoint, observable outcome — plus the task's own `Feedback signal:` from `plan.md` | seconds–low minutes |
-| **V2 — Branch** | Once, after the last task, before the final review | Full test suite + full lint/type-check | minutes |
+| **V2 — Branch** | Before final review in every posture; also per task under `harden` or escalation | Full test suite + full lint/type-check | minutes |
 | **V3a — Wave review** | At each dependency-graph wave boundary (see `shape.md` Stage 4) | Review agent over the diff **since the last review checkpoint** only | one bounded dispatch |
 | **V3b — Branch review** | Once, after V2 passes | Review agent over the complete branch diff | one dispatch |
 | **V4 — Post-merge CI** | After merge, where CI exists | The merged commit's own check-runs, classified against the pre-merge commit | polled, async |
@@ -193,10 +193,10 @@ undeclared across a few real plans, or is declared and then followed by faults
 V1 would have caught.
 
 Rules:
-- **What counts as the acceptance check.** Three properties: it enters through the real entrypoint a caller uses, not an internal helper; it asserts an observable outcome (exit code and output, response body, file written, state changed — never a mock call count); and **it goes red if you delete the behavior**. Only the third cannot be faked by a plausible-looking test — verify it by deleting the implementation and rerunning. One check per user-visible feature, per AGENTS.md; a branch, input variant, or failure mode is not another feature.
+- **What counts as the acceptance check.** Three properties: it enters through the real entrypoint a caller uses, not an internal helper; it asserts an observable outcome (exit code and output, response body, file written, state changed — never a mock call count); and **it goes red if you delete the behavior**. Establish falsifiability with the once-per-new-harness break-check below, not a mutation check per test or task. One check per user-visible feature, per AGENTS.md; a branch, input variant, or failure mode is not another feature.
   The unit-vs-acceptance distinction is the point: of the eight fault classes below, a test over the changed file catches roughly none, while an acceptance check through the real entrypoint reaches 2, 3, 4 and 7.
-- **V1 is the per-task default. Do not run V2 between tasks unless the escalation rule below applies.** A full suite per task is near-pure duplication of V2: it re-verifies untouched code N times to catch regressions that a per-task commit plus V2 already localizes by bisect.
-- **Recheck changed results.** Once-per-branch means no redundant full runs during ordinary tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the branch gate before merge.
+- **Under `default`, V1 is the per-task floor; under `explore`, V0 plus smoke. Run V2 between tasks only under `harden` or escalation.** Otherwise, per-task full runs duplicate the branch gate, which already localizes regressions through per-task commits and bisect.
+- **Recheck changed results.** Outside `harden` or escalation, avoid redundant full runs between tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the branch gate before merge.
 - **Commit per task.** This is what preserves attribution when V2 or V3 finds something. Without it, the argument for V1-only collapses and you owe a fuller check per task.
 - **V3 covers gaps in V1.** Cross-task interaction faults, pattern-level bugs, and spec drift can escape scoped tests. Broader tests can detect interactions they exercise, but cannot substitute for review of assumptions and consistency. Keep V3 alongside V2.
 - **Review cadence — not test breadth — is the lever on compounding.** In the small sample below, review found faults the existing tests missed; that supports wave reviews here, not a claim that tests cannot catch interactions. Hence V3a: at each wave boundary review only the diff since the last checkpoint. That diff is bounded, so cost stays roughly constant and a finding is attributable to that wave's few tasks rather than the whole branch.
