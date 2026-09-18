@@ -43,6 +43,16 @@ Search claude-mem for each finding to determine whether it is a one-off or a rec
 mcp__plugin_claude-mem_mcp-search__search(query="<finding keyword>")
 ```
 
+**Call this tool directly yourself in this step. Do not dispatch a sub-agent for it at all — never
+`fork`, never any other subagent_type.** This exact step has already produced 4+ documented
+occurrences of dispatching a "do not write" `fork` for this lookup (a fork inherits the full
+Bash/Edit/Write toolset regardless of the brief's prose restriction) — see memory
+`feedback_fork_writes_despite_readonly_brief_turborepo_reflection` and its chain. Two prior
+same-day, same-step recurrences already proved that a memory-file-only mitigation does not hold at
+the actual dispatch decision; the fix has to live here, in the procedure text this step re-reads
+every run. `search`/`timeline`/`get_observations` are cheap, already-scoped MCP calls — there is no
+multi-step research need that would justify any sub-agent dispatch for this step, fork or otherwise.
+
 Classify each finding:
 
 | Classification | Meaning | Priority |

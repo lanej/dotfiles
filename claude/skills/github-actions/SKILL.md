@@ -66,6 +66,8 @@ steps:
 
 `workload_identity_provider` uses the numeric project number, not the project ID — you only get the real value after `tofu apply` creates the pool/provider (Terraform outputs it). This means: provision the WIF Terraform once manually, read the output, then hardcode that resource name into the workflow YAML. It does not need to be a secret — the attribute condition is what protects it, not obscurity.
 
+**Pool-ID collision in a shared GCP project:** a shared/platform project (multiple repos and teams deploying into the same project) may already have a `google_iam_workload_identity_pool` with the ID you'd naturally pick (e.g. `github-actions-pool`), created by a different repo's own Terraform. Check for this before planning (`gcloud iam workload-identity-pools describe <id> --project=<project> --location=global`) rather than letting `tofu plan`/`apply` surface it as a collision. If it already exists and is owned by someone else's state: don't touch it and don't widen its existing provider's `attribute_condition` to cover your repo too. Instead, reference the pool as a `data` source (read-only, not owned by your state) and add your own distinctly-named `google_iam_workload_identity_pool_provider` underneath it, scoped by its own `attribute_condition` to just your `org/repo` + ref. This leaves the other team's provider and its security boundary completely untouched while still giving your repo keyless auth under the same pool.
+
 ## Per-resource least-privilege IAM, not project-wide roles
 
 Grant the deploy SA access scoped to the specific resources it deploys, not `roles/run.admin` or `roles/editor` project-wide:

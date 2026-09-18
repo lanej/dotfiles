@@ -30,6 +30,7 @@ the failure modes on this machine that have actually cost time.
 3. `--force-with-lease`, never bare `--force`.
 4. Confirm authorship and push status before amending.
 5. Destructive commands need user confirmation.
+6. To check whether a merge would conflict before committing to a mechanism: run the real `git merge --no-ff <branch>`, inspect `git status --short`, then `git merge --abort` to fully revert — safer than eyeballing `git diff`/`git log` divergence and guessing. (detail: memory "reference_dry_run_merge_then_abort_conflict_check")
 
 ## Worktree gotchas
 

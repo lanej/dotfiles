@@ -46,6 +46,22 @@ conform extract messy_report.pdf --output invoices.csv && duckdb -c "SELECT vend
 duckdb -c "COPY (SELECT * FROM 'local.csv' WHERE important) TO 'important.csv'" && bigquery insert dataset.table important.csv
 ```
 
+## Concurrency: a read-write connection takes an exclusive file lock
+
+Opening a `.duckdb` file in read-write mode (the default for `duckdb.connect(path)` and any
+wrapper class that always opens rw) takes an exclusive OS-level lock on that file — a second
+process cannot open **any** connection to it concurrently, not even a read-only one, until the
+first connection closes. This bit a multi-agent dispatch plan in `usps-local-route-detection`:
+`GeocodeCache` opened a shared `data/geocode_cache.duckdb` read-write on every connection, so
+running cache-import/backtest steps for multiple metros in parallel (as the original task
+dependency graph assumed) would have hit lock conflicts. Caught by reading the accessor's code
+before dispatching, not from any DuckDB doc.
+
+Before parallelizing sub-agent tasks that touch a shared `.duckdb` file, check whether the
+accessor opens it read-write unconditionally — if so, serialize those specific steps instead of
+running them concurrently, even if the rest of the plan's tasks are otherwise independent. Open
+with `read_only=True` explicitly wherever a step only needs to read.
+
 ## Python API gotchas
 
 ### `rowcount` is always negative for UPDATE/DELETE

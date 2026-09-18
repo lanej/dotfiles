@@ -2,6 +2,4 @@
   "gspace":   { "command": "gspace",   "args": ["mcp", "stdio"] },
   "bigquery": { "command": "bigquery", "args": ["mcp", "stdio"] },
   "jira":     { "command": "jira",     "args": ["mcp", "stdio"] },
-  "looker":   { "command": "looker",   "args": ["mcp", "stdio"] },
-  "epq":      { "command": "epq",      "args": ["mcp"] }
 }

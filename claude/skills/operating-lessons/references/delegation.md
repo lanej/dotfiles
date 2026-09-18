@@ -34,6 +34,9 @@ Treat any **second** notification on the same task-id as a signal, not routine c
 ### Killed-agent status
 A task-notification with `status: killed` has its `result` field populated from the agent's last in-flight message — narrated intent ("let's check X now"), not a completed or verified finding, no matter how conclusive it reads. Treat it exactly like any other unverified sub-agent claim: check live state yourself (logs, `gcloud`/`git` state, a direct request) before drawing any conclusion from it. (undocumented in memory as of this writing — first observed instance)
 
+### Checking on a running background agent
+Never call `TaskOutput` with `block=false` (or anything else that surfaces a running agent's raw transcript) just to answer "is it still working" during a goal check-in or other status-pressure moment — this pollutes context exactly like reading a fork's output file directly (the "don't peek" rule). Use an observable side effect instead — `git status --short`, `git diff --stat`, or an expected intermediate artifact named in the dispatch brief — and otherwise wait for the real `<task-notification>` completion event. (detail: memory "feedback_taskoutput_block_false_transcript_dump")
+
 ### Git push/merge
 Verify with `git log origin/main -1` or `git remote show origin` after any push/merge — don't rely on the exit code alone. (detail: memory "feedback_git_push_verification")
 

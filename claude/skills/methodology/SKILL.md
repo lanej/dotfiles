@@ -275,4 +275,25 @@ Once per new harness — not per test, and not repeated for tasks adding tests t
 - `uv run pytest` or `uv run pytest path/to/test_file.py`
 - Coverage: `uv run pytest --cov=scripts --cov-report=html --cov-report=term-missing`
 - Use pytest fixtures for isolation and mock behaviors
+
+## Statistical Correlation Discovery
+
+Pre-registration, Bonferroni correction, and chronological half-sample robustness checks are
+noise/drift filters — they rule out "this could be chance" and "this is drift over time." None of
+them rule out confounding.
+
+**Before declaring a categorical bar-clearing correlation "real" (day-of-week, time-of-day, region,
+cohort, or any other grouping variable) — and especially before auto-building on it — stratify by
+every other categorical variable sharing the same population that could independently predict the
+outcome (carrier, ingestion source, region, cohort), and confirm the effect holds independently
+within each stratum, not just in the pooled test.** A pooled effect that vanishes or reverses once a
+lurking variable is held fixed (Simpson's paradox) is not a real finding, however cleanly it clears
+the statistical, practical-effect, and robustness bars.
+
+If a confound is found and needs controlling for, check the proposed control against the analysis's
+own stated goal/scope *before* applying it. The statistically simplest control — "restrict to one
+segment" — can silently narrow the analysis away from what it was actually meant to answer (e.g.
+restricting to a single carrier when the goal is cross-carrier intelligence). Stratify and compare
+across the full population; don't discard most of it to make the confound go away. (detail: memory
+"project_simpsons_paradox_confound_check_gap_temporal_pattern")
 - AVOID bats, shell-based testing — prefer subprocess testing from Python

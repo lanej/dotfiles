@@ -249,6 +249,42 @@ Discovered self-hosting OSRM + Nominatim on Cloud Run (Jobs + Services, multi-co
 
 **Cloud Run does not redeploy on a bare image push.** Pushing a new `:latest` tag to Artifact Registry does not create a new revision — Cloud Run only redeploys when a `gcloud run deploy`/`jobs update` command actually runs with a resolved image reference. Prefer deploying by content digest (`@sha256:...`) over `:latest` — it makes "what's actually serving" independently verifiable (`gcloud run services describe --format='value(status.latestReadyRevision... image)'` compared against what was just pushed) rather than trusted on faith. If Terraform also manages the same resource with a floating-tag `image` value, expect `tofu plan` to show drift after any out-of-band digest deploy — that's expected divergence between two different deploy mechanisms touching the same field, not a misconfiguration to chase down.
 
+## Cloud Build — Substitution Scanner Rejects Any `$UPPERCASE` Token, Zero Bash Awareness
+
+Cloud Build's substitution engine textually scans **every step's raw args** for any
+`$UPPERCASE`/`${UPPERCASE}`-shaped token and rejects the whole `gcloud builds submit` at
+*submission time* — before any build record is created — if a token doesn't resolve to a real
+built-in (`$PROJECT_ID`, `$BUILD_ID`, ...) or a declared user substitution (`${_FOO}`). This scan
+has **no bash-syntax awareness whatsoever**: it doesn't know the difference between an actual
+variable reference and a bash-local variable name, a comment, or a string that merely happens to
+contain `$` followed by an uppercase word.
+
+```
+INVALID_ARGUMENT: ... key in the template "STATUS_DIR" is not a valid built-in substitution
+```
+
+This fires on a step's own **local** bash variables too — a `bash -c` script inside a step that
+declares `STATUS_DIR=$(mktemp -d)` or `declare -A PIPELINES=(...)` trips the same rejection as an
+actually-malformed `${_TYPO}` substitution reference, even though those variables are pure
+shell-local state with zero relation to Cloud Build's own substitution mechanism. It also fires on
+a **comment** written to explain the bug — a comment reading `# don't use $UPPERCASE here` is
+itself flagged, since the scanner doesn't distinguish code from prose.
+
+**Fix:** name every bash-local variable inside a Cloud Build step's script in lowercase
+(`status_dir`, `pipelines`, `failed`, ...) — reserve `UPPERCASE` exclusively for real Cloud Build
+substitutions. When writing a comment that needs to reference the bad pattern for explanatory
+purposes, avoid literal `$`+uppercase-word adjacency in the comment text too (e.g. describe it as
+"a dollar-sign-prefixed all-caps token" rather than writing the literal `$UPPERCASE` string).
+Before submitting, grep the full step script for the failure signature ahead of time:
+`grep -oE '\$\{?[A-Z][A-Z0-9_]*' step-script.sh | sort -u` and manually confirm every hit is either
+a real substitution or doesn't belong in the file at all.
+
+Blast radius when this is caught (as it always will be, immediately): zero. The rejection happens
+at submission, before any build record exists — no partial deploy, no stuck resources, just a
+failed `gcloud builds submit` invocation to fix and resubmit.
+
+(detail: memory "project_cloudbuild_substitution_uppercase_var_collision")
+
 ## Cloud Workflows — BigQuery connector `source_contents` has a hard 128 KB limit
 
 `google_workflows_workflow.source_contents` (or the equivalent `gcloud workflows deploy

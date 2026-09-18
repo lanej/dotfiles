@@ -204,6 +204,15 @@
             "command": "$HOME/.files/bin/claude-agent-model-narration-hook"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-sandbox-bypass-narration-hook"
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
@@ -282,13 +291,20 @@
     "code-simplifier@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true
+    "feature-dev@claude-plugins-official": true,
+    "viewrule@viewrule": true
   },
   "extraKnownMarketplaces": {
     "agent-plugins-for-aws": {
       "source": {
         "source": "github",
         "repo": "awslabs/agent-plugins"
+      }
+    },
+    "viewrule": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/lanej/viewrule.git"
       }
     }
   },
@@ -314,5 +330,6 @@
   "verbose": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754065442220
-  }
+  },
+  "crossSessionInbound": "accept"
 }
