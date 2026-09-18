@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Called by a yabai window_created signal for Playwright's non-headless test
+# browser. Only intervenes if the space we're about to be yanked from is
+# native-fullscreen (macOS force-switches spaces to reveal a new window that
+# isn't on the current one) -- otherwise leaves the window alone so it pops
+# up normally. Fails safe: any query error leaves the window untouched.
+
+window_id=$1
+
+was_fullscreen=$(yabai -m query --spaces --space | jq -r '.["is-native-fullscreen"]')
+
+if [[ "$was_fullscreen" == "true" ]]; then
+	yabai -m window "$window_id" --minimize
+fi
