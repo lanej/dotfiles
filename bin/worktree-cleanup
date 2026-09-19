@@ -214,7 +214,11 @@ echo "=========================================="
 echo "Summary"
 echo "=========================================="
 echo "Found: $found"
-echo "Removed: $removed (reclaimed $(human_size "$total_kb"))"
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Would remove: $removed (would reclaim $(human_size "$total_kb"))"
+else
+    echo "Removed: $removed (reclaimed $(human_size "$total_kb"))"
+fi
 echo "Skipped (dirty): $skipped_dirty"
 echo "Skipped (unmerged): $skipped_unmerged"
 echo "Skipped (other): $skipped_other"
