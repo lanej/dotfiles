@@ -28,6 +28,7 @@ failed=()
 
 # name, supports-dry-run
 STEPS=(
+    "worktree-cleanup:yes"
     "disk-cleanup:yes"
     "cargo-sweep-cleanup:no"
     "rust-dev-cleanup:yes"

@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+# Remove abandoned git worktrees under <repo>/.claude/worktrees/ across
+# repos below ~/src and ~/workspace. A worktree is removed only when its
+# branch is fully merged into the parent repo's default branch AND it has
+# no uncommitted/untracked changes. Dirty worktrees and unmerged worktrees
+# are reported but never touched.
+# Run with: worktree-cleanup [--dry-run]
+
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+run() {
+    echo "+ $*"
+    if [[ "$DRY_RUN" == "false" ]]; then
+        "$@"
+    fi
+}
+
+found=0
+removed=0
+skipped_dirty=0
+skipped_unmerged=0
+skipped_other=0
+total_kb=0
+
+processed_common_dirs=()
+
+already_processed() {
+    local needle="$1"
+    local d
+    for d in "${processed_common_dirs[@]:-}"; do
+        [[ "$d" == "$needle" ]] && return 0
+    done
+    return 1
+}
+
+human_size() {
+    local kb="$1"
+    awk -v kb="$kb" 'BEGIN {
+        if (kb >= 1048576) printf "%.1fG", kb / 1048576;
+        else if (kb >= 1024) printf "%.1fM", kb / 1024;
+        else printf "%dK", kb;
+    }'
+}
+
+get_default_branch() {
+    local repo_root="$1"
+    local ref
+
+    ref=$(git -C "$repo_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
+    if [[ -n "$ref" ]]; then
+        echo "${ref#origin/}"
+        return
+    fi
+
+    if git -C "$repo_root" show-ref --verify --quiet refs/heads/main; then
+        echo "main"
+        return
+    fi
+    if git -C "$repo_root" show-ref --verify --quiet refs/heads/master; then
+        echo "master"
+        return
+    fi
+
+    ref=$(git -C "$repo_root" remote show origin 2>/dev/null | awk -F': ' '/HEAD branch/ {print $2}')
+    if [[ -n "$ref" && "$ref" != "(unknown)" ]]; then
+        echo "$ref"
+        return
+    fi
+
+    echo ""
+}
+
+remove_worktree() {
+    local repo_root="$1"
+    local path="$2"
+    local err_file
+    err_file=$(mktemp)
+
+    if git -C "$repo_root" worktree remove "$path" 2>"$err_file"; then
+        rm -f "$err_file"
+        return 0
+    fi
+
+    if grep -q "is locked" "$err_file"; then
+        echo "worktree locked, retrying with --force: $path"
+        rm -f "$err_file"
+        git -C "$repo_root" worktree remove --force "$path"
+        return 0
+    fi
+
+    echo "ERROR removing worktree $path:" >&2
+    cat "$err_file" >&2
+    rm -f "$err_file"
+    return 1
+}
+
+process_repo() {
+    local worktrees_dir
+    worktrees_dir=$(cd "$1" && pwd -P)
+    local repo_root
+    repo_root=$(cd "$(dirname "$(dirname "$worktrees_dir")")" && pwd -P)
+
+    if ! git -C "$repo_root" rev-parse --is-inside-work-tree &>/dev/null; then
+        return
+    fi
+
+    local common_dir
+    common_dir=$(git -C "$repo_root" rev-parse --git-common-dir)
+    case "$common_dir" in
+        /*) ;;
+        *) common_dir="$repo_root/$common_dir" ;;
+    esac
+    common_dir=$(cd "$common_dir" && pwd -P)
+
+    if already_processed "$common_dir"; then
+        return
+    fi
+    processed_common_dirs+=("$common_dir")
+
+    local default_branch
+    default_branch=$(get_default_branch "$repo_root")
+
+    echo
+    echo "== $repo_root =="
+    if [[ -z "$default_branch" ]]; then
+        echo "could not determine default branch, skipping repo"
+        return
+    fi
+    echo "default branch: $default_branch"
+
+    local cur_path="" cur_branch="" cur_detached=false
+
+    emit() {
+        local path="$1" branch="$2" detached="$3"
+        [[ "$path" == "$worktrees_dir"/* ]] || return 0
+        [[ -d "$path" ]] || return 0
+
+        found=$((found + 1))
+
+        if [[ "$detached" == "true" || -z "$branch" ]]; then
+            echo "skip (detached HEAD, cannot determine merge status): $path"
+            skipped_other=$((skipped_other + 1))
+            return
+        fi
+
+        if [[ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ]]; then
+            echo "skip (uncommitted/untracked changes): $path [$branch]"
+            skipped_dirty=$((skipped_dirty + 1))
+            return
+        fi
+
+        if ! git -C "$repo_root" merge-base --is-ancestor "$branch" "$default_branch" 2>/dev/null; then
+            echo "skip (not merged into $default_branch): $path [$branch]"
+            skipped_unmerged=$((skipped_unmerged + 1))
+            return
+        fi
+
+        local size_h size_kb
+        size_h=$(du -sh "$path" 2>/dev/null | cut -f1)
+        size_kb=$(du -sk "$path" 2>/dev/null | cut -f1)
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "would remove ($size_h): $path [$branch]"
+            removed=$((removed + 1))
+            total_kb=$((total_kb + size_kb))
+            return
+        fi
+
+        echo "removing ($size_h): $path [$branch]"
+        if remove_worktree "$repo_root" "$path"; then
+            run git -C "$repo_root" branch -d "$branch" || true
+            removed=$((removed + 1))
+            total_kb=$((total_kb + size_kb))
+        else
+            skipped_other=$((skipped_other + 1))
+        fi
+    }
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" ]]; then
+            if [[ -n "$cur_path" ]]; then
+                emit "$cur_path" "$cur_branch" "$cur_detached"
+            fi
+            cur_path=""; cur_branch=""; cur_detached=false
+            continue
+        fi
+        case "$line" in
+            "worktree "*) cur_path="${line#worktree }" ;;
+            "branch "*) cur_branch="${line#branch refs/heads/}" ;;
+            "detached") cur_detached=true ;;
+        esac
+    done < <(git -C "$repo_root" worktree list --porcelain)
+
+    if [[ -n "$cur_path" ]]; then
+        emit "$cur_path" "$cur_branch" "$cur_detached"
+    fi
+}
+
+for root in "$HOME/src" "$HOME/workspace"; do
+    [[ -d "$root" ]] || continue
+    while IFS= read -r worktrees_dir; do
+        process_repo "$worktrees_dir"
+    done < <(find "$root" -type d -path '*/.claude/worktrees' 2>/dev/null)
+done
+
+echo
+echo "=========================================="
+echo "Summary"
+echo "=========================================="
+echo "Found: $found"
+echo "Removed: $removed (reclaimed $(human_size "$total_kb"))"
+echo "Skipped (dirty): $skipped_dirty"
+echo "Skipped (unmerged): $skipped_unmerged"
+echo "Skipped (other): $skipped_other"
