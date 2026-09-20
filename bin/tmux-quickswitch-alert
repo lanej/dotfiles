@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Cycle to the next interesting window in the current session (wraps around).
-# Interesting: bell flag, ! prefix (Claude waiting), or @claude-state set.
 # Excludes the current window. Popup session searches session 0.
+#
+# Interest escalates: if any window NEEDS you (blocked on a question, a
+# permission prompt, or a plan), cycle only among those; otherwise cycle among
+# the windows showing activity. A window Claude merely finished in is not a
+# reason to jump, so the quiet states (idle/dormant) are never candidates --
+# they are display, not navigation.
 
 LOG=/tmp/tmux-quickswitch-alert.log
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >> "$LOG"; }
@@ -12,21 +17,29 @@ current_idx=$(tmux display-message -p '#{window_index}')
 
 log "--- invoked session=$current_session current_idx=$current_idx ---"
 
-# Collect interesting windows: index|id, sorted by index ascending
-# Interesting = bell OR ! prefix OR non-empty @claude-state
+# Collect candidates as index|id at the highest tier that has any, so a window
+# that needs you always wins over one that is merely busy.
 candidates=()
 while IFS= read -r line; do
   candidates+=("$line")
 done < <(
   # shellcheck disable=SC2086
   tmux list-windows $search_flags \
-    -F "#{window_index}|#{window_id}|#{window_bell_flag}|#{@claude-state}|#{window_name}" \
+    -F "#{window_index}|#{window_id}|#{window_bell_flag}|#{@claude-class}|#{window_name}" \
   | awk -F'|' -v cur="$current_idx" '{
-      idx=$1; id=$2; bell=$3; claude=$4; name=$5;
-      waiting=(substr(name,1,1)=="!") ? 1 : 0;
-      if (idx!=cur && (bell=="1" || waiting || claude!="")) print idx "|" id
+      idx=$1; id=$2; bell=$3; class=$4; name=$5;
+      if (idx==cur) next;
+      # The ! prefix is the pre-@claude-class marker for "blocked on you", and
+      # a bare bell from any program is the same request without the detail.
+      if (class=="need" || substr(name,1,1)=="!") { need[idx]=id; next }
+      if (class=="activity" || bell=="1") { busy[idx]=id }
+    }
+    END {
+      n=0; for (i in need) { print "0|" i "|" need[i]; n++ }
+      if (n==0) for (i in busy) print "1|" i "|" busy[i]
     }' \
-  | sort -t'|' -k1,1 -n
+  | sort -t'|' -k2,2 -n \
+  | cut -d'|' -f2-
 )
 
 log "candidates: ${candidates[*]}"

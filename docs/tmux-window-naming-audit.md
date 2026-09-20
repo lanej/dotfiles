@@ -1,6 +1,7 @@
 # Tmux Window Naming Audit
 
 **Date:** 2026-06-01  
+**Status:** Point-in-time investigation. The `@claude-state` model it describes has since been replaced — see [tmux.md](tmux.md#claude-window-status) for the current states, hooks, and palette.  
 **Scope:** Investigation of intermittent window naming bug where window 2 steals window 1's name
 
 ## Executive Summary
@@ -28,7 +29,7 @@ Ten distinct code paths control tmux window names across three systems: Claude h
 | **Clear Waiting** | `bin/claude-clear-waiting:6-7` | tmux `after-select-window` hook (when window name matches `^!`) | `-t "$window_id"` from arg 1 | `set-option -w @claude-state ""`, `rename-window` (removes `!` prefix) | Reads name from arg, writes stripped version |
 | **Worktree Create** ⚠️ | `bin/claude-worktree-create-hook:29` | Claude WorktreeCreate event | **Implicit current window** (NO `-t`) | `rename-window "$name"` | Writes branch name |
 | **Worktree Remove** ⚠️ | `bin/claude-worktree-remove-hook:13,17` | Claude WorktreeRemove event | **Implicit current window** (NO `-t`) | `rename-window "$name"`, `set-window-option automatic-rename on` | Writes repo name |
-| **Tool Start Hook** | `bin/claude-tool-start-hook:21` | Claude PreToolUse event | `-t $pane` from `TMUX_PANE` env var | `set-option -w @claude-state "tool"` | Writes state only (NO rename) |
+| **Tool Start Hook** (now `bin/claude-tmux-state-hook`) | `bin/claude-tool-start-hook:21` | Claude PreToolUse event | `-t $pane` from `TMUX_PANE` env var | `set-option -w @claude-state "tool"` | Writes state only (NO rename) |
 | **after-select-window Hook** | `rc/tmux.conf:227` | tmux native hook (when selecting window) | Conditional on window name regex `^!` | Calls `bin/claude-clear-waiting` script | Indirect via script |
 | **automatic-rename Disable** | `rc/tmux.conf:76` | Global tmux config | Global setting | `setw -g automatic-rename off` | N/A (blocks tmux shell renaming) |
 | **vim-prosession Plugin** | `nvim/init.lua:1819-1832` | Neovim VimEnter or session load/switch | **Plugin-internal** (unknown targeting) | Plugin calls `tmux rename-window` internally | Writes session-based name |
