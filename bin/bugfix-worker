@@ -332,20 +332,43 @@ print(json.dumps({
           state_set_field "$state_file" mergedSha "$merged_sha"
           state_set_field "$state_file" preMergeSha "$pre_merge_sha"
         fi
+        # Sync the primary checkout's local main forward, best-effort — never fails finish merge.
+        # Done BEFORE the post-merge install below (see there for why): this
+        # is the only source of a stable install path that outlives the
+        # worktree `claude rm` is about to delete.
+        install_dir=""
+        if [ -d "$repo_path/.git" ]; then
+          branch="$(git -C "$repo_path" symbolic-ref --short -q HEAD || true)"
+          if [ "$branch" = "main" ]; then
+            if git -C "$repo_path" fetch origin && git -C "$repo_path" merge --ff-only origin/main; then
+              install_dir="$repo_path"
+            else
+              echo "WARN: primary-checkout sync of $repo_path failed (fetch or non-ff-only) — sync manually" >&2
+            fi
+          else
+            echo "WARN: $repo_path not on main (branch=$branch) — skipped primary-checkout sync" >&2
+          fi
+        fi
         # Best-effort post-merge install: some tool repos install a compiled
-        # binary (e.g. to ~/.local/bin) that a plain `git push` to main does
-        # not refresh — the fix wouldn't actually take effect in daily use
-        # until reinstalled. Convention: run `just install` / `make install`
-        # if the repo defines one. Run it from the worktree (which already
-        # has the fixed, tested code checked out) rather than the primary
-        # checkout, whose sync below is best-effort and may fail/diverge.
+        # binary, or a launcher script that re-invokes source from wherever
+        # install ran (e.g. `justfile_directory()` baked into the script) —
+        # either way, a plain `git push` to main does not refresh what's
+        # already installed. Convention: run `just install` / `make install`
+        # if the repo defines one, from the primary checkout ($repo_path,
+        # just synced above) whenever that sync succeeded — it's the only
+        # location guaranteed to still exist after `claude rm` below deletes
+        # the worktree. A launcher script that captures its invocation
+        # directory (confirmed 2026-09-20, phab's `install-bin` recipe) was
+        # left pointing at a now-deleted worktree when this ran from $cwd
+        # instead; only fall back to the worktree if the sync above failed.
         # Never fails finish merge — surfaces as a warning only.
-        if [ -f "$cwd/justfile" ] && grep -qE '^install( |:)' "$cwd/justfile"; then
-          if ! install_output="$(cd "$cwd" && just install 2>&1)"; then
+        install_dir="${install_dir:-$cwd}"
+        if [ -f "$install_dir/justfile" ] && grep -qE '^install( |:)' "$install_dir/justfile"; then
+          if ! install_output="$(cd "$install_dir" && just install 2>&1)"; then
             echo "WARN: post-merge 'just install' failed for $repo — install manually: $install_output" >&2
           fi
-        elif [ -f "$cwd/Makefile" ] && grep -qE '^install:' "$cwd/Makefile"; then
-          if ! install_output="$(cd "$cwd" && make install 2>&1)"; then
+        elif [ -f "$install_dir/Makefile" ] && grep -qE '^install:' "$install_dir/Makefile"; then
+          if ! install_output="$(cd "$install_dir" && make install 2>&1)"; then
             echo "WARN: post-merge 'make install' failed for $repo — install manually: $install_output" >&2
           fi
         fi
@@ -361,19 +384,6 @@ print(json.dumps({
           echo "WARN: claude rm $id did not complete cleanly after a successful push: $rm_output" >&2
         elif printf '%s' "$rm_output" | grep -qi '^kept'; then
           echo "WARN: claude rm $id refused despite a successful push — investigate before assuming cleanup: $rm_output" >&2
-        fi
-        # Sync the primary checkout's local main forward, best-effort — never fails finish merge.
-        if [ -d "$repo_path/.git" ]; then
-          branch="$(git -C "$repo_path" symbolic-ref --short -q HEAD || true)"
-          if [ "$branch" = "main" ]; then
-            if git -C "$repo_path" fetch origin && git -C "$repo_path" merge --ff-only origin/main; then
-              :
-            else
-              echo "WARN: primary-checkout sync of $repo_path failed (fetch or non-ff-only) — sync manually" >&2
-            fi
-          else
-            echo "WARN: $repo_path not on main (branch=$branch) — skipped primary-checkout sync" >&2
-          fi
         fi
         ;;
       pr)
