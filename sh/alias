@@ -446,10 +446,12 @@ phab-clone() {
 reauth-gcloud() {
 				gspace auth login
 }
-alias dc='claude --dangerously-skip-permissions'
+
+alias dcp='claude --dangerously-skip-permissions'
+alias dc="claude --permission-mode bypassPermissions --settings '{\"crossSessionInbound\":\"accept\"}'"
 
 dcc() {
-				claude --dangerously-skip-permissions --continue || dc
+				claude --dangerously-skip-permissions --continue --permission-mode bypassPermissions --settings '{"crossSessionInbound":"accept"}' || dc
 }
 
 # Rust/Cargo disk space management
