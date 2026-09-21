@@ -366,15 +366,6 @@ op_password() {
 	op item list | tail -n +2 | fzf -m | awk '{ print $1 }' | xargs -L 1 op item get --format json | jq -r '.fields[] | select(.id == "password") | .value'
 }
 
-podman_container_rmi() {
-	podman container ls | fzf | awk '{ print $1 }' | xargs --no-run-if-empty podman container rm
-}
-
-open_webui() {
-	podman run -d -p 3000:8080 --replace -v open-webui:/app/backend/data --name open-webui --restart always --pull always ghcr.io/open-webui/open-webui:ollama
-	open "http://localhost:3000"
-
-}
 
 # Override glow to always use nord style
 glow() {
