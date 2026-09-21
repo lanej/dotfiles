@@ -86,6 +86,10 @@ fi
 (( $+functions[compdef] )) && compdef _just just-hack
 (( $+functions[compdef] )) && compdef _just just
 
+# Skip the unconditional `gh extension list` check the plugin below runs on
+# every shell (network round-trip, ~380-800ms) -- gh-copilot itself still
+# works; this only skips confirming the extension is installed at init time.
+export ZSH_GH_COPILOT_NO_CHECK=1
 if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
 	# If macOS
@@ -99,7 +103,7 @@ if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 fi
 
 if command -v fzf >/dev/null; then
-	source <(fzf --zsh)
+	_cache_shell_init "$HOME/.zsh/cache/fzf-init.zsh" fzf --zsh
 	
 	# Helper function for dynamic preview window positioning
 	__fzf_dynamic_preview_window() {
@@ -386,7 +390,7 @@ elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
 	source "${HOME}/.oh-my-zsh/oh-my-zsh.sh"
 	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 elif command -v starship >/dev/null; then
-	eval "$(starship init zsh)"
+	_cache_shell_init "$HOME/.zsh/cache/starship-init.zsh" starship init zsh
 	[[ -r "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
 else
 	export PS1='%F{cyan}%n@%m %F{green}%1~ %F{yellow}➜ %f'
@@ -447,9 +451,9 @@ fi
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"
 
-if command -v direnv >/dev/null; then
-	eval "$(direnv hook zsh)"
-fi
+# direnv is wired lazily in zsh/lazy-load.zsh (only hooks in on a directory
+# with .envrc); a second unconditional hook here used to run on every shell
+# regardless, defeating that.
 
 # Load tmux auto-titling functionality
 [[ -r "${HOME}/.local/share/zsh/tmux-auto-title.zsh" ]] && source "${HOME}/.local/share/zsh/tmux-auto-title.zsh"
@@ -457,7 +461,7 @@ fi
 
 
 if command -v atuin >/dev/null; then
-	eval "$(atuin init zsh)"
+	_cache_shell_init "$HOME/.zsh/cache/atuin-init.zsh" atuin init zsh
 
 	bindkey '^r' atuin-search
 fi
