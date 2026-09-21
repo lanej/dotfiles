@@ -1,0 +1,589 @@
+#!/usr/bin/env bash
+# Generic mechanical worker for the `dispatcher` skill template. Any repo
+# adopting the dispatcher pattern points its own dispatcher session at this
+# one shared script instead of forking bugfix-worker/infra-worker per repo —
+# see claude/skills/bugfix-dispatcher/SKILL.md's bin/bugfix-worker and
+# easypost-enterprise-platform-infra's bin/infra-worker for the two
+# production scripts this generalizes from. Everything repo-specific comes
+# from a per-repo JSON config file (default `.claude/dispatcher.config.json`
+# in $PWD, override via $DISPATCHER_CONFIG) and from the current working
+# directory's own git repo — this script must never hardcode a path or
+# convention belonging to bugfix-dispatcher or infra-dispatcher.
+#
+# State lives under ~/.local/state/dispatcher/<repo-basename>/<id>.json —
+# XDG_STATE_HOME, not XDG_CACHE_HOME, matching bugfix-worker's rationale:
+# this is recovery state, not disposable cache. <repo-basename> is the
+# basename of `git rev-parse --show-toplevel` for the CURRENT repo, so
+# multiple repos sharing this one script never collide.
+#
+# Security note (mirrors bugfx-worker's 2026-09-10 review): every subcommand
+# here is a boundary a cross-session report's slug/prompt content ultimately
+# crosses. `slug`/`id` are validated against a strict allowlist before they
+# touch any path or lock, and no dynamic value is ever spliced as literal
+# text into a `python3 -c` script — every value crosses the bash/python
+# boundary via an environment variable, which cannot be broken out of
+# regardless of its content. `verifyCommand`/`installCommand`/`finishCommand`
+# ARE `eval`'d as shell — that is by design (they are operator-authored
+# config, not attacker-controlled input) and mirrors bugfix-worker's
+# equally-trusted-but-unsandboxed `npm test`/`make test` invocations.
+set -euo pipefail
+
+CONFIG_PATH="${DISPATCHER_CONFIG:-.claude/dispatcher.config.json}"
+STATE_ROOT="$HOME/.local/state/dispatcher"
+mkdir -p "$STATE_ROOT"
+
+usage() {
+  echo "Usage: dispatcher-worker <recover|start|check|verify|finish|unlock|gc> ..." >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
+# repo context — every subcommand (not just start) runs with its cwd inside
+# the target git repo; that's how this shared script derives a per-repo
+# state directory without a separate --repo argument.
+# ---------------------------------------------------------------------------
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$repo_root" ] || { echo "ERROR: dispatcher-worker must be run with cwd inside the target git repo (no repo found via 'git rev-parse --show-toplevel')" >&2; exit 1; }
+repo_basename="$(basename "$repo_root")"
+STATE_DIR="$STATE_ROOT/$repo_basename"
+mkdir -p "$STATE_DIR"
+
+# ---------------------------------------------------------------------------
+# config helpers
+# ---------------------------------------------------------------------------
+require_config() {
+  [ -f "$CONFIG_PATH" ] || { echo "ERROR: config file not found at $CONFIG_PATH (set DISPATCHER_CONFIG to override the path)" >&2; exit 1; }
+  if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$CONFIG_PATH" >/dev/null 2>&1; then
+    echo "ERROR: config file $CONFIG_PATH is not valid JSON" >&2
+    exit 1
+  fi
+}
+
+config_get() {
+  # config_get <key> [default]
+  DW_CONFIG_PATH="$CONFIG_PATH" DW_KEY="$1" DW_DEFAULT="${2:-}" python3 -c "
+import json, os, sys
+default = os.environ.get('DW_DEFAULT', '')
+try:
+    with open(os.environ['DW_CONFIG_PATH']) as f:
+        d = json.load(f)
+except Exception:
+    sys.stdout.write(default)
+    sys.exit(0)
+v = d.get(os.environ['DW_KEY'])
+if v is None:
+    sys.stdout.write(default)
+elif isinstance(v, str):
+    sys.stdout.write(v)
+else:
+    sys.stdout.write(json.dumps(v))
+"
+}
+
+# ---------------------------------------------------------------------------
+# claude agents --json helpers
+# ---------------------------------------------------------------------------
+agent_record() {
+  # Print the claude agents --json record for id $1, or nothing.
+  claude agents --json 2>/dev/null | DW_ID="$1" python3 -c "
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+target = os.environ['DW_ID']
+for o in data:
+    if o.get('id') == target:
+        print(json.dumps(o))
+        break
+"
+}
+
+agent_ids_by_name() {
+  # Space-separated ids of every session currently named $1.
+  claude agents --json 2>/dev/null | DW_NAME="$1" python3 -c "
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+name = os.environ['DW_NAME']
+print(' '.join(o.get('id', '') for o in data if o.get('name') == name))
+"
+}
+
+# ---------------------------------------------------------------------------
+# state file helpers — state_file_for <id>
+# ---------------------------------------------------------------------------
+state_file_for() { echo "$STATE_DIR/$1.json"; }
+
+state_field() {
+  # state_field <state_file> <key>
+  DW_STATE_FILE="$1" DW_KEY="$2" python3 -c "
+import json, os
+print(json.load(open(os.environ['DW_STATE_FILE'])).get(os.environ['DW_KEY'], ''))
+"
+}
+
+state_set_field() {
+  # state_set_field <state_file> <key> <value>
+  DW_STATE_FILE="$1" DW_KEY="$2" DW_VALUE="$3" python3 -c "
+import json, os
+p = os.environ['DW_STATE_FILE']
+d = json.load(open(p))
+d[os.environ['DW_KEY']] = os.environ['DW_VALUE']
+json.dump(d, open(p, 'w'))
+"
+}
+
+# Resolve the worktree cwd for a tracked item: prefer the live agent
+# record's own cwd; fall back to the deterministic worktree path
+# (<repo>/.claude/worktrees/<slug>) if the session is no longer resident —
+# mirrors bugfix-worker's verify/finish fallback exactly.
+resolve_cwd() {
+  # resolve_cwd <state_file> <id>
+  local state_file="$1" id="$2" record cwd repo slug
+  record="$(agent_record "$id")"
+  if [ -n "$record" ]; then
+    cwd="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+  fi
+  if [ -z "${cwd:-}" ]; then
+    repo="$(state_field "$state_file" repo)"
+    slug="$(state_field "$state_file" slug)"
+    cwd="$repo/.claude/worktrees/$slug"
+    echo "WARN: no live agent record for $id — falling back to deterministic worktree path $cwd" >&2
+  fi
+  printf '%s' "$cwd"
+}
+
+cmd="${1:-}"; shift || true
+
+case "$cmd" in
+  # -------------------------------------------------------------------
+  start)
+    slug="${1:?slug required}"; prompt_file="${2:?prompt file required}"
+
+    case "$slug" in
+      ''|.|..|*[!a-zA-Z0-9._-]*)
+        echo "ERROR: slug '$slug' must match ^[a-zA-Z0-9._-]+\$ and not be '.' or '..'" >&2; exit 1 ;;
+    esac
+    case "$slug" in
+      *..*)
+        echo "ERROR: slug '$slug' must not contain '..'" >&2; exit 1 ;;
+    esac
+
+    require_config
+
+    # --- hard security boundary: allowedOrigin, checked before anything else ---
+    allowed_origin="$(config_get allowedOrigin)"
+    [ -n "$allowed_origin" ] || { echo "ERROR: config $CONFIG_PATH is missing required field 'allowedOrigin' — refusing to start anything without an origin allowlist" >&2; exit 1; }
+    origin_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+    # A repo with no 'origin' remote at all is refused unconditionally, by
+    # design — this is NOT the same as grep failing to match an empty
+    # string against allowedOrigin (confirmed live: `grep -qE '.*'` on
+    # empty/zero-line stdin never matches, since grep matches lines, not
+    # raw strings, so an origin-less repo would otherwise fail even a
+    # maximally permissive pattern for an accidental reason rather than a
+    # deliberate one). There is no way to verify allowlist membership
+    # without an origin to check, so this fails closed explicitly.
+    if [ -z "$origin_url" ]; then
+      echo "ERROR: $repo_root has no 'origin' remote configured — cannot verify against allowedOrigin, refusing unconditionally (config: $CONFIG_PATH)" >&2
+      exit 1
+    fi
+    if ! printf '%s' "$origin_url" | grep -qE "$allowed_origin"; then
+      echo "ERROR: $repo_root origin ('$origin_url') does not match config's allowedOrigin pattern ('$allowed_origin') — refusing (config: $CONFIG_PATH)" >&2
+      exit 1
+    fi
+
+    # --- global WIP ceiling: across every repo's state dir under STATE_ROOT,
+    # not just this one — a state file exists only while its resource lock
+    # is held, so counting state files is counting in-flight locked items.
+    # Exit code 7 mirrors matrix-dispatcher's own AT_CAPACITY convention.
+    wip_ceiling="$(config_get wipCeiling 3)"
+    current_wip="$(find "$STATE_ROOT" -mindepth 2 -maxdepth 2 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "$current_wip" -ge "$wip_ceiling" ]; then
+      echo "AT_CAPACITY: $current_wip in-flight item(s) tracked across all repos under $STATE_ROOT meets or exceeds wipCeiling=$wip_ceiling from $CONFIG_PATH — this is transient, do not retry with different arguments, wait for capacity to free up and retry the identical dispatch" >&2
+      exit 7
+    fi
+
+    # --- per-resource lock: the resource is the repo root itself (this
+    # generic script has no other repo-specific notion of "resource" to key
+    # on) — mirrors bugfix-worker's per-repo .git/bugfix.lock exactly.
+    lock_dir="$repo_root/.git/dispatcher.lock"
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+      echo "BUSY: $repo_basename already has a dispatch in flight ($lock_dir exists)" >&2
+      exit 2
+    fi
+
+    [ -f "$prompt_file" ] || { rmdir "$lock_dir" 2>/dev/null || true; echo "ERROR: prompt file $prompt_file not found" >&2; exit 1; }
+    prompt_content="$(cat "$prompt_file")"
+
+    session_name="dispatcher-${repo_basename}-${slug}"
+
+    # Snapshot pre-existing ids for this exact session name BEFORE
+    # launching, so the post-launch lookup can positively identify the NEW
+    # session rather than risk matching a stale one from a prior run that
+    # reused this repo+slug — mirrors bugfix-worker exactly.
+    pre_launch_ids="$(agent_ids_by_name "$session_name")"
+
+    launch_output="$(cd "$repo_root" && claude -w "$slug" --bg -n "$session_name" --permission-mode bypassPermissions "$prompt_content" 2>&1)" || {
+      rmdir "$lock_dir" 2>/dev/null || true
+      echo "ERROR: launch failed: $launch_output" >&2
+      exit 1
+    }
+
+    # CRITICAL new step (not present in bugfix-worker/infra-worker): poll up
+    # to ~10s for the launched session to actually appear in
+    # `claude agents --json`, excluding any id that already existed before
+    # this launch. Never trust a zero exit / parsed banner text alone.
+    id=""
+    for _attempt in 1 2 3 4 5; do
+      id="$(claude agents --json 2>/dev/null | DW_NAME="$session_name" DW_EXCLUDE="$pre_launch_ids" python3 -c "
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+name = os.environ['DW_NAME']
+exclude = set(os.environ.get('DW_EXCLUDE', '').split())
+candidates = [o for o in data if o.get('name') == name and o.get('id', '') not in exclude]
+candidates.sort(key=lambda o: o.get('startedAt', 0))
+if candidates:
+    print(candidates[-1].get('id', ''))
+" || true)"
+      [ -n "$id" ] && break
+      sleep 2
+    done
+
+    if [ -z "$id" ]; then
+      rmdir "$lock_dir" 2>/dev/null || true
+      echo "ERROR: launched session '$session_name' never appeared in 'claude agents --json' after ~10s (pre-existing ids for this name: '$pre_launch_ids'). Suspected cause: worktree path too long — a Unix domain socket's sun_path is limited to roughly 108-136 bytes total on this platform, and a long slug pushes the worktree path (repo path + '.claude/worktrees/' + slug) over that limit, which can silently prevent the background session's control socket from binding. Try a shorter slug and re-launch under a new name rather than retrying this exact one. Raw launch output: $launch_output" >&2
+      exit 1
+    fi
+
+    reviewer_mode="$(config_get reviewerMode subagent)"
+    started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    DW_REPO="$repo_root" DW_SLUG="$slug" DW_LOCK_DIR="$lock_dir" DW_SESSION_NAME="$session_name" DW_REVIEWER_MODE="$reviewer_mode" DW_STARTED_AT="$started_at" DW_STATE_PATH="$(state_file_for "$id")" python3 -c "
+import json, os
+json.dump({
+    'repo': os.environ['DW_REPO'],
+    'slug': os.environ['DW_SLUG'],
+    'lockPath': os.environ['DW_LOCK_DIR'],
+    'sessionName': os.environ['DW_SESSION_NAME'],
+    'startedAt': os.environ['DW_STARTED_AT'],
+    'reviewerMode': os.environ['DW_REVIEWER_MODE'],
+}, open(os.environ['DW_STATE_PATH'], 'w'))
+"
+    echo "$id"
+    ;;
+
+  # -------------------------------------------------------------------
+  check)
+    id="${1:?id required}"
+    record="$(agent_record "$id")"
+    if [ -z "$record" ]; then
+      echo '{"result":"unknown"}'
+      exit 0
+    fi
+    # Same reconciliation as bugfix-worker: a resident --bg session that
+    # finishes a turn without exiting shows status "idle" while `state`
+    # stays "working" — `status` is the real completion signal, `state`
+    # only distinguishes blocked-on-input from genuinely done.
+    status="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")"
+    state="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('state',''))")"
+    if [ "$status" != "idle" ]; then
+      echo '{"result":"working"}'
+    elif [ "$state" = "blocked" ]; then
+      echo '{"result":"blocked"}'
+    else
+      echo '{"result":"done"}'
+    fi
+    ;;
+
+  # -------------------------------------------------------------------
+  verify)
+    id="${1:?id required}"
+    state_file="$(state_file_for "$id")"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id in $STATE_DIR" >&2; exit 1; }
+    require_config
+
+    verify_command="$(config_get verifyCommand)"
+    [ -n "$verify_command" ] || { echo "ERROR: config $CONFIG_PATH is missing required field 'verifyCommand'" >&2; exit 1; }
+    target_branch="$(config_get targetBranch main)"
+    report_prefix="$(config_get reportPathPrefix bugs/)"
+
+    cwd="$(resolve_cwd "$state_file" "$id")"
+    [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: worktree cwd '$cwd' not found for $id" >&2; exit 1; }
+
+    git -C "$cwd" fetch origin "$target_branch" >/dev/null 2>&1 || true
+
+    # Fail loud, never silently fail-open on riskyPaths — mirrors
+    # bugfix-worker's 2026-09-10 fix exactly: a swallowed diff error must
+    # never compute as an empty (safe-looking) riskyPaths list.
+    if ! diff_output="$(git -C "$cwd" diff --name-only "origin/$target_branch...HEAD" 2>&1)"; then
+      echo "ERROR: could not diff $cwd against origin/$target_branch — cannot safely compute riskyPaths, refusing to report a possibly-false-clean result: $diff_output" >&2
+      exit 1
+    fi
+    changed_paths="$(printf '%s\n' "$diff_output" | grep -vE "^${report_prefix}" || true)"
+    risky_paths="$(printf '%s\n' "$changed_paths" | grep -E '(^|/)\.github/|(^|/)\.env|Dockerfile|\.gitlab-ci|\.circleci/' || true)"
+    test_touched="$(printf '%s\n' "$changed_paths" | grep -iE '(^|/)(tests?|specs?)/|(^|/)test_[^/]+$|_test\.[^/]+$|\.test\.[^/]+$|_spec\.[^/]+$' || true)"
+
+    suite_pass="false"
+    log_file="/tmp/dispatcher-verify-$id.log"
+    if verify_output="$(cd "$cwd" && eval "$verify_command" 2>&1)"; then
+      suite_pass="true"
+    fi
+    printf '%s\n' "${verify_output:-}" > "$log_file"
+
+    DW_CWD="$cwd" DW_SUITE_PASS="$suite_pass" DW_TEST_TOUCHED="$test_touched" DW_RISKY_PATHS="$risky_paths" DW_LOG_FILE="$log_file" python3 -c "
+import json, os
+print(json.dumps({
+    'cwd': os.environ['DW_CWD'],
+    'suitePass': os.environ['DW_SUITE_PASS'] == 'true',
+    'testTouched': bool(os.environ['DW_TEST_TOUCHED'].strip()),
+    'riskyPaths': [p for p in os.environ['DW_RISKY_PATHS'].strip().splitlines() if p],
+    'logFile': os.environ['DW_LOG_FILE'],
+}))
+"
+    ;;
+
+  # -------------------------------------------------------------------
+  finish)
+    id="${1:?id required}"; action="${2:?merge|pr|custom required}"
+    state_file="$(state_file_for "$id")"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id in $STATE_DIR" >&2; exit 1; }
+    require_config
+
+    repo_path="$(state_field "$state_file" repo)"
+    slug="$(state_field "$state_file" slug)"
+    target_branch="$(config_get targetBranch main)"
+    cwd="$(resolve_cwd "$state_file" "$id")"
+
+    case "$action" in
+      merge)
+        [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: no usable cwd for $id, cannot push" >&2; exit 1; }
+        pre_merge_sha="$(git -C "$cwd" rev-parse "origin/$target_branch" 2>/dev/null || true)"
+        git -C "$cwd" push origin "HEAD:$target_branch"
+        merged_sha="$(git -C "$cwd" rev-parse HEAD 2>/dev/null || true)"
+        if [ -n "$merged_sha" ]; then
+          state_set_field "$state_file" mergedSha "$merged_sha"
+          state_set_field "$state_file" preMergeSha "$pre_merge_sha"
+        fi
+
+        # Sync the primary checkout forward BEFORE any install step — the
+        # worktree at $cwd is about to be deleted by `claude rm` below, so
+        # it is not a stable location for an install artifact that captures
+        # its own invocation directory (a real incident today: a launcher
+        # script baking in $PWD/justfile_directory() was left pointing at a
+        # now-deleted worktree). Only fall back to the worktree if this
+        # sync itself fails.
+        install_dir=""
+        current_branch="$(git -C "$repo_path" symbolic-ref --short -q HEAD || true)"
+        if [ "$current_branch" = "$target_branch" ]; then
+          if git -C "$repo_path" fetch origin && git -C "$repo_path" merge --ff-only "origin/$target_branch"; then
+            install_dir="$repo_path"
+          else
+            echo "WARN: primary-checkout sync of $repo_path failed (fetch or non-ff-only) — falling back to the worktree for install; sync $repo_path manually afterward" >&2
+          fi
+        else
+          echo "WARN: $repo_path is not on $target_branch (currently: $current_branch) — skipped primary-checkout sync, falling back to the worktree for install" >&2
+        fi
+        install_dir="${install_dir:-$cwd}"
+
+        install_command="$(config_get installCommand)"
+        if [ -n "$install_command" ]; then
+          if ! install_output="$(cd "$install_dir" && eval "$install_command" 2>&1)"; then
+            echo "WARN: post-merge installCommand failed in $install_dir — install manually: $install_output" >&2
+          fi
+        fi
+
+        # `claude rm` deliberately refuses to delete a worktree with
+        # unpushed commits — a real data-loss guard. Never force past that
+        # refusal here (the push above already succeeded, so a refusal now
+        # is a real anomaly to surface, not override).
+        if ! rm_output="$(claude rm "$id" 2>&1)"; then
+          echo "WARN: claude rm $id did not complete cleanly after a successful push: $rm_output" >&2
+        elif printf '%s' "$rm_output" | grep -qi '^kept'; then
+          echo "WARN: claude rm $id refused despite a successful push — investigate before assuming cleanup: $rm_output" >&2
+        fi
+        ;;
+
+      pr)
+        [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: no usable cwd for $id, cannot push" >&2; exit 1; }
+        branch="dispatcher/$slug"
+        git -C "$cwd" push origin "HEAD:$branch"
+        git -C "$cwd" fetch origin "$target_branch"
+        # gh pr create --fill needs a local ref named exactly $branch to
+        # diff against; the worktree's own local branch is named
+        # differently (set by `claude -w`) — create one pointing at HEAD
+        # without checking it out, mirrors bugfix-worker exactly.
+        if ! git -C "$cwd" branch -f "$branch" HEAD; then
+          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh pr create --fill --head $branch" >&2
+          exit 1
+        fi
+        pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        echo "$pr_url"
+        pr_number="$(printf '%s' "$pr_url" | grep -oE '[0-9]+$')"
+        [ -n "$pr_number" ] && state_set_field "$state_file" prNumber "$pr_number"
+        claude stop "$id" || true
+        ;;
+
+      custom)
+        finish_command="$(config_get finishCommand)"
+        [ -n "$finish_command" ] || { echo "ERROR: config $CONFIG_PATH has finishMode=custom (or no finishMode) but is missing required field 'finishCommand'" >&2; exit 1; }
+        [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: no usable cwd for $id, cannot run finishCommand" >&2; exit 1; }
+        if custom_output="$(cd "$cwd" && DISPATCHER_ID="$id" DISPATCHER_SLUG="$slug" DISPATCHER_TARGET_BRANCH="$target_branch" DISPATCHER_CWD="$cwd" eval "$finish_command" 2>&1)"; then
+          echo "{\"outcome\":\"custom\",\"success\":true}"
+        else
+          echo "ERROR: finishCommand failed: $custom_output" >&2
+          exit 1
+        fi
+        # Deliberately does not rm/stop the session — a custom finish
+        # mechanism (e.g. an Atlantis/terraform-apply comment) has its own
+        # asynchronous completion signal the calling skill must poll before
+        # any session cleanup decision is safe to make.
+        ;;
+
+      *)
+        echo "Usage: dispatcher-worker finish <id> merge|pr|custom" >&2; exit 1 ;;
+    esac
+    ;;
+
+  # -------------------------------------------------------------------
+  unlock)
+    id="${1:?id required}"
+    state_file="$(state_file_for "$id")"
+    [ -f "$state_file" ] || exit 0
+    lock_path="$(state_field "$state_file" lockPath)"
+    [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+    rm -f "$state_file"
+    ;;
+
+  # -------------------------------------------------------------------
+  recover)
+    found_any=false
+    shopt -s nullglob
+    for f in "$STATE_DIR"/*.json; do
+      found_any=true
+      id="$(basename "$f" .json)"
+      repo="$(state_field "$f" repo)"
+      slug="$(state_field "$f" slug)"
+      session_name="$(state_field "$f" sessionName)"
+      if [ -n "$(agent_record "$id")" ]; then
+        result="resumable"
+      else
+        lock_path="$(state_field "$f" lockPath)"
+        [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+        rm -f "$f"
+        result="orphaned_cleaned"
+      fi
+      DW_ID="$id" DW_REPO="$repo" DW_SLUG="$slug" DW_SESSION_NAME="$session_name" DW_RESULT="$result" python3 -c "
+import json, os
+print(json.dumps({
+    'id': os.environ['DW_ID'],
+    'result': os.environ['DW_RESULT'],
+    'repo': os.environ['DW_REPO'],
+    'slug': os.environ['DW_SLUG'],
+    'sessionName': os.environ['DW_SESSION_NAME'],
+}))
+"
+    done
+    shopt -u nullglob
+    # NOT `[ "$found_any" = false ] && echo ...` as the final statement —
+    # confirmed live: when found_any=true (the common case), that test's
+    # own nonzero (false) exit code becomes this subcommand's exit status
+    # even though everything above succeeded, since it's the last command
+    # executed in this case arm. bugfix-worker's `recover` has this exact
+    # latent bug (same pattern, same consequence) — fixed here explicitly
+    # rather than inherited.
+    if [ "$found_any" = false ]; then
+      echo '{"result":"none"}'
+    fi
+    exit 0
+    ;;
+
+  # -------------------------------------------------------------------
+  gc)
+    require_config
+    target_branch="$(config_get targetBranch main)"
+    git -C "$repo_root" fetch origin "$target_branch" >/dev/null 2>&1 || true
+
+    found_any=false
+    shopt -s nullglob
+    for f in "$STATE_DIR"/*.json; do
+      found_any=true
+      id="$(basename "$f" .json)"
+      slug="$(state_field "$f" slug)"
+      record="$(agent_record "$id")"
+
+      if [ -z "$record" ]; then
+        # Session is gone entirely — same as recover's orphaned_cleaned.
+        lock_path="$(state_field "$f" lockPath)"
+        [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+        rm -f "$f"
+        DW_ID="$id" DW_SLUG="$slug" python3 -c "
+import json, os
+print(json.dumps({'id': os.environ['DW_ID'], 'slug': os.environ['DW_SLUG'], 'result': 'orphaned_cleaned'}))
+"
+        continue
+      fi
+
+      status="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")"
+      if [ "$status" = "working" ]; then
+        # Actively running — never touch.
+        DW_ID="$id" DW_SLUG="$slug" python3 -c "
+import json, os
+print(json.dumps({'id': os.environ['DW_ID'], 'slug': os.environ['DW_SLUG'], 'result': 'still_working'}))
+"
+        continue
+      fi
+
+      # Idle or stopped: check whether its worktree's HEAD is already fully
+      # contained in the target branch before touching anything — a
+      # PR-path item still under review must be left alone.
+      worktree_head="$(printf '%s' "$record" | python3 -c "import json,sys; print(json.load(sys.stdin).get('cwd',''))")"
+      if [ -n "$worktree_head" ] && [ -d "$worktree_head" ]; then
+        head_sha="$(git -C "$worktree_head" rev-parse HEAD 2>/dev/null || true)"
+      else
+        head_sha=""
+      fi
+      if [ -z "$head_sha" ]; then
+        repo="$(state_field "$f" repo)"
+        fallback_cwd="$repo/.claude/worktrees/$slug"
+        [ -d "$fallback_cwd" ] && head_sha="$(git -C "$fallback_cwd" rev-parse HEAD 2>/dev/null || true)"
+      fi
+
+      if [ -n "$head_sha" ] && git -C "$repo_root" merge-base --is-ancestor "$head_sha" "origin/$target_branch" 2>/dev/null; then
+        rm_output="$(claude rm "$id" 2>&1)" || true
+        lock_path="$(state_field "$f" lockPath)"
+        [ -n "$lock_path" ] && rmdir "$lock_path" 2>/dev/null || true
+        rm -f "$f"
+        DW_ID="$id" DW_SLUG="$slug" DW_RM_OUTPUT="$rm_output" python3 -c "
+import json, os
+print(json.dumps({'id': os.environ['DW_ID'], 'slug': os.environ['DW_SLUG'], 'result': 'merged_cleaned', 'rmOutput': os.environ['DW_RM_OUTPUT']}))
+"
+      else
+        DW_ID="$id" DW_SLUG="$slug" python3 -c "
+import json, os
+print(json.dumps({'id': os.environ['DW_ID'], 'slug': os.environ['DW_SLUG'], 'result': 'left_alone'}))
+"
+      fi
+    done
+    shopt -u nullglob
+    # NOT `[ "$found_any" = false ] && echo ...` as the final statement —
+    # confirmed live: when found_any=true (the common case), that test's
+    # own nonzero (false) exit code becomes this subcommand's exit status
+    # even though everything above succeeded, since it's the last command
+    # executed in this case arm. bugfix-worker's `recover` has this exact
+    # latent bug (same pattern, same consequence) — fixed here explicitly
+    # rather than inherited.
+    if [ "$found_any" = false ]; then
+      echo '{"result":"none"}'
+    fi
+    exit 0
+    ;;
+
+  *)
+    usage
+    ;;
+esac
