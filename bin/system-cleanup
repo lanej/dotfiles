@@ -32,7 +32,6 @@ STEPS=(
     "disk-cleanup:yes"
     "cargo-sweep-cleanup:no"
     "rust-dev-cleanup:yes"
-    "podman-cleanup:yes"
     "opencode-cleanup-cache:no"
     "opencode-cleanup-snapshots:no"
     "npm-cleanup:yes"
