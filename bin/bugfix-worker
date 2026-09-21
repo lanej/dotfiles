@@ -428,6 +428,20 @@ print(json.dumps({
     # Classifies failures on the just-pushed main commit against the
     # pre-merge main commit's own check-runs. Requires `finish merge` to
     # have run first (needs the recorded mergedSha/preMergeSha).
+    #
+    # github-claude-coordinator T9: this no longer blocks synchronously on
+    # its first call. The FIRST invocation for a given id (no
+    # `watchRegistered` state yet) registers the merged commit's checks
+    # with the watcher daemon (`watch add --sha ...` — keyed by commit SHA,
+    # not PR number, since there's no PR here — Fix 3) and returns
+    # immediately so the calling agent's turn can end. The watcher's
+    # injected notification wakes a fresh turn that re-invokes this same
+    # subcommand; THAT call (watchRegistered already true) skips
+    # registration and fetches the check-runs ONCE (not a loop), since the
+    # watcher only notifies once terminal. If that single fetch still
+    # shows pending — the watcher hasn't caught up yet, or `watch add`
+    # itself failed earlier — fall back to the ORIGINAL bounded polling
+    # loop below (R6 safety net, kept intact, not the default path).
     id="${1:?id required}"
     state_file="$STATE_DIR/$id.json"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
@@ -439,18 +453,42 @@ print(json.dumps({
     origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
     owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
 
-    # Poll the merged commit's check-runs directly (no PR to query here).
-    checks_json="[]"
-    for _attempt in $(seq 1 30); do
-      checks_json="$(gh api "repos/$owner_repo/commits/$merged_sha/check-runs" --jq '[.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
-      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+    watch_registered="$(state_field "$state_file" watchRegistered)"
+    if [ "$watch_registered" = "true" ]; then
+      : # already registered — an injected watcher notification (or a
+        # direct re-check) woke this turn; skip straight to classification.
+    elif watch add --repo "$owner_repo" --sha "$merged_sha" --session "$id" --kind checks --expected-duration 5m >&2; then
+      state_set_field "$state_file" watchRegistered "true"
+      state_set_field "$state_file" watchRegisteredAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo '{"registered": true, "terminal": false}'
+      exit 0
+    else
+      echo "WARN: 'watch add --sha' failed for $id — falling back to direct polling instead of the watcher path" >&2
+    fi
+
+    # Single terminal-state fetch — correct once re-invoked by the watcher,
+    # since it only notifies after the checks are already terminal.
+    checks_json="$(gh api "repos/$owner_repo/commits/$merged_sha/check-runs" --jq '[.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+    still_pending="$(printf '%s' "$checks_json" | python3 -c "
 import json, sys
 checks = json.load(sys.stdin) or []
 print('yes' if (not checks or any(c.get('status') != 'completed' for c in checks)) else '')
 " 2>/dev/null || echo yes)"
-      [ -z "$still_pending" ] && break
-      sleep 30
-    done
+
+    if [ -n "$still_pending" ]; then
+      # R6 fallback: watcher hasn't caught up (or registration above
+      # failed) — retained verbatim from the pre-watcher implementation.
+      for _attempt in $(seq 1 30); do
+        checks_json="$(gh api "repos/$owner_repo/commits/$merged_sha/check-runs" --jq '[.check_runs[] | {name: .name, status: .status, conclusion: .conclusion}]' 2>/dev/null || echo '[]')"
+        still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('status') != 'completed' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+        [ -z "$still_pending" ] && break
+        sleep 30
+      done
+    fi
 
     base_checks_json="[]"
     if [ -n "$pre_merge_sha" ]; then
@@ -478,15 +516,19 @@ print(json.dumps({
     ;;
 
   ci)
-    # CI follow-through for the PR path: wait for the opened PR's checks to
-    # reach a terminal state, then classify any failures as pre-existing
-    # (already failing at the PR's merge-base commit) or new. A job that's
-    # merely "already failing on main" can still have picked up an
-    # additional new failure alongside the old one — this only classifies
-    # at job granularity, so treat 'preExisting' as "worth a manual log
-    # read to confirm the specific failures didn't change," not as a free
-    # pass. Requires `finish pr` to have run first (needs the recorded
-    # prNumber).
+    # CI follow-through for the PR path: classify any failures as
+    # pre-existing (already failing at the PR's merge-base commit) or new.
+    # A job that's merely "already failing on main" can still have picked
+    # up an additional new failure alongside the old one — this only
+    # classifies at job granularity, so treat 'preExisting' as "worth a
+    # manual log read to confirm the specific failures didn't change," not
+    # as a free pass. Requires `finish pr` to have run first (needs the
+    # recorded prNumber).
+    #
+    # github-claude-coordinator T9: this no longer blocks synchronously on
+    # its first call — see ci-main's comment above for the full
+    # register/end-turn/wake/re-invoke protocol; this is the PR-number-
+    # keyed twin (`watch add --pr`, not `--sha`).
     id="${1:?id required}"
     state_file="$STATE_DIR/$id.json"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
@@ -497,25 +539,49 @@ print(json.dumps({
     origin_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null || true)"
     owner_repo="$(printf '%s' "$origin_url" | sed -E 's#.*[:/]([^/]+/[^/]+)(\.git)?$#\1#; s#\.git$##')"
 
-    # `gh pr checks --watch` was tried first but returns immediately (not
-    # an error, just an empty/incomplete result) when called right after PR
-    # creation, before GitHub Actions has registered any checks yet —
-    # confirmed 2026-09-10, this produced a false 'allPassing: true' on a
-    # PR whose checks were still pending/one already failed. Poll explicitly
-    # instead: never treat an empty check list, or any check still
-    # 'pending', as done — only stop once every check present has reached a
-    # terminal bucket (pass/fail/skipping/cancel), or the bound is hit.
-    checks_json="[]"
-    for _attempt in $(seq 1 30); do
-      checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
-      still_pending="$(printf '%s' "$checks_json" | python3 -c "
+    watch_registered="$(state_field "$state_file" watchRegistered)"
+    if [ "$watch_registered" = "true" ]; then
+      : # already registered — go straight to classification below.
+    elif watch add --repo "$owner_repo" --pr "$pr_number" --session "$id" --kind checks --expected-duration 5m >&2; then
+      state_set_field "$state_file" watchRegistered "true"
+      state_set_field "$state_file" watchRegisteredAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo '{"registered": true, "terminal": false}'
+      exit 0
+    else
+      echo "WARN: 'watch add --pr' failed for $id — falling back to direct polling instead of the watcher path" >&2
+    fi
+
+    # Single terminal-state fetch — correct once re-invoked by the watcher,
+    # since it only notifies after the checks are already terminal.
+    checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
+    still_pending="$(printf '%s' "$checks_json" | python3 -c "
 import json, sys
 checks = json.load(sys.stdin) or []
 print('yes' if (not checks or any(c.get('bucket') == 'pending' for c in checks)) else '')
 " 2>/dev/null || echo yes)"
-      [ -z "$still_pending" ] && break
-      sleep 30
-    done
+
+    if [ -n "$still_pending" ]; then
+      # `gh pr checks --watch` was tried first but returns immediately (not
+      # an error, just an empty/incomplete result) when called right after
+      # PR creation, before GitHub Actions has registered any checks yet —
+      # confirmed 2026-09-10, this produced a false 'allPassing: true' on a
+      # PR whose checks were still pending/one already failed. R6 fallback:
+      # poll explicitly instead, retained verbatim from the pre-watcher
+      # implementation — never treat an empty check list, or any check
+      # still 'pending', as done — only stop once every check present has
+      # reached a terminal bucket (pass/fail/skipping/cancel), or the bound
+      # is hit.
+      for _attempt in $(seq 1 30); do
+        checks_json="$(cd "$repo_path" && gh pr checks "$pr_number" --repo "$owner_repo" --json name,bucket 2>/dev/null || echo '[]')"
+        still_pending="$(printf '%s' "$checks_json" | python3 -c "
+import json, sys
+checks = json.load(sys.stdin) or []
+print('yes' if (not checks or any(c.get('bucket') == 'pending' for c in checks)) else '')
+" 2>/dev/null || echo yes)"
+        [ -z "$still_pending" ] && break
+        sleep 30
+      done
+    fi
 
     # `merge-base` here must be computed against a freshly-fetched
     # origin/main in the PRIMARY checkout, not whatever it happened to
