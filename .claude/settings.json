@@ -153,15 +153,6 @@
             "timeout": 30
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/ui-review\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "SessionEnd": [
