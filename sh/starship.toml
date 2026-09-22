@@ -2,6 +2,7 @@
 add_newline = false
 continuation_prompt = '▶▶ '
 right_format = "$status"
+command_timeout = 2000
 
 [character]
 success_symbol = "[\\$](bold white)"
@@ -15,7 +16,7 @@ behind = "⇣${count}"
 style = "yellow"
 
 [git_metrics]
-disabled = false
+disabled = true
 
 [battery]
 disabled = false
