@@ -4,10 +4,11 @@ The UI-review engine is now **Viewrule**, an independent tool at
 [lanej/viewrule](https://github.com/lanej/viewrule). This repository owns the
 installer, version pin, personal preferences, and Claude integration.
 
-**Current pin:** [Viewrule v0.6.0](https://github.com/lanej/viewrule/releases/tag/v0.6.0).
-This release is marked as experimental upstream. It bundles Impeccable source
-diagnostics and adds `ui-review lint --target src` for source-only checks. Rendered
-requirements still use `check`; source-only results cannot satisfy the Stop hook.
+**Current pin:** [Viewrule v0.7.1](https://github.com/lanej/viewrule/releases/tag/v0.7.1).
+This release is marked as experimental upstream. It fixes project discovery from
+subdirectories in Git worktrees and prevents sharing review state across checkouts.
+Source-only checks use `ui-review lint --target src`; rendered requirements still
+use `check`, and source-only results cannot satisfy the Stop hook.
 The installer verifies the published archive against the checksum in `tool.json`.
 
 ## Install and use
@@ -28,6 +29,10 @@ ui-review check
 installs into `~/.local/share/viewrule/releases/`, installs the pinned browser, and
 switches `current` only after success. Both CLI names are linked in `~/.local/bin`.
 The existing `.ui-review` project files and Claude Stop hook remain compatible.
+The wrapper finds the nearest `.ui-review/config.json` without crossing a `.git`
+file or directory. Commit the setup files so Git carries them into new worktrees;
+keep each worktree's `.ui-review` directory separate so review evidence stays local.
+See the upstream [worktree setup guide](https://github.com/lanej/viewrule/blob/main/docs/worktrees.md).
 
 ## Develop the independent tool
 
@@ -74,15 +79,17 @@ configured `VIEWRULE_INSTALL_ROOT` replaces the default install location.
 ## Verification and upstream docs
 
 `make test-ui-review` runs one installation workflow with the real pinned package:
-install, launch, and verify an opted-in project blocks without a current review.
+install, launch, commit project setup, and verify the hook blocks from a nested
+worktree directory without a current review. An unconfigured worktree must not
+inherit its parent checkout's configuration.
 It does not rerun the engine's browser regression. For an unpublished local archive:
 
 ```sh
-VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.6.0.tgz make test-ui-review
+VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.7.1.tgz make test-ui-review
 ```
 
 The archive must match the checksum pin. `python3 scripts/install-viewrule.py
---archive /absolute/path/to/viewrule-0.6.0.tgz` installs that same archive locally.
+--archive /absolute/path/to/viewrule-0.7.1.tgz` installs that same archive locally.
 
 Engine documentation lives in the package under `docs/` and upstream:
 [manual](https://github.com/lanej/viewrule/blob/main/docs/ui-review.md),
