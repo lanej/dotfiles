@@ -21,9 +21,14 @@ if sys.argv[1:] == ["hook"]:
         payload = json.loads(raw)
         if payload.get("stop_hook_active") or not payload.get("cwd"):
             sys.exit(0)
-        config_file = Path(payload["cwd"]) / ".ui-review/config.json"
-        if not config_file.exists():
-            sys.exit(0)
+        # Match the pinned engine's discovery before taking the cheap no-op path.
+        # A linked worktree has a .git file, which is also a checkout boundary.
+        directory = Path(payload["cwd"]).resolve(strict=True)
+        while not os.path.lexists(directory / ".ui-review/config.json"):
+            if os.path.lexists(directory / ".git") or directory.parent == directory:
+                sys.exit(0)
+            directory = directory.parent
+        config_file = directory / ".ui-review/config.json"
         config = json.loads(config_file.read_text())
         if config.get("enforceOnStop") is False:
             sys.exit(0)
