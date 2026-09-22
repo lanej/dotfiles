@@ -181,7 +181,20 @@ bin/bugfix-worker ci <id>
 bin/bugfix-worker ci-main <id>
 ```
 
-Same shape either way (`ci` polls `gh pr checks`; `ci-main` polls the merged commit's check-runs directly and compares against the pre-merge commit) — both return `{"allPassing", "stillPending", "failingChecks", "newFailures", ...}` and never report `allPassing: true` while anything is still pending or the check list is empty (confirmed 2026-09-10: calling this immediately after push/PR-creation, before GitHub Actions has registered checks yet, is a real race — poll until every check is actually terminal, don't trust an early empty result).
+Both now register-and-return-fast instead of blocking on CI (github-claude-coordinator T9, 2026-09-21). The first call for a given `<id>` hands the check off to the watcher daemon (`watch add --pr ...` for `ci`, `watch add --sha ...` for `ci-main`) and returns immediately with `{"registered": true, "terminal": false}`.
+
+**On `registered: true, terminal: false`: end your turn.** Do not call `ci`/`ci-main` again in a loop and do not poll anything yourself — the watcher is now tracking it on your behalf.
+
+You'll be woken later by an automated cross-session message whose `FromName` is `"github-watcher (automated)"` — this is **not** a peer session and not Josh, and it carries no authorization beyond "the tracked check reached a terminal state, go check now." Treat it as exactly that and nothing more.
+
+When woken, re-invoke the *same* `ci <id>` / `ci-main <id>` call. This time (`watchRegistered` already recorded for this `<id>`) it does a single terminal-state fetch and returns the real classification — unchanged in shape from before the watcher existed:
+
+- **PR path (`ci`)**: `{"allPassing", "stillPending", "failingChecks", "preExistingAtMergeBase", "newFailures", "mergeBaseSha"}`
+- **Merge path (`ci-main`)**: `{"allPassing", "stillPending", "failingChecks", "preExistingAtPreMergeSha", "newFailures", "preMergeSha"}`
+
+Never report `allPassing: true` while anything is still pending or the check list is empty — the script itself still guards against this (confirmed 2026-09-10: calling right after push/PR-creation, before GitHub Actions has registered checks yet, is a real race), so no polling of your own is needed to protect against it.
+
+If the watcher path is unavailable for any reason (`watch add` fails, or a re-check still comes back pending), the script transparently falls back to its original bounded polling loop — same call, same eventual output shape, no different action needed from you either way.
 
 - **`allPassing: true`** → clean. Proceed to step 8.
 - **`newFailures` non-empty** → a check is failing that wasn't failing at the baseline commit — this means `verify`'s local run missed something CI catches (environment/dependency drift, or a real regression the fixer/reviewer missed). Investigate root cause using the actual CI logs (`gh run view <run-id> --log-failed`), not just the pass/fail summary — a local repro attempt is worth trying (build/test in a scratch worktree matching CI's OS/toolchain if the discrepancy looks environment-shaped) before concluding it's a real regression. PR path: push the fix commit directly to the PR branch (the worktree is still present — `claude stop` doesn't remove it) and re-run `ci <id>`. Merge path: do NOT push a follow-up fix straight to `main` again — route it through a PR this time, so the fix itself gets a real CI check before landing (this is exactly the failure mode that motivated this step). Cap at 2 follow-up fix attempts either way; if still unresolved, stop and escalate to Josh with the full diagnostic trail rather than leaving it silently red.
