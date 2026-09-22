@@ -14,11 +14,11 @@ Use Viewrule through the `ui-review` compatibility wrapper in Josh's dotfiles. I
 1. Identify the user's primary decision and the information needed to make it.
    Run `ui-review guidance --project <project>` and inspect relevant approved
    screenshots under `<project>/.ui-review/approved/` before designing.
-2. If unconfigured, run `ui-review init --url <dev-url> --project <project>`.
+2. If unconfigured, run `ui-review init --project <project>`.
    Set routes, representative viewport sizes, and a page-specific ready selector.
    Use stable application state and realistic data. Add a small set of relevant
    selector rules to `.ui-review/rules.json`; do not invent universal thresholds.
-3. Implement the UI, run `ui-review check --project <project>`, and read the
+3. Implement the UI, run `ui-review check --project <project> --url <actual-app-url>`, and read the
    returned JSON plus every affected screenshot. Open the HTML report to compare
    with the last approved reference. A screenshot capture is not a visual review.
    Use the full-page image for hierarchy and open the detail tiles individually
@@ -82,8 +82,9 @@ and authentication state out of public dotfiles.
 
 ## Enforcement
 
-The global Stop hook acts only where `.ui-review/config.json` enables
-`enforceOnStop`. It checks the last result and source/rule freshness; it does not
-launch a browser. A hook continuation is bounded, so use `ui-review check` in CI
-for required gates. Explicit requests to configure enforcement authorize that
+Stop enforcement is retired in Viewrule 0.8.0; `enforceOnStop` is ignored.
+Use `ui-review verify --project <project>` to verify existing rendered evidence
+without a browser. Git gates are optional and scoped to selected applications;
+see `~/.files/docs/ui-review.md`. Use `ui-review check` in application CI for
+required gates. Explicit requests to configure enforcement authorize that
 configuration; do not add extra approval steps.
