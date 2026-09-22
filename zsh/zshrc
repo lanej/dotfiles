@@ -13,6 +13,9 @@ fi
 
 export PS1=""
 
+# Enable extended glob qualifiers (required for (##q...) syntax used in cache staleness checks)
+setopt extendedglob
+
 # Append history entries as they are typed, not just when the shell exits
 setopt inc_append_history
 # Record timestamp of command in history
