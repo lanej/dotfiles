@@ -23,7 +23,7 @@ the failure modes on this machine that have actually cost time.
 
 Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
 updating a PR. Use `pull-request-writer` for the title and body. Lead with the
-outcome and why, include a current inline screenshot, and add context only when
+outcome and why, include screenshots when useful, and add context only when
 the diff and checks do not supply it. Do not reproduce automated test results.
 Use `--body-file` for multiline descriptions and verify the rendered result.
 

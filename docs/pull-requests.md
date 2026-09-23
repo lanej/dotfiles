@@ -40,21 +40,25 @@ repository fields without expanding them into another report.
 
 ## Show the result
 
-Include a current screenshot in the body of every new PR. Show the actual
-changed component or screen for UI work, or the relevant rendered document or
-observable output for other work. Use descriptive alt text and a durable image
-URL that renders inline on GitHub. Verify the image loads in the rendered PR
-before handing it off; a local path or downloadable CI artifact is insufficient.
-Keep the screenshot current when the visible result changes. Do not invent an
-image URL or substitute a mockup for the implemented result.
+Include a screenshot when it helps reviewers understand or assess a visual
+change, such as a UI, chart, or rendered document. Omit it when the diff and prose
+already explain the change adequately; screenshots are not a universal PR
+requirement.
+
+When included, show the actual current result, use descriptive alt text and a
+durable image URL, and verify that it renders inline on GitHub. A local path or
+downloadable CI artifact is insufficient. Keep the image current when the visible
+result changes. Do not invent an image URL or substitute a mockup for the
+implemented result.
 
 ## Minimal shape
 
-Start with **What and why** and the screenshot. Add **Additional context** only
-when it supplies information the diff and checks do not show. Headings are
-optional for a short description; omit unused sections and drafting prompts.
+Start with **What and why**. Add a screenshot when it helps explain the result
+and **Additional context** when it supplies information the diff and checks do
+not show. Headings are optional for a short description; omit unused sections
+and drafting prompts.
 
-This is enough for a routine UI fix, followed by its actual screenshot:
+This is enough for a routine UI fix; a screenshot can illustrate the result:
 
 > Keep the selected shipment and destination filter when returning from details,
 > so reviewers can continue through the same set of shipments. Previously,
@@ -64,7 +68,7 @@ This is enough for a routine UI fix, followed by its actual screenshot:
 
 Use the existing PR when updating a change. Confirm the repository, branch,
 review base, and publication authorization before creating a new one. Inspect
-the published title, rendered body, screenshot, and stack relationship.
+the published title, rendered body, any included images, and stack relationship.
 
 Pass multiline descriptions through a file (for example,
 `gh pr create --body-file /tmp/pr-body.md`) so Markdown and literal text survive

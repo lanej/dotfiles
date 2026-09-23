@@ -615,9 +615,9 @@ Use descriptive, categorized names:
 ### Pull Request Practices
 
 Follow [PR guidance](../../../docs/pull-requests.md): explain the outcome and why,
-show a current inline screenshot, and add only context absent from the diff and
+show screenshots when useful, and add only context absent from the diff and
 checks. Omit test inventories and automated results. Verify the rendered body,
-image, and stack parent; keep the description aligned with the final scope.
+any included images, and stack parent; keep the description aligned with the final scope.
 
 ### Git Configuration
 

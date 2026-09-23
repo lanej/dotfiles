@@ -28,8 +28,9 @@ Keep CI scoped to the features it exercises.
 # Pull requests
 
 Follow [the PR guidance](docs/pull-requests.md): explain the outcome and why,
-include a current inline screenshot, and add only context the diff and checks
-do not already supply. Do not duplicate test inventories or automated results.
+include a screenshot when it adds useful evidence, and add only context the
+diff and checks do not already supply. Do not duplicate test inventories or
+automated results.
 
 # Maintaining agent instructions
 
