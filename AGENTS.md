@@ -21,8 +21,15 @@ simple configuration/documentation edits. Do not add tests that mirror code,
 check exact source strings, or merely count configured hooks.
 
 Routine maintenance needs no evaluation bundles, source snapshots, provenance
-receipts, or separate review narratives. Put the change and validation result
-in the PR. Keep CI scoped to the features it exercises.
+receipts, or separate review narratives. Put the outcome and any manual findings
+or verification gaps in the PR; let automated checks report their own results.
+Keep CI scoped to the features it exercises.
+
+# Pull requests
+
+Follow [the PR guidance](docs/pull-requests.md): explain the outcome and why,
+include a current inline screenshot, and add only context the diff and checks
+do not already supply. Do not duplicate test inventories or automated results.
 
 # Maintaining agent instructions
 
