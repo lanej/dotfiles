@@ -15,18 +15,20 @@ acting on anything below; this file is the navigator, not the procedure.
 ## Before first use in a new repo
 
 1. Read `references/config-schema.md` in full — it defines every field the per-repo config file
-   must set (`allowedOrigin`, `verifyCommand`, `finishMode`, `wipCeiling`, `reviewerMode`,
-   `notifyState`) and gives one complete worked example.
+   must set (`allowedOrigin`, `verifyCommand`, `finishMode`, `trackingMode`, `wipCeiling`,
+   `reviewerMode`, `notifyState`) and gives one complete worked example.
 2. Confirm the config file exists at the adopting repo's `.claude/dispatcher.config.json` (or the
    path this dispatcher instance was told to use). If missing or malformed, stop — see Error
    Handling below.
 3. Confirm `scripts/dispatcher-worker` exists and is executable in the adopting repo. This skill
    does not ship that script — each dispatcher instance owns its own `dispatcher-worker`
    implementing the `recover|start|check|verify|finish|unlock|gc` subcommands this protocol calls.
-4. Confirm the launch mechanism pins non-interactive cross-session delivery (mirroring
-   `bugfix-dispatcher-launch`/`infra-dispatcher-launch`'s `crossSessionInbound: "accept"`) — without
-   it, an inbound report from a session in a different permission-mode class is held for manual
-   terminal approval and can silently expire.
+4. Launch the resident session with `scripts/dispatcher-launch launch`, run from inside the
+   adopting repo — it pins non-interactive cross-session delivery (`crossSessionInbound: "accept"`)
+   and backgrounds the session (`--bg`) so it stays addressable without a human keeping a terminal
+   open. Without `crossSessionInbound: "accept"`, an inbound report from a session in a different
+   permission-mode class is held for manual terminal approval and can silently expire. Use
+   `scripts/dispatcher-launch attach|logs|status` to inspect or reattach to it later.
 
 ## On start, before waiting for anything: recover
 
@@ -60,30 +62,37 @@ For each incoming report, in order:
    same `start` call checks this before attempting the lock, so an `AT_CAPACITY` refusal can occur
    even when step 3's lock was never contended — don't assume `BUSY` and `AT_CAPACITY` map cleanly
    onto this list's step order.
-5. **Write the builder's prompt to a temp file** — never inline a multi-line report into argv.
-6. **Launch** the builder via `claude -w <slug> --bg -n <session-name> --permission-mode
+5. **Create the tracking issue** (`trackingMode: "issue"`, the default) — the dispatcher itself
+   opens a real tracking issue in the resource's own issue tracker before the builder is dispatched;
+   no local record file is written. Skipped under `trackingMode: "file"`, where the builder commits
+   its own record file as its first commit instead.
+6. **Write the builder's prompt to a temp file** — never inline a multi-line report into argv.
+   References the tracking issue (or the record-file convention, under `trackingMode: "file"`).
+7. **Launch** the builder via `claude -w <slug> --bg -n <session-name> --permission-mode
    bypassPermissions <prompt-file>`.
-7. **Immediately verify the launch actually succeeded** against `claude agents --json` — never
+8. **Immediately verify the launch actually succeeded** against `claude agents --json` — never
    trust the returned id blindly.
-8. **Subscribe** with `notify_when_idle: true` immediately after confirmed launch — edge-triggered,
+9. **Subscribe** with `notify_when_idle: true` immediately after confirmed launch — edge-triggered,
    not retroactive.
-9. **On notification, check** working/blocked/done. `blocked` is not a failure — it is the
-   interactive design's actual purpose; escalate and leave the lock held.
-10. **Check for an "unable to build/reproduce" signal** in the builder's final message before
+10. **On notification, check** working/blocked/done. `blocked` is not a failure — it is the
+    interactive design's actual purpose; escalate and leave the lock held.
+11. **Check for an "unable to build/reproduce" signal** in the builder's final message before
     trusting it enough to run `verify`.
-11. **Independently verify** — re-derive ground truth (real diff, real test run, real static
+12. **Independently verify** — re-derive ground truth (real diff, real test run, real static
     check) directly; never trust the builder's self-report.
-12. **Dispatch a reviewer** — a same-process code-reviewer subagent (lighter default) or a fully
+13. **Dispatch a reviewer** — a same-process code-reviewer subagent (lighter default) or a fully
     separate blind reviewer session with zero visibility into the builder's reasoning (higher-stakes
     repos), per `reviewerMode`.
-13. **Decide** via an explicit, mechanical merge/apply bar — all criteria required, no partial
+14. **Decide** via an explicit, mechanical merge/apply bar — all criteria required, no partial
     credit.
-14. **Independently check real state after any completion claim** from builder or reviewer —
-    a valid verdict that never calls the apply/merge step, and an apply/merge call that "succeeds"
-    without the triggered action actually resolving, are both real, distinct failure modes.
-15. **Cap repeat failures on the same signature at 2 attempts** — a third occurrence of an
+15. **Independently check real state after any completion claim** from builder or reviewer —
+    a valid verdict that never calls the apply/merge step, an apply/merge call that "succeeds"
+    without the triggered action actually resolving, and (under `trackingMode: "issue"`) a merge
+    whose commit trailer didn't actually auto-close the tracking issue, are all real, distinct
+    failure modes.
+16. **Cap repeat failures on the same signature at 2 attempts** — a third occurrence of an
     identical failure class is escalated to the user as a policy question, not re-patched again.
-16. **Close out in order**: finish (merge/PR/apply per `finishMode`) → unlock → immediate session
+17. **Close out in order**: finish (merge/PR/apply per `finishMode`) → unlock → immediate session
     cleanup → reply to the original requester → notify the user only on non-clean outcomes.
 
 Emit one status line at each real state transition (dispatch, verify-result, review-dispatch,

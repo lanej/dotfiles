@@ -2,5 +2,9 @@
   "claude/skills/methodology/SKILL.md": {
     "max_estimated_tokens": 5250,
     "reason": "Verification Rigor Tiers carries the V0-V4 table, the acceptance-check definition, the declared posture, and eight fault classes derived from audited faults. Roughly 1,600 bytes of incident provenance were compressed out of this file in 2026-09 to fund those additions; further squeezing would cut operative content to hold a number. Revisit by moving the fault classes to a reference file if this section grows again."
+  },
+  "claude/skills/bugfix-dispatcher/SKILL.md": {
+    "max_estimated_tokens": 5700,
+    "reason": "2026-09-23: switched the per-report tracking record from a committed bugs/<slug>.md file to a real GitHub Issue the dispatcher opens up front (Josh's explicit call). Net new content: step 1a (issue creation), the Fixes-#N/auto-close convention in the fixer prompt, an independent post-merge issue-close check (mirrors the existing 'never trust a completion claim' discipline already applied to CI in step 7.5), and an issue comment on indeterminate outcomes. Already squeezed the new prose to the minimum needed to state the mechanism unambiguously; revisit by moving the fixer-prompt template to a references/ file if this grows again."
   }
 }

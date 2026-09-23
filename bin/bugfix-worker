@@ -235,11 +235,6 @@ json.dump({
     # fails loudly if origin/main can't be resolved at all.
     git -C "$cwd" fetch origin main >/dev/null 2>&1 || true
 
-    # Exclude bugs/ from both checks below — it always appears in the diff
-    # (the bug-report commit) and its slug can coincidentally contain
-    # "test"/"spec" (e.g. a report titled "smoketest"), which would
-    # otherwise false-positive the repro-test-touched heuristic.
-    #
     # This must fail LOUDLY, not silently, if the diff itself can't be
     # computed (e.g. origin/main missing/unresolvable in this worktree) —
     # confirmed 2026-09-10: swallowing that error via `2>/dev/null` made
@@ -251,7 +246,10 @@ json.dump({
       echo "ERROR: could not diff $cwd against origin/main — cannot safely compute riskyPaths, refusing to report a possibly-false-clean result: $diff_output" >&2
       exit 1
     fi
-    changed_paths="$(printf '%s\n' "$diff_output" | grep -v '^bugs/' || true)"
+    # No local bugs/<slug>.md report file is committed anymore (2026-09-23:
+    # tracking moved to a real GitHub Issue the dispatcher opens up front) —
+    # the full diff is real work, nothing to exclude.
+    changed_paths="$diff_output"
     risky_paths="$(printf '%s\n' "$changed_paths" | grep -E '(^|/)\.github/|(^|/)\.env|Dockerfile|\.gitlab-ci|\.circleci/' || true)"
     # Real test-file conventions only: a tests/spec directory, or a
     # test_*/*_test.*/*.test.*/*_spec.* filename — not a bare substring match.

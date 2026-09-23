@@ -3,7 +3,7 @@
 Full per-item detail for the numbered list in `SKILL.md`'s "Per-report protocol" section. Read
 `lessons-learned.md` before handling any failure this document doesn't explicitly resolve, and
 `config-schema.md` for the exact per-repo config fields referenced below (`allowedOrigin`,
-`verifyCommand`, `finishMode`, `wipCeiling`, `reviewerMode`, `notifyState`).
+`verifyCommand`, `finishMode`, `trackingMode`, `wipCeiling`, `reviewerMode`, `notifyState`).
 
 ## 1. Generate a slug
 
@@ -68,18 +68,32 @@ trustworthy, unlike an `allowedOrigin` scope refusal, which is permanent for tha
 Never retry an `AT_CAPACITY` refusal with different arguments hoping something sticks; wait for
 another item to finish and retry the identical dispatch once capacity frees up.
 
+## 4a. Create the tracking issue (`trackingMode: "issue"` only)
+
+Skip this step entirely under `trackingMode: "file"` — the builder's own record-file commit (step 5
+below) is that mode's record instead.
+
+Under the default `trackingMode: "issue"`, the dispatcher — never the builder — opens the tracking
+issue right after `start` clears (step 4), before writing the builder's prompt: for a GitHub-hosted
+resource, `gh issue create --repo <org>/<repo> --title "<title>" --body "<expected/actual/repro,
+same content the old file-based template carried>"`. Capture the returned number/URL — the
+builder's prompt (step 5) references it instead of writing any local record file.
+
 ## 5. Write the builder's prompt to a temp file
 
 Never inline a multi-line report into command argv — quotes, backticks, and newlines in a raw bug
 report or feature request are a shell-quoting hazard. Write it to a real temp file first. At
-minimum the prompt should instruct the builder to: work autonomously; commit a record of the
-request itself as its first commit; reproduce/scope the change with a test before building
-(bugs: a failing repro test, confirmed red; features: a demonstration test that fails until built);
-build the change; verify locally; reply with a one-line summary and stop without pushing, merging,
-opening a PR, or applying — the dispatcher handles that after independent verification. Include an
-explicit "if you cannot proceed, stop and reply starting with the literal token `UNABLE_TO_BUILD:`
-(or `UNABLE_TO_REPRODUCE:` for a bug), followed by exactly what you tried" instruction — see step
-10 below for why this exact literal-prefix convention matters.
+minimum the prompt should instruct the builder to: work autonomously; under `trackingMode: "file"`,
+commit a record of the request itself as its first commit — under `trackingMode: "issue"` (default),
+instead reference the tracking issue from step 4a and skip any local record file entirely;
+reproduce/scope the change with a test before building (bugs: a failing repro test, confirmed red;
+features: a demonstration test that fails until built); build the change, and — under
+`trackingMode: "issue"` — include a `Fixes #<N>`/`Closes #<N>` trailer in the fix commit so merging
+to `targetBranch` auto-closes the issue; verify locally; reply with a one-line summary and stop
+without pushing, merging, opening a PR, or applying — the dispatcher handles that after independent
+verification. Include an explicit "if you cannot proceed, stop and reply starting with the literal
+token `UNABLE_TO_BUILD:` (or `UNABLE_TO_REPRODUCE:` for a bug), followed by exactly what you tried"
+instruction — see step 10 below for why this exact literal-prefix convention matters.
 
 ## 6. Launch
 
@@ -149,12 +163,14 @@ itself may echo that string.
 
 If it does not begin with the token: proceed normally to step 11.
 
-If it does: before trusting the claim, confirm no real change was attempted (the diff against the
-base branch, excluding the request-record file committed in step 5's template, should be empty).
-If the diff is non-empty despite the claim, do not trust it — fall through to the normal step
-11–13 path instead. If the diff is genuinely empty: skip verify and review entirely, stop (not
-remove) the session so it stays attachable, release the lock, and go to closeout with an
-`indeterminate` outcome.
+If it does: before trusting the claim, confirm no real change was attempted — the diff against the
+base branch should be empty (under `trackingMode: "file"`, excluding the request-record file
+committed in step 5's template; under `trackingMode: "issue"`, there's no record file to exclude, so
+any diff at all means real work was attempted). If the diff is non-empty despite the claim, do not
+trust it — fall through to the normal step 11–13 path instead. If the diff is genuinely empty: skip
+verify and review entirely, stop (not remove) the session so it stays attachable, and — under
+`trackingMode: "issue"` — comment on the tracking issue with what was tried and leave it open.
+Release the lock and go to closeout with an `indeterminate` outcome.
 
 ## 11. Independently re-verify
 
@@ -200,6 +216,33 @@ There is no separate, looser bar for a feature request versus a bug fix, and no 
 3 of 4 criteria. Anything short of all four routes to the non-clean closeout path (PR instead of
 merge, hold instead of apply) per `finishMode`.
 
+### Carve-out: CI/infra self-fixes (criteria 2 and 3) — resolved autonomously, no user ask
+
+A fix whose entire purpose *is* a change to a named risky path (CI config, a Dockerfile, an
+`.env*`-adjacent config the resource legitimately needs to touch) is not the failure mode criterion
+3 exists to catch — that criterion is a tripwire for a risky-path touch incidental to some unrelated
+change, not for a change whose stated purpose the risky path IS. Likewise, some defect classes (a
+CI-runner resource-constraint OOM, runner-environment drift) have no meaningful repo-resident
+unit-test expression — the real environment is the only faithful test surface.
+
+Criteria 2 and 3 are both satisfied — without pausing to ask the user — when ALL four hold:
+
+1. The bug/feature record documents the defect via real, independently-checkable environment
+   evidence (e.g. cited prior CI run IDs/logs), not merely an assertion.
+2. The risky path touched is the *direct, named subject* of the fix, not an incidental touch riding
+   along with an unrelated change.
+3. The fix has already gone green on a real (not simulated/local-only) run of the actual CI/resource
+   it claims to fix, on the exact commit being decided — confirmed independently (`gh pr checks` or
+   equivalent), never the builder's claim.
+4. The reviewer's verdict (criterion 4) is still a clean, unconditional approval.
+
+Missing any of the four means there is no carve-out — fall through to the normal "no partial
+credit" bar and its non-clean closeout path. This narrows criteria 2/3 specifically for this
+pattern; it does not touch criterion 1 or 4, and does not generalize to any other risky-path or
+missing-test gap. See `lessons-learned.md`'s "`recover` reporting 'none'..." entry for the
+companion case (a recovered orphaned item) this carve-out was written to unblock without a
+user round-trip.
+
 ## 14. Independently check real state after any completion claim
 
 After *any* claim of completion — from the builder or from the reviewer — independently check the
@@ -227,7 +270,11 @@ how to handle it.
 
 1. **Finish** — merge, open a PR, or apply, per `finishMode` in config (`custom` uses
    `finishCommand`). For a PR, have `pull-request-writer` write the description to a file first
-   and pass it: `scripts/dispatcher-worker finish <id> pr <file>`. This is the only step that mutates the target branch/environment.
+   and pass it: `scripts/dispatcher-worker finish <id> pr <file>`. This is the only step that mutates the target branch/environment. Under
+   `trackingMode: "issue"` and a direct `merge`, independently confirm the tracking issue actually
+   closed after the push — a missing/malformed `Fixes #<N>` trailer won't auto-close it, and this is
+   the same "never trust a completion claim without checking real state" discipline step 14 already
+   applies elsewhere. If still open, close it explicitly with a comment citing the merged commit.
 2. **Unlock** — `scripts/dispatcher-worker unlock <id>`, always, regardless of outcome.
 3. **Immediate session cleanup** (not deferred to a later batch pass):
    - **PR path** (opened but not yet merged/applied) → `claude stop <id>`. Never `rm` — the

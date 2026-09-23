@@ -77,11 +77,23 @@ would be left pointing at a now-deleted path. Only falls back to running from th
 primary-checkout sync itself fails. A failure here is a warning, never a reason to fail `finish`
 itself.
 
-### `reportPathPrefix` (optional, string, default `"bugs/"`)
+### `trackingMode` (optional, one of `"issue"` | `"file"`, default `"issue"`)
 
-The path prefix under which each item's request-record file (written in `worker-protocol.md` step
-5's prompt template) lives. Excluded from `verify`'s diff/`testTouched`/risky-path computation, so
-committing the request record itself never counts as "a real code change" or "a real test."
+How each item's request is durably recorded. `"issue"` (default, matches bugfix-dispatcher as of
+2026-09-23): the dispatcher itself opens a real tracking issue in the resource's own issue tracker
+before dispatching the builder — for a GitHub-hosted resource, `gh issue create --repo <org>/<repo>
+--title ... --body ...` — and captures the returned number/URL. No local record file is written;
+the issue is the sole record, closed automatically when a `Fixes #<N>` (or `Closes #<N>`) trailer in
+the builder's fix commit lands on `targetBranch`. `"file"` is the older, tracker-agnostic fallback
+for a resource with no addressable issue tracker: the builder itself commits a record file under
+`reportPathPrefix` as its first commit, and `verify` excludes that prefix from its diff/
+`testTouched`/risky-path computation so the record commit itself never counts as real work.
+
+### `reportPathPrefix` (optional, string, default `"bugs/"`, only used when `trackingMode` is `"file"`)
+
+The path prefix under which each item's request-record file lives, when `trackingMode` is `"file"`.
+Excluded from `verify`'s diff/`testTouched`/risky-path computation. Ignored entirely under
+`trackingMode: "issue"` — there is no local record file to exclude.
 
 ### `notifyState` (required, string)
 
@@ -105,7 +117,7 @@ tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
   "finishMode": "merge",
   "targetBranch": "main",
   "installCommand": "just install",
-  "reportPathPrefix": "bugs/",
+  "trackingMode": "issue",
   "wipCeiling": 3,
   "reviewerMode": "subagent",
   "notifyState": "widget-dispatcher-alert"
@@ -114,7 +126,7 @@ tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
 
 This example matches a `bugfix-dispatcher`-shaped setup: one exact `easypost-sandbox`-org repo over
 SSH, a `just test` verify command, direct merge to `main` on a clean pass, a best-effort `just
-install` refresh from the primary checkout after merge, request records under `bugs/`, a global cap
-of 3 concurrent items across all tracked repos, a lightweight subagent reviewer, and a
-dispatcher-specific tmux alert state distinct from any other dispatcher instance's own
-`notifyState`.
+install` refresh from the primary checkout after merge, requests tracked as real GitHub Issues (no
+local record file), a global cap of 3 concurrent items across all tracked repos, a lightweight
+subagent reviewer, and a dispatcher-specific tmux alert state distinct from any other dispatcher
+instance's own `notifyState`.

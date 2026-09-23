@@ -42,6 +42,16 @@ If it exits non-zero for the allowlist reason: reply to the caller that the repo
 
 If it exits with BUSY: wait ~30s and retry `start` again (a second `mkdir` attempt) rather than failing the report outright.
 
+### 1a. Create the tracking issue
+
+Before writing the fixer's prompt, file the tracking issue yourself — the dispatcher creates it, never the fixer, and no local `bugs/<slug>.md` file is written anywhere in this protocol (Josh's explicit call, 2026-09-23: the issue is the sole record):
+
+```
+gh issue create --repo easypost-sandbox/<repo> --title "<title>" --body "<Type/Reported-by/Reported-at/Expected/Actual/Repro — same fields the old bugs/<slug>.md template used, now in the issue body>"
+```
+
+Capture the printed URL — its trailing path segment is `<N>`, needed for the fixer's prompt below.
+
 ### 2. Write the fixer's prompt to a temp file first
 
 Before calling `start`, write the prompt content to a temp file — **never inline it into command argv** (multi-line bug reports containing quotes/backticks are a shell-quoting hazard). Template:
@@ -49,55 +59,33 @@ Before calling `start`, write the prompt content to a temp file — **never inli
 ```markdown
 This is an automated <bug-fix|feature> task from the bugfix-dispatcher. Work autonomously — do not wait for further input unless you are genuinely stuck and need a decision only a human can make.
 
-## Step 1 — commit the report
+Tracking issue: <issue URL> (easypost-sandbox/<repo>#<N>) — read it for full context. Don't write a local copy of it anywhere in this worktree.
 
-Write a file at exactly `bugs/<slug>.md` with this content, then commit it (this is the first commit of your work):
-
----
-# <bug title | feature title>
-
-**Type:** <Bug | Feature>
-**Reported by:** <caller session name/id>
-**Reported at:** <ISO timestamp>
-
-## Expected
-
-<expected behavior / desired behavior, from the report>
-
-## Actual
-
-<actual behavior / what's missing today, from the report>
-
-## Repro / context
-
-<repro steps and any error output from the report>
----
-
-Commit message: `docs: record <bug report|feature request> for <slug>`
-
-## Step 2 — reproduce (bugs only) / scope (features only)
+## Step 1 — reproduce (bugs only) / scope (features only)
 
 **If this is a bug**: write a failing test that reproduces it. Confirm it actually fails before proceeding (do not skip this — a test that was never confirmed red proves nothing).
 
 If you cannot reproduce the bug after genuinely attempting the exact repro steps given, do not write a speculative fix or a test that doesn't actually reproduce the behavior. Stop and make your final reply start with the literal token `UNABLE_TO_REPRODUCE:`, followed by exactly what you tried (including any deviation from the given steps) and what happened instead.
 
-**If this is a feature**: there's nothing to reproduce — write test(s) that will demonstrate the new behavior working once built (these will fail until Step 3 is done, same discipline as a repro test).
+**If this is a feature**: there's nothing to reproduce — write test(s) that will demonstrate the new behavior working once built (these will fail until Step 2 is done, same discipline as a repro test).
 
-## Step 3 — fix / build
+## Step 2 — fix / build
 
 **Bug**: fix the underlying issue. Prefer the root-cause fix over a workaround.
 **Feature**: build the requested behavior, scoped to exactly what was asked — no speculative extras.
 
-## Step 4 — verify
+Your fix's final commit message must include a literal `Fixes #<N>` line so merging to the default branch auto-closes the tracking issue — this is the only thing that closes it.
+
+## Step 3 — verify
 
 Confirm your new test(s) now pass, and run the repo's full existing test suite to confirm nothing else broke.
 
-## Step 5 — done
+## Step 4 — done
 
 Reply with a one-line summary of what you did and stop. Do not push, merge, or open a PR yourself — the dispatcher handles that after independently verifying your work.
 ```
 
-Fill in `<slug>`, the title, `<Bug|Feature>`, and the report's expected/actual/repro content literally — you (the dispatcher) compute `bugs/<slug>.md`'s exact filename, don't leave it for the fixer to invent, so step 5 below can reference it reliably. (The `bugs/` directory name predates the feature-request scope; feature reports live there too rather than splitting into a second directory.)
+Fill in `<slug>` (worktree/session naming only now, not a filename), the title, `<Bug|Feature>`, `<repo>`, `<issue URL>`, and `<N>` literally — you (the dispatcher) already created the issue in step 1a, so the fixer never has to invent or guess it.
 
 ### 3. Launch, then subscribe before it can go idle
 
@@ -129,9 +117,9 @@ Before running `verify`, read the fixer's final assistant message (`claude logs 
 
 If it does not begin with the token: proceed normally to step 5 (`verify`).
 
-If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD | grep -v '^bugs/'` should be empty (only the `bugs/<slug>.md` report commit exists). `<cwd>` isn't available yet at this point (it's first produced by `verify` in step 5) — get it here via `claude agents --json`, filtered by `<id>`, reading its `cwd` field. This is a sanctioned exception to step 4's caution against inspecting `claude agents --json` yourself: that caution is specifically about not second-guessing `check`'s `working`/`blocked`/`done` verdict, not about resolving `cwd`, which has no other source before step 5. If the diff is non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
+If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD` should be empty (there's no local report file to exclude anymore, so any diff at all means real work was attempted). `<cwd>` isn't available yet at this point (it's first produced by `verify` in step 5) — get it here via `claude agents --json`, filtered by `<id>`, reading its `cwd` field. This is a sanctioned exception to step 4's caution against inspecting `claude agents --json` yourself: that caution is specifically about not second-guessing `check`'s `working`/`blocked`/`done` verdict, not about resolving `cwd`, which has no other source before step 5. If the diff is non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
 
-If the diff is empty: skip `verify` and code review entirely. Call `claude stop <id>` (not `claude rm`) to keep the session attachable — Josh is being notified anyway (step 10) and may want to inspect what was tried. Release the lock (step 8) and go to step 9 with outcome `indeterminate`.
+If the diff is empty: skip `verify` and code review entirely. Call `claude stop <id>` (not `claude rm`) to keep the session attachable — Josh is being notified anyway (step 10) and may want to inspect what was tried. `gh issue comment` the tracking issue with what was tried and leave it **open**. Release the lock (step 8) and go to step 9 with outcome `indeterminate`.
 
 ### 5. Independently re-verify — never trust the fixer's self-report
 
@@ -147,7 +135,7 @@ Returns `{"cwd", "suitePass", "testTouched", "riskyPaths", "logFile"}`. This re-
 Agent({
   subagent_type: "code-reviewer",
   description: "Review bugfix for <repo>/<slug>",
-  prompt: "Review the fix at <cwd from step 5> for the bug described in bugs/<slug>.md in that worktree. This is a small tool repo — ignore the coverage-percentage checklist item entirely; focus on whether the fix is correct and doesn't introduce regressions. Read the diff against origin/main to scope your review."
+  prompt: "Review the fix at <cwd from step 5> for the bug/feature described in tracking issue <issue URL> (read via `gh issue view <N> --repo easypost-sandbox/<repo>`) in that worktree. This is a small tool repo — ignore the coverage-percentage checklist item entirely; focus on whether the fix is correct and doesn't introduce regressions. Read the diff against origin/main to scope your review."
 })
 ```
 
@@ -164,6 +152,8 @@ Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line 
 There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
 
 All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (records the pre-merge/merged SHAs into state, pushes to `main`; if the repo defines a `just install`/`make install` target, runs it from the fixer's worktree — best-effort, warns rather than fails — since a plain push doesn't refresh an installed compiled binary like `~/.local/bin/bigquery`; syncs the primary checkout's local `main` to match; then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10). Do not `claude rm`-then-forget — step 7.5 below still applies to this path.
+
+After the push, confirm the issue actually closed (`gh issue view <N> --repo easypost-sandbox/<repo> --json state`) — a missing `Fixes #<N>` trailer won't auto-close it. If still open: `gh issue close <N> --repo easypost-sandbox/<repo> -c "Fixed by <merged SHA>."`
 
 Anything short → **PR path**: have `pull-request-writer` write the description to a file, then `bin/bugfix-worker finish <id> pr <file>` (pushes, opens the PR, records its number in state, then `claude stop`s the session so Josh can `claude attach` it later).
 
@@ -212,9 +202,9 @@ bin/bugfix-worker unlock <id>
 
 `SendMessage` back to whoever originally reported it, with the outcome:
 
-- **Merged**: state the commit/repo, and ask the reporter to re-run their original repro against the merged fix and reply back confirming it's resolved. A "not resolved" reply is a fresh report (new slug), not a reopen.
-- **Indeterminate (unable to reproduce)**: state plainly it couldn't be reproduced, quote what the fixer tried, and ask a structured follow-up: exact command/invocation, environment (repo path, branch, commit SHA, sandboxed vs. real shell), when it occurred, and any raw error/log output not already in the original report. Ask if it's still reproducible right now.
-- **PR opened** / **rejected as out-of-scope**: unchanged from today's wording — link the PR, or state the repo is out of scope.
+- **Merged**: state the commit/repo, link the now-closed issue, and ask the reporter to re-run their original repro against the merged fix and confirm it's resolved. A "not resolved" reply is a fresh report (new slug, new issue), not a reopen.
+- **Indeterminate (unable to reproduce)**: state plainly it couldn't be reproduced, link the still-open issue with your comment on it, quote what the fixer tried, and ask a structured follow-up: exact command/invocation, environment (repo path, branch, commit SHA, sandboxed vs. real shell), when it occurred, and any raw error/log output not already in the original report. Ask if it's still reproducible right now.
+- **PR opened** / **rejected as out-of-scope**: link the PR and its still-open issue, or state the repo is out of scope (no issue created for a scope rejection).
 
 ### 10. Notify Josh on any non-clean outcome
 
