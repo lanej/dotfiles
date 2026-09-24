@@ -58,7 +58,6 @@ EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from the
 
 The pattern is already employed for several commands:
 - `claude/commands/gh/fix-issue.md` - GitHub issue fixing workflow
-- `claude/commands/gh/review-pr.md` - Pull request review workflow
 - `claude/commands/eureka.md` - Capture technical breakthroughs
 - `claude/agents/commit-message-generator.md` - Git commit message generation
 
