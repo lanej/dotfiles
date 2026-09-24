@@ -1,20 +1,20 @@
 ---
 name: report-infra-work
-description: Report an infrastructure change need in easypost-enterprise-platform-infra or enterprise-platform-bootstrap to the infra-dispatcher session instead of working around it inline or building/opening a PR yourself. Use when you hit a need for a new GCP resource, IAM grant, DNS record, GitHub org/repo setting, or Jira config change in either of those two repos, and building it isn't part of your current task.
+description: Report an infrastructure change need in platform-infra (Josh's current primary repo for this category, migrating off the legacy easypost-enterprise-platform-infra / enterprise-platform-bootstrap since 2026-09-24) to the infra-dispatcher session instead of working around it inline or building/opening a PR yourself. Use when you hit a need for a new GCP resource, IAM grant, DNS record, GitHub org/repo setting, or Jira config change in platform-infra or either of the two legacy repos, and building it isn't part of your current task.
 ---
 
 # Report an Infra Change Need to the Dispatcher
 
-If you hit a need for a change in `easypost-enterprise-platform-infra` or `enterprise-platform-bootstrap` — a new GCP resource, an IAM grant, a DNS record, a GitHub org/repo setting, a Jira config change — and building or proposing it isn't your job right now, don't work around it silently and don't drop it. Report it to the `infra-dispatcher` session.
+If you hit a need for a change in `platform-infra` (github.com/easypost/platform-infra) — Josh's current, actively-chosen primary repo for this category, per his 2026-09-24 decision to migrate off the legacy repos below (migration in progress, not yet complete) — or in the legacy `easypost-enterprise-platform-infra` / `enterprise-platform-bootstrap` (secondary during the transition) — a new GCP resource, an IAM grant, a DNS record, a GitHub org/repo setting, a Jira config change — and building or proposing it isn't your job right now, don't work around it silently and don't drop it. Report it to the `infra-dispatcher` session.
 
 ## When to use this
 
-- You need something to exist or change in either of those two repos (e.g. a bucket, a service account grant, a DNS record, a label policy) to unblock your actual task.
+- You need something to exist or change in `platform-infra` or either of the two legacy repos (e.g. a bucket, a service account grant, a DNS record, a label policy) to unblock your actual task.
 - Building it yourself is out of scope for what you're currently doing, or you don't have (and shouldn't need) direct write access to production GCP/GitHub-org/Jira infrastructure.
 
 ## When NOT to use this
 
-- The repo isn't one of the two named above — the dispatcher only acts on that exact allowlist and will reject anything else.
+- The repo isn't one of the three named above — the dispatcher only acts on that exact allowlist and will reject anything else.
 - You're already the one building it as your actual task — just do it directly (or if you're unsure of the repo's conventions, read that repo's own README/CLAUDE.md first).
 - It requires an addition to `policy-exceptions.yaml` (a security-relaxation decision) or touches Rego policy source, CODEOWNERS, branch protection, or Atlantis's own server config — those always require Josh's own direct decision; the dispatcher will refuse to act on them autonomously too, so raise those with Josh directly instead of routing them through this path.
 - The change is large, ambiguous, or needs product/design judgment beyond "here's the resource/setting I need" — this path has no design-review step; it's for scoped, mechanically-verifiable infra changes only.
@@ -27,7 +27,7 @@ Call `SendMessage` addressed to the session named `infra-dispatcher`:
 SendMessage({
   to: "infra-dispatcher",
   summary: "<repo>: <one-line title>",
-  message: "Infra change request.\n\nRepo: <easypost-enterprise-platform-infra|enterprise-platform-bootstrap>\nTarget: <root/dir under live/, or the relevant path>\n\nDesired change: <what should exist or change, concretely>\n\nWhy: <context/motivation — what this unblocks for you>"
+  message: "Infra change request.\n\nRepo: <platform-infra|easypost-enterprise-platform-infra|enterprise-platform-bootstrap>\nTarget: <root/dir under live/, or the relevant path>\n\nDesired change: <what should exist or change, concretely>\n\nWhy: <context/motivation — what this unblocks for you>"
 })
 ```
 
