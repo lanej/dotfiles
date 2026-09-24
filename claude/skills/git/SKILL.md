@@ -22,6 +22,14 @@ the failure modes on this machine that have actually cost time.
 - **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution.
 - `--amend` only when the user asked for it, or to fold in a pre-commit hook's own edits.
 
+## Pull requests
+
+Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
+updating a PR. Use `pull-request-writer` for the title and body. Lead with the
+outcome and why, include screenshots when useful, and add context only when
+the diff and checks do not supply it. Do not reproduce automated test results.
+Use `--body-file` for multiline descriptions and verify the rendered result.
+
 ## Branch naming
 
 `feature/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `test/` + a descriptive slug.

@@ -25,7 +25,8 @@ changes, that may be one realistic dialogue or task; source-string assertions
 cannot establish agent behavior. Keep its fixtures small and use the same
 scenario to assess the correction. Report simulated or mocked boundaries.
 
-Describe validation in the PR. Do not generate source snapshots, hash receipts,
+Describe manual findings or validation limits in the PR; do not duplicate
+automated check results. Do not generate source snapshots, hash receipts,
 baseline/candidate/review narratives, or new evaluation directories for routine
 maintenance. Git already retains prior source versions. Broader behavioral
 studies and their supporting artifacts require an explicit owner request.

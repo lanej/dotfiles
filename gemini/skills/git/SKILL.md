@@ -297,18 +297,8 @@ gh pr create --title "Title" --body "Description"
 gh pr create --draft
 gh pr create --base develop --head feature-branch
 
-# Using heredoc for body (recommended)
-gh pr create --title "Feature: Add new thing" --body "$(cat <<'EOF'
-## Summary
-- Added new feature
-- Fixed related bug
-
-## Test plan
-- [ ] Run unit tests
-- [ ] Test manually
-
-EOF
-)"
+# Write the final description to a file and preserve its Markdown exactly
+gh pr create --title "Add shipment filtering" --body-file /tmp/pr-body.md
 
 # List PRs
 gh pr list
@@ -624,11 +614,10 @@ Use descriptive, categorized names:
 
 ### Pull Request Practices
 
-1. **Keep PRs focused**: One feature/fix per PR
-2. **Write good descriptions**: Explain what, why, and how to test
-3. **Update regularly**: Keep branch up to date with base
-4. **Respond promptly**: Address review comments quickly
-5. **Use draft PRs**: For work-in-progress feedback
+Follow [PR guidance](../../../docs/pull-requests.md): explain the outcome and why,
+show screenshots when useful, and add only context absent from the diff and
+checks. Omit test inventories and automated results. Verify the rendered body,
+any included images, and stack parent; keep the description aligned with the final scope.
 
 ### Git Configuration
 

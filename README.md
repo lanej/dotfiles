@@ -68,3 +68,4 @@ $ sh transfer.sh
 ---
 
 See [docs/](docs/) for tool-specific notes and decision rationale.
+For creating and updating pull requests, follow [the PR guidance](docs/pull-requests.md).
