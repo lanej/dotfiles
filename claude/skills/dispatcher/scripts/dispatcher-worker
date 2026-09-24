@@ -349,7 +349,7 @@ print(json.dumps({
 
   # -------------------------------------------------------------------
   finish)
-    id="${1:?id required}"; action="${2:?merge|pr|custom required}"
+    id="${1:?id required}"; action="${2:?merge|pr|custom required}"; pr_file="${3:-}"
     state_file="$(state_file_for "$id")"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id in $STATE_DIR" >&2; exit 1; }
     require_config
@@ -409,6 +409,13 @@ print(json.dumps({
         ;;
 
       pr)
+        # The PR opens from a pull-request-writer description file (title
+        # line, blank line, body). Check it before pushing so a bad file
+        # never leaves a pushed branch without a PR.
+        [ -n "$pr_file" ] || { echo "ERROR: finish $id pr needs a pull-request-writer description file: finish $id pr <file>" >&2; exit 1; }
+        pr_file="$(cd "$(dirname "$pr_file")" && pwd)/$(basename "$pr_file")"
+        pr_helper="$(command -v gh-pr-create-from || echo "$HOME/.files/bin/gh-pr-create-from")"
+        "$pr_helper" --check "$pr_file" || exit 1
         [ -n "$cwd" ] && [ -d "$cwd" ] || { echo "ERROR: no usable cwd for $id, cannot push" >&2; exit 1; }
         branch="dispatcher/$slug"
         git -C "$cwd" push origin "HEAD:$branch"
@@ -418,10 +425,10 @@ print(json.dumps({
         # differently (set by `claude -w`) — create one pointing at HEAD
         # without checking it out, mirrors bugfix-worker exactly.
         if ! git -C "$cwd" branch -f "$branch" HEAD; then
-          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh pr create --fill --head $branch" >&2
+          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh-pr-create-from $pr_file --head $branch" >&2
           exit 1
         fi
-        pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        pr_url="$(cd "$cwd" && "$pr_helper" "$pr_file" --head "$branch")"
         echo "$pr_url"
         pr_number="$(printf '%s' "$pr_url" | grep -oE '[0-9]+$')"
         [ -n "$pr_number" ] && state_set_field "$state_file" prNumber "$pr_number"
@@ -445,7 +452,7 @@ print(json.dumps({
         ;;
 
       *)
-        echo "Usage: dispatcher-worker finish <id> merge|pr|custom" >&2; exit 1 ;;
+        echo "Usage: dispatcher-worker finish <id> merge|pr|custom [pr-description-file]" >&2; exit 1 ;;
     esac
     ;;
 

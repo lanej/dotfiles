@@ -59,28 +59,6 @@ Start with high-level phases (3-5 major tasks), break down as complexity emerges
    2.2 Integration tests for login flow
 ```
 
-### Orchestration (Hybrid Model)
-
-For multi-workstream projects, Build agent may **suggest** orchestration:
-- User types "yes"/"orchestrate" → invoke @orchestrator subagent
-- User types "no"/"sequential" → continue sequential execution
-- User types `@orchestrator <description>` → manually invoke
-
-**Orchestrator behavior:** Breaks into parallel workstreams, delegates to subagents, tracks dependencies, reports consolidated status.
-
-### Subagent Delegation
-
-- **@general** — General-purpose multi-step tasks, parallel work
-- **@explore** — Read-only codebase discovery
-- **@orchestrator** — Multi-workstream coordination
-- **Custom agents** — Domain-specific work
-
-### Agent Modes
-
-- **Build (default):** Full tool access, continuous phased execution, delegates to subagents
-- **Plan (Tab to switch):** Read-only analysis, creates implementation plans as adaptive todo lists
-- **Orchestrator (subagent):** Coordinates parallel workstreams
-
 ### Integration with Memory/Search
 
 1. **Before starting**: Check memory and qmd workspace search for relevant patterns

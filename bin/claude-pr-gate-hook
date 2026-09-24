@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""PreToolUse:Bash — deny raw `gh pr create`; PRs open via gh-pr-create-from.
+
+A raw `gh pr create` skips the pull-request-writer description and its checks,
+so Claude gets told what to run instead. `gh pr create --help` stays allowed.
+"""
+import json
+import re
+import sys
+
+RAW_CREATE = re.compile(
+    r"(?:^|[;&|(\n]|\$\()\s*(?:\w+=\S*\s+)*(?:command\s+|env\s+(?:\w+=\S*\s+)*)?"
+    r"gh\s+pr\s+(?:create|new)\b(?P<rest>[^;&|\n]*)"
+)
+REASON = (
+    "Raw `gh pr create` is blocked here. Have the pull-request-writer agent write the "
+    "title and description to a file (title on line 1, blank line, body), then open "
+    "the PR with `~/.files/bin/gh-pr-create-from <file> [--draft] [--base ...]`. It "
+    "checks the description and passes other gh flags through. If the user wants a "
+    "raw `gh pr create` anyway, they can run it themselves."
+)
+
+
+def main():
+    try:
+        payload = json.load(sys.stdin)
+    except ValueError:
+        return 0
+    command = (payload.get("tool_input") or {}).get("command") or ""
+    for match in RAW_CREATE.finditer(command):
+        if re.search(r"(?:^|\s)(?:--help|-h)\b", match.group("rest")):
+            continue
+        json.dump({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": REASON,
+        }}, sys.stdout)
+        return 0
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

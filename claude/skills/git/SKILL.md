@@ -13,10 +13,13 @@ the failure modes on this machine that have actually cost time.
 - **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
   Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
   automatic naming.
+- **All PR titles and descriptions go through the `pull-request-writer` agent**, including
+  `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
+  visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
-- **No AI attribution.** Never emit `Generated with Claude Code` or `Co-Authored-By: Claude`.
+- AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
-- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution, and is unaffected by the no-AI-attribution rule above.
+- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution.
 - `--amend` only when the user asked for it, or to fold in a pre-commit hook's own edits.
 
 ## Branch naming

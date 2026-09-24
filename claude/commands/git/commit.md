@@ -64,7 +64,6 @@ EOF
 
 ## Important Notes
 
-- **NO AI attribution**: Never include "Generated with Claude Code" or "Co-Authored-By: Claude"
 - **Professional style**: Follow Commitizen format (type(scope): message)
 - **Match project conventions**: Use recent commits as style guide
 - **Clear and concise**: Focus on "why" not just "what"
