@@ -30,7 +30,7 @@ Find all open GitHub issues without associated PRs, create git worktrees for eac
        - Verify the reproduction steps now pass
        - Commit changes using git-commit-message-writer agent
        - Push branch to origin
-       - Create PR with `gh pr create --title "Fix #{number}: {title}" --body "Fixes #{number}"`
+       - Write the PR title and description with the pull-request-writer agent (output to a file), then `gh pr create --title "<first line>" --body-file <rest>`; the body must include `Fixes #{number}`
        - Wait for CI checks to pass using `gh pr checks`
        - **If checks pass: immediately auto-merge** with `gh pr merge --auto --squash`
        - **If merged: close issue and clean up worktree**
@@ -181,7 +181,7 @@ Each parallel Task agent should:
 - Run tests to verify the fix works and provides regression protection
 - Verify the reproduction steps now pass
 - Commit with proper message (using git-commit-message-writer agent)
-- Push and create PR
+- Push and create PR (description from the pull-request-writer agent)
 - Monitor CI checks
 - **If passing: immediately auto-merge, close issue, and remove worktree**
 - **If failing: preserve worktree for manual review**

@@ -149,112 +149,13 @@ For each logical commit:
 
 ### 7. Generate PR Description
 
-**Create a concise, scannable PR description** and save it to `/tmp/pr_description.md`:
+Dispatch the **pull-request-writer agent**; it owns the PR description spec (review-oriented structure, links a teammate can open, no local paths, screenshots for visual changes). Brief it with:
+- The base branch and the issue/ticket URL (from `$ARGUMENTS` or step 1)
+- The verification you ran in the steps above and its results, plus the CI run URL once pushed
+- For any user-visible change: the before/after screenshots you captured, or where they are hosted
+- The output path `/tmp/pr_description.md` (a local handoff file only; never mention it in the PR)
 
-**Principles for PR descriptions:**
-- **Concise**: No fluff, filler, or unnecessary words
-- **Scannable**: Use bullets, headers, and whitespace for easy scanning
-- **Comprehensive**: Cover what matters, skip what doesn't
-- **Human-friendly**: Conversational but professional
-- **Avoid noise**: No over-explanation, excessive detail, or verbose prose
-
-**Structure:**
-
-```markdown
-## Summary
-
-[1-2 sentences explaining what this PR does and why it matters]
-
-Fixes #[issue-number]
-
-## Changes
-
-- [Key change 1 - what, not how]
-- [Key change 2]
-- [Key change 3]
-
-## API Example
-
-[If applicable, show a concise before/after or usage example]
-
-## Testing
-
-- [Test coverage highlights]
-- [How to verify the changes]
-
-## Notes
-
-[Optional: Any important context, trade-offs, or follow-up work]
-```
-
-**Writing Guidelines:**
-
-**DO:**
-- Lead with impact: what does this enable?
-- Use active voice: "Adds support for X" not "Support for X has been added"
-- Show, don't tell: code examples over prose
-- Highlight breaking changes clearly
-- List what's testable/verifiable
-
-**DON'T:**
-- Over-explain obvious things
-- Include implementation minutiae
-- Use corporate speak or buzzwords
-- List every file changed
-- Write long paragraphs (use bullets)
-- Repeat what's in commit messages
-
-**Example - Good:**
-
-```markdown
-## Summary
-
-Adds multipart/related support for uploading files with metadata in a single request per RFC 2387.
-
-Fixes #1240
-
-## Changes
-
-- Runtime support for constructing multipart/related request bodies
-- Code generation for expanded builder APIs (`.file()`, `.metadata()` methods)
-- Proper Vec<u8> handling for binary fields
-
-## API Example
-
-```rust
-client.upload_file()
-    .file(file_bytes)
-    .metadata(FileMetadata { name: "doc.txt", mime_type: "text/plain" })
-    .send()
-    .await
-```
-
-## Testing
-
-- Three test endpoints covering single file, multiple files, and raw body scenarios
-- All existing tests pass with no breaking changes
-```
-
-**Example - Too Verbose (Avoid):**
-
-```markdown
-## Summary
-
-This pull request implements comprehensive support for the multipart/related
-content type as specified in RFC 2387. The implementation spans multiple
-components of the codebase including the runtime library and code generation
-system. We have carefully considered the architectural implications and
-designed a solution that balances flexibility with type safety...
-
-[Don't do this - too wordy, no clear structure, hard to scan]
-```
-
-**Generate the PR description:**
-- Use the **pull-request-writer agent** to generate the PR title and description
-- Provide the agent with context about the implementation and commits
-- Review the generated content
-- Save to `/tmp/pr_description.md`
-- Show it to the user for review
+Read the result before showing it. Send it back if it references anything the reviewer can't open, omits the why or the verification, or has an unresolved screenshot TODO you didn't surface to the user.
 
 ### 8. Push to Remote
 
@@ -288,7 +189,6 @@ Or with an issue number:
 - **Keep the user informed** - explain your reasoning for the commit structure
 - **Don't push without approval** - always get user confirmation first
 - **Clean working directory** - ensure no uncommitted changes at the end
-- **Professional PR descriptions** - never mention AI/Claude in PR descriptions
 
 ## Example Output Structure
 

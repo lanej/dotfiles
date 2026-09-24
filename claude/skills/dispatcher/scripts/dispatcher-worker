@@ -349,7 +349,7 @@ print(json.dumps({
 
   # -------------------------------------------------------------------
   finish)
-    id="${1:?id required}"; action="${2:?merge|pr|custom required}"
+    id="${1:?id required}"; action="${2:?merge|pr|custom required}"; pr_file="${3:-}"
     state_file="$(state_file_for "$id")"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id in $STATE_DIR" >&2; exit 1; }
     require_config
@@ -421,7 +421,15 @@ print(json.dumps({
           echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh pr create --fill --head $branch" >&2
           exit 1
         fi
-        pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        # A pull-request-writer description file (title line, blank line,
+        # body) replaces --fill's commit-subject defaults when supplied.
+        if [ -n "$pr_file" ]; then
+          [ -s "$pr_file" ] || { echo "ERROR: PR description file '$pr_file' is missing or empty" >&2; exit 1; }
+          pr_title="$(head -n 1 "$pr_file")"
+          pr_url="$(tail -n +3 "$pr_file" | (cd "$cwd" && gh pr create --head "$branch" --title "$pr_title" --body-file -))"
+        else
+          pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        fi
         echo "$pr_url"
         pr_number="$(printf '%s' "$pr_url" | grep -oE '[0-9]+$')"
         [ -n "$pr_number" ] && state_set_field "$state_file" prNumber "$pr_number"
@@ -445,7 +453,7 @@ print(json.dumps({
         ;;
 
       *)
-        echo "Usage: dispatcher-worker finish <id> merge|pr|custom" >&2; exit 1 ;;
+        echo "Usage: dispatcher-worker finish <id> merge|pr|custom [pr-description-file]" >&2; exit 1 ;;
     esac
     ;;
 

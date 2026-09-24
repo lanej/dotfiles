@@ -226,7 +226,8 @@ how to handle it.
 ## 16. Closeout sequence, in exact order
 
 1. **Finish** — merge, open a PR, or apply, per `finishMode` in config (`custom` uses
-   `finishCommand`). This is the only step that mutates the target branch/environment.
+   `finishCommand`). For a PR, have `pull-request-writer` write the description to a file first
+   and pass it: `scripts/dispatcher-worker finish <id> pr <file>`. This is the only step that mutates the target branch/environment.
 2. **Unlock** — `scripts/dispatcher-worker unlock <id>`, always, regardless of outcome.
 3. **Immediate session cleanup** (not deferred to a later batch pass):
    - **PR path** (opened but not yet merged/applied) → `claude stop <id>`. Never `rm` — the

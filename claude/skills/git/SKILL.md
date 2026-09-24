@@ -13,6 +13,9 @@ the failure modes on this machine that have actually cost time.
 - **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
   Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
   automatic naming.
+- **All PR titles and descriptions go through the `pull-request-writer` agent**, including
+  `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
+  visual changes.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
