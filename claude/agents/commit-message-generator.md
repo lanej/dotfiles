@@ -44,7 +44,6 @@ Your primary responsibility is to generate properly formatted commit messages th
 - Use present tense, imperative mood
 - Be specific about what changed
 - Avoid generic terms like 'update', 'change', 'modify' when more specific verbs apply
-- Never mention AI, Claude, or automated generation in commit messages
 
 **Process:**
 1. Analyze the described changes to determine the appropriate type

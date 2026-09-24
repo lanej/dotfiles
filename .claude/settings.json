@@ -270,7 +270,6 @@
     "command": "$HOME/.files/bin/claude-statusline"
   },
   "attribution": {
-    "commit": "",
     "pr": ""
   },
   "enabledPlugins": {

@@ -124,7 +124,6 @@ For each logical commit:
    - Includes detailed body explaining what and why
    - References the issue number
    - Is written in professional, human style
-   - Does NOT mention AI, Claude, or automated generation
 4. Create the commit: `git commit -m "message"`
 5. Verify the commit compiles: run build/test commands
 6. Repeat for each commit
@@ -289,7 +288,7 @@ Or with an issue number:
 - **Keep the user informed** - explain your reasoning for the commit structure
 - **Don't push without approval** - always get user confirmation first
 - **Clean working directory** - ensure no uncommitted changes at the end
-- **Professional commits** - never mention AI/Claude in commit messages or PR descriptions
+- **Professional PR descriptions** - never mention AI/Claude in PR descriptions
 
 ## Example Output Structure
 
