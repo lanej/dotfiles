@@ -45,6 +45,23 @@ claude/skills/xlsx-python/
 # Agents are ignored by default (some are symlinked from ~/src/ep-dotfiles).
 # Real, repo-owned agents are force-added: git add -f claude/agents/<name>
 claude/agents/*
+
+# ~/.claude/{commands,workflows} are symlinked here too, so Claude Code, plugins,
+# and installers write straight into the repo. Ignored by default like agents;
+# version a real one with: git add -f claude/commands/<name>
+claude/commands/*
+claude/workflows/
+
+# Repo-local Claude Code state (permission grants, `claude -w` worktrees, ...).
+# Only the shared settings and MCP server list are tracked.
+.claude/*
+!.claude/settings.json
+!.claude/mcp-servers.json
+
+# Generated output: eval runs, skill-creator workspaces, packaged skills.
+claude/evals/*/results/
+*-workspace/
+*.skill
 CLAUDE.local.md
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/

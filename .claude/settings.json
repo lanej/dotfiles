@@ -326,8 +326,5 @@
   "theme": "auto",
   "editorMode": "vim",
   "verbose": true,
-  "feedbackSurveyState": {
-    "lastShownTime": 1754065442220
-  },
   "crossSessionInbound": "accept"
 }

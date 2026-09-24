@@ -63,9 +63,9 @@ The pattern is already employed for several commands:
 
 ### Gitignore Configuration
 
-- **Global** (`~/.gitignore`): Ignores `.claude/` directory
-- **Local** (`.files/.gitignore`): No special Claude rules needed
-- Use `git add -f` to force-add specific commands when ready to version
+`~/.claude/{commands,agents,skills,workflows}` are symlinks into this repo, so anything Claude Code, a plugin, or an installer writes there lands in the working tree. `.gitignore` therefore ignores new files in those directories by default; version a real one with `git add -f` (already-tracked files are unaffected). It also ignores repo-local `.claude/` state other than `settings.json` and `mcp-servers.json`, eval `results/`, skill-creator `*-workspace/` dirs, and packaged `*.skill` files. Anthropic-published skills are listed by name and never tracked (`claude/skills/ANTHROPIC-SKILLS.md`).
+
+`.claude/settings.json` is tracked but rewritten in place by Claude Code; a `claude-settings` clean filter (`.gitattributes`, configured by `make claude`) drops bookkeeping keys such as `feedbackSurveyState` so they never show up as changes.
 
 This pattern mirrors the approach used elsewhere in this repository (e.g., experimental scripts in `bin/` that are selectively versioned).
 
