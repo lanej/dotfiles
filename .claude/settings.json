@@ -269,6 +269,10 @@
     "type": "command",
     "command": "$HOME/.files/bin/claude-statusline"
   },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,

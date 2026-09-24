@@ -150,7 +150,6 @@ The delegated agent checks for:
 - **Delegates to agent**: Keeps main context clean
 - **Optional workflow**: Use when you want review, use `/git:commit` when you don't
 - **Blocking vs. suggestions**: Agent distinguishes between must-fix and nice-to-have
-- **No AI attribution**: Commits still use standard message format
 
 ## When to Use This vs. /git:commit
 
