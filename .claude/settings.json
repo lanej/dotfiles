@@ -49,15 +49,6 @@
             "command": "$HOME/.files/bin/claude-session-start-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "Notification": [
@@ -120,15 +111,6 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "Stop": [
@@ -144,15 +126,6 @@
             "command": "$HOME/.files/bin/claude-stop-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "SessionEnd": [
@@ -162,15 +135,6 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
           }
         ]
       }
@@ -184,27 +148,9 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      },
       {
         "matcher": "Agent",
         "hooks": [
@@ -220,61 +166,6 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-sandbox-bypass-narration-hook"
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
           }
         ]
       }

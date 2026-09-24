@@ -24,9 +24,10 @@ import time
 state = SourceFileLoader(
     "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state"))).load_module()
 
-# A finished session stays "just finished" for a quarter hour; anything still
-# claiming to run after an hour has lost its Stop hook.
-DORMANT_AFTER = int(os.environ.get("CLAUDE_DORMANT_AFTER", "900"))
+# A finished session stays "just finished" until its prompt cache has lapsed
+# (an hour), after which resuming it pays to re-read the whole conversation.
+# Anything still claiming to run after an hour has lost its Stop hook.
+DORMANT_AFTER = int(os.environ.get("CLAUDE_DORMANT_AFTER", "3600"))
 STALL_AFTER = int(os.environ.get("CLAUDE_STALL_AFTER", "3600"))
 
 # Status-bar roll-up: one glyph per class, hottest first, matching the tab colours.

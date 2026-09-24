@@ -173,8 +173,6 @@ claude-plugins:
 claude: claude-plugins
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
-	@mkdir -p $(HOME)/.config/claude-tmux-later
-	@ln -fs $(DOTFILES)/claude/tmux-later.json $(HOME)/.config/claude-tmux-later/config.json
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md

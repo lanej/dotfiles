@@ -5,7 +5,6 @@ on:
     paths:
       - 'bin/claude-autoname-hook*'
       - 'bin/claude-session-resolve*'
-      - 'bin/claude-tmux-later*'
       - 'bin/tmux-claude-state*'
       - 'bin/tmux-claude-sweep'
       - 'bin/claude-tmux-state-hook'
@@ -17,7 +16,6 @@ on:
       - 'bin/conftest.py'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
-      - 'claude/tmux-later.json'
       - 'Makefile'
       - '.github/workflows/claude-features.yml'
   push:
@@ -25,7 +23,6 @@ on:
     paths:
       - 'bin/claude-autoname-hook*'
       - 'bin/claude-session-resolve*'
-      - 'bin/claude-tmux-later*'
       - 'bin/tmux-claude-state*'
       - 'bin/tmux-claude-sweep'
       - 'bin/claude-tmux-state-hook'
@@ -37,7 +34,6 @@ on:
       - 'bin/conftest.py'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
-      - 'claude/tmux-later.json'
       - 'Makefile'
       - '.github/workflows/claude-features.yml'
 
