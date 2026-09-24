@@ -38,10 +38,16 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     state = load_script("tmux-claude-state")
     sweep = load_script("tmux-claude-sweep")
     hooks = json.loads((ROOT / ".claude/settings.json").read_text())["hooks"]
-    window = private_tmux.call("new-window", "-d", "-t", "main:", "-P", "-F",
-                               "#{window_id}", "sleep 300")
+    window = private_tmux.call("new-window", "-d", "-t", "main:", "-n", "project",
+                               "-P", "-F", "#{window_id}", "sleep 300")
     pane = private_tmux.call("display-message", "-p", "-t", window, "#{pane_id}")
     monkeypatch.setenv("TMUX_PANE", pane)
+    # Every assertion below compares whole rendered tabs, so the only thing that
+    # may differ between them is the state. tmux's own automatic-rename would
+    # otherwise retitle the window from its running command mid-test -- which it
+    # does differently per platform -- and the comparisons would turn on the name
+    # instead of on the styling they exist to check.
+    private_tmux.call("set-option", "-w", "-t", window, "automatic-rename", "off")
 
     # Teach the throwaway server the tab the user actually sees.
     conf = private_tmux.folder / "tab.conf"
