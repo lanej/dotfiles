@@ -3,3 +3,7 @@ superwhisper/settings/settings.json filter=git-crypt diff=git-crypt
 
 # Collapse captured model transcripts in PR diffs; reviews and result notes stay visible.
 claude/evals/socrates-dialogue/results/**/record.json linguist-generated=true
+
+# Claude Code rewrites settings.json in place (it is symlinked to ~/.claude).
+# Strip the keys it writes as bookkeeping; `make claude` configures the filter.
+.claude/settings.json filter=claude-settings

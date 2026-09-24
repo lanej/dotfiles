@@ -297,7 +297,7 @@ print(json.dumps({
     ;;
 
   finish)
-    id="${1:?id required}"; action="${2:?merge|pr required}"
+    id="${1:?id required}"; action="${2:?merge|pr required}"; pr_file="${3:-}"
     state_file="$STATE_DIR/$id.json"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
     repo="$(state_field "$state_file" repo)"
@@ -387,6 +387,13 @@ print(json.dumps({
         fi
         ;;
       pr)
+        # The PR opens from a pull-request-writer description file (title
+        # line, blank line, body). Check it before pushing so a bad file
+        # never leaves a pushed branch without a PR.
+        [ -n "$pr_file" ] || { echo "ERROR: finish $id pr needs a pull-request-writer description file: finish $id pr <file>" >&2; exit 1; }
+        pr_file="$(cd "$(dirname "$pr_file")" && pwd)/$(basename "$pr_file")"
+        pr_helper="$(command -v gh-pr-create-from || echo "$HOME/.files/bin/gh-pr-create-from")"
+        "$pr_helper" --check "$pr_file" || exit 1
         [ -n "$cwd" ] || { echo "ERROR: no cwd for $id, cannot push" >&2; exit 1; }
         branch="bugfix/$slug"
         git -C "$cwd" push origin "HEAD:$branch"
@@ -406,10 +413,10 @@ print(json.dumps({
         # slug's timestamp-uniqueness, but fail loudly rather than let a
         # bare `set -e` abort with no guidance) must say so explicitly.
         if ! git -C "$cwd" branch -f "$branch" HEAD; then
-          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh pr create --fill --head $branch" >&2
+          echo "ERROR: pushed to origin/$branch but could not create local branch ref '$branch' in $cwd (already checked out elsewhere?) — no PR was opened; open it manually: cd $cwd && gh-pr-create-from $pr_file --head $branch" >&2
           exit 1
         fi
-        pr_url="$(cd "$cwd" && gh pr create --fill --head "$branch")"
+        pr_url="$(cd "$cwd" && "$pr_helper" "$pr_file" --head "$branch")"
         echo "$pr_url"
         pr_number="$(printf '%s' "$pr_url" | grep -oE '[0-9]+$')"
         # Record the PR number so a later `bugfix-worker ci <id>` call (the
@@ -419,7 +426,7 @@ print(json.dumps({
         claude stop "$id" || true
         ;;
       *)
-        echo "Usage: bugfix-worker finish <id> merge|pr" >&2; exit 1 ;;
+        echo "Usage: bugfix-worker finish <id> merge|pr [pr-description-file]" >&2; exit 1 ;;
     esac
     ;;
 
