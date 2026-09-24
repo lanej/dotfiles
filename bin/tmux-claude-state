@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Single source of truth for what a Claude session is doing, as a tmux window tab.
+
+Claude's hooks call `set`; tmux.conf reads the options this writes. Keeping the
+palette here (rather than as another nested ternary in tmux.conf) means a new
+state costs one table row instead of three more conditional branches per
+rendered segment.
+
+Options written on the window:
+  @claude-state   semantic name, also read by tmux-quickswitch-alert
+  @claude-class   need | activity | quiet -- the only axis the status bar sorts on
+  @claude-bg      segment background, also used for the tab's powerline caps
+  @claude-fg      text foreground inside the segment
+  @claude-attr    bold on the states that want you to come over, nobold otherwise
+  @claude-glyph   one column of shape, so the state survives a colourless terminal
+  @claude-since   epoch seconds the state was entered, for dormancy
+"""
+import os
+import subprocess
+import sys
+import time
+
+# Nord. "Needs" are hot and bold, activity is warm, quiet states recede into the
+# bar. Glyphs carry the same ranking for anyone reading shape over colour.
+STATES = {
+    # name        class       bg         fg         bold   glyph
+    "approval": ("need",     "#BF616A", "#ECEFF4", True,  "▲"),  # blocked on a permission prompt
+    "question": ("need",     "#BF616A", "#ECEFF4", True,  "?"),  # blocked on something it asked you
+    "plan":     ("need",     "#D08770", "#2E3440", True,  "▣"),  # a plan is up for approval
+    "tool":     ("activity", "#EBCB8B", "#2E3440", False, "●"),  # a tool is running
+    "thinking": ("activity", "#88C0D0", "#2E3440", False, "◐"),  # has the turn, nothing running
+    "idle":     ("quiet",    "#4C566A", "#D8DEE9", False, "○"),  # finished, still warm
+    "dormant":  ("quiet",    "#3B4252", "#616E88", False, "·"),  # finished and left alone
+}
+
+# The pre-existing name for "Claude asked you something"; still written by older
+# checkouts of the hooks and still understood here.
+ALIASES = {"waiting": "question"}
+
+OPTIONS = ("@claude-state", "@claude-class", "@claude-bg",
+           "@claude-fg", "@claude-attr", "@claude-glyph", "@claude-since")
+
+
+def tmux(*args):
+    """Best-effort tmux call: a hook must never fail a turn over a status bar."""
+    try:
+        return subprocess.run(["tmux", *args], check=False, capture_output=True,
+                              text=True, timeout=5).stdout.strip()
+    except Exception:
+        return ""
+
+
+def style(name):
+    """Render one state, or None if the name is not a state we know."""
+    name = ALIASES.get(name, name)
+    entry = STATES.get(name)
+    if entry is None:
+        return None
+    klass, bg, fg, bold, glyph = entry
+    return {
+        "@claude-state": name,
+        "@claude-class": klass,
+        "@claude-bg": bg,
+        "@claude-fg": fg,
+        "@claude-attr": "bold" if bold else "nobold",
+        "@claude-glyph": glyph,
+        "@claude-since": str(int(time.time())),
+    }
+
+
+def write(target, values):
+    """Set every option in one tmux invocation.
+
+    PreToolUse fires on each tool call, so the per-option process this used to
+    spawn was six too many on a hot path.
+    """
+    args = []
+    for option, value in values.items():
+        args += ["set-option", "-w", "-t", target, option, value, ";"]
+    tmux(*args, "refresh-client", "-S")
+
+
+def apply(target, name):
+    """Write `name` onto the window owning `target` (a pane id or window id)."""
+    values = style(name)
+    if values is None:
+        clear(target)
+        return False
+    write(target, values)
+    return True
+
+
+def clear(target):
+    """Return the tab to a plain, un-Claude-ed window."""
+    write(target, {option: "" for option in OPTIONS})
+
+
+def main(argv):
+    if len(argv) < 2:
+        print(__doc__.strip().splitlines()[0], file=sys.stderr)
+        return 2
+    command = argv[1]
+
+    if command == "render":
+        values = style(argv[2] if len(argv) > 2 else "")
+        if values is None:
+            return 1
+        for option in OPTIONS:
+            print("%s\t%s" % (option, values[option]))
+        return 0
+
+    # Usage: `set <state> [target]` / `clear [target]`. Both default to this
+    # hook's own pane, which is how every caller but the sweep invokes them.
+    if command == "set":
+        name, rest = (argv[2] if len(argv) > 2 else ""), argv[3:]
+    elif command == "clear":
+        name, rest = None, argv[2:]
+    else:
+        return 2
+    target = rest[0] if rest else os.environ.get("TMUX_PANE", "")
+    if not target:
+        return 0
+    if name is None:
+        clear(target)
+    else:
+        apply(target, name)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

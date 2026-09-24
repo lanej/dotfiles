@@ -32,11 +32,17 @@ if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
     fi
 fi
 
-# Mark window as needing input (cleared by PreToolUse / Stop)
+# Mark the window as blocked on you. A permission prompt and an open question
+# are both "come here now", but they cost you different things, so the tab
+# glyph distinguishes them. bin/tmux-claude-state owns the palette.
 if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
-    log_window_action "set-option -w -t $TMUX_PANE @claude-state waiting"
-    tmux set-option -w -t "$TMUX_PANE" @claude-state "waiting" 2>/dev/null || true
-    tmux refresh-client -S 2>/dev/null || true
+    message=$(echo "$input" | jq -r '.message // empty' 2>/dev/null)
+    case "$message" in
+        *permission*|*Permission*|*approv*|*Approv*) state="approval" ;;
+        *) state="question" ;;
+    esac
+    log_window_action "tmux-claude-state set $state (-t $TMUX_PANE)"
+    "$(dirname "$0")/tmux-claude-state" set "$state" "$TMUX_PANE" 2>/dev/null || true
 fi
 
 # Trigger tmux bell

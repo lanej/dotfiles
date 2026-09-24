@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-tool-start-hook"
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
       },
@@ -161,6 +161,15 @@
     ],
     "SessionEnd": [
       {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
@@ -171,6 +180,15 @@
       }
     ],
     "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
+          }
+        ]
+      },
       {
         "hooks": [
           {

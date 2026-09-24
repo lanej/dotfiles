@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Drive the tmux window tab from Claude Code hook events.
+
+Wired to several events at once and dispatches on `hook_event_name`, so the
+state machine reads as one table instead of being spread across a script per
+event.
+
+  UserPromptSubmit -> thinking   Claude has the turn, nothing running yet
+  PreToolUse       -> tool       ...or `plan` for ExitPlanMode, which needs you
+  Notification     -> approval   permission prompt
+                   -> question   anything else Claude is blocked on
+  Stop             -> idle       finished; tmux-claude-sweep ages this to dormant
+  SessionEnd       -> (cleared)  no Claude here any more
+
+PostToolUse is deliberately NOT wired: re-asserting a state between every tool
+call would strobe the tab on a busy turn without saying anything new.
+
+Notification and Stop are handled here too, but .claude/settings.json points
+those events at claude-notification-hook and claude-stop-hook instead, since
+each already fires there and carries the bell and rename that go with it. The
+rows stay in the table because they define the state machine, and writing the
+same state twice is harmless if the wiring ever changes.
+"""
+import json
+import os
+import re
+import sys
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+state = SourceFileLoader(
+    "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state"))).load_module()
+
+# Claude Code words permission prompts differently across tools, but every one
+# of them asks to be allowed to do something.
+APPROVAL = re.compile(r"permission|approv|allow|confirm", re.IGNORECASE)
+
+
+def resolve(event):
+    kind = event.get("hook_event_name", "")
+    if kind == "UserPromptSubmit":
+        return "thinking"
+    if kind == "PreToolUse":
+        return "plan" if event.get("tool_name") == "ExitPlanMode" else "tool"
+    if kind == "Notification":
+        return "approval" if APPROVAL.search(event.get("message", "")) else "question"
+    if kind == "Stop":
+        return "idle"
+    if kind == "SessionEnd":
+        return ""
+    return None
+
+
+def main():
+    if not os.environ.get("TMUX_PANE") or not os.environ.get("TMUX"):
+        return 0
+    try:
+        event = json.load(sys.stdin)
+    except Exception:
+        return 0
+    name = resolve(event)
+    if name is None:  # An event we do not model; leave the tab as it is.
+        return 0
+    pane = os.environ["TMUX_PANE"]
+    if name:
+        state.apply(pane, name)
+    else:
+        state.clear(pane)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
