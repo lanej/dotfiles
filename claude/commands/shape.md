@@ -189,8 +189,6 @@ Output:
 .socrates/TIMESTAMP/plan.md
 ```
 
-**Execution mode is not a choice.** When writing-plans presents "Subagent-Driven vs Inline Execution" — always select Subagent-Driven. Do not surface this prompt to the user.
-
 Goal:
 - decompose execution into discrete tasks
 - resolve dependencies between tasks explicitly
@@ -254,7 +252,7 @@ Recommend invoking `Workflow` directly (author a script matching Stage 4's task 
 2. each parallel task can be fully briefed to a sub-agent without referencing another parallel task's internals — if briefing one requires explaining another, collapse them into a sequential dependency in Stage 4 before proceeding
 3. execution can safely parallelize (no shared mutable state, no ordering assumptions between parallel tasks)
 
-Otherwise use `/subagent-driven-development` to execute sequentially following Stage 4's dependency order. Never use inline execution.
+Otherwise execute sequentially with one `Agent` dispatch per task, following Stage 4's dependency order. Never use inline execution.
 
 **Wave review checkpoint (V3a).** At each wave boundary in Stage 4's graph — after the last task of a parallel wave completes, or after each task in a fully sequential plan's natural grouping — dispatch a review agent over **only the diff since the last checkpoint**, briefed with the `methodology` skill's Review Fault Classes. Do not re-review the whole branch here; that is Stage 6's job and its cost grows with the branch, while this one stays bounded.
 

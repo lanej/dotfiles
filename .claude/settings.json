@@ -85,10 +85,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-delegate-plan-guard-hook"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.files/bin/claude-sibling-doc-check-hook"
           }
         ]
