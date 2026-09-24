@@ -1,7 +1,6 @@
 ---
 name: reflection
 description: Analyze a completed Claude Code session transcript against CLAUDE.md and apply behavioral improvements to the right target (memory, skill files, CLAUDE.md). Runs autonomously when briefed with 'auto'. Invoke after sessions with repeated corrections, ignored instructions, or notable validated patterns.
-model: sonnet
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__plugin_claude-mem_mcp-search__search, mcp__plugin_claude-mem_mcp-search__get_observations
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: git-commit-message-writer
 description: Generate professional git commit messages following Commitizen conventional format. Use when creating commits, generating commit messages, or when user requests to commit changes. Triggers on phrases like "commit", "create a commit", "git commit", "commit these changes", "commit message", or when changes are ready to be committed.
-model: sonnet
 color: cyan
 ---
 

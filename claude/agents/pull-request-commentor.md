@@ -1,7 +1,6 @@
 ---
 name: pull-request-commentor
 description: Use this agent when you need to write GitHub pull request comments or reviews. Examples: <example>Context: User wants feedback posted on a PR. user: 'Review PR #123 and leave comments on the implementation' assistant: 'I'll use the pull-request-commentor agent to write professional review comments.' <commentary>The user wants PR review comments posted, so use the pull-request-commentor agent to generate helpful, professional feedback.</commentary></example> <example>Context: User asks to comment on specific code in a PR. user: 'Add a comment about the error handling in that function' assistant: 'Let me use the pull-request-commentor agent to write a clear, actionable comment about the error handling.' <commentary>The user needs a specific code comment on a PR, so use the pull-request-commentor agent.</commentary></example>
-model: sonnet
 color: green
 ---
 

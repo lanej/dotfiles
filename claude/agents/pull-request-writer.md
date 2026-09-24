@@ -1,7 +1,6 @@
 ---
 name: pull-request-writer
 description: Use this agent when you need to create GitHub pull request titles and descriptions. Examples: <example>Context: User has implemented a new feature and needs a PR description. user: 'I added support for multipart/related uploads with metadata' assistant: 'I'll use the pull-request-writer agent to create a clear, scannable PR description.' <commentary>The user needs a PR description for a new feature, so use the pull-request-writer agent to create a professional, concise description.</commentary></example> <example>Context: User is preparing a branch for PR and needs both title and description. user: 'Generate a PR for this bug fix' assistant: 'Let me use the pull-request-writer agent to generate a proper PR title and description for your bug fix.' <commentary>The user needs a complete PR with title and description, so use the pull-request-writer agent.</commentary></example>
-model: sonnet
 color: blue
 ---
 

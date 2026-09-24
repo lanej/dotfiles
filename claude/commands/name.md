@@ -8,7 +8,7 @@ allowed-tools:
 
 Delegate session naming entirely to a sub-agent. The main session must not read the transcript, derive the name, or run any bash itself — its only job is to spawn the agent and relay its final line back to the user.
 
-Spawn `Agent(subagent_type: "general-purpose", model: "haiku", run_in_background: false)` with this prompt verbatim:
+Spawn `Agent(subagent_type: "general-purpose", run_in_background: false)` with this prompt verbatim:
 
 ````
 You are naming a Claude Code session for tmux/session-list display. This writes only to ~/.claude/session-names/ and tmux window state — never to a git repo. NO-REPO-WRITES. Do the whole thing yourself — no clarifying questions.
