@@ -54,8 +54,11 @@ Each limit is the larger of that budget and the file's size on the PR base.
 Existing overages may stay the same size or shrink; new entrypoints must meet
 both limits. This does not require rewriting existing vendored skills.
 Installed files use their corresponding repository source's base size and
-override. Local additions or external symlink targets without a regular tracked
-source use the default limits. Default `make` compares against `HEAD`; use
+override. Local additions without a regular tracked source use the default
+limits. Installed files that resolve outside this repository (for example
+ep-dotfiles skills linked by `make link-skills`) are reported as `WARN` against
+the default limits but do not fail `make`; their owning repository budgets them.
+Default `make` compares against `HEAD`; use
 `make INSTRUCTION_SIZE_BASE=origin/master` to compare against the PR base.
 
 Use progressive disclosure for conditional detail; moving always-loaded text

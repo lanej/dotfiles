@@ -3,7 +3,7 @@
 set -euo pipefail
 export LC_ALL=C
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)
 config="$root/claude/evals/skill-maintenance/size-budgets.json"
 base= installed_home=
 while (($#)); do
@@ -51,7 +51,8 @@ measure() {
 
 failed=0 count=0
 check_file() {
-    local name=$1 path=$2 label=$3 budget_lines budget_tokens current_lines current_tokens
+    # Oversize files owned elsewhere (external: 1) warn; this repo cannot budget them.
+    local name=$1 path=$2 label=$3 external=${4:-0} budget_lines budget_tokens current_lines current_tokens
     local old_lines=0 old_tokens=0 limit_lines limit_tokens status=EXISTING
     count=$((count + 1))
     if [[ ! -f $path || ! -r $path ]]; then
@@ -69,7 +70,9 @@ check_file() {
     fi
     limit_lines=$((old_lines > budget_lines ? old_lines : budget_lines))
     limit_tokens=$((old_tokens > budget_tokens ? old_tokens : budget_tokens))
-    if ((current_lines > limit_lines || current_tokens > limit_tokens)); then status=FAIL; failed=1; fi
+    if ((current_lines > limit_lines || current_tokens > limit_tokens)); then
+        if ((external)); then status=WARN; else status=FAIL; failed=1; fi
+    fi
     if ((current_lines > budget_lines || current_tokens > budget_tokens)); then
         echo "$status $label: $current_lines lines, ~$current_tokens tokens; allowed $limit_lines / ~$limit_tokens"
     fi
@@ -98,7 +101,12 @@ if [[ -n $installed_home ]]; then
     while IFS= read -r -d '' path; do
         name=${path#"$installed_home/."}
         is_entrypoint "$name" || continue
-        check_file "$name" "$path" "installed $path"
+        # Only files resolving into this repo are its to budget; ep-dotfiles
+        # links and tool-written files in ~/.claude are owned elsewhere.
+        real=$(realpath "$path" 2>/dev/null) || real=$path
+        external=0
+        [[ $real = "$root"/* ]] || external=1
+        check_file "$name" "$path" "installed $path" "$external"
     done < "$scratch/installed"
     echo "Checked $count installed entrypoints."
 fi
