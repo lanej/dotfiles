@@ -3,8 +3,7 @@
   "env": {
     "CLAUDE_CODE_USE_VERTEX": "1",
     "ANTHROPIC_VERTEX_PROJECT_ID": "easypost-platform",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5[1m]"
+    "VIEWRULE_CONFIG_DIR": "/Users/joshlane/.files/claude/ui-review"
   },
   "permissions": {
     "allow": [
@@ -37,7 +36,7 @@
     "defaultMode": "acceptEdits",
     "additionalDirectories": []
   },
-  "model": "sonnet",
+  "model": "claude-sonnet-5",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
@@ -199,7 +198,9 @@
     "skill-creator@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "viewrule@viewrule": true
+    "viewrule@viewrule": true,
+    "bigquery@easypost-sandbox": true,
+    "looker@easypost-sandbox": true
   },
   "extraKnownMarketplaces": {
     "agent-plugins-for-aws": {
@@ -212,6 +213,12 @@
       "source": {
         "source": "git",
         "url": "https://github.com/lanej/viewrule.git"
+      }
+    },
+    "easypost-sandbox": {
+      "source": {
+        "source": "github",
+        "repo": "easypost-sandbox/claude-marketplace"
       }
     }
   },

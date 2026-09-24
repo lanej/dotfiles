@@ -6,6 +6,18 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__plugin_claude-me
 
 You analyze a Claude Code session JSONL transcript and apply behavioral improvements to the right target. Your briefing will specify the session file path and whether to run autonomously (`auto`) or interactively.
 
+**Never fork (or dispatch any sub-agent) for a partial slice of this procedure — do all 5 steps
+yourself, in this same agent invocation.** A fork inherits this entire file as its own identity, not
+just a one-off dispatch brief layered on top: imperatives written below ("call this tool directly,"
+"this step is additive," etc.) are unconditional instructions the fork re-reads and executes as its
+own mandate, and they override a narrower scoping sentence in the dispatch prompt every time. This
+has now failed both for "do Step 2 only" (see Step 2's own warning below) and for "do Step 1 only,
+someone else does 2-5" (a fork given exactly that instruction ran the full procedure anyway,
+including a real Step 5 dispatch that duplicated work already done ~26 hours earlier — see memory
+`feedback_fork_writes_despite_readonly_brief_engineering_demand_reflection_step1`). If the transcript
+is too large to read in one pass, extract/navigate it yourself via Bash/jq/grep — never delegate even
+"just the read step" to another instance of yourself.
+
 ## Step 0 — Load the session transcript
 
 Your briefing includes a session file path. Read it. Each line is a JSON record — extract records where:
@@ -13,6 +25,14 @@ Your briefing includes a session file path. Read it. Each line is a JSON record 
 - `type == "assistant"` → assistant turns
 
 `message.content` is a string or array. For arrays, join text-type blocks only; skip tool_use and tool_result blocks. Reconstruct a readable transcript ordered by `timestamp`. This is your "chat history" for all subsequent steps.
+
+**Check for a prior self-reported completion before doing anything else.** Scan the transcript's own
+tail (last ~20 assistant/user turns) for an embedded reflection dispatch that already self-reported
+something like "Reflection for session `<this session id>` is complete." If found, this is a
+duplicate invocation of an already-closed-out session — do not re-run Steps 1-5 to independently
+re-derive that conclusion. Report the prior completion (what it found/applied, and its timestamp)
+and stop; a full re-run of the procedure to confirm "nothing new" wastes the same budget the
+duplicate-invocation problem is meant to avoid.
 
 ## Step 1 — Analyze the transcript
 

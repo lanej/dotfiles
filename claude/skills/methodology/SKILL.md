@@ -215,6 +215,13 @@ Detected-By: V3b
 
 Valid values are `V0`, `V1`, `V2`, `V3a`, `V3b`, and `V4`, or `user` when a person caught it. One trailer per commit; if a commit fixes findings from two tiers, name the earliest one that caught anything.
 
+**`user` means a person named the specific defect — not that a person asked you to check.** A
+generic ask ("make sure we're in a good state," "check we're healthy," "look into it") that leads
+*you* to run a test suite, a health-check script, or the job itself, and *that run* surfaces the
+fault, is a `V<n>` trailer for whichever tier actually ran — never `user`. Before writing the
+trailer, ask "did Josh say what was wrong, or did my own check find it?" (detail: memory
+"feedback_detected_by_misattributed_as_user").
+
 This exists because the tier model rests on an audit reconstructed by reading commit prose — archaeology, not measurement. With the trailer the next audit is `git log --grep="Detected-By"`, and questions that are currently guesses become queries:
 
 - Does V3a find anything V3b would not have found anyway? If not, V3a is pure cost and should be removed.

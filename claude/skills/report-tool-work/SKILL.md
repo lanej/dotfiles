@@ -11,6 +11,7 @@ If you hit a bug, or notice something missing, in a tool, script, or MCP server 
 
 - A CLI, script, or MCP server under `~/src/<repo>` (where `<repo>`'s git remote is `easypost-sandbox/*`) produces incorrect output, errors, or crashes in a way that's clearly a bug in that tool, not a misuse on your part — **or** it's missing a capability that would clearly help and is small enough to build without a design discussion.
 - Fixing or building it is out of scope for what you're currently doing.
+- This applies just as much when a sub-agent surfaces the bug in its own report as when you hit it directly — a sub-agent has no path to `bugfix-dispatcher` itself, so relaying its finding to Josh in your summary is not a substitute for sending the report yourself. Send it in the same turn you tell Josh about it. (detail: memory "feedback_tool_bug_flagged_not_reported_to_dispatcher")
 
 ## When NOT to use this
 

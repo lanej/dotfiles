@@ -8,10 +8,14 @@ description: Node.js and JavaScript development patterns, gotchas, and library c
 ## Project Setup Basics
 
 - Always check `package.json` first to understand available scripts before running anything
-- Run `npm install` before attempting to execute Node.js scripts in a new project
+- Before running or briefing any install/test/lint/build command, check which package manager the repo actually uses — a tracked `pnpm-lock.yaml`/`yarn.lock`/`package-lock.json`, or a `packageManager` field in `package.json` — and use that tool by name. Don't default to `npm` as a generic placeholder; running the wrong manager's install command can generate a stray lockfile and produce a false "this repo is missing X" claim. (detail: memory "feedback_subagent_briefed_wrong_package_manager")
+- Run `npm install` (or the repo's actual package manager's install) before attempting to execute Node.js scripts in a new project
 - If a user specifies a script to run, use exactly what they specify
 
 ## Library Compatibility Gotchas
+
+### Optional/lazy-loaded peer dependencies fail silently at runtime, not at build/test/lint
+A component that dynamically imports an optional peer dependency (chart libraries like ECharts, PDF/canvas renderers, syntax highlighters commonly do this) can pass `tsc`/`vite build`/lint/unit tests cleanly even when that dependency was never added to `package.json` — none of those steps actually execute the dynamic `import()` call, and the component's own error boundary may swallow the runtime failure with zero console output. This surfaces only on the first feature that newly exercises that dependency path. Fix: after wiring in a new usage of any library with lazy/optional dependencies, run a live render/runtime smoke check (Playwright drive, browser-mode test, or manually running the app) in addition to the normal build+lint+test suite — don't treat green CI as sufficient for that one class of change. (detail: memory "feedback_optional_peerdep_runtime_failure_invisible_to_tests")
 
 ### LobeHub / antd-style + Zustand 5 Conflict
 

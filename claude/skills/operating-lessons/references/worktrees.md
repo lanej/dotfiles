@@ -12,11 +12,29 @@ State the worktree's full absolute path explicitly in the briefing's Context, di
 ### `EnterWorktree` is pinned to the session's original root
 If the session's original working directory changes identity mid-session (full rename/relocation, or it stops being a git repo), `EnterWorktree` can't resolve a base branch there — it never re-targets to wherever the project actually lives now. Fall back to plain `git worktree add <path> -b <branch>` against the current real repo, mirroring `EnterWorktree`'s own `.claude/worktrees/<name>` convention. (detail: memory "reference_enterworktree_pinned_to_original_root")
 
+### `EnterWorktree`'s default `fresh` mode can silently branch from a stale `origin/main`
+Its default `baseRef` setting branches from `origin/<default-branch>`, not local `main` — if local `main` carries unpushed commits (common in a solo-stakeholder sandbox repo that pushes in batches), the new worktree lands on the stale `origin` tip with no error or warning. Before trusting `fresh` mode, check `git log --oneline origin/main..main | wc -l`; if nonzero, build the worktree manually off local `main` (`git worktree add <path> -b <branch> main` from the primary checkout, then `EnterWorktree({path: ...})`) instead. (detail: memory "reference_enterworktree_fresh_baseref_stale_origin")
+
+### Check a repo's own governance docs before adding a worktree/branch there — even one you don't primarily maintain
+Creating a new worktree/branch in a shared external repo (a personal fork with worktrees already sitting next to each other, e.g. `~/src/easy-ui-worktrees/`) can violate that directory's own "use the existing checkout/branch/PR, do not create parallel stacks" convention, documented in a `README.md`/`CONTRIBUTING.md` you never read because the check only fires for the primary project. Treat "this repo already has other worktrees/checkouts next to it" as itself the signal to look for such a doc before adding another one. (detail: memory "feedback_worktree_governance_docs_not_checked")
+
 ### Process/port kill scope boundary — binds you directly, not just sub-agents you brief
 Don't kill a process you don't own, or mutate production data/schema when only asked to dry-run/verify — this applies to your own tool calls as the orchestrator, not only to a sub-agent you're briefing. Before running `kill`/`pkill`/`killall` against a PID found via `ps`/`lsof` rather than one your current session started, confirm ownership first; don't kill based on inference ("this looks like an old merged worktree's leftover process"). If a permission classifier/hook denies the attempt, that's a sign your own judgment should have caught it first — don't reframe the denial as your own judgment having worked (recurred 2026-08-15 in the orchestrator itself, caught only by the harness's classifier, after the original 2026-07-09 fix was scoped to sub-agent briefings only). Port/process-cleanup briefings to sub-agents need the same ownership confirmation before killing anything, plus restart+disclosure if something outside scope was killed; proactively check for orphaned killed processes yourself afterward rather than trusting the "done" report. For live cloud/DB credentials, state the negative explicitly ("dry-run only; do not create/modify/delete anything") — a brief that only states the affirmative command doesn't thereby forbid everything else those credentials permit. The same inference-based-killing failure mode applies to ad hoc remediation scripts against live cloud executions, not just local PIDs: a bash guard/kill-switch written under incident pressure to cancel unwanted executions (e.g. `gcloud run jobs executions cancel`) must match on the specific culprit's identity (task args, job name, or another attribute unique to the bad execution) — not a broad proxy like "any new execution created by this service account/actor," which will also match legitimate concurrent work sharing that same actor (recurred 2026-08-16 in `pulse`: a retry-storm guard script matched on `creator=<Composer SA>` alone, which would also match that DAG's own legitimate `harvest` executions; caught before real damage only by verifying the specific interval's task afterward). (detail: memory "project_subagent_port_kill_incident"; "project_orchestrator_port_kill_attempt"; also "feedback_subagent_dry_run_scope_boundary"; "pulse-airflow-migration-incident")
 
 ### Closing a verification gap without touching a port you don't own
 When mandatory browser/e2e verification is blocked because the project's fixed dev ports are legitimately held by another live worktree/session, don't kill it and don't skip the verification — confirm ownership (`lsof -p <pid> -a -d cwd`), then stand up your own instance on alternate ports (adjusting a dev-proxy target if needed to reach the alternate port), run the verification against it, and revert any temporary config edit before finishing (confirm `git status`/`git diff` clean). This resolves the tension between "never touch a process you didn't spawn" and "a plan's verification step isn't optional" without weakening either. (detail: memory "project_alternate_port_verification_instance")
+
+### Two concurrent Agent tracks writing into the same worktree can race on the shared git index
+A file-disjoint parallel fan-out (e.g. a Go/frontend track and a Python-deletion track, both
+pre-approved to write into one worktree) is still exposed to a plain `git commit -m` committing
+*everything currently staged*, not just the files that track itself `git add`ed — if the other
+track happens to be mid-`git add` on its own files at that moment, they land in the wrong commit.
+Brief every concurrently-writing track to commit with `git commit -- <explicit paths>` (or
+`git add <paths>` immediately followed by `git commit`, never a bare `git commit -m` trusting
+whatever the index happens to hold) from its very first commit. If a bundled commit is discovered
+after the fact, verify no data loss before touching history, and prefer splitting the commit apart
+over a `git reset --hard`, especially while another track may still be writing to that same tree.
+(detail: memory "feedback_parallel_track_commit_race_shared_worktree")
 
 ### No concurrent duplicate background commands
 Check `TaskList`/`TaskStop` for an equivalent long-running command before spawning another.
@@ -78,6 +96,28 @@ script — `export PATH="$HOME/.nvm/versions/node/vX.Y.Z/bin:$PATH"` — repeati
 subsequent Bash call in that worktree, since PATH doesn't persist across calls. If the version
 isn't already installed, `nvm install` itself still needs `source`, and no workaround is confirmed
 yet. (detail: memory "project_worktree_source_command_blocked_nvm_workaround")
+
+### Gitignored review/report directories don't transfer into or out of a worktree
+
+`.ui-review/runs/` (Viewrule's own report/screenshot history) is gitignored via its own
+`.ui-review/.gitignore` — `git worktree add` only checks out tracked files, so a fresh
+worktree starts with zero review history even though `.ui-review/config.json`/`rules.json`
+(tracked) copy over fine. Confirmed 2026-09-22 in `usps-local-route-detection`: the primary
+checkout's `.ui-review/runs/` (two runs from Sep 17) and a worktree's own `.ui-review/runs/`
+(two more runs from Sep 21-22, generated by dispatched agents running `/viewrule:review`
+inside that worktree) were completely disjoint — neither had the other's history, and the
+worktree's runs would have been silently lost forever the moment that worktree was removed
+(this session's own established cleanup pattern). The same applies to any other
+gitignored-but-valuable directory a tool writes into a worktree (build caches with real
+diagnostic value, local review-run archives, etc.) — assume nothing gitignored survives
+worktree creation or removal unless copied explicitly.
+
+Fix: when creating a worktree in a repo that has `.ui-review/` (or an analogous gitignored
+report directory), copy it into the new worktree right after creation (`cp -r
+<primary>/.ui-review/runs <worktree>/.ui-review/runs`) for baseline continuity, and copy any
+new runs back out to the primary checkout (or wherever the worktree's *next* home is) before
+running `git worktree remove`/`ExitWorktree` — never let removal be the point where this
+data disappears. (detail: memory "project_worktree_gitignored_review_runs_lost")
 
 ### Dispatched Agent inheriting an unexited Plan Mode
 A background `Agent` dispatched to execute a fully-approved task can inherit the orchestrator's own not-yet-exited Plan Mode state (e.g. left open from an earlier `/socrates` Phase 3 entry elsewhere in the same session) — the orchestrator won't notice until the child reports back that it can't write. Once stuck this way, the child has no `ExitPlanMode` tool of its own, so it will correctly refuse a relayed "it's approved" from the orchestrator (Constitution II: not Josh's direct words) no matter how well-informed that relay is — retrying via `SendMessage` just burns another cycle on a permanently dead-ended agent. Before dispatching an `Agent` meant to execute directly, confirm your own session's Plan Mode was actually exited this turn (not inferred from an earlier "go" that predates a possible still-open entry point); if a dispatched agent reports unexpected Plan Mode entrapment, abandon it and dispatch a fresh one with an explicit brief line: "This task is fully scoped and pre-approved — do not enter Plan Mode; execute directly." (detail: memory "feedback_subagent_plan_mode_entrapment")

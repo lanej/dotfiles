@@ -404,8 +404,8 @@ gh-clone() {
 		--reverse \
 		--multi \
 		--prompt="GitHub repo> " \
-		--header=$'CTRL-R: Search | Wildcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
-		--bind='ctrl-r:change-prompt(🔍 Searching {q}...> )+reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")+clear-query+change-prompt(GitHub repo> )' \
+		--header=$'CTRL-R: Search | WilDcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
+		--bind='ctrl-r:change-prompt(Searching {q}...> )+reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")+clear-query+change-prompt(GitHub repo> )' \
 		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
 		--preview-window="$(fzf_preview_window)")
 

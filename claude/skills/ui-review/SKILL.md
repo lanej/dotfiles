@@ -88,3 +88,14 @@ without a browser. Git gates are optional and scoped to selected applications;
 see `~/.files/docs/ui-review.md`. Use `ui-review check` in application CI for
 required gates. Explicit requests to configure enforcement authorize that
 configuration; do not add extra approval steps.
+
+A clean `enforceOnStop` gate does not mean every visual regression class in the
+project is covered. Viewrule's configured checks capture static, route-based
+states — an *interaction* state (collapse/expand, hover, open/closed) that
+isn't itself a distinct route can sit outside that coverage even with the gate
+live, and re-verifying it by ad hoc screenshot-and-`getBoundingClientRect()`
+each time a change touches it doesn't close the gap for the next change. When
+an element has meaningful interaction states like this, write a small
+persisted browser/e2e test asserting the geometry once, instead of re-deriving
+manual pixel measurement from scratch on every future edit. (detail: memory
+"feedback_viewrule_interactive_state_coverage_gap")

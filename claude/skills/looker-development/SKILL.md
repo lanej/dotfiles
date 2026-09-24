@@ -137,6 +137,14 @@ concrete tell. Fix is a differently-scoped credential/role, never a client code 
 
 ## Shift-left checklist — catch these before opening a PR, not after a multi-minute CI round-trip
 
+- If the project has a dashboard chart-type lint (e.g. `looker-development`'s `just
+  lint-chart-types [branch]`, added 2026-09-18) — run it before opening any PR that adds or
+  changes a dashboard element's chart type. Looker's own CI validators don't check
+  chart-type-vs-field-shape correctness at all (a time dimension plotted as a bar chart is
+  syntactically valid LookML and passes every official validator), so a clean CI run is not
+  evidence this is right. Like `validate_branch_live.py`, this needs a live Looker API call
+  against a *pushed* branch, so it can't be a git hook — it's enforced by this checklist entry,
+  not tooling; review is the actual backstop if it's skipped.
 - `grep -rn "^test:" .` across the project — if empty, expect Assert Validator to error rather
   than skip; don't burn a debug cycle chasing it as a regression.
 - Check every model's `connection:` against the real configured connection list (via a

@@ -121,6 +121,42 @@ session wakes/resumes it rather than opening a read-only view. If the person att
 without re-`stop`ping it, it keeps running with `bypassPermissions` in the background. Always
 mention this caveat when directing anyone to go inspect a stopped builder/reviewer session.
 
+## `recover` reporting "none" doesn't mean there's nothing to resume (jira-dispatcher, 2026-09-21)
+
+Confirmed live: a previous session died after a builder finished and a PR was opened, but before
+`finish` was ever called — losing the state-file entry `recover` depends on. `recover` correctly
+reported no in-flight state; a real, actionable orphaned PR (green CI, unreviewed) sat open on
+GitHub the whole time regardless. A second, unrelated orphaned PR (a bootstrap smoke test) was also
+found this way.
+
+**Fix:** `recover`'s "none" is a claim about this script's own state directory, not about actual
+repo/GitHub state. On dispatcher start, also independently cross-check: any open PR on a branch
+matching this repo's dispatcher naming convention, any worktree under `.claude/worktrees/` not
+accounted for by `recover`'s output. Treat a found discrepancy as a normal item to resume via
+worker-protocol.md steps 11–16 — independently re-verify, dispatch review, apply the merge bar
+(including its CI/infra-self-fix carve-out) — without asking the user first; the same verification
+machinery that establishes trust in a live item is sufficient to establish trust in a recovered one.
+Reserve escalation for what the bar genuinely can't resolve mechanically (no way to independently
+confirm what step a recovered item reached, or a real policy question left after applying the bar
+and its carve-outs) — not for ambiguity the protocol's own tools already know how to settle.
+
+An interactively-attached dispatcher session (a human is present and can answer) is not an
+exemption from this — the point isn't that no one's available to ask, it's that asking is the wrong
+default when the protocol already has a mechanical answer. Default to resolving via the existing
+verification/review machinery first; reach for `AskUserQuestion` only for what's left after that
+machinery is exhausted.
+
+Cleanup after a recovered item's merge can look like it hit the same gap: `claude rm <name>` (using
+the session's display *name*, e.g. a slug) can report no matching job even for a genuinely-exited
+session. **Corrected after further testing (same day):** this was a misuse, not a real gap —
+`claude rm`/`claude stop`/`claude agents` all key on the short *id* (e.g. `8d3ea16b`), not the
+display name, and a fully-exited session only shows up in `claude agents --json` with `--all` (the
+default view omits completed/exited jobs). `claude agents --json --all`, filtered for the name, then
+`claude rm <id>` on the id it returns, worked cleanly on two already-worktree-deleted sessions,
+including correctly reporting the (already-gone) worktree path. Always resolve name → id via
+`--all` before concluding a session is untrackable; only fall back to manual `git worktree unlock` +
+`remove --force` + `branch -D` if `claude rm <id>` (the *right* id) itself still fails.
+
 ## Per-resource lock contention is a real, load-bearing serialization, not a bug
 
 One builder→reviewer lifecycle per resource at a time (worker-protocol.md step 3) is intentional —

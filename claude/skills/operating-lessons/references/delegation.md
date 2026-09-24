@@ -34,6 +34,9 @@ Treat any **second** notification on the same task-id as a signal, not routine c
 ### Killed-agent status
 A task-notification with `status: killed` has its `result` field populated from the agent's last in-flight message — narrated intent ("let's check X now"), not a completed or verified finding, no matter how conclusive it reads. Treat it exactly like any other unverified sub-agent claim: check live state yourself (logs, `gcloud`/`git` state, a direct request) before drawing any conclusion from it. (undocumented in memory as of this writing — first observed instance)
 
+### Completed-but-stalled status
+A `status: completed` notification is not automatically a real result either — check `usage.tool_uses` and `usage.duration_ms` before trusting the content. A multi-step research/investigation/implementation task returning in single-digit seconds with 0 tool uses is a stalled or echoed-back prompt, not a completed finding, even though the `result` text can read as plausible narrated intent. Re-prompt the same task-id rather than surfacing it. (detail: memory "feedback_task_notification_stall_zero_tooluse")
+
 ### Checking on a running background agent
 Never call `TaskOutput` with `block=false` (or anything else that surfaces a running agent's raw transcript) just to answer "is it still working" during a goal check-in or other status-pressure moment — this pollutes context exactly like reading a fork's output file directly (the "don't peek" rule). Use an observable side effect instead — `git status --short`, `git diff --stat`, or an expected intermediate artifact named in the dispatch brief — and otherwise wait for the real `<task-notification>` completion event. (detail: memory "feedback_taskoutput_block_false_transcript_dump")
 
@@ -45,6 +48,9 @@ Before telling the user a merge/push is safe or a fast-forward, run the comparis
 
 ### Unattributed repo changes
 A sub-agent's denial of authorship — even backed by its own tool-call history or a `ps` check — is still self-report; verify it from the raw transcript, don't just re-ask. Read the sub-agent's own JSONL directly (`~/.claude/projects/<escaped-cwd>/<session-id>/subagents/agent-<task-id>.jsonl`) rather than trusting its reply. If that comes up clean, before treating the change as a genuine anomaly, grep `~/.claude/projects/<escaped-cwd>/*.jsonl` (all top-level session files, not just the current one) for a unique string from the new content — a second Claude Code window open on the same repo is a real, mundane cause of a write with no actor visible in either session's own history, and it will show up this way. Check `CronList` too. Content being accurate/load-bearing is not evidence of authorship — resolve provenance before deciding whether to commit. (detail: memory "project_readme_provenance_concurrent_session")
+
+### Unauthorized remote/repo creation by a `gh`-capable sub-agent
+A commit/build/live-smoke-test verification pass does not surface a sub-agent creating org-visible remote infrastructure (a new GitHub repo, a changed `origin`, a webhook) it wasn't briefed to create — this isn't fork-specific, it happens with any agent that has `gh` or another network-mutating tool. After any such dispatch, add `git remote -v` (and `gh repo view <name>` if a new remote appears) to the verification pass as a matter of course, not only when a later task happens to need the remote state. If an unauthorized remote turns up, the next brief into that repo must explicitly enumerate what's forbidden (`gh repo create`, `git push`, Pages/settings changes) rather than assuming "local only" was implicit. (detail: memory "feedback_subagent_remote_repo_creation_missed_by_verification")
 
 
 ## Verification-before-reporting family
@@ -86,8 +92,18 @@ CLAUDE.md carries the contract itself (write findings to a file, reply `status:`
 - **Write-capable built-ins** such as `general-purpose`: state the contract in the brief.
 - **Custom agents that always produce prose** should carry it in their own definition rather than in your brief — a definition is always loaded, a brief's instructions are not. `document-summarizer` does.
 - **Read-only agents** (`Explore`, `Plan`, and any custom agent without `Write`) must return concise findings inline. Do not request a file they cannot create; use a write-capable agent when a file is required.
-- **`code-reviewer`** has no `Write` tool and structurally cannot comply. Leave it returning prose, or grant it `Write` deliberately.
+- **`code-reviewer`** has no `Write` tool and structurally cannot comply. Leave it returning prose, or grant it `Write` deliberately. It also has no `Bash` (Read/Glob/Grep only) — don't brief it to run `git diff`/`git log` itself; pre-compute the diff to a file and point it there instead. (detail: memory "reference_code_reviewer_no_bash_access")
 - Compliance measured 12/12, but `wrote:` is still an unverified claim — check the file exists before relying on it.
+
+## Task dependency and parallel dispatch
+
+Before dispatching an already-written multi-task plan, annotate each task with what prior task(s) it actually reads/depends on — not just its position in the numbered list. Tasks with no dependency on a still-in-flight task's output default to concurrent dispatch (single message, multiple `Agent` tool_use blocks), not strict numeric-order serial execution. A Plan agent or critique pass that checks task *correctness* (file lists, check ordering) won't surface this on its own — it has to be asked for explicitly. Exception: once a plan is committed to executing under `subagent-driven-development`, that skill's own sequential-only constraint governs instead (`feedback_sdd_plan_no_parallel_phasing`) — don't parallelize there. (detail: memory "feedback_serial_dispatch_missed_parallel_tasks")
+
+A task-scoped sub-agent that reports going beyond its briefed task list — even when writing itself was authorized — is a scope deviation, not a bonus. Flag it before accepting the extra work as done: run each unbriefed commit's own acceptance check individually rather than one aggregate check at the end, or check with Josh first. Don't infer "that's the outcome you want" on the agent's behalf. (detail: memory "feedback_fork_task_scope_creep_palette_package")
+
+## Skill-mapped dispatch
+
+A task that maps to a known dedicated `subagent_type` (`reflection`, `easypost-research`, `epq-report-author`, etc.) needs that `subagent_type` set explicitly on the `Agent` call — a slash command or skill name does not automatically bind to a same-named agent type when dispatched via `Agent` rather than the `Skill` tool, and omitting it silently defaults to `general-purpose`. The failure is invisible: the call still succeeds and returns plausible prose, just without the specialized agent's own baked-in procedure. Check this before dispatch, not after reading a suspiciously generic result. (detail: memory "feedback_reflection_dispatch_missing_subagent_type")
 
 ## Delegation vs handoff
 

@@ -26,7 +26,7 @@ Single targeted lookups (one `grep`, one file read, one known query) can run inl
 
 The sub-agent should work through these sources in order, stopping when it has sufficient confidence:
 
-1. **Workspace KB** — `qmd query --no-rerank "<query>"` — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context
+1. **Workspace KB** — `mcp__qmd__query` tool (not the `qmd` CLI — a shared daemon backs this MCP server; invoking the CLI directly spawns a separate process and defeats it) — prior analyses, domain docs, BQ data dictionary, strategy, headcount, customer context
 2. **Codebase** — Glob/Grep/Read — source of truth for implementation details
 3. **BigQuery** — `mcp__bigquery__query` — live warehouse data; always `dry_run` first
 4. **Jira** — `mcp__jira__jira_issues_search` JQL — ticket status, project decisions, delivery context
