@@ -22,6 +22,25 @@ __pycache__
 # Skills are ignored by default (symlinked external skills are machine-specific).
 # Real, repo-owned skills are force-added: git add -f claude/skills/<name>
 claude/skills/*
+# Anthropic-published skills (anthropics/skills, official plugins) are never
+# tracked here, even with -f: install them from the source so they stay current.
+# See claude/skills/ANTHROPIC-SKILLS.md.
+claude/skills/algorithmic-art/
+claude/skills/brand-guidelines/
+claude/skills/canvas-design/
+claude/skills/doc-coauthoring/
+claude/skills/docx/
+claude/skills/frontend-design/
+claude/skills/internal-comms/
+claude/skills/mcp-builder/
+claude/skills/pdf/
+claude/skills/pptx/
+claude/skills/skill-creator/
+claude/skills/slack-gif-creator/
+claude/skills/theme-factory/
+claude/skills/web-artifacts-builder/
+claude/skills/webapp-testing/
+claude/skills/xlsx-python/
 
 # Agents are ignored by default (some are symlinked from ~/src/ep-dotfiles).
 # Real, repo-owned agents are force-added: git add -f claude/agents/<name>
