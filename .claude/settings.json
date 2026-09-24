@@ -109,6 +109,10 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-git-stash-guard-hook"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-pr-gate-hook"
           }
         ]
       },

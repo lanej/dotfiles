@@ -164,10 +164,7 @@ Read the result before showing it. Send it back if it references anything the re
 git push origin <branch-name>
 ```
 
-Show the user:
-1. The GitHub PR creation URL
-2. The generated PR description from `/tmp/pr_description.md`
-3. Instructions to copy/paste the description when creating the PR
+Show the user the description, then open the PR only on their approval with `gh-pr-create-from /tmp/pr_description.md` (add `--draft` while a screenshot TODO is open). Raw `gh pr create` is blocked by a hook.
 
 ## Usage
 

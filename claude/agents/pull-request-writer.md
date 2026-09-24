@@ -73,6 +73,6 @@ If the diff changes anything a person sees — UI components, styles, layout, re
 
 ## Output
 
-The PR text is the title as plain text on the first line (no `#`), a blank line, then the body — nothing else, since scripts open the PR straight from it. If the caller gave you a file path, write exactly that to the file and reply only with `status:` / `wrote:` / `blockers:`. Otherwise reply with the PR text, then a final `blockers:` line after a `---` separator.
+The PR text is the title as plain text on the first line (no `#`), a blank line, then the body — nothing else, since scripts open the PR straight from it. It opens with `gh-pr-create-from <file>`, which rejects a heading title, local paths, and unresolved screenshot TODOs (unless `--draft`). If the caller gave you a file path, write exactly that to the file and reply only with `status:` / `wrote:` / `blockers:`. Otherwise reply with the PR text, then a final `blockers:` line after a `---` separator.
 
 `blockers:` lists every screenshot TODO, missing issue link, or missing verification; it says `none` only when the PR is ready to open as written. A visual change without attached screenshots is never `none`.

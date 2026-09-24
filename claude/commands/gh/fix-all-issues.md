@@ -30,7 +30,7 @@ Find all open GitHub issues without associated PRs, create git worktrees for eac
        - Verify the reproduction steps now pass
        - Commit changes using git-commit-message-writer agent
        - Push branch to origin
-       - Write the PR title and description with the pull-request-writer agent (output to a file), then `gh pr create --title "<first line>" --body-file <rest>`; the body must include `Fixes #{number}`
+       - Write the PR title and description with the pull-request-writer agent (output to a file), then `gh-pr-create-from <file>`; the body must include `Fixes #{number}`
        - Wait for CI checks to pass using `gh pr checks`
        - **If checks pass: immediately auto-merge** with `gh pr merge --auto --squash`
        - **If merged: close issue and clean up worktree**
