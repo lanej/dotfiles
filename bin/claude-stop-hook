@@ -32,10 +32,11 @@ fi
 # Record this Stop event timestamp
 date +%s > "$state_file"
 
-# Clear tool-running color
+# Finished, but still warm. Clearing the state here would make a window Claude
+# just worked in indistinguishable from one it was never in; tmux-claude-sweep
+# ages this to "dormant" once it has sat untouched.
 if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
-    tmux set-option -w -t "$TMUX_PANE" @claude-state "" 2>/dev/null || true
-    tmux refresh-client -S 2>/dev/null || true
+    "$(dirname "$0")/tmux-claude-state" set idle "$TMUX_PANE" 2>/dev/null || true
 fi
 
 exit 0
