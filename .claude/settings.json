@@ -49,15 +49,6 @@
             "command": "$HOME/.files/bin/claude-session-start-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "Notification": [
@@ -109,6 +100,10 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-git-stash-guard-hook"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.files/bin/claude-pr-gate-hook"
           }
         ]
       },
@@ -117,16 +112,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-tool-start-hook"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
       }
@@ -144,49 +130,31 @@
             "command": "$HOME/.files/bin/claude-stop-hook"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "SessionEnd": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
+            "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
       }
     ],
     "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      },
       {
         "matcher": "Agent",
         "hooks": [
@@ -205,61 +173,6 @@
           }
         ]
       }
-    ],
-    "PostToolUseFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.files/bin/claude-tmux-later\" hook",
-            "timeout": 30
-          }
-        ]
-      }
     ]
   },
   "worktree": {
@@ -268,6 +181,9 @@
   "statusLine": {
     "type": "command",
     "command": "$HOME/.files/bin/claude-statusline"
+  },
+  "attribution": {
+    "pr": ""
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
@@ -319,8 +235,5 @@
   "theme": "auto",
   "editorMode": "vim",
   "verbose": true,
-  "feedbackSurveyState": {
-    "lastShownTime": 1754065442220
-  },
   "crossSessionInbound": "accept"
 }

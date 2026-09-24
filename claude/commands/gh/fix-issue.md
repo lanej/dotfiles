@@ -49,6 +49,6 @@ Once an issue number is available (either from $ARGUMENTS or user selection), an
 
 # OPEN PULL REQUEST
 
-- Open a PR and request a review.
+- Open a PR (title and description from the pull-request-writer agent) and request a review.
 
 Remember to use the GitHub CLI ('gh') for all Github-related tasks.

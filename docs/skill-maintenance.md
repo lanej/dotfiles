@@ -10,8 +10,7 @@ authorization remain authoritative.
 For a substantive change to instructional behavior, load the enabled Anthropic
 **skill-creator:skill-creator** through the runtime's installed catalog. Use the
 parts of its authoring guidance relevant to the change, within the owner's
-one-detector policy. The older repo-owned `claude/skills/skill-creator` is not a
-substitute merely because its name matches. Do not edit plugin caches or update
+one-detector policy. Do not edit plugin caches or update
 installed plugins as a side effect. If the workflow is unavailable, report the
 validation limit without claiming it was followed.
 

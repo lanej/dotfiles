@@ -1,7 +1,6 @@
 ---
 name: tech-radar
 description: Maintain the tech radar in docs/radar.md. Use when adding, promoting, demoting, or retiring tools. Triggers on phrases like "add to radar", "trial X", "adopt X", "hold X", "archive X", "update the radar", or any request to change tool status.
-model: sonnet
 color: orange
 ---
 

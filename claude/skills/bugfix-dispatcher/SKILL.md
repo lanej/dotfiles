@@ -165,7 +165,7 @@ There is no separate, looser bar for features — "no PR fallback for features" 
 
 All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (records the pre-merge/merged SHAs into state, pushes to `main`; if the repo defines a `just install`/`make install` target, runs it from the fixer's worktree — best-effort, warns rather than fails — since a plain push doesn't refresh an installed compiled binary like `~/.local/bin/bigquery`; syncs the primary checkout's local `main` to match; then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10). Do not `claude rm`-then-forget — step 7.5 below still applies to this path.
 
-Anything short → **PR path**: `bin/bugfix-worker finish <id> pr` (pushes the branch, opens a PR, records the PR number into state, then `claude stop`s the session — preserved and `claude attach`-able later, since this is exactly the outcome worth Josh inspecting).
+Anything short → **PR path**: have `pull-request-writer` write the description to a file, then `bin/bugfix-worker finish <id> pr <file>` (pushes, opens the PR, records its number in state, then `claude stop`s the session so Josh can `claude attach` it later).
 
 ### 7.5. Follow through on CI, don't just fire-and-forget — merge and PR paths both
 

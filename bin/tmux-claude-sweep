@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Age Claude window states, and summarise what is outstanding for the status bar.
+
+tmux has no timer of its own, so this runs from a `#()` in status-right and gets
+re-run once per status-interval. Two jobs, one process, regardless of how many
+windows exist:
+
+  1. A window Claude finished with goes `idle` -> `dormant` once it has sat
+     untouched, so a stale tab reads as stale instead of merely "done".
+  2. A window stuck in `tool`/`thinking` far longer than any real turn lost its
+     Stop hook (killed client, crashed session). Claiming it is still working is
+     the one genuinely misleading state, so it is demoted to `dormant` too.
+
+Prints a compact roll-up -- `#[..] 2! 1* 3.` -- covering every session, because
+the need you most want surfaced is the one in a window you are not looking at.
+"""
+import os
+import subprocess
+import sys
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+import time
+
+state = SourceFileLoader(
+    "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state"))).load_module()
+
+# A finished session stays "just finished" until its prompt cache has lapsed
+# (an hour), after which resuming it pays to re-read the whole conversation.
+# Anything still claiming to run after an hour has lost its Stop hook.
+DORMANT_AFTER = int(os.environ.get("CLAUDE_DORMANT_AFTER", "3600"))
+STALL_AFTER = int(os.environ.get("CLAUDE_STALL_AFTER", "3600"))
+
+# Status-bar roll-up: one glyph per class, hottest first, matching the tab colours.
+SUMMARY = (
+    ("need", "#BF616A", "▲"),
+    ("activity", "#EBCB8B", "●"),
+    ("quiet", "#616E88", "·"),
+)
+
+
+def windows():
+    """Every window on this server that a Claude session has claimed."""
+    out = state.tmux("list-windows", "-a", "-F",
+                     "#{window_id}\t#{@claude-state}\t#{@claude-since}\t#{window_active}")
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 4 or not parts[1]:
+            continue
+        try:
+            since = int(parts[2])
+        except ValueError:
+            since = 0
+        yield parts[0], parts[1], since, parts[3] == "1"
+
+
+def age(name, since, active, now):
+    """The state this window should be in, given how long it has held the current one."""
+    if since <= 0:
+        return name
+    elapsed = now - since
+    # The window you are looking at is never dormant -- you are the activity.
+    if active:
+        return name
+    if name == "idle" and elapsed >= DORMANT_AFTER:
+        return "dormant"
+    if name in ("tool", "thinking") and elapsed >= STALL_AFTER:
+        return "dormant"
+    return name
+
+
+def main():
+    if not state.tmux("display-message", "-p", "ok"):
+        return 0  # No server; nothing to sweep and nothing to draw.
+    now = int(time.time())
+    counts = {"need": 0, "activity": 0, "quiet": 0}
+
+    for window, name, since, active in windows():
+        aged = age(name, since, active, now)
+        if aged != name:
+            # Re-stamp @claude-since so a demoted window does not immediately
+            # re-qualify on the next sweep.
+            state.apply(window, aged)
+            name = aged
+        entry = state.STATES.get(state.ALIASES.get(name, name))
+        if entry:
+            counts[entry[0]] += 1
+
+    if not counts["need"] and not counts["activity"]:
+        return 0  # Quiet windows alone are not worth a permanent status segment.
+
+    segments = ["#[fg=%s,bg=brightblack%s] %s%d " % (colour, ",bold" if klass == "need" else "",
+                                                     glyph, counts[klass])
+                for klass, colour, glyph in SUMMARY if counts[klass]]
+    sys.stdout.write("".join(segments))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

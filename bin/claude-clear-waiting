@@ -19,8 +19,10 @@ log_window_action() {
 window_id="$1"
 window_name=$(tmux display-message -t "$window_id" -p '#{window_name}' 2>/dev/null)
 
-log_window_action "set-option -w -t $window_id @claude-state '' (clear waiting)"
-tmux set-option -w -t "$window_id" @claude-state ""
+# You came over, so the window no longer needs you -- but Claude is still
+# sitting there waiting on your reply, which is "idle", not "no Claude here".
+log_window_action "tmux-claude-state set idle (-t $window_id)"
+"$(dirname "$0")/tmux-claude-state" set idle "$window_id"
 
 log_window_action "rename-window -t $window_id '${window_name#!}' (remove ! prefix)"
 tmux rename-window -t "$window_id" "${window_name#!}"
