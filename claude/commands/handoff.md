@@ -29,7 +29,7 @@ Use `/handoff` when **the session is the problem**, not the task:
 |---|---|
 | One sub-task would pollute context (search, research, review) | plain `Agent` dispatch — see `/delegate` |
 | You will keep driving the session afterward | plain `Agent` dispatch |
-| Context is fine, task is just big | plain `Agent` dispatch, or `subagent-driven-development` |
+| Context is fine, task is just big | plain `Agent` dispatch |
 | Remaining work is unclear even to you | resolve it with the user first — a handoff cannot invent a goal |
 | No JSONL transcript exists (non-standard invocation) | write the brief by hand, then dispatch normally |
 

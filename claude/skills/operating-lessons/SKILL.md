@@ -42,7 +42,7 @@ Read when double-checking a procedure this index names.
 - Architecture: extend the existing codebase idiom before proposing a new layer; name the optimal layer explicitly; query the real distribution before picking a threshold; validate a new classification bar against a known-good example before scaling it
 - **Interactive tools and auto-approve**: the Stop-hook/`/goal` pressure cases behind CLAUDE.md's rule, and the gate that was built and revoked
 - **Search and credential gotchas**: why no web search can reach an internal company document; 1Password dual-account lookups
-- Misc: Dockerfile `COPY`, TOML comment placement, `subagent-driven-development` brief/workspace/BASE pitfalls, monorepo git pathspec double-prefixing, cross-task bug-class propagation, no hard-wrapping markdown, `subagent-driven-development` implementer-prompt.md gaps (git-staging discipline, evidentiary rigor), `CronCreate`/`ScheduleWakeup` cron-math verification
+- Misc: Dockerfile `COPY`, TOML comment placement, monorepo git pathspec double-prefixing, cross-task bug-class propagation, no hard-wrapping markdown, implementer-brief gaps (git-staging discipline, evidentiary rigor), `CronCreate`/`ScheduleWakeup` cron-math verification
 
 ## Error Handling
 
