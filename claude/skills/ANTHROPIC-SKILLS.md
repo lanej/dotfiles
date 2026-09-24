@@ -19,7 +19,6 @@ This file documents the one-time migration of skills from https://github.com/ant
 ### Creative & Design
 - **algorithmic-art** - Generative art and algorithmic design
 - **canvas-design** - Canvas-based design work
-- **frontend-design** - Frontend UI/UX design
 - **theme-factory** - Theme creation and customization
 - **slack-gif-creator** - Create GIFs for Slack
 
@@ -30,9 +29,14 @@ This file documents the one-time migration of skills from https://github.com/ant
 
 ### Development Tools
 - **mcp-builder** - MCP (Model Context Protocol) server building
-- **skill-creator** - Create new Claude skills
 - **web-artifacts-builder** - Build web artifacts
 - **webapp-testing** - Web application testing
+
+## Removed
+
+`skill-creator` and `frontend-design` were deleted once the official
+`claude-plugins-official` plugins of the same name were enabled in
+`.claude/settings.json`; the vendored copies only competed with them.
 
 ## Conflict Resolution
 
