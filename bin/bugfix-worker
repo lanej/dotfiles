@@ -437,14 +437,14 @@ print(json.dumps({
     # github-claude-coordinator T9: this no longer blocks synchronously on
     # its first call. The FIRST invocation for a given id (no
     # `watchRegistered` state yet) registers the merged commit's checks
-    # with the watcher daemon (`watch add --sha ...` — keyed by commit SHA,
+    # with the watcher daemon (`ghwatch add --sha ...` — keyed by commit SHA,
     # not PR number, since there's no PR here — Fix 3) and returns
     # immediately so the calling agent's turn can end. The watcher's
     # injected notification wakes a fresh turn that re-invokes this same
     # subcommand; THAT call (watchRegistered already true) skips
     # registration and fetches the check-runs ONCE (not a loop), since the
     # watcher only notifies once terminal. If that single fetch still
-    # shows pending — the watcher hasn't caught up yet, or `watch add`
+    # shows pending — the watcher hasn't caught up yet, or `ghwatch add`
     # itself failed earlier — fall back to the ORIGINAL bounded polling
     # loop below (R6 safety net, kept intact, not the default path).
     id="${1:?id required}"
@@ -462,13 +462,13 @@ print(json.dumps({
     if [ "$watch_registered" = "true" ]; then
       : # already registered — an injected watcher notification (or a
         # direct re-check) woke this turn; skip straight to classification.
-    elif watch add --repo "$owner_repo" --sha "$merged_sha" --session "$id" --kind checks --expected-duration 5m >&2; then
+    elif ghwatch add --repo "$owner_repo" --sha "$merged_sha" --session "$id" --kind checks --expected-duration 5m >&2; then
       state_set_field "$state_file" watchRegistered "true"
       state_set_field "$state_file" watchRegisteredAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       echo '{"registered": true, "terminal": false}'
       exit 0
     else
-      echo "WARN: 'watch add --sha' failed for $id — falling back to direct polling instead of the watcher path" >&2
+      echo "WARN: 'ghwatch add --sha' failed for $id — falling back to direct polling instead of the watcher path" >&2
     fi
 
     # Single terminal-state fetch — correct once re-invoked by the watcher,
@@ -533,7 +533,7 @@ print(json.dumps({
     # github-claude-coordinator T9: this no longer blocks synchronously on
     # its first call — see ci-main's comment above for the full
     # register/end-turn/wake/re-invoke protocol; this is the PR-number-
-    # keyed twin (`watch add --pr`, not `--sha`).
+    # keyed twin (`ghwatch add --pr`, not `--sha`).
     id="${1:?id required}"
     state_file="$STATE_DIR/$id.json"
     [ -f "$state_file" ] || { echo "ERROR: no state for $id" >&2; exit 1; }
@@ -547,13 +547,13 @@ print(json.dumps({
     watch_registered="$(state_field "$state_file" watchRegistered)"
     if [ "$watch_registered" = "true" ]; then
       : # already registered — go straight to classification below.
-    elif watch add --repo "$owner_repo" --pr "$pr_number" --session "$id" --kind checks --expected-duration 5m >&2; then
+    elif ghwatch add --repo "$owner_repo" --pr "$pr_number" --session "$id" --kind checks --expected-duration 5m >&2; then
       state_set_field "$state_file" watchRegistered "true"
       state_set_field "$state_file" watchRegisteredAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       echo '{"registered": true, "terminal": false}'
       exit 0
     else
-      echo "WARN: 'watch add --pr' failed for $id — falling back to direct polling instead of the watcher path" >&2
+      echo "WARN: 'ghwatch add --pr' failed for $id — falling back to direct polling instead of the watcher path" >&2
     fi
 
     # Single terminal-state fetch — correct once re-invoked by the watcher,
