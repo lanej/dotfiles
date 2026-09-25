@@ -256,7 +256,7 @@ Instead of a blocking `gh pr checks --watch` call or a raw sleep-poll loop, regi
 `github-claude-coordinator`'s resident `watchd` daemon and end the turn:
 
 ```bash
-ghwatch add --repo <owner/repo> --sha <commit-sha> --session "$CLAUDE_SESSION_ID" \
+ghwatch add --repo <owner/repo> --sha <commit-sha> --session "$CLAUDE_CODE_SESSION_ID" \
   --kind checks --expected-duration 5m
 ```
 
