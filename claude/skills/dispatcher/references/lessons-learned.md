@@ -66,6 +66,28 @@ local/CI divergence.
 builder or a reviewer — per worker-protocol.md step 14. Never treat a verdict or an API "success"
 response as proof the underlying mutation actually happened and actually worked.
 
+## `ghwatch add`'s exit code isn't proof of live delivery (github-claude-coordinator watchd)
+
+`ghwatch add` returning success only means a row was inserted into the watcher's registry — it says
+nothing about whether the resident `watchd` daemon is actually running, polling GitHub, or capable
+of ever delivering a wake. Confirmed live: `watchd` had no launchd service, no `KeepAlive`, and no
+build tooling in its own repo, so it was silently not running for an unknown period while
+bugfix-worker's `ci`/`ci-main` subcommands kept calling `ghwatch add --sha`/`--pr` and getting a
+clean exit every time — a registration that was never actually serviced. The gap stayed invisible
+because bugfix-worker's own bounded sleep-loop fallback (kept for exactly this kind of failure)
+picked up the slack every time, so CI follow-through still worked end to end, just always via the
+slow path, never the fast one the watch mechanism was built to provide.
+
+**Fix:** make `watchd` a `KeepAlive: true` launchd service (a dead daemon should restart, not
+silently degrade to fallback-only forever) and add a real `ghwatch selftest` round-trip — checking
+the target session's own on-disk transcript for the delivered wake marker — as the actual proof of
+live delivery, run whenever the daemon is stood up or its health is in question. Never trust
+`ghwatch add`'s exit code alone as evidence the watch mechanism is working end to end; a successful
+registration and an actually-serviced daemon are two different, independently-checkable things. See
+`worker-protocol.md`'s register-and-wake step and `config-schema.md`'s `githubWatch` field for the
+pattern this incident motivated documenting explicitly, with the sleep-loop kept as a permanent
+fallback rather than assumed away.
+
 ## CI/runner flakiness needs a different recovery than a blind retry (bugfix-dispatcher)
 
 Some failure classes cannot be fixed by retrying the same action — e.g. an apply-only retry cannot

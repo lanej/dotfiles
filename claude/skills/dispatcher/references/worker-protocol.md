@@ -243,6 +243,42 @@ missing-test gap. See `lessons-learned.md`'s "`recover` reporting 'none'..." ent
 companion case (a recovered orphaned item) this carve-out was written to unblock without a
 user round-trip.
 
+## 13a. GitHub-state wait: register-and-wake (optional, `githubWatch`)
+
+Any point in this protocol that would otherwise block synchronously on GitHub state going terminal
+— the carve-out above independently confirming a fix "has already gone green on a real run"
+(criterion 3), a builder-side worktree waiting for its own just-pushed commit to go green, or the
+dispatcher's own post-finish CI follow-through (step 16's closeout) — is a candidate for this
+pattern once the adopting repo's config sets `githubWatch.enabled: true` (see
+`config-schema.md`).
+
+Instead of a blocking `gh pr checks --watch` call or a raw sleep-poll loop, register the wait with
+`github-claude-coordinator`'s resident `watchd` daemon and end the turn:
+
+```bash
+ghwatch add --repo <owner/repo> --sha <commit-sha> --session "$CLAUDE_SESSION_ID" \
+  --kind checks --expected-duration 5m
+```
+
+(swap in `--pr <number>` for `--sha <commit-sha>` when the wait is keyed to a PR rather than a bare
+commit — both forms are real, in-production usages: bugfix-worker's `ci-main` uses `--sha`,
+keyed off a merged commit with no PR in play; its `ci` uses `--pr`, for the PR path). Track whether
+registration already happened for this item — e.g. a `watchRegistered` flag in whatever per-item
+state this worker script already persists — so a woken re-entry skips straight to a single snapshot
+check (`gh pr checks` / `gh api .../check-runs`) instead of re-registering or looping; the daemon
+only wakes once the watched state is actually terminal, so one fetch on re-entry is correct, not a
+race.
+
+**Fallback — kept, not removed.** If `ghwatch add` errors (binary missing, `watchd` not running —
+check `launchctl list | grep github-claude-coordinator` when diagnosing) or `githubWatch` is unset
+or `enabled: false` in this repo's config, fall through to a bounded, fixed-interval sleep-poll
+retry instead — mirroring bugfix-worker's own R6 fallback (up to 30 attempts, 30s apart), which it
+keeps intact specifically for this case rather than assuming the watch path always works. Treat
+either condition as a normal, expected branch, not a hard failure. This fallback is permanent, not
+a transitional shim to delete once the watch path looks reliable: a single shared `watchd` daemon is
+now a new single point of failure for every dispatcher instance that adopts `githubWatch`, so any
+worker implementing this step must keep its sleep-loop path working indefinitely alongside it.
+
 ## 14. Independently check real state after any completion claim
 
 After *any* claim of completion — from the builder or from the reviewer — independently check the

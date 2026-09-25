@@ -108,6 +108,29 @@ tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
 [ -n "$tty" ] && printf '\a' > "$tty" 2>/dev/null || true
 ```
 
+### `githubWatch` (optional, object, default omitted — sleep-loop retry only)
+
+```json
+{
+  "enabled": true,
+  "kinds": ["checks"]
+}
+```
+
+When present with `enabled: true`, a builder or dispatcher-worker session waiting on GitHub state
+it just triggered (post-push CI, a pending review, an in-flight merge/deploy) registers itself with
+`github-claude-coordinator`'s `ghwatch` CLI instead of sleep-looping or blocking synchronously on a
+`gh ... --watch` call, then ends its turn — the resident `watchd` daemon polls GitHub in the
+background and wakes this exact session via its `ccsock` once the watched state goes terminal (see
+`worker-protocol.md`'s register-and-wake step; the reference implementation is bugfix-worker's
+`ci`/`ci-main` subcommands). `kinds` lists which wait categories this repo instance has opted into
+— today only `"checks"` (post-push CI) has a working, in-production reference implementation;
+`"review"` and `"merge"`/`"deploy"` are anticipated future kinds a worker script may add support
+for, not yet exercised anywhere. Omitting this field entirely, or setting `enabled: false`, is not
+an error — the bounded sleep-loop retry `worker-protocol.md` documents is the unconditional
+fallback and is never removed, since a single shared `watchd` is a new single point of failure for
+every dispatcher instance that adopts this.
+
 ## Worked example
 
 ```json
