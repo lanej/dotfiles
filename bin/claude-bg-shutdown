@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Stop every live `claude` background agent (kind=="background", state=="blocked" --
+# the only non-terminal state `claude agents --json` reports; done/failed/stopped
+# are already inert). Excludes interactive sessions on purpose: those are Josh's
+# attached tmux work, not background agents, and killing them would drop a live
+# terminal.
+#
+# `claude stop <id>` keeps the conversation (resumable via `claude attach <id>`),
+# so this defaults to listing what it *would* stop; pass --yes to actually stop.
+set -euo pipefail
+
+apply=false
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y) apply=true ;;
+    -h|--help)
+      echo "Usage: $(basename "$0") [--yes]"
+      echo "  Lists live claude background agents. Add --yes to actually stop them."
+      exit 0
+      ;;
+    *)
+      echo "unknown argument: $arg" >&2
+      exit 1
+      ;;
+  esac
+done
+
+targets="$(claude agents --json --all 2>/dev/null | jq -r '
+  .[] | select(.kind == "background" and .state == "blocked") | [.id, .name, .cwd] | @tsv
+')"
+
+if [ -z "$targets" ]; then
+  echo "no live background agents."
+  exit 0
+fi
+
+echo "$targets" | while IFS=$'\t' read -r id name cwd; do
+  if $apply; then
+    claude stop "$id"
+    echo "stopped $id  $name  ($cwd)"
+  else
+    echo "would stop $id  $name  ($cwd)"
+  fi
+done
+
+$apply || echo "(dry run -- pass --yes to stop these)"
