@@ -62,6 +62,13 @@ tmux:
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.tmux.conf
 	@[ -d $(HOME)/.tmux/plugins/tpm ] || git clone --depth=1 https://github.com/tmux-plugins/tpm $(HOME)/.tmux/plugins/tpm
+	@for d in $(HOME)/.tmux/plugins/*/ $(HOME)/.config/tmux/plugins/*/; do \
+		[ -d "$$d" ] || continue; \
+		[ "$$(basename "$$d")" = "tpm" ] && continue; \
+		[ -d "$$d.git" ] && continue; \
+		echo "tmux: removing corrupted plugin dir $$d (not a git checkout, would block reinstall)"; \
+		rm -rf "$$d"; \
+	done
 	@tmux list-sessions 2>/dev/null | grep -q . || tmux new-session -d -s __tpm_bootstrap 2>/dev/null || true
 	@$(HOME)/.tmux/plugins/tpm/bin/install_plugins || true
 	@tmux kill-session -t __tpm_bootstrap 2>/dev/null || true
