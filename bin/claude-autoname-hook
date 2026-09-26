@@ -19,8 +19,12 @@ def log_window_action(action):
         tmux_pane = os.environ.get('TMUX_PANE', 'unset')
 
         try:
+            cmd = ['tmux', 'display-message', '-p']
+            if tmux_pane and tmux_pane != 'unset':
+                cmd += ['-t', tmux_pane]
+            cmd.append('#{window_id}:#{window_name}')
             result = subprocess.run(
-                ['tmux', 'display-message', '-p', '#{window_id}:#{window_name}'],
+                cmd,
                 capture_output=True, text=True, timeout=1
             )
             current_window = result.stdout.strip() if result.returncode == 0 else 'unknown'

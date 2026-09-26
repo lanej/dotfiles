@@ -11,7 +11,7 @@
 log_window_action() {
     local logfile="$HOME/.claude/logs/window-naming.log"
     local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local current_window; current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
+    local current_window; current_window=$(tmux display-message -t "$window_id" -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
     printf '[%s] [clear-waiting] TMUX_PANE=%s current=%s action=%s\n' \
         "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
 }
