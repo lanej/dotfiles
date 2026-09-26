@@ -23,10 +23,10 @@ This repository uses a selective versioning pattern for Claude commands and agen
 └── .claude/          # Gitignored (user-specific settings)
     └── settings.json
 
-~/.claude/            # User's global Claude directory
-├── commands/         # Symlinked to ~/.files/claude/commands/
-├── agents/           # Symlinked to ~/.files/claude/agents/
-├── skills/           # Symlinked to ~/.files/claude/skills/
+~/.claude/            # User's global Claude directory (real, not a symlink)
+├── commands/         # Individual entries symlinked from ~/.files/claude/commands/
+├── agents/           # Individual entries symlinked from ~/.files/claude/agents/
+├── skills/           # Individual entries symlinked from ~/.files/claude/skills/
 └── CLAUDE.md         # Symlinked to ~/.files/claude/CLAUDE.md
 ```
 
@@ -38,9 +38,9 @@ EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from the
 
 ### Workflow
 
-1. **Experimentation**: Create/edit commands in `~/.claude/commands/` (or agents in `~/.claude/agents/`)
-   - Changes appear immediately in `.files/claude/` due to symlink
-   - Not automatically tracked by git (`.claude/` is globally gitignored)
+1. **Experimentation**: Create/edit the file directly under `~/.files/claude/commands/` (or `claude/agents/`)
+   - Run `make claude` to symlink new entries out into `~/.claude/commands/` (already-symlinked files update live since they point back to the same source; only brand-new files need the re-run)
+   - Not automatically tracked by git (new files are gitignored by default)
 
 2. **Selective Versioning**: When ready to version a command:
    ```bash
@@ -63,7 +63,7 @@ The pattern is already employed for several commands:
 
 ### Gitignore Configuration
 
-`~/.claude/{commands,agents,skills,workflows}` are symlinks into this repo, so anything Claude Code, a plugin, or an installer writes there lands in the working tree. `.gitignore` therefore ignores new files in those directories by default; version a real one with `git add -f` (already-tracked files are unaffected). It also ignores repo-local `.claude/` state other than `settings.json` and `mcp-servers.json`, eval `results/`, skill-creator `*-workspace/` dirs, and packaged `*.skill` files. Anthropic-published skills are listed by name and never tracked (`claude/skills/ANTHROPIC-SKILLS.md`).
+`~/.claude/{commands,agents,skills,workflows}` are real directories; `make claude` (the `claude` Makefile target) symlinks each top-level entry in this repo's `claude/{commands,agents,skills,workflows}/` into them individually, so anything Claude Code, a plugin, or an installer writes as a *new* entry there stays local and never lands in the working tree. `.gitignore` still ignores new files under this repo's own `claude/{commands,agents,skills}/` by default; version one deliberately with `git add -f` (already-tracked files are unaffected). It also ignores repo-local `.claude/` state other than `settings.json` and `mcp-servers.json`, eval `results/`, skill-creator `*-workspace/` dirs, and packaged `*.skill` files. Anthropic-published skills are listed by name and never tracked (`claude/skills/ANTHROPIC-SKILLS.md`).
 
 `.claude/settings.json` is tracked but rewritten in place by Claude Code; a `claude-settings` clean filter (`.gitattributes`, configured by `make claude`) drops bookkeeping keys such as `feedbackSurveyState` so they never show up as changes.
 

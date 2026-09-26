@@ -46,9 +46,10 @@ claude/skills/xlsx-python/
 # Real, repo-owned agents are force-added: git add -f claude/agents/<name>
 claude/agents/*
 
-# ~/.claude/{commands,workflows} are symlinked here too, so Claude Code, plugins,
-# and installers write straight into the repo. Ignored by default like agents;
-# version a real one with: git add -f claude/commands/<name>
+# New/experimental commands are ignored by default; version one deliberately with:
+# git add -f claude/commands/<name>. (`make claude` symlinks individual entries out
+# into a real ~/.claude/commands/, so this no longer fills up from plugins/installers
+# writing there directly — see the `claude` Makefile target.)
 claude/commands/*
 claude/workflows/
 

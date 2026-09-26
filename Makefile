@@ -98,7 +98,6 @@ git:
 	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
 	@ln -fs $(DOTFILES)/git/hooks/pre-commit $(DOTFILES)/.git/hooks/pre-commit
 	@ln -fs $(DOTFILES)/git/hooks/commit-msg $(DOTFILES)/.git/hooks/commit-msg
-	@chmod +x $(DOTFILES)/git/hooks/pre-commit $(DOTFILES)/git/hooks/commit-msg
 gpg:
 	@mkdir -p $(HOME)/.gnupg
 	@ln -fs $(DOTFILES)/rc/gpg.conf $(HOME)/.gnupg/gpg.conf
@@ -178,10 +177,14 @@ claude: claude-plugins
 	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
-	@ln -fns $(DOTFILES)/claude/commands $(HOME)/.claude/commands
-	@ln -fns $(DOTFILES)/claude/agents $(HOME)/.claude/agents
-	@ln -fns $(DOTFILES)/claude/skills $(HOME)/.claude/skills
-	@ln -fns $(DOTFILES)/claude/workflows $(HOME)/.claude/workflows
+	@for d in commands agents skills workflows; do \
+		[ -L $(HOME)/.claude/$$d ] && rm $(HOME)/.claude/$$d; \
+		mkdir -p $(HOME)/.claude/$$d; \
+		for f in $(DOTFILES)/claude/$$d/*; do \
+			[ -e "$$f" ] || continue; \
+			ln -fs "$$f" $(HOME)/.claude/$$d/; \
+		done; \
+	done
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json

@@ -69,7 +69,7 @@ This repository uses a "selective versioning" pattern for the `bin/` and `claude
 ## AI Integration
 
 The `claude/` directory contains context and commands for AI assistants. While named "claude", the patterns (commands/agents defined in Markdown) are relevant for understanding the user's AI workflow.
-*   **Global Config:** `~/.claude/` (symlinked from `.files/claude/` and `.files/.claude/`).
+*   **Global Config:** `~/.claude/` (real directory; individual commands/agents/skills/workflows entries are symlinked in from `.files/claude/`, plus a few top-level files symlinked from `.files/claude/` and `.files/.claude/`).
 *   **Local Overrides:** `.claude/settings.json` handles user-specific settings.
 
 ## Gemini Skills
