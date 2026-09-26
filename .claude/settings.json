@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-session-start-hook"
+            "command": "command -v python3 >/dev/null 2>&1 && \"$HOME/.files/bin/claude-session-start-hook\" || true"
           }
         ]
       }
@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.files/bin/claude-autoname-hook"
+            "command": "command -v python3 >/dev/null 2>&1 && \"$HOME/.files/bin/claude-autoname-hook\" || true"
           },
           {
             "type": "command",

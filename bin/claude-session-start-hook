@@ -137,4 +137,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # subprocess.run(capture_output=...) below requires 3.7+; silently no-op
+    # on an older interpreter rather than crashing with a visible traceback.
+    if sys.version_info >= (3, 7):
+        main()
