@@ -41,6 +41,7 @@ Read when double-checking a procedure this index names.
 - Document editing: dependency/sibling-doc grep after *every* change that moves a number, including rebases; citations in externally-shareable artifacts
 - Architecture: extend the existing codebase idiom before proposing a new layer; name the optimal layer explicitly; query the real distribution before picking a threshold; validate a new classification bar against a known-good example before scaling it
 - **Interactive tools and auto-approve**: the Stop-hook/`/goal` pressure cases behind CLAUDE.md's rule, and the gate that was built and revoked
+- **SSH behind a Duo-gated ProxyJump**: one-shot ask-Josh-to-auth vs. durable `ControlMaster`/`ControlPersist` for a daemon/cron, and the silent-failure gotcha when the window lapses
 - **Search and credential gotchas**: why no web search can reach an internal company document; 1Password dual-account lookups
 - Misc: Dockerfile `COPY`, TOML comment placement, monorepo git pathspec double-prefixing, cross-task bug-class propagation, no hard-wrapping markdown, implementer-brief gaps (git-staging discipline, evidentiary rigor), `CronCreate`/`ScheduleWakeup` cron-math verification
 

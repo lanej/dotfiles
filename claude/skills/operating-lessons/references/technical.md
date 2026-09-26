@@ -41,6 +41,9 @@ Joining an event-level table (trackers, scan events, audit records) to a billing
 ### Vertex fast-mode limitation
 `/fast` requires direct Anthropic API and is unavailable on Vertex. Use the model picker (`meta+p`) to switch to Opus instead.
 
+### SSH host behind a Duo/keyboard-interactive ProxyJump
+A host reached via a Duo-gated `ProxyJump` (e.g. `admindev`) fails outright under `BatchMode=yes` — ask Josh to authenticate once via a real TTY (`! ssh <host>`); subsequent non-interactive calls succeed on the same live session (recurred 6+ times: `adhoc`, `pencil tunnel`, `kread`/`srvctl`, `ccsend`). That one-shot fix only lasts the lifetime of one interactive session — for a daemon, cron job, or other repeated unattended access, add `ControlMaster`/`ControlPersist` to the jump host's `~/.ssh/config` stanza instead, so one Duo push covers the whole persist window. Either way, when the authenticated window lapses, the next unattended attempt fails **silently** (e.g. queues locally, or times out) rather than erroring loudly — there's no signal distinguishing "host down" from "auth expired." (detail: memory "ssh_duo_proxyjump_controlmaster")
+
 ## Document editing
 
 ### Dependency check
