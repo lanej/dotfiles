@@ -41,6 +41,24 @@ gotestsum -- -race ./...
 go test -coverprofile=cover.out ./... && go tool cover -html=cover.out
 ```
 
+## Stale gopls/LSP Diagnostics After a Concurrent Write
+
+An editor/LSP diagnostic reporting `undefined: <Symbol>` or a similar compile error right after your
+own edit, a dispatched sub-agent's commit, or a peer session's commit just defined that symbol is
+frequently a stale gopls index, not a real error — gopls doesn't reliably invalidate its package
+index the instant another process writes and commits new Go source. Recurring pattern, confirmed 7+
+times in one session (`fraud-detector`, 2026-09-26).
+
+**Fix:** Never trust the diagnostic at face value. A plain `go test ./...` reporting `(cached)` PASS
+is not sufficient evidence either — it proves the code passed at some earlier point, not that it
+reflects the current tree. Force a non-cached run before treating the diagnostic as real:
+```bash
+go build -a ./...          # -a forces rebuild of all packages, bypasses build cache
+go test ./... -count=1     # -count=1 disables test result caching
+```
+Clean run = diagnostic was stale, proceed. Reproduced failure = real, fix it. (detail: memory
+"feedback_go_stale_lsp_diagnostics")
+
 ## Environment
 
 ```bash
