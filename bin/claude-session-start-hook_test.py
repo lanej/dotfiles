@@ -43,5 +43,5 @@ def test_log_window_action_targets_own_pane_when_tmux_pane_set(fake_home, monkey
 
     assert call(
         ['tmux', 'display-message', '-p', '-t', '%7', '#{window_id}:#{window_name}'],
-        capture_output=True, text=True, timeout=1,
+        stdout=hook.subprocess.PIPE, stderr=hook.subprocess.PIPE, text=True, timeout=1,
     ) in mock_run.call_args_list
