@@ -1,0 +1,10 @@
+#!/bin/bash
+# Claude Code PostToolUse hook (matcher: Agent): placeholder.
+#
+# Referenced by .claude/settings.json but not yet implemented -- the intended
+# behavior (per CLAUDE.md's Model Selection rule: every repo-writing Agent
+# dispatch must name its model explicitly in the visible narration) still
+# needs design input on what this hook should actually check/do. This stub
+# only exists to stop the "No such file or directory" error; it does nothing.
+
+exit 0
