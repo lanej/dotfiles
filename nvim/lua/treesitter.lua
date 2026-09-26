@@ -61,10 +61,11 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
--- Node selection (built-in vim.treesitter.select): <C-Space> selects the node under
--- the cursor (e.g. the whole table from its `{`) and expands on repeat; <BS> shrinks.
-vim.keymap.set({ "n", "x" }, "<C-Space>", function() vim.treesitter.select("parent", vim.v.count1) end)
-vim.keymap.set("x", "<BS>", function() vim.treesitter.select("child", vim.v.count1) end)
+-- Node selection (built-in vim.treesitter.select): <leader>o selects the node under
+-- the cursor (e.g. the whole table from its `{`) and expands outward on repeat;
+-- <leader>i shrinks inward.
+vim.keymap.set({ "n", "x" }, "<leader>o", function() vim.treesitter.select("parent", vim.v.count1) end)
+vim.keymap.set("x", "<leader>i", function() vim.treesitter.select("child", vim.v.count1) end)
 
 -- Textobjects
 require("nvim-treesitter-textobjects").setup({
