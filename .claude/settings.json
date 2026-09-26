@@ -173,6 +173,13 @@
   "worktree": {
     "baseRef": "fresh"
   },
+  "pluginConfigs": {
+    "agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-and-agents-md"
+      }
+    }
+  },
   "statusLine": {
     "type": "command",
     "command": "$HOME/.files/bin/claude-statusline"
