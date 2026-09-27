@@ -1,0 +1,11 @@
+#!/bin/bash
+# Claude Code PreToolUse hook (matcher: Edit|Write): placeholder.
+#
+# Referenced by .claude/settings.json but not yet implemented -- the intended
+# behavior (per CLAUDE.md's Execution & Delegation trigger rule: delegate
+# anything touching 2+ files or requiring 2+ tool calls to gather context)
+# still needs design input on what this hook should actually detect/enforce.
+# This stub only exists to stop the "No such file or directory" error; it
+# does nothing and never blocks.
+
+exit 0

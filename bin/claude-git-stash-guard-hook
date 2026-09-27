@@ -1,0 +1,11 @@
+#!/bin/bash
+# Claude Code PreToolUse hook (matcher: Bash): placeholder.
+#
+# Referenced by .claude/settings.json but not yet implemented -- the intended
+# behavior (per CLAUDE.md: "Never use `git stash` to set aside changes for a
+# baseline check -- use a WIP commit instead") still needs design input on
+# how strictly to gate (block vs warn, exact command pattern to match). This
+# stub only exists to stop the "No such file or directory" error; it does
+# nothing and never blocks.
+
+exit 0
