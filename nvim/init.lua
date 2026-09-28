@@ -621,7 +621,7 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_augroup("filetype_typescript", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typescript",
-	pattern = "typescript",
+	pattern = { "typescript", "typescriptreact" },
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap",
 })
 
@@ -1459,7 +1459,26 @@ require("lazy").setup({
 		dependencies = { "williamboman/mason.nvim" },
 		config = function()
 			require("mason-lspconfig").setup({
-				automatic_installation = true,
+				-- automatic_installation only auto-installs servers set up via the old
+				-- require('lspconfig')[server].setup() API; this config uses the native
+				-- vim.lsp.config()/vim.lsp.enable() API instead, so it never fires there.
+				-- List servers explicitly to keep them installed by Mason.
+				ensure_installed = {
+					"lua_ls",
+					"csharp_ls",
+					"ts_ls",
+					"gopls",
+					"ruby_lsp",
+					"jsonls",
+					"pylsp",
+					"html",
+					"yamlls",
+					"bashls",
+					"zls",
+					"tinymist",
+					"texlab",
+					"lemminx",
+				},
 			})
 		end,
 	},
@@ -2102,6 +2121,7 @@ require("lazy").setup({
 					},
 					javascript = { "prettierd", "prettier", stop_after_first = true },
 					typescript = { "prettierd", "prettier", stop_after_first = true },
+					typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 					sql = { "sql_formatter" },
 				},
 				log_level = vim.log.levels.DEBUG,
