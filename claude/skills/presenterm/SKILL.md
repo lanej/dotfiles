@@ -1,6 +1,6 @@
 ---
 name: presenterm
-description: Build and run terminal-based presentations from markdown with presenterm - slide syntax, speaker notes, executable code blocks, mermaid/d2/LaTeX rendering, themes, and PDF/HTML export.
+description: "Build and run terminal-based presentations from markdown with presenterm - slide syntax, speaker notes, executable code blocks, mermaid/d2/LaTeX rendering, themes, and PDF/HTML export. Use when building a presentation from markdown slides with live code execution or diagram rendering. Don't use for Beamer/Reveal.js decks, browser-based slide tools, or EasyPost branded presentation decks — use ep-slides for those instead."
 ---
 
 # presenterm
