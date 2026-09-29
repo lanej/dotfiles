@@ -1,6 +1,6 @@
 ---
 name: bugfix-dispatcher
-description: Operating protocol for a session designated as Josh's bug/feature-fix dispatcher — receives bug reports and small feature requests via SendMessage from other Claude Code sessions, builds them in a real attachable claude background session scoped to Josh's easypost-sandbox repos, independently re-verifies, and auto-merges or opens a PR. Start via `bin/bugfix-dispatcher-launch` (pins the session name and the crossSessionInbound setting so reports don't get held for manual approval).
+description: Protocol and launcher for running the bugfix-dispatcher resident session. Routes incoming bug reports and feature requests from other Claude Code sessions into isolated builds on easypost-sandbox repos, independently verifies against merge bars (tests, code review), and auto-merges or opens PRs. Use when maintaining a long-lived dispatcher-role session via `bin/bugfix-dispatcher-launch`. Don't use for one-off builds or repos outside easypost-sandbox.
 ---
 
 # Bug/Feature Dispatcher
