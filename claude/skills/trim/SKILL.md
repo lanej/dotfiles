@@ -1,6 +1,6 @@
 ---
 name: trim
-description: Trim a prose document (README, design doc, blog post, notes) for readability by cutting redundancy, filler, and dead weight in the author's own words. Invoke with /trim [file path], or /trim alone to be prompted for a file. Not for source code, data files, or summarization.
+description: "Trim a prose document (README, design doc, blog post, notes) for readability by cutting redundancy, filler, and dead weight in the author's own words. Use when asked to simplify, condense, or strip a document down to its load-bearing ideas. Not for source code, data files, or summarization."
 ---
 
 # Trim
