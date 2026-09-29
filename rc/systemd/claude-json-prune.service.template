@@ -1,0 +1,8 @@
+[Unit]
+Description=Persistence-gated cleanup of stale ~/.claude.json project entries
+
+[Service]
+Type=oneshot
+Environment=PATH=__HOME__/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=__HOME__
+ExecStart=__HOME__/.local/bin/claude-json-prune

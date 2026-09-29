@@ -266,12 +266,29 @@ ui-review:
 test-ui-review:
 	@python3 $(DOTFILES)/scripts/test-viewrule.py
 
-launchd-claude-json-prune:
-	@mkdir -p $(HOME)/.local/state/claude-json-prune
-	@mkdir -p $(HOME)/Library/LaunchAgents
-	@sed -e 's|__HOME__|$(HOME)|g' \
-		$(DOTFILES)/rc/launchd/com.joshlane.claude-json-prune.plist.template \
-		> $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist
-	@launchctl unload $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist 2>/dev/null || true
-	@launchctl load -w $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist
-	@echo "claude-json-prune scheduled via launchd (daily, 4am)"
+claude-json-prune-schedule:
+	@os=$$(uname -s); \
+	if [ "$$os" = "Darwin" ]; then \
+		mkdir -p $(HOME)/.local/state/claude-json-prune; \
+		mkdir -p $(HOME)/Library/LaunchAgents; \
+		sed -e 's|__HOME__|$(HOME)|g' \
+			$(DOTFILES)/rc/launchd/com.joshlane.claude-json-prune.plist.template \
+			> $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist; \
+		launchctl unload $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist 2>/dev/null || true; \
+		launchctl load -w $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist; \
+		echo "claude-json-prune scheduled via launchd (daily, 4am)"; \
+	elif [ "$$os" = "Linux" ]; then \
+		mkdir -p $(HOME)/.local/state/claude-json-prune; \
+		mkdir -p $(HOME)/.config/systemd/user; \
+		sed -e 's|__HOME__|$(HOME)|g' \
+			$(DOTFILES)/rc/systemd/claude-json-prune.service.template \
+			> $(HOME)/.config/systemd/user/claude-json-prune.service; \
+		sed -e 's|__HOME__|$(HOME)|g' \
+			$(DOTFILES)/rc/systemd/claude-json-prune.timer.template \
+			> $(HOME)/.config/systemd/user/claude-json-prune.timer; \
+		systemctl --user daemon-reload; \
+		systemctl --user enable --now claude-json-prune.timer; \
+		echo "claude-json-prune scheduled via systemd --user timer (daily, 4am). Headless/no-login box: also run 'loginctl enable-linger $$USER' (not run automatically here — that's an account-level setting change, Josh's call)"; \
+	else \
+		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
+	fi

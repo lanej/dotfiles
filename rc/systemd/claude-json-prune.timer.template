@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily schedule for claude-json-prune
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
