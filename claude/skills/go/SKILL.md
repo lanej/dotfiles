@@ -1,6 +1,6 @@
 ---
 name: go
-description: Go development with gotestsum for testing, standard tooling, and best practices
+description: Go development conventions including gotestsum for testing, standard tooling (gofmt, go vet, -race flag), and best practices for the Go environment. Use when developing, testing, or debugging Go code. Don't use for deployment, containerization, or Rust/Python projects.
 ---
 
 # Go
