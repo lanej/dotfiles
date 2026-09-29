@@ -1,6 +1,6 @@
 ---
 name: methodology
-description: "Consolidated methodology reference covering phased execution (continuous work through genuine blockers only, adaptive todo granularity), visual communication requirements (Mermaid diagrams, formatted tables, LaTeX math instead of raw data/plain-text math), and other process guidance relocated from CLAUDE.md for space efficiency. Load when working through multi-step tasks needing phased-execution guidance, or when producing analytical/quantitative output that should follow visual communication standards."
+description: "Consolidated reference for phased execution (continuous work through genuine blockers only, adaptive todo granularity), visual communication standards (Mermaid, formatted tables, LaTeX instead of raw data), and verification tiers for code changes. Load when working through multi-step tasks needing phased-execution guidance or designing test/review gates for a code change. Don't use for project-specific tool tutorials or EasyPost domain procedures — refer to domain-specialized skills instead."
 ---
 
 # Methodology Reference
