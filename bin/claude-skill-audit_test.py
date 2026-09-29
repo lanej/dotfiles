@@ -124,4 +124,22 @@ def test_audit_flags_missing_jit_instruction(tmp_path, load_script):
     warns_section = report.split("## Warnings")[1].split("## Overlap")[0]
     assert warns_section.count("missing_jit_instruction") == 1
     assert "notes.md" in warns_section
-    assert "auth-flow.md" not in warns_section
+
+
+def test_audit_exempts_router_table_and_list_entries(tmp_path, load_script):
+    app = load_script("claude-skill-audit")
+    body = (
+        "\n\n"
+        "| Scenario | Doc |\n"
+        "|---|---|\n"
+        "| Data prep | `references/pipeline.md` |\n\n"
+        "- [Visuals](references/visuals.md) — chart construction rules\n"
+    )
+    make_skill(tmp_path, "router-skill",
+               'name: router-skill\ndescription: "Use when the user wants this thing across many scenarios."',
+               body=body)
+
+    report = app.build_report(tmp_path, min_words=6)
+
+    warns_section = report.split("## Warnings")[1].split("## Overlap")[0]
+    assert "missing_jit_instruction" not in warns_section

@@ -20,7 +20,9 @@ MAX_SKILL_LINES = 500
 FORBIDDEN_DOC_NAMES = {"readme.md", "changelog.md", "installation_guide.md"}
 ALLOWED_SUBDIRS = {"scripts", "references", "assets"}
 JIT_PATH_RE = re.compile(r"references/[\w.-]+\.\w+|scripts/[\w.-]+")
-JIT_VERB_RE = re.compile(r"\b(read|run|execute|see|check|follow|load)\b", re.IGNORECASE)
+JIT_VERB_RE = re.compile(r"\b(read|run|execute|see|check|follow|load|confirm|invoke|use)\b", re.IGNORECASE)
+ROUTER_LIST_ITEM_RE = re.compile(r"^[-*]\s|^\d+\.\s")
+MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\([^)]*\)")
 ERROR_HEADING_RE = re.compile(r"^#{1,6}\s+.*\berror handling\b", re.IGNORECASE)
 
 
@@ -172,12 +174,18 @@ def check_first_person_body(body: str):
 def check_jit_instructions(body: str, body_start_line: int):
     issues = []
     for offset, line in enumerate(body.splitlines()):
-        if JIT_PATH_RE.search(line) and not JIT_VERB_RE.search(line):
-            line_no = body_start_line + offset
-            snippet = line.strip()
-            if len(snippet) > 100:
-                snippet = snippet[:97] + "..."
-            issues.append(("WARN", "missing_jit_instruction", f"line {line_no}: {snippet}"))
+        if not JIT_PATH_RE.search(line) or JIT_VERB_RE.search(line):
+            continue
+        stripped = line.strip()
+        is_table_row = stripped.startswith("|")
+        is_linked_list_item = ROUTER_LIST_ITEM_RE.match(stripped) and MARKDOWN_LINK_RE.search(line)
+        if is_table_row or is_linked_list_item:
+            continue  # router/index entry — the list or table structure is itself the JIT framing
+        line_no = body_start_line + offset
+        snippet = stripped
+        if len(snippet) > 100:
+            snippet = snippet[:97] + "..."
+        issues.append(("WARN", "missing_jit_instruction", f"line {line_no}: {snippet}"))
     return issues
 
 
