@@ -1,6 +1,6 @@
 ---
 name: report-infra-work
-description: Report an infrastructure change need in platform-infra (Josh's current primary repo for this category, migrating off the legacy easypost-enterprise-platform-infra / enterprise-platform-bootstrap since 2026-09-24) to the infra-dispatcher session instead of working around it inline or building/opening a PR yourself. Use when you hit a need for a new GCP resource, IAM grant, DNS record, GitHub org/repo setting, or Jira config change in platform-infra or either of the two legacy repos, and building it isn't part of your current task.
+description: "Report an infrastructure change need in platform-infra (Josh's current primary repo for this category, migrating off the legacy easypost-enterprise-platform-infra / enterprise-platform-bootstrap since 2026-09-24) to the infra-dispatcher session instead of working around it inline or building a PR. Use when a need arises for a new GCP resource, IAM grant, DNS record, GitHub org/repo setting, or Jira config change in platform-infra or either of the two legacy repos, and building it isn't part of the current task."
 ---
 
 # Report an Infra Change Need to the Dispatcher
