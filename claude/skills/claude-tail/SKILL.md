@@ -1,6 +1,6 @@
 ---
 name: claude-tail
-description: View Claude Code session logs with colors, filtering, and real-time following
+description: Analyzes Claude Code session logs (JSONL format) with syntax highlighting, filtering by event type/tool/time/errors, and real-time following. Use when debugging a session, monitoring tool usage, understanding workflows, or tracking errors. Don't use for reading general Claude Code documentation or for non-session-log files.
 ---
 # Claude Tail Skill
 
