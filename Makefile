@@ -265,3 +265,13 @@ ui-review:
 	@echo "Viewrule installed. Use /ui-review in Claude Code or viewrule --help."
 test-ui-review:
 	@python3 $(DOTFILES)/scripts/test-viewrule.py
+
+launchd-claude-json-prune:
+	@mkdir -p $(HOME)/.local/state/claude-json-prune
+	@mkdir -p $(HOME)/Library/LaunchAgents
+	@sed -e 's|__HOME__|$(HOME)|g' \
+		$(DOTFILES)/rc/launchd/com.joshlane.claude-json-prune.plist.template \
+		> $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist
+	@launchctl unload $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist 2>/dev/null || true
+	@launchctl load -w $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist
+	@echo "claude-json-prune scheduled via launchd (daily, 4am)"

@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# Prunes stale ~/.claude.json project entries — persistence-gated (a project
+# must look missing across CHECK_GAP_RESET_DAYS-spaced checks for
+# STALE_THRESHOLD_DAYS running) rather than point-in-time, so a laptop closed
+# for a few days or one flaky check can't fast-track a purge.
+#
+# Never treats "[ -d ] says no" alone as proof a project directory is gone:
+# a macOS TCC permission denial and an unmounted /Volumes/* mount look
+# identical to a naive directory check and would otherwise be silently
+# purged as "missing" by a daily launchd job lacking Full Disk Access.
+#
+# Run with: claude-json-prune [--dry-run]
+set -euo pipefail
+
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "DRY RUN - no changes will be made"
+fi
+
+CLAUDE_JSON="${CLAUDE_JSON_PRUNE_CLAUDE_JSON:-$HOME/.claude.json}"
+STATE_DIR="${CLAUDE_JSON_PRUNE_STATE_DIR:-$HOME/.local/state/claude-json-prune}"
+STATE_FILE="$STATE_DIR/state.json"
+PURGE_LOG="${CLAUDE_JSON_PRUNE_LOG:-$STATE_DIR/purge.log}"
+
+STALE_THRESHOLD_DAYS=14      # days a project must be continuously missing before purge
+CHECK_GAP_RESET_DAYS=2       # streak resets if checks stop landing ~daily
+MAX_PURGES_PER_RUN=10        # blast-radius cap
+ABORT_MISSING_RATIO_PCT=50   # circuit breaker: >50% missing/inconclusive in one run = abort
+
+for bin in jq claude; do
+    command -v "$bin" >/dev/null 2>&1 || { echo "claude-json-prune: '$bin' not found on PATH" >&2; exit 1; }
+done
+
+[[ -f "$CLAUDE_JSON" ]] || { echo "claude-json-prune: $CLAUDE_JSON not found" >&2; exit 1; }
+
+mkdir -p "$STATE_DIR"
+
+LOCK_DIR="$STATE_DIR/.lock"
+if [[ "$DRY_RUN" != "true" ]]; then
+    mkdir "$LOCK_DIR" 2>/dev/null || { echo "claude-json-prune: already running, exiting"; exit 0; }
+    trap 'rmdir "$LOCK_DIR"' EXIT
+fi
+
+[[ -f "$STATE_FILE" ]] || echo '{"version":1,"paths":{}}' > "$STATE_FILE"
+
+now=$(date +%s)
+
+# --- state helpers -----------------------------------------------------
+
+state_write() {   # $1=jq filter  $2=path
+    local filter="$1" path="$2"
+    [[ "$DRY_RUN" == "true" ]] && return 0
+    local tmp
+    tmp=$(mktemp "$STATE_FILE.XXXXXX")
+    jq --arg p "$path" --argjson now "$now" "$filter" "$STATE_FILE" > "$tmp"
+    mv "$tmp" "$STATE_FILE"
+}
+
+state_clear() {   # $1=path
+    # shellcheck disable=SC2016  # $p is a jq variable (--arg), not a shell one
+    state_write '.paths |= del(.[$p])' "$1"
+}
+
+# Records an observation of "still/newly missing" for $1, applying the
+# gap-reset: if the previous last_checked_epoch is more than
+# CHECK_GAP_RESET_DAYS old, the streak restarts from now instead of
+# extending a stale first_missing_epoch.
+state_record_missing() {   # $1=path
+    local path="$1" last_checked
+    last_checked=$(jq -r --arg p "$path" '.paths[$p].last_checked_epoch // empty' "$STATE_FILE")
+    if [[ -n "$last_checked" ]] && (( now - last_checked > CHECK_GAP_RESET_DAYS * 86400 )); then
+        # shellcheck disable=SC2016  # $p/$now are jq variables (--arg/--argjson), not shell ones
+        state_write '.paths[$p] = {first_missing_epoch: $now, last_checked_epoch: $now}' "$path"
+    else
+        # shellcheck disable=SC2016  # $p/$now are jq variables (--arg/--argjson), not shell ones
+        state_write '.paths[$p] = ((.paths[$p] // {first_missing_epoch: $now}) + {last_checked_epoch: $now})' "$path"
+    fi
+}
+
+# Classifies a path: exists | missing | inconclusive.
+# inconclusive covers a TCC/ACL permission denial and an unmounted
+# /Volumes/* mount — both must never be treated as "genuinely missing".
+path_status() {
+    local p="$1"
+    [[ -d "$p" ]] && { echo exists; return; }
+    local err
+    err=$(stat "$p" 2>&1 >/dev/null) || true
+    if [[ "$err" == *"Operation not permitted"* || "$err" == *"Permission denied"* ]]; then
+        echo inconclusive
+        return
+    fi
+    if [[ "$p" == /Volumes/*/* ]]; then
+        local mount
+        mount="/Volumes/$(cut -d/ -f3 <<< "$p")"
+        [[ -d "$mount" ]] || { echo inconclusive; return; }
+    fi
+    echo missing
+}
+
+# --- read-only pass: enumerate current project paths + circuit breaker --
+
+current_paths=()
+while IFS= read -r p; do
+    [[ -n "$p" ]] && current_paths+=("$p")
+done < <(jq -r '.projects | keys[]' "$CLAUDE_JSON")
+
+missing_count=0
+total_count=0
+for p in "${current_paths[@]}"; do
+    total_count=$(( total_count + 1 ))
+    s=$(path_status "$p")
+    if [[ "$s" == "missing" || "$s" == "inconclusive" ]]; then
+        missing_count=$(( missing_count + 1 ))
+    fi
+done
+
+abort=false
+if (( total_count > 0 )); then
+    if (( missing_count * 100 > total_count * ABORT_MISSING_RATIO_PCT )); then
+        abort=true
+    fi
+fi
+
+if [[ "$abort" == "true" ]]; then
+    msg="claude-json-prune: ABORT — ${missing_count}/${total_count} projects missing/inconclusive (>${ABORT_MISSING_RATIO_PCT}%), circuit breaker tripped, no changes made"
+    echo "$msg" >&2
+    printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$msg" >> "$PURGE_LOG"
+    exit 1
+fi
+
+# --- main loop -----------------------------------------------------------
+
+new_count=0
+cleared_count=0
+purged_count=0
+waiting_count=0
+deferred_count=0
+inconclusive_count=0
+failed_count=0
+
+for p in "${current_paths[@]}"; do
+    s=$(path_status "$p")
+    has_state=$(jq -r --arg p "$p" 'if .paths[$p] then "yes" else "no" end' "$STATE_FILE")
+
+    case "$s" in
+        exists)
+            if [[ "$has_state" == "yes" ]]; then
+                echo "reappeared, clearing state: $p"
+                state_clear "$p"
+                cleared_count=$(( cleared_count + 1 ))
+            fi
+            ;;
+        inconclusive)
+            echo "inconclusive (permission/mount), skipping: $p"
+            inconclusive_count=$(( inconclusive_count + 1 ))
+            ;;
+        missing)
+            if [[ "$has_state" == "no" ]]; then
+                echo "newly missing, recording: $p"
+                state_record_missing "$p"
+                new_count=$(( new_count + 1 ))
+                continue
+            fi
+
+            # Resolve the effective first_missing_epoch, applying the
+            # gap-reset BEFORE deciding purge eligibility — a stale
+            # first_missing_epoch from a check-gap must never carry a
+            # path straight past the purge threshold on the next check.
+            first_missing=$(jq -r --arg p "$p" '.paths[$p].first_missing_epoch' "$STATE_FILE")
+            last_checked=$(jq -r --arg p "$p" '.paths[$p].last_checked_epoch' "$STATE_FILE")
+            if (( now - last_checked > CHECK_GAP_RESET_DAYS * 86400 )); then
+                first_missing=$now
+            fi
+            days=$(( (now - first_missing) / 86400 ))
+
+            if (( days < STALE_THRESHOLD_DAYS )); then
+                echo "still missing (${days}/${STALE_THRESHOLD_DAYS}d), waiting: $p"
+                state_record_missing "$p"
+                waiting_count=$(( waiting_count + 1 ))
+            elif (( purged_count < MAX_PURGES_PER_RUN )); then
+                echo "missing ${days}d, purging: $p"
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "(dry-run) would purge: $p"
+                    purged_count=$(( purged_count + 1 ))
+                else
+                    dry_output=$(claude project purge "$p" --dry-run 2>&1 || true)
+                    {
+                        printf '%s purge: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$p"
+                        echo "$dry_output"
+                        echo "---"
+                    } >> "$PURGE_LOG"
+                    if claude project purge "$p" -y >/dev/null 2>&1; then
+                        state_clear "$p"
+                        purged_count=$(( purged_count + 1 ))
+                    else
+                        echo "claude-json-prune: WARNING purge failed for $p, will retry next run" >&2
+                        failed_count=$(( failed_count + 1 ))
+                    fi
+                fi
+            else
+                echo "deferred (per-run cap reached): $p"
+                state_record_missing "$p"
+                deferred_count=$(( deferred_count + 1 ))
+            fi
+            ;;
+    esac
+done
+
+# --- GC pass: drop state entries for paths no longer in claude.json -----
+
+if [[ "$DRY_RUN" != "true" ]]; then
+    state_paths=()
+    while IFS= read -r sp; do
+        [[ -n "$sp" ]] && state_paths+=("$sp")
+    done < <(jq -r '.paths | keys[]' "$STATE_FILE")
+    for sp in "${state_paths[@]}"; do
+        found="no"
+        for p in "${current_paths[@]}"; do
+            if [[ "$sp" == "$p" ]]; then
+                found="yes"
+                break
+            fi
+        done
+        if [[ "$found" == "no" ]]; then
+            echo "orphaned state entry, clearing: $sp"
+            state_clear "$sp"
+        fi
+    done
+fi
+
+echo
+echo "Summary: new=${new_count} cleared=${cleared_count} purged=${purged_count} waiting=${waiting_count} deferred=${deferred_count} inconclusive=${inconclusive_count} failed=${failed_count}"
