@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Report skill files whose frontmatter can't drive reliable triage.
+
+Scans a skills directory (default ~/.claude/skills, the merged live set) for
+missing/thin/first-person descriptions, invalid names, and name-prefix
+overlap candidates (e.g. paseo, paseo-advisor, paseo-committee).
+"""
+import argparse
+import re
+import subprocess
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+TRIGGER_CUE_RE = re.compile(r"\buse\b|\btrigger\b|\bwhen the user\b")
+FIRST_PERSON = {"i", "me", "my", "we", "our", "you", "your"}
+NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
+def find_skill_files(root: Path):
+    if not root.is_dir():
+        return []
+    files = []
+    for entry in sorted(root.iterdir()):
+        if not entry.is_dir():
+            continue
+        for candidate in ("SKILL.md", "skill.md", "Skill.md"):
+            f = entry / candidate
+            if f.exists():
+                files.append(f)
+                break
+    return files
+
+
+def parse_frontmatter(text: str):
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return None
+    meta = {}
+    key = None
+    block = []
+    for line in lines[1:end]:
+        m = re.match(r"^([a-zA-Z_]+):\s*(.*)$", line)
+        if m and not line.startswith((" ", "\t")):
+            if key:
+                meta[key] = " ".join(block).strip()
+            key, val = m.group(1), m.group(2).strip()
+            if val in (">", ">-", "|", "|-", ""):
+                block = []
+            else:
+                meta[key] = val.strip('"').strip("'")
+                key = None
+        elif key:
+            block.append(line.strip())
+    if key:
+        meta[key] = " ".join(block).strip()
+    return meta
+
+
+def resolve_source(skill_dir: Path) -> str:
+    if skill_dir.is_symlink():
+        return f"symlink -> {skill_dir.resolve()}"
+    result = subprocess.run(
+        ["git", "-C", str(skill_dir), "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0:
+        return f"repo: {result.stdout.strip()}"
+    return "local (untracked, not in any git repo)"
+
+
+def check_skill(meta: dict | None, min_words: int):
+    issues = []
+    if meta is None:
+        return [("ERROR", "no_frontmatter", "no --- frontmatter block found")]
+    name = meta.get("name", "")
+    desc = meta.get("description", "")
+    if not name:
+        issues.append(("ERROR", "missing_name", "no name field"))
+    elif not (1 <= len(name) <= 64) or not NAME_RE.match(name):
+        issues.append(("ERROR", "invalid_name", f"'{name}' fails spec (lowercase, hyphenated, 1-64 chars)"))
+    if not desc:
+        issues.append(("ERROR", "missing_description", "no description field"))
+        return issues
+    if len(desc) > 1024:
+        issues.append(("ERROR", "description_too_long", f"{len(desc)} chars > 1024"))
+    words = re.findall(r"\b\w+\b", desc.lower())
+    if len(words) < min_words:
+        issues.append(("WARN", "thin_description", f"only {len(words)} words"))
+    elif not TRIGGER_CUE_RE.search(desc.lower()):
+        issues.append(("WARN", "no_trigger_cue", "no 'use when/for/this' or 'trigger' language"))
+    found_fp = FIRST_PERSON.intersection(words)
+    if found_fp:
+        issues.append(("WARN", "first_person", f"contains {sorted(found_fp)}"))
+    return issues
+
+
+def find_overlap_groups(names: list[str]):
+    groups = defaultdict(list)
+    for n in names:
+        prefix = re.split(r"[-:]", n)[0]
+        groups[prefix].append(n)
+    return {p: sorted(members) for p, members in groups.items() if len(members) > 1}
+
+
+def build_report(root: Path, min_words: int = 6) -> str:
+    files = find_skill_files(root)
+    errors, warns, overlap_input, local_only = [], [], [], []
+    for f in files:
+        skill_dir_name = f.parent.name
+        meta = parse_frontmatter(f.read_text(errors="ignore"))
+        source = resolve_source(f.parent)
+        if source.startswith("local"):
+            local_only.append(skill_dir_name)
+        for severity, code, detail in check_skill(meta, min_words):
+            row = (skill_dir_name, source, code, detail)
+            (errors if severity == "ERROR" else warns).append(row)
+        overlap_input.append((meta or {}).get("name", skill_dir_name))
+    overlaps = find_overlap_groups(overlap_input)
+
+    lines = [f"# Skill Audit — {root}", "", f"Scanned {len(files)} skill files.", ""]
+    lines.append(f"## Summary: {len(errors)} errors, {len(warns)} warnings, "
+                 f"{len(overlaps)} overlap groups, {len(local_only)} local-only")
+    lines.append("")
+    for title, rows in (("## Errors", errors), ("## Warnings", warns)):
+        lines.append(title)
+        if not rows:
+            lines.append("(none)")
+        else:
+            lines.append("| skill | source | issue | detail |")
+            lines.append("|---|---|---|---|")
+            for skill, source, code, detail in rows:
+                lines.append(f"| {skill} | {source} | {code} | {detail} |")
+        lines.append("")
+    lines.append("## Overlap candidates (shared name prefix — review for consolidation)")
+    if not overlaps:
+        lines.append("(none)")
+    else:
+        for prefix, members in sorted(overlaps.items()):
+            lines.append(f"- **{prefix}**: {', '.join(members)}")
+    lines.append("")
+    lines.append("## Local-only skills (not backed by any git repo)")
+    lines.append(", ".join(sorted(local_only)) if local_only else "(none)")
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--path", default=str(Path.home() / ".claude/skills"),
+                        help="skills directory to scan (default: ~/.claude/skills)")
+    parser.add_argument("--min-words", type=int, default=6,
+                        help="descriptions with fewer words are flagged as thin")
+    parser.add_argument("--out", help="also write the report to this file")
+    args = parser.parse_args()
+
+    report = build_report(Path(args.path), args.min_words)
+    print(report)
+    if args.out:
+        Path(args.out).write_text(report)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
