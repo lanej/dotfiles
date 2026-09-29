@@ -16,7 +16,6 @@ TRIGGER_CUE_RE = re.compile(r"\buse\b|\btrigger\b|\bwhen the user\b")
 FIRST_PERSON = {"i", "me", "my", "we", "our", "you", "your"}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-MAX_SKILL_LINES = 500
 FORBIDDEN_DOC_NAMES = {"readme.md", "changelog.md", "installation_guide.md"}
 ALLOWED_SUBDIRS = {"scripts", "references", "assets"}
 JIT_PATH_RE = re.compile(r"references/[\w.-]+\.\w+|scripts/[\w.-]+")
@@ -133,13 +132,6 @@ def check_skill(meta: dict | None, min_words: int):
     return issues
 
 
-def check_line_count(text: str):
-    n = len(text.splitlines())
-    if n >= MAX_SKILL_LINES:
-        return [("ERROR", "skill_too_long", f"{n} lines >= {MAX_SKILL_LINES}")]
-    return []
-
-
 def check_forbidden_files(skill_dir: Path):
     issues = []
     for entry in sorted(skill_dir.iterdir()):
@@ -214,8 +206,7 @@ def build_report(root: Path, min_words: int = 6) -> str:
             (errors if severity == "ERROR" else warns).append(row)
 
         new_issues = (
-            check_line_count(text)
-            + check_forbidden_files(f.parent)
+            check_forbidden_files(f.parent)
             + check_subdirectories(f.parent)
             + check_first_person_body(body)
             + check_jit_instructions(body, body_start_line)

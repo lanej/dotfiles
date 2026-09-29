@@ -86,3 +86,48 @@ When changing the size checker itself, run its single regression detector:
 ```sh
 bash claude/evals/skill-maintenance/size_test.sh
 ```
+
+## Skill frontmatter and structure audit
+
+Use `bin/claude-skill-audit` to check frontmatter quality and structural
+consistency across a skill tree. It flags: missing or thin descriptions
+(< 6 words by default), descriptions that lack trigger-cue language
+("use when", "trigger", etc.), first-person pronouns in descriptions, invalid
+skill names, name-prefix overlaps suggesting consolidation candidates
+(e.g., `paseo`, `paseo-advisor`, `paseo-committee`), forbidden documentation
+files (`readme.md`, `changelog.md`), disallowed subdirectories or nested
+subdirectories (only `scripts/`, `references/`, `assets/` are allowed),
+first-person pronouns in body prose, and references to `references/` or
+`scripts/` paths without nearby JIT-load verbs (read, run, execute, use, etc.)
+unless they appear in router tables or linked lists.
+
+Unlike the "Entrypoint size budget" check above, `claude-skill-audit` does
+**not** check line or token counts — that is already handled by the size-budget
+checker and is not a concern here. The two tools are complementary:
+size budgets prevent entrypoints from growing unboundedly, while
+`claude-skill-audit` ensures frontmatter and structure follow conventions
+that make dispatch reliable.
+
+Run the audit against the live merged skills tree:
+
+```sh
+bin/claude-skill-audit
+```
+
+Or scan a specific skills directory:
+
+```sh
+bin/claude-skill-audit --path /path/to/skills/dir
+```
+
+Via the Makefile:
+
+```sh
+make audit-skills
+```
+
+The audit produces warnings (e.g., thin descriptions, first-person body prose)
+and errors (e.g., missing name, forbidden files). Warnings are advisory and do
+not block CI. Run it before committing a skill or agent instructional change,
+and periodically via `make audit-skills` to catch drift in skills installed
+from external repositories (symlinked into `~/.claude/skills`).

@@ -252,6 +252,10 @@ mail:
 test:
 	@pytest bin/*_test.py
 
+.PHONY: audit-skills
+audit-skills:
+	@"$(DOTFILES)/bin/claude-skill-audit"
+
 .PHONY: ui-review test-ui-review
 ui-review:
 	@python3 $(DOTFILES)/scripts/install-viewrule.py

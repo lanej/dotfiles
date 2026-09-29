@@ -41,20 +41,6 @@ def test_audit_reports_zero_issues_for_clean_directory(tmp_path, load_script):
     assert "0 errors, 0 warnings" in report
 
 
-def test_audit_flags_skill_too_long(tmp_path, load_script):
-    app = load_script("claude-skill-audit")
-    long_body = "\n" + "\n".join(f"line {i}" for i in range(600)) + "\n"
-    make_skill(tmp_path, "long-skill",
-               'name: long-skill\ndescription: "Use when the user needs this for long documents across cases."',
-               body=long_body)
-
-    report = app.build_report(tmp_path, min_words=6)
-
-    errors_section = report.split("## Errors")[1].split("## Warnings")[0]
-    assert "skill_too_long" in errors_section
-    assert "long-skill" in errors_section
-
-
 def test_audit_flags_forbidden_doc_files(tmp_path, load_script):
     app = load_script("claude-skill-audit")
     d = make_skill(tmp_path, "docs-skill",
