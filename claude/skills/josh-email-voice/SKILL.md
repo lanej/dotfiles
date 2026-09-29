@@ -1,6 +1,6 @@
 ---
 name: josh-email-voice
-description: Writing style and workflow conventions for drafting email as Josh Lane (CTO, EasyPost). Apply whenever drafting a Gmail reply or note on his behalf.
+description: Writing style and workflow conventions for drafting email as Josh Lane (CTO, EasyPost). Apply whenever drafting a Gmail reply or note on his behalf. Don't use it for Slack messages (use josh-slack-voice instead), formal HR/legal documents, or communications from EasyPost as an organization.
 ---
 
 # Josh Lane — Email Voice
