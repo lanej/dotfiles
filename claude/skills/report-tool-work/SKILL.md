@@ -1,6 +1,6 @@
 ---
 name: report-tool-work
-description: Report a bug or request a feature in one of Josh's easypost-sandbox tool/MCP-server repos (bigquery, jira, kagi, gspace, dora, epq, and similar) to the bugfix-dispatcher session instead of working around it inline or building it yourself. Use when a tool, CLI, or MCP server under Josh's easypost-sandbox GitHub org is broken, or when it's missing something it should have, and fixing/building it isn't part of your current task.
+description: "Report a bug or request a feature in one of Josh's easypost-sandbox tool/MCP-server repos to the bugfix-dispatcher session instead of working around it inline or building it directly. Use when a tool, CLI, or MCP server under Josh's easypost-sandbox GitHub org is broken, or when it's missing something it should have, and fixing/building it isn't part of the current task."
 ---
 
 # Report a Bug or Feature Request to the Dispatcher
