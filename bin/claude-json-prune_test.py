@@ -6,6 +6,13 @@ Covers, against one shared fixture set:
   (c) reappeared path -> state cleared, no claude calls
   (d) inconclusive (permission-denied) path -> untouched entirely
   (e) large gap since last check -> streak resets instead of carrying a stale day-count through
+
+Plus two dedicated detectors for the delta-based circuit breaker (distinct
+from the day-to-day classify/purge decisions above — a cumulative-ratio
+breaker can't tell "one big pre-existing backlog" apart from "something
+just broke", so it's scoped to NEWLY-missing paths since the last run):
+  (f) cold start (no tracked history yet) bypasses the breaker entirely
+  (g) a warm run (history exists) still trips on a burst of new missing paths
 """
 import json
 import os
@@ -23,7 +30,9 @@ def _days_ago(days):
     return int(time.time()) - days * 86400
 
 
-def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
+def _build_executables(tmp_path, calls_log):
+    """Fully-replaced PATH dir: real jq/bash/stat/coreutils plus a fake `claude`
+    that logs every invocation to calls_log and no-ops `project purge`."""
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
@@ -33,7 +42,6 @@ def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
         (executables / tool).symlink_to(resolved)
     (executables / "claude-json-prune").symlink_to(ROOT / "bin/claude-json-prune")
 
-    calls_log = tmp_path / "claude-calls.jsonl"
     calls_log.write_text("")
     cli = executables / "claude"
     cli.write_text(f"#!{sys.executable}\n" + '''
@@ -45,6 +53,20 @@ if sys.argv[1:3] == ["project", "purge"]:
 sys.exit(1)
 ''')
     cli.chmod(0o755)
+    return executables
+
+
+def _run(executables, env_overrides, cwd):
+    env = dict(os.environ, PATH=str(executables), **env_overrides)
+    return subprocess.run(
+        [str(executables / "claude-json-prune")],
+        env=env, cwd=str(cwd), capture_output=True, text=True, timeout=30,
+    )
+
+
+def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
+    calls_log = tmp_path / "claude-calls.jsonl"
+    executables = _build_executables(tmp_path, calls_log)
 
     projects_dir = tmp_path / "projects"
     never_existed = projects_dir / "never-existed"
@@ -98,9 +120,7 @@ sys.exit(1)
         },
     }))
 
-    env = dict(
-        os.environ,
-        PATH=str(executables),
+    env_overrides = dict(
         CLAUDE_JSON_PRUNE_CLAUDE_JSON=str(claude_json),
         CLAUDE_JSON_PRUNE_STATE_DIR=str(state_dir),
         CLAUDE_JSON_PRUNE_LOG=str(purge_log),
@@ -109,10 +129,7 @@ sys.exit(1)
 
     try:
         os.chmod(inconclusive_parent, 0o000)
-        result = subprocess.run(
-            [str(executables / "claude-json-prune")],
-            env=env, cwd=str(tmp_path), capture_output=True, text=True, timeout=30,
-        )
+        result = _run(executables, env_overrides, tmp_path)
     finally:
         os.chmod(inconclusive_parent, 0o755)
 
@@ -147,3 +164,99 @@ sys.exit(1)
     assert not any(str(gap_reset) in c for c in calls)
     now = int(time.time())
     assert now - state["paths"][str(gap_reset)]["first_missing_epoch"] < 3600
+
+
+def test_claude_json_prune_cold_start_bypasses_circuit_breaker(tmp_path):
+    """(f) A fresh install with no tracked history records its whole existing
+    backlog on day 1 even when most projects are missing (a ratio that would
+    trip a cumulative-count breaker) — nothing to compare "new" against yet."""
+    calls_log = tmp_path / "claude-calls.jsonl"
+    executables = _build_executables(tmp_path, calls_log)
+
+    projects_dir = tmp_path / "projects"
+    missing_paths = [projects_dir / f"missing-{i}" for i in range(3)]
+    existing_path = projects_dir / "existing"
+    existing_path.mkdir(parents=True)
+
+    claude_json = tmp_path / "claude.json"
+    claude_json.write_text(json.dumps({
+        "projects": {str(p): {} for p in [*missing_paths, existing_path]},
+    }))
+
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    state_file = state_dir / "state.json"
+    purge_log = state_dir / "purge.log"
+    state_file.write_text(json.dumps({"version": 1, "paths": {}}))
+
+    env_overrides = dict(
+        CLAUDE_JSON_PRUNE_CLAUDE_JSON=str(claude_json),
+        CLAUDE_JSON_PRUNE_STATE_DIR=str(state_dir),
+        CLAUDE_JSON_PRUNE_LOG=str(purge_log),
+        TEST_CLAUDE_CALLS=str(calls_log),
+    )
+    result = _run(executables, env_overrides, tmp_path)
+
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    calls = [json.loads(line) for line in calls_log.read_text().splitlines() if line.strip()]
+    state = json.loads(state_file.read_text())
+
+    for p in missing_paths:
+        assert str(p) in state["paths"], (p, state)
+        assert "first_missing_epoch" in state["paths"][str(p)]
+    assert not calls, calls  # nothing can have 14 days of history on a cold start
+
+
+def test_claude_json_prune_warm_run_trips_on_new_missing_burst(tmp_path):
+    """(g) With tracked history already present (not a cold start), a burst of
+    paths that were fine as of the last run and are now all missing at once
+    still trips the breaker — untouched state, no claude calls, logged."""
+    calls_log = tmp_path / "claude-calls.jsonl"
+    executables = _build_executables(tmp_path, calls_log)
+
+    projects_dir = tmp_path / "projects"
+    already_tracked_missing = projects_dir / "already-tracked-missing"
+    burst_missing = [projects_dir / f"burst-missing-{i}" for i in range(3)]
+    existing_path = projects_dir / "existing"
+    existing_path.mkdir(parents=True)
+
+    claude_json = tmp_path / "claude.json"
+    claude_json.write_text(json.dumps({
+        "projects": {
+            str(p): {}
+            for p in [already_tracked_missing, *burst_missing, existing_path]
+        },
+    }))
+
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    state_file = state_dir / "state.json"
+    purge_log = state_dir / "purge.log"
+    initial_state = {
+        "version": 1,
+        "paths": {
+            str(already_tracked_missing): {
+                "first_missing_epoch": _days_ago(3),
+                "last_checked_epoch": _days_ago(1),
+            },
+        },
+    }
+    state_file.write_text(json.dumps(initial_state))
+    state_bytes_before = state_file.read_bytes()
+
+    env_overrides = dict(
+        CLAUDE_JSON_PRUNE_CLAUDE_JSON=str(claude_json),
+        CLAUDE_JSON_PRUNE_STATE_DIR=str(state_dir),
+        CLAUDE_JSON_PRUNE_LOG=str(purge_log),
+        TEST_CLAUDE_CALLS=str(calls_log),
+    )
+    # 3 newly-missing out of 5 total = 60% > 50% threshold; the one
+    # pre-existing tracked-missing path does NOT count toward "new".
+    result = _run(executables, env_overrides, tmp_path)
+
+    assert result.returncode != 0
+    assert state_file.read_bytes() == state_bytes_before
+    calls = [json.loads(line) for line in calls_log.read_text().splitlines() if line.strip()]
+    assert not calls, calls
+    purge_log_text = purge_log.read_text() if purge_log.exists() else ""
+    assert "circuit breaker" in purge_log_text.lower()

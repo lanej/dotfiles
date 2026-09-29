@@ -105,25 +105,54 @@ while IFS= read -r p; do
     [[ -n "$p" ]] && current_paths+=("$p")
 done < <(jq -r '.projects | keys[]' "$CLAUDE_JSON")
 
-missing_count=0
+# Snapshot of paths already tracked in state.json as of the START of this
+# run, before any writes. The breaker is scoped to paths that are missing
+# AND weren't already tracked — a cumulative "62% of everything is missing"
+# snapshot can't tell a large pre-existing legacy backlog apart from a
+# sudden anomaly (e.g. a disconnected drive). A day-over-day delta can:
+# a big slow-draining backlog was already tracked yesterday and doesn't
+# re-trip the breaker every single day, while a burst of paths that were
+# fine as of the last run and are now all missing at once still does.
+pre_run_tracked=()
+while IFS= read -r sp; do
+    [[ -n "$sp" ]] && pre_run_tracked+=("$sp")
+done < <(jq -r '.paths | keys[]' "$STATE_FILE")
+
+cold_start=false
+if [[ ${#pre_run_tracked[@]} -eq 0 ]]; then
+    cold_start=true
+fi
+
+is_pre_run_tracked() {   # $1=path
+    local target="$1" tp
+    for tp in "${pre_run_tracked[@]}"; do
+        [[ "$tp" == "$target" ]] && return 0
+    done
+    return 1
+}
+
+new_missing_count=0
 total_count=0
 for p in "${current_paths[@]}"; do
     total_count=$(( total_count + 1 ))
     s=$(path_status "$p")
-    if [[ "$s" == "missing" || "$s" == "inconclusive" ]]; then
-        missing_count=$(( missing_count + 1 ))
+    if [[ "$s" == "missing" ]] && ! is_pre_run_tracked "$p"; then
+        new_missing_count=$(( new_missing_count + 1 ))
     fi
 done
 
+# Cold start (nothing tracked yet) is skipped entirely: a fresh install
+# recording its whole existing backlog on day 1 is expected, not anomalous
+# — there is nothing yet to compare "new" against.
 abort=false
-if (( total_count > 0 )); then
-    if (( missing_count * 100 > total_count * ABORT_MISSING_RATIO_PCT )); then
+if [[ "$cold_start" != "true" ]] && (( total_count > 0 )); then
+    if (( new_missing_count * 100 > total_count * ABORT_MISSING_RATIO_PCT )); then
         abort=true
     fi
 fi
 
 if [[ "$abort" == "true" ]]; then
-    msg="claude-json-prune: ABORT — ${missing_count}/${total_count} projects missing/inconclusive (>${ABORT_MISSING_RATIO_PCT}%), circuit breaker tripped, no changes made"
+    msg="claude-json-prune: ABORT — ${new_missing_count}/${total_count} projects newly missing since last run (>${ABORT_MISSING_RATIO_PCT}%), circuit breaker tripped, no changes made"
     echo "$msg" >&2
     printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$msg" >> "$PURGE_LOG"
     exit 1
