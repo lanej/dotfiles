@@ -1,6 +1,6 @@
 ---
 name: just
-description: Task automation with just and justfiles - recipe definition, dependencies, parameters, imports, and delegation to shell scripts. Prefer just over make for new projects.
+description: Task automation with just and justfiles for recipe definition, dependencies, parameters, imports, and shell script delegation. Use when building new task runners or maintaining justfiles. Don't use for existing make-based projects or arbitrary shell script work.
 ---
 
 # just
