@@ -1,6 +1,6 @@
 ---
 name: git
-description: Git version control and GitHub CLI workflows for commits, branches, pull requests, and code reviews with professional commit message practices.
+description: Git version control conventions and GitHub CLI workflows including commits, branches, pull requests, and code reviews with professional message practices. Use when managing commits, branches, PRs, or coordinating multi-worktree workflows. Don't use for deployment scripting or infrastructure-as-code (use other domain skills instead).
 ---
 
 # Git and GitHub
