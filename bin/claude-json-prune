@@ -83,6 +83,10 @@ state_record_missing() {   # $1=path
 # /Volumes/* mount — both must never be treated as "genuinely missing".
 path_status() {
     local p="$1"
+    # Not an absolute path (e.g. a stray "42" key in .projects) can't be a
+    # real project dir, and checking it via [ -d ] would be cwd-dependent —
+    # classify deterministically without touching the filesystem at all.
+    [[ "$p" == /* ]] || { echo missing; return; }
     [[ -d "$p" ]] && { echo exists; return; }
     local err
     err=$(stat "$p" 2>&1 >/dev/null) || true

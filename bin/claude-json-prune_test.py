@@ -86,6 +86,14 @@ def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
         d.mkdir()
         dummy_existing.append(d)
 
+    # A stray non-absolute-path key (Josh's real ~/.claude.json has 64 of
+    # these — plain small integers, pre-existing garbage unrelated to this
+    # tool). A same-named directory literally exists relative to the
+    # subprocess's CWD (tmp_path, see _run below) so `[ -d "42" ]` would
+    # wrongly say "exists" if path_status didn't reject non-absolute paths
+    # before ever touching the filesystem.
+    (tmp_path / "42").mkdir()
+
     claude_json = tmp_path / "claude.json"
     projects = {
         str(never_existed): {},
@@ -93,6 +101,7 @@ def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
         str(reappeared): {},
         str(gap_reset): {},
         str(inconclusive_child): {},
+        "42": {},
     }
     for d in dummy_existing:
         projects[str(d)] = {}
@@ -164,6 +173,12 @@ def test_claude_json_prune_classifies_and_purges_correctly(tmp_path):
     assert not any(str(gap_reset) in c for c in calls)
     now = int(time.time())
     assert now - state["paths"][str(gap_reset)]["first_missing_epoch"] < 3600
+
+    # non-absolute-path key ("42"): classified missing deterministically,
+    # NOT via a cwd-relative [ -d ] check against a same-named real dir
+    assert "42" in state["paths"]
+    assert "first_missing_epoch" in state["paths"]["42"]
+    assert not any("42" in c for c in calls)
 
 
 def test_claude_json_prune_cold_start_bypasses_circuit_breaker(tmp_path):
