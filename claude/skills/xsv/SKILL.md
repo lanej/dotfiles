@@ -1,6 +1,6 @@
 ---
 name: xsv
-description: Fast CSV processing with xsv - select, search, slice, sort, join, stats, frequency, and indexing for large delimited files. Prefer over pandas or awk for CSV-shaped work on the command line.
+description: "Fast CSV/TSV processing with xsv - select, search, slice, sort, join, stats, frequency, and indexing for large delimited files. Use when processing CSV-shaped data on the command line with filtering, joining, or summary statistics. Prefer over pandas or awk for CLI-based CSV work. Don't use for Excel formats, multi-sheet data, or complex SQL queries — use xlsx for Excel, duckdb for SQL operations."
 ---
 
 # xsv
