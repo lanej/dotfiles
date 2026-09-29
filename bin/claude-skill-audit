@@ -16,6 +16,13 @@ TRIGGER_CUE_RE = re.compile(r"\buse\b|\btrigger\b|\bwhen the user\b")
 FIRST_PERSON = {"i", "me", "my", "we", "our", "you", "your"}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
+MAX_SKILL_LINES = 500
+FORBIDDEN_DOC_NAMES = {"readme.md", "changelog.md", "installation_guide.md"}
+ALLOWED_SUBDIRS = {"scripts", "references", "assets"}
+JIT_PATH_RE = re.compile(r"references/[\w.-]+\.\w+|scripts/[\w.-]+")
+JIT_VERB_RE = re.compile(r"\b(read|run|execute|see|check|follow|load)\b", re.IGNORECASE)
+ERROR_HEADING_RE = re.compile(r"^#{1,6}\s+.*\berror handling\b", re.IGNORECASE)
+
 
 def find_skill_files(root: Path):
     if not root.is_dir():
@@ -64,6 +71,28 @@ def parse_frontmatter(text: str):
     return meta
 
 
+def extract_body(text: str):
+    """Return (body_text, body_start_line): everything after the frontmatter's
+    closing '---', and the 1-based line number of the body's first line in
+    the original file (falls back to the whole text if there's no valid
+    frontmatter block)."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return text, 1
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return text, 1
+    return "\n".join(lines[end + 1:]), end + 2
+
+
+def has_error_handling_section(body: str) -> bool:
+    return any(ERROR_HEADING_RE.match(line) for line in body.splitlines())
+
+
 def resolve_source(skill_dir: Path) -> str:
     if skill_dir.is_symlink():
         return f"symlink -> {skill_dir.resolve()}"
@@ -102,6 +131,56 @@ def check_skill(meta: dict | None, min_words: int):
     return issues
 
 
+def check_line_count(text: str):
+    n = len(text.splitlines())
+    if n >= MAX_SKILL_LINES:
+        return [("ERROR", "skill_too_long", f"{n} lines >= {MAX_SKILL_LINES}")]
+    return []
+
+
+def check_forbidden_files(skill_dir: Path):
+    issues = []
+    for entry in sorted(skill_dir.iterdir()):
+        if entry.is_file() and entry.name.lower() in FORBIDDEN_DOC_NAMES:
+            issues.append(("ERROR", "forbidden_doc_file", entry.name))
+    return issues
+
+
+def check_subdirectories(skill_dir: Path):
+    issues = []
+    for entry in sorted(skill_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name not in ALLOWED_SUBDIRS:
+            issues.append(("ERROR", "bad_subdirectory", entry.name))
+            continue
+        for sub in sorted(entry.iterdir()):
+            if sub.is_dir():
+                issues.append(("ERROR", "nested_subdirectory", str(sub.relative_to(skill_dir))))
+    return issues
+
+
+def check_first_person_body(body: str):
+    words = re.findall(r"\b\w+\b", body.lower())
+    found = FIRST_PERSON.intersection(words)
+    if not found:
+        return []
+    count = sum(1 for w in words if w in FIRST_PERSON)
+    return [("WARN", "first_person_body", f"{count} occurrences of {sorted(found)} in body")]
+
+
+def check_jit_instructions(body: str, body_start_line: int):
+    issues = []
+    for offset, line in enumerate(body.splitlines()):
+        if JIT_PATH_RE.search(line) and not JIT_VERB_RE.search(line):
+            line_no = body_start_line + offset
+            snippet = line.strip()
+            if len(snippet) > 100:
+                snippet = snippet[:97] + "..."
+            issues.append(("WARN", "missing_jit_instruction", f"line {line_no}: {snippet}"))
+    return issues
+
+
 def find_overlap_groups(names: list[str]):
     groups = defaultdict(list)
     for n in names:
@@ -113,21 +192,41 @@ def find_overlap_groups(names: list[str]):
 def build_report(root: Path, min_words: int = 6) -> str:
     files = find_skill_files(root)
     errors, warns, overlap_input, local_only = [], [], [], []
+    error_handling_count = 0
     for f in files:
         skill_dir_name = f.parent.name
-        meta = parse_frontmatter(f.read_text(errors="ignore"))
+        text = f.read_text(errors="ignore")
+        meta = parse_frontmatter(text)
+        body, body_start_line = extract_body(text)
         source = resolve_source(f.parent)
         if source.startswith("local"):
             local_only.append(skill_dir_name)
         for severity, code, detail in check_skill(meta, min_words):
             row = (skill_dir_name, source, code, detail)
             (errors if severity == "ERROR" else warns).append(row)
+
+        new_issues = (
+            check_line_count(text)
+            + check_forbidden_files(f.parent)
+            + check_subdirectories(f.parent)
+            + check_first_person_body(body)
+            + check_jit_instructions(body, body_start_line)
+        )
+        for severity, code, detail in new_issues:
+            row = (skill_dir_name, source, code, detail)
+            (errors if severity == "ERROR" else warns).append(row)
+
+        if has_error_handling_section(body):
+            error_handling_count += 1
+
         overlap_input.append((meta or {}).get("name", skill_dir_name))
     overlaps = find_overlap_groups(overlap_input)
 
     lines = [f"# Skill Audit — {root}", "", f"Scanned {len(files)} skill files.", ""]
     lines.append(f"## Summary: {len(errors)} errors, {len(warns)} warnings, "
                  f"{len(overlaps)} overlap groups, {len(local_only)} local-only")
+    lines.append(f"{error_handling_count}/{len(files)} skills have an Error Handling section "
+                 f"(informational — not counted as errors/warnings).")
     lines.append("")
     for title, rows in (("## Errors", errors), ("## Warnings", warns)):
         lines.append(title)
