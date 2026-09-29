@@ -1,6 +1,6 @@
 ---
 name: jq
-description: JSON processing with jq - filtering, transforming, aggregating, and reshaping JSON from files, APIs, and command output on the command line.
+description: JSON processing with jq for filtering, transforming, aggregating, and reshaping data from files, APIs, and command output on the command line. Use when processing JSON via command-line filters. Don't use for CSV/TSV (use xsv), YAML (use yq), or analytical queries requiring SQL (use duckdb).
 ---
 
 # jq
