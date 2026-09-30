@@ -193,3 +193,5 @@ else
 	export EDITOR=vi
 	export VISUAL=vi
 fi
+
+. "$HOME/.atuin/bin/env"

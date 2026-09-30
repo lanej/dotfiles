@@ -18,4 +18,6 @@ fi
 
 . ${HOME}/.profile
 . ${HOME}/.alias
-. "$HOME/.cargo/env"
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+. "$HOME/.atuin/bin/env"

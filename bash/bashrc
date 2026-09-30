@@ -42,4 +42,7 @@ if command -v chruby >/dev/null; then
 fi
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
-. "$HOME/.cargo/env"
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init bash)"
