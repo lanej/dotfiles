@@ -498,8 +498,10 @@ codex-bedrock() {
 	echo "🟠 Codex CLI → AWS Bedrock ($region, profile $profile)"
 	echo "   Bearer token expires <=12h; re-run codex-bedrock to refresh"
 
-	AWS_BEARER_TOKEN_BEDROCK="$token" AWS_REGION="$region" \
-		codex --profile bedrock "$@"
+	# No AWS_REGION export: codex/bedrock.config.toml pins
+	# model_providers.amazon-bedrock.aws.region explicitly, which always wins
+	# over env vars (confirmed against Codex's own docs and a live test run).
+	AWS_BEARER_TOKEN_BEDROCK="$token" codex --profile bedrock "$@"
 }
 
 claude-status() {
