@@ -489,6 +489,9 @@ alias claude-check="~/.claude/local/claude-privacy-check"
 # Long-term AWS Bedrock key (default provider for plain `claude`/`codex --profile bedrock`)
 [ -f ~/.config/bedrock/env ] && source ~/.config/bedrock/env
 
+# Kagi MCP server bearer token (shared by Claude's ${KAGI_MCP_BEARER} header expansion and Codex's --bearer-token-env-var)
+[ -f ~/.config/kagi/env ] && source ~/.config/kagi/env
+
 # FastEmbed cache centralization
 export FASTEMBED_CACHE_DIR="$HOME/.cache/fastembed"
 

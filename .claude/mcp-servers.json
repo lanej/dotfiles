@@ -1,5 +1,9 @@
 {
-  "gspace":   { "command": "gspace",   "args": ["mcp", "stdio"] },
-  "bigquery": { "command": "bigquery", "args": ["mcp", "stdio"] },
-  "jira":     { "command": "jira",     "args": ["mcp", "stdio"] }
+  "sequential-thinking": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"] },
+  "qmd": { "type": "http", "url": "http://localhost:8181/mcp" },
+  "kagi": { "type": "http", "url": "https://mcp.kagi.com/mcp", "headers": {"Authorization": "Bearer ${KAGI_MCP_BEARER}"} },
+  "gspace":     { "command": "gspace",     "args": ["mcp", "stdio"] },
+  "bigquery":   { "command": "bigquery",   "args": ["mcp", "stdio"] },
+  "jira":       { "command": "jira",       "args": ["mcp", "stdio"] },
+  "1password":  { "command": "1password-mcp", "args": [] }
 }
