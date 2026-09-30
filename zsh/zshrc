@@ -581,3 +581,12 @@ fi
 
 # Azure Functions Core Tools
 export FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
+
+# bun completions
+[ -s "/home/vagrant/.bun/_bun" ] && source "/home/vagrant/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+. "$HOME/.atuin/bin/env"
