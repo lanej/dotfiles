@@ -450,6 +450,52 @@ reauth-gcloud() {
 alias dcp='claude --dangerously-skip-permissions'
 alias dc="claude --permission-mode bypassPermissions --settings '{\"crossSessionInbound\":\"accept\"}'"
 
+claude-vertex() {
+	export ANTHROPIC_VERTEX_PROJECT_ID=easypost-platform
+	export CLAUDE_CODE_USE_VERTEX=1
+	export CLAUDE_CODE_USE_BEDROCK=""
+	echo "🏢 Claude Code → EasyPost Vertex AI (easypost-platform)"
+	echo "   Privacy: MEDIUM (metadata visible to EasyPost admins)"
+	echo "   Run 'claude-check' to verify logging status"
+}
+
+claude-bedrock() {
+	local profile="EasyPostAIHubEngineering"
+	local region="us-west-2"
+	local token
+
+	AWS_PROFILE="$profile" aws sts get-caller-identity >/dev/null 2>&1 \
+		|| aws sso login --profile "$profile" \
+		|| return 1
+
+	token="$(bedrock-mantle-token "$profile" "$region")" || return 1
+
+	echo "🟠 Claude Code → AWS Bedrock ($region, profile $profile)"
+	echo "   Bearer token expires <=12h; re-run claude-bedrock to refresh"
+
+	AWS_BEARER_TOKEN_BEDROCK="$token" AWS_REGION="$region" \
+		claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":"","ANTHROPIC_DEFAULT_SONNET_MODEL":"us.anthropic.claude-sonnet-5","ANTHROPIC_DEFAULT_OPUS_MODEL":"us.anthropic.claude-opus-5"}}' "$@"
+}
+cbd() {
+	if [ "$#" -gt 0 ]; then
+		echo "cbd: no arguments allowed (use claude-bedrock directly for custom flags)" >&2
+		return 1
+	fi
+	claude-bedrock --dangerously-skip-permissions
+}
+
+claude-status() {
+	local project="${ANTHROPIC_VERTEX_PROJECT_ID:-easypost-platform}"
+	echo "Current project: $project"
+	if [ "$project" = "easypost-platform" ]; then
+		echo "Context: 🏢 Work (shared EasyPost infrastructure)"
+	elif [ "$project" = "joshlane-claude-private" ]; then
+		echo "Context: 🔒 Personal (private infrastructure)"
+	else
+		echo "Context: ⚠️  Unknown project"
+	fi
+}
+
 dcc() {
 				claude --dangerously-skip-permissions --continue --permission-mode bypassPermissions --settings '{"crossSessionInbound":"accept"}' || dc
 }
