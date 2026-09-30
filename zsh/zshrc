@@ -594,4 +594,4 @@ export FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-. "$HOME/.atuin/bin/env"
+[ -f "$HOME/.atuin/bin/env" ] && source "$HOME/.atuin/bin/env"
