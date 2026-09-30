@@ -2,6 +2,7 @@
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
 DOTFILES := $(shell pwd)
 INSTRUCTION_SIZE_BASE ?= HEAD
+UNAME_S := $(shell uname -s)
 
 all: .PHONY
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
@@ -189,6 +190,10 @@ claude: claude-plugins
 		mkdir -p $(HOME)/.claude/$$d; \
 		for f in $(DOTFILES)/claude/$$d/*; do \
 			[ -e "$$f" ] || continue; \
+			if [ "$(UNAME_S)" != "Darwin" ] && [ "$$d" = "skills" ] && [ "$$(basename "$$f")" = "problem-definition-contract" ]; then \
+				rm -f $(HOME)/.claude/$$d/problem-definition-contract; \
+				continue; \
+			fi; \
 			ln -fs "$$f" $(HOME)/.claude/$$d/; \
 		done; \
 	done
