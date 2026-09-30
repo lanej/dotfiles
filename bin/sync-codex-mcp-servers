@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+command -v codex >/dev/null 2>&1 || { echo "sync-codex-mcp-servers: codex not on PATH, skipping" >&2; exit 0; }
+[ -f "$HOME/.claude.json" ] || { echo "sync-codex-mcp-servers: no ~/.claude.json yet, skipping" >&2; exit 0; }
+
+while IFS= read -r entry; do
+	name=$(jq -r '.key' <<<"$entry")
+	type=$(jq -r '.value.type // "stdio"' <<<"$entry")
+
+	case "$type" in
+	http)
+		url=$(jq -r '.value.url' <<<"$entry")
+		auth=$(jq -r '.value.headers.Authorization // ""' <<<"$entry")
+		bearer_var=$(sed -n 's/^Bearer \${\(.*\)}$/\1/p' <<<"$auth")
+		codex mcp remove "$name" >/dev/null 2>&1 </dev/null || true
+		if [ -n "$auth" ] && [ -z "$bearer_var" ]; then
+			echo "sync-codex-mcp-servers: $name has an Authorization header that isn't a \${VAR} reference, skipping to avoid syncing a literal secret" >&2
+			continue
+		elif [ -n "$bearer_var" ]; then
+			codex mcp add "$name" --url "$url" --bearer-token-env-var "$bearer_var" </dev/null
+		else
+			codex mcp add "$name" --url "$url" </dev/null
+		fi
+		;;
+	stdio)
+		cmd=$(jq -r '.value.command' <<<"$entry")
+		mapfile -t args < <(jq -r '.value.args[]? // empty' <<<"$entry")
+		mapfile -t env_flags < <(jq -r '.value.env // {} | to_entries[] | "--env=" + .key + "=" + .value' <<<"$entry")
+		codex mcp remove "$name" >/dev/null 2>&1 </dev/null || true
+		codex mcp add "$name" "${env_flags[@]}" -- "$cmd" "${args[@]}" </dev/null
+		;;
+	*)
+		echo "sync-codex-mcp-servers: $name has unrecognized type '$type', skipping" >&2
+		;;
+	esac
+done < <(jq -c '.mcpServers | to_entries[] | select(.key != "codex")' "$HOME/.claude.json")
