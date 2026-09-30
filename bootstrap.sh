@@ -611,6 +611,14 @@ install_cargo-cache_from_release() {
 	cargo install cargo-cache --locked --version "$1"
 }
 
+install_tree-sitter-cli_from_release() {
+	cargo install tree-sitter-cli --locked --version "$1"
+}
+
+tree-sitter-cli_current_semver() {
+	tree-sitter --version 2>/dev/null | parse_semver | head -n1
+}
+
 install_git-crypt_from_source() {
 	# git-crypt needs to be built from source on some systems
 	if [ ! -d ~/lib/git-crypt ]; then
@@ -736,6 +744,7 @@ install_dependencies() {
 	install_package_version gotestsum 1.13.0                 # go test runner with color
 	install_package_version yaml-language-server 0.16.0      # yaml
 	install_package_version ctags-lsp 0.6.1                  # ctags fallback
+	install_package_version tree-sitter-cli 0.27.0           # nvim-treesitter TSInstall parser builds
 
 	# tools
 	install_package_version hexyl 0.16.0
