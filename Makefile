@@ -1,5 +1,5 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto
+.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
 DOTFILES := $(shell pwd)
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
@@ -200,6 +200,10 @@ claude: claude-plugins
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
+codex: claude
+	@mkdir -p $(HOME)/.codex
+	@ln -fs $(DOTFILES)/codex/bedrock.config.toml $(HOME)/.codex/bedrock.config.toml
+	@$(DOTFILES)/bin/sync-codex-mcp-servers
 quarto:
 	@mkdir -p $(HOME)/.config/quarto
 	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles

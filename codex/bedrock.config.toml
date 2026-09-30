@@ -1,0 +1,8 @@
+model_provider = "amazon-bedrock"
+model = "TODO-fill-in-bedrock-model-id"  # verify with `aws bedrock list-foundation-models --region us-west-2` before first real run
+
+[model_providers.amazon-bedrock]
+name = "Amazon Bedrock (bedrock-mantle)"
+base_url = "https://bedrock-mantle.us-west-2.api.aws"
+env_key = "AWS_BEARER_TOKEN_BEDROCK"
+wire_api = "chat"  # UNVERIFIED — codex-cli 0.153.4 may expect "responses" instead; first `codex --profile bedrock --strict-config` run will error clearly if wrong, try the other value if so
