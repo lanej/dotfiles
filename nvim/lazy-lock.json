@@ -11,7 +11,7 @@
   "csharpls-extended-lsp.nvim": { "branch": "master", "commit": "ed20a88af5774319c7eafc7faa45c9fde7314b4e" },
   "dadbod-grip.nvim": { "branch": "main", "commit": "d3b03fc157f90fe18d112578c2453bc5430b9252" },
   "diffview.nvim": { "branch": "main", "commit": "4516612fe98ff56ae0415a259ff6361a89419b0a" },
-  "focus.nvim": { "branch": "feature/width-min-columns", "commit": "cb2a68d89c509dc0687fe796283cb18992b21426" },
+  "focus.nvim": { "branch": "master", "commit": "69475643c1c40cfaed8f1c0178b0c44abe509396" },
   "friendly-snippets": { "branch": "main", "commit": "6cd7280adead7f586db6fccbd15d2cac7e2188b9" },
   "fugitive-azure-devops.vim": { "branch": "master", "commit": "f5fc65a35a08662f8f3b1df457cc37597004f43a" },
   "fzf-lua": { "branch": "main", "commit": "532d463f5c83595192fe740572d8fd6902b2217a" },
