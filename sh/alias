@@ -485,23 +485,19 @@ cbd() {
 }
 
 codex-bedrock() {
-	local profile="EasyPostAIHubEngineering"
-	local region="us-west-2"
-	local token
+	# No SSO, no per-run token generation: the long-lived Bedrock API key in
+	# ~/.config/bedrock/env is already sourced into every shell (zsh/zshrc)
+	# and is what codex/bedrock.config.toml's native amazon-bedrock provider
+	# reads via AWS_BEARER_TOKEN_BEDROCK. This is just a thin, explicit entry
+	# point onto that already-ambient credential - not a credential fetcher.
+	if [ -z "$AWS_BEARER_TOKEN_BEDROCK" ]; then
+		echo "codex-bedrock: AWS_BEARER_TOKEN_BEDROCK not set - open a new shell or run: source ~/.config/bedrock/env" >&2
+		return 1
+	fi
 
-	AWS_PROFILE="$profile" aws sts get-caller-identity >/dev/null 2>&1 \
-		|| aws sso login --profile "$profile" \
-		|| return 1
+	echo "🟠 Codex CLI → AWS Bedrock (long-lived key, no SSO)"
 
-	token="$(bedrock-mantle-token "$profile" "$region")" || return 1
-
-	echo "🟠 Codex CLI → AWS Bedrock ($region, profile $profile)"
-	echo "   Bearer token expires <=12h; re-run codex-bedrock to refresh"
-
-	# No AWS_REGION export: codex/bedrock.config.toml pins
-	# model_providers.amazon-bedrock.aws.region explicitly, which always wins
-	# over env vars (confirmed against Codex's own docs and a live test run).
-	AWS_BEARER_TOKEN_BEDROCK="$token" codex --profile bedrock "$@"
+	codex --profile bedrock "$@"
 }
 
 claude-status() {
