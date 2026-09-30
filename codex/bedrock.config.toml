@@ -1,8 +1,7 @@
+model = "openai.gpt-5.6-terra"  # per OpenAI's official Codex-on-Bedrock support doc (help.openai.com/en/articles/20001253), the only officially supported ids are gpt-5.6-sol/terra/luna, gpt-5.5, gpt-5.4 — sol/gpt-5.5 aren't available on this account's Bedrock catalog, terra and luna are
 model_provider = "amazon-bedrock"
-model = "TODO-fill-in-bedrock-model-id"  # verify with `aws bedrock list-foundation-models --region us-west-2` before first real run
+model_reasoning_summary = "auto"  # base config.toml's global "detailed" 400s on this model via bedrock-mantle ("reasoning.summary" not supported) — override live-verified working
 
-[model_providers.amazon-bedrock]
-name = "Amazon Bedrock (bedrock-mantle)"
-base_url = "https://bedrock-mantle.us-west-2.api.aws"
-env_key = "AWS_BEARER_TOKEN_BEDROCK"
-wire_api = "chat"  # UNVERIFIED — codex-cli 0.153.4 may expect "responses" instead; first `codex --profile bedrock --strict-config` run will error clearly if wrong, try the other value if so
+[model_providers.amazon-bedrock.aws]
+region = "us-west-2"
+# profile intentionally omitted — Codex checks AWS_BEARER_TOKEN_BEDROCK first (already sourced ambiently via ~/.config/bedrock/env), falling back to the AWS SDK credential chain only if that's unset
