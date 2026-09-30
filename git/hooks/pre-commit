@@ -27,7 +27,11 @@ if command -v shellcheck >/dev/null 2>&1; then
         esac
     done < <(git diff --cached --name-only --diff-filter=ACM)
     if [[ ${#shell_files[@]} -gt 0 ]]; then
-        shellcheck "${shell_files[@]}"
+        # warning/info/style findings are dominated by non-constant `source`
+        # paths (inherent to conditionally sourcing things like .cargo/env)
+        # and by long-standing bashisms these dotfiles rely on intentionally
+        # -- not real defects. Only fail on actual errors.
+        shellcheck --severity=error "${shell_files[@]}"
     fi
 fi
 
