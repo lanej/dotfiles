@@ -484,6 +484,24 @@ cbd() {
 	claude-bedrock --dangerously-skip-permissions
 }
 
+codex-bedrock() {
+	local profile="EasyPostAIHubEngineering"
+	local region="us-west-2"
+	local token
+
+	AWS_PROFILE="$profile" aws sts get-caller-identity >/dev/null 2>&1 \
+		|| aws sso login --profile "$profile" \
+		|| return 1
+
+	token="$(bedrock-mantle-token "$profile" "$region")" || return 1
+
+	echo "🟠 Codex CLI → AWS Bedrock ($region, profile $profile)"
+	echo "   Bearer token expires <=12h; re-run codex-bedrock to refresh"
+
+	AWS_BEARER_TOKEN_BEDROCK="$token" AWS_REGION="$region" \
+		codex --profile bedrock "$@"
+}
+
 claude-status() {
 	local project="${ANTHROPIC_VERTEX_PROJECT_ID:-easypost-platform}"
 	echo "Current project: $project"
