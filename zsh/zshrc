@@ -486,10 +486,14 @@ fi
 # Quick privacy check before starting Claude Code
 alias claude-check="~/.claude/local/claude-privacy-check"
 
+# Long-term AWS Bedrock key (default provider for plain `claude`/`codex --profile bedrock`)
+[ -f ~/.config/bedrock/env ] && source ~/.config/bedrock/env
+
 # Context switching (for future personal GCP project setup)
 claude-work() {
     export ANTHROPIC_VERTEX_PROJECT_ID=easypost-platform
     export CLAUDE_CODE_USE_VERTEX=1
+    export CLAUDE_CODE_USE_BEDROCK=""
     echo "🏢 Claude Code → EasyPost Vertex AI (easypost-platform)"
     echo "   Privacy: MEDIUM (metadata visible to EasyPost admins)"
     echo "   Run 'claude-check' to verify logging status"
@@ -498,6 +502,7 @@ claude-work() {
 claude-personal() {
     export ANTHROPIC_VERTEX_PROJECT_ID=joshlane-claude-private
     export CLAUDE_CODE_USE_VERTEX=1
+    export CLAUDE_CODE_USE_BEDROCK=""
     echo "🔒 Claude Code → Personal Vertex AI (joshlane-claude-private)"
     echo "   Privacy: HIGH (you control all access)"
     echo "   Run 'claude-check' to verify logging status"
