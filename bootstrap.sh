@@ -732,7 +732,7 @@ install_dependencies() {
 	install_package_version lua-language-server 3.13.6       # lua
 	install_package_version rust-analyzer 1.84.1             # rust
 	install_package_version typescript-language-server 4.3.3 # typescript
-	install_package_version gopls 0.17.1                     # go
+	install_package_version gopls 0.23.0                     # go
 	install_package_version gotestsum 1.13.0                 # go test runner with color
 	install_package_version yaml-language-server 0.16.0      # yaml
 	install_package_version ctags-lsp 0.6.1                  # ctags fallback
