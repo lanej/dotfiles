@@ -1,9 +1,14 @@
 # Bedrock router for Codex and ChatGPT SSH hosts
 
-Routes `openai.gpt-6.1-sol` to Mantle in `us-east-1`; all other models go to
-`us-west-2`. Listens only on `127.0.0.1:18081`, forwards streaming responses,
-and uses the bearer token supplied by Codex. Logs contain routing metadata,
-never tokens or prompt bodies.
+New sessions use Mantle in `us-west-2`, except `openai.gpt-6.1-sol`, which requires
+`us-east-1`. A session stays in its initial region across model changes, and new
+guardian agents and forks inherit their parent's region. Choosing GPT-6.1 Sol
+in a West session returns an explicit conflict: start a new session to use it.
+
+Listens only on `127.0.0.1:18081`, forwards streaming responses, and uses the
+bearer token supplied by Codex. Logs contain routing metadata, never tokens or
+prompt bodies. Region pins survive restarts in `~/.codex/bedrock-router/sessions.sqlite3`,
+which stores only hashed thread IDs and regions. `--state-file` overrides its path.
 
 ## Install or update
 
@@ -75,8 +80,10 @@ systemctl --user restart codex-bedrock-router.service
 systemctl --user status codex-bedrock-router.service
 ```
 
-After a cross-region encrypted-reasoning validation failure, the router retries
-once with only the reasoning ciphertext removed. It preserves visible messages,
-reasoning summaries, and tool calls/results. Encrypted compaction is never
-removed: a task containing it must remain in its original region or begin a new
-task with a visible handoff summary.
+For an older session whose region is not yet recorded, an encrypted-context
+validation failure triggers one attempt in the other region with the entire
+request unchanged. A successful attempt records that region for future turns.
+This also lets an older guardian retain its own history's region when its parent
+has a different pin.
+An established pin never moves, and encrypted reasoning and compaction are never
+removed. A model unavailable in a session's region requires a new session.

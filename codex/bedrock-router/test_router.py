@@ -2,8 +2,10 @@ import gzip
 import http.client
 import http.server
 import json
+import tempfile
 import threading
 import unittest
+from pathlib import Path
 
 from router import RouterServer
 
@@ -26,11 +28,15 @@ class RouterTest(unittest.TestCase):
                         "auth": self.headers.get("Authorization"),
                         "path": self.path,
                         "encoding": self.headers.get("Content-Encoding"),
+                        "region": self.server.region,
                     }
                 )
                 if self.headers.get("X-Test-Region-Error"):
                     data = json.loads(body)
-                    if any(x.get("encrypted_content") for x in data.get("input", [])):
+                    origin = self.headers.get("X-Test-Context-Region", "us-east-1")
+                    if self.server.region != origin and any(
+                        x.get("encrypted_content") for x in data.get("input", [])
+                    ):
                         error = json.dumps(
                             {
                                 "error": {
@@ -55,17 +61,30 @@ class RouterTest(unittest.TestCase):
                     cls.release_stream.wait(5)
                 self.wfile.write(b"data: [DONE]\n\n")
 
-        cls.upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
-        threading.Thread(target=cls.upstream.serve_forever, daemon=True).start()
+        cls.upstreams = {}
+        for region in ("us-west-2", "us-east-1"):
+            upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+            upstream.region = region
+            cls.upstreams[region] = upstream
+            threading.Thread(target=upstream.serve_forever, daemon=True).start()
         cls.regions = []
+        cls.state_dir = tempfile.TemporaryDirectory()
+        cls.state_file = Path(cls.state_dir.name) / "sessions.sqlite3"
 
         def connect(region):
             cls.regions.append(region)
             return http.client.HTTPConnection(
-                "127.0.0.1", cls.upstream.server_port, timeout=5
+                "127.0.0.1", cls.upstreams[region].server_port, timeout=5
             )
 
-        cls.router = RouterServer(("127.0.0.1", 0), connect)
+        cls.connect = staticmethod(connect)
+        cls.start_router()
+
+    @classmethod
+    def start_router(cls):
+        cls.router = RouterServer(
+            ("127.0.0.1", 0), cls.connect, state_file=cls.state_file
+        )
         threading.Thread(target=cls.router.serve_forever, daemon=True).start()
 
     @classmethod
@@ -73,20 +92,23 @@ class RouterTest(unittest.TestCase):
         cls.release_stream.set()
         cls.router.shutdown()
         cls.router.server_close()
-        cls.upstream.shutdown()
-        cls.upstream.server_close()
+        for upstream in cls.upstreams.values():
+            upstream.shutdown()
+            upstream.server_close()
+        cls.state_dir.cleanup()
 
-    def request(self, model, compress=False, chunked=False):
+    def request(self, model, compress=False, chunked=False, headers=None, timeout=5):
         body = json.dumps({"model": model, "input": "test"}).encode()
         headers = {
             "Authorization": "Bearer test-only",
             "Content-Type": "application/json",
+            **(headers or {}),
         }
         if compress:
             body = gzip.compress(body)
             headers["Content-Encoding"] = "gzip"
         conn = http.client.HTTPConnection(
-            "127.0.0.1", self.router.server_port, timeout=5
+            "127.0.0.1", self.router.server_port, timeout=timeout
         )
         conn.request(
             "POST",
@@ -102,16 +124,76 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(self.seen[-1]["body"], body)
         self.assertEqual(self.seen[-1]["auth"], "Bearer test-only")
 
-    def test_exact_model_routes_east_and_other_models_west(self):
-        for model, region in [
-            ("openai.gpt-6.1-sol", "us-east-1"),
-            ("openai.gpt-6-astra", "us-west-2"),
-            ("openai.gpt-6-sol", "us-west-2"),
-            ("openai.gpt-6.1-sol-other", "us-west-2"),
-        ]:
-            with self.subTest(model=model):
-                self.request(model)
-                self.assertEqual(self.regions[-1], region)
+    def test_session_region_survives_model_change_fork_and_restart(self):
+        west = {"thread-id": "west-session"}
+        east = {"thread-id": "east-session"}
+        self.request("openai.gpt-6-astra", headers=west)
+        self.assertEqual(self.regions[-1], "us-west-2")
+
+        before = len(self.seen)
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=5
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps({"model": "openai.gpt-6.1-sol", "input": "test"}),
+            {"Authorization": "Bearer test-only", **west},
+        )
+        response = conn.getresponse()
+        self.assertEqual(response.status, 409)
+        self.assertIn(b"Start a new session", response.read())
+        conn.close()
+        self.assertEqual(len(self.seen), before)
+
+        self.release_stream.clear()
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=2
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps({"model": "openai.gpt-6.1-sol", "input": "test"}),
+            {"Authorization": "Bearer test-only", "X-Test-Stream": "1", **east},
+        )
+        response = conn.getresponse()
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.read(13), b"data: first\n\n")
+        self.assertEqual(self.regions[-1], "us-east-1")
+        try:
+            self.request(
+                "openai.gpt-5.6-luna",
+                headers={
+                    "thread-id": "guardian-during-stream",
+                    "x-codex-parent-thread-id": "east-session",
+                },
+                timeout=2,
+            )
+            self.assertEqual(self.regions[-1], "us-east-1")
+        finally:
+            self.release_stream.set()
+            response.read()
+            conn.close()
+        self.request("openai.gpt-6-astra", headers=east)
+        self.assertEqual(self.regions[-1], "us-east-1")
+
+        self.router.shutdown()
+        self.router.server_close()
+        type(self).start_router()
+        self.request("openai.gpt-6-astra", headers=east)
+        self.assertEqual(self.regions[-1], "us-east-1")
+        self.request(
+            "openai.gpt-5.6-luna",
+            headers={
+                "thread-id": "guardian-session",
+                "x-codex-turn-metadata": json.dumps(
+                    {"parent_thread_id": "east-session"}
+                ),
+            },
+        )
+        self.assertEqual(self.regions[-1], "us-east-1")
+        self.request("openai.gpt-6-astra", headers=west)
+        self.assertEqual(self.regions[-1], "us-west-2")
 
     def test_compressed_chunked_request_preserves_payload_and_auth(self):
         self.request("openai.gpt-6.1-sol", compress=True, chunked=True)
@@ -154,9 +236,12 @@ class RouterTest(unittest.TestCase):
             conn.close()
             self.assertEqual(len(self.regions), before)
 
-    def test_region_error_retries_preserving_visible_history_and_tool_results(self):
+    def test_old_session_recovers_its_region_with_encrypted_context_intact(self):
+        self.request(
+            "openai.gpt-6.1-sol", headers={"thread-id": "old-session-parent"}
+        )
         payload = {
-            "model": "openai.gpt-6-astra",
+            "model": "openai.gpt-5.6-luna",
             "input": [
                 {"role": "user", "content": "Keep this task context."},
                 {
@@ -174,33 +259,6 @@ class RouterTest(unittest.TestCase):
                     "arguments": '{"message":"test"}',
                 },
                 {"type": "function_call_output", "call_id": "call_1", "output": "test"},
-            ],
-        }
-        before = len(self.seen)
-        conn = http.client.HTTPConnection(
-            "127.0.0.1", self.router.server_port, timeout=5
-        )
-        conn.request(
-            "POST",
-            "/openai/v1/responses",
-            json.dumps(payload),
-            {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"},
-        )
-        response = conn.getresponse()
-        self.assertEqual(response.status, 200)
-        self.assertIn(b"[DONE]", response.read())
-        conn.close()
-        self.assertEqual(len(self.seen) - before, 2)
-        self.assertEqual(json.loads(self.seen[-2]["body"]), payload)
-        del payload["input"][1]["encrypted_content"]
-        self.assertEqual(json.loads(self.seen[-1]["body"]), payload)
-        self.assertEqual(self.seen[-1]["auth"], "Bearer test-only")
-
-    def test_encrypted_compaction_is_never_removed_or_retried(self):
-        payload = {
-            "model": "openai.gpt-6-astra",
-            "input": [
-                {"type": "reasoning", "encrypted_content": "foreign", "summary": []},
                 {"type": "compaction", "encrypted_content": "task-context"},
             ],
         }
@@ -212,14 +270,47 @@ class RouterTest(unittest.TestCase):
             "POST",
             "/openai/v1/responses",
             json.dumps(payload),
-            {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"},
+            {
+                "Authorization": "Bearer test-only",
+                "X-Test-Region-Error": "1",
+                "X-Test-Context-Region": "us-west-2",
+                "thread-id": "old-session",
+                "x-codex-parent-thread-id": "old-session-parent",
+            },
         )
         response = conn.getresponse()
-        self.assertEqual(response.status, 400)
-        self.assertIn(b"Encrypted content", response.read())
+        self.assertEqual(response.status, 200)
+        self.assertIn(b"[DONE]", response.read())
+        conn.close()
+        self.assertEqual(len(self.seen) - before, 2)
+        self.assertEqual(json.loads(self.seen[-2]["body"]), payload)
+        self.assertEqual(json.loads(self.seen[-1]["body"]), payload)
+        self.assertEqual(self.seen[-2]["region"], "us-east-1")
+        self.assertEqual(self.seen[-1]["region"], "us-west-2")
+        self.assertEqual(self.seen[-1]["auth"], "Bearer test-only")
+        before = len(self.seen)
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=5
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps(payload),
+            {
+                "Authorization": "Bearer test-only",
+                "X-Test-Region-Error": "1",
+                "X-Test-Context-Region": "us-west-2",
+                "thread-id": "old-session",
+                "x-codex-parent-thread-id": "old-session-parent",
+            },
+        )
+        response = conn.getresponse()
+        self.assertEqual(response.status, 200)
+        self.assertIn(b"[DONE]", response.read())
         conn.close()
         self.assertEqual(len(self.seen) - before, 1)
         self.assertEqual(json.loads(self.seen[-1]["body"]), payload)
+        self.assertEqual(self.seen[-1]["region"], "us-west-2")
 
 
 if __name__ == "__main__":
