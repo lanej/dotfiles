@@ -31,6 +31,11 @@ failures stop the task so they can be fixed.
 
 See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
 
+In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
+and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
+These shortcuts also work through tmux, so Codex actions such as `F2` and `F4`
+are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
+
 ## Key Makefile Targets
 
 | Target | Description |
