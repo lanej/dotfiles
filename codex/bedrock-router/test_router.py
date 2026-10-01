@@ -20,18 +20,26 @@ class RouterTest(unittest.TestCase):
 
             def do_POST(self):
                 body = self.rfile.read(int(self.headers["Content-Length"]))
-                cls.seen.append({
-                    "body": body, "auth": self.headers.get("Authorization"),
-                    "path": self.path, "encoding": self.headers.get("Content-Encoding"),
-                })
+                cls.seen.append(
+                    {
+                        "body": body,
+                        "auth": self.headers.get("Authorization"),
+                        "path": self.path,
+                        "encoding": self.headers.get("Content-Encoding"),
+                    }
+                )
                 if self.headers.get("X-Test-Region-Error"):
                     data = json.loads(body)
                     if any(x.get("encrypted_content") for x in data.get("input", [])):
-                        error = json.dumps({"error": {
-                            "code": "validation_error",
-                            "message": "Encrypted content cannot be used in a different region from the one that created it.",
-                            "type": "invalid_request_error",
-                        }}).encode()
+                        error = json.dumps(
+                            {
+                                "error": {
+                                    "code": "validation_error",
+                                    "message": "Encrypted content cannot be used in a different region from the one that created it.",
+                                    "type": "invalid_request_error",
+                                }
+                            }
+                        ).encode()
                         self.send_response(400)
                         self.send_header("Content-Type", "application/json")
                         self.send_header("Content-Length", str(len(error)))
@@ -53,7 +61,9 @@ class RouterTest(unittest.TestCase):
 
         def connect(region):
             cls.regions.append(region)
-            return http.client.HTTPConnection("127.0.0.1", cls.upstream.server_port, timeout=5)
+            return http.client.HTTPConnection(
+                "127.0.0.1", cls.upstream.server_port, timeout=5
+            )
 
         cls.router = RouterServer(("127.0.0.1", 0), connect)
         threading.Thread(target=cls.router.serve_forever, daemon=True).start()
@@ -68,14 +78,23 @@ class RouterTest(unittest.TestCase):
 
     def request(self, model, compress=False, chunked=False):
         body = json.dumps({"model": model, "input": "test"}).encode()
-        headers = {"Authorization": "Bearer test-only", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": "Bearer test-only",
+            "Content-Type": "application/json",
+        }
         if compress:
             body = gzip.compress(body)
             headers["Content-Encoding"] = "gzip"
-        conn = http.client.HTTPConnection("127.0.0.1", self.router.server_port, timeout=5)
-        conn.request("POST", "/openai/v1/responses",
-                     iter([body[:5], body[5:]]) if chunked else body,
-                     headers=headers, encode_chunked=chunked)
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=5
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            iter([body[:5], body[5:]]) if chunked else body,
+            headers=headers,
+            encode_chunked=chunked,
+        )
         response = conn.getresponse()
         self.assertEqual(response.status, 200)
         self.assertIn(b"[DONE]", response.read())
@@ -101,10 +120,15 @@ class RouterTest(unittest.TestCase):
 
     def test_stream_is_forwarded_before_upstream_finishes(self):
         self.release_stream.clear()
-        conn = http.client.HTTPConnection("127.0.0.1", self.router.server_port, timeout=2)
-        conn.request("POST", "/openai/v1/responses",
-                     json.dumps({"model": "openai.gpt-6-astra"}),
-                     {"Authorization": "Bearer test-only", "X-Test-Stream": "1"})
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=2
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps({"model": "openai.gpt-6-astra"}),
+            {"Authorization": "Bearer test-only", "X-Test-Stream": "1"},
+        )
         response = conn.getresponse()
         try:
             self.assertEqual(response.read(13), b"data: first\n\n")
@@ -120,7 +144,9 @@ class RouterTest(unittest.TestCase):
             ("/unrelated", "Bearer test-only", 404),
         ]:
             before = len(self.regions)
-            conn = http.client.HTTPConnection("127.0.0.1", self.router.server_port, timeout=2)
+            conn = http.client.HTTPConnection(
+                "127.0.0.1", self.router.server_port, timeout=2
+            )
             conn.request("POST", path, b"{}", {"Authorization": auth})
             response = conn.getresponse()
             self.assertEqual(response.status, status)
@@ -129,18 +155,37 @@ class RouterTest(unittest.TestCase):
             self.assertEqual(len(self.regions), before)
 
     def test_region_error_retries_preserving_visible_history_and_tool_results(self):
-        payload = {"model": "openai.gpt-6-astra", "input": [
-            {"role": "user", "content": "Keep this task context."},
-            {"type": "reasoning", "id": "rs_1", "encrypted_content": "foreign",
-             "summary": [{"type": "summary_text", "text": "Retain this summary."}]},
-            {"type": "function_call", "call_id": "call_1", "name": "echo",
-             "arguments": "{\"message\":\"test\"}"},
-            {"type": "function_call_output", "call_id": "call_1", "output": "test"},
-        ]}
+        payload = {
+            "model": "openai.gpt-6-astra",
+            "input": [
+                {"role": "user", "content": "Keep this task context."},
+                {
+                    "type": "reasoning",
+                    "id": "rs_1",
+                    "encrypted_content": "foreign",
+                    "summary": [
+                        {"type": "summary_text", "text": "Retain this summary."}
+                    ],
+                },
+                {
+                    "type": "function_call",
+                    "call_id": "call_1",
+                    "name": "echo",
+                    "arguments": '{"message":"test"}',
+                },
+                {"type": "function_call_output", "call_id": "call_1", "output": "test"},
+            ],
+        }
         before = len(self.seen)
-        conn = http.client.HTTPConnection("127.0.0.1", self.router.server_port, timeout=5)
-        conn.request("POST", "/openai/v1/responses", json.dumps(payload),
-                     {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"})
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=5
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps(payload),
+            {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"},
+        )
         response = conn.getresponse()
         self.assertEqual(response.status, 200)
         self.assertIn(b"[DONE]", response.read())
@@ -152,14 +197,23 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(self.seen[-1]["auth"], "Bearer test-only")
 
     def test_encrypted_compaction_is_never_removed_or_retried(self):
-        payload = {"model": "openai.gpt-6-astra", "input": [
-            {"type": "reasoning", "encrypted_content": "foreign", "summary": []},
-            {"type": "compaction", "encrypted_content": "task-context"},
-        ]}
+        payload = {
+            "model": "openai.gpt-6-astra",
+            "input": [
+                {"type": "reasoning", "encrypted_content": "foreign", "summary": []},
+                {"type": "compaction", "encrypted_content": "task-context"},
+            ],
+        }
         before = len(self.seen)
-        conn = http.client.HTTPConnection("127.0.0.1", self.router.server_port, timeout=5)
-        conn.request("POST", "/openai/v1/responses", json.dumps(payload),
-                     {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"})
+        conn = http.client.HTTPConnection(
+            "127.0.0.1", self.router.server_port, timeout=5
+        )
+        conn.request(
+            "POST",
+            "/openai/v1/responses",
+            json.dumps(payload),
+            {"Authorization": "Bearer test-only", "X-Test-Region-Error": "1"},
+        )
         response = conn.getresponse()
         self.assertEqual(response.status, 400)
         self.assertIn(b"Encrypted content", response.read())

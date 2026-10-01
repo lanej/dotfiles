@@ -7,16 +7,20 @@ import gzip
 import http.client
 import http.server
 import json
-import socket
 import threading
 import urllib.parse
-
 
 DEFAULT_REGION = "us-west-2"
 MODEL_REGIONS = {"openai.gpt-6.1-sol": "us-east-1"}
 HOP_HEADERS = {
-    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
-    "te", "trailer", "transfer-encoding", "upgrade",
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
 }
 MAX_BODY_BYTES = 128 * 1024 * 1024
 
@@ -29,6 +33,7 @@ def json_from_body(body, encoding):
     if encoding.lower() == "gzip":
         # Limit decompression independently of the encoded request size.
         import io
+
         with gzip.GzipFile(fileobj=io.BytesIO(body)) as stream:
             body = stream.read(MAX_BODY_BYTES + 1)
         if len(body) > MAX_BODY_BYTES:
@@ -39,7 +44,7 @@ def json_from_body(body, encoding):
         return {}
     value = json.loads(body)
     if not isinstance(value, dict):
-        raise ValueError("Expected a JSON object")
+        raise TypeError("Expected a JSON object")
     return value
 
 
@@ -77,9 +82,12 @@ def without_encrypted_reasoning(body, encoding):
 
     removed = 0
     for item in items:
-        if isinstance(item, dict) and item.get("type") == "reasoning":
-            if item.pop("encrypted_content", None):
-                removed += 1
+        if (
+            isinstance(item, dict)
+            and item.get("type") == "reasoning"
+            and item.pop("encrypted_content", None)
+        ):
+            removed += 1
     if not removed:
         return None
     clean = json.dumps(payload, separators=(",", ":")).encode()
@@ -101,9 +109,7 @@ def is_region_state_error(status, body):
 
 
 def upstream_connection(region):
-    return http.client.HTTPSConnection(
-        f"bedrock-mantle.{region}.api.aws", timeout=300
-    )
+    return http.client.HTTPSConnection(f"bedrock-mantle.{region}.api.aws", timeout=300)
 
 
 class RouterServer(http.server.ThreadingHTTPServer):
@@ -147,12 +153,15 @@ class RouterHandler(http.server.BaseHTTPRequestHandler):
         if self.path == "/healthz":
             with self.server.count_lock:
                 counts = dict(self.server.route_counts)
-            self.send_json(200, {
-                "status": "ok",
-                "default_region": DEFAULT_REGION,
-                "model_regions": MODEL_REGIONS,
-                "requests_by_region": counts,
-            })
+            self.send_json(
+                200,
+                {
+                    "status": "ok",
+                    "default_region": DEFAULT_REGION,
+                    "model_regions": MODEL_REGIONS,
+                    "requests_by_region": counts,
+                },
+            )
             return
         self.proxy()
 
@@ -210,16 +219,31 @@ class RouterHandler(http.server.BaseHTTPRequestHandler):
         try:
             body = self.read_body()
             model = model_from_body(body, self.headers.get("Content-Encoding", ""))
-        except (ValueError, OSError, EOFError):
-            self.send_json(400, {"error": {"message": "Invalid JSON request body or framing"}})
+        except (ValueError, TypeError, OSError, EOFError):
+            self.send_json(
+                400, {"error": {"message": "Invalid JSON request body or framing"}}
+            )
             return
         # Model-less response lookups cannot be safely routed by model.
-        if "/responses/" in parsed.path and parsed.path.rsplit("/", 1)[-1] != "compact" and model is None:
-            self.send_json(400, {"error": {"message": "A model is required for regional response routing"}})
+        if (
+            "/responses/" in parsed.path
+            and parsed.path.rsplit("/", 1)[-1] != "compact"
+            and model is None
+        ):
+            self.send_json(
+                400,
+                {
+                    "error": {
+                        "message": "A model is required for regional response routing"
+                    }
+                },
+            )
             return
         region = region_for_model(model)
         excluded = HOP_HEADERS | {"host", "content-length"}
-        excluded |= {x.strip().lower() for x in self.headers.get("Connection", "").split(",")}
+        excluded |= {
+            x.strip().lower() for x in self.headers.get("Connection", "").split(",")
+        }
         headers = {k: v for k, v in self.headers.items() if k.lower() not in excluded}
         headers["Connection"] = "close"
         upstream = self.server.connection_factory(region)
@@ -240,18 +264,30 @@ class RouterHandler(http.server.BaseHTTPRequestHandler):
                         # history and all tool calls, outputs, and summaries.
                         upstream.close()
                         upstream = self.server.connection_factory(region)
-                        upstream.request(self.command, self.path, body=clean, headers=headers)
+                        upstream.request(
+                            self.command, self.path, body=clean, headers=headers
+                        )
                         response = upstream.getresponse()
                         prefetched = None
-                        print(json.dumps({
-                            "event": "retry_without_cross_region_reasoning",
-                            "region": region, "model": model, "status": response.status,
-                        }), flush=True)
+                        print(
+                            json.dumps(
+                                {
+                                    "event": "retry_without_cross_region_reasoning",
+                                    "region": region,
+                                    "model": model,
+                                    "status": response.status,
+                                }
+                            ),
+                            flush=True,
+                        )
             with self.server.count_lock:
                 self.server.route_counts[region] += 1
-            print(json.dumps({
-                "region": region, "model": model, "status": response.status
-            }), flush=True)
+            print(
+                json.dumps(
+                    {"region": region, "model": model, "status": response.status}
+                ),
+                flush=True,
+            )
             self.send_response(response.status, response.reason)
             response_excluded = HOP_HEADERS | {"server", "date"}
             response_excluded |= {
@@ -272,9 +308,11 @@ class RouterHandler(http.server.BaseHTTPRequestHandler):
             while chunk := response.read1(65536):
                 self.wfile.write(chunk)
                 self.wfile.flush()
-        except (OSError, http.client.HTTPException, socket.timeout):
+        except (TimeoutError, OSError, http.client.HTTPException):
             if not response_started:
-                self.send_json(502, {"error": {"message": "Bedrock upstream connection failed"}})
+                self.send_json(
+                    502, {"error": {"message": "Bedrock upstream connection failed"}}
+                )
         finally:
             self.close_connection = True
             upstream.close()
@@ -285,10 +323,18 @@ def main():
     parser.add_argument("--port", type=int, default=18081)
     args = parser.parse_args()
     with RouterServer(("127.0.0.1", args.port)) as server:
-        print(json.dumps({
-            "event": "listening", "host": "127.0.0.1", "port": server.server_port,
-            "default_region": DEFAULT_REGION, "model_regions": MODEL_REGIONS,
-        }), flush=True)
+        print(
+            json.dumps(
+                {
+                    "event": "listening",
+                    "host": "127.0.0.1",
+                    "port": server.server_port,
+                    "default_region": DEFAULT_REGION,
+                    "model_regions": MODEL_REGIONS,
+                }
+            ),
+            flush=True,
+        )
         server.serve_forever()
 
 
