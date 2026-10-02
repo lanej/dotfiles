@@ -22,6 +22,14 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// launchdLabel and systemdUnitName name the installed background service on
+// each platform. Shared between install.go (which registers the service)
+// and status.go (which queries it) so the two never drift apart.
+const (
+	launchdLabel    = "com.joshlane.codex.bedrock-router"
+	systemdUnitName = "codex-bedrock-router.service"
+)
+
 type installEnvironment struct {
 	home, root, executable, platform, uid string
 	run                                   func(string, ...string) (string, error)
@@ -150,7 +158,7 @@ func launchAgent(executable, dir string) []byte {
 		out.WriteString("</string>")
 	}
 	for _, entry := range []struct{ key, value string }{
-		{"Label", "com.joshlane.codex.bedrock-router"},
+		{"Label", launchdLabel},
 		{"WorkingDirectory", dir},
 		{"ProcessType", "Background"},
 		{"StandardOutPath", filepath.Join(dir, "router.log")},
@@ -277,7 +285,7 @@ func install(args []string, env installEnvironment) error {
 		}
 	}
 	if env.platform == "darwin" {
-		label := "com.joshlane.codex.bedrock-router"
+		label := launchdLabel
 		service := filepath.Join(env.home, "Library", "LaunchAgents", label+".plist")
 		if err := atomicWrite(service, launchAgent(executable, dir), 0600); err != nil {
 			return err
@@ -317,15 +325,15 @@ func install(args []string, env installEnvironment) error {
 			}
 		}
 	} else {
-		service := filepath.Join(env.home, ".config", "systemd", "user", "codex-bedrock-router.service")
+		service := filepath.Join(env.home, ".config", "systemd", "user", systemdUnitName)
 		if err := atomicWrite(service, systemdUnit(executable, dir), 0600); err != nil {
 			return err
 		}
 		if !*noStart {
 			for _, args := range [][]string{
 				{"--user", "daemon-reload"},
-				{"--user", "enable", "codex-bedrock-router.service"},
-				{"--user", "restart", "codex-bedrock-router.service"},
+				{"--user", "enable", systemdUnitName},
+				{"--user", "restart", systemdUnitName},
 			} {
 				if _, err := env.run("systemctl", args...); err != nil {
 					return err

@@ -7,12 +7,28 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 )
 
 //go:embed config.json
 var embeddedConfig []byte
+
+// effectiveConfigPath resolves the configuration file path the same way for
+// every entrypoint: an explicit flag value wins, otherwise a config.json
+// sitting beside the running executable is used if present, otherwise the
+// empty string (meaning: fall back to the embedded default).
+func effectiveConfigPath(flagValue, executable string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	adjacent := filepath.Join(filepath.Dir(executable), "config.json")
+	if _, err := os.Stat(adjacent); !os.IsNotExist(err) {
+		return adjacent
+	}
+	return ""
+}
 
 type configuration struct {
 	Port               int               `json:"port"`

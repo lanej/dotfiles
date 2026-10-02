@@ -41,16 +41,29 @@ func (c *idleConn) Write(p []byte) (int, error) {
 
 func main() {
 	syscall.Umask(0077)
-	if len(os.Args) > 1 && os.Args[1] == "install" {
-		env, err := currentInstallEnvironment()
-		if err == nil {
-			err = install(os.Args[2:], env)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "install":
+			env, err := currentInstallEnvironment()
+			if err == nil {
+				err = install(os.Args[2:], env)
+			}
+			if err != nil {
+				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("installation_failed", "message", err.Error())
+				os.Exit(1)
+			}
+			return
+		case "status":
+			env, err := currentInstallEnvironment()
+			code := 1
+			if err == nil {
+				code, err = statusCmd(os.Args[2:], env, os.Stdout)
+			}
+			if err != nil {
+				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("status_failed", "message", err.Error())
+			}
+			os.Exit(code)
 		}
-		if err != nil {
-			slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("installation_failed", "message", err.Error())
-			os.Exit(1)
-		}
-		return
 	}
 	executable, _ := os.Executable()
 	configPath := flag.String("config", "", "Configuration file (default: config.json beside the binary, then embedded defaults)")
@@ -62,13 +75,7 @@ func main() {
 	clientIdle := flag.Duration("client-write-timeout", 0, "Override the configured client write timeout")
 	flag.Parse()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	path := *configPath
-	if path == "" {
-		adjacent := filepath.Join(filepath.Dir(executable), "config.json")
-		if _, err := os.Stat(adjacent); !os.IsNotExist(err) {
-			path = adjacent
-		}
-	}
+	path := effectiveConfigPath(*configPath, executable)
 	cfg, err := loadConfiguration(path)
 	if err != nil {
 		log.Error("invalid_config", "message", "Unable to load a valid configuration")
