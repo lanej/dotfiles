@@ -180,6 +180,22 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	if err != nil || wantErr != nil || link != wantLink {
 		t.Fatal("private credential link was not preserved")
 	}
+	// install() ran twice above (a repeat update); the ~/.local/bin symlink
+	// must still exist and resolve correctly after that second run, not just
+	// error-free on os.Remove + os.Symlink of an already-correct link.
+	binLink := filepath.Join(home, ".local", "bin", "bedrock-router")
+	binLinkInfo, err := os.Lstat(binLink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if binLinkInfo.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("bedrock-router was not installed as a symlink in ~/.local/bin")
+	}
+	resolvedBinLink, err := filepath.EvalSymlinks(binLink)
+	wantBinLink, wantBinLinkErr := filepath.EvalSymlinks(executable)
+	if err != nil || wantBinLinkErr != nil || resolvedBinLink != wantBinLink {
+		t.Fatalf("bin symlink did not resolve to the installed binary: got %s (err %v), want %s (err %v)", resolvedBinLink, err, wantBinLink, wantBinLinkErr)
+	}
 }
 
 // TestInstallationFailsFastWhenLaunchdNeverRegistersTheJob reproduces the

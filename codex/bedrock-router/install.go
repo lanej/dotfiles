@@ -341,6 +341,21 @@ func install(args []string, env installEnvironment) error {
 			}
 		}
 	}
+	// Put the installed binary on PATH, mirroring this repo's own Makefile
+	// convention (`ln -fs $(DOTFILES)/bin/* $(HOME)/.local/bin/`) so
+	// `bedrock-router status`/`logs` work from any shell without the full
+	// ~/.codex/bedrock-router path.
+	binDir := filepath.Join(env.home, ".local", "bin")
+	if err := os.MkdirAll(binDir, 0700); err != nil {
+		return err
+	}
+	binLink := filepath.Join(binDir, "bedrock-router")
+	if err := os.Remove(binLink); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Symlink(executable, binLink); err != nil {
+		return err
+	}
 	if !*noStart {
 		client := &http.Client{Timeout: 2 * time.Second}
 		healthy := false

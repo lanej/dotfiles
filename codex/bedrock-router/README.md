@@ -103,7 +103,10 @@ Request IDs correlate the events and are returned as `X-Router-Request-Id`.
 Session references are shortened hashes. Logs never include authorization,
 request bodies, output bodies, raw thread IDs, or raw transport error strings.
 On macOS, logs are `~/.codex/bedrock-router/router.log` and `router.err.log`;
-on Linux, use `journalctl --user -u codex-bedrock-router -f`.
+on Linux, use `journalctl --user -u codex-bedrock-router -f`. From any shell,
+`bedrock-router logs` (installed onto PATH at `~/.local/bin/bedrock-router`)
+tails the same logs on either platform; see "Checks and service management"
+below.
 
 ## Private credentials
 
@@ -128,9 +131,29 @@ the credential link, rerun this installer after restoring the credential source.
 cd codex/bedrock-router
 go vet ./...
 gotestsum -- -race ./...
-curl --fail http://127.0.0.1:18081/healthz
-curl --fail http://127.0.0.1:18081/metrics
 ```
+
+Check health and service state from any shell (after `install`, `bedrock-router`
+is symlinked onto PATH at `~/.local/bin/bedrock-router`):
+
+```sh
+bedrock-router status            # human-readable summary; exit 1 if unhealthy
+bedrock-router status --quiet    # scripting: no output, exit 0/1
+```
+
+Tail logs:
+
+```sh
+bedrock-router logs               # last 50 lines
+bedrock-router logs -f            # follow
+bedrock-router logs -n 200
+bedrock-router logs --stderr      # macOS only: router.err.log instead of router.log
+```
+
+For deeper diagnostics, the raw commands remain available: `curl --fail
+http://127.0.0.1:18081/healthz`, `curl --fail http://127.0.0.1:18081/metrics`,
+`launchctl print "gui/$(id -u)/com.joshlane.codex.bedrock-router"` (macOS),
+`systemctl --user status codex-bedrock-router.service` (Linux).
 
 On macOS, restart with:
 
