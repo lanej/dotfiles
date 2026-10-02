@@ -1,0 +1,14 @@
+{
+  "port": 18081,
+  "default_region": "us-west-2",
+  "model_regions": {
+    "openai.gpt-6.1-sol": "us-east-1"
+  },
+  "region_fallbacks": {
+    "us-west-2": "us-east-1",
+    "us-east-1": "us-west-2"
+  },
+  "header_timeout": "15m",
+  "stream_idle_timeout": "15m",
+  "client_write_timeout": "15m"
+}
