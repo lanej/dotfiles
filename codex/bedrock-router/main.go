@@ -41,6 +41,17 @@ func (c *idleConn) Write(p []byte) (int, error) {
 
 func main() {
 	syscall.Umask(0077)
+	if len(os.Args) > 1 && os.Args[1] == "install" {
+		env, err := currentInstallEnvironment()
+		if err == nil {
+			err = install(os.Args[2:], env)
+		}
+		if err != nil {
+			slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("installation_failed", "message", err.Error())
+			os.Exit(1)
+		}
+		return
+	}
 	executable, _ := os.Executable()
 	configPath := flag.String("config", "", "Configuration file (default: config.json beside the binary, then embedded defaults)")
 	checkConfig := flag.Bool("check-config", false, "Validate configuration and exit")

@@ -12,20 +12,20 @@ which stores only hashed thread IDs and regions. `--state-file` overrides its pa
 
 ## Install or update
 
-Use Go 1.26 or newer and Python 3.11 or newer on macOS or Linux:
+Use Go 1.26 or newer to build from source on macOS or Linux:
 
 ```sh
-python3 codex/bedrock-router/install.py
+cd codex/bedrock-router
+go run . install --config ./config.json
 ```
 
-On older Linux hosts, install a user-owned Python runtime with `uv`:
+An already-built binary installs itself without a compiler:
 
 ```sh
-uv python install 3.13
-uv run --python 3.13 --no-project codex/bedrock-router/install.py
+./bedrock-router install --config ./config.json
 ```
 
-The installer builds a standalone Go binary in `~/.codex/bedrock-router`,
+The `install` subcommand copies the running binary into `~/.codex/bedrock-router`,
 backs up and updates `config.toml`, links `.env` to your existing private
 `~/.config/bedrock/env`, and installs a launchd or systemd user service.
 Run it again after updating this checkout. Existing model, reasoning effort,
