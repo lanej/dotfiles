@@ -63,6 +63,16 @@ func main() {
 				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("status_failed", "message", err.Error())
 			}
 			os.Exit(code)
+		case "logs":
+			env, err := currentInstallEnvironment()
+			if err == nil {
+				err = logsCmd(os.Args[2:], env, os.Stdout)
+			}
+			if err != nil {
+				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("logs_failed", "message", err.Error())
+				os.Exit(1)
+			}
+			os.Exit(0)
 		}
 	}
 	executable, _ := os.Executable()
