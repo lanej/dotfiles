@@ -89,7 +89,7 @@ func queryServiceStatus(env installEnvironment) serviceStatus {
 			return serviceStatus{state: "not registered with launchd"}
 		}
 		status := serviceStatus{state: strings.TrimSpace(match[1])}
-		if pid := launchdPIDPattern.FindStringSubmatch(output); pid != nil {
+		if pid := launchdPIDPattern.FindStringSubmatch(output); pid != nil && strings.TrimSpace(pid[1]) != "0" {
 			status.pid = pid[1]
 		}
 		return status
@@ -181,12 +181,21 @@ func statusCmd(args []string, env installEnvironment, stdout io.Writer) (int, er
 	if flags.NArg() != 0 {
 		return 1, fmt.Errorf("unexpected status arguments")
 	}
+	var portSet bool
+	flags.Visit(func(f *flag.Flag) {
+		if f.Name == "port" {
+			portSet = true
+		}
+	})
+	if portSet && *port == 0 {
+		return 1, fmt.Errorf("--port 0 is not a valid port")
+	}
 	path := effectiveConfigPath(*configPath, env.executable)
 	cfg, err := loadConfiguration(path)
 	if err != nil {
 		return 1, fmt.Errorf("invalid router configuration: %w", err)
 	}
-	if *port != 0 {
+	if portSet {
 		cfg.Port = *port
 	}
 	health, healthErr := fetchHealth(fmt.Sprintf("http://127.0.0.1:%d", cfg.Port))

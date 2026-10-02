@@ -201,7 +201,9 @@ func pollLaunchctlPrint(env installEnvironment, target string, attempts int, int
 		if until(output, err) {
 			return true
 		}
-		time.Sleep(interval)
+		if attempt < attempts-1 {
+			time.Sleep(interval)
+		}
 	}
 	return false
 }

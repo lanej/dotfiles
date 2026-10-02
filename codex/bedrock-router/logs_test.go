@@ -145,6 +145,23 @@ func TestLogsCmdMissingLogFile(t *testing.T) {
 	}
 }
 
+// TestLogsCmdMissingSystemdUnit confirms a missing systemd unit file on
+// Linux produces a clear, interpreted error — analogous to
+// TestLogsCmdMissingLogFile on darwin — rather than execing journalctl
+// against a service that was never installed.
+func TestLogsCmdMissingSystemdUnit(t *testing.T) {
+	home := t.TempDir() // no ~/.config/systemd/user/codex-bedrock-router.service created
+	env := installEnvironment{platform: "linux", home: home}
+	var out bytes.Buffer
+	err := logsCmd(nil, env, &out)
+	if err == nil {
+		t.Fatalf("expected an error when the systemd unit doesn't exist, got none (output: %q)", out.String())
+	}
+	if !strings.Contains(err.Error(), "no systemd unit at") {
+		t.Fatalf("expected a clear missing-unit error, got: %v", err)
+	}
+}
+
 // No test covers --follow actually following (streaming newly appended
 // lines): verifying "it kept streaming" needs real concurrency/timing
 // control that's disproportionate to the risk for a thin passthrough to

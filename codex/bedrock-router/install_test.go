@@ -269,6 +269,69 @@ func TestInstallationFailsFastWhenLaunchdNeverRegistersTheJob(t *testing.T) {
 	}
 }
 
+// TestInstallReplacesPreExistingRegularFileAtBinLink confirms the
+// ~/.local/bin/bedrock-router symlink step correctly replaces a
+// pre-existing REGULAR file at that path (not a stale symlink) — the
+// os.Remove + os.Symlink pairing in install() is type-agnostic, but no
+// test previously exercised this exact starting shape. Uses --no-start so
+// no real launchctl/systemctl calls or /healthz polling are needed: the
+// PATH-symlink step in install() runs unconditionally, before the
+// noStart-gated service-start block.
+func TestInstallReplacesPreExistingRegularFileAtBinLink(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, ".codex")
+	credentials := filepath.Join(home, ".config", "bedrock", "env")
+	if err := atomicWrite(credentials, []byte("export AWS_BEARER_TOKEN_BEDROCK=test-only\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(t.TempDir(), "bedrock-router")
+	if err := os.WriteFile(executable, []byte("fake binary contents"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadConfiguration("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pre-create a REGULAR (non-symlink) file at the install target's
+	// ~/.local/bin/bedrock-router path, simulating a user who e.g. manually
+	// copied a binary there previously.
+	binLink := filepath.Join(home, ".local", "bin", "bedrock-router")
+	if err := atomicWrite(binLink, []byte("stale regular file, not a symlink"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Lstat(binLink); err != nil || info.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("test setup bug: expected a regular file at %s, got mode %v (err %v)", binLink, info, err)
+	}
+
+	env := installEnvironment{home: home, root: root, executable: executable, platform: runtime.GOOS, uid: "test"}
+	if err := install([]string{"--config", configPath, "--no-start"}, env); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	installedExecutable := filepath.Join(root, "bedrock-router", "bedrock-router")
+	info, err := os.Lstat(binLink)
+	if err != nil {
+		t.Fatalf("expected %s to exist after install, got: %v", binLink, err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected %s to be replaced with a symlink, still a regular file", binLink)
+	}
+	resolved, err := filepath.EvalSymlinks(binLink)
+	wantResolved, wantErr := filepath.EvalSymlinks(installedExecutable)
+	if err != nil || wantErr != nil || resolved != wantResolved {
+		t.Fatalf("bin symlink did not resolve to the installed executable: got %s (err %v), want %s (err %v)", resolved, err, wantResolved, wantErr)
+	}
+}
+
 func launchCommand(data []byte) ([]string, string, error) {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	var key, cwd string

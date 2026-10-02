@@ -136,12 +136,43 @@ func TestStatusConsultsBothHealthzAndServiceState(t *testing.T) {
 	}
 }
 
+// TestStatusPortZeroIsRejected confirms an explicitly-passed --port 0 is
+// distinguished from not passing --port at all (which should fall back to
+// the config's port). main.go already uses flag.Visit for this same
+// explicit-vs-default distinction; statusCmd must do the same rather than
+// using the `*port != 0` check, which silently treats --port 0 as unset.
+func TestStatusPortZeroIsRejected(t *testing.T) {
+	env := fakeStatusEnv(t, "darwin", "\tpid = 0\n\tstate = not running\n", nil)
+	var out bytes.Buffer
+	_, err := statusCmd([]string{"--port", "0"}, env, &out)
+	if err == nil {
+		t.Fatalf("expected an error for an explicit --port 0, got none (output: %s)", out.String())
+	}
+}
+
 func TestStatusDarwinNotRegistered(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "", &exitError{})
 
 	status := queryServiceStatus(env)
 	if status.state != "not registered with launchd" {
 		t.Fatalf("expected 'not registered with launchd', got %q", status.state)
+	}
+}
+
+// TestStatusDarwinPidZeroIsTreatedAsNoPid confirms the darwin branch filters
+// a reported `pid = 0` the same way the linux branch already does (via
+// `strings.TrimSpace(pid) != "0"`), so a not-running job with a zero PID
+// renders as plain "not running" rather than the confusing "not running
+// (pid 0)".
+func TestStatusDarwinPidZeroIsTreatedAsNoPid(t *testing.T) {
+	env := fakeStatusEnv(t, "darwin", "\tpid = 0\n\tstate = not running\n", nil)
+
+	status := queryServiceStatus(env)
+	if status.pid != "" {
+		t.Fatalf("expected pid 0 to be treated as no pid, got pid=%q", status.pid)
+	}
+	if got := status.String(); strings.Contains(got, "pid") {
+		t.Fatalf("expected no 'pid' mention in String() for a zero pid, got %q", got)
 	}
 }
 

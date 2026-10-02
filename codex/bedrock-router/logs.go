@@ -22,6 +22,14 @@ func darwinLogPath(home string, stderrFlag bool) string {
 	return filepath.Join(home, ".codex", "bedrock-router", name)
 }
 
+// linuxUnitPath resolves the installed systemd user unit file's path — see
+// install.go, which writes it at this same location. journald owns the log
+// data itself (there's no log file to stat), but the unit file's presence
+// is a reliable proxy for "is bedrock-router installed".
+func linuxUnitPath(home string) string {
+	return filepath.Join(home, ".config", "systemd", "user", systemdUnitName)
+}
+
 // logCommand is a pure, no-I/O function that builds the external command
 // used to display the router's logs on the current platform. It performs
 // no execution and touches no filesystem state, so it's trivially testable
@@ -94,6 +102,12 @@ func logsCmd(args []string, env installEnvironment, stdout io.Writer) error {
 		path := darwinLogPath(env.home, stderrFlag)
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("no log file at %s — is bedrock-router installed and running?", path)
+		}
+	}
+	if env.platform == "linux" {
+		path := linuxUnitPath(env.home)
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("no systemd unit at %s — is bedrock-router installed?", path)
 		}
 	}
 	return streamCommand(stdout, name, cmdArgs)
