@@ -183,6 +183,21 @@ func systemdUnit(executable, dir string) []byte {
 		"Restart=always\nRestartSec=3\nUMask=0077\nNoNewPrivileges=yes\nPrivateTmp=yes\n\n[Install]\nWantedBy=default.target\n")
 }
 
+// pollLaunchctlPrint repeatedly runs `launchctl print <target>`, calling
+// until with each attempt's output and error, up to attempts times with
+// interval between tries. It returns true as soon as until reports a match,
+// or false once the attempt budget is exhausted.
+func pollLaunchctlPrint(env installEnvironment, target string, attempts int, interval time.Duration, until func(output string, err error) bool) bool {
+	for attempt := 0; attempt < attempts; attempt++ {
+		output, err := env.run("launchctl", "print", target)
+		if until(output, err) {
+			return true
+		}
+		time.Sleep(interval)
+	}
+	return false
+}
+
 func install(args []string, env installEnvironment) error {
 	flags := flag.NewFlagSet("install", flag.ContinueOnError)
 	noStart := flags.Bool("no-start", false, "Write files without starting the service")
@@ -269,15 +284,36 @@ func install(args []string, env installEnvironment) error {
 		}
 		if !*noStart {
 			domain := "gui/" + env.uid
-			_, _ = env.run("launchctl", "bootout", domain+"/"+label)
-			if _, err := env.run("launchctl", "bootstrap", domain, service); err != nil {
-				job, lookupErr := env.run("launchctl", "print", domain+"/"+label)
+			target := domain + "/" + label
+			_, _ = env.run("launchctl", "bootout", target)
+			// Give a torn-down job a chance to actually clear before
+			// re-registering it: bootstrap can otherwise race an in-flight
+			// unload. If nothing needed unloading (the common case), print
+			// errors immediately and this proceeds without delay.
+			pollLaunchctlPrint(env, target, 20, 100*time.Millisecond, func(_ string, err error) bool {
+				return err != nil
+			})
+			_, bootstrapErr := env.run("launchctl", "bootstrap", domain, service)
+			if bootstrapErr != nil {
+				job, lookupErr := env.run("launchctl", "print", target)
 				if lookupErr != nil || !strings.Contains(job, "program = "+executable) || !strings.Contains(job, filepath.Join(dir, "config.json")) {
+					return bootstrapErr
+				}
+				if _, err := env.run("launchctl", "kickstart", "-k", target); err != nil {
 					return err
 				}
-				if _, err := env.run("launchctl", "kickstart", "-k", domain+"/"+label); err != nil {
-					return err
-				}
+			}
+			// A successful bootstrap/kickstart doesn't guarantee the job
+			// actually registered with launchd — e.g. macOS Background Task
+			// Management can silently gate it behind a pending Login Items
+			// approval. Verify before falling through to the generic
+			// /healthz poll, which otherwise can't distinguish this from a
+			// slow start or port conflict.
+			registered := pollLaunchctlPrint(env, target, 10, 200*time.Millisecond, func(output string, err error) bool {
+				return err == nil && strings.Contains(output, "program = "+executable) && strings.Contains(output, filepath.Join(dir, "config.json"))
+			})
+			if !registered {
+				return fmt.Errorf("bedrock-router did not register with launchd after bootstrap — check System Settings > General > Login Items & Extensions for a pending 'bedrock-router' approval, then retry install")
 			}
 		}
 	} else {

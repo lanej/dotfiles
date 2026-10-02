@@ -182,6 +182,77 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	}
 }
 
+// TestInstallationFailsFastWhenLaunchdNeverRegistersTheJob reproduces the
+// 2026-10-02 outage mode: launchctl bootstrap reports success (does not
+// error), but the job never actually appears in launchd — e.g. because
+// macOS Background Task Management silently gated the newly-registered
+// executable behind a pending Login Items approval. install() must detect
+// this via its own post-bootstrap launchd verification and fail fast with a
+// specific, actionable error instead of falling through to the generic
+// ~10s /healthz timeout.
+func TestInstallationFailsFastWhenLaunchdNeverRegistersTheJob(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, ".codex")
+	credentials := filepath.Join(home, ".config", "bedrock", "env")
+	if err := atomicWrite(credentials, []byte("export AWS_BEARER_TOKEN_BEDROCK=test-only\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(t.TempDir(), "bedrock-router")
+	if err := os.WriteFile(executable, []byte("fake binary contents"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Use an isolated, never-listening port for this run's config — the
+	// embedded default port may collide with a real bedrock-router already
+	// running on this machine, which would make the /healthz probe succeed
+	// for the wrong reason and mask the launchd-registration failure this
+	// test exists to catch.
+	cfg, err := loadConfiguration("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Port = listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	env := installEnvironment{home: home, root: root, executable: executable, platform: "darwin", uid: "test"}
+	env.run = func(name string, args ...string) (string, error) {
+		if name == "launchctl" {
+			switch args[0] {
+			case "bootout":
+				return "", nil
+			case "bootstrap":
+				// Reports success without ever actually registering the job.
+				return "", nil
+			case "print":
+				return "", errors.New(`Could not find service "com.joshlane.codex.bedrock-router" in domain for port`)
+			}
+		}
+		return "", nil
+	}
+	start := time.Now()
+	err = install([]string{"--config", configPath}, env)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected install to fail when launchd never registers the job")
+	}
+	if !strings.Contains(err.Error(), "did not register") || !strings.Contains(err.Error(), "Login Items") {
+		t.Fatalf("expected a specific launchd-registration error, got: %v", err)
+	}
+	if elapsed >= 10*time.Second {
+		t.Fatalf("install took %s; expected the new launchd verification to fail fast instead of falling through to the health check timeout", elapsed)
+	}
+}
+
 func launchCommand(data []byte) ([]string, string, error) {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	var key, cwd string
