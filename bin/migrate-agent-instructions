@@ -1,97 +1,141 @@
-#!/usr/bin/env python3
-"""Share repository guidance between Codex and Claude without duplicating it."""
+#!/usr/bin/env bash
+# Share repository guidance between Codex and Claude.
+# Compatible with Bash 3.2 and standard macOS/Linux utilities.
+set -euo pipefail
 
-import argparse
-from pathlib import Path
-import shutil
-import sys
+usage() {
+    cat <<'EOF'
+Usage: migrate-agent-instructions [--dry-run] [--merge] [directory]
 
+Move CLAUDE.md guidance to AGENTS.md and create a relative CLAUDE.md
+symlink. Back up an existing AGENTS.md before replacing it.
+Use --merge to preserve differing guidance from both files.
+Review tool-specific paths and commands before committing.
+EOF
+}
 
-def migrate(root, dry_run=False, merge=False):
-    claude = root / "CLAUDE.md"
-    agents = root / "AGENTS.md"
-    if claude.is_symlink():
-        if claude.resolve() == agents.resolve() and agents.is_file():
-            print(f"{root}: already shared")
-            return
-        raise ValueError("CLAUDE.md is an unexpected or broken symlink")
-    if not claude.is_file():
-        raise ValueError("no regular CLAUDE.md found")
-    if agents.is_symlink():
-        raise ValueError("AGENTS.md is a symlink; resolve it before migration")
+die() {
+    printf 'Migration stopped: %s\n' "$*" >&2
+    exit 1
+}
 
-    source = claude.read_text()
-    existing = agents.read_text() if agents.exists() else ""
-    memory_only = (
-        existing.strip().startswith("<claude-mem-context>")
-        and existing.strip().endswith("</claude-mem-context>")
-        and existing.count("<claude-mem-context>") == 1
-    )
-    if existing.strip() and existing != source and not memory_only and not merge:
-        raise ValueError(
-            "AGENTS.md has different guidance; review it and use --merge to preserve both"
-        )
+dry_run=false
+merge=false
+directory=.
+have_directory=false
+while (($#)); do
+    case "$1" in
+        --dry-run) dry_run=true ;;
+        --merge) merge=true ;;
+        -h|--help) usage; exit 0 ;;
+        --) shift; break ;;
+        -*) die "unknown option: $1" ;;
+        *)
+            $have_directory && die "expected one directory"
+            directory=$1
+            have_directory=true
+            ;;
+    esac
+    shift
+done
+if (($#)); then
+    $have_directory && die "expected one directory"
+    (($# == 1)) || die "expected one directory"
+    directory=$1
+fi
+cd -- "$directory" || die "cannot open directory: $directory"
+root=$PWD
 
-    content = source.replace("# CLAUDE.md\n", "# AGENTS.md\n", 1)
-    content = content.replace(
-        "This file provides guidance to Claude Code (claude.ai/code) "
-        "when working with code in this repository.",
-        "This file provides shared guidance to Claude Code and Codex "
-        "when working with code in this repository.",
-        1,
-    )
-    if merge and existing.strip() and existing != source and not memory_only:
-        content = existing.rstrip() + "\n\n" + content
+if [[ -L CLAUDE.md ]]; then
+    if [[ -f AGENTS.md && CLAUDE.md -ef AGENTS.md ]]; then
+        printf '%s: already shared\n' "$root"
+        exit 0
+    fi
+    die "CLAUDE.md is an unexpected or broken symlink"
+fi
+[[ -f CLAUDE.md ]] || die "no regular CLAUDE.md found"
+[[ ! -L AGENTS.md ]] || die "AGENTS.md is a symlink; resolve it before migration"
+[[ ! -e AGENTS.md || -f AGENTS.md ]] || die "AGENTS.md is not a regular file"
+[[ ! -L .gitignore ]] || die ".gitignore is a symlink; resolve it before migration"
+[[ ! -e .gitignore || -f .gitignore ]] || die ".gitignore is not a regular file"
 
-    ignore = root / ".gitignore"
-    ignore_content = ignore.read_text() if ignore.exists() else None
-    updated_ignore = ignore_content
-    if ignore_content is not None:
-        updated_ignore = "".join(
-            line for line in ignore_content.splitlines(keepends=True)
-            if line.strip() not in {
-                "AGENTS.md", "/AGENTS.md", "CLAUDE.md", "/CLAUDE.md",
-                "# claude-mem context injection",
-            }
-        )
-    backup = root / "AGENTS.md.pre-migration"
-    if agents.exists():
-        index = 1
-        while backup.exists() or backup.is_symlink():
-            backup = root / f"AGENTS.md.pre-migration.{index}"
-            index += 1
-        print(f"Back up {agents} to {backup}")
-    print(f"Move guidance to {agents}; link CLAUDE.md -> AGENTS.md")
-    if updated_ignore != ignore_content:
-        print(f"Remove instruction-file ignore rules from {ignore}")
-    if dry_run:
-        return
-    if agents.exists():
-        shutil.copy2(agents, backup)
-    agents.write_text(content)
-    claude.unlink()
-    claude.symlink_to("AGENTS.md")
-    if updated_ignore != ignore_content:
-        ignore.write_text(updated_ignore)
-    print("Review the guidance for tool-specific paths and commands before committing.")
+different=false
+if [[ -f AGENTS.md ]] && LC_ALL=C grep -q '[^[:space:]]' AGENTS.md \
+    && ! cmp -s AGENTS.md CLAUDE.md; then
+    # Memory-only files are backed up, rather than merged into shared guidance.
+    if ! awk '
+        { text = text $0 "\n" }
+        END {
+            sub(/^[[:space:]]+/, "", text)
+            sub(/[[:space:]]+$/, "", text)
+            copy = text
+            count = gsub(/<claude-mem-context>/, "", copy)
+            exit !(text ~ /^<claude-mem-context>/ &&
+                   text ~ /<\/claude-mem-context>$/ && count == 1)
+        }
+    ' AGENTS.md; then
+        different=true
+        $merge || die "AGENTS.md has different guidance; review it and use --merge to preserve both"
+    fi
+fi
 
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/agent-instructions.XXXXXX")
+trap 'rm -rf -- "$scratch"' EXIT
+# Keep the source file's permissions in the shared file.
+cp -p CLAUDE.md "$scratch/AGENTS.md"
+{
+    if $different; then
+        cat AGENTS.md
+        printf '\n\n'
+    fi
+    awk '
+        !heading && $0 == "# CLAUDE.md" {
+            print "# AGENTS.md"; heading = 1; next
+        }
+        !intro && $0 == "This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository." {
+            print "This file provides shared guidance to Claude Code and Codex when working with code in this repository."
+            intro = 1; next
+        }
+        { print }
+    ' CLAUDE.md
+} > "$scratch/AGENTS.md"
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("directory", nargs="?", default=".", type=Path)
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--merge", action="store_true",
-        help="preserve differing AGENTS.md guidance ahead of CLAUDE.md guidance",
-    )
-    args = parser.parse_args()
-    try:
-        migrate(args.directory.resolve(), args.dry_run, args.merge)
-    except (OSError, UnicodeError, ValueError) as error:
-        print(f"Migration stopped: {error}", file=sys.stderr)
-        return 1
-    return 0
+update_ignore=false
+if [[ -f .gitignore ]]; then
+    cp -p .gitignore "$scratch/gitignore"
+    awk '
+        {
+            rule = $0
+            sub(/^[[:space:]]+/, "", rule)
+            sub(/[[:space:]]+$/, "", rule)
+            if (rule != "AGENTS.md" && rule != "/AGENTS.md" &&
+                rule != "CLAUDE.md" && rule != "/CLAUDE.md" &&
+                rule != "# claude-mem context injection") print
+        }
+    ' .gitignore > "$scratch/gitignore"
+    cmp -s .gitignore "$scratch/gitignore" || update_ignore=true
+fi
 
+backup=AGENTS.md.pre-migration
+if [[ -f AGENTS.md ]]; then
+    index=1
+    while [[ -e $backup || -L $backup ]]; do
+        backup=AGENTS.md.pre-migration.$index
+        index=$((index + 1))
+    done
+    printf 'Back up %s/AGENTS.md to %s/%s\n' "$root" "$root" "$backup"
+fi
+printf 'Move guidance to %s/AGENTS.md; link CLAUDE.md -> AGENTS.md\n' "$root"
+if $update_ignore; then
+    printf 'Remove instruction-file ignore rules from %s/.gitignore\n' "$root"
+fi
+$dry_run && exit 0
 
-if __name__ == "__main__":
-    sys.exit(main())
+[[ ! -f AGENTS.md ]] || cp -p AGENTS.md "$backup"
+cp -p "$scratch/AGENTS.md" AGENTS.md
+ln -s AGENTS.md "$scratch/CLAUDE.md"
+mv -f "$scratch/CLAUDE.md" CLAUDE.md
+if $update_ignore; then
+    cp -p "$scratch/gitignore" .gitignore
+fi
+printf 'Review the guidance for tool-specific paths and commands before committing.\n'

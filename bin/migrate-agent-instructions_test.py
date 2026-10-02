@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -22,7 +21,7 @@ class MigrationTest(unittest.TestCase):
 
             def run(*args):
                 return subprocess.run(
-                    [sys.executable, str(SCRIPT), str(root), *args],
+                    [str(SCRIPT), str(root), *args],
                     capture_output=True, text=True, check=True,
                 )
 
