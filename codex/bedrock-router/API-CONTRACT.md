@@ -25,6 +25,13 @@ Unknown JSON fields and stream events must continue to pass through.
 - Inspect only the top-level `model` for routing. Empty bodies are accepted;
   nonempty bodies must be JSON objects, optionally gzip encoded. The encoded
   and decoded body limits are each 128 MiB.
+- After the specific streamed error `Access denied: web search is not authorized
+  for this identity.`, append a developer recovery hint to the next response
+  creation request in that session. The hint asks the model to avoid repeating
+  the denied call unchanged and continue useful work. Tools, existing input
+  items (including encrypted history), and unknown fields are preserved.
+  This is the only request-body rewriting exception. The pending hint expires
+  after 15 minutes and does not survive a router restart.
 - Relay upstream statuses, response bytes, and SSE bytes without schema
   decoding or serialization. Streaming transport removes fixed content lengths
   so incomplete streams can be reported.

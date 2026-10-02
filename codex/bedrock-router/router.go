@@ -188,6 +188,7 @@ type router struct {
 	sequence  atomic.Uint64
 	started   time.Time
 	writeIdle time.Duration
+	recovery  webRecovery
 }
 
 func newRouter(state string, transport http.RoundTripper, log *slog.Logger, cfg configuration) (*router, error) {
@@ -495,6 +496,14 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		release()
 	}
 
+	if req.Method == http.MethodPost && req.URL.Path == "/openai/v1/responses" && len(keys) > 0 &&
+		r.recovery.take(keys[0]) {
+		if recovered, recoveryErr := addWebRecoveryHint(body, req.Header.Get("Content-Encoding")); recoveryErr == nil {
+			body = recovered
+			log.Info("web_search_recovery_hint")
+		}
+	}
+
 	forward := func(target string) (*http.Response, error) {
 		up, err := http.NewRequestWithContext(req.Context(), req.Method, r.endpoint(target)+req.URL.RequestURI(), bytes.NewReader(body))
 		if err != nil {
@@ -638,6 +647,12 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var tracker terminalTracker
+	defer func() {
+		if tracker.webDenied && len(keys) > 0 {
+			r.recovery.record(keys[0])
+			log.Warn("web_search_denied")
+		}
+	}()
 	buf := make([]byte, 32<<10)
 	for {
 		n, readErr := response.Body.Read(buf)
@@ -704,10 +719,12 @@ type prefixedBody struct {
 
 // Inspect only bounded SSE lines; never retain or log prompt/output payloads.
 type terminalTracker struct {
-	line     []byte
-	overflow bool
-	terminal bool
-	failed   bool
+	line      []byte
+	overflow  bool
+	terminal  bool
+	failed    bool
+	webDenied bool
+	eventType string
 }
 
 func (t *terminalTracker) observe(chunk []byte) {
@@ -717,27 +734,51 @@ func (t *terminalTracker) observe(chunk []byte) {
 				line := strings.TrimSpace(string(t.line))
 
 				if strings.HasPrefix(line, "event:") {
-					t.event(strings.TrimSpace(strings.TrimPrefix(line, "event:")))
+					t.eventType = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+					t.event(t.eventType)
 				} else if strings.HasPrefix(line, "data:") {
 					data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 
 					if data == "[DONE]" {
 						t.terminal = true
 					} else {
-						var event struct{ Type string }
+						var event struct {
+							Type     string
+							Error    struct{ Message string }
+							Response struct {
+								Error struct{ Message string }
+							}
+						}
 
 						if json.Unmarshal([]byte(data), &event) == nil {
 							t.event(event.Type)
+
+							if event.Type == "response.failed" || event.Type == "error" {
+								const denial = "Access denied: web search is not authorized for this identity."
+								t.webDenied = t.webDenied || event.Error.Message == denial ||
+									event.Response.Error.Message == denial
+							}
 						}
 					}
+				} else if line == "" {
+					t.eventType = ""
 				}
 			}
 
 			t.line, t.overflow = t.line[:0], false
-		} else if len(t.line) < 64<<10 {
-			t.line = append(t.line, b)
 		} else {
-			t.overflow = true
+			limit := 64 << 10
+			// Failed responses may include the generated output before the
+			// error object. Keep that inspection bounded too.
+			if t.eventType == "response.failed" || t.eventType == "error" {
+				limit = 1 << 20
+			}
+
+			if len(t.line) < limit {
+				t.line = append(t.line, b)
+			} else {
+				t.overflow = true
+			}
 		}
 	}
 }

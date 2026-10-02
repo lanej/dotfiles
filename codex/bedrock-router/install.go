@@ -133,6 +133,12 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 		{"model_reasoning_summary", "none"},
 		{"web_search", "cached"},
 	} {
+		if setting.key == "web_search" {
+			if _, exists := previous["web_search"]; exists {
+				continue
+			}
+		}
+
 		line := setting.key + " = " + strconv.Quote(setting.value)
 		pattern := regexp.MustCompile(`(?m)^[\t ]*` + setting.key + `[\t ]*=.*$`)
 

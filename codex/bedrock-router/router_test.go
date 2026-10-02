@@ -390,6 +390,120 @@ func TestIncompleteStreamIsReportedAndNeverReplayed(t *testing.T) {
 	}
 }
 
+func TestWebSearchDenialGuidesNextAttemptWithoutDisablingSearch(t *testing.T) {
+	failure := "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"id\":\"resp_denied\",\"output\":\"" +
+		strings.Repeat("x", 70<<10) + "\",\"error\":{\"message\":\"Access denied: web search is not authorized for this identity.\"}}}\n\n"
+	const completed = "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_ok\"}}\n\n"
+	const original = `{"model":"openai.gpt-6-astra","tools":[{"type":"web_search","external_web_access":true}],"input":[{"type":"reasoning","encrypted_content":"opaque-history"},{"role":"user","content":"look up a page"}],"unknown":{"preserve":true}}`
+	requests := make(chan []byte, 4)
+	var calls atomic.Int32
+	_, server, logs := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Encoding") != "gzip" {
+			t.Error("recovery changed request encoding")
+		}
+
+		reader, err := gzip.NewReader(req.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		body, err := io.ReadAll(reader)
+		reader.Close()
+
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		requests <- body
+		w.Header().Set("Content-Type", "text/event-stream")
+
+		if calls.Add(1) == 1 {
+			// Split the error payload across reads, as a real stream may do.
+			io.WriteString(w, failure[:len(failure)/2])
+			w.(http.Flusher).Flush()
+			io.WriteString(w, failure[len(failure)/2:])
+		} else {
+			io.WriteString(w, completed)
+		}
+	}))
+	send := func(session string) string {
+		t.Helper()
+		var compressed bytes.Buffer
+		writer := gzip.NewWriter(&compressed)
+		writer.Write([]byte(original))
+		writer.Close()
+		req, _ := http.NewRequest("POST", server.URL+"/openai/v1/responses", &compressed)
+		req.Header.Set("Authorization", "Bearer private-token")
+		req.Header.Set("Thread-Id", session)
+		req.Header.Set("Content-Encoding", "gzip")
+
+		resp, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return string(drain(t, resp, http.StatusOK))
+	}
+
+	if got := send("denied-session"); got != failure {
+		t.Fatalf("failure was hidden or rewritten: %s", got)
+	}
+
+	if got := <-requests; string(got) != original {
+		t.Fatal("initial request was changed")
+	}
+
+	send("unrelated-session")
+
+	if got := <-requests; string(got) != original {
+		t.Fatal("web denial affected another session")
+	}
+
+	if got := send("denied-session"); got != completed {
+		t.Fatal("retry did not complete")
+	}
+
+	var recovered, unchanged map[string]json.RawMessage
+	if err := json.Unmarshal(<-requests, &recovered); err != nil {
+		t.Fatal(err)
+	}
+
+	json.Unmarshal([]byte(original), &unchanged)
+	var input []json.RawMessage
+	json.Unmarshal(recovered["input"], &input)
+	var previousInput []json.RawMessage
+	json.Unmarshal(unchanged["input"], &previousInput)
+
+	if len(input) != 3 || !bytes.Equal(input[0], previousInput[0]) || !bytes.Equal(input[1], previousInput[1]) {
+		t.Fatal("recovery lost original history")
+	}
+
+	var hint struct{ Role, Content string }
+	json.Unmarshal(input[2], &hint)
+
+	if hint.Role != "developer" || hint.Content != webRecoveryHint ||
+		!bytes.Equal(recovered["tools"], unchanged["tools"]) ||
+		!bytes.Equal(recovered["unknown"], unchanged["unknown"]) {
+		t.Fatal("recovery missing guidance or changed web-search tools/unknown fields")
+	}
+
+	send("denied-session")
+
+	if got := <-requests; string(got) != original || calls.Load() != 4 {
+		t.Fatal("recovery hint persisted or router replayed a generation")
+	}
+
+	server.Close()
+
+	if !strings.Contains(logs.String(), `"msg":"web_search_denied"`) ||
+		!strings.Contains(logs.String(), `"msg":"web_search_recovery_hint"`) ||
+		strings.Contains(logs.String(), "opaque-history") {
+		t.Fatal("recovery metadata missing or private history logged")
+	}
+}
+
 func TestUpstreamHeaderTimeoutReturnsGatewayTimeout(t *testing.T) {
 	r, server, _ := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		io.Copy(io.Discard, req.Body)

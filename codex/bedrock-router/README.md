@@ -34,7 +34,7 @@ An already-built binary installs itself without a compiler:
 The `install` subcommand copies the running binary into `~/.codex/bedrock-router`,
 backs up and updates `config.toml`, links `.env` to your existing private
 `~/.config/bedrock/env`, and installs a launchd or systemd user service.
-Run it again after updating this checkout. Existing model, reasoning effort,
+Run it again after updating this checkout. Existing model, web-search preference, reasoning effort,
 project settings, and MCP definitions are preserved. Configuration using extra
 Bedrock provider settings or a different `.env` source requires a manual merge.
 `--no-start` writes files without starting the service.
@@ -94,6 +94,14 @@ headers return a JSON error: `502` for connection failures and `504` for timeout
 Failures after headers abort the HTTP stream. An SSE response ending without a
 completion event is counted and logged as incomplete. Generations, HTTP 500s,
 and partially delivered responses are never replayed.
+
+An intermittent built-in web-search denial remains visible as a failed stream.
+The router adds a recovery hint to Codex's next attempt in the same session,
+so the model can change its search approach or continue with available information.
+Web search stays enabled. Codex owns retries; the router does not replay the
+generation or invent a successful completion. Recovery requires a session header
+and a subsequent request within 15 minutes. Logs identify these events as
+`web_search_denied` and `web_search_recovery_hint`.
 
 ## Monitoring
 

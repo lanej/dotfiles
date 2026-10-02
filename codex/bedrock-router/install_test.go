@@ -33,7 +33,7 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\n")
+	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\nweb_search = \"live\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\n")
 
 	if err := atomicWrite(filepath.Join(root, "config.toml"), original, 0600); err != nil {
 		t.Fatal(err)
@@ -207,8 +207,9 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 
 	mcp := config["mcp_servers"].(map[string]any)["fixture"].(map[string]any)
 
-	if config["model"] != "existing-model" || mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) {
-		t.Fatal("installation changed existing model, MCP settings, or comments")
+	if config["model"] != "existing-model" || config["web_search"] != "live" ||
+		mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) {
+		t.Fatal("installation changed existing model, web search, MCP settings, or comments")
 	}
 
 	link, err := filepath.EvalSymlinks(filepath.Join(root, ".env"))
