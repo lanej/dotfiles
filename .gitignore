@@ -66,5 +66,15 @@ claude/evals/*/results/
 CLAUDE.local.md
 codex/AGENTS.local.md
 codex/bedrock.config.toml
+
+# Compiled binary left behind by `go build` in codex/bedrock-router/
+codex/bedrock-router/bedrock-router
+
+# Local OpenCode install (dependency tree, not source)
+.opencode/
+
+# htop search history (runtime state, not source)
+sh/htop_history
+
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
