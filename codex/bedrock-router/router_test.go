@@ -267,6 +267,41 @@ func TestRegionRecoveryPreservesCompressedChunkedPayload(t *testing.T) {
 	}
 }
 
+func TestMixedRegionHistoryIsReportedWithoutChangingHistory(t *testing.T) {
+	rejection := `{"error":{"code":"validation_error","message":"Encrypted content cannot be used in a different region from the one that created it."}}`
+	r, server, logs := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(400)
+		io.WriteString(w, rejection)
+	}))
+	resp := call(t, server.Client(), server.URL, "openai.gpt-6-astra", "mixed-history", "")
+	if body := drain(t, resp, 400); string(body) != rejection {
+		t.Fatalf("upstream rejection changed: %s", body)
+	}
+	health, err := server.Client().Get(server.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot map[string]any
+	json.NewDecoder(health.Body).Decode(&snapshot)
+	health.Body.Close()
+	if snapshot["failures"] != float64(1) {
+		t.Fatalf("rejection missing from monitoring: %v", snapshot)
+	}
+	header := http.Header{"Thread-Id": []string{"mixed-history"}}
+	if region, err := r.routes.lookup(context.Background(), sessionKeys(header)[0]); err != nil || region != "" {
+		t.Fatalf("rejected history acquired a pin: %q, %v", region, err)
+	}
+	if !strings.Contains(logs.String(), `"event":"region_discovery_rejected"`) &&
+		!strings.Contains(logs.String(), `"msg":"region_discovery_rejected"`) {
+		t.Fatalf("alternate rejection missing from logs: %s", logs)
+	}
+	if !strings.Contains(logs.String(), `"encrypted_region_mismatch":true`) ||
+		!strings.Contains(logs.String(), `"outcome":"upstream_http_error"`) ||
+		strings.Contains(logs.String(), "private-") {
+		t.Fatalf("unsafe or incomplete rejection logs: %s", logs)
+	}
+}
+
 func TestIncompleteStreamIsReportedAndNeverReplayed(t *testing.T) {
 	_, server, logs := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")

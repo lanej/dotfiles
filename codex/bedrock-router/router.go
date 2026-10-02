@@ -456,9 +456,12 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		alternate := r.config.RegionFallbacks[region]
+		regionMismatch := len(prefix) <= 1<<20 && json.Unmarshal(prefix, &data) == nil &&
+			data.Error.Code == "validation_error" &&
+			strings.Contains(data.Error.Message, "Encrypted content cannot be used in a different region")
+		log.Warn("upstream_rejected", "region", region, "status", response.StatusCode, "encrypted_region_mismatch", regionMismatch)
 		if alternate != "" && !confirmed && r.config.ModelRegions[model] == "" && readErr == nil && len(prefix) <= 1<<20 &&
-			json.Unmarshal(prefix, &data) == nil && data.Error.Code == "validation_error" &&
-			strings.Contains(data.Error.Message, "Encrypted content cannot be used in a different region") {
+			regionMismatch {
 			r.stats.Lock()
 			r.stats.Retries++
 			r.stats.Unlock()
@@ -469,6 +472,13 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					response.Body.Close()
 					response, region = other, alternate
 				} else {
+					rejection, readErr := io.ReadAll(io.LimitReader(other.Body, (1<<20)+1))
+					data.Error.Code, data.Error.Message = "", ""
+					mismatch := readErr == nil && len(rejection) <= 1<<20 &&
+						json.Unmarshal(rejection, &data) == nil && data.Error.Code == "validation_error" &&
+						strings.Contains(data.Error.Message, "Encrypted content cannot be used in a different region")
+					log.Warn("region_discovery_rejected", "region", alternate, "status", other.StatusCode,
+						"encrypted_region_mismatch", mismatch)
 					other.Body.Close()
 				}
 			} else {
@@ -485,12 +495,12 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	release()
 	status = response.StatusCode
-	if status >= 500 {
+	if status >= 400 {
 		outcome = "upstream_http_error"
 	}
 	log.Info("upstream_headers", "region", region, "status", status,
 		"headers_ms", time.Since(start).Milliseconds(), "upstream_request_id", safeModel(response.Header.Get("X-Amzn-Requestid")))
-	if status >= 500 {
+	if status >= 400 {
 		log.Warn("upstream_http_error", "region", region, "status", status)
 	}
 	stream := strings.HasPrefix(strings.ToLower(response.Header.Get("Content-Type")), "text/event-stream")
