@@ -152,3 +152,11 @@ This also lets an older guardian retain its own history's region when its parent
 has a different pin.
 An established pin never moves, and encrypted reasoning and compaction are never
 removed. A model unavailable in a session's region requires a new session.
+
+If a legacy history contains encrypted items created in both regions, neither
+region can accept the complete history. Preserve the original session and start
+a new session with a plain-text handoff of the task and current workspace state.
+The router does not discard or rewrite encrypted items to bypass this error.
+Upstream HTTP 400 responses count as failures; rejection logs identify encrypted
+region mismatches for the original route and discovery attempt without logging
+the error body.
