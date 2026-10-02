@@ -76,6 +76,8 @@ tmux:
 	@mkdir -p $(HOME)/.config/tmux/plugins/tmux-resurrect/strategies
 	@ln -fs $(DOTFILES)/bin/tmux-resurrect-claude $(HOME)/.config/tmux/plugins/tmux-resurrect/strategies/claude.sh
 	@echo "tmux: TPM and plugins installed"
+tmux-status-legend:
+	@"$(DOTFILES)/bin/tmux-claude-state" legend
 vim:
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
@@ -200,9 +202,17 @@ claude: claude-plugins
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
-codex: claude
+.PHONY: codex-skills
+codex-skills:
+	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
+.PHONY: codex-tmux
+codex-tmux:
+	@"$(DOTFILES)/bin/sync-codex-tmux-hooks"
+codex: claude codex-skills codex-tmux
 	@mkdir -p $(HOME)/.codex
+	@ln -fs $(DOTFILES)/codex/env $(HOME)/.codex/.env
 	@ln -fs $(DOTFILES)/codex/bedrock.config.toml $(HOME)/.codex/bedrock.config.toml
+	@cat $(DOTFILES)/codex/AGENTS.md $(DOTFILES)/codex/AGENTS.local.md > $(HOME)/.codex/AGENTS.md 2>/dev/null || cp $(DOTFILES)/codex/AGENTS.md $(HOME)/.codex/AGENTS.md
 	@$(DOTFILES)/bin/sync-codex-mcp-servers
 quarto:
 	@mkdir -p $(HOME)/.config/quarto
