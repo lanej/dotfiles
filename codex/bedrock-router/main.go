@@ -23,6 +23,7 @@ func (c *idleConn) Read(p []byte) (int, error) {
 	if err := c.Conn.SetReadDeadline(time.Now().Add(c.idle)); err != nil {
 		return 0, err
 	}
+
 	return c.Conn.Read(p)
 }
 
@@ -30,17 +31,21 @@ func (c *idleConn) Write(p []byte) (int, error) {
 	// A reused socket may already be waiting for its next response. Reset
 	// that read deadline when a fresh request starts, as well as on reads.
 	deadline := time.Now().Add(c.idle)
+
 	if err := c.Conn.SetReadDeadline(deadline); err != nil {
 		return 0, err
 	}
+
 	if err := c.Conn.SetWriteDeadline(deadline); err != nil {
 		return 0, err
 	}
+
 	return c.Conn.Write(p)
 }
 
 func main() {
 	syscall.Umask(0077)
+
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "install":
@@ -48,33 +53,41 @@ func main() {
 			if err == nil {
 				err = install(os.Args[2:], env)
 			}
+
 			if err != nil {
 				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("installation_failed", "message", err.Error())
 				os.Exit(1)
 			}
+
 			return
 		case "status":
 			env, err := currentInstallEnvironment()
 			code := 1
+
 			if err == nil {
 				code, err = statusCmd(os.Args[2:], env, os.Stdout)
 			}
+
 			if err != nil {
 				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("status_failed", "message", err.Error())
 			}
+
 			os.Exit(code)
 		case "logs":
 			env, err := currentInstallEnvironment()
 			if err == nil {
 				err = logsCmd(os.Args[2:], env, os.Stdout)
 			}
+
 			if err != nil {
 				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("logs_failed", "message", err.Error())
 				os.Exit(1)
 			}
+
 			os.Exit(0)
 		}
 	}
+
 	executable, _ := os.Executable()
 	configPath := flag.String("config", "", "Configuration file (default: config.json beside the binary, then embedded defaults)")
 	checkConfig := flag.Bool("check-config", false, "Validate configuration and exit")
@@ -86,11 +99,13 @@ func main() {
 	flag.Parse()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	path := effectiveConfigPath(*configPath, executable)
+
 	cfg, err := loadConfiguration(path)
 	if err != nil {
 		log.Error("invalid_config", "message", "Unable to load a valid configuration")
 		os.Exit(1)
 	}
+
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "port":
@@ -103,14 +118,17 @@ func main() {
 			cfg.ClientWriteTimeout = clientIdle.String()
 		}
 	})
+
 	if err := cfg.validate(); err != nil {
 		log.Error("invalid_config", "message", err.Error())
 		os.Exit(1)
 	}
+
 	if *checkConfig {
 		log.Info("configuration_valid")
 		return
 	}
+
 	*port = cfg.Port
 	*headerTimeout, _ = time.ParseDuration(cfg.HeaderTimeout)
 	*streamIdle, _ = time.ParseDuration(cfg.StreamIdleTimeout)
@@ -124,6 +142,7 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
+
 			return &idleConn{Conn: conn, idle: *streamIdle}, nil
 		},
 		ForceAttemptHTTP2: false, // Per-connection idle deadlines must not couple multiplexed streams.
@@ -131,11 +150,13 @@ func main() {
 		TLSHandshakeTimeout: 30 * time.Second, ResponseHeaderTimeout: *headerTimeout,
 		ExpectContinueTimeout: time.Second, DisableCompression: true,
 	}
+
 	r, err := newRouter(*state, transport, log, cfg)
 	if err != nil {
 		log.Error("startup_failed", "component", "session_database")
 		os.Exit(1)
 	}
+
 	defer r.routes.db.Close()
 	defer transport.CloseIdleConnections()
 	r.writeIdle = *clientIdle
@@ -153,6 +174,7 @@ func main() {
 		log.Info("shutdown_started")
 		drain, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+
 		if err := server.Shutdown(drain); err != nil {
 			log.Warn("shutdown_drain_timeout")
 			_ = server.Close()
@@ -160,10 +182,12 @@ func main() {
 	}()
 	log.Info("listening", "host", "127.0.0.1", "port", *port, "header_timeout", headerTimeout.String(),
 		"stream_idle_timeout", streamIdle.String(), "client_write_timeout", clientIdle.String())
+
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error("listen_failed")
 		os.Exit(1)
 	}
+
 	if ctx.Err() != nil {
 		<-drained
 	}

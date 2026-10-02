@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - wsl_v5
+  settings:
+    wsl_v5:
+      default: none
+      enable:
+        - if
+        - err
+        - after-block
+        - leading-whitespace
+        - trailing-whitespace
+      # Keep one related statement beside its check, not a chain of setup.
+      cuddle-max-statements: 1
+      allow-first-in-block: true
+      allow-whole-block: false

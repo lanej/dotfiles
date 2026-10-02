@@ -76,18 +76,23 @@ func TestLogCommand(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			gotCmd, gotArgs, err := logCommand(c.platform, home, c.lines, c.follow, c.stderrFlag)
+
 			if c.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
 					t.Fatalf("expected error containing %q, got %v", c.wantErr, err)
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if gotCmd != c.wantCmd {
 				t.Fatalf("expected command %q, got %q", c.wantCmd, gotCmd)
 			}
+
 			if !reflect.DeepEqual(gotArgs, c.wantArgs) {
 				t.Fatalf("expected args %v, got %v", c.wantArgs, gotArgs)
 			}
@@ -102,28 +107,35 @@ func TestLogsCmdTailsRealFile(t *testing.T) {
 	if _, err := exec.LookPath("tail"); err != nil {
 		t.Skip("tail not available on this system; skipping real end-to-end tail test")
 	}
+
 	home := t.TempDir()
 	logDir := filepath.Join(home, ".codex", "bedrock-router")
+
 	if err := os.MkdirAll(logDir, 0700); err != nil {
 		t.Fatal(err)
 	}
+
 	var lines []string
 	for i := 1; i <= 20; i++ {
 		lines = append(lines, "line "+strconv.Itoa(i))
 	}
+
 	content := strings.Join(lines, "\n") + "\n"
+
 	if err := os.WriteFile(filepath.Join(logDir, "router.log"), []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
 
 	env := installEnvironment{platform: "darwin", home: home}
 	var out bytes.Buffer
+
 	if err := logsCmd([]string{"--lines", "3"}, env, &out); err != nil {
 		t.Fatalf("logsCmd returned error: %v", err)
 	}
 
 	got := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
 	want := []string{"line 18", "line 19", "line 20"}
+
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("expected exactly the last 3 lines %v, got %v", want, got)
 	}
@@ -136,10 +148,12 @@ func TestLogsCmdMissingLogFile(t *testing.T) {
 	home := t.TempDir() // no .codex/bedrock-router/router.log created
 	env := installEnvironment{platform: "darwin", home: home}
 	var out bytes.Buffer
+
 	err := logsCmd(nil, env, &out)
 	if err == nil {
 		t.Fatalf("expected an error when the log file doesn't exist, got none (output: %q)", out.String())
 	}
+
 	if !strings.Contains(err.Error(), "no log file at") {
 		t.Fatalf("expected a clear missing-log-file error, got: %v", err)
 	}
@@ -153,10 +167,12 @@ func TestLogsCmdMissingSystemdUnit(t *testing.T) {
 	home := t.TempDir() // no ~/.config/systemd/user/codex-bedrock-router.service created
 	env := installEnvironment{platform: "linux", home: home}
 	var out bytes.Buffer
+
 	err := logsCmd(nil, env, &out)
 	if err == nil {
 		t.Fatalf("expected an error when the systemd unit doesn't exist, got none (output: %q)", out.String())
 	}
+
 	if !strings.Contains(err.Error(), "no systemd unit at") {
 		t.Fatalf("expected a clear missing-unit error, got: %v", err)
 	}

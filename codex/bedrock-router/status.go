@@ -85,20 +85,26 @@ func queryServiceStatus(env installEnvironment) serviceStatus {
 		// launchctl exits non-zero when the job isn't found, but the output
 		// may still carry useful text — ignore the error and parse the text.
 		match := launchdJobStatePattern.FindStringSubmatch(output)
+
 		if match == nil {
 			return serviceStatus{state: "not registered with launchd"}
 		}
+
 		status := serviceStatus{state: strings.TrimSpace(match[1])}
+
 		if pid := launchdPIDPattern.FindStringSubmatch(output); pid != nil && strings.TrimSpace(pid[1]) != "0" {
 			status.pid = pid[1]
 		}
+
 		return status
 	case "linux":
 		active, _ := env.run("systemctl", "--user", "is-active", systemdUnitName)
 		status := serviceStatus{state: strings.TrimSpace(active)}
+
 		if pid, _ := env.run("systemctl", "--user", "show", systemdUnitName, "--property=MainPID", "--value"); strings.TrimSpace(pid) != "0" {
 			status.pid = strings.TrimSpace(pid)
 		}
+
 		return status
 	default:
 		return serviceStatus{state: "unsupported platform"}
@@ -111,18 +117,24 @@ func queryServiceStatus(env installEnvironment) serviceStatus {
 // formatted output rather than treating it as fatal.
 func fetchHealth(baseURL string) (*healthSnapshot, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
+
 	response, err := client.Get(baseURL + "/healthz")
 	if err != nil {
 		return nil, err
 	}
+
 	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status %d", response.StatusCode)
 	}
+
 	var snapshot healthSnapshot
+
 	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&snapshot); err != nil {
 		return nil, err
 	}
+
 	return &snapshot, nil
 }
 
@@ -132,10 +144,13 @@ func formatStatus(health *healthSnapshot, healthErr error, service serviceStatus
 	var b strings.Builder
 	healthy := healthErr == nil && health != nil && health.Status == "ok"
 	overall := "unhealthy"
+
 	if healthy && service.running() {
 		overall = "healthy"
 	}
+
 	fmt.Fprintf(&b, "status: %s\n", overall)
+
 	if !healthy {
 		if healthErr != nil {
 			fmt.Fprintf(&b, "healthz: unreachable (%v)\n", healthErr)
@@ -147,19 +162,23 @@ func formatStatus(health *healthSnapshot, healthErr error, service serviceStatus
 		fmt.Fprintf(&b, "requests: active=%d completed=%d failures=%d canceled=%d incomplete_streams=%d\n",
 			health.ActiveRequests, health.CompletedRequests, health.Failures, health.CanceledRequests, health.IncompleteStreams)
 		fmt.Fprintf(&b, "pinned_sessions: %d\n", health.PinnedSessions)
+
 		if len(health.RequestsByRegion) > 0 {
 			regions := make([]string, 0, len(health.RequestsByRegion))
 			for region := range health.RequestsByRegion {
 				regions = append(regions, region)
 			}
+
 			sort.Strings(regions)
 			fmt.Fprint(&b, "requests_by_region:")
 			for _, region := range regions {
 				fmt.Fprintf(&b, " %s=%d", region, health.RequestsByRegion[region])
 			}
+
 			fmt.Fprintln(&b)
 		}
 	}
+
 	fmt.Fprintf(&b, "service: %s\n", service.String())
 	return b.String()
 }
@@ -175,36 +194,47 @@ func statusCmd(args []string, env installEnvironment, stdout io.Writer) (int, er
 	var quiet bool
 	flags.BoolVar(&quiet, "quiet", false, "Suppress output; only set the exit code")
 	flags.BoolVar(&quiet, "q", false, "Suppress output; only set the exit code")
+
 	if err := flags.Parse(args); err != nil {
 		return 1, err
 	}
+
 	if flags.NArg() != 0 {
 		return 1, fmt.Errorf("unexpected status arguments")
 	}
+
 	var portSet bool
 	flags.Visit(func(f *flag.Flag) {
 		if f.Name == "port" {
 			portSet = true
 		}
 	})
+
 	if portSet && *port == 0 {
 		return 1, fmt.Errorf("--port 0 is not a valid port")
 	}
+
 	path := effectiveConfigPath(*configPath, env.executable)
+
 	cfg, err := loadConfiguration(path)
 	if err != nil {
 		return 1, fmt.Errorf("invalid router configuration: %w", err)
 	}
+
 	if portSet {
 		cfg.Port = *port
 	}
+
 	health, healthErr := fetchHealth(fmt.Sprintf("http://127.0.0.1:%d", cfg.Port))
 	service := queryServiceStatus(env)
+
 	if !quiet {
 		fmt.Fprint(stdout, formatStatus(health, healthErr, service))
 	}
+
 	if healthErr == nil && health != nil && health.Status == "ok" && service.running() {
 		return 0, nil
 	}
+
 	return 1, nil
 }

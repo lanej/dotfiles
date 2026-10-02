@@ -45,16 +45,20 @@ func openRoutes(path string) (*routes, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if err = f.Chmod(0600); err != nil {
 			f.Close()
 			return nil, err
 		}
+
 		f.Close()
 	}
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
+
 	db.SetMaxOpenConns(1)
 	for _, stmt := range []string{
 		"PRAGMA busy_timeout=5000",
@@ -66,15 +70,18 @@ func openRoutes(path string) (*routes, error) {
 			return nil, err
 		}
 	}
+
 	return &routes{db: db, gates: make(map[string]*sessionGate)}, nil
 }
 
 func (s *routes) lookup(ctx context.Context, key string) (string, error) {
 	var region string
 	err := s.db.QueryRowContext(ctx, "SELECT region FROM sessions WHERE session_hash = ?", key).Scan(&region)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}
+
 	return region, err
 }
 
@@ -89,10 +96,12 @@ func (s *routes) acquire(ctx context.Context, keys []string) (func(), error) {
 		for _, g := range held {
 			g.token <- struct{}{}
 		}
+
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		for i, g := range referenced {
 			g.users--
+
 			if g.users == 0 {
 				delete(s.gates, keys[i])
 			}
@@ -101,11 +110,13 @@ func (s *routes) acquire(ctx context.Context, keys []string) (func(), error) {
 	for _, key := range keys {
 		s.mu.Lock()
 		g := s.gates[key]
+
 		if g == nil {
 			g = &sessionGate{token: make(chan struct{}, 1)}
 			g.token <- struct{}{}
 			s.gates[key] = g
 		}
+
 		g.users++
 		referenced = append(referenced, g)
 		s.mu.Unlock()
@@ -117,6 +128,7 @@ func (s *routes) acquire(ctx context.Context, keys []string) (func(), error) {
 			return nil, ctx.Err()
 		}
 	}
+
 	return release, nil
 }
 
@@ -129,6 +141,7 @@ func sessionKeys(h http.Header) []string {
 				return v
 			}
 		}
+
 		return ""
 	}
 	first := func(values ...string) string {
@@ -137,6 +150,7 @@ func sessionKeys(h http.Header) []string {
 				return v
 			}
 		}
+
 		return ""
 	}
 	session := first(h.Get("Thread-Id"), value("thread_id", "session_id"), h.Get("Session-Id"))
@@ -146,11 +160,13 @@ func sessionKeys(h http.Header) []string {
 		if id != "" {
 			hash := sha256.Sum256([]byte(id))
 			key := hex.EncodeToString(hash[:])
+
 			if len(keys) == 0 || keys[0] != key {
 				keys = append(keys, key)
 			}
 		}
 	}
+
 	return keys
 }
 
@@ -178,10 +194,12 @@ func newRouter(state string, transport http.RoundTripper, log *slog.Logger, cfg 
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
+
 	s, err := openRoutes(state)
 	if err != nil {
 		return nil, err
 	}
+
 	writeIdle, _ := time.ParseDuration(cfg.ClientWriteTimeout)
 	return &router{
 		config: cfg,
@@ -202,6 +220,7 @@ func stripHopHeaders(h http.Header) {
 	for _, field := range strings.Split(h.Get("Connection"), ",") {
 		h.Del(strings.TrimSpace(field))
 	}
+
 	for _, field := range []string{"Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization", "Te", "Trailer", "Transfer-Encoding", "Upgrade"} {
 		h.Del(field)
 	}
@@ -216,28 +235,37 @@ func requestModel(body []byte, encoding string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		defer gz.Close()
 		reader = gz
 	default:
 		return "", errors.New("unsupported content encoding")
 	}
+
 	data, err := io.ReadAll(io.LimitReader(reader, maxBodyBytes+1))
+
 	if err != nil || len(data) > maxBodyBytes {
 		return "", errors.New("invalid body")
 	}
+
 	if len(data) == 0 {
 		return "", nil
 	}
+
 	var object map[string]json.RawMessage
+
 	if err = json.Unmarshal(data, &object); err != nil || object == nil {
 		return "", errors.New("expected JSON object")
 	}
+
 	var model string
+
 	if raw := object["model"]; raw != nil {
 		if err = json.Unmarshal(raw, &model); err != nil {
 			return "", err
 		}
 	}
+
 	return model, nil
 }
 
@@ -245,30 +273,41 @@ func errorKind(err error, ctx context.Context) string {
 	if ctx.Err() != nil {
 		return "client_canceled"
 	}
+
 	var ne net.Error
+
 	if errors.As(err, &ne) && ne.Timeout() {
 		return "timeout"
 	}
+
 	var dns *net.DNSError
+
 	if errors.As(err, &dns) {
 		return "dns_error"
 	}
+
 	var cert *tls.CertificateVerificationError
+
 	if errors.As(err, &cert) {
 		return "tls_verification_error"
 	}
+
 	if errors.Is(err, syscall.ECONNREFUSED) {
 		return "connection_refused"
 	}
+
 	if errors.Is(err, syscall.ECONNRESET) {
 		return "connection_reset"
 	}
+
 	if errors.Is(err, io.ErrUnexpectedEOF) {
 		return "unexpected_eof"
 	}
+
 	if errors.Is(err, io.EOF) {
 		return "upstream_closed"
 	}
+
 	return "connection_error"
 }
 
@@ -276,7 +315,21 @@ func safeModel(model string) string {
 	if len(model) > 128 || strings.ContainsAny(model, "\r\n\t ") {
 		return "other"
 	}
+
 	return model
+}
+
+// Collection actions route by model; stored response operations require the
+// originating session's region. Response IDs are opaque, not region hints.
+func responseResource(path string) bool {
+	const prefix = "/openai/v1/responses/"
+
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+
+	action := strings.TrimPrefix(path, prefix)
+	return action != "" && action != "compact" && action != "input_tokens"
 }
 
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -284,6 +337,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.monitor(w, req)
 		return
 	}
+
 	start := time.Now()
 	id := fmt.Sprintf("%x-%x", r.started.UnixNano(), r.sequence.Add(1))
 	log := r.log.With("request_id", id, "method", req.Method)
@@ -300,17 +354,21 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.stats.Requests++
 		r.stats.Duration += time.Since(start)
 		r.stats.Statuses[status]++
+
 		if region != "" {
 			r.stats.Regions[region]++
 		}
+
 		if outcome == "client_canceled" {
 			r.stats.Canceled++
 		} else if outcome != "complete" || status >= 500 {
 			r.stats.Failures++
 		}
+
 		if outcome == "incomplete_stream" {
 			r.stats.Incomplete++
 		}
+
 		r.stats.Unlock()
 		log.Info("request_finished", "region", region, "model", safeModel(model),
 			"status", status, "outcome", outcome, "bytes", transferred,
@@ -321,76 +379,97 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			status, outcome = 499, "client_canceled"
 			return
 		}
+
 		status, outcome = code, kind
 		log.Warn("request_rejected", "status", status, "error_kind", kind)
 		sendError(w, code, kind, message)
 	}
+
 	if req.URL.IsAbs() || !strings.HasPrefix(req.URL.Path, "/openai/v1/") {
 		fail(404, "unknown_endpoint", "Unknown router endpoint")
 		return
 	}
+
 	if !strings.HasPrefix(req.Header.Get("Authorization"), "Bearer ") {
 		fail(401, "missing_auth", "Bearer token required")
 		return
 	}
+
 	body, err := io.ReadAll(http.MaxBytesReader(w, req.Body, maxBodyBytes))
 	if err != nil {
 		fail(400, "invalid_body", "Invalid request body or framing")
 		return
 	}
+
 	model, err = requestModel(body, req.Header.Get("Content-Encoding"))
 	if err != nil {
 		fail(400, "invalid_body", "Invalid JSON request body or content encoding")
 		return
 	}
-	if strings.Contains(req.URL.Path, "/responses/") && !strings.HasSuffix(req.URL.Path, "/compact") && model == "" {
-		fail(400, "missing_model", "A model is required for regional response routing")
-		return
-	}
+
 	keys := sessionKeys(req.Header)
+
 	if len(keys) > 0 {
 		log = log.With("session", keys[0][:12])
 	}
+
 	pinned := ""
+
 	if len(keys) > 0 {
 		pinned, err = r.routes.lookup(req.Context(), keys[0])
 	}
+
 	if err != nil {
 		fail(503, "state_unavailable", "Session routing state unavailable")
 		return
 	}
+
+	if responseResource(req.URL.Path) && pinned == "" {
+		fail(409, "region_unknown", "Stored response operations require the originating session's pinned region. Supply its session header.")
+		return
+	}
+
 	release := func() {}
+
 	if pinned == "" && len(keys) > 0 {
 		discoveryKeys := keys[:1]
+
 		if len(keys) > 1 {
 			parentRegion, lookupErr := r.routes.lookup(req.Context(), keys[1])
 			if lookupErr != nil {
 				fail(503, "state_unavailable", "Session routing state unavailable")
 				return
 			}
+
 			// An established parent's pin is immutable. Locking it while
 			// this new child waits for headers would serialize every fork.
 			if parentRegion == "" {
 				discoveryKeys = keys
 			}
 		}
+
 		wait := time.Now()
 		log.Info("session_wait_started")
+
 		release, err = r.routes.acquire(req.Context(), discoveryKeys)
 		if err != nil {
 			status, outcome = 499, "client_canceled"
 			return
 		}
+
 		defer release()
 		log.Info("session_acquired", "wait_ms", time.Since(wait).Milliseconds())
+
 		pinned, err = r.routes.lookup(req.Context(), keys[0])
 		if err != nil {
 			fail(503, "state_unavailable", "Session routing state unavailable")
 			return
 		}
 	}
+
 	confirmed := pinned != ""
 	region = pinned
+
 	if region == "" && len(keys) > 1 {
 		region, err = r.routes.lookup(req.Context(), keys[1])
 		if err != nil {
@@ -398,24 +477,30 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+
 	if region == "" {
 		region = r.config.ModelRegions[model]
+
 		if region == "" {
 			region = r.config.DefaultRegion
 		}
 	}
+
 	if required := r.config.ModelRegions[model]; required != "" && region != required {
 		fail(409, "region_conflict", fmt.Sprintf("This session is pinned to %s; %s requires %s. Start a new session to use this model.", region, model, required))
 		return
 	}
+
 	if confirmed {
 		release()
 	}
+
 	forward := func(target string) (*http.Response, error) {
 		up, err := http.NewRequestWithContext(req.Context(), req.Method, r.endpoint(target)+req.URL.RequestURI(), bytes.NewReader(body))
 		if err != nil {
 			return nil, err
 		}
+
 		up.Header = req.Header.Clone()
 		// Disable transport-level request replay even if the caller supplied
 		// an idempotency header. Region validation is our only explicit retry.
@@ -425,21 +510,27 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		up.Header.Del("X-Router-Request-Id")
 		return r.transport.RoundTrip(up)
 	}
+
 	response, err := forward(region)
 	if err != nil {
 		kind := errorKind(err, req.Context())
 		log.Warn("upstream_failed", "region", region, "error_kind", kind)
+
 		if kind == "client_canceled" {
 			status, outcome = 499, kind
 		} else {
 			code := 502
+
 			if kind == "timeout" {
 				code = 504
 			}
+
 			fail(code, kind, "Bedrock upstream connection failed")
 		}
+
 		return
 	}
+
 	// Only retry an explicit regional validation rejection; a generation or
 	// partial stream is never replayed, including HTTP 500 and transport errors.
 	if response.StatusCode == 400 {
@@ -449,6 +540,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			fail(502, errorKind(readErr, req.Context()), "Unable to read Bedrock error response")
 			return
 		}
+
 		response.Body = &prefixedBody{Reader: io.MultiReader(bytes.NewReader(prefix), response.Body), Closer: response.Body}
 		var data struct {
 			Error struct {
@@ -460,14 +552,17 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			data.Error.Code == "validation_error" &&
 			strings.Contains(data.Error.Message, "Encrypted content cannot be used in a different region")
 		log.Warn("upstream_rejected", "region", region, "status", response.StatusCode, "encrypted_region_mismatch", regionMismatch)
+
 		if alternate != "" && !confirmed && r.config.ModelRegions[model] == "" && readErr == nil && len(prefix) <= 1<<20 &&
 			regionMismatch {
 			r.stats.Lock()
 			r.stats.Retries++
 			r.stats.Unlock()
+
 			other, retryErr := forward(alternate)
 			if retryErr == nil {
 				log.Info("discover_context_region", "region", alternate, "status", other.StatusCode)
+
 				if other.StatusCode >= 200 && other.StatusCode < 300 {
 					response.Body.Close()
 					response, region = other, alternate
@@ -486,39 +581,51 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
+
 	defer response.Body.Close()
+
 	if model != "" && len(keys) > 0 && response.StatusCode >= 200 && response.StatusCode < 300 {
 		if _, err = r.routes.db.ExecContext(req.Context(), "INSERT OR IGNORE INTO sessions VALUES (?, ?)", keys[0], region); err != nil {
 			fail(503, "state_unavailable", "Unable to persist session region")
 			return
 		}
 	}
+
 	release()
 	status = response.StatusCode
+
 	if status >= 400 {
 		outcome = "upstream_http_error"
 	}
+
 	log.Info("upstream_headers", "region", region, "status", status,
 		"headers_ms", time.Since(start).Milliseconds(), "upstream_request_id", safeModel(response.Header.Get("X-Amzn-Requestid")))
+
 	if status >= 400 {
 		log.Warn("upstream_http_error", "region", region, "status", status)
 	}
+
 	stream := strings.HasPrefix(strings.ToLower(response.Header.Get("Content-Type")), "text/event-stream")
+
 	if stream {
 		// A fixed length could make a truncated SSE stream look complete
 		// to the caller before we have checked its terminal event.
 		response.Header.Del("Content-Length")
 	}
+
 	stripHopHeaders(response.Header)
 	for key, values := range response.Header {
 		if strings.EqualFold(key, "X-Router-Request-Id") {
 			continue
 		}
+
 		w.Header()[key] = values
 	}
+
 	w.WriteHeader(status)
 	control := http.NewResponseController(w)
 	_ = control.Flush()
+
 	if stream {
 		r.stats.Lock()
 		r.stats.Streams++
@@ -529,35 +636,44 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			r.stats.Unlock()
 		}()
 	}
+
 	var tracker terminalTracker
 	buf := make([]byte, 32<<10)
 	for {
 		n, readErr := response.Body.Read(buf)
+
 		if n > 0 {
 			if transferred == 0 {
 				log.Info("first_response_bytes", "first_byte_ms", time.Since(start).Milliseconds())
 			}
+
 			if stream {
 				tracker.observe(buf[:n])
 			}
+
 			_ = control.SetWriteDeadline(time.Now().Add(r.writeIdle))
 			written, writeErr := w.Write(buf[:n])
 			transferred += int64(written)
 			r.stats.Lock()
 			r.stats.Bytes += uint64(written)
 			r.stats.Unlock()
+
 			if writeErr == nil {
 				writeErr = control.Flush()
 			}
+
 			if writeErr != nil {
 				outcome = "client_write_error"
+
 				if req.Context().Err() != nil {
 					outcome = "client_canceled"
 				}
+
 				log.Warn("stream_failed", "side", "client", "error_kind", outcome)
 				return
 			}
 		}
+
 		if readErr != nil {
 			if !errors.Is(readErr, io.EOF) {
 				outcome = errorKind(readErr, req.Context())
@@ -571,9 +687,11 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			} else if tracker.failed {
 				outcome = "upstream_stream_error"
 			}
+
 			if !errors.Is(readErr, io.EOF) {
 				panic(http.ErrAbortHandler)
 			}
+
 			return
 		}
 	}
@@ -597,20 +715,24 @@ func (t *terminalTracker) observe(chunk []byte) {
 		if b == '\n' {
 			if !t.overflow {
 				line := strings.TrimSpace(string(t.line))
+
 				if strings.HasPrefix(line, "event:") {
 					t.event(strings.TrimSpace(strings.TrimPrefix(line, "event:")))
 				} else if strings.HasPrefix(line, "data:") {
 					data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+
 					if data == "[DONE]" {
 						t.terminal = true
 					} else {
 						var event struct{ Type string }
+
 						if json.Unmarshal([]byte(data), &event) == nil {
 							t.event(event.Type)
 						}
 					}
 				}
 			}
+
 			t.line, t.overflow = t.line[:0], false
 		} else if len(t.line) < 64<<10 {
 			t.line = append(t.line, b)
@@ -633,10 +755,12 @@ func (r *router) monitor(w http.ResponseWriter, req *http.Request) {
 	r.stats.Lock()
 	defer r.stats.Unlock()
 	var pinned int
+
 	if err := r.routes.db.QueryRowContext(req.Context(), "SELECT count(*) FROM sessions").Scan(&pinned); err != nil {
 		sendError(w, 503, "state_unavailable", "Session routing state unavailable")
 		return
 	}
+
 	if req.URL.Path == "/healthz" {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -650,6 +774,7 @@ func (r *router) monitor(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
+
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	for _, metric := range []struct {
 		name, kind string
@@ -663,12 +788,14 @@ func (r *router) monitor(w http.ResponseWriter, req *http.Request) {
 	} {
 		fmt.Fprintf(w, "# TYPE bedrock_router_%s %s\nbedrock_router_%s %d\n", metric.name, metric.kind, metric.name, metric.value)
 	}
+
 	fmt.Fprintf(w, "# TYPE bedrock_router_request_duration_seconds summary\nbedrock_router_request_duration_seconds_sum %f\nbedrock_router_request_duration_seconds_count %d\n",
 		r.stats.Duration.Seconds(), r.stats.Requests)
 	fmt.Fprintln(w, "# TYPE bedrock_router_region_requests_total counter")
 	for region, count := range r.stats.Regions {
 		fmt.Fprintf(w, "bedrock_router_region_requests_total{region=%q} %d\n", region, count)
 	}
+
 	fmt.Fprintln(w, "# TYPE bedrock_router_status_requests_total counter")
 	for status, count := range r.stats.Statuses {
 		fmt.Fprintf(w, "bedrock_router_status_requests_total{status=%q} %d\n", fmt.Sprint(status), count)

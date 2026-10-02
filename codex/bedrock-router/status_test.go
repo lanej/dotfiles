@@ -27,9 +27,11 @@ func fakeStatusEnv(t *testing.T, platform, runOutput string, runErr error) insta
 func portOf(t *testing.T, url string) string {
 	t.Helper()
 	port := strings.TrimPrefix(url, "http://127.0.0.1:")
+
 	if port == url {
 		t.Fatalf("unexpected server URL shape: %s", url)
 	}
+
 	return port
 }
 
@@ -50,13 +52,16 @@ func TestStatusReportsLiveHealthAndRunningService(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "\tpid = 4242\n\tstate = running\n\n\tresource coalition = {\n\t\tstate = active\n\t}\n", nil)
 
 	var out bytes.Buffer
+
 	code, err := statusCmd([]string{"--port", portOf(t, srv.URL)}, env, &out)
 	if err != nil {
 		t.Fatalf("statusCmd returned error: %v", err)
 	}
+
 	if code != 0 {
 		t.Fatalf("expected exit code 0 for a healthy router, got %d (output: %s)", code, out.String())
 	}
+
 	output := out.String()
 	for _, want := range []string{"status: healthy", "completed=1", "uptime", "service: running (pid 4242)"} {
 		if !strings.Contains(output, want) {
@@ -65,13 +70,16 @@ func TestStatusReportsLiveHealthAndRunningService(t *testing.T) {
 	}
 
 	var quietOut bytes.Buffer
+
 	code, err = statusCmd([]string{"--port", portOf(t, srv.URL), "--quiet"}, env, &quietOut)
 	if err != nil {
 		t.Fatalf("statusCmd (quiet) returned error: %v", err)
 	}
+
 	if code != 0 {
 		t.Fatalf("expected exit code 0 in quiet mode for a healthy router, got %d", code)
 	}
+
 	if quietOut.Len() != 0 {
 		t.Fatalf("--quiet must suppress all stdout output, got: %q", quietOut.String())
 	}
@@ -82,6 +90,7 @@ func TestStatusUnreachableRouterNeverHangsOrPanics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	port := portOf(t, "http://"+listener.Addr().String())
 	listener.Close() // port is now free but dead: nothing answers it
 
@@ -93,13 +102,16 @@ func TestStatusUnreachableRouterNeverHangsOrPanics(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "\tpid = 4242\n\tstate = running\n\n\tresource coalition = {\n\t\tstate = active\n\t}\n", nil)
 
 	var out bytes.Buffer
+
 	code, err := statusCmd([]string{"--port", port, "-q"}, env, &out)
 	if err != nil {
 		t.Fatalf("statusCmd returned error for an unreachable router: %v", err)
 	}
+
 	if code != 1 {
 		t.Fatalf("expected exit code 1 for an unreachable router, got %d", code)
 	}
+
 	if out.Len() != 0 {
 		t.Fatalf("-q must suppress all stdout output, got: %q", out.String())
 	}
@@ -116,21 +128,26 @@ func TestStatusConsultsBothHealthzAndServiceState(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "\tpid = 0\n\tstate = not running\n", nil)
 
 	var out bytes.Buffer
+
 	code, err := statusCmd([]string{"--port", portOf(t, srv.URL), "--quiet"}, env, &out)
 	if err != nil {
 		t.Fatalf("statusCmd returned error: %v", err)
 	}
+
 	if code != 1 {
 		t.Fatalf("expected exit code 1 when the service isn't running even though healthz is ok, got %d", code)
 	}
 
 	var verboseOut bytes.Buffer
+
 	if _, err := statusCmd([]string{"--port", portOf(t, srv.URL)}, env, &verboseOut); err != nil {
 		t.Fatalf("statusCmd returned error: %v", err)
 	}
+
 	if !strings.Contains(verboseOut.String(), "status: unhealthy") {
 		t.Fatalf("expected unhealthy status in output, got:\n%s", verboseOut.String())
 	}
+
 	if !strings.Contains(verboseOut.String(), "service: not running") {
 		t.Fatalf("expected the not-running service state in output, got:\n%s", verboseOut.String())
 	}
@@ -144,6 +161,7 @@ func TestStatusConsultsBothHealthzAndServiceState(t *testing.T) {
 func TestStatusPortZeroIsRejected(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "\tpid = 0\n\tstate = not running\n", nil)
 	var out bytes.Buffer
+
 	_, err := statusCmd([]string{"--port", "0"}, env, &out)
 	if err == nil {
 		t.Fatalf("expected an error for an explicit --port 0, got none (output: %s)", out.String())
@@ -154,6 +172,7 @@ func TestStatusDarwinNotRegistered(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "", &exitError{})
 
 	status := queryServiceStatus(env)
+
 	if status.state != "not registered with launchd" {
 		t.Fatalf("expected 'not registered with launchd', got %q", status.state)
 	}
@@ -168,9 +187,11 @@ func TestStatusDarwinPidZeroIsTreatedAsNoPid(t *testing.T) {
 	env := fakeStatusEnv(t, "darwin", "\tpid = 0\n\tstate = not running\n", nil)
 
 	status := queryServiceStatus(env)
+
 	if status.pid != "" {
 		t.Fatalf("expected pid 0 to be treated as no pid, got pid=%q", status.pid)
 	}
+
 	if got := status.String(); strings.Contains(got, "pid") {
 		t.Fatalf("expected no 'pid' mention in String() for a zero pid, got %q", got)
 	}

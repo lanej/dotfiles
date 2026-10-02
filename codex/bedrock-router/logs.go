@@ -16,9 +16,11 @@ import (
 // install.go, which writes these same paths beside the installed binary.
 func darwinLogPath(home string, stderrFlag bool) string {
 	name := "router.log"
+
 	if stderrFlag {
 		name = "router.err.log"
 	}
+
 	return filepath.Join(home, ".codex", "bedrock-router", name)
 }
 
@@ -39,21 +41,26 @@ func logCommand(platform, home string, lines int, follow, stderrFlag bool) (name
 	case "darwin":
 		path := darwinLogPath(home, stderrFlag)
 		args := []string{"-n", strconv.Itoa(lines)}
+
 		if follow {
 			// BSD tail requires flags before the file operand: a trailing
 			// -f after path is parsed as a second (nonexistent) file.
 			args = append(args, "-f")
 		}
+
 		args = append(args, path)
 		return "tail", args, nil
 	case "linux":
 		if stderrFlag {
 			return "", nil, errors.New("--stderr is only meaningful on macOS; journald already combines stdout and stderr")
 		}
+
 		args := []string{"--user", "-u", systemdUnitName, "-n", strconv.Itoa(lines)}
+
 		if follow {
 			args = append(args, "-f")
 		}
+
 		return "journalctl", args, nil
 	default:
 		return "", nil, errors.New("logs supports macOS and Linux")
@@ -87,9 +94,11 @@ func logsCmd(args []string, env installEnvironment, stdout io.Writer) error {
 	flags.BoolVar(&follow, "f", false, "Follow log output as it's written (shorthand)")
 	var stderrFlag bool
 	flags.BoolVar(&stderrFlag, "stderr", false, "Show the stderr log instead of stdout (macOS only)")
+
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
+
 	if flags.NArg() != 0 {
 		return errors.New("unexpected logs arguments")
 	}
@@ -98,17 +107,22 @@ func logsCmd(args []string, env installEnvironment, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+
 	if env.platform == "darwin" {
 		path := darwinLogPath(env.home, stderrFlag)
+
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("no log file at %s — is bedrock-router installed and running?", path)
 		}
 	}
+
 	if env.platform == "linux" {
 		path := linuxUnitPath(env.home)
+
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("no systemd unit at %s — is bedrock-router installed?", path)
 		}
 	}
+
 	return streamCommand(stdout, name, cmdArgs)
 }

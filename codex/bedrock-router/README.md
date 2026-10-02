@@ -10,6 +10,12 @@ bearer token supplied by Codex. Logs contain routing metadata, never tokens or
 prompt bodies. Region pins survive restarts in `~/.codex/bedrock-router/sessions.sqlite3`,
 which stores only hashed thread IDs and regions. `--state-file` overrides its path.
 
+[`API-CONTRACT.md`](API-CONTRACT.md) defines the proxy and routing contract and
+links the pinned upstream OpenAPI reference. Stored response operations use the
+originating session's pin without requiring a body `model`; supply that session's
+header when retrieving, canceling, deleting, or listing a response's input items.
+An unknown session region returns `409 region_unknown`.
+
 ## Install or update
 
 Use Go 1.26 or newer to build from source on macOS or Linux:
@@ -127,8 +133,17 @@ the credential link, rerun this installer after restoring the credential source.
 
 ## Checks and service management
 
+Use standard `gofmt` for Go source. It has no style configuration; `.editorconfig`
+sets editor indentation and line endings. `.golangci.yml` configures `wsl_v5`
+to separate `if` blocks and add space after blocks, while allowing one related
+statement next to its check. Error checks stay with their assignments; `else`
+branches stay attached. Install `golangci-lint` 2.13.2 or newer for the commands
+below. CI currently checks `gofmt` output; `make check-fmt` also checks spacing.
+
 ```sh
 cd codex/bedrock-router
+make fmt           # format Go source
+make check-fmt     # check formatting without editing
 go vet ./...
 gotestsum -- -race ./...
 ```
