@@ -1,7 +1,24 @@
-model = "openai.gpt-5.6-terra"  # per OpenAI's official Codex-on-Bedrock support doc (help.openai.com/en/articles/20001253), the only officially supported ids are gpt-5.6-sol/terra/luna, gpt-5.5, gpt-5.4 — sol/gpt-5.5 aren't available on this account's Bedrock catalog, terra and luna are
+model = "openai.gpt-6.1-sol"  # per OpenAI's official Codex-on-Bedrock support doc (help.openai.com/en/articles/20001253), the only officially supported ids are gpt-5.6-sol/terra/luna, gpt-5.5, gpt-5.4 — sol/gpt-5.5 aren't available on this account's Bedrock catalog, terra and luna are
 model_provider = "amazon-bedrock"
 model_reasoning_summary = "auto"  # base config.toml's global "detailed" 400s on this model via bedrock-mantle ("reasoning.summary" not supported) — override live-verified working
+model_reasoning_effort = "xhigh"
 
 [model_providers.amazon-bedrock.aws]
 region = "us-west-2"
+
+[tui]
+screen_reader_detection_done = true
+theme = "nord"
+
+[projects."/Users/joshlane/src/connect-easypost-promise"]
+trust_level = "trusted"
+
+[projects."/Users/joshlane/.codex"]
+trust_level = "trusted"
+
+[projects."/Users/joshlane/workspace"]
+trust_level = "trusted"
+
+[projects."/Users/joshlane/src/looker-development"]
+trust_level = "trusted"
 # profile intentionally omitted — Codex checks AWS_BEARER_TOKEN_BEDROCK first (already sourced ambiently via ~/.config/bedrock/env), falling back to the AWS SDK credential chain only if that's unset

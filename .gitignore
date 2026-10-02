@@ -64,5 +64,7 @@ claude/evals/*/results/
 *-workspace/
 *.skill
 CLAUDE.local.md
+codex/AGENTS.local.md
+codex/bedrock.config.toml
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
