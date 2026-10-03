@@ -234,19 +234,22 @@ func requestModel(body []byte, encoding string) (string, error) {
 	case "gzip":
 		gz, err := gzip.NewReader(reader)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("decode gzip request body: %w", err)
 		}
 
 		defer gz.Close()
 		reader = gz
 	default:
-		return "", errors.New("unsupported content encoding")
+		return "", fmt.Errorf("unsupported Content-Encoding %q; use identity or gzip", encoding)
 	}
 
 	data, err := io.ReadAll(io.LimitReader(reader, maxBodyBytes+1))
+	if err != nil {
+		return "", fmt.Errorf("read decoded request body: %w", err)
+	}
 
-	if err != nil || len(data) > maxBodyBytes {
-		return "", errors.New("invalid body")
+	if len(data) > maxBodyBytes {
+		return "", fmt.Errorf("decoded request body exceeds %d bytes", maxBodyBytes)
 	}
 
 	if len(data) == 0 {
@@ -255,15 +258,19 @@ func requestModel(body []byte, encoding string) (string, error) {
 
 	var object map[string]json.RawMessage
 
-	if err = json.Unmarshal(data, &object); err != nil || object == nil {
-		return "", errors.New("expected JSON object")
+	if err = json.Unmarshal(data, &object); err != nil {
+		return "", fmt.Errorf("expected a JSON request object: %w", err)
+	}
+
+	if object == nil {
+		return "", errors.New("expected a JSON request object, got null")
 	}
 
 	var model string
 
 	if raw := object["model"]; raw != nil {
 		if err = json.Unmarshal(raw, &model); err != nil {
-			return "", err
+			return "", fmt.Errorf("model must be a JSON string: %w", err)
 		}
 	}
 
@@ -375,15 +382,22 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			"status", status, "outcome", outcome, "bytes", transferred,
 			"duration_ms", time.Since(start).Milliseconds())
 	}()
-	fail := func(code int, kind, message string) {
+	fail := func(code int, kind, message string, causes ...error) {
 		if req.Context().Err() != nil {
 			status, outcome = 499, "client_canceled"
 			return
 		}
 
 		status, outcome = code, kind
-		log.Warn("request_rejected", "status", status, "error_kind", kind)
-		sendError(w, code, kind, message)
+		details := []any{"status", status, "error_kind", kind, "region", region, "model", safeModel(model)}
+
+		if len(causes) > 0 {
+			message += ": " + causes[0].Error()
+			details = append(details, "cause", causes[0].Error())
+		}
+
+		log.Warn("request_rejected", details...)
+		sendError(w, code, kind, message+" (router request "+id+")")
 	}
 
 	if req.URL.IsAbs() || !strings.HasPrefix(req.URL.Path, "/openai/v1/") {
@@ -398,13 +412,13 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	body, err := io.ReadAll(http.MaxBytesReader(w, req.Body, maxBodyBytes))
 	if err != nil {
-		fail(400, "invalid_body", "Invalid request body or framing")
+		fail(400, "invalid_body", "Unable to read request body", err)
 		return
 	}
 
 	model, err = requestModel(body, req.Header.Get("Content-Encoding"))
 	if err != nil {
-		fail(400, "invalid_body", "Invalid JSON request body or content encoding")
+		fail(400, "invalid_body", "Invalid request body", err)
 		return
 	}
 
@@ -421,7 +435,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
-		fail(503, "state_unavailable", "Session routing state unavailable")
+		fail(503, "state_unavailable", "Unable to read session region", err)
 		return
 	}
 
@@ -438,7 +452,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if len(keys) > 1 {
 			parentRegion, lookupErr := r.routes.lookup(req.Context(), keys[1])
 			if lookupErr != nil {
-				fail(503, "state_unavailable", "Session routing state unavailable")
+				fail(503, "state_unavailable", "Unable to read parent session region", lookupErr)
 				return
 			}
 
@@ -463,32 +477,44 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		pinned, err = r.routes.lookup(req.Context(), keys[0])
 		if err != nil {
-			fail(503, "state_unavailable", "Session routing state unavailable")
+			fail(503, "state_unavailable", "Unable to read session region after waiting for discovery", err)
 			return
 		}
 	}
 
 	confirmed := pinned != ""
 	region = pinned
+	regionSource := "session"
 
 	if region == "" && len(keys) > 1 {
 		region, err = r.routes.lookup(req.Context(), keys[1])
 		if err != nil {
-			fail(503, "state_unavailable", "Session routing state unavailable")
+			fail(503, "state_unavailable", "Unable to read parent session region", err)
 			return
 		}
+
+		regionSource = "parent"
 	}
 
 	if region == "" {
 		region = r.config.ModelRegions[model]
+		regionSource = "model_override"
 
 		if region == "" {
 			region = r.config.DefaultRegion
+			regionSource = "default"
 		}
 	}
 
+	log = log.With("region_source", regionSource)
+
 	if required := r.config.ModelRegions[model]; required != "" && region != required {
-		fail(409, "region_conflict", fmt.Sprintf("This session is pinned to %s; %s requires %s. Start a new session to use this model.", region, model, required))
+		identity := keys[0][:12]
+		if regionSource == "parent" {
+			identity = keys[1][:12]
+		}
+
+		fail(409, "region_conflict", fmt.Sprintf("Routing uses the saved %s pin %s in %s, but %s requires %s. Existing encrypted history cannot move regions. Start a new independent session with this model; if an auxiliary model runs first, default_region must also be %s.", regionSource, identity, region, model, required, required))
 		return
 	}
 
@@ -534,7 +560,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				code = 504
 			}
 
-			fail(code, kind, "Bedrock upstream connection failed")
+			fail(code, kind, fmt.Sprintf("Bedrock upstream connection failed in %s (%s)", region, kind), err)
 		}
 
 		return
@@ -546,7 +572,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		prefix, readErr := io.ReadAll(io.LimitReader(response.Body, (1<<20)+1))
 		if readErr != nil {
 			response.Body.Close()
-			fail(502, errorKind(readErr, req.Context()), "Unable to read Bedrock error response")
+			fail(502, errorKind(readErr, req.Context()), "Unable to read Bedrock error response", readErr)
 			return
 		}
 
@@ -595,7 +621,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if model != "" && len(keys) > 0 && response.StatusCode >= 200 && response.StatusCode < 300 {
 		if _, err = r.routes.db.ExecContext(req.Context(), "INSERT OR IGNORE INTO sessions VALUES (?, ?)", keys[0], region); err != nil {
-			fail(503, "state_unavailable", "Unable to persist session region")
+			fail(503, "state_unavailable", "Unable to persist session region", err)
 			return
 		}
 	}
@@ -798,20 +824,15 @@ func (r *router) monitor(w http.ResponseWriter, req *http.Request) {
 	var pinned int
 
 	if err := r.routes.db.QueryRowContext(req.Context(), "SELECT count(*) FROM sessions").Scan(&pinned); err != nil {
-		sendError(w, 503, "state_unavailable", "Session routing state unavailable")
+		r.log.Warn("monitor_failed", "message", err.Error())
+		sendError(w, 503, "state_unavailable", "Unable to count pinned sessions: "+err.Error())
 		return
 	}
 
 	if req.URL.Path == "/healthz" {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": "ok", "implementation": "go", "default_region": r.config.DefaultRegion,
-			"model_regions": r.config.ModelRegions, "region_fallbacks": r.config.RegionFallbacks, "session_affinity": true,
-			"pinned_sessions": pinned, "requests_by_region": r.stats.Regions,
-			"active_requests": r.stats.Active, "active_streams": r.stats.Streams,
-			"completed_requests": r.stats.Requests, "response_bytes": r.stats.Bytes,
-			"failures": r.stats.Failures, "incomplete_streams": r.stats.Incomplete,
-			"canceled_requests": r.stats.Canceled, "uptime_seconds": time.Since(r.started).Seconds(),
+			"status": "ok", "implementation": "go", "default_region": r.config.DefaultRegion, "model_regions": r.config.ModelRegions, "region_fallbacks": r.config.RegionFallbacks, "session_affinity": true, "pinned_sessions": pinned, "requests_by_region": r.stats.Regions, "active_requests": r.stats.Active, "active_streams": r.stats.Streams, "completed_requests": r.stats.Requests, "response_bytes": r.stats.Bytes, "failures": r.stats.Failures, "incomplete_streams": r.stats.Incomplete, "canceled_requests": r.stats.Canceled, "uptime_seconds": time.Since(r.started).Seconds(),
 		})
 		return
 	}

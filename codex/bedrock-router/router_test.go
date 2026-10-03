@@ -28,6 +28,9 @@ func fixture(t *testing.T, upstream http.Handler) (*router, *httptest.Server, *b
 		t.Fatal(err)
 	}
 
+	// These fixtures exercise legacy West pins and regional recovery.
+	// The configuration-file detector below exercises the production default.
+	cfg.DefaultRegion = "us-west-2"
 	return fixtureConfig(t, upstream, cfg)
 }
 
@@ -112,7 +115,17 @@ func TestSessionAffinityThroughConcurrentStreamsAndRestart(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	drain(t, call(t, client, server.URL, "openai.gpt-6.1-sol", "east-parent", ""), 200)
 	drain(t, call(t, client, server.URL, "openai.gpt-6-astra", "west-parent", ""), 200)
-	drain(t, call(t, client, server.URL, "openai.gpt-6.1-sol", "west-parent", ""), 409)
+
+	conflict := drain(t, call(t, client, server.URL, "openai.gpt-6.1-sol", "west-parent", ""), 409)
+	if !bytes.Contains(conflict, []byte("saved session pin")) || !bytes.Contains(conflict, []byte("router request")) {
+		t.Fatalf("conflict did not identify the saved pin and request: %s", conflict)
+	}
+
+	parentConflict := drain(t, call(t, client, server.URL, "openai.gpt-6.1-sol", "west-child", "west-parent"), 409)
+	if !bytes.Contains(parentConflict, []byte("saved parent pin")) {
+		t.Fatalf("inherited conflict mislabeled as a session pin: %s", parentConflict)
+	}
+
 	drain(t, call(t, client, server.URL, "openai.gpt-5.6-luna", "child", "east-parent"), 200)
 	key := sessionKeys(http.Header{"Thread-Id": {"child"}})[0]
 
@@ -769,8 +782,7 @@ func TestConfigurationFileControlsRegionalRouting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg.DefaultRegion = "us-east-1"
-	cfg.ModelRegions = map[string]string{"custom-model": "us-west-2"}
+	cfg.ModelRegions["custom-model"] = "us-west-2"
 	data, _ := json.Marshal(cfg)
 	path := filepath.Join(t.TempDir(), "config.json")
 
@@ -797,6 +809,15 @@ func TestConfigurationFileControlsRegionalRouting(t *testing.T) {
 	}
 
 	drain(t, resp, 200)
+
+	// A guardian can arrive first under the main thread's identity.
+	guardian := call(t, server.Client(), server.URL, "openai.gpt-5.6-luna", "fresh-sol-session", "")
+	if guardian.Header.Get("X-Upstream-Region") != "us-east-1" {
+		t.Fatalf("auxiliary request would pin a fresh Sol session to %q", guardian.Header.Get("X-Upstream-Region"))
+	}
+
+	drain(t, guardian, 200)
+	drain(t, call(t, server.Client(), server.URL, "openai.gpt-6.1-sol", "fresh-sol-session", ""), 200)
 
 	health, err := server.Client().Get(server.URL + "/healthz")
 	if err != nil {

@@ -109,7 +109,7 @@ func main() {
 
 	cfg, err := loadConfiguration(path)
 	if err != nil {
-		log.Error("invalid_config", "message", "Unable to load a valid configuration")
+		log.Error("invalid_config", "message", err.Error())
 		os.Exit(1)
 	}
 
@@ -160,7 +160,7 @@ func main() {
 
 	r, err := newRouter(*state, transport, log, cfg)
 	if err != nil {
-		log.Error("startup_failed", "component", "session_database")
+		log.Error("startup_failed", "component", "session_database", "path", *state, "message", err.Error())
 		os.Exit(1)
 	}
 
@@ -183,7 +183,7 @@ func main() {
 		defer cancel()
 
 		if err := server.Shutdown(drain); err != nil {
-			log.Warn("shutdown_drain_timeout")
+			log.Warn("shutdown_drain_timeout", "message", err.Error())
 			_ = server.Close()
 		}
 	}()
@@ -191,7 +191,7 @@ func main() {
 		"stream_idle_timeout", streamIdle.String(), "client_write_timeout", clientIdle.String())
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error("listen_failed")
+		log.Error("listen_failed", "address", server.Addr, "message", err.Error())
 		os.Exit(1)
 	}
 

@@ -75,7 +75,13 @@ replayed.
 `GET /healthz` returns the router's JSON status; `GET /metrics` returns Prometheus
 metrics. These local operations do not require bearer authorization.
 
-Router errors use `{"error":{"code":"…","message":"…"}}`. Invalid paths return
+Router errors use `{"error":{"code":"…","message":"…"}}`. Rejections include a
+router request ID in the message, with regional source and available underlying
+causes in the logs. Region conflicts distinguish saved session pins from
+inherited parent pins. Local configuration and startup errors report the path
+or operation and underlying cause. Browsing rejections identify the model,
+region, HTTP status, and upstream request ID without returning upstream error
+bodies, which may echo research input or credentials. Invalid paths return
 `404`; missing bearer authorization returns `401`; invalid bodies return `400`;
 state failures return `503`; upstream connection failures return `502`; upstream
 timeouts before headers return `504`. Failures after headers abort the stream.

@@ -103,7 +103,7 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 	var previous map[string]any
 
 	if err := toml.Unmarshal([]byte(text), &previous); err != nil {
-		return "", errors.New("existing Codex config is not valid TOML")
+		return "", fmt.Errorf("parse existing Codex config.toml: %w", err)
 	}
 
 	providers, _ := previous["model_providers"].(map[string]any)
@@ -111,13 +111,13 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 	aws, _ := provider["aws"].(map[string]any)
 	for key := range provider {
 		if key != "base_url" && key != "aws" {
-			return "", errors.New("existing Bedrock provider has additional settings; merge them manually")
+			return "", fmt.Errorf("existing Bedrock provider setting %q requires a manual merge", key)
 		}
 	}
 
 	for key := range aws {
 		if key != "region" {
-			return "", errors.New("existing Bedrock AWS settings require a manual merge")
+			return "", fmt.Errorf("existing Bedrock AWS setting %q requires a manual merge", key)
 		}
 	}
 
@@ -174,7 +174,7 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 	var check map[string]any
 
 	if err := toml.Unmarshal([]byte(updated), &check); err != nil {
-		return "", errors.New("Codex configuration requires a manual merge")
+		return "", fmt.Errorf("parse updated Codex configuration; a manual merge is required: %w", err)
 	}
 
 	return updated, nil
@@ -245,7 +245,7 @@ func configureBrowsing(text, executable, credentials string, delegated bool) (st
 
 	var check map[string]any
 	if err := toml.Unmarshal([]byte(updated), &check); err != nil {
-		return "", errors.New("browsing configuration requires a manual merge")
+		return "", fmt.Errorf("parse updated browsing configuration; a manual merge is required: %w", err)
 	}
 
 	return updated, nil
@@ -309,18 +309,22 @@ func install(args []string, env installEnvironment) error {
 
 	cfg, err := loadConfiguration(*configPath)
 	if err != nil {
-		return errors.New("invalid router configuration")
+		return fmt.Errorf("invalid router configuration: %w", err)
 	}
 
 	credentials := filepath.Join(env.home, ".config", "bedrock", "env")
-	info, err := os.Stat(credentials)
 
-	if err != nil || !info.Mode().IsRegular() {
-		return errors.New("set up your private ~/.config/bedrock/env first")
+	info, err := os.Stat(credentials)
+	if err != nil {
+		return fmt.Errorf("read private credentials; set up %q first: %w", credentials, err)
+	}
+
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("credentials %q must be a regular file", credentials)
 	}
 
 	if info.Mode().Perm()&0077 != 0 {
-		return errors.New("credentials must have permissions 600")
+		return fmt.Errorf("credentials %q have permissions %03o; run chmod 600 on that file", credentials, info.Mode().Perm())
 	}
 
 	link := filepath.Join(env.root, ".env")
@@ -329,8 +333,18 @@ func install(args []string, env installEnvironment) error {
 		destination, linkErr := filepath.EvalSymlinks(link)
 		source, sourceErr := filepath.EvalSymlinks(credentials)
 
-		if !*keepEnv && (linkErr != nil || sourceErr != nil || destination != source) {
-			return errors.New("existing Codex .env uses another source; merge it manually")
+		if !*keepEnv {
+			if linkErr != nil {
+				return fmt.Errorf("resolve existing Codex environment %q: %w; repair it or use --keep-env to preserve it", link, linkErr)
+			}
+
+			if sourceErr != nil {
+				return fmt.Errorf("resolve credential source %q: %w", credentials, sourceErr)
+			}
+
+			if destination != source {
+				return fmt.Errorf("existing Codex environment %q resolves to %q, but credentials resolve to %q; merge them manually or use --keep-env to preserve the existing environment", link, destination, source)
+			}
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -483,8 +497,12 @@ func install(args []string, env installEnvironment) error {
 	if !*noStart {
 		client := &http.Client{Timeout: 2 * time.Second}
 		healthy := false
+		healthURL := fmt.Sprintf("http://127.0.0.1:%d/healthz", cfg.Port)
+		var healthErr error
 		for attempt := 0; attempt < 40; attempt++ {
-			response, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/healthz", cfg.Port))
+			response, err := client.Get(healthURL)
+
+			healthErr = err
 			if err == nil {
 				var health struct {
 					Implementation string            `json:"implementation"`
@@ -494,8 +512,18 @@ func install(args []string, env installEnvironment) error {
 				err = json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&health)
 				response.Body.Close()
 
-				if err == nil && response.StatusCode == 200 && health.Implementation == "go" && health.DefaultRegion == cfg.DefaultRegion && reflect.DeepEqual(health.ModelRegions, cfg.ModelRegions) {
+				switch {
+				case response.StatusCode != http.StatusOK:
+					healthErr = fmt.Errorf("HTTP %s", response.Status)
+				case err != nil:
+					healthErr = fmt.Errorf("decode health response: %w", err)
+				case health.Implementation != "go" || health.DefaultRegion != cfg.DefaultRegion || !reflect.DeepEqual(health.ModelRegions, cfg.ModelRegions):
+					healthErr = fmt.Errorf("health response reports implementation %q, default_region %q and model_regions %v; expected go, %q and %v", health.Implementation, health.DefaultRegion, health.ModelRegions, cfg.DefaultRegion, cfg.ModelRegions)
+				default:
 					healthy = true
+				}
+
+				if healthy {
 					break
 				}
 			}
@@ -504,7 +532,7 @@ func install(args []string, env installEnvironment) error {
 		}
 
 		if !healthy {
-			return errors.New("installed router failed its health check")
+			return fmt.Errorf("installed router failed its health check at %s: %w; inspect bedrock-router status and bedrock-router logs --stderr on macOS, or bedrock-router logs on Linux", healthURL, healthErr)
 		}
 	}
 

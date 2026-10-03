@@ -1,6 +1,6 @@
 {
   "port": 18081,
-  "default_region": "us-west-2",
+  "default_region": "us-east-1",
   "model_regions": {
     "openai.gpt-6.1-sol": "us-east-1"
   },

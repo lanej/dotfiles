@@ -166,6 +166,23 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	}
 
 	// A repeat update must converge while the previous installed binary exists.
+	invalidConfig := cfg
+	invalidConfig.Port = 0
+
+	invalidData, _ := json.Marshal(invalidConfig)
+	if err := os.WriteFile(configPath, invalidData, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := install([]string{"--config", configPath}, env); err == nil ||
+		!strings.Contains(err.Error(), configPath) || !strings.Contains(err.Error(), "port 0") {
+		t.Fatalf("invalid configuration did not identify its path and cause: %v", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := install([]string{"--config", configPath, "--delegated-browsing"}, env); err != nil {
 		stop()
 		t.Fatalf("install: %v: %s", err, logs.String())
@@ -182,6 +199,12 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 
 	if err := os.Symlink(customEnv, filepath.Join(root, ".env")); err != nil {
 		t.Fatal(err)
+	}
+
+	if err := install([]string{"--config", configPath}, env); err == nil ||
+		!strings.Contains(err.Error(), customEnv) || !strings.Contains(err.Error(), credentials) ||
+		!strings.Contains(err.Error(), "--keep-env") {
+		t.Fatalf("environment conflict did not identify both sources and a remedy: %v", err)
 	}
 
 	if err := install([]string{"--config", configPath, "--keep-env"}, env); err != nil {

@@ -1,9 +1,12 @@
 # Bedrock router for Codex and ChatGPT SSH hosts
 
-New sessions use Mantle in `us-west-2`, except `openai.gpt-6.1-sol`, which requires
-`us-east-1`. A session stays in its initial region across model changes, and new
-guardian agents and forks inherit their parent's region. Choosing GPT-6.1 Sol
-in a West session returns an explicit conflict: start a new session to use it.
+New sessions use Mantle in `us-east-1`, where `openai.gpt-6.1-sol` is available.
+This also keeps a fresh Sol session in the right region if an auxiliary Luna
+request arrives first under the same session identity. A session stays in its
+initial region across model changes, and new guardian agents and forks inherit
+their parent's region. Existing West sessions retain their pins; choosing Sol
+in one returns a conflict identifying the saved session or parent pin. Start a
+new independent session to use Sol.
 
 The Go service listens only on `127.0.0.1:18081`, forwards streaming responses, and uses the
 bearer token supplied by Codex. Logs contain routing metadata, never tokens or
@@ -59,6 +62,13 @@ read directly from the same SQLite database.
 default region, model-to-region mappings, regional discovery fallbacks, and
 timeouts. It contains operational settings. Credentials stay in the private
 environment file, and session pins stay in the runtime SQLite database.
+
+`model_regions` contains regional overrides, not a model allowlist. Models
+without an override use `default_region` for new sessions. Codex's native Bedrock
+catalog supplies the model picker. A `model_catalog_json` setting replaces that
+catalog entirely; remove an obsolete custom catalog override if models disappear
+from the picker. Codex loads the catalog at startup, so restart the client after
+changing that setting.
 
 The installer validates and copies this file beside the binary on every update,
 and uses its port when updating the Codex provider URL. Edit the repository copy

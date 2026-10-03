@@ -1,4 +1,4 @@
-.PHONY: fmt check-fmt
+.PHONY: fmt check-fmt install
 
 fmt:
 	golangci-lint run --fix ./...
@@ -11,3 +11,6 @@ check-fmt:
 		exit 1; \
 	fi
 	golangci-lint run ./...
+
+install:
+	go run . install --config ./config.json

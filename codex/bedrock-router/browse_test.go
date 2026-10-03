@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
 func TestBrowsingToolReturnsResearchFromSeparateModel(t *testing.T) {
+	var requests atomic.Int32
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var body map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -28,6 +30,13 @@ func TestBrowsingToolReturnsResearchFromSeparateModel(t *testing.T) {
 			t.Error("request did not enable web browsing")
 		}
 
+		if requests.Add(1) == 2 {
+			w.Header().Set("X-Amzn-Requestid", "browse-rejection-123")
+			w.WriteHeader(http.StatusForbidden)
+			io.WriteString(w, `{"error":{"message":"test-only private research task"}}`)
+			return
+		}
+
 		io.WriteString(w, `{"status":"completed","output":[{"type":"web_search_call","status":"completed"},{"type":"message","content":[{"text":"Official memory documentation.","annotations":[{"url":"https://developers.openai.com/codex/memories"}]}]}]}`)
 	}))
 	defer upstream.Close()
@@ -36,7 +45,8 @@ func TestBrowsingToolReturnsResearchFromSeparateModel(t *testing.T) {
 		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}\n" +
 			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n" +
 			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n" +
-			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"bedrock_browse\",\"arguments\":{\"task\":\"Find the official memory documentation\"}}}\n")
+			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"bedrock_browse\",\"arguments\":{\"task\":\"Find the official memory documentation\"}}}\n" +
+			"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"bedrock_browse\",\"arguments\":{\"task\":\"Find the official memory documentation\"}}}\n")
 	var output bytes.Buffer
 
 	err := serveBrowse(input, &output, browser{
@@ -78,5 +88,24 @@ func TestBrowsingToolReturnsResearchFromSeparateModel(t *testing.T) {
 
 	if strings.Contains(text, "test-only") {
 		t.Fatal("credential leaked in tool result")
+	}
+
+	var rejected struct {
+		Result struct {
+			IsError bool `json:"isError"`
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"result"`
+	}
+	if decoder.Decode(&rejected) != nil || !rejected.Result.IsError || len(rejected.Result.Content) != 1 {
+		t.Fatal("missing browsing rejection")
+	}
+
+	detail := rejected.Result.Content[0].Text
+	if !strings.Contains(detail, "403 Forbidden") || !strings.Contains(detail, "openai.gpt-5.6-luna") ||
+		!strings.Contains(detail, "us-west-2") || !strings.Contains(detail, "browse-rejection-123") ||
+		strings.Contains(detail, "test-only") || strings.Contains(detail, "private research task") {
+		t.Fatalf("browsing rejection lacks safe diagnostic context: %s", detail)
 	}
 }

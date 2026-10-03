@@ -45,13 +45,15 @@ type configuration struct {
 
 func loadConfiguration(path string) (configuration, error) {
 	data := embeddedConfig
+	source := "embedded config.json"
 
 	if path != "" {
+		source = path
 		var err error
 
 		data, err = os.ReadFile(path)
 		if err != nil {
-			return configuration{}, err
+			return configuration{}, fmt.Errorf("read router configuration: %w", err)
 		}
 	}
 
@@ -60,36 +62,44 @@ func loadConfiguration(path string) (configuration, error) {
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&cfg); err != nil {
-		return cfg, err
+		return cfg, fmt.Errorf("decode router configuration %q: %w", source, err)
 	}
 
 	if err := decoder.Decode(new(any)); err != io.EOF {
-		return cfg, fmt.Errorf("expected one configuration object")
+		if err != nil {
+			return cfg, fmt.Errorf("read trailing data in router configuration %q: %w", source, err)
+		}
+
+		return cfg, fmt.Errorf("router configuration %q: expected one configuration object", source)
 	}
 
-	return cfg, cfg.validate()
+	if err := cfg.validate(); err != nil {
+		return cfg, fmt.Errorf("router configuration %q: %w", source, err)
+	}
+
+	return cfg, nil
 }
 
 func (cfg configuration) validate() error {
 	if cfg.Port < 1 || cfg.Port > 65535 {
-		return fmt.Errorf("port must be between 1 and 65535")
+		return fmt.Errorf("port %d must be between 1 and 65535", cfg.Port)
 	}
 
 	regionPattern := regexp.MustCompile(`^[a-z]{2}(?:-[a-z0-9]+)+-[0-9]+$`)
 
 	if !regionPattern.MatchString(cfg.DefaultRegion) {
-		return fmt.Errorf("invalid default_region")
+		return fmt.Errorf("invalid default_region %q: expected an AWS region such as us-east-1", cfg.DefaultRegion)
 	}
 
 	for model, region := range cfg.ModelRegions {
 		if model == "" || !regionPattern.MatchString(region) {
-			return fmt.Errorf("invalid model_regions entry")
+			return fmt.Errorf("invalid model_regions entry %q = %q: model must be nonempty and region must be an AWS region", model, region)
 		}
 	}
 
 	for region, fallback := range cfg.RegionFallbacks {
 		if !regionPattern.MatchString(region) || !regionPattern.MatchString(fallback) || region == fallback {
-			return fmt.Errorf("invalid region_fallbacks entry")
+			return fmt.Errorf("invalid region_fallbacks entry %q = %q: expected distinct AWS regions", region, fallback)
 		}
 	}
 
@@ -99,9 +109,12 @@ func (cfg configuration) validate() error {
 		"client_write_timeout": cfg.ClientWriteTimeout,
 	} {
 		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("%s %q must be a positive duration: %w", name, value, err)
+		}
 
-		if err != nil || duration <= 0 {
-			return fmt.Errorf("%s must be a positive duration", name)
+		if duration <= 0 {
+			return fmt.Errorf("%s %q must be a positive duration", name, value)
 		}
 	}
 

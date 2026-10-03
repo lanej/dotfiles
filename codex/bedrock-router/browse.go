@@ -38,7 +38,7 @@ func (b browser) browse(ctx context.Context, task string) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint+"/openai/v1/responses", bytes.NewReader(body))
 	if err != nil {
-		return "", errors.New("unable to create browsing request")
+		return "", fmt.Errorf("create browsing request for %s in %s: %w", b.model, b.region, err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+b.token)
@@ -46,18 +46,22 @@ func (b browser) browse(ctx context.Context, task string) (string, error) {
 
 	response, err := b.client.Do(req)
 	if err != nil {
-		return "", errors.New("browsing request failed or timed out")
+		return "", fmt.Errorf("browsing request for %s in %s failed (%s): %w", b.model, b.region, errorKind(err, ctx), err)
 	}
 	defer response.Body.Close()
 
 	data, err := io.ReadAll(io.LimitReader(response.Body, (8<<20)+1))
-	if err != nil || len(data) > 8<<20 {
-		return "", errors.New("unable to read bounded browsing response")
+	if err != nil {
+		return "", fmt.Errorf("read browsing response for %s in %s: %w", b.model, b.region, err)
+	}
+
+	if len(data) > 8<<20 {
+		return "", fmt.Errorf("browsing response for %s in %s exceeds the 8 MiB limit", b.model, b.region)
 	}
 
 	// Never return an upstream error body: it may echo input or credentials.
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Bedrock browsing rejected the request (HTTP %d)", response.StatusCode)
+		return "", fmt.Errorf("Bedrock browsing rejected %s in %s (HTTP %s, upstream request %q)", b.model, b.region, response.Status, safeModel(response.Header.Get("X-Amzn-Requestid")))
 	}
 
 	var result struct {
@@ -73,8 +77,12 @@ func (b browser) browse(ctx context.Context, task string) (string, error) {
 			} `json:"content"`
 		} `json:"output"`
 	}
-	if json.Unmarshal(data, &result) != nil || result.Status != "completed" {
-		return "", errors.New("browsing response did not complete")
+	if err := json.Unmarshal(data, &result); err != nil {
+		return "", fmt.Errorf("decode browsing response for %s in %s: %w", b.model, b.region, err)
+	}
+
+	if result.Status != "completed" {
+		return "", fmt.Errorf("browsing response for %s in %s did not complete (status %q)", b.model, b.region, safeModel(result.Status))
 	}
 
 	var answer []string
@@ -102,8 +110,12 @@ func (b browser) browse(ctx context.Context, task string) (string, error) {
 		}
 	}
 
-	if !browsed || len(answer) == 0 {
-		return "", errors.New("model did not return an answer from completed browsing")
+	if !browsed {
+		return "", fmt.Errorf("%s in %s returned no completed web_search_call", b.model, b.region)
+	}
+
+	if len(answer) == 0 {
+		return "", fmt.Errorf("%s in %s completed browsing but returned no answer text", b.model, b.region)
 	}
 
 	output, _ := json.Marshal(map[string]any{
@@ -125,7 +137,7 @@ func serveBrowse(input io.Reader, output io.Writer, b browser) error {
 			Params json.RawMessage `json:"params"`
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &request); err != nil {
-			return errors.New("invalid MCP JSON")
+			return fmt.Errorf("decode MCP request JSON: %w", err)
 		}
 
 		if len(request.ID) == 0 {
@@ -206,9 +218,16 @@ func browseMCP(args []string) error {
 		return err
 	}
 
-	if flags.NArg() != 0 || !regexp.MustCompile(`^[a-z]{2}(?:-[a-z0-9]+)+-[0-9]+$`).MatchString(*region) ||
-		*model == "" || safeModel(*model) != *model {
-		return errors.New("invalid browsing arguments")
+	if flags.NArg() != 0 {
+		return fmt.Errorf("unexpected browse-mcp arguments %q; use --model and --region", flags.Args())
+	}
+
+	if !regexp.MustCompile(`^[a-z]{2}(?:-[a-z0-9]+)+-[0-9]+$`).MatchString(*region) {
+		return fmt.Errorf("invalid browsing region %q: expected an AWS region such as us-west-2", *region)
+	}
+
+	if *model == "" || safeModel(*model) != *model {
+		return fmt.Errorf("invalid browsing model %q: expected a nonempty model ID", *model)
 	}
 
 	token := os.Getenv("AWS_BEARER_TOKEN_BEDROCK")
