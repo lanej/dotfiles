@@ -579,11 +579,14 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 	end,
 })
 
--- Treat .jsonl files as JSON (JSON Lines format)
+-- Custom filetypes, including YAML-based LookML dashboards.
 vim.filetype.add({
 	extension = {
 		jsonl = "json",
 		mdx = "mdx",
+	},
+	pattern = {
+		[".*%.dashboard%.lookml"] = "yaml",
 	},
 })
 
@@ -2123,11 +2126,19 @@ require("lazy").setup({
 	"cedarbaum/fugitive-azure-devops.vim",
 	{
 		"nvim-java/nvim-java",
+		ft = "java",
 		enabled = function()
-			return vim.fn.executable("javac") == 1
+			if vim.fn.executable("javac") ~= 1 then
+				return false
+			end
+			-- macOS ships a javac stub even when no JDK is installed.
+			vim.fn.system({ "javac", "-version" })
+			return vim.v.shell_error == 0
 		end,
 		config = function()
-			require("java").setup()
+			require("java").setup({
+				spring_boot_tools = { enable = false },
+			})
 			vim.lsp.enable("jdtls")
 		end,
 	},
