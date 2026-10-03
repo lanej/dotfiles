@@ -111,6 +111,10 @@ failures, incomplete streams, cancellations, region counts, and pinned sessions.
 throughput with `rate(bedrock_router_response_bytes_total[5m])` and request rate
 with `rate(bedrock_router_requests_total[5m])`.
 
+The [measurements contention benchmark](MEASUREMENTS-PERFORMANCE.md) records the
+cost of per-chunk byte accounting under concurrent streaming and frequent health
+scrapes, including the experiment's limits.
+
 JSON logs record request start, session-lock wait, upstream headers, first-byte
 latency, failures, and completion with status, duration, bytes, and outcome.
 Request IDs correlate the events and are returned as `X-Router-Request-Id`.
