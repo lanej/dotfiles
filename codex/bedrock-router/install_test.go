@@ -166,12 +166,25 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	}
 
 	// A repeat update must converge while the previous installed binary exists.
-	if err := install([]string{"--config", configPath}, env); err != nil {
+	if err := install([]string{"--config", configPath, "--delegated-browsing"}, env); err != nil {
 		stop()
 		t.Fatalf("install: %v: %s", err, logs.String())
 	}
 
-	if err := install([]string{"--config", configPath}, env); err != nil {
+	customEnv := filepath.Join(home, "private.env")
+	if err := atomicWrite(customEnv, []byte("export CUSTOM_SETTING=preserved\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(filepath.Join(root, ".env")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Symlink(customEnv, filepath.Join(root, ".env")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := install([]string{"--config", configPath, "--keep-env"}, env); err != nil {
 		stop()
 		t.Fatalf("repeat install: %v: %s", err, logs.String())
 	}
@@ -207,13 +220,41 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 
 	mcp := config["mcp_servers"].(map[string]any)["fixture"].(map[string]any)
 
-	if config["model"] != "existing-model" || config["web_search"] != "live" ||
+	if config["model"] != "existing-model" || config["web_search"] != "disabled" ||
 		mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) {
-		t.Fatal("installation changed existing model, web search, MCP settings, or comments")
+		t.Fatal("installation did not configure delegated browsing while preserving existing settings")
+	}
+
+	browse := config["mcp_servers"].(map[string]any)["bedrock_browse"].(map[string]any)
+	var browseArgs []string
+	for _, arg := range browse["args"].([]any) {
+		browseArgs = append(browseArgs, arg.(string))
+	}
+
+	browseCommand := exec.Command(browse["command"].(string), browseArgs...)
+	browseCommand.Stdin = strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
+
+	browseOutput, err := browseCommand.Output()
+	if err != nil {
+		t.Fatalf("installed browsing tool failed: %v", err)
+	}
+
+	browseDecoder := json.NewDecoder(bytes.NewReader(browseOutput))
+
+	var browseReply struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if browseDecoder.Decode(&browseReply) != nil || browseDecoder.Decode(&browseReply) != nil ||
+		len(browseReply.Result.Tools) != 1 || browseReply.Result.Tools[0].Name != "bedrock_browse" {
+		t.Fatal("installed MCP server did not expose browsing")
 	}
 
 	link, err := filepath.EvalSymlinks(filepath.Join(root, ".env"))
-	wantLink, wantErr := filepath.EvalSymlinks(credentials)
+	wantLink, wantErr := filepath.EvalSymlinks(customEnv)
 
 	if err != nil || wantErr != nil || link != wantLink {
 		t.Fatal("private credential link was not preserved")

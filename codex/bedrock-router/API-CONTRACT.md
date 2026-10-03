@@ -32,6 +32,11 @@ Unknown JSON fields and stream events must continue to pass through.
   items (including encrypted history), and unknown fields are preserved.
   This is the only request-body rewriting exception. The pending hint expires
   after 15 minutes and does not survive a router restart.
+- The separate `browse-mcp` stdio command exposes `bedrock_browse`. It submits
+  only the supplied research task to its configured model and region, without
+  using the proxy's session pins or replaying the caller's generation. Tool
+  results contain the browsing answer and citation URLs. No task or result is
+  logged; upstream error bodies are not returned.
 - Relay upstream statuses, response bytes, and SSE bytes without schema
   decoding or serialization. Streaming transport removes fixed content lengths
   so incomplete streams can be reported.

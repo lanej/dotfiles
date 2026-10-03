@@ -60,7 +60,8 @@ func (r *webRecovery) take(session string) bool {
 const webRecoveryHint = "The previous response failed during built-in web browsing with: " +
 	"Access denied: web search is not authorized for this identity. " +
 	"Web search remains enabled and may work for other calls. Do not repeat the same failing " +
-	"search or URL-open call unchanged. Continue the task using completed work; try a different " +
+	"search or URL-open call unchanged. Use the bedrock_browse MCP tool if available, with a " +
+	"self-contained research task; it uses a separate browsing model and region. Continue the task using completed work; try a different " +
 	"search approach or another available tool when useful. If access remains denied, explain " +
 	"the limitation and continue what you can without repeatedly attempting the denied call."
 
