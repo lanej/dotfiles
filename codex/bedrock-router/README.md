@@ -56,6 +56,22 @@ If your host requires administrator permission, run that command with `sudo`.
 The service uses the system CA bundle. Existing Python-router session pins are
 read directly from the same SQLite database.
 
+## Bypass the router
+
+The dotfiles shell shortcut `codex-bedrock-direct` (also `cxd`) starts an
+independent Codex process directly against Mantle in `us-east-1`, defaulting to
+Sol. It uses the same ambient Bedrock key and overrides the endpoint and region
+for that process only. It works when the router service is unavailable:
+
+```sh
+source ~/.alias
+cxd
+cxd --model openai.gpt-5.6-luna
+```
+
+Start a new session when bypassing an existing West session; its encrypted
+history still belongs to West. Other Codex arguments pass through unchanged.
+
 ## Configuration
 
 [`config.json`](config.json) is the checked-in source for the loopback port,

@@ -500,6 +500,23 @@ codex-bedrock() {
 	codex --profile bedrock "$@"
 }
 
+codex-bedrock-direct() {
+	if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ]; then
+		echo "codex-bedrock-direct: AWS_BEARER_TOKEN_BEDROCK not set - source ~/.config/bedrock/env" >&2
+		return 1
+	fi
+
+	echo "🟠 Codex CLI → AWS Bedrock directly (us-east-1, router bypassed)" >&2
+	command codex --no-daemon \
+		-c 'model_provider="amazon-bedrock"' \
+		-c 'model="openai.gpt-6.1-sol"' \
+		-c 'model_reasoning_summary="none"' \
+		-c 'model_providers.amazon-bedrock.base_url="https://bedrock-mantle.us-east-1.api.aws/openai/v1"' \
+		-c 'model_providers.amazon-bedrock.aws.region="us-east-1"' \
+		"$@"
+}
+alias cxd='codex-bedrock-direct'
+
 claude-status() {
 	local project="${ANTHROPIC_VERTEX_PROJECT_ID:-easypost-platform}"
 	echo "Current project: $project"
