@@ -877,30 +877,6 @@ require("lazy").setup({
 		},
 	},
 	{
-		dir = vim.fn.stdpath("config") .. "/lua",
-		name = "remarkable",
-		config = function()
-			local remarkable = require("remarkable")
-
-			remarkable.setup({
-				remarkable_cli = vim.fn.expand("~/src/remarkable-mcp/bin/remarkable"),
-				default_folder = "",
-				save_pdf_locally = false,
-				pandoc_options = {
-					"--pdf-engine=weasyprint",
-				},
-			})
-
-			vim.api.nvim_create_user_command("RemarkableUpload", function()
-				remarkable.upload_current_buffer()
-			end, { desc = "Upload current markdown buffer to reMarkable" })
-
-			vim.api.nvim_create_user_command("RemarkableUploadTo", function()
-				remarkable.upload_with_folder()
-			end, { desc = "Upload markdown to specific folder on reMarkable" })
-		end,
-	},
-	{
 		"gbprod/nord.nvim",
 		config = function()
 			require("nord").setup({
@@ -927,23 +903,6 @@ require("lazy").setup({
 				end,
 			})
 			vim.api.nvim_command("colorscheme nord")
-		end,
-	},
-	{
-		"lanej/vim-phabricator",
-		dependencies = {
-			"tpope/vim-fugitive",
-		},
-		enabled = function()
-			return vim.fn.filereadable(vim.fn.expand("~/.arcrc")) == 1
-		end,
-		config = function()
-			-- Read the arcrc file, parse the json into a lua table
-			local arcrc = vim.fn.json_decode(vim.fn.readfile(vim.fn.expand("~/.arcrc")))
-			-- The base url is the config.default value
-			vim.g.phabricator_hosts = { arcrc.config.default }
-			-- The Token is is in the hosts table, with a key of the base url + "/api/"
-			vim.g.phabricator_api_token = arcrc.hosts[arcrc.config.default .. "/api/"].token
 		end,
 	},
 	{
@@ -1468,10 +1427,10 @@ require("lazy").setup({
 				-- List servers explicitly to keep them installed by Mason.
 				ensure_installed = {
 					"lua_ls",
-					"csharp_ls",
+					-- "csharp_ls",
 					"ts_ls",
 					"gopls",
-					"ruby_lsp",
+					-- "ruby_lsp",
 					"jsonls",
 					"pylsp",
 					"html",
@@ -1800,31 +1759,15 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"iamcco/markdown-preview.nvim",
-		cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-		build = function()
-			vim.fn["mkdp#util#install"]()
-		end,
-		ft = { "markdown" },
-		init = function()
-			-- Use latest Mermaid from CDN
-			vim.g.mkdp_preview_options = {
-				mkit = {},
-				katex = {},
-				uml = {},
-				maid = {
-					-- Use latest Mermaid version from CDN
-					version = "latest",
-				},
-				disable_sync_scroll = 0,
-				sync_scroll_type = "middle",
-				hide_yaml_meta = 1,
-				sequence_diagrams = {},
-				flowchart_diagrams = {},
-				content_editable = false,
-				disable_filename = 0,
-				toc = {},
-			}
+		"selimacerbas/markdown-preview.nvim",
+		dependencies = { "selimacerbas/live-server.nvim" },
+		lazy = true, -- Recommended
+		enabled = true,
+		ft = "markdown", -- If you decide to lazy-load anyway
+		config = function()
+			require("markdown_preview").setup({
+				mermaid_renderer = "mmdc",
+			})
 		end,
 	},
 	{
@@ -1850,7 +1793,7 @@ require("lazy").setup({
 	{
 		"OXY2DEV/markview.nvim",
 		lazy = true, -- Recommended
-		enabled = false,
+		enabled = true,
 		ft = "markdown", -- If you decide to lazy-load anyway
 		dependencies = {
 			-- You will not need this if you installed the
@@ -2184,142 +2127,6 @@ require("lazy").setup({
 		},
 		init = function()
 			require("duckdb-picker")
-		end,
-	},
-	{
-		"greggh/claude-code.nvim",
-		dependencies = { "nvim-lua/plenary.nvim" },
-		lazy = false,
-		config = function()
-			require("claude-code").setup({
-				command = "/Users/joshlane/.local/bin/claude",
-				window = {
-					position = "vertical",
-					split_ratio = 0.35,
-					enter_insert = true,
-					hide_numbers = true,
-					hide_signcolumn = true,
-				},
-				keymaps = {
-					toggle = {
-						normal = "<leader>ac",
-						terminal = "<leader>ac",
-						variants = {
-							continue = "<leader>aC",
-							verbose = "<leader>aV",
-						},
-					},
-					window_navigation = true,
-					scrolling = true,
-				},
-			})
-
-			local function send_to_claude(text)
-				local instances = require("claude-code").claude_code and require("claude-code").claude_code.instances
-				if not instances then
-					vim.notify("Claude terminal not open", vim.log.levels.WARN)
-					return
-				end
-				for _, bufnr in pairs(instances) do
-					if vim.api.nvim_buf_is_valid(bufnr) then
-						local job_id = vim.b[bufnr].terminal_job_id
-						if job_id and vim.fn.jobwait({ job_id }, 0)[1] == -1 then
-							vim.fn.chansend(job_id, text)
-							return
-						end
-					end
-				end
-				vim.notify("No active Claude terminal", vim.log.levels.WARN)
-			end
-
-			vim.keymap.set("v", "<leader>as", function()
-				local start_pos = vim.fn.getpos("'<")
-				local end_pos = vim.fn.getpos("'>")
-				local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
-				if #lines == 0 then
-					return
-				end
-				lines[#lines] = lines[#lines]:sub(1, end_pos[3])
-				lines[1] = lines[1]:sub(start_pos[3])
-				send_to_claude(table.concat(lines, "\n") .. "\n")
-			end, { desc = "Send selection to Claude" })
-
-			vim.keymap.set("n", "<leader>af", function()
-				local filepath = vim.fn.expand("%:p")
-				if filepath == "" then
-					vim.notify("No file in current buffer", vim.log.levels.WARN)
-					return
-				end
-				send_to_claude("@" .. filepath .. " ")
-			end, { desc = "Send file reference to Claude" })
-
-			vim.keymap.set("n", "<leader>ad", function()
-				local lnum = vim.api.nvim_win_get_cursor(0)[1] - 1
-				local diags = vim.diagnostic.get(0, { lnum = lnum })
-				if #diags == 0 then
-					diags = vim.diagnostic.get(0)
-				end
-				if #diags == 0 then
-					vim.notify("No diagnostics in buffer", vim.log.levels.WARN)
-					return
-				end
-				local filepath = vim.fn.expand("%:p")
-				local d = diags[1]
-				local severity = vim.diagnostic.severity[d.severity]:lower()
-				send_to_claude(
-					string.format("Fix this %s in @%s line %d: %s\n", severity, filepath, d.lnum + 1, d.message)
-				)
-			end, { desc = "Send LSP diagnostic to Claude" })
-
-			vim.keymap.set("n", "<leader>ccm", function()
-				if vim.bo.filetype ~= "gitcommit" then
-					vim.notify("Not a git commit buffer", vim.log.levels.WARN)
-					return
-				end
-				vim.fn.system("git diff --cached --quiet")
-				if vim.v.shell_error == 0 then
-					vim.notify("No staged changes", vim.log.levels.WARN)
-					return
-				end
-				vim.notify("Generating commit message...", vim.log.levels.INFO)
-				local comment_lines = {}
-				local found_comment = false
-				for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-					if line:match("^#") then
-						found_comment = true
-					end
-					if found_comment then
-						table.insert(comment_lines, line)
-					end
-				end
-				local diff = vim.fn.system("git diff --cached")
-				vim.fn.jobstart({ "claude", "-p", "--agent", "git-commit-message-writer", diff }, {
-					stdout_buffered = true,
-					on_stdout = function(_, data)
-						local output = vim.fn.trim(table.concat(data, "\n"))
-						if output == "" then
-							vim.notify("No output from claude", vim.log.levels.ERROR)
-							return
-						end
-						local msg_lines = vim.split(output, "\n", { plain = true })
-						table.insert(msg_lines, "")
-						for _, l in ipairs(comment_lines) do
-							table.insert(msg_lines, l)
-						end
-						vim.schedule(function()
-							vim.api.nvim_buf_set_lines(0, 0, -1, false, msg_lines)
-							vim.api.nvim_win_set_cursor(0, { 1, 0 })
-							vim.notify("Commit message generated", vim.log.levels.INFO)
-						end)
-					end,
-					on_stderr = function(_, data)
-						local err = vim.fn.trim(table.concat(data, "\n"))
-						if err ~= "" then
-							vim.notify("claude: " .. err, vim.log.levels.ERROR)
-						end
-					end,
-				})
-			end, { desc = "Generate commit message via claude agent" })
 		end,
 	},
 })
