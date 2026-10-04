@@ -1,5 +1,10 @@
 # Pull requests
 
+Use [Conventional Pull Requests](conventional-pull-requests.md) for the title
+and description format in this repository. The guidance below covers preparing,
+publishing, and handing off the change; other repositories' conventions still
+apply when working there.
+
 A PR should help a reviewer understand the intended outcome and the decisions
 that need judgment. Keep the description proportional to the change; one or two
 short paragraphs are usually enough.

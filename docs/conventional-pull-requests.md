@@ -1,0 +1,159 @@
+# Conventional Pull Requests
+
+Draft 0.1
+
+A lightweight convention for pull request titles and descriptions. A reader
+should understand what will change, why it matters, and what needs their
+judgment.
+
+Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+and [Conventional Comments](https://conventionalcomments.org/).
+
+## Format
+
+```text
+<type>[(<scope>)][!]: <subject>
+
+<what changes and why>
+
+[additional context]
+```
+
+The title identifies the kind of change and its intended outcome. The opening
+paragraph explains the problem and resulting behavior. Additional context is
+optional; include it when it helps someone assess or use the change.
+
+For example:
+
+```text
+fix(tracking): preserve filters when returning from details
+
+Keep the destination filter when returning to the shipment list, so reviewers
+can continue through the same set of shipments. Previously, returning from
+details reset the filter.
+```
+
+This is a complete description. Larger changes may need more explanation;
+smaller ones may need only a sentence.
+
+## Specification
+
+The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in
+[RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+
+1. The title MUST follow the format `<type>[(<scope>)][!]: <subject>`.
+   Square brackets indicate optional elements and are not literal characters.
+2. The type MUST describe the final change as a whole. Use `feat` for a new
+   capability and `fix` for a correction. Other types MAY describe other
+   purposes; the vocabulary below is recommended.
+3. A scope MAY identify the affected component. It SHOULD be a short,
+   lowercase name familiar to the project. Omit it when no single scope fits.
+4. The subject MUST describe the intended outcome. It SHOULD use the imperative
+   mood, start with a lowercase letter, and omit a trailing period. The complete
+   title SHOULD be at most 72 characters.
+5. A breaking change MUST place `!` immediately before the colon. Its description
+   MUST explain the incompatibility and what affected users need to do.
+6. The description MUST begin by explaining what changes and why. It SHOULD use
+   a concrete before/after example when that makes the outcome clearer.
+7. Additional context SHOULD supply information needed for review that the
+   opening paragraph, diff, and automated checks do not already provide.
+   Headings MAY organize that context; no headings are required.
+8. Material compatibility constraints, rollout requirements, and known
+   verification gaps MUST be disclosed when they affect acceptance or use.
+   Claims about behavior and verification MUST be supported by actual evidence.
+9. A screenshot or other illustration SHOULD be included when it helps assess
+   the result. It MUST show the actual current result, have descriptive alt
+   text, and use a durable URL that renders for the intended reviewers.
+10. References MUST be accessible to the intended reviewers. Local machine or
+    session paths MUST NOT be used as evidence. Relevant issues and design
+    decisions SHOULD be linked when available.
+11. The description SHOULD NOT repeat file inventories, commit history, test
+    cases, coverage figures, test counts, or automated check results. Empty
+    sections and boilerplate checklists SHOULD be omitted.
+12. The title and description MUST reflect the final scope of the PR. A stacked
+    PR MUST identify its parent and describe its own change.
+
+## Types
+
+Use the same meanings as the project's Conventional Commit types.
+
+| Type | Purpose |
+| --- | --- |
+| `feat` | Add a capability |
+| `fix` | Correct a defect |
+| `perf` | Improve performance |
+| `refactor` | Restructure without changing behavior |
+| `docs` | Change documentation |
+| `style` | Change formatting without changing behavior |
+| `test` | Add or improve tests |
+| `build` | Change dependencies or build tooling |
+| `ci` | Change continuous integration |
+| `chore` | Other maintenance |
+
+Choose the type for the resulting change, rather than its supporting edits.
+A feature with tests and documentation is still `feat`. Unrelated outcomes
+should usually be separate PRs.
+
+## Additional context
+
+Add only the parts a reviewer needs. These are suggested headings, not a
+template to fill out:
+
+| Heading | Include when |
+| --- | --- |
+| Result | An image or concrete example helps assess the implemented result |
+| Context | A consequential decision or requirement is not apparent in the diff |
+| Compatibility | Consumers must adapt to an interface or behavior change |
+| Rollout | Deployment order, migration, or recovery needs explanation |
+| Review | A particular tradeoff or unresolved question needs reviewer judgment |
+
+Manual observations, external evidence, and verification gaps can be described
+where they matter. There is no default Testing or Verification section.
+
+## Examples
+
+### Feature
+
+```text
+feat(exports): allow downloading filtered shipments
+
+Export the shipments matching the current filters, so operations can reconcile
+a selected group without downloading the entire account history.
+
+The export uses the filters at the time it is requested; later filter changes
+do not alter an export already in progress.
+```
+
+### Breaking change
+
+```text
+feat(api)!: require cursor pagination for shipment lists
+
+Replace offset pagination with cursors so shipment lists remain consistent as
+new shipments arrive.
+
+Compatibility: Clients must replace the page parameter with the next_cursor
+returned by the previous response. Requests using page are rejected.
+```
+
+### Verification gap
+
+```text
+fix(printing): retain the selected printer after reconnecting
+
+Restore the selected printer after a connection interruption, so the next label
+goes to the same device instead of the system default.
+
+Review: Reconnection was checked with the local simulator. Physical printer
+reconnection remains unverified and needs a device check before release.
+```
+
+## Adoption
+
+Projects can adopt this convention for PR titles and descriptions independently
+of how they merge commits. A conventional PR title does not make the commits
+conventional or configure release automation.
+
+Required repository fields still apply. Include them without padding the rest
+of the description. When working in a repository that has not adopted this
+convention, follow its title and template requirements.
