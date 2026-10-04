@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# PostToolUse:Bash — nudge (never block) Claude to narrate every sandbox
+# bypass, on every single occurrence.
+#
+# CLAUDE.md (Tool Preferences / Sandbox retries): "Before every
+# `dangerouslyDisableSandbox: true` retry, narrate the sandbox restriction
+# that caused the failure AND mention `/sandbox` manages restrictions --
+# every bypass, not just the first."
+#
+# History: this rule regressed at increasing scale on prose alone --
+# feedback_sandbox_command_mention_omitted records an 11-bypass session with
+# the /sandbox mention said once, then a later session ran 62 bypass calls
+# with the mention appearing only twice. Restating the rule in CLAUDE.md
+# did not hold under a long run of repeated, routine bypasses -- exactly the
+# shape prose enforcement keeps failing on elsewhere in this file (git
+# stash, tofu auto-approve). This hook is the harness-level fix: instead of
+# relying on the model to remember a standing instruction across dozens of
+# tool calls, re-inject the reminder fresh, every single matching call.
+#
+# Why PostToolUse and not PreToolUse, despite the rule being about a
+# Bash call's parameters: checked directly against the installed Claude
+# Code CLI's hook-output validation (zod schema in cli.js) --
+# PreToolUse's hookSpecificOutput accepts only
+# {hookEventName, permissionDecision, permissionDecisionReason}; there is no
+# additionalContext channel for PreToolUse, and plain (non-JSON) stdout on
+# exit 0 is documented and coded as "not shown" to the model or the user for
+# PreToolUse. permissionDecision:"allow" plus a reason only feeds the
+# permission-system's own decisionReason bookkeeping (audit/UI), not
+# Claude's context. permissionDecision:"ask" would surface text to Claude,
+# but only by interrupting for approval -- exactly the blocking behavior
+# this rule explicitly rules out (bypasses must keep working smoothly; this
+# is a reminder, not a gate). PostToolUse's hookSpecificOutput, by contrast,
+# *does* validate and pass through `additionalContext` -- confirmed in the
+# same schema and in the result-processing switch that assigns
+# `Z.additionalContext = hookSpecificOutput.additionalContext` for
+# `hookEventName:"PostToolUse"`. That text is surfaced to Claude right next
+# to the tool_result, after the command has already run (so it never blocks
+# or delays the bypassed command itself) -- the same mechanism used for the
+# built-in sandbox-violation system-reminder text visible elsewhere in this
+# transcript. This is a deliberate, verified deviation from a literal
+# "PreToolUse" hook: the taxonomy fact (PreToolUse cannot carry
+# additionalContext without asking) overrides the surface framing of what
+# event name to register under.
+#
+# Fires on every Bash call where tool_input.dangerouslyDisableSandbox is
+# exactly boolean true -- false, absent, or any other value is a silent
+# no-op (Unix: silent on the non-matching case, verbose only when the rule
+# actually applies). Never denies, never asks -- this hook has no
+# permissionDecision field at all, by design; it cannot become a gate.
+#
+# Workflow-discipline aid, not a security boundary: fails open on any parse
+# trouble, and only sees Bash calls where dangerouslyDisableSandbox was
+# already set to true -- it cannot itself detect or prevent a bypass, only
+# remind about one that already happened.
+
+set -uo pipefail
+
+payload=$(cat)
+
+tool_name=$(printf '%s' "$payload" | jq -r '.tool_name // empty' 2>/dev/null)
+[[ "$tool_name" == "Bash" ]] || exit 0
+
+bypass=$(printf '%s' "$payload" | jq -r '.tool_input.dangerouslyDisableSandbox // false' 2>/dev/null)
+[[ "$bypass" == "true" ]] || exit 0
+
+command=$(printf '%s' "$payload" | jq -r '.tool_input.command // "(unknown command)"' 2>/dev/null)
+
+context="This Bash call just ran with dangerouslyDisableSandbox=true (command: ${command}). Per CLAUDE.md (Tool Preferences / Sandbox retries), before/around every sandbox bypass -- not just the first one in a session -- explicitly: (1) name the specific sandbox restriction (the exact denied-path, denied-host, or \"Operation not permitted\" evidence) that caused this bypass, and (2) mention that /sandbox manages these restrictions. Say both in your next reply, even if you already said them earlier this session."
+
+jq -n --arg ctx "$context" '{
+  hookSpecificOutput: {
+    hookEventName: "PostToolUse",
+    additionalContext: $ctx
+  }
+}'
+exit 0
