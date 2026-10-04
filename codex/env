@@ -1,0 +1,3 @@
+# Default region for Codex launches that do not inherit the shell environment.
+# The Bedrock profile sets its own region for its selected model.
+AWS_REGION=us-east-1

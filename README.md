@@ -17,6 +17,39 @@ to retire another plugin; Superpowers is the initial entry. Already-absent
 installations are a no-op; invalid configuration, inspection, or uninstall
 failures stop the task so they can be fixed.
 
+`make codex` also exposes the shared `claude/skills` tree through
+`~/.agents/skills/dotfiles`, preserving local Codex skills. Skill directories
+remain linked to their sources. File-linked or lowercase entrypoints are
+normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
+those entrypoints. Missing external skill sources are reported and skipped.
+
+`make codex` converts the shared `claude/agents` Markdown files (including
+external symlinks) into personal agents in `~/.codex/agents/*.toml`.
+Names, descriptions, and instructions are preserved; Claude model aliases and
+tool lists are omitted so agents inherit Codex's model and tools. Agents limited
+to Read/Glob/Grep receive a read-only sandbox. Local Codex agents are preserved,
+including name collisions. Rerun `make codex-agents` after changing agent
+sources, then start a new Codex session. Missing external sources are reported
+and skipped.
+
+`make codex` shares Claude's user MCP servers and the MCP servers bundled with
+enabled user-scope Claude plugins. Shared definitions come from
+`.claude/mcp-servers.json`, merged into Claude's user configuration. Explicit
+user definitions take precedence over plugin servers. Codex-only servers remain
+installed, and unchanged definitions retain their Codex settings. The Claude
+`codex` MCP server is excluded to avoid recursion. Bearer tokens stay in
+environment variables, and plugin install paths are resolved without modifying
+the plugin cache. Rerun `make codex` after changing server definitions or plugins,
+then restart Codex to load the configuration. See Codex's
+[MCP configuration documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+`make codex` also installs the shared Claude/Codex tmux window-status hooks.
+Run `make codex-tmux` for just this integration, then restart Codex and trust
+the new handlers with `/hooks`. The shell's `codex` function uses `--no-daemon`
+inside tmux so hooks inherit the launching pane. See
+[tmux window status](docs/tmux.md#claude-and-codex-window-status) for the states
+and event mapping.
+
 ## Stack
 
 | Tool | Description |
@@ -41,7 +74,11 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 | Target | Description |
 |---|---|
 | `make` | Symlink all configuration files |
-| `make claude` | Set up Claude commands/agents symlinks |
+| `make claude` | Set up Claude skills, commands, agents, and MCP servers |
+| `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
+| `make codex-skills` | Refresh shared dotfiles skills for Codex |
+| `make codex-agents` | Convert shared Claude agents for Codex |
+| `make codex-tmux` | Install shared tmux window-status hooks for Codex |
 | `make git` | Symlink git configuration |
 | `make tmux` | Symlink tmux configuration |
 | `make zsh` | Symlink zsh configuration |

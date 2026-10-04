@@ -1,4 +1,4 @@
-"""One live regression detector for the Claude window-status feature.
+"""One live regression detector for the shared Claude/Codex window-status feature.
 
 Drives a window through the states a real session produces -- needs you, busy,
 finished, forgotten -- through the actual hooks, and asserts the tab tmux draws
@@ -37,6 +37,10 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
         load_script, private_tmux, monkeypatch):
     state = load_script("tmux-claude-state")
     sweep = load_script("tmux-claude-sweep")
+    home = private_tmux.folder / "home"
+    home.mkdir()
+    (home / ".files").symlink_to(ROOT)
+    monkeypatch.setenv("HOME", str(home))
     hooks = json.loads((ROOT / ".claude/settings.json").read_text())["hooks"]
     window = private_tmux.call("new-window", "-d", "-t", "main:", "-n", "project",
                                "-P", "-F", "#{window_id}", "sleep 300")
@@ -56,7 +60,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
 
     def emit(event_name, hook_name, **fields):
         """Deliver an event through whichever hook settings.json wires to it."""
-        event = dict(hook_event_name=event_name, session_id="conversation-1", **fields)
+        event = dict(hook_event_name=event_name, session_id=private_tmux.folder.name, **fields)
         commands = [h["command"] for entry in hooks.get(event_name, [])
                     for h in entry["hooks"]]
         script = next(c for c in commands if Path(c.strip('"')).name == hook_name)
@@ -68,8 +72,8 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
         return private_tmux.call("display-message", "-p", "-t", window,
                                  "#{E:window-status-format}")
 
-    def option(name):
-        return private_tmux.call("display-message", "-p", "-t", window, "#{%s}" % name)
+    def option(name, target=window):
+        return private_tmux.call("display-message", "-p", "-t", target, "#{%s}" % name)
 
     plain = tab()
     assert option("@claude-state") == "", "a fresh window starts un-Claude-ed"
@@ -154,3 +158,87 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     private_tmux.call("select-window", "-t", "main:")
     assert option("window_bell_flag") == "0"
     assert tab() == plain
+
+    # Install Codex's hooks beside another integration, then drive a real
+    # approval/question/finished workflow through the installed commands.
+    codex_home = home / ".codex"
+    codex_home.mkdir()
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    hook_file = codex_home / "hooks.json"
+    hook_file.write_text(json.dumps({"hooks": {"PreToolUse": [{"hooks": [{
+        "type": "command", "command": 'printf kept >> "$CODEX_HOME/custom-hook"',
+    }]}]}}))
+    subprocess.run(["make", "codex-tmux"], cwd=ROOT, check=True,
+                   capture_output=True, text=True, timeout=10)
+    installed = hook_file.read_text()
+    subprocess.run(["make", "codex-tmux"], cwd=ROOT, check=True,
+                   capture_output=True, text=True, timeout=10)
+    assert hook_file.read_text() == installed
+    codex_hooks = json.loads(installed)["hooks"]
+    codex_window = private_tmux.call("new-window", "-d", "-t", "main:", "-n", "codex",
+                                     "-P", "-F", "#{window_id}", "sleep 300")
+    codex_pane = private_tmux.call("display-message", "-p", "-t", codex_window, "#{pane_id}")
+    private_tmux.call("set-option", "-w", "-t", codex_window, "automatic-rename", "off")
+    monkeypatch.setenv("TMUX_PANE", codex_pane)
+
+    def codex_tab():
+        return private_tmux.call("display-message", "-p", "-t", codex_window,
+                                 "#{E:window-status-format}")
+
+    def emit_codex(event_name, **fields):
+        event = dict(hook_event_name=event_name, session_id="codex-conversation", **fields)
+        for group in codex_hooks.get(event_name, []):
+            for handler in group["hooks"]:
+                subprocess.run(["sh", "-c", handler["command"]], input=json.dumps(event),
+                               text=True, capture_output=True, check=True, timeout=10)
+
+    codex_plain = codex_tab()
+    emit_codex("SessionStart", source="startup")
+    emit_codex("UserPromptSubmit")
+    assert option("@claude-state", codex_window) == "thinking"
+    emit_codex("PreToolUse", tool_name="Bash", tool_use_id="command-1")
+    assert option("@claude-class", codex_window) == "activity"
+    assert state.STATES["tool"][1] in codex_tab()
+    assert (codex_home / "custom-hook").read_text() == "kept"
+
+    emit_codex("PermissionRequest", tool_name="Bash")
+    assert option("@claude-state", codex_window) == "approval"
+    assert state.STATES["approval"][1] in codex_tab() and "▲" in codex_tab()
+    # A Codex need outranks a busy Claude window, both in the summary and when
+    # jumping from the user's shell. The hook must target its background pane.
+    monkeypatch.setenv("TMUX_PANE", pane)
+    emit("PreToolUse", "claude-tmux-state-hook", tool_name="Bash")
+    roll_up = capture(sweep.main)
+    assert "▲1" in roll_up and "●1" in roll_up
+    private_tmux.call("select-window", "-t", "main:keep")
+    monkeypatch.setenv("TMUX_PANE", private_tmux.pane)
+    subprocess.run([str(BIN / "tmux-quickswitch-alert")], capture_output=True,
+                   check=True, timeout=10)
+    assert private_tmux.call("display-message", "-p", "#{window_id}") == codex_window
+    private_tmux.call("select-window", "-t", "main:keep")
+    monkeypatch.setenv("TMUX_PANE", codex_pane)
+
+    emit_codex("PostToolUse", tool_name="Bash", tool_use_id="command-1")
+    assert option("@claude-class", codex_window) == "activity"
+    emit_codex("PreToolUse", tool_name="request_user_input", tool_use_id="question-1")
+    assert option("@claude-state", codex_window) == "question"
+    assert "?" in codex_tab()
+    emit_codex("PostToolUse", tool_name="request_user_input", tool_use_id="question-1")
+    assert option("@claude-state", codex_window) == "thinking"
+    emit_codex("Stop", permission_mode="plan")
+    assert option("@claude-state", codex_window) == "plan"
+    assert "▣" in codex_tab()
+    emit_codex("UserPromptSubmit")
+    emit_codex("Stop", permission_mode="default")
+    assert option("@claude-state", codex_window) == "idle"
+    private_tmux.call("set-option", "-w", "-t", codex_window, "@claude-since",
+                      str(int(time.time()) - sweep.DORMANT_AFTER - 1))
+    sweep.main()
+    assert option("@claude-state", codex_window) == "dormant"
+    assert "·" in codex_tab()
+    emit_codex("SessionEnd")
+    assert option("@claude-state", codex_window) == ""
+    private_tmux.call("select-window", "-t", codex_window)
+    private_tmux.call("select-window", "-t", "main:keep")
+    assert codex_tab() == codex_plain
+    assert option("@claude-state") == "tool", "Codex must leave Claude's window alone"

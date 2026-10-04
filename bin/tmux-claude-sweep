@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Age Claude window states, and summarise what is outstanding for the status bar.
+"""Age Claude and Codex states, and summarise outstanding work for the status bar.
 
 tmux has no timer of its own, so this runs from a `#()` in status-right and gets
 re-run once per status-interval. Two jobs, one process, regardless of how many
 windows exist:
 
-  1. A window Claude finished with goes `idle` -> `dormant` once it has sat
+  1. A window an agent finished with goes `idle` -> `dormant` once it has sat
      untouched, so a stale tab reads as stale instead of merely "done".
   2. A window stuck in `tool`/`thinking` far longer than any real turn lost its
      Stop hook (killed client, crashed session). Claiming it is still working is
@@ -24,9 +24,9 @@ import time
 state = SourceFileLoader(
     "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state"))).load_module()
 
-# A finished session stays "just finished" until its prompt cache has lapsed
-# (an hour), after which resuming it pays to re-read the whole conversation.
-# Anything still claiming to run after an hour has lost its Stop hook.
+# The shared idle threshold was chosen for Claude's one-hour prompt cache.
+# Codex uses the same visual aging interval, independent of its cache policy.
+# Anything still claiming to run after an hour may have lost its Stop hook.
 DORMANT_AFTER = int(os.environ.get("CLAUDE_DORMANT_AFTER", "3600"))
 STALL_AFTER = int(os.environ.get("CLAUDE_STALL_AFTER", "3600"))
 
@@ -39,7 +39,7 @@ SUMMARY = (
 
 
 def windows():
-    """Every window on this server that a Claude session has claimed."""
+    """Every window on this server claimed by a Claude or Codex session."""
     out = state.tmux("list-windows", "-a", "-F",
                      "#{window_id}\t#{@claude-state}\t#{@claude-since}\t#{window_active}")
     for line in out.splitlines():

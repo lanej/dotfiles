@@ -1,4 +1,4 @@
-name: Claude feature regressions
+name: Agent feature regressions
 
 on:
   pull_request:
@@ -12,10 +12,18 @@ on:
       - 'bin/claude-tmux-state-hook'
       - 'bin/claude-notification-hook'
       - 'bin/claude-stop-hook'
+      - 'bin/codex-tmux-state-hook'
+      - 'codex/tmux-hooks.json'
       - 'rc/tmux.conf'
       - 'bin/claude-plugin-converge_test.py'
       - 'bin/claude-remove-blocked-plugins'
       - 'bin/conftest.py'
+      - 'bin/sync-codex-*'
+      - 'bin/codex-mcp-sync_test.py'
+      - 'bin/codex-skills-sync_test.py'
+      - 'bin/codex-agents-sync_test.py'
+      - 'bin/dispatcher-launch_test.py'
+      - 'claude/skills/dispatcher/scripts/dispatcher-launch'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
@@ -32,10 +40,18 @@ on:
       - 'bin/claude-tmux-state-hook'
       - 'bin/claude-notification-hook'
       - 'bin/claude-stop-hook'
+      - 'bin/codex-tmux-state-hook'
+      - 'codex/tmux-hooks.json'
       - 'rc/tmux.conf'
       - 'bin/claude-plugin-converge_test.py'
       - 'bin/claude-remove-blocked-plugins'
       - 'bin/conftest.py'
+      - 'bin/sync-codex-*'
+      - 'bin/codex-mcp-sync_test.py'
+      - 'bin/codex-skills-sync_test.py'
+      - 'bin/codex-agents-sync_test.py'
+      - 'bin/dispatcher-launch_test.py'
+      - 'claude/skills/dispatcher/scripts/dispatcher-launch'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
