@@ -11,21 +11,32 @@ and [Conventional Comments](https://conventionalcomments.org/).
 
 ## Format
 
-```text
+```markdown
 <type>[(<scope>)][!]: <subject>
 
-<what changes and why>
+<what changes and the resulting behavior, followed by why it matters>
 
-[additional context]
+## Result
+
+<screenshot or concrete example, when useful>
+
+## Additional context
+
+<decisions, constraints, or review needs, when relevant>
 ```
 
-The title identifies the kind of change and its intended outcome. The opening
-paragraph explains the problem and resulting behavior. Additional context is
-optional; include it when it helps someone assess or use the change.
+The title identifies the kind of change and its intended outcome. Every body
+starts with prose: first explain what changes and the resulting behavior, then
+why the change matters. Use one or two short paragraphs without an opening
+heading.
+
+Use the sections in the order shown. `## Result` and `## Additional context`
+are optional: omit each heading and its content when unnecessary. Replace all
+drafting prompts; do not publish placeholders or empty sections.
 
 For example:
 
-```text
+```markdown
 fix(tracking): preserve filters when returning from details
 
 Keep the destination filter when returning to the shipment list, so reviewers
@@ -53,11 +64,13 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in
    title SHOULD be at most 72 characters.
 5. A breaking change MUST place `!` immediately before the colon. Its description
    MUST explain the incompatibility and what affected users need to do.
-6. The description MUST begin by explaining what changes and why. It SHOULD use
-   a concrete before/after example when that makes the outcome clearer.
+6. The description MUST begin with prose explaining what changes, followed by
+   why it matters, without an opening heading. It SHOULD use a concrete
+   before/after example when that makes the outcome clearer.
 7. Additional context SHOULD supply information needed for review that the
-   opening paragraph, diff, and automated checks do not already provide.
-   Headings MAY organize that context; no headings are required.
+   opening prose, diff, and automated checks do not already provide. After the
+   opening prose, the body MAY include `## Result`, then `## Additional context`
+   in that order, omitting either when unnecessary.
 8. Material compatibility constraints, rollout requirements, and known
    verification gaps MUST be disclosed when they affect acceptance or use.
    Claims about behavior and verification MUST be supported by actual evidence.
@@ -94,31 +107,38 @@ Choose the type for the resulting change, rather than its supporting edits.
 A feature with tests and documentation is still `feat`. Unrelated outcomes
 should usually be separate PRs.
 
-## Additional context
+## Body sections
 
-Add only the parts a reviewer needs. These are suggested headings, not a
-template to fill out:
+Begin with prose, then use the exact level-two headings below for any optional
+sections. Keep each included section concise.
 
-| Heading | Include when |
+| Section | Content |
 | --- | --- |
-| Result | An image or concrete example helps assess the implemented result |
-| Context | A consequential decision or requirement is not apparent in the diff |
-| Compatibility | Consumers must adapt to an interface or behavior change |
-| Rollout | Deployment order, migration, or recovery needs explanation |
-| Review | A particular tradeoff or unresolved question needs reviewer judgment |
+| Opening prose (no heading) | Required: what changes and the resulting behavior, followed by why it matters |
+| Result | Optional: a current screenshot, example output, or before/after example that helps assess the implemented result |
+| Additional context | Optional: consequential decisions, compatibility or rollout constraints, manual findings, verification gaps, or questions requiring reviewer judgment |
 
-Manual observations, external evidence, and verification gaps can be described
-where they matter. There is no default Testing or Verification section.
+Result must show the artifact or example itself, rather than summarize changes
+or list examples available elsewhere. Explain changed rules in the opening prose.
+Additional context concerns this particular change; do not fill it with an
+explanation of the template.
+
+Link relevant requirements in the section they support. In Additional context,
+use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when
+they help scanning. There is no default Testing or Verification section, and
+no requirement to fill every section.
 
 ## Examples
 
 ### Feature
 
-```text
+```markdown
 feat(exports): allow downloading filtered shipments
 
 Export the shipments matching the current filters, so operations can reconcile
 a selected group without downloading the entire account history.
+
+## Additional context
 
 The export uses the filters at the time it is requested; later filter changes
 do not alter an export already in progress.
@@ -126,25 +146,29 @@ do not alter an export already in progress.
 
 ### Breaking change
 
-```text
+```markdown
 feat(api)!: require cursor pagination for shipment lists
 
 Replace offset pagination with cursors so shipment lists remain consistent as
 new shipments arrive.
 
-Compatibility: Clients must replace the page parameter with the next_cursor
+## Additional context
+
+**Compatibility:** Clients must replace the page parameter with the next_cursor
 returned by the previous response. Requests using page are rejected.
 ```
 
 ### Verification gap
 
-```text
+```markdown
 fix(printing): retain the selected printer after reconnecting
 
 Restore the selected printer after a connection interruption, so the next label
 goes to the same device instead of the system default.
 
-Review: Reconnection was checked with the local simulator. Physical printer
+## Additional context
+
+**Review:** Reconnection was checked with the local simulator. Physical printer
 reconnection remains unverified and needs a device check before release.
 ```
 
@@ -154,6 +178,7 @@ Projects can adopt this convention for PR titles and descriptions independently
 of how they merge commits. A conventional PR title does not make the commits
 conventional or configure release automation.
 
-Required repository fields still apply. Include them without padding the rest
-of the description. When working in a repository that has not adopted this
-convention, follow its title and template requirements.
+Required repository fields still apply and take precedence over this default
+layout when they conflict. Map the content into those fields without duplicating
+it or padding the rest of the description. When working in a repository that has
+not adopted this convention, follow its title and template requirements.

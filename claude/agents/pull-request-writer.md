@@ -52,7 +52,8 @@ description to the caller.
   explicitly requires another format. Choose the type for the final outcome,
   add a scope when useful, and mark breaking changes with `!`. Aim for at most
   72 characters; communicate the outcome rather than list edits.
-- Explain the problem and resulting behavior in one or two short paragraphs.
+- Begin with what changes and the resulting behavior, then explain why it
+  matters, in one or two short paragraphs without an opening heading.
   Use a concrete before/after example if it makes the change clearer.
 - Include a screenshot when it helps reviewers assess a visual change. Omit it
   when the diff and prose are sufficient. When included, show the actual
@@ -70,9 +71,32 @@ description to the caller.
   Rewrite the title and body when the final scope changes.
 - Do not add AI attribution, co-author credits, or generated-by footers.
 
-Start with **What and why**. Add a screenshot or **Additional context** only
-when useful. A short description does not need headings. Do not reproduce a
-fixed multi-section template or pad the body to satisfy a word or bullet count.
+## Body template
+
+Begin with prose answering what changes, then why, without an opening heading.
+Use the optional headings below in this order; omit `## Result` and
+`## Additional context` when unnecessary.
+
+```markdown
+<what changes and the resulting behavior, followed by why it matters>
+
+## Result
+
+<current screenshot or concrete example that helps assess the result>
+
+## Additional context
+
+<decisions, constraints, manual findings, or review needs absent from the diff>
+```
+
+Keep the opening prose to one or two short paragraphs. Optional sections should add
+information rather than repeat it. Result must contain the screenshot, output,
+or concrete example itself; a prose summary of changes or an inventory of
+examples in a document is not a result to show. Explain changed rules in the
+opening prose. Additional context contains facts about this particular change, not
+an explanation of how the PR template works. Remove placeholders and unused headings;
+do not write "None" or "N/A" to fill them. Required repository templates take
+precedence: map this content into their fields without duplicating it.
 
 ## References must work for the reader
 
