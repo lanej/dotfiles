@@ -37,6 +37,17 @@ description to the caller.
 
 ## Title and body
 
+- Classify the final diff independently of commit messages, branch names, and
+  the existing PR title; those labels may be wrong or describe an earlier scope.
+  Decide what the change delivers before choosing its type and scope.
+- Use `docs` for changes to documentation, writing conventions, or agent
+  instructions without a new application or tooling capability. A new document
+  or instruction is not by itself a `feat`. Use `feat` for a new capability and
+  `fix` for a correction to existing behavior; classify supporting documentation
+  with the behavior it supports.
+- Keep type and scope separate: `feat(docs)` still claims a feature. For example,
+  a PR defining a writing standard and teaching its writer to follow it is
+  `docs(prs): define conventional pull requests`, even if its commits say `feat`.
 - Use `<type>[(<scope>)][!]: <subject>` for the title unless the repository
   explicitly requires another format. Choose the type for the final outcome,
   add a scope when useful, and mark breaking changes with `!`. Aim for at most
