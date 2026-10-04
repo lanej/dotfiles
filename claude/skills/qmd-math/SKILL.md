@@ -1,6 +1,6 @@
 ---
 name: qmd-math
-description: Math notation conventions for Quarto/EPQ documents rendered via lualatex. Use when: writing or adding a formula, equation, or mathematical expression to a .qmd file; asked about display math, inline math, or LaTeX notation in a QMD/Quarto context; defining a where-clause or variable definitions for an equation; converting prose variable descriptions into structured math notation; fixing math that renders badly in a PDF; using \lvert, \begin{aligned}, \tfrac, \text{where}, or any LaTeX math command in a Quarto document. Triggers on: "write a formula", "add an equation", "math notation", "where clause", "display math", "LaTeX equation", "define variables", "simplify the formula", "typeset this".
+description: 'Math notation conventions for Quarto/EPQ documents rendered via lualatex. Use when: writing or adding a formula, equation, or mathematical expression to a .qmd file; asked about display math, inline math, or LaTeX notation in a QMD/Quarto context; defining a where-clause or variable definitions for an equation; converting prose variable descriptions into structured math notation; fixing math that renders badly in a PDF; using \lvert, \begin{aligned}, \tfrac, \text{where}, or any LaTeX math command in a Quarto document. Triggers on: "write a formula", "add an equation", "math notation", "where clause", "display math", "LaTeX equation", "define variables", "simplify the formula", "typeset this".'
 ---
 
 # qmd-math — Math Notation in Quarto/lualatex

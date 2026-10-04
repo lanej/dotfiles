@@ -1,5 +1,10 @@
 # Pull requests
 
+Use [Conventional Pull Requests](conventional-pull-requests.md) for the title
+and description format in this repository. The guidance below covers preparing,
+publishing, and handing off the change; other repositories' conventions still
+apply when working there.
+
 A PR should help a reviewer understand the intended outcome and the decisions
 that need judgment. Keep the description proportional to the change; one or two
 short paragraphs are usually enough.
@@ -18,8 +23,9 @@ short paragraphs are usually enough.
 ## Write the description
 
 [Explain what changes and why](https://google.github.io/eng-practices/review/developer/cl-descriptions.html).
-Lead with the problem and resulting behavior, using a concrete before/after
-example when useful. Supply context that is not apparent from the diff. Link
+Start with what changes and the resulting behavior, then explain why it matters.
+Use a concrete before/after example when useful. Supply context that is not
+apparent from the diff. Link
 relevant requirements and design decisions.
 
 Use a specific, concise title that follows the repository's conventions.
@@ -51,14 +57,34 @@ downloadable CI artifact is insufficient. Keep the image current when the visibl
 result changes. Do not invent an image URL or substitute a mockup for the
 implemented result.
 
-## Minimal shape
+## Description template
 
-Start with **What and why**. Add a screenshot when it helps explain the result
-and **Additional context** when it supplies information the diff and checks do
-not show. Headings are optional for a short description; omit unused sections
-and drafting prompts.
+Start with prose answering what changes, then why, without an opening heading.
+Use the optional headings below in this order; omit **Result** and
+**Additional context** when they do not add useful evidence or information.
+Remove drafting prompts and empty sections.
 
-This is enough for a routine UI fix; a screenshot can illustrate the result:
+```markdown
+Explain what changes and the resulting behavior, followed by why it matters.
+
+## Result
+
+Show a current screenshot or concrete example when it helps assess the result.
+
+## Additional context
+
+Add decisions, constraints, manual findings, or review questions the diff and
+checks do not already supply.
+```
+
+Required repository templates take precedence over this default layout; map
+the same content into their fields without duplicating it.
+
+Result shows the screenshot, output, or example itself. A summary of changed
+rules belongs in the opening prose. Additional context concerns this particular
+change; do not fill it with an explanation of the template.
+
+This is enough for a routine UI fix; a screenshot can be added under **Result**:
 
 > Keep the selected shipment and destination filter when returning from details,
 > so reviewers can continue through the same set of shipments. Previously,

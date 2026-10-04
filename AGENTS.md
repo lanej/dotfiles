@@ -27,18 +27,6 @@ symlinked requires a corresponding rule in the `Makefile` plus a re-run of
 to pin a specific version) and, if they need config symlinked, to the
 `Makefile`.
 
-## Repository Layout
-
-- `bootstrap.sh` — main installation script; checks OS, installs packages, manages versions.
-- `Makefile` — defines symlink rules; run `make` to apply.
-- `bin/` — utility scripts, added to `$PATH`; selectively versioned.
-- `claude/` — custom commands and agents for AI assistants (`commands/`, `agents/`).
-- `gemini/skills/` — skills replicated from the Claude configuration for Gemini.
-- `nvim/` — Neovim configuration (Lua).
-- `zsh/` — Zsh configuration and plugins.
-- `git/` — Git configuration (`.gitconfig`, `.gitignore`, etc.).
-- `rc/` — miscellaneous run commands (tmux, X resources, etc.).
-
 ## Development Conventions
 
 - **Idempotency**: `bootstrap.sh` and `Makefile` should be idempotent — running them multiple times is safe and converges on correct state.
@@ -89,112 +77,8 @@ this repository's focused regression checks and entrypoint size budget.
 
 ## Claude Commands & Agents Versioning Pattern
 
-This repository uses a selective versioning pattern for Claude commands and agents that allows for experimentation without polluting version control.
-
-### Directory Structure
-
-```
-~/.files/
-├── claude/
-│   ├── commands/     # Source directory (selectively versioned)
-│   └── agents/       # Source directory (selectively versioned)
-└── .claude/          # Gitignored (user-specific settings)
-    └── settings.json
-
-~/.claude/            # User's global Claude directory (real, not a symlink)
-├── commands/         # Individual entries symlinked from ~/.files/claude/commands/
-├── agents/           # Individual entries symlinked from ~/.files/claude/agents/
-├── skills/           # Individual entries symlinked from ~/.files/claude/skills/
-└── CLAUDE.md         # Symlinked to ~/.files/claude/CLAUDE.md
-```
-
-### Setup via Makefile
-
-Run `make claude` (Makefile:168-178). Symlinks `settings.json`, commands, agents, skills, workflows, and CLAUDE.md into `~/.claude/`, and wires MCP servers into `~/.claude.json` via `jq`.
-
-EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from there after cloning to symlink them into `~/.files/claude/skills/`.
-
-### Workflow
-
-1. **Experimentation**: Create/edit the file directly under `~/.files/claude/commands/` (or `claude/agents/`)
-   - Run `make claude` to symlink new entries out into `~/.claude/commands/` (already-symlinked files update live since they point back to the same source; only brand-new files need the re-run)
-   - Not automatically tracked by git (new files are gitignored by default)
-
-2. **Selective Versioning**: When ready to version a command:
-   ```bash
-   git add -f claude/commands/path/to/command.md
-   git commit -m "feat(claude): add new command"
-   ```
-
-3. **Benefits**:
-   - Experiment freely without polluting git history
-   - Selectively version only stable/useful commands
-   - Portable across machines via dotfiles
-   - User-specific settings (`.claude/settings.json`) remain separate
-
-### Examples
-
-The pattern is already employed for several commands:
-- `claude/commands/gh/fix-issue.md` - GitHub issue fixing workflow
-- `claude/commands/eureka.md` - Capture technical breakthroughs
-- `claude/agents/commit-message-generator.md` - Git commit message generation
-
-### Gitignore Configuration
-
-`~/.claude/{commands,agents,skills,workflows}` are real directories; `make claude` (the `claude` Makefile target) symlinks each top-level entry in this repo's `claude/{commands,agents,skills,workflows}/` into them individually, so anything Claude Code, a plugin, or an installer writes as a *new* entry there stays local and never lands in the working tree. `.gitignore` still ignores new files under this repo's own `claude/{commands,agents,skills}/` by default; version one deliberately with `git add -f` (already-tracked files are unaffected). It also ignores repo-local `.claude/` state other than `settings.json` and `mcp-servers.json`, eval `results/`, skill-creator `*-workspace/` dirs, and packaged `*.skill` files. Anthropic-published skills are listed by name and never tracked (`claude/skills/ANTHROPIC-SKILLS.md`).
-
-`.claude/settings.json` is tracked but rewritten in place by Claude Code; a `claude-settings` clean filter (`.gitattributes`, configured by `make claude`) drops bookkeeping keys such as `feedbackSurveyState` so they never show up as changes.
-
-This pattern mirrors the approach used elsewhere in this repository (e.g., experimental scripts in `bin/` that are selectively versioned).
-
-## Gemini Skills
-
-A set of skill definitions has been replicated from the Claude configuration to `gemini/skills/` to provide specialized assistance in Gemini CLI. These Markdown files contain specific workflows and best practices for various tools.
-
-- **Location:** `gemini/skills/`
-- **Available Skills:**
-    - `az`: Azure CLI
-    - `bigquery`: Google BigQuery
-    - `git`: Git & GitHub CLI
-    - `go`: Go development
-    - `gspace`: Google Workspace
-    - `jira`: Jira CLI
-    - `jq`: JSON processing
-    - `just`: Command runner
-    - `lancer`: LanceDB/Search
-    - `phab`: Phabricator
-    - `pkm`: Personal Knowledge Management
-    - `presenterm`: Presentation tool
-    - `python`: Python development
-    - `rust`: Rust development
-    - `xlsx`: Excel manipulation
-    - `xsv`: CSV processing
-
-Refer to the `SKILL.md` file within each directory (e.g., `gemini/skills/rust/SKILL.md`) for detailed instructions.
+New files under `claude/{commands,agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.
 
 ## Tech Radar
 
-Tool and technology decisions are tracked in [`docs/radar.md`](docs/radar.md) using a four-ring model:
-
-| Ring | Meaning |
-|---|---|
-| **Adopt** | In active use; recommended |
-| **Trial** | Being evaluated in real workflows |
-| **Assess** | Worth watching; not yet trialed |
-| **Hold** | Deliberately not adopted; rationale documented |
-
-### When to update the radar
-
-- **New tool added to the stack** → move it to **Adopt** (or **Trial** if still evaluating)
-- **Tool being evaluated** → add to **Trial** or **Assess**
-- **Tool rejected** → add to **Hold** with a concise rationale
-- **Trial concludes** → promote to **Adopt** or demote to **Hold**
-- **Adopted tool retired** → move to **Hold** (or remove if fully purged)
-
-### How to update
-
-Edit `docs/radar.md` directly. Each entry lives under its ring heading as a `###` subsection. Cross-link related entries when one tool's fate depends on another (e.g., "Revisit if X resolves issue Y").
-
-Use the `tech-radar` agent to make updates conversationally.
-</content>
-</invoke>
+Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Use the `tech-radar` agent for updates.
