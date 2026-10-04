@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'bin/claude-autoname-hook*'
+      - 'bin/claude-json-prune*'
       - 'bin/claude-session-resolve*'
       - 'bin/claude-pr-gate*'
       - 'bin/gh-pr-create-from'
@@ -32,6 +33,7 @@ on:
     branches: [master]
     paths:
       - 'bin/claude-autoname-hook*'
+      - 'bin/claude-json-prune*'
       - 'bin/claude-session-resolve*'
       - 'bin/claude-pr-gate*'
       - 'bin/gh-pr-create-from'
