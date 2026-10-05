@@ -52,7 +52,7 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on GitHub and be linked to the relevant version. GitHub objects MUST be linked with full URLs or appropriate autolinking references. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
 11. The description SHOULD NOT repeat file inventories, commit history, test cases, coverage figures, test counts, or automated check results. Empty sections and boilerplate checklists SHOULD be omitted.
 12. The title and description MUST reflect the final scope of the PR. A stacked PR MUST identify its parent and describe its own change.
-13. Bulleted lists SHOULD be used when multiple independent points are easier to scan and compare than prose. Connected explanations SHOULD remain prose; numbered lists SHOULD be reserved for sequences where order matters.
+13. Bulleted lists SHOULD be used when multiple independent points are easier to scan than prose. Tables SHOULD be used when several items need comparison across shared attributes. Connected explanations SHOULD remain prose; numbered lists SHOULD be reserved for sequences where order matters. Measurement tables MUST preserve units, workload scope, evidence source, and material caveats without implying unsupported comparisons.
 14. Paragraphs and list items MUST NOT be artificially wrapped or use manual line breaks for appearance. Meaningful line breaks in code and actual example output MUST be preserved.
 
 ## Types
@@ -84,13 +84,17 @@ Begin with prose, then use the exact level-two headings below for any optional s
 | Result | Optional: a current screenshot, example output, or before/after example that helps assess the implemented result |
 | Additional context | Optional: consequential decisions, compatibility or rollout constraints, manual findings, verification gaps, or questions requiring reviewer judgment |
 
-Result must show the artifact or example itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose. Additional context concerns this particular change; do not fill it with an explanation of the template.
+Result must show the artifact, example, or decision-relevant measurement table itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose. Additional context concerns this particular change; do not fill it with an explanation of the template.
 
 Link relevant requirements in the section they support. In Additional context, use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every section.
 
 ## Readability and discoverability
 
 Use prose for connected reasoning. Use bullets when multiple independent outcomes, constraints, tradeoffs, or decisions are easier to scan separately. Each item should make one assessable point, with parallel phrasing and enough explanation to understand its effect. Avoid sentence-by-sentence bullets, file inventories, lists repeating the opening, and arbitrary item counts. Use numbered lists when order matters, such as migration steps.
+
+Use a compact table when readers need to compare several items across shared attributes, such as before/after performance and cost, alternatives, compatibility, or rollout status. Put measurement and example results under Result; put tradeoffs and constraints under Additional context. Label units and workload scope, identify the evidence source, and keep caveats nearby. Distinguish per-item from combined measurements, and serving queries from refresh work. Separate unlike measurement layers or clearly label them; do not combine overlapping timings, invent missing values, or infer unsupported speedups. Explicitly mark missing values as not measured or not reported. Keep long reasoning outside cells. Tables should contain decision-relevant manual measurements or external evidence, not routine automated check reports.
+
+Use Before/After columns only when workloads and measurement layers match. Otherwise use rows identified by workload and layer, or separate tables. API query timing is not full dashboard load unless browser rendering was measured. Write "Not measured" or "Not reported" for missing values rather than unexplained dashes.
 
 Write each paragraph and list item on one source line, allowing GitHub to wrap it for the reader's screen. Use blank lines between paragraphs and before lists. Preserve meaningful line breaks in code and actual example output.
 
