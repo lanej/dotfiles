@@ -96,6 +96,8 @@ Use a compact table when readers need to compare several items across shared att
 
 Use Before/After columns only when workloads and measurement layers match. Otherwise use rows identified by workload and layer, or separate tables. API query timing is not full dashboard load unless browser rendering was measured. Write "Not measured" or "Not reported" for missing values rather than unexplained dashes.
 
+Table cells follow the same prose and linking rules: do not insert `<br>` or other manual breaks for appearance, and link cited GitHub objects in cells. Split overloaded columns or move details into adjacent prose. Do not label workloads as "the same" without evidence of matching scope. The opening prose still must explain why the change matters.
+
 Write each paragraph and list item on one source line, allowing GitHub to wrap it for the reader's screen. Use blank lines between paragraphs and before lists. Preserve meaningful line breaks in code and actual example output.
 
 Reference files only when they exist on GitHub and reviewers can open them. Use descriptive Markdown links to full GitHub file URLs pinned to the relevant commit SHA, with line anchors when useful. An unlinked filename, inline-code path, or local plan is not a discoverable reference.

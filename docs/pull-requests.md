@@ -30,6 +30,8 @@ Use tables when several items need comparison across shared attributes, such as 
 
 Reserve Before/After columns for matching workloads and layers; otherwise identify each measured workload and layer by row or use separate tables. Label API timings accurately when browser rendering was not measured. Mark missing values as "Not measured" or "Not reported" rather than unexplained dashes.
 
+Apply prose and linking rules inside cells too: no `<br>` for appearance, and cited GitHub objects must be linked. Split overloaded columns or move detail outside the table. Do not call workloads "the same" without evidence; keep why the change matters explicit in the opening prose.
+
 Write each paragraph and list item on one source line. Let GitHub wrap text for the reader's screen; preserve meaningful line breaks in code and actual example output.
 
 Referenced files must already exist on GitHub. Link them with descriptive text to the relevant commit's full GitHub file URL, adding line anchors when useful. Link GitHub issues and PRs with full URLs or autolinking references (`#123` in this repository, `owner/repo#123` across repositories); link commits, reviews, discussions, releases, comparisons, and Actions runs to the specific object cited. Verify each target exists and is accessible to reviewers. Do not reference local-only files or leave cited paths and object names unlinked.
