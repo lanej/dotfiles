@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Single source of truth for what a Claude session is doing, as a tmux window tab.
+"""Single source of truth for an agent's state, as a tmux window tab.
 
-Claude's hooks call `set`; tmux.conf reads the options this writes. Keeping the
-palette here (rather than as another nested ternary in tmux.conf) means a new
-state costs one table row instead of three more conditional branches per
-rendered segment.
+Claude and Codex hooks share this palette; tmux.conf reads the options it writes.
+The @claude-* names remain the common interface for existing hooks and servers.
+Keeping the palette here (rather than as another nested ternary in tmux.conf)
+means a new state costs one table row instead of three more conditional
+branches per rendered segment.
 
 Options written on the window:
   @claude-state   semantic name, also read by tmux-quickswitch-alert
@@ -16,8 +17,11 @@ Options written on the window:
   @claude-since   epoch seconds the state was entered, for dormancy
 """
 import os
+from pathlib import Path
+import re
 import subprocess
 import sys
+import tempfile
 import time
 
 # Nord. "Needs" are hot and bold, activity is warm, quiet states recede into the
@@ -91,8 +95,94 @@ def apply(target, name):
 
 
 def clear(target):
-    """Return the tab to a plain, un-Claude-ed window."""
+    """Return the tab to a plain window."""
     write(target, {option: "" for option in OPTIONS})
+
+
+def ansi_tab(text):
+    """Translate the status formats' tmux style markers into terminal colours."""
+    named = {"black": 30, "cyan": 36, "brightblack": 90}
+    attributes = {"bold": 1, "nobold": 22, "noitalics": 23,
+                  "nounderscore": 24, "nodim": 22}
+
+    def marker(match):
+        codes = []
+        for field in match.group(1).split(","):
+            field = field.strip()
+            if field.startswith(("fg=", "bg=")):
+                channel, colour = field.split("=", 1)
+                base = 38 if channel == "fg" else 48
+                if colour.startswith("#"):
+                    rgb = [str(int(colour[i:i + 2], 16)) for i in (1, 3, 5)]
+                    codes.append("%s;2;%s" % (base, ";".join(rgb)))
+                elif colour.startswith("colour"):
+                    codes.append("%s;5;%s" % (base, colour[6:]))
+                elif colour in named:
+                    codes.append(str(named[colour] + (10 if channel == "bg" else 0)))
+            elif field in attributes:
+                codes.append(str(attributes[field]))
+        return "\033[%sm" % ";".join(codes) if codes else ""
+
+    return re.sub(r"#\[([^]]*)\]", marker, text) + "\033[0m"
+
+
+def legend():
+    """Show sample tabs using the real formats on an isolated tmux server."""
+    config = (Path(__file__).resolve().parent.parent / "rc/tmux.conf").read_text()
+    formats = {}
+    for option in ("window-status-current-format", "window-status-format"):
+        match = re.search(r'^set-window-option -g %s "((?:.*\\\n)*.*)"$' % option,
+                          config, re.MULTILINE)
+        if not match:
+            raise ValueError("rc/tmux.conf does not define " + option)
+        text = match.group(1).replace("\\\n", "")
+        # Model the read-only window flags without ringing a bell or changing
+        # any real windows. tmux still expands the actual tab format.
+        for flag in ("zoomed", "bell", "activity"):
+            text = text.replace("#{?window_%s_flag," % flag,
+                                "#{?#{@legend-%s}," % flag)
+        formats[option] = text
+
+    env = {key: value for key, value in os.environ.items()
+           if key not in ("TMUX", "TMUX_PANE")}
+    with tempfile.TemporaryDirectory(prefix="tmux-legend-", dir="/tmp") as directory:
+        socket = str(Path(directory) / "tmux.sock")
+
+        def call(*args):
+            return subprocess.run(["tmux", "-S", socket, *args], env=env,
+                                  check=True, capture_output=True, text=True,
+                                  timeout=5).stdout.strip()
+
+        try:
+            window = call("-f", "/dev/null", "new-session", "-d", "-s", "legend",
+                          "-n", "this window title", "-P", "-F", "#{window_id}", "sleep 60")
+            call("set-option", "-w", "-t", window, "automatic-rename", "off")
+            for option, text in formats.items():
+                call("set-option", "-w", "-t", window, option, text)
+
+            def sample(label, name="", focused=False, zoomed=False, bell=False, activity=False):
+                values = style(name) if name else {option: "" for option in OPTIONS}
+                values.update({"@legend-zoomed": str(int(zoomed)),
+                               "@legend-bell": str(int(bell)),
+                               "@legend-activity": str(int(activity))})
+                args = []
+                for option, value in values.items():
+                    args += ["set-option", "-w", "-t", window, option, value, ";"]
+                option = "window-status-current-format" if focused else "window-status-format"
+                tab = call(*args, "display-message", "-p", "-t", window, "#{E:%s}" % option)
+                print('%-23s -> "%s"' % (label, ansi_tab(tab)))
+
+            sample("active (focused)", focused=True)
+            sample("active (zoomed)", focused=True, zoomed=True)
+            sample("inactive (no agent)")
+            sample("inactive (bell)", bell=True)
+            sample("inactive (activity)", activity=True)
+            for name in STATES:
+                sample("inactive: " + name, name)
+            print("\nActive tabs keep their focused colour; the agent state still supplies the glyph.")
+        finally:
+            subprocess.run(["tmux", "-S", socket, "kill-server"], env=env,
+                           capture_output=True, timeout=5)
 
 
 def main(argv):
@@ -100,6 +190,14 @@ def main(argv):
         print(__doc__.strip().splitlines()[0], file=sys.stderr)
         return 2
     command = argv[1]
+
+    if command == "legend":
+        try:
+            legend()
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print("tmux-status-legend: %s" % error, file=sys.stderr)
+            return 1
+        return 0
 
     if command == "render":
         values = style(argv[2] if len(argv) > 2 else "")

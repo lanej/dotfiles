@@ -86,6 +86,8 @@
 	sp = status -s
 	uf = ls-files -o --exclude-standard
 	cm = commit -m
+	sd = "!f() { branch=$(git default-branch) || return; git switch \"$branch\" \"$@\"; }; f"
+	default-branch = "!f() { remote=origin; if ! git remote get-url \"$remote\" >/dev/null 2>&1; then remote=$(git remote | head -n 1); fi; branch=; if [ -n \"$remote\" ]; then branch=$(git symbolic-ref --quiet --short \"refs/remotes/$remote/HEAD\" 2>/dev/null); branch=${branch#\"$remote/\"}; if [ -z \"$branch\" ]; then branch=$(git ls-remote --symref \"$remote\" HEAD | sed -n \"s@^ref: refs/heads/\\(.*\\)[[:space:]]HEAD\\$@\\1@p\") || return; fi; fi; if [ -z \"$branch\" ]; then for candidate in main master; do if git show-ref --verify --quiet \"refs/heads/$candidate\"; then branch=$candidate; break; fi; done; fi; if [ -z \"$branch\" ]; then echo \"Cannot determine the default branch.\" >&2; return 1; fi; printf \"%s\\n\" \"$branch\"; }; f"
 [core]
 	excludesfile = ~/.gitignore
 	whitespace = trailing-space,space-before-tab,blank-at-eol

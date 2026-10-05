@@ -1,8 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "CLAUDE_CODE_USE_VERTEX": "1",
-    "ANTHROPIC_VERTEX_PROJECT_ID": "easypost-platform",
     "VIEWRULE_CONFIG_DIR": "/Users/joshlane/.files/claude/ui-review"
   },
   "attribution": {
@@ -36,10 +34,10 @@
       "WebSearch",
       "WebFetch"
     ],
-    "defaultMode": "acceptEdits",
+    "defaultMode": "auto",
     "additionalDirectories": []
   },
-  "model": "claude-sonnet-5",
+  "model": "claude-sonnet-5-5",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
@@ -184,13 +182,13 @@
     "gopls-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
     "playwright@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "claude-mem@thedotmack": true,
     "frontend-design@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": false,
     "skill-creator@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
@@ -245,5 +243,38 @@
   "theme": "auto",
   "editorMode": "vim",
   "verbose": true,
-  "crossSessionInbound": "accept"
+  "crossSessionInbound": "accept",
+  "skillOverrides": {
+    "skill-creator": "off",
+    "dagster": "off",
+    "data-pipeline": "off",
+    "insurance-claims": "off",
+    "kread": "off",
+    "paseo": "off",
+    "paseo-advisor": "off",
+    "paseo-committee": "off",
+    "paseo-handoff": "off",
+    "paseo-plugin": "off",
+    "presenterm": "off",
+    "ruby": "off",
+    "srvctl": "off",
+    "xsv": "off",
+    "claude-mem:babysit": "off",
+    "claude-mem:cloud-sync": "off",
+    "claude-mem:design-is": "off",
+    "claude-mem:do": "off",
+    "claude-mem:how-it-works": "off",
+    "claude-mem:knowledge-agent": "off",
+    "claude-mem:learn-codebase": "off",
+    "claude-mem:make-plan": "off",
+    "claude-mem:oh-my-issues": "off",
+    "claude-mem:pathfinder": "off",
+    "claude-mem:smart-explore": "off",
+    "claude-mem:standup": "off",
+    "claude-mem:timeline-report": "off",
+    "claude-mem:version-bump": "off",
+    "claude-mem:weekly-digests": "off",
+    "claude-mem:what-the": "off",
+    "claude-mem:wowerpoint": "off"
+  }
 }

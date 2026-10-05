@@ -263,14 +263,15 @@ install_glibc() {
 }
 
 install_neovim_from_source() {
-	if [ ! -d ~/lib/neovim ]; then
-		git clone https://github.com/neovim/neovim.git ~/lib/neovim --depth 1
+	mkdir -p "$HOME/src/oss"
+	if [ ! -d ~/src/oss/neovim ]; then
+		git clone https://github.com/neovim/neovim.git ~/src/oss/neovim --depth 1
 	fi
 
-	git -C ~/lib/neovim fetch --tags --force --prune || exit 1
-	git -C ~/lib/neovim checkout "v$1" || exit 1
+	git -C ~/src/oss/neovim fetch --tags --force --prune || exit 1
+	git -C ~/src/oss/neovim checkout "v$1" || exit 1
 
-	cd ~/lib/neovim || exit 1
+	cd ~/src/oss/neovim || exit 1
 	make clean
 	rm -rf .deps/
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
@@ -413,15 +414,16 @@ install_package_version() {
 }
 
 install_fzf_from_source() {
-	if [ -d ~/lib/fzf ]; then
-		git -C ~/lib/fzf fetch --tags --force
-		git -C ~/lib/fzf checkout -f "v$1"
+	mkdir -p "$HOME/src/oss"
+	if [ -d ~/src/oss/fzf ]; then
+		git -C ~/src/oss/fzf fetch --tags --force
+		git -C ~/src/oss/fzf checkout -f "v$1"
 	else
-		git clone --depth 1 https://github.com/junegunn/fzf.git ~/lib/fzf
+		git clone --depth 1 https://github.com/junegunn/fzf.git ~/src/oss/fzf
 	fi
 
-	~/lib/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
-	ln -fs ~/lib/fzf/bin/fzf "$HOME/.local/bin/fzf"
+	~/src/oss/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
+	ln -fs ~/src/oss/fzf/bin/fzf "$HOME/.local/bin/fzf"
 }
 
 install_ripgrep_from_release() {
@@ -526,13 +528,6 @@ install_yq_from_release() {
 	chmod +x "$HOME/.local/bin/yq"
 }
 
-install_lua-language-server_from_release() {
-	curl -fLO "https://github.com/LuaLS/lua-language-server/releases/download/$1/lua-language-server-$1-$short_distro.tar.gz" --output-dir ~/lib
-	mkdir -p "$HOME/lib/lua-language-server-$1"
-	tar -zxf "$HOME/lib/lua-language-server-$1-$short_distro.tar.gz" -C "$HOME/lib/lua-language-server-$1"
-	ln -fs ~/lib/lua-language-server-"$1"/bin/lua-language-server "$HOME/.local/bin/lua-language-server"
-}
-
 install_typescript-language-server_from_release() {
 	install_package_version node 24
 	npm install -g typescript-language-server@"$1"
@@ -621,14 +616,15 @@ tree-sitter-cli_current_semver() {
 
 install_git-crypt_from_source() {
 	# git-crypt needs to be built from source on some systems
-	if [ ! -d ~/lib/git-crypt ]; then
-		git clone https://github.com/AGWA/git-crypt.git ~/lib/git-crypt --depth 1
+	mkdir -p "$HOME/src/oss"
+	if [ ! -d ~/src/oss/git-crypt ]; then
+		git clone https://github.com/AGWA/git-crypt.git ~/src/oss/git-crypt --depth 1
 	fi
 
-	git -C ~/lib/git-crypt fetch --tags --force --prune || exit 1
-	git -C ~/lib/git-crypt checkout "$1" || exit 1
+	git -C ~/src/oss/git-crypt fetch --tags --force --prune || exit 1
+	git -C ~/src/oss/git-crypt checkout "$1" || exit 1
 
-	cd ~/lib/git-crypt || exit 1
+	cd ~/src/oss/git-crypt || exit 1
 	make clean
 	make
 	make install PREFIX="$HOME/.local"
@@ -737,7 +733,6 @@ install_dependencies() {
 	install_package_version neovim 0.11.4 # Latest stable version
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
-	install_package_version lua-language-server 3.13.6       # lua
 	install_package_version rust-analyzer 1.84.1             # rust
 	install_package_version typescript-language-server 4.3.3 # typescript
 	install_package_version gopls 0.23.0                     # go

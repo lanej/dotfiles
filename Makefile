@@ -208,7 +208,10 @@ codex-skills:
 .PHONY: codex-tmux
 codex-tmux:
 	@"$(DOTFILES)/bin/sync-codex-tmux-hooks"
-codex: claude codex-skills codex-tmux
+.PHONY: codex-agents
+codex-agents:
+	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
+codex: claude codex-skills codex-agents codex-tmux
 	@mkdir -p $(HOME)/.codex
 	@ln -fs $(DOTFILES)/codex/env $(HOME)/.codex/.env
 	@ln -fs $(DOTFILES)/codex/bedrock.config.toml $(HOME)/.codex/bedrock.config.toml

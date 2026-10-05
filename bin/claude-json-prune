@@ -129,7 +129,7 @@ fi
 
 is_pre_run_tracked() {   # $1=path
     local target="$1" tp
-    for tp in "${pre_run_tracked[@]}"; do
+    for tp in ${pre_run_tracked[@]+"${pre_run_tracked[@]}"}; do
         [[ "$tp" == "$target" ]] && return 0
     done
     return 1
@@ -137,7 +137,8 @@ is_pre_run_tracked() {   # $1=path
 
 new_missing_count=0
 total_count=0
-for p in "${current_paths[@]}"; do
+# Bash 3.2 treats an empty array as unset under nounset; expand only if set.
+for p in ${current_paths[@]+"${current_paths[@]}"}; do
     total_count=$(( total_count + 1 ))
     s=$(path_status "$p")
     if [[ "$s" == "missing" ]] && ! is_pre_run_tracked "$p"; then
@@ -172,7 +173,7 @@ deferred_count=0
 inconclusive_count=0
 failed_count=0
 
-for p in "${current_paths[@]}"; do
+for p in ${current_paths[@]+"${current_paths[@]}"}; do
     s=$(path_status "$p")
     has_state=$(jq -r --arg p "$p" 'if .paths[$p] then "yes" else "no" end' "$STATE_FILE")
 
@@ -247,9 +248,9 @@ if [[ "$DRY_RUN" != "true" ]]; then
     while IFS= read -r sp; do
         [[ -n "$sp" ]] && state_paths+=("$sp")
     done < <(jq -r '.paths | keys[]' "$STATE_FILE")
-    for sp in "${state_paths[@]}"; do
+    for sp in ${state_paths[@]+"${state_paths[@]}"}; do
         found="no"
-        for p in "${current_paths[@]}"; do
+        for p in ${current_paths[@]+"${current_paths[@]}"}; do
             if [[ "$sp" == "$p" ]]; then
                 found="yes"
                 break

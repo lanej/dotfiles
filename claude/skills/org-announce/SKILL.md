@@ -1,6 +1,6 @@
 ---
 name: org-announce
-description: Draft org-level or company-wide announcements (reporting changes, promotions, departures, strategy, business decisions). Produces email and Slack formats in one invocation. Enforces Josh Lane's register: terse, declarative, no sentiment, no signature, no sycophantic close. Use when asked to draft an announcement, org update, or leadership communication.
+description: 'Draft org-level or company-wide announcements (reporting changes, promotions, departures, strategy, business decisions). Produces email and Slack formats in one invocation. Enforces Josh Lane''s register: terse, declarative, no sentiment, no signature, no sycophantic close. Use when asked to draft an announcement, org update, or leadership communication.'
 ---
 
 ## When to use

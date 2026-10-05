@@ -36,7 +36,9 @@ def _build_executables(tmp_path, calls_log):
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
-    for tool in ("jq", "bash", "stat", "mkdir", "mv", "mktemp", "date", "rmdir", "cut"):
+    # Use macOS's bundled Bash 3.2 rather than a newer Homebrew shell.
+    (executables / "bash").symlink_to("/bin/bash")
+    for tool in ("jq", "stat", "mkdir", "mv", "mktemp", "date", "rmdir", "cut"):
         resolved = shutil.which(tool)
         assert resolved, f"{tool} must be resolvable on PATH to run this test"
         (executables / tool).symlink_to(resolved)

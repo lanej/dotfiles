@@ -4,6 +4,73 @@ set -euo pipefail
 command -v codex >/dev/null 2>&1 || { echo "sync-codex-mcp-servers: codex not on PATH, skipping" >&2; exit 0; }
 [ -f "$HOME/.claude.json" ] || { echo "sync-codex-mcp-servers: no ~/.claude.json yet, skipping" >&2; exit 0; }
 
+# Plugin MCPs are separate from ~/.claude.json. Include enabled user installs and
+# resolve their install root without changing Claude's plugin cache.
+config=$(python3 - <<'PY'
+import json
+from pathlib import Path
+
+home = Path.home()
+servers = json.loads((home / ".claude.json").read_text()).get("mcpServers", {})
+
+
+def resolve_root(value, root):
+    if isinstance(value, str):
+        return value.replace("${CLAUDE_PLUGIN_ROOT}", str(root))
+    if isinstance(value, list):
+        return [resolve_root(item, root) for item in value]
+    if isinstance(value, dict):
+        return {key: resolve_root(item, root) for key, item in value.items()}
+    return value
+
+
+settings_path = home / ".claude/settings.json"
+registry_path = home / ".claude/plugins/installed_plugins.json"
+if settings_path.is_file() and registry_path.is_file():
+    enabled = json.loads(settings_path.read_text()).get("enabledPlugins", {})
+    plugins = json.loads(registry_path.read_text()).get("plugins", {})
+    for plugin, installs in plugins.items():
+        if enabled.get(plugin) is not True:
+            continue
+        for install in installs:
+            if install.get("scope") != "user":
+                continue
+            root = Path(install["installPath"])
+            manifest_path = root / ".claude-plugin/plugin.json"
+            manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
+            declaration = manifest.get("mcpServers", "./.mcp.json")
+            if isinstance(declaration, dict):
+                configs = [declaration]
+            else:
+                paths = declaration if isinstance(declaration, list) else [declaration]
+                configs = [json.loads((root / path).read_text()) for path in paths
+                           if (root / path).is_file()]
+            for config in configs:
+                for name, server in config.get("mcpServers", config).items():
+                    # Explicit user server definitions take precedence.
+                    if name in servers:
+                        continue
+                    server = resolve_root(server, root)
+                    if server.get("type", "stdio") == "stdio":
+                        server["env"] = {"CLAUDE_PLUGIN_ROOT": str(root), **server.get("env", {})}
+                    servers[name] = server
+print(json.dumps({"mcpServers": servers}))
+PY
+)
+
+# An unchanged definition must retain Codex's timeouts, tool policy, and enabled state.
+matches_transport() {
+	local current
+	current=$(codex mcp get "$name" --json 2>/dev/null </dev/null) || return 1
+	jq -e --argjson desired "$1" '
+		.transport as $actual |
+		all($desired | to_entries[];
+			if .key == "env" then ($actual.env // {}) == .value
+			elif .key == "args" then ($actual.args // []) == .value
+			else $actual[.key] == .value end)
+	' <<<"$current" >/dev/null
+}
+
 while IFS= read -r entry; do
 	name=$(jq -r '.key' <<<"$entry")
 	type=$(jq -r '.value.type // "stdio"' <<<"$entry")
@@ -12,12 +79,15 @@ while IFS= read -r entry; do
 	http)
 		url=$(jq -r '.value.url' <<<"$entry")
 		auth=$(jq -r '.value.headers.Authorization // ""' <<<"$entry")
-		bearer_var=$(sed -n 's/^Bearer \${\(.*\)}$/\1/p' <<<"$auth")
-		codex mcp remove "$name" >/dev/null 2>&1 </dev/null || true
+		bearer_var=$(sed -n 's/^Bearer \${\([A-Za-z_][A-Za-z0-9_]*\)}$/\1/p' <<<"$auth")
 		if [ -n "$auth" ] && [ -z "$bearer_var" ]; then
 			echo "sync-codex-mcp-servers: $name has an Authorization header that isn't a \${VAR} reference, skipping to avoid syncing a literal secret" >&2
 			continue
-		elif [ -n "$bearer_var" ]; then
+		fi
+		desired=$(jq -n --arg url "$url" --arg bearer "$bearer_var" \
+			'{type: "streamable_http", url: $url, bearer_token_env_var: (if $bearer == "" then null else $bearer end)}')
+		matches_transport "$desired" && continue
+		if [ -n "$bearer_var" ]; then
 			codex mcp add "$name" --url "$url" --bearer-token-env-var "$bearer_var" </dev/null
 		else
 			codex mcp add "$name" --url "$url" </dev/null
@@ -25,13 +95,16 @@ while IFS= read -r entry; do
 		;;
 	stdio)
 		cmd=$(jq -r '.value.command' <<<"$entry")
-		mapfile -t args < <(jq -r '.value.args[]? // empty' <<<"$entry")
-		mapfile -t env_flags < <(jq -r '.value.env // {} | to_entries[] | "--env=" + .key + "=" + .value' <<<"$entry")
-		codex mcp remove "$name" >/dev/null 2>&1 </dev/null || true
-		codex mcp add "$name" "${env_flags[@]}" -- "$cmd" "${args[@]}" </dev/null
+		desired=$(jq -c '.value | {type: "stdio", command, args: (.args // []), env: (.env // {})}' <<<"$entry")
+		matches_transport "$desired" && continue
+		mcp_cmd=(codex mcp add "$name")
+		while IFS= read -r flag; do mcp_cmd+=("$flag"); done < <(jq -r '.value.env // {} | to_entries[] | "--env=" + .key + "=" + .value' <<<"$entry")
+		mcp_cmd+=(-- "$cmd")
+		while IFS= read -r arg; do mcp_cmd+=("$arg"); done < <(jq -r '.value.args[]?' <<<"$entry")
+		"${mcp_cmd[@]}" </dev/null
 		;;
 	*)
 		echo "sync-codex-mcp-servers: $name has unrecognized type '$type', skipping" >&2
 		;;
 	esac
-done < <(jq -c '.mcpServers | to_entries[] | select(.key != "codex")' "$HOME/.claude.json")
+done < <(jq -c '.mcpServers | to_entries[] | select(.key != "codex")' <<<"$config")

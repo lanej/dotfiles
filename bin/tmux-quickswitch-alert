@@ -4,7 +4,7 @@
 #
 # Interest escalates: if any window NEEDS you (blocked on a question, a
 # permission prompt, or a plan), cycle only among those; otherwise cycle among
-# the windows showing activity. A window Claude merely finished in is not a
+# the windows showing activity. A window an agent merely finished in is not a
 # reason to jump, so the quiet states (idle/dormant) are never candidates --
 # they are display, not navigation.
 
