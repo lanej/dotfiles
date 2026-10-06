@@ -283,6 +283,33 @@ ui-review:
 test-ui-review:
 	@python3 $(DOTFILES)/scripts/test-viewrule.py
 
+# Opt-in services: keep these out of .PHONY, which is also the default target's
+# dependency list.
+ATUIN_SYNC_HOST ?= dev
+UV ?= uv
+atuin-sync:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-atuin-sync.py" --host "$(ATUIN_SYNC_HOST)"
+
+test-atuin-sync:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-atuin-sync.py"
+
+atuin-server:
+	@test "$(UNAME_S)" = Linux
+	@test -x "$(HOME)/.local/bin/atuin-server"
+	@mkdir -p "$(HOME)/.config/atuin" "$(HOME)/.config/systemd/user"
+	@mkdir -p "$(HOME)/.local/share/atuin-server"
+	@chmod 700 "$(HOME)/.local/share/atuin-server"
+	@sed 's|__HOME__|$(HOME)|g' "$(DOTFILES)/sh/atuin-server.toml.template" \
+		> "$(HOME)/.config/atuin/server.toml"
+	@ln -fs "$(DOTFILES)/rc/systemd/atuin-server.service" \
+		"$(HOME)/.config/systemd/user/atuin-server.service"
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now atuin-server.service
+	@systemctl --user restart atuin-server.service
+
+atuin-tunnel:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-atuin-sync.py" --host "$(ATUIN_SYNC_HOST)" --tunnel-only
+
 claude-json-prune-schedule:
 	@os=$$(uname -s); \
 	if [ "$$os" = "Darwin" ]; then \

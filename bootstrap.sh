@@ -594,9 +594,51 @@ install_direnv_from_release() {
 	curl -sfL https://direnv.net/install.sh | bash
 }
 
-install_atuin_from_release() {
-	cargo install atuin --locked --version "$1"
-}
+install_uv_from_release() (
+	uv_stage=$(mktemp) || exit 1
+	trap 'rm -f "$uv_stage"' EXIT
+	curl -fsSL "https://github.com/astral-sh/uv/releases/download/$1/uv-installer.sh" \
+		-o "$uv_stage" || exit 1
+	UV_INSTALL_DIR="$HOME/.local/bin" UV_NO_MODIFY_PATH=1 sh "$uv_stage" || exit 1
+	"$HOME/.local/bin/uv" --version || exit 1
+)
+
+install_atuin_from_release() (
+	# Use musl on Linux so older dev-box glibc versions work too.
+	# Binary releases also avoid requiring Atuin's newer Rust toolchain.
+	case "$(uname -m)" in
+		x86_64) atuin_arch=x86_64 ;;
+		arm64|aarch64) atuin_arch=aarch64 ;;
+		*) echo "Unsupported Atuin architecture" >&2; exit 1 ;;
+	esac
+	case "$(uname -s)" in
+		Darwin) atuin_target="$atuin_arch-apple-darwin" ;;
+		Linux) atuin_target="$atuin_arch-unknown-linux-musl" ;;
+		*) echo "Unsupported Atuin OS" >&2; exit 1 ;;
+	esac
+	atuin_program=${2:-atuin}
+	case "$atuin_program" in
+		atuin) atuin_bin="${CARGO_HOME:-$HOME/.cargo}/bin" ;;
+		atuin-server) atuin_bin="$HOME/.local/bin" ;;
+		*) echo "Unsupported Atuin program" >&2; exit 1 ;;
+	esac
+	atuin_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$atuin_stage"' EXIT
+	atuin_archive="$atuin_program-$atuin_target.tar.gz"
+	atuin_url="https://github.com/atuinsh/atuin/releases/download/v$1/$atuin_archive"
+	curl -fsSL "$atuin_url" -o "$atuin_stage/$atuin_archive" || exit 1
+	curl -fsSL "$atuin_url.sha256" -o "$atuin_stage/$atuin_archive.sha256" || exit 1
+	if command -v sha256sum >/dev/null; then
+		(cd "$atuin_stage" && sha256sum -c "$atuin_archive.sha256") || exit 1
+	else
+		(cd "$atuin_stage" && shasum -a 256 -c "$atuin_archive.sha256") || exit 1
+	fi
+	tar -xzf "$atuin_stage/$atuin_archive" -C "$atuin_stage" || exit 1
+	"$atuin_stage/$atuin_program-$atuin_target/$atuin_program" --version || exit 1
+	mkdir -p "$atuin_bin" || exit 1
+	install -m 755 "$atuin_stage/$atuin_program-$atuin_target/$atuin_program" "$atuin_bin/$atuin_program.new" || exit 1
+	mv -f "$atuin_bin/$atuin_program.new" "$atuin_bin/$atuin_program" || exit 1
+)
 
 install_cargo-sweep_from_release() {
 	cargo install cargo-sweep --locked --version "$1"
@@ -704,11 +746,12 @@ install_cargo_from_release() {
 install_dependencies() {
 	# install rust
 	install_package_version cargo 1.84.1
+	install_package_version uv 0.12.11
 
 	# terminal candy
 	install_package_version fzf 0.59.0
 	install_package_version starship 1.22.1
-	install_package_version atuin 18.4.0
+	install_package_version atuin 18.21.0
 	install_package_version skim 0.16.0
 	install_package_version git-delta 0.18.2
 	install_package_version glow 2.0.0
@@ -751,7 +794,17 @@ install_dependencies() {
 	post_install_setup
 }
 
+setup_atuin_sync() {
+	if [ "$os" = "macos" ]; then
+		local atuin_uv
+		atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
+		make -C "$HOME/.files" atuin-sync \
+			ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-dev}" UV="$atuin_uv" || return 1
+	fi
+}
+
 post_install_setup() {
+	setup_atuin_sync || return 1
 	echo ""
 	echo "🎉 Bootstrap installation completed!"
 	echo ""

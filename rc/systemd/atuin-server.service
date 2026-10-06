@@ -1,0 +1,11 @@
+[Unit]
+Description=Atuin history sync server
+
+[Service]
+ExecStart=%h/.local/bin/atuin-server start
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

@@ -50,6 +50,27 @@ inside tmux so hooks inherit the launching pane. See
 [tmux window status](docs/tmux.md#claude-and-codex-window-status) for the states
 and event mapping.
 
+## Shared shell history
+
+Mac bootstrap installs `uv` and configures Atuin sharing with `dev` automatically.
+Have current dotfiles installed in `~/.files` on the SSH host and authenticate
+to any bastion first. Choose another host with
+`ATUIN_SYNC_HOST=dev2 bash bootstrap.sh`.
+
+To configure sharing again without reinstalling other tools:
+
+```sh
+make atuin-sync                         # configure sharing with dev
+make atuin-sync ATUIN_SYNC_HOST=dev2     # use another SSH alias
+```
+
+The target installs matching Atuin clients and a Linux server, starts a private
+SSH tunnel, and merges existing history. Reruns reuse the account and encryption
+key. Original stores stay intact; recovery details are saved with owner-only
+permissions at `~/.local/share/atuin/self-hosted-account.json` on both machines.
+A replacement Mac can recover those details over SSH from the configured server.
+Unlock your SSH agent and authenticate to any bastion before running the target.
+
 ## Stack
 
 | Tool | Description |
