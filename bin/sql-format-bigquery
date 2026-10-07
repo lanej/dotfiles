@@ -1,0 +1,83 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["sqlfluff==4.4.0"]
+# ///
+"""Format BigQuery SQL without expanding its compact clause layout."""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from sqlfluff.core import FluffConfig, Linter
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("file", nargs="?", help="Read a file instead of stdin")
+    parser.add_argument("--stdin-filename", help="Resolve project rules for this buffer")
+    parser.add_argument("--config", help="SQL Formatter JSON settings or config path")
+    args = parser.parse_args()
+    filename = args.stdin_filename or args.file or str(Path.cwd() / "stdin.sql")
+    config = FluffConfig.from_path(filename, overrides={"dialect": "bigquery"})
+    settings = {}
+    if args.config:
+        try:
+            settings = json.loads(args.config)
+        except json.JSONDecodeError:
+            settings = json.loads(Path(args.config).read_text())
+    if not isinstance(settings, dict):
+        raise ValueError("Formatter config must be a JSON object")
+    # Explicit non-default indentation requires normalization; the usual
+    # two-space style preserves existing compact breaks.
+    if settings.get("tabWidth", 2) != 2 or settings.get("useTabs", False):
+        rules = config.get("rules")
+        if isinstance(rules, str):
+            rules = rules.split(",")
+        if rules and "all" not in rules:
+            config = FluffConfig.from_path(
+                filename,
+                overrides={
+                    "dialect": "bigquery",
+                    "rules": ",".join(dict.fromkeys([*rules, "LT02"])),
+                },
+            )
+    for setting, section, key in [
+        ("keywordCase", "capitalisation.keywords", "capitalisation_policy"),
+        ("functionCase", "capitalisation.functions", "extended_capitalisation_policy"),
+        ("dataTypeCase", "capitalisation.types", "extended_capitalisation_policy"),
+    ]:
+        if setting in settings:
+            policy = settings[setting]
+            if policy == "preserve":
+                config.set_value(["rules", section, "ignore_words_regex"], ".*")
+            else:
+                config.set_value(["rules", section, key], policy)
+    if "tabWidth" in settings:
+        config.set_value(["indentation", "tab_space_size"], settings["tabWidth"])
+    if "useTabs" in settings:
+        config.set_value(["indentation", "indent_unit"], "tab" if settings["useTabs"] else "space")
+    source = Path(args.file).read_text() if args.file else sys.stdin.read()
+    result = Linter(config=config).lint_string_wrapped(
+        source, fname=filename, fix=True, stdin_filename=filename
+    )
+    if not result.paths or not result.paths[0].files:
+        raise ValueError("SQL was skipped; formatting was not applied")
+    if not source.strip():
+        sys.stdout.write(source)
+        return
+    errors, _ = result.count_tmp_prs_errors()
+    if errors:
+        raise ValueError("SQL could not be parsed; formatting was not applied")
+    if result.paths[0].files[0].tree is None:
+        raise ValueError("SQL was skipped; formatting was not applied")
+    sys.stdout.write(result.paths[0].files[0].fix_string()[0])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        print(f"sql-format-bigquery: {error}", file=sys.stderr)
+        sys.exit(1)

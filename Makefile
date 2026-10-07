@@ -1,5 +1,6 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
+.PHONY: sql-formatters
 DOTFILES := $(shell pwd)
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
@@ -78,7 +79,13 @@ tmux:
 	@echo "tmux: TPM and plugins installed"
 tmux-status-legend:
 	@"$(DOTFILES)/bin/tmux-claude-state" legend
-vim:
+sql-formatters:
+	@mkdir -p $(HOME)/.local/bin
+	@ln -fs $(DOTFILES)/rc/sql-formatter.json $(HOME)/.sql-formatter.json
+	@ln -fs $(DOTFILES)/rc/sqlfluff $(HOME)/.sqlfluff
+	@ln -fs $(DOTFILES)/bin/sql-format-bigquery $(HOME)/.local/bin/sql-format-bigquery
+	@"$(UV)" run --script "$(DOTFILES)/bin/sql-format-bigquery" --help >/dev/null
+vim: sql-formatters
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
 	@mkdir -p $(HOME)/.config/

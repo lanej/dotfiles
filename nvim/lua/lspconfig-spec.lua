@@ -1,4 +1,5 @@
 -- Language server defaults, overrides, and activation.
+local bqls = vim.fn.expand("~/.local/bin/bqls")
 return {
 	"neovim/nvim-lspconfig",
 	dependencies = {
@@ -100,6 +101,16 @@ return {
 				},
 			},
 			ruby_lsp = {},
+			bqls = {
+				-- Prefer the patched fork; use Mason on hosts without it.
+				cmd = { vim.fn.executable(bqls) == 1 and bqls or "bqls" },
+				filetypes = { "sql.bigquery" },
+				on_init = function(client)
+					-- Keep the compact SQLFluff layout for all formatting entrypoints.
+					client.server_capabilities.documentFormattingProvider = false
+					client.server_capabilities.documentRangeFormattingProvider = false
+				end,
+			},
 			jsonls = {
 				settings = {
 					json = {

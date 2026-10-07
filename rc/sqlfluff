@@ -1,0 +1,23 @@
+[sqlfluff]
+dialect = bigquery
+templater = raw
+# Preserve compact clause breaks and deliberate indentation. LT02 and LT09
+# would expand mixed inline/multiline SELECT lists and function arguments.
+rules = LT01,LT05,CP01,CP03,CP05
+max_line_length = 120
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 2
+indented_ctes = false
+indented_joins = false
+implicit_indents = allow
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper

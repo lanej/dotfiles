@@ -805,6 +805,9 @@ setup_atuin_sync() {
 
 post_install_setup() {
 	setup_atuin_sync || return 1
+	local sql_format_uv
+	sql_format_uv=$(command -v uv) || sql_format_uv="$HOME/.local/bin/uv"
+	make -C "$HOME/.files" sql-formatters UV="$sql_format_uv" || return 1
 	echo ""
 	echo "🎉 Bootstrap installation completed!"
 	echo ""

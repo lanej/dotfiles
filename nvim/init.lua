@@ -489,57 +489,6 @@ vim.api.nvim_create_autocmd("FileType", {
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
 })
 
-local function align_pipe_table(lines)
-	local rows = {}
-	for _, line in ipairs(lines) do
-		if not line:match("^%s*|") then
-			return nil
-		end
-		local parts = vim.split(line, "|", { plain = true })
-		local cells = {}
-		for i = 2, #parts - 1 do
-			table.insert(cells, vim.trim(parts[i]))
-		end
-		table.insert(rows, cells)
-	end
-
-	local ncols = 0
-	for _, row in ipairs(rows) do
-		ncols = math.max(ncols, #row)
-	end
-	if ncols == 0 then
-		return nil
-	end
-
-	local widths = {}
-	for c = 1, ncols do
-		widths[c] = 3
-		for _, row in ipairs(rows) do
-			if row[c] then
-				widths[c] = math.max(widths[c], vim.fn.strdisplaywidth(row[c]))
-			end
-		end
-	end
-
-	local result = {}
-	for _, row in ipairs(rows) do
-		local parts = {}
-		for c = 1, ncols do
-			local cell = row[c] or ""
-			local w = widths[c]
-			if cell:match("^:?%-+:?$") then
-				local lc = cell:sub(1, 1) == ":" and ":" or "-"
-				local rc = (cell:sub(-1) == ":" and #cell > 1) and ":" or ""
-				table.insert(parts, lc .. string.rep("-", w - #lc - #rc) .. rc)
-			else
-				table.insert(parts, cell .. string.rep(" ", w - vim.fn.strdisplaywidth(cell)))
-			end
-		end
-		table.insert(result, "| " .. table.concat(parts, " | ") .. " |")
-	end
-	return result
-end
-
 vim.api.nvim_create_autocmd("BufWritePre", {
 	group = "filetype_markdown",
 	pattern = { "*.md", "*.qmd" },
@@ -571,7 +520,7 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 		for i = #ranges, 1, -1 do
 			local sr, er = ranges[i][1], ranges[i][2]
 			local lines = vim.api.nvim_buf_get_lines(0, sr, er + 1, false)
-			local aligned = align_pipe_table(lines)
+			local aligned = require("markdown-tables").align(lines)
 			if aligned then
 				vim.api.nvim_buf_set_lines(0, sr, er + 1, false, aligned)
 			end
@@ -1342,6 +1291,22 @@ require("lazy").setup({
 		config = function()
 			require("noice").setup({
 				routes = {
+					{
+						filter = {
+							event = "lsp",
+							kind = "hover",
+							cond = function(message)
+								return message.opts.markdown_table == true
+							end,
+						},
+						view = "hover",
+						opts = {
+							replace = true,
+							render = "plain",
+							format = { "{message}" },
+							win_options = { conceallevel = 0, wrap = false, linebreak = false },
+						},
+					},
 					-- filter write messages "xxxL, xxxB"
 					{ filter = { event = "msg_show", find = "%dL" }, opts = { skip = true } },
 					-- filter yank messages
@@ -1388,6 +1353,7 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("markdown-tables").setup_hover()
 		end,
 		dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify", "neovim/nvim-lspconfig" },
 	},
@@ -1430,6 +1396,7 @@ require("lazy").setup({
 					-- "csharp_ls",
 					"ts_ls",
 					"gopls",
+					"bqls",
 					-- "ruby_lsp",
 					"jsonls",
 					"pylsp",
@@ -1846,12 +1813,29 @@ require("lazy").setup({
 					typescript = { "prettierd", "prettier", stop_after_first = true },
 					typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 					sql = { "sql_formatter" },
-					["sql.bigquery"] = { "sql_formatter" },
+					["sql.bigquery"] = { "bigquery_sql", timeout_ms = 5000 },
 				},
 				log_level = vim.log.levels.DEBUG,
 				formatters = {
+					bigquery_sql = {
+						command = "sql-format-bigquery",
+						stdin = true,
+						args = function(_, ctx)
+							local settings, warning = require("bigquery").project_formatter_config(ctx.buf)
+							if warning then
+								error(warning)
+							end
+							return { "--config", vim.json.encode(settings), "--stdin-filename", "$FILENAME" }
+						end,
+					},
 					sql_formatter = {
-						args = { "--config", vim.fn.expand("~/.sql-formatter.json") },
+						args = function(_, ctx)
+							local settings, _, warning = require("bigquery").formatter_config(ctx.buf)
+							if warning then
+								error(warning)
+							end
+							return { "--config", vim.json.encode(settings) }
+						end,
 					},
 					rubocop = {
 						command = "rubocop",
