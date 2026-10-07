@@ -1323,6 +1323,13 @@ require("lazy").setup({
 					},
 				},
 				popupmenu = { enabled = false },
+				markdown = {
+					highlights = {
+						["^Table:%s+.+$"] = "@module",
+						["^(Table info)$"] = "@markup.heading",
+						["^(Storage info)$"] = "@markup.heading",
+					},
+				},
 				-- cmdline = {
 				-- 	format = {
 				-- 		conceal = false,

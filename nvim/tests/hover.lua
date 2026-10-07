@@ -8,6 +8,9 @@ local function workflow()
 	local contents = {
 		kind = "markdown",
 		value = table.concat({
+			"Table: demo-project.dataset.shipments",
+			"Destination addresses.",
+			"",
 			"| Name | Type | Mode | Description |",
 			"| --- | --- | --- | --- |",
 			"| `address` | RECORD | NULLABLE | destination |",
@@ -40,8 +43,16 @@ local function workflow()
 	)
 	local win = docs._messages.hover:win()
 	local lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false)
+	assert(lines[1] == "Table: demo-project.dataset.shipments", "Table title gained Markdown markers")
+	local title_highlight = false
+	for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(vim.api.nvim_win_get_buf(win), -1, 0, -1, { details = true })) do
+		if mark[2] == 0 and mark[3] == 0 and mark[4].hl_group == "@module" then
+			title_highlight = true
+		end
+	end
+	assert(title_highlight, "Table name is missing its semantic highlight")
 	local boundaries
-	for r = 1, 4 do
+	for r = 4, 7 do
 		local positions = {}
 		for c in lines[r]:gmatch("()|") do
 			if lines[r]:sub(c - 1, c - 1) ~= "\\" then
@@ -52,7 +63,7 @@ local function workflow()
 		boundaries = boundaries or positions
 		assert(vim.deep_equal(boundaries, positions), "Rendered table boundaries are misaligned")
 	end
-	assert(lines[4]:find("|   city", 1, true), "Nested field indentation was lost")
+	assert(lines[7]:find("|   city", 1, true), "Nested field indentation was lost")
 	assert(vim.tbl_contains(lines, "| code | untouched |"), "Fenced code was reformatted")
 	assert(vim.wo[win].conceallevel == 0 and not vim.wo[win].wrap, "Popup options break column alignment")
 	assert(vim.deep_equal(contents, original), "Hover modified the server response")

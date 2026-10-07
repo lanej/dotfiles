@@ -121,6 +121,14 @@ local function workflow()
 	-- Regex detector: inspect actual injected highlight captures at character positions.
 	local parser = vim.treesitter.get_parser(0)
 	parser:parse(true)
+	local table_highlight = false
+	for _, capture in ipairs(vim.treesitter.get_captures_at_pos(0, 7, 5)) do
+		table_highlight = table_highlight or capture.capture == "module"
+	end
+	assert(table_highlight, "Table reference is missing its semantic highlight")
+	for _, capture in ipairs(vim.treesitter.get_captures_at_pos(0, 6, 7)) do
+		assert(capture.capture ~= "module", "Column reference was highlighted as a table")
+	end
 	local regex = assert(parser:children().regex, "Pattern was not injected as regex")
 	assert(#regex:trees() == 2, "Input/replacement strings must not become regex trees")
 	local groups = {}
