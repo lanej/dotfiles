@@ -167,9 +167,10 @@ can be canceled. Locks are removed when unused. Upstream HTTP/1.1 connections
 are pooled, with no cap on active connections. HTTP/2 is disabled so a silent
 stream's socket deadline cannot terminate other sessions.
 
-The default upstream header timeout and stream silence timeout are **15 minutes**,
-up from 5 minutes. The silence deadline resets on every upstream read; there is
-no total response duration limit. Client writes also have a 15-minute deadline.
+The default upstream header timeout and stream silence timeout are **5 minutes**,
+matching Codex's default SSE idle timeout. The silence deadline resets on every
+upstream read; there is no total response duration limit. Client writes also
+have a 5-minute deadline.
 Change these in `config.json`, or override them on the command line:
 
 ```sh
