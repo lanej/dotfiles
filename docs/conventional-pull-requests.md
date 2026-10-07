@@ -13,18 +13,14 @@ Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0
 
 <what changes and the resulting behavior, followed by why it matters>
 
-## Result
-
 <screenshot or concrete example, when useful>
-
-## Additional context
 
 <decisions, constraints, or review needs, when relevant>
 ```
 
 The title identifies the kind of change and its intended outcome. Every body starts with prose: first explain what changes and the resulting behavior, then why the change matters. Use one or two short paragraphs without an opening heading.
 
-Use the sections in the order shown. `## Result` and `## Additional context` are optional: omit each heading and its content when unnecessary. Replace all drafting prompts; do not publish placeholders or empty sections.
+The template describes the order of information, not literal section names. Add evidence and supporting context only when useful. Short descriptions need no headings. For a longer description, use a heading only when it helps navigation and names the actual subject, such as "Snapshot query timings" or "Cursor migration". Avoid generic headings such as "What and why", "Result", or "Additional context"; renaming them to "Summary" or "Context" does not help. Required repository fields take precedence. Replace all drafting prompts; do not publish placeholders or empty sections.
 
 For example:
 
@@ -46,7 +42,7 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 4. The subject MUST describe the intended outcome. It SHOULD use the imperative mood, start with a lowercase letter, and omit a trailing period. The complete title SHOULD be at most 72 characters.
 5. A breaking change MUST place `!` immediately before the colon. Its description MUST explain the incompatibility and what affected users need to do.
 6. The description MUST begin with prose explaining what changes, followed by why it matters, without an opening heading. It SHOULD use a concrete before/after example when that makes the outcome clearer.
-7. Additional context SHOULD supply information needed for review that the opening prose, diff, and automated checks do not already provide. After the opening prose, the body MAY include `## Result`, then `## Additional context` in that order, omitting either when unnecessary.
+7. Supporting context SHOULD supply information needed for review that the opening prose, diff, and automated checks do not already provide. The body SHOULD omit headings for short descriptions. A longer body MAY use headings that name the actual subject when they help navigation; generic category headings SHOULD NOT be used unless required by the repository.
 8. Material compatibility constraints, rollout requirements, and known verification gaps MUST be disclosed when they affect acceptance or use. Claims about behavior and verification MUST be supported by actual evidence.
 9. A screenshot or other illustration SHOULD be included when it helps assess the result. It MUST show the actual current result, have descriptive alt text, and use a durable URL that renders for the intended reviewers.
 10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on GitHub and be linked to the relevant version. GitHub objects MUST be linked with full URLs or appropriate autolinking references. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
@@ -74,25 +70,25 @@ Use the same meanings as the project's Conventional Commit types.
 
 Choose the type for the resulting change, rather than its supporting edits. A feature with tests and documentation is still `feat`. Unrelated outcomes should usually be separate PRs.
 
-## Body sections
+## Body content
 
-Begin with prose, then use the exact level-two headings below for any optional sections. Keep each included section concise.
+Begin with prose, then add useful evidence and supporting context. These are content roles, not headings to copy into a PR.
 
-| Section | Content |
+| Role | Content |
 | --- | --- |
-| Opening prose (no heading) | Required: what changes and the resulting behavior, followed by why it matters |
-| Result | Optional: a current screenshot, example output, or before/after example that helps assess the implemented result |
-| Additional context | Optional: consequential decisions, compatibility or rollout constraints, manual findings, verification gaps, or questions requiring reviewer judgment |
+| Opening prose | Required: what changes and the resulting behavior, followed by why it matters |
+| Evidence | Optional: a current screenshot, example output, or before/after example that helps assess the implemented result |
+| Supporting context | Optional: consequential decisions, compatibility or rollout constraints, manual findings, verification gaps, or questions requiring reviewer judgment |
 
-Result must show the artifact, example, or decision-relevant measurement table itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose. Additional context concerns this particular change; do not fill it with an explanation of the template.
+Show the artifact, example, or decision-relevant measurement table itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose. Supporting context concerns this particular change; do not fill it with an explanation of the template.
 
-Link relevant requirements in the section they support. In Additional context, use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every section.
+Link relevant requirements next to the point they support. Use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every content role.
 
 ## Readability and discoverability
 
 Use prose for connected reasoning. Use bullets when multiple independent outcomes, constraints, tradeoffs, or decisions are easier to scan separately. Each item should make one assessable point, with parallel phrasing and enough explanation to understand its effect. Avoid sentence-by-sentence bullets, file inventories, lists repeating the opening, and arbitrary item counts. Use numbered lists when order matters, such as migration steps.
 
-Use a compact table when readers need to compare several items across shared attributes, such as before/after performance and cost, alternatives, compatibility, or rollout status. Put measurement and example results under Result; put tradeoffs and constraints under Additional context. Label units and workload scope, identify the evidence source, and keep caveats nearby. Distinguish per-item from combined measurements, and serving queries from refresh work. Separate unlike measurement layers or clearly label them; do not combine overlapping timings, invent missing values, or infer unsupported speedups. Explicitly mark missing values as not measured or not reported. Keep long reasoning outside cells. Tables should contain decision-relevant manual measurements or external evidence, not routine automated check reports.
+Use a compact table when readers need to compare several items across shared attributes, such as before/after performance and cost, alternatives, compatibility, or rollout status. Place it next to the prose it supports. Label units and workload scope, identify the evidence source, and keep caveats nearby. Distinguish per-item from combined measurements, and serving queries from refresh work. Separate unlike measurement layers or clearly label them; do not combine overlapping timings, invent missing values, or infer unsupported speedups. Explicitly mark missing values as not measured or not reported. Keep long reasoning outside cells. Tables should contain decision-relevant manual measurements or external evidence, not routine automated check reports.
 
 Use Before/After columns only when workloads and measurement layers match. Otherwise use rows identified by workload and layer, or separate tables. API query timing is not full dashboard load unless browser rendering was measured. Write "Not measured" or "Not reported" for missing values rather than unexplained dashes.
 
@@ -115,8 +111,6 @@ feat(exports): allow downloading filtered shipments
 
 Export the shipments matching the current filters, so operations can reconcile a selected group without downloading the entire account history.
 
-## Additional context
-
 The export uses the filters at the time it is requested; later filter changes do not alter an export already in progress.
 ```
 
@@ -127,8 +121,6 @@ feat(api)!: require cursor pagination for shipment lists
 
 Replace offset pagination with cursors so shipment lists remain consistent as new shipments arrive.
 
-## Additional context
-
 **Compatibility:** Clients must replace the page parameter with the next_cursor returned by the previous response. Requests using page are rejected.
 ```
 
@@ -138,8 +130,6 @@ Replace offset pagination with cursors so shipment lists remain consistent as ne
 fix(printing): retain the selected printer after reconnecting
 
 Restore the selected printer after a connection interruption, so the next label goes to the same device instead of the system default.
-
-## Additional context
 
 **Review:** Reconnection was checked with the local simulator. Physical printer reconnection remains unverified and needs a device check before release.
 ```

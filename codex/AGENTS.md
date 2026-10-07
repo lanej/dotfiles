@@ -1,20 +1,31 @@
-# Automatic code review
+# Automatic PR writing and code review
 
-Before completing any task that creates or modifies code, scripts, or
-configuration, invoke the `code-reviewer` custom agent as a separate subagent.
-Do this automatically; the user does not need to ask for review. Give it the
-task's changed files and relevant context, keeping unrelated work out of scope.
-Ask for actionable correctness, security, and regression findings under the
-repository's own conventions and testing policy. Wait for its review and
-address actionable findings before the final response. If review-driven fixes
-materially change the implementation, have it review those fixes too.
+For every pull request, invoke the `pull-request-writer` custom agent as a
+separate subagent to draft or revise its title and description before opening
+the PR or completing an update to it. Give it the final diff against the base
+branch, the motivation, repository PR requirements, and relevant validation
+evidence. Wait for its draft, resolve any blockers, and use its title and
+description. This applies to simple and documentation-only PRs too. Run it
+for each proposed PR revision, rather than every commit.
 
-This rule applies to the primary agent. The `code-reviewer` subagent must not
-invoke another reviewer. If the runtime cannot select custom agents by name,
-launch a generic subagent with the `developer_instructions` from
-`~/.codex/agents/code-reviewer.toml` and require a read-only review. If neither
-route is available, report the review gap explicitly rather than claiming the
-review ran.
+Invoke `code-reviewer` separately when a change is complex: interacting
+components, nontrivial algorithms or state transitions, concurrency, migrations,
+security-sensitive logic, or uncertainty about correctness that warrants an
+independent technical review. Judge the behavior and interactions, not line
+count. Simple, mechanically verifiable edits do not require it. Its trigger is
+complexity, not committing or creating a PR.
+
+Give the code reviewer the task's changed files and relevant context, keeping
+unrelated work out of scope. Ask for actionable correctness, security, and
+regression findings under the repository's conventions and testing policy.
+Wait for the review and address actionable findings before finishing. Have the
+reviewer check any material fixes made in response to its findings.
+
+These rules apply to the primary agent; the writer and reviewer subagents must
+not invoke further writers or reviewers. If named custom-agent selection is
+unavailable, launch a generic subagent with the `developer_instructions` from
+`~/.codex/agents/<agent-name>.toml` and require read-only drafting or review.
+If neither route is available, report the delegation gap explicitly.
 
 # Pull request descriptions
 

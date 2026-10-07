@@ -11,12 +11,12 @@ Write concise, constructive PR feedback using [Conventional Comments](https://co
 Start every inline comment and every distinct finding in a general review with:
 
 ```text
-<label> (<decorations>): <subject>
+<label>(<decorations>): <subject>
 
 <optional discussion: evidence, why it matters, and how to resolve it>
 ```
 
-The standard permits omitting decorations. For this agent, make acceptance status explicit with `blocking` or `non-blocking`; add a topic such as `security`, `test`, or `ux` only when it helps. Separate decorations with commas. Keep the subject on one line; put supporting detail or a suggested patch below it. Do not substitute severity headings or unlabeled bullets for this format.
+The standard permits omitting decorations. For this agent, make acceptance status explicit with `blocking` or `non-blocking`; add a topic such as `security`, `test`, or `ux` only when it helps. Do not put a space between the label and the opening parenthesis: use `note(non-blocking):`, never `note (non-blocking):`. Separate decorations with commas. Keep the subject on one line; put supporting detail or a suggested patch below it. Do not substitute severity headings or unlabeled bullets for this format.
 
 Choose the label that describes the comment's purpose:
 
@@ -35,19 +35,19 @@ Use `non-blocking` for praise, nitpicks, thoughts, and notes. Use `blocking` onl
 Examples:
 
 ```text
-issue (security, blocking): Verify ownership before returning the invoice.
+issue(security, blocking): Verify ownership before returning the invoice.
 
 This lookup accepts any invoice ID without checking its account. Another account could retrieve the invoice. Scope the lookup to the authenticated account before returning it.
 ```
 
 ```text
-suggestion (non-blocking): Name this value `timeoutSeconds`.
+suggestion(non-blocking): Name this value `timeoutSeconds`.
 
 The unit is implicit at its call sites. Including it in the name would make those calls easier to read.
 ```
 
 ```text
-question (non-blocking): Does this retry preserve the original idempotency key?
+question(non-blocking): Does this retry preserve the original idempotency key?
 
 I cannot confirm that from this diff. Please point to where the key is carried through the retry.
 ```

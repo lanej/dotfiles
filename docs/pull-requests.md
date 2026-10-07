@@ -26,7 +26,7 @@ Avoid file inventories, commit-by-commit narratives, repeated summaries, empty h
 
 Use bullets for multiple independent outcomes, constraints, or review decisions when that makes them easier to scan; use prose for connected reasoning or a single point. Keep items parallel and concise. Avoid file inventories and lists that repeat the opening. Number steps only when their order matters.
 
-Use tables when several items need comparison across shared attributes, such as before/after performance and cost, alternatives, or compatibility. Keep columns compact and label units, workload scope, and evidence source. Preserve caveats and distinguish per-item from combined measurements; do not present unlike layers or refresh costs as equivalent query measurements, invent missing values, or calculate unsupported speedups. Put numerical results under Result and tradeoffs under Additional context. Keep longer reasoning outside cells; routine automated check results still belong to the checks.
+Use tables when several items need comparison across shared attributes, such as before/after performance and cost, alternatives, or compatibility. Place each table next to the prose it supports. Keep columns compact and label units, workload scope, and evidence source. Preserve caveats and distinguish per-item from combined measurements; do not present unlike layers or refresh costs as equivalent query measurements, invent missing values, or calculate unsupported speedups. Keep longer reasoning outside cells; routine automated check results still belong to the checks.
 
 Reserve Before/After columns for matching workloads and layers; otherwise identify each measured workload and layer by row or use separate tables. Label API timings accurately when browser rendering was not measured. Mark missing values as "Not measured" or "Not reported" rather than unexplained dashes.
 
@@ -44,25 +44,21 @@ When included, show the actual current result, use descriptive alt text and a du
 
 ## Description template
 
-Start with prose answering what changes, then why, without an opening heading. Use the optional headings below in this order; omit **Result** and **Additional context** when they do not add useful evidence or information. Remove drafting prompts and empty sections.
+Start with prose answering what changes, then why, without an opening heading. The template describes the order of information, not section names. Short descriptions need no headings. In a longer description, add a heading only when it helps navigation and names the actual subject, such as "Snapshot query timings" or "Cursor migration". Avoid generic headings such as "What and why", "Result", or "Additional context"; renaming them to "Summary" or "Context" does not help. Remove drafting prompts and unused content.
 
 ```markdown
 Explain what changes and the resulting behavior, followed by why it matters.
 
-## Result
-
 Show a current screenshot or concrete example when it helps assess the result.
-
-## Additional context
 
 Add decisions, constraints, manual findings, or review questions the diff and checks do not already supply.
 ```
 
 Required repository templates take precedence over this default layout; map the same content into their fields without duplicating it.
 
-Result shows the screenshot, output, or example itself. A summary of changed rules belongs in the opening prose. Additional context concerns this particular change; do not fill it with an explanation of the template.
+Show the screenshot, output, or example itself. A summary of changed rules belongs in the opening prose. Supporting context concerns this particular change; do not fill it with an explanation of the template. Add this content directly as prose, a list, an image, or a table when useful.
 
-This is enough for a routine UI fix; a screenshot can be added under **Result**:
+This is enough for a routine UI fix; a screenshot can follow the paragraph when useful:
 
 > Keep the selected shipment and destination filter when returning from details, so reviewers can continue through the same set of shipments. Previously, returning to the list restored the selection but reset the filter.
 

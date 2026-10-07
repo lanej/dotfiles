@@ -36,21 +36,17 @@ If the reason for the change is unclear, report it to the caller as a blocker. A
 
 ## Body template
 
-Begin with prose answering what changes, then why, without an opening heading. Use the optional headings below in this order; omit `## Result` and `## Additional context` when unnecessary.
+Begin with prose answering what changes, then why, without an opening heading. The template below describes the order of information, not section names. Short descriptions should have no headings. In a longer description, add a heading only when it helps navigation and names the actual subject, such as "Snapshot query timings" or "Cursor migration". Do not use generic headings such as "What and why", "Result", or "Additional context" unless a required repository template mandates them; renaming them to "Summary" or "Context" does not help.
 
 ```markdown
 <what changes and the resulting behavior, followed by why it matters>
 
-## Result
-
 <current screenshot or concrete example that helps assess the result>
-
-## Additional context
 
 <decisions, constraints, manual findings, or review needs absent from the diff>
 ```
 
-Keep the opening prose to one or two short paragraphs. Optional sections should add information rather than repeat it. Result must contain the screenshot, output, concrete example, or decision-relevant measurement table itself; a prose summary of changes or an inventory of examples in a document is not a result to show. Explain changed rules in the opening prose. Additional context contains facts about this particular change, not an explanation of how the PR template works. Remove placeholders and unused headings; do not write "None" or "N/A" to fill unused sections. A table may explicitly mark a value as not measured or not reported. Required repository templates take precedence: map this content into their fields without duplicating it.
+Keep the opening prose to one or two short paragraphs. Add optional evidence and context directly as prose, a list, an image, or a table when useful. Show the screenshot, output, concrete example, or decision-relevant measurement table itself; a prose summary of changes or an inventory of examples in a document is not a result to show. Explain changed rules in the opening prose. Supporting context contains facts about this particular change, not an explanation of how the PR template works. Remove placeholders and unused content; do not write "None" or "N/A" to fill the template. A table may explicitly mark a value as not measured or not reported. Required repository templates take precedence: map this content into their fields without duplicating it.
 
 ## References must work for the reader
 
@@ -67,7 +63,7 @@ The reader is a teammate on another machine. Everything you point to must open f
 - Use bullets for multiple independently meaningful outcomes, constraints, tradeoffs, or reviewer decisions when a list is easier to scan than prose. Keep each item concise and parallel, with enough explanation to assess it.
 - Use a compact table when readers need to compare several items across the same attributes: before/after measurements, alternatives and tradeoffs, compatibility, or rollout status. Give columns clear labels and units; retain measurement scope, time window, evidence source, and caveats. Do not imply unlike workloads or measurement layers are directly comparable, combine overlapping timings, invent missing values, or calculate unsupported speedups. State when a value was not measured or reported.
 - Use Before/After columns only for measurements with matching workloads and layers. Otherwise identify each workload and layer in its own row or separate table. Label API query timing as API query timing, not full dashboard load when rendering was not measured. For missing values, write "Not measured" or "Not reported" as appropriate rather than an unexplained dash.
-- Keep tables focused on decision-relevant evidence. Put numerical or example results under Result and tradeoff or compatibility comparisons under Additional context. Use prose or bullets when entries do not share useful comparison columns, and keep long explanations outside the cells. Manual measurements and external evidence may belong in a table; routine automated check results still do not.
+- Keep tables focused on decision-relevant evidence and place them next to the prose they support. Use prose or bullets when entries do not share useful comparison columns, and keep long explanations outside the cells. Manual measurements and external evidence may belong in a table; routine automated check results still do not.
 - Table cells follow the same prose and linking rules: do not insert `<br>` or other manual breaks for appearance, and link cited commits and objects inside cells. Split overloaded columns or move details into adjacent prose. Do not call workloads "the same" unless the evidence establishes matching scope. A table does not replace the opening explanation of why the change matters.
 - Keep a connected explanation or a single point in prose. Do not turn every sentence into a bullet, list edited files, repeat the opening in a list, or add bullets merely to fill a template. Use numbered lists only when order matters, such as required migration steps.
 - Write each paragraph and list item on one source line. Do not wrap at a character count, add manual line breaks for appearance, or wrap URLs. Use blank lines between paragraphs and before lists; preserve meaningful line breaks inside code and actual example output.
