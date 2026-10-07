@@ -6,14 +6,25 @@ require("nvim-treesitter").setup()
 vim.api.nvim_create_autocmd("User", {
 	pattern = "TSUpdate",
 	callback = function()
-		require("nvim-treesitter.parsers").mdx = {
+		local parsers = require("nvim-treesitter.parsers")
+		parsers.mdx = {
 			install_info = {
 				url = "https://github.com/srazzak/tree-sitter-mdx",
 				branch = "main",
 			},
 		}
+		parsers.sql_bigquery = {
+			install_info = {
+				url = "https://github.com/lanej/tree-sitter-sql-bigquery",
+				branch = "fix/query-time-travel-and-if",
+				revision = "db6ed431534e3f60189481a533c7662328866ad8",
+				queries = "queries",
+			},
+		}
 	end,
 })
+
+require("bigquery").setup()
 
 -- Install parsers that aren't already present
 require("nvim-treesitter.install").install(
@@ -55,7 +66,8 @@ vim.api.nvim_create_autocmd("FileType", {
 			return
 		end
 		pcall(vim.treesitter.start, args.buf, lang)
-		if pcall(require, "nvim-treesitter.indent") then
+		-- The BigQuery grammar ships highlights only; retain the SQL ftplugin's indent.
+		if lang ~= "sql_bigquery" and pcall(require, "nvim-treesitter.indent") then
 			vim.bo.indentexpr = "v:lua.require('nvim-treesitter').indentexpr()"
 		end
 	end,

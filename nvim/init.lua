@@ -1846,6 +1846,7 @@ require("lazy").setup({
 					typescript = { "prettierd", "prettier", stop_after_first = true },
 					typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 					sql = { "sql_formatter" },
+					["sql.bigquery"] = { "sql_formatter" },
 				},
 				log_level = vim.log.levels.DEBUG,
 				formatters = {
