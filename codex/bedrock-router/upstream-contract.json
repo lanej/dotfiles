@@ -1,7 +1,0 @@
-{
-  "repository": "https://github.com/openai/openai-openapi",
-  "revision": "237b87781da24369f448655d1e3961bfdba43050",
-  "specification": "https://raw.githubusercontent.com/openai/openai-openapi/237b87781da24369f448655d1e3961bfdba43050/openapi.yaml",
-  "openapi": "3.1.0",
-  "purpose": "Compatibility reference only; no runtime validation or server generation"
-}

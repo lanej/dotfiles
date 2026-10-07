@@ -67,9 +67,6 @@ CLAUDE.local.md
 codex/AGENTS.local.md
 codex/bedrock.config.toml
 
-# Compiled binary left behind by `go build` in codex/bedrock-router/
-codex/bedrock-router/bedrock-router
-
 # Local OpenCode install (dependency tree, not source)
 .opencode/
 
