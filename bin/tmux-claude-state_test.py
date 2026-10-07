@@ -226,7 +226,7 @@ if "app-name" in items and "thread-id" in items:
         time.sleep(0.02)
     border = private_tmux.call("display-message", "-p", "-t", codex_pane,
                               "#{E:pane-border-format}")
-    assert " ✅ · project" in border
+    assert " ○ · project" in border
     assert "codex" not in border and codex_session[:29] not in border
     # Every hook now receives the shared daemon's stale originating pane.
     monkeypatch.setenv("TMUX_PANE", pane)
@@ -246,6 +246,8 @@ if "app-name" in items and "thread-id" in items:
     emit_codex("SessionStart", source="startup")
     emit_codex("UserPromptSubmit")
     assert option("@claude-state", codex_window) == "thinking"
+    assert f" {state.STATES['thinking'][4]} · project" in private_tmux.call(
+        "display-message", "-p", "-t", codex_pane, "#{E:pane-border-format}")
     assert option("@claude-state", window) != "thinking"
     emit_codex("PreToolUse", tool_name="Bash", tool_use_id="command-1")
     assert option("@claude-class", codex_window) == "activity"
@@ -330,7 +332,7 @@ if "app-name" in items and "thread-id" in items:
              tool_name="exec_command", tool_use_id="approval-title-refresh"))))
     assert hook.main() == 0
     assert option("@claude-state", codex_window) == "approval"
-    assert " ⏸️ · project" in private_tmux.call(
+    assert f" {state.STATES['approval'][4]} · project" in private_tmux.call(
         "display-message", "-p", "-t", codex_pane, "#{E:pane-border-format}")
     emit_codex("PostToolUse", tool_name="exec_command",
                tool_use_id="approval-title-refresh")
