@@ -7,9 +7,11 @@ from rc/tmux.conf tells them apart.
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -164,6 +166,10 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     codex_home = home / ".codex"
     codex_home.mkdir()
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    config_file = codex_home / "config.toml"
+    config_file.write_text('model = "kept"\n[tui]\nterminal_title = [\n'
+                           '  "project", # prior preference\n]\n'
+                           'status_line = ["model-name"]\n')
     hook_file = codex_home / "hooks.json"
     hook_file.write_text(json.dumps({"hooks": {"PreToolUse": [{"hooks": [{
         "type": "command", "command": 'printf kept >> "$CODEX_HOME/custom-hook"',
@@ -171,22 +177,59 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     subprocess.run(["make", "codex-tmux"], cwd=ROOT, check=True,
                    capture_output=True, text=True, timeout=10)
     installed = hook_file.read_text()
+    installed_config = config_file.read_text()
     subprocess.run(["make", "codex-tmux"], cwd=ROOT, check=True,
                    capture_output=True, text=True, timeout=10)
     assert hook_file.read_text() == installed
+    assert config_file.read_text() == installed_config
+    assert 'model = "kept"' in installed_config
+    assert 'status_line = ["model-name"]' in installed_config
     codex_hooks = json.loads(installed)["hooks"]
     codex_window = private_tmux.call("new-window", "-d", "-t", "main:", "-n", "codex",
                                      "-P", "-F", "#{window_id}", "sleep 300")
     codex_pane = private_tmux.call("display-message", "-p", "-t", codex_window, "#{pane_id}")
     private_tmux.call("set-option", "-w", "-t", codex_window, "automatic-rename", "off")
-    monkeypatch.setenv("TMUX_PANE", codex_pane)
+    codex_session = "01a11437-3d7c-7053-b6d2-da78e9281cd6"
+    fake_bin = home / "bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    fake_codex.write_text(f"""#!{sys.executable}
+import json, os, sys, tomllib
+from pathlib import Path
+args = sys.argv[1:]
+Path(os.environ["CODEX_TEST_ARGS"]).write_text(json.dumps(args))
+config = tomllib.loads((Path(os.environ["CODEX_HOME"]) / "config.toml").read_text())
+items = config["tui"]["terminal_title"]
+if "app-name" in items and "thread-id" in items:
+    title = "codex | " + os.environ["CODEX_TEST_SESSION"][:29] + "... | Ready | project"
+    with open(os.environ["CODEX_TEST_TTY"], "wb", buffering=0) as tty:
+        tty.write(("\\033]0;" + title + "\\007").encode())
+""")
+    fake_codex.chmod(0o755)
+    cli_args = home / "codex-args.json"
+    launch_env = dict(os.environ, PATH=f"{fake_bin}:{os.environ['PATH']}",
+                      TMUX_PANE=codex_pane, CODEX_TEST_ARGS=str(cli_args),
+                      CODEX_TEST_SESSION=codex_session,
+                      CODEX_TEST_TTY=option("pane_tty", codex_pane))
+    # Exercise the installed shell entrypoint. The fake CLI models only native
+    # title publication; it makes no model request and starts no daemon.
+    subprocess.run(["bash", "-c", '. "$HOME/.files/sh/alias"; codex resume --last'],
+                   env=launch_env, check=True, capture_output=True, text=True)
+    assert "--no-daemon" not in json.loads(cli_args.read_text())
+    assert "-c" not in json.loads(cli_args.read_text())
+    deadline = time.monotonic() + 5
+    while codex_session[:29] not in option("pane_title", codex_pane):
+        assert time.monotonic() < deadline, "the client did not publish its thread title"
+        time.sleep(0.02)
+    # Every hook now receives the shared daemon's stale originating pane.
+    monkeypatch.setenv("TMUX_PANE", pane)
 
     def codex_tab():
         return private_tmux.call("display-message", "-p", "-t", codex_window,
                                  "#{E:window-status-format}")
 
     def emit_codex(event_name, **fields):
-        event = dict(hook_event_name=event_name, session_id="codex-conversation", **fields)
+        event = dict(hook_event_name=event_name, session_id=codex_session, **fields)
         for group in codex_hooks.get(event_name, []):
             for handler in group["hooks"]:
                 subprocess.run(["sh", "-c", handler["command"]], input=json.dumps(event),
@@ -196,6 +239,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     emit_codex("SessionStart", source="startup")
     emit_codex("UserPromptSubmit")
     assert option("@claude-state", codex_window) == "thinking"
+    assert option("@claude-state", window) != "thinking"
     emit_codex("PreToolUse", tool_name="Bash", tool_use_id="command-1")
     assert option("@claude-class", codex_window) == "activity"
     assert state.STATES["tool"][1] in codex_tab()
@@ -236,6 +280,101 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     sweep.main()
     assert option("@claude-state", codex_window) == "dormant"
     assert "·" in codex_tab()
+    emit_codex("SessionEnd")
+    assert option("@claude-state", codex_window) == ""
+
+    # Reusing the pane for a different thread must reject delayed old events,
+    # even when the last recorded owner still belongs to the previous thread.
+    codex_session = "01a1143c-c598-79f2-ae9e-717ed97a274b"
+    launch_env["CODEX_TEST_SESSION"] = codex_session
+    subprocess.run(["bash", "-c", '. "$HOME/.files/sh/alias"; codex'],
+                   env=launch_env, check=True, capture_output=True, text=True)
+    deadline = time.monotonic() + 5
+    while codex_session[:29] not in option("pane_title", codex_pane):
+        assert time.monotonic() < deadline
+        time.sleep(0.02)
+    emit_codex("UserPromptSubmit")
+    assert option("@claude-state", codex_window) == "thinking"
+    emit_codex("Stop", agent_id="subagent", agent_type="worker")
+    assert option("@claude-state", codex_window) == "thinking"
+    old_session = codex_session
+    codex_session = "01a11437-3d7c-7053-b6d2-da78e9281cd6"
+    emit_codex("SessionEnd")
+    assert option("@claude-state", codex_window) == "thinking"
+    codex_session = old_session
+
+    # A same-thread title refresh must preserve a valid approval event.
+    hook = load_script("codex-tmux-state-hook")
+    real_tmux = hook.state.tmux
+    refreshing = True
+
+    def refresh_after_snapshot(*args):
+        nonlocal refreshing
+        result = real_tmux(*args)
+        if refreshing and args[:2] == ("list-panes", "-a"):
+            refreshing = False
+            private_tmux.call("select-pane", "-t", codex_pane, "-T",
+                              f"! codex | {codex_session[:29]}... | Waiting | project")
+        return result
+
+    monkeypatch.setattr(hook.state, "tmux", refresh_after_snapshot)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(
+        dict(hook_event_name="PermissionRequest", session_id=codex_session,
+             tool_name="exec_command", tool_use_id="approval-title-refresh"))))
+    assert hook.main() == 0
+    assert option("@claude-state", codex_window) == "approval"
+    emit_codex("PostToolUse", tool_name="exec_command",
+               tool_use_id="approval-title-refresh")
+    assert option("@claude-state", codex_window) == "thinking"
+
+    # The same thread can start a new turn without changing its visible state.
+    # An old Stop must not mistake that new thinking state for its own snapshot.
+    submitting = True
+
+    def submit_after_snapshot(*args):
+        nonlocal submitting
+        result = real_tmux(*args)
+        if submitting and args[:2] == ("list-panes", "-a"):
+            submitting = False
+            emit_codex("UserPromptSubmit")
+        return result
+
+    monkeypatch.setattr(hook.state, "tmux", submit_after_snapshot)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(
+        dict(hook_event_name="Stop", session_id=codex_session))))
+    assert hook.main() == 0
+    assert option("@claude-state", codex_window) == "thinking"
+
+    # Interleave a client thread switch after an old hook reads pane identity.
+    # The real tmux server must reject that old hook's state/ownership mutation.
+    switching = True
+    ending_session = codex_session
+
+    def switch_after_snapshot(*args):
+        nonlocal switching, codex_session
+        result = real_tmux(*args)
+        if switching and args[:2] == ("list-panes", "-a"):
+            switching = False
+            codex_session = "01a1143f-eae6-7d10-9267-c87553d379e1"
+            private_tmux.call("select-pane", "-t", codex_pane, "-T",
+                              f"codex | {codex_session[:29]}... | Ready | project")
+            emit_codex("UserPromptSubmit")
+        return result
+
+    monkeypatch.setattr(hook.state, "tmux", switch_after_snapshot)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(
+        dict(hook_event_name="SessionEnd", session_id=ending_session))))
+    assert hook.main() == 0
+    assert option("@claude-state", codex_window) == "thinking"
+    assert option("@codex-session-id", codex_pane) == codex_session
+
+    # A replacement application must not inherit native ownership as a
+    # supposedly legacy binding for another delayed event.
+    private_tmux.call("select-pane", "-t", codex_pane, "-T", "claude")
+    emit_codex("SessionEnd")
+    assert option("@claude-state", codex_window) == "thinking"
+    private_tmux.call("select-pane", "-t", codex_pane, "-T",
+                      f"codex | {codex_session[:29]}... | Ready | project")
     emit_codex("SessionEnd")
     assert option("@claude-state", codex_window) == ""
     private_tmux.call("select-window", "-t", codex_window)

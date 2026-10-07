@@ -4,14 +4,78 @@ import copy
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
+import tomllib
+
+
+def install_title(root):
+    """Set the native pane identity without changing unrelated configuration."""
+    path = root / "config.toml"
+    if path.is_symlink():
+        path = path.resolve(strict=True)
+    original = path.read_text() if path.exists() else ""
+    desired = ["app-name", "thread-id", "status", "project"]
+    config = tomllib.loads(original)
+    if config.get("tui", {}).get("terminal_title") == desired:
+        return
+    setting = "terminal_title = " + json.dumps(desired) + "\n"
+    table = re.search(r"(?m)^\[tui\][ \t]*(?:#.*)?$", original)
+    if table:
+        if not original.endswith("\n"):
+            original += "\n"
+        start = original.find("\n", table.end())
+        start = len(original) if start == -1 else start + 1
+        following = re.search(r"(?m)^\[", original[start:])
+        end = start + following.start() if following else len(original)
+        body = original[start:end]
+        key = re.search(r'(?m)^[ \t]*(?:terminal_title|"terminal_title"|\'terminal_title\')[ \t]*=', body)
+        if key:
+            # Parse successive lines to find the whole value, including a
+            # multiline array, while leaving all other keys and comments intact.
+            value_end = key.start()
+            for line in body[key.start():].splitlines(keepends=True):
+                value_end += len(line)
+                try:
+                    parsed = tomllib.loads(body[key.start():value_end])
+                except tomllib.TOMLDecodeError:
+                    continue
+                if "terminal_title" in parsed:
+                    break
+            body = body[:key.start()] + setting + body[value_end:]
+        else:
+            body = setting + body
+        updated = original[:start] + body + original[end:]
+    else:
+        updated = original.rstrip() + "\n\n[tui]\n" + setting
+    # Unusual TOML table spellings must fail without damaging the original.
+    if tomllib.loads(updated).get("tui", {}).get("terminal_title") != desired:
+        raise ValueError("could not configure the Codex terminal title")
+    write_atomic(path, updated)
+
+
+def write_atomic(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=".tmux-hooks-", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(text)
+        temporary.chmod(mode)
+        temporary.replace(path)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
 
 
 def main():
     source = Path(__file__).resolve().parent.parent / "codex/tmux-hooks.json"
     desired = json.loads(source.read_text())
     root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    install_title(root)
     path = root / "hooks.json"
     # Preserve an existing dotfiles symlink as well as its unrelated handlers.
     if path.is_symlink():
@@ -35,20 +99,7 @@ def main():
 
     if merged == existing:
         return 0
-    path.parent.mkdir(parents=True, exist_ok=True)
-    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(
-                mode="w", dir=path.parent, prefix=".tmux-hooks-", delete=False) as output:
-            temporary = Path(output.name)
-            json.dump(merged, output, indent=2)
-            output.write("\n")
-        temporary.chmod(mode)
-        temporary.replace(path)
-    finally:
-        if temporary and temporary.exists():
-            temporary.unlink()
+    write_atomic(path, json.dumps(merged, indent=2) + "\n")
     print("Codex tmux status hooks installed. Review and trust new hooks with /hooks.")
     return 0
 

@@ -480,13 +480,9 @@ cbd() {
 }
 
 codex() {
-	# Keep lifecycle hooks in the launching terminal's environment. A shared
-	# app-server can have been started with another window's TMUX_PANE.
-	if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ]; then
-		command codex --no-daemon "$@"
-	else
-		command codex "$@"
-	fi
+	# Keep ordinary launches eligible for the shared daemon. Pane identity is
+	# configured by make codex-tmux, since -c overrides force embedded mode.
+	command codex "$@"
 }
 
 codex-bedrock() {
@@ -512,7 +508,7 @@ codex-bedrock-direct() {
 	fi
 
 	echo "🟠 Codex CLI → AWS Bedrock directly (us-east-1, router bypassed)" >&2
-	command codex --no-daemon \
+	codex \
 		-c 'model_provider="amazon-bedrock"' \
 		-c 'model="openai.gpt-6.1-sol"' \
 		-c 'model_reasoning_summary="none"' \

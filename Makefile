@@ -207,7 +207,7 @@ codex-skills:
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
 .PHONY: codex-tmux
 codex-tmux:
-	@"$(DOTFILES)/bin/sync-codex-tmux-hooks"
+	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 .PHONY: codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"

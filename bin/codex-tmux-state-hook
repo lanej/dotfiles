@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Feed Codex lifecycle events into the shared Claude/tmux status palette."""
 import json
-import os
+import re
+import shlex
 import sys
+import uuid
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
@@ -12,6 +14,96 @@ state = SourceFileLoader(
 QUESTIONS = {"request_user_input", "request_user_input_async"}
 WAITING_TOOL = "@codex-waiting-tool"
 WAITING_ID = "@codex-waiting-id"
+STATE_REVISION = "@codex-state-revision"
+
+
+def pane_for(event):
+    """Use the TUI's pane-local identity, never the daemon's TMUX_PANE."""
+    session = event.get("session_id", "")
+    if not session or event.get("agent_id") or event.get("agent_type"):
+        return ""
+    rows = state.tmux(
+        "list-panes", "-a", "-F",
+        "#{pane_id}\t#{pane_title}\t#{@codex-session-id}\t#{@codex-native-title}"
+        "\t#{@claude-state}\t#{@codex-waiting-tool}\t#{@codex-waiting-id}"
+        "\t#{@codex-state-revision}\t.")
+    candidates = []
+    for row in rows.splitlines():
+        fields = row.split("\t", 8)
+        if len(fields) != 9:
+            continue
+        pane, title, owner, was_native, current, waiting_tool, waiting_id, revision, _ = fields
+        # Codex abbreviates long title segments with an ellipsis. Match only
+        # the thread-ID segment, ahead of arbitrary project or task names.
+        segments = title.split("|", 2)
+        native = bool(re.fullmatch(r"[!●\s]*codex", segments[0].strip()))
+        if native:
+            identity = re.match(r"\s*([0-9a-f-]{16,36})(?:\.{3}|…|\s|$)",
+                                segments[1]) if len(segments) > 1 else None
+            if identity and session.startswith(identity.group(1)):
+                candidates.append((pane, title, owner, current, waiting_tool, waiting_id, revision, True))
+        elif not was_native and owner == session:
+            # Sessions launched before the native-title integration still
+            # have their pane ownership recorded by the old startup hook.
+            candidates.append((pane, title, owner, current, waiting_tool, waiting_id, revision, False))
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def write_event(context, event, values):
+    """Validate the client identity and mutate status in one tmux command queue."""
+    pane, title, owner, current, waiting_tool, waiting_id, revision, native = context
+    session = event.get("session_id", "")
+    nonce = uuid.uuid4().hex
+    commands = []
+    if native:
+        commands.append(["set-option", "-p", "-t", pane, "@codex-native-title", "1"])
+    commands.append(["set-option", "-p", "-t", pane, "@codex-session-id", session])
+    commands += [["set-option", "-w", "-t", pane, option, value]
+                 for option, value in values.items()]
+    # Advance even if the visible state stays unchanged: a newer turn can
+    # return to thinking before an older Stop finishes reading its snapshot.
+    commands.append(["set-option", "-p", "-t", pane, STATE_REVISION, nonce])
+    if event.get("hook_event_name") == "SessionEnd":
+        commands.append(["set-option", "-p", "-u", "-t", pane, "@codex-session-id"])
+    commands += [["refresh-client", "-S"], ["display-message", "-p", "applied"]]
+
+    # Store literal snapshots in private options rather than interpolate title
+    # text into tmux's format language. The nonce keeps concurrent hooks apart.
+    # Native status/project text changes during a turn. Guard only the stable
+    # app/thread segment so a valid approval event survives a title refresh.
+    title_field = "pane_title"
+    title_value = title
+    if native:
+        title_field = (
+            r"s/^[!● ]*(codex[ ]*[|][ ]*"
+            r"[0-9a-f-]+([.][.][.]|…)?)[ ]*([|].*)?$/\1/:pane_title")
+        title_value = re.match(
+            r"^[!●\s]*(codex\s*\|\s*[0-9a-f-]+(?:\.{3}|…)?)(?=\s*(?:\||$))",
+            title).group(1)
+    snapshots = [
+        (title_field, title_value),
+        ("@codex-session-id", owner),
+        ("@claude-state", current),
+        (WAITING_TOOL, waiting_tool),
+        (WAITING_ID, waiting_id),
+        (STATE_REVISION, revision),
+    ]
+    args = []
+    checks = []
+    options = []
+    for index, (field, value) in enumerate(snapshots):
+        option = f"@codex-check-{nonce}-{index}"
+        options.append(option)
+        args += ["set-option", "-p", "-t", pane, option, value, ";"]
+        checks.append("#{==:#{%s},#{%s}}" % (field, option))
+    guard = checks[0]
+    for check in checks[1:]:
+        guard = "#{&&:%s,%s}" % (guard, check)
+    body = " ; ".join(shlex.join(command) for command in commands)
+    args += ["if-shell", "-F", "-t", pane, guard, body, ""]
+    for option in options:
+        args += [";", "set-option", "-p", "-u", "-t", pane, option]
+    return state.tmux(*args) == "applied"
 
 
 def resolve(event, current, waiting_tool, waiting_id):
@@ -54,28 +146,17 @@ def bell(pane):
 
 
 def main():
-    pane = os.environ.get("TMUX_PANE", "")
-    if not pane or not os.environ.get("TMUX"):
-        return 0
     try:
         event = json.load(sys.stdin)
     except (ValueError, OSError):
         return 0
     if not isinstance(event, dict):
         return 0
-
-    context = state.tmux(
-        "display-message", "-p", "-t", pane,
-        "#{@codex-session-id}|#{@claude-state}|#{@codex-waiting-tool}|#{@codex-waiting-id}")
+    context = pane_for(event)
     if not context:
         return 0
-    owner, current, waiting_tool, waiting_id = context.split("|", 3)
+    pane, title, owner, current, waiting_tool, waiting_id, revision, native = context
     kind = event.get("hook_event_name", "")
-    session = event.get("session_id", "")
-    if kind == "SessionStart" and session:
-        state.tmux("set-option", "-p", "-t", pane, "@codex-session-id", session)
-    elif owner and session != owner:
-        return 0  # An old session or a subagent must not clear this session's tab.
 
     name = resolve(event, current, waiting_tool, waiting_id)
     if name is None:
@@ -84,10 +165,8 @@ def main():
     waiting = name in ("approval", "question")
     values[WAITING_TOOL] = event.get("tool_name", "") if waiting else ""
     values[WAITING_ID] = event.get("tool_use_id", "") if waiting else ""
-    state.write(pane, values)
-    if kind == "SessionEnd":
-        state.tmux("set-option", "-p", "-u", "-t", pane, "@codex-session-id")
-    elif waiting or kind == "Stop":
+    applied = write_event(context, event, values)
+    if applied and (waiting or kind == "Stop"):
         bell(pane)
     return 0
 
