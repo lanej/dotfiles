@@ -57,7 +57,10 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
 
     # Teach the throwaway server the tab the user actually sees.
     conf = private_tmux.folder / "tab.conf"
-    conf.write_text(tab_format() + "\n")
+    border_settings = "\n".join(
+        line for line in (ROOT / "rc/tmux.conf").read_text().splitlines()
+        if re.match(r"set\s+-g (?:@codex-pane-label|pane-border-format) ", line))
+    conf.write_text(tab_format() + "\n" + border_settings + "\n")
     private_tmux.call("source-file", str(conf))
 
     def emit(event_name, hook_name, **fields):
@@ -221,6 +224,10 @@ if "app-name" in items and "thread-id" in items:
     while codex_session[:29] not in option("pane_title", codex_pane):
         assert time.monotonic() < deadline, "the client did not publish its thread title"
         time.sleep(0.02)
+    border = private_tmux.call("display-message", "-p", "-t", codex_pane,
+                              "#{E:pane-border-format}")
+    assert " ✅ · project" in border
+    assert "codex" not in border and codex_session[:29] not in border
     # Every hook now receives the shared daemon's stale originating pane.
     monkeypatch.setenv("TMUX_PANE", pane)
 
@@ -323,6 +330,8 @@ if "app-name" in items and "thread-id" in items:
              tool_name="exec_command", tool_use_id="approval-title-refresh"))))
     assert hook.main() == 0
     assert option("@claude-state", codex_window) == "approval"
+    assert " ⏸️ · project" in private_tmux.call(
+        "display-message", "-p", "-t", codex_pane, "#{E:pane-border-format}")
     emit_codex("PostToolUse", tool_name="exec_command",
                tool_use_id="approval-title-refresh")
     assert option("@claude-state", codex_window) == "thinking"
