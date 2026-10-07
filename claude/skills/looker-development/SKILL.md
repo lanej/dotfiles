@@ -1,13 +1,19 @@
 ---
 name: looker-development
-description: Develop LookML against a live, GitHub-CI-integrated Looker instance (the official "Looker Continuous Integration" GitHub App plus git-connected deploy). Use when debugging `looker/ci - Github CI - *` GitHub check failures or silence, setting up Looker CI (GitHub App install, CI Suite creation, deploy webhook) for a repo that doesn't have it yet, onboarding a new LookML model, diagnosing a connection/SQL Validator failure, or trying to shift feedback left before the multi-minute CI round-trip. Not for querying/searching an existing Looker catalog for data (see the `looker` skill) or for BigQuery cost/query mechanics (see the `bigquery` skill).
+description: Develop LookML models and dashboards against live Looker CI. Use when refining chart grouping, semantic category colors or readability, diagnosing CI/model/connection failures, onboarding models, or configuring Git-connected deploy. Data-only catalog and warehouse queries use the relevant Looker or BigQuery tooling.
 ---
 
 # Looker Development Against Live GitHub CI
 
-Distilled from debugging one real instance end-to-end. The principles generalize across
-Looker instances/repos; none of the concrete names below (project IDs, connection names,
-model names) do — treat every specific identifier here as an example, not a default to copy.
+Verify project, model, and connection names for the current instance before using
+the examples below.
+
+## Dashboard information architecture
+
+When designing or refining dashboard colors and activity groupings,
+read [Color as information architecture](references/dashboard-color-information-architecture.md).
+Use category meaning within the EasyPost palette, retain raw evidence behind grouped
+views, and distinguish API/query verification from human rendered verification.
 
 ## Two-layer architecture — know which layer you're debugging
 

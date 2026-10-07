@@ -9,6 +9,15 @@ Use Viewrule through the `ui-review` compatibility wrapper in Josh's dotfiles. I
 `~/.files/bin/ui-review`. Setup and rule types are documented in
 `~/.files/docs/ui-review.md`. This supplements the project's design system.
 
+## Dashboard color and grouping
+
+For dashboard category colors or work-activity groupings,
+read [Color as information architecture](../looker-development/references/dashboard-color-information-architecture.md).
+Apply it alongside the project design system. Status and health colors must
+communicate meaning; quantity alone does not justify warning colors. For Looker
+behind interactive SSO, use API/query evidence and the user's rendered feedback;
+do not fabricate a capture report or attempt automated SSO navigation.
+
 ## Design and verify
 
 1. Identify the user's primary decision and the information needed to make it.
