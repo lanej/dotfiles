@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.joshlane.atuin-sync-tunnel</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/ssh</string>
+        <string>-N</string>
+        <string>-T</string>
+        <!-- Isolate this connection from dev's interactive port forwards. -->
+        <string>-F</string>
+        <string>/dev/null</string>
+        <string>-o</string>
+        <string>ProxyCommand=/usr/bin/ssh -o ClearAllForwardings=yes -W %h:%p admindev</string>
+        <string>-o</string>
+        <string>IdentityAgent="__HOME__/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"</string>
+        <string>-o</string>
+        <string>BatchMode=yes</string>
+        <string>-o</string>
+        <string>ExitOnForwardFailure=yes</string>
+        <string>-o</string>
+        <string>ConnectTimeout=10</string>
+        <string>-o</string>
+        <string>ServerAliveInterval=30</string>
+        <string>-o</string>
+        <string>ServerAliveCountMax=3</string>
+        <string>-L</string>
+        <string>127.0.0.1:8888:127.0.0.1:8888</string>
+        <string>vagrant@dev.joshlane.devvm.easypo.net</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.local/state/atuin-sync/tunnel.log</string>
+</dict>
+</plist>
