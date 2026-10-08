@@ -100,7 +100,7 @@ func main() {
 	checkConfig := flag.Bool("check-config", false, "Validate configuration and exit")
 	port := flag.Int("port", 0, "Override the configured loopback port")
 	state := flag.String("state-file", filepath.Join(filepath.Dir(executable), "sessions.sqlite3"), "Session affinity database")
-	headerTimeout := flag.Duration("header-timeout", 0, "Override the configured maximum wait for upstream headers")
+	headerTimeout := flag.Duration("header-timeout", 0, "Override the configured deadline for upstream setup, upload, and headers")
 	streamIdle := flag.Duration("stream-idle-timeout", 0, "Override the configured maximum upstream silence")
 	clientIdle := flag.Duration("client-write-timeout", 0, "Override the configured client write timeout")
 	flag.Parse()
@@ -145,7 +145,7 @@ func main() {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			conn, err := (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext(ctx, network, address)
+			conn, err := (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext(ctx, network, address)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +154,7 @@ func main() {
 		},
 		ForceAttemptHTTP2: false, // Per-connection idle deadlines must not couple multiplexed streams.
 		MaxIdleConns:      256, MaxIdleConnsPerHost: 128, IdleConnTimeout: 90 * time.Second,
-		TLSHandshakeTimeout: 30 * time.Second, ResponseHeaderTimeout: *headerTimeout,
+		TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: *headerTimeout,
 		ExpectContinueTimeout: time.Second, DisableCompression: true,
 	}
 

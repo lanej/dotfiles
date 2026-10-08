@@ -167,14 +167,15 @@ can be canceled. Locks are removed when unused. Upstream HTTP/1.1 connections
 are pooled, with no cap on active connections. HTTP/2 is disabled so a silent
 stream's socket deadline cannot terminate other sessions.
 
-The default upstream header timeout and stream silence timeout are **5 minutes**,
-matching Codex's default SSE idle timeout. The silence deadline resets on every
-upstream read; there is no total response duration limit. Client writes also
-have a 5-minute deadline.
+Each upstream attempt has a **60-second** deadline covering connection setup,
+request upload, and receipt of response headers. Connection establishment and
+TLS handshakes each have a 10-second limit. Once headers arrive, the stream
+silence timeout is **2 minutes** and resets on every upstream read; there is no
+total response duration limit. Writes to the local client have a 15-second deadline.
 Change these in `config.json`, or override them on the command line:
 
 ```sh
-bedrock-router --header-timeout 20m --stream-idle-timeout 20m --client-write-timeout 20m
+bedrock-router --header-timeout 60s --stream-idle-timeout 2m --client-write-timeout 15s
 ```
 
 Requests canceled by the client cancel their upstream request. Failures before

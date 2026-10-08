@@ -8,7 +8,7 @@
     "us-west-2": "us-east-1",
     "us-east-1": "us-west-2"
   },
-  "header_timeout": "5m",
-  "stream_idle_timeout": "5m",
-  "client_write_timeout": "5m"
+  "header_timeout": "60s",
+  "stream_idle_timeout": "2m",
+  "client_write_timeout": "15s"
 }

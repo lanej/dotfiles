@@ -518,14 +518,27 @@ func TestWebSearchDenialGuidesNextAttemptWithoutDisablingSearch(t *testing.T) {
 }
 
 func TestUpstreamHeaderTimeoutReturnsGatewayTimeout(t *testing.T) {
+	release := make(chan struct{})
+	defer close(release)
 	r, server, _ := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		io.Copy(io.Discard, req.Body)
-		<-req.Context().Done()
+		// Never consume the upload: ResponseHeaderTimeout alone cannot
+		// bound this phase because it starts after the request is written.
+		<-release
 	}))
-	transport := &http.Transport{ResponseHeaderTimeout: 50 * time.Millisecond}
+	r.config.HeaderTimeout = "50ms"
+	transport := &http.Transport{}
 	defer transport.CloseIdleConnections()
 	r.transport = transport
-	resp := call(t, &http.Client{Timeout: time.Second}, server.URL, "openai.gpt-6-astra", "slow", "")
+	payload := `{"model":"openai.gpt-6-astra","input":"` + strings.Repeat("x", 16<<20) + `"}`
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/openai/v1/responses", strings.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer private-token")
+	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := drain(t, resp, 504)
 
 	if !bytes.Contains(body, []byte(`"code":"timeout"`)) {
@@ -548,6 +561,7 @@ func TestUpstreamSilenceTimeoutResetsOnActivity(t *testing.T) {
 	r, server, _ := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		io.Copy(io.Discard, req.Body)
 		w.Header().Set("Content-Type", "text/event-stream")
+		w.(http.Flusher).Flush()
 
 		if req.Header.Get("Thread-Id") == "silent" {
 			io.WriteString(w, "data: first\n\n")
@@ -568,6 +582,7 @@ func TestUpstreamSilenceTimeoutResetsOnActivity(t *testing.T) {
 
 		io.WriteString(w, "data: [DONE]\n\n")
 	}))
+	r.config.HeaderTimeout = "50ms"
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 			conn, err := (&net.Dialer{}).DialContext(ctx, network, address)

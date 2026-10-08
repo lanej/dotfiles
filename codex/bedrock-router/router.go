@@ -530,8 +530,11 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	upstreamCtx, cancelUpstream := context.WithCancel(req.Context())
+	defer cancelUpstream()
+	headerWait, _ := time.ParseDuration(r.config.HeaderTimeout)
 	forward := func(target string) (*http.Response, error) {
-		up, err := http.NewRequestWithContext(req.Context(), req.Method, r.endpoint(target)+req.URL.RequestURI(), bytes.NewReader(body))
+		up, err := http.NewRequestWithContext(upstreamCtx, req.Method, r.endpoint(target)+req.URL.RequestURI(), bytes.NewReader(body))
 		if err != nil {
 			return nil, err
 		}
@@ -543,7 +546,23 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		stripHopHeaders(up.Header)
 		up.Header.Del("Content-Length")
 		up.Header.Del("X-Router-Request-Id")
-		return r.transport.RoundTrip(up)
+		// Bound connection setup and upload as well as header receipt. Stop
+		// the timer once headers arrive so active streams have no total limit.
+		expired := make(chan struct{})
+		timer := time.AfterFunc(headerWait, func() {
+			cancelUpstream()
+			close(expired)
+		})
+		response, err := r.transport.RoundTrip(up)
+		if !timer.Stop() {
+			// Wait for cancellation to finish before reporting the timeout.
+			<-expired
+			if response != nil {
+				response.Body.Close()
+			}
+			return nil, context.DeadlineExceeded
+		}
+		return response, err
 	}
 
 	response, err := forward(region)
@@ -657,9 +676,17 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		w.Header()[key] = values
 	}
 
-	w.WriteHeader(status)
 	control := http.NewResponseController(w)
-	_ = control.Flush()
+	_ = control.SetWriteDeadline(time.Now().Add(r.writeIdle))
+	w.WriteHeader(status)
+	if err := control.Flush(); err != nil {
+		outcome = "client_write_error"
+		if req.Context().Err() != nil {
+			outcome = "client_canceled"
+		}
+		log.Warn("stream_failed", "side", "client", "error_kind", outcome)
+		return
+	}
 
 	if stream {
 		r.stats.Lock()
