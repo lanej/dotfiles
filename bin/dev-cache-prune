@@ -100,6 +100,14 @@ def external_links(user_home):
         ".paseo/worktrees", ".local/share/uv/tools", ".local/bin", ".cargo/bin"
     )]
     temporary = [Path("/tmp").resolve(), Path(tempfile.gettempdir()).resolve()]
+    system_temp_names = {"homed", "icdd"}
+    if sys.platform == "darwin":
+        system = run(["ps", "-axww", "-o", "comm="])
+        if system.returncode:
+            raise RuntimeError("Cannot inspect system temporary contexts")
+        system_temp_names.update(Path(command.strip()).name
+                                 for command in system.stdout.splitlines()
+                                 if command.strip().startswith(("/System/Library/", "/usr/libexec/")))
     roots.extend(temporary + [Path("/opt/homebrew/bin"), Path("/usr/local/bin")])
     links = []
     for root in roots:
@@ -113,26 +121,31 @@ def external_links(user_home):
             continue
         seen.add(folder)
         try:
-            with os.scandir(folder) as entries:
-                for entry in entries:
-                    path = Path(entry.path)
-                    if entry.is_symlink():
-                        links.append((path, path.resolve()))
-                    elif entry.is_dir(follow_symlinks=False) and entry.name != ".git":
-                        # Apple app-private temporary folders do not borrow
-                        # development caches and may be privacy protected.
-                        if sys.platform == "darwin" and folder in temporary and (entry.name.startswith("com.apple.") or entry.name == "homed"):
-                            continue
-                        # Other users' protected temporary folders cannot hold
-                        # this user's installed environments.
-                        if temp and entry.stat(follow_symlinks=False).st_uid != os.getuid():
-                            continue
-                        pending.append((path, temp))
+            with os.scandir(folder) as listing:
+                entries = list(listing)
         except FileNotFoundError:
-            # Temporary tools may remove their own directories during a scan.
             continue
         except OSError as exc:
+            private_context = False
+            if sys.platform == "darwin" and isinstance(exc, PermissionError):
+                for root in temporary:
+                    if folder != root and folder.is_relative_to(root):
+                        name = folder.relative_to(root).parts[0]
+                        private_context |= name.startswith("com.apple.") or name in system_temp_names
+            if private_context:
+                continue
             raise RuntimeError("Cannot inspect dependency links in " + str(folder)) from exc
+        for entry in entries:
+            path = Path(entry.path)
+            try:
+                if entry.is_symlink():
+                    links.append((path, path.resolve()))
+                elif entry.is_dir(follow_symlinks=False) and entry.name != ".git":
+                    if temp and entry.stat(follow_symlinks=False).st_uid != os.getuid():
+                        continue
+                    pending.append((path, temp))
+            except FileNotFoundError:
+                continue
     return links
 
 
