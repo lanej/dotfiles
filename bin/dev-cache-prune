@@ -131,7 +131,8 @@ def external_links(user_home):
                 for root in temporary:
                     if folder != root and folder.is_relative_to(root):
                         name = folder.relative_to(root).parts[0]
-                        private_context |= name.startswith("com.apple.") or name in system_temp_names
+                        private_context |= (folder == root / "TemporaryItems"
+                                            or name.startswith("com.apple.") or name in system_temp_names)
             if private_context:
                 continue
             raise RuntimeError("Cannot inspect dependency links in " + str(folder)) from exc
