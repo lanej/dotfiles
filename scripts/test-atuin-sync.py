@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """One bootstrap/recovery workflow; packages, SSH, services and Atuin CLI are fixtures."""
 import contextlib
+import argparse
 import importlib.util
 import io
 import json
 import os
 from pathlib import Path
+import plistlib
 import runpy
+import shlex
 import shutil
+import socket
 import sqlite3
 import subprocess
 import sys
@@ -50,7 +54,14 @@ class SetupWorkflow(unittest.TestCase):
                     with database(data / name) as db:
                         db.execute("create table saved (value text primary key)")
                         db.execute("insert into saved values (?)", (home.name,))
+                if home == homes[1]:
+                    # Atuin shell init can create a private store before enrollment.
+                    (data / "shared-key").write_bytes(b"dev-unenrolled-key")
+                    with database(data / "shared-records.db") as db:
+                        db.execute("create table saved (value text primary key)")
+                        db.execute("insert into saved values ('dev')")
             registered = {}
+            linger = {"enabled": False}
             sessions = {str(home): "previous-server" for home in homes}
             fixture_bin = Path(temporary) / "bin"
             fixture_bin.mkdir()
@@ -66,7 +77,7 @@ class SetupWorkflow(unittest.TestCase):
                 'printf "%s\\n" "$@" > "$ATUIN_FIXTURE_MAKE_REQUEST"\n')
             (fixture_bin / "make").chmod(0o755)
 
-            def bootstrap():
+            def bootstrap(host="dev2"):
                 # Real Bash bootstrap flow; package installation and make's process boundary are fixtures.
                 script = '''
 source "$1"
@@ -79,12 +90,15 @@ install_package_version() {
 }
 setup_gh_auth() { :; }
 gh() { return 1; }
+install_dependencies() { install_package_version uv 0.12.11; }
 install_dependencies
+setup_atuin_sync
 '''
                 env = dict(os.environ, PATH=str(fixture_bin),
+                           HOME=str(homes[0]), BASH_ENV="/dev/null",
                            ATUIN_FIXTURE_BIN=str(fixture_bin),
                            ATUIN_FIXTURE_MAKE_REQUEST=str(make_request),
-                           ATUIN_SYNC_HOST="dev")
+                           ATUIN_SYNC_HOST=host)
                 result = REAL_RUN(["/bin/bash", "-c", script, "bash",
                                    str(homes[0] / ".files/bootstrap.sh")],
                                   env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -108,16 +122,25 @@ install_dependencies
                 output, error, code = "", "", 0
                 program = Path(argv[0]).name
                 if program == "ssh" and argv[1:2] == ["-G"]:
-                    output = ("hostname dev.example.test\nuser vagrant\nport 22\n"
-                              "identityagent /tmp/agent with spaces.sock\nproxyjump admindev\n"
-                              "identityfile ~/.ssh/id_rsa\n")
+                    if argv[-1] == "admindev":
+                        output = "controlpath {}/missing-master\n".format(temporary)
+                    else:
+                        output = ("hostname dev.example.test\nuser vagrant\nport 22\n"
+                                  "identityagent /tmp/agent with spaces.sock\nproxyjump admindev\n"
+                                  "identityfile ~/.ssh/id_rsa\n")
                 elif program == "ssh" and "--remote" in argv[-1]:
                     with patch.object(Path, "home", return_value=homes[1]), patch.dict(os.environ, {"USER": "vagrant"}):
                         output = json.dumps(helper.server(json.loads(input)))
                 elif program == "ssh" or program in ("systemctl", "launchctl"):
                     pass
                 elif program == "loginctl":
-                    output = "Linger=yes\n"
+                    if argv[1] == "show-user":
+                        output = "Linger={}\n".format("yes" if linger["enabled"] else "no")
+                    else:
+                        code, error = 1, "PolicyKit unavailable"
+                elif program == "sudo":
+                    self.assertEqual(argv[1:], ["-n", "loginctl", "enable-linger", "vagrant"])
+                    linger["enabled"] = True
                 elif program == "git":
                     output = "josh@example.test\n"
                 elif program == "bash":
@@ -159,6 +182,9 @@ install_dependencies
                         with database(data / "shared-records.db") as db:
                             db.execute("create table if not exists saved (value text primary key)")
                     elif command == ["store", "verify"]:
+                        if (data / "shared-key").read_bytes() == b"dev-unenrolled-key":
+                            self.assertEqual(Path(kwargs["env"]["ATUIN_KEY_PATH"]), data / "shared-key")
+                            self.assertEqual(Path(kwargs["env"]["ATUIN_RECORD_STORE_PATH"]), data / "shared-records.db")
                         if (data / "shared-key").exists() and (data / "shared-records.db").exists():
                             output = "Local store encryption verified OK\n"
                         else:
@@ -190,8 +216,14 @@ install_dependencies
                 account_path = homes[0] / ".local/share/atuin" / helper.ACCOUNT_FILE
                 account = json.loads(account_path.read_text())
                 account_path.unlink()
-                bootstrap()
+                bootstrap(host="")
                 self.assertEqual(json.loads(account_path.read_text()), account)
+                self.assertEqual((homes[0] / ".local/state/atuin-sync/host").read_text().strip(), "dev2")
+                # An enrolled Linux host also configures and syncs on bootstrap reruns.
+                with patch.object(Path, "home", return_value=homes[1]), \
+                        patch("platform.system", return_value="Linux"), \
+                        patch.dict(os.environ, {"USER": "vagrant"}):
+                    helper.setup(argparse.Namespace(host="dev", tunnel_only=False))
             for home in homes:
                 data = home / ".local/share/atuin"
                 self.assertEqual((data / "shared-key").read_bytes(), b"mac-original-key")
@@ -210,12 +242,36 @@ install_dependencies
                         restored_metadata.extend(row[0] for row in db.execute("select value from saved"))
                 self.assertIn(home.name, restored_metadata)
             server_config = (homes[1] / ".config/atuin/server.toml").read_text()
+            self.assertTrue(any((homes[1] / ".local/share/atuin/backups").glob("setup-*/original-shared-key")))
+            self.assertTrue(linger["enabled"])
             self.assertIn("open_registration = false", server_config)
             self.assertIn('host = "127.0.0.1"', server_config)
             plist = (homes[0] / "Library/LaunchAgents/com.joshlane.atuin-sync-tunnel.plist").read_text()
             self.assertIn("vagrant@dev.example.test", plist)
             self.assertNotIn(account["password"], output.getvalue())
             self.assertNotIn(b"mac-original-key".hex(), output.getvalue())
+            # Exercise the generated jump command with real SSH after its master
+            # disappears. A local listener represents the Duo-protected bastion.
+            job = plistlib.loads(plist.encode())
+            proxy = next(a.split("=", 1)[1] for a in job["ProgramArguments"]
+                         if a.startswith("ProxyCommand="))
+            with socket.socket() as listener:
+                listener.bind(("127.0.0.1", 0))
+                listener.listen()
+                config = Path(temporary) / "ssh_config"
+                config.write_text(
+                    "Host admindev\n  HostName 127.0.0.1\n  Port {}\n"
+                    "  ControlMaster auto\n  ControlPath {}/missing-master\n".format(
+                        listener.getsockname()[1], temporary))
+                command = shlex.split(proxy.replace("%h:%p", "127.0.0.1:8888"))
+                result = REAL_RUN(command[:1] + ["-F", str(config)] + command[1:],
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=5)
+                self.assertNotEqual(result.returncode, 0)
+                listener.settimeout(0.1)
+                with self.assertRaises(TimeoutError):
+                    listener.accept()
+            self.assertFalse(job.get("KeepAlive", False))
 
 
 if __name__ == "__main__":

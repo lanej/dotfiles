@@ -44,5 +44,7 @@ fi
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
-. "$HOME/.atuin/bin/env"
-eval "$(atuin init bash)"
+[ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
+if [[ $- == *i* ]] && command -v atuin >/dev/null; then
+	eval "$(atuin init bash)"
+fi

@@ -1,6 +1,15 @@
 #!/bin/bash
 # Shared shell functions
 
+# Kitty's SSH kitten installs matching terminfo and shell integration remotely.
+kssh() {
+	if [ -n "${KITTY_WINDOW_ID:-}" ] && command -v kitten >/dev/null 2>&1; then
+		command kitten ssh "$@"
+	else
+		command ssh "$@"
+	fi
+}
+
 # Smart FZF preview window positioning based on terminal width
 # Returns preview window configuration string for fzf --preview-window
 # Wide terminals (>=140 cols): right side preview at 60%

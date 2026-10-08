@@ -2088,7 +2088,7 @@ require("lazy").setup({
 	},
 	{
 		"lanej/focus.nvim",
-		branch = "feature/width-min-columns",
+		branch = "master",
 		config = function()
 			require("focus").setup({
 				autoresize = {
@@ -2130,6 +2130,9 @@ require("lazy").setup({
 			require("duckdb-picker")
 		end,
 	},
+}, {
+	-- Bootstrap installs pinned plugins without rewriting the checked-in lockfile.
+	lockfile = vim.env.DOTFILES_NVIM_BOOTSTRAP_LOCK,
 })
 
 vim.keymap.set("n", "<leader>vpu", ":Lazy update<CR>", { silent = true, noremap = true })

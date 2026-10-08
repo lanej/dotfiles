@@ -27,10 +27,9 @@ vim.api.nvim_create_autocmd("User", {
 require("bigquery").setup()
 
 -- Install parsers that aren't already present
-require("nvim-treesitter.install").install(
-	{ "lua", "bash", "rust", "python", "ruby", "json", "yaml", "toml", "typst", "xml", "regex", "markdown", "markdown_inline" },
-	{ skip = { installed = true } }
-)
+if not vim.env.DOTFILES_NVIM_BOOTSTRAP then
+	require("nvim-treesitter.install").install(require("treesitter-parsers"))
+end
 
 -- Install a missing parser synchronously so the buffer's first draw has treesitter.
 -- Languages that fail or time out are not retried this session, so a bad parser

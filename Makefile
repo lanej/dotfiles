@@ -141,7 +141,7 @@ bspwm:
 	@ln -fs $(DOTFILES)/bspwm/bspwmrc $(HOME)/.config/bspwm/bspwmrc
 	@ln -fs $(DOTFILES)/bspwm/sxhkdrc $(HOME)/.config/sxhkd/sxhkdrc
 	@ln -fs $(DOTFILES)/rc/config.rasi $(HOME)/.config/rofi/config.rasi
-kitty:
+kitty: kitty-terminfo
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
 	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
@@ -292,13 +292,26 @@ test-ui-review:
 
 # Opt-in services: keep these out of .PHONY, which is also the default target's
 # dependency list.
-ATUIN_SYNC_HOST ?= dev
+# The helper remembers the selected server, falling back to dev on first setup.
+ATUIN_SYNC_HOST ?=
 UV ?= uv
 atuin-sync:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-atuin-sync.py" --host "$(ATUIN_SYNC_HOST)"
 
 test-atuin-sync:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-atuin-sync.py"
+
+test-bootstrap:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap.py"
+
+test-bootstrap-nvim:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"
+
+kitty-terminfo:
+	@bash -ec 'source "$$1"; setup_kitty_terminfo' bash "$(DOTFILES)/bootstrap.sh"
+
+test-kitty-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-kitty-ssh.py"
 
 atuin-server:
 	@test "$(UNAME_S)" = Linux

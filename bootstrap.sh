@@ -32,7 +32,7 @@ package_manager_semver() {
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi "$1" | parse_semver || (echo "package $1 not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
-		(dnf info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || (echo "package $1 not found in dnf" && return 1)
+		(dnf --cacheonly info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
 		(apt-cache show "$1" 2>/dev/null | head -n1 | parse_semver) || (echo "package $1 not found in apt-get" && return 1)
 	else
@@ -83,7 +83,7 @@ fd_package_semver() {
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi fd | parse_semver || (echo "package fd not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
-		(dnf info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || (echo "package fd not found in dnf" && return 1)
+		(dnf --cacheonly info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
 		(apt-cache show fd-find 2>/dev/null | head -n1 | parse_semver) || (echo "package fd not found in apt-get" && return 1)
 	else
@@ -92,14 +92,14 @@ fd_package_semver() {
 }
 
 install_explicitly() {
-	if declare -f "install_$1_package" >/dev/null; then
-		"install_$1_package" "$2"
-	elif declare -f "install_$1_from_release" >/dev/null; then
+	if declare -f "install_$1_from_release" >/dev/null; then
 		echo "Installing $1 $2 from release"
 		"install_$1_from_release" "$2"
 	elif declare -f "install_$1_from_source" >/dev/null; then
 		echo "Installing $1 $2 from source"
 		"install_$1_from_source" "$2"
+	elif declare -f "install_$1_package" >/dev/null; then
+		"install_$1_package" "$2"
 	else
 		echo "Unable to install: $1" >&2
 		exit 1
@@ -109,14 +109,20 @@ install_explicitly() {
 install_package() {
 	local package=$1
 	local version=$2
-	get_package_semver=$(package_semver "$package")
-	local package_version="$get_package_semver"
+	local package_version
+	package_version=$(package_semver "$package") || package_version=""
 
 	if [ -z "$package_version" ]; then
 		echo "$package is not found in package manager"
 	elif semver_ge "$package_version" "$version"; then
 		echo "$package $package_version is available in package manager"
-		install_from_package_manager "$package" || (echo "Failed to install: $package" && exit 1)
+		if install_from_package_manager "$package" "$version"; then
+			local installed
+			installed=$(installed_semver "$package") || installed=""
+			if [ -n "$installed" ] && semver_ge "$installed" "$version"; then
+				return 0
+			fi
+		fi
 	else
 		echo "$package needs to be explicitly upgraded '$package_version' < '$version'"
 	fi
@@ -210,14 +216,10 @@ semver_ge() {
 	local required_major required_minor required_patch
 
 	# Parse installed version
-	installed_major=$(echo "$installed_version" | cut -d. -f1)
-	installed_minor=$(echo "$installed_version" | cut -d. -f2)
-	installed_patch=$(echo "$installed_version" | cut -d. -f3)
+	IFS=. read -r installed_major installed_minor installed_patch <<< "$installed_version"
 
 	# Parse required version
-	required_major=$(echo "$required_version" | cut -d. -f1)
-	required_minor=$(echo "$required_version" | cut -d. -f2)
-	required_patch=$(echo "$required_version" | cut -d. -f3)
+	IFS=. read -r required_major required_minor required_patch <<< "$required_version"
 
 	# Set defaults for missing components
 	installed_major=${installed_major:-0}
@@ -330,6 +332,10 @@ git-delta_current_semver() {
 	delta --version 2>/dev/null | parse_semver
 }
 
+git-crypt_current_semver() {
+	git-crypt version 2>/dev/null | parse_semver | head -n1
+}
+
 go_current_semver() {
 	go version | parse_semver | head -n1
 }
@@ -366,12 +372,38 @@ install_go_package() {
 	fi
 }
 
-install_go_from_release() {
-	curl -fLO "https://go.dev/dl/go$1.$short_distro.tar.gz"
-	sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$1.$short_distro.tar.gz"
-	echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
-	export PATH=$PATH:/usr/local/go/bin
-}
+install_go_from_release() (
+	local go_arch
+	case "$(uname -m)" in
+		x86_64) go_arch=amd64 ;;
+		arm64|aarch64) go_arch=arm64 ;;
+		*) echo "Unsupported Go architecture" >&2; exit 1 ;;
+	esac
+	local go_os
+	go_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+	local go_root="$HOME/.local/share/go" go_target="$HOME/.local/share/go/$1"
+	mkdir -p "$go_root" "$HOME/.local/bin" || exit 1
+	if [ -x "$go_target/bin/go" ] && [ "$("$go_target/bin/go" version | parse_semver | head -n1)" = "$1" ]; then
+		ln -fs "$go_target/bin/go" "$HOME/.local/bin/go" || exit 1
+		ln -fs "$go_target/bin/gofmt" "$HOME/.local/bin/gofmt" || exit 1
+		exit 0
+	fi
+	local go_stage
+	go_stage=$(mktemp -d "$go_root/.install-XXXXXX") || exit 1
+	trap 'rm -rf "$go_stage"' EXIT
+	curl -fsSL "https://go.dev/dl/go$1.$go_os-$go_arch.tar.gz" -o "$go_stage/go.tar.gz" || exit 1
+	tar -xzf "$go_stage/go.tar.gz" -C "$go_stage" || exit 1
+	[ "$("$go_stage/go/bin/go" version | parse_semver | head -n1)" = "$1" ] || exit 1
+	if [ -e "$go_target" ]; then
+		mv "$go_target" "$go_stage/previous" || exit 1
+	fi
+	if ! mv "$go_stage/go" "$go_target"; then
+		[ ! -e "$go_stage/previous" ] || mv "$go_stage/previous" "$go_target"
+		exit 1
+	fi
+	ln -fs "$go_target/bin/go" "$HOME/.local/bin/go" || exit 1
+	ln -fs "$go_target/bin/gofmt" "$HOME/.local/bin/gofmt" || exit 1
+)
 
 install_glow_from_source() {
 	install_package_version go 1.22
@@ -379,7 +411,14 @@ install_glow_from_source() {
 }
 
 installed_semver() {
-	explicit_current_semver "$1" || current_heuristic_semver "$1"
+	explicit_current_semver "$1" || current_heuristic_semver "$1" || go_binary_semver "$1"
+}
+
+go_binary_semver() {
+	local binary
+	binary=$(command -v "$1") || return 1
+	command -v go >/dev/null || return 1
+	go version -m "$binary" 2>/dev/null | awk '$1 == "mod" { print $3 }' | parse_semver | head -n1
 }
 
 explicit_current_semver() {
@@ -394,8 +433,8 @@ install_package_version() {
 	local package=$1
 	local min_version=$2
 	local preferred_version=${3:-$min_version}
-	get_installed_semver=$(installed_semver "$package")
-	local current_version=$get_installed_semver
+	local current_version
+	current_version=$(installed_semver "$package") || current_version=""
 
 	if [ -n "$current_version" ]; then
 		echo "Package $package is already installed at version $current_version <=> $min_version"
@@ -409,8 +448,14 @@ install_package_version() {
 	fi
 
 	# install package to preferred version
-	install_package "$package" "$preferred_version"
-	echo "Installed $package $(installed_semver "$package")"
+	install_package "$package" "$preferred_version" || return 1
+	hash -r
+	current_version=$(installed_semver "$package") || current_version=""
+	if [ -z "$current_version" ] || ! semver_ge "$current_version" "$min_version"; then
+		echo "Failed to install $package >= $min_version (found ${current_version:-none})" >&2
+		return 1
+	fi
+	echo "Installed $package $current_version"
 }
 
 install_fzf_from_source() {
@@ -419,7 +464,7 @@ install_fzf_from_source() {
 		git -C ~/src/oss/fzf fetch --tags --force
 		git -C ~/src/oss/fzf checkout -f "v$1"
 	else
-		git clone --depth 1 https://github.com/junegunn/fzf.git ~/src/oss/fzf
+		git clone --depth 1 --branch "v$1" https://github.com/junegunn/fzf.git ~/src/oss/fzf
 	fi
 
 	~/src/oss/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
@@ -461,7 +506,12 @@ install_shfmt_from_release() {
 
 install_node_from_release() {
 	# Download and install nvm:
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+	local node_stage
+	node_stage=$(mktemp) || return 1
+	curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh -o "$node_stage" ||
+		{ rm -f "$node_stage"; return 1; }
+	PROFILE=/dev/null bash "$node_stage" || { rm -f "$node_stage"; return 1; }
+	rm -f "$node_stage"
 
 	# Set up nvm environment - must be sourced fresh for new installation
 	export NVM_DIR="$HOME/.nvm"
@@ -472,9 +522,6 @@ install_node_from_release() {
 	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
 	nvm alias default "$1"
 	nvm use "$1"
-
-	# Make node and npm immediately available in current session
-	export PATH="$NVM_DIR/versions/node/v$1/bin:$PATH"
 
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
@@ -494,23 +541,27 @@ install_bash-language-server_from_release() {
 	npm install -g "bash-language-server@$1"
 }
 
-install_jq_from_release() {
-	mkdir -p "$HOME/.local/bin"
-	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/jq-$os$bitness" -o /tmp/jq
-	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o /tmp/jq-sha256sum.txt
-
-	# Extract the checksum for our specific binary
-	if grep -q "jq-$os$bitness" /tmp/jq-sha256sum.txt; then
-		grep "jq-$os$bitness" /tmp/jq-sha256sum.txt > /tmp/jq-filtered-sum.txt
-		(cd /tmp && sha256sum -c jq-filtered-sum.txt) || (echo "Failed to verify jq checksum" && exit 1)
+install_jq_from_release() (
+	case "$(uname -m)" in
+		x86_64) jq_arch=amd64 ;;
+		arm64|aarch64) jq_arch=arm64 ;;
+		*) echo "Unsupported jq architecture" >&2; exit 1 ;;
+	esac
+	jq_asset="jq-$os-$jq_arch"
+	jq_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$jq_stage"' EXIT
+	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/$jq_asset" -o "$jq_stage/$jq_asset" || exit 1
+	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o "$jq_stage/checksums" || exit 1
+	awk -v asset="$jq_asset" '$2 == asset || $2 == "*" asset' "$jq_stage/checksums" > "$jq_stage/selected"
+	[ -s "$jq_stage/selected" ] || exit 1
+	if command -v sha256sum >/dev/null; then
+		(cd "$jq_stage" && sha256sum -c selected) || exit 1
 	else
-		echo "Warning: No checksum found for jq-$os$bitness, skipping verification"
+		(cd "$jq_stage" && shasum -a 256 -c selected) || exit 1
 	fi
-
-	mv -f /tmp/jq "$HOME/.local/bin/jq"
-	chmod +x "$HOME/.local/bin/jq"
-	rm -rf /tmp/jq /tmp/jq-sha256sum.txt /tmp/jq-filtered-sum.txt
-}
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 "$jq_stage/$jq_asset" "$HOME/.local/bin/jq" || exit 1
+)
 
 install_yq_from_release() {
 	mkdir -p "$HOME/.local/bin"
@@ -573,7 +624,9 @@ install_zsh-autosuggestions_from_source() {
 }
 
 yaml-language-server_current_semver() {
-	npm info yaml-language-server version | parse_semver
+	command -v yaml-language-server >/dev/null || return 1
+	npm list --global yaml-language-server --depth=0 --json 2>/dev/null |
+		jq -r '.dependencies["yaml-language-server"].version // empty'
 }
 
 install_yaml-language-server_from_release() {
@@ -586,7 +639,17 @@ install_hexyl_from_release() {
 }
 
 install_kagi_from_source() {
-	go install github.com/unitedinterlo/kagi/cmd/kagi@latest
+	CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --locked \
+		--git ssh://git@github.com/easypost-sandbox/kagi.git \
+		--rev 47eabb65b715e404710c9a5ddfe23d222622b102
+}
+
+kagi_current_semver() {
+	local cargo_root="${CARGO_HOME:-$HOME/.cargo}"
+	[ "$(command -v kagi)" = "$cargo_root/bin/kagi" ] || return 1
+	# This CLI has no --version flag; use Cargo's installed-package receipt.
+	awk -F'"' '$2 ~ /^kagi / { split($2, package, " "); print package[2] }' \
+		"$cargo_root/.crates.toml" 2>/dev/null | head -n1
 }
 
 install_direnv_from_release() {
@@ -682,71 +745,101 @@ install_ctags-lsp_from_source() {
 	go install github.com/netmute/ctags-lsp@latest
 }
 
-install_cargo_package() {
-	# Check if cargo/rust is already installed via package manager
-	if command -v cargo &>/dev/null && command -v rustc &>/dev/null; then
-		echo "Rust/cargo already installed via system package manager"
-		# Create cargo env file if it doesn't exist
-		if [ ! -f "$HOME/.cargo/env" ]; then
-			mkdir -p "$HOME/.cargo"
-			echo "#!/bin/sh" > "$HOME/.cargo/env"
-			echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
-		fi
-		source "$HOME"/.cargo/env 2>/dev/null || true
-
-		# Install rustup to manage rust versions if not already available
-		if ! command -v rustup &>/dev/null; then
-			echo "Installing rustup to manage rust versions"
-			curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-			source "$HOME/.cargo/env"
-		fi
-
-		# Update to the specified rust version if rustup is available
-		if command -v rustup &>/dev/null; then
-			rustup default "$1"
-			rustup update
-		fi
-
-		return 0
-	fi
-
-	if command -v brew &>/dev/null; then
-		brew install rust
-	elif command -v yay &>/dev/null; then
-		sudo yay -S --noconfirm rustup
-	elif command -v pacman &>/dev/null; then
-		sudo pacman -S --noconfirm rustup
-	elif command -v dnf &>/dev/null; then
-		sudo dnf install -y cargo rust
-	elif command -v apt-get &>/dev/null; then
-		sudo apt-get install -y rustup
-	else
-		exit 1
-	fi
-
-	# Only run rustup-init if it exists (not needed for dnf/rpm installations)
-	if command -v rustup-init &>/dev/null; then
-		rustup-init --default-toolchain "$1" -y
-	fi
-
-	# Create cargo env file if it doesn't exist
-	if [ ! -f "$HOME/.cargo/env" ]; then
-		mkdir -p "$HOME/.cargo"
-		echo "#!/bin/sh" > "$HOME/.cargo/env"
-		echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
-	fi
-	source "$HOME"/.cargo/env 2>/dev/null || true
-}
-
 install_cargo_from_release() {
-	curl -sfL https://sh.rustup.rs | sh -s -- --default-toolchain "$1" -y
+	local rust_stage
+	rust_stage=$(mktemp) || return 1
+	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o "$rust_stage" ||
+		{ rm -f "$rust_stage"; return 1; }
+	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y ||
+		{ rm -f "$rust_stage"; return 1; }
+	rm -f "$rust_stage"
 	source "$HOME"/.cargo/env
 }
 
+install_just_from_release() {
+	cargo install just --locked --version "$1"
+}
+
+prepare_bootstrap_environment() {
+	mkdir -p "$HOME/.local/bin"
+	export GOPATH="${GOPATH:-$HOME/.local/go}"
+	export PATH="$HOME/.local/bin:$HOME/.cargo/bin:${GOPATH%%:*}/bin:/usr/local/go/bin:$PATH"
+	# Dev VM images provide Go outside PATH.
+	if ! command -v go >/dev/null; then
+		local go_binary go_version
+		for go_binary in /opt/golang*/bin/go; do
+			[ -x "$go_binary" ] || continue
+			go_version=$("$go_binary" version | parse_semver | head -n1)
+			if semver_ge "$go_version" 1.26.2; then
+				ln -fs "$go_binary" "$HOME/.local/bin/go"
+				ln -fs "$(dirname "$go_binary")/gofmt" "$HOME/.local/bin/gofmt"
+				break
+			fi
+		done
+	fi
+	# Reuse an NVM default without changing the checked-in shell profiles.
+	if [ -s "$HOME/.nvm/nvm.sh" ]; then
+		export NVM_DIR="$HOME/.nvm"
+		source "$NVM_DIR/nvm.sh"
+	fi
+}
+
+install_build_dependencies() {
+	[ "$os" = linux ] || return 0
+	if command -v dnf >/dev/null; then
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get update
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin
+	fi
+}
+
+setup_kitty_terminfo() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	tic -x -o "$HOME/.terminfo" "$root/kitty/kitty.terminfo" || return 1
+	infocmp -A "$HOME/.terminfo" xterm-kitty >/dev/null || return 1
+}
+
+setup_neovim() (
+	local root staging
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	staging=$(mktemp -d) || return 1
+	trap 'rm -rf "$staging"' EXIT
+	if [ -f "$root/nvim/lazy-lock.json" ]; then
+		cp "$root/nvim/lazy-lock.json" "$staging/lazy-lock.json"
+	fi
+	echo "Installing Neovim plugins, Treesitter parsers, and language servers..."
+	cd "$HOME" || return 1
+	DOTFILES_NVIM_BOOTSTRAP="$root/scripts/bootstrap-nvim.lua" \
+		DOTFILES_NVIM_BOOTSTRAP_LOCK="$staging/lazy-lock.json" \
+		nvim --headless -i NONE -u "$HOME/.config/nvim/init.lua" \
+		--cmd 'lua vim.g.dotfiles_bootstrap_errors = {}; local notify = vim.notify; vim.notify = function(msg, level, opts) if level == vim.log.levels.ERROR then local errors = vim.g.dotfiles_bootstrap_errors; table.insert(errors, tostring(msg)); vim.g.dotfiles_bootstrap_errors = errors end; return notify(msg, level, opts) end' \
+		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
+)
+
 install_dependencies() {
 	# install rust
-	install_package_version cargo 1.84.1
+	if ! command -v rustup >/dev/null; then
+		local rust_version
+		rust_version=$(rust_current_semver) || rust_version=""
+		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" 1.93.1; then
+			rust_version=1.93.1
+		fi
+		install_cargo_from_release "$rust_version"
+	fi
+	install_package_version cargo 1.93.1
 	install_package_version uv 0.12.11
+	uv python install 3.12 --default
+	install_package_version node 24
+	install_package_version go 1.26.2
+	local go_bin
+	go_bin=$(go env GOBIN)
+	if [ -z "$go_bin" ]; then
+		go_bin=$(go env GOPATH)
+		go_bin="${go_bin%%:*}/bin"
+	fi
+	export PATH="$go_bin:$PATH"
 
 	# terminal candy
 	install_package_version fzf 0.59.0
@@ -773,7 +866,7 @@ install_dependencies() {
 	install_package_version stylua 2.0.2
 
 	# editor
-	install_package_version neovim 0.11.4 # Latest stable version
+	install_package_version neovim 0.12.5 # Treesitter's main branch requires 0.12+
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
 	install_package_version rust-analyzer 1.84.1             # rust
@@ -786,24 +879,22 @@ install_dependencies() {
 
 	# tools
 	install_package_version hexyl 0.16.0
-	install_package_version kagi 0.0.1
+	install_package_version kagi 0.1.0
 	install_package_version direnv 2.35.0
 	install_package_version just 1.40.0
 
-	# Post-installation setup
-	post_install_setup
 }
 
 setup_atuin_sync() {
-	if [ "$os" = "macos" ]; then
-		local atuin_uv
-		atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
-		make -C "$HOME/.files" atuin-sync \
-			ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-dev}" UV="$atuin_uv" || return 1
-	fi
+	local atuin_uv
+	atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
+	make -C "$HOME/.files" atuin-sync \
+		ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-}" UV="$atuin_uv" || return 1
 }
 
 post_install_setup() {
+	setup_kitty_terminfo || return 1
+	setup_neovim || return 1
 	setup_atuin_sync || return 1
 	local sql_format_uv
 	sql_format_uv=$(command -v uv) || sql_format_uv="$HOME/.local/bin/uv"
@@ -829,12 +920,15 @@ post_install_setup() {
 
 # Detect if the user is running the script directly
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-	set -e
+	set -eo pipefail
 	if [ -d "$HOME"/.files ]; then
 		git -C "$HOME"/.files pull
 	else
 		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
 	fi
-	make -C "$HOME"/.files
+	prepare_bootstrap_environment
+	install_build_dependencies
 	install_dependencies
+	make -C "$HOME"/.files
+	post_install_setup
 fi
