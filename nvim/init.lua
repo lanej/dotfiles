@@ -928,11 +928,20 @@ require("lazy").setup({
 							treesitter = {
 								"lsp",
 							},
-							columns = { { "kind_icon" }, { "label", gap = 1 } },
+							columns = { { "kind_icon" }, { "label", gap = 1 }, { "sql_type" } },
 							components = {
+								kind_icon = {
+									text = require("bigquery-completion").icon_text,
+									highlight = require("bigquery-completion").icon_highlight,
+								},
 								label = {
-									text = require("colorful-menu").blink_components_text,
-									highlight = require("colorful-menu").blink_components_highlight,
+									text = require("bigquery-completion").label_text,
+									highlight = require("bigquery-completion").label_highlight,
+								},
+								sql_type = {
+									width = { max = 32 },
+									text = require("bigquery-completion").type_text,
+									highlight = require("bigquery-completion").type_highlight,
 								},
 								source = {
 									text = function(ctx)
