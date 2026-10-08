@@ -171,16 +171,17 @@ dev-cache-config:
 	@test -f "$(HOME)/.config/dev-cache-budgets.json" || cp "$(DOTFILES)/rc/dev-cache-budgets.json" "$(HOME)/.config/dev-cache-budgets.json"
 FORCE:
 DEV_CACHE_NODE_PATH = $(shell dirname "$$(command -v node || echo /usr/bin/node)"):$(shell dirname "$$(command -v npm || echo /usr/bin/npm)")
+DEV_CACHE_GOPATH = $(shell GOTOOLCHAIN=local GOWORK=off go env GOPATH 2>/dev/null)
 dev-cache-schedule: dev-cache-config FORCE
 	@mkdir -p "$(HOME)/.local/state/dev-cache-prune"
 ifeq ($(UNAME_S),Darwin)
 	@mkdir -p "$(HOME)/Library/LaunchAgents"
-	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' "$(DOTFILES)/rc/launchd/com.joshlane.dev-cache-prune.plist.template" > "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
+	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' -e 's|__GOPATH__|$(DEV_CACHE_GOPATH)|g' "$(DOTFILES)/rc/launchd/com.joshlane.dev-cache-prune.plist.template" > "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
 	@launchctl unload "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist" 2>/dev/null || true
 	@launchctl load -w "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
 else
 	@mkdir -p "$(HOME)/.config/systemd/user"
-	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' "$(DOTFILES)/rc/systemd/dev-cache-prune.service.template" > "$(HOME)/.config/systemd/user/dev-cache-prune.service"
+	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' -e 's|__GOPATH__|$(DEV_CACHE_GOPATH)|g' "$(DOTFILES)/rc/systemd/dev-cache-prune.service.template" > "$(HOME)/.config/systemd/user/dev-cache-prune.service"
 	@cp "$(DOTFILES)/rc/systemd/dev-cache-prune.timer.template" "$(HOME)/.config/systemd/user/dev-cache-prune.timer"
 	@systemctl --user daemon-reload
 	@systemctl --user enable --now dev-cache-prune.timer

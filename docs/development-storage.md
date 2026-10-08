@@ -6,8 +6,10 @@ Go build, npm download, and Cargo download caches, 4 GiB for Go modules,
 and 8 GiB across Rust
 `target` directories in `~/src`, `~/Documents/Codex`, and Paseo worktrees.
 Run `dev-cache-prune --dry-run` to inspect usage.
-Setup records the installed Node/npm directories, including nvm installations.
-Rerun the setup target after replacing a Node installation.
+Setup records the installed Node/npm directories and Go workspace path.
+Rerun the setup target after replacing Node or changing the Go workspace.
+Developer temporary folders are scanned for borrowed cache files; macOS Apple
+app-private temporary folders are excluded.
 
 These are periodic size budgets. Busy caches and targets are deferred and
 checked again on the next run. Native managers clean over-budget caches;

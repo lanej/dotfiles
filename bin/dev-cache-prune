@@ -119,6 +119,10 @@ def external_links(user_home):
                     if entry.is_symlink():
                         links.append((path, path.resolve()))
                     elif entry.is_dir(follow_symlinks=False) and entry.name != ".git":
+                        # Apple app-private temporary folders do not borrow
+                        # development caches and may be privacy protected.
+                        if sys.platform == "darwin" and folder in temporary and entry.name.startswith("com.apple."):
+                            continue
                         # Other users' protected temporary folders cannot hold
                         # this user's installed environments.
                         if temp and entry.stat(follow_symlinks=False).st_uid != os.getuid():

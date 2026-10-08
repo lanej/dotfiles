@@ -6,7 +6,7 @@
   <key>ProgramArguments</key>
   <array><string>__HOME__/.local/bin/dev-cache-prune</string></array>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>__NODE_PATH__:__HOME__/.local/bin:__HOME__/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <dict><key>PATH</key><string>__NODE_PATH__:__HOME__/.local/bin:__HOME__/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string><key>GOPATH</key><string>__GOPATH__</string></dict>
   <key>StartInterval</key><integer>3600</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>__HOME__/.local/state/dev-cache-prune/out.log</string>

@@ -4,4 +4,5 @@ Description=Enforce development cache budgets
 [Service]
 Type=oneshot
 Environment=PATH=__NODE_PATH__:__HOME__/.local/bin:__HOME__/.cargo/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+Environment="GOPATH=__GOPATH__"
 ExecStart=__HOME__/.local/bin/dev-cache-prune
