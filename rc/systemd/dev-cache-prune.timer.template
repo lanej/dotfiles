@@ -1,0 +1,9 @@
+[Unit]
+Description=Check development cache budgets hourly
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

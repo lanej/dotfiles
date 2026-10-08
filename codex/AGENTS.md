@@ -32,3 +32,41 @@ If neither route is available, report the delegation gap explicitly.
 Keep PR descriptions concise: explain the final change and why, show the result, and add only context the diff and checks do not already provide. Let tests and automated checks report their own results; do not duplicate test cases, coverage figures, test counts, or CI results in the description. Mention manual validation, external evidence, or known verification gaps only when they add information. Omit unused sections, boilerplate checklists, and implementation history.
 
 Include a screenshot when it helps reviewers understand or assess a visual change. Omit it when the diff and prose already explain the change adequately; screenshots are not required for every PR. When included, show the actual current result, use a durable image URL that renders inline on GitHub, and verify that it loads before handing off.
+
+# Git worktree cleanup
+
+Treat cleanup of temporary worktrees created for the task as part of completion.
+This includes temporary worktrees created by subagents for the same task.
+Record their paths and the starting checkout so ownership stays clear across
+subagents and handoffs.
+
+Before the final response, remove each task-owned temporary worktree whose work
+is safely retained and which no active session, process, or pending task needs.
+An open PR alone does not require keeping its checkout: keep the branch for
+review updates and recreate a worktree when needed. Preserve commits on a named
+branch or verified remote ref before removing a detached worktree.
+
+Check `git status --short --untracked-files=all` and any valuable ignored files
+before removal. Retain a worktree with uncommitted work or needed local artifacts
+unless that work has been preserved elsewhere. Leave pre-existing, permanent,
+user-owned, and other agents' active worktrees alone; age is not proof of
+inactivity.
+
+Move outside the worktree first, then use `git worktree remove <path>` from a
+surviving checkout. Do not force removal or delete branches as a cleanup side
+effect. For registrations whose directories are already gone, inspect
+`git worktree prune --dry-run --verbose` before running `git worktree prune`.
+Verify the result with `git worktree list`.
+
+Do this cleanup within the authorized task without asking for routine
+confirmation. If a task-owned worktree must remain or removal is blocked,
+include its path and the concrete reason in the final response.
+
+# Development storage
+
+Use the normal shared package-manager download caches; do not create a cache
+per worktree. Link read-only datasets, verified package artifacts, and browser
+installations to their canonical locations. Keep mutable dependencies and build
+outputs isolated when versions differ. Remove disposable test dependencies and
+temporary caches at task completion while retaining useful logs and artifacts.
+See `~/.files/docs/development-storage.md` for the installed cache budgets.

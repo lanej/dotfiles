@@ -1,0 +1,8 @@
+{
+  "uv_gib": 4,
+  "go_build_gib": 2,
+  "go_modules_gib": 4,
+  "npm_gib": 2,
+  "cargo_gib": 2,
+  "rust_targets_gib": 8
+}

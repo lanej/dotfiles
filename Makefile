@@ -1,6 +1,6 @@
 .PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
-.PHONY: sql-formatters
+.PHONY: sql-formatters dev-cache-config FORCE
 DOTFILES := $(shell pwd)
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
@@ -165,6 +165,29 @@ go:
 cargo:
 	@mkdir -p $(HOME)/.cargo
 	@ln -fs $(DOTFILES)/cargo/config.toml $(HOME)/.cargo/config.toml
+dev-cache-config:
+	@mkdir -p "$(HOME)/.local/bin" "$(HOME)/.config"
+	@ln -fs "$(DOTFILES)/bin/dev-cache-prune" "$(HOME)/.local/bin/dev-cache-prune"
+	@test -f "$(HOME)/.config/dev-cache-budgets.json" || cp "$(DOTFILES)/rc/dev-cache-budgets.json" "$(HOME)/.config/dev-cache-budgets.json"
+FORCE:
+DEV_CACHE_NODE_PATH = $(shell dirname "$$(command -v node || echo /usr/bin/node)"):$(shell dirname "$$(command -v npm || echo /usr/bin/npm)")
+dev-cache-schedule: dev-cache-config FORCE
+	@mkdir -p "$(HOME)/.local/state/dev-cache-prune"
+ifeq ($(UNAME_S),Darwin)
+	@mkdir -p "$(HOME)/Library/LaunchAgents"
+	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' "$(DOTFILES)/rc/launchd/com.joshlane.dev-cache-prune.plist.template" > "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
+	@launchctl unload "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist" 2>/dev/null || true
+	@launchctl load -w "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
+else
+	@mkdir -p "$(HOME)/.config/systemd/user"
+	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' "$(DOTFILES)/rc/systemd/dev-cache-prune.service.template" > "$(HOME)/.config/systemd/user/dev-cache-prune.service"
+	@cp "$(DOTFILES)/rc/systemd/dev-cache-prune.timer.template" "$(HOME)/.config/systemd/user/dev-cache-prune.timer"
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now dev-cache-prune.timer
+endif
+
+test-dev-cache-prune: FORCE
+	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
 superwhisper:
 	@if ! command -v git-crypt >/dev/null 2>&1; then \
 		echo "⚠️  Skipping superwhisper: git-crypt not installed. Install with: brew install git-crypt"; \

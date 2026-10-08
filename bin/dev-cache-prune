@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""Enforce development cache budgets using native cache managers."""
+import argparse
+import fcntl
+import json
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+def run(args, **kwargs):
+    return subprocess.run(args, capture_output=True, text=True, **kwargs)
+
+
+def size(path):
+    result = run(["du", "-sk", str(path)])
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip())
+    return int(result.stdout.split()[0]) * 1024
+
+
+def activity():
+    commands = {}
+    result = run(["ps", "-axww", "-o", "pid=", "-o", "comm="])
+    if result.returncode:
+        raise RuntimeError("Cannot inspect running processes")
+    for line in result.stdout.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2:
+            commands[int(parts[0])] = Path(parts[1]).name
+    arguments = run(["ps", "-axww", "-o", "pid=", "-o", "ppid=", "-o", "args="])
+    if arguments.returncode:
+        raise RuntimeError("Cannot inspect command arguments")
+    rows = {}
+    for line in arguments.stdout.splitlines():
+        parts = line.strip().split(None, 2)
+        if len(parts) == 3:
+            rows[int(parts[0])] = (int(parts[1]), parts[2].split())
+    launched = {parent for parent, argv in rows.values()
+                if any("/node_modules/.bin/" in arg
+                       and Path(arg).is_file() for arg in argv[:2])}
+    for pid, (parent, argv) in rows.items():
+        npm_index = next((i for i, arg in enumerate(argv[:3])
+                          if Path(arg).name in ("npm", "npm-cli.js")), None)
+        if npm_index is not None:
+            operation = argv[npm_index + 1] if len(argv) > npm_index + 1 else ""
+            # npm exec stays alive while an installed server runs. Its startup
+            # stays guarded until its installed binary child has launched.
+            writer = operation not in ("run", "run-script", "start", "test")
+            if operation == "exec" and pid in launched:
+                writer = False
+            commands[pid] = "npm" if writer else "npm runtime"
+    result = run(["lsof", "-nP", "-u", str(os.getuid()), "-Fpcn"])
+    if result.returncode not in (0, 1) or not result.stdout.startswith("p"):
+        raise RuntimeError("Cannot inspect open files")
+    paths = []
+    command = ""
+    for line in result.stdout.splitlines():
+        if line.startswith("c"):
+            command = line[1:]
+        elif line.startswith("n/") and command not in ("du", "ps", "lsof"):
+            name = line[1:].removesuffix(" (deleted)")
+            if sys.platform == "darwin" and (
+                name.startswith("/tmp/") or name.startswith("/var/")
+            ):
+                name = "/private" + name
+            paths.append(name)
+    return set(commands.values()), paths
+
+
+def busy(path, paths):
+    prefix = str(path) + "/"
+    return any(p == str(path) or p.startswith(prefix) for p in paths)
+
+
+def cache_path(path):
+    if not path.is_absolute():
+        raise RuntimeError("Cache path must be absolute: " + str(path))
+    if path.is_symlink() or path.resolve() != path.absolute():
+        raise RuntimeError("Cache path has a symlink: " + str(path))
+    return path
+
+
+def native_clean(args, env=None):
+    result = run(args, cwd="/tmp", env=env, timeout=60)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Cache manager failed")
+    if result.stderr.strip():
+        print(result.stderr.strip())
+
+
+def external_links(user_home):
+    roots = [user_home / name for name in (
+        "src", "Documents/Codex", "workspace", ".files", ".venvs",
+        ".paseo/worktrees", ".local/share/uv/tools", ".local/bin", ".cargo/bin"
+    )]
+    temporary = [Path("/tmp").resolve(), Path(tempfile.gettempdir()).resolve()]
+    roots.extend(temporary + [Path("/opt/homebrew/bin"), Path("/usr/local/bin")])
+    links = []
+    for root in roots:
+        if root.is_symlink():
+            links.append((root.absolute(), root.resolve()))
+    pending = [(root, root in temporary) for root in dict.fromkeys(roots) if root.exists()]
+    seen = set()
+    while pending:
+        folder, temp = pending.pop()
+        if folder in seen:
+            continue
+        seen.add(folder)
+        try:
+            with os.scandir(folder) as entries:
+                for entry in entries:
+                    path = Path(entry.path)
+                    if entry.is_symlink():
+                        links.append((path, path.resolve()))
+                    elif entry.is_dir(follow_symlinks=False) and entry.name != ".git":
+                        # Other users' protected temporary folders cannot hold
+                        # this user's installed environments.
+                        if temp and entry.stat(follow_symlinks=False).st_uid != os.getuid():
+                            continue
+                        pending.append((path, temp))
+        except FileNotFoundError:
+            # Temporary tools may remove their own directories during a scan.
+            continue
+        except OSError as exc:
+            raise RuntimeError("Cannot inspect dependency links in " + str(folder)) from exc
+    return links
+
+
+def dedicated_uv_cache(path):
+    allowed = {".gitignore", ".lock", "CACHEDIR.TAG"}
+    bucket = re.compile(r"^(archive|builds|environments|git|interpreter|sdists|simple|wheels|flat-index)-v[0-9]+$")
+    marker = path / "CACHEDIR.TAG"
+    if not marker.is_file() or not marker.read_text().startswith(
+        "Signature: 8a477f597d28d172789f06886806bc55"
+    ):
+        return False
+    return all(not entry.is_symlink() and (
+        entry.name in allowed or (entry.is_dir() and bucket.fullmatch(entry.name))
+    ) for entry in path.iterdir())
+
+
+def dedicated_go_modules(path):
+    return (path / "cache/download").is_dir() and all(
+        not entry.is_symlink() and entry.is_dir() and (
+            entry.name == "cache"
+            or re.fullmatch(r"[a-zA-Z0-9._~-]+\.[a-zA-Z0-9._~@+-]+", entry.name)
+        ) for entry in path.iterdir()
+    )
+
+
+def identity(path):
+    info = path.stat()
+    return info.st_dev, info.st_ino
+
+
+def linked(paths, links):
+    def within(candidate):
+        return any(candidate == path or str(candidate).startswith(str(path) + "/")
+                   for path in paths)
+    return any(within(destination) and not within(origin)
+               for origin, destination in links)
+
+
+def rust_targets(roots):
+    for root in roots:
+        for current, dirs, files in os.walk(root, followlinks=False):
+            folder = Path(current)
+            if "CACHEDIR.TAG" in files and folder.name != "target":
+                dirs[:] = []
+                continue
+            for name in list(dirs):
+                child = folder / name
+                if child.is_symlink() or name in (
+                    ".git", "node_modules", ".venv", ".next", ".cache", ".ui-review"
+                ):
+                    dirs.remove(name)
+                elif name == "target":
+                    if (child / "CACHEDIR.TAG").is_file() and (
+                        (folder / "Cargo.toml").is_file()
+                        or (child / ".rustc_info.json").is_file()
+                    ):
+                        yield child
+                    dirs.remove(name)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--config", type=Path,
+                        default=Path.home() / ".config/dev-cache-budgets.json")
+    options = parser.parse_args()
+    state = Path.home() / ".local/state/dev-cache-prune"
+    state.mkdir(parents=True, exist_ok=True)
+    lock = (state / "lock").open("a")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("Another cache cleanup is running")
+        return 0
+    config = json.loads(options.config.read_text())
+    required = ("uv_gib", "go_build_gib", "go_modules_gib", "npm_gib", "cargo_gib", "rust_targets_gib")
+    if any(type(config.get(k)) not in (int, float)
+           or not math.isfinite(config[k]) or config[k] <= 0 for k in required):
+        raise SystemExit("Cache budgets must be positive GiB values")
+    user_home = Path.home()
+    errors = []
+    env = os.environ.copy()
+    env.update(GOTOOLCHAIN="local", GOWORK="off", GOENV="off", UV_LOCK_TIMEOUT="10")
+    uv_path = Path(os.path.abspath(os.environ.get("UV_CACHE_DIR",
+                   str(user_home / ".cache/uv"))))
+    env["UV_CACHE_DIR"] = str(uv_path)
+    read_env = os.environ.copy()
+    read_env.update(GOTOOLCHAIN="local", GOWORK="off")
+    go_result = run(["go", "env", "GOCACHE"], cwd="/tmp", env=read_env) if shutil.which("go") else None
+    go_path = Path(os.path.abspath(go_result.stdout.strip())) if (
+        go_result and go_result.returncode == 0 and go_result.stdout.strip() != "off"
+    ) else None
+    if go_path:
+        env["GOCACHE"] = str(go_path)
+    modules_result = run(["go", "env", "GOMODCACHE"], cwd="/tmp", env=read_env) if shutil.which("go") else None
+    modules_path = Path(os.path.abspath(modules_result.stdout.strip())) if (
+        modules_result and modules_result.returncode == 0 and modules_result.stdout.strip()
+    ) else None
+    if modules_path:
+        env["GOMODCACHE"] = str(modules_path)
+    npm_result = run(["npm", "config", "get", "cache"], cwd="/tmp") if shutil.which("npm") else None
+    npm_path = Path(os.path.abspath(npm_result.stdout.strip())) if npm_result and npm_result.returncode == 0 else None
+    cargo_path = Path(os.path.abspath(os.environ.get("CARGO_HOME", str(user_home / ".cargo"))))
+    env["CARGO_HOME"] = str(cargo_path)
+    specs = [
+        ("uv", uv_path, "uv_gib", ["uv", "cache", "clean", "--cache-dir", str(uv_path)],
+         {"uv"}, dedicated_uv_cache),
+        ("Go build", go_path, "go_build_gib", ["go", "clean", "-cache"],
+         {"go", "compile", "link", "gopls"}, lambda p: (p / "README").is_file()),
+        ("Go modules", modules_path, "go_modules_gib", ["go", "clean", "-modcache"],
+         {"go", "compile", "link", "gopls"}, dedicated_go_modules),
+        ("npm", npm_path / "_cacache" if npm_path else None, "npm_gib",
+         ["npm", "cache", "clean", "--force", "--cache", str(npm_path)],
+         {"npm"}, lambda p: p.name == "_cacache"),
+        ("Cargo", cargo_path, "cargo_gib",
+         ["cargo", "cache", "trim", "--limit", str(int(config["cargo_gib"] * 1024**3)) + "B"],
+         {"cargo", "cargo-cache", "rustc", "rustdoc"}, lambda p: (p / "registry").is_dir()),
+    ]
+    for label, path, key, args, writers, valid in specs:
+        if path is None or not path.is_dir() or not shutil.which(args[0]):
+            continue
+        try:
+            cache_path(path)
+            original_identity = identity(path)
+            evicted = [path / "registry", path / "git"] if label == "Cargo" else [path]
+            # Cargo's installed binaries and toolchains are outside its trim scope.
+            measured = sum(size(path / name) for name in ("registry", "git")
+                           if (path / name).is_dir()) if label == "Cargo" else size(path)
+            limit = config[key] * 1024**3
+            print("{}: {:.2f} GiB / {} GiB".format(label, measured / 1024**3, config[key]))
+            if measured <= limit:
+                continue
+            if not valid(path):
+                raise RuntimeError("Not a dedicated native cache directory")
+            commands, opened = activity()
+            if writers & commands or any(busy(subtree, opened) for subtree in evicted):
+                print("  Deferred: cache is in use")
+                continue
+            links = external_links(user_home)
+            commands, opened = activity()
+            if writers & commands or any(busy(subtree, opened) for subtree in evicted):
+                print("  Deferred: cache is in use")
+                continue
+            if linked(evicted, links):
+                print("  Deferred: installed environment or tool links into this cache")
+                continue
+            cache_path(path)
+            if identity(path) != original_identity or not valid(path):
+                raise RuntimeError("Cache directory changed during inspection")
+            if options.dry_run:
+                print("  Would enforce budget")
+                continue
+            native_clean(args, env=env)
+        except Exception as exc:
+            errors.append(label + ": " + str(exc))
+    try:
+        targets = list(rust_targets([user_home / "src", user_home / "Documents/Codex",
+                                     user_home / ".paseo/worktrees"]))
+        identities = {p: identity(p) for p in targets}
+        total = sum(size(p) for p in targets)
+        print("Rust targets: {:.2f} GiB / {} GiB".format(total / 1024**3, config["rust_targets_gib"]))
+        for path in sorted(targets, key=lambda p: p.stat().st_mtime):
+            if total <= config["rust_targets_gib"] * 1024**3:
+                break
+            amount = size(path)
+            links = external_links(user_home)
+            commands, opened = activity()
+            if {"cargo", "rustc", "rustdoc"} & commands or busy(path, opened):
+                print("  Deferred: Rust target is in use")
+                continue
+            if linked([path], links):
+                print("  Deferred: an installed tool links into this target")
+                continue
+            cache_path(path)
+            if not (path / "CACHEDIR.TAG").is_file() or identity(path) != identities[path]:
+                raise RuntimeError("Rust cache directory changed during inspection")
+            print("  {} {}".format("Would remove" if options.dry_run else "Removing", path))
+            if not options.dry_run:
+                shutil.rmtree(path)
+            total -= amount
+    except Exception as exc:
+        errors.append("Rust targets: " + str(exc))
+    for message in errors:
+        print(message, file=sys.stderr)
+    return bool(errors)
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.exit(main())
