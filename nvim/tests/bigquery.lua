@@ -9,7 +9,12 @@ local source = {
 	"  FROM addresses",
 	")",
 	"SELECT street, REGEXP_CONTAINS(street, r'^[0-9]+ .*?[A-Z]') AS valid",
-	"FROM normalized;",
+	"FROM normalized",
+	"QUALIFY",
+	"  ROW_NUMBER() OVER (",
+	"    PARTITION BY street",
+	"    ORDER BY street",
+	"  ) = 1;",
 }
 local function open(path, lines)
 	vim.fn.writefile(lines, path)
@@ -48,11 +53,13 @@ local function workflow()
 	local misindented = vim.deepcopy(source)
 	misindented[2] = " " .. source[2]:sub(3)
 	misindented[4] = "     " .. source[4]:sub(3)
+	misindented[9] = "QUALIFY ROW_NUMBER() OVER ("
+	table.remove(misindented, 10)
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, misindented)
 	format()
 	assert(
 		vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)),
-		"Default formatting must repair uneven indentation without expanding compact clauses"
+		"Default formatting must repair indentation and put QUALIFY's window on its own line"
 	)
 	vim.fn.writefile({
 		"[sqlfluff:rules:capitalisation.keywords]",

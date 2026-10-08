@@ -3,7 +3,7 @@ dialect = bigquery
 templater = raw
 # Normalize indentation while retaining compact SELECT lists. LT09 is omitted
 # so short clauses and multiple expressions can share a line.
-rules = LT01,LT02,LT05,CP01,CP03,CP05
+rules = LT01,LT02,LT05,LT14,CP01,CP03,CP05
 max_line_length = 120
 
 [sqlfluff:indentation]
@@ -12,6 +12,23 @@ tab_space_size = 2
 indented_ctes = false
 indented_joins = false
 implicit_indents = allow
+
+# Make the window expression's outer indentation explicit.
+[sqlfluff:layout:type:qualify_clause]
+keyword_line_position = alone
+
+# Limit keyword line-break enforcement to QUALIFY; keep other clauses compact.
+[sqlfluff:layout:type:where_clause]
+keyword_line_position = none
+
+[sqlfluff:layout:type:groupby_clause]
+keyword_line_position = none
+
+[sqlfluff:layout:type:orderby_clause]
+keyword_line_position = none
+
+[sqlfluff:layout:type:having_clause]
+keyword_line_position = none
 
 [sqlfluff:rules:capitalisation.keywords]
 capitalisation_policy = upper
