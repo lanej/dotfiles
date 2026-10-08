@@ -100,10 +100,22 @@ func atomicWrite(path string, data []byte, mode os.FileMode) error {
 }
 
 func updateCodexConfig(text string, cfg configuration) (string, error) {
+	return updateCodexConfigLayer(text, cfg, false)
+}
+
+func updateCodexConfigLayer(text string, cfg configuration, profileLayer bool) (string, error) {
 	var previous map[string]any
 
 	if err := toml.Unmarshal([]byte(text), &previous); err != nil {
 		return "", fmt.Errorf("parse existing Codex config.toml: %w", err)
+	}
+
+	profiles, _ := previous["profiles"].(map[string]any)
+	if legacy, exists := profiles["bedrock"]; exists {
+		settings, ok := legacy.(map[string]any)
+		if !ok || len(settings) != 2 || settings["model_provider"] != "amazon-bedrock" || settings["model_reasoning_summary"] != "none" {
+			return "", errors.New("legacy Bedrock profile requires migration to bedrock.config.toml")
+		}
 	}
 
 	providers, _ := previous["model_providers"].(map[string]any)
@@ -134,6 +146,9 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 		{"web_search", "cached"},
 	} {
 		if setting.key == "web_search" {
+			if profileLayer {
+				continue
+			}
 			if _, exists := previous["web_search"]; exists {
 				continue
 			}
@@ -149,7 +164,7 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 		}
 	}
 
-	if _, exists := previous["model"]; !exists {
+	if _, exists := previous["model"]; !exists && !profileLayer {
 		top += "model = \"openai.gpt-6.1-sol\"\n"
 	}
 
@@ -159,7 +174,7 @@ func updateCodexConfig(text string, cfg configuration) (string, error) {
 		header := strings.TrimSpace(strings.SplitN(line, "#", 2)[0])
 
 		if strings.HasPrefix(header, "[") {
-			skip = header == "[model_providers.amazon-bedrock]" || header == "[model_providers.amazon-bedrock.aws]"
+			skip = header == "[model_providers.amazon-bedrock]" || header == "[model_providers.amazon-bedrock.aws]" || header == "[profiles.bedrock]"
 		}
 
 		if !skip {
@@ -367,6 +382,20 @@ func install(args []string, env installEnvironment) error {
 		return err
 	}
 
+	profile := filepath.Join(env.root, "bedrock.config.toml")
+	oldProfile, err := os.ReadFile(profile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	updatedProfile, err := updateCodexConfigLayer(string(oldProfile), cfg, true)
+	if err != nil {
+		return fmt.Errorf("configure Bedrock profile: %w", err)
+	}
+	updatedProfile, err = configureBrowsing(updatedProfile, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
+	if err != nil {
+		return err
+	}
+
 	binary, err := os.ReadFile(env.executable)
 	if err != nil {
 		return err
@@ -378,6 +407,11 @@ func install(args []string, env installEnvironment) error {
 
 	if old != nil {
 		if err := atomicWrite(backup, old, 0600); err != nil {
+			return err
+		}
+	}
+	if oldProfile != nil {
+		if err := atomicWrite(filepath.Join(filepath.Dir(backup), "bedrock.config.toml"), oldProfile, 0600); err != nil {
 			return err
 		}
 	}
@@ -395,6 +429,7 @@ func install(args []string, env installEnvironment) error {
 		{executable, binary, 0700},
 		{filepath.Join(dir, "config.json"), append(settings, '\n'), 0600},
 		{config, []byte(updated), 0600},
+		{profile, []byte(updatedProfile), 0600},
 	} {
 		if err := atomicWrite(file.path, file.data, file.mode); err != nil {
 			return err

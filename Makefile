@@ -243,10 +243,21 @@ codex-tmux:
 .PHONY: codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
-codex: claude codex-skills codex-agents codex-tmux
+codex-env:
 	@mkdir -p $(HOME)/.codex
-	@ln -fs $(DOTFILES)/codex/env $(HOME)/.codex/.env
-	@ln -fs $(DOTFILES)/codex/bedrock.config.toml $(HOME)/.codex/bedrock.config.toml
+	@if [ ! -e "$(HOME)/.codex/.env" ] && [ ! -L "$(HOME)/.codex/.env" ] || \
+		[ "$$(readlink "$(HOME)/.codex/.env")" = "$(DOTFILES)/codex/env" ]; then \
+		if [ -f "$(HOME)/.config/bedrock/env" ]; then \
+			ln -fs "$(HOME)/.config/bedrock/env" "$(HOME)/.codex/.env"; \
+		else \
+			ln -fs "$(DOTFILES)/codex/env" "$(HOME)/.codex/.env"; \
+		fi; \
+	fi
+codex: claude codex-skills codex-agents codex-tmux codex-env
+	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
+		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
+		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
+	fi
 	@cat $(DOTFILES)/codex/AGENTS.md $(DOTFILES)/codex/AGENTS.local.md > $(HOME)/.codex/AGENTS.md 2>/dev/null || cp $(DOTFILES)/codex/AGENTS.md $(HOME)/.codex/AGENTS.md
 	@$(DOTFILES)/bin/sync-codex-mcp-servers
 quarto:
@@ -328,6 +339,14 @@ test-atuin-sync:
 
 test-bootstrap:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap.py"
+
+BEDROCK_TOKEN_FILE ?=
+export BEDROCK_TOKEN_FILE
+bedrock-credentials:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-bedrock-credentials.py"
+
+bedrock-router: codex-env
+	@bash -ec 'source "$$1"; prepare_bootstrap_environment; setup_bedrock_router' bash "$(DOTFILES)/bootstrap.sh"
 
 test-bootstrap-nvim:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"

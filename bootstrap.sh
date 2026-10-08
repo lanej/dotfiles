@@ -531,6 +531,22 @@ install_node_from_release() {
 	hash -r
 }
 
+install_codex_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g "@openai/codex@$1"
+}
+
+claude-code_current_semver() {
+	current_heuristic_semver claude
+}
+
+install_claude-code_from_release() (
+	claude_stage=$(mktemp) || exit 1
+	trap 'rm -f "$claude_stage"' EXIT
+	curl -fsSL https://claude.ai/install.sh -o "$claude_stage" || exit 1
+	bash "$claude_stage" "$1" || exit 1
+)
+
 install_stylua_from_release() {
 	install_package_version node 24
 	npm install -g "@johnnymorganz/stylua-bin@$1"
@@ -841,6 +857,10 @@ install_dependencies() {
 	fi
 	export PATH="$go_bin:$PATH"
 
+	# AI coding tools, installed before Make links their configuration.
+	install_package_version codex 0.162.0
+	install_package_version claude-code 2.1.295
+
 	# terminal candy
 	install_package_version fzf 0.59.0
 	install_package_version starship 1.22.1
@@ -892,7 +912,34 @@ setup_atuin_sync() {
 		ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-}" UV="$atuin_uv" || return 1
 }
 
+setup_bedrock_credentials() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	uv run --no-project python "$root/scripts/setup-bedrock-credentials.py"
+}
+
+setup_bedrock_router() (
+	local root staging
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	if [ ! -f "$HOME/.config/bedrock/env" ]; then
+		echo "No Bedrock credentials configured; skipping router setup."
+		return 0
+	fi
+	staging=$(mktemp -d) || return 1
+	trap 'rm -rf "$staging"' EXIT
+	cd "$root/codex/bedrock-router" || return 1
+	go build -trimpath -o "$staging/bedrock-router" . || return 1
+	"$staging/bedrock-router" install --config "$PWD/config.json" --keep-env || return 1
+	if [ "$os" = linux ]; then
+		if ! loginctl show-user "$USER" -p Linger | grep -q '^Linger=yes$'; then
+			loginctl enable-linger "$USER" ||
+				sudo -n loginctl enable-linger "$USER" || return 1
+		fi
+	fi
+)
+
 post_install_setup() {
+	setup_bedrock_router || return 1
 	setup_kitty_terminfo || return 1
 	setup_neovim || return 1
 	setup_atuin_sync || return 1
@@ -929,6 +976,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	prepare_bootstrap_environment
 	install_build_dependencies
 	install_dependencies
+	setup_bedrock_credentials
 	make -C "$HOME"/.files
 	post_install_setup
 fi

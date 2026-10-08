@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
+import json
 import os
 import shutil
 import subprocess
@@ -17,8 +18,18 @@ def main():
         checkout = home / ".files"
         checkout.mkdir()
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
+        shutil.copyfile(root / "Makefile", checkout / "Makefile")
+        (checkout / "scripts").mkdir()
+        shutil.copyfile(
+            root / "scripts/setup-bedrock-credentials.py",
+            checkout / "scripts/setup-bedrock-credentials.py",
+        )
+        token = "test-only-'$(touch \"$HOME/token-executed\")`id`"
+        source = home / "user (13).json"
+        source.write_text(json.dumps({"bearer_token": token, "region": "us-east-1", "expiration": 4102444800}))
         (checkout / "kitty").mkdir()
         shutil.copyfile(root / "kitty/kitty.terminfo", checkout / "kitty/kitty.terminfo")
+        (checkout / "codex/bedrock-router").mkdir(parents=True)
         driver = fixture / "driver"
         driver.write_text(f"#!{sys.executable}\n" + r'''
 import os
@@ -71,6 +82,12 @@ NVM
 ln -fs "$HOME/fixture/driver" "$HOME/.cargo/bin/rustup"
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.cargo/env"
 """
+    elif url == "https://claude.ai/install.sh":
+        event = "claude"
+        script = r"""mkdir -p "$HOME/.local/bin"
+ln -fs "$HOME/fixture/driver" "$HOME/.local/bin/claude"
+echo "$1" > "$HOME/claude-version"
+"""
     else:
         raise AssertionError("Unexpected download: " + url)
     record(event)
@@ -79,6 +96,9 @@ elif name == "uv":
     if args[:2] == ["python", "install"]:
         record("python")
         (home / ".local/bin/python3").symlink_to(fixture / "driver")
+    elif args[:3] == ["run", "--no-project", "python"]:
+        record("bedrock setup")
+        os.execv(sys.executable, [sys.executable, *args[3:]])
     else:
         print("uv 0.12.11" if managed else "uv 0.10.12")
 elif name == "python3":
@@ -87,14 +107,32 @@ elif name == "node":
     print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else "v16.19.1")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
+elif name == "npm" and args[:2] == ["install", "-g"]:
+    package, version = args[2].rsplit("@", 1)
+    assert package == "@openai/codex", args
+    node_bin = Path(shutil.which("node")).parent
+    (node_bin / "codex").symlink_to(fixture / "driver")
+    (home / "codex-version").write_text(version)
+    record("codex")
+elif name in ("codex", "claude"):
+    assert args == ["--version"], args
+    print(name + " " + (home / (name + "-version")).read_text().strip())
 elif name == "jq" and args[:1] == ["-r"]:
     print("99.0.0")
 elif name == "make":
-    for tool in ("node", "python3", "uv"):
+    for tool in ("node", "python3", "uv", "codex", "claude"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
-        expected = {"node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12."}[tool]
+        expected = {
+            "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
+            "codex": "codex 0.162.0", "claude": "claude 2.1.295",
+        }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
+    assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
+    subprocess.run(
+        ["/usr/bin/make", "-f", str(home / ".files/Makefile"), "codex-env"],
+        cwd=home / ".files", check=True,
+    )
     record("make")
     if "atuin-sync" in args:
         record("atuin setup")
@@ -103,6 +141,13 @@ elif name == "nvim" and "--headless" in args:
     assert "make" in (home / "events").read_text()
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
+elif name == "bedrock-router":
+    assert args == ["install", "--config", str(home / ".files/codex/bedrock-router/config.json"), "--keep-env"], args
+    assert "make" in (home / "events").read_text()
+    assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
+    record("router setup")
+elif name == "loginctl":
+    print("Linger=yes")
 elif name == "cargo" and args[:1] == ["install"]:
     assert "ssh://git@github.com/easypost-sandbox/kagi.git" in args, args
     (home / ".cargo/bin/kagi").symlink_to(fixture / "driver")
@@ -128,6 +173,9 @@ elif name == "go":
     elif args[:2] == ["version", "-m"]:
         assert args[2].endswith("/glow"), args
         print("\tmod\tgithub.com/charmbracelet/glow/v2\tv2.0.0\tfixture")
+    elif args[:1] == ["build"]:
+        assert Path.cwd() == (home / ".files/codex/bedrock-router").resolve()
+        Path(args[args.index("-o") + 1]).symlink_to(fixture / "driver")
     else:
         print("go version go1.26.2 linux/amd64")
 elif name == "glow":
@@ -149,7 +197,7 @@ else:
             "gh", "git-crypt", "jq", "yq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
-            "direnv", "just",
+            "direnv", "just", "loginctl",
         ):
             (fixture / tool).symlink_to(driver)
         env = {
@@ -168,11 +216,51 @@ else:
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
         events = (home / "events").read_text().splitlines()
-        assert events.index("make") > max(events.index(tool) for tool in ("uv", "node", "python", "rustup"))
+        assert events.index("make") > max(
+            events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
+        )
         assert "neovim setup" in events
         assert "atuin setup" in events
+        assert events.index("router setup") > events.index("make")
+        assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
+        credential_file = home / ".config/bedrock/env"
+        assert events.index("bedrock setup") < events.index("make")
+        assert credential_file.stat().st_mode & 0o777 == 0o600
+        assert source.stat().st_mode & 0o777 == 0o600
+        loaded = subprocess.run(
+            ["/bin/bash", "-c", 'source "$1"; test "$AWS_BEARER_TOKEN_BEDROCK" = "$2" && test "$AWS_REGION" = us-east-1',
+             "bedrock-test", str(credential_file), token],
+            env=env, capture_output=True, text=True,
+        )
+        assert loaded.returncode == 0, "Bedrock credentials did not survive shell quoting."
+        assert not (home / "token-executed").exists(), "Token executed shell code."
+        assert token not in result.stdout + result.stderr
+        # A rerun preserves credentials even if the original export changes.
+        previous = credential_file.read_bytes()
+        source.write_text(json.dumps({"bearer_token": "changed-test-only", "region": "us-west-2"}))
+        rerun = subprocess.run(
+            [sys.executable, str(checkout / "scripts/setup-bedrock-credentials.py")],
+            env=env, capture_output=True, text=True,
+        )
+        assert rerun.returncode == 0 and credential_file.read_bytes() == previous
+        selected = home / "token '$(touch selected-token-executed).json"
+        selected.write_text(json.dumps({"bearer_token": "selected-test-only", "region": "us-west-2"}))
+        selected_install = subprocess.run(
+            ["/usr/bin/make", "-f", str(root / "Makefile"), "bedrock-credentials"],
+            cwd=checkout,
+            env={**env, "BEDROCK_TOKEN_FILE": str(selected)},
+            capture_output=True, text=True,
+        )
+        assert selected_install.returncode == 0, selected_install.stdout + selected_install.stderr
+        selected_loaded = subprocess.run(
+            ["/bin/bash", "-c", 'source "$1"; test "$AWS_BEARER_TOKEN_BEDROCK" = selected-test-only && test "$AWS_REGION" = us-west-2',
+             "bedrock-test", str(credential_file)],
+            env=env, capture_output=True, text=True,
+        )
+        assert selected_loaded.returncode == 0, "Explicitly selected credentials were not installed."
+        assert not (checkout / "selected-token-executed").exists()
         assert "Bootstrap installation completed!" in result.stdout
-        print("PASS: fresh-box bootstrap installs working runtimes before linking configuration.")
+        print("PASS: fresh-box bootstrap installs runtimes, AI CLIs, and private Bedrock credentials.")
 
 
 if __name__ == "__main__":

@@ -33,9 +33,17 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\nweb_search = \"live\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\n")
+	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\nweb_search = \"live\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\n[profiles.bedrock]\nmodel_provider = \"amazon-bedrock\"\nmodel_reasoning_summary = \"none\"\n")
 
 	if err := atomicWrite(filepath.Join(root, "config.toml"), original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	profileSource := filepath.Join(home, "existing-profile.toml")
+	originalProfile := []byte("model_reasoning_effort = \"high\"\n")
+	if err := atomicWrite(profileSource, originalProfile, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(profileSource, filepath.Join(root, "bedrock.config.toml")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -242,10 +250,26 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	}
 
 	mcp := config["mcp_servers"].(map[string]any)["fixture"].(map[string]any)
+	var profile map[string]any
+	profileData, err := os.ReadFile(filepath.Join(root, "bedrock.config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := toml.Unmarshal(profileData, &profile); err != nil {
+		t.Fatal(err)
+	}
 
 	if config["model"] != "existing-model" || config["web_search"] != "disabled" ||
-		mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) {
+		mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) ||
+		profile["model_provider"] != "amazon-bedrock" || profile["model_reasoning_summary"] != "none" ||
+		profile["model"] != nil || profile["web_search"] != nil ||
+		profile["model_reasoning_effort"] != "high" ||
+		bytes.Contains(installed, []byte("[profiles.bedrock]")) ||
+		profile["model_providers"].(map[string]any)["amazon-bedrock"].(map[string]any)["base_url"] != fmt.Sprintf("http://127.0.0.1:%d/openai/v1", cfg.Port) {
 		t.Fatal("installation did not configure delegated browsing while preserving existing settings")
+	}
+	if source, err := os.ReadFile(profileSource); err != nil || !bytes.Equal(source, originalProfile) {
+		t.Fatal("installation changed the original symlinked profile")
 	}
 
 	browse := config["mcp_servers"].(map[string]any)["bedrock_browse"].(map[string]any)
