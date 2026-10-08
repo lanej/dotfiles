@@ -1,9 +1,9 @@
 [sqlfluff]
 dialect = bigquery
 templater = raw
-# Preserve compact clause breaks and deliberate indentation. LT02 and LT09
-# would expand mixed inline/multiline SELECT lists and function arguments.
-rules = LT01,LT05,CP01,CP03,CP05
+# Normalize indentation while retaining compact SELECT lists. LT09 is omitted
+# so short clauses and multiple expressions can share a line.
+rules = LT01,LT02,LT05,CP01,CP03,CP05
 max_line_length = 120
 
 [sqlfluff:indentation]

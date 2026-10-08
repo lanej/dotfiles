@@ -29,8 +29,8 @@ def main():
             settings = json.loads(Path(args.config).read_text())
     if not isinstance(settings, dict):
         raise ValueError("Formatter config must be a JSON object")
-    # Explicit non-default indentation requires normalization; the usual
-    # two-space style preserves existing compact breaks.
+    # Explicit non-default indentation requires normalization even if a
+    # project has removed LT02 from its rule list.
     if settings.get("tabWidth", 2) != 2 or settings.get("useTabs", False):
         rules = config.get("rules")
         if isinstance(rules, str):

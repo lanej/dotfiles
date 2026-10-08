@@ -45,6 +45,15 @@ local function workflow()
 		vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)),
 		"Default formatting must preserve the compact reference layout"
 	)
+	local misindented = vim.deepcopy(source)
+	misindented[2] = " " .. source[2]:sub(3)
+	misindented[4] = "     " .. source[4]:sub(3)
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, misindented)
+	format()
+	assert(
+		vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)),
+		"Default formatting must repair uneven indentation without expanding compact clauses"
+	)
 	vim.fn.writefile({
 		"[sqlfluff:rules:capitalisation.keywords]",
 		"capitalisation_policy = lower",
