@@ -24,6 +24,7 @@ shell:
 	@mkdir -p $(HOME)/.config/btop
 	@ln -fs $(DOTFILES)/btop/btop.conf $(HOME)/.config/btop/btop.conf
 	@mkdir -p $(HOME)/.local/share/z
+	@touch "$(HOME)/.z"
 	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@mkdir -p $(HOME)/.config/atuin

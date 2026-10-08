@@ -40,6 +40,7 @@ _z() {
 
     _z_dirs () {
         local line
+        [ -f "$datafile" ] || return 0
         while read line; do
             # only count directories
             [ -d "${line%%\|*}" ] && echo "$line"
