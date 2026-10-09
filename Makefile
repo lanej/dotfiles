@@ -261,6 +261,7 @@ SETUP_TARGETS += codex-tmux
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
+	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
 codex-tmux: agent-status-broker
 	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-agents

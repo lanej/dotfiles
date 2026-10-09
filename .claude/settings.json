@@ -119,8 +119,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && \"$HOME/.files/bin/claude-autoname-hook\" || true"
-          },
+            "command": "$HOME/.files/bin/claude-stop-hook"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-stop-hook"

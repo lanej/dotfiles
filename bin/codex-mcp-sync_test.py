@@ -30,6 +30,7 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     shutil.copy2(ROOT / "codex/AGENTS.md", repo / "codex/AGENTS.md")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-agent-status-broker").symlink_to(ROOT / "scripts/install-agent-status-broker")
+    (repo / "bin/sync-agent-status-hooks").symlink_to(ROOT / "bin/sync-agent-status-hooks")
     # The external project's installer is a package boundary for this MCP
     # configuration workflow; its own tests exercise real installation.
     broker = executables / "agent-status-broker"
@@ -40,6 +41,17 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     (executables / "python3").symlink_to(sys.executable)
     (executables / "uv").symlink_to(shutil.which("uv"))
     (executables / "jq").symlink_to(shutil.which("jq"))
+    paseo = executables / "paseo"
+    paseo.write_text('#!/bin/sh\n[ "$1" = reload ] && touch "$HOME/paseo-reloaded"\n')
+    paseo.chmod(0o755)
+    (home / ".paseo").mkdir()
+    (home / ".paseo/config.json").write_text(json.dumps({
+        "daemon": {"enableTerminalAgentHooks": True, "retained": "kept"},
+    }))
+    (home / ".codex/hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [{"hooks": [
+        {"command": 'if [ -n "$PASEO_TERMINAL_ID" ]; then "${PASEO_HOOK_CLI:-paseo}" hooks codex PreToolUse; fi'},
+        {"command": "printf retained"},
+    ]}]}}))
     (repo / ".claude/settings.json").write_text(json.dumps({
         "enabledPlugins": {"search@local": True, "disabled@local": False},
     }))
@@ -105,10 +117,16 @@ else:
                AGENT_STATUS_INSTALL_FLAGS="--no-start",
                AGENT_STATUS_BIN=str(broker),
                UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
-               HOME=str(home), CODEX_HOME=str(home / ".codex"))
+               HOME=str(home), CODEX_HOME=str(home / ".codex"),
+               PASEO_HOME=str(home / ".paseo"), CLAUDE_CONFIG_DIR=str(home / ".claude"))
     command = [shutil.which("make"), "-f", str(ROOT / "Makefile"), "codex",
                f"DOTFILES={repo}", f"HOME={home}"]
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
+    assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
+        "enableTerminalAgentHooks": False, "retained": "kept"}
+    assert (home / "paseo-reloaded").exists()
+    installed_hooks = (home / ".codex/hooks.json").read_text()
+    assert "printf retained" in installed_hooks and "PASEO_HOOK_CLI" not in installed_hooks
 
     servers = json.loads(state.read_text())
     assert servers["workspace"]["transport"] == {

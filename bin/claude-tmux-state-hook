@@ -1,6 +1,6 @@
 #!/bin/sh
 # Send timestamped cosmetic status to the broker; tmux runs in its worker.
-[ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] || exit 0
+[ -n "${TMUX:-}" ] || [ -n "${PASEO_TERMINAL_ID:-}" ] || exit 0
 broker="${AGENT_STATUS_BIN:-$HOME/.local/lib/agent-status/agent-status-broker}"
 [ -x "$broker" ] || exit 0
 tmux_context="${TMUX:-}"

@@ -32,7 +32,11 @@ def private_tmux(monkeypatch):
     with tempfile.TemporaryDirectory(prefix="claude-test-", dir="/tmp") as directory:
         folder = Path(directory)
         socket = str(folder / "tmux.sock")
-        env = {k: v for k, v in os.environ.items() if k not in ("TMUX", "TMUX_PANE")}
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("TMUX", "TMUX_PANE") and not k.startswith("PASEO_")}
+        for key in tuple(os.environ):
+            if key.startswith("PASEO_"):
+                monkeypatch.delenv(key)
 
         def call(*args):
             return subprocess.run(["tmux", "-S", socket, *args], env=env,

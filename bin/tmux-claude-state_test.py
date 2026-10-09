@@ -72,10 +72,14 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     def client_command(provider):
         # A passive copy supplies a live named process, without making a model
         # request or treating a retained title as evidence of liveness.
-        shutil.copy2(broker_binary, clients / provider)
-        return "exec " + shlex.join([
+        if not (clients / provider).exists():
+            shutil.copy2(broker_binary, clients / provider)
+        launch = shlex.join([
             str(clients / provider), "serve", "--socket",
-            str(clients / provider) + "-socket/broker.sock", "--renderer", "/bin/cat"])
+            str(clients / provider) + "-socket-" + str(time.time_ns()) + "/broker.sock",
+            "--renderer", "/bin/cat"])
+        return (launch + ' & AGENT_CLIENT_PID=$!; export AGENT_CLIENT_PID; '
+                'exec env -u PROMPT_COMMAND -u ENV -u BASH_ENV /bin/bash --noprofile --norc -i')
 
     # Keep desktop delivery observable without notifying the developer's OS.
     notification = fake_bin / "osascript"
@@ -100,7 +104,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     monkeypatch.setenv("AGENT_STATUS_SOCKET", str(broker_socket))
     broker_binary = home / ".local/lib/agent-status/agent-status-broker"
     broker = subprocess.Popen(
-        [str(broker_binary), "serve", "--socket", str(broker_socket)],
+        [str(broker_binary), "serve", "--socket", str(broker_socket), "--interval", "500ms"],
         env=dict(os.environ, PATH=f"{fake_bin}:{os.environ['PATH']}"),
         stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     def stop_broker():
@@ -123,6 +127,25 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
                 return
             assert time.monotonic() < deadline, json.dumps(stats)
             time.sleep(0.02)
+
+    def in_pane(target, command):
+        done = home / ("done-" + str(time.time_ns()))
+        commands = done.with_suffix(".sh")
+        commands.write_text(command + "; touch " + shlex.quote(str(done)) + "\n")
+        private_tmux.call("send-keys", "-t", target, "-l",
+                          ". " + shlex.quote(str(commands)))
+        private_tmux.call("send-keys", "-t", target, "Enter")
+        deadline = time.monotonic() + 5
+        while not done.exists():
+            assert time.monotonic() < deadline, private_tmux.call("capture-pane", "-p", "-t", target)
+            time.sleep(0.02)
+
+    def stop_client(target):
+        in_pane(target, 'kill "$AGENT_CLIENT_PID"; wait "$AGENT_CLIENT_PID" 2>/dev/null')
+
+    def restart_client(target, provider):
+        command = client_command(provider).split("; exec ", 1)[0]
+        in_pane(target, command)
 
     hooks = json.loads((ROOT / ".claude/settings.json").read_text())["hooks"]
     window = private_tmux.call("new-window", "-d", "-t", "main:", "-n", "project",
@@ -150,8 +173,27 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
         commands = [h["command"] for entry in hooks.get(event_name, [])
                     for h in entry["hooks"]]
         script = next(c for c in commands if hook_name in c)
-        subprocess.run([str(BIN / hook_name)], input=json.dumps(event), text=True,
-                       capture_output=True, timeout=10, check=True)
+        if event_name == "SessionStart":
+            packet = home / "startup.json"
+            packet.write_text(json.dumps(event))
+            command = shlex.join(["env", "HOME=" + str(home),
+                                  "AGENT_STATUS_BIN=" + str(broker_binary),
+                                  "AGENT_STATUS_SOCKET=" + str(broker_socket),
+                                  "TMUX_PANE=" + private_tmux.pane,
+                                  str(BIN / hook_name)]) + " < " + shlex.quote(str(packet))
+            prompt = home / "initial-prompt.json"
+            prompt.write_text(json.dumps(dict(hook_event_name="UserPromptSubmit",
+                                             session_id=private_tmux.folder.name)))
+            command += "; " + shlex.join(["env", "HOME=" + str(home),
+                                          "AGENT_STATUS_BIN=" + str(broker_binary),
+                                          "AGENT_STATUS_SOCKET=" + str(broker_socket),
+                                          "TMUX_PANE=" + private_tmux.pane,
+                                          str(BIN / "claude-tmux-state-hook")])
+            command += " < " + shlex.quote(str(prompt))
+            in_pane(pane, command)
+        else:
+            subprocess.run([str(BIN / hook_name)], input=json.dumps(event), text=True,
+                           capture_output=True, timeout=10, check=True)
         wait_for_broker()
         return script
 
@@ -164,7 +206,12 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
 
     plain = tab()
     assert option("@claude-state") == "", "a fresh window starts un-Claude-ed"
+    private_tmux.call("respawn-pane", "-k", "-t", private_tmux.pane, client_command("claude"))
+    private_tmux.call("set-option", "-p", "-t", private_tmux.pane, "@claude-session-id", "another-live-session")
     emit("SessionStart", "claude-session-start-hook", cwd="/workspace/project", source="startup")
+    assert option("@claude-session-id", pane) == private_tmux.folder.name
+    assert option("@claude-session-id", private_tmux.pane) == "another-live-session"
+    assert option("@claude-state") == "thinking", "startup registration must survive an immediate prompt"
 
     # A plan waiting on approval is a need, and must not look like a busy window.
     emit("PreToolUse", "claude-tmux-state-hook", tool_name="ExitPlanMode")
@@ -240,6 +287,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
 
     # SessionEnd hands the tab back to tmux's own signals -- here, that pending
     # bell -- and once it is acknowledged, to a plain window.
+    stop_client(pane)
     emit("SessionEnd", "claude-tmux-state-hook")
     assert option("@claude-state") == ""
     private_tmux.call("select-window", "-t", window)
@@ -342,8 +390,12 @@ if "app-name" in items and "thread-id" in items:
     # A Codex need outranks a busy Claude window, both in the summary and when
     # jumping from the user's shell. The hook must target its background pane.
     monkeypatch.setenv("TMUX_PANE", pane)
+    restart_client(pane, "claude")
     emit("SessionStart", "claude-session-start-hook", cwd="/workspace/project", source="resume")
     emit("UserPromptSubmit", "claude-tmux-state-hook")
+    emit("SessionEnd", "claude-tmux-state-hook")
+    emit("PreToolUse", "claude-tmux-state-hook", tool_name="Bash")
+    assert option("@claude-state") == "tool", "a late old end must not tombstone the resumed client"
     emit("PreToolUse", "claude-tmux-state-hook", tool_name="Bash")
     roll_up = capture(sweep.main)
     assert "▲1" in roll_up and "●1" in roll_up
@@ -373,11 +425,13 @@ if "app-name" in items and "thread-id" in items:
     sweep.main()
     assert option("@claude-state", codex_window) == "dormant"
     assert "·" in codex_tab()
+    stop_client(codex_pane)
     emit_codex("SessionEnd")
     assert option("@claude-state", codex_window) == ""
 
     # Reusing the pane for a different thread must reject delayed old events,
     # even when the last recorded owner still belongs to the previous thread.
+    restart_client(codex_pane, "codex")
     codex_session = "01a1143c-c598-79f2-ae9e-717ed97a274b"
     launch_env["CODEX_TEST_SESSION"] = codex_session
     subprocess.run(["bash", "-c", '. "$HOME/.files/sh/alias"; codex'],
@@ -468,6 +522,7 @@ if "app-name" in items and "thread-id" in items:
     assert option("@claude-state", codex_window) == "thinking"
     private_tmux.call("select-pane", "-t", codex_pane, "-T",
                       f"codex | {codex_session[:29]}... | Ready | project")
+    stop_client(codex_pane)
     hook.render_event(dict(hook_event_name="SessionEnd", session_id=codex_session))
     assert option("@claude-state", codex_window) == ""
     private_tmux.call("select-window", "-t", codex_window)
@@ -476,10 +531,13 @@ if "app-name" in items and "thread-id" in items:
     assert option("@claude-state") == "tool", "Codex must leave Claude's window alone"
 
     # The same active pane can move to a different window between tools.
+    private_tmux.call("split-window", "-d", "-t", pane, "sleep 300")
     private_tmux.call("join-pane", "-d", "-s", pane, "-t", codex_pane)
     monkeypatch.setenv("TMUX_PANE", pane)
     emit("PreToolUse", "claude-tmux-state-hook", tool_name="Bash")
     assert option("@claude-state", codex_window) == "tool"
+    assert option("@claude-state", window) == "", "moving the agent must clear its surviving source window"
+    restart_client(codex_pane, "codex")
 
     # Their two panes now share a palette. An older Claude Stop delivered after
     # a newer Codex prompt must not win, whether in one batch or on a retry.
@@ -523,3 +581,7 @@ if "app-name" in items and "thread-id" in items:
     offline.unlink()
     wait_for_broker()
     assert (home / "desktop-notification").read_text().splitlines() == ["delivered"]
+
+    emit("Stop", "claude-stop-hook", cwd="/workspace/shipping-api")
+    assert option("window_name", codex_window) == "✻ shipping-api"
+    assert (home / ".claude/session-names" / private_tmux.folder.name).read_text() == "shipping-api"
