@@ -34,9 +34,11 @@ def main():
         driver.write_text(f"#!{sys.executable}\n" + r'''
 import os
 from pathlib import Path
+import io
 import shutil
 import subprocess
 import sys
+import tarfile
 
 home = Path(os.environ["HOME"])
 fixture = home / "fixture"
@@ -49,13 +51,20 @@ def record(event):
         output.write(event + "\n")
 
 if name == "uname":
-    print("Linux" if args == ["-s"] else "x86_64")
+    print("Linux" if args == ["-s"] else "aarch64")
 elif name == "git":
-    pass
+    if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
+        (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
-    record("build dependencies")
-elif name == "dnf":
-    sys.exit(1)  # Cached distro packages cannot supply the requested versions.
+    if args == ["apt-get", "install", "-y", "eza"]:
+        (home / ".local/bin/eza").symlink_to(fixture / "driver")
+        record("apt eza")
+    else:
+        record("build dependencies")
+elif name == "apt-cache":
+    assert args[:1] == ["policy"], args
+    version = {"eza": "0.20.19-1"}.get(args[1], "(none)")
+    print(args[1] + ":\n  Installed: (none)\n  Candidate: " + version)
 elif name == "curl":
     url = next(arg for arg in args if arg.startswith("https://"))
     target = args[args.index("-o") + 1]
@@ -88,6 +97,21 @@ echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.cargo/env"
 ln -fs "$HOME/fixture/driver" "$HOME/.local/bin/claude"
 echo "$1" > "$HOME/claude-version"
 """
+    elif url == "https://github.com/mikefarah/yq/releases/download/v4.45.4/yq_linux_arm64":
+        Path(target).symlink_to(fixture / "driver")
+        record("yq")
+        sys.exit(0)
+    elif url == "https://github.com/aristocratos/btop/releases/download/v1.4.7/btop-aarch64-unknown-linux-musl.tar.gz":
+        with tarfile.open(target, "w:gz") as archive:
+            for path, payload in (
+                ("btop/bin/btop", (fixture / "driver").read_bytes()),
+                ("btop/themes/dracula.theme", b"main_bg=\"#000000\"\n"),
+            ):
+                member = tarfile.TarInfo(path)
+                member.size = len(payload)
+                archive.addfile(member, io.BytesIO(payload))
+        record("btop")
+        sys.exit(0)
     else:
         raise AssertionError("Unexpected download: " + url)
     record(event)
@@ -119,12 +143,25 @@ elif name in ("codex", "claude"):
     print(name + " " + (home / (name + "-version")).read_text().strip())
 elif name == "jq" and args[:1] == ["-r"]:
     print("99.0.0")
+elif name in ("eza", "yq"):
+    print(name + " " + {"eza": "0.20.19", "yq": "4.45.4"}[name])
+elif name == "btop":
+    print("btop version: 1.4.7")
+elif name == "nvim" and args == ["--version"]:
+    print("NVIM v0.12.5" if managed else "NVIM v0.11.0")
+elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
+    if args[:1] == ["install"]:
+        (home / ".local/bin/nvim").symlink_to(fixture / "driver")
+        record("neovim build")
+    else:
+        assert args == ["clean"], args
 elif name == "make":
-    for tool in ("node", "python3", "uv", "codex", "claude"):
+    for tool in ("node", "python3", "uv", "codex", "claude", "btop"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
             "codex": "codex 0.162.0", "claude": "claude 2.1.295",
+            "btop": "btop version: 1.4.7",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
@@ -136,13 +173,16 @@ elif name == "make":
     record("make")
     if "atuin-sync" in args:
         record("atuin setup")
+    if "agent-status-broker" in args:
+        record("agent status setup")
 elif name == "nvim" and "--headless" in args:
     assert (home / ".terminfo/x/xterm-kitty").exists() or (home / ".terminfo/78/xterm-kitty").exists()
     assert "make" in (home / "events").read_text()
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
 elif name == "bedrock-router":
-    assert args == ["install", "--config", str(home / ".files/codex/bedrock-router/config.json"), "--keep-env"], args
+    assert args[:2] == ["install", "--config"] and args[3:] == ["--keep-env"], args
+    assert Path(args[2]).resolve() == (home / ".files/codex/bedrock-router/config.json").resolve()
     assert "make" in (home / "events").read_text()
     assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
     record("router setup")
@@ -190,11 +230,11 @@ else:
         suggestions.mkdir(parents=True)
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
-            "uname", "git", "sudo", "dnf", "curl", "uv", "node", "npm",
+            "uname", "git", "sudo", "apt-get", "apt-cache", "curl", "uv", "node", "npm",
             "python3", "make", "cargo", "rustc", "rust-analyzer", "go",
-            "fzf", "starship", "atuin", "sk", "delta", "bat",
-            "fd", "eza", "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
-            "gh", "git-crypt", "jq", "yq", "rg", "stylua", "nvim", "shfmt",
+            "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
+            "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
+            "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
             "direnv", "just", "loginctl",
@@ -207,11 +247,11 @@ else:
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
-        # Run the real entrypoint from a box with old Python, Node and uv,
-        # and a system Rust installation without rustup.
+        # Exercise the documented relative launch on ARM Linux, including an
+        # older Neovim that needs a source build and missing eza/yq/btop.
         result = subprocess.run(
-            ["/bin/bash", str(checkout / "bootstrap.sh")],
-            env=env, capture_output=True, text=True,
+            ["/bin/bash", "./bootstrap.sh"],
+            cwd=checkout, env=env, capture_output=True, text=True,
         )
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
@@ -220,8 +260,14 @@ else:
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
         )
         assert "neovim setup" in events
+        assert "neovim build" in events
+        assert "apt eza" in events
+        assert "yq" in events
+        assert "btop" in events
+        assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")
+        assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"
         assert events.index("bedrock setup") < events.index("make")
