@@ -14,9 +14,8 @@ ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 else
 	+@log=$$(mktemp) || exit 1; \
 	trap 'rm -f "$$log"' 0; \
-	if { $(MAKE) --no-print-directory $(SETUP_TARGETS) && \
-		bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"; \
-	} >"$$log" 2>&1; then \
+	if $(MAKE) --no-print-directory $(SETUP_TARGETS) >"$$log" 2>&1 && \
+		bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)" >"$$log" 2>&1; then \
 		:; \
 	else \
 		status=$$?; cat "$$log" >&2; exit "$$status"; \
@@ -237,6 +236,12 @@ claude: claude-plugins agent-status-broker
 	@for d in commands agents skills workflows; do \
 		[ -L $(HOME)/.claude/$$d ] && rm $(HOME)/.claude/$$d; \
 		mkdir -p $(HOME)/.claude/$$d; \
+		for link in "$(HOME)/.claude/$$d/"*; do \
+			[ -L "$$link" ] && [ ! -e "$$link" ] || continue; \
+			case "$$(readlink "$$link")" in \
+				"$(DOTFILES)/claude/$$d/"*) rm "$$link" || exit 1 ;; \
+			esac; \
+		done; \
 		for f in $(DOTFILES)/claude/$$d/*; do \
 			[ -e "$$f" ] || continue; \
 			if [ "$(UNAME_S)" != "Darwin" ] && [ "$$d" = "skills" ] && [ "$$(basename "$$f")" = "problem-definition-contract" ]; then \
