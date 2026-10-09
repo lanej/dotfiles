@@ -14,6 +14,8 @@ on:
       - 'bin/claude-notification-hook'
       - 'bin/claude-stop-hook'
       - 'bin/codex-tmux-state-hook'
+      - 'bin/agent-status-*'
+      - 'scripts/install-agent-status-broker'
       - 'codex/tmux-hooks.json'
       - 'rc/tmux.conf'
       - 'bin/claude-plugin-converge_test.py'
@@ -43,6 +45,8 @@ on:
       - 'bin/claude-notification-hook'
       - 'bin/claude-stop-hook'
       - 'bin/codex-tmux-state-hook'
+      - 'bin/agent-status-*'
+      - 'scripts/install-agent-status-broker'
       - 'codex/tmux-hooks.json'
       - 'rc/tmux.conf'
       - 'bin/claude-plugin-converge_test.py'
@@ -64,6 +68,8 @@ permissions:
 
 jobs:
   test:
+    env:
+      BROKER_READ_TOKEN: ${{ secrets.AGENT_STATUS_BROKER_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -75,14 +81,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: astral-sh/setup-uv@v10.2.0
       - name: Install tmux on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y tmux
       - name: Install tmux on macOS
         if: runner.os == 'macOS'
         run: command -v tmux || brew install tmux
+      - name: Install standalone broker for integration
+        if: env.BROKER_READ_TOKEN != ''
+        run: scripts/install-agent-status-broker --no-start
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_STATUS_BROKER_TOKEN }}
       - run: python -m pip install pytest
       - name: One regression detector per feature
         run: python -m pytest -v bin/*_test.py
         env:
           REQUIRE_TMUX_TESTS: '1'
+          REQUIRE_BROKER_TESTS: ${{ env.BROKER_READ_TOKEN != '' && '1' || '0' }}

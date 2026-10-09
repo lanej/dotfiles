@@ -43,8 +43,12 @@ def private_tmux(monkeypatch):
                     "-n", "keep", "-P", "-F", "#{pane_id}", "sleep 300")
         monkeypatch.setenv("TMUX", f"{socket},1,0")
         monkeypatch.setenv("TMUX_PANE", pane)
+        cleanup = []
         try:
-            yield SimpleNamespace(folder=folder, socket=socket, call=call, pane=pane)
+            yield SimpleNamespace(folder=folder, socket=socket, call=call, pane=pane,
+                                  cleanup=cleanup)
         finally:
+            for fn in reversed(cleanup):
+                fn()
             subprocess.run(["tmux", "-S", socket, "kill-server"], env=env,
                            capture_output=True, timeout=5)

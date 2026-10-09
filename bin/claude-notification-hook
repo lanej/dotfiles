@@ -1,65 +1,8 @@
-#!/bin/bash
-# Claude Code notification hook
-# Triggers tmux bell and desktop notification when Claude needs input
-
-# Logging function
-log_window_action() {
-    local logfile="$HOME/.claude/logs/window-naming.log"
-    local timestamp; timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local current_window
-    if [ -n "$TMUX_PANE" ]; then
-        current_window=$(tmux display-message -pt "$TMUX_PANE" '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
-    else
-        current_window=$(tmux display-message -p '#{window_id}:#{window_name}' 2>/dev/null || echo "unknown")
-    fi
-    printf '[%s] [notification] TMUX_PANE=%s current=%s action=%s\n' \
-        "$timestamp" "${TMUX_PANE:-unset}" "$current_window" "$1" >> "$logfile" 2>/dev/null || true
-}
-
-# Read stdin
-input=$(cat)
-
-# Debug: log the input (uncomment to debug)
-# echo "$input" > /tmp/claude-notification-debug.log
-
-GLYPH='✻'  # matches Claude Code's own CLI spinner frame (U+273B) — must match
-           # claude-session-start-hook / claude-autoname-hook's GLYPH constant,
-           # since session-names/<id> stores the plain name without it.
-
-# Set window indicator
-if [ -n "$TMUX_PANE" ] && command -v jq >/dev/null 2>&1; then
-    session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
-    name_file="$HOME/.claude/session-names/$session_id"
-    if [ -n "$session_id" ] && [ -f "$name_file" ]; then
-        base=$(cat "$name_file")
-        log_window_action "rename-window -t $TMUX_PANE '!${GLYPH} ${base}' (add ! prefix)"
-        tmux rename-window -t "$TMUX_PANE" "!${GLYPH} ${base}" 2>/dev/null
-    fi
-fi
-
-# Mark the window as blocked on you. A permission prompt and an open question
-# are both "come here now", but they cost you different things, so the tab
-# glyph distinguishes them. bin/tmux-claude-state owns the palette.
-if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
-    message=$(echo "$input" | jq -r '.message // empty' 2>/dev/null)
-    case "$message" in
-        *permission*|*Permission*|*approv*|*Approv*) state="approval" ;;
-        *) state="question" ;;
-    esac
-    log_window_action "tmux-claude-state set $state (-t $TMUX_PANE)"
-    "$(dirname "$0")/tmux-claude-state" set "$state" "$TMUX_PANE" 2>/dev/null || true
-fi
-
-# Trigger tmux bell
-if [ -n "$TMUX_PANE" ]; then
-    # Print bell character to stderr (goes to the pane)
-    printf '\a' >&2
-
-    # Also write directly to the tty to ensure bell is visible
-    tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
-    if [ -n "$tty" ]; then
-        printf '\a' > "$tty" 2>/dev/null
-    fi
-fi
-
-exit 0
+#!/bin/sh
+# Send timestamped cosmetic status to the broker; tmux runs in its worker.
+[ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] || exit 0
+broker="${AGENT_STATUS_BIN:-$HOME/.local/lib/agent-status/agent-status-broker}"
+[ -x "$broker" ] || exit 0
+tmux_context="${TMUX:-}"
+tmux_socket="${tmux_context%,*,*}"
+exec "$broker" send --provider claude --tmux-socket "$tmux_socket" --pane "${TMUX_PANE:-}"

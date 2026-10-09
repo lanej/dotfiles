@@ -106,6 +106,20 @@ def main():
     if any(cwd.startswith(p) for p in internal_prefixes):
         sys.exit(0)
 
+    # Reset the broker's SessionEnd tombstone before a resumed session emits
+    # status. Window naming below is infrequent and retains its existing flow.
+    broker = os.environ.get("AGENT_STATUS_BIN", str(
+        Path.home() / ".local/lib/agent-status/agent-status-broker"))
+    if Path(broker).is_file():
+        try:
+            subprocess.run([broker, "send", "--provider", "claude",
+                            "--tmux-socket", os.environ["TMUX"].rsplit(",", 2)[0],
+                            "--pane", pane],
+                           input=json.dumps(input_data), text=True, timeout=0.3,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
     # Always tag the pane with the session ID — needed for tmux-resurrect restore even
     # when we skip window renaming. After a resurrect restore, automatic-rename is off
     # (set by resurrect) but @claude_named is unset (pane options aren't saved in the

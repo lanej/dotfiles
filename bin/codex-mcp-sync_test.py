@@ -28,9 +28,17 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     shutil.copy2(ROOT / "bin/sync-codex-tmux-hooks", repo / "bin/sync-codex-tmux-hooks")
     shutil.copy2(ROOT / "codex/tmux-hooks.json", repo / "codex/tmux-hooks.json")
     shutil.copy2(ROOT / "codex/AGENTS.md", repo / "codex/AGENTS.md")
+    (repo / "scripts").mkdir()
+    (repo / "scripts/install-agent-status-broker").symlink_to(ROOT / "scripts/install-agent-status-broker")
+    # The external project's installer is a package boundary for this MCP
+    # configuration workflow; its own tests exercise real installation.
+    broker = executables / "agent-status-broker"
+    broker.write_text("#!/bin/sh\n[ \"$1\" = install ] && [ \"$2\" = --no-start ]\n")
+    broker.chmod(0o755)
     # Exercise macOS's bundled Bash too; the Codex CLI boundary is simulated below.
     (executables / "bash").symlink_to("/bin/bash")
     (executables / "python3").symlink_to(sys.executable)
+    (executables / "uv").symlink_to(shutil.which("uv"))
     (executables / "jq").symlink_to(shutil.which("jq"))
     (repo / ".claude/settings.json").write_text(json.dumps({
         "enabledPlugins": {"search@local": True, "disabled@local": False},
@@ -94,6 +102,9 @@ else:
     cli.chmod(0o755)
     subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
     env = dict(os.environ, PATH=f"{executables}:/usr/bin:/bin",
+               AGENT_STATUS_INSTALL_FLAGS="--no-start",
+               AGENT_STATUS_BIN=str(broker),
+               UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
                HOME=str(home), CODEX_HOME=str(home / ".codex"))
     command = [shutil.which("make"), "-f", str(ROOT / "Makefile"), "codex",
                f"DOTFILES={repo}", f"HOME={home}"]

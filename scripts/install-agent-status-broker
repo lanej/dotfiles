@@ -1,0 +1,59 @@
+#!/bin/sh
+# Build the standalone checkout or verify and install its pinned release.
+set -eu
+
+if [ -n "${AGENT_STATUS_BIN:-}" ]; then
+    exec "$AGENT_STATUS_BIN" install "$@"
+fi
+
+broker_source="${AGENT_STATUS_SOURCE:-$HOME/src/agent-status-broker}"
+broker_version="${AGENT_STATUS_VERSION:-v0.1.1}"
+case "$broker_version" in
+    ''|*[!A-Za-z0-9._-]*) printf 'Invalid broker release version\n' >&2; exit 1 ;;
+esac
+broker_staging=$(mktemp -d)
+trap 'rm -rf "$broker_staging"' EXIT HUP INT TERM
+
+if [ -f "$broker_source/go.mod" ]; then
+    (cd "$broker_source" &&
+        "${AGENT_STATUS_GO:-go}" build -trimpath -o "$broker_staging/agent-status-broker" .)
+else
+    case "$(uname -s)" in
+        Darwin) broker_os=darwin ;;
+        Linux) broker_os=linux ;;
+        *) printf 'Unsupported broker platform\n' >&2; exit 1 ;;
+    esac
+    case "$(uname -m)" in
+        arm64|aarch64) broker_arch=arm64 ;;
+        x86_64|amd64) broker_arch=amd64 ;;
+        *) printf 'Unsupported broker architecture\n' >&2; exit 1 ;;
+    esac
+    broker_archive="agent-status-broker_${broker_version}_${broker_os}_${broker_arch}.tar.gz"
+    broker_release="https://github.com/lanej/agent-status-broker/releases/download/$broker_version"
+    if curl -fsSL --max-time 60 -o "$broker_staging/$broker_archive" "$broker_release/$broker_archive" &&
+       curl -fsSL --max-time 60 -o "$broker_staging/SHA256SUMS" "$broker_release/SHA256SUMS"; then
+        :
+    elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+        rm -f "$broker_staging/$broker_archive" "$broker_staging/SHA256SUMS"
+        gh release download "$broker_version" --repo lanej/agent-status-broker \
+            --pattern "$broker_archive" --pattern SHA256SUMS --dir "$broker_staging"
+    else
+        printf '%s\n' 'Broker release unavailable. For the private repository, run gh auth login' \
+            'or clone lanej/agent-status-broker into ~/src before installing dotfiles.' >&2
+        exit 1
+    fi
+    awk -v name="$broker_archive" '$2 == name {print}' \
+        "$broker_staging/SHA256SUMS" > "$broker_staging/selected.sha256"
+    [ -s "$broker_staging/selected.sha256" ] || {
+        printf 'Release archive is missing from SHA256SUMS\n' >&2
+        exit 1
+    }
+    if command -v sha256sum >/dev/null 2>&1; then
+        (cd "$broker_staging" && sha256sum -c selected.sha256)
+    else
+        (cd "$broker_staging" && shasum -a 256 -c selected.sha256)
+    fi
+    tar -xzf "$broker_staging/$broker_archive" -C "$broker_staging" agent-status-broker
+fi
+
+"$broker_staging/agent-status-broker" install "$@"

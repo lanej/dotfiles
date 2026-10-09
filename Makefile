@@ -2,6 +2,7 @@
 .PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
 .PHONY: sql-formatters dev-cache-config FORCE
 DOTFILES := $(shell pwd)
+GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 
@@ -211,7 +212,7 @@ superwhisper:
 .PHONY: claude-plugins
 claude-plugins:
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-claude: claude-plugins
+claude: claude-plugins agent-status-broker
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
@@ -238,7 +239,10 @@ claude: claude-plugins
 codex-skills:
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
 .PHONY: codex-tmux
-codex-tmux:
+.PHONY: agent-status-broker
+agent-status-broker:
+	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
+codex-tmux: agent-status-broker
 	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 .PHONY: codex-agents
 codex-agents:

@@ -1,42 +1,7 @@
-#!/bin/bash
-# Claude Code Stop hook - triggers notification only if idle for 10+ seconds
-
-# Read stdin to get session info
-input=$(cat)
-session_id=$(echo "$input" | jq -r '.session_id // "unknown"')
-state_file="/tmp/claude-stop-${session_id}"
-
-# Check if there's a previous Stop event
-if [ -f "$state_file" ]; then
-    prev_time=$(cat "$state_file")
-    current_time=$(date +%s)
-    elapsed=$((current_time - prev_time))
-
-    # If more than 10 seconds have passed since last Stop, notify
-    if [ "$elapsed" -ge 10 ]; then
-        # Ring bell directly on the TTY — never goes through tmux input processing
-        if [ -n "$TMUX_PANE" ]; then
-            tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
-            [ -n "$tty" ] && printf '\a' >> "$tty"
-        fi
-
-        # Desktop notification (background, non-blocking)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            osascript -e 'display notification "Claude is waiting for input" with title "Claude Code"' 2>/dev/null &
-        elif command -v notify-send >/dev/null 2>&1; then
-            notify-send "Claude Code" "Claude is waiting for input" 2>/dev/null &
-        fi
-    fi
-fi
-
-# Record this Stop event timestamp
-date +%s > "$state_file"
-
-# Finished, but still warm. Clearing the state here would make a window Claude
-# just worked in indistinguishable from one it was never in; tmux-claude-sweep
-# ages this to "dormant" once it has sat untouched.
-if [ -n "$TMUX_PANE" ] && [ -n "$TMUX" ]; then
-    "$(dirname "$0")/tmux-claude-state" set idle "$TMUX_PANE" 2>/dev/null || true
-fi
-
-exit 0
+#!/bin/sh
+# Send timestamped cosmetic status to the broker; tmux runs in its worker.
+broker="${AGENT_STATUS_BIN:-$HOME/.local/lib/agent-status/agent-status-broker}"
+[ -x "$broker" ] || exit 0
+tmux_context="${TMUX:-}"
+tmux_socket="${tmux_context%,*,*}"
+exec "$broker" send --provider claude --tmux-socket "$tmux_socket" --pane "${TMUX_PANE:-}"
