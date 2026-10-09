@@ -34,10 +34,15 @@ package_manager_semver() {
 	elif command -v dnf &>/dev/null; then
 		(dnf --cacheonly info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
-		(apt-cache show "$1" 2>/dev/null | head -n1 | parse_semver) || (echo "package $1 not found in apt-get" && return 1)
+		apt_package_semver "$1"
 	else
 		exit 1
 	fi
+}
+
+apt_package_semver() {
+	apt-cache policy "$1" 2>/dev/null |
+		awk '$1 == "Candidate:" { print $2 }' | parse_semver | head -n1
 }
 
 package_semver() {
@@ -85,7 +90,7 @@ fd_package_semver() {
 	elif command -v dnf &>/dev/null; then
 		(dnf --cacheonly info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
-		(apt-cache show fd-find 2>/dev/null | head -n1 | parse_semver) || (echo "package fd not found in apt-get" && return 1)
+		apt_package_semver fd-find
 	else
 		exit 1
 	fi
@@ -264,7 +269,7 @@ install_glibc() {
 	sudo make install
 }
 
-install_neovim_from_source() {
+install_neovim_from_source() (
 	mkdir -p "$HOME/src/oss"
 	if [ ! -d ~/src/oss/neovim ]; then
 		git clone https://github.com/neovim/neovim.git ~/src/oss/neovim --depth 1
@@ -277,7 +282,7 @@ install_neovim_from_source() {
 	make clean
 	rm -rf .deps/
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
-}
+)
 
 # WARN: installing glibc makes this more like a dentist visit
 # install_neovim_from_release() {
@@ -479,6 +484,28 @@ install_starship_from_release() {
 	cargo install starship -q --locked --version "$1"
 }
 
+install_btop_from_release() (
+	case "$os" in
+		macos) brew install btop; exit $? ;;
+		linux) ;;
+		*) echo "Unsupported btop OS: $os" >&2; exit 1 ;;
+	esac
+	local btop_arch btop_stage
+	case "$(uname -m)" in
+		x86_64) btop_arch=x86_64 ;;
+		arm64|aarch64) btop_arch=aarch64 ;;
+		*) echo "Unsupported btop architecture" >&2; exit 1 ;;
+	esac
+	btop_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$btop_stage"' EXIT
+	curl -fsSL "https://github.com/aristocratos/btop/releases/download/v$1/btop-${btop_arch}-unknown-linux-musl.tar.gz" \
+		-o "$btop_stage/btop.tar.gz" || exit 1
+	tar -xzf "$btop_stage/btop.tar.gz" -C "$btop_stage" || exit 1
+	mkdir -p "$HOME/.local/bin" "$HOME/.local/share/btop/themes" || exit 1
+	cp "$btop_stage/btop/themes/"*.theme "$HOME/.local/share/btop/themes/" || exit 1
+	install -m 755 "$btop_stage/btop/bin/btop" "$HOME/.local/bin/btop" || exit 1
+)
+
 install_skim_from_release() {
 	cargo install skim -q --locked --version "$1"
 }
@@ -580,18 +607,20 @@ install_jq_from_release() (
 )
 
 install_yq_from_release() {
-	mkdir -p "$HOME/.local/bin"
-	local yq_arch=""
-	if [ "$short_arch" = "x64" ]; then
-		yq_arch="amd64"
-	elif [ "$short_arch" = "arm64" ]; then
-		yq_arch="arm64"
-	else
-		echo "Unsupported architecture for yq: $short_arch"
-		exit 1
-	fi
-
-	curl -sfL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${os}_${yq_arch}" -o "$HOME/.local/bin/yq"
+	local yq_arch yq_os
+	case "$(uname -m)" in
+		x86_64) yq_arch=amd64 ;;
+		arm64|aarch64) yq_arch=arm64 ;;
+		*) echo "Unsupported yq architecture" >&2; return 1 ;;
+	esac
+	case "$os" in
+		macos) yq_os=darwin ;;
+		linux) yq_os=linux ;;
+		*) echo "Unsupported yq OS" >&2; return 1 ;;
+	esac
+	mkdir -p "$HOME/.local/bin" || return 1
+	curl -fsSL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${yq_os}_${yq_arch}" \
+		-o "$HOME/.local/bin/yq" || return 1
 	chmod +x "$HOME/.local/bin/yq"
 }
 
@@ -735,7 +764,7 @@ tree-sitter-cli_current_semver() {
 	tree-sitter --version 2>/dev/null | parse_semver | head -n1
 }
 
-install_git-crypt_from_source() {
+install_git-crypt_from_source() (
 	# git-crypt needs to be built from source on some systems
 	mkdir -p "$HOME/src/oss"
 	if [ ! -d ~/src/oss/git-crypt ]; then
@@ -749,7 +778,7 @@ install_git-crypt_from_source() {
 	make clean
 	make
 	make install PREFIX="$HOME/.local"
-}
+)
 
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
@@ -862,6 +891,7 @@ install_dependencies() {
 	install_package_version claude-code 2.1.295
 
 	# terminal candy
+	install_package_version btop 1.4.7
 	install_package_version fzf 0.59.0
 	install_package_version starship 1.22.1
 	install_package_version atuin 18.21.0
