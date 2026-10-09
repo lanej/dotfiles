@@ -1,13 +1,27 @@
-.PHONY: banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-.PHONY: zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
-.PHONY: sql-formatters dev-cache-config FORCE
+SETUP_TARGETS += banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
+SETUP_TARGETS += zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
+SETUP_TARGETS += sql-formatters dev-cache-config FORCE
 DOTFILES := $(shell pwd)
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 
-all: .PHONY
+# Keep successful default setup quiet; replay diagnostics on failure.
+all:
+ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
+	+@$(MAKE) --no-print-directory $(SETUP_TARGETS)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
+else
+	+@log=$$(mktemp) || exit 1; \
+	trap 'rm -f "$$log"' 0; \
+	if { $(MAKE) --no-print-directory $(SETUP_TARGETS) && \
+		bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"; \
+	} >"$$log" 2>&1; then \
+		:; \
+	else \
+		status=$$?; cat "$$log" >&2; exit "$$status"; \
+	fi
+endif
 
 banner:
 	@cat banner.txt
@@ -40,7 +54,7 @@ shell:
 	@mkdir -p $(HOME)/.config/glow
 	@ln -fs $(DOTFILES)/sh/glow.yml $(HOME)/.config/glow/glow.yml
 	@ln -fs $(DOTFILES)/sh/glow.nord.json $(HOME)/.config/glow/nord.json
-.PHONY: zsh
+SETUP_TARGETS += zsh
 zsh: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
 	@ln -fs $(DOTFILES)/zsh/zlogout $(HOME)/.zlogout
@@ -209,7 +223,7 @@ superwhisper:
 		ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json; \
 		echo "✓ SuperWhisper configuration linked"; \
 	fi
-.PHONY: claude-plugins
+SETUP_TARGETS += claude-plugins
 claude-plugins:
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
 claude: claude-plugins agent-status-broker
@@ -235,16 +249,16 @@ claude: claude-plugins agent-status-broker
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
-.PHONY: codex-skills
+SETUP_TARGETS += codex-skills
 codex-skills:
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
-.PHONY: codex-tmux
-.PHONY: agent-status-broker
+SETUP_TARGETS += codex-tmux
+SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
 codex-tmux: agent-status-broker
 	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
-.PHONY: codex-agents
+SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
 codex-env:
@@ -316,11 +330,11 @@ mail:
 test:
 	@pytest bin/*_test.py
 
-.PHONY: audit-skills
+SETUP_TARGETS += audit-skills
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 
-.PHONY: ui-review test-ui-review
+SETUP_TARGETS += ui-review test-ui-review
 ui-review:
 	@python3 $(DOTFILES)/scripts/install-viewrule.py
 	@mkdir -p $(HOME)/.local/bin
@@ -404,3 +418,5 @@ claude-json-prune-schedule:
 	else \
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
+
+.PHONY: all $(SETUP_TARGETS)
