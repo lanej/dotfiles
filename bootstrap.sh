@@ -949,17 +949,51 @@ setup_bedrock_credentials() {
 }
 
 setup_bedrock_router() (
-	local root staging
-	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	local staging version platform arch archive release config
 	if [ ! -f "$HOME/.config/bedrock/env" ]; then
 		echo "No Bedrock credentials configured; skipping router setup."
 		return 0
 	fi
+	version="${BEDROCK_ROUTER_VERSION:-v0.1.1}"
+	case "$version" in
+		''|*[!A-Za-z0-9._-]*) echo "Invalid Bedrock router release version" >&2; return 1 ;;
+	esac
+	case "$(uname -s)" in
+		Darwin) platform=darwin ;;
+		Linux) platform=linux ;;
+		*) echo "Unsupported Bedrock router platform" >&2; return 1 ;;
+	esac
+	case "$(uname -m)" in
+		arm64|aarch64) arch=arm64 ;;
+		x86_64|amd64) arch=amd64 ;;
+		*) echo "Unsupported Bedrock router architecture" >&2; return 1 ;;
+	esac
 	staging=$(mktemp -d) || return 1
 	trap 'rm -rf "$staging"' EXIT
-	cd "$root/codex/bedrock-router" || return 1
-	go build -trimpath -o "$staging/bedrock-router" . || return 1
-	"$staging/bedrock-router" install --config "$PWD/config.json" --keep-env || return 1
+	archive="bedrock-router_${version}_${platform}_${arch}.tar.gz"
+	release="https://github.com/lanej/bedrock-router/releases/download/$version"
+	if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+		gh release download "$version" --repo lanej/bedrock-router \
+			--pattern "$archive" --pattern SHA256SUMS --dir "$staging" || return 1
+	else
+		curl -fsSL --max-time 60 -o "$staging/$archive" "$release/$archive" || return 1
+		curl -fsSL --max-time 60 -o "$staging/SHA256SUMS" "$release/SHA256SUMS" || return 1
+	fi
+	awk -v name="$archive" '$2 == name {print}' "$staging/SHA256SUMS" > "$staging/selected.sha256"
+	[ -s "$staging/selected.sha256" ] || {
+		echo "Bedrock router archive is missing from SHA256SUMS" >&2; return 1
+	}
+	if command -v sha256sum >/dev/null 2>&1; then
+		(cd "$staging" && sha256sum -c selected.sha256) || return 1
+	else
+		(cd "$staging" && shasum -a 256 -c selected.sha256) || return 1
+	fi
+	tar -xzf "$staging/$archive" -C "$staging" bedrock-router config.json || return 1
+	config="$staging/config.json"
+	if [ -f "$HOME/.codex/bedrock-router/config.json" ]; then
+		config="$HOME/.codex/bedrock-router/config.json"
+	fi
+	"$staging/bedrock-router" install --config "$config" --keep-env || return 1
 	if [ "$os" = linux ]; then
 		if ! loginctl show-user "$USER" -p Linger | grep -q '^Linger=yes$'; then
 			loginctl enable-linger "$USER" ||

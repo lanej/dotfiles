@@ -29,12 +29,13 @@ def main():
         source.write_text(json.dumps({"bearer_token": token, "region": "us-east-1", "expiration": 4102444800}))
         (checkout / "kitty").mkdir()
         shutil.copyfile(root / "kitty/kitty.terminfo", checkout / "kitty/kitty.terminfo")
-        (checkout / "codex/bedrock-router").mkdir(parents=True)
         driver = fixture / "driver"
         driver.write_text(f"#!{sys.executable}\n" + r'''
 import os
 from pathlib import Path
 import io
+import hashlib
+import json
 import shutil
 import subprocess
 import sys
@@ -56,15 +57,20 @@ elif name == "git":
     if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
-    if args == ["apt-get", "install", "-y", "eza"]:
+    if args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
         (home / ".local/bin/eza").symlink_to(fixture / "driver")
-        record("apt eza")
+        record("eza package")
     else:
         record("build dependencies")
 elif name == "apt-cache":
     assert args[:1] == ["policy"], args
     version = {"eza": "0.20.19-1"}.get(args[1], "(none)")
     print(args[1] + ":\n  Installed: (none)\n  Candidate: " + version)
+elif name == "dnf":
+    assert args[:2] == ["--cacheonly", "info"], args
+    if args[2] != "eza":
+        sys.exit(1)
+    print("Version : 0.20.19")
 elif name == "curl":
     url = next(arg for arg in args if arg.startswith("https://"))
     target = args[args.index("-o") + 1]
@@ -111,6 +117,24 @@ echo "$1" > "$HOME/claude-version"
                 member.size = len(payload)
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
+        sys.exit(0)
+    elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
+        assert url.startswith("https://github.com/lanej/bedrock-router/releases/download/v0.1.1/")
+        with tarfile.open(target, "w:gz") as archive:
+            for path, payload in (
+                ("bedrock-router", (fixture / "driver").read_bytes()),
+                ("config.json", b'{"fixture": "standalone-router"}\n'),
+            ):
+                member = tarfile.TarInfo(path)
+                member.size = len(payload)
+                member.mode = 0o755 if path == "bedrock-router" else 0o644
+                archive.addfile(member, io.BytesIO(payload))
+        record("router release")
+        sys.exit(0)
+    elif url == "https://github.com/lanej/bedrock-router/releases/download/v0.1.1/SHA256SUMS":
+        release_archive = Path(target).with_name("bedrock-router_v0.1.1_linux_arm64.tar.gz")
+        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
+        Path(target).write_text(digest + "  " + release_archive.name + "\n")
         sys.exit(0)
     else:
         raise AssertionError("Unexpected download: " + url)
@@ -182,7 +206,7 @@ elif name == "nvim" and "--headless" in args:
     record("neovim setup")
 elif name == "bedrock-router":
     assert args[:2] == ["install", "--config"] and args[3:] == ["--keep-env"], args
-    assert Path(args[2]).resolve() == (home / ".files/codex/bedrock-router/config.json").resolve()
+    assert json.loads(Path(args[2]).read_text()) == {"fixture": "standalone-router"}
     assert "make" in (home / "events").read_text()
     assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
     record("router setup")
@@ -213,9 +237,6 @@ elif name == "go":
     elif args[:2] == ["version", "-m"]:
         assert args[2].endswith("/glow"), args
         print("\tmod\tgithub.com/charmbracelet/glow/v2\tv2.0.0\tfixture")
-    elif args[:1] == ["build"]:
-        assert Path.cwd() == (home / ".files/codex/bedrock-router").resolve()
-        Path(args[args.index("-o") + 1]).symlink_to(fixture / "driver")
     else:
         print("go version go1.26.2 linux/amd64")
 elif name == "glow":
@@ -230,7 +251,7 @@ else:
         suggestions.mkdir(parents=True)
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
-            "uname", "git", "sudo", "apt-get", "apt-cache", "curl", "uv", "node", "npm",
+            "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm",
             "python3", "make", "cargo", "rustc", "rust-analyzer", "go",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
@@ -261,12 +282,13 @@ else:
         )
         assert "neovim setup" in events
         assert "neovim build" in events
-        assert "apt eza" in events
+        assert "eza package" in events
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")
+        assert events.index("router release") < events.index("router setup")
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"
