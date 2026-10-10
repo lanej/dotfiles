@@ -126,6 +126,12 @@ Questions, approval requests, and turn completion ring the originating pane's
 bell. `SessionStart` records `@codex-session-id` on the pane so events from a
 previous session cannot clear its replacement's status.
 
+### Terminal program status
+
+The standalone `agent-status-broker` can publish the [Program Status Protocol (OSC 7501)](https://www.superlogical.com/rex/docs/build/program-status) to supporting terminals such as Rex. `rc/tmux.conf` enables `@agent-status-protocol` and sets `allow-passthrough all` so status reports from unfocused windows reach the terminal. The broker uses its resolved agent states: machine waits report `working`, human requests report `blocked`, completed turns report `done`, and fresh sessions or interruptions report `idle`. Each agent has its own record even when panes share a window tab. Tmux's colours, glyphs, navigation, and dormancy continue to use the richer internal states.
+
+This requires a broker build containing OSC 7501 support; the currently pinned `v0.1.3` does not emit these reports. Until a release includes the feature, install from a checkout of the broker with `AGENT_STATUS_SOURCE=/path/to/agent-status-broker make agent-status-broker`. The option is harmless with older builds. To disable reporting, run `tmux set -g @agent-status-protocol off`.
+
 ### Dormancy and the status-bar roll-up
 
 tmux has no timer, so `bin/tmux-claude-sweep` rides the status refresh
