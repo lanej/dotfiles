@@ -33,13 +33,14 @@ STATES = {
     "plan":     ("need",     "#D08770", "#2E3440", True,  "▣"),  # a plan is up for approval
     "tool":     ("activity", "#EBCB8B", "#2E3440", False, "●"),  # a tool is running
     "thinking": ("activity", "#88C0D0", "#2E3440", False, "◐"),  # has the turn, nothing running
-    "waiting":  ("activity", "#5E81AC", "#ECEFF4", False, "◷"),  # waiting for an agent or timer
+    "waiting":  ("activity", "#5E81AC", "#ECEFF4", False, "…"),  # waiting without a human prompt
     "failed":   ("need",     "#BF616A", "#ECEFF4", True,  "!"),  # terminal system error
     "idle":     ("quiet",    "#4C566A", "#D8DEE9", False, "○"),  # finished, still warm
     "dormant":  ("quiet",    "#3B4252", "#616E88", False, "·"),  # finished and left alone
 }
 
 ALIASES = {}
+WAIT_GLYPHS = {"agent": "⇄", "timer": "◷", "review": "⟳"}
 
 OPTIONS = ("@claude-state", "@claude-class", "@claude-bg",
            "@claude-fg", "@claude-attr", "@claude-glyph", "@claude-since", "@claude-reason")
@@ -54,13 +55,15 @@ def tmux(*args):
         return ""
 
 
-def style(name):
+def style(name, reason=""):
     """Render one state, or None if the name is not a state we know."""
     name = ALIASES.get(name, name)
     entry = STATES.get(name)
     if entry is None:
         return None
     klass, bg, fg, bold, glyph = entry
+    if name == "waiting":
+        glyph = WAIT_GLYPHS.get(reason, glyph)
     return {
         "@claude-state": name,
         "@claude-class": klass,
@@ -69,7 +72,7 @@ def style(name):
         "@claude-attr": "bold" if bold else "nobold",
         "@claude-glyph": glyph,
         "@claude-since": str(int(time.time())),
-        "@claude-reason": "",
+        "@claude-reason": reason,
     }
 
 

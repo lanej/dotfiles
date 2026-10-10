@@ -7,7 +7,7 @@ if [ -n "${AGENT_STATUS_BIN:-}" ]; then
 fi
 
 broker_source="${AGENT_STATUS_SOURCE:-$HOME/src/agent-status-broker}"
-broker_version="${AGENT_STATUS_VERSION:-v0.1.6}"
+broker_version="${AGENT_STATUS_VERSION:-v0.1.7}"
 case "$broker_version" in
     ''|*[!A-Za-z0-9._-]*) printf 'Invalid broker release version\n' >&2; exit 1 ;;
 esac

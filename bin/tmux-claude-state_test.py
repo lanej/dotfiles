@@ -234,6 +234,9 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
          message="Claude is waiting for your input")
     assert option("@claude-state") == "question"
     question = tab()
+    emit("Notification", "claude-notification-hook", notification_type="auth_success",
+         message="Authentication succeeded")
+    assert tab() == question, "an unrelated notification must not invent or clear a human request"
 
     # Finished is its own state: a window Claude just worked in is not a window
     # Claude was never in.
@@ -385,6 +388,14 @@ if "app-name" in items and "thread-id" in items:
     assert (codex_home / "custom-hook").read_text() == "kept"
 
     emit_codex("PermissionRequest", tool_name="Bash")
+    assert option("@claude-class", codex_window) == "activity"
+    assert "▲" not in codex_tab() and "[approval" not in codex_tab()
+    private_tmux.call("select-pane", "-t", codex_pane, "-T",
+                      f"[ ! ] Action Required | codex | {codex_session[:29]}... | project")
+    deadline = time.monotonic() + 5
+    while option("@claude-state", codex_window) != "approval":
+        assert time.monotonic() < deadline
+        time.sleep(0.02)
     assert option("@claude-state", codex_window) == "approval"
     assert state.STATES["approval"][1] in codex_tab() and "▲" in codex_tab()
     # A Codex need outranks a busy Claude window, both in the summary and when
@@ -408,12 +419,17 @@ if "app-name" in items and "thread-id" in items:
     monkeypatch.setenv("TMUX_PANE", codex_pane)
 
     emit_codex("PostToolUse", tool_name="Bash", tool_use_id="command-1")
+    private_tmux.call("select-pane", "-t", codex_pane, "-T",
+                      f"codex | {codex_session[:29]}... | Working | project")
     assert option("@claude-class", codex_window) == "activity"
     emit_codex("PreToolUse", tool_name="request_user_input", tool_use_id="question-1")
     assert option("@claude-state", codex_window) == "question"
     assert "?" in codex_tab()
     emit_codex("PostToolUse", tool_name="request_user_input", tool_use_id="question-1")
     assert option("@claude-state", codex_window) == "thinking"
+    emit_codex("PreToolUse", tool_name="wait_agent", tool_use_id="agent-wait")
+    assert "⇄" in codex_tab() and "[agent]" not in codex_tab()
+    emit_codex("PostToolUse", tool_name="wait_agent", tool_use_id="agent-wait")
     emit_codex("Stop", permission_mode="plan")
     assert option("@claude-state", codex_window) == "plan"
     assert "▣" in codex_tab()
@@ -465,10 +481,14 @@ if "app-name" in items and "thread-id" in items:
         if refreshing and args[:2] == ("list-panes", "-a"):
             refreshing = False
             private_tmux.call("select-pane", "-t", codex_pane, "-T",
-                              f"! codex | {codex_session[:29]}... | Waiting | project")
+                              f"[ . ] Action Required | codex | {codex_session[:29]}... | project")
         return result
 
     monkeypatch.setattr(hook.state, "tmux", refresh_after_snapshot)
+    assert hook.render_event(
+        dict(hook_event_name="PermissionRequest", session_id=codex_session,
+             tool_name="exec_command", tool_use_id="approval-title-refresh")) == 0
+    assert option("@claude-class", codex_window) == "activity"
     assert hook.render_event(
         dict(hook_event_name="PermissionRequest", session_id=codex_session,
              tool_name="exec_command", tool_use_id="approval-title-refresh")) == 0
