@@ -23,12 +23,12 @@ end
 local function text(range)
 	return table.concat(vim.api.nvim_buf_get_text(0, range[1], range[2], range[4], range[5], {}), "\n")
 end
-local function format()
-	local completed, error
-	require("conform").format({ async = false, timeout_ms = 5000 }, function(problem)
-		completed, error = true, problem
-	end)
-	assert(completed and not error, "Formatter failed: " .. tostring(error))
+local function save()
+	vim.cmd.write()
+	assert(
+		vim.deep_equal(vim.fn.readfile(vim.api.nvim_buf_get_name(0)), vim.api.nvim_buf_get_lines(0, 0, -1, false)),
+		"Write did not persist the formatted buffer"
+	)
 end
 local function workflow()
 	vim.o.columns = 120
@@ -43,14 +43,14 @@ local function workflow()
 	assert(settings.keywordCase == "lower" and settings.tabWidth == 4, "Setup overwrote formatter preferences")
 	assert(vim.bo.filetype == "sql.bigquery", "Setup did not refresh the open SQL buffer")
 
-	-- Formatting detector: execute the actual Conform entrypoint and formatter.
-	format()
+	-- Formatting detector: write through the actual save hook and formatter.
+	save()
 	local formatted = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 	assert(formatted:match("^with%s+addresses as"), "Formatter ignored project keywordCase")
 	assert(formatted:find("\n    select", 1, true), "Formatter ignored project indentation")
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, source)
 	vim.fn.writefile({ '{"language":"bigquery"}' }, temp .. "/.sql-formatter.json")
-	format()
+	save()
 	assert(
 		vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)),
 		"Default formatting must preserve the compact reference layout"
@@ -61,7 +61,7 @@ local function workflow()
 	misindented[9] = "QUALIFY ROW_NUMBER() OVER ("
 	table.remove(misindented, 10)
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, misindented)
-	format()
+	save()
 	assert(
 		vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)),
 		"Default formatting must repair indentation and put QUALIFY's window on its own line"
@@ -70,7 +70,7 @@ local function workflow()
 		"[sqlfluff:rules:capitalisation.keywords]",
 		"capitalisation_policy = lower",
 	}, temp .. "/.sqlfluff")
-	format()
+	save()
 	assert(
 		vim.api.nvim_buf_get_lines(0, 0, 1, false)[1]:match("^with addresses as"),
 		"Native project SQLFluff rules must override home defaults"
@@ -180,9 +180,14 @@ local function workflow()
 	assert(vim.wo[second_window].foldexpr ~= "v:lua.vim.treesitter.foldexpr()", "BigQuery folds leaked in new split")
 	assert(require("bigquery").formatter_config(0).language == "postgresql", "Project dialect was not retained")
 	vim.cmd.close()
-	open(temp .. "-generic.sql", { "SELECT 1;" })
+	open(temp .. "-generic.sql", { "SELECT    1 AS value;" })
 	assert(vim.bo.filetype == "sql", "Generic SQL changed dialect")
 	assert(require("bigquery").formatter_config(0).language == "sql", "Global config leaked its dialect")
+	save()
+	assert(
+		vim.fn.readfile(temp .. "-generic.sql")[1] ~= "SELECT    1 AS value;",
+		"Generic SQL was not formatted on write"
+	)
 	print("BigQuery editor: formatting, textobjects, folding, regex highlights and info/refresh passed")
 end
 local ok, err = xpcall(workflow, debug.traceback)

@@ -1805,6 +1805,12 @@ require("lazy").setup({
 		"stevearc/conform.nvim",
 		config = function()
 			require("conform").setup({
+				format_on_save = function(buf)
+					local ft = vim.bo[buf].filetype
+					if ft == "sql" or ft == "sql.bigquery" then
+						return { timeout_ms = 5000, lsp_format = "never" }
+					end
+				end,
 				formatters_by_ft = {
 					lua = { "stylua" },
 					-- Conform will run multiple formatters sequentially
