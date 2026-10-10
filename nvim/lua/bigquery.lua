@@ -116,9 +116,62 @@ function M.refresh(buf)
 		return
 	end
 	ft = M.detect(path, buf)
+	for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf })) do
+		local filetypes = client.config.filetypes
+		if filetypes and not vim.tbl_contains(filetypes, ft) then
+			vim.lsp.buf_detach_client(buf, client.id)
+		end
+	end
 	if vim.bo[buf].filetype ~= ft then
 		vim.bo[buf].filetype = ft
 	end
+end
+
+function M.setup_project(buf)
+	buf = buf or vim.api.nvim_get_current_buf()
+	local path = vim.api.nvim_buf_get_name(buf)
+	if path == "" then
+		error("Open a named SQL file before running BigQuerySetup", 0)
+	end
+	local ft = vim.bo[buf].filetype
+	if
+		ft ~= "sql"
+		and ft ~= "sql.bigquery"
+		and not path:lower():match("%.sql$")
+		and not path:lower():match("%.bqsql$")
+	then
+		error("BigQuerySetup requires a SQL buffer", 0)
+	end
+	local context = project(path)
+	if context.warning then
+		error(context.warning, 0)
+	end
+	local config = context.config or (context.root or vim.fs.dirname(path)) .. "/.sql-formatter.json"
+	if vim.fs.normalize(vim.fs.dirname(config)) == vim.fs.normalize(vim.fn.expand("~")) then
+		error("Use a project directory for BigQuerySetup; for this buffer, use :setfiletype sql.bigquery", 0)
+	end
+	local config_buf = vim.fn.bufnr(config)
+	if config_buf ~= -1 and vim.bo[config_buf].modified then
+		error("Save the pending edits to " .. config .. " before running BigQuerySetup", 0)
+	end
+	local settings = vim.tbl_extend("force", context.settings or {}, { language = "bigquery" })
+	if vim.fn.writefile({ vim.json.encode(settings) }, config) ~= 0 then
+		error("Unable to write " .. config, 0)
+	end
+	if config_buf ~= -1 then
+		vim.cmd.checktime(config_buf)
+	end
+	-- Redetect all loaded SQL buffers sharing this config so their parser,
+	-- formatter and LSP change together.
+	for _, candidate in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_loaded(candidate) then
+			local candidate_path = vim.api.nvim_buf_get_name(candidate)
+			if candidate_path ~= "" and project(candidate_path).config == config then
+				M.refresh(candidate)
+			end
+		end
+	end
+	return config
 end
 
 function M.info(buf)
@@ -361,6 +414,13 @@ function M.setup()
 		end
 		vim.api.nvim_echo({ { table.concat(M.info(), "\n") } }, true, {})
 	end, { bang = true, desc = "Show SQL dialect, parser and formatter; ! refreshes detection", force = true })
+	vim.api.nvim_create_user_command("BigQuerySetup", function()
+		local ok, result = pcall(M.setup_project)
+		vim.notify(
+			ok and ("BigQuery configured: " .. result) or result,
+			ok and vim.log.levels.INFO or vim.log.levels.ERROR
+		)
+	end, { desc = "Save BigQuery project config and refresh open SQL buffers", force = true })
 end
 
 return M

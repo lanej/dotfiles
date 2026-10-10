@@ -34,9 +34,14 @@ local function workflow()
 	vim.o.columns = 120
 	vim.o.lines = 40
 	vim.fn.mkdir(temp, "p")
-	vim.fn.writefile({ '{"language":"bigquery","keywordCase":"lower","tabWidth":4}' }, temp .. "/.sql-formatter.json")
+	vim.fn.writefile({ '{"keywordCase":"lower","tabWidth":4}' }, temp .. "/.sql-formatter.json")
 	open(temp .. "/addresses.sql", source)
-	assert(vim.bo.filetype == "sql.bigquery", "Project config must select BigQuery")
+	assert(vim.bo.filetype == "sql", "Style-only config must retain generic SQL")
+	vim.cmd.BigQuerySetup()
+	local settings = vim.json.decode(table.concat(vim.fn.readfile(temp .. "/.sql-formatter.json"), "\n"))
+	assert(settings.language == "bigquery", "Setup did not save the project dialect")
+	assert(settings.keywordCase == "lower" and settings.tabWidth == 4, "Setup overwrote formatter preferences")
+	assert(vim.bo.filetype == "sql.bigquery", "Setup did not refresh the open SQL buffer")
 
 	-- Formatting detector: execute the actual Conform entrypoint and formatter.
 	format()
