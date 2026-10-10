@@ -28,21 +28,21 @@ import time
 # bar. Glyphs carry the same ranking for anyone reading shape over colour.
 STATES = {
     # name        class       bg         fg         bold   glyph
-    "approval": ("need",     "#BF616A", "#ECEFF4", True,  "▲"),  # blocked on a permission prompt
-    "question": ("need",     "#BF616A", "#ECEFF4", True,  "?"),  # blocked on something it asked you
+    "approval": ("need",     "#D08770", "#2E3440", True,  "▲"),  # blocked on a permission prompt
+    "question": ("need",     "#D08770", "#2E3440", True,  "?"),  # blocked on something it asked you
     "plan":     ("need",     "#D08770", "#2E3440", True,  "▣"),  # a plan is up for approval
     "tool":     ("activity", "#EBCB8B", "#2E3440", False, "●"),  # a tool is running
     "thinking": ("activity", "#88C0D0", "#2E3440", False, "◐"),  # has the turn, nothing running
+    "waiting":  ("activity", "#5E81AC", "#ECEFF4", False, "◷"),  # waiting for an agent or timer
+    "failed":   ("need",     "#BF616A", "#ECEFF4", True,  "!"),  # terminal system error
     "idle":     ("quiet",    "#4C566A", "#D8DEE9", False, "○"),  # finished, still warm
     "dormant":  ("quiet",    "#3B4252", "#616E88", False, "·"),  # finished and left alone
 }
 
-# The pre-existing name for "Claude asked you something"; still written by older
-# checkouts of the hooks and still understood here.
-ALIASES = {"waiting": "question"}
+ALIASES = {}
 
 OPTIONS = ("@claude-state", "@claude-class", "@claude-bg",
-           "@claude-fg", "@claude-attr", "@claude-glyph", "@claude-since")
+           "@claude-fg", "@claude-attr", "@claude-glyph", "@claude-since", "@claude-reason")
 
 
 def tmux(*args):
@@ -69,6 +69,7 @@ def style(name):
         "@claude-attr": "bold" if bold else "nobold",
         "@claude-glyph": glyph,
         "@claude-since": str(int(time.time())),
+        "@claude-reason": "",
     }
 
 
