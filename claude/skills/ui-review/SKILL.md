@@ -65,6 +65,9 @@ For Easy UI PRs, put the actual per-PR Storybook URL in the PR description, with
 direct links to affected stories. Publish or refresh that preview and verify its
 adjacent revision file matches the PR head before handing it off; a main-branch
 Storybook link or a promise of a future preview is not equivalent.
+Start a fresh Pages publishing run for a refresh rather than rerunning its
+artifact-producing build job: duplicate `github-pages` artifacts in one run
+can prevent deployment even when both builds pass.
 
 ## Learn from Josh's feedback
 
