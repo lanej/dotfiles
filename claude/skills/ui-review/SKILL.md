@@ -47,6 +47,25 @@ Do not force every UI into a dashboard or add unrelated redesign work. The CLI
 captures configured initial states; exercise relevant keyboard, loading, empty,
 error, and interaction states through the project's browser tests as needed.
 
+## Chart component contracts
+
+For reusable chart components, exercise the smallest valid public input through
+the actual rendering engine, not only populated Storybook fixtures or mocked
+geometry. Optional configuration must render without undocumented required axes;
+require caller configuration explicitly when the component cannot supply it.
+Check that partial axis names or styling preserve generated categories and axis
+types, while authored arrays replace defaults rather than append to them.
+Zoom inside a supplied interval or prediction band with both endpoints outside
+the viewport; visible overlap must survive filtering and remain clipped to the
+plot. Preserve explicit caller filtering, missing-data gaps, and exact values.
+Improve the existing chart detector with these behaviors rather than treating
+successful screenshots or finite SVG coordinates as proof of the API contract.
+
+For Easy UI PRs, put the actual per-PR Storybook URL in the PR description, with
+direct links to affected stories. Publish or refresh that preview and verify its
+adjacent revision file matches the PR head before handing it off; a main-branch
+Storybook link or a promise of a future preview is not equivalent.
+
 ## Learn from Josh's feedback
 
 When Josh says a design looks good or asks for an adjustment, preserve his actual
