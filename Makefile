@@ -206,6 +206,8 @@ endif
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
+test-git-worktree-cleanup: FORCE
+	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 superwhisper:
 	@if ! command -v git-crypt >/dev/null 2>&1; then \
 		echo "⚠️  Skipping superwhisper: git-crypt not installed. Install with: brew install git-crypt"; \

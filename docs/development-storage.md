@@ -11,6 +11,26 @@ Rerun the setup target after replacing Node or changing the Go workspace.
 Developer temporary folders are scanned for borrowed cache files; macOS Apple
 app-private temporary folders are excluded.
 
+Preview worktree cleanup across all projects with `git-worktree-cleanup ~/src`,
+or run it from `~/src` without an argument. Inside a repository, the command
+checks only that repository unless you pass a directory to sweep. Discovery
+includes grouped and nested projects, deduplicates linked checkouts, and checks
+each repository's registered worktrees even when they live outside `~/src`.
+The report shows disk usage per worktree and a combined estimate for eligible
+checkouts.
+
+Add `-y` to remove eligible worktrees. The tool retains primary, locked, active,
+dirty, and unmerged checkouts, plus those with recent HEAD commits, and checks
+eligibility again before each removal. Checkout creation time does not set its
+age: a new checkout of an old commit can be eligible. Ignored files are retained
+except for recognized dependency and build
+caches such as `node_modules`, `.venv`, and `target`. It requires `lsof` to
+inspect processes belonging to your user; if that check fails, worktrees stay
+in place. Each project uses its own `origin/HEAD` ref, falling back to local
+`main` or `master`; use `-b` for a different base ref. Refs are read locally,
+so refresh them before relying on the report. Project errors are reported
+without stopping the remaining sweep, and branches are retained.
+
 These are periodic size budgets. Busy caches and targets are deferred and
 checked again on the next run. Native managers clean over-budget caches;
 Cargo trims old entries. npm's installed `_npx` tools, installed Rust toolchains,

@@ -1,0 +1,20 @@
+name: Worktree cleanup
+on:
+  pull_request:
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree-cleanup.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+  push:
+    branches: [master]
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree-cleanup.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+permissions:
+  contents: read
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y lsof
+      - run: make test-git-worktree-cleanup

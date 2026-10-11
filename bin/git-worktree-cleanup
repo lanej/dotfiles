@@ -1,0 +1,403 @@
+#!/usr/bin/env bash
+# Preview or remove idle, merged worktrees for one repository or a project tree.
+set -euo pipefail
+
+AGE_HOURS="${WORKTREE_CLEANUP_AGE_HOURS:-24}"
+BASE_BRANCH="${WORKTREE_CLEANUP_BASE_BRANCH:-}"
+APPLY=0
+RECHECK=0
+
+usage() {
+    cat <<'EOF'
+Usage: git-worktree-cleanup [-a HOURS] [-b BRANCH] [-y] [DIRECTORY]
+
+Inside a repository, checks its registered worktrees wherever they live on disk.
+Otherwise, discovers repositories recursively below the current directory.
+Pass DIRECTORY to scan that project tree from anywhere, e.g. ~/src.
+Linked checkouts of the same repository are checked only once. Dependency,
+build, and managed worktree directories are excluded from repository discovery.
+
+Only idle, clean worktrees merged into their repository's base branch whose
+HEAD commit is older than the age threshold are eligible. Primary and locked worktrees are
+retained, as are ignored files other than disposable dependency/build caches.
+Requires lsof to check for processes using a worktree. Dry-run by default;
+eligibility is checked again before removal. Branches are never deleted.
+
+Shows allocated disk usage; the combined reclaimable total includes only
+removal candidates. Actual savings may vary with shared filesystem blocks.
+Terminal colors respect NO_COLOR.
+Checks for unresolved index conflicts and whether unmerged HEADs conflict
+with the base branch, without changing working files (requires Git 2.38+).
+
+  -a HOURS   minimum HEAD commit age (default: 24h; env WORKTREE_CLEANUP_AGE_HOURS)
+  -b BRANCH  base ref for every repository (default: each repository's
+             origin/HEAD, else local main/master; env WORKTREE_CLEANUP_BASE_BRANCH)
+  -y         actually remove; without this, only lists candidates
+  -h         show this help
+EOF
+}
+
+while getopts ":a:b:yh" opt; do
+    case "$opt" in
+        a) AGE_HOURS="$OPTARG" ;;
+        b) BASE_BRANCH="$OPTARG" ;;
+        y) APPLY=1 ;;
+        h) usage; exit 0 ;;
+        *) usage >&2; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+[[ $# -le 1 ]] || { usage >&2; exit 1; }
+[[ "$AGE_HOURS" =~ ^[0-9]+$ ]] \
+    || { echo "error: age must be a nonnegative integer" >&2; exit 1; }
+SCAN_TREE=1
+if [[ $# -eq 0 ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    ROOT="$(git rev-parse --show-toplevel)"
+    SCAN_TREE=0
+else
+    ROOT="${1:-$PWD}"
+fi
+[[ -d "$ROOT" ]] || { echo "error: not a directory: $ROOT" >&2; exit 1; }
+ROOT="$(cd "$ROOT" && pwd -P)"
+REQUESTED_BASE="$BASE_BRANCH"
+AGE_SECONDS=$(( 10#$AGE_HOURS * 3600 ))
+NOW=$(date +%s)
+
+echo "Project root:  $ROOT"
+echo "Age threshold: ${AGE_HOURS}h"
+echo "Mode:          $([[ $APPLY -eq 1 ]] && echo REMOVE || echo "dry-run (pass -y to remove)")"
+echo
+
+to_remove=() removal_repos=() removal_bases=() removal_primaries=()
+repositories=() repository_ids=()
+repositories_checked=0 errors=0
+row_status=() row_reason=() row_size=() row_path=()
+status_width=6 reason_width=6 size_width=11
+reclaim_kib=0 unknown_sizes=0
+GREEN="" YELLOW="" CYAN="" RED="" MAGENTA="" BLUE="" GRAY="" RESET=""
+if [[ -t 1 && -z "${NO_COLOR+x}" && "${TERM:-dumb}" != dumb ]]; then
+    GREEN=$'\033[32m' YELLOW=$'\033[33m' CYAN=$'\033[36m' RESET=$'\033[0m'
+    RED=$'\033[31m' MAGENTA=$'\033[35m' BLUE=$'\033[34m' GRAY=$'\033[90m'
+fi
+
+spinner_pid=""
+checked_worktrees=0
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/worktree-cleanup.XXXXXX")"
+
+stop_spinner() {
+    if [[ -n "$spinner_pid" ]]; then
+        kill "$spinner_pid" 2>/dev/null || true
+        wait "$spinner_pid" 2>/dev/null || true
+        spinner_pid=""
+        printf '\r\033[K'
+    fi
+}
+# Invoked by the EXIT trap.
+# shellcheck disable=SC2329
+cleanup() {
+    stop_spinner
+    rm -r -- "$scratch"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+start_spinner() {
+    [[ -t 1 && "${TERM:-dumb}" != dumb ]] || return 0
+    (
+        frames=( '|' '/' '-' $'\\' )
+        i=0
+        while :; do
+            printf '\r%s%s%s Checking worktree %s…' "$CYAN" "${frames[i%4]}" "$RESET" "$checked_worktrees"
+            i=$(( i + 1 ))
+            sleep 0.1
+        done
+    ) &
+    spinner_pid=$!
+}
+
+check_worktree() {
+    [[ "$1" == "$PRIMARY_WORKTREE" ]] && return 0
+    checked_worktrees=$(( checked_worktrees + 1 ))
+    start_spinner
+    evaluate "$@"
+    stop_spinner
+}
+
+human_size() {
+    awk -v kib="$1" 'BEGIN {
+        split("KiB MiB GiB TiB PiB", units, " ")
+        i = 1
+        while (kib >= 1024 && i < 5) { kib /= 1024; i++ }
+        printf "%.1f %s", kib, units[i]
+    }'
+}
+
+add_row() {
+    local size="$3" kib
+    if [[ "$size" == - && -d "$4" ]]; then
+        if kib="$(du -sk "$4" 2>/dev/null)" && [[ "${kib%%[[:space:]]*}" =~ ^[0-9]+$ ]]; then
+            size="$(human_size "${kib%%[[:space:]]*}")"
+        else
+            size="unknown"
+        fi
+    fi
+    row_status+=("$1") row_reason+=("$2") row_size+=("$size") row_path+=("$4")
+    (( ${#1} > status_width )) && status_width=${#1}
+    (( ${#2} > reason_width )) && reason_width=${#2}
+    (( ${#size} > size_width )) && size_width=${#size}
+    return 0
+}
+
+print_rows() {
+    printf '%s%-*s  %-*s  %*s  %s%s\n' "$CYAN" "$status_width" STATUS "$reason_width" REASON "$size_width" "DISK USAGE" PATH "$RESET"
+    local i color status_color
+    for (( i=0; i<${#row_status[@]}; i++ )); do
+        case "${row_reason[i]}" in
+            merged,*) color="$GREEN" ;;
+            dirty) color="$YELLOW" ;;
+            "not merged") color="$MAGENTA" ;;
+            locked) color="$BLUE" ;;
+            "too new") color="$CYAN" ;;
+            *failed|*unavailable|"unresolved conflicts"|"merge conflicts") color="$RED" ;;
+            *) color="$GRAY" ;;
+        esac
+        status_color="$YELLOW"
+        [[ "${row_status[i]}" == remove ]] && status_color="$GREEN"
+        printf '%s%-*s%s  %s%-*s%s  %*s  %s\n' "$status_color" "$status_width" "${row_status[i]}" "$RESET" "$color" "$reason_width" "${row_reason[i]}" "$RESET" "$size_width" "${row_size[i]}" "${row_path[i]}"
+    done
+}
+
+load_activity() {
+    activity_ok=0
+    if command -v lsof >/dev/null 2>&1 && lsof -nP -u "$(id -u)" -Fn > "$scratch/activity" 2>/dev/null; then
+        activity_ok=1
+    else
+        echo "error: lsof activity check unavailable; eligible worktrees will be retained" >&2
+        errors=$(( errors + 1 ))
+    fi
+}
+
+inspect_worktree() {
+    local path="$1" locked="$2" head top status commit_ts merge_status=0 ignored open_path
+    CHECK_REASON=""
+    [[ "$path" == "$PRIMARY_WORKTREE" ]] && { CHECK_REASON="primary"; return 1; }
+    [[ "$locked" -eq 0 ]] || { CHECK_REASON="locked"; return 1; }
+    if [[ "$path" == *\\* || "$path" =~ [[:cntrl:]] ]]; then
+        CHECK_REASON="unsupported activity path"; return 1
+    fi
+    [[ -d "$path" ]] || { CHECK_REASON="missing directory"; return 1; }
+    if ! top="$(git -C "$path" rev-parse --show-toplevel 2>/dev/null)" || [[ "$top" != "$path" ]]; then
+        CHECK_REASON="checkout check failed"; return 1
+    fi
+    if ! head="$(git -C "$path" rev-parse --verify HEAD 2>/dev/null)" \
+        || ! status="$(git -C "$path" ls-files --unmerged 2>/dev/null)"; then
+        CHECK_REASON="index check failed"; return 1
+    fi
+    [[ -z "$status" ]] || { CHECK_REASON="unresolved conflicts"; return 1; }
+
+    git -C "$REPOSITORY" merge-base --is-ancestor "$head" "$BASE_BRANCH" 2>/dev/null || merge_status=$?
+    if [[ "$merge_status" -ne 0 ]]; then
+        [[ "$merge_status" -eq 1 ]] || { CHECK_REASON="merge check failed"; return 1; }
+        merge_status=0
+        git -C "$REPOSITORY" merge-tree --write-tree "$BASE_BRANCH" "$head" >/dev/null 2>&1 || merge_status=$?
+        case "$merge_status" in
+            0) CHECK_REASON="not merged" ;;
+            1) CHECK_REASON="merge conflicts" ;;
+            *) CHECK_REASON="merge check failed" ;;
+        esac
+        return 1
+    fi
+
+    if ! commit_ts="$(git -C "$REPOSITORY" log -1 --format=%ct "$head" 2>/dev/null)" \
+        || [[ ! "$commit_ts" =~ ^[0-9]+$ ]]; then
+        CHECK_REASON="history check failed"; return 1
+    fi
+    CHECK_AGE=$(( NOW - commit_ts ))
+    (( CHECK_AGE >= AGE_SECONDS )) || { CHECK_REASON="too new"; return 1; }
+
+    if ! status="$(git -C "$path" status --porcelain --untracked-files=all 2>/dev/null)"; then
+        CHECK_REASON="status check failed"; return 1
+    fi
+    [[ -z "$status" ]] || { CHECK_REASON="dirty"; return 1; }
+    if ! git -C "$path" ls-files --others --ignored --exclude-standard --directory -z \
+        > "$scratch/ignored" 2>/dev/null; then
+        CHECK_REASON="ignored-file check failed"; return 1
+    fi
+    while IFS= read -r -d '' ignored; do
+        case "$ignored" in
+            node_modules/*|*/node_modules/*|.venv/*|*/.venv/*|target/*|*/target/*|\
+            .next/*|*/.next/*|__pycache__/*|*/__pycache__/*|.pytest_cache/*|*/.pytest_cache/*|\
+            .mypy_cache/*|*/.mypy_cache/*|.ruff_cache/*|*/.ruff_cache/*) ;;
+            *) CHECK_REASON="ignored files"; return 1 ;;
+        esac
+    done < "$scratch/ignored"
+    # A later candidate may become busy while earlier worktrees are removed.
+    [[ "$RECHECK" -eq 0 ]] || load_activity
+    [[ "$activity_ok" -eq 1 ]] || { CHECK_REASON="activity unavailable"; return 1; }
+    while IFS= read -r open_path; do
+        [[ "$open_path" == n/* ]] || continue
+        open_path="${open_path#n}"
+        case "$open_path" in
+            "$path"|"$path"/*) CHECK_REASON="active process"; return 1 ;;
+        esac
+    done < "$scratch/activity"
+    return 0
+}
+
+evaluate() {
+    local path="$1" locked="$2"
+    if ! inspect_worktree "$path" "$locked"; then
+        add_row skip "$CHECK_REASON" - "$path"
+        case "$CHECK_REASON" in *failed|*unavailable) errors=$(( errors + 1 )) ;; esac
+        return 0
+    fi
+    local kib size
+    if kib="$(du -sk "$path" 2>/dev/null)" && [[ "${kib%%[[:space:]]*}" =~ ^[0-9]+$ ]]; then
+        kib="${kib%%[[:space:]]*}"
+        size="$(human_size "$kib")"
+        reclaim_kib=$(( reclaim_kib + kib ))
+    else
+        size="unknown"
+        unknown_sizes=$(( unknown_sizes + 1 ))
+    fi
+    add_row remove "merged, $(( CHECK_AGE / 3600 ))h old" "$size" "$path"
+    to_remove+=("$path")
+    removal_repos+=("$REPOSITORY")
+    removal_bases+=("$BASE_BRANCH")
+    removal_primaries+=("$PRIMARY_WORKTREE")
+}
+
+add_repository() {
+    local repo="$1" common known first
+    if ! common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+        || ! common="$(cd "$common" && pwd -P)"; then
+        echo "error: cannot inspect repository: $repo" >&2
+        errors=$(( errors + 1 ))
+        return 0
+    fi
+    for known in ${repository_ids[@]+"${repository_ids[@]}"}; do
+        [[ "$known" != "$common" ]] || return 0
+    done
+    if ! git -C "$repo" worktree list --porcelain -z > "$scratch/discovered-worktrees" \
+        || ! IFS= read -r -d '' first < "$scratch/discovered-worktrees" \
+        || [[ "$first" != worktree\ * || ! -d "${first#worktree }" ]]; then
+        echo "error: cannot resolve primary checkout for $repo" >&2
+        errors=$(( errors + 1 ))
+        return 0
+    fi
+    repository_ids+=("$common")
+    repositories+=("${first#worktree }")
+}
+
+scan_repository() {
+    local REPOSITORY="$1" BASE_BRANCH="$REQUESTED_BASE" PRIMARY_WORKTREE="" candidate path="" locked=0 line
+    repositories_checked=$(( repositories_checked + 1 ))
+    echo "Repository: $REPOSITORY"
+    if [[ -z "$BASE_BRANCH" ]]; then
+        BASE_BRANCH="$(git -C "$REPOSITORY" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+        if [[ -z "$BASE_BRANCH" ]]; then
+            for candidate in main master; do
+                if git -C "$REPOSITORY" show-ref --verify --quiet "refs/heads/$candidate"; then
+                    BASE_BRANCH="$candidate"
+                    break
+                fi
+            done
+        fi
+    fi
+    if [[ -z "$BASE_BRANCH" ]] || ! git -C "$REPOSITORY" rev-parse --verify "$BASE_BRANCH^{commit}" >/dev/null 2>&1; then
+        echo "error: no valid base ref for $REPOSITORY; pass -b BRANCH" >&2
+        errors=$(( errors + 1 ))
+        echo
+        return 0
+    fi
+    echo "Base branch: $BASE_BRANCH"
+    if ! git -C "$REPOSITORY" worktree list --porcelain -z > "$scratch/worktrees"; then
+        echo "error: cannot list worktrees for $REPOSITORY" >&2
+        errors=$(( errors + 1 ))
+        return 0
+    fi
+    row_status=() row_reason=() row_size=() row_path=()
+    status_width=6 reason_width=6 size_width=10
+    while IFS= read -r -d '' line; do
+        if [[ -z "$line" ]]; then
+            [[ -z "$path" ]] || check_worktree "$path" "$locked"
+            path="" locked=0
+            continue
+        fi
+        case "$line" in
+            worktree\ *)
+                path="${line#worktree }"
+                [[ -n "$PRIMARY_WORKTREE" ]] || PRIMARY_WORKTREE="$path"
+                ;;
+            locked*) locked=1 ;;
+        esac
+    done < "$scratch/worktrees"
+    [[ -z "$path" ]] || check_worktree "$path" "$locked"
+    print_rows
+    echo
+}
+
+load_activity
+if [[ "$SCAN_TREE" -eq 0 ]]; then
+    add_repository "$ROOT"
+else
+    if ! find "$ROOT" \
+        -name .git -print0 -prune -o \
+        -type d \( -name node_modules -o -name .venv -o -name venv \
+        -o -name target -o -name dist -o -name build -o -name .next \
+        -o -name .worktrees -o -name .claude -o -name .codex \
+        -o -name .cache -o -name __pycache__ \) -prune \
+        > "$scratch/repositories"; then
+        echo "error: some directories could not be scanned under $ROOT" >&2
+        errors=$(( errors + 1 ))
+    fi
+    while IFS= read -r -d '' marker; do
+        add_repository "${marker%/.git}"
+    done < "$scratch/repositories"
+fi
+for repo in ${repositories[@]+"${repositories[@]}"}; do
+    scan_repository "$repo"
+done
+echo "Repositories checked: $repositories_checked"
+echo "Worktrees checked: $checked_worktrees"
+
+if [[ ${#to_remove[@]} -eq 0 ]]; then
+    echo "Nothing to remove."
+    exit $(( errors > 0 ))
+fi
+
+printf 'Estimated reclaimable space (eligible worktrees): %s%s%s' "$GREEN" "$(human_size "$reclaim_kib")" "$RESET"
+if (( unknown_sizes > 0 )); then
+    printf ' (plus %s worktree(s) with unknown size)' "$unknown_sizes"
+fi
+printf '\n'
+
+if [[ $APPLY -eq 0 ]]; then
+    echo "${#to_remove[@]} worktree(s) would be removed. Re-run with -y to remove."
+    exit $(( errors > 0 ))
+fi
+
+removed=0
+RECHECK=1
+for (( i=0; i<${#to_remove[@]}; i++ )); do
+    path="${to_remove[i]}"
+    REPOSITORY="${removal_repos[i]}"
+    BASE_BRANCH="${removal_bases[i]}"
+    PRIMARY_WORKTREE="${removal_primaries[i]}"
+    NOW=$(date +%s)
+    if ! inspect_worktree "$path" 0; then
+        echo "Retaining $path: $CHECK_REASON"
+        case "$CHECK_REASON" in *failed|*unavailable) errors=$(( errors + 1 )) ;; esac
+        continue
+    fi
+    echo "Removing $path"
+    if git -C "$REPOSITORY" worktree remove "$path"; then
+        removed=$(( removed + 1 ))
+    else
+        echo "error: removal failed for $path; continuing" >&2
+        errors=$(( errors + 1 ))
+    fi
+done
+printf 'Removed %s worktree(s).\n' "$removed"
+exit $(( errors > 0 ))
