@@ -55,6 +55,18 @@ Keep PR descriptions concise: explain the final change and why, show the result,
 
 Include a screenshot when it helps reviewers understand or assess a visual change. Omit it when the diff and prose already explain the change adequately; screenshots are not required for every PR. When included, show the actual current result, use a durable image URL that renders inline on GitHub, and verify that it loads before handing off.
 
+# Git worktree location
+
+Create agent-owned worktrees at `<primary-checkout>/.worktrees/<task-slug>` so
+each repository's work stays together and within its writable root. Resolve the
+primary checkout with `git worktree list --porcelain`, including when starting
+from a linked worktree, and choose a unique task slug. Verify that
+`git check-ignore` excludes the destination before creating it.
+
+Use this repository-relative layout for worktrees you create through shell
+commands. Honor an explicit user-selected location or a host-managed worktree.
+Keep existing worktrees in place unless the user requests relocation.
+
 # Git worktree cleanup
 
 Treat cleanup of temporary worktrees created for the task as part of completion.

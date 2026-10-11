@@ -63,6 +63,18 @@ After changing a rendered document's markup/escaping, read the rendered output a
 Any PR touching rendered UI (frontend views, CLI output formatting, generated documents/dashboards) needs before/after screenshots in the PR body or a follow-up comment — capture them during the verification you're already doing. `gh gist create` rejects binary files; commit screenshots into the PR branch (e.g. `docs/pr-screenshots/pr-<n>/`) and embed via `blob/<branch>/<path>?raw=true` links. (detail: memory "feedback_pr_ui_screenshots_required")
 Before applying a new threshold or classification bar to a batch, confirm its exact metric reproduces the known-correct example on record. (detail: memory "feedback_classification_bar_validate_before_scale")
 
+## Git Worktree Location
+
+Create agent-owned worktrees at `<primary-checkout>/.worktrees/<task-slug>` so
+each repository's work stays together and within its writable root. Resolve the
+primary checkout with `git worktree list --porcelain`, including when starting
+from a linked worktree, and choose a unique task slug. Verify that
+`git check-ignore` excludes the destination before creating it.
+
+Use this repository-relative layout for worktrees you create through shell
+commands. Honor an explicit user-selected location or a host-managed worktree.
+Keep existing worktrees in place unless the user requests relocation.
+
 ## Tool Preferences
 
 **Web search/research.** Kagi (`mcp__kagi__kagi_search_fetch`, `mcp__kagi__kagi_extract`); WebSearch/WebFetch are blocked by GCP org policy. Codex (`mcp__codex__codex`) is the fallback for multi-step research Kagi can't cover. Only `gspace`/Drive tools reach internal documents. (`operating-lessons`, `technical.md`; detail: memory "reference_websearch_org_policy_blocked", "feedback_internal_doc_search_tool_capability")

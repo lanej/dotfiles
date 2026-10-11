@@ -18,6 +18,9 @@ data/snapshots/
 # Playwright MCP artifacts (screenshots/snapshots, not project content)
 .playwright-mcp/
 
+# Agent-owned Git worktrees, kept with their primary repository
+.worktrees/
+
 # MCP Memory (personal context, not shared)
 memory.json
 .memory.json
