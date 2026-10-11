@@ -9,6 +9,10 @@ Use Viewrule through the `ui-review` compatibility wrapper in Josh's dotfiles. I
 `~/.files/bin/ui-review`. Setup and rule types are documented in
 `~/.files/docs/ui-review.md`. This supplements the project's design system.
 
+Keep this skill focused on Viewrule's rendered visual review. Component API
+contracts and library-specific usage or publishing guidance belong to the
+component library's own skill, documentation, tests, and CI.
+
 ## Dashboard color and grouping
 
 For dashboard category colors or work-activity groupings,
