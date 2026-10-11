@@ -16,7 +16,7 @@ def install_title(root):
     if path.is_symlink():
         path = path.resolve(strict=True)
     original = path.read_text() if path.exists() else ""
-    desired = ["app-name", "thread-id", "status", "project"]
+    desired = ["app-name", "thread-id", "status", "project", "spinner"]
     config = tomllib.loads(original)
     if config.get("tui", {}).get("terminal_title") == desired:
         return

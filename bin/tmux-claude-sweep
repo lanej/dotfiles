@@ -32,7 +32,7 @@ STALL_AFTER = int(os.environ.get("CLAUDE_STALL_AFTER", "3600"))
 
 # Status-bar roll-up: one glyph per class, hottest first, matching the tab colours.
 SUMMARY = (
-    ("need", "#BF616A", "▲"),
+    ("need", "#D08770", "▲"),
     ("activity", "#EBCB8B", "●"),
     ("quiet", "#616E88", "·"),
 )

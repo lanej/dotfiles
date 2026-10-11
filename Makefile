@@ -94,6 +94,8 @@ tmux:
 	@echo "tmux: TPM and plugins installed"
 tmux-status-legend:
 	@"$(DOTFILES)/bin/tmux-claude-state" legend
+tmux-program-status:
+	@"$(if $(AGENT_STATUS_SOURCE),$(AGENT_STATUS_SOURCE),$(HOME)/src/agent-status-broker)/tmux/build" "$(HOME)/.local/bin/tmux-program-status"
 sql-formatters:
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/rc/sql-formatter.json $(HOME)/.sql-formatter.json
