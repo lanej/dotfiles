@@ -394,7 +394,8 @@ if "app-name" in items and "thread-id" in items:
                       f"[ ! ] Action Required | codex | {codex_session[:29]}... | project")
     deadline = time.monotonic() + 5
     while option("@claude-state", codex_window) != "approval":
-        assert time.monotonic() < deadline
+        assert time.monotonic() < deadline, subprocess.check_output(
+            [str(broker_binary), "status"], text=True)
         time.sleep(0.02)
     assert option("@claude-state", codex_window) == "approval"
     assert state.STATES["approval"][1] in codex_tab() and "▲" in codex_tab()
