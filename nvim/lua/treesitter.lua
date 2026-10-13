@@ -16,7 +16,7 @@ vim.api.nvim_create_autocmd("User", {
 		parsers.sql_bigquery = {
 			install_info = {
 				url = "https://github.com/lanej/tree-sitter-sql-bigquery",
-				branch = "fix/query-time-travel-and-if",
+				branch = "main",
 				revision = "db6ed431534e3f60189481a533c7662328866ad8",
 				queries = "queries",
 			},
