@@ -9,9 +9,6 @@ local relations = {
 }
 
 local function is_bigquery(ctx)
-	if ctx.item.source_id == "bigquery_local" then
-		return true
-	end
 	if not ctx.item.client_id then
 		return false
 	end
@@ -63,10 +60,7 @@ function M.description_text(ctx)
 			description = docs.value:match("^[^\n]*\n(.*)$")
 		end
 	end
-	if (not description or description == "") and (ctx.kind == "Field" or ctx.kind == "Property") then
-		local info = require("bigquery-types").info(ctx.item.detail or "")
-		description = info and info.summary
-	end
+
 	return description and description:gsub("%s+", " ") or ""
 end
 

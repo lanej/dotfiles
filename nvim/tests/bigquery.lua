@@ -200,7 +200,10 @@ local function workflow()
 	-- Info/refresh detector: change the config in a live buffer and redetect it.
 	local report = vim.api.nvim_exec2("BigQueryInfo", { output = true }).output
 	assert(report:find("project config (bigquery)", 1, true), "Info omitted detection reason")
-	assert(report:find("db6ed431", 1, true), "Info omitted installed parser revision")
+	assert(
+		report:find("Parser: sql_bigquery @ ", 1, true) and not report:find("@ unknown", 1, true),
+		"Info omitted installed parser revision"
+	)
 	assert(report:find("Parse: no SQL syntax errors", 1, true), "Info omitted parse status")
 	vim.fn.writefile({ '{"language":"postgresql","keywordCase":"lower"}' }, temp .. "/.sql-formatter.json")
 	vim.cmd.BigQueryInfo({ bang = true })

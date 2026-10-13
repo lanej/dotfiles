@@ -1002,7 +1002,6 @@ require("lazy").setup({
 				sources = {
 					default = {
 						"lazydev",
-						"bigquery_local",
 						"lsp",
 						"dictionary",
 						"emoji",
@@ -1011,11 +1010,6 @@ require("lazy").setup({
 						"buffer",
 					},
 					providers = {
-						bigquery_local = {
-							name = "BigQuery",
-							module = "bigquery-source",
-							score_offset = 110,
-						},
 						lazydev = {
 							name = "LazyDev",
 							module = "lazydev.integrations.blink",
