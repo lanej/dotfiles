@@ -928,7 +928,7 @@ require("lazy").setup({
 							treesitter = {
 								"lsp",
 							},
-							columns = { { "kind_icon" }, { "label", gap = 1 }, { "sql_type" } },
+							columns = { { "kind_icon" }, { "label", gap = 1 }, { "sql_type" }, { "sql_description" } },
 							components = {
 								kind_icon = {
 									text = require("bigquery-completion").icon_text,
@@ -942,6 +942,11 @@ require("lazy").setup({
 									width = { max = 32 },
 									text = require("bigquery-completion").type_text,
 									highlight = require("bigquery-completion").type_highlight,
+								},
+								sql_description = {
+									width = { max = 60 },
+									text = require("bigquery-completion").description_text,
+									highlight = "BlinkCmpLabelDescription",
 								},
 								source = {
 									text = function(ctx)
@@ -995,8 +1000,22 @@ require("lazy").setup({
 				-- Default list of enabled providers defined so that you can extend it
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
-					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
+					default = {
+						"lazydev",
+						"bigquery_local",
+						"lsp",
+						"dictionary",
+						"emoji",
+						"path",
+						"snippets",
+						"buffer",
+					},
 					providers = {
+						bigquery_local = {
+							name = "BigQuery",
+							module = "bigquery-source",
+							score_offset = 110,
+						},
 						lazydev = {
 							name = "LazyDev",
 							module = "lazydev.integrations.blink",

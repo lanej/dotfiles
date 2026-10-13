@@ -1,0 +1,1325 @@
+{
+  "ADD": {
+    "keyword": "ADD",
+    "summary": "Adds a column, constraint, or dataset replica.",
+    "syntax": "ALTER TABLE table_name ADD COLUMN column_name data_type",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_add_column_statement"
+  },
+  "ALL": {
+    "keyword": "ALL",
+    "summary": "Keeps duplicates; GROUP BY ALL infers grouping keys.",
+    "syntax": "SELECT ALL ...; GROUP BY ALL",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_all"
+  },
+  "ALL_PRIVILEGES": {
+    "keyword": "ALL PRIVILEGES",
+    "summary": "Undocumented parser form; BigQuery GRANT and REVOKE require IAM roles.",
+    "syntax": "GRANT `roles/bigquery.dataViewer` ON TABLE table_name TO user_list",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-control-language#grant_statement",
+    "gap": true
+  },
+  "ALTER": {
+    "keyword": "ALTER",
+    "summary": "Changes an existing database object's schema or settings.",
+    "syntax": "ALTER TABLE table_name ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_set_options_statement"
+  },
+  "AND": {
+    "keyword": "AND",
+    "summary": "Combines boolean expressions; both must be true.",
+    "syntax": "bool_expression AND bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#logical_operators"
+  },
+  "ANY": {
+    "keyword": "ANY",
+    "summary": "Matches when at least one quantified LIKE pattern matches.",
+    "syntax": "expression LIKE ANY (pattern, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#like_operator_quantified"
+  },
+  "ARRAY": {
+    "keyword": "ARRAY",
+    "summary": "Introduces an array literal, type, or subquery-to-array constructor.",
+    "syntax": "ARRAY<INT64>[1, 2, 3]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#array_literals"
+  },
+  "AS": {
+    "keyword": "AS",
+    "summary": "Assigns an alias or introduces a query or return type.",
+    "syntax": "expression AS alias",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#explicit_alias_syntax"
+  },
+  "ASC": {
+    "keyword": "ASC",
+    "summary": "Orders values from smallest to largest.",
+    "syntax": "ORDER BY expression ASC",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause"
+  },
+  "ASSERT": {
+    "keyword": "ASSERT",
+    "summary": "Raises an error unless its boolean expression is true.",
+    "syntax": "ASSERT bool_expression [AS description];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/debugging-statements#assert"
+  },
+  "BEGIN": {
+    "keyword": "BEGIN",
+    "summary": "Starts a script block; BEGIN TRANSACTION starts a transaction.",
+    "syntax": "BEGIN statements; END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#begin"
+  },
+  "BETWEEN": {
+    "keyword": "BETWEEN",
+    "summary": "Tests an inclusive range.",
+    "syntax": "expression [NOT] BETWEEN lower_bound AND upper_bound",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#comparison_operators"
+  },
+  "BIGDECIMAL": {
+    "keyword": "BIGDECIMAL",
+    "summary": "Synonym for BIGNUMERIC in decimal literals and types.",
+    "syntax": "BIGDECIMAL '123.45'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#bignumeric_literals"
+  },
+  "BIGNUMERIC": {
+    "keyword": "BIGNUMERIC",
+    "summary": "Introduces a high-precision decimal literal; also names its type.",
+    "syntax": "BIGNUMERIC '123.45'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#bignumeric_literals"
+  },
+  "BREAK": {
+    "keyword": "BREAK",
+    "summary": "Exits a loop, optionally naming a labeled target.",
+    "syntax": "BREAK [label];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#break"
+  },
+  "BY_TARGET": {
+    "keyword": "BY TARGET",
+    "summary": "Identifies source rows without a matching MERGE target row.",
+    "syntax": "WHEN NOT MATCHED BY TARGET THEN INSERT ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "CALL": {
+    "keyword": "CALL",
+    "summary": "Invokes a stored procedure.",
+    "syntax": "CALL procedure_name(argument, ...);",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#call"
+  },
+  "CASCADE": {
+    "keyword": "CASCADE",
+    "summary": "Deletes a dataset and the objects it contains.",
+    "syntax": "DROP SCHEMA [IF EXISTS] dataset_name CASCADE",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_schema_statement"
+  },
+  "CASE": {
+    "keyword": "CASE",
+    "summary": "Selects a result using matching values or boolean conditions.",
+    "syntax": "CASE WHEN condition THEN result [ELSE result] END",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#case"
+  },
+  "CAST": {
+    "keyword": "CAST",
+    "summary": "Converts a value to the specified data type.",
+    "syntax": "CAST(expression AS data_type [format_clause])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast"
+  },
+  "CLONE": {
+    "keyword": "CLONE",
+    "summary": "Creates a writable table clone sharing unchanged storage.",
+    "syntax": "CREATE TABLE clone_name CLONE source_table",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_clone_statement"
+  },
+  "CLUSTER_BY": {
+    "keyword": "CLUSTER BY",
+    "summary": "Organizes table storage by up to four clustering columns.",
+    "syntax": "CREATE TABLE table_name (...) CLUSTER BY column_name, ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#clustering_column_list"
+  },
+  "COLLATE": {
+    "keyword": "COLLATE",
+    "summary": "Specifies string comparison collation for a column.",
+    "syntax": "column_name STRING COLLATE 'und:ci'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#column_name_and_column_schema"
+  },
+  "COLUMN": {
+    "keyword": "COLUMN",
+    "summary": "Introduces a column in table-alteration statements.",
+    "syntax": "ALTER TABLE table_name ADD COLUMN column_name data_type",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_add_column_statement"
+  },
+  "CONSTRAINT": {
+    "keyword": "CONSTRAINT",
+    "summary": "Names a primary-key or foreign-key constraint.",
+    "syntax": "CONSTRAINT constraint_name FOREIGN KEY (column) REFERENCES table(column) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "CONTINUE": {
+    "keyword": "CONTINUE",
+    "summary": "Starts the next iteration of a loop.",
+    "syntax": "CONTINUE [label];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#continue"
+  },
+  "COPY": {
+    "keyword": "COPY",
+    "summary": "Creates a table copy from an existing table.",
+    "syntax": "CREATE TABLE destination_table COPY source_table",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_copy"
+  },
+  "CREATE": {
+    "keyword": "CREATE",
+    "summary": "Creates a database object with the selected object-specific syntax.",
+    "syntax": "CREATE TABLE table_name (column_name data_type, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "CROSS_JOIN": {
+    "keyword": "CROSS JOIN",
+    "summary": "Returns every combination of rows from both inputs.",
+    "syntax": "left_table CROSS JOIN right_table",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#cross_join"
+  },
+  "CUBE": {
+    "keyword": "CUBE",
+    "summary": "Produces all combinations of specified grouping keys.",
+    "syntax": "GROUP BY CUBE (expression, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#group_by_cube"
+  },
+  "CURRENT_ROW": {
+    "keyword": "CURRENT ROW",
+    "summary": "Sets a window frame boundary at the current row.",
+    "syntax": "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "DATE": {
+    "keyword": "DATE",
+    "summary": "Introduces a calendar-date literal; also names its type.",
+    "syntax": "DATE '2026-10-12'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#date_literals"
+  },
+  "DATETIME": {
+    "keyword": "DATETIME",
+    "summary": "Introduces a timezone-free date/time literal; also names its type.",
+    "syntax": "DATETIME '2026-10-12 12:30:00'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#datetime_literals"
+  },
+  "DATETIME_TRUNC": {
+    "keyword": "DATETIME_TRUNC",
+    "summary": "Truncates a datetime or timestamp to the specified granularity.",
+    "syntax": "DATETIME_TRUNC(value, granularity [, time_zone])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime_trunc"
+  },
+  "DATE_TRUNC": {
+    "keyword": "DATE_TRUNC",
+    "summary": "Truncates a date, datetime, or timestamp to a granularity.",
+    "syntax": "DATE_TRUNC(value, granularity [, time_zone])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc"
+  },
+  "DAY": {
+    "keyword": "DAY",
+    "summary": "Specifies a day granularity or datetime part.",
+    "syntax": "DATE_TRUNC(date_expression, DAY)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc"
+  },
+  "DECIMAL": {
+    "keyword": "DECIMAL",
+    "summary": "Synonym for NUMERIC in decimal literals and types.",
+    "syntax": "DECIMAL '123.45'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#numeric_literals"
+  },
+  "DECLARE": {
+    "keyword": "DECLARE",
+    "summary": "Declares script variables, optionally with initial values.",
+    "syntax": "DECLARE variable_name [data_type] [DEFAULT expression];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#declare"
+  },
+  "DEFAULT": {
+    "keyword": "DEFAULT",
+    "summary": "Supplies an initial variable value or a default column value.",
+    "syntax": "column_name data_type DEFAULT expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#column_name_and_column_schema"
+  },
+  "DEFAULT_COLLATE": {
+    "keyword": "DEFAULT COLLATE",
+    "summary": "Sets default string collation for a dataset or table.",
+    "syntax": "CREATE TABLE table_name (...) DEFAULT COLLATE 'und:ci'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "DELETE": {
+    "keyword": "DELETE",
+    "summary": "Removes rows matching its required WHERE condition.",
+    "syntax": "DELETE FROM table_name WHERE bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#delete_statement"
+  },
+  "DESC": {
+    "keyword": "DESC",
+    "summary": "Orders values from largest to smallest.",
+    "syntax": "ORDER BY expression DESC",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause"
+  },
+  "DISTINCT": {
+    "keyword": "DISTINCT",
+    "summary": "Removes duplicate result rows or aggregate input values.",
+    "syntax": "SELECT DISTINCT expression, ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_distinct"
+  },
+  "DISTINCT_FROM": {
+    "keyword": "DISTINCT FROM",
+    "summary": "Compares values including NULL without returning NULL.",
+    "syntax": "expression IS [NOT] DISTINCT FROM expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#is_distinct"
+  },
+  "DO": {
+    "keyword": "DO",
+    "summary": "Introduces the statements in a WHILE or FOR loop.",
+    "syntax": "WHILE condition DO statements; END WHILE;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#while"
+  },
+  "DROP": {
+    "keyword": "DROP",
+    "summary": "Removes an existing database object.",
+    "syntax": "DROP TABLE [IF EXISTS] table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_statement"
+  },
+  "DROP_CONSTRAINT": {
+    "keyword": "DROP CONSTRAINT",
+    "summary": "Removes a named foreign-key constraint.",
+    "syntax": "ALTER TABLE table_name DROP CONSTRAINT [IF EXISTS] constraint_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_drop_constraint_statement"
+  },
+  "DROP_DEFAULT": {
+    "keyword": "DROP DEFAULT",
+    "summary": "Removes a column's default value expression.",
+    "syntax": "ALTER TABLE table_name ALTER COLUMN column_name DROP DEFAULT",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_column_drop_default_statement"
+  },
+  "DROP_NOT_NULL": {
+    "keyword": "DROP NOT NULL",
+    "summary": "Changes a required column to allow NULL values.",
+    "syntax": "ALTER TABLE table_name ALTER COLUMN column_name DROP NOT NULL",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_column_drop_not_null_statement"
+  },
+  "DROP_PRIMARY_KEY": {
+    "keyword": "DROP PRIMARY KEY",
+    "summary": "Removes the table's primary-key constraint.",
+    "syntax": "ALTER TABLE table_name DROP PRIMARY KEY [IF EXISTS]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_drop_primary_key_statement"
+  },
+  "ELSE": {
+    "keyword": "ELSE",
+    "summary": "Runs the fallback branch of IF or CASE.",
+    "syntax": "IF condition THEN statements; ELSE statements; END IF;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#if"
+  },
+  "ELSEIF": {
+    "keyword": "ELSEIF",
+    "summary": "Tests another condition when earlier IF branches fail.",
+    "syntax": "ELSEIF bool_expression THEN statements;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#if"
+  },
+  "END": {
+    "keyword": "END",
+    "summary": "Closes a script block or CASE expression.",
+    "syntax": "BEGIN statements; END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#begin"
+  },
+  "END_FOR": {
+    "keyword": "END FOR",
+    "summary": "Closes a FOR loop.",
+    "syntax": "FOR variable_name IN (query) DO statements; END FOR;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#for-in"
+  },
+  "END_IF": {
+    "keyword": "END IF",
+    "summary": "Closes a procedural IF statement.",
+    "syntax": "IF condition THEN statements; END IF;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#if"
+  },
+  "END_LOOP": {
+    "keyword": "END LOOP",
+    "summary": "Closes an unconditional loop.",
+    "syntax": "LOOP statements; END LOOP;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#loop"
+  },
+  "END_REPEAT": {
+    "keyword": "END REPEAT",
+    "summary": "Closes a REPEAT loop.",
+    "syntax": "REPEAT statements; UNTIL condition END REPEAT;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#repeat"
+  },
+  "END_WHILE": {
+    "keyword": "END WHILE",
+    "summary": "Closes a WHILE loop.",
+    "syntax": "WHILE condition DO statements; END WHILE;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#while"
+  },
+  "ENFORCED": {
+    "keyword": "ENFORCED",
+    "summary": "BigQuery key constraints require NOT ENFORCED; ENFORCED is unsupported.",
+    "syntax": "PRIMARY KEY (column, ...) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement",
+    "gap": true
+  },
+  "EXCEPT": {
+    "keyword": "EXCEPT",
+    "summary": "Excludes named columns from SELECT star expansion.",
+    "syntax": "SELECT * EXCEPT (column_name, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_except"
+  },
+  "EXCEPTION_WHEN_ERROR_THEN": {
+    "keyword": "EXCEPTION WHEN ERROR THEN",
+    "summary": "Runs the handler if the preceding block raises an error.",
+    "syntax": "BEGIN statements; EXCEPTION WHEN ERROR THEN handler; END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#beginexceptionend"
+  },
+  "EXCEPT_DISTINCT": {
+    "keyword": "EXCEPT DISTINCT",
+    "summary": "Returns distinct left rows absent from the right result.",
+    "syntax": "query EXCEPT DISTINCT query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#set_operators"
+  },
+  "EXCLUDE_NULLS": {
+    "keyword": "EXCLUDE NULLS",
+    "summary": "Drops rows containing NULL values during UNPIVOT.",
+    "syntax": "UNPIVOT EXCLUDE NULLS (... IN (...))",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unpivot_operator"
+  },
+  "EXECUTE_IMMEDIATE": {
+    "keyword": "EXECUTE IMMEDIATE",
+    "summary": "Executes SQL supplied as a string expression.",
+    "syntax": "EXECUTE IMMEDIATE sql_expression [INTO variables] [USING values];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#execute_immediate"
+  },
+  "EXISTS": {
+    "keyword": "EXISTS",
+    "summary": "Tests whether a subquery produces at least one row.",
+    "syntax": "EXISTS (subquery)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#exists_operator"
+  },
+  "EXPORT_DATA": {
+    "keyword": "EXPORT DATA",
+    "summary": "Writes query results to a supported external destination.",
+    "syntax": "EXPORT DATA [WITH CONNECTION connection_name] OPTIONS (...) AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/export-statements#export_data_statement"
+  },
+  "EXTERNAL_TABLE": {
+    "keyword": "EXTERNAL TABLE",
+    "summary": "Defines a table over data stored outside BigQuery storage.",
+    "syntax": "CREATE EXTERNAL TABLE table_name OPTIONS (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_external_table_statement"
+  },
+  "EXTRACT": {
+    "keyword": "EXTRACT",
+    "summary": "Returns the specified datetime part as an integer.",
+    "syntax": "EXTRACT(part FROM date_expression)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#extract"
+  },
+  "FALSE": {
+    "keyword": "FALSE",
+    "summary": "Represents the boolean value false.",
+    "syntax": "FALSE",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-types#boolean_type"
+  },
+  "FILES": {
+    "keyword": "FILES",
+    "summary": "Specifies source-file load options.",
+    "syntax": "FROM FILES (format = 'PARQUET', uris = ['gs://bucket/file'])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/load-statements#load_data_statement"
+  },
+  "FOLLOWING": {
+    "keyword": "FOLLOWING",
+    "summary": "Sets a frame boundary after the current row or key.",
+    "syntax": "number FOLLOWING",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "FOR": {
+    "keyword": "FOR",
+    "summary": "Iterates over rows returned by a table expression.",
+    "syntax": "FOR variable_name IN (query) DO statements; END FOR;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#for-in"
+  },
+  "FOREIGN_KEY": {
+    "keyword": "FOREIGN KEY",
+    "summary": "Declares references to another table's primary key; unenforced.",
+    "syntax": "FOREIGN KEY (column) REFERENCES table_name(column) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "FORMAT": {
+    "keyword": "FORMAT",
+    "summary": "Controls formatting in supported conversions; also a string-format function.",
+    "syntax": "CAST(expression AS data_type FORMAT format_string)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast"
+  },
+  "FOR_SYSTEM_TIME_AS_OF": {
+    "keyword": "FOR SYSTEM TIME AS OF",
+    "summary": "Reads a table version at the specified timestamp.",
+    "syntax": "table FOR SYSTEM_TIME AS OF timestamp_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#for_system_time_as_of"
+  },
+  "FROM": {
+    "keyword": "FROM",
+    "summary": "Names input tables, subqueries, and table expressions.",
+    "syntax": "FROM table_expression [, ...]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#from_clause"
+  },
+  "FULL": {
+    "keyword": "FULL",
+    "summary": "Keeps all rows from both inputs, matching where possible.",
+    "syntax": "left_table FULL [OUTER] JOIN right_table ON condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#full_join"
+  },
+  "FUNCTION": {
+    "keyword": "FUNCTION",
+    "summary": "Defines a scalar user-defined function.",
+    "syntax": "CREATE FUNCTION function_name(arguments) [RETURNS type] AS (expression)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_function_statement"
+  },
+  "GENERATE_ARRAY": {
+    "keyword": "GENERATE_ARRAY",
+    "summary": "Returns an inclusive numeric array with an optional step.",
+    "syntax": "GENERATE_ARRAY(start_expression, end_expression [, step_expression])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_array"
+  },
+  "GRANT": {
+    "keyword": "GRANT",
+    "summary": "Grants IAM roles on a supported BigQuery resource.",
+    "syntax": "GRANT role_list ON resource_type resource_name TO user_list",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-control-language#grant_statement"
+  },
+  "GROUPING_SETS": {
+    "keyword": "GROUPING SETS",
+    "summary": "Aggregates over explicitly listed grouping combinations.",
+    "syntax": "GROUP BY GROUPING SETS (grouping_set, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#group_by_grouping_sets"
+  },
+  "GROUP_BY": {
+    "keyword": "GROUP BY",
+    "summary": "Groups rows for aggregation.",
+    "syntax": "GROUP BY expression [, ...]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#group_by_clause"
+  },
+  "HAVING": {
+    "keyword": "HAVING",
+    "summary": "Filters grouped results after aggregation.",
+    "syntax": "HAVING bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#having_clause"
+  },
+  "HOUR": {
+    "keyword": "HOUR",
+    "summary": "Specifies an hour granularity or datetime part.",
+    "syntax": "TIMESTAMP_TRUNC(timestamp_expression, HOUR)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_trunc"
+  },
+  "IF": {
+    "keyword": "IF",
+    "summary": "Conditionally executes statements; also selects between two expression values.",
+    "syntax": "IF bool_expression THEN statements; END IF;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#if"
+  },
+  "IF_EXISTS": {
+    "keyword": "IF EXISTS",
+    "summary": "Skips removal when the named object does not exist.",
+    "syntax": "DROP TABLE IF EXISTS table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_statement"
+  },
+  "IF_NOT_EXISTS": {
+    "keyword": "IF NOT EXISTS",
+    "summary": "Skips creation when an object with that name already exists.",
+    "syntax": "CREATE TABLE IF NOT EXISTS table_name (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "IGNORE": {
+    "keyword": "IGNORE",
+    "summary": "Excludes NULL inputs in functions supporting IGNORE NULLS.",
+    "syntax": "function(expression IGNORE NULLS)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/aggregate-function-calls#aggregate_function_call_syntax"
+  },
+  "IN": {
+    "keyword": "IN",
+    "summary": "Tests membership in a list, array, or subquery.",
+    "syntax": "expression [NOT] IN (value, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#in_operators"
+  },
+  "INCLUDE_NULLS": {
+    "keyword": "INCLUDE NULLS",
+    "summary": "Retains rows containing NULL values during UNPIVOT.",
+    "syntax": "UNPIVOT INCLUDE NULLS (... IN (...))",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unpivot_operator"
+  },
+  "INNER": {
+    "keyword": "INNER",
+    "summary": "Keeps only matching rows from both join inputs.",
+    "syntax": "left_table INNER JOIN right_table ON condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#inner_join"
+  },
+  "INOUT": {
+    "keyword": "INOUT",
+    "summary": "Defines a procedure argument passed both in and out.",
+    "syntax": "CREATE PROCEDURE procedure_name(INOUT argument_name data_type) BEGIN ... END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/procedures#pass_a_value_in_and_out_with_an_inputoutput_parameter"
+  },
+  "INSERT": {
+    "keyword": "INSERT",
+    "summary": "Adds rows to a table.",
+    "syntax": "INSERT [INTO] table_name [(column, ...)] VALUES (value, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#insert_statement"
+  },
+  "INTERSECT_DISTINCT": {
+    "keyword": "INTERSECT DISTINCT",
+    "summary": "Returns distinct rows appearing in both query results.",
+    "syntax": "query INTERSECT DISTINCT query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#set_operators"
+  },
+  "INTERVAL": {
+    "keyword": "INTERVAL",
+    "summary": "Introduces a duration literal using one or multiple datetime parts.",
+    "syntax": "INTERVAL 1 DAY; INTERVAL '1-2' YEAR TO MONTH",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#interval_literals"
+  },
+  "INTO": {
+    "keyword": "INTO",
+    "summary": "Captures dynamic SQL results; also identifies write destinations.",
+    "syntax": "EXECUTE IMMEDIATE sql_expression INTO variable_name;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#execute_immediate"
+  },
+  "IS": {
+    "keyword": "IS",
+    "summary": "Tests NULL, TRUE, FALSE, or UNKNOWN without returning NULL.",
+    "syntax": "expression IS [NOT] NULL",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#is_operators"
+  },
+  "ITERATE": {
+    "keyword": "ITERATE",
+    "summary": "Synonym for CONTINUE; starts the next loop iteration.",
+    "syntax": "ITERATE [label];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#iterate"
+  },
+  "JOIN": {
+    "keyword": "JOIN",
+    "summary": "Combines rows from table expressions.",
+    "syntax": "left_table JOIN right_table ON bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#join_types"
+  },
+  "JSON": {
+    "keyword": "JSON",
+    "summary": "Introduces a JSON literal; also names its type.",
+    "syntax": "JSON '{\"id\": 1}'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#json_literals"
+  },
+  "LANGUAGE": {
+    "keyword": "LANGUAGE",
+    "summary": "Selects a supported user-defined function implementation language.",
+    "syntax": "CREATE FUNCTION function_name(...) RETURNS type LANGUAGE js AS code",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_function_statement"
+  },
+  "LEAVE": {
+    "keyword": "LEAVE",
+    "summary": "Synonym for BREAK; exits a loop or labeled block.",
+    "syntax": "LEAVE [label];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#leave"
+  },
+  "LEFT": {
+    "keyword": "LEFT",
+    "summary": "Keeps every left row and its matching right rows.",
+    "syntax": "left_table LEFT [OUTER] JOIN right_table ON condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#left_join"
+  },
+  "LIKE": {
+    "keyword": "LIKE",
+    "summary": "Matches text against a pattern using percent and underscore wildcards.",
+    "syntax": "expression [NOT] LIKE pattern",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#like_operator"
+  },
+  "LIMIT": {
+    "keyword": "LIMIT",
+    "summary": "Caps the number of returned rows.",
+    "syntax": "LIMIT count [OFFSET skip_rows]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#limit_and_offset_clause"
+  },
+  "LOAD_DATA": {
+    "keyword": "LOAD DATA",
+    "summary": "Loads files into a BigQuery table.",
+    "syntax": "LOAD DATA INTO table_name FROM FILES (option_name = value, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/load-statements#load_data_statement"
+  },
+  "LOOP": {
+    "keyword": "LOOP",
+    "summary": "Repeats statements until interrupted by BREAK or another exit.",
+    "syntax": "LOOP statements; END LOOP;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#loop"
+  },
+  "MATERIALIZED_VIEW": {
+    "keyword": "MATERIALIZED VIEW",
+    "summary": "Defines a view whose precomputed results can accelerate queries.",
+    "syntax": "CREATE MATERIALIZED VIEW view_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_materialized_view_statement"
+  },
+  "MAX": {
+    "keyword": "MAX",
+    "summary": "Returns the largest non-NULL value; HAVING MAX restricts aggregate inputs.",
+    "syntax": "MAX(expression); aggregate(expression HAVING MAX key)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#max"
+  },
+  "MERGE": {
+    "keyword": "MERGE",
+    "summary": "Atomically combines conditional insert, update, and delete actions.",
+    "syntax": "MERGE target USING source ON condition WHEN ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "MIN": {
+    "keyword": "MIN",
+    "summary": "Returns the smallest non-NULL value; HAVING MIN restricts aggregate inputs.",
+    "syntax": "MIN(expression); aggregate(expression HAVING MIN key)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#min"
+  },
+  "MODEL": {
+    "keyword": "MODEL",
+    "summary": "Introduces a BigQuery ML model definition.",
+    "syntax": "CREATE MODEL model_name OPTIONS (...) AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/bigqueryml-syntax-create"
+  },
+  "MONTH": {
+    "keyword": "MONTH",
+    "summary": "Specifies a month granularity or datetime part.",
+    "syntax": "DATE_TRUNC(date_expression, MONTH)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc"
+  },
+  "NOT": {
+    "keyword": "NOT",
+    "summary": "Negates a boolean expression or predicate.",
+    "syntax": "NOT bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#logical_operators"
+  },
+  "NOT_ENFORCED": {
+    "keyword": "NOT ENFORCED",
+    "summary": "Declares that BigQuery does not validate key constraints.",
+    "syntax": "PRIMARY KEY (column, ...) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "NOT_NULL": {
+    "keyword": "NOT NULL",
+    "summary": "Makes a column required, rejecting SQL NULL values.",
+    "syntax": "column_name data_type NOT NULL",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#column_name_and_column_schema"
+  },
+  "NULL": {
+    "keyword": "NULL",
+    "summary": "Represents a missing or unknown value.",
+    "syntax": "NULL",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_properties"
+  },
+  "NULLS": {
+    "keyword": "NULLS",
+    "summary": "Selects NULL input handling in supported function calls.",
+    "syntax": "function(expression IGNORE NULLS); function(expression RESPECT NULLS)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/aggregate-function-calls#aggregate_function_call_syntax"
+  },
+  "NULLS_FIRST": {
+    "keyword": "NULLS FIRST",
+    "summary": "Places NULL values before other values.",
+    "syntax": "ORDER BY expression NULLS FIRST",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause"
+  },
+  "NULLS_LAST": {
+    "keyword": "NULLS LAST",
+    "summary": "Places NULL values after other values.",
+    "syntax": "ORDER BY expression NULLS LAST",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause"
+  },
+  "NUMERIC": {
+    "keyword": "NUMERIC",
+    "summary": "Introduces an exact-decimal literal; also names its type.",
+    "syntax": "NUMERIC '123.45'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#numeric_literals"
+  },
+  "OFFSET": {
+    "keyword": "OFFSET",
+    "summary": "Skips rows with LIMIT; indexes arrays starting at zero.",
+    "syntax": "LIMIT count OFFSET skip_rows",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#limit_and_offset_clause"
+  },
+  "ON": {
+    "keyword": "ON",
+    "summary": "Supplies the boolean condition matching join rows.",
+    "syntax": "JOIN table ON bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#on_clause"
+  },
+  "OPTIONS": {
+    "keyword": "OPTIONS",
+    "summary": "Sets object or clause-specific named configuration values.",
+    "syntax": "OPTIONS (option_name = value [, ...])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "OR": {
+    "keyword": "OR",
+    "summary": "Combines boolean expressions; either can be true.",
+    "syntax": "bool_expression OR bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#logical_operators"
+  },
+  "ORDER_BY": {
+    "keyword": "ORDER BY",
+    "summary": "Sorts query results or window input.",
+    "syntax": "ORDER BY expression [ASC / DESC], ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause"
+  },
+  "OR_REPLACE": {
+    "keyword": "OR REPLACE",
+    "summary": "Replaces an existing object when creating its replacement.",
+    "syntax": "CREATE OR REPLACE TABLE table_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "OUT": {
+    "keyword": "OUT",
+    "summary": "Defines a procedure argument returning a value to its caller.",
+    "syntax": "CREATE PROCEDURE procedure_name(OUT argument_name data_type) BEGIN ... END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/procedures#pass_a_value_out_with_an_output_parameter"
+  },
+  "OUTER": {
+    "keyword": "OUTER",
+    "summary": "Marks a LEFT, RIGHT, or FULL outer join.",
+    "syntax": "LEFT / RIGHT / FULL OUTER JOIN table ON condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#join_types"
+  },
+  "OVER": {
+    "keyword": "OVER",
+    "summary": "Applies a function over a window of rows.",
+    "syntax": "function(...) OVER (window_specification)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_over_clause"
+  },
+  "OVERWRITE": {
+    "keyword": "OVERWRITE",
+    "summary": "Replaces table contents when loading files.",
+    "syntax": "LOAD DATA OVERWRITE table_name FROM FILES (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/load-statements#load_data_statement"
+  },
+  "PARTITION_BY": {
+    "keyword": "PARTITION BY",
+    "summary": "Divides a window into groups; also defines table partitions.",
+    "syntax": "OVER (PARTITION BY expression, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_spec"
+  },
+  "PARTITION_COLUMNS": {
+    "keyword": "PARTITION COLUMNS",
+    "summary": "Declares external Hive partition columns or requests automatic inference.",
+    "syntax": "WITH PARTITION COLUMNS [(column_name data_type, ...)]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_external_table_statement"
+  },
+  "PERCENT": {
+    "keyword": "PERCENT",
+    "summary": "Specifies the percentage of storage blocks to sample.",
+    "syntax": "TABLESAMPLE SYSTEM (percent PERCENT)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#tablesample_operator"
+  },
+  "PIVOT": {
+    "keyword": "PIVOT",
+    "summary": "Turns row values into columns using aggregation.",
+    "syntax": "PIVOT (aggregate(expr) FOR column IN (value, ...))",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#pivot_operator"
+  },
+  "PRECEDING": {
+    "keyword": "PRECEDING",
+    "summary": "Sets a frame boundary before the current row or key.",
+    "syntax": "number PRECEDING",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "PRIMARY_KEY": {
+    "keyword": "PRIMARY KEY",
+    "summary": "Declares columns intended to uniquely identify rows; unenforced.",
+    "syntax": "PRIMARY KEY (column_name, ...) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "PROCEDURE": {
+    "keyword": "PROCEDURE",
+    "summary": "Defines a stored procedure containing multiple SQL statements.",
+    "syntax": "CREATE PROCEDURE procedure_name(arguments) BEGIN statements; END;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/procedures"
+  },
+  "QUALIFY": {
+    "keyword": "QUALIFY",
+    "summary": "Filters results of window functions.",
+    "syntax": "QUALIFY bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#qualify_clause"
+  },
+  "RAISE": {
+    "keyword": "RAISE",
+    "summary": "Raises an error or rethrows the current handled exception.",
+    "syntax": "RAISE [USING MESSAGE = message];",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#raise"
+  },
+  "RANGE": {
+    "keyword": "RANGE",
+    "summary": "Defines a logical window frame; also names a range type.",
+    "syntax": "RANGE BETWEEN frame_start AND frame_end",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "RANGE_BUCKET": {
+    "keyword": "RANGE_BUCKET",
+    "summary": "Returns the index of the upper boundary containing a value.",
+    "syntax": "RANGE_BUCKET(point, boundaries_array)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#range_bucket"
+  },
+  "RECURSIVE": {
+    "keyword": "RECURSIVE",
+    "summary": "Enables recursive CTEs and changes CTE visibility.",
+    "syntax": "WITH RECURSIVE cte AS (query) ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#recursive_keyword"
+  },
+  "REFERENCES": {
+    "keyword": "REFERENCES",
+    "summary": "Names the table and columns referenced by a foreign key.",
+    "syntax": "FOREIGN KEY (column) REFERENCES table_name(column) NOT ENFORCED",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "REMOTE_WITH_CONNECTION": {
+    "keyword": "REMOTE WITH CONNECTION",
+    "summary": "Defines a function implemented by a remote service.",
+    "syntax": "CREATE FUNCTION function_name(...) RETURNS type REMOTE WITH CONNECTION connection_name OPTIONS (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_function_statement"
+  },
+  "RENAME": {
+    "keyword": "RENAME",
+    "summary": "Renames a table or one of its columns.",
+    "syntax": "ALTER TABLE table_name RENAME COLUMN old_name TO new_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_rename_column_statement"
+  },
+  "RENAME_TO": {
+    "keyword": "RENAME TO",
+    "summary": "Renames a table.",
+    "syntax": "ALTER TABLE table_name RENAME TO new_table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_rename_to_statement"
+  },
+  "REPEAT": {
+    "keyword": "REPEAT",
+    "summary": "Executes a loop body before testing its exit condition.",
+    "syntax": "REPEAT statements; UNTIL condition END REPEAT;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#repeat"
+  },
+  "REPLACE": {
+    "keyword": "REPLACE",
+    "summary": "Replaces named expressions within SELECT star expansion.",
+    "syntax": "SELECT * REPLACE (expression AS column_name, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_replace"
+  },
+  "REPLICA": {
+    "keyword": "REPLICA",
+    "summary": "Names a dataset replica to add or remove.",
+    "syntax": "ALTER SCHEMA dataset_name ADD REPLICA replica_name OPTIONS (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_schema_add_replica_statement"
+  },
+  "RESPECT": {
+    "keyword": "RESPECT",
+    "summary": "Includes NULL inputs in functions supporting RESPECT NULLS.",
+    "syntax": "function(expression RESPECT NULLS)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/aggregate-function-calls#aggregate_function_call_syntax"
+  },
+  "RESTRICT": {
+    "keyword": "RESTRICT",
+    "summary": "Deletes a dataset only when it is empty.",
+    "syntax": "DROP SCHEMA [IF EXISTS] dataset_name RESTRICT",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_schema_statement"
+  },
+  "RETURN": {
+    "keyword": "RETURN",
+    "summary": "Stops execution of a multi-statement query or procedure.",
+    "syntax": "RETURN;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#return"
+  },
+  "RETURNS": {
+    "keyword": "RETURNS",
+    "summary": "Declares the return type of a user-defined function.",
+    "syntax": "CREATE FUNCTION function_name(arguments) RETURNS data_type AS (expression)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_function_statement"
+  },
+  "REVOKE": {
+    "keyword": "REVOKE",
+    "summary": "Removes IAM roles on a supported BigQuery resource.",
+    "syntax": "REVOKE role_list ON resource_type resource_name FROM user_list",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-control-language#revoke_statement"
+  },
+  "RIGHT": {
+    "keyword": "RIGHT",
+    "summary": "Keeps every right row and its matching left rows.",
+    "syntax": "left_table RIGHT [OUTER] JOIN right_table ON condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#right_join"
+  },
+  "ROLLUP": {
+    "keyword": "ROLLUP",
+    "summary": "Produces hierarchical grouping sets, including the grand total.",
+    "syntax": "GROUP BY ROLLUP (expression, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#group_by_rollup"
+  },
+  "ROW": {
+    "keyword": "ROW",
+    "summary": "Uses source columns in ordinal order for MERGE insertion.",
+    "syntax": "WHEN NOT MATCHED THEN INSERT ROW",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "ROWS": {
+    "keyword": "ROWS",
+    "summary": "Defines a window frame using physical row positions.",
+    "syntax": "ROWS BETWEEN frame_start AND frame_end",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "SAFE_CAST": {
+    "keyword": "SAFE_CAST",
+    "summary": "Converts a value, returning NULL for runtime conversion errors.",
+    "syntax": "SAFE_CAST(expression AS data_type [format_clause])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#safe_casting"
+  },
+  "SCHEMA": {
+    "keyword": "SCHEMA",
+    "summary": "Names a BigQuery dataset in DDL statements.",
+    "syntax": "CREATE SCHEMA [IF NOT EXISTS] dataset_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_schema_statement"
+  },
+  "SELECT": {
+    "keyword": "SELECT",
+    "summary": "Chooses expressions for the query result.",
+    "syntax": "SELECT expression [AS alias], ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_list"
+  },
+  "SET": {
+    "keyword": "SET",
+    "summary": "Assigns script variables; also sets DML and DDL values.",
+    "syntax": "SET variable_name = expression;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#set"
+  },
+  "SET_DATA_TYPE": {
+    "keyword": "SET DATA TYPE",
+    "summary": "Changes a column to a supported new data type.",
+    "syntax": "ALTER TABLE table_name ALTER COLUMN column_name SET DATA TYPE data_type",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_column_set_data_type_statement"
+  },
+  "SET_DEFAULT": {
+    "keyword": "SET DEFAULT",
+    "summary": "Sets a default expression for a column.",
+    "syntax": "ALTER TABLE table_name ALTER COLUMN column_name SET DEFAULT expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_column_set_default_statement"
+  },
+  "SNAPSHOST_TABLE": {
+    "keyword": "SNAPSHOST TABLE",
+    "summary": "Parser misspelling; use SNAPSHOT TABLE in valid GoogleSQL.",
+    "syntax": "DROP SNAPSHOT TABLE [IF EXISTS] table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_snapshot_table_statement",
+    "gap": true
+  },
+  "SNAPSHOT_TABLE": {
+    "keyword": "SNAPSHOT TABLE",
+    "summary": "Creates a read-only snapshot of an existing table.",
+    "syntax": "CREATE SNAPSHOT TABLE snapshot_name CLONE source_table",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_snapshot_table_statement"
+  },
+  "SOME": {
+    "keyword": "SOME",
+    "summary": "Synonym for ANY in quantified LIKE pattern matching.",
+    "syntax": "expression LIKE SOME (pattern, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/operators#like_operator_quantified"
+  },
+  "STRUCT": {
+    "keyword": "STRUCT",
+    "summary": "Introduces a record literal, type, or structured query result.",
+    "syntax": "STRUCT(1 AS id, 'name' AS label)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#struct_literals"
+  },
+  "TABLE": {
+    "keyword": "TABLE",
+    "summary": "Names a table in DDL, DML, or resource arguments.",
+    "syntax": "CREATE TABLE table_name (column_name data_type, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "TABLESAMPLE_SYSTEM": {
+    "keyword": "TABLESAMPLE SYSTEM",
+    "summary": "Reads a random percentage of table storage blocks.",
+    "syntax": "table TABLESAMPLE SYSTEM (percent PERCENT)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#tablesample_operator"
+  },
+  "TABLE_FUNCTION": {
+    "keyword": "TABLE FUNCTION",
+    "summary": "Defines a user-defined function returning a table.",
+    "syntax": "CREATE TABLE FUNCTION function_name(arguments) AS (query)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_function_statement"
+  },
+  "TEMP": {
+    "keyword": "TEMP",
+    "summary": "Creates a temporary table or function.",
+    "syntax": "CREATE TEMP TABLE table_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "TEMPORARY": {
+    "keyword": "TEMPORARY",
+    "summary": "Synonym for TEMP in supported CREATE statements.",
+    "syntax": "CREATE TEMPORARY TABLE table_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "THEN": {
+    "keyword": "THEN",
+    "summary": "Introduces the result or statements of a conditional branch.",
+    "syntax": "IF condition THEN statements; END IF;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#if"
+  },
+  "TIME": {
+    "keyword": "TIME",
+    "summary": "Introduces a time-of-day literal; also names its type.",
+    "syntax": "TIME '12:30:00'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#time_literals"
+  },
+  "TIMESTAMP": {
+    "keyword": "TIMESTAMP",
+    "summary": "Introduces an absolute-time literal; also names its type.",
+    "syntax": "TIMESTAMP '2026-10-12 12:30:00+00'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#timestamp_literals"
+  },
+  "TIMESTAMP_TRUNC": {
+    "keyword": "TIMESTAMP_TRUNC",
+    "summary": "Truncates a timestamp or datetime to the specified granularity.",
+    "syntax": "TIMESTAMP_TRUNC(value, granularity [, time_zone])",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_trunc"
+  },
+  "TO": {
+    "keyword": "TO",
+    "summary": "Introduces a new name or a privilege recipient.",
+    "syntax": "ALTER TABLE table_name RENAME COLUMN old_name TO new_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_rename_column_statement"
+  },
+  "TRANSFORM": {
+    "keyword": "TRANSFORM",
+    "summary": "Defines reusable feature transformations for BigQuery ML model training.",
+    "syntax": "CREATE MODEL model_name TRANSFORM (expression, ...) OPTIONS (...) AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/bigqueryml-syntax-create#transform"
+  },
+  "TRUE": {
+    "keyword": "TRUE",
+    "summary": "Represents the boolean value true.",
+    "syntax": "TRUE",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-types#boolean_type"
+  },
+  "TRUNCATE_TABLE": {
+    "keyword": "TRUNCATE TABLE",
+    "summary": "Removes all table rows while preserving its schema.",
+    "syntax": "TRUNCATE TABLE table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#truncate_table_statement"
+  },
+  "UNBOUNDED": {
+    "keyword": "UNBOUNDED",
+    "summary": "Represents an open endpoint in a range literal.",
+    "syntax": "RANGE<DATE> '[UNBOUNDED, 2026-10-12)'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#range_literals"
+  },
+  "UNBOUNDED_FOLLOWING": {
+    "keyword": "UNBOUNDED FOLLOWING",
+    "summary": "Extends a window frame to the partition's last row.",
+    "syntax": "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "UNBOUNDED_PRECEDING": {
+    "keyword": "UNBOUNDED PRECEDING",
+    "summary": "Extends a window frame to the partition's first row.",
+    "syntax": "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "UNION_ALL": {
+    "keyword": "UNION ALL",
+    "summary": "Combines results while retaining duplicate rows.",
+    "syntax": "query UNION ALL query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#set_operators"
+  },
+  "UNION_DISTINCT": {
+    "keyword": "UNION DISTINCT",
+    "summary": "Combines results and removes duplicate rows.",
+    "syntax": "query UNION DISTINCT query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#set_operators"
+  },
+  "UNNEST": {
+    "keyword": "UNNEST",
+    "summary": "Expands an array into one row per element.",
+    "syntax": "UNNEST(array_expression) [AS alias] [WITH OFFSET]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unnest_operator"
+  },
+  "UNPIVOT": {
+    "keyword": "UNPIVOT",
+    "summary": "Turns columns into rows.",
+    "syntax": "UNPIVOT [INCLUDE NULLS] (value FOR name IN (column, ...))",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unpivot_operator"
+  },
+  "UNTIL": {
+    "keyword": "UNTIL",
+    "summary": "Stops a REPEAT loop when its condition becomes true.",
+    "syntax": "REPEAT statements; UNTIL bool_expression END REPEAT;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#repeat"
+  },
+  "UPDATE": {
+    "keyword": "UPDATE",
+    "summary": "Changes existing rows matching its required WHERE condition.",
+    "syntax": "UPDATE table_name SET column = expression WHERE condition",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#update_statement"
+  },
+  "UPDATE_SET": {
+    "keyword": "UPDATE SET",
+    "summary": "Specifies column assignments in a matched MERGE branch.",
+    "syntax": "WHEN MATCHED THEN UPDATE SET column = expression, ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "USING": {
+    "keyword": "USING",
+    "summary": "Matches joins by column names; also binds dynamic SQL parameters.",
+    "syntax": "JOIN table USING (column_name, ...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#using_clause"
+  },
+  "USING_MESSAGE": {
+    "keyword": "USING MESSAGE",
+    "summary": "Supplies the message for a raised error.",
+    "syntax": "RAISE USING MESSAGE = message;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#raise"
+  },
+  "VALUE": {
+    "keyword": "VALUE",
+    "summary": "Produces a value table with one value per row.",
+    "syntax": "SELECT AS VALUE expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_as_value"
+  },
+  "VALUES": {
+    "keyword": "VALUES",
+    "summary": "Supplies explicit rows for insertion.",
+    "syntax": "VALUES (value, ...) [, ...]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#insert_statement"
+  },
+  "VIEW": {
+    "keyword": "VIEW",
+    "summary": "Defines a stored query evaluated when referenced.",
+    "syntax": "CREATE VIEW view_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_view_statement"
+  },
+  "WHEN": {
+    "keyword": "WHEN",
+    "summary": "Introduces a CASE condition or value; also a MERGE branch.",
+    "syntax": "CASE WHEN condition THEN result END",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#case"
+  },
+  "WHEN_MATCHED": {
+    "keyword": "WHEN MATCHED",
+    "summary": "Handles rows matching between MERGE source and target.",
+    "syntax": "WHEN MATCHED [AND condition] THEN UPDATE SET column = value",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "WHEN_NOT_MATCHED": {
+    "keyword": "WHEN NOT MATCHED",
+    "summary": "Handles source rows without a matching target row.",
+    "syntax": "WHEN NOT MATCHED [BY TARGET] THEN INSERT ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "WHEN_NOT_MATCHED_BY_SOURCE": {
+    "keyword": "WHEN NOT MATCHED BY SOURCE",
+    "summary": "Handles target rows without a matching source row.",
+    "syntax": "WHEN NOT MATCHED BY SOURCE THEN DELETE",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#merge_statement"
+  },
+  "WHERE": {
+    "keyword": "WHERE",
+    "summary": "Filters input rows using a boolean expression.",
+    "syntax": "WHERE bool_expression",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#where_clause"
+  },
+  "WHILE": {
+    "keyword": "WHILE",
+    "summary": "Repeats statements while a condition is true.",
+    "syntax": "WHILE bool_expression DO statements; END WHILE;",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#while"
+  },
+  "WINDOW": {
+    "keyword": "WINDOW",
+    "summary": "Defines named windows referenced by window functions.",
+    "syntax": "WINDOW window_name AS (window_specification)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#window_clause"
+  },
+  "WITH": {
+    "keyword": "WITH",
+    "summary": "Defines named common table expressions for a query.",
+    "syntax": "WITH cte AS (query) SELECT ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#with_clause"
+  },
+  "WITH_AGGREGATION_THRESHOLD": {
+    "keyword": "WITH AGGREGATION THRESHOLD",
+    "summary": "Suppresses groups with too few distinct privacy units.",
+    "syntax": "SELECT WITH AGGREGATION_THRESHOLD OPTIONS (...) ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#agg_threshold_clause"
+  },
+  "WITH_CONNECTION": {
+    "keyword": "WITH CONNECTION",
+    "summary": "Selects a connection for accessing supported external data.",
+    "syntax": "LOAD DATA INTO table_name FROM FILES (...) WITH CONNECTION connection_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/load-statements#load_data_statement"
+  },
+  "WITH_DIFFERENTIAL_PRIVACY": {
+    "keyword": "WITH DIFFERENTIAL PRIVACY",
+    "summary": "Applies differential privacy using configured privacy parameters.",
+    "syntax": "SELECT WITH DIFFERENTIAL_PRIVACY OPTIONS (...) ...",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#dp_clause"
+  },
+  "WITH_OFFSET": {
+    "keyword": "WITH OFFSET",
+    "summary": "Adds each array element's zero-based position to UNNEST output.",
+    "syntax": "UNNEST(array) WITH OFFSET [AS offset_alias]",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#unnest_operator"
+  },
+  "YEAR": {
+    "keyword": "YEAR",
+    "summary": "Specifies a year granularity or datetime part.",
+    "syntax": "DATE_TRUNC(date_expression, YEAR)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc"
+  },
+  "_PARTITIONDATE": {
+    "keyword": "_PARTITIONDATE",
+    "summary": "Contains the date of a daily ingestion-time partition.",
+    "syntax": "WHERE _PARTITIONDATE >= DATE '2026-10-01'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
+  },
+  "_PARTITIONTIME": {
+    "keyword": "_PARTITIONTIME",
+    "summary": "Contains the UTC ingestion-time partition boundary for a row.",
+    "syntax": "WHERE _PARTITIONTIME >= TIMESTAMP('2026-10-01')",
+    "url": "https://docs.cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
+  },
+  "_TABLE_SUFFIX": {
+    "keyword": "_TABLE_SUFFIX",
+    "summary": "Contains the wildcard-matched portion of a table name.",
+    "syntax": "FROM `project.dataset.prefix*` WHERE _TABLE_SUFFIX = 'suffix'",
+    "url": "https://docs.cloud.google.com/bigquery/docs/querying-wildcard-tables#filter_selected_tables_using_table_suffix"
+  },
+  "keyword_current_row": {
+    "keyword": "CURRENT ROW",
+    "summary": "Sets a window frame boundary at the current row.",
+    "syntax": "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "keyword_if_exists": {
+    "keyword": "IF EXISTS",
+    "summary": "Skips removal when the named object does not exist.",
+    "syntax": "DROP TABLE IF EXISTS table_name",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_statement"
+  },
+  "keyword_if_not_exists": {
+    "keyword": "IF NOT EXISTS",
+    "summary": "Skips creation when an object with that name already exists.",
+    "syntax": "CREATE TABLE IF NOT EXISTS table_name (...)",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "keyword_replace": {
+    "keyword": "OR REPLACE",
+    "summary": "Replaces an existing object when creating its replacement.",
+    "syntax": "CREATE OR REPLACE TABLE table_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "keyword_temporary": {
+    "keyword": "TEMPORARY",
+    "summary": "Synonym for TEMP in supported CREATE statements.",
+    "syntax": "CREATE TEMPORARY TABLE table_name AS query",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement"
+  },
+  "keyword_unbounded_following": {
+    "keyword": "UNBOUNDED FOLLOWING",
+    "summary": "Extends a window frame to the partition's last row.",
+    "syntax": "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  },
+  "keyword_unbounded_preceding": {
+    "keyword": "UNBOUNDED PRECEDING",
+    "summary": "Extends a window frame to the partition's first row.",
+    "syntax": "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+    "url": "https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/window-function-calls#def_window_frame"
+  }
+}

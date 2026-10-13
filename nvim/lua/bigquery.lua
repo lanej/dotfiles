@@ -379,6 +379,18 @@ function M.setup()
 				end
 				return
 			end
+			vim.keymap.set("n", "gd", require("bigquery-definition").goto_definition, {
+				buffer = args.buf,
+				desc = "BigQuery: Go to definition",
+			})
+			vim.keymap.set("n", "<leader>cd", require("bigquery-definition").goto_definition, {
+				buffer = args.buf,
+				desc = "BigQuery: Go to definition",
+			})
+			vim.keymap.set("n", "K", require("bigquery-hover").hover, {
+				buffer = args.buf,
+				desc = "BigQuery: Hover",
+			})
 			local select = require("nvim-treesitter-textobjects.select")
 			local move = require("nvim-treesitter-textobjects.move")
 			local swap = require("nvim-treesitter-textobjects.swap")

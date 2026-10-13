@@ -165,6 +165,38 @@ local function workflow()
 	end
 	assert(not groups["operator"], "Replacement text must retain SQL string highlighting")
 
+	-- DDL uses combined keyword tokens and a dedicated partition-function token.
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, {
+		"CREATE TABLE deliveries (",
+		"  delivery_id STRING(36) NOT NULL,",
+		"  source_refs ARRAY<STRUCT<object_id STRING NOT NULL>>,",
+		"  cohort_date DATE OPTIONS(description = 'NOT NULL')",
+		")",
+		"PARTITION BY DATE_TRUNC(cohort_date, MONTH)",
+		"CLUSTER BY delivery_id;",
+		"ALTER TABLE deliveries ALTER COLUMN delivery_id DROP NOT NULL;",
+	})
+	parser:parse(true)
+	local function highlighted(row, token, capture)
+		local line = vim.api.nvim_buf_get_lines(0, row, row + 1, false)[1]
+		local col = assert(line:find(token, 1, true)) - 1
+		for _, group in ipairs(vim.treesitter.get_captures_at_pos(0, row, col)) do
+			if group.capture == capture then
+				return true
+			end
+		end
+		return false
+	end
+	assert(highlighted(1, "NOT NULL", "keyword"), "Required column constraint is missing its highlight")
+	assert(highlighted(2, "NOT NULL", "keyword"), "Required STRUCT field constraint is missing its highlight")
+	assert(highlighted(5, "DATE_TRUNC", "function.builtin"), "Partition function is missing its highlight")
+	assert(highlighted(5, "MONTH", "keyword"), "Partition granularity is missing its highlight")
+	assert(highlighted(6, "CLUSTER BY", "keyword"), "Clustering clause is missing its highlight")
+	assert(highlighted(7, "DROP NOT NULL", "keyword"), "ALTER keyword is missing its highlight")
+	assert(highlighted(3, "NOT NULL", "string"), "Description text must retain string highlighting")
+	assert(not highlighted(3, "NOT NULL", "keyword"), "Description text was highlighted as a constraint")
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, source)
+
 	-- Info/refresh detector: change the config in a live buffer and redetect it.
 	local report = vim.api.nvim_exec2("BigQueryInfo", { output = true }).output
 	assert(report:find("project config (bigquery)", 1, true), "Info omitted detection reason")

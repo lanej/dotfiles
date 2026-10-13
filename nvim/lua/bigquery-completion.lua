@@ -9,6 +9,9 @@ local relations = {
 }
 
 local function is_bigquery(ctx)
+	if ctx.item.source_id == "bigquery_local" then
+		return true
+	end
 	if not ctx.item.client_id then
 		return false
 	end
@@ -45,6 +48,26 @@ function M.type_text(ctx)
 		return ctx.item.detail or ""
 	end
 	return ""
+end
+
+function M.description_text(ctx)
+	if not is_bigquery(ctx) then
+		return ""
+	end
+	local description = ctx.label_description
+	if not description or description == "" then
+		local docs = ctx.item.documentation
+		-- bqls schema fields carry a plaintext type line followed by the
+		-- warehouse description. Resolved expression fields carry only a type.
+		if ctx.kind == "Field" and type(docs) == "table" and docs.kind == "plaintext" then
+			description = docs.value:match("^[^\n]*\n(.*)$")
+		end
+	end
+	if (not description or description == "") and (ctx.kind == "Field" or ctx.kind == "Property") then
+		local info = require("bigquery-types").info(ctx.item.detail or "")
+		description = info and info.summary
+	end
+	return description and description:gsub("%s+", " ") or ""
 end
 
 function M.icon_text(ctx)

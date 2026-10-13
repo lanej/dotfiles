@@ -69,6 +69,190 @@ local function workflow()
 	assert(vim.deep_equal(contents, original), "Hover modified the server response")
 	assert(vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)), "Hover modified the source")
 	docs.on_close()
+	assert(
+		vim.wait(2000, function()
+			return docs._messages.hover:win() == nil
+		end, 10),
+		"Table hover did not close"
+	)
+
+	vim.cmd.enew()
+	local declaration = {
+		"CREATE TABLE types (",
+		"  STRING STRING(36) OPTIONS(description = 'Journey\\'s identifier\\nUnicode: \\u6771'),",
+		"  count INT64,",
+		"  note ARRAY<STRUCT<`postal  code` STRING OPTIONS(description = 'Nested field documentation')>> OPTIONS(description = 'STRING outer notes')",
+		");",
+		"SELECT CAST(NULL AS STRUCT<STRING /* field name */ INT64>);",
+	}
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, declaration)
+	vim.bo.filetype = "sql.bigquery"
+	vim.api.nvim_win_set_cursor(0, { 2, 9 })
+	local hover = vim.lsp.buf.hover
+	local forwarded = false
+	vim.lsp.buf.hover = function()
+		forwarded = true
+	end
+	vim.cmd.normal("K")
+	assert(not forwarded, "Type hover unnecessarily requested the language server")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			if not popup then
+				return false
+			end
+			local text = table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+			return text:find("STRING(36)", 1, true)
+				and text:find("Declared maximum: 36 Unicode characters.", 1, true)
+				and text:find("Journey's identifier", 1, true)
+				and text:find("Unicode: 東", 1, true)
+		end, 10),
+		"K did not show the parameterized STRING documentation"
+	)
+	assert(not docs._messages.hover.opts.markdown_table, "Type documentation retained schema-table rendering")
+	assert(vim.deep_equal(declaration, vim.api.nvim_buf_get_lines(0, 0, -1, false)), "Type hover changed the SQL")
+	docs.on_close()
+	assert(
+		vim.wait(2000, function()
+			return docs._messages.hover:win() == nil
+		end, 10),
+		"STRING hover did not close"
+	)
+	vim.api.nvim_win_set_cursor(0, { 3, 11 })
+	vim.cmd.normal("K")
+	assert(not forwarded, "Hovering a digit within INT64 missed the type")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("Signed 64-bit integer.", 1, true)
+		end, 10),
+		"INT64 hover did not render"
+	)
+	docs.on_close()
+	vim.api.nvim_win_set_cursor(0, { 2, 2 })
+	vim.cmd.normal("K")
+	assert(not forwarded, "A local column name unnecessarily requested the language server")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("Journey's identifier", 1, true)
+		end, 10),
+		"Column name hover omitted its declared description"
+	)
+	docs.on_close()
+	forwarded = false
+	local literal = declaration[4]:find("'STRING outer notes'", 1, true)
+	vim.api.nvim_win_set_cursor(0, { 4, literal })
+	vim.cmd.normal("K")
+	assert(forwarded, "A string literal was mistaken for a type")
+	forwarded = false
+	vim.api.nvim_win_set_cursor(0, { 4, 2 })
+	vim.cmd.normal("K")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			if not popup then
+				return false
+			end
+			local text = table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+			return text:find("`postal  code`", 1, true)
+				and text:find("STRING outer notes", 1, true)
+				and not text:find("Nested field documentation", 1, true)
+		end, 10),
+		"STRUCT hover changed a quoted name or used a nested description"
+	)
+	assert(not forwarded, "Local STRUCT column hover requested the language server")
+	docs.on_close()
+	local field = declaration[6]:find("STRING", 1, true) - 1
+	vim.api.nvim_win_set_cursor(0, { 6, field })
+	vim.cmd.normal("K")
+	assert(forwarded, "A commented STRUCT field name was mistaken for a type")
+	forwarded = false
+	local ddl = {
+		"CREATE TABLE deliveries (",
+		"  carrier STRING NOT NULL OPTIONS(description = 'Delivery carrier')",
+		")",
+		"PARTITION BY DATE_TRUNC(created_at, MONTH)",
+		"CLUSTER BY carrier",
+		"OPTIONS(description = 'Deliveries', require_partition_filter = TRUE);",
+	}
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, ddl)
+	vim.api.nvim_win_set_cursor(0, { 2, assert(ddl[2]:find("NOT NULL", 1, true)) - 1 })
+	vim.cmd.normal("K")
+	assert(not forwarded, "Keyword hover requested the server")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("Makes a column required", 1, true)
+		end, 10),
+		"NOT NULL keyword documentation did not render"
+	)
+	docs.on_close()
+	vim.api.nvim_win_set_cursor(0, { 6, 0 })
+	vim.cmd.normal("K")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("require_partition_filter", 1, true)
+		end, 10),
+		"Table OPTIONS did not show supported parameters"
+	)
+	docs.on_close()
+	vim.api.nvim_win_set_cursor(0, { 2, assert(ddl[2]:find("OPTIONS", 1, true)) - 1 })
+	vim.cmd.normal("K")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			if not popup then
+				return false
+			end
+			local text = table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+			return text:find("rounding_mode", 1, true) and not text:find("require_partition_filter", 1, true)
+		end, 10),
+		"Column OPTIONS did not use the column parameter list"
+	)
+	docs.on_close()
+	vim.api.nvim_win_set_cursor(0, { 6, assert(ddl[6]:find("require_partition_filter", 1, true)) - 1 })
+	vim.cmd.normal("K")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("Supported values: TRUE, FALSE.", 1, true)
+		end, 10),
+		"Individual OPTIONS parameter documentation did not render"
+	)
+	assert(not forwarded, "OPTIONS help requested the server")
+	docs.on_close()
+	vim.api.nvim_win_set_cursor(0, { 5, 11 })
+	vim.cmd.normal("K")
+	assert(
+		vim.wait(2000, function()
+			local popup = docs._messages.hover:win()
+			return popup
+				and table
+					.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(popup), 0, -1, false), "\n")
+					:find("Delivery carrier", 1, true)
+		end, 10),
+		"Clustering reference hover omitted the column's description"
+	)
+	assert(not forwarded, "Local clustering hover requested the language server")
+	docs.on_close()
+	vim.lsp.buf.hover = hover
 end
 
 vim.api.nvim_create_autocmd("VimEnter", {
@@ -80,7 +264,7 @@ vim.api.nvim_create_autocmd("VimEnter", {
 				io.stderr:write(err .. "\n")
 				vim.cmd.cquit(1)
 			else
-				io.stdout:write("Hover table workflow passed\n")
+				io.stdout:write("Hover workflow: schema, type, keyword and OPTIONS documentation passed\n")
 				vim.cmd("qa!")
 			end
 		end)
