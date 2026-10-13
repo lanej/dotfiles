@@ -17,7 +17,7 @@ vim.api.nvim_create_autocmd("User", {
 			install_info = {
 				url = "https://github.com/lanej/tree-sitter-sql-bigquery",
 				branch = "main",
-				revision = "db6ed431534e3f60189481a533c7662328866ad8",
+				revision = "7108977efc3651947faf3e989530f4b0a973339c",
 				queries = "queries",
 			},
 		}

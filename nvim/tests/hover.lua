@@ -76,7 +76,16 @@ local function workflow()
 		"Table hover did not close"
 	)
 
-	vim.cmd.enew()
+	local path = vim.fn.tempname() .. ".bqsql"
+	vim.fn.writefile({}, path)
+	vim.cmd.edit(path)
+	assert(
+		vim.wait(20000, function()
+			local client = vim.lsp.get_clients({ name = "bqls", bufnr = 0 })[1]
+			return client and client.initialized
+		end, 100),
+		"bqls did not attach for hover"
+	)
 	local declaration = {
 		"CREATE TABLE types (",
 		"  STRING STRING(36) OPTIONS(description = 'Journey\\'s identifier\\nUnicode: \\u6771'),",
@@ -92,9 +101,10 @@ local function workflow()
 	local forwarded = false
 	vim.lsp.buf.hover = function()
 		forwarded = true
+		hover()
 	end
 	vim.cmd.normal("K")
-	assert(not forwarded, "Type hover unnecessarily requested the language server")
+	assert(forwarded, "Type hover did not request the language server")
 	assert(
 		vim.wait(2000, function()
 			local popup = docs._messages.hover:win()
@@ -120,7 +130,7 @@ local function workflow()
 	)
 	vim.api.nvim_win_set_cursor(0, { 3, 11 })
 	vim.cmd.normal("K")
-	assert(not forwarded, "Hovering a digit within INT64 missed the type")
+	assert(forwarded, "Hovering a digit within INT64 missed the type")
 	assert(
 		vim.wait(2000, function()
 			local popup = docs._messages.hover:win()
@@ -134,7 +144,7 @@ local function workflow()
 	docs.on_close()
 	vim.api.nvim_win_set_cursor(0, { 2, 2 })
 	vim.cmd.normal("K")
-	assert(not forwarded, "A local column name unnecessarily requested the language server")
+	assert(forwarded, "A local column name did not request the language server")
 	assert(
 		vim.wait(2000, function()
 			local popup = docs._messages.hover:win()
@@ -167,7 +177,7 @@ local function workflow()
 		end, 10),
 		"STRUCT hover changed a quoted name or used a nested description"
 	)
-	assert(not forwarded, "Local STRUCT column hover requested the language server")
+	assert(forwarded, "STRUCT column hover did not reach bqls")
 	docs.on_close()
 	local field = declaration[6]:find("STRING", 1, true) - 1
 	vim.api.nvim_win_set_cursor(0, { 6, field })
@@ -185,7 +195,7 @@ local function workflow()
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, ddl)
 	vim.api.nvim_win_set_cursor(0, { 2, assert(ddl[2]:find("NOT NULL", 1, true)) - 1 })
 	vim.cmd.normal("K")
-	assert(not forwarded, "Keyword hover requested the server")
+	assert(forwarded, "Keyword hover did not reach bqls")
 	assert(
 		vim.wait(2000, function()
 			local popup = docs._messages.hover:win()
@@ -236,7 +246,7 @@ local function workflow()
 		end, 10),
 		"Individual OPTIONS parameter documentation did not render"
 	)
-	assert(not forwarded, "OPTIONS help requested the server")
+	assert(forwarded, "OPTIONS help did not reach bqls")
 	docs.on_close()
 	vim.api.nvim_win_set_cursor(0, { 5, 11 })
 	vim.cmd.normal("K")
@@ -250,9 +260,10 @@ local function workflow()
 		end, 10),
 		"Clustering reference hover omitted the column's description"
 	)
-	assert(not forwarded, "Local clustering hover requested the language server")
+	assert(forwarded, "Clustering column hover did not reach bqls")
 	docs.on_close()
 	vim.lsp.buf.hover = hover
+	vim.fn.delete(path)
 end
 
 vim.api.nvim_create_autocmd("VimEnter", {

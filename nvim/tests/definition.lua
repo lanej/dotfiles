@@ -3,7 +3,6 @@
 local temp = vim.fn.tempname()
 local client_id
 local function workflow()
-	vim.lsp.enable("bqls", false)
 	vim.fn.mkdir(temp .. "/.git", "p")
 	vim.fn.mkdir(temp .. "/sql", "p")
 	temp = assert(vim.uv.fs_realpath(temp))
@@ -27,9 +26,21 @@ local function workflow()
 	vim.fn.writefile(source, query)
 	vim.cmd.edit(vim.fn.fnameescape(query))
 	local source_buf = vim.api.nvim_get_current_buf()
+	assert(
+		vim.wait(20000, function()
+			local client = vim.lsp.get_clients({ name = "bqls", bufnr = source_buf })[1]
+			return client and client.initialized
+		end, 100),
+		"bqls did not attach for navigation"
+	)
 	vim.api.nvim_win_set_cursor(0, { 2, 14 })
 	vim.cmd.normal("gd")
-	assert(vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 1, 5 }), "gd did not resolve the CTE")
+	assert(
+		vim.wait(5000, function()
+			return vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 1, 5 })
+		end, 10),
+		"gd did not resolve the CTE"
+	)
 	vim.cmd.normal(vim.api.nvim_replace_termcodes("<C-o>", true, false, true))
 	assert(vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 2, 14 }), "Definition jump lost its return position")
 
@@ -48,20 +59,34 @@ local function workflow()
 	vim.api.nvim_win_set_cursor(0, { 8, 12 })
 	vim.cmd.normal("gd")
 	assert(
-		vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 4, 2 }),
+		vim.wait(5000, function()
+			return vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 4, 2 })
+		end, 10),
 		"Clustering column did not resolve its declaration"
 	)
 	vim.cmd.normal(vim.api.nvim_replace_termcodes("<C-o>", true, false, true))
 	assert(vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 8, 12 }), "Column jump lost its return position")
 	vim.api.nvim_win_set_cursor(0, { 7, 25 })
 	vim.cmd.normal(vim.g.mapleader .. "cd")
-	assert(vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 5, 2 }), "Partition column did not resolve its declaration")
+	assert(
+		vim.wait(5000, function()
+			return vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 5, 2 })
+		end, 10),
+		"Partition column did not resolve its declaration"
+	)
 	vim.cmd.normal(vim.api.nvim_replace_termcodes("<C-o>", true, false, true))
 	assert(vim.deep_equal(vim.api.nvim_win_get_cursor(0), { 7, 25 }), "Partition jump lost its return position")
 	vim.cmd.buffer(source_buf)
 
 	-- Continue the same navigation workflow with a table that has no local DDL.
 	-- The transport fixture exercises real LSP dispatch without requiring warehouse access.
+	vim.lsp.enable("bqls", false)
+	assert(
+		vim.wait(5000, function()
+			return #vim.lsp.get_clients({ name = "bqls", bufnr = source_buf }) == 0
+		end, 10),
+		"Previous bqls client did not stop"
+	)
 	local requests = {}
 	local delayed
 	client_id = vim.lsp.start({
@@ -80,12 +105,12 @@ local function workflow()
 					elseif method == "textDocument/definition" then
 						response = {
 							{
-								uri = "bqls://project/demo/dataset/deliveries/table/live_journeys",
+								uri = "bqls://project/demo/dataset/deliveries/schema/live_journeys",
 								range = { start = { line = 0, character = 0 }, ["end"] = { line = 0, character = 0 } },
 							},
 						}
-					elseif method == "textDocument/hover" then
-						assert(params.textDocument.uri == vim.uri_from_fname(query), "Schema request lost its source")
+					elseif method == "bqls/virtualTextDocument" then
+						assert(params.textDocument.uri:find("/schema/live_journeys", 1, true), "Schema URI missing")
 						response = {
 							contents = {
 								kind = "markdown",
@@ -140,7 +165,7 @@ local function workflow()
 		table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("delivery_id", 1, true),
 		"Live schema omitted its fields"
 	)
-	assert(not vim.tbl_contains(requests, "bqls/virtualTextDocument"), "Definition fetched preview rows")
+	assert(vim.tbl_contains(requests, "bqls/virtualTextDocument"), "Server schema document was not requested")
 	vim.cmd.normal(vim.api.nvim_replace_termcodes("<C-o>", true, false, true))
 	assert(vim.api.nvim_get_current_buf() == source_buf, "Live schema lost its return position")
 	assert(vim.deep_equal(source, vim.api.nvim_buf_get_lines(0, 0, -1, false)), "Definition changed source SQL")

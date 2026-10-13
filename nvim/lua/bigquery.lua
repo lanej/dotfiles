@@ -387,7 +387,7 @@ function M.setup()
 				buffer = args.buf,
 				desc = "BigQuery: Go to definition",
 			})
-			vim.keymap.set("n", "K", require("bigquery-hover").hover, {
+			vim.keymap.set("n", "K", function() vim.lsp.buf.hover() end, {
 				buffer = args.buf,
 				desc = "BigQuery: Hover",
 			})

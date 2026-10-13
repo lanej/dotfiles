@@ -79,7 +79,6 @@ local function workflow()
 		vim.api.nvim_buf_get_lines(buf, 1, 2, false)[1] == "SELECT carrier FROM shipments;",
 		"Completion inserted presentation details into SQL: " .. vim.api.nvim_buf_get_lines(buf, 1, 2, false)[1]
 	)
-	client:stop(true)
 	blink.hide()
 	local declaration = {
 		"CREATE TABLE deliveries (",
@@ -90,7 +89,7 @@ local function workflow()
 	}
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, declaration)
 	vim.api.nvim_win_set_cursor(0, { 5, #declaration[5] })
-	blink.show({ providers = { "bigquery_local" } })
+	blink.show({ providers = { "lsp" } })
 	assert(
 		vim.wait(2000, function()
 			return blink.is_menu_visible() and #blink.get_items() > 0
@@ -129,7 +128,7 @@ local function workflow()
 
 	blink.hide()
 	vim.api.nvim_win_set_cursor(0, { 2, assert(declaration[2]:find("round", 1, true)) + #"round" - 1 })
-	blink.show({ providers = { "bigquery_local" } })
+	blink.show({ providers = { "lsp" } })
 	assert(
 		vim.wait(2000, function()
 			return blink.is_menu_visible() and #blink.get_items() > 0
@@ -166,7 +165,7 @@ local function workflow()
 	local comment = "  require_partition_filter = TRUE, -- further options"
 	vim.api.nvim_buf_set_lines(buf, 4, 5, false, { comment })
 	vim.api.nvim_win_set_cursor(0, { 5, #comment })
-	blink.show({ providers = { "bigquery_local" } })
+	blink.show({ providers = { "lsp" } })
 	vim.wait(200, function()
 		return false
 	end, 10)
@@ -191,7 +190,7 @@ local function workflow()
 	assert(
 		vim.wait(2000, function()
 			for _, item in ipairs(blink.get_items()) do
-				if item.source_id == "bigquery_local" and item.label == "case" then
+				if item.source_id == "lsp" and item.label == "case" then
 					return blink.is_menu_visible()
 				end
 			end
@@ -200,7 +199,7 @@ local function workflow()
 	)
 	local cluster_index
 	for index, item in ipairs(blink.get_items()) do
-		if item.source_id == "bigquery_local" then
+		if item.source_id == "lsp" then
 			if item.label == "case" then
 				cluster_index = index
 				assert(item.detail == "STRING", "Clustering column type was omitted")
