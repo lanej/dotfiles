@@ -162,6 +162,7 @@ kitty: kitty-terminfo
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
 	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
+	@ln -fs $(DOTFILES)/kitty/open_last_url.py $(HOME)/.config/kitty/open_last_url.py
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
@@ -386,6 +387,9 @@ kitty-terminfo:
 
 test-kitty-ssh:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-kitty-ssh.py"
+
+test-kitty-last-url:
+	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
 atuin-server:
 	@test "$(UNAME_S)" = Linux
