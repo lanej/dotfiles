@@ -14,10 +14,19 @@ app-private temporary folders are excluded.
 Preview worktree cleanup across all projects with `git-worktree-cleanup ~/src`,
 or run it from `~/src` without an argument. Inside a repository, the command
 checks only that repository unless you pass a directory to sweep. Discovery
-includes grouped and nested projects, deduplicates linked checkouts, and checks
+includes grouped projects, stops descending at the first repository in each
+directory branch, deduplicates linked checkouts, and checks
 each repository's registered worktrees even when they live outside `~/src`.
-The report shows disk usage per worktree and a combined estimate for eligible
-checkouts.
+One table lists repositories, base refs, worktree disk usage, and retention
+reasons, sorted by disk usage from smallest to largest, with unknown sizes last.
+A combined estimate follows for eligible checkouts. Terminal
+progress covers discovery and scanning, including when stdout is redirected.
+Disk sizes are cached for 15 minutes in
+`${XDG_CACHE_HOME:-~/.cache}/git-worktree-cleanup`; the `SIZE AGE` column marks
+cached estimates. Use `--refresh` to remeasure sizes. Missing or replaced
+directories invalidate their entries. Git state and activity checks run fresh,
+including immediately before removal. If the cache is unavailable, sizes are
+measured directly.
 
 Add `-y` to remove eligible worktrees. The tool retains primary, locked, active,
 dirty, and unmerged checkouts, plus those with recent HEAD commits, and checks
@@ -30,6 +39,21 @@ in place. Each project uses its own `origin/HEAD` ref, falling back to local
 `main` or `master`; use `-b` for a different base ref. Refs are read locally,
 so refresh them before relying on the report. Project errors are reported
 without stopping the remaining sweep, and branches are retained.
+Tracked files marked assume-unchanged or skip-worktree retain their checkout,
+because Git status can hide edits to those files.
+
+Preview preservation of dirty or unmerged work with
+`git-worktree-cleanup --wip-push ~/src`. This mode accepts only effective GitHub
+push URLs owned by `easypost-sandbox`, preferring `origin` or another approved
+remote. The table shows each proposed recovery branch. Add `-y` to create a
+unique `wip/cleanup/...` branch, commit tracked changes and untracked source,
+push that snapshot, verify its remote ref, and remove the checkout. Original
+branches are retained; detached work gets a named recovery branch too.
+The age threshold applies before the snapshot commit. A base ref is unnecessary
+in this mode, and the usual activity, lock, and ignored-artifact checks still
+apply. Unfinished Git operations are retained. Commit or push failures, remote
+verification failures, and changes made during publication leave the checkout
+in place, with any completed WIP commit retained on its local recovery branch.
 
 These are periodic size budgets. Busy caches and targets are deferred and
 checked again on the next run. Native managers clean over-budget caches;

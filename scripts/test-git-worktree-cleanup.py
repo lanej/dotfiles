@@ -2,10 +2,13 @@
 """Sweep real repositories, removing idle merged worktrees and retaining work."""
 import os
 from pathlib import Path
+import pty
+import select
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 
 
 def main():
@@ -34,7 +37,7 @@ def main():
     def project(repo, branch):
         repo.mkdir(parents=True)
         git(repo, "init", "-q", "--initial-branch", branch)
-        (repo / ".gitignore").write_text(".worktrees/\nnode_modules/\nevidence/\n")
+        (repo / ".gitignore").write_text(".worktrees/\nnode_modules/\nevidence/\nvendor/\n")
         git(repo, "add", ".gitignore")
         git(repo, "commit", "-qm", "Initialize cleanup fixture")
         git(repo, "update-ref", f"refs/remotes/origin/{branch}", "HEAD")
@@ -50,6 +53,7 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="worktree-cleanup-check-") as folder:
         temporary = Path(folder).resolve()
+        env["XDG_CACHE_HOME"] = str(temporary / "cache")
         root = temporary / "src"
         app = root / "group/team app"
         # Discover this repository through a disposable linked checkout, not
@@ -57,11 +61,25 @@ def main():
         library = temporary / "z-library-primary"
         project(app, "main")
         project(library, "trunk")
+        nested = app / "vendor/nested-project"
+        project(nested, "main")
+        nested_checkout = nested / ".worktrees/retained"
+        git(nested, "worktree", "add", "--detach", str(nested_checkout))
         disposable = app / ".worktrees/merged"
         git(app, "worktree", "add", "-b", "completed-task", str(disposable))
+        (disposable / "node_modules").mkdir()
+        (disposable / "node_modules/disposable-cache").write_bytes(b"x" * 2 * 1024 * 1024)
         dirty = app / ".worktrees/unfinished"
         git(app, "worktree", "add", "--detach", str(dirty))
         (dirty / ".gitignore").write_text("unfinished edit\n")
+        missing = app / ".worktrees/abandoned"
+        git(app, "worktree", "add", "--detach", str(missing))
+        shutil.rmtree(missing)
+        hidden = app / ".worktrees/hidden-index"
+        git(app, "worktree", "add", "--detach", str(hidden))
+        git(hidden, "update-index", "--assume-unchanged", ".gitignore")
+        (hidden / ".gitignore").write_text("edit hidden from git status\n")
+        assert git(hidden, "status", "--porcelain") == ""
         evidence = app / ".worktrees/evidence"
         git(app, "worktree", "add", "--detach", str(evidence))
         (evidence / "evidence").mkdir()
@@ -121,12 +139,55 @@ time.sleep(120)
 """], cwd=temporary, env=tool_env,
         )
         try:
-            preview = run(root)
+            # A terminal on stderr keeps progress visible when stdout is logged.
+            terminal, terminal_output = pty.openpty()
+            progress_chunks = []
+            finished = threading.Event()
+
+            def read_progress():
+                while not finished.is_set() or select.select([terminal], [], [], 0)[0]:
+                    if select.select([terminal], [], [], 0.1)[0]:
+                        progress_chunks.append(os.read(terminal, 65536))
+
+            reader = threading.Thread(target=read_progress)
+            reader.start()
+            try:
+                preview_run = subprocess.run(
+                    ["/bin/bash", str(tool)], cwd=root,
+                    env={**env, "TERM": "xterm"}, stdout=subprocess.PIPE,
+                    stderr=terminal_output, text=True, timeout=60,
+                )
+            finally:
+                # Drain before closing the slave: macOS discards unread terminal
+                # output when the final slave descriptor closes.
+                finished.set()
+                reader.join(timeout=5)
+                os.close(terminal_output)
+                os.close(terminal)
+            assert not reader.is_alive(), "Terminal progress reader did not stop"
+            progress = b"".join(progress_chunks).decode()
+            preview = preview_run.stdout
+            assert preview_run.returncode == 0, preview + progress
+            assert "Discovering repositories" in progress, progress
+            assert "Scanning repositories 2/2" in progress, progress
             assert "Repositories checked: 2" in preview, preview
+            assert preview.count("DISK USAGE") == 1, preview
+            assert "REPOSITORY" in preview and "BASE" in preview, preview
+            assert str(nested) not in preview, preview
             assert "4 worktree(s) would be removed" in preview, preview
             assert "Estimated reclaimable space" in preview, preview
             assert disposable.is_dir() and dependencies.is_dir() and completed.is_dir()
             assert "ignored files" in preview, preview
+            assert "hidden index flags" in preview, preview
+            header = next(line for line in preview.splitlines() if line.startswith("REPOSITORY"))
+            size_at, age_at = header.index("DISK USAGE"), header.index("SIZE AGE")
+            table = preview.split(header + "\n", 1)[1].split("\n\n", 1)[0].splitlines()
+            sizes = [line[size_at:age_at].strip() for line in table]
+            assert sizes[-1] == "-" and all(size != "-" for size in sizes[:-1]), preview
+            units = {"KiB": 1, "MiB": 1024, "GiB": 1024**2, "TiB": 1024**3, "PiB": 1024**4}
+            numeric = [float(size.split()[0]) * units[size.split()[1]] for size in sizes[:-1]]
+            assert numeric == sorted(numeric), preview
+            assert any("MiB" in size for size in sizes) and any("KiB" in size for size in sizes), preview
             # Start a process during the first removal, after planning and any
             # initial activity snapshot. The later candidate must stay alive.
             result = run(temporary, "-y", str(root), run_env=tool_env)
@@ -134,7 +195,9 @@ time.sleep(120)
             assert "active process" in result, result
             assert not disposable.exists() and not dependencies.exists() and not completed.exists(), result
             assert dirty.is_dir() and active.is_dir() and locked.is_dir()
+            assert nested_checkout.is_dir()
             assert (dirty / ".gitignore").read_text() == "unfinished edit\n"
+            assert (hidden / ".gitignore").read_text() == "edit hidden from git status\n"
             assert (evidence / "evidence/report.txt").read_text() == "retain ignored evidence"
             assert git(app, "show-ref", "--verify", "refs/heads/completed-task")
             assert git(app, "status", "--porcelain") == ""
