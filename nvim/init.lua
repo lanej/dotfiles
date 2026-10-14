@@ -1191,80 +1191,9 @@ require("lazy").setup({
 					lualine_x = {
 						{ "diagnostics", sources = { "nvim_lsp" } },
 						{
-							function()
-								local clients = vim.lsp.get_clients({ bufnr = 0 })
-								if #clients == 0 then
-									return ""
-								end
-
-								local webdevicons = require("nvim-web-devicons")
-
-								-- Filter out copilot and other non-language servers
-								local ignored = {
-									["copilot"] = true,
-									["GitHub Copilot"] = true,
-									["null-ls"] = true,
-								}
-
-								-- Map LSP server names to file extensions for nvim-web-devicons
-								local lsp_to_ext = {
-									["lua_ls"] = "lua",
-									["rust_analyzer"] = "rs",
-									["gopls"] = "go",
-									["pyright"] = "py",
-									["pylsp"] = "py",
-									["ruff"] = "py",
-									["tsserver"] = "ts",
-									["ts_ls"] = "ts",
-									["vtsls"] = "ts",
-									["eslint"] = "js",
-									["yamlls"] = "yaml",
-									["bashls"] = "sh",
-									["dockerls"] = "dockerfile",
-									["docker_compose_language_service"] = "yaml",
-									["jsonls"] = "json",
-									["vimls"] = "vim",
-									["clangd"] = "c",
-									["html"] = "html",
-									["cssls"] = "css",
-									["tailwindcss"] = "css",
-									["svelte"] = "svelte",
-									["marksman"] = "md",
-									["jdtls"] = "java",
-									["kotlin_language_server"] = "kt",
-									["sourcekit"] = "swift",
-									["solargraph"] = "rb",
-									["ruby_lsp"] = "rb",
-									["intelephense"] = "php",
-									["phpactor"] = "php",
-									["vuels"] = "vue",
-									["volar"] = "vue",
-									["angularls"] = "ts",
-									["astro"] = "astro",
-									["graphql"] = "graphql",
-									["prismals"] = "prisma",
-									["terraformls"] = "tf",
-								}
-
-								local result = {}
-								for _, client in ipairs(clients) do
-									if not ignored[client.name] then
-										local ext = lsp_to_ext[client.name]
-										if ext then
-											local icon, hl_group =
-												webdevicons.get_icon("file." .. ext, ext, { default = true })
-											if icon and hl_group then
-												-- Use the highlight group from nvim-web-devicons directly
-												table.insert(result, string.format("%%#%s#%s%%*", hl_group, icon))
-											elseif icon then
-												table.insert(result, icon)
-											end
-										end
-									end
-								end
-
-								return table.concat(result, " ")
-							end,
+							require("lsp-status"),
+							icon = "",
+							ignore_lsp = { "copilot", "GitHub Copilot", "null-ls" },
 						},
 					},
 					lualine_y = {},

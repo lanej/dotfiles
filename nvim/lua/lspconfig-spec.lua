@@ -184,6 +184,10 @@ return {
 			-- `opts[server].capabilities, if you've defined it
 			config.capabilities = require("blink.cmp").get_lsp_capabilities(config.capabilities)
 			vim.lsp.config(server, config)
+			local cmd = vim.lsp.config[server].cmd
+			if cmd then
+				vim.lsp.config(server, { cmd = require("lsp-status-state").wrap_cmd(cmd) })
+			end
 
 			-- Skip auto-enabling markdown LSPs - our autocmd handles them conditionally
 			if server ~= "marksman" then
