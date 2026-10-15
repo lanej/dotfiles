@@ -1684,16 +1684,11 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"selimacerbas/markdown-preview.nvim",
-		dependencies = { "selimacerbas/live-server.nvim" },
-		lazy = true, -- Recommended
-		enabled = true,
-		ft = "markdown", -- If you decide to lazy-load anyway
-		config = function()
-			require("markdown_preview").setup({
-				mermaid_renderer = "mmdc",
-			})
-		end,
+		"selimacerbas/mdkite.nvim",
+		dependencies = { "selimacerbas/kitehost.nvim" },
+		ft = "markdown",
+		cmd = "MdKite",
+		opts = {},
 	},
 	{
 		"pwntester/octo.nvim",
