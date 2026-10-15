@@ -102,7 +102,14 @@ Serial-versus-concurrent equality establishes repeatability within one build;
 it does not establish equivalence to an old build or correctness against
 historical fixtures. Exact canaries can differ because of contract changes,
 datasets, or regressions. Retain expected/actual differences and diagnose them;
-do not silently replace expected postal results.
+update expectations only after reviewing the change against its data and contract.
+Prefer generated postal fixtures with declared expected results for stable
+acceptance. AVCass's `make test-acceptance` exercises generated DVDComm ranges
+through native workers and both HTTP APIs, using a compatible pinned seed and
+controlled RDI files. Ancillary postal and DPV records still depend on the seed;
+record it and use separate fixed geometry fixtures for location assertions.
+Keep HTTP readiness independent of exact response expectations so healthy
+services report correctness differences instead of startup timeouts.
 
 For bounded-concurrency load, separate successful throughput and latency from
 overload rejections. AVCass's Connect endpoint can return HTTP 429 with
