@@ -54,6 +54,17 @@ if settings_path.is_file() and registry_path.is_file():
                     if server.get("type", "stdio") == "stdio":
                         server["env"] = {"CLAUDE_PLUGIN_ROOT": str(root), **server.get("env", {})}
                     servers[name] = server
+
+# Codex's browser checks should not create native windows or steal keyboard focus.
+# Apply this to the copied definition, leaving Claude and its plugin cache alone.
+for server in servers.values():
+    args = server.get("args", [])
+    if (server.get("type", "stdio") == "stdio"
+            and any(arg == "@playwright/mcp" or arg.startswith("@playwright/mcp@")
+                    for arg in args)
+            and "--headless" not in args):
+        server["args"] = [*args, "--headless"]
+
 print(json.dumps({"mcpServers": servers}))
 PY
 )

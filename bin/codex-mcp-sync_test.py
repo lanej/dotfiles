@@ -60,6 +60,7 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     plugin.mkdir(parents=True)
     (plugin / ".mcp.json").write_text(json.dumps({
         "search": {"command": "python3", "args": ["${CLAUDE_PLUGIN_ROOT}/server.py"]},
+        "playwright": {"command": "npx", "args": ["@playwright/mcp@latest"]},
         "qmd": {"command": "plugin-override"},
     }))
     disabled = home / ".claude/plugins/disabled/1.0"
@@ -140,6 +141,13 @@ else:
         "type": "stdio", "command": "python3", "args": [str(plugin / "server.py")],
         "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
     }
+    assert servers["playwright"]["transport"] == {
+        "type": "stdio", "command": "npx", "args": ["@playwright/mcp@latest", "--headless"],
+        "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
+    }
+    assert json.loads((plugin / ".mcp.json").read_text())["playwright"]["args"] == [
+        "@playwright/mcp@latest",
+    ]
     assert "codex-only" in servers and "codex" not in servers and "disabled-tool" not in servers
 
     servers["workspace"]["enabled"] = False

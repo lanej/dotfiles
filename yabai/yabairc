@@ -10,11 +10,12 @@ yabai -m config window_topmost on
 
 yabai -m config window_opacity off
 
-# Playwright's non-headless test browser (Chromium / "Google Chrome for Testing")
-# calls macOS's activateIgnoringOtherApps directly. Normally that's fine and
-# should pop up as usual, but if it steals focus while the current space is
-# native-fullscreen (e.g. a fullscreen terminal), macOS force-switches spaces
-# to reveal it -- minimize it on creation in that case only. Anchored regex
-# excludes the regular "Google Chrome" app.
-yabai -m rule --add app="^(Chromium|Google Chrome for Testing)$" manage=off
-yabai -m signal --add event=window_created app="^(Chromium|Google Chrome for Testing)$" action="/Users/joshlane/.files/bin/yabai-suppress-fullscreen-popup \$YABAI_WINDOW_ID"
+# Keep agent test browsers minimized, including later activation/focus attempts.
+# Signals react after macOS grants focus; they cannot veto activation outright.
+test_browser='^(Chromium|Google Chrome for Testing)$'
+focus_guard="$HOME/.files/bin/yabai-suppress-fullscreen-popup"
+yabai -m rule --add label=test-browser app="$test_browser" manage=off
+yabai -m signal --add label=test-browser-created event=window_created app="$test_browser" action="\"$focus_guard\" window \$YABAI_WINDOW_ID"
+yabai -m signal --add label=test-browser-focused event=window_focused app="$test_browser" action="\"$focus_guard\" window \$YABAI_WINDOW_ID"
+# This event supplies the previous application PID and does not support app filters.
+yabai -m signal --add label=test-browser-activated event=application_front_switched action="\"$focus_guard\" application \$YABAI_PROCESS_ID \$YABAI_RECENT_PROCESS_ID"

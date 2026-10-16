@@ -1,15 +1,70 @@
 #!/bin/bash
 
-# Called by a yabai window_created signal for Playwright's non-headless test
-# browser. Only intervenes if the space we're about to be yanked from is
-# native-fullscreen (macOS force-switches spaces to reveal a new window that
-# isn't on the current one) -- otherwise leaves the window alone so it pops
-# up normally. Fails safe: any query error leaves the window untouched.
+# Keep the installed helper path, but suppress test browsers on every space.
+# Restore a known non-test application only while the browser still has focus.
+# No saved focus state: overlapping signals cannot overwrite a shared file.
 
-window_id=$1
+event=$1
+target_id=$2
+previous_pid=${3:-0}
+[[ "$target_id" =~ ^[1-9][0-9]*$ ]] || exit 0
+[[ "$previous_pid" =~ ^[0-9]+$ ]] || exit 0
 
-was_fullscreen=$(yabai -m query --spaces --space | jq -r '.["is-native-fullscreen"]')
+windows=$(yabai -m query --windows) || windows='[]'
+case "$event" in
+window)
+	browser_pid=$(jq -r --argjson id "$target_id" '
+		.[] | select(.id == $id and
+			(.app == "Chromium" or .app == "Google Chrome for Testing")) | .pid
+	' <<< "$windows")
+	[[ "$browser_pid" =~ ^[1-9][0-9]*$ ]] || exit 0
+	previous_pid=$(yabai -m query --windows --window recent 2>/dev/null | jq -r '
+		select(.app != "Chromium" and .app != "Google Chrome for Testing"
+			and (.["is-minimized"] | not) and (.["is-hidden"] | not)) | .pid
+	')
+	[[ "$previous_pid" =~ ^[1-9][0-9]*$ ]] || previous_pid=0
+	;;
+application)
+	# Most switches are ordinary apps. Avoid starting AppKit for known ones.
+	if jq -e --argjson pid "$target_id" '
+		.[] | select(.pid == $pid and
+			.app != "Chromium" and .app != "Google Chrome for Testing")
+	' <<< "$windows" >/dev/null; then
+		exit 0
+	fi
+	browser_pid=$target_id
+	;;
+*) exit 0 ;;
+esac
 
-if [[ "$was_fullscreen" == "true" ]]; then
+# Minimize siblings too, so macOS cannot hand focus to another test window.
+while read -r window_id; do
 	yabai -m window "$window_id" --minimize
-fi
+done < <(jq -r --argjson pid "$browser_pid" '
+	.[] | select(.pid == $pid and (.["is-minimized"] | not)
+		and (.app == "Chromium" or .app == "Google Chrome for Testing")) | .id
+' <<< "$windows")
+
+# A minimized browser can still be the frontmost app with no focused window.
+# AppKit checks the application itself and hides it even when it has no windows.
+# This avoids System Events automation permissions and restores keyboard routing.
+osascript -l JavaScript - "$browser_pid" "$previous_pid" <<'JXA'
+ObjC.import('AppKit');
+
+function run(argv) {
+	function isTestBrowser(app) {
+		if (!app || app.isNil()) return false;
+		var name = ObjC.unwrap(app.localizedName);
+		return name === 'Chromium' || name === 'Google Chrome for Testing';
+	}
+	var browser = $.NSRunningApplication.runningApplicationWithProcessIdentifier(Number(argv[0]));
+	if (!isTestBrowser(browser)) return;
+	var previous = $.NSRunningApplication.runningApplicationWithProcessIdentifier(Number(argv[1]));
+	// Check now, after the window operations, so a later user switch wins.
+	if (browser.active && previous && !previous.isNil() && !isTestBrowser(previous)
+		&& !previous.terminated && !previous.hidden) {
+		previous.activateWithOptions($.NSApplicationActivateIgnoringOtherApps);
+	}
+	browser.hide;
+}
+JXA

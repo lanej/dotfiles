@@ -20,6 +20,17 @@ Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
 16. **Diversity:** Be skeptical of any supposedly universal approach.
 17. **Extensibility:** Design to accommodate future changes.
 
+# Browser automation
+
+Default local pages and UI validation to headless Playwright MCP.
+Headless browsers avoid macOS window focus and accidental keyboard input.
+Launch visible browsers only when the user explicitly requests them.
+Use CUA/native integration for explicitly requested real, signed-in browser work.
+Close agent-owned MCP browsers gracefully when finished.
+For raw Playwright, set `headless: true`; close contexts and browsers in `finally`.
+On macOS, use approved shell escalation before raw browser launches.
+Sandboxed macOS launches can abort during application registration and trigger crash alerts.
+
 # Automatic PR writing and code review
 
 For every pull request, invoke the `pull-request-writer` custom agent as a
