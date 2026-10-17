@@ -6,13 +6,13 @@ end, {
 })
 -- go to errors first, warnings second
 vim.keymap.set("n", "<c-p>", function()
-	vim.diagnostic.goto_prev({ float = false })
+	vim.diagnostic.jump({ count = -1 })
 end, {
 	noremap = true,
 	silent = true,
 })
 vim.keymap.set("n", "<c-n>", function()
-	vim.diagnostic.goto_next({ float = false })
+	vim.diagnostic.jump({ count = 1 })
 end, {
 	noremap = true,
 	silent = true,
