@@ -175,6 +175,23 @@ wezterm:
 	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.config/wezterm/wezterm.lua
 spotify_player:
 	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
+# Opt-in restore: quit Amphetamine first; its preferences must not be symlinked.
+AMPHETAMINE_PREFS ?= $(HOME)/Library/Containers/com.if.Amphetamine/Data/Library/Preferences/com.if.Amphetamine
+amphetamine:
+ifeq ($(UNAME_S),Darwin)
+	@pgrep -x Amphetamine >/dev/null; status=$$?; \
+	if [ "$$status" -eq 0 ]; then \
+		echo "Quit Amphetamine before restoring its settings." >&2; exit 1; \
+	elif [ "$$status" -ne 1 ]; then \
+		exit "$$status"; \
+	fi
+	@plutil -lint "$(DOTFILES)/amphetamine/settings.plist" >/dev/null
+	@defaults write "$(AMPHETAMINE_PREFS)" "Trigger Data" "$$(plutil -extract 'Trigger Data' xml1 -o - "$(DOTFILES)/amphetamine/settings.plist")"
+	@defaults write "$(AMPHETAMINE_PREFS)" "Enable Triggers" -bool "$$(plutil -extract 'Enable Triggers' raw -o - "$(DOTFILES)/amphetamine/settings.plist")"
+	@echo "Amphetamine trigger settings restored. Reopen Amphetamine."
+else
+	@echo "Amphetamine settings require macOS." >&2; exit 1
+endif
 undercurl:
 	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
 go:
@@ -438,4 +455,4 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all $(SETUP_TARGETS)
+.PHONY: all $(SETUP_TARGETS) amphetamine
