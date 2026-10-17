@@ -10,12 +10,10 @@ yabai -m config window_topmost on
 
 yabai -m config window_opacity off
 
-# Keep agent test browsers minimized, including later activation/focus attempts.
-# Signals react after macOS grants focus; they cannot veto activation outright.
 test_browser='^(Chromium|Google Chrome for Testing)$'
-focus_guard="$HOME/.files/bin/yabai-suppress-fullscreen-popup"
 yabai -m rule --add label=test-browser app="$test_browser" manage=off
-yabai -m signal --add label=test-browser-created event=window_created app="$test_browser" action="\"$focus_guard\" window \$YABAI_WINDOW_ID"
-yabai -m signal --add label=test-browser-focused event=window_focused app="$test_browser" action="\"$focus_guard\" window \$YABAI_WINDOW_ID"
-# This event supplies the previous application PID and does not support app filters.
-yabai -m signal --add label=test-browser-activated event=application_front_switched action="\"$focus_guard\" application \$YABAI_PROCESS_ID \$YABAI_RECENT_PROCESS_ID"
+
+# Remove the former focus guards when reloading an existing daemon.
+yabai -m signal --remove test-browser-created 2>/dev/null || :
+yabai -m signal --remove test-browser-focused 2>/dev/null || :
+yabai -m signal --remove test-browser-activated 2>/dev/null || :
