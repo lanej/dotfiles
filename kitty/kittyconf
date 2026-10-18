@@ -12,6 +12,7 @@ map cmd+1 goto_tab 1
 map cmd+2 goto_tab 2
 map cmd+3 goto_tab 3
 map cmd+4 goto_tab 4
+map cmd+5 goto_tab 5
 map cmd+r set_tab_title
 # Access function-key actions in Codex and other terminal apps without Fn keys.
 # Kitty handles Option as Alt for these mappings on macOS, including through tmux.
