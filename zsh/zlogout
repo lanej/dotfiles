@@ -1,1 +1,2 @@
-clear
+# Leave the terminal unchanged when closing a login shell.
+:

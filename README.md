@@ -10,12 +10,46 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
+`make` defaults to `setup` and prints a checklist: green `✓` for completed
+configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
+`uv`, or `jq` do not stop other setup steps, and configuration links are installed
+independently of optional integrations. It exits nonzero after the full checklist
+if anything needs attention. Install the missing dependencies or fix the reported
+issue, then rerun `make`; existing links and user configuration are safe to reuse.
+Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
+run separately with `make lint` and the `test` targets. Color is enabled in
+terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
+
+Platform-specific setup is included only on its supported OS:
+
+| Platform | Additional configuration |
+|---|---|
+| Linux | X11, Polybar, bspwm/sxhkd/rofi |
+| macOS | Yabai/skhd/borders, SuperWhisper |
+
+Explicitly requesting an unsupported target fails before writing configuration.
+Existing tmux plugin directories are preserved, including local plugins without
+Git metadata; failed TPM installation reports an error for manual recovery.
+
+Zsh also starts silently during a partial install. Missing shared files and
+optional tools leave the basic prompt, completion, and history available.
+The custom fzf integration requires both `fzf` and `fd`; it activates in a new
+shell once they are installed. Failed integration generators do not replace
+working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
+
+`make benchmark-zsh-startup` measures the current home's interactive login-shell
+startup and exit over 30 runs after three warmups. It reports median and p95
+wall time for `zsh -d -i -l -c exit`, including process launch and logout,
+with global rc files skipped. It inherits your `HOME` and `PATH`; run it on your
+workstation for representative timings. Use
+`ZSH_BENCHMARK_ARGS='--runs 60 --json'` for more samples and JSON output.
+
 `make` (or `make claude`) also removes installed Claude Code plugins listed in
 [`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
 the Claude CLI is available. Add a marketplace-qualified plugin ID to that list
 to retire another plugin; Superpowers is the initial entry. Already-absent
 installations are a no-op; invalid configuration, inspection, or uninstall
-failures stop the task so they can be fixed.
+failures mark that step incomplete so they can be fixed.
 
 `make claude-shared` links the shared `ai/skills` and `ai/agents` sources into
 Claude's installed directories, preserving local entries. `make claude` includes
@@ -98,7 +132,8 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
 | Target | Description |
 |---|---|
-| `make` | Symlink all configuration files |
+| `make` / `make setup` | Install configuration and integrations with a checklist |
+| `make lint` | Run skill audits and instruction-size checks |
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
 | `make codex-skills` | Refresh shared dotfiles skills for Codex |
