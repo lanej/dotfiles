@@ -58,10 +58,10 @@ bindkey '^a' beginning-of-line
 autoload edit-command-line; zle -N edit-command-line
 bindkey -M vicmd v edit-command-line
 
-# Load lazy-loading functions for expensive integrations
-[[ -r "${HOME}/.files/zsh/lazy-load.zsh" ]] && source "${HOME}/.files/zsh/lazy-load.zsh"
+[[ -r "${HOME}/.profile" ]] && source "${HOME}/.profile"
 
-. "${HOME}/.profile"
+# Load integrations after .profile has added installed tools to PATH.
+[[ -r "${HOME}/.files/zsh/lazy-load.zsh" ]] && source "${HOME}/.files/zsh/lazy-load.zsh"
 
 # Add custom completions and site-functions to fpath (must be before compinit)
 # ZSH_COMPLETIONS is set in zshenv
@@ -93,7 +93,8 @@ fi
 # every shell (network round-trip, ~380-800ms) -- gh-copilot itself still
 # works; this only skips confirming the extension is installed at init time.
 export ZSH_GH_COPILOT_NO_CHECK=1
-if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
+if command -v gh >/dev/null 2>&1 && command -v tput >/dev/null 2>&1 && \
+   tput sgr0 >/dev/null 2>&1 && [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	source "${HOME}/.local/share/zsh/zsh-github-copilot.zsh"
 	# If macOS
 	if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -105,8 +106,10 @@ if [[ -r "${HOME}/.local/share/zsh/zsh-github-copilot.zsh" ]]; then
 	fi
 fi
 
-if command -v fzf >/dev/null; then
-	_cache_shell_init "$HOME/.zsh/cache/fzf-init.zsh" fzf --zsh
+if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
+   (( $+functions[_cache_shell_init] )) && \
+   _cache_shell_init "$HOME/.zsh/cache/fzf-init.zsh" fzf --zsh && \
+   (( $+widgets[fzf-completion] && $+functions[__fzf_defaults] )); then
 	
 	# Helper function for dynamic preview window positioning
 	__fzf_dynamic_preview_window() {
@@ -382,22 +385,35 @@ if command -v purs >/dev/null; then
 	  purs precmd -s "$SSH_TTY" -h "$HOST" 
 	}
 	add-zsh-hook precmd _prompt_purs_precmd
-elif [[ -d "${HOME}/.oh-my-zsh" ]]; then
-	plugins=(zsh-autosuggestions vi-mode)
+elif command -v git >/dev/null 2>&1 && [[ -r "${HOME}/.oh-my-zsh/oh-my-zsh.sh" ]]; then
+	# A partial framework install may not include these optional plugins/theme.
+	plugins=()
+	for plugin in zsh-autosuggestions vi-mode; do
+		if [[ -r "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/$plugin/$plugin.plugin.zsh" || \
+		      -r "$HOME/.oh-my-zsh/plugins/$plugin/$plugin.plugin.zsh" ]]; then
+			plugins+=("$plugin")
+		fi
+	done
+	if [[ -n $ZSH_THEME && ! -r "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/$ZSH_THEME.zsh-theme" && \
+	      ! -r "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/$ZSH_THEME.zsh-theme" && \
+	      ! -r "$HOME/.oh-my-zsh/themes/$ZSH_THEME.zsh-theme" ]]; then
+		ZSH_THEME=''
+	fi
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=cyan
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=red
 	typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='$'
 	export DISABLE_FZF_AUTO_COMPLETION="true"
-	load_zsh_autosuggestions=false
+	(( ${plugins[(Ie)zsh-autosuggestions]} )) && load_zsh_autosuggestions=false
 
 	source "${HOME}/.oh-my-zsh/oh-my-zsh.sh"
 	[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-elif command -v starship >/dev/null; then
-	_cache_shell_init "$HOME/.zsh/cache/starship-init.zsh" starship init zsh
+elif command -v starship >/dev/null 2>&1 && (( $+functions[_cache_shell_init] )) && \
+     _cache_shell_init "$HOME/.zsh/cache/starship-init.zsh" starship init zsh; then
 	[[ -r "${HOME}/.z.zsh" ]] && source "${HOME}/.z.zsh"
 else
 	export PS1='%F{cyan}%n@%m %F{green}%1~ %F{yellow}➜ %f'
 fi
+[[ -n $PS1 ]] || PS1='%F{cyan}%n@%m %F{green}%1~ %F{yellow}➜ %f'
 
 [[ -r "${HOME}/.local/share/z/z.sh" ]] && source "${HOME}/.local/share/z/z.sh"
 
@@ -449,7 +465,7 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 	# ZSH_HIGHLIGHT_STYLES[assign]=none
 fi
 
-. "${HOME}/.alias"
+[[ -r "${HOME}/.alias" ]] && source "${HOME}/.alias"
 
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"
@@ -463,8 +479,9 @@ fi
 
 
 
-if command -v atuin >/dev/null; then
-	_cache_shell_init "$HOME/.zsh/cache/atuin-init.zsh" atuin init zsh
+if command -v atuin >/dev/null 2>&1 && (( $+functions[_cache_shell_init] )) && \
+   _cache_shell_init "$HOME/.zsh/cache/atuin-init.zsh" atuin init zsh && \
+   (( $+widgets[atuin-search] )); then
 
 	bindkey '^r' atuin-search
 fi

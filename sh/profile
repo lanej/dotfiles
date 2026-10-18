@@ -18,14 +18,14 @@ elif [ -n "$SSH_AUTH_SOCK" ] && [ -S "$SSH_AUTH_SOCK" ]; then
 elif [ -S "$ONEPASSWORD_SSH_AGENT" ]; then
     # 1Password is running and SSH agent is available - use it (local machine only)
     export SSH_AUTH_SOCK="$ONEPASSWORD_SSH_AGENT"
-elif [ -z "$SSH_CONNECTION" ]; then
+elif [ -z "$SSH_CONNECTION" ] && command -v ssh-agent >/dev/null 2>&1; then
     # Not in SSH session and no 1Password - fall back to traditional ssh-agent
     # Store agent info in a persistent file so all shells can share the same agent
     SSH_ENV="$HOME/.ssh/agent-env"
 
     start_agent() {
-        ssh-agent -s > "$SSH_ENV"
-        chmod 600 "$SSH_ENV"
+        (umask 077; mkdir -p "$HOME/.ssh" && ssh-agent -s > "$SSH_ENV") 2>/dev/null || return
+        chmod 600 "$SSH_ENV" 2>/dev/null || return
         # shellcheck disable=SC1090
         . "$SSH_ENV" > /dev/null
     }
@@ -99,7 +99,7 @@ export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
 
-if [[ $OSTYPE =~ 'darwin' ]]; then
+if [[ $OSTYPE =~ 'darwin' && -t 0 ]] && command -v tty >/dev/null 2>&1; then
 	# shellcheck disable=SC2155
 	export GPG_TTY=$(tty)
 fi
@@ -123,7 +123,9 @@ fi
 
 # sccache intentionally disabled — see docs/radar.md Hold: sccache (unbounded disk growth)
 
-test -r "$HOME/.dir_colors" && eval "$(dircolors "$HOME/.dir_colors")"
+if command -v dircolors >/dev/null 2>&1 && [ -r "$HOME/.dir_colors" ]; then
+	eval "$(dircolors -b "$HOME/.dir_colors")"
+fi
 
 export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."
 

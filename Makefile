@@ -1,26 +1,43 @@
-SETUP_TARGETS += banner shell git fish screen tmux vim nvim X ruby chunk awesome i3 polybar oni bspwm kitty bash
-SETUP_TARGETS += zsh qute alacritty wezterm yabai spotify_player python go claude gemini cargo superwhisper presenterm mail quarto codex
-SETUP_TARGETS += sql-formatters dev-cache-config FORCE
+.DEFAULT_GOAL := setup
+SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby oni kitty-config kitty-terminfo
+SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm spotify_player python go claude-config gemini cargo presenterm mail quarto codex-config codex-mcp
+SETUP_TARGETS += dev-cache-config
+LINUX_SETUP_TARGETS := X polybar bspwm
+DARWIN_SETUP_TARGETS := yabai superwhisper
 DOTFILES := $(shell pwd)
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
-
-# Keep successful default setup quiet; replay diagnostics on failure.
-all:
-ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
-	+@$(MAKE) --no-print-directory $(SETUP_TARGETS)
-	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
-else
-	+@log=$$(mktemp) || exit 1; \
-	trap 'rm -f "$$log"' 0; \
-	if $(MAKE) --no-print-directory $(SETUP_TARGETS) >"$$log" 2>&1 && \
-		bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)" >"$$log" 2>&1; then \
-		:; \
-	else \
-		status=$$?; cat "$$log" >&2; exit "$$status"; \
-	fi
+ifeq ($(UNAME_S),Linux)
+SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
+else ifeq ($(UNAME_S),Darwin)
+SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
 endif
+
+# The runner reports every step and returns failure only after trying them all.
+all: setup
+
+setup:
+ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
+	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(SETUP_TARGETS)
+else
+	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SETUP_TARGETS)
+endif
+
+define require-command
+	@command -v "$(1)" >/dev/null 2>&1 || { printf '%s\n' 'Missing dependency: $(1). Install it or add it to PATH, then rerun make.' >&2; exit 1; }
+endef
+
+define require-os
+	@test "$(UNAME_S)" = "$(1)" || { printf '%s\n' '$@: requires $(1); detected $(UNAME_S).' >&2; exit 1; }
+endef
+
+instruction-size:
+	$(call require-command,git)
+	$(call require-command,jq)
+	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
+
+lint: audit-skills instruction-size
 
 banner:
 	@cat banner.txt
@@ -43,7 +60,7 @@ shell:
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@mkdir -p $(HOME)/.config/atuin
 	@ln -fs $(DOTFILES)/sh/atuin.toml $(HOME)/.config/atuin/config.toml
-	@ln -fs $(DOTFILES)/sh/dir_colors $(HOME)/.dir_colors
+	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dir_colors
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
@@ -53,8 +70,8 @@ shell:
 	@mkdir -p $(HOME)/.config/glow
 	@ln -fs $(DOTFILES)/sh/glow.yml $(HOME)/.config/glow/glow.yml
 	@ln -fs $(DOTFILES)/sh/glow.nord.json $(HOME)/.config/glow/nord.json
-SETUP_TARGETS += zsh
-zsh: shell
+zsh: zsh-config zsh-plugins
+zsh-config: shell
 	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
 	@ln -fs $(DOTFILES)/zsh/zlogout $(HOME)/.zlogout
 	@ln -fs $(DOTFILES)/zsh/zlogin $(HOME)/.zlogin
@@ -66,32 +83,22 @@ zsh: shell
 	@mkdir -p $(HOME)/.zsh/cache
 	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
 	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
-	@if [ -d $(HOME)/.local/share/fzf-tab ]; then \
-		git -C $(HOME)/.local/share/fzf-tab pull -q; \
-	else \
-		git clone -q https://github.com/Aloxaf/fzf-tab $(HOME)/.local/share/fzf-tab; \
-	fi
 	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
 	@ln -fns $(DOTFILES)/zsh/zsh-github-copilot.plugin.zsh $(HOME)/.local/share/zsh/zsh-github-copilot.zsh
 	@ln -fs $(DOTFILES)/zsh/tmux-auto-title.zsh $(HOME)/.local/share/zsh/tmux-auto-title.zsh
-tmux:
+zsh-plugins: zsh-config
+	$(call require-command,git)
+	@[ -e "$(HOME)/.local/share/fzf-tab/.git" ] || \
+		git clone -q https://github.com/Aloxaf/fzf-tab "$(HOME)/.local/share/fzf-tab"
+tmux: tmux-config tmux-plugins
+tmux-config:
 	@mkdir -p $(HOME)/.config/tmux/
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
 	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.tmux.conf
-	@[ -d $(HOME)/.tmux/plugins/tpm ] || git clone --depth=1 https://github.com/tmux-plugins/tpm $(HOME)/.tmux/plugins/tpm
-	@for d in $(HOME)/.tmux/plugins/*/ $(HOME)/.config/tmux/plugins/*/; do \
-		[ -d "$$d" ] || continue; \
-		[ "$$(basename "$$d")" = "tpm" ] && continue; \
-		[ -d "$$d.git" ] && continue; \
-		echo "tmux: removing corrupted plugin dir $$d (not a git checkout, would block reinstall)"; \
-		rm -rf "$$d"; \
-	done
-	@tmux list-sessions 2>/dev/null | grep -q . || tmux new-session -d -s __tpm_bootstrap 2>/dev/null || true
-	@$(HOME)/.tmux/plugins/tpm/bin/install_plugins || true
-	@tmux kill-session -t __tpm_bootstrap 2>/dev/null || true
-	@mkdir -p $(HOME)/.config/tmux/plugins/tmux-resurrect/strategies
-	@ln -fs $(DOTFILES)/bin/tmux-resurrect-claude $(HOME)/.config/tmux/plugins/tmux-resurrect/strategies/claude.sh
-	@echo "tmux: TPM and plugins installed"
+tmux-plugins: tmux-config
+	$(call require-command,tmux)
+	$(call require-command,git)
+	@bash "$(DOTFILES)/scripts/install-tmux-plugins.sh" "$(DOTFILES)"
 tmux-status-legend:
 	@"$(DOTFILES)/bin/tmux-claude-state" legend
 tmux-program-status:
@@ -101,8 +108,10 @@ sql-formatters:
 	@ln -fs $(DOTFILES)/rc/sql-formatter.json $(HOME)/.sql-formatter.json
 	@ln -fs $(DOTFILES)/rc/sqlfluff $(HOME)/.sqlfluff
 	@ln -fs $(DOTFILES)/bin/sql-format-bigquery $(HOME)/.local/bin/sql-format-bigquery
+	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/sql-format-bigquery" --help >/dev/null
-vim: sql-formatters
+vim: vim-config sql-formatters
+vim-config:
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
 	@mkdir -p $(HOME)/.config/
@@ -114,6 +123,7 @@ vim: sql-formatters
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
 X:
+	$(call require-os,Linux)
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults
 	@ln -fs $(DOTFILES)/rc/xinitrc $(HOME)/.xinitrc
@@ -138,6 +148,7 @@ gpg:
 	@ln -fs $(DOTFILES)/rc/gpg-agent.conf $(HOME)/.gnupg/gpg-agent.conf
 	@chmod 700 $(HOME)/.gnupg
 yabai:
+	$(call require-os,Darwin)
 	@mkdir -p $(HOME)/.config/skhd
 	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
 	@mkdir -p $(HOME)/.config/yabai
@@ -145,12 +156,15 @@ yabai:
 	@mkdir -p $(HOME)/.config/borders
 	@ln -fs $(DOTFILES)/yabai/bordersrc $(HOME)/.config/borders/bordersrc
 polybar:
+	$(call require-os,Linux)
+	@mkdir -p $(HOME)/.config
 	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
 oni:
 	@mkdir -p $(HOME)/.config/oni
 	@ln -fs $(DOTFILES)/oni/config.js $(HOME)/.config/oni/config.js
 	@ln -fs $(DOTFILES)/oni/config.tsx $(HOME)/.config/oni/config.tsx
 bspwm:
+	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config/bspwm
 	@mkdir -p $(HOME)/.config/sxhkd
 	@mkdir -p $(HOME)/.config/rofi
@@ -158,7 +172,8 @@ bspwm:
 	@ln -fs $(DOTFILES)/bspwm/bspwmrc $(HOME)/.config/bspwm/bspwmrc
 	@ln -fs $(DOTFILES)/bspwm/sxhkdrc $(HOME)/.config/sxhkd/sxhkdrc
 	@ln -fs $(DOTFILES)/rc/config.rasi $(HOME)/.config/rofi/config.rasi
-kitty: kitty-terminfo
+kitty: kitty-config kitty-terminfo
+kitty-config:
 	@mkdir -p $(HOME)/.config/kitty
 	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
 	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
@@ -212,32 +227,26 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
 superwhisper:
-	@if ! command -v git-crypt >/dev/null 2>&1; then \
-		echo "⚠️  Skipping superwhisper: git-crypt not installed. Install with: brew install git-crypt"; \
-	else \
-		echo "Checking git-crypt status..."; \
-		if git-crypt status 2>/dev/null | grep -q "not encrypted: superwhisper/settings/settings.json"; then \
-			echo "⚠️  git-crypt is locked. Unlocking..."; \
-			git-crypt unlock || (echo "Error: Failed to unlock. Ensure GPG key is available." && exit 1); \
-			echo "✓ git-crypt unlocked"; \
-		else \
-			echo "✓ git-crypt already unlocked"; \
+	$(call require-os,Darwin)
+	@for source in "$(DOTFILES)/superwhisper/settings/settings.json" "$(DOTFILES)/superwhisper/modes/default.json"; do \
+		[ -r "$$source" ] || { echo "Missing or unreadable SuperWhisper configuration: $$source" >&2; exit 1; }; \
+		if head -c 10 "$$source" | grep -q GITCRYPT; then \
+			echo 'SuperWhisper configuration is encrypted; run git-crypt unlock, then make superwhisper.' >&2; \
+			exit 1; \
 		fi; \
-		mkdir -p $(HOME)/Documents/superwhisper/settings; \
-		mkdir -p $(HOME)/Documents/superwhisper/modes; \
-		ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json; \
-		ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json; \
-		echo "✓ SuperWhisper configuration linked"; \
-	fi
+	done
+	@mkdir -p $(HOME)/Documents/superwhisper/settings $(HOME)/Documents/superwhisper/modes
+	@ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json
+	@ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json
 SETUP_TARGETS += claude-plugins
 claude-plugins:
+	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-claude: claude-plugins agent-status-broker
+claude: claude-config claude-plugins agent-status-broker
+claude-config:
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
-	@git -C $(DOTFILES) config filter.claude-settings.clean 'jq --indent 2 "del(.feedbackSurveyState)"'
-	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
 	@for d in commands agents skills workflows; do \
@@ -259,18 +268,28 @@ claude: claude-plugins agent-status-broker
 		done; \
 	done
 	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
+	$(call require-command,git)
+	@git -C $(DOTFILES) config filter.claude-settings.clean 'jq --indent 2 "del(.feedbackSurveyState)"'
+	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
+	$(call require-command,jq)
 	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
-	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
+	@temporary=$$(mktemp "$(HOME)/.claude.json.XXXXXX") || exit 1; \
+	trap 'rm -f "$$temporary"' 0; \
+	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
 codex-skills:
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
-SETUP_TARGETS += codex-tmux
+SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
 	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
+# The aggregate waits for hook migration before installing Codex hooks. The
+# standalone config target remains usable without the broker.
 codex-tmux: agent-status-broker
-	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
+codex-tmux codex-tmux-config:
+	$(call require-command,$(UV))
+	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
@@ -284,12 +303,16 @@ codex-env:
 			ln -fs "$(DOTFILES)/codex/env" "$(HOME)/.codex/.env"; \
 		fi; \
 	fi
-codex: claude codex-skills codex-agents codex-tmux codex-env
+codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
+codex-config: codex-env
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
 	fi
 	@cat $(DOTFILES)/codex/AGENTS.md $(DOTFILES)/codex/AGENTS.local.md > $(HOME)/.codex/AGENTS.md 2>/dev/null || cp $(DOTFILES)/codex/AGENTS.md $(HOME)/.codex/AGENTS.md
+codex-mcp: claude-config codex-config
+	$(call require-command,codex)
+	$(call require-command,jq)
 	@$(DOTFILES)/bin/sync-codex-mcp-servers
 quarto:
 	@mkdir -p $(HOME)/.config/quarto
@@ -343,12 +366,13 @@ mail:
 test:
 	@pytest bin/*_test.py
 
-SETUP_TARGETS += audit-skills
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 
-SETUP_TARGETS += ui-review test-ui-review
+SETUP_TARGETS += ui-review
 ui-review:
+	$(call require-command,node)
+	$(call require-command,npm)
 	@python3 $(DOTFILES)/scripts/install-viewrule.py
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/ui-review
@@ -357,8 +381,7 @@ ui-review:
 test-ui-review:
 	@python3 $(DOTFILES)/scripts/test-viewrule.py
 
-# Opt-in services: keep these out of .PHONY, which is also the default target's
-# dependency list.
+# Opt-in services stay out of SETUP_TARGETS.
 # The helper remembers the selected server, falling back to dev on first setup.
 ATUIN_SYNC_HOST ?=
 UV ?= uv
@@ -383,6 +406,8 @@ test-bootstrap-nvim:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"
 
 kitty-terminfo:
+	$(call require-command,tic)
+	$(call require-command,infocmp)
 	@bash -ec 'source "$$1"; setup_kitty_terminfo' bash "$(DOTFILES)/bootstrap.sh"
 
 test-kitty-ssh:
@@ -438,4 +463,14 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all $(SETUP_TARGETS)
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup
+
+test-setup:
+	@python3 "$(DOTFILES)/scripts/test-setup.py"
+
+test-zsh-startup:
+	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
+
+ZSH_BENCHMARK_ARGS ?=
+benchmark-zsh-startup:
+	@python3 "$(DOTFILES)/scripts/benchmark-zsh-startup.py" $(ZSH_BENCHMARK_ARGS)
