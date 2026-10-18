@@ -41,6 +41,11 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     (executables / "python3").symlink_to(sys.executable)
     (executables / "uv").symlink_to(shutil.which("uv"))
     (executables / "jq").symlink_to(shutil.which("jq"))
+    # This workflow has no plugins to remove; provide the Claude CLI boundary
+    # required by the shared setup without invoking an installed user client.
+    claude = executables / "claude"
+    claude.write_text('#!/bin/sh\n[ "$*" = "plugin list --json" ] && echo "[]"\n')
+    claude.chmod(0o755)
     paseo = executables / "paseo"
     paseo.write_text('#!/bin/sh\n[ "$1" = reload ] && touch "$HOME/paseo-reloaded"\n')
     paseo.chmod(0o755)

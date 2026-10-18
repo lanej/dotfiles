@@ -10,12 +10,22 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
+`make` defaults to `setup` and prints a checklist: green `✓` for completed
+configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
+`uv`, or `jq` do not stop other setup steps, and configuration links are installed
+independently of optional integrations. It exits nonzero after the full checklist
+if anything needs attention. Install the missing dependencies or fix the reported
+issue, then rerun `make`; existing links and user configuration are safe to reuse.
+Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
+run separately with `make lint` and the `test` targets. Color is enabled in
+terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
+
 `make` (or `make claude`) also removes installed Claude Code plugins listed in
 [`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
 the Claude CLI is available. Add a marketplace-qualified plugin ID to that list
 to retire another plugin; Superpowers is the initial entry. Already-absent
 installations are a no-op; invalid configuration, inspection, or uninstall
-failures stop the task so they can be fixed.
+failures mark that step incomplete so they can be fixed.
 
 `make codex` also exposes the shared `claude/skills` tree through
 `~/.agents/skills/dotfiles`, preserving local Codex skills. Skill directories
@@ -94,7 +104,8 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
 | Target | Description |
 |---|---|
-| `make` | Symlink all configuration files |
+| `make` / `make setup` | Install configuration and integrations with a checklist |
+| `make lint` | Run skill audits and instruction-size checks |
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
 | `make codex-skills` | Refresh shared dotfiles skills for Codex |

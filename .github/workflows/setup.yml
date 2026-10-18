@@ -1,0 +1,22 @@
+name: Dotfiles setup
+on:
+  pull_request:
+    paths: ['Makefile', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', '.github/workflows/setup.yml']
+  push:
+    branches: [master]
+    paths: ['Makefile', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', '.github/workflows/setup.yml']
+permissions:
+  contents: read
+jobs:
+  setup:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: make test-setup
