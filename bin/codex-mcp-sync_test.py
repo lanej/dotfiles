@@ -34,12 +34,23 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     # The external project's installer is a package boundary for this MCP
     # configuration workflow; its own tests exercise real installation.
     broker = executables / "agent-status-broker"
-    broker.write_text("#!/bin/sh\n[ \"$1\" = install ] && [ \"$2\" = --no-start ]\n")
+    # Keep the external installation in flight while make can schedule other
+    # prerequisites; the hook installer must wait for the subsequent migration.
+    broker.write_text("#!/bin/sh\n[ \"$1\" = install ] && [ \"$2\" = --no-start ] || exit 1\nsleep 1\n")
     broker.chmod(0o755)
     # Exercise macOS's bundled Bash too; the Codex CLI boundary is simulated below.
     (executables / "bash").symlink_to("/bin/bash")
     (executables / "python3").symlink_to(sys.executable)
-    (executables / "uv").symlink_to(shutil.which("uv"))
+    # At the hook-installation boundary, migration must already have removed
+    # Paseo's old handlers. Exercise that invariant with parallel make enabled.
+    uv = executables / "uv"
+    uv.write_text(f"#!{sys.executable}\n" + f'''
+import os
+from pathlib import Path
+assert "PASEO_HOOK_CLI" not in (Path.home() / ".codex/hooks.json").read_text(), "hook installation overlapped broker migration"
+os.execv({shutil.which("uv")!r}, [{shutil.which("uv")!r}, *os.sys.argv[1:]])
+''')
+    uv.chmod(0o755)
     (executables / "jq").symlink_to(shutil.which("jq"))
     # This workflow has no plugins to remove; provide the Claude CLI boundary
     # required by the shared setup without invoking an installed user client.
@@ -120,19 +131,27 @@ else:
     cli.chmod(0o755)
     subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
     env = dict(os.environ, PATH=f"{executables}:/usr/bin:/bin",
+               UV="uv",
                AGENT_STATUS_INSTALL_FLAGS="--no-start",
                AGENT_STATUS_BIN=str(broker),
                UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
                HOME=str(home), CODEX_HOME=str(home / ".codex"),
                PASEO_HOME=str(home / ".paseo"), CLAUDE_CONFIG_DIR=str(home / ".claude"))
-    command = [shutil.which("make"), "-f", str(ROOT / "Makefile"), "codex",
+    command = [shutil.which("make"), "-j4", "-f", str(ROOT / "Makefile"),
                f"DOTFILES={repo}", f"HOME={home}"]
-    subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
+    subprocess.run([*command, "codex-tmux"], cwd=repo, env=env,
+                   check=True, capture_output=True, text=True)
+    subprocess.run([*command, "codex"], cwd=repo, env=env,
+                   check=True, capture_output=True, text=True)
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
         "enableTerminalAgentHooks": False, "retained": "kept"}
     assert (home / "paseo-reloaded").exists()
     installed_hooks = (home / ".codex/hooks.json").read_text()
     assert "printf retained" in installed_hooks and "PASEO_HOOK_CLI" not in installed_hooks
+    desired_hooks = json.loads((repo / "codex/tmux-hooks.json").read_text())["hooks"]
+    actual_hooks = json.loads(installed_hooks)["hooks"]
+    assert all(group in actual_hooks[event]
+               for event, groups in desired_hooks.items() for group in groups)
 
     servers = json.loads(state.read_text())
     assert servers["workspace"]["transport"] == {
@@ -158,5 +177,7 @@ else:
     servers["workspace"]["enabled"] = False
     state.write_text(json.dumps(servers))
     previous_state = state.read_bytes()
-    subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
+    subprocess.run([*command, "codex"], cwd=repo, env=env,
+                   check=True, capture_output=True, text=True)
     assert state.read_bytes() == previous_state
+    assert (home / ".codex/hooks.json").read_text() == installed_hooks

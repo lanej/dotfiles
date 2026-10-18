@@ -284,8 +284,10 @@ SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
 	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
-codex-tmux: agent-status-broker codex-tmux-config
-codex-tmux-config:
+# The aggregate waits for hook migration before installing Codex hooks. The
+# standalone config target remains usable without the broker.
+codex-tmux: agent-status-broker
+codex-tmux codex-tmux-config:
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-agents
@@ -461,10 +463,14 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
+
+ZSH_BENCHMARK_ARGS ?=
+benchmark-zsh-startup:
+	@python3 "$(DOTFILES)/scripts/benchmark-zsh-startup.py" $(ZSH_BENCHMARK_ARGS)

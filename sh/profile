@@ -124,7 +124,7 @@ fi
 # sccache intentionally disabled — see docs/radar.md Hold: sccache (unbounded disk growth)
 
 if command -v dircolors >/dev/null 2>&1 && [ -r "$HOME/.dir_colors" ]; then
-	eval "$(dircolors "$HOME/.dir_colors")"
+	eval "$(dircolors -b "$HOME/.dir_colors")"
 fi
 
 export SKIM_DEFAULT_COMMAND="fd --type f || git ls-tree -r --name-only HEAD || rg --files || find ."

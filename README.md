@@ -37,6 +37,13 @@ The custom fzf integration requires both `fzf` and `fd`; it activates in a new
 shell once they are installed. Failed integration generators do not replace
 working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
 
+`make benchmark-zsh-startup` measures the current home's interactive login-shell
+startup and exit over 30 runs after three warmups. It reports median and p95
+wall time for `zsh -d -i -l -c exit`, including process launch and logout,
+with global rc files skipped. It inherits your `HOME` and `PATH`; run it on your
+workstation for representative timings. Use
+`ZSH_BENCHMARK_ARGS='--runs 60 --json'` for more samples and JSON output.
+
 `make` (or `make claude`) also removes installed Claude Code plugins listed in
 [`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
 the Claude CLI is available. Add a marketplace-qualified plugin ID to that list

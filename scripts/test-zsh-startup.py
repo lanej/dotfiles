@@ -46,6 +46,10 @@ print -r -- READY
         isolated = isolated.replace("/usr/share/", str(temporary / "usr-share") + "/")
         profile.unlink()
         profile.write_text(isolated)
+        # SHELL is intentionally unset; dircolors must select a compatible
+        # output format itself when the optional command is available.
+        if dircolors := shutil.which("dircolors"):
+            (executables / "dircolors").symlink_to(dircolors)
         (home / ".oh-my-zsh").mkdir()  # interrupted framework installation
         partial = subprocess.run([*shell, probe + '''
 (( ! $+widgets[fzf-completion] )) || exit 12
