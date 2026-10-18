@@ -40,6 +40,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import zipfile
 
 home = Path(os.environ["HOME"])
 fixture = home / "fixture"
@@ -57,7 +58,10 @@ elif name == "git":
     if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
-    if args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
+    if args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
+        (home / ".local/bin/tmux").symlink_to(fixture / "driver")
+        record("tmux package")
+    elif args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
         (home / ".local/bin/eza").symlink_to(fixture / "driver")
         record("eza package")
     else:
@@ -97,6 +101,12 @@ NVM
 ln -fs "$HOME/fixture/driver" "$HOME/.cargo/bin/rustup"
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.cargo/env"
 """
+    elif url.endswith("/Hack.zip"):
+        with zipfile.ZipFile(target, "w") as archive:
+            archive.writestr("HackNerdFontMono-Regular.ttf", b"fixture font")
+            archive.writestr("HackNerdFont-Regular.ttf", b"non-mono font")
+        record("hack font")
+        sys.exit(0)
     elif url == "https://claude.ai/install.sh":
         event = "claude"
         script = r"""mkdir -p "$HOME/.local/bin"
@@ -212,12 +222,6 @@ elif name == "bedrock-router":
     record("router setup")
 elif name == "loginctl":
     print("Linger=yes")
-elif name == "cargo" and args[:1] == ["install"]:
-    assert "ssh://git@github.com/easypost-sandbox/kagi.git" in args, args
-    (home / ".cargo/bin/kagi").symlink_to(fixture / "driver")
-    (home / ".cargo/.crates.toml").write_text('"kagi 0.1.0 (git+ssh://fixture)" = ["kagi"]\n')
-elif name == "kagi":
-    sys.exit(2)  # The actual CLI does not support --version.
 elif name == "git-crypt":
     if args != ["version"]:
         sys.exit(2)
@@ -265,6 +269,7 @@ else:
             **os.environ,
             "HOME": str(home),
             "PATH": f"{fixture}:/usr/bin:/bin",
+            "ATUIN_SYNC_HOST": "fixture-host",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
@@ -283,8 +288,19 @@ else:
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
+        assert (home / ".local/bin/tmux").is_file()
+        assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
+        font_dir = home / ".local/share/fonts"
+        assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
+        assert not (font_dir / "HackNerdFont-Regular.ttf").exists()
+        font_rerun = subprocess.run(
+            ["bash", "-ec", 'source "$1"; install_hack_nerd_font', "bash", str(checkout / "bootstrap.sh")],
+            env=env, capture_output=True, text=True,
+        )
+        assert font_rerun.returncode == 0, font_rerun.stdout + font_rerun.stderr
+        assert (home / "events").read_text().splitlines().count("hack font") == 1
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")

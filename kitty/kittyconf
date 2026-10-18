@@ -3,6 +3,7 @@ font_size 13
 disable_ligatures never
 hide_window_decorations yes
 map cmd+shift+r load_config_file ~/.config/kitty/kitty.conf
+background_opacity 0.9
 # Open the last web link, including links wrapped inside Codex's padded output.
 map cmd+shift+o kitten open_last_url.py
 map cmd+n new_tab

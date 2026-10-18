@@ -26,7 +26,7 @@ install_from_package_manager() {
 
 package_manager_semver() {
 	if command -v brew &>/dev/null; then
-		(brew info "$1" | head -n1 | parse_semver | head -n1) || (echo "package $1 not found in brew" && return 1)
+		(brew info "$1" | sed -n '1p' | parse_semver | sed -n '1p') || (echo "package $1 not found in brew" >&2 && return 1)
 	elif command -v yay &>/dev/null; then
 		yay -Qi "$1" | parse_semver || (echo "package $1 not found in yay" && return 1)
 	elif command -v pacman &>/dev/null; then
@@ -198,7 +198,9 @@ install_gh_extensions() {
 	echo "Installing GitHub CLI extensions..."
 
 	# Install copilot extension if not already installed
-	if ! gh extension list | grep -q "github/gh-copilot"; then
+	if gh copilot --help >/dev/null 2>&1; then
+		echo "GitHub Copilot already available"
+	elif ! gh extension list | grep -q "github/gh-copilot"; then
 		gh extension install github/gh-copilot || echo "Failed to install gh-copilot extension"
 	else
 		echo "gh-copilot extension already installed"
@@ -634,11 +636,15 @@ install_rust-analyzer_from_release() {
 }
 
 zsh-autosuggestions_current_semver() {
+	local version
 	if command -v brew &>/dev/null; then
-		ls "$(brew --prefix)/Cellar/zsh-autosuggestions" 3>/dev/null | parse_semver
-	else
-		head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
+		version=$(brew list --versions zsh-autosuggestions 2>/dev/null | parse_semver | tail -n1) || version=""
+		if [ -n "$version" ]; then
+			echo "$version"
+			return 0
+		fi
 	fi
+	head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
 }
 
 install_gopls_from_release() {
@@ -681,20 +687,6 @@ install_yaml-language-server_from_release() {
 
 install_hexyl_from_release() {
 	cargo install hexyl -q --locked --version "$1"
-}
-
-install_kagi_from_source() {
-	CARGO_NET_GIT_FETCH_WITH_CLI=true cargo install --locked \
-		--git ssh://git@github.com/easypost-sandbox/kagi.git \
-		--rev 47eabb65b715e404710c9a5ddfe23d222622b102
-}
-
-kagi_current_semver() {
-	local cargo_root="${CARGO_HOME:-$HOME/.cargo}"
-	[ "$(command -v kagi)" = "$cargo_root/bin/kagi" ] || return 1
-	# This CLI has no --version flag; use Cargo's installed-package receipt.
-	awk -F'"' '$2 ~ /^kagi / { split($2, package, " "); print package[2] }' \
-		"$cargo_root/.crates.toml" 2>/dev/null | head -n1
 }
 
 install_direnv_from_release() {
@@ -839,6 +831,46 @@ install_build_dependencies() {
 	fi
 }
 
+install_macos_window_tools() {
+	[ "$os" = macos ] || return 0
+	local tool
+	for tool in yabai skhd; do
+		command -v "$tool" >/dev/null && continue
+		if ! command -v brew >/dev/null; then
+			echo "Homebrew is required to install $tool" >&2
+			return 1
+		fi
+		brew install "koekeishiya/formulae/$tool" || return 1
+	done
+}
+
+install_hack_nerd_font() (
+	local font_dir staging directory
+	if [ "$os" = macos ]; then
+		font_dir="$HOME/Library/Fonts"
+	else
+		font_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
+	fi
+	for directory in "$font_dir" "$HOME/.fonts" /Library/Fonts /usr/local/share/fonts /usr/share/fonts; do
+		if [ -d "$directory" ] && [ -n "$(find "$directory" -name 'HackNerdFontMono-Regular.ttf' -print -quit)" ]; then
+			return 0
+		fi
+	done
+	if command -v fc-list >/dev/null && fc-list : family | grep -Fxq 'Hack Nerd Font Mono'; then
+		return 0
+	fi
+	staging=$(mktemp -d) || return 1
+	trap 'rm -rf "$staging"' EXIT
+	echo "Installing Hack Nerd Font Mono..."
+	curl -fL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Hack.zip -o "$staging/Hack.zip" || return 1
+	unzip -q "$staging/Hack.zip" 'HackNerdFontMono-*.ttf' -d "$staging" || return 1
+	mkdir -p "$font_dir" || return 1
+	cp "$staging"/HackNerdFontMono-*.ttf "$font_dir/" || return 1
+	if command -v fc-cache >/dev/null; then
+		fc-cache -f "$font_dir" || return 1
+	fi
+)
+
 setup_kitty_terminfo() {
 	local root
 	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
@@ -891,6 +923,11 @@ install_dependencies() {
 	install_package_version claude-code 2.1.295
 
 	# terminal candy
+	if ! command -v tmux >/dev/null; then
+		install_from_package_manager tmux || return 1
+	fi
+	install_macos_window_tools || return 1
+	install_hack_nerd_font || return 1
 	install_package_version btop 1.4.7
 	install_package_version fzf 0.59.0
 	install_package_version starship 1.22.1
@@ -929,13 +966,18 @@ install_dependencies() {
 
 	# tools
 	install_package_version hexyl 0.16.0
-	install_package_version kagi 0.1.0
 	install_package_version direnv 2.35.0
 	install_package_version just 1.40.0
 
 }
 
 setup_atuin_sync() {
+	if [ -z "${ATUIN_SYNC_HOST:-}" ] &&
+		[ ! -s "$HOME/.local/state/atuin-sync/host" ] &&
+		[ ! -f "$HOME/.local/share/atuin/self-hosted-account.json" ]; then
+		echo "No Atuin sync host configured; skipping sync setup. Set ATUIN_SYNC_HOST to enable it."
+		return 0
+	fi
 	local atuin_uv
 	atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
 	make -C "$HOME/.files" atuin-sync \

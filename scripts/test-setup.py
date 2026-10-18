@@ -62,6 +62,8 @@ def main():
         assert "test-ui-review" not in partial.stdout
         if sys.platform == "darwin":
             assert (home / ".config/yabai/yabairc").is_symlink()
+            assert not (home / "Documents/superwhisper").exists()
+            assert "superwhisper" not in partial.stdout
             assert not (home / ".config/polybar").exists()
             assert not (home / ".xinitrc").exists()
             assert not (home / ".config/bspwm").exists()

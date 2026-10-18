@@ -3,7 +3,7 @@ SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ru
 SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm spotify_player python go claude-config gemini cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config
 LINUX_SETUP_TARGETS := X polybar bspwm
-DARWIN_SETUP_TARGETS := yabai superwhisper
+DARWIN_SETUP_TARGETS := yabai
 DOTFILES := $(shell pwd)
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
@@ -12,6 +12,9 @@ ifeq ($(UNAME_S),Linux)
 SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
 else ifeq ($(UNAME_S),Darwin)
 SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
+ifneq ($(shell command -v git-crypt >/dev/null 2>&1 && test -r "$(DOTFILES)/superwhisper/settings/settings.json" && ! head -c 10 "$(DOTFILES)/superwhisper/settings/settings.json" | grep -q GITCRYPT && printf ready),)
+SETUP_TARGETS += superwhisper
+endif
 endif
 
 # The runner reports every step and returns failure only after trying them all.
