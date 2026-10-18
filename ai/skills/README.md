@@ -1,6 +1,6 @@
-# Claude Code Skills
+# Shared AI Skills
 
-This directory contains specialized skill files that enhance Claude Code's capabilities for specific tools, workflows, and domains.
+This directory contains specialized skill files that enhance Claude Code and Codex capabilities for specific tools, workflows, and domains.
 
 ## What are Skills?
 

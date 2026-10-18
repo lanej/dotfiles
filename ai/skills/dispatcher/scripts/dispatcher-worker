@@ -2,7 +2,7 @@
 # Generic mechanical worker for the `dispatcher` skill template. Any repo
 # adopting the dispatcher pattern points its own dispatcher session at this
 # one shared script instead of forking bugfix-worker/infra-worker per repo —
-# see claude/skills/bugfix-dispatcher/SKILL.md's bin/bugfix-worker and
+# see ai/skills/bugfix-dispatcher/SKILL.md's bin/bugfix-worker and
 # easypost-enterprise-platform-infra's bin/infra-worker for the two
 # production scripts this generalizes from. Everything repo-specific comes
 # from a per-repo JSON config file (default `.claude/dispatcher.config.json`

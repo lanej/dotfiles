@@ -77,7 +77,7 @@ this repository's focused regression checks and entrypoint size budget.
 
 ## Claude Commands & Agents Versioning Pattern
 
-New files under `claude/{commands,agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.
+New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.
 
 ## Tech Radar
 

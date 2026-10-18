@@ -36,7 +36,7 @@ duplicate-invocation problem is meant to avoid.
 
 ## Step 1 — Analyze the transcript
 
-Scan the transcript for patterns indicating missing, incomplete, or incorrect instructions across all eligible targets: **user-level CLAUDE.md, project-level CLAUDE.md, skill files** (`~/.files/claude/skills/*/SKILL.md`), and **auto-memory** (`~/.claude/projects/…/memory/`).
+Scan the transcript for patterns indicating missing, incomplete, or incorrect instructions across all eligible targets: **user-level CLAUDE.md, project-level CLAUDE.md, skill files** (`~/.files/ai/skills/*/SKILL.md`), and **auto-memory** (`~/.claude/projects/…/memory/`).
 
 Look for:
 - Requests Claude misunderstood
@@ -90,7 +90,7 @@ Classify where each finding belongs. Ask first: **is this a bug/gap in the tool 
 - Local tool repos: `epq` → `~/src/analysis-doc`; check `which <tool>` for others
 - If no local repo exists (xlsx, bigquery CLI, external SaaS), document the workaround in the skill file instead
 
-**Skill file** (`~/.files/claude/skills/<name>/SKILL.md`) — usage guidance, gotchas, patterns, workarounds:
+**Skill file** (`~/.files/ai/skills/<name>/SKILL.md`) — usage guidance, gotchas, patterns, workarounds:
 - If a finding is about how to use a specific tool and that tool has a skill file, it goes there — not CLAUDE.md
 - CLAUDE.md should only say when to load the skill, not the tool's usage detail
 - Do NOT add a skill-file caveat for something that should be fixed in the tool
@@ -130,7 +130,7 @@ Split findings by scope and dispatch:
 
 **Skill file findings** — write the change directly yourself rather than delegating:
 1. Write the incident to a memory file first, using the Memory findings procedure below.
-2. Edit the skill file (`~/.files/claude/skills/<name>/SKILL.md`) directly — add or edit the usage guidance/gotcha/pattern under the relevant section, ending with `(detail: memory "‹slug›")` where `‹slug›` is the memory file's `name`. Match the file's existing terse style; do not restate the incident narrative inline.
+2. Edit the skill file (`~/.files/ai/skills/<name>/SKILL.md`) directly — add or edit the usage guidance/gotcha/pattern under the relevant section, ending with `(detail: memory "‹slug›")` where `‹slug›` is the memory file's `name`. Match the file's existing terse style; do not restate the incident narrative inline.
 3. This agent has no `Skill` tool, so `skill-creator` is not callable here regardless of task size — do a routine single-finding addition via step 2 directly. A genuine new-skill creation or full skill restructure is out of scope for reflection; escalate that to the user instead of attempting it.
 
 **CLAUDE.md findings** — for the common case (one or a few rule additions/edits arising from this session), write the change directly yourself rather than delegating:

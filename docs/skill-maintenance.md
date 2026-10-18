@@ -35,7 +35,7 @@ studies and their supporting artifacts require an explicit owner request.
 
 CI checks tracked `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` files at
 any depth, plus Markdown entrypoints under `claude/commands/` and
-`claude/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
+`ai/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
 are skipped in the source scan; the installed scan follows them. The installed
 `claude/CONSTITUTION.md` import is also covered in both scans. The estimate is
 `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.

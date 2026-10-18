@@ -24,7 +24,10 @@ skill=claude/skills/example/SKILL.md
 awk 'BEGIN { for (i=0; i<490; i++) printf "%031d\r\n", 0 }' > "$skill"
 git add "$skill"
 git commit -qm baseline
-ln -s "$repo/claude/skills" "$installed/skills"
+mkdir -p ai
+git mv claude/skills ai/skills
+skill=ai/skills/example/SKILL.md
+ln -s "$repo/ai/skills" "$installed/skills"
 
 printf '%031d\r\n' 0 >> "$skill"
 awk 'BEGIN { for (i=0; i<501; i++) print "x" }' > AGENTS.md
@@ -53,7 +56,7 @@ if "${command[@]}" > "$fixture/result" 2>&1; then
 fi
 grep -Fq "FAIL $skill: 520 lines" "$fixture/result"
 cat > "$folder/size-budgets.json" <<'JSON'
-{"claude/skills/example/SKILL.md": {"max_lines": 600, "max_estimated_tokens": 5000, "reason": "fixture"}}
+{"ai/skills/example/SKILL.md": {"max_lines": 600, "max_estimated_tokens": 5000, "reason": "fixture"}}
 JSON
 "${command[@]}" > "$fixture/result" 2>&1 || { cat "$fixture/result"; exit 1; }
 

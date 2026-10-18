@@ -18,7 +18,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     instruction.write_text("---\nname: shared-workflow\ndescription: Use when reviewing shared work.\n---\nReview the work.\n")
     (external / "references").mkdir()
     (external / "references/guide.md").write_text("Review guide.\n")
-    source = repo / "claude/skills/shared-workflow"
+    source = repo / "ai/skills/shared-workflow"
     source.mkdir(parents=True)
     (source / "SKILL.md").symlink_to(instruction)
     (source / "references").symlink_to(external / "references")
@@ -27,6 +27,9 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     local = home / ".agents/skills/local-workflow/SKILL.md"
     local.parent.mkdir(parents=True)
     local.write_text("Local instructions.\n")
+    cache = home / ".codex/dotfiles-skills"
+    cache.mkdir(parents=True)
+    (cache / "shared-workflow").symlink_to(repo / "claude/skills/shared-workflow")
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
