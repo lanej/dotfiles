@@ -8,12 +8,6 @@ tpm="$HOME/.tmux/plugins/tpm"
     printf 'TPM installer is missing or not executable: %s/bin/install_plugins\n' "$tpm" >&2
     exit 1
 }
-for directory in "$HOME"/.tmux/plugins/*/ "$HOME"/.config/tmux/plugins/*/; do
-    [[ -d $directory ]] || continue
-    [[ ${directory%/} == */tpm || -d $directory.git ]] && continue
-    printf 'tmux: removing corrupted plugin directory %s\n' "$directory"
-    rm -rf "$directory"
-done
 
 # Only clean up the session created by this invocation; leave user sessions alone.
 session="__tpm_bootstrap_$$"
@@ -28,6 +22,12 @@ if ! tmux list-sessions >/dev/null 2>&1; then
     tmux new-session -d -s "$session"
     created=1
 fi
-"$tpm/bin/install_plugins"
+if "$tpm/bin/install_plugins"; then
+    :
+else
+    status=$?
+    printf 'TPM installation failed; existing plugin directories were preserved.\n' >&2
+    exit "$status"
+fi
 mkdir -p "$HOME/.config/tmux/plugins/tmux-resurrect/strategies"
 ln -fs "$dotfiles/bin/tmux-resurrect-claude" "$HOME/.config/tmux/plugins/tmux-resurrect/strategies/claude.sh"

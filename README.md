@@ -20,6 +20,17 @@ Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
 run separately with `make lint` and the `test` targets. Color is enabled in
 terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
 
+Platform-specific setup is included only on its supported OS:
+
+| Platform | Additional configuration |
+|---|---|
+| Linux | X11, Polybar, bspwm/sxhkd/rofi |
+| macOS | Yabai/skhd/borders, SuperWhisper |
+
+Explicitly requesting an unsupported target fails before writing configuration.
+Existing tmux plugin directories are preserved, including local plugins without
+Git metadata; failed TPM installation reports an error for manual recovery.
+
 Zsh also starts silently during a partial install. Missing shared files and
 optional tools leave the basic prompt, completion, and history available.
 The custom fzf integration requires both `fzf` and `fd`; it activates in a new

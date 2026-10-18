@@ -1,11 +1,18 @@
 .DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters X ruby polybar oni bspwm kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm yabai spotify_player python go claude-config gemini cargo superwhisper presenterm mail quarto codex-config codex-mcp
+SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby oni kitty-config kitty-terminfo
+SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm spotify_player python go claude-config gemini cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config
+LINUX_SETUP_TARGETS := X polybar bspwm
+DARWIN_SETUP_TARGETS := yabai superwhisper
 DOTFILES := $(shell pwd)
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
+else ifeq ($(UNAME_S),Darwin)
+SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
+endif
 
 # The runner reports every step and returns failure only after trying them all.
 all: setup
@@ -19,6 +26,10 @@ endif
 
 define require-command
 	@command -v "$(1)" >/dev/null 2>&1 || { printf '%s\n' 'Missing dependency: $(1). Install it or add it to PATH, then rerun make.' >&2; exit 1; }
+endef
+
+define require-os
+	@test "$(UNAME_S)" = "$(1)" || { printf '%s\n' '$@: requires $(1); detected $(UNAME_S).' >&2; exit 1; }
 endef
 
 instruction-size:
@@ -77,7 +88,7 @@ zsh-config: shell
 	@ln -fs $(DOTFILES)/zsh/tmux-auto-title.zsh $(HOME)/.local/share/zsh/tmux-auto-title.zsh
 zsh-plugins: zsh-config
 	$(call require-command,git)
-	@[ -d "$(HOME)/.local/share/fzf-tab/.git" ] || \
+	@[ -e "$(HOME)/.local/share/fzf-tab/.git" ] || \
 		git clone -q https://github.com/Aloxaf/fzf-tab "$(HOME)/.local/share/fzf-tab"
 tmux: tmux-config tmux-plugins
 tmux-config:
@@ -112,6 +123,7 @@ vim-config:
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
 X:
+	$(call require-os,Linux)
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults
 	@ln -fs $(DOTFILES)/rc/xinitrc $(HOME)/.xinitrc
@@ -136,6 +148,7 @@ gpg:
 	@ln -fs $(DOTFILES)/rc/gpg-agent.conf $(HOME)/.gnupg/gpg-agent.conf
 	@chmod 700 $(HOME)/.gnupg
 yabai:
+	$(call require-os,Darwin)
 	@mkdir -p $(HOME)/.config/skhd
 	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
 	@mkdir -p $(HOME)/.config/yabai
@@ -143,12 +156,15 @@ yabai:
 	@mkdir -p $(HOME)/.config/borders
 	@ln -fs $(DOTFILES)/yabai/bordersrc $(HOME)/.config/borders/bordersrc
 polybar:
+	$(call require-os,Linux)
+	@mkdir -p $(HOME)/.config
 	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
 oni:
 	@mkdir -p $(HOME)/.config/oni
 	@ln -fs $(DOTFILES)/oni/config.js $(HOME)/.config/oni/config.js
 	@ln -fs $(DOTFILES)/oni/config.tsx $(HOME)/.config/oni/config.tsx
 bspwm:
+	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config/bspwm
 	@mkdir -p $(HOME)/.config/sxhkd
 	@mkdir -p $(HOME)/.config/rofi
@@ -211,6 +227,7 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
 superwhisper:
+	$(call require-os,Darwin)
 	@for source in "$(DOTFILES)/superwhisper/settings/settings.json" "$(DOTFILES)/superwhisper/modes/default.json"; do \
 		[ -r "$$source" ] || { echo "Missing or unreadable SuperWhisper configuration: $$source" >&2; exit 1; }; \
 		if head -c 10 "$$source" | grep -q GITCRYPT; then \
@@ -444,7 +461,7 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
