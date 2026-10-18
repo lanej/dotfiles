@@ -7,11 +7,18 @@
 # (regenerate at most once per 24h) so a tool upgrade is picked up without
 # needing a version-string subprocess check on every shell.
 _cache_shell_init() {
-	local cache_file=$1
+	local cache_file=$1 temporary
 	shift
+	command -v "$1" >/dev/null 2>&1 || return 1
 	if [[ ! -r "$cache_file" ]] || [[ -n ${cache_file}(#qN.mh+24) ]]; then
-		mkdir -p "${cache_file:h}"
-		"$@" >| "$cache_file" 2>/dev/null
+		mkdir -p "${cache_file:h}" 2>/dev/null || return 1
+		temporary=$(mktemp "${cache_file}.XXXXXX" 2>/dev/null) || return 1
+		if "$@" >| "$temporary" 2>/dev/null && [[ -s $temporary ]]; then
+			mv -f "$temporary" "$cache_file" 2>/dev/null || { rm -f "$temporary"; return 1; }
+		else
+			rm -f "$temporary"
+			return 1
+		fi
 	fi
 	source "$cache_file"
 }

@@ -49,7 +49,7 @@ shell:
 	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
 	@mkdir -p $(HOME)/.config/atuin
 	@ln -fs $(DOTFILES)/sh/atuin.toml $(HOME)/.config/atuin/config.toml
-	@ln -fs $(DOTFILES)/sh/dir_colors $(HOME)/.dir_colors
+	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dir_colors
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
 	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
 	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
@@ -444,7 +444,10 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup
+.PHONY: all setup $(SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
+
+test-zsh-startup:
+	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"

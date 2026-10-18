@@ -20,6 +20,12 @@ Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
 run separately with `make lint` and the `test` targets. Color is enabled in
 terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
 
+Zsh also starts silently during a partial install. Missing shared files and
+optional tools leave the basic prompt, completion, and history available.
+The custom fzf integration requires both `fzf` and `fd`; it activates in a new
+shell once they are installed. Failed integration generators do not replace
+working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
+
 `make` (or `make claude`) also removes installed Claude Code plugins listed in
 [`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
 the Claude CLI is available. Add a marketplace-qualified plugin ID to that list

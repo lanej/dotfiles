@@ -19,7 +19,7 @@ def snapshot(home):
 
 def main():
     with tempfile.TemporaryDirectory(prefix="dotfiles-setup-") as temporary:
-        temporary = Path(temporary)
+        temporary = Path(temporary).resolve()
         repo = temporary / "dotfiles"
         home = temporary / "home"
         executables = temporary / "bin"
