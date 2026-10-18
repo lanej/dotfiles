@@ -22,6 +22,10 @@ If you hit a bug, or notice something missing, in a tool, script, or MCP server 
 
 ## How to report
 
+For a **bug**, first invoke `bug-reporter` as a separate subagent with the exact repository, dispatcher destination, observed failure, and supplied evidence. Follow `~/.files/docs/bug-reports.md`. Its only job is to report; do not ask it to investigate, reproduce, fix, or send the message. Missing reproduction alone is not a blocker. Encourage load bearing supplied screenshots, diagrams, and output; avoid redundant prose. Resolve its blockers and use its title and body, excluding the handoff-only `blockers:` line. If named selection is unavailable, use a generic drafting-only agent with the shared `~/.files/ai/agents/bug-reporter.md` definition or installed Codex instructions; report the delegation gap if neither is available.
+
+Feature requests retain the direct reporting format below. An unchanged reporter-approved bug draft can be reused; substantive revisions require a new reporter pass.
+
 Call `SendMessage` addressed to the session named `bugfix-dispatcher`:
 
 ```
@@ -32,8 +36,8 @@ SendMessage({
 })
 ```
 
-State plainly which kind it is (bug vs. feature) — the dispatcher's merge bar differs slightly: a bug fix needs a test that reproduces the reported bug; a feature needs tests that demonstrate the new behavior. Include the exact repo name (matching its directory under `~/src`), and be concrete about expected vs. actual — this becomes the committed report the work is built against, so vague reports produce vague results.
+State plainly which kind it is (bug vs. feature) — the dispatcher's merge bar differs slightly: a bug fix needs a test that reproduces the reported bug; a feature needs tests that demonstrate the new behavior. Include the exact repo name (matching its directory under `~/src`), and be concrete about expected vs. actual — this becomes the committed report the work is built against, so vague reports produce vague results. Reproduction is the fixer's responsibility; do not invent reporting steps or relabel a bug because no reproduction was supplied.
 
 ## After reporting
 
-Don't block your own task waiting for a reply. The dispatcher works asynchronously and will reply with the outcome (merged, PR opened, or rejected as out of scope) whenever it's done — often well after you've moved on. If the `bugfix-dispatcher` session isn't currently running, the message simply won't be delivered; there's no queue. That's a known, accepted limitation — retry later or mention it to Josh directly if it's urgent.
+Check the send result and distinguish successful message delivery from a drafted report or a failed send. Don't block your own task waiting for a repair reply. The dispatcher works asynchronously and will reply with the outcome (merged, PR opened, or rejected as out of scope) whenever it's done — often well after you've moved on. If the `bugfix-dispatcher` session isn't currently running, the message simply won't be delivered; there's no queue. That's a known, accepted limitation — report the delivery gap, retry later or mention it to Josh directly if it's urgent.

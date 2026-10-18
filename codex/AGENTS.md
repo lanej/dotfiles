@@ -66,6 +66,29 @@ Keep PR descriptions concise: explain the final change and why, show the result,
 
 Include a screenshot when it helps reviewers understand or assess a visual change. Omit it when the diff and prose already explain the change adequately; screenshots are not required for every PR. When included, show the actual current result, use a durable image URL that renders inline on GitHub, and verify that it loads before handing off.
 
+# Bug reports
+
+Before filing any bug report or making a substantive revision, invoke
+`bug-reporter` as a separate subagent. Supply the destination, supported markup,
+required fields, observed failure, existing evidence, and current report if
+revising. Its only job is to report: do not ask it to investigate, reproduce,
+fix, or submit. Missing reproduction alone does not block a report.
+
+Follow `~/.files/docs/bug-reports.md`. Encourage load bearing screenshots,
+diagrams, and concrete output; every image and paragraph must help the reader
+understand or assess the failure. Omit redundant or decorative content.
+Resolve the reporter's blockers, use its draft, then submit through the existing
+authorized workflow and verify the saved report, links, and images. Distinguish
+drafting, filing or message delivery, and eventual repair.
+
+The reporter must not invoke further writers or reviewers. If named selection
+is unavailable, use a generic drafting-only agent with the
+`developer_instructions` from `~/.codex/agents/bug-reporter.toml` or the shared
+`~/.files/ai/agents/bug-reporter.md` definition. If neither route is available,
+report the delegation gap explicitly. Reuse an unchanged approved draft;
+substantive revisions need a new pass. Feature requests keep their existing
+writers and workflows.
+
 # Git worktree location
 
 Create agent-owned worktrees at `<primary-checkout>/.worktrees/<task-slug>` so

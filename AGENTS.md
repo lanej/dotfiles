@@ -75,6 +75,20 @@ Before changing skills, commands, agents, or their supporting resources, read
 through the installed Anthropic skill-creator workflow and defines
 this repository's focused regression checks and entrypoint size budget.
 
+## Bug reports
+
+Before filing a bug report or making a substantive revision, invoke the
+`bug-reporter` as a separate subagent and follow [the shared standard](docs/bug-reports.md).
+Supply the destination, required fields, observed failure, and existing evidence.
+Its only job is to report: do not ask it to investigate, reproduce, fix, or submit.
+Encourage load bearing screenshots and diagrams; omit redundant prose and visuals.
+Resolve its blockers, use its draft, then submit and verify the saved result through
+the existing workflow. The reporter must not invoke further writers or reviewers.
+If named selection is unavailable, use a generic drafting-only agent with the
+installed `~/.codex/agents/bug-reporter.toml` instructions or shared
+`ai/agents/bug-reporter.md` definition; report the gap if neither is available.
+Feature requests keep their existing workflows.
+
 ## Claude Commands & Agents Versioning Pattern
 
 New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.

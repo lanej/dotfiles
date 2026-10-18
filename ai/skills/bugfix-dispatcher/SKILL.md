@@ -28,7 +28,7 @@ For each entry it reports:
 
 Generate one identifier up front for the whole report: **`slug = <YYYYMMDD-HHMMSS>-<short-kebab-description>`** (e.g. `20260903-141502-worktree-path-bug`). Reuse this exact string everywhere below — report filename, worktree name, session name — so nothing has to be re-derived, and re-reports of "the same" thing never collide (fresh timestamp each time).
 
-Determine whether the report is a **bug** or a **feature request** — the reporting agent should say so explicitly (per the `report-tool-work` skill); if genuinely ambiguous, treat it as a feature request (the stricter reading: no bug to reproduce means no repro-test requirement to satisfy).
+Use the report's **bug** or **feature request** classification (per `report-tool-work`). Missing reproduction alone does not make a bug a feature request; the fixer attempts reproduction. Clarify genuinely ambiguous requests with the caller before launching work.
 
 ### 1. Validate scope + lock
 
@@ -45,6 +45,8 @@ If it exits with BUSY: wait ~30s and retry `start` again (a second `mkdir` attem
 ### 1a. Create the tracking issue
 
 Before writing the fixer's prompt, file the tracking issue yourself — the dispatcher creates it, never the fixer, and no local `bugs/<slug>.md` file is written anywhere in this protocol (Josh's explicit call, 2026-09-23: the issue is the sole record):
+
+For bugs, reuse an unchanged reporter-approved draft that meets the issue requirements, or invoke `bug-reporter` with the supplied facts and required fields. Resolve blockers; file only its title/body. Reproduction stays with the fixer. Features keep the format below.
 
 ```
 gh issue create --repo easypost-sandbox/<repo> --title "<title>" --body "<Type/Reported-by/Reported-at/Expected/Actual/Repro — same fields the old bugs/<slug>.md template used, now in the issue body>"
