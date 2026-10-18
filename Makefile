@@ -18,7 +18,7 @@ else
 endif
 
 define require-command
-	@command -v "$(1)" >/dev/null 2>&1 || { printf '%s\n' 'Missing dependency: $(1). Install packages with bash bootstrap.sh, then rerun make.' >&2; exit 1; }
+	@command -v "$(1)" >/dev/null 2>&1 || { printf '%s\n' 'Missing dependency: $(1). Install it or add it to PATH, then rerun make.' >&2; exit 1; }
 endef
 
 instruction-size:
