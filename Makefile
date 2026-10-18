@@ -477,3 +477,13 @@ test-zsh-startup:
 ZSH_BENCHMARK_ARGS ?=
 benchmark-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/benchmark-zsh-startup.py" $(ZSH_BENCHMARK_ARGS)
+
+ac-awake-status:
+	@"$(DOTFILES)/bin/ac-awake-service" status
+ac-awake-install:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" install
+ac-awake-stop:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" stop
+ac-awake-uninstall:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" uninstall
+.PHONY: ac-awake-status ac-awake-install ac-awake-stop ac-awake-uninstall
