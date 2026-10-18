@@ -24,7 +24,7 @@ trap 'rm -rf "$scratch"' EXIT
 
 is_entrypoint() {
     case ${1##*/} in SKILL.md|AGENTS.md|CLAUDE.md|GEMINI.md) return 0 ;; esac
-    case $1 in claude/CONSTITUTION.md|claude/commands/*.md|claude/agents/*.md) return 0 ;; esac
+    case $1 in claude/CONSTITUTION.md|claude/commands/*.md|ai/agents/*.md) return 0 ;; esac
     return 1
 }
 
@@ -52,7 +52,7 @@ measure() {
 failed=0 count=0
 check_file() {
     local name=$1 path=$2 label=$3 budget_lines budget_tokens current_lines current_tokens
-    local old_lines=0 old_tokens=0 limit_lines limit_tokens status=EXISTING
+    local old_lines=0 old_tokens=0 limit_lines limit_tokens status=EXISTING base_name=$1
     count=$((count + 1))
     if [[ ! -f $path || ! -r $path ]]; then
         echo "FAIL $label: missing or unreadable instruction"; failed=1; return
@@ -61,9 +61,14 @@ check_file() {
         .[$name] // {} | [.max_lines // 500, .max_estimated_tokens // 4000] | @tsv' "$config")
     measure "$path"
     current_lines=$lines current_tokens=$tokens
+    # Preserve allowances across the shared-source move when the base predates it.
+    if [[ -z $(git --literal-pathspecs ls-tree "$base" -- "$name") &&
+          $(git --literal-pathspecs ls-files --stage -- "$name") = 100* ]]; then
+        case $name in ai/skills/*|ai/agents/*) base_name="claude/${name#ai/}" ;; esac
+    fi
     # A Git symlink blob is a path, not the previous instruction text.
-    if [[ $(git --literal-pathspecs ls-tree "$base" -- "$name") = 100* ]]; then
-        git show "$base:$name" > "$scratch/base"
+    if [[ $(git --literal-pathspecs ls-tree "$base" -- "$base_name") = 100* ]]; then
+        git show "$base:$base_name" > "$scratch/base"
         measure "$scratch/base"
         old_lines=$lines old_tokens=$tokens
     fi
@@ -97,6 +102,7 @@ if [[ -n $installed_home ]]; then
     done
     while IFS= read -r -d '' path; do
         name=${path#"$installed_home/."}
+        case $name in claude/skills/*|claude/agents/*) name="ai/${name#claude/}" ;; esac
         is_entrypoint "$name" || continue
         check_file "$name" "$path" "installed $path"
     done < "$scratch/installed"

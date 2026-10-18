@@ -44,7 +44,7 @@ else:
     env = dict(os.environ, PATH=f"{executables}:/usr/bin:/bin",
                DISPATCHER_TEST_STATE=str(state))
     env.pop("DISPATCHER_CONFIG", None)
-    script = ROOT / "claude/skills/dispatcher/scripts/dispatcher-launch"
+    script = ROOT / "ai/skills/dispatcher/scripts/dispatcher-launch"
     launched = subprocess.run(["/bin/bash", str(script), "launch"], cwd=repo,
                               env=env, capture_output=True, text=True,
                               check=True, timeout=20)

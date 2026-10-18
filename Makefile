@@ -249,7 +249,10 @@ superwhisper:
 SETUP_TARGETS += claude-plugins
 claude-plugins:
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-claude: claude-plugins agent-status-broker
+SETUP_TARGETS += claude-shared
+claude-shared:
+	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
+claude: claude-plugins agent-status-broker claude-shared
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
@@ -257,7 +260,7 @@ claude: claude-plugins agent-status-broker
 	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
-	@for d in commands agents skills workflows; do \
+	@for d in commands workflows; do \
 		[ -L $(HOME)/.claude/$$d ] && rm $(HOME)/.claude/$$d; \
 		mkdir -p $(HOME)/.claude/$$d; \
 		for link in "$(HOME)/.claude/$$d/"*; do \
@@ -268,10 +271,6 @@ claude: claude-plugins agent-status-broker
 		done; \
 		for f in $(DOTFILES)/claude/$$d/*; do \
 			[ -e "$$f" ] || continue; \
-			if [ "$(UNAME_S)" != "Darwin" ] && [ "$$d" = "skills" ] && [ "$$(basename "$$f")" = "problem-definition-contract" ]; then \
-				rm -f $(HOME)/.claude/$$d/problem-definition-contract; \
-				continue; \
-			fi; \
 			ln -fs "$$f" $(HOME)/.claude/$$d/; \
 		done; \
 	done
@@ -280,7 +279,7 @@ claude: claude-plugins agent-status-broker
 	@jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > /tmp/.claude.json.tmp && mv /tmp/.claude.json.tmp $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
 codex-skills:
-	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
+	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 SETUP_TARGETS += codex-tmux
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:
@@ -290,7 +289,7 @@ codex-tmux: agent-status-broker
 	@uv run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-agents
 codex-agents:
-	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
+	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
 	@mkdir -p $(HOME)/.codex
 	@if [ ! -e "$(HOME)/.codex/.env" ] && [ ! -L "$(HOME)/.codex/.env" ] || \

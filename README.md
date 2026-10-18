@@ -17,13 +17,17 @@ to retire another plugin; Superpowers is the initial entry. Already-absent
 installations are a no-op; invalid configuration, inspection, or uninstall
 failures stop the task so they can be fixed.
 
-`make codex` also exposes the shared `claude/skills` tree through
+`make claude-shared` links the shared `ai/skills` and `ai/agents` sources into
+Claude's installed directories, preserving local entries. `make claude` includes
+this target.
+
+`make codex` also exposes the shared `ai/skills` tree through
 `~/.agents/skills/dotfiles`, preserving local Codex skills. Skill directories
 remain linked to their sources. File-linked or lowercase entrypoints are
 normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
 those entrypoints. Missing external skill sources are reported and skipped.
 
-`make codex` converts the shared `claude/agents` Markdown files (including
+`make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
 Names, descriptions, and instructions are preserved; Claude model aliases and
 tool lists are omitted so agents inherit Codex's model and tools. Agents limited
@@ -98,7 +102,8 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
 | `make codex-skills` | Refresh shared dotfiles skills for Codex |
-| `make codex-agents` | Convert shared Claude agents for Codex |
+| `make claude-shared` | Link shared skills and agents for Claude |
+| `make codex-agents` | Convert shared agents for Codex |
 | `make codex-tmux` | Install shared tmux window-status hooks for Codex |
 | `make git` | Symlink git configuration |
 | `make tmux` | Symlink tmux configuration |
@@ -115,7 +120,8 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 ├── kitty/         # Kitty terminal config
 ├── tmux/          # Tmux config
 ├── yabai/         # macOS tiling WM config
-├── claude/        # Claude commands and agents (selectively versioned)
+├── ai/            # Shared skills and agents (selectively versioned)
+├── claude/        # Claude configuration and commands
 ├── bin/           # Utility scripts (selectively versioned)
 ├── bootstrap/     # Bootstrap helpers
 ├── docs/          # Tool-specific notes and decision rationale

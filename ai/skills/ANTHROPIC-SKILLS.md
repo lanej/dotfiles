@@ -12,7 +12,7 @@ Install them from the source instead:
   `canvas-design`, `theme-factory`, `slack-gif-creator`, `doc-coauthoring`,
   `internal-comms`, `brand-guidelines`, `mcp-builder`, `web-artifacts-builder`,
   `webapp-testing`): install from the anthropics/skills marketplace, or keep a
-  local copy under `claude/skills/` — `.gitignore` lists every name, so a local
+  local copy under `ai/skills/` — `.gitignore` lists every name, so a local
   copy stays untracked.
 
 `xlsx-python` was renamed from Anthropic's `xlsx` to avoid colliding with the

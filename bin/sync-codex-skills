@@ -84,7 +84,7 @@ def sync(source, home):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "claude/skills")
+    parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "ai/skills")
     parser.add_argument("--home", type=Path, default=Path.home())
     args = parser.parse_args()
     try:

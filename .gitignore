@@ -20,31 +20,31 @@ __pycache__
 .socrates/
 
 # Skills are ignored by default (symlinked external skills are machine-specific).
-# Real, repo-owned skills are force-added: git add -f claude/skills/<name>
-claude/skills/*
+# Real, repo-owned skills are force-added: git add -f ai/skills/<name>
+ai/skills/*
 # Anthropic-published skills (anthropics/skills, official plugins) are never
 # tracked here, even with -f: install them from the source so they stay current.
-# See claude/skills/ANTHROPIC-SKILLS.md.
-claude/skills/algorithmic-art/
-claude/skills/brand-guidelines/
-claude/skills/canvas-design/
-claude/skills/doc-coauthoring/
-claude/skills/docx/
-claude/skills/frontend-design/
-claude/skills/internal-comms/
-claude/skills/mcp-builder/
-claude/skills/pdf/
-claude/skills/pptx/
-claude/skills/skill-creator/
-claude/skills/slack-gif-creator/
-claude/skills/theme-factory/
-claude/skills/web-artifacts-builder/
-claude/skills/webapp-testing/
-claude/skills/xlsx-python/
+# See ai/skills/ANTHROPIC-SKILLS.md.
+ai/skills/algorithmic-art/
+ai/skills/brand-guidelines/
+ai/skills/canvas-design/
+ai/skills/doc-coauthoring/
+ai/skills/docx/
+ai/skills/frontend-design/
+ai/skills/internal-comms/
+ai/skills/mcp-builder/
+ai/skills/pdf/
+ai/skills/pptx/
+ai/skills/skill-creator/
+ai/skills/slack-gif-creator/
+ai/skills/theme-factory/
+ai/skills/web-artifacts-builder/
+ai/skills/webapp-testing/
+ai/skills/xlsx-python/
 
 # Agents are ignored by default (some are symlinked from ~/src/ep-dotfiles).
-# Real, repo-owned agents are force-added: git add -f claude/agents/<name>
-claude/agents/*
+# Real, repo-owned agents are force-added: git add -f ai/agents/<name>
+ai/agents/*
 
 # New/experimental commands are ignored by default; version one deliberately with:
 # git add -f claude/commands/<name>. (`make claude` symlinks individual entries out

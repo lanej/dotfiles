@@ -206,7 +206,7 @@ make <tool>
 
 ~/.claude/
 ├── commands/  -> ~/.files/claude/commands/   # Symlinked
-└── agents/    -> ~/.files/claude/agents/     # Symlinked
+└── agents/    -> ~/.files/ai/agents/     # Symlinked
 ```
 
 ## Makefile Target Pattern
