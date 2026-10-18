@@ -246,12 +246,6 @@ alias tn="tmux new"
 alias ct="cargo test"
 alias gt="gotestsum"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
-alias go="go-hack"
-if [ -x "$HOME/.local/bin/just-hack" ]; then
-	alias just="just-hack"
-fi
-alias python="python-hack"
-alias ruby="ruby-hack"
 alias b='bundle-hack'
 alias be='bundle-exec-hack'
 alias bi='bundle-hack install'

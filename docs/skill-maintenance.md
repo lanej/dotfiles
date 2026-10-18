@@ -45,7 +45,7 @@ It needs Git, standard Unix tools, and the same `jq` already used by setup.
 Default `make` checks both the repository instructions (meta) and the installed
 instructions (applied) after setup finishes. Installed coverage matches the
 Makefile's destinations: `~/.claude/CLAUDE.md`, `~/.claude/CONSTITUTION.md`,
-`~/.claude/{commands,agents,skills}`, and `~/.gemini/skills`. It follows file and
+and `~/.claude/{commands,agents,skills}`. It follows file and
 directory symlinks, includes local untracked additions in those trees, and
 reports source and installed results separately. Absent destinations are
 skipped; broken links or unreadable instructions fail the check.

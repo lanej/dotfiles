@@ -9,6 +9,12 @@ Use `gh stack` from `github/gh-stack`. The command is not `gh pr stack`.
 Chaining PR bases with `gh pr create --base` or adding merge-order prose does
 not register a native GitHub stack.
 
+Keep each PR description focused on its change and rationale. Do not include
+stack sequences, merge-order lists, layer numbers, stack tables, or manual
+stack navigation links: GitHub's native stack API and UI provide membership
+and ordering automatically. When updating an existing PR description, remove
+manually added stack navigation while preserving substantive review context.
+
 ## Establish scope
 
 - Confirm the repository, trunk, and layers ordered bottom to top from the

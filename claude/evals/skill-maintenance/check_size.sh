@@ -92,7 +92,7 @@ if [[ -n $installed_home ]]; then
     count=0
     : > "$scratch/installed"
     # Instruction destinations linked by Makefile, including local additions.
-    for name in claude/CLAUDE.md claude/CONSTITUTION.md claude/commands claude/agents claude/skills gemini/skills; do
+    for name in claude/CLAUDE.md claude/CONSTITUTION.md claude/commands claude/agents claude/skills; do
         path="$installed_home/.$name"
         if [[ -L $path && ! -e $path ]]; then
             check_file "$name" "$path" "installed $path"

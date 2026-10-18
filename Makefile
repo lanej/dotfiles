@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby oni kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm spotify_player python go claude-config gemini cargo presenterm mail quarto codex-config codex-mcp
+SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
+SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
@@ -12,9 +12,6 @@ ifeq ($(UNAME_S),Linux)
 SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
 else ifeq ($(UNAME_S),Darwin)
 SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
-ifneq ($(shell command -v git-crypt >/dev/null 2>&1 && test -r "$(DOTFILES)/superwhisper/settings/settings.json" && ! head -c 10 "$(DOTFILES)/superwhisper/settings/settings.json" | grep -q GITCRYPT && printf ready),)
-SETUP_TARGETS += superwhisper
-endif
 endif
 
 # The runner reports every step and returns failure only after trying them all.
@@ -162,10 +159,6 @@ polybar:
 	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config
 	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
-oni:
-	@mkdir -p $(HOME)/.config/oni
-	@ln -fs $(DOTFILES)/oni/config.js $(HOME)/.config/oni/config.js
-	@ln -fs $(DOTFILES)/oni/config.tsx $(HOME)/.config/oni/config.tsx
 bspwm:
 	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config/bspwm
@@ -184,15 +177,10 @@ kitty-config:
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
-alacritty:
-	@mkdir -p $(HOME)/.config/alacritty
-	@ln -fs $(DOTFILES)/alacritty/alacritty.yml $(HOME)/.config/alacritty
 wezterm:
 	@mkdir -p $(HOME)/.config/wezterm
 	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.wezterm.lua
 	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.config/wezterm/wezterm.lua
-spotify_player:
-	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
 # Opt-in restore: quit Amphetamine first; its preferences must not be symlinked.
 AMPHETAMINE_PREFS ?= $(HOME)/Library/Containers/com.if.Amphetamine/Data/Library/Preferences/com.if.Amphetamine
 amphetamine:
@@ -246,18 +234,6 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-superwhisper:
-	$(call require-os,Darwin)
-	@for source in "$(DOTFILES)/superwhisper/settings/settings.json" "$(DOTFILES)/superwhisper/modes/default.json"; do \
-		[ -r "$$source" ] || { echo "Missing or unreadable SuperWhisper configuration: $$source" >&2; exit 1; }; \
-		if head -c 10 "$$source" | grep -q GITCRYPT; then \
-			echo 'SuperWhisper configuration is encrypted; run git-crypt unlock, then make superwhisper.' >&2; \
-			exit 1; \
-		fi; \
-	done
-	@mkdir -p $(HOME)/Documents/superwhisper/settings $(HOME)/Documents/superwhisper/modes
-	@ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json
-	@ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json
 SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
@@ -338,10 +314,6 @@ quarto:
 	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles
 	@ln -fs $(DOTFILES)/quarto/_quarto.yml $(HOME)/.config/quarto/_quarto.yml
 	@echo "✓ Quarto configuration linked"
-gemini:
-	@mkdir -p $(HOME)/.gemini/themes
-	@ln -fs $(DOTFILES)/gemini/themes/nord.json $(HOME)/.gemini/themes/nord.json
-	@ln -fns $(DOTFILES)/gemini/skills $(HOME)/.gemini/skills
 gpg-restore:
 	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
 		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \

@@ -477,12 +477,6 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- Markdown settings
 vim.api.nvim_create_augroup("filetype_markdown", { clear = true })
-vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-	group = "filetype_markdown",
-	pattern = "qutebrowser-editor*",
-	command = "set filetype=markdown",
-})
-
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
@@ -708,14 +702,6 @@ vim.api.nvim_create_augroup("filetype_yaml", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_yaml",
 	pattern = "yaml",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- Fish settings
-vim.api.nvim_create_augroup("filetype_fish", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_fish",
-	pattern = "fish",
 	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
 })
 
@@ -2031,7 +2017,6 @@ require("lazy").setup({
 	},
 	{
 		"lanej/focus.nvim",
-		branch = "master",
 		config = function()
 			require("focus").setup({
 				autoresize = {
@@ -2081,9 +2066,5 @@ require("lazy").setup({
 vim.keymap.set("n", "<leader>vpu", ":Lazy update<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpi", ":Lazy home<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpc", ":Lazy clean<CR>", { silent = true, noremap = true })
-
--- Load Phabricator LSP configuration
-require("phab-lsp")
-require("pkm-lsp")
 
 vim.cmd([[set secure]])
