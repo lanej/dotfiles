@@ -51,13 +51,24 @@ Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-referen
 
 Adapt the guidance to plain `git log` output: lead the subject with a meaningful outcome. Add a body only when why, constraints, or caveats need explanation. Frontload informative words, keep paragraphs focused, and place caveats beside the claims they qualify. Do not force headings, Markdown bold, or tables into commit messages. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
 
-Illustrative example, assuming an export fix requires restarting existing exports:
+Fictional scenario: a label provider supports idempotent purchases within a retention window. The application can persist purchase keys and reconcile ambiguous attempts.
 
 ```text
-fix(exports): retain filters between pages
+fix(labels): reuse purchase keys after timeouts
 
-Reuse selected filters for every request so exports stay within
-the requested scope. Existing exports must be restarted.
+Timeouts can leave a successful label purchase without a recorded
+response. Retrying with a fresh key can buy another billable label,
+so retain the original key until the purchase outcome is resolved.
+
+Persist the key before sending the request and reuse it for retries
+within the provider's retention window. Give each intentional new
+purchase its own key, including replacement labels for the same
+shipment. This distinguishes retrying a request from buying again.
+
+Expired or missing keys require reconciliation before another attempt.
+Stop automatic retries in these cases rather than create a fresh key.
+Older ambiguous purchases need the same reconciliation, which delays
+recovery but avoids treating an unknown outcome as a failed purchase.
 ```
 
 **Process:**
