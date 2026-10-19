@@ -50,6 +50,7 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 12. The title and description MUST reflect the final scope of the PR. A stacked PR MUST identify its parent and describe its own change.
 13. Bulleted lists SHOULD be used when multiple independent points are easier to scan than prose. Tables SHOULD be used when several items need comparison across shared attributes. Connected explanations SHOULD remain prose; numbered lists SHOULD be reserved for sequences where order matters. Measurement tables MUST preserve units, workload scope, evidence source, and material caveats without implying unsupported comparisons.
 14. Paragraphs and list items MUST NOT be artificially wrapped or use manual line breaks for appearance. Meaningful line breaks in code and actual example output MUST be preserved.
+15. Markdown design SHOULD receive the same care as wording. Heading hierarchy, emphasis, spacing, and content layout SHOULD help reviewers scan the description. Authors SHOULD preview the rendered Markdown before publishing.
 
 ## Types
 
@@ -84,7 +85,11 @@ Show the artifact, example, or decision-relevant measurement table itself, rathe
 
 Link relevant requirements next to the point they support. Use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every content role.
 
-## Readability and discoverability
+## Markdown design and discoverability
+
+Treat the rendered description as a designed document. Use a deliberate heading hierarchy when sections help navigation, restrained emphasis for key facts, and whitespace to separate ideas. Choose prose, lists, and tables according to the content; avoid decorative structure.
+
+Apply [Writing for F-pattern scanning](f-pattern-scanning.md) to information order, navigation, emphasis, and the rendered scan check. That specification distinguishes observed reading patterns from our writing recommendations.
 
 Use prose for connected reasoning. Use bullets when multiple independent outcomes, constraints, tradeoffs, or decisions are easier to scan separately. Each item should make one assessable point, with parallel phrasing and enough explanation to understand its effect. Avoid sentence-by-sentence bullets, file inventories, lists repeating the opening, and arbitrary item counts. Use numbered lists when order matters, such as migration steps.
 
@@ -100,7 +105,7 @@ Reference files only when they exist on GitHub and reviewers can open them. Use 
 
 Link GitHub issues and PRs using full URLs or autolinking references: `#123` in the same repository and `owner/repo#123` across repositories. Link commits, reviews, discussions, releases, comparisons, and Actions runs directly to the object being cited. When citing a code symbol as evidence, link its definition. Verify that targets exist, identify the intended version, and are accessible to reviewers before handoff.
 
-Read the rendered description as a reviewer before requesting a decision. The outcome should be clear immediately, supporting evidence reachable in one click, and the facts and judgments needed for approval or rejection explicit.
+Preview the rendered Markdown before publishing; check hierarchy, spacing, emphasis, and table readability. Read it as a reviewer before requesting a decision. The outcome should be clear immediately, supporting evidence reachable in one click, and the facts and judgments needed for approval or rejection explicit.
 
 ## Examples
 

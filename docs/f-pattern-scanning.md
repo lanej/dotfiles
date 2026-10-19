@@ -1,0 +1,53 @@
+# Writing for F-pattern scanning
+
+Make the reader's outcome and required action visible before supporting detail.
+
+## Scope and research
+
+Apply this specification to left-to-right prose, including proposals, release notes, and review descriptions. Adapt it to the reader's task and the document's length.
+
+Nielsen Norman Group's [F-shaped reading pattern](https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content-discovered/) describes observed scanning. Readers often scan opening lines horizontally, then scan down the left side. The pattern is approximate, not a layout to reproduce.
+
+Its [layer-cake scanning research](https://www.nngroup.com/articles/layer-cake-pattern-scanning/) describes readers using meaningful headings to locate relevant sections.
+
+The rules below apply that general research to writing. They are design recommendations, not findings about every document or a proven PR-specific optimum.
+
+## Writing rules
+
+MUST means required; SHOULD allows an exception when the reader's task warrants it.
+
+1. **Lead with the outcome.** The opening MUST state what changes, what matters, or what action the reader needs. Explain the benefit before supporting background.
+2. **Frontload meaningful words.** Paragraphs and list items SHOULD begin with information-bearing words. Remove introductions that postpone the point.
+3. **Order by reader need.** Place decisions, required actions, and consequential constraints before optional detail. Keep instructions in execution order when order matters.
+4. **Keep paragraphs focused.** Each paragraph SHOULD develop one idea. Separate a new subject with whitespace rather than burying it inside another explanation.
+5. **Choose navigation deliberately.** Longer documents SHOULD use descriptive headings with a logical hierarchy. Short documents need no headings. Use brief labels to distinguish independent points when a list helps scanning.
+6. **Use structure for meaning.** Keep connected reasoning in prose. Use lists for independent points, numbered steps for sequences, and tables for comparisons. Do not add empty sections or decorative scaffolding.
+7. **Separate ideas visibly.** Use blank lines between paragraphs and before lists. Let the renderer wrap prose; do not manufacture an F shape with manual line breaks.
+8. **Emphasize selectively.** Bold SHOULD identify key labels or consequential facts. Leave supporting detail in normal weight. Do not bold whole paragraphs or compete for attention with every sentence.
+9. **Keep caveats with claims.** Material limits MUST appear beside the claim or action they qualify. Do not hide a critical caveat in a late section or footnote.
+10. **Name link destinations.** Links MUST use meaningful text identifying their subject. Place supporting links beside the relevant claim; avoid generic instructions such as “click here.”
+
+Do not impose fixed word counts, heading counts, or list lengths. Use the smallest structure that preserves the reader's understanding.
+
+## Illustrative example
+
+Assume a release adds cursor pagination alongside existing page numbers. Older clients still work, but page-number requests can skip records during concurrent inserts. This is a fictional example, not a release announcement.
+
+> Export changing shipment lists without skipping records by using cursor pagination. Page-number requests remain available but can skip records when shipments arrive during an export.
+>
+> - **Requests:** Pass the returned cursor to fetch the next batch.
+> - **Completion:** Stop when the response contains no next cursor.
+> - **Adoption:** Update exporters before enabling concurrent shipment imports.
+
+The opening carries the outcome and its limit. Distinct labels expose the workflow; ordinary text supplies the instructions. The short example needs no internal headings.
+
+## Rendered scan check
+
+Preview the document in its intended renderer before sharing it.
+
+- Read only the opening, headings, labels, and first words of each paragraph or item. They should reveal the outcome, required action, and major distinctions.
+- Check that consequential caveats remain visible beside the claims they qualify.
+- Check spacing, wrapping, emphasis, and link text at the expected reading width.
+- Read the full text once. The scan path must support the explanation without repeating it.
+
+This is an editorial check, not an eye-tracking measurement or proof of reader behavior.
