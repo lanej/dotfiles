@@ -43,6 +43,26 @@ def link(target, path):
     path.symlink_to(target, target_is_directory=target.is_dir())
 
 
+def migrate_skills_directory(directory):
+    """Replace a prevalidated directory link without changing its source tree."""
+    original = directory.readlink()
+    entries = list(directory.iterdir()) if directory.exists() else []
+    with tempfile.TemporaryDirectory(prefix=".builder-skills-", dir=directory.parent) as temporary:
+        staged = Path(temporary) / "skills"
+        staged.mkdir()
+        for entry in entries:
+            # Preserve local/external links as such rather than making them look
+            # like owned links that the shared synchronizer is allowed to prune.
+            target = entry.resolve() if entry.is_symlink() else directory.resolve() / entry.name
+            (staged / entry.name).symlink_to(target, target_is_directory=entry.is_dir())
+        directory.unlink()
+        try:
+            staged.rename(directory)
+        except OSError:
+            directory.symlink_to(original, target_is_directory=True)
+            raise
+
+
 def managed_guidance(original, path):
     """Replace either managed name in place; reject ambiguous or broken blocks."""
     blocks = []
@@ -70,7 +90,8 @@ def install(source, home):
     for relative in ("SKILL.md", "references/standard.md",
                      "references/construction.md", "references/instructions.md"):
         if not (source / relative).is_file():
-            raise ValueError(f"missing package resource: {source / relative}")
+            raise ValueError(f"missing package resource: {source / relative}. "
+                             "Restore the Builder package and rerun make software-standard.")
     package = home / ".local/share/software-standards" / NAME
     marker = package / ".dotfiles-managed"
     if package.is_symlink() or (package.exists() and
@@ -79,13 +100,22 @@ def install(source, home):
     cache = home / ".codex/dotfiles-skills"
     catalog = home / ".agents/skills/dotfiles"
     check_link(catalog, {cache.resolve()})
-    for directory in (home / ".claude/skills", home / ".claude/rules"):
-        if directory.is_symlink():
-            raise ValueError(f"preserving linked directory; migrate its entries first: {directory}")
-    claude_skill = home / ".claude/skills" / NAME
+    skills_directory = home / ".claude/skills"
+    migrate_skills = skills_directory.is_symlink()
+    if migrate_skills:
+        roots = {source.parent, source.parents[2] / "claude/skills"}
+        if skills_directory.resolve() not in {root.resolve() for root in roots}:
+            raise ValueError(f"preserving unrelated skill tree: {skills_directory}")
+    rules_directory = home / ".claude/rules"
+    if rules_directory.is_symlink():
+        raise ValueError(f"preserving linked directory; migrate its entries first: {rules_directory}")
+    claude_skill = skills_directory / NAME
     codex_skill = cache / NAME
-    rule = home / ".claude/rules" / f"{NAME}.md"
-    check_link(claude_skill, {source, package})
+    rule = rules_directory / f"{NAME}.md"
+    # A directory-wide link exposes the regular source entry. After migration
+    # it will be an individual link, so validate its intended target here.
+    if not (migrate_skills and claude_skill.resolve() in {source, package.resolve()}):
+        check_link(claude_skill, {source, package})
     check_link(codex_skill, {source, package})
     check_link(rule, {package / "references/instructions.md"})
     global_file = home / ".codex/AGENTS.md"
@@ -122,6 +152,8 @@ def install(source, home):
         staged = temporary / "package"
         shutil.copytree(source, staged, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         (staged / ".dotfiles-managed").write_text(MARKER)
+        if migrate_skills:
+            migrate_skills_directory(skills_directory)
         backup = temporary / "previous"
         if package.exists():
             package.rename(backup)

@@ -37,11 +37,16 @@ previous managed `pragmatic-hexagonal` instruction block, skill links, rule, and
 package to Builder. Unrelated local entries are preserved and reported rather
 than deleted. Conflicting or malformed managed blocks are rejected before
 installation. All required references, including `construction.md`, must be
-present before the installed package is replaced.
+present before the installed package is replaced. Missing package source is a
+failure, not a successful skip. Ordinary setup reports Builder as incomplete and
+continues independent tasks; restore the source and rerun setup to finish.
 
 The existing full `codex-config` target still regenerates its managed global file
 from repository sources and `codex/AGENTS.local.md`.
-Linked Claude skills or rules directories must be migrated before standalone installation.
+Recognized `~/.claude/skills` directory links to this checkout's `ai/skills`
+or `claude/skills` are migrated to individual links before installation.
+Source entries and external skill targets are left intact. Unrelated skill
+trees and linked rules directories remain protected and require explicit migration.
 The installer targets default home locations; custom configuration homes require
 explicit integration. Changing `CODEX_HOME` does not redirect this installer.
 
@@ -58,6 +63,9 @@ or a credible experiment for uncertain feasibility. Once meaningful behavior
 will be retained, protect it before expanding or materially restructuring it.
 Plan working-and-verifying increments rather than separate implementation and
 testing phases. This does not waive delivery gates or explicit project mandates.
+Implementation-agent briefs direct loading of Builder and its two references,
+not a blanket test-first sequence. Explicit user or project test-first
+requirements still govern that work.
 
 Apply the architecture standard to consequential claims, conditions,
 contradictory evidence, and interpretation limits. Use existing software

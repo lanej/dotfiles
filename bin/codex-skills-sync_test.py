@@ -63,7 +63,15 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (legacy / "SKILL.md").write_text("---\nname: pragmatic-hexagonal\n---\n")
     (legacy / "references/instructions.md").write_text("Old architecture guidance.\n")
     old_claude = home / ".claude/skills/pragmatic-hexagonal"
-    old_claude.parent.mkdir(parents=True)
+    # Older setups linked the whole skills directory. Migrate that layout
+    # before the shared sync runs, retaining external per-user skill links.
+    old_sources = repo / "claude/skills"
+    old_sources.mkdir(parents=True)
+    old_claude.parent.symlink_to(old_sources, target_is_directory=True)
+    personal = external / "personal"
+    personal.mkdir()
+    (personal / "SKILL.md").write_text("Keep my external skill.\n")
+    (old_sources / "personal").symlink_to(personal)
     old_claude.symlink_to(legacy)
     old_rule = home / ".claude/rules/pragmatic-hexagonal.md"
     old_rule.symlink_to(legacy / "references/instructions.md")
@@ -82,6 +90,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert "missing package resource" in rejected.stderr and "construction.md" in rejected.stderr
     assert global_file.read_text() == previous_guidance
     assert old_claude.resolve() == legacy.resolve() and old_rule.is_file()
+    assert old_claude.parent.is_symlink(), "rejected update migrated the directory"
     assert not (home / ".local/share/software-standards/builder").exists()
     construction.write_text(construction_text)
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
@@ -100,6 +109,10 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     package = (home / ".local/share/software-standards/builder").resolve()
     assert builder_installed.resolve() == package
     assert (home / ".claude/skills/builder").resolve() == package
+    assert not old_claude.parent.is_symlink()
+    assert (home / ".claude/skills/personal").resolve() == personal
+    assert (old_sources / "pragmatic-hexagonal").readlink() == legacy
+    assert builder.is_dir() and not builder.is_symlink(), "migration replaced the source skill"
     assert (home / ".claude/rules/builder.md").read_bytes() == (package / "references/instructions.md").read_bytes()
     assert not old_claude.is_symlink() and not old_rule.is_symlink()
     assert not (cache / "pragmatic-hexagonal").is_symlink() and not legacy.exists()
@@ -123,6 +136,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     shutil.rmtree(repo)
     assert (builder_installed / "references/standard.md").is_file()
     assert (home / ".claude/skills/builder/references/construction.md").read_text() == construction_text
+    assert (home / ".claude/skills/personal/SKILL.md").read_text() == "Keep my external skill.\n"
     for document in (portable / "SKILL.md", portable / "references/standard.md",
                      portable / "references/construction.md"):
         for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):

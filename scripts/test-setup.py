@@ -27,6 +27,10 @@ def main():
         executables.mkdir()
         shutil.copytree(ROOT, repo, symlinks=True,
                         ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        # Exercise supported local Codex preferences even in a clean CI checkout.
+        local_guidance = repo / "codex/AGENTS.local.md"
+        if not local_guidance.exists():
+            local_guidance.write_text("Keep fixture-local Codex preferences.\n")
         # Only base utilities are available; optional tools cannot leak in from
         # the developer machine or CI runner. Network boundaries stay offline.
         for name in ("awk", "basename", "bash", "cat", "cp", "dirname", "find",
@@ -49,6 +53,20 @@ def main():
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
+
+        # Missing required source is an incomplete step, not a successful skip.
+        # The actual setup runner must still complete independent configuration.
+        entrypoint = repo / "ai/skills/builder/SKILL.md"
+        entrypoint_bytes = entrypoint.read_bytes()
+        entrypoint.unlink()
+        missing = subprocess.run(command, cwd=repo, env=env,
+                                 capture_output=True, text=True, timeout=30)
+        assert missing.returncode != 0, missing.stdout + missing.stderr
+        assert "\033[31m✗\033[0m software-standard" in missing.stdout, missing.stdout
+        assert "missing package resource" in missing.stdout and "SKILL.md" in missing.stdout
+        assert "\033[32m✓\033[0m cargo" in missing.stdout, missing.stdout
+        assert not (home / ".local/share/software-standards/builder").exists()
+        entrypoint.write_bytes(entrypoint_bytes)
 
         partial = subprocess.run(command, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
@@ -88,7 +106,8 @@ def main():
         assert (home / ".config/nvim").resolve() == repo / "nvim"
         assert (home / ".config/kitty/kitty.conf").is_symlink()
         assert (home / ".claude/CLAUDE.md").is_symlink()
-        assert (home / ".codex/AGENTS.md").read_bytes() == (repo / "codex/AGENTS.md").read_bytes()
+        expected_guidance = (repo / "codex/AGENTS.md").read_bytes() + local_guidance.read_bytes()
+        assert (home / ".codex/AGENTS.md").read_bytes() == expected_guidance
         skill = home / ".agents/skills/dotfiles/builder"
         source = repo / "ai/skills/builder"
         assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()

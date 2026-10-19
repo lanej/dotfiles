@@ -240,9 +240,7 @@ claude-plugins:
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
 SETUP_TARGETS += software-standard
 software-standard:
-	@if [ -f "$(DOTFILES)/ai/skills/builder/SKILL.md" ]; then \
-		python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"; \
-	else printf '%s\n' 'software-standard: package source unavailable, skipping'; fi
+	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
 
 SETUP_TARGETS += claude-shared
 claude-shared: software-standard
