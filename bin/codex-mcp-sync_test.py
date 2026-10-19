@@ -19,11 +19,13 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     (repo / ".claude").mkdir()
     (repo / "claude").mkdir()
     (repo / "codex").mkdir()
+    (repo / "ai/skills").mkdir(parents=True)
+    (repo / "ai/agents").mkdir()
     (home / ".claude/plugins").mkdir(parents=True)
     (home / ".codex").mkdir()
 
     for name in ("sync-codex-mcp-servers", "sync-codex-skills",
-                 "sync-codex-agents", "claude-remove-blocked-plugins"):
+                 "sync-codex-agents", "sync-claude-shared", "claude-remove-blocked-plugins"):
         (repo / "bin" / name).symlink_to(ROOT / "bin" / name)
     shutil.copy2(ROOT / "bin/sync-codex-tmux-hooks", repo / "bin/sync-codex-tmux-hooks")
     shutil.copy2(ROOT / "codex/tmux-hooks.json", repo / "codex/tmux-hooks.json")
