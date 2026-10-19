@@ -41,6 +41,14 @@ present before the installed package is replaced. Missing package source is a
 failure, not a successful skip. Ordinary setup reports Builder as incomplete and
 continues independent tasks; restore the source and rerun setup to finish.
 
+The former package address remains as a relative link to `builder`, so custom
+aliases to that package or its reference files follow the current installation,
+including aliases inside external skill trees. Canonical old skill/rule entries
+are removed; no second copy of the standard is retained. If a legacy resource
+cannot be forwarded without disappearing or changing kind, installation stops
+before changing existing files and identifies the resource for manual review.
+Runtime Python caches are excluded from this compatibility check.
+
 The existing full `codex-config` target still regenerates its managed global file
 from repository sources and `codex/AGENTS.local.md`.
 Recognized `~/.claude/skills` directory links to this checkout's `ai/skills`

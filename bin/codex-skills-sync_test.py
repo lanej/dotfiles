@@ -76,6 +76,13 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     old_rule = home / ".claude/rules/pragmatic-hexagonal.md"
     old_rule.symlink_to(legacy / "references/instructions.md")
     (cache / "pragmatic-hexagonal").symlink_to(legacy)
+    # Custom aliases can target the package or a resource within it, including
+    # from user-owned trees that the installer must not traverse or rewrite.
+    alias = old_claude.with_name("my-architecture")
+    alias.symlink_to(legacy)
+    reference_alias = personal / "architecture.md"
+    reference_alias.symlink_to(legacy / "references/instructions.md")
+    assert (alias / "SKILL.md").is_file() and reference_alias.is_file()
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
@@ -115,7 +122,11 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert builder.is_dir() and not builder.is_symlink(), "migration replaced the source skill"
     assert (home / ".claude/rules/builder.md").read_bytes() == (package / "references/instructions.md").read_bytes()
     assert not old_claude.is_symlink() and not old_rule.is_symlink()
-    assert not (cache / "pragmatic-hexagonal").is_symlink() and not legacy.exists()
+    assert (alias / "SKILL.md").read_bytes() == (builder / "SKILL.md").read_bytes()
+    assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
+    assert reference_alias.readlink() == legacy / "references/instructions.md"
+    assert not (cache / "pragmatic-hexagonal").is_symlink()
+    assert legacy.is_symlink() and legacy.resolve() == package
     assert global_file.read_text().startswith("Keep my leading preferences.\n")
     assert global_file.read_text().endswith("Keep my existing global preferences.\n")
     assert local_rule.read_text() == "Keep my local rule.\n"
@@ -125,9 +136,14 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert (home / target[2:]).read_bytes() == (package / "references/instructions.md").read_bytes()
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
+    construction_text += "Protect retained behavior during the next increment.\n"
+    construction.write_text(construction_text)
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert local.read_text() == "Local instructions.\n"
+
+    assert (alias / "references/construction.md").read_text() == construction_text
+    assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
 
     # A copied skill package must not depend on the dotfiles checkout layout.
     portable = tmp_path / "portable"
@@ -137,6 +153,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert (builder_installed / "references/standard.md").is_file()
     assert (home / ".claude/skills/builder/references/construction.md").read_text() == construction_text
     assert (home / ".claude/skills/personal/SKILL.md").read_text() == "Keep my external skill.\n"
+    assert (alias / "references/construction.md").read_text() == construction_text
+    assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
     for document in (portable / "SKILL.md", portable / "references/standard.md",
                      portable / "references/construction.md"):
         for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):

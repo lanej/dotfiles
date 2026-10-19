@@ -133,6 +133,20 @@ def install(source, home):
     legacy_sources = {source.parent / LEGACY_NAME}
     legacy_rules = set()
     if owned_legacy:
+        # A forwarding path preserves aliases without discovering every caller.
+        # Refuse the migration before any writes if a legacy resource would
+        # disappear or change kind. Runtime caches are not package resources.
+        for entry in legacy_package.rglob("*"):
+            relative = entry.relative_to(legacy_package)
+            if (relative == Path(".dotfiles-managed") or "__pycache__" in relative.parts
+                    or entry.suffix == ".pyc"):
+                continue
+            replacement = source / relative
+            if (entry.is_symlink() or not (
+                    entry.is_file() and replacement.is_file()
+                    or entry.is_dir() and replacement.is_dir())):
+                raise ValueError(f"preserving legacy package: cannot redirect {entry} to {replacement}. "
+                                 "Review the legacy resource before retrying installation.")
         legacy_sources.add(legacy_package)
         legacy_rules.add(legacy_package / "references/instructions.md")
     obsolete = []
@@ -174,7 +188,17 @@ def install(source, home):
     for path in obsolete:
         path.unlink()
     if owned_legacy:
-        shutil.rmtree(legacy_package)
+        # Keep the old address usable for custom skill and reference aliases,
+        # even inside external trees that this installer must not rewrite.
+        # The forwarding link follows future Builder updates, not a stale copy.
+        with tempfile.TemporaryDirectory(prefix=".builder-legacy-", dir=package.parent) as temporary:
+            backup = Path(temporary) / LEGACY_NAME
+            legacy_package.rename(backup)
+            try:
+                legacy_package.symlink_to(package.name, target_is_directory=True)
+            except OSError:
+                backup.rename(legacy_package)
+                raise
     print(f"software-standard: installed Builder package at {package}")
 
 
