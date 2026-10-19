@@ -94,6 +94,13 @@ def main():
         assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
         assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
         assert (skill / "scripts/check_examples.py").is_file()
+        package = home / ".local/share/software-standards/pragmatic-hexagonal"
+        claude_skill = home / ".claude/skills/pragmatic-hexagonal"
+        rule = home / ".claude/rules/pragmatic-hexagonal.md"
+        assert skill.resolve() == package
+        assert claude_skill.resolve() == package
+        assert not (package / "references/standard.md").is_symlink()
+        assert rule.read_bytes() == (source / "references/instructions.md").read_bytes()
         # Guidance installs even while optional tools and network are absent.
         assert (home / ".codex/agents/code-reviewer.toml").is_file()
         assert not (home / ".tmux/plugins/tpm").exists()

@@ -44,6 +44,11 @@ def sync(source, home):
             continue
         if platform.system() != "Darwin" and folder.name == "problem-definition-contract":
             continue
+        # This standard also has a standalone, tool-neutral installation.
+        if folder.name == "pragmatic-hexagonal":
+            package = home / ".local/share/software-standards" / folder.name
+            if (package / ".dotfiles-managed").is_file():
+                folder = package
         children = list(folder.iterdir())
         entrypoints = sorted(
             (p for p in children if p.name.casefold() == "skill.md" and p.is_file()),

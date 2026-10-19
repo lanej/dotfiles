@@ -47,4 +47,4 @@ precedence; record material deviations using the standard's exception format.
 
 For concrete examples or to inspect their limitations, read the standard's
 reference examples and run `python3 scripts/check_examples.py` from this skill
-directory. That exercises software examples, not Codex adherence.
+directory. That exercises software examples, not assistant adherence.

@@ -238,11 +238,17 @@ SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
+SETUP_TARGETS += software-standard
+software-standard:
+	@if [ -f "$(DOTFILES)/ai/skills/pragmatic-hexagonal/SKILL.md" ]; then \
+		python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/pragmatic-hexagonal" --home "$(HOME)"; \
+	else printf '%s\n' 'software-standard: package source unavailable, skipping'; fi
+
 SETUP_TARGETS += claude-shared
-claude-shared:
+claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
-claude-config:
+claude-config: software-standard
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
@@ -272,7 +278,7 @@ claude-config:
 	trap 'rm -f "$$temporary"' 0; \
 	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
-codex-skills:
+codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker

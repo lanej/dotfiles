@@ -1,25 +1,10 @@
+<!-- pragmatic-hexagonal:start -->
 # Default software standard
 
-For designing, implementing, modifying, debugging, and reviewing software, use
-**Pragmatic Hexagonal Architecture**. Load the `pragmatic-hexagonal` skill and
-its `references/standard.md` before software work. If discovery omits it, read
-`~/.agents/skills/dotfiles/pragmatic-hexagonal/SKILL.md` directly; if unavailable,
-report that gap rather than claiming the standard was applied.
-
-Preserve explicit expectations, inspectable decisions, observable effects,
-challengeable evidence, and revisable policies. Choose the minimum architecture
-supporting them. Identify consequential claims and how the software exposes
-contradictory evidence; distinguish contract correctness, environmental
-assumptions, and intended outcomes. Reviews identify specific violations,
-affected behavior, and evidence. Separate established facts, assumptions, and
-verification gaps. A trivial change needs no architecture report; a written
-explanation cannot substitute for the software exhibiting the property.
-
-These are global defaults under Codex's documented instruction precedence;
-closer project instructions can override them. Apply project constraints and
-record material deviations with the affected requirement, concrete constraint,
-retained protections, and revisit condition. Existing testing guidance governs
-procedure; this standard governs the resulting software.
+For software design, implementation, modification, debugging, and review, read
+`~/.local/share/software-standards/pragmatic-hexagonal/references/instructions.md`
+and follow the shared skill and standard it identifies.
+<!-- pragmatic-hexagonal:end -->
 
 # Unix philosophy
 

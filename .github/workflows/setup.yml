@@ -1,10 +1,10 @@
 name: Dotfiles setup
 on:
   pull_request:
-    paths: ['Makefile', 'codex/AGENTS.md', 'ai/skills/pragmatic-hexagonal/**', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['Makefile', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/pragmatic-hexagonal/**', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
   push:
     branches: [master]
-    paths: ['Makefile', 'codex/AGENTS.md', 'ai/skills/pragmatic-hexagonal/**', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['Makefile', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/pragmatic-hexagonal/**', 'bootstrap.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
 permissions:
   contents: read
 jobs:
