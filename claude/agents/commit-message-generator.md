@@ -45,11 +45,26 @@ Your primary responsibility is to generate properly formatted commit messages th
 - Be specific about what changed
 - Avoid generic terms like 'update', 'change', 'modify' when more specific verbs apply
 
+**Scanning and plain-text readability:**
+
+Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default. Follow its link to the full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
+
+Adapt the guidance to plain `git log` output: lead the subject with a meaningful outcome. Add a body only when why, constraints, or caveats need explanation. Frontload informative words, keep paragraphs focused, and place caveats beside the claims they qualify. Do not force headings, Markdown bold, or tables into commit messages. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
+
+Illustrative example, assuming an export fix requires restarting existing exports:
+
+```text
+fix(exports): retain filters between pages
+
+Reuse selected filters for every request so exports stay within
+the requested scope. Existing exports must be restarted.
+```
+
 **Process:**
 1. Analyze the described changes to determine the appropriate type
 2. Identify the most relevant scope based on affected components
 3. Craft a concise, descriptive subject using imperative mood
-4. Verify the complete message is under 50 characters
+4. Verify the complete subject is at most 50 characters
 5. If additional context is needed, provide a body wrapped at 72 characters
 6. Include footer for breaking changes or issue references if applicable
 
