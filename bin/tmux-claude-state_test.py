@@ -470,9 +470,10 @@ if "app-name" in items and "thread-id" in items:
     # A same-thread title refresh must preserve a valid approval event.
     # Snapshot interleavings exercise the actual renderer installed from the
     # standalone binary, including its embedded palette.
-    from importlib.machinery import SourceFileLoader
-    hook = SourceFileLoader("agent_status_renderer", str(
-        home / ".local/lib/agent-status/tmux-render.py")).load_module()
+    hook = load_script(
+        "agent_status_renderer",
+        path=home / ".local/lib/agent-status/tmux-render.py",
+        register=True)
     real_tmux = hook.state.tmux
     refreshing = True
 

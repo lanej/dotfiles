@@ -14,6 +14,7 @@ windows exist:
 Prints a compact roll-up -- `#[..] 2! 1* 3.` -- covering every session, because
 the need you most want surfaced is the one in a window you are not looking at.
 """
+import importlib.util
 import os
 import subprocess
 import sys
@@ -21,8 +22,18 @@ from importlib.machinery import SourceFileLoader
 from pathlib import Path
 import time
 
-state = SourceFileLoader(
-    "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state"))).load_module()
+_state_loader = SourceFileLoader(
+    "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state")))
+state = sys.modules.get(_state_loader.name)
+if state is None:
+    _state_spec = importlib.util.spec_from_loader(_state_loader.name, _state_loader)
+    state = importlib.util.module_from_spec(_state_spec)
+    sys.modules[_state_loader.name] = state
+    try:
+        _state_loader.exec_module(state)
+    except BaseException:
+        del sys.modules[_state_loader.name]
+        raise
 
 # The shared idle threshold was chosen for Claude's one-hour prompt cache.
 # Codex uses the same visual aging interval, independent of its cache policy.
