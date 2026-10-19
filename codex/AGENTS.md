@@ -1,3 +1,9 @@
+# Architecture and falsifiability
+
+Default all new software and modified architectural boundaries to **Pragmatic Hexagonal Architecture**: functional core / imperative shell, thin owned canonical model, explicit integration modules, and ports only where substitution or isolation is real. Keep domain decisions independent of provider SDKs and external I/O. Prefer complete vertical workflows over speculative layering.
+
+For nontrivial design, integration, or refactoring work, load the `pragmatic-hexagonal` skill and follow `~/.files/docs/pragmatic-hexagonal-architecture.md`. Identify observable outcomes and what would disprove important design claims before implementation. Use lightweight checks for trivial changes; never generate interfaces or layers just to satisfy a pattern. Existing methodology/testing instructions control verification cadence.
+
 # Unix philosophy
 
 Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
