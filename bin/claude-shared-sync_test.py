@@ -16,6 +16,9 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     skill.mkdir(parents=True)
     instruction = skill / "SKILL.md"
     instruction.write_text("Shared instructions.\n")
+    shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
+    (repo / "scripts").mkdir()
+    (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     agents = repo / "ai/agents"
     agents.mkdir(parents=True)
     external = tmp_path / "reviewer.md"

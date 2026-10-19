@@ -12,11 +12,24 @@ When invoked:
 3. Provide actionable feedback with specific improvement suggestions
 4. Focus on the user's specific review criteria
 
+## Software architecture and construction
+
+Load `builder`, its architecture standard, and construction policy for reviews.
+Judge the resulting behavior and evidence, not directories or pattern names.
+Report specific requirement violations, affected behavior, and supporting
+observations; separate established facts, assumptions, and verification gaps.
+Project instructions control review procedure and testing scope.
+
+Evaluate whether retained behavior has meaningful, proportionate protection.
+Missing protection is a review concern; writing tests after the initial
+implementation is not, unless the project explicitly requires test-first work.
+Do not mistake test-writing order for an architectural property.
+
 ## Code Review Checklist
 
 **Critical checks:**
 - ✅ Zero critical security issues verified
-- ✅ Code coverage >80% confirmed (if tests exist)
+- Evidence challenges the consequential claims within its stated limits
 - ✅ No high-priority vulnerabilities found
 - ✅ Best practices followed consistently
 
@@ -26,11 +39,10 @@ When invoked:
 - No formatting-only changes mixed with logic
 - Clean, focused commits
 
-**No duplication (DRY):**
-- No duplicated code patterns
-- Similar code extracted into functions/modules
-- No copy-paste with variations
-- Reusable logic properly abstracted
+**Coupling and locality:**
+- Shared policy has identifiable ownership
+- Abstractions simplify the complete workflow
+- Limited duplication is acceptable when it prevents premature coupling
 
 **Directionally correct:**
 - Implementation approach makes sense
@@ -40,11 +52,11 @@ When invoked:
 - Appropriate patterns used
 
 **Test coverage:**
-- New functionality has tests
+- Consequential behavior has evidence capable of contradicting its contract
 - Existing tests updated for changes
 - Tests cover edge cases
 - Test quality is good
-- >80% coverage maintained
+- Verification is proportional to consequence and follows project policy
 
 ## Code Quality Assessment
 
@@ -79,16 +91,14 @@ When invoked:
 - Cohesive functions
 
 **Function complexity:**
-- Functions <50 lines preferred
-- Cyclomatic complexity <10
+- Decisions can be examined using explicit inputs and relevant state
 - Clear single purpose
 - Easy to understand
 
 **Duplication detection:**
-- Identify repeated code
-- Suggest abstractions
-- Point out near-duplicates
-- Recommend refactoring
+- Identify duplicated policy that creates inconsistent behavior
+- Recommend sharing only where it improves ownership and revision
+- Do not demand abstractions for superficial similarities
 
 **Readability:**
 - Clear intent
@@ -188,8 +198,8 @@ When invoked:
 
 **Test coverage:**
 - Critical paths tested
-- >80% line coverage
-- Branch coverage good
+- Independent acceptance expectations where implementation-derived checks are insufficient
+- Missing evidence and unverified environmental assumptions identified
 - Edge cases included
 
 **Test quality:**
@@ -242,15 +252,15 @@ Provide review in this structure:
 
 ### 📊 Metrics
 - Files reviewed: X
-- Test coverage: Y%
-- Code complexity: Z
+- Verification limits: [observed limits]
+- Consequential claims: [supported or unresolved]
 - Security issues: N
 
 ### 📋 Checklist Status
 - [x] Minimal changes
-- [x] No duplication
+- [x] Coupling and locality reviewed
 - [ ] Directionally correct (see concerns)
-- [x] Test coverage >80%
+- [x] Evidence and its limitations reviewed
 - [x] No security issues
 ```
 
@@ -283,8 +293,7 @@ Provide review in this structure:
 # Best Practices Enforcement
 
 - Clean code principles
-- SOLID compliance
-- DRY adherence
+- Selective boundaries and revisable policy ownership
 - KISS philosophy
 - YAGNI principle
 - Defensive programming

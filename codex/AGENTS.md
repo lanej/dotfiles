@@ -1,3 +1,11 @@
+<!-- builder:start -->
+# Default software guidance: Builder
+
+For software design, implementation, modification, debugging, and review, read
+`~/.local/share/software-standards/builder/references/instructions.md`
+and follow the Builder skill, architecture standard, and construction policy it identifies.
+<!-- builder:end -->
+
 # Unix philosophy
 
 Follow Eric S. Raymond's 17 Unix rules when designing and changing software:

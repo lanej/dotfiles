@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - '**/SKILL.md'
+      - 'ai/skills/builder/**'
+      - 'docs/pragmatic-hexagonal-architecture.md'
+      - 'docs/software-construction.md'
       - '**/AGENTS.md'
       - '**/CLAUDE.md'
       - '**/GEMINI.md'
@@ -20,6 +23,9 @@ on:
     branches: [master]
     paths:
       - '**/SKILL.md'
+      - 'ai/skills/builder/**'
+      - 'docs/pragmatic-hexagonal-architecture.md'
+      - 'docs/software-construction.md'
       - '**/AGENTS.md'
       - '**/CLAUDE.md'
       - '**/GEMINI.md'
@@ -64,3 +70,14 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bash claude/evals/skill-maintenance/check_size.sh --base "$BASE_REF"
+
+  architecture-examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reference software and controlled contradictions
+        run: make test-pragmatic-hexagonal

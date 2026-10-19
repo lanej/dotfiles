@@ -238,11 +238,15 @@ SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
+SETUP_TARGETS += software-standard
+software-standard:
+	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
+
 SETUP_TARGETS += claude-shared
-claude-shared:
+claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
-claude-config:
+claude-config: software-standard
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
@@ -272,7 +276,7 @@ claude-config:
 	trap 'rm -f "$$temporary"' 0; \
 	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
-codex-skills:
+codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker
@@ -299,7 +303,7 @@ codex-env:
 		fi; \
 	fi
 codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
-codex-config: codex-env
+codex-config: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
@@ -354,6 +358,9 @@ mail:
 	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
 	@echo "  2. Follow the prompts to configure your Gmail account"
 	@echo "  3. Launch neomutt when done"
+test-pragmatic-hexagonal:
+	@python3 "$(DOTFILES)/ai/skills/builder/scripts/check_examples.py"
+
 test:
 	@pytest bin/*_test.py
 
@@ -475,3 +482,5 @@ ac-awake-stop:
 ac-awake-uninstall:
 	@sudo "$(DOTFILES)/bin/ac-awake-service" uninstall
 .PHONY: ac-awake-status ac-awake-install ac-awake-stop ac-awake-uninstall
+
+.PHONY: test-pragmatic-hexagonal
