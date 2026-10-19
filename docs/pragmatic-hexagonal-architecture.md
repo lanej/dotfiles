@@ -1,1 +1,1 @@
-../ai/skills/pragmatic-hexagonal/references/standard.md
+../ai/skills/builder/references/standard.md

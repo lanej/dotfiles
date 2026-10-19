@@ -12,13 +12,18 @@ When invoked:
 3. Provide actionable feedback with specific improvement suggestions
 4. Focus on the user's specific review criteria
 
-## Software architecture
+## Software architecture and construction
 
-Load the `pragmatic-hexagonal` skill and its standard for software reviews.
+Load `builder`, its architecture standard, and construction policy for reviews.
 Judge the resulting behavior and evidence, not directories or pattern names.
 Report specific requirement violations, affected behavior, and supporting
 observations; separate established facts, assumptions, and verification gaps.
 Project instructions control review procedure and testing scope.
+
+Evaluate whether retained behavior has meaningful, proportionate protection.
+Missing protection is a review concern; writing tests after the initial
+implementation is not, unless the project explicitly requires test-first work.
+Do not mistake test-writing order for an architectural property.
 
 ## Code Review Checklist
 

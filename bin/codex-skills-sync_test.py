@@ -1,4 +1,4 @@
-"""One detector for making shared dotfiles skills discoverable by Codex."""
+"""One detector for exposing shared skills and migrating the Builder package."""
 
 from pathlib import Path
 import re
@@ -23,12 +23,16 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     source.mkdir(parents=True)
     (source / "SKILL.md").symlink_to(instruction)
     (source / "references").symlink_to(external / "references")
-    architecture = repo / "ai/skills/pragmatic-hexagonal"
-    shutil.copytree(ROOT / "ai/skills/pragmatic-hexagonal", architecture)
+    builder = repo / "ai/skills/builder"
+    shutil.copytree(ROOT / "ai/skills/builder", builder)
+    construction = builder / "references/construction.md"
+    construction_text = construction.read_text()
+    (repo / "ai/agents").mkdir()
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     (repo / "bin").mkdir()
     (repo / "bin/sync-codex-skills").symlink_to(ROOT / "bin/sync-codex-skills")
+    (repo / "bin/sync-claude-shared").symlink_to(ROOT / "bin/sync-claude-shared")
     local = home / ".agents/skills/local-workflow/SKILL.md"
     local.parent.mkdir(parents=True)
     local.write_text("Local instructions.\n")
@@ -40,17 +44,46 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     cache = home / ".codex/dotfiles-skills"
     cache.mkdir(parents=True)
     global_file = home / ".codex/AGENTS.md"
-    global_file.write_text("Keep my existing global preferences.\n")
+    previous_guidance = (
+        "Keep my leading preferences.\n"
+        "<!-- pragmatic-hexagonal:start -->\nRead\n"
+        "`~/.local/share/software-standards/pragmatic-hexagonal/references/instructions.md`\n"
+        "<!-- pragmatic-hexagonal:end -->\n"
+        "Keep my existing global preferences.\n"
+    )
+    global_file.write_text(previous_guidance)
     local_rule = home / ".claude/rules/local.md"
     local_rule.parent.mkdir(parents=True)
     local_rule.write_text("Keep my local rule.\n")
     (cache / "shared-workflow").symlink_to(repo / "claude/skills/shared-workflow")
+    # Model the previous managed install at its filesystem boundary.
+    legacy = home / ".local/share/software-standards/pragmatic-hexagonal"
+    (legacy / "references").mkdir(parents=True)
+    (legacy / ".dotfiles-managed").write_text("Installed by dotfiles install-software-standard.py\n")
+    (legacy / "SKILL.md").write_text("---\nname: pragmatic-hexagonal\n---\n")
+    (legacy / "references/instructions.md").write_text("Old architecture guidance.\n")
+    old_claude = home / ".claude/skills/pragmatic-hexagonal"
+    old_claude.parent.mkdir(parents=True)
+    old_claude.symlink_to(legacy)
+    old_rule = home / ".claude/rules/pragmatic-hexagonal.md"
+    old_rule.symlink_to(legacy / "references/instructions.md")
+    (cache / "pragmatic-hexagonal").symlink_to(legacy)
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
-    command = [shutil.which("make"), "-f", str(ROOT / "Makefile"), "codex-skills",
+    command = [shutil.which("make"), "-f", str(ROOT / "Makefile"), "codex-skills", "claude-shared",
                f"DOTFILES={repo}", f"HOME={home}"]
     env = {"PATH": f"{executables}:/usr/bin:/bin"}
+
+    # An incomplete update must not replace the working managed installation.
+    construction.unlink()
+    rejected = subprocess.run(command, cwd=repo, env=env, capture_output=True, text=True)
+    assert rejected.returncode != 0
+    assert "missing package resource" in rejected.stderr and "construction.md" in rejected.stderr
+    assert global_file.read_text() == previous_guidance
+    assert old_claude.resolve() == legacy.resolve() and old_rule.is_file()
+    assert not (home / ".local/share/software-standards/builder").exists()
+    construction.write_text(construction_text)
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
 
     installed = home / ".agents/skills/dotfiles/shared-workflow"
@@ -58,17 +91,25 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert not (installed / "SKILL.md").is_symlink()
     assert (installed / "references/guide.md").read_text() == "Review guide.\n"
-    architecture_installed = home / ".agents/skills/dotfiles/pragmatic-hexagonal"
-    assert (architecture_installed / "references/standard.md").read_bytes() == (architecture / "references/standard.md").read_bytes()
-    assert (architecture_installed / "scripts/operations.py").read_bytes() == (architecture / "scripts/operations.py").read_bytes()
+    builder_installed = home / ".agents/skills/dotfiles/builder"
+    assert (builder_installed / "references/standard.md").read_bytes() == (builder / "references/standard.md").read_bytes()
+    assert (builder_installed / "references/construction.md").read_text() == construction_text
+    assert (builder_installed / "scripts/operations.py").read_bytes() == (builder / "scripts/operations.py").read_bytes()
+    assert re.search(r"^name: builder$", (builder_installed / "SKILL.md").read_text(), re.M)
     assert local.read_text() == "Local instructions.\n"
-    package = (home / ".local/share/software-standards/pragmatic-hexagonal").resolve()
-    assert architecture_installed.resolve() == package
-    assert (home / ".claude/skills/pragmatic-hexagonal").resolve() == package
-    assert (home / ".claude/rules/pragmatic-hexagonal.md").read_bytes() == (package / "references/instructions.md").read_bytes()
+    package = (home / ".local/share/software-standards/builder").resolve()
+    assert builder_installed.resolve() == package
+    assert (home / ".claude/skills/builder").resolve() == package
+    assert (home / ".claude/rules/builder.md").read_bytes() == (package / "references/instructions.md").read_bytes()
+    assert not old_claude.is_symlink() and not old_rule.is_symlink()
+    assert not (cache / "pragmatic-hexagonal").is_symlink() and not legacy.exists()
+    assert global_file.read_text().startswith("Keep my leading preferences.\n")
     assert global_file.read_text().endswith("Keep my existing global preferences.\n")
     assert local_rule.read_text() == "Keep my local rule.\n"
     guidance = global_file.read_text()
+    # Follow the actual installed instruction path, without claiming model loading.
+    target, = re.findall(r"`(~\/[^`]+)`", guidance)
+    assert (home / target[2:]).read_bytes() == (package / "references/instructions.md").read_bytes()
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
@@ -77,12 +118,13 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
 
     # A copied skill package must not depend on the dotfiles checkout layout.
     portable = tmp_path / "portable"
-    shutil.copytree(architecture_installed, portable)
+    shutil.copytree(builder_installed, portable)
     assert global_file.read_text() == guidance, "repeat install changed global instructions"
     shutil.rmtree(repo)
-    assert (architecture_installed / "references/standard.md").is_file()
-    assert (home / ".claude/skills/pragmatic-hexagonal/references/standard.md").is_file()
-    for document in (portable / "SKILL.md", portable / "references/standard.md"):
+    assert (builder_installed / "references/standard.md").is_file()
+    assert (home / ".claude/skills/builder/references/construction.md").read_text() == construction_text
+    for document in (portable / "SKILL.md", portable / "references/standard.md",
+                     portable / "references/construction.md"):
         for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
             if "://" not in target and not target.startswith("#"):
                 assert (document.parent / target.split("#")[0]).is_file(), target

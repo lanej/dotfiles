@@ -4,8 +4,9 @@ on:
   pull_request:
     paths:
       - '**/SKILL.md'
-      - 'ai/skills/pragmatic-hexagonal/**'
+      - 'ai/skills/builder/**'
       - 'docs/pragmatic-hexagonal-architecture.md'
+      - 'docs/software-construction.md'
       - '**/AGENTS.md'
       - '**/CLAUDE.md'
       - '**/GEMINI.md'
@@ -22,8 +23,9 @@ on:
     branches: [master]
     paths:
       - '**/SKILL.md'
-      - 'ai/skills/pragmatic-hexagonal/**'
+      - 'ai/skills/builder/**'
       - 'docs/pragmatic-hexagonal-architecture.md'
+      - 'docs/software-construction.md'
       - '**/AGENTS.md'
       - '**/CLAUDE.md'
       - '**/GEMINI.md'

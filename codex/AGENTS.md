@@ -1,10 +1,10 @@
-<!-- pragmatic-hexagonal:start -->
-# Default software standard
+<!-- builder:start -->
+# Default software guidance: Builder
 
 For software design, implementation, modification, debugging, and review, read
-`~/.local/share/software-standards/pragmatic-hexagonal/references/instructions.md`
-and follow the shared skill and standard it identifies.
-<!-- pragmatic-hexagonal:end -->
+`~/.local/share/software-standards/builder/references/instructions.md`
+and follow the Builder skill, architecture standard, and construction policy it identifies.
+<!-- builder:end -->
 
 # Unix philosophy
 

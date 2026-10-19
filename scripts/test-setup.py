@@ -89,14 +89,15 @@ def main():
         assert (home / ".config/kitty/kitty.conf").is_symlink()
         assert (home / ".claude/CLAUDE.md").is_symlink()
         assert (home / ".codex/AGENTS.md").read_bytes() == (repo / "codex/AGENTS.md").read_bytes()
-        skill = home / ".agents/skills/dotfiles/pragmatic-hexagonal"
-        source = repo / "ai/skills/pragmatic-hexagonal"
+        skill = home / ".agents/skills/dotfiles/builder"
+        source = repo / "ai/skills/builder"
         assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
         assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
+        assert (skill / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
         assert (skill / "scripts/check_examples.py").is_file()
-        package = home / ".local/share/software-standards/pragmatic-hexagonal"
-        claude_skill = home / ".claude/skills/pragmatic-hexagonal"
-        rule = home / ".claude/rules/pragmatic-hexagonal.md"
+        package = home / ".local/share/software-standards/builder"
+        claude_skill = home / ".claude/skills/builder"
+        rule = home / ".claude/rules/builder.md"
         assert skill.resolve() == package
         assert claude_skill.resolve() == package
         assert not (package / "references/standard.md").is_symlink()

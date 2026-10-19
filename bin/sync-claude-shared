@@ -50,7 +50,7 @@ def sync(source, home):
             if owned_entry(installed, roots) and installed.name not in entries:
                 installed.unlink()
         for name, entry in sorted(entries.items()):
-            if group == "skills" and name == "pragmatic-hexagonal":
+            if group == "skills" and name == "builder":
                 package = home / ".local/share/software-standards" / name
                 if (package / ".dotfiles-managed").is_file():
                     entry = package

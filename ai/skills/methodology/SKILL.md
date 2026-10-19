@@ -5,8 +5,8 @@ description: "Consolidated reference for phased execution (continuous work throu
 
 # Methodology Reference
 
-For software work, load `pragmatic-hexagonal` and its standard: software
-properties are distinct from this procedure and its passing checks.
+For software work, load `builder` and its architecture and construction references.
+Software properties, construction feedback, and delivery gates remain distinct.
 
 ## Visual Communication Requirements
 
@@ -46,19 +46,19 @@ Claude agents use continuous phased processing for complex multi-step work.
 
 Start with high-level phases (3-5 major tasks), break down as complexity emerges:
 
-**Initial:** `1. Implement auth system  2. Add tests  3. Update docs`
+**Initial:** `1. Establish a verified path  2. Extend protected behavior  3. Complete delivery checks`
 
 **Adaptive breakdown:**
 ```
-1. Implement auth system
-   1.1 Create User model with bcrypt hashing
-   1.2 Add JWT token generation
-   1.3 Implement middleware for protected routes
-   1.4 Add session management
-2. Add tests
-   2.1 Unit tests for auth functions
-   2.2 Integration tests for login flow
+1. Exercise the smallest meaningful login path
+   1.1 Establish the expected outcome
+   1.2 Protect retained behavior with repeatable checks
+2. Extend and verify session behavior
+3. Simplify, run broader checks, and document
 ```
+
+Follow Builder's construction policy; do not separate implementation from testing
+or defer security-critical requirements to a later phase.
 
 ### Integration with Memory/Search
 
@@ -137,11 +137,14 @@ Use `just dev-fig NAME` → Read PNG from `{project-dir}_files/figure-pdf/{LABEL
 - If `uv add` hangs building from source (>60 seconds): (1) system Python, (2) PyPI, (3) CLI tool instead
 - AVOID installing Python bindings from source when CLI alternatives exist
 
-## TDD Extended Reference
+## Verification Extended Reference
 
 ### Feedback Loop Design
 
-**Design the feedback loop before writing code.** Before the first line, identify what "verifiably done" looks like: which tests run, which lint/type-check passes, which grep/diff confirms the output. The verification path is part of the design, not an afterthought.
+TDD is optional; verification is not. Resolve consequential uncertainty with the
+smallest credible check, then protect retained behavior before expanding or
+restructuring it. Follow Builder's construction policy; these loops do not
+replace the delivery gates below.
 
 ### Verification Rigor Tiers
 
@@ -172,7 +175,7 @@ undeclared across a few real plans, or is declared and then followed by faults
 V1 would have caught.
 
 Rules:
-- **What counts as the acceptance check.** Three properties: it enters through the real entrypoint a caller uses, not an internal helper; it asserts an observable outcome (exit code and output, response body, file written, state changed — never a mock call count); and **it goes red if you delete the behavior**. Establish falsifiability with the once-per-new-harness break-check below, not a mutation check per test or task. One check per user-visible feature, per AGENTS.md; a branch, input variant, or failure mode is not another feature.
+- **What counts as the acceptance check.** Three properties: it enters through the real entrypoint a caller uses, not an internal helper; it asserts an observable outcome (exit code and output, response body, file written, state changed — never a mock call count); and **it goes red if you delete the behavior**. Check detector sensitivity with the once-per-new-harness break-check below, not a mutation check per test or task. One check per user-visible feature, per AGENTS.md; a branch, input variant, or failure mode is not another feature.
   The unit-vs-acceptance distinction is the point: of the eight fault classes below, a test over the changed file catches roughly none, while an acceptance check through the real entrypoint reaches 2, 3, 4 and 7.
 - **Under `default`, V1 is the per-task floor; under `explore`, V0 plus smoke. Run V2 between tasks only under `harden` or escalation.** Otherwise, per-task full runs duplicate the branch gate, which already localizes regressions through per-task commits and bisect.
 - **Recheck changed results.** Outside `harden` or escalation, avoid redundant full runs between tasks. If a gate fails or review fixes change verified code, rerun the affected checks and the branch gate before merge.
@@ -187,7 +190,7 @@ Rules:
 - **Keep escalation for the remainder of the current plan**, as required by CLAUDE.md. A new plan can default to V1 after the cause is fixed; one clean task does not cancel the active plan's trip-wire.
 - **Where no acceptance check exists, V1 is to write the one.** `bin/bugfix-worker` carried 9 of the 14 audited faults and has no test file — under the old file-scoped V1 that read as "run nothing, pass." Confirm the tier you are relying on actually covers the changed behavior; where it does not, write the check or accept that detection falls entirely on V3, and say which.
 - **Brief the reviewer with the fault classes below.** An unguided "review this diff" dispatch relies on the reviewer happening to look in the right place. Each class below is derived from a fault that actually shipped past a green check, so none is speculative.
-- **Break-checks are per harness, not per test.** Falsifiability (Constitution IV) is satisfied by one break-check the first time a harness is wired up — not by re-breaking an established suite each task.
+- **Break-checks are per harness, not per test.** Check a new harness once, not each task. Detector sensitivity is not proof of solution properties.
 
 The accepted tradeoff: a local, short-lived error rate is cheaper than uniform maximum rigor. A *compounding* error rate, or one whose cause can no longer be attributed, is not.
 
@@ -231,13 +234,13 @@ This exists because the tier model rests on an audit reconstructed by reading co
 
 Do not defend a tier that the trailer data shows catches nothing. The whole point of this section is that the model was wrong once already — the per-task full suite was defended on reasoning for as long as nobody counted.
 
-**Harness verification (false-red / false-green discipline).** For a new test file or package, or any setup where harness wiring is uncertain:
-1. Write the failing test
-2. Break the implementation in a targeted way (wrong return value, removed body, inverted condition) and confirm the test catches that specific failure
-3. Restore the implementation and confirm green
-4. Only then proceed — a green you haven't confirmed can turn red tells you nothing
+**Harness verification.** When wiring is new or uncertain:
+1. Check independently specified behavior; code may already exist.
+2. Introduce a controlled defect and confirm the intended failure, not a setup error.
+3. Restore the implementation and confirm green.
 
-Once per new harness — not per test, and not repeated for tasks adding tests to a harness already break-checked.
+Once per new harness, not per test or task. This verifies a detector, not a
+mandatory test-first sequence or every property of the resulting software.
 
 **Return only when self-validated.** Never ask for confirmation on something you can verify yourself. Run the tier the task calls for (see Verification Rigor Tiers), confirm the diff, check the output — then return with evidence of completion, not a question.
 
