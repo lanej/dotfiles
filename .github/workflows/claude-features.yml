@@ -88,25 +88,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Checkout standalone broker
         if: env.TRUSTED_BROKER_TEST == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: lanej/agent-status-broker
           ref: v0.1.7
           path: agent-status-broker-source
           ssh-key: ${{ secrets.AGENT_STATUS_BROKER_DEPLOY_KEY }}
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: env.TRUSTED_BROKER_TEST == 'true'
         with:
           go-version-file: agent-status-broker-source/go.mod
           cache: false
       - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: false
       - name: Install tmux on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y tmux
