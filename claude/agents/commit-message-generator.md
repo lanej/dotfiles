@@ -45,11 +45,11 @@ Your primary responsibility is to generate properly formatted commit messages th
 - Be specific about what changed
 - Avoid generic terms like 'update', 'change', 'modify' when more specific verbs apply
 
-**Scanning and plain-text readability:**
+**Markdown design and scanning:**
 
 Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default. Follow its link to the full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
 
-Keep messages readable in raw `git log` output: lead the subject with a meaningful outcome. Add a body only when why, constraints, or caveats need explanation. Frontload informative words, keep paragraphs focused, and place caveats beside the claims they qualify. Markdown is allowed: use bullets, inline code, restrained emphasis, headings, or tables when they improve understanding. Decoration is optional. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
+Format commit bodies with the same Markdown design conventions as PR descriptions, using the quick reference as the shared guide. Lead with the outcome; use informative labeled bullets, restrained emphasis, inline code, and headings when the content benefits. Keep caveats beside their claims. Adapt the structure to the message's length and keep it readable in raw `git log` output. A subject alone is sufficient when no explanation is needed. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
 
 Fictional scenario: a label provider supports idempotent purchases within a retention window. The application can persist purchase keys and reconcile ambiguous attempts.
 
