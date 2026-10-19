@@ -26,7 +26,7 @@ Classify the final diff independently of commit messages, branch names, and the 
 
 Apply the linked specification rather than copying its rules into another template. Draft around the final outcome, then remove anything already evident from the diff or checks. Do not add AI attribution, co-author credits, or generated-by footers.
 
-Read [Writing for F-pattern scanning](../../docs/f-pattern-scanning.md) and apply its rendered scan check alongside the PR specification's Markdown design guidance. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
+Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default and apply its rendered scan check. Read the full specification linked there only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
 
 ## Example: software design standard
 

@@ -89,7 +89,7 @@ Link relevant requirements next to the point they support. Use brief labels such
 
 Treat the rendered description as a designed document. Use a deliberate heading hierarchy when sections help navigation, restrained emphasis for key facts, and whitespace to separate ideas. Choose prose, lists, and tables according to the content; avoid decorative structure.
 
-Apply [Writing for F-pattern scanning](f-pattern-scanning.md) to information order, navigation, emphasis, and the rendered scan check. That specification distinguishes observed reading patterns from our writing recommendations.
+Use the [F-pattern quick reference](f-pattern-scanning-quick-reference.md) by default for information order, navigation, emphasis, and the rendered scan check. Consult its linked full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
 
 Use prose for connected reasoning. Use bullets when multiple independent outcomes, constraints, tradeoffs, or decisions are easier to scan separately. Each item should make one assessable point, with parallel phrasing and enough explanation to understand its effect. Avoid sentence-by-sentence bullets, file inventories, lists repeating the opening, and arbitrary item counts. Use numbered lists when order matters, such as migration steps.
 
