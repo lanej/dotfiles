@@ -1,6 +1,7 @@
 """One detector for making shared dotfiles skills discoverable by Codex."""
 
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     source.mkdir(parents=True)
     (source / "SKILL.md").symlink_to(instruction)
     (source / "references").symlink_to(external / "references")
+    architecture = repo / "ai/skills/pragmatic-hexagonal"
+    shutil.copytree(ROOT / "ai/skills/pragmatic-hexagonal", architecture)
     (repo / "bin").mkdir()
     (repo / "bin/sync-codex-skills").symlink_to(ROOT / "bin/sync-codex-skills")
     local = home / ".agents/skills/local-workflow/SKILL.md"
@@ -43,9 +46,21 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert not (installed / "SKILL.md").is_symlink()
     assert (installed / "references/guide.md").read_text() == "Review guide.\n"
+    architecture_installed = home / ".agents/skills/dotfiles/pragmatic-hexagonal"
+    assert (architecture_installed / "references/standard.md").read_bytes() == (architecture / "references/standard.md").read_bytes()
+    assert (architecture_installed / "scripts/operations.py").read_bytes() == (architecture / "scripts/operations.py").read_bytes()
     assert local.read_text() == "Local instructions.\n"
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert local.read_text() == "Local instructions.\n"
+
+    # A copied skill package must not depend on the dotfiles checkout layout.
+    portable = tmp_path / "portable"
+    shutil.copytree(architecture_installed, portable)
+    shutil.rmtree(repo)
+    for document in (portable / "SKILL.md", portable / "references/standard.md"):
+        for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
+            if "://" not in target and not target.startswith("#"):
+                assert (document.parent / target.split("#")[0]).is_file(), target

@@ -60,6 +60,7 @@ def main():
         assert "incomplete" in partial.stdout
         assert "instruction-size" not in partial.stdout and "audit-skills" not in partial.stdout
         assert "test-ui-review" not in partial.stdout
+        assert "test-pragmatic-hexagonal" not in partial.stdout
         if sys.platform == "darwin":
             assert (home / ".config/yabai/yabairc").is_symlink()
             assert not (home / "Documents/superwhisper").exists()
@@ -87,7 +88,14 @@ def main():
         assert (home / ".config/nvim").resolve() == repo / "nvim"
         assert (home / ".config/kitty/kitty.conf").is_symlink()
         assert (home / ".claude/CLAUDE.md").is_symlink()
-        assert (home / ".codex/AGENTS.md").is_file()
+        assert (home / ".codex/AGENTS.md").read_bytes() == (repo / "codex/AGENTS.md").read_bytes()
+        skill = home / ".agents/skills/dotfiles/pragmatic-hexagonal"
+        source = repo / "ai/skills/pragmatic-hexagonal"
+        assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
+        assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
+        assert (skill / "scripts/check_examples.py").is_file()
+        # Guidance installs even while optional tools and network are absent.
+        assert (home / ".codex/agents/code-reviewer.toml").is_file()
         assert not (home / ".tmux/plugins/tpm").exists()
         # Local cache budgets are deliberately editable and must survive reruns.
         budgets = home / ".config/dev-cache-budgets.json"

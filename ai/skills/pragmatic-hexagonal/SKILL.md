@@ -1,23 +1,50 @@
 ---
 name: pragmatic-hexagonal
-description: "Use when designing, implementing, refactoring, or reviewing software behavior or architecture; apply pragmatic functional-core/imperative-shell boundaries and falsifiable verification proportional to the change."
+description: "Use when designing, implementing, modifying, debugging, or reviewing software; preserve inspectable behavior, challengeable claims, and revisable policies with the minimum supporting architecture."
 ---
 
 # Pragmatic Hexagonal Architecture
 
-Read `~/.files/docs/pragmatic-hexagonal-architecture.md` (or the repository copy) when changing architectural boundaries, introducing integrations, designing a nontrivial feature, or reviewing such a change.
+Read [the standard](references/standard.md) before software work. It governs
+properties of the software produced, by humans or agents. Test completion,
+agent instruction following, and architectural appearance cannot substitute
+for those properties.
 
-## Procedure
+## Apply the standard
 
-1. Identify the real workflow, caller-facing entrypoint, observable success, and likely failure.
-2. Separate **facts and decisions** (functional core) from **orchestration and effects** (imperative shell).
-3. Normalize only owned domain concepts; keep vendor-specific features explicit in integrations.
-4. Introduce ports only for real substitution, isolation, independent ownership or lifecycle; never create generic interfaces reflexively.
-5. Identify the simplest counterexample to each important design or behavioral claim and the detector that would expose it.
-6. Build a thin end-to-end slice; verify through the real entrypoint and observable outcome.
-7. Enforce objectively testable import boundaries with project-appropriate tooling where justified. Review semantic boundaries manually.
-8. Report observed verification and gaps; do not claim static lint proves good architecture.
+Identify the consequential behavior in the changed capability: its contract,
+external assumptions, intended outcome, and evidence capable of contradicting
+each. Use existing types, acceptance examples, tests, errors, return values,
+or runtime signals; do not create a separate claim registry or report.
 
-For a trivial edit, preserve existing boundaries and use the repository's normal lightweight checks. Do not introduce architecture diagrams, interfaces, or new tests solely to satisfy this skill.
+Keep relevant facts explicit at decision boundaries. Preserve consequential
+provenance and uncertainty through translation and effects. Distinguish intended
+actions, attempts, confirmations, failures, and unknown outcomes where material.
+Locate the policy owner so disproven assumptions can be corrected locally.
 
-The repository `methodology` skill controls test cadence and rigor; do not duplicate it here.
+Choose the minimum architecture supporting these properties: functional core,
+imperative shell, a thin model of owned concepts, and ports only for concrete
+substitution or isolation. Follow a complete capability rather than imposing
+horizontal layers. Do not invent interfaces to make the diagram look right.
+
+For debugging, distinguish a violated contract from a failed environmental
+assumption or an outcome the contract never guaranteed. Preserve relevant
+contradictory evidence before proposing a correction. Missing evidence stays
+an explicit gap; it is not proof of correctness.
+
+## Review
+
+Report specific violated requirement IDs, affected behavior, and supporting
+evidence. Separate established facts, unverified assumptions, and verification
+gaps. Examine whether evidence can disagree with the implementation, including
+where independent acceptance expectations or external observations are needed.
+Do not infer compliance from source layout, green checks, or a polished rationale.
+
+For small changes, preserve the properties with ordinary code and proportionate
+verification; no architecture report is required. Existing project instructions
+control development procedure and test cadence. Apply documented instruction
+precedence; record material deviations using the standard's exception format.
+
+For concrete examples or to inspect their limitations, read the standard's
+reference examples and run `python3 scripts/check_examples.py` from this skill
+directory. That exercises software examples, not Codex adherence.

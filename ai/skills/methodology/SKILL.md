@@ -5,7 +5,8 @@ description: "Consolidated reference for phased execution (continuous work throu
 
 # Methodology Reference
 
-Consolidated methodology, frameworks, and detailed process guidance relocated from CLAUDE.md for space efficiency.
+For software work, load `pragmatic-hexagonal` and its standard: software
+properties are distinct from this procedure and its passing checks.
 
 ## Visual Communication Requirements
 
@@ -245,10 +246,9 @@ Once per new harness — not per test, and not repeated for tasks adding tests t
 - Fix by: dependency injection, deterministic mocks, proper test isolation
 
 ### Dependency Inversion for Testability
-- Quick/dirty scripts without tests: hardcoded dependencies fine
-- Code with tests: inject dependencies as parameters
-- Accept interfaces/protocols not concrete implementations
-- Pass dependencies as parameters for test doubles (mocks, stubs, fakes)
+- Supply consequential facts explicitly; isolate effects where useful.
+- Interfaces require real substitution or isolation needs; functions can suffice.
+- Doubles do not establish live provider facts.
 
 ### Acceptance Testing
 - Test complete user workflows end-to-end from user's perspective

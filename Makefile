@@ -299,7 +299,7 @@ codex-env:
 		fi; \
 	fi
 codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
-codex-config: codex-env
+codex-config: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
@@ -354,6 +354,9 @@ mail:
 	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
 	@echo "  2. Follow the prompts to configure your Gmail account"
 	@echo "  3. Launch neomutt when done"
+test-pragmatic-hexagonal:
+	@python3 "$(DOTFILES)/ai/skills/pragmatic-hexagonal/scripts/check_examples.py"
+
 test:
 	@pytest bin/*_test.py
 
@@ -475,3 +478,5 @@ ac-awake-stop:
 ac-awake-uninstall:
 	@sudo "$(DOTFILES)/bin/ac-awake-service" uninstall
 .PHONY: ac-awake-status ac-awake-install ac-awake-stop ac-awake-uninstall
+
+.PHONY: test-pragmatic-hexagonal
