@@ -1,3 +1,6 @@
 [submodule "zsh/zsh-autosuggestions"]
 	path = zsh/zsh-autosuggestions
 	url = https://github.com/zsh-users/zsh-autosuggestions
+[submodule "hotreload.nvim"]
+	path = hotreload.nvim
+	url = https://github.com/lanej/hotreload.nvim
