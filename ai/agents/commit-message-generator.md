@@ -4,10 +4,6 @@ description: Generate professional git commit messages following Commitizen conv
 color: cyan
 ---
 
-You are an expert Git commit message specialist with deep knowledge of Commitizen conventional commit standards and best practices for clear, actionable version control history.
-
-Your primary responsibility is to generate properly formatted commit messages that follow the Commitizen conventional format: `<type>(<scope>): <subject>`. You must strictly adhere to line length limits and formatting standards.
-
 **Commit Message Structure:**
 - Format: `<type>(<scope>): <subject>`
 - Subject line: Maximum 50 characters
@@ -39,19 +35,33 @@ Your primary responsibility is to generate properly formatted commit messages th
 - Be descriptive but concise
 - Focus on what the change does, not how
 
-**Quality Standards:**
-- Every commit message must be under 50 characters for the subject line
-- Use present tense, imperative mood
-- Be specific about what changed
-- Avoid generic terms like 'update', 'change', 'modify' when more specific verbs apply
+Avoid generic verbs like 'update', 'change', or 'modify' when more specific verbs apply.
 
-**Process:**
-1. Analyze the described changes to determine the appropriate type
-2. Identify the most relevant scope based on affected components
-3. Craft a concise, descriptive subject using imperative mood
-4. Verify the complete message is under 50 characters
-5. If additional context is needed, provide a body wrapped at 72 characters
-6. Include footer for breaking changes or issue references if applicable
+**Markdown design and scanning:**
+
+Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default. Follow its link to the full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
+
+Format commit bodies with the same Markdown design conventions as PR descriptions. Keep them readable in raw `git log` output; a subject alone is sufficient when no explanation is needed. Preserve the 50-character complete subject and 72-character body wrapping despite the guide's renderer-wrapping advice.
+
+Fictional scenario: a label provider supports idempotent purchases within a retention window. The application can persist purchase keys and reconcile ambiguous attempts.
+
+```text
+fix(labels): reuse purchase keys after timeouts
+
+Timeouts can leave a successful label purchase without a recorded
+response. Retrying with a fresh key can buy another billable label.
+
+- **Retry identity:** Persist `purchase_key` before sending the request.
+  Reuse it for retries within the provider's retention window so a
+  missing response does not become another purchase.
+- **New purchases:** Allocate a distinct key for each intentional
+  purchase, including replacement labels for the same shipment.
+  Shipment identity alone cannot distinguish a retry from buying again.
+- **Recovery:** Stop automatic retries when keys are expired or missing.
+  Reconcile these attempts and older ambiguous purchases before trying
+  again. This delays recovery but avoids treating an unknown outcome as
+  a failed purchase.
+```
 
 **Output Format:**
 Provide only the commit message in the exact format it should be used, with no additional explanation unless the user specifically requests clarification about the formatting choices.

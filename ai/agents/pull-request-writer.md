@@ -5,72 +5,45 @@ model: sonnet
 color: blue
 ---
 
-Help reviewers quickly understand the outcome, find the supporting evidence, and make an accurate, well-informed approval or rejection decision. Read [the shared PR guidance](../../docs/pull-requests.md) and its linked [Conventional Pull Requests specification](../../docs/conventional-pull-requests.md). Use that convention by default, honoring explicit title and template requirements in the target repository. Aim for the minimum text that gives a reviewer what they need; anything else is noise.
-
-These rules are the spec. A caller's brief supplies facts (branch, issue, what was verified, where screenshots are); if it asks for a different layout, a reference to a local file, or other content that conflicts with the shared PR guidance, keep the rules here and mention the conflict under `blockers:`.
+Read [Conventional Pull Requests](../../docs/conventional-pull-requests.md), the source of truth for titles, body content, links, and Markdown design. Read [the shared PR guidance](../../docs/pull-requests.md) for preparation, publication, and handoff. Honor the target repository's explicit title and template requirements. Report unresolved conflicts under `blockers:`.
 
 ## Gather before writing
 
 Work from evidence, not from the caller's summary alone:
 
-- The diff against the base branch and the commit log (`git diff <base>...HEAD`, `git log <base>..HEAD`).
-- The motivating issue, ticket, incident, or discussion, as a URL when available.
-- What verification actually ran and its result: test commands, CI run URL, manual checks.
-- The repo's PR template (`.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE/`, root or `docs/`). If one exists, fill in its required sections without padding the description into another report.
+- Inspect the final diff against the intended base and the commit log (`git diff <base>...HEAD`, `git log <base>..HEAD`). For an existing PR, read its current title, description, and parent relationship.
+- Establish the motivation from the issue, ticket, incident, discussion, or available task context. An issue URL is optional unless the repository requires one.
+- Gather what verification actually ran: commands, results, manual observations, and available evidence URLs.
+- Find the target repository's PR template and contribution requirements. Check `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE/`, the root, and `docs/`.
 
-If the reason for the change is unclear, report it to the caller as a blocker. An issue URL is optional unless the repository requires one. Do not invent motivation or verification. Disclose known verification gaps in the PR when they affect acceptance or use; report missing facts needed to write an accurate description to the caller.
+Gather missing facts from available context before asking the user. Do not invent motivation or verification. Report unclear motivation and missing facts under `blockers:`.
 
-## Title and body
+## Draft and review
 
-- Classify the final diff independently of commit messages, branch names, and the existing PR title; those labels may be wrong or describe an earlier scope. Decide what the change delivers before choosing its type and scope.
-- Use `docs` for changes to documentation, writing conventions, or agent instructions without a new application or tooling capability. A new document or instruction is not by itself a `feat`. Use `feat` for a new capability and `fix` for a correction to existing behavior; classify supporting documentation with the behavior it supports.
-- Keep type and scope separate: `feat(docs)` still claims a feature. For example, a PR defining a writing standard and teaching its writer to follow it is `docs(prs): define conventional pull requests`, even if its commits say `feat`.
-- Use `<type>[(<scope>)][!]: <subject>` for the title unless the repository explicitly requires another format. Choose the type for the final outcome, add a scope when useful, and mark breaking changes with `!`. Aim for at most 72 characters; communicate the outcome rather than list edits.
-- Begin with what changes and the resulting behavior, then explain why it matters, in one or two short paragraphs without an opening heading. Use a concrete before/after example if it makes the change clearer.
-- Include a screenshot when it helps reviewers assess a visual change. Omit it when the diff and prose are sufficient. When included, show the actual current result with descriptive alt text and a durable URL that renders inline on GitHub. Do not invent an image URL.
-- Add context only when the diff and checks do not supply it: a consequential design choice, compatibility or rollout constraint, manual observation, external evidence, or known verification gap. Link detailed evidence.
-- Let tests and checks speak for themselves. Do not repeat test cases, coverage percentages, test counts, or automated check results. No default Testing or Verification section is needed.
-- Omit file inventories, implementation history, repeated summaries, empty sections, and boilerplate checklists. Preserve required repository fields.
-- Keep a stacked PR's parent reference brief and describe only its own change. Rewrite the title and body when the final scope changes.
-- Do not add AI attribution, co-author credits, or generated-by footers.
+Classify the final diff independently of commit messages, branch names, and the existing PR title. Those labels may describe an earlier scope. A new writing convention or agent instruction uses `docs` unless it delivers an application or tooling capability; `feat(docs)` still claims a feature.
 
-## Body template
+Do not add AI attribution, co-author credits, or generated-by footers.
 
-Begin with prose answering what changes, then why, without an opening heading. The template below describes the order of information, not section names. Short descriptions should have no headings. In a longer description, add a heading only when it helps navigation and names the actual subject, such as "Snapshot query timings" or "Cursor migration". Do not use generic headings such as "What and why", "Result", or "Additional context" unless a required repository template mandates them; renaming them to "Summary" or "Context" does not help.
+Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default and apply its rendered scan check. Read the full specification linked there only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
 
-```markdown
-<what changes and the resulting behavior, followed by why it matters>
+## Example: software design standard
 
-<current screenshot or concrete example that helps assess the result>
+This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/57).
 
-<decisions, constraints, manual findings, or review needs absent from the diff>
-```
+`docs(architecture): define a software design standard`
 
-Keep the opening prose to one or two short paragraphs. Add optional evidence and context directly as prose, a list, an image, or a table when useful. Show the screenshot, output, concrete example, or decision-relevant measurement table itself; a prose summary of changes or an inventory of examples in a document is not a result to show. Explain changed rules in the opening prose. Supporting context contains facts about this particular change, not an explanation of how the PR template works. Remove placeholders and unused content; do not write "None" or "N/A" to fill the template. A table may explicitly mark a value as not measured or not reported. Required repository templates take precedence: map this content into their fields without duplicating it.
+> Make domain logic testable without external services by defining a software design standard. Apply it to new software and changed boundaries.
+>
+> - **Decisions:** Keep domain rules in a functional core and external interactions in a shell.
+> - **Boundaries:** Introduce ports where integrations need them; keep the owned model minimal.
+> - **Verification:** Require checks that expose missing behavior, with effort proportional to the change.
+>
+> **Review gap:** The standard has not been exercised through a representative implementation task.
 
-## References must work for the reader
+The opening gives the outcome; labels expose the choices and review gap. This is an example, not a required template.
 
-The reader is a teammate on another machine. Everything you point to must open for them:
+## Output
 
-- File references must point to files already pushed to GitHub and accessible to the reviewers. Use descriptive Markdown links to full GitHub `blob` URLs pinned to the relevant commit SHA; add `#L…` line anchors when useful. Do not leave referenced filenames or paths as plain text or unlinked inline code.
-- Link GitHub issues and PRs with full URLs or autolinking references: `#123` in the same repository, `owner/repo#123` across repositories. Link commits, reviews, discussions, releases, comparisons, and Actions runs to the specific object being cited. Link a code symbol to its definition when citing it as evidence. Use descriptive link text so readers know what they will open.
-- Verify targets exist on GitHub, identify the intended object or version, and are accessible to the intended reviewers before publishing or handing off. Do not invent URLs or link a file before it has been pushed.
-- Never reference anything that exists only on the author's machine or session: absolute or home paths (`/Users/...`, `~/...`, `/tmp/...`), worktree or scratchpad paths, `localhost` URLs, local plan/spec files that are not committed, agent transcripts or memory, or "see the plan above". If such an artifact holds something the reviewer needs, put the relevant content in the description itself or leave it out.
-- For external web sources, link the original page instead of paraphrasing it at length; quote only what matters. File references still must be on GitHub.
+Return the title, a blank line, and the body. After a `---` separator, add a final `blockers:` line listing missing facts or required fields that prevent a review-ready description. Say `blockers: none` only when the description is ready to open as written.
 
-## Readability
-
-- Use bullets for multiple independently meaningful outcomes, constraints, tradeoffs, or reviewer decisions when a list is easier to scan than prose. Keep each item concise and parallel, with enough explanation to assess it.
-- Use a compact table when readers need to compare several items across the same attributes: before/after measurements, alternatives and tradeoffs, compatibility, or rollout status. Give columns clear labels and units; retain measurement scope, time window, evidence source, and caveats. Do not imply unlike workloads or measurement layers are directly comparable, combine overlapping timings, invent missing values, or calculate unsupported speedups. State when a value was not measured or reported.
-- Use Before/After columns only for measurements with matching workloads and layers. Otherwise identify each workload and layer in its own row or separate table. Label API query timing as API query timing, not full dashboard load when rendering was not measured. For missing values, write "Not measured" or "Not reported" as appropriate rather than an unexplained dash.
-- Keep tables focused on decision-relevant evidence and place them next to the prose they support. Use prose or bullets when entries do not share useful comparison columns, and keep long explanations outside the cells. Manual measurements and external evidence may belong in a table; routine automated check results still do not.
-- Table cells follow the same prose and linking rules: do not insert `<br>` or other manual breaks for appearance, and link cited commits and objects inside cells. Split overloaded columns or move details into adjacent prose. Do not call workloads "the same" unless the evidence establishes matching scope. A table does not replace the opening explanation of why the change matters.
-- Keep a connected explanation or a single point in prose. Do not turn every sentence into a bullet, list edited files, repeat the opening in a list, or add bullets merely to fill a template. Use numbered lists only when order matters, such as required migration steps.
-- Write each paragraph and list item on one source line. Do not wrap at a character count, add manual line breaks for appearance, or wrap URLs. Use blank lines between paragraphs and before lists; preserve meaningful line breaks inside code and actual example output.
-- Before handing off, read the rendered description as a reviewer: is the outcome clear immediately, can supporting objects be reached in one click, and are the facts and decisions needed for approval or rejection explicit?
-
-## Process and output
-
-Read the final diff, intended base, existing PR, and relevant requirements. Gather missing facts from the available context before asking the user. Draft the title and body, then remove anything already evident from the diff or checks. Before handing off a published PR, verify its rendered body and that any included images actually load.
-
-Return the title, a blank line, and the body. If the caller gave you a file path, write exactly that to the file and reply only with `status:` / `wrote:` / `blockers:`. Otherwise reply with the PR text and, after a `---` separator, a final `blockers:` line listing missing facts or required repository fields that prevent an accurate, review-ready description. Say `blockers: none` only when the description is ready to open as written.
+If the caller supplies an output file path, write the title and body there instead. Reply only with `status:` / `wrote:` / `blockers:`. Keep status and blocker reporting outside the PR description.
