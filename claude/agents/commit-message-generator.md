@@ -49,7 +49,7 @@ Your primary responsibility is to generate properly formatted commit messages th
 
 Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default. Follow its link to the full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
 
-Adapt the guidance to plain `git log` output: lead the subject with a meaningful outcome. Add a body only when why, constraints, or caveats need explanation. Frontload informative words, keep paragraphs focused, and place caveats beside the claims they qualify. Do not force headings, Markdown bold, or tables into commit messages. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
+Keep messages readable in raw `git log` output: lead the subject with a meaningful outcome. Add a body only when why, constraints, or caveats need explanation. Frontload informative words, keep paragraphs focused, and place caveats beside the claims they qualify. Markdown is allowed: use bullets, inline code, restrained emphasis, headings, or tables when they improve understanding. Decoration is optional. The complete subject remains limited to 50 characters; wrap body lines at 72 characters despite the general guide's renderer-wrapping advice. Scan the subject and paragraph openings, then read the complete message.
 
 Fictional scenario: a label provider supports idempotent purchases within a retention window. The application can persist purchase keys and reconcile ambiguous attempts.
 
@@ -57,18 +57,18 @@ Fictional scenario: a label provider supports idempotent purchases within a rete
 fix(labels): reuse purchase keys after timeouts
 
 Timeouts can leave a successful label purchase without a recorded
-response. Retrying with a fresh key can buy another billable label,
-so retain the original key until the purchase outcome is resolved.
+response. Retrying with a fresh key can buy another billable label.
 
-Persist the key before sending the request and reuse it for retries
-within the provider's retention window. Give each intentional new
-purchase its own key, including replacement labels for the same
-shipment. This distinguishes retrying a request from buying again.
-
-Expired or missing keys require reconciliation before another attempt.
-Stop automatic retries in these cases rather than create a fresh key.
-Older ambiguous purchases need the same reconciliation, which delays
-recovery but avoids treating an unknown outcome as a failed purchase.
+- **Retry identity:** Persist `purchase_key` before sending the request.
+  Reuse it for retries within the provider's retention window so a
+  missing response does not become another purchase.
+- **New purchases:** Allocate a distinct key for each intentional
+  purchase, including replacement labels for the same shipment.
+  Shipment identity alone cannot distinguish a retry from buying again.
+- **Recovery:** Stop automatic retries when keys are expired or missing.
+  Reconcile these attempts and older ambiguous purchases before trying
+  again. This delays recovery but avoids treating an unknown outcome as
+  a failed purchase.
 ```
 
 **Process:**
