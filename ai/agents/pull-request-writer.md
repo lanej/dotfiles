@@ -38,10 +38,6 @@ This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/5
 > - **Review gap:** The standard has not been exercised through a representative implementation task.
 >
 > ![The shell supplies facts to the core and carries out its decisions; ports are selective](https://raw.githubusercontent.com/lanej/dotfiles/21240a2e4c14c772654fbf206e55d872b8868c4c/docs/images/decision-boundaries.svg)
->
-> *Conceptual diagram illustrating the standard.*
-
-The opening gives the takeaway; labels expose scope and review needs; the diagram shows structure. This is an example, not a required template.
 
 ## Output
 

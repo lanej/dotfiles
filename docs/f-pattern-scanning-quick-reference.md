@@ -8,7 +8,7 @@ Maximize understanding per reader effort. Support observed scanning, not a liter
 - Separate focused paragraphs with whitespace.
 - Choose text or visuals for clarity: screenshots for appearance, diagrams for structure, charts for patterns.
 - Use prose for reasoning, informative labeled bullets for independent points, tables for comparisons.
-- Use headings only for navigation; omit empty scaffolding.
+- Use headings only for navigation; omit empty scaffolding and self-evident narration.
 - Bold key labels or facts sparingly.
 - Keep visuals factual; preserve units, scope, sources, and caveats. Images complement the scan path.
 - Keep consequential caveats beside their claims.
