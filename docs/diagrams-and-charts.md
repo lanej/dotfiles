@@ -13,7 +13,7 @@ Answer one reader question with one visible takeaway. Choose the form that expos
 | Change | Before/after comparison |
 | Quantitative patterns | Chart |
 
-- Name concrete concepts, inputs, and outputs. Show relationships instead of boxing prose.
+- Name concrete concepts, inputs, and outputs. Keep prose and lists as native text. Images must add spatial relationships, data patterns, or visual evidence beyond restyling text.
 - Give arrows a consistent direction and explicit meaning: data flow, dependency, or sequence. Distinguish meanings when combining them. Label conditional branches beside their edges.
 - Use shapes and grouping consistently. Draw meaningful boundaries, such as a pure decision excluding network and storage.
 - Make the entry point obvious. Use whitespace and short labels; avoid crossing lines and unattached notes.
