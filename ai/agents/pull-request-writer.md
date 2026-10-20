@@ -22,7 +22,7 @@ Classify the final diff independently of existing labels. Writing conventions an
 
 Do not add AI attribution, co-author credits, or generated-by footers.
 
-Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md), including its palette and rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
+Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) and its rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
 
 ## Example: software design standard
 

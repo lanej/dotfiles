@@ -67,7 +67,7 @@ Use labels such as **Compatibility:**, **Rollout:**, or **Review:** when they he
 
 ## Markdown design and discoverability
 
-Apply the [F-pattern quick reference](f-pattern-scanning-quick-reference.md), including its dark palette and rendered scan check.
+Apply the [F-pattern quick reference](f-pattern-scanning-quick-reference.md) and its rendered scan check.
 
 Each list item should make one assessable point. Avoid sentence-by-sentence bullets and lists repeating the opening.
 

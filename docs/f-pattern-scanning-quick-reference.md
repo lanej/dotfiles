@@ -10,12 +10,12 @@ Maximize understanding per reader effort. Support observed scanning, not a liter
 - Use prose for reasoning, informative labeled bullets for independent points, tables for comparisons.
 - Use headings only for navigation; omit empty scaffolding and self-evident narration.
 - Bold key labels or facts sparingly.
-- Preserve visual evidence, units, scope, sources, and caveats. Images complement the scan path.
+- Images complement the outcome and meaningful labels; preserve the scan path.
 - Keep consequential caveats beside their claims.
 - Link supporting evidence descriptively.
 
-Authored GitHub diagrams/charts default to dark: background `#0d1117`, text `#e6edf3`, muted text `#9da7b3`, borders `#30363d`, accents `#79c0ff`/`#d2a8ff`. Preserve actual screenshots. Use readable contrast and labels, not color alone.
+Read [Diagrams and charts](diagrams-and-charts.md) only when creating or including them.
 
-Preview at desktop and mobile widths in the intended theme; check labels and contrast. Scan the opening, headings, labels, and first words for outcome and action. Check caveats, then read fully.
+Preview at desktop and mobile widths. Scan the opening, headings, labels, and first words for outcome and action. Check caveats, then read fully.
 
 Read the [full specification](f-pattern-scanning.md) only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.

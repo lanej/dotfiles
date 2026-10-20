@@ -26,9 +26,7 @@ MUST means required; SHOULD allows an exception when the reader's task warrants 
 8. **Emphasize selectively.** Bold SHOULD identify key labels or consequential facts, never whole paragraphs.
 9. **Keep caveats with claims.** Material limits MUST appear beside the claim or action they qualify.
 10. **Name link destinations.** Links MUST use meaningful text identifying their subject. Place supporting links beside the relevant claim; avoid generic instructions such as “click here.”
-11. **Choose the clearest medium.** Use screenshots for appearance, diagrams for structure or workflow, and graphs or charts for quantitative patterns when clearer than prose. Retain the takeaway and caveats without repeating the visual. Preserve axes, units, workload, and evidence source. Visuals MUST reflect actual evidence or labeled conceptual design; do not fabricate evidence. Not every document needs a visual. Images MUST complement the outcome and informative text labels, not erase that scan path.
-
-For authored GitHub diagrams and charts, use the dark palette in the [quick reference](f-pattern-scanning-quick-reference.md). Preserve real application screenshots. Ensure readable contrast and explicit labels; color alone must not carry meaning.
+11. **Choose the clearest medium.** Use screenshots for appearance, diagrams for structure, and charts for quantitative patterns when clearer than prose. Not every document needs a visual. Images MUST complement the outcome and informative text labels, not erase that scan path. For diagrams or charts, read [Diagrams and charts](diagrams-and-charts.md).
 
 Do not impose fixed word counts, heading counts, or list lengths.
 
@@ -48,7 +46,7 @@ Preview in the intended renderer before sharing.
 
 - Scan the opening, headings, labels, and first words for outcome, action, and major distinctions.
 - Check that consequential caveats remain visible beside the claims they qualify.
-- Check spacing, wrapping, emphasis, and link text at desktop and mobile widths. Check authored visuals in the intended theme for legible labels and contrast.
+- Check spacing, wrapping, emphasis, and link text at desktop and mobile widths.
 - Read fully; remove repetition between the scan path and explanation.
 
 This is an editorial check, not an eye-tracking measurement or proof of reader behavior.
