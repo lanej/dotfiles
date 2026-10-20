@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
 SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
+SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config
 SETUP_TARGETS += dev-cache-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
@@ -302,16 +302,16 @@ codex-env:
 			ln -fs "$(DOTFILES)/codex/env" "$(HOME)/.codex/.env"; \
 		fi; \
 	fi
-codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
+# Codex's MCP entries are user-owned; setup must preserve removals and disabled servers.
+codex: claude codex-skills codex-agents codex-tmux codex-config
 codex-config: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
 	fi
 	@cat $(DOTFILES)/codex/AGENTS.md $(DOTFILES)/codex/AGENTS.local.md > $(HOME)/.codex/AGENTS.md 2>/dev/null || cp $(DOTFILES)/codex/AGENTS.md $(HOME)/.codex/AGENTS.md
-codex-mcp: claude-config codex-config
-	$(call require-command,codex)
-	$(call require-command,jq)
+# Retain a clear failure for old callers instead of silently restoring servers.
+codex-mcp:
 	@$(DOTFILES)/bin/sync-codex-mcp-servers
 quarto:
 	@mkdir -p $(HOME)/.config/quarto
@@ -465,7 +465,7 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-mcp codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"

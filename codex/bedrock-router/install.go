@@ -226,6 +226,12 @@ func launchAgent(executable, dir string) []byte {
 }
 
 func configureBrowsing(text, executable, credentials string, delegated bool) (string, error) {
+	// Only an explicit browsing opt-in may register or replace an MCP server.
+	// Ordinary reinstalls preserve user edits, removals, and disabled entries.
+	if !delegated {
+		return text, nil
+	}
+
 	// Replace only our MCP table, preserving other server definitions verbatim.
 	var preserved strings.Builder
 	skip := false
@@ -241,9 +247,7 @@ func configureBrowsing(text, executable, credentials string, delegated bool) (st
 	}
 
 	text = preserved.String()
-	if delegated {
-		text = regexp.MustCompile(`(?m)^[\t ]*web_search[\t ]*=.*$`).ReplaceAllString(text, `web_search = "disabled"`)
-	}
+	text = regexp.MustCompile(`(?m)^[\t ]*web_search[\t ]*=.*$`).ReplaceAllString(text, `web_search = "disabled"`)
 
 	fragment, err := toml.Marshal(map[string]any{
 		"command": "/bin/sh",
@@ -308,6 +312,7 @@ func install(args []string, env installEnvironment) error {
 	noStart := flags.Bool("no-start", false, "Write files without starting the service")
 	configPath := flags.String("config", "", "Configuration file; defaults are embedded in this binary")
 	delegatedBrowsing := flags.Bool("delegated-browsing", false, "Use Luna browsing MCP instead of built-in web search")
+	preserveMCP := flags.Bool("preserve-mcp", false, "Keep all existing MCP server choices unchanged")
 	keepEnv := flags.Bool("keep-env", false, "Preserve an existing custom Codex .env source")
 
 	if err := flags.Parse(args); err != nil {
@@ -316,6 +321,9 @@ func install(args []string, env installEnvironment) error {
 
 	if flags.NArg() != 0 {
 		return errors.New("unexpected install arguments")
+	}
+	if *preserveMCP && *delegatedBrowsing {
+		return errors.New("--preserve-mcp conflicts with --delegated-browsing")
 	}
 
 	if env.platform != "darwin" && env.platform != "linux" {
@@ -377,9 +385,11 @@ func install(args []string, env installEnvironment) error {
 		return err
 	}
 
-	updated, err = configureBrowsing(updated, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
-	if err != nil {
-		return err
+	if !*preserveMCP {
+		updated, err = configureBrowsing(updated, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
+		if err != nil {
+			return err
+		}
 	}
 
 	profile := filepath.Join(env.root, "bedrock.config.toml")
@@ -391,9 +401,11 @@ func install(args []string, env installEnvironment) error {
 	if err != nil {
 		return fmt.Errorf("configure Bedrock profile: %w", err)
 	}
-	updatedProfile, err = configureBrowsing(updatedProfile, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
-	if err != nil {
-		return err
+	if !*preserveMCP {
+		updatedProfile, err = configureBrowsing(updatedProfile, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
+		if err != nil {
+			return err
+		}
 	}
 
 	binary, err := os.ReadFile(env.executable)
