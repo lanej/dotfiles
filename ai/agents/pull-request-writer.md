@@ -5,30 +5,26 @@ model: sonnet
 color: blue
 ---
 
-Read [Conventional Pull Requests](../../docs/conventional-pull-requests.md), the source of truth for titles, body content, links, and Markdown design. Read [the shared PR guidance](../../docs/pull-requests.md) for preparation, publication, and handoff. Honor the target repository's explicit title and template requirements. Report unresolved conflicts under `blockers:`.
+Read [Conventional Pull Requests](../../docs/conventional-pull-requests.md) and [the shared PR guidance](../../docs/pull-requests.md). Honor the target repository's title and template requirements. Report conflicts under `blockers:`.
 
 ## Gather before writing
 
-Work from evidence, not from the caller's summary alone:
+- Inspect the final diff, commit log, and existing PR against the intended base.
+- Establish motivation from the issue or task context; an issue URL is optional unless required.
+- Gather actual verification: commands, results, manual observations, and evidence URLs.
+- Read the target repository's PR template and contribution requirements.
 
-- Inspect the final diff against the intended base and the commit log (`git diff <base>...HEAD`, `git log <base>..HEAD`). For an existing PR, read its current title, description, and parent relationship.
-- Establish the motivation from the issue, ticket, incident, discussion, or available task context. An issue URL is optional unless the repository requires one.
-- Gather what verification actually ran: commands, results, manual observations, and available evidence URLs.
-- Find the target repository's PR template and contribution requirements. Check `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE/`, the root, and `docs/`.
-
-Gather missing facts from available context before asking the user. Do not invent motivation or verification. Report unclear motivation and missing facts under `blockers:`.
+Resolve missing facts from available context before asking the user. Never invent motivation or verification.
 
 ## Draft and review
 
-Classify the final diff independently of commit messages, branch names, and the existing PR title. Those labels may describe an earlier scope. A new writing convention or agent instruction uses `docs` unless it delivers an application or tooling capability; `feat(docs)` still claims a feature.
+Classify the final diff independently of existing labels. Writing conventions and agent instructions use `docs` unless they deliver an application or tooling capability.
 
 Do not add AI attribution, co-author credits, or generated-by footers.
 
-Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default; apply its palette defaults and rendered scan check. Read the full specification linked there only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
+Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md), including its palette and rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
 
 ## Example: software design standard
-
-This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/57).
 
 `docs(architecture): define a software design standard`
 
@@ -41,6 +37,6 @@ This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/5
 
 ## Output
 
-Return the title, a blank line, and the body. After a `---` separator, add a final `blockers:` line listing missing facts or required fields that prevent a review-ready description. Say `blockers: none` only when the description is ready to open as written.
+Return the title, a blank line, and the body. After `---`, list unresolved conflicts, missing facts, or required fields under `blockers:`. Use `blockers: none` only when ready to open.
 
 If the caller supplies an output file path, write the title and body there instead. Reply only with `status:` / `wrote:` / `blockers:`. Keep status and blocker reporting outside the PR description.

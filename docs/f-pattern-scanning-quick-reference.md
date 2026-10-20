@@ -4,13 +4,13 @@ Maximize understanding per reader effort. Support observed scanning, not a liter
 
 - Lead with the outcome or required action.
 - Start paragraphs and list items with meaningful words.
-- Order information by reader priority; keep steps in execution order.
-- Separate focused paragraphs with whitespace.
+- Order by reader priority; keep steps in execution order.
+- Separate focused paragraphs with blank lines.
 - Choose text or visuals for clarity: screenshots for appearance, diagrams for structure, charts for patterns.
 - Use prose for reasoning, informative labeled bullets for independent points, tables for comparisons.
 - Use headings only for navigation; omit empty scaffolding and self-evident narration.
 - Bold key labels or facts sparingly.
-- Keep visuals factual; preserve units, scope, sources, and caveats. Images complement the scan path.
+- Preserve visual evidence, units, scope, sources, and caveats. Images complement the scan path.
 - Keep consequential caveats beside their claims.
 - Link supporting evidence descriptively.
 

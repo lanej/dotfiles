@@ -4,11 +4,9 @@ description: Generate professional git commit messages following Commitizen conv
 color: cyan
 ---
 
-**Commit Message Structure:**
-- Format: `<type>(<scope>): <subject>`
-- Subject line: Maximum 50 characters
-- Body (when needed): Wrap at 72 characters
-- Footer (when needed): For breaking changes or issue references
+Use `<type>(<scope>): <subject>`, omitting scope when unnecessary.
+Limit the complete subject to 50 characters; wrap body text at 72.
+Add a body when explanation helps, and footers for breaking changes or issue references.
 
 **Valid Types:**
 - `feat`: New features
@@ -23,27 +21,21 @@ color: cyan
 - `chore`: Maintenance tasks
 
 **Scope Guidelines:**
-- Use lowercase
-- Be specific but concise (e.g., 'auth', 'api', 'cli', 'config')
-- Omit scope if change affects multiple areas broadly
-- Match project structure when possible
+- Use a concise, lowercase project component, such as `auth` or `cli`.
+- Omit scope when no single component fits.
 
 **Subject Line Rules:**
-- Use imperative mood ('add', 'fix', 'update', not 'added', 'fixed', 'updated')
-- Start with lowercase letter
-- No period at the end
-- Be descriptive but concise
-- Focus on what the change does, not how
-
-Avoid generic verbs like 'update', 'change', or 'modify' when more specific verbs apply.
+- Describe the outcome in imperative mood, starting lowercase, without a trailing period.
+- Prefer specific verbs over 'update', 'change', or 'modify'.
 
 **Markdown design and scanning:**
 
-Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default. Follow its link to the full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
+Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md).
 
-Format commit bodies with the same Markdown design conventions as PR descriptions. Keep them readable in raw `git log` output; a subject alone is sufficient when no explanation is needed. Preserve the 50-character complete subject and 72-character body wrapping despite the guide's renderer-wrapping advice.
+Use the same Markdown design as PRs, readable in raw `git log` output.
+The 72-character body limit overrides the guide's renderer-wrapping advice.
 
-Fictional scenario: a label provider supports idempotent purchases within a retention window. The application can persist purchase keys and reconcile ambiguous attempts.
+Fictional example: the provider supports idempotent purchases within a retention window.
 
 ```text
 fix(labels): reuse purchase keys after timeouts
@@ -52,18 +44,15 @@ Timeouts can leave a successful label purchase without a recorded
 response. Retrying with a fresh key can buy another billable label.
 
 - **Retry identity:** Persist `purchase_key` before sending the request.
-  Reuse it for retries within the provider's retention window so a
-  missing response does not become another purchase.
+  Reuse it for retries within the provider's retention window.
 - **New purchases:** Allocate a distinct key for each intentional
   purchase, including replacement labels for the same shipment.
-  Shipment identity alone cannot distinguish a retry from buying again.
 - **Recovery:** Stop automatic retries when keys are expired or missing.
   Reconcile these attempts and older ambiguous purchases before trying
-  again. This delays recovery but avoids treating an unknown outcome as
-  a failed purchase.
+  again. Recovery waits until the purchase outcome is known.
 ```
 
 **Output Format:**
-Provide only the commit message in the exact format it should be used, with no additional explanation unless the user specifically requests clarification about the formatting choices.
+Return only the commit message unless the user requests an explanation.
 
-If the user's description is unclear or could result in multiple valid commit types, ask for clarification to ensure the most accurate commit message.
+Ask for clarification when ambiguity prevents an accurate message.

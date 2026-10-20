@@ -18,15 +18,7 @@ Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0
 <decisions, constraints, or review needs, when relevant>
 ```
 
-The template describes information order, not section names. Use one or two short opening paragraphs. Longer descriptions may use subject-specific headings, such as "Snapshot query timings" or "Cursor migration". Replace drafting prompts; do not publish placeholders.
-
-For example:
-
-```markdown
-fix(tracking): preserve filters when returning from details
-
-Keep the destination filter when returning to the shipment list, so reviewers can continue through the same set of shipments. Previously, returning from details reset the filter.
-```
+Replace drafting prompts; do not publish placeholders.
 
 ## Specification
 
@@ -69,29 +61,25 @@ A feature with tests and documentation is still `feat`. Unrelated outcomes shoul
 
 ## Body content
 
-Show the artifact, example, or decision-relevant measurement table itself. Use a screenshot for appearance, a diagram for structure or workflow, and a graph or chart for quantitative patterns when clearer than prose. Keep the essential takeaway and caveats in text; do not repeat what the visual communicates. Captions should add context, interpretation, sources, or limits not already evident. Preserve chart axes, units, workload, and evidence source. Images complement the outcome and informative labels; they do not replace the scan path. For authored GitHub diagrams and charts, use the quick reference's dark palette and contrast checks. Preserve actual application screenshots. Visuals are optional when text explains the change adequately. Explain changed rules in the opening prose; do not fill supporting context with an explanation of the template.
+Show the artifact, example, or measurement itself. Keep captions only when they add context, interpretation, sources, or limits. Omit self-evident narration and template commentary.
 
-Link relevant requirements next to the point they support. Use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every content role.
+Use labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section.
 
 ## Markdown design and discoverability
 
-Use the [F-pattern quick reference](f-pattern-scanning-quick-reference.md) by default for information order, navigation, emphasis, and the rendered scan check. Consult its linked full specification only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems.
+Apply the [F-pattern quick reference](f-pattern-scanning-quick-reference.md), including its dark palette and rendered scan check.
 
-Each list item should make one assessable point, with parallel phrasing. Avoid sentence-by-sentence bullets, lists repeating the opening, and arbitrary item counts.
+Each list item should make one assessable point. Avoid sentence-by-sentence bullets and lists repeating the opening.
 
-Place compact tables next to the prose they support; keep long reasoning outside cells. Distinguish per-item from combined measurements, and serving queries from refresh work. Do not combine overlapping timings, invent missing values, or infer unsupported speedups. Tables should contain decision-relevant manual measurements or external evidence, not routine automated check reports.
+Place tables beside supporting prose; keep long reasoning outside cells. Distinguish per-item from combined measurements, and serving queries from refresh work. Never combine overlapping timings, invent missing values, or infer unsupported speedups.
 
 Use Before/After columns only when workloads and measurement layers match. Otherwise use rows identified by workload and layer, or separate tables. API query timing is not full dashboard load unless browser rendering was measured. Write "Not measured" or "Not reported" for missing values rather than unexplained dashes.
 
-Table cells follow the same prose and linking rules. Split overloaded columns or move details into adjacent prose. Do not label workloads as "the same" without evidence of matching scope.
+Table cells follow the same prose and linking rules. Split overloaded columns. Claim matching workloads only with evidence.
 
-Write each paragraph and list item on one source line, allowing GitHub to wrap it for the reader's screen.
+Pin file and code-symbol links to the relevant commit SHA, with line anchors when useful.
 
-Link files with full GitHub URLs pinned to the relevant commit SHA, with line anchors when useful. Do not leave cited paths unlinked.
-
-Autolink issues and PRs with `#123` in the same repository or `owner/repo#123` across repositories, or use full URLs. Link other GitHub objects directly; link cited code symbols to their definitions. Verify targets exist, identify the intended version, and are accessible before handoff.
-
-Check table readability in the rendered preview. The outcome should be clear immediately, supporting evidence reachable in one click, and the facts needed for a review decision explicit.
+Autolink issues and PRs with `#123` or `owner/repo#123`, or use full URLs. Link other GitHub objects directly.
 
 ## Examples
 
@@ -129,4 +117,4 @@ Restore the selected printer after a connection interruption, so the next label 
 
 Projects can adopt this convention for PR titles and descriptions independently of how they merge commits. A conventional PR title does not make the commits conventional or configure release automation.
 
-Required repository fields still apply and take precedence over this default layout when they conflict. Map the content into those fields without duplicating it or padding the rest of the description. When working in a repository that has not adopted this convention, follow its title and template requirements.
+Repository title and template requirements take precedence. Fill required fields without duplication or padding.
