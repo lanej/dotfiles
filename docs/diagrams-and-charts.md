@@ -2,7 +2,23 @@
 
 Use visuals to explain structure, workflow, or quantitative patterns with less reading effort.
 
-Choose the relationship or change readers need to understand. Use connections, sequence, or comparison, with a concrete example relevant to the change. Avoid boxed prose, redundant titles, and unattached notes.
+## Design
+
+Answer one reader question with one visible takeaway. Choose the form that exposes the relationship:
+
+| Reader needs | Use |
+| --- | --- |
+| Choices and outcomes | Flow or decision tree |
+| Structure | Dependency or boundary diagram |
+| Change | Before/after comparison |
+| Quantitative patterns | Chart |
+
+- Name concrete concepts, inputs, and outputs. Show relationships instead of boxing prose.
+- Give arrows a consistent direction and explicit meaning: data flow, dependency, or sequence. Distinguish meanings when combining them. Label conditional branches beside their edges.
+- Use shapes and grouping consistently. Draw meaningful boundaries, such as a pure decision excluding network and storage.
+- Make the entry point obvious. Use whitespace and short labels; avoid crossing lines and unattached notes.
+
+Remove any element whose deletion loses no information or relationship, including redundant titles.
 
 ## Palette and accessibility
 
@@ -24,4 +40,4 @@ Show actual evidence or clearly identified conceptual design. Never fabricate me
 
 Preserve axes, units, workload scope, sources, and material caveats. Keep the takeaway and consequential limits in adjacent text without repeating the visual. Captions must add information.
 
-Preview in the intended renderer and theme at desktop and mobile widths. Check label legibility, contrast, and clipping. Keep the outcome and informative text labels visible; images must complement the scan path.
+Preview the actual render in the intended theme at desktop and mobile widths. Check labels, contrast, boundaries, arrow routing, and clipping. Keep the outcome and informative text labels visible; images must complement the scan path.
