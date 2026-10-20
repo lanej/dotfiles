@@ -1,24 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="520" viewBox="0 0 680 520" role="img" aria-labelledby="title description">
-  <title id="title">Keep domain decisions independent of external effects</title>
-  <desc id="description">The imperative shell obtains facts from SDKs, storage, and networks, passes them to the functional core, then carries out the returned decisions. The core contains owned domain values, rules, validation, and calculations. Add ports only for a concrete substitution or isolation need.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="510" viewBox="0 0 680 510" role="img" aria-labelledby="title description">
+  <title id="title">Choose how to recover a timed-out purchase</title>
+  <desc id="description">Illustrative workflow for a provider with idempotent purchase keys. A pure decision receives the timeout and key status without using network or storage. A present key within the provider's retry window leads to retrying with the same key; a missing or expired key leads to reconciliation. Both actions perform external I/O outside the decision boundary.</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#9da7b3" stroke-width="1.5"/></marker>
   </defs>
-  <rect width="680" height="520" rx="12" fill="#0d1117"/>
+  <rect width="680" height="510" rx="12" fill="#0d1117"/>
   <g font-family="Arial, Helvetica, sans-serif">
-    <text x="32" y="51" font-size="30" font-weight="700" fill="#e6edf3">Separate decisions from effects</text>
-    <rect x="32" y="88" width="616" height="138" rx="10" fill="#161b22" stroke="#30363d" stroke-width="2"/>
-    <text x="56" y="127" font-size="25" font-weight="700" fill="#79c0ff">Imperative shell</text>
-    <text x="56" y="163" font-size="26" fill="#e6edf3">SDKs · storage · network</text>
-    <text x="56" y="198" font-size="24" fill="#9da7b3">Obtain facts. Carry out decisions.</text>
-    <path d="M192 232 V292" stroke="#9da7b3" stroke-width="2" marker-end="url(#arrow)"/>
-    <text x="216" y="270" font-size="26" font-weight="700" fill="#e6edf3">Facts</text>
-    <path d="M488 294 V234" stroke="#9da7b3" stroke-width="2" marker-end="url(#arrow)"/>
-    <text x="464" y="270" text-anchor="end" font-size="26" font-weight="700" fill="#e6edf3">Decisions</text>
-    <rect x="32" y="302" width="616" height="138" rx="10" fill="#161b22" stroke="#30363d" stroke-width="2"/>
-    <text x="56" y="341" font-size="25" font-weight="700" fill="#d2a8ff">Functional core</text>
-    <text x="56" y="377" font-size="26" fill="#e6edf3">Owned domain values</text>
-    <text x="56" y="412" font-size="24" fill="#9da7b3">Rules · validation · calculations</text>
-    <text x="32" y="487" font-size="24" fill="#9da7b3">Ports only for concrete substitution or isolation.</text>
+    <rect x="170" y="24" width="340" height="62" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <text x="340" y="63" text-anchor="middle" font-size="25" fill="#e6edf3">Timeout + key status</text>
+    <path d="M340 86 V183" fill="none" stroke="#9da7b3" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="24" y="122" width="632" height="228" rx="10" fill="none" stroke="#d2a8ff" stroke-dasharray="7 6" stroke-width="2"/>
+    <text x="48" y="159" font-size="23" font-weight="700" fill="#d2a8ff">No network or storage</text>
+    <path d="M340 190 L448 246 L340 302 L232 246 Z" fill="#161b22" stroke="#d2a8ff" stroke-width="2"/>
+    <text x="340" y="239" text-anchor="middle" font-size="24" fill="#e6edf3">Key present</text>
+    <text x="340" y="268" text-anchor="middle" font-size="24" fill="#e6edf3">and valid?</text>
+    <path d="M232 246 H164 V412" fill="none" stroke="#9da7b3" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M448 246 H516 V412" fill="none" stroke="#9da7b3" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="94" y="311" width="140" height="32" fill="#0d1117"/>
+    <text x="164" y="335" text-anchor="middle" font-size="24" fill="#e6edf3">Valid key</text>
+    <rect x="412" y="311" width="208" height="32" fill="#0d1117"/>
+    <text x="516" y="335" text-anchor="middle" font-size="24" fill="#e6edf3">Missing / expired</text>
+    <text x="24" y="393" font-size="22" fill="#9da7b3">External I/O</text>
+    <rect x="24" y="420" width="280" height="66" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <text x="164" y="461" text-anchor="middle" font-size="25" font-weight="700" fill="#79c0ff">Retry same key</text>
+    <rect x="376" y="420" width="280" height="66" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <text x="516" y="461" text-anchor="middle" font-size="25" font-weight="700" fill="#79c0ff">Reconcile purchase</text>
   </g>
 </svg>
