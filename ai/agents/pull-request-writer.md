@@ -32,15 +32,15 @@ This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/5
 
 `docs(architecture): define a software design standard`
 
-> Make domain logic testable without external services by defining a software design standard. Apply it to new software and changed boundaries.
+> Keep domain rules testable without external services. Define a functional core with I/O in a shell for new software and changed boundaries.
 >
-> - **Decisions:** Keep domain rules in a functional core and external interactions in a shell.
-> - **Boundaries:** Introduce ports where integrations need them; keep the owned model minimal.
-> - **Verification:** Require checks that expose missing behavior, with effort proportional to the change.
+> ![The shell supplies facts to the core and carries out its decisions; ports are selective](https://raw.githubusercontent.com/lanej/dotfiles/49ff92d1ff9c20e4c73438120e2f5e0fec536886/docs/images/decision-boundaries.svg)
+>
+> *Conceptual diagram illustrating the standard.*
 >
 > **Review gap:** The standard has not been exercised through a representative implementation task.
 
-The opening gives the outcome; labels expose the choices and review gap. This is an example, not a required template.
+The opening gives the takeaway; the diagram shows the structure. This is an example, not a required template.
 
 ## Output
 

@@ -1,6 +1,6 @@
 # Writing for F-pattern scanning
 
-Make the reader's outcome and required action visible before supporting detail.
+Maximize decision-relevant understanding per reader effort, not brevity alone. Make the outcome and required action visible before supporting detail.
 
 ## Scope and research
 
@@ -26,6 +26,7 @@ MUST means required; SHOULD allows an exception when the reader's task warrants 
 8. **Emphasize selectively.** Bold SHOULD identify key labels or consequential facts. Leave supporting detail in normal weight. Do not bold whole paragraphs.
 9. **Keep caveats with claims.** Material limits MUST appear beside the claim or action they qualify.
 10. **Name link destinations.** Links MUST use meaningful text identifying their subject. Place supporting links beside the relevant claim; avoid generic instructions such as “click here.”
+11. **Choose the clearest medium.** Use screenshots for appearance, diagrams for structure or workflow, and graphs or charts for quantitative patterns when clearer than prose. Retain the takeaway and caveats without repeating the visual. Preserve axes, units, workload, and evidence source. Visuals MUST reflect actual evidence or labeled conceptual design; do not fabricate evidence. Not every document needs a visual.
 
 Do not impose fixed word counts, heading counts, or list lengths.
 

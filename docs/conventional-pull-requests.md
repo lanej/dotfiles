@@ -2,7 +2,7 @@
 
 Draft 0.1
 
-A convention for pull request titles and descriptions that helps reviewers understand the outcome and assess the evidence.
+Help reviewers understand the outcome and assess the evidence with minimum reading effort. Optimize decision-relevant understanding, not word count.
 
 Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and [Conventional Comments](https://conventionalcomments.org/).
 
@@ -40,7 +40,7 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 6. The description MUST begin with prose explaining what changes, followed by why it matters, without an opening heading. It SHOULD use a concrete before/after example when that makes the outcome clearer.
 7. Supporting context SHOULD supply information needed for review that the opening prose, diff, and automated checks do not already provide. The body SHOULD omit headings for short descriptions. A longer body MAY use headings that name the actual subject when they help navigation; generic category headings SHOULD NOT be used unless required by the repository.
 8. Material compatibility constraints, rollout requirements, and known verification gaps MUST be disclosed when they affect acceptance or use. Claims about behavior and verification MUST be supported by actual evidence.
-9. A screenshot or other illustration SHOULD be included when it helps assess the result. It MUST show the actual current result, have descriptive alt text, and use a durable URL that renders for the intended reviewers.
+9. A visual SHOULD be included when it explains the result more clearly than prose. It MUST show actual evidence or clearly identified conceptual design, have descriptive alt text, and use a durable URL that renders for the intended reviewers. Visuals MUST NOT fabricate evidence.
 10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on GitHub and be linked to the relevant version. GitHub objects MUST be linked with full URLs or appropriate autolinking references. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
 11. The description SHOULD NOT repeat file inventories, commit history, test cases, coverage figures, test counts, or automated check results. Empty sections and boilerplate checklists SHOULD be omitted.
 12. The title and description MUST reflect the final scope of the PR. A stacked PR MUST identify its parent and describe its own change.
@@ -69,7 +69,7 @@ A feature with tests and documentation is still `feat`. Unrelated outcomes shoul
 
 ## Body content
 
-Show the artifact, example, or decision-relevant measurement table itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose; do not fill supporting context with an explanation of the template.
+Show the artifact, example, or decision-relevant measurement table itself. Use a screenshot for appearance, a diagram for structure or workflow, and a graph or chart for quantitative patterns when clearer than prose. Keep the essential takeaway and caveats in text; do not repeat what the visual communicates. Preserve chart axes, units, workload, and evidence source. Visuals are optional when text explains the change adequately. Explain changed rules in the opening prose; do not fill supporting context with an explanation of the template.
 
 Link relevant requirements next to the point they support. Use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every content role.
 
