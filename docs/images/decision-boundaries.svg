@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="440" viewBox="0 0 1080 440" role="img" aria-labelledby="title description">
+  <title id="title">Keep domain decisions independent of external effects</title>
+  <desc id="description">The imperative shell obtains facts from SDKs, storage, and networks, passes them to the functional core, then carries out the returned decisions. The core contains owned domain values, rules, validation, and calculations. Add ports only for a concrete substitution or isolation need.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#475569" stroke-width="1.5"/></marker>
+  </defs>
+  <rect width="1080" height="440" rx="16" fill="#ffffff"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="40" y="58" font-size="29" font-weight="700" fill="#0f172a">Keep decisions independent of effects</text>
+    <text x="40" y="92" font-size="18" fill="#475569">A boundary that makes domain rules testable without external services.</text>
+    <rect x="40" y="132" width="380" height="226" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+    <text x="66" y="176" font-size="25" font-weight="700" fill="#1e3a8a">Imperative shell</text>
+    <text x="66" y="215" font-size="19" fill="#1e293b">SDKs · storage · network</text>
+    <text x="66" y="257" font-size="18" fill="#334155">Obtain facts. Carry out decisions.</text>
+    <text x="66" y="289" font-size="18" fill="#334155">Coordinate retries and transactions.</text>
+    <rect x="660" y="132" width="380" height="226" rx="12" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+    <text x="686" y="176" font-size="25" font-weight="700" fill="#4c1d95">Functional core</text>
+    <text x="686" y="215" font-size="19" fill="#1e293b">Owned domain values</text>
+    <text x="686" y="257" font-size="18" fill="#334155">Rules · validation · calculations</text>
+    <text x="686" y="289" font-size="18" fill="#334155">Decide from supplied facts.</text>
+    <path d="M436 221 H642" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="540" y="207" text-anchor="middle" font-size="18" font-weight="700" fill="#334155">Facts</text>
+    <path d="M644 298 H438" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="540" y="283" text-anchor="middle" font-size="18" font-weight="700" fill="#334155">Decisions</text>
+    <text x="40" y="405" font-size="18" fill="#475569">Add ports only for a concrete substitution or isolation need.</text>
+  </g>
+</svg>
