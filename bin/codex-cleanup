@@ -1,0 +1,475 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["websockets==15.0.1"]
+# ///
+"""Report loaded Codex sessions; --apply archives completed, idle helper agents.
+
+Primary sessions are retained. Helpers must be persisted leaves, idle for at
+least 30 minutes, with no queued input, background commands, or unfinished goal.
+Active or busy ancestors protect their helpers. Cleanup uses thread/archive,
+which keeps transcripts, and confirms the thread is unloaded afterward.
+Missing transcripts and already archived histories are reported and retained.
+
+State is rechecked immediately before archiving. Codex has no conditional
+archive API: another client could start work between that check and the request.
+This command never starts or restarts a daemon, or kills processes directly.
+"""
+
+import argparse
+import json
+import math
+import os
+import shutil
+import sys
+import textwrap
+import time
+from pathlib import Path
+
+from websockets.exceptions import WebSocketException
+from websockets.sync.client import unix_connect
+
+
+class InspectionError(Exception):
+    pass
+
+
+class RpcError(InspectionError):
+    pass
+
+
+class Daemon:
+    # The Codex SDK exposes model execution, not local thread administration.
+    # These methods follow `codex app-server generate-ts --experimental`.
+    def __init__(self, connection):
+        self.connection = connection
+        self.sequence = 0
+
+    def request(self, method, params):
+        self.sequence += 1
+        request_id = self.sequence
+        self.connection.send(json.dumps({
+            "id": request_id, "method": method, "params": params,
+        }))
+        deadline = time.monotonic() + 10
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(f"{method}: daemon response timed out")
+            response = json.loads(self.connection.recv(timeout=remaining))
+            if not isinstance(response, dict):
+                raise InspectionError(f"{method}: invalid daemon response")
+            if "method" in response or response.get("id") != request_id:
+                continue
+            if "error" in response:
+                raise RpcError(f"{method}: {response['error']}")
+            if not isinstance(response.get("result"), dict):
+                raise InspectionError(f"{method}: missing result")
+            return response["result"]
+
+    def loaded(self):
+        result, cursor, seen = {}, None, set()
+        while True:
+            page = self.request("thread/loaded/list", {"limit": 100, "cursor": cursor})
+            if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+                raise InspectionError("thread/loaded/list: invalid page")
+            for thread_id in page["data"]:
+                if not isinstance(thread_id, str):
+                    raise InspectionError("thread/loaded/list: invalid thread id")
+                result[thread_id] = None
+            cursor = page["nextCursor"]
+            if cursor is None:
+                return set(result)
+            if not isinstance(cursor, str) or cursor in seen:
+                raise InspectionError("thread/loaded/list: invalid pagination cursor")
+            seen.add(cursor)
+
+    def thread(self, thread_id):
+        thread = self.request("thread/read", {
+            "threadId": thread_id, "includeTurns": False,
+        }).get("thread")
+        if not isinstance(thread, dict) or thread.get("id") != thread_id:
+            raise InspectionError(f"thread/read: invalid metadata for {thread_id}")
+        return thread
+
+    def has_descendants(self, thread_id):
+        page = self.request("thread/list", {
+            "ancestorThreadId": thread_id, "archived": False, "limit": 1,
+            # Empty/omitted defaults to interactive sources and hides helpers.
+            "sourceKinds": [
+                "cli", "vscode", "exec", "appServer", "subAgent",
+                "subAgentReview", "subAgentCompact", "subAgentThreadSpawn",
+                "subAgentOther", "unknown",
+            ],
+        })
+        if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+            raise InspectionError("thread/list: invalid descendant page")
+        return bool(page["data"]) or page["nextCursor"] is not None
+
+    def busy(self, thread_id, include_background=True):
+        methods = [("thread/queue/list", "queued input")]
+        if include_background:
+            methods.append(("thread/backgroundTerminals/list", "background commands"))
+        for method, reason in methods:
+            page = self.request(method, {"threadId": thread_id, "limit": 1})
+            if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+                raise InspectionError(f"{method}: invalid page")
+            if page["data"] or page["nextCursor"] is not None:
+                return reason
+        result = self.request("thread/goal/get", {"threadId": thread_id})
+        if "goal" not in result:
+            raise InspectionError("thread/goal/get: missing goal")
+        goal = result["goal"]
+        if goal is not None:
+            if not isinstance(goal, dict) or "status" not in goal:
+                raise InspectionError("thread/goal/get: invalid goal")
+            if goal["status"] != "complete":
+                return "unfinished goal"
+        return None
+
+
+def status(thread):
+    value = thread.get("status")
+    if not isinstance(value, dict) or value.get("type") not in {
+        "active", "idle", "notLoaded", "systemError",
+    }:
+        raise InspectionError("thread/read: unknown runtime status")
+    return value["type"]
+
+
+def metadata_reason(thread, has_children):
+    if "parentThreadId" not in thread:
+        return "missing parent metadata"
+    if thread["parentThreadId"] is None:
+        return "primary session"
+    if status(thread) != "idle":
+        return f"runtime status: {status(thread)}"
+    if thread.get("ephemeral") is not False or not thread.get("path"):
+        return "no persisted transcript"
+    if has_children:
+        return "loaded descendants"
+    return None
+
+
+def retirement_reason(thread, last_turn, busy, ancestor_busy, has_children,
+                      now, min_idle_minutes):
+    """Return why a helper must be retained; all policy inputs are explicit."""
+    reason = metadata_reason(thread, has_children)
+    if reason:
+        return reason
+    if ancestor_busy:
+        return f"ancestor: {ancestor_busy}"
+    if busy:
+        return busy
+    if last_turn.get("status") != "completed":
+        return "latest turn is not completed"
+    completed_at = last_turn.get("completedAt")
+    if (isinstance(completed_at, bool) or
+            not isinstance(completed_at, (int, float)) or
+            not math.isfinite(completed_at)):
+        return "completion time unavailable"
+    idle_seconds = now - completed_at
+    if idle_seconds < 0:
+        return "completion time is in the future"
+    if idle_seconds < min_idle_minutes * 60:
+        return f"completed less than {min_idle_minutes:g} minutes ago"
+    return None
+
+
+def inspect(daemon, thread, threads, min_idle_minutes):
+    """Resolve daemon facts without subscribing to or resuming any thread."""
+    thread_id = thread["id"]
+    has_children = any(t.get("parentThreadId") == thread_id for t in threads.values())
+    reason = metadata_reason(thread, has_children)
+    if reason:
+        return {"reason": reason}
+    transcript = Path(thread["path"])
+    if not transcript.is_file():
+        return {"reason": "transcript missing at recorded path"}
+    if transcript.parent.name == "archived_sessions":
+        return {"reason": "transcript already archived; runtime still loaded"}
+    if daemon.has_descendants(thread_id):
+        return {"reason": "persisted descendants"}
+
+    parent_id, seen, ancestor_busy = thread["parentThreadId"], {thread_id}, None
+    while parent_id is not None:
+        if not isinstance(parent_id, str) or parent_id in seen:
+            raise InspectionError("invalid or cyclic parent metadata")
+        seen.add(parent_id)
+        parent = threads.get(parent_id)
+        if parent is None:
+            parent = daemon.thread(parent_id)
+        parent_status = status(parent)
+        if parent_status not in {"idle", "notLoaded"}:
+            ancestor_busy = f"runtime status: {parent_status}"
+            break
+        try:
+            ancestor_busy = daemon.busy(parent_id, include_background=parent_status == "idle")
+        except InspectionError as error:
+            raise InspectionError(f"ancestor {parent_id}: {error}") from error
+        if ancestor_busy:
+            break
+        if "parentThreadId" not in parent:
+            raise InspectionError("ancestor parent metadata unavailable")
+        parent_id = parent["parentThreadId"]
+
+    if ancestor_busy:
+        return {"reason": f"ancestor: {ancestor_busy}"}
+    busy = daemon.busy(thread_id)
+    if busy:
+        return {"reason": busy}
+    page = daemon.request("thread/turns/list", {
+        "threadId": thread_id, "limit": 1, "sortDirection": "desc", "itemsView": "summary",
+    })
+    if not isinstance(page.get("data"), list) or len(page["data"]) > 1:
+        raise InspectionError("thread/turns/list: invalid latest turn")
+    last_turn = page["data"][0] if page["data"] else {}
+    if not isinstance(last_turn, dict):
+        raise InspectionError("thread/turns/list: invalid turn")
+    now = time.time()
+    reason = retirement_reason(thread, last_turn, busy, ancestor_busy, False,
+                               now, min_idle_minutes)
+    facts = {"reason": reason, "completed_at": last_turn.get("completedAt")}
+    if reason is None:
+        facts["idle_minutes"] = int((now - last_turn["completedAt"]) // 60)
+    return facts
+
+
+def snapshot(daemon):
+    return {thread_id: daemon.thread(thread_id)
+            for thread_id in sorted(daemon.loaded())}
+
+
+def diagnostics(daemon):
+    try:
+        result = daemon.request("server/diagnostics", {})
+        return {
+            "process": result.get("process"),
+            "gauges": {g["name"]: g["value"] for g in result.get("gauges", [])},
+        }
+    except (InspectionError, OSError, ValueError, TypeError, KeyError,
+            WebSocketException) as error:
+        # Optional counters must not erase confirmed cleanup results.
+        return {"error": str(error)}
+
+
+def collect(daemon, args, report):
+    report["before"] = diagnostics(daemon)
+    threads = snapshot(daemon)
+    requested = set(args.thread or threads)
+    had_error = False
+    for thread_id in sorted(requested):
+        thread = threads.get(thread_id)
+        record = {"id": thread_id, "action": "retained", "reason": "inspection incomplete"}
+        report["threads"].append(record)
+        if thread is None:
+            record["reason"] = "not loaded"
+            continue
+        try:
+            record.update({"role": thread.get("agentRole") or (
+                "helper" if thread.get("parentThreadId") else "primary"
+            ), "cwd": thread.get("cwd"), "status": status(thread),
+                           "transcript": thread.get("path")})
+            record.update(inspect(daemon, thread, threads, args.min_idle_minutes))
+            if record["reason"] is None:
+                record["action"] = "candidate"
+        except (InspectionError, ValueError, TypeError, KeyError) as error:
+            record.update(action="error", reason=str(error))
+            had_error = True
+    if args.apply:
+        for record in report["threads"]:
+            if record["action"] != "candidate":
+                continue
+            attempted, acknowledged = False, False
+            try:
+                current = snapshot(daemon)
+                thread = current.get(record["id"])
+                if thread is None:
+                    record.update(action="retained", reason="already unloaded")
+                    continue
+                record.update(inspect(daemon, thread, current, args.min_idle_minutes))
+                if record["reason"] is not None:
+                    record["action"] = "retained"
+                    continue
+                # Read runtime state again after the slower pending-work checks.
+                thread = daemon.thread(record["id"])
+                if status(thread) != "idle":
+                    record.update(action="retained", reason="became active before archive")
+                    continue
+                attempted = True
+                daemon.request("thread/archive", {"threadId": record["id"]})
+                acknowledged = True
+                if record["id"] in daemon.loaded():
+                    raise InspectionError("archive acknowledged, but thread is still loaded")
+                record.update(action="archived", reason="archive acknowledged; unloaded")
+            except KeyboardInterrupt:
+                if record["action"] != "archived":
+                    record.update(action="unconfirmed" if attempted else "retained",
+                                  archive_attempted=attempted,
+                                  archive_acknowledged=acknowledged,
+                                  reason="interrupted during archive" if attempted else
+                                         "interrupted before archiving")
+                raise
+            except (InspectionError, OSError, ValueError, TypeError, KeyError,
+                    WebSocketException) as error:
+                # A server error can follow partial effects; do not assume rollback.
+                action = "unconfirmed" if attempted else "error"
+                record.update(action=action, archive_attempted=attempted,
+                              archive_acknowledged=acknowledged,
+                              reason=str(error))
+                had_error = True
+                break  # Never retry an archive with an uncertain outcome.
+        report["after"] = diagnostics(daemon)
+    return int(had_error)
+
+
+def run(daemon, args):
+    report = {"mode": "apply" if args.apply else "report",
+              "socket": str(args.socket), "threads": []}
+    try:
+        exit_code = collect(daemon, args, report)
+    except KeyboardInterrupt:
+        report["interrupted"] = True
+        for record in report["threads"]:
+            if record["action"] == "candidate":
+                record.update(action="retained", reason="interrupted before archiving")
+        exit_code = 130
+    report["summary"] = {
+        action: sum(r["action"] == action for r in report["threads"])
+        for action in ["candidate", "retained", "archived", "error", "unconfirmed"]
+    }
+    return report, exit_code
+
+
+def display(report, as_json, color="auto"):
+    if as_json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return
+    use_color = color == "always" or (
+        color == "auto" and sys.stdout.isatty()
+        and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
+    )
+    colors = {"retained": 36, "candidate": 33, "archived": 32,
+              "error": 31, "unconfirmed": 31}
+
+    def action_cell(action, width):
+        cell = action.ljust(width)
+        return f"\033[{colors[action]}m{cell}\033[0m" if use_color else cell
+
+    def plain(value):
+        return " ".join("".join(
+            c for c in str(value) if c.isprintable() or c.isspace()
+        ).split()) or "—"
+
+    if report.get("interrupted"):
+        print("Interrupted; partial results follow.")
+    rows = [
+        [record["action"], plain(record["id"]), plain(record.get("role") or "—"),
+         f"{record['idle_minutes']}m ago" if "idle_minutes" in record else "—",
+         plain(record["reason"] or "eligible for archive")]
+        for record in report["threads"]
+    ]
+    headers = ["ACTION", "THREAD", "ROLE", "FINISHED"]
+    widths = [max([len(header)] + [len(row[i]) for row in rows])
+              for i, header in enumerate(headers)]
+    terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
+    prefix_width = sum(widths) + 8
+    compact = terminal_width < prefix_width + 24
+    columns = [0, 1, 3] if compact else [0, 1, 2, 3]
+
+    def fields(row, colored=False):
+        return "  ".join(
+            action_cell(row[i], widths[i]) if colored and i == 0 else
+            row[i].rjust(widths[i]) if i == 3 else row[i].ljust(widths[i])
+            for i in columns
+        )
+
+    print(fields(headers) + ("" if compact else "  REASON"))
+    print(fields(["─" * width for width in widths]) +
+          ("" if compact else "  " + "─" * max(6, terminal_width - prefix_width)))
+    for row in rows:
+        prefix = fields(row, colored=True)
+        if compact:
+            print(prefix)
+            indent = " " * (widths[0] + 2)
+            for label, value in [("ROLE", row[2]), ("REASON", row[4])]:
+                lead = f"{indent}{label:6}  "
+                lines = textwrap.wrap(value, width=max(20, terminal_width - len(lead)))
+                print(lead + lines[0])
+                for line in lines[1:]:
+                    print(" " * len(lead) + line)
+        else:
+            lines = textwrap.wrap(row[4], width=terminal_width - prefix_width)
+            print(prefix + "  " + lines[0])
+            for line in lines[1:]:
+                print(" " * prefix_width + line)
+    print()
+    summary = report["summary"]
+    print(f"{summary['candidate']} eligible; {summary['archived']} archived; "
+          f"{summary['retained']} retained; "
+          f"{summary['error'] + summary['unconfirmed']} errors/unconfirmed")
+    metrics_rows = []
+    for label in ["before", "after"]:
+        metrics = report.get(label)
+        if metrics and isinstance(metrics.get("process"), dict):
+            process = metrics["process"]
+            footprint = process.get("physicalFootprintBytes")
+            if footprint is None:
+                footprint = process.get("residentMemoryBytes")
+            metrics_rows.append([
+                label, f"{footprint / 1024**2:.0f}" if footprint is not None else "?",
+                str(metrics["gauges"].get("mcp.connections.live", "?")),
+                str(metrics["gauges"].get("core.turns.active", "?")),
+            ])
+    if metrics_rows:
+        print()
+        print(f"{'DAEMON':8}  {'MEMORY MiB':>10}  {'MCP CONNECTIONS':>15}  {'ACTIVE TURNS':>12}")
+        for label, footprint, connections, turns in metrics_rows:
+            print(f"{label:8}  {footprint:>10}  {connections:>15}  {turns:>12}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--apply", action="store_true", help="Archive eligible helpers")
+    parser.add_argument("--json", action="store_true", help="Emit decisions and daemon metrics as JSON")
+    parser.add_argument("--color", choices=["auto", "always", "never"], default="auto",
+                        help="Color actions (default: auto; respects NO_COLOR)")
+    parser.add_argument("--thread", action="append", help="Inspect only this loaded thread ID; repeatable")
+    parser.add_argument("--min-idle-minutes", type=float, default=30, metavar="MINUTES",
+                        help="Minimum time since the completed turn (default: 30)")
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    parser.add_argument("--socket", type=Path,
+                        default=codex_home / "app-server-control/app-server-control.sock",
+                        help="Existing daemon's Unix socket (defaults under CODEX_HOME)")
+    args = parser.parse_args()
+    if not math.isfinite(args.min_idle_minutes) or args.min_idle_minutes < 0:
+        parser.error("--min-idle-minutes must be a finite, nonnegative number")
+    report = None
+    try:
+        with unix_connect(str(args.socket), uri="ws://localhost", open_timeout=5,
+                          close_timeout=2, ping_interval=None, max_size=4 * 1024**2) as connection:
+            daemon = Daemon(connection)
+            daemon.request("initialize", {
+                "clientInfo": {"name": "codex_cleanup", "version": "1"},
+                "capabilities": {"experimentalApi": True},
+            })
+            connection.send(json.dumps({"method": "initialized"}))
+            report, exit_code = run(daemon, args)
+        display(report, args.json, args.color)
+        return exit_code
+    except KeyboardInterrupt:
+        if report is not None:
+            report["interrupted"] = True
+            display(report, args.json, args.color)
+        else:
+            print("codex-cleanup: interrupted before inspection completed", file=sys.stderr)
+        return 130
+    except (InspectionError, OSError, ValueError, TypeError, KeyError,
+            WebSocketException) as error:
+        print(f"codex-cleanup: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
