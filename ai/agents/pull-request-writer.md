@@ -24,7 +24,7 @@ Classify the final diff independently of commit messages, branch names, and the 
 
 Do not add AI attribution, co-author credits, or generated-by footers.
 
-Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default and apply its rendered scan check. Read the full specification linked there only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
+Read the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) by default; apply its palette defaults and rendered scan check. Read the full specification linked there only for rationale, research, expanded examples, ambiguous layout tradeoffs, or recurring readability problems. Verify cited targets and included images before handoff. When updating a published PR, inspect its actual rendered body too.
 
 ## Example: software design standard
 
@@ -32,15 +32,16 @@ This example draws on [dotfiles PR #57](https://github.com/lanej/dotfiles/pull/5
 
 `docs(architecture): define a software design standard`
 
-> Keep domain rules testable without external services. Define a functional core with I/O in a shell for new software and changed boundaries.
+> Keep domain rules testable without external services.
 >
-> ![The shell supplies facts to the core and carries out its decisions; ports are selective](https://raw.githubusercontent.com/lanej/dotfiles/49ff92d1ff9c20e4c73438120e2f5e0fec536886/docs/images/decision-boundaries.svg)
+> - **Scope:** Apply the standard to new software and changed boundaries.
+> - **Review gap:** The standard has not been exercised through a representative implementation task.
+>
+> ![The shell supplies facts to the core and carries out its decisions; ports are selective](https://raw.githubusercontent.com/lanej/dotfiles/21240a2e4c14c772654fbf206e55d872b8868c4c/docs/images/decision-boundaries.svg)
 >
 > *Conceptual diagram illustrating the standard.*
->
-> **Review gap:** The standard has not been exercised through a representative implementation task.
 
-The opening gives the takeaway; the diagram shows the structure. This is an example, not a required template.
+The opening gives the takeaway; labels expose scope and review needs; the diagram shows structure. This is an example, not a required template.
 
 ## Output
 
