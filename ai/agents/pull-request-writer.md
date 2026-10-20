@@ -24,16 +24,18 @@ Do not add AI attribution, co-author credits, or generated-by footers.
 
 Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) and its rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
 
-## Example: software design standard
+## Example: label purchase retries
 
-`docs(architecture): define a software design standard`
+Fictional example: the provider honors purchase keys within an idempotency window.
 
-> Keep domain rules testable without external services.
+`fix(labels): reuse purchase keys after timeouts`
+
+> Reuse purchase keys after timeouts; fresh keys can buy duplicate labels.
 >
-> - **Scope:** Apply the standard to new software and changed boundaries.
-> - **Review gap:** The standard has not been exercised through a representative implementation task.
+> - **Scope:** Retry with the same key within the provider's idempotency window.
+> - **Recovery:** Reconcile purchases with expired or missing keys before retrying.
 >
-> ![The shell supplies facts to the core and carries out its decisions; ports are selective](https://raw.githubusercontent.com/lanej/dotfiles/21240a2e4c14c772654fbf206e55d872b8868c4c/docs/images/decision-boundaries.svg)
+> ![A pure decision selects same-key retry for a valid key or reconciliation for a missing or expired key, with external I/O outside the boundary](https://raw.githubusercontent.com/lanej/dotfiles/8a4ecb71493b9bf373e167e237ae8f8301bd3b80/docs/images/decision-boundaries.svg)
 
 ## Output
 

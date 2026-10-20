@@ -2,6 +2,8 @@
 
 Use visuals to explain structure, workflow, or quantitative patterns with less reading effort.
 
+Choose the relationship or change readers need to understand. Use connections, sequence, or comparison, with a concrete example relevant to the change. Avoid boxed prose, redundant titles, and unattached notes.
+
 ## Palette and accessibility
 
 Authored GitHub diagrams and charts default to dark:
