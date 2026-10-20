@@ -2,7 +2,7 @@
 
 Draft 0.1
 
-A lightweight convention for pull request titles and descriptions. Help reviewers quickly understand what changes and why, find supporting evidence, and make an accurate, well-informed approval or rejection decision.
+Help reviewers understand the outcome and assess the evidence with minimum reading effort. Optimize decision-relevant understanding, not word count.
 
 Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and [Conventional Comments](https://conventionalcomments.org/).
 
@@ -18,19 +18,7 @@ Inspired by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0
 <decisions, constraints, or review needs, when relevant>
 ```
 
-The title identifies the kind of change and its intended outcome. Every body starts with prose: first explain what changes and the resulting behavior, then why the change matters. Use one or two short paragraphs without an opening heading.
-
-The template describes the order of information, not literal section names. Add evidence and supporting context only when useful. Short descriptions need no headings. For a longer description, use a heading only when it helps navigation and names the actual subject, such as "Snapshot query timings" or "Cursor migration". Avoid generic headings such as "What and why", "Result", or "Additional context"; renaming them to "Summary" or "Context" does not help. Required repository fields take precedence. Replace all drafting prompts; do not publish placeholders or empty sections.
-
-For example:
-
-```markdown
-fix(tracking): preserve filters when returning from details
-
-Keep the destination filter when returning to the shipment list, so reviewers can continue through the same set of shipments. Previously, returning from details reset the filter.
-```
-
-This is a complete description. Larger changes may need more explanation; smaller ones may need only a sentence.
+Replace drafting prompts; do not publish placeholders.
 
 ## Specification
 
@@ -44,12 +32,13 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 6. The description MUST begin with prose explaining what changes, followed by why it matters, without an opening heading. It SHOULD use a concrete before/after example when that makes the outcome clearer.
 7. Supporting context SHOULD supply information needed for review that the opening prose, diff, and automated checks do not already provide. The body SHOULD omit headings for short descriptions. A longer body MAY use headings that name the actual subject when they help navigation; generic category headings SHOULD NOT be used unless required by the repository.
 8. Material compatibility constraints, rollout requirements, and known verification gaps MUST be disclosed when they affect acceptance or use. Claims about behavior and verification MUST be supported by actual evidence.
-9. A screenshot or other illustration SHOULD be included when it helps assess the result. It MUST show the actual current result, have descriptive alt text, and use a durable URL that renders for the intended reviewers.
+9. A visual SHOULD be included when it explains the result more clearly than prose. It MUST show actual evidence or clearly identified conceptual design, have descriptive alt text, and use a durable URL that renders for the intended reviewers. Visuals MUST NOT fabricate evidence.
 10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on GitHub and be linked to the relevant version. GitHub objects MUST be linked with full URLs or appropriate autolinking references. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
 11. The description SHOULD NOT repeat file inventories, commit history, test cases, coverage figures, test counts, or automated check results. Empty sections and boilerplate checklists SHOULD be omitted.
 12. The title and description MUST reflect the final scope of the PR. A stacked PR MUST identify its parent and describe its own change.
 13. Bulleted lists SHOULD be used when multiple independent points are easier to scan than prose. Tables SHOULD be used when several items need comparison across shared attributes. Connected explanations SHOULD remain prose; numbered lists SHOULD be reserved for sequences where order matters. Measurement tables MUST preserve units, workload scope, evidence source, and material caveats without implying unsupported comparisons.
 14. Paragraphs and list items MUST NOT be artificially wrapped or use manual line breaks for appearance. Meaningful line breaks in code and actual example output MUST be preserved.
+15. Markdown design SHOULD receive the same care as wording. Heading hierarchy, emphasis, spacing, and content layout SHOULD help reviewers scan the description. Authors SHOULD preview the rendered Markdown before publishing.
 
 ## Types
 
@@ -68,39 +57,29 @@ Use the same meanings as the project's Conventional Commit types.
 | `ci` | Change continuous integration |
 | `chore` | Other maintenance |
 
-Choose the type for the resulting change, rather than its supporting edits. A feature with tests and documentation is still `feat`. Unrelated outcomes should usually be separate PRs.
+A feature with tests and documentation is still `feat`. Unrelated outcomes should usually be separate PRs.
 
 ## Body content
 
-Begin with prose, then add useful evidence and supporting context. These are content roles, not headings to copy into a PR.
+Show the artifact, example, or measurement itself. Keep captions only when they add context, interpretation, sources, or limits. Omit self-evident narration and template commentary.
 
-| Role | Content |
-| --- | --- |
-| Opening prose | Required: what changes and the resulting behavior, followed by why it matters |
-| Evidence | Optional: a current screenshot, example output, or before/after example that helps assess the implemented result |
-| Supporting context | Optional: consequential decisions, compatibility or rollout constraints, manual findings, verification gaps, or questions requiring reviewer judgment |
+Use labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section.
 
-Show the artifact, example, or decision-relevant measurement table itself, rather than summarize changes or list examples available elsewhere. Explain changed rules in the opening prose. Supporting context concerns this particular change; do not fill it with an explanation of the template.
+## Markdown design and discoverability
 
-Link relevant requirements next to the point they support. Use brief labels such as **Compatibility:**, **Rollout:**, or **Review:** when they help scanning. There is no default Testing or Verification section, and no requirement to fill every content role.
+Apply the [F-pattern quick reference](f-pattern-scanning-quick-reference.md) and its rendered scan check.
 
-## Readability and discoverability
+Each list item should make one assessable point. Avoid sentence-by-sentence bullets and lists repeating the opening.
 
-Use prose for connected reasoning. Use bullets when multiple independent outcomes, constraints, tradeoffs, or decisions are easier to scan separately. Each item should make one assessable point, with parallel phrasing and enough explanation to understand its effect. Avoid sentence-by-sentence bullets, file inventories, lists repeating the opening, and arbitrary item counts. Use numbered lists when order matters, such as migration steps.
-
-Use a compact table when readers need to compare several items across shared attributes, such as before/after performance and cost, alternatives, compatibility, or rollout status. Place it next to the prose it supports. Label units and workload scope, identify the evidence source, and keep caveats nearby. Distinguish per-item from combined measurements, and serving queries from refresh work. Separate unlike measurement layers or clearly label them; do not combine overlapping timings, invent missing values, or infer unsupported speedups. Explicitly mark missing values as not measured or not reported. Keep long reasoning outside cells. Tables should contain decision-relevant manual measurements or external evidence, not routine automated check reports.
+Place tables beside supporting prose; keep long reasoning outside cells. Distinguish per-item from combined measurements, and serving queries from refresh work. Never combine overlapping timings, invent missing values, or infer unsupported speedups.
 
 Use Before/After columns only when workloads and measurement layers match. Otherwise use rows identified by workload and layer, or separate tables. API query timing is not full dashboard load unless browser rendering was measured. Write "Not measured" or "Not reported" for missing values rather than unexplained dashes.
 
-Table cells follow the same prose and linking rules: do not insert `<br>` or other manual breaks for appearance, and link cited GitHub objects in cells. Split overloaded columns or move details into adjacent prose. Do not label workloads as "the same" without evidence of matching scope. The opening prose still must explain why the change matters.
+Table cells follow the same prose and linking rules. Split overloaded columns. Claim matching workloads only with evidence.
 
-Write each paragraph and list item on one source line, allowing GitHub to wrap it for the reader's screen. Use blank lines between paragraphs and before lists. Preserve meaningful line breaks in code and actual example output.
+Pin file and code-symbol links to the relevant commit SHA, with line anchors when useful.
 
-Reference files only when they exist on GitHub and reviewers can open them. Use descriptive Markdown links to full GitHub file URLs pinned to the relevant commit SHA, with line anchors when useful. An unlinked filename, inline-code path, or local plan is not a discoverable reference.
-
-Link GitHub issues and PRs using full URLs or autolinking references: `#123` in the same repository and `owner/repo#123` across repositories. Link commits, reviews, discussions, releases, comparisons, and Actions runs directly to the object being cited. When citing a code symbol as evidence, link its definition. Verify that targets exist, identify the intended version, and are accessible to reviewers before handoff.
-
-Read the rendered description as a reviewer before requesting a decision. The outcome should be clear immediately, supporting evidence reachable in one click, and the facts and judgments needed for approval or rejection explicit.
+Autolink issues and PRs with `#123` or `owner/repo#123`, or use full URLs. Link other GitHub objects directly.
 
 ## Examples
 
@@ -138,4 +117,4 @@ Restore the selected printer after a connection interruption, so the next label 
 
 Projects can adopt this convention for PR titles and descriptions independently of how they merge commits. A conventional PR title does not make the commits conventional or configure release automation.
 
-Required repository fields still apply and take precedence over this default layout when they conflict. Map the content into those fields without duplicating it or padding the rest of the description. When working in a repository that has not adopted this convention, follow its title and template requirements.
+Repository title and template requirements take precedence. Fill required fields without duplication or padding.
