@@ -48,13 +48,6 @@ func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case "browse-mcp":
-			if err := browseMCP(os.Args[2:]); err != nil {
-				slog.New(slog.NewJSONHandler(os.Stderr, nil)).Error("browse_mcp_failed", "message", err.Error())
-				os.Exit(1)
-			}
-
-			return
 		case "install":
 			env, err := currentInstallEnvironment()
 			if err == nil {
@@ -105,6 +98,10 @@ func main() {
 	clientIdle := flag.Duration("client-write-timeout", 0, "Override the configured client write timeout")
 	flag.Parse()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if flag.NArg() != 0 {
+		log.Error("invalid_arguments", "message", "unexpected arguments; use --help for supported commands and flags")
+		os.Exit(1)
+	}
 	path := effectiveConfigPath(*configPath, executable)
 
 	cfg, err := loadConfiguration(path)

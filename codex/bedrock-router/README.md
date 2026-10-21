@@ -43,8 +43,7 @@ extra Bedrock provider settings requires a manual merge. A different `.env`
 source requires the explicit `--keep-env` option.
 `--no-start` writes files without starting the service.
 
-The installer also registers a separate browsing MCP tool; see
-[Delegated web browsing](#delegated-web-browsing) for setup and behavior.
+Installs preserve MCP removals, custom settings, and disabled flags.
 
 On Linux, allow the service to survive logout and start at boot:
 
@@ -102,56 +101,12 @@ nonpositive timeouts are rejected. Command-line port and timeout flags override
 the file. Regional discovery makes at most one attempt using `region_fallbacks`;
 omitting a region's fallback disables discovery from that region.
 
-## Delegated web browsing
-
-The `bedrock_browse` MCP tool runs a separate Luna (`openai.gpt-5.6-luna`)
-request in `us-west-2`. This provides a working browsing path when the main
-model's built-in search returns `Access denied: web search is not authorized
-for this identity.`
-
-Codex supplies a self-contained research question or URL-reading task. The
-tool returns an answer with source URLs, without receiving session history or
-encrypted context. The main model and its region pin remain unchanged.
-Credentials come from `~/.config/bedrock/env`; neither credentials nor research
-tasks are logged.
-
-### Enable delegated browsing
-
-```sh
-go run . install --config ./config.json --delegated-browsing
-```
-
-This registers the tool and sets `web_search = "disabled"`. Start a new Codex
-session to load the tool and search setting. Browsing should then appear as a
-`bedrock_browse.bedrock_browse(...)` call. The router does not intercept an
-internal search call or replay a failed generation through Luna.
-
-Later installs preserve the disabled search setting. An ordinary install
-registers the tool as a fallback while preserving your existing built-in search
-preference. If Codex's `.env` uses a different source, add `--keep-env` to preserve
-it; the tool loads the Bedrock credential file independently.
-
-### Choose a browsing model and region
-
-The registered command runs:
-
-```sh
-bedrock-router browse-mcp --model openai.gpt-5.6-luna --region us-west-2
-```
-
-Change these arguments under
-`[mcp_servers.bedrock_browse]` in `~/.codex/config.toml` to use another browsing
-model and region. Reinstalling restores the arguments to Luna in West.
-
-Luna browsing was verified with the existing credentials; its relative price
-has not been verified.
-
-### Built-in search denial recovery
+## Built-in search denial recovery
 
 When built-in search is enabled, a denial remains visible as a failed stream.
-The router adds a recovery hint to Codex's next attempt in the same session,
-directing it to use `bedrock_browse` when available or continue useful work
-through another approach. The hint does not change the search setting.
+The router adds a recovery hint to Codex's next attempt in the same session.
+It directs Codex to any available separate search or browsing tool, or to
+continue useful work if none is available. The hint does not change the search setting.
 Codex owns retries; the router does not replay the generation or invent a
 successful completion.
 
