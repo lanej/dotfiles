@@ -29,6 +29,7 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
                  "sync-codex-agents", "sync-claude-shared", "claude-remove-blocked-plugins"):
         (repo / "bin" / name).symlink_to(ROOT / "bin" / name)
     shutil.copy2(ROOT / "bin/sync-codex-tmux-hooks", repo / "bin/sync-codex-tmux-hooks")
+    shutil.copy2(ROOT / "bin/codex-worktree-config", repo / "bin/codex-worktree-config")
     shutil.copy2(ROOT / "codex/tmux-hooks.json", repo / "codex/tmux-hooks.json")
     shutil.copy2(ROOT / "codex/AGENTS.md", repo / "codex/AGENTS.md")
     (repo / "scripts").mkdir()

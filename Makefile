@@ -289,6 +289,15 @@ codex-tmux: agent-status-broker
 codex-tmux codex-tmux-config:
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
+SETUP_TARGETS += codex-worktree-hook
+# The codex aggregate runs this after its other hook installers finish.
+codex codex-worktree-hook:
+	$(call require-command,$(UV))
+	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
+
+test-codex-worktree-hook: FORCE
+	$(call require-command,$(UV))
+	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/scripts/test-codex-worktree-hook.py"
 SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
