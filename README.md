@@ -70,15 +70,10 @@ including name collisions. Rerun `make codex-agents` after changing agent
 sources, then start a new Codex session. Missing external sources are reported
 and skipped.
 
-`make codex` shares Claude's user MCP servers and the MCP servers bundled with
-enabled user-scope Claude plugins. Shared definitions come from
-`.claude/mcp-servers.json`, merged into Claude's user configuration. Explicit
-user definitions take precedence over plugin servers. Codex-only servers remain
-installed, and unchanged definitions retain their Codex settings. The Claude
-`codex` MCP server is excluded to avoid recursion. Bearer tokens stay in
-environment variables, and plugin install paths are resolved without modifying
-the plugin cache. Rerun `make codex` after changing server definitions or plugins,
-then restart Codex to load the configuration. See Codex's
+Codex MCP servers are manually curated in `~/.codex/config.toml`. Setup preserves
+user removals, disabled servers, and custom settings; it does not import servers
+from Claude or its plugins. The old `codex-mcp` target and importer are retired.
+See Codex's
 [MCP configuration documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 `make codex` also installs the shared Claude/Codex tmux window-status hooks.

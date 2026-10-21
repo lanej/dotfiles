@@ -19,6 +19,7 @@ def main():
         checkout.mkdir()
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
+        (checkout / "codex/bedrock-router").mkdir(parents=True)
         (checkout / "scripts").mkdir()
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
@@ -27,6 +28,10 @@ def main():
         token = "test-only-'$(touch \"$HOME/token-executed\")`id`"
         source = home / "user (13).json"
         source.write_text(json.dumps({"bearer_token": token, "region": "us-east-1", "expiration": 4102444800}))
+        (home / ".codex").mkdir()
+        codex_config = home / ".codex/config.toml"
+        curated_mcp = b'[mcp_servers.retained]\ncommand = "fixture"\nenabled = false\n'
+        codex_config.write_bytes(curated_mcp)
         (checkout / "kitty").mkdir()
         shutil.copyfile(root / "kitty/kitty.terminfo", checkout / "kitty/kitty.terminfo")
         driver = fixture / "driver"
@@ -215,7 +220,15 @@ elif name == "nvim" and "--headless" in args:
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
 elif name == "bedrock-router":
-    assert args[:2] == ["install", "--config"] and args[3:] == ["--keep-env"], args
+    if args == ["install", "--help"]:
+        print("Legacy installer: no MCP-preservation support")
+        sys.exit(0)
+    assert args[:2] == ["install", "--config"], args
+    if "--preserve-mcp" not in args:
+        with (home / ".codex/config.toml").open("a") as output:
+            output.write('\n[mcp_servers.unwanted]\ncommand = "restored"\n')
+    if not Path(sys.argv[0] + ".safe-installer").is_file():
+        raise AssertionError("bootstrap used the legacy installer")
     assert json.loads(Path(args[2]).read_text()) == {"fixture": "standalone-router"}
     assert "make" in (home / "events").read_text()
     assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
@@ -238,6 +251,13 @@ elif name == "go":
         destination = Path(os.environ["GOPATH"]) / "bin"
         destination.mkdir(parents=True)
         (destination / "glow").symlink_to(fixture / "driver")
+    elif args[:1] == ["build"]:
+        assert Path.cwd() == (home / ".files/codex/bedrock-router").resolve()
+        target = Path(args[args.index("-o") + 1])
+        target.write_bytes((fixture / "driver").read_bytes())
+        target.chmod(0o755)
+        Path(str(target) + ".safe-installer").touch()
+        record("router build")
     elif args[:2] == ["version", "-m"]:
         assert args[2].endswith("/glow"), args
         print("\tmod\tgithub.com/charmbracelet/glow/v2\tv2.0.0\tfixture")
@@ -305,6 +325,8 @@ else:
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")
         assert events.index("router release") < events.index("router setup")
+        assert events.index("router build") < events.index("router setup")
+        assert codex_config.read_bytes() == curated_mcp, "Bootstrap restored or changed MCP servers."
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"

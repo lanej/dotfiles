@@ -28,9 +28,16 @@ Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
 16. **Diversity:** Be skeptical of any supposedly universal approach.
 17. **Extensibility:** Design to accommodate future changes.
 
+# Codex MCP configuration
+
+Codex MCP servers are manually curated. Preserve user removals, disabled flags,
+and custom settings. Prefer installed CLIs when available. Do not import servers
+from Claude, plugins, backups, or other configs, or add or re-enable a server,
+unless the user explicitly requests that change.
+
 # Browser automation
 
-Default local pages and UI validation to headless Playwright MCP.
+Default local pages and UI validation to headless Playwright.
 Headless browsers avoid macOS window focus and accidental keyboard input.
 Launch visible browsers only when the user explicitly requests them.
 Use CUA/native integration for explicitly requested real, signed-in browser work.

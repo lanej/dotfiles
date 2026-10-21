@@ -33,7 +33,7 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\nweb_search = \"live\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\n[profiles.bedrock]\nmodel_provider = \"amazon-bedrock\"\nmodel_reasoning_summary = \"none\"\n")
+	original := []byte("# Keep my settings.\nmodel = \"existing-model\"\nweb_search = \"live\"\n[mcp_servers.fixture]\ncommand = \"fixture\"\nenabled = false\n[profiles.bedrock]\nmodel_provider = \"amazon-bedrock\"\nmodel_reasoning_summary = \"none\"\n")
 
 	if err := atomicWrite(filepath.Join(root, "config.toml"), original, 0600); err != nil {
 		t.Fatal(err)
@@ -196,6 +196,65 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 		t.Fatalf("install: %v: %s", err, logs.String())
 	}
 
+	registeredBytes, err := os.ReadFile(filepath.Join(root, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var registered map[string]any
+	if err := toml.Unmarshal(registeredBytes, &registered); err != nil {
+		t.Fatal(err)
+	}
+	browse := registered["mcp_servers"].(map[string]any)["bedrock_browse"].(map[string]any)
+	var browseArgs []string
+	for _, arg := range browse["args"].([]any) {
+		browseArgs = append(browseArgs, arg.(string))
+	}
+
+	browseCommand := exec.Command(browse["command"].(string), browseArgs...)
+	browseCommand.Stdin = strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
+
+	browseOutput, err := browseCommand.Output()
+	if err != nil {
+		t.Fatalf("installed browsing tool failed: %v", err)
+	}
+	browseDecoder := json.NewDecoder(bytes.NewReader(browseOutput))
+	var browseReply struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if browseDecoder.Decode(&browseReply) != nil || browseDecoder.Decode(&browseReply) != nil ||
+		len(browseReply.Result.Tools) != 1 || browseReply.Result.Tools[0].Name != "bedrock_browse" {
+		t.Fatal("explicit browsing opt-in did not expose the tool")
+	}
+
+	// The user removes the browsing server from both layers. Ordinary reinstalls
+	// must respect that choice while preserving the remaining disabled server.
+	for _, name := range []string{"config.toml", "bedrock.config.toml"} {
+		path := filepath.Join(root, name)
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var trimmed map[string]any
+		if err := toml.Unmarshal(raw, &trimmed); err != nil {
+			t.Fatal(err)
+		}
+		delete(trimmed["mcp_servers"].(map[string]any), "bedrock_browse")
+		data, err := toml.Marshal(trimmed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name == "config.toml" {
+			data = append([]byte("# Keep my settings.\n"), data...)
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	customEnv := filepath.Join(home, "private.env")
 	if err := atomicWrite(customEnv, []byte("export CUSTOM_SETTING=preserved\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -260,7 +319,8 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 	}
 
 	if config["model"] != "existing-model" || config["web_search"] != "disabled" ||
-		mcp["command"] != "fixture" || !bytes.Contains(installed, []byte("# Keep my settings.")) ||
+		mcp["command"] != "fixture" || mcp["enabled"] != false ||
+		!bytes.Contains(installed, []byte("# Keep my settings.")) ||
 		profile["model_provider"] != "amazon-bedrock" || profile["model_reasoning_summary"] != "none" ||
 		profile["model"] != nil || profile["web_search"] != nil ||
 		profile["model_reasoning_effort"] != "high" ||
@@ -272,32 +332,9 @@ func TestInstallationStartsServiceAndPreservesConfiguration(t *testing.T) {
 		t.Fatal("installation changed the original symlinked profile")
 	}
 
-	browse := config["mcp_servers"].(map[string]any)["bedrock_browse"].(map[string]any)
-	var browseArgs []string
-	for _, arg := range browse["args"].([]any) {
-		browseArgs = append(browseArgs, arg.(string))
-	}
-
-	browseCommand := exec.Command(browse["command"].(string), browseArgs...)
-	browseCommand.Stdin = strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
-
-	browseOutput, err := browseCommand.Output()
-	if err != nil {
-		t.Fatalf("installed browsing tool failed: %v", err)
-	}
-
-	browseDecoder := json.NewDecoder(bytes.NewReader(browseOutput))
-
-	var browseReply struct {
-		Result struct {
-			Tools []struct {
-				Name string `json:"name"`
-			} `json:"tools"`
-		} `json:"result"`
-	}
-	if browseDecoder.Decode(&browseReply) != nil || browseDecoder.Decode(&browseReply) != nil ||
-		len(browseReply.Result.Tools) != 1 || browseReply.Result.Tools[0].Name != "bedrock_browse" {
-		t.Fatal("installed MCP server did not expose browsing")
+	profileServers, _ := profile["mcp_servers"].(map[string]any)
+	if len(config["mcp_servers"].(map[string]any)) != 1 || len(profileServers) != 0 {
+		t.Fatal("ordinary reinstall restored a removed MCP server")
 	}
 
 	link, err := filepath.EvalSymlinks(filepath.Join(root, ".env"))

@@ -991,7 +991,7 @@ setup_bedrock_credentials() {
 }
 
 setup_bedrock_router() (
-	local staging version platform arch archive release config
+	local staging version platform arch archive release config source_root
 	if [ ! -f "$HOME/.config/bedrock/env" ]; then
 		echo "No Bedrock credentials configured; skipping router setup."
 		return 0
@@ -1031,11 +1031,23 @@ setup_bedrock_router() (
 		(cd "$staging" && shasum -a 256 -c selected.sha256) || return 1
 	fi
 	tar -xzf "$staging/$archive" -C "$staging" bedrock-router config.json || return 1
+	# Older releases silently restore the browsing MCP server on every install.
+	# Use our guarded installer before allowing a release to touch user settings.
+	"$staging/bedrock-router" install --help > "$staging/install-help" 2>&1 || true
+	if ! grep -q -- '-preserve-mcp' "$staging/install-help"; then
+		command -v go >/dev/null 2>&1 || {
+			echo "Bedrock installer cannot preserve MCP settings; Go is required to build the safe local installer." >&2
+			return 1
+		}
+		source_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+		(cd "$source_root/codex/bedrock-router" &&
+			go build -trimpath -p 2 -o "$staging/bedrock-router" .) || return 1
+	fi
 	config="$staging/config.json"
 	if [ -f "$HOME/.codex/bedrock-router/config.json" ]; then
 		config="$HOME/.codex/bedrock-router/config.json"
 	fi
-	"$staging/bedrock-router" install --config "$config" --keep-env || return 1
+	"$staging/bedrock-router" install --config "$config" --keep-env --preserve-mcp || return 1
 	if [ "$os" = linux ]; then
 		if ! loginctl show-user "$USER" -p Linger | grep -q '^Linger=yes$'; then
 			loginctl enable-linger "$USER" ||
