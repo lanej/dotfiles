@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby oni kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins alacritty wezterm spotify_player python go claude-config gemini cargo presenterm mail quarto codex-config codex-mcp
+SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
+SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
@@ -12,9 +12,6 @@ ifeq ($(UNAME_S),Linux)
 SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
 else ifeq ($(UNAME_S),Darwin)
 SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
-ifneq ($(shell command -v git-crypt >/dev/null 2>&1 && test -r "$(DOTFILES)/superwhisper/settings/settings.json" && ! head -c 10 "$(DOTFILES)/superwhisper/settings/settings.json" | grep -q GITCRYPT && printf ready),)
-SETUP_TARGETS += superwhisper
-endif
 endif
 
 # The runner reports every step and returns failure only after trying them all.
@@ -162,10 +159,6 @@ polybar:
 	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config
 	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
-oni:
-	@mkdir -p $(HOME)/.config/oni
-	@ln -fs $(DOTFILES)/oni/config.js $(HOME)/.config/oni/config.js
-	@ln -fs $(DOTFILES)/oni/config.tsx $(HOME)/.config/oni/config.tsx
 bspwm:
 	$(call require-os,Linux)
 	@mkdir -p $(HOME)/.config/bspwm
@@ -184,15 +177,27 @@ kitty-config:
 python:
 	@mkdir -p $(HOME)/.config/
 	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
-alacritty:
-	@mkdir -p $(HOME)/.config/alacritty
-	@ln -fs $(DOTFILES)/alacritty/alacritty.yml $(HOME)/.config/alacritty
 wezterm:
 	@mkdir -p $(HOME)/.config/wezterm
 	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.wezterm.lua
 	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.config/wezterm/wezterm.lua
-spotify_player:
-	@ln -fns $(DOTFILES)/spotify-player $(HOME)/.config/spotify-player
+# Opt-in restore: quit Amphetamine first; its preferences must not be symlinked.
+AMPHETAMINE_PREFS ?= $(HOME)/Library/Containers/com.if.Amphetamine/Data/Library/Preferences/com.if.Amphetamine
+amphetamine:
+ifeq ($(UNAME_S),Darwin)
+	@pgrep -x Amphetamine >/dev/null; status=$$?; \
+	if [ "$$status" -eq 0 ]; then \
+		echo "Quit Amphetamine before restoring its settings." >&2; exit 1; \
+	elif [ "$$status" -ne 1 ]; then \
+		exit "$$status"; \
+	fi
+	@plutil -lint "$(DOTFILES)/amphetamine/settings.plist" >/dev/null
+	@defaults write "$(AMPHETAMINE_PREFS)" "Trigger Data" "$$(plutil -extract 'Trigger Data' xml1 -o - "$(DOTFILES)/amphetamine/settings.plist")"
+	@defaults write "$(AMPHETAMINE_PREFS)" "Enable Triggers" -bool "$$(plutil -extract 'Enable Triggers' raw -o - "$(DOTFILES)/amphetamine/settings.plist")"
+	@echo "Amphetamine trigger settings restored. Reopen Amphetamine."
+else
+	@echo "Amphetamine settings require macOS." >&2; exit 1
+endif
 undercurl:
 	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
 go:
@@ -229,30 +234,25 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-superwhisper:
-	$(call require-os,Darwin)
-	@for source in "$(DOTFILES)/superwhisper/settings/settings.json" "$(DOTFILES)/superwhisper/modes/default.json"; do \
-		[ -r "$$source" ] || { echo "Missing or unreadable SuperWhisper configuration: $$source" >&2; exit 1; }; \
-		if head -c 10 "$$source" | grep -q GITCRYPT; then \
-			echo 'SuperWhisper configuration is encrypted; run git-crypt unlock, then make superwhisper.' >&2; \
-			exit 1; \
-		fi; \
-	done
-	@mkdir -p $(HOME)/Documents/superwhisper/settings $(HOME)/Documents/superwhisper/modes
-	@ln -fs $(DOTFILES)/superwhisper/settings/settings.json $(HOME)/Documents/superwhisper/settings/settings.json
-	@ln -fs $(DOTFILES)/superwhisper/modes/default.json $(HOME)/Documents/superwhisper/modes/default.json
 SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-claude: claude-config claude-plugins agent-status-broker
-claude-config:
+SETUP_TARGETS += software-standard
+software-standard:
+	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
+
+SETUP_TARGETS += claude-shared
+claude-shared: software-standard
+	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
+claude: claude-config claude-plugins agent-status-broker claude-shared
+claude-config: software-standard
 	@mkdir -p $(HOME)/.claude
 	@mkdir -p $(HOME)/.claude/local
 	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
 	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
 	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
-	@for d in commands agents skills workflows; do \
+	@for d in commands workflows; do \
 		[ -L $(HOME)/.claude/$$d ] && rm $(HOME)/.claude/$$d; \
 		mkdir -p $(HOME)/.claude/$$d; \
 		for link in "$(HOME)/.claude/$$d/"*; do \
@@ -263,10 +263,6 @@ claude-config:
 		done; \
 		for f in $(DOTFILES)/claude/$$d/*; do \
 			[ -e "$$f" ] || continue; \
-			if [ "$(UNAME_S)" != "Darwin" ] && [ "$$d" = "skills" ] && [ "$$(basename "$$f")" = "problem-definition-contract" ]; then \
-				rm -f $(HOME)/.claude/$$d/problem-definition-contract; \
-				continue; \
-			fi; \
 			ln -fs "$$f" $(HOME)/.claude/$$d/; \
 		done; \
 	done
@@ -280,8 +276,8 @@ claude-config:
 	trap 'rm -f "$$temporary"' 0; \
 	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
-codex-skills:
-	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/claude/skills" --home "$(HOME)"
+codex-skills: software-standard
+	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:
@@ -295,7 +291,7 @@ codex-tmux codex-tmux-config:
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-agents
 codex-agents:
-	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/claude/agents" --home "$(HOME)"
+	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
 	@mkdir -p $(HOME)/.codex
 	@if [ ! -e "$(HOME)/.codex/.env" ] && [ ! -L "$(HOME)/.codex/.env" ] || \
@@ -307,7 +303,7 @@ codex-env:
 		fi; \
 	fi
 codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
-codex-config: codex-env
+codex-config: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
@@ -322,10 +318,6 @@ quarto:
 	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles
 	@ln -fs $(DOTFILES)/quarto/_quarto.yml $(HOME)/.config/quarto/_quarto.yml
 	@echo "✓ Quarto configuration linked"
-gemini:
-	@mkdir -p $(HOME)/.gemini/themes
-	@ln -fs $(DOTFILES)/gemini/themes/nord.json $(HOME)/.gemini/themes/nord.json
-	@ln -fns $(DOTFILES)/gemini/skills $(HOME)/.gemini/skills
 gpg-restore:
 	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
 		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \
@@ -366,6 +358,9 @@ mail:
 	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
 	@echo "  2. Follow the prompts to configure your Gmail account"
 	@echo "  3. Launch neomutt when done"
+test-pragmatic-hexagonal:
+	@python3 "$(DOTFILES)/ai/skills/builder/scripts/check_examples.py"
+
 test:
 	@pytest bin/*_test.py
 
@@ -466,7 +461,7 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
@@ -477,3 +472,15 @@ test-zsh-startup:
 ZSH_BENCHMARK_ARGS ?=
 benchmark-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/benchmark-zsh-startup.py" $(ZSH_BENCHMARK_ARGS)
+
+ac-awake-status:
+	@"$(DOTFILES)/bin/ac-awake-service" status
+ac-awake-install:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" install
+ac-awake-stop:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" stop
+ac-awake-uninstall:
+	@sudo "$(DOTFILES)/bin/ac-awake-service" uninstall
+.PHONY: ac-awake-status ac-awake-install ac-awake-stop ac-awake-uninstall
+
+.PHONY: test-pragmatic-hexagonal

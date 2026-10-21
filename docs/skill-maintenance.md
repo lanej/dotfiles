@@ -35,17 +35,17 @@ studies and their supporting artifacts require an explicit owner request.
 
 CI checks tracked `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` files at
 any depth, plus Markdown entrypoints under `claude/commands/` and
-`claude/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
+`ai/agents/`, against **500 lines and approximately 4,000 tokens**. Symlinks
 are skipped in the source scan; the installed scan follows them. The installed
 `claude/CONSTITUTION.md` import is also covered in both scans. The estimate is
 `ceil(UTF-8 bytes / 4)`, not a Claude tokenizer count.
 The Bash checker uses `wc -l` and `wc -c`, including a final unterminated line.
 It needs Git, standard Unix tools, and the same `jq` already used by setup.
 
-Default `make` checks both the repository instructions (meta) and the installed
-instructions (applied) after setup finishes. Installed coverage matches the
+Run `make instruction-size` explicitly to check repository and installed
+instructions. Default `make` performs setup only and does not run validation. Installed coverage matches the
 Makefile's destinations: `~/.claude/CLAUDE.md`, `~/.claude/CONSTITUTION.md`,
-`~/.claude/{commands,agents,skills}`, and `~/.gemini/skills`. It follows file and
+and `~/.claude/{commands,agents,skills}`. It follows file and
 directory symlinks, includes local untracked additions in those trees, and
 reports source and installed results separately. Absent destinations are
 skipped; broken links or unreadable instructions fail the check.
@@ -55,8 +55,8 @@ Existing overages may stay the same size or shrink; new entrypoints must meet
 both limits. This does not require rewriting existing vendored skills.
 Installed files use their corresponding repository source's base size and
 override. Local additions or external symlink targets without a regular tracked
-source use the default limits. Default `make` compares against `HEAD`; use
-`make INSTRUCTION_SIZE_BASE=origin/master` to compare against the PR base.
+source use the default limits. `make instruction-size` compares against `HEAD`; use
+`make instruction-size INSTRUCTION_SIZE_BASE=origin/master` for the PR base.
 
 Use progressive disclosure for conditional detail; moving always-loaded text
 to another file does not reduce runtime context. Size checks measure entrypoints,

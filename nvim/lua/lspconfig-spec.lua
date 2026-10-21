@@ -100,7 +100,9 @@ return {
 					functionTypeParameters = true,
 				},
 			},
-			ruby_lsp = {},
+			ruby_lsp = {
+				cmd = { "bundle", "exec", "ruby-lsp" },
+			},
 			bqls = {
 				-- Prefer the patched fork; use Mason on hosts without it.
 				cmd = { vim.fn.executable(bqls) == 1 and bqls or "bqls" },

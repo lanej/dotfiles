@@ -48,3 +48,6 @@ fi
 if [[ $- == *i* ]] && command -v atuin >/dev/null; then
 	eval "$(atuin init bash)"
 fi
+
+# EPF shell completion
+[ -r "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/epf" ] && source "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/epf"

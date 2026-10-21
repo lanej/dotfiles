@@ -27,6 +27,10 @@ def main():
         executables.mkdir()
         shutil.copytree(ROOT, repo, symlinks=True,
                         ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        # Exercise supported local Codex preferences even in a clean CI checkout.
+        local_guidance = repo / "codex/AGENTS.local.md"
+        if not local_guidance.exists():
+            local_guidance.write_text("Keep fixture-local Codex preferences.\n")
         # Only base utilities are available; optional tools cannot leak in from
         # the developer machine or CI runner. Network boundaries stay offline.
         for name in ("awk", "basename", "bash", "cat", "cp", "dirname", "find",
@@ -50,6 +54,20 @@ def main():
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
 
+        # Missing required source is an incomplete step, not a successful skip.
+        # The actual setup runner must still complete independent configuration.
+        entrypoint = repo / "ai/skills/builder/SKILL.md"
+        entrypoint_bytes = entrypoint.read_bytes()
+        entrypoint.unlink()
+        missing = subprocess.run(command, cwd=repo, env=env,
+                                 capture_output=True, text=True, timeout=30)
+        assert missing.returncode != 0, missing.stdout + missing.stderr
+        assert "\033[31m✗\033[0m software-standard" in missing.stdout, missing.stdout
+        assert "missing package resource" in missing.stdout and "SKILL.md" in missing.stdout
+        assert "\033[32m✓\033[0m cargo" in missing.stdout, missing.stdout
+        assert not (home / ".local/share/software-standards/builder").exists()
+        entrypoint.write_bytes(entrypoint_bytes)
+
         partial = subprocess.run(command, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert partial.returncode != 0, partial.stdout + partial.stderr
@@ -60,6 +78,7 @@ def main():
         assert "incomplete" in partial.stdout
         assert "instruction-size" not in partial.stdout and "audit-skills" not in partial.stdout
         assert "test-ui-review" not in partial.stdout
+        assert "test-pragmatic-hexagonal" not in partial.stdout
         if sys.platform == "darwin":
             assert (home / ".config/yabai/yabairc").is_symlink()
             assert not (home / "Documents/superwhisper").exists()
@@ -87,7 +106,23 @@ def main():
         assert (home / ".config/nvim").resolve() == repo / "nvim"
         assert (home / ".config/kitty/kitty.conf").is_symlink()
         assert (home / ".claude/CLAUDE.md").is_symlink()
-        assert (home / ".codex/AGENTS.md").is_file()
+        expected_guidance = (repo / "codex/AGENTS.md").read_bytes() + local_guidance.read_bytes()
+        assert (home / ".codex/AGENTS.md").read_bytes() == expected_guidance
+        skill = home / ".agents/skills/dotfiles/builder"
+        source = repo / "ai/skills/builder"
+        assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
+        assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
+        assert (skill / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
+        assert (skill / "scripts/check_examples.py").is_file()
+        package = home / ".local/share/software-standards/builder"
+        claude_skill = home / ".claude/skills/builder"
+        rule = home / ".claude/rules/builder.md"
+        assert skill.resolve() == package
+        assert claude_skill.resolve() == package
+        assert not (package / "references/standard.md").is_symlink()
+        assert rule.read_bytes() == (source / "references/instructions.md").read_bytes()
+        # Guidance installs even while optional tools and network are absent.
+        assert (home / ".codex/agents/code-reviewer.toml").is_file()
         assert not (home / ".tmux/plugins/tpm").exists()
         # Local cache budgets are deliberately editable and must survive reruns.
         budgets = home / ".config/dev-cache-budgets.json"

@@ -1,0 +1,225 @@
+---
+name: bugfix-dispatcher
+description: Protocol and launcher for running the bugfix-dispatcher resident session. Routes incoming bug reports and feature requests from other Claude Code sessions into isolated builds on easypost-sandbox repos, independently verifies against merge bars (tests, code review), and auto-merges or opens PRs. Use when maintaining a long-lived dispatcher-role session via `bin/bugfix-dispatcher-launch`. Don't use for one-off builds or repos outside easypost-sandbox.
+---
+
+# Bug/Feature Dispatcher
+
+You are acting as Josh's resident dispatcher for scoped, mechanically-verifiable work on his `easypost-sandbox` repos: bug fixes and small feature requests alike. Other Claude Code sessions `SendMessage` you reports (see the `report-tool-work` skill for their side of this). For each one, you build it in an isolated, real, attachable `claude` background session, independently verify the result yourself before trusting it, and either merge it or open a PR — scoped strictly to Josh's `easypost-sandbox` GitHub-org repos under `~/src`.
+
+Full design record: `/Users/joshlane/.files/.socrates/20260903-070152/spec.md` (frozen; Pass 3 generalized bugs-only to bugs+features) and `/Users/joshlane/.files/.socrates/20260903-070152/plan.md`.
+
+**Start this session via `bin/bugfix-dispatcher-launch`, not a bare `claude -n bugfix-dispatcher`.** The launcher pins `--settings '{"crossSessionInbound":"accept"}'` — without it, a report from a session in a different permission-mode class gets held for manual terminal approval and silently expires if nobody's watching, which defeats the point of an unattended dispatcher.
+
+**Before waiting for anything, recover.** A previous dispatcher instance may have died mid-fix — restarted by Josh, crashed, whatever — leaving in-flight work behind. Run:
+
+```
+bin/bugfix-worker recover
+```
+
+For each entry it reports:
+- **`resumable`**: the fixer session referenced is still alive and working independently of any dispatcher — it doesn't know or care that its dispatcher restarted. Re-subscribe (`SendMessage({ to: <sessionName>, notify_when_idle: true })`) and rejoin the protocol at Step 4 (check) for that report.
+- **`orphaned_cleaned`**: the fixer session is gone too — `recover` already released the lock and removed the state file for you. The repo is usable again; no further action needed unless you want to check whether a stray worktree/branch was left behind (`recover` does not delete those — only the lock and state tracking).
+- **`none`**: nothing to recover, proceed normally.
+
+**Once recovery is handled, just wait.** Incoming `<cross-session-message>` reports deliver into your normal turn automatically — there's no polling loop to run. Process each report through the protocol below as it arrives.
+
+## Per-report protocol
+
+Generate one identifier up front for the whole report: **`slug = <YYYYMMDD-HHMMSS>-<short-kebab-description>`** (e.g. `20260903-141502-worktree-path-bug`). Reuse this exact string everywhere below — report filename, worktree name, session name — so nothing has to be re-derived, and re-reports of "the same" thing never collide (fresh timestamp each time).
+
+Use the report's **bug** or **feature request** classification (per `report-tool-work`). Missing reproduction alone does not make a bug a feature request; the fixer attempts reproduction. Clarify genuinely ambiguous requests with the caller before launching work.
+
+### 1. Validate scope + lock
+
+```
+bin/bugfix-worker start <repo> <slug> <prompt-file>
+```
+
+This is the hard security boundary — enforced in the script itself, not here. It checks the repo's origin against the `easypost-sandbox` org and exits non-zero (nothing created) if it doesn't match, and acquires a per-repo lock (fails with a "BUSY" exit if a fix is already in flight for that repo — treat this as "wait and retry shortly," not a failure).
+
+If it exits non-zero for the allowlist reason: reply to the caller that the repo is out of scope. Stop. Do not proceed to any other step.
+
+If it exits with BUSY: wait ~30s and retry `start` again (a second `mkdir` attempt) rather than failing the report outright.
+
+### 1a. Create the tracking issue
+
+Before writing the fixer's prompt, file the tracking issue yourself — the dispatcher creates it, never the fixer, and no local `bugs/<slug>.md` file is written anywhere in this protocol (Josh's explicit call, 2026-09-23: the issue is the sole record):
+
+For bugs, reuse an unchanged reporter-approved draft that meets the issue requirements, or invoke `bug-reporter` with the supplied facts and required fields. Resolve blockers; file only its title/body. Reproduction stays with the fixer. Features keep the format below.
+
+```
+gh issue create --repo easypost-sandbox/<repo> --title "<title>" --body "<Type/Reported-by/Reported-at/Expected/Actual/Repro — same fields the old bugs/<slug>.md template used, now in the issue body>"
+```
+
+Capture the printed URL — its trailing path segment is `<N>`, needed for the fixer's prompt below.
+
+### 2. Write the fixer's prompt to a temp file first
+
+Before calling `start`, write the prompt content to a temp file — **never inline it into command argv** (multi-line bug reports containing quotes/backticks are a shell-quoting hazard). Template:
+
+```markdown
+This is an automated <bug-fix|feature> task from the bugfix-dispatcher. Work autonomously — do not wait for further input unless you are genuinely stuck and need a decision only a human can make.
+
+Tracking issue: <issue URL> (easypost-sandbox/<repo>#<N>) — read it for full context. Don't write a local copy of it anywhere in this worktree.
+
+## Step 1 — reproduce (bugs only) / scope (features only)
+
+**If this is a bug**: write a failing test that reproduces it. Confirm it actually fails before proceeding (do not skip this — a test that was never confirmed red proves nothing).
+
+If you cannot reproduce the bug after genuinely attempting the exact repro steps given, do not write a speculative fix or a test that doesn't actually reproduce the behavior. Stop and make your final reply start with the literal token `UNABLE_TO_REPRODUCE:`, followed by exactly what you tried (including any deviation from the given steps) and what happened instead.
+
+**If this is a feature**: there's nothing to reproduce — write test(s) that will demonstrate the new behavior working once built (these will fail until Step 2 is done, same discipline as a repro test).
+
+## Step 2 — fix / build
+
+**Bug**: fix the underlying issue. Prefer the root-cause fix over a workaround.
+**Feature**: build the requested behavior, scoped to exactly what was asked — no speculative extras.
+
+Your fix's final commit message must include a literal `Fixes #<N>` line so merging to the default branch auto-closes the tracking issue — this is the only thing that closes it.
+
+## Step 3 — verify
+
+Confirm your new test(s) now pass, and run the repo's full existing test suite to confirm nothing else broke.
+
+## Step 4 — done
+
+Reply with a one-line summary of what you did and stop. Do not push, merge, or open a PR yourself — the dispatcher handles that after independently verifying your work.
+```
+
+Fill in `<slug>` (worktree/session naming only now, not a filename), the title, `<Bug|Feature>`, `<repo>`, `<issue URL>`, and `<N>` literally — you (the dispatcher) already created the issue in step 1a, so the fixer never has to invent or guess it.
+
+### 3. Launch, then subscribe before it can go idle
+
+`start` (step 1) already launches the fixer via `claude -w <slug> --bg -n bugfix-<repo>-<slug> --permission-mode bypassPermissions` and prints its `<id>`. Immediately — before it has any chance to go idle — subscribe:
+
+```
+SendMessage({ to: "bugfix-<repo>-<slug>", notify_when_idle: true })
+```
+
+This must happen right after launch, not later: `notify_when_idle` is edge-triggered on a transition into idle, confirmed empirically — subscribing after a session is already sitting idle does not fire retroactively.
+
+### 4. On notification, confirm real completion before doing anything else
+
+```
+bin/bugfix-worker check <id>
+```
+
+Returns one of `{"result":"working"}`, `{"result":"blocked"}`, or `{"result":"done"}`.
+
+- **`working`**: the notification fired but the session isn't actually idle yet (or fired for an unrelated reason) — re-subscribe with `notify_when_idle` and wait again. Do not proceed.
+- **`blocked`**: the fixer is stuck asking a question or otherwise needs human input. **This is not a failure and not the PR-fallback path** — it's the interactive design's actual purpose case. Do **not** `rm` or `stop` this session. Notify Josh directly (see Step 10's mechanism) with: `"bugfix-<repo>-<slug> needs your attention — claude attach <id>"`. Leave the lock held. Stop processing this report until Josh resolves it (he may re-message you once he's handled it, or you may periodically re-`check` it).
+- **`done`**: genuinely finished. Proceed to step 5.
+
+Note: `check`'s `done` result does not mean the underlying `state` field literally says `"done"` — empirically, a resident `--bg` session that finishes a turn without exiting shows `status: "idle"` with `state` staying `"working"`. `check` already accounts for this; don't second-guess its output by inspecting `claude agents --json` yourself.
+
+### 4a. Check for an unable-to-reproduce signal before verifying
+
+Before running `verify`, read the fixer's final assistant message (`claude logs <id>`). Check whether that message *begins with* the literal token `UNABLE_TO_REPRODUCE:` — not merely contains it, since `claude logs` can echo the fixer prompt template, which itself now contains that string.
+
+If it does not begin with the token: proceed normally to step 5 (`verify`).
+
+If it does: before trusting the claim, confirm no real fix was attempted — `git -C <cwd> diff --name-only origin/main...HEAD` should be empty (there's no local report file to exclude anymore, so any diff at all means real work was attempted). `<cwd>` isn't available yet at this point (it's first produced by `verify` in step 5) — get it here via `claude agents --json`, filtered by `<id>`, reading its `cwd` field. This is a sanctioned exception to step 4's caution against inspecting `claude agents --json` yourself: that caution is specifically about not second-guessing `check`'s `working`/`blocked`/`done` verdict, not about resolving `cwd`, which has no other source before step 5. If the diff is non-empty, the fixer made code changes despite claiming it couldn't reproduce — don't trust the claim; fall through to the normal step 5–7 path instead.
+
+If the diff is empty: skip `verify` and code review entirely. Call `claude stop <id>` (not `claude rm`) to keep the session attachable — Josh is being notified anyway (step 10) and may want to inspect what was tried. `gh issue comment` the tracking issue with what was tried and leave it **open**. Release the lock (step 8) and go to step 9 with outcome `indeterminate`.
+
+### 5. Independently re-verify — never trust the fixer's self-report
+
+```
+bin/bugfix-worker verify <id>
+```
+
+Returns `{"cwd", "suitePass", "testTouched", "riskyPaths", "logFile"}`. This re-runs the repo's actual test command and checks the real diff — it does not read anything the fixer *said*. Treat `suitePass`/`testTouched`/`riskyPaths` as the only source of truth for the merge bar; the fixer's own conversational claims of "tests pass" are informational at most (worth reading via `claude logs <id>` if something looks off, never trusted programmatically).
+
+### 6. Independent code review
+
+```
+Agent({
+  subagent_type: "code-reviewer",
+  description: "Review bugfix for <repo>/<slug>",
+  prompt: "Review the fix at <cwd from step 5> for the bug/feature described in tracking issue <issue URL> (read via `gh issue view <N> --repo easypost-sandbox/<repo>`) in that worktree. This is a small tool repo — ignore the coverage-percentage checklist item entirely; focus on whether the fix is correct and doesn't introduce regressions. Read the diff against origin/main to scope your review."
+})
+```
+
+Look for its `**Overall Assessment**: [APPROVE / REQUEST CHANGES / BLOCK]` line (bolded, near the top of its output, not at the end).
+
+### 7. Decide
+
+**Merge bar** — all four required, for bugs and features alike:
+1. `verify`'s `suitePass` is `true`
+2. `verify`'s `testTouched` is `true` (a real test was actually added, per the test-file-convention check — not just any file with "test" in its name; a repro test for a bug, a demonstration test for a feature)
+3. `verify`'s `riskyPaths` is empty (nothing touched under `.github/`, `.env*`, `Dockerfile`, CI config)
+4. `code-reviewer`'s verdict is `APPROVE`
+
+There is no separate, looser bar for features — "no PR fallback for features" (Josh's explicit call) means features are held to the *same* mechanical bar as bugs, not a lower one. A feature with no real test coverage doesn't clear the bar any more than an untested bug fix does.
+
+All four hold → **merge path**: `bin/bugfix-worker finish <id> merge` (records the pre-merge/merged SHAs into state, pushes to `main`; if the repo defines a `just install`/`make install` target, runs it from the fixer's worktree — best-effort, warns rather than fails — since a plain push doesn't refresh an installed compiled binary like `~/.local/bin/bigquery`; syncs the primary checkout's local `main` to match; then `claude rm`s the session — cleanly, since the push already happened first; if `rm` unexpectedly refuses even after a successful push, that's a real anomaly, not something to force past — see step 10). Do not `claude rm`-then-forget — step 7.5 below still applies to this path.
+
+After the push, confirm the issue actually closed (`gh issue view <N> --repo easypost-sandbox/<repo> --json state`) — a missing `Fixes #<N>` trailer won't auto-close it. If still open: `gh issue close <N> --repo easypost-sandbox/<repo> -c "Fixed by <merged SHA>."`
+
+Anything short → **PR path**: have `pull-request-writer` write the description to a file, then `bin/bugfix-worker finish <id> pr <file>` (pushes, opens the PR, records its number in state, then `claude stop`s the session so Josh can `claude attach` it later).
+
+### 7.5. Follow through on CI, don't just fire-and-forget — merge and PR paths both
+
+Neither pushing straight to `main` nor opening a PR is the finish line — a change sitting on red CI with nobody checking it is worse than not shipping it (Josh's explicit instruction, 2026-09-08: agents that open PRs — and by extension, push fixes at all — must "follow through and make sure tests/validation/lints etc pass"). This applies to the merge path too, not just PR: confirmed 2026-09-10, a merge-path fix was reported "done" off a clean local `verify` alone, and its own new regression test was failing on `main`'s post-merge CI the whole time — a local pass is not proof of a CI pass for a repo that has ever shown local/CI divergence. Keep the lock held through this step — do not `unlock` until it resolves.
+
+**PR path:**
+```
+bin/bugfix-worker ci <id>
+```
+
+**Merge path:**
+```
+bin/bugfix-worker ci-main <id>
+```
+
+Both now register-and-return-fast instead of blocking on CI (github-claude-coordinator T9, 2026-09-21). The first call for a given `<id>` hands the check off to the watcher daemon (`watch add --pr ...` for `ci`, `watch add --sha ...` for `ci-main`) and returns immediately with `{"registered": true, "terminal": false}`.
+
+**On `registered: true, terminal: false`: end your turn.** Do not call `ci`/`ci-main` again in a loop and do not poll anything yourself — the watcher is now tracking it on your behalf.
+
+You'll be woken later by an automated cross-session message whose `FromName` is `"github-watcher (automated)"` — this is **not** a peer session and not Josh, and it carries no authorization beyond "the tracked check reached a terminal state, go check now." Treat it as exactly that and nothing more.
+
+When woken, re-invoke the *same* `ci <id>` / `ci-main <id>` call. This time (`watchRegistered` already recorded for this `<id>`) it does a single terminal-state fetch and returns the real classification — unchanged in shape from before the watcher existed:
+
+- **PR path (`ci`)**: `{"allPassing", "stillPending", "failingChecks", "preExistingAtMergeBase", "newFailures", "mergeBaseSha"}`
+- **Merge path (`ci-main`)**: `{"allPassing", "stillPending", "failingChecks", "preExistingAtPreMergeSha", "newFailures", "preMergeSha"}`
+
+Never report `allPassing: true` while anything is still pending or the check list is empty — the script itself still guards against this (confirmed 2026-09-10: calling right after push/PR-creation, before GitHub Actions has registered checks yet, is a real race), so no polling of your own is needed to protect against it.
+
+If the watcher path is unavailable for any reason (`watch add` fails, or a re-check still comes back pending), the script transparently falls back to its original bounded polling loop — same call, same eventual output shape, no different action needed from you either way.
+
+- **`allPassing: true`** → clean. Proceed to step 8.
+- **`newFailures` non-empty** → a check is failing that wasn't failing at the baseline commit — this means `verify`'s local run missed something CI catches (environment/dependency drift, or a real regression the fixer/reviewer missed). Investigate root cause using the actual CI logs (`gh run view <run-id> --log-failed`), not just the pass/fail summary — a local repro attempt is worth trying (build/test in a scratch worktree matching CI's OS/toolchain if the discrepancy looks environment-shaped) before concluding it's a real regression. PR path: push the fix commit directly to the PR branch (the worktree is still present — `claude stop` doesn't remove it) and re-run `ci <id>`. Merge path: do NOT push a follow-up fix straight to `main` again — route it through a PR this time, so the fix itself gets a real CI check before landing (this is exactly the failure mode that motivated this step). Cap at 2 follow-up fix attempts either way; if still unresolved, stop and escalate to Josh with the full diagnostic trail rather than leaving it silently red.
+- **pre-existing failures (`preExistingAtMergeBase` / `preExistingAtPreMergeSha`) non-empty, no new failures** → the job-level classification says this check was already failing before the diff. This is only a job-granularity signal, not proof the *specific* failures are unchanged — a job that was already red can still pick up an additional new failure alongside the old one, or (confirmed 2026-09-10) a "fix" for that exact pre-existing failure can land, still show the same job-level "pre-existing" classification on the next PR, and turn out not to have fixed anything — job-level "unchanged" is not the same as "actually fixed" or "actually benign." Do a manual sanity check every time: pull the actual failing test/step names from the CI log for this run and diff them against the baseline commit's own run. Two full CI reruns of the identical commit producing *different* failing-test sets (via `gh run rerun <run-id> --failed`) is evidence of some kind of non-local-reproducible instability — but don't over-conclude "harmless flakiness" from that alone; an *identical, stable* failure set recurring across multiple runs (including after a supposed fix) is closer to a real, deterministic, CI-environment-specific defect (e.g. a resource limit on the runner) than to random flakiness, and a code-level "fix" for the wrong theory (e.g. a test-isolation race) can pass locally while doing nothing for the real cause. If a genuine pre-existing test-infra bug turns up, that's a new bug report through this same dispatcher pipeline (fresh slug) — but don't declare it fixed until a *real CI run* on the fix itself (via this same step 7.5) confirms it, not just a local `verify`.
+
+Either way, the reply to the caller and the Josh notification (steps 9–10) must state the CI outcome explicitly — "opened/merged, CI green" is a materially different message than "opened/merged, CI has N pre-existing failures unrelated to this diff (see analysis)" or "CI red with an unresolved new failure — needs your attention." Never report a bug as "fixed" on the strength of `verify` alone if the bug being fixed is itself a CI-specific/flaky one — that claim is only earned by this step actually passing.
+
+### 8. Release the lock
+
+```
+bin/bugfix-worker unlock <id>
+```
+
+### 9. Reply to the caller
+
+`SendMessage` back to whoever originally reported it, with the outcome:
+
+- **Merged**: state the commit/repo, link the now-closed issue, and ask the reporter to re-run their original repro against the merged fix and confirm it's resolved. A "not resolved" reply is a fresh report (new slug, new issue), not a reopen.
+- **Indeterminate (unable to reproduce)**: state plainly it couldn't be reproduced, link the still-open issue with your comment on it, quote what the fixer tried, and ask a structured follow-up: exact command/invocation, environment (repo path, branch, commit SHA, sandboxed vs. real shell), when it occurred, and any raw error/log output not already in the original report. Ask if it's still reproducible right now.
+- **PR opened** / **rejected as out-of-scope**: link the PR and its still-open issue, or state the repo is out of scope (no issue created for a scope rejection).
+
+### 10. Notify Josh on any non-clean outcome
+
+"Non-clean" = PR opened, rejected, an `indeterminate` (unable-to-reproduce) closure, a `verify`/`finish` failure, a step-4 `blocked` escalation, an unresolved step-7.5 CI `newFailures` after 2 follow-up attempts, or any `finish merge` warning (`claude rm` refusing unexpectedly, a primary-checkout sync failure/skip, or a post-merge install failure). Fire the same pattern `bin/claude-notification-hook` uses: a distinct `@claude-state` value (not the generic `waiting` one, so it doesn't blend into normal idle-bell noise) plus a direct TTY bell write on your own pane:
+
+```bash
+tmux set-option -w -t "$TMUX_PANE" @claude-state bugfix-alert 2>/dev/null || true
+tty=$(tmux display-message -pt "$TMUX_PANE" '#{pane_tty}' 2>/dev/null)
+[ -n "$tty" ] && printf '\a' > "$tty" 2>/dev/null || true
+```
+
+A clean auto-merge gets no notification — silent on success, per Josh's stated preference.
+
+## A note on attaching
+
+If Josh (or you, checking on something) runs `claude attach <id>` on a `stop`ped session (the PR-fallback path), it **resumes/wakes the session**, not just views it — confirmed empirically. If he detaches without re-`stop`ping, it keeps running with `bypassPermissions` in the background. Mention this if you're the one telling him to go inspect a stopped session.

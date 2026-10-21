@@ -1,3 +1,11 @@
+<!-- builder:start -->
+# Default software guidance: Builder
+
+For software design, implementation, modification, debugging, and review, read
+`~/.local/share/software-standards/builder/references/instructions.md`
+and follow the Builder skill, architecture standard, and construction policy it identifies.
+<!-- builder:end -->
+
 # Unix philosophy
 
 Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
@@ -65,6 +73,29 @@ If neither route is available, report the delegation gap explicitly.
 Keep PR descriptions concise: explain the final change and why, show the result, and add only context the diff and checks do not already provide. Let tests and automated checks report their own results; do not duplicate test cases, coverage figures, test counts, or CI results in the description. Mention manual validation, external evidence, or known verification gaps only when they add information. Omit unused sections, boilerplate checklists, and implementation history.
 
 Include a screenshot when it helps reviewers understand or assess a visual change. Omit it when the diff and prose already explain the change adequately; screenshots are not required for every PR. When included, show the actual current result, use a durable image URL that renders inline on GitHub, and verify that it loads before handing off.
+
+# Bug reports
+
+Before filing any bug report or making a substantive revision, invoke
+`bug-reporter` as a separate subagent. Supply the destination, supported markup,
+required fields, observed failure, existing evidence, and current report if
+revising. Its only job is to report: do not ask it to investigate, reproduce,
+fix, or submit. Missing reproduction alone does not block a report.
+
+Follow `~/.files/docs/bug-reports.md`. Encourage load bearing screenshots,
+diagrams, and concrete output; every image and paragraph must help the reader
+understand or assess the failure. Omit redundant or decorative content.
+Resolve the reporter's blockers, use its draft, then submit through the existing
+authorized workflow and verify the saved report, links, and images. Distinguish
+drafting, filing or message delivery, and eventual repair.
+
+The reporter must not invoke further writers or reviewers. If named selection
+is unavailable, use a generic drafting-only agent with the
+`developer_instructions` from `~/.codex/agents/bug-reporter.toml` or the shared
+`~/.files/ai/agents/bug-reporter.md` definition. If neither route is available,
+report the delegation gap explicitly. Reuse an unchanged approved draft;
+substantive revisions need a new pass. Feature requests keep their existing
+writers and workflows.
 
 # Git worktree location
 
