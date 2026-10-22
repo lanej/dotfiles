@@ -1,0 +1,783 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["websockets==15.0.1", "psutil==7.2.2"]
+# ///
+"""Report loaded Codex sessions and optionally archive old, idle helpers.
+
+Primary sessions are retained. Helpers must be persisted leaves, idle for at
+least 60 minutes, with no queued input, background commands, or unfinished goal.
+Active or busy ancestors protect their helpers. Missing transcripts are
+reported and retained; already archived histories pass the same checks.
+
+Codex 0.163.0 does not expose per-thread client subscriptions or conditional
+retirement. Old, otherwise eligible helpers may be archived despite unknown
+attachment status. Age is a heuristic, not proof of detachment. --apply rechecks
+eligibility before archiving. For already archived helpers, it attempts restoration
+and rechecks before archiving; daemon refusals remain unconfirmed.
+
+MCP cleanup also terminates old orphaned processes matching configured stdio
+servers, after verifying that their stdin pipe has no peer. Live client parents
+and shared listeners protect their servers. MCP configuration is read only.
+Pipe peer inspection currently requires macOS; other platforms retain processes.
+This command never starts or restarts a daemon.
+
+Worktree auditing reports merged, clean, unused checkouts through the existing
+git-worktree-cleanup policy. Loaded Codex sessions and unarchived Paseo agents
+also protect their checkout paths. Worktrees are reported, including in --apply.
+"""
+
+import argparse
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+import textwrap
+import time
+import tomllib
+from pathlib import Path
+
+import psutil
+from websockets.exceptions import WebSocketException
+from websockets.sync.client import unix_connect
+
+
+class InspectionError(Exception):
+    pass
+
+
+class RpcError(InspectionError):
+    pass
+
+
+class Daemon:
+    # The Codex SDK exposes model execution, not local thread administration.
+    # These methods follow `codex app-server generate-ts --experimental`.
+    def __init__(self, connection):
+        self.connection = connection
+        self.sequence = 0
+
+    def request(self, method, params):
+        self.sequence += 1
+        request_id = self.sequence
+        self.connection.send(json.dumps({
+            "id": request_id, "method": method, "params": params,
+        }))
+        deadline = time.monotonic() + 10
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(f"{method}: daemon response timed out")
+            response = json.loads(self.connection.recv(timeout=remaining))
+            if not isinstance(response, dict):
+                raise InspectionError(f"{method}: invalid daemon response")
+            if "method" in response or response.get("id") != request_id:
+                continue
+            if "error" in response:
+                raise RpcError(f"{method}: {response['error']}")
+            if not isinstance(response.get("result"), dict):
+                raise InspectionError(f"{method}: missing result")
+            return response["result"]
+
+    def loaded(self):
+        result, cursor, seen = {}, None, set()
+        while True:
+            page = self.request("thread/loaded/list", {"limit": 100, "cursor": cursor})
+            if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+                raise InspectionError("thread/loaded/list: invalid page")
+            for thread_id in page["data"]:
+                if not isinstance(thread_id, str):
+                    raise InspectionError("thread/loaded/list: invalid thread id")
+                result[thread_id] = None
+            cursor = page["nextCursor"]
+            if cursor is None:
+                return set(result)
+            if not isinstance(cursor, str) or cursor in seen:
+                raise InspectionError("thread/loaded/list: invalid pagination cursor")
+            seen.add(cursor)
+
+    def thread(self, thread_id):
+        thread = self.request("thread/read", {
+            "threadId": thread_id, "includeTurns": False,
+        }).get("thread")
+        if not isinstance(thread, dict) or thread.get("id") != thread_id:
+            raise InspectionError(f"thread/read: invalid metadata for {thread_id}")
+        return thread
+
+    def has_descendants(self, thread_id, archived=False):
+        page = self.request("thread/list", {
+            "ancestorThreadId": thread_id, "archived": archived, "limit": 1,
+            # Empty/omitted defaults to interactive sources and hides helpers.
+            "sourceKinds": [
+                "cli", "vscode", "exec", "appServer", "subAgent",
+                "subAgentReview", "subAgentCompact", "subAgentThreadSpawn",
+                "subAgentOther", "unknown",
+            ],
+        })
+        if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+            raise InspectionError("thread/list: invalid descendant page")
+        return bool(page["data"]) or page["nextCursor"] is not None
+
+    def busy(self, thread_id, include_background=True):
+        methods = [("thread/queue/list", "queued input")]
+        if include_background:
+            methods.append(("thread/backgroundTerminals/list", "background commands"))
+        for method, reason in methods:
+            page = self.request(method, {"threadId": thread_id, "limit": 1})
+            if not isinstance(page.get("data"), list) or "nextCursor" not in page:
+                raise InspectionError(f"{method}: invalid page")
+            if page["data"] or page["nextCursor"] is not None:
+                return reason
+        result = self.request("thread/goal/get", {"threadId": thread_id})
+        if "goal" not in result:
+            raise InspectionError("thread/goal/get: missing goal")
+        goal = result["goal"]
+        if goal is not None:
+            if not isinstance(goal, dict) or "status" not in goal:
+                raise InspectionError("thread/goal/get: invalid goal")
+            if goal["status"] != "complete":
+                return "unfinished goal"
+        return None
+
+
+def status(thread):
+    value = thread.get("status")
+    if not isinstance(value, dict) or value.get("type") not in {
+        "active", "idle", "notLoaded", "systemError",
+    }:
+        raise InspectionError("thread/read: unknown runtime status")
+    return value["type"]
+
+
+def metadata_reason(thread, has_children):
+    if "parentThreadId" not in thread:
+        return "missing parent metadata"
+    if thread["parentThreadId"] is None:
+        return "primary session"
+    if status(thread) != "idle":
+        return f"runtime status: {status(thread)}"
+    if thread.get("ephemeral") is not False or not thread.get("path"):
+        return "no persisted transcript"
+    if has_children:
+        return "loaded descendants"
+    return None
+
+
+def retirement_reason(thread, last_turn, busy, ancestor_busy, has_children,
+                      now, min_idle_minutes):
+    """Return why a helper must be retained; all policy inputs are explicit."""
+    reason = metadata_reason(thread, has_children)
+    if reason:
+        return reason
+    if ancestor_busy:
+        return f"ancestor: {ancestor_busy}"
+    if busy:
+        return busy
+    if last_turn.get("status") != "completed":
+        return "latest turn is not completed"
+    completed_at = last_turn.get("completedAt")
+    if (isinstance(completed_at, bool) or
+            not isinstance(completed_at, (int, float)) or
+            not math.isfinite(completed_at)):
+        return "completion time unavailable"
+    idle_seconds = now - completed_at
+    if idle_seconds < 0:
+        return "completion time is in the future"
+    if idle_seconds < min_idle_minutes * 60:
+        return f"completed less than {min_idle_minutes:g} minutes ago"
+    return None
+
+
+def inspect(daemon, thread, threads, min_idle_minutes):
+    """Resolve daemon facts without subscribing to or resuming any thread."""
+    thread_id = thread["id"]
+    has_children = any(t.get("parentThreadId") == thread_id for t in threads.values())
+    reason = metadata_reason(thread, has_children)
+    if reason:
+        return {"reason": reason}
+    transcript = Path(thread["path"])
+    if not transcript.is_file():
+        return {"reason": "transcript missing at recorded path"}
+    if daemon.has_descendants(thread_id):
+        return {"reason": "persisted descendants"}
+    if daemon.has_descendants(thread_id, archived=True):
+        return {"reason": "persisted archived descendants"}
+
+    parent_id, seen, ancestor_busy = thread["parentThreadId"], {thread_id}, None
+    while parent_id is not None:
+        if not isinstance(parent_id, str) or parent_id in seen:
+            raise InspectionError("invalid or cyclic parent metadata")
+        seen.add(parent_id)
+        parent = threads.get(parent_id)
+        if parent is None:
+            parent = daemon.thread(parent_id)
+        parent_status = status(parent)
+        if parent_status not in {"idle", "notLoaded"}:
+            ancestor_busy = f"runtime status: {parent_status}"
+            break
+        try:
+            ancestor_busy = daemon.busy(parent_id, include_background=parent_status == "idle")
+        except InspectionError as error:
+            raise InspectionError(f"ancestor {parent_id}: {error}") from error
+        if ancestor_busy:
+            break
+        if "parentThreadId" not in parent:
+            raise InspectionError("ancestor parent metadata unavailable")
+        parent_id = parent["parentThreadId"]
+
+    if ancestor_busy:
+        return {"reason": f"ancestor: {ancestor_busy}"}
+    busy = daemon.busy(thread_id)
+    if busy:
+        return {"reason": busy}
+    page = daemon.request("thread/turns/list", {
+        "threadId": thread_id, "limit": 1, "sortDirection": "desc", "itemsView": "summary",
+    })
+    if not isinstance(page.get("data"), list) or len(page["data"]) > 1:
+        raise InspectionError("thread/turns/list: invalid latest turn")
+    last_turn = page["data"][0] if page["data"] else {}
+    if not isinstance(last_turn, dict):
+        raise InspectionError("thread/turns/list: invalid turn")
+    now = time.time()
+    reason = retirement_reason(thread, last_turn, busy, ancestor_busy, False,
+                               now, min_idle_minutes)
+    facts = {"reason": reason, "completed_at": last_turn.get("completedAt")}
+    if reason is None:
+        facts["idle_minutes"] = int((now - last_turn["completedAt"]) // 60)
+    return facts
+
+
+def snapshot(daemon):
+    return {thread_id: daemon.thread(thread_id)
+            for thread_id in sorted(daemon.loaded())}
+
+
+def diagnostics(daemon):
+    try:
+        result = daemon.request("server/diagnostics", {})
+        return {
+            "process": result.get("process"),
+            "gauges": {g["name"]: g["value"] for g in result.get("gauges", [])},
+        }
+    except (InspectionError, OSError, ValueError, TypeError, KeyError,
+            WebSocketException) as error:
+        # Optional counters must not erase confirmed cleanup results.
+        return {"error": str(error)}
+
+
+def recheck(daemon, thread_id, min_idle_minutes, record):
+    """Refresh runtime and ancestry immediately before each mutation."""
+    threads = snapshot(daemon)
+    thread = threads.get(thread_id)
+    if thread is None:
+        record.update(action="retained", reason="no longer loaded")
+        return None
+    record.update(status=status(thread), transcript=thread.get("path"))
+    record.update(inspect(daemon, thread, threads, min_idle_minutes))
+    if record["reason"] is not None:
+        record["action"] = "retained"
+        return None
+    return thread
+
+
+def archive(daemon, thread_id, min_idle_minutes, record):
+    thread = recheck(daemon, thread_id, min_idle_minutes, record)
+    if thread is None:
+        return
+    if "archived_sessions" in Path(thread["path"]).parts:
+        # Already archived roots are excluded from Codex's archive operation.
+        # Restoring the history lets the next archive request unload the runtime.
+        record.update(action="unconfirmed", reason="restore requested; outcome unknown")
+        daemon.request("thread/unarchive", {"threadId": thread_id})
+        record.update(action="retained", reason="restored; inspection incomplete",
+                      transcript_restored=True)
+        thread = recheck(daemon, thread_id, min_idle_minutes, record)
+        if thread is None:
+            return
+    record.update(action="unconfirmed", reason="archive requested; outcome unknown")
+    daemon.request("thread/archive", {"threadId": thread_id})
+    if thread_id in daemon.loaded():
+        record["reason"] = "archive returned; runtime still loaded"
+        return
+    archived = daemon.thread(thread_id)
+    transcript = Path(archived.get("path") or "")
+    record.update(status=status(archived), transcript=str(transcript))
+    if record["status"] != "notLoaded":
+        record["reason"] = "archive returned; runtime reloaded"
+        return
+    if "archived_sessions" not in transcript.parts or not transcript.is_file():
+        record["reason"] = "runtime unloaded; transcript archival unconfirmed"
+        return
+    record.update(action="archived",
+                  reason="runtime unloaded; client attachment status unavailable")
+
+
+def stdio_servers(config_path):
+    """Match full configured commands; never infer MCP ownership from a name."""
+    config = tomllib.loads(config_path.read_text())
+    signatures = {}
+    settings = [config, *config.get("profiles", {}).values()]
+    for scope in settings:
+        for name, server in scope.get("mcp_servers", {}).items():
+            if "url" in server or not isinstance(server.get("command"), str):
+                continue
+            args = server.get("args", [])
+            if not isinstance(args, list) or not all(isinstance(arg, str) for arg in args):
+                raise InspectionError(f"MCP server {name}: invalid arguments")
+            command = os.path.expanduser(server["command"])
+            # An application update can remove a binary while its MCP process lives.
+            executable = command if Path(command).is_absolute() else shutil.which(command)
+            if executable:
+                signatures[(str(Path(executable).resolve()), tuple(args))] = name
+    return signatures
+
+
+def orphan_reason(info, uid, now, min_idle_minutes):
+    if info["uids"] is None or info["uids"].real != uid:
+        return "process owner unavailable or different"
+    if info["ppid"] != 1:
+        return "live client parent"
+    if info["status"] == psutil.STATUS_ZOMBIE:
+        return "zombie awaiting parent reaping"
+    created_at = info["create_time"]
+    if created_at is None or not math.isfinite(created_at) or created_at > now:
+        return "process age unavailable"
+    if now - created_at < min_idle_minutes * 60:
+        return f"process younger than {min_idle_minutes:g} minutes"
+    return None
+
+
+def stdio_reason(pid):
+    """Use descriptor peer evidence, not orphan age alone, to allow termination."""
+    if sys.platform != "darwin":
+        return "stdio peer inspection unavailable on this platform"
+    result = subprocess.run(
+        ["lsof", "-nP", "-a", "-p", str(pid), "-FftnTP"],
+        capture_output=True, text=True, timeout=5,
+    )
+    if result.returncode != 0 or result.stderr:
+        return "stdio peer inspection unavailable"
+    files, descriptor, shared_socket = {}, None, False
+    for line in result.stdout.splitlines():
+        if line in {"TST=LISTEN", "tunix", "PUDP"}:
+            shared_socket = True
+        if line.startswith("f"):
+            descriptor = line[1:]
+            files[descriptor] = {}
+        elif descriptor is not None and line:
+            files[descriptor][line[0]] = line[1:]
+    if shared_socket:
+        return "shared listener or Unix socket"
+    stdin = files.get("0", {})
+    if stdin.get("t") != "PIPE" or "n" not in stdin:
+        return "stdin is not a verifiable stdio pipe"
+    if stdin["n"]:
+        return "stdio peer still attached"
+    return None
+
+
+def cleanup_mcp(args, report):
+    report["mcp_processes"] = records = []
+    if args.thread:
+        report["mcp_skipped"] = "thread filter prevents global MCP process cleanup"
+        return False
+    config_path = args.mcp_config
+    if not config_path.is_file():
+        report["mcp_skipped"] = "MCP configuration unavailable"
+        return False
+    try:
+        servers = stdio_servers(config_path)
+        had_error = False
+        for process in psutil.process_iter(
+            ["pid", "ppid", "uids", "create_time", "cmdline", "exe", "status"],
+            ad_value=None,
+        ):
+            info = process.info
+            if not info["exe"] or not info["cmdline"]:
+                continue
+            signature = (str(Path(info["exe"]).resolve()), tuple(info["cmdline"][1:]))
+            name = servers.get(signature)
+            if name is None or info["uids"] is None or info["uids"].real != os.getuid():
+                continue
+            record = {"pid": info["pid"], "server": name, "action": "retained"}
+            records.append(record)
+            try:
+                reason = orphan_reason(info, os.getuid(), time.time(), args.min_idle_minutes)
+                if reason is None:
+                    reason = stdio_reason(process.pid)
+                record["reason"] = reason or "old orphaned stdio server; stdin peer closed"
+                if reason:
+                    continue
+                record["action"] = "candidate"
+                if not args.apply:
+                    continue
+                # Refresh identity, command, ownership, and descriptors before SIGTERM.
+                fresh = psutil.Process(process.pid)
+                if fresh.create_time() != info["create_time"]:
+                    record.update(action="retained", reason="process identity changed")
+                    continue
+                if (str(Path(fresh.exe()).resolve()), tuple(fresh.cmdline()[1:])) not in servers:
+                    record.update(action="retained", reason="process command changed")
+                    continue
+                reason = orphan_reason(fresh.as_dict(
+                    attrs=["uids", "ppid", "status", "create_time"],
+                ), os.getuid(), time.time(), args.min_idle_minutes) or stdio_reason(fresh.pid)
+                if reason:
+                    record.update(action="retained", reason=reason)
+                    continue
+                record.update(action="unconfirmed", reason="SIGTERM sent; exit unconfirmed")
+                fresh.terminate()
+                fresh.wait(timeout=3)
+                record.update(action="terminated", reason="orphaned stdio server exited")
+            except psutil.NoSuchProcess:
+                record.update(action="retained", reason="process already exited")
+            except (psutil.Error, OSError, ValueError, subprocess.SubprocessError) as error:
+                action = "unconfirmed" if record["action"] == "unconfirmed" else "error"
+                record.update(action=action, reason=str(error))
+                had_error = True
+        return had_error
+    except (OSError, ValueError, TypeError, AttributeError, InspectionError, psutil.Error) as error:
+        report["mcp_error"] = str(error)
+        return True
+
+
+def worktree_agent_references(daemon):
+    references = []
+    for thread in snapshot(daemon).values():
+        cwd = thread.get("cwd")
+        if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+            raise InspectionError("Codex session working directory unavailable")
+        references.append({"source": "Codex", "id": thread["id"], "cwd": cwd})
+    paseo = shutil.which("paseo")
+    if not paseo:
+        raise InspectionError("Paseo agent inventory unavailable")
+    paseo_home = os.environ.get("PASEO_HOME") or str(Path.home() / ".paseo")
+    result = subprocess.run(
+        [paseo, "ls", "--global", "--json", "--home", paseo_home],
+        capture_output=True, text=True, timeout=20,
+    )
+    if result.returncode:
+        raise InspectionError("Paseo agent inventory unavailable")
+    agents = json.loads(result.stdout)
+    if not isinstance(agents, list):
+        raise InspectionError("Paseo agent inventory has an unexpected format")
+    for agent in agents:
+        cwd = agent.get("cwd")
+        if not isinstance(cwd, str) or not Path(cwd).expanduser().is_absolute():
+            raise InspectionError("Paseo agent working directory unavailable")
+        references.append({"source": "Paseo", "id": agent["id"],
+                           "cwd": str(Path(cwd).expanduser())})
+    return references
+
+
+def audit_worktrees(daemon, args, report):
+    report["worktrees"] = records = []
+    if args.thread:
+        report["worktrees_skipped"] = "thread filter prevents global worktree auditing"
+        return False
+    tool = Path(__file__).resolve().with_name("git-worktree-cleanup")
+    roots = args.worktree_root or [
+        Path.home() / "src", Path.home() / "workspace", tool.parent.parent,
+    ]
+    report["worktree_roots"] = [str(root.expanduser().resolve()) for root in roots]
+    repositories, seen, had_error = set(), set(), False
+    for root in roots:
+        root = root.expanduser().resolve()
+        if not root.is_dir():
+            if args.worktree_root:
+                records.append({"path": str(root), "action": "error",
+                                "reason": "worktree scan root unavailable"})
+                had_error = True
+            continue
+        command = ["/bin/bash", str(tool), "--json"]
+        if args.worktree_age_hours is not None:
+            command.extend(["-a", str(args.worktree_age_hours)])
+        if args.worktree_base:
+            command.extend(["-b", args.worktree_base])
+        command.append(str(root))
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=300,
+                                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
+            data = json.loads(result.stdout)
+            if result.returncode not in {0, 1} or not isinstance(data.get("worktrees"), list):
+                raise InspectionError("worktree scan failed")
+            repositories.update(data["repositories"])
+            had_error = bool(data["errors"]) or had_error
+            if data["errors"]:
+                records.append({
+                    "path": str(root), "action": "error",
+                    "reason": result.stderr.strip() or (
+                        f"worktree scan reported {data['errors']} error(s)"
+                    ),
+                })
+            for row in data["worktrees"]:
+                path = str(Path(row["path"]).resolve())
+                if path in seen:
+                    continue
+                seen.add(path)
+                row["path"] = path
+                row["action"] = {"remove": "candidate", "skip": "retained",
+                                 "error": "error"}[row["action"]]
+                records.append(row)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError,
+                InspectionError, subprocess.SubprocessError) as error:
+            records.append({"path": str(root), "action": "error", "reason": str(error)})
+            had_error = True
+    report["worktree_repositories_checked"] = len(repositories)
+    candidates = [row for row in records if row["action"] == "candidate"]
+    if candidates:
+        try:
+            references = worktree_agent_references(daemon)
+            for row in candidates:
+                checkout = Path(row["path"])
+                holders = [reference for reference in references
+                           if Path(reference["cwd"]).resolve().is_relative_to(checkout)]
+                if holders:
+                    row.update(action="retained", reason="agent references this checkout",
+                               agent_references=holders)
+        except (InspectionError, OSError, ValueError, TypeError, KeyError, AttributeError,
+                RuntimeError, WebSocketException, subprocess.SubprocessError) as error:
+            report["worktree_activity_error"] = str(error)
+            for row in candidates:
+                row.update(action="retained", reason="agent activity unavailable")
+            had_error = True
+    records.sort(key=lambda row: (row.get("size_kib") is None, row.get("size_kib") or 0))
+    return had_error
+
+
+def collect(daemon, args, report):
+    report["before"] = diagnostics(daemon)
+    threads = snapshot(daemon)
+    requested = set(args.thread or threads)
+    had_error = False
+    for thread_id in sorted(requested):
+        thread = threads.get(thread_id)
+        record = {"id": thread_id, "action": "retained", "reason": "inspection incomplete"}
+        report["threads"].append(record)
+        if thread is None:
+            record["reason"] = "not loaded"
+            continue
+        try:
+            record.update({"role": thread.get("agentRole") or (
+                "helper" if thread.get("parentThreadId") else "primary"
+            ), "cwd": thread.get("cwd"), "status": status(thread),
+                           "transcript": thread.get("path")})
+            record.update(inspect(daemon, thread, threads, args.min_idle_minutes))
+            if record["reason"] is None:
+                record.update(action="candidate", attachment_status="unknown",
+                              reason="old idle helper; client attachment status unavailable")
+                if args.apply:
+                    archive(daemon, thread_id, args.min_idle_minutes, record)
+                    if record["action"] == "unconfirmed":
+                        had_error = True
+        except (InspectionError, OSError, ValueError, TypeError, KeyError,
+                WebSocketException) as error:
+            action = "unconfirmed" if record["action"] == "unconfirmed" else "error"
+            record.update(action=action, reason=str(error))
+            had_error = True
+    had_error = cleanup_mcp(args, report) or had_error
+    had_error = audit_worktrees(daemon, args, report) or had_error
+    if args.apply:
+        report["after"] = diagnostics(daemon)
+    return int(had_error)
+
+
+def run(daemon, args):
+    report = {"mode": "apply" if args.apply else "report",
+              "socket": str(args.socket), "threads": []}
+    try:
+        exit_code = collect(daemon, args, report)
+    except KeyboardInterrupt:
+        report["interrupted"] = True
+        for record in report["threads"]:
+            if record["action"] == "candidate":
+                record.update(action="retained", reason="interrupted before archiving")
+        exit_code = 130
+    report["summary"] = {
+        action: sum(r["action"] == action for r in report["threads"])
+        for action in ["candidate", "retained", "archived", "error", "unconfirmed"]
+    }
+    report["mcp_summary"] = {
+        action: sum(r["action"] == action for r in report.get("mcp_processes", []))
+        for action in ["candidate", "retained", "terminated", "error", "unconfirmed"]
+    }
+    report["worktree_summary"] = {
+        action: sum(r["action"] == action for r in report.get("worktrees", []))
+        for action in ["candidate", "retained", "error"]
+    }
+    return report, exit_code
+
+
+def display(report, as_json, color="auto"):
+    if as_json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return
+    use_color = color == "always" or (
+        color == "auto" and sys.stdout.isatty()
+        and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
+    )
+    colors = {"retained": 36, "candidate": 33, "archived": 32, "terminated": 32,
+              "error": 31, "unconfirmed": 31}
+
+    def action_cell(action, width):
+        cell = action.ljust(width)
+        return f"\033[{colors[action]}m{cell}\033[0m" if use_color else cell
+
+    def plain(value):
+        return " ".join("".join(
+            c for c in str(value) if c.isprintable() or c.isspace()
+        ).split()) or "—"
+
+    if report.get("interrupted"):
+        print("Interrupted; partial results follow.")
+    rows = [
+        [record["action"], plain(record["id"]), plain(record.get("role") or "—"),
+         f"{record['idle_minutes']}m ago" if "idle_minutes" in record else "—",
+         plain(record["reason"] or "eligible for archive")]
+        for record in report["threads"]
+    ]
+    headers = ["ACTION", "THREAD", "ROLE", "FINISHED"]
+    widths = [max([len(header)] + [len(row[i]) for row in rows])
+              for i, header in enumerate(headers)]
+    terminal_width = shutil.get_terminal_size(fallback=(120, 24)).columns
+    prefix_width = sum(widths) + 8
+    compact = terminal_width < prefix_width + 24
+    columns = [0, 1, 3] if compact else [0, 1, 2, 3]
+
+    def fields(row, colored=False):
+        return "  ".join(
+            action_cell(row[i], widths[i]) if colored and i == 0 else
+            row[i].rjust(widths[i]) if i == 3 else row[i].ljust(widths[i])
+            for i in columns
+        )
+
+    print(fields(headers) + ("" if compact else "  REASON"))
+    print(fields(["─" * width for width in widths]) +
+          ("" if compact else "  " + "─" * max(6, terminal_width - prefix_width)))
+    for row in rows:
+        prefix = fields(row, colored=True)
+        if compact:
+            print(prefix)
+            indent = " " * (widths[0] + 2)
+            for label, value in [("ROLE", row[2]), ("REASON", row[4])]:
+                lead = f"{indent}{label:6}  "
+                lines = textwrap.wrap(value, width=max(20, terminal_width - len(lead)))
+                print(lead + lines[0])
+                for line in lines[1:]:
+                    print(" " * len(lead) + line)
+        else:
+            lines = textwrap.wrap(row[4], width=terminal_width - prefix_width)
+            print(prefix + "  " + lines[0])
+            for line in lines[1:]:
+                print(" " * prefix_width + line)
+    print()
+    summary = report["summary"]
+    print(f"{summary['candidate']} eligible; {summary['archived']} archived; "
+          f"{summary['retained']} retained; "
+          f"{summary['error'] + summary['unconfirmed']} errors/unconfirmed")
+    mcp_summary = report["mcp_summary"]
+    print(f"MCP processes: {mcp_summary['candidate']} eligible; "
+          f"{mcp_summary['terminated']} terminated; {mcp_summary['retained']} retained; "
+          f"{mcp_summary['error'] + mcp_summary['unconfirmed']} errors/unconfirmed")
+    for record in report.get("mcp_processes", []):
+        if record["action"] != "retained":
+            print(f"  {record['pid']} {plain(record['server'])}: "
+                  f"{record['action']} — {plain(record['reason'])}")
+    for key in ["mcp_skipped", "mcp_error"]:
+        if key in report:
+            print(f"  {plain(report[key])}")
+    worktree_summary = report["worktree_summary"]
+    print(f"Worktrees: {worktree_summary['candidate']} eligible; "
+          f"{worktree_summary['retained']} retained; {worktree_summary['error']} errors "
+          f"({report.get('worktree_repositories_checked', 0)} repositories checked)")
+    if report.get("worktrees"):
+        print()
+        print(f"{'ACTION':10}  {'DISK USAGE':>11}  {'BASE':20}  WORKTREE")
+        for record in report["worktrees"]:
+            size = record.get("size_kib")
+            size_text = f"{size / 1024:.1f} MiB" if size is not None else "—"
+            print(f"{action_cell(record['action'], 10)}  {size_text:>11}  "
+                  f"{plain(record.get('base') or '—'):20}  {plain(record['path'])}")
+            print(f"  {plain(record['reason'])}")
+    for key in ["worktrees_skipped", "worktree_activity_error"]:
+        if key in report:
+            print(f"  {plain(report[key])}")
+    metrics_rows = []
+    for label in ["before", "after"]:
+        metrics = report.get(label)
+        if metrics and isinstance(metrics.get("process"), dict):
+            process = metrics["process"]
+            footprint = process.get("physicalFootprintBytes")
+            if footprint is None:
+                footprint = process.get("residentMemoryBytes")
+            metrics_rows.append([
+                label, f"{footprint / 1024**2:.0f}" if footprint is not None else "?",
+                str(metrics["gauges"].get("mcp.connections.live", "?")),
+                str(metrics["gauges"].get("core.turns.active", "?")),
+            ])
+    if metrics_rows:
+        print()
+        print(f"{'DAEMON':8}  {'MEMORY MiB':>10}  {'MCP CONNECTIONS':>15}  {'ACTIVE TURNS':>12}")
+        for label, footprint, connections, turns in metrics_rows:
+            print(f"{label:8}  {footprint:>10}  {connections:>15}  {turns:>12}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--apply", action="store_true",
+                        help="Archive eligible old helpers and terminate verified orphaned MCP servers")
+    parser.add_argument("--json", action="store_true", help="Emit decisions and daemon metrics as JSON")
+    parser.add_argument("--color", choices=["auto", "always", "never"], default="auto",
+                        help="Color actions (default: auto; respects NO_COLOR)")
+    parser.add_argument("--thread", action="append", help="Inspect only this loaded thread ID; repeatable")
+    parser.add_argument("--worktree-root", action="append", type=Path, metavar="DIRECTORY",
+                        help="Scan repositories under this directory; repeatable "
+                             "(default: ~/src, ~/workspace, dotfiles repository)")
+    parser.add_argument("--worktree-base", metavar="REF",
+                        help="Override the base ref used to check merged worktrees")
+    parser.add_argument("--worktree-age-hours", type=int, metavar="HOURS",
+                        help="Override minimum worktree HEAD age (default: existing cleanup policy, 24)")
+    parser.add_argument("--min-idle-minutes", type=float, default=60, metavar="MINUTES",
+                        help="Minimum time since the completed turn, allowing unknown attachment "
+                             "status (default: 60)")
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    parser.set_defaults(mcp_config=codex_home / "config.toml")
+    parser.add_argument("--socket", type=Path,
+                        default=codex_home / "app-server-control/app-server-control.sock",
+                        help="Existing daemon's Unix socket (defaults under CODEX_HOME)")
+    args = parser.parse_args()
+    if not math.isfinite(args.min_idle_minutes) or args.min_idle_minutes < 0:
+        parser.error("--min-idle-minutes must be a finite, nonnegative number")
+    if args.worktree_age_hours is not None and args.worktree_age_hours < 0:
+        parser.error("--worktree-age-hours must be nonnegative")
+    report = None
+    try:
+        with unix_connect(str(args.socket), uri="ws://localhost", open_timeout=5,
+                          close_timeout=2, ping_interval=None, max_size=4 * 1024**2) as connection:
+            daemon = Daemon(connection)
+            daemon.request("initialize", {
+                "clientInfo": {"name": "codex_cleanup", "version": "1"},
+                "capabilities": {"experimentalApi": True},
+            })
+            connection.send(json.dumps({"method": "initialized"}))
+            report, exit_code = run(daemon, args)
+        display(report, args.json, args.color)
+        return exit_code
+    except KeyboardInterrupt:
+        if report is not None:
+            report["interrupted"] = True
+            display(report, args.json, args.color)
+        else:
+            print("codex-cleanup: interrupted before inspection completed", file=sys.stderr)
+        return 130
+    except (InspectionError, OSError, ValueError, TypeError, KeyError,
+            WebSocketException) as error:
+        print(f"codex-cleanup: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

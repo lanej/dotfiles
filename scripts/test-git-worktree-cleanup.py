@@ -87,6 +87,12 @@ def main():
         locked = app / ".worktrees/pinned"
         git(app, "worktree", "add", "--detach", str(locked))
         git(app, "worktree", "lock", "--reason", "Keep this checkout", str(locked))
+        git(app, "commit", "--allow-empty", "-qm", "Advance the merged base without file changes")
+        git(app, "update-ref", "refs/remotes/origin/main", "HEAD")
+        operation = app / ".worktrees/unfinished-merge"
+        git(app, "worktree", "add", "-b", "merge-in-progress", str(operation), "HEAD~1")
+        git(operation, "merge", "--no-ff", "--no-commit", "main")
+        assert git(operation, "status", "--porcelain") == ""
         dependencies = root / "library linked checkout"
         git(library, "worktree", "add", "--detach", str(dependencies))
         (dependencies / "node_modules").mkdir()
@@ -179,6 +185,7 @@ time.sleep(120)
             assert disposable.is_dir() and dependencies.is_dir() and completed.is_dir()
             assert "ignored files" in preview, preview
             assert "hidden index flags" in preview, preview
+            assert "Git operation in progress" in preview, preview
             header = next(line for line in preview.splitlines() if line.startswith("REPOSITORY"))
             size_at, age_at = header.index("DISK USAGE"), header.index("SIZE AGE")
             table = preview.split(header + "\n", 1)[1].split("\n\n", 1)[0].splitlines()
@@ -196,6 +203,7 @@ time.sleep(120)
             assert not disposable.exists() and not dependencies.exists() and not completed.exists(), result
             assert dirty.is_dir() and active.is_dir() and locked.is_dir()
             assert nested_checkout.is_dir()
+            assert operation.is_dir()
             assert (dirty / ".gitignore").read_text() == "unfinished edit\n"
             assert (hidden / ".gitignore").read_text() == "edit hidden from git status\n"
             assert (evidence / "evidence/report.txt").read_text() == "retain ignored evidence"

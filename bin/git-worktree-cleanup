@@ -8,12 +8,13 @@ APPLY=0
 RECHECK=0
 REFRESH=0
 WIP_PUSH=0
+JSON=0
 SIZE_CACHE_SECONDS=900
 SIZE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/git-worktree-cleanup"
 
 usage() {
     cat <<'EOF'
-Usage: git-worktree-cleanup [-a HOURS] [-b BRANCH] [-y] [--refresh] [--wip-push] [DIRECTORY]
+Usage: git-worktree-cleanup [-a HOURS] [-b BRANCH] [-y] [--refresh] [--wip-push] [--json] [DIRECTORY]
 
 Inside a repository, checks its registered worktrees wherever they live on disk.
 Otherwise, discovers repositories recursively below the current directory.
@@ -50,6 +51,7 @@ with the base branch, without changing working files (requires Git 2.38+).
   -y         actually remove; without this, only lists candidates
   --refresh  remeasure sizes and update their cache entries
   --wip-push preserve work on an easypost-sandbox remote before removal
+  --json     emit a structured dry-run report (requires uv; excludes -y/--wip-push)
   -h         show this help
 EOF
 }
@@ -63,6 +65,7 @@ while getopts ":a:b:yh-:" opt; do
         -) case "$OPTARG" in
                refresh) REFRESH=1 ;;
                wip-push) WIP_PUSH=1 ;;
+               json) JSON=1 ;;
                *) usage >&2; exit 1 ;;
            esac ;;
         *) usage >&2; exit 1 ;;
@@ -70,6 +73,10 @@ while getopts ":a:b:yh-:" opt; do
 done
 shift $((OPTIND - 1))
 [[ $# -le 1 ]] || { usage >&2; exit 1; }
+if [[ "$JSON" -eq 1 && ( "$APPLY" -eq 1 || "$WIP_PUSH" -eq 1 ) ]]; then
+    echo "error: --json supports inspection only; omit -y and --wip-push" >&2
+    exit 1
+fi
 [[ "$AGE_HOURS" =~ ^[0-9]+$ ]] \
     || { echo "error: age must be a nonnegative integer" >&2; exit 1; }
 SCAN_TREE=1
@@ -85,11 +92,13 @@ REQUESTED_BASE="$BASE_BRANCH"
 AGE_SECONDS=$(( 10#$AGE_HOURS * 3600 ))
 NOW=$(date +%s)
 
-echo "Project root:  $ROOT"
-echo "Age threshold: ${AGE_HOURS}h"
-echo "Mode:          $([[ $APPLY -eq 1 ]] && echo REMOVE || echo "dry-run (pass -y to remove)")"
-[[ "$WIP_PUSH" -eq 0 ]] || echo "WIP-push owner: easypost-sandbox"
-echo
+if [[ "$JSON" -eq 0 ]]; then
+    echo "Project root:  $ROOT"
+    echo "Age threshold: ${AGE_HOURS}h"
+    echo "Mode:          $([[ $APPLY -eq 1 ]] && echo REMOVE || echo "dry-run (pass -y to remove)")"
+    [[ "$WIP_PUSH" -eq 0 ]] || echo "WIP-push owner: easypost-sandbox"
+    echo
+fi
 
 to_remove=() removal_repos=() removal_bases=() removal_primaries=()
 removal_urls=() removal_branches=()
@@ -289,6 +298,40 @@ print_rows() {
     done < "$scratch/sorted-rows"
 }
 
+print_json() {
+    local i
+    : > "$scratch/json-rows"
+    for (( i=0; i<${#row_status[@]}; i++ )); do
+        printf '%s\0' "${row_status[i]}" "${row_reason[i]}" "${row_path[i]}" \
+            "${row_repo[i]}" "${row_base[i]}" "${row_kib[i]}" "${row_size_age[i]}" \
+            >> "$scratch/json-rows"
+    done
+    : > "$scratch/json-repositories"
+    for repo in ${repositories[@]+"${repositories[@]}"}; do
+        printf '%s\0' "$repo" >> "$scratch/json-repositories"
+    done
+    uv run --no-project --python '>=3.11' python - "$scratch" "$ROOT" "$AGE_HOURS" "$errors" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+scratch, root = Path(sys.argv[1]), Path(sys.argv[2])
+fields = (scratch / "json-rows").read_bytes().split(b"\0")[:-1]
+keys = ["action", "reason", "path", "repository", "base", "size_kib", "size_age"]
+rows = []
+for offset in range(0, len(fields), len(keys)):
+    row = dict(zip(keys, [value.decode() for value in fields[offset:offset + len(keys)]]))
+    row["repository"] = str(root / row["repository"])
+    row["size_kib"] = int(row["size_kib"]) if row["size_kib"] else None
+    rows.append(row)
+rows.sort(key=lambda row: (row["size_kib"] is None, row["size_kib"] or 0))
+repositories = [value.decode() for value in
+                (scratch / "json-repositories").read_bytes().split(b"\0")[:-1]]
+print(json.dumps({"root": str(root), "age_hours": int(sys.argv[3]), "errors": int(sys.argv[4]),
+                  "repositories": repositories, "worktrees": rows}, ensure_ascii=False))
+PY
+}
+
 load_activity() {
     activity_ok=0
     if command -v lsof >/dev/null 2>&1 && lsof -nP -u "$(id -u)" -Fn > "$scratch/activity" 2>/dev/null; then
@@ -386,13 +429,13 @@ inspect_worktree() {
     if [[ -n "$saved_head" && "$head" != "$saved_head" ]]; then
         CHECK_REASON="HEAD changed after snapshot"; return 1
     fi
+    for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer index.lock; do
+        if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path "$marker" 2>/dev/null)"; then
+            CHECK_REASON="operation check failed"; return 1
+        fi
+        [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="Git operation in progress"; return 1; }
+    done
     if [[ "$WIP_PUSH" -eq 1 ]]; then
-        for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer index.lock; do
-            if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path "$marker" 2>/dev/null)"; then
-                CHECK_REASON="operation check failed"; return 1
-            fi
-            [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="Git operation in progress"; return 1; }
-        done
         resolve_wip_remote "$path" || return 1
         if ! key="$(printf '%s' "$path" | git hash-object --stdin 2>/dev/null)" \
             || [[ ! "$key" =~ ^[0-9a-f]{40,64}$ ]]; then
@@ -624,6 +667,10 @@ for repo in ${repositories[@]+"${repositories[@]}"}; do
     scan_repository "$repo"
 done
 stop_spinner
+if [[ "$JSON" -eq 1 ]]; then
+    print_json
+    exit $(( errors > 0 ))
+fi
 print_rows
 echo
 echo "Repositories checked: $repositories_checked"

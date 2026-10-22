@@ -373,6 +373,10 @@ test-pragmatic-hexagonal:
 test:
 	@pytest bin/*_test.py
 
+.PHONY: test-codex-cleanup
+test-codex-cleanup:
+	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py
+
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 
