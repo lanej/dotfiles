@@ -34,7 +34,7 @@ Apply prose and linking rules inside cells too: no `<br>` for appearance, and ci
 
 Write each paragraph and list item on one source line. Let GitHub wrap text for the reader's screen; preserve meaningful line breaks in code and actual example output.
 
-Referenced files must already exist on GitHub. Link them with descriptive text to the relevant commit's full GitHub file URL, adding line anchors when useful. Link GitHub issues and PRs with full URLs or autolinking references (`#123` in this repository, `owner/repo#123` across repositories); link commits, reviews, discussions, releases, comparisons, and Actions runs to the specific object cited. Verify each target exists and is accessible to reviewers. Do not reference local-only files or leave cited paths and object names unlinked.
+Referenced files must already exist on GitHub. Link them with descriptive text to the relevant commit's full GitHub file URL, adding line anchors when useful. Use native GitHub references for issues and PRs: `#52` within the PR's repository and `easypost/claims-service#132` across repositories. In published descriptions, write these references as plain text without backticks or Markdown links so GitHub creates its native links; do not substitute full URLs. Link commits, reviews, discussions, releases, comparisons, and Actions runs directly to the specific object cited. Verify each target exists and is accessible to reviewers. Do not reference local-only files or leave cited paths and object names unlinked.
 
 ## Show the result
 
