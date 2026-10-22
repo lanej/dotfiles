@@ -22,6 +22,8 @@ Classify the final diff independently of existing labels. Writing conventions an
 
 Do not add AI attribution, co-author credits, or generated-by footers.
 
+Use GitHub's native references for issues and PRs: `#52` within the PR's repository and `easypost/claims-service#132` for another repository. In published descriptions, leave these references as plain text so GitHub autolinks them; do not use backticks, Markdown links, or full URLs. Use direct links for other evidence, including check runs, commits, files, releases, and non-GitHub issues.
+
 Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) and its rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
 
 ## Example: label purchase retries
