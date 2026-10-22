@@ -505,4 +505,38 @@ ac-awake-uninstall:
 	@sudo "$(DOTFILES)/bin/ac-awake-service" uninstall
 .PHONY: ac-awake-status ac-awake-install ac-awake-stop ac-awake-uninstall
 
+# Control the installed Paseo LaunchAgents; stopping persists across logins.
+PASEO_LAUNCH_AGENTS := local.paseo.relay local.paseo.daemon local.paseo.lan-ingress
+paseo-start:
+	$(call require-os,Darwin)
+	@set -eu; domain="gui/$$(id -u)"; \
+	for label in $(PASEO_LAUNCH_AGENTS); do \
+		test -f "$(HOME)/Library/LaunchAgents/$$label.plist" || \
+			{ printf 'Missing LaunchAgent: %s\n' "$$label" >&2; exit 1; }; \
+	done; \
+	for label in $(PASEO_LAUNCH_AGENTS); do \
+		launchctl enable "$$domain/$$label"; \
+		if ! launchctl print "$$domain/$$label" >/dev/null 2>&1; then \
+			launchctl bootstrap "$$domain" "$(HOME)/Library/LaunchAgents/$$label.plist"; \
+		fi; \
+	done
+	@open -a Paseo
+
+paseo-stop:
+	$(call require-os,Darwin)
+	@domain="gui/$$(id -u)"; status=0; \
+	for label in $(PASEO_LAUNCH_AGENTS); do \
+		launchctl disable "$$domain/$$label" || status=1; \
+		if launchctl print "$$domain/$$label" >/dev/null 2>&1; then \
+			launchctl bootout "$$domain/$$label" || status=1; \
+		fi; \
+	done; \
+	pkill -TERM -u "$$(id -u)" -x Paseo || { test $$? -eq 1 || status=1; }; \
+	exit $$status
+
+test-paseo-lifecycle:
+	@python3 "$(DOTFILES)/scripts/test-paseo-lifecycle.py"
+
+.PHONY: paseo-start paseo-stop test-paseo-lifecycle
+
 .PHONY: test-pragmatic-hexagonal
