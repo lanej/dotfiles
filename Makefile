@@ -377,6 +377,15 @@ test:
 test-codex-cleanup:
 	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py
 
+SETUP_TARGETS += codex-worktree-exit-hook
+codex: codex-worktree-exit-hook
+codex-worktree-exit-hook: codex-tmux
+	@python3 "$(DOTFILES)/bin/codex-worktree-exit-hook" --install
+
+.PHONY: test-codex-worktree-exit
+test-codex-worktree-exit:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-codex-worktree-exit.py"
+
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 

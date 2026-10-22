@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["websockets==15.0.1", "psutil==7.2.2"]
+# ///
+"""Remove only the merged, unused linked checkout from a Codex SessionEnd.
+
+The synchronous hook starts a detached worker outside the checkout. The worker
+keeps branches and delegates Git safety checks to git-worktree-cleanup, without
+the sweep's 24-hour age cutoff. Other sessions, processes, dirty work, locks,
+Git operations, and valuable ignored files prevent removal.
+"""
+
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import runpy
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+
+SOURCE = Path(__file__).resolve()
+HOOK_COMMAND = "python3 " + shlex.quote(str(SOURCE))
+
+
+def codex_home():
+    return Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+
+
+def git(directory, *args, check=True):
+    return subprocess.run(
+        ["git", "-C", str(directory), *args], check=check, capture_output=True,
+        text=True, timeout=10, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+    )
+
+
+def log_result(event, action, reason, path=None):
+    directory = codex_home() / "log"
+    directory.mkdir(parents=True, exist_ok=True)
+    record = {"time": time.time(), "session_id": event["session_id"],
+              "path": str(path or event["cwd"]), "action": action, "reason": reason}
+    descriptor = os.open(directory / "worktree-exit.jsonl",
+                         os.O_APPEND | os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    try:
+        os.write(descriptor, (json.dumps(record) + "\n").encode())
+    finally:
+        os.close(descriptor)
+
+
+def install():
+    directory = codex_home()
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        path = directory / "hooks.json"
+        if path.is_symlink():
+            raise ValueError("refusing to replace symlinked hooks.json")
+        original = path.read_bytes() if path.exists() else None
+        data = json.loads(original) if original is not None else {}
+        groups = data.setdefault("hooks", {}).setdefault("SessionEnd", [])
+        if any(handler.get("command") == HOOK_COMMAND
+               for group in groups for handler in group.get("hooks", [])):
+            return
+        groups.append({"hooks": [{"type": "command", "command": HOOK_COMMAND, "timeout": 3}]})
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=directory, delete=False) as output:
+                temporary = Path(output.name)
+                output.write((json.dumps(data, indent=2) + "\n").encode())
+            temporary.chmod(path.stat().st_mode & 0o777 if original is not None else 0o600)
+            if (path.read_bytes() if path.exists() else None) != original:
+                raise ValueError("hook configuration changed during installation")
+            temporary.replace(path)
+        finally:
+            if temporary:
+                temporary.unlink(missing_ok=True)
+    finally:
+        os.close(descriptor)
+
+
+def checkout(cwd):
+    root = Path(git(cwd, "rev-parse", "--show-toplevel").stdout.strip()).resolve()
+    fields = git(root, "worktree", "list", "--porcelain", "-z").stdout.split("\0")
+    paths = [Path(field[9:]).resolve() for field in fields if field.startswith("worktree ")]
+    if not paths or root not in paths:
+        raise ValueError("checkout registration unavailable")
+    return root, paths[0]
+
+
+def agent_reason(root, event, control):
+    socket = codex_home() / "app-server-control/app-server-control.sock"
+    with control["unix_connect"](str(socket), uri="ws://localhost", open_timeout=3,
+                                  close_timeout=1, ping_interval=None) as connection:
+        daemon = control["Daemon"](connection)
+        daemon.request("initialize", {
+            "clientInfo": {"name": "codex_worktree_exit", "version": "1"},
+            "capabilities": {"experimentalApi": True},
+        })
+        connection.send(json.dumps({"method": "initialized"}))
+        for thread in control["snapshot"](daemon).values():
+            cwd = thread.get("cwd")
+            if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+                raise ValueError("Codex working directory unavailable")
+            if Path(cwd).resolve().is_relative_to(root):
+                if thread["id"] != event["session_id"]:
+                    return "another Codex session references this checkout"
+                if control["status"](thread) != "idle":
+                    return "ending Codex session is active again"
+                busy = daemon.busy(thread["id"])
+                if busy:
+                    return "ending Codex session has " + busy
+    paseo = shutil.which("paseo")
+    if not paseo:
+        raise ValueError("Paseo agent inventory unavailable")
+    response = subprocess.run(
+        [paseo, "ls", "--global", "--json", "--home",
+         os.environ.get("PASEO_HOME", str(Path.home() / ".paseo"))],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    agents = json.loads(response.stdout)
+    if not isinstance(agents, list):
+        raise ValueError("Paseo agent inventory unavailable")
+    for agent in agents:
+        cwd = agent.get("cwd")
+        if not isinstance(cwd, str) or not Path(cwd).expanduser().is_absolute():
+            raise ValueError("Paseo working directory unavailable")
+        if Path(cwd).expanduser().resolve().is_relative_to(root):
+            return "Paseo agent references this checkout"
+    return None
+
+
+def regular_bytes(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+            raise ValueError("configuration is not an owned regular file")
+        with os.fdopen(descriptor, "rb", closefd=False) as source:
+            return source.read()
+    finally:
+        os.close(descriptor)
+
+
+@contextmanager
+def generated_config(root, primary):
+    """Temporarily set aside only the exact regenerable SessionStart config."""
+    config = root / ".codex/config.toml"
+    expected = ('[desktop]\ngit-worktree-root = ' +
+                json.dumps(str(primary / ".worktrees"), ensure_ascii=False) + '\n').encode()
+    recovery_directory = None
+    recovery = None
+    try:
+        if (not config.parent.is_symlink() and config.exists()
+                and list(config.parent.iterdir()) == [config]
+                and git(root, "ls-files", "--error-unmatch", "--",
+                        ".codex/config.toml", check=False).returncode == 1
+                and regular_bytes(config) == expected):
+            recovery_directory = Path(tempfile.mkdtemp(prefix="codex-exit-config-"))
+            recovery = recovery_directory / "config.toml"
+            config.replace(recovery)
+            if regular_bytes(recovery) != expected:
+                raise ValueError("generated configuration changed during inspection")
+            # An empty ignored .codex/ is still reported as an ignored artifact.
+            # rmdir refuses any file added concurrently.
+            config.parent.rmdir()
+        yield
+    finally:
+        if recovery is not None and os.path.lexists(recovery):
+            if root.is_dir():
+                if config.parent.is_symlink():
+                    raise ValueError(f"configuration preserved at {recovery}")
+                config.parent.mkdir(exist_ok=True)
+                if not os.path.lexists(config):
+                    recovery.replace(config)
+                else:
+                    recovery.replace(config.parent / ("config.toml.recovered-" +
+                                                      recovery_directory.name))
+            else:
+                try:
+                    disposable = regular_bytes(recovery) == expected
+                except (OSError, ValueError):
+                    disposable = False
+                if not disposable:
+                    raise ValueError(f"configuration preserved at {recovery}")
+        if recovery_directory is not None:
+            shutil.rmtree(recovery_directory)
+
+
+def reap(event):
+    root, primary = checkout(event["cwd"])
+    if root == primary:
+        return
+    control = runpy.run_path(str(SOURCE.with_name("codex-cleanup")))
+    backend = SOURCE.with_name("git-worktree-cleanup")
+    deadline = time.monotonic() + 30
+    while root.is_dir():
+        removed = False
+        reason = agent_reason(root, event, control)
+        if reason:
+            log_result(event, "retained", reason, root)
+            return
+        with generated_config(root, primary):
+            preview = subprocess.run(
+                ["/bin/bash", str(backend), "-a", "0", "--integrated",
+                 "--json", "--worktree", str(root)],
+                capture_output=True, text=True, timeout=20,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            )
+            plan = json.loads(preview.stdout)
+            rows = [row for row in plan["worktrees"] if Path(row["path"]).resolve() == root]
+            if preview.returncode or len(rows) != 1:
+                raise ValueError(preview.stderr.strip() or "checkout inspection unavailable")
+            reason = rows[0]["reason"]
+            if rows[0]["action"] == "remove":
+                reason = agent_reason(root, event, control)
+                if not reason:
+                    result = subprocess.run(
+                        ["/bin/bash", str(backend), "-a", "0", "--integrated",
+                         "-y", "--worktree", str(root)],
+                        capture_output=True, text=True, timeout=20,
+                        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+                    )
+                    registered = git(primary, "worktree", "list", "--porcelain", "-z").stdout
+                    removed = not root.exists() and f"worktree {root}\0" not in registered
+                    if not removed:
+                        if result.returncode:
+                            raise ValueError(result.stderr.strip() or "worktree removal failed")
+                        # Exit references can appear between Git inspections.
+                        reason = "active process" if "active process" in result.stdout else (
+                            "checkout changed before removal"
+                        )
+        if removed:
+            log_result(event, "removed", "merged checkout removed; branches preserved", root)
+            return
+        if reason != "active process" or time.monotonic() >= deadline:
+            log_result(event, "retained", reason, root)
+            return
+        time.sleep(0.5)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--install", action="store_true")
+    parser.add_argument("--reap", metavar="EVENT_JSON")
+    args = parser.parse_args()
+    if args.install:
+        install()
+        return 0
+    event = json.loads(args.reap) if args.reap else json.load(sys.stdin)
+    if event.get("hook_event_name") != "SessionEnd":
+        return 0
+    if (not isinstance(event.get("session_id"), str) or not event["session_id"]
+            or not isinstance(event.get("cwd"), str) or not Path(event["cwd"]).is_absolute()):
+        raise ValueError("session identity or working directory unavailable")
+    if args.reap:
+        try:
+            reap(event)
+        except Exception as error:
+            # A subprocess error or timeout can follow a completed mutation.
+            log_result(event, "unconfirmed", str(error))
+            return 1
+    else:
+        subprocess.Popen(
+            [shutil.which("uv") or "uv", "run", "--script", str(SOURCE),
+             "--reap", json.dumps(event)], cwd="/",
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+        print(f"codex-worktree-exit-hook: {error}", file=sys.stderr)
+        sys.exit(1)

@@ -9,12 +9,16 @@ RECHECK=0
 REFRESH=0
 WIP_PUSH=0
 JSON=0
+INTEGRATED=0
+TARGET_WORKTREE=""
+target_seen=0
 SIZE_CACHE_SECONDS=900
 SIZE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/git-worktree-cleanup"
 
 usage() {
     cat <<'EOF'
 Usage: git-worktree-cleanup [-a HOURS] [-b BRANCH] [-y] [--refresh] [--wip-push] [--json] [DIRECTORY]
+       git-worktree-cleanup [OPTIONS] --worktree PATH
 
 Inside a repository, checks its registered worktrees wherever they live on disk.
 Otherwise, discovers repositories recursively below the current directory.
@@ -28,6 +32,10 @@ HEAD commit is older than the age threshold are eligible. Primary and locked wor
 retained, as are ignored files other than disposable dependency/build caches.
 Requires lsof to check for processes using a worktree. Dry-run by default;
 eligibility is checked again before removal. Branches are never deleted.
+With --integrated, also accepts a named branch whose complete file tree is
+identical to the base's file tree.
+The branch must retain HEAD, preserving its original commits after squash or
+rebase integration. Detached non-ancestor commits are retained.
 With --wip-push, idle worktrees can instead be preserved on unique wip/cleanup
 branches, including dirty and unmerged work. Only GitHub push URLs owned by
 easypost-sandbox are allowed. Changes are committed, pushed, and verified before
@@ -52,6 +60,8 @@ with the base branch, without changing working files (requires Git 2.38+).
   --refresh  remeasure sizes and update their cache entries
   --wip-push preserve work on an easypost-sandbox remote before removal
   --json     emit a structured dry-run report (requires uv; excludes -y/--wip-push)
+  --worktree PATH  inspect only this registered checkout; excludes DIRECTORY
+  --integrated    also accept changes already integrated into the base
   -h         show this help
 EOF
 }
@@ -66,6 +76,13 @@ while getopts ":a:b:yh-:" opt; do
                refresh) REFRESH=1 ;;
                wip-push) WIP_PUSH=1 ;;
                json) JSON=1 ;;
+               integrated) INTEGRATED=1 ;;
+               worktree)
+                   [[ "$OPTIND" -le $# ]] || { usage >&2; exit 1; }
+                   TARGET_WORKTREE="${!OPTIND}"
+                   OPTIND=$(( OPTIND + 1 ))
+                   [[ -n "$TARGET_WORKTREE" ]] || { usage >&2; exit 1; }
+                   ;;
                *) usage >&2; exit 1 ;;
            esac ;;
         *) usage >&2; exit 1 ;;
@@ -80,7 +97,13 @@ fi
 [[ "$AGE_HOURS" =~ ^[0-9]+$ ]] \
     || { echo "error: age must be a nonnegative integer" >&2; exit 1; }
 SCAN_TREE=1
-if [[ $# -eq 0 ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if [[ -n "$TARGET_WORKTREE" ]]; then
+    [[ $# -eq 0 ]] || { echo "error: --worktree excludes DIRECTORY" >&2; exit 1; }
+    TARGET_WORKTREE="$(cd "$TARGET_WORKTREE" && pwd -P)"
+    ROOT="$(git -C "$TARGET_WORKTREE" rev-parse --show-toplevel)"
+    [[ "$ROOT" == "$TARGET_WORKTREE" ]] || { echo "error: specify the checkout root" >&2; exit 1; }
+    SCAN_TREE=0
+elif [[ $# -eq 0 ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     ROOT="$(git rev-parse --show-toplevel)"
     SCAN_TREE=0
 else
@@ -166,6 +189,10 @@ start_spinner() {
 }
 
 check_worktree() {
+    if [[ -n "$TARGET_WORKTREE" ]]; then
+        [[ "$1" == "$TARGET_WORKTREE" ]] || return 0
+        target_seen=1
+    fi
     [[ "$1" == "$PRIMARY_WORKTREE" ]] && return 0
     checked_worktrees=$(( checked_worktrees + 1 ))
     start_spinner "Scanning repositories $repositories_checked/${#repositories[@]}; worktrees checked: $checked_worktrees..."
@@ -395,9 +422,10 @@ $remotes"
 }
 
 inspect_worktree() {
-    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 ignored open_path marker marker_path key slug entry
+    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 ignored open_path marker marker_path key slug entry head_tree base_tree branch branch_head
     CHECK_REASON=""
     CHECK_DIRTY=0 CHECK_PUSH_URL="" CHECK_PUSH_REMOTE="" CHECK_WIP_BRANCH=""
+    CHECK_MERGE="merged"
     [[ "$path" == "$PRIMARY_WORKTREE" ]] && { CHECK_REASON="primary"; return 1; }
     [[ "$locked" -eq 0 ]] || { CHECK_REASON="locked"; return 1; }
     if [[ "$path" == *\\* || "$path" =~ [[:cntrl:]] ]]; then
@@ -448,14 +476,27 @@ inspect_worktree() {
         git -C "$REPOSITORY" merge-base --is-ancestor "$head" "$BASE_BRANCH" 2>/dev/null || merge_status=$?
         if [[ "$merge_status" -ne 0 ]]; then
             [[ "$merge_status" -eq 1 ]] || { CHECK_REASON="merge check failed"; return 1; }
-            merge_status=0
-            git -C "$REPOSITORY" merge-tree --write-tree "$BASE_BRANCH" "$head" >/dev/null 2>&1 || merge_status=$?
-            case "$merge_status" in
-                0) CHECK_REASON="not merged" ;;
-                1) CHECK_REASON="merge conflicts" ;;
-                *) CHECK_REASON="merge check failed" ;;
-            esac
-            return 1
+            # Tree equality cannot be influenced by a custom merge driver.
+            # A named branch retains non-ancestor history after squash/rebase.
+            if [[ "$INTEGRATED" -eq 1 ]] \
+                && head_tree="$(git -C "$REPOSITORY" rev-parse "$head^{tree}")" \
+                && base_tree="$(git -C "$REPOSITORY" rev-parse "$BASE_BRANCH^{tree}")" \
+                && [[ "$head_tree" == "$base_tree" ]] \
+                && branch="$(git -C "$path" symbolic-ref --quiet HEAD)" \
+                && [[ "$branch" == refs/heads/* ]] \
+                && branch_head="$(git -C "$path" rev-parse --verify "$branch^{commit}")" \
+                && [[ "$branch_head" == "$head" ]]; then
+                CHECK_MERGE="changes integrated"
+            else
+                merge_status=0
+                git -C "$REPOSITORY" merge-tree --write-tree "$BASE_BRANCH" "$head" >/dev/null 2>&1 || merge_status=$?
+                case "$merge_status" in
+                    0) CHECK_REASON="not merged" ;;
+                    1) CHECK_REASON="merge conflicts" ;;
+                    *) CHECK_REASON="merge check failed" ;;
+                esac
+                return 1
+            fi
         fi
     fi
 
@@ -565,7 +606,7 @@ evaluate() {
         [[ "$CHECK_DIRTY" -eq 0 ]] || state="commit WIP"
         add_row wip-push "$state, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "${BASE_BRANCH:--}" "$MEASURED_AGE" "$CHECK_PUSH_REMOTE/$CHECK_WIP_BRANCH" "$MEASURED_KIB"
     else
-        add_row remove "merged, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB"
+        add_row remove "$CHECK_MERGE, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB"
     fi
     to_remove+=("$path")
     removal_repos+=("$REPOSITORY")
@@ -666,6 +707,10 @@ fi
 for repo in ${repositories[@]+"${repositories[@]}"}; do
     scan_repository "$repo"
 done
+if [[ -n "$TARGET_WORKTREE" && "$target_seen" -eq 0 ]]; then
+    add_row error "not a registered worktree" n/a "$TARGET_WORKTREE"
+    errors=$(( errors + 1 ))
+fi
 stop_spinner
 if [[ "$JSON" -eq 1 ]]; then
     print_json
