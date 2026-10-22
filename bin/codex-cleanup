@@ -21,10 +21,6 @@ servers, after verifying that their stdin pipe has no peer. Live client parents
 and shared listeners protect their servers. MCP configuration is read only.
 Pipe peer inspection currently requires macOS; other platforms retain processes.
 This command never starts or restarts a daemon.
-
-Worktree auditing reports merged, clean, unused checkouts through the existing
-git-worktree-cleanup policy. Loaded Codex sessions and unarchived Paseo agents
-also protect their checkout paths. Worktrees are reported, including in --apply.
 """
 
 import argparse
@@ -443,110 +439,6 @@ def cleanup_mcp(args, report):
         return True
 
 
-def worktree_agent_references(daemon):
-    references = []
-    for thread in snapshot(daemon).values():
-        cwd = thread.get("cwd")
-        if not isinstance(cwd, str) or not Path(cwd).is_absolute():
-            raise InspectionError("Codex session working directory unavailable")
-        references.append({"source": "Codex", "id": thread["id"], "cwd": cwd})
-    paseo = shutil.which("paseo")
-    if not paseo:
-        raise InspectionError("Paseo agent inventory unavailable")
-    paseo_home = os.environ.get("PASEO_HOME") or str(Path.home() / ".paseo")
-    result = subprocess.run(
-        [paseo, "ls", "--global", "--json", "--home", paseo_home],
-        capture_output=True, text=True, timeout=20,
-    )
-    if result.returncode:
-        raise InspectionError("Paseo agent inventory unavailable")
-    agents = json.loads(result.stdout)
-    if not isinstance(agents, list):
-        raise InspectionError("Paseo agent inventory has an unexpected format")
-    for agent in agents:
-        cwd = agent.get("cwd")
-        if not isinstance(cwd, str) or not Path(cwd).expanduser().is_absolute():
-            raise InspectionError("Paseo agent working directory unavailable")
-        references.append({"source": "Paseo", "id": agent["id"],
-                           "cwd": str(Path(cwd).expanduser())})
-    return references
-
-
-def audit_worktrees(daemon, args, report):
-    report["worktrees"] = records = []
-    if args.thread:
-        report["worktrees_skipped"] = "thread filter prevents global worktree auditing"
-        return False
-    tool = Path(__file__).resolve().with_name("git-worktree-cleanup")
-    roots = args.worktree_root or [
-        Path.home() / "src", Path.home() / "workspace", tool.parent.parent,
-    ]
-    report["worktree_roots"] = [str(root.expanduser().resolve()) for root in roots]
-    repositories, seen, had_error = set(), set(), False
-    for root in roots:
-        root = root.expanduser().resolve()
-        if not root.is_dir():
-            if args.worktree_root:
-                records.append({"path": str(root), "action": "error",
-                                "reason": "worktree scan root unavailable"})
-                had_error = True
-            continue
-        command = ["/bin/bash", str(tool), "--json"]
-        if args.worktree_age_hours is not None:
-            command.extend(["-a", str(args.worktree_age_hours)])
-        if args.worktree_base:
-            command.extend(["-b", args.worktree_base])
-        command.append(str(root))
-        try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=300,
-                                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
-            data = json.loads(result.stdout)
-            if result.returncode not in {0, 1} or not isinstance(data.get("worktrees"), list):
-                raise InspectionError("worktree scan failed")
-            repositories.update(data["repositories"])
-            had_error = bool(data["errors"]) or had_error
-            if data["errors"]:
-                records.append({
-                    "path": str(root), "action": "error",
-                    "reason": result.stderr.strip() or (
-                        f"worktree scan reported {data['errors']} error(s)"
-                    ),
-                })
-            for row in data["worktrees"]:
-                path = str(Path(row["path"]).resolve())
-                if path in seen:
-                    continue
-                seen.add(path)
-                row["path"] = path
-                row["action"] = {"remove": "candidate", "skip": "retained",
-                                 "error": "error"}[row["action"]]
-                records.append(row)
-        except (OSError, ValueError, TypeError, KeyError, AttributeError,
-                InspectionError, subprocess.SubprocessError) as error:
-            records.append({"path": str(root), "action": "error", "reason": str(error)})
-            had_error = True
-    report["worktree_repositories_checked"] = len(repositories)
-    candidates = [row for row in records if row["action"] == "candidate"]
-    if candidates:
-        try:
-            references = worktree_agent_references(daemon)
-            for row in candidates:
-                checkout = Path(row["path"])
-                holders = [reference for reference in references
-                           if Path(reference["cwd"]).resolve().is_relative_to(checkout)]
-                if holders:
-                    row.update(action="retained", reason="agent references this checkout",
-                               agent_references=holders)
-        except (InspectionError, OSError, ValueError, TypeError, KeyError, AttributeError,
-                RuntimeError, WebSocketException, subprocess.SubprocessError) as error:
-            report["worktree_activity_error"] = str(error)
-            for row in candidates:
-                row.update(action="retained", reason="agent activity unavailable")
-            had_error = True
-    records.sort(key=lambda row: (row.get("size_kib") is None, row.get("size_kib") or 0))
-    return had_error
-
-
 def collect(daemon, args, report):
     report["before"] = diagnostics(daemon)
     threads = snapshot(daemon)
@@ -578,7 +470,6 @@ def collect(daemon, args, report):
             record.update(action=action, reason=str(error))
             had_error = True
     had_error = cleanup_mcp(args, report) or had_error
-    had_error = audit_worktrees(daemon, args, report) or had_error
     if args.apply:
         report["after"] = diagnostics(daemon)
     return int(had_error)
@@ -602,10 +493,6 @@ def run(daemon, args):
     report["mcp_summary"] = {
         action: sum(r["action"] == action for r in report.get("mcp_processes", []))
         for action in ["candidate", "retained", "terminated", "error", "unconfirmed"]
-    }
-    report["worktree_summary"] = {
-        action: sum(r["action"] == action for r in report.get("worktrees", []))
-        for action in ["candidate", "retained", "error"]
     }
     return report, exit_code
 
@@ -688,22 +575,6 @@ def display(report, as_json, color="auto"):
     for key in ["mcp_skipped", "mcp_error"]:
         if key in report:
             print(f"  {plain(report[key])}")
-    worktree_summary = report["worktree_summary"]
-    print(f"Worktrees: {worktree_summary['candidate']} eligible; "
-          f"{worktree_summary['retained']} retained; {worktree_summary['error']} errors "
-          f"({report.get('worktree_repositories_checked', 0)} repositories checked)")
-    if report.get("worktrees"):
-        print()
-        print(f"{'ACTION':10}  {'DISK USAGE':>11}  {'BASE':20}  WORKTREE")
-        for record in report["worktrees"]:
-            size = record.get("size_kib")
-            size_text = f"{size / 1024:.1f} MiB" if size is not None else "—"
-            print(f"{action_cell(record['action'], 10)}  {size_text:>11}  "
-                  f"{plain(record.get('base') or '—'):20}  {plain(record['path'])}")
-            print(f"  {plain(record['reason'])}")
-    for key in ["worktrees_skipped", "worktree_activity_error"]:
-        if key in report:
-            print(f"  {plain(report[key])}")
     metrics_rows = []
     for label in ["before", "after"]:
         metrics = report.get(label)
@@ -733,13 +604,6 @@ def main():
     parser.add_argument("--color", choices=["auto", "always", "never"], default="auto",
                         help="Color actions (default: auto; respects NO_COLOR)")
     parser.add_argument("--thread", action="append", help="Inspect only this loaded thread ID; repeatable")
-    parser.add_argument("--worktree-root", action="append", type=Path, metavar="DIRECTORY",
-                        help="Scan repositories under this directory; repeatable "
-                             "(default: ~/src, ~/workspace, dotfiles repository)")
-    parser.add_argument("--worktree-base", metavar="REF",
-                        help="Override the base ref used to check merged worktrees")
-    parser.add_argument("--worktree-age-hours", type=int, metavar="HOURS",
-                        help="Override minimum worktree HEAD age (default: existing cleanup policy, 24)")
     parser.add_argument("--min-idle-minutes", type=float, default=60, metavar="MINUTES",
                         help="Minimum time since the completed turn, allowing unknown attachment "
                              "status (default: 60)")
@@ -751,8 +615,6 @@ def main():
     args = parser.parse_args()
     if not math.isfinite(args.min_idle_minutes) or args.min_idle_minutes < 0:
         parser.error("--min-idle-minutes must be a finite, nonnegative number")
-    if args.worktree_age_hours is not None and args.worktree_age_hours < 0:
-        parser.error("--worktree-age-hours must be nonnegative")
     report = None
     try:
         with unix_connect(str(args.socket), uri="ws://localhost", open_timeout=5,

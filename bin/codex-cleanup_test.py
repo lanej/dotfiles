@@ -176,14 +176,14 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
                         raise AssertionError((folder / "server.log").read_text())
                     time.sleep(0.02)
                 command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
-                           "--socket", str(folder / "daemon.sock"),
-                           "--worktree-root", str(folder), "--json"]
+                           "--socket", str(folder / "daemon.sock"), "--json"]
                 script_env = {**os.environ, "CODEX_HOME": str(folder)}
                 preview = subprocess.run(command + ["--color", "always"],
                                          capture_output=True, text=True, timeout=30,
                                          env=script_env)
                 assert preview.returncode == 0, preview.stderr
                 plan = json.loads(preview.stdout)
+                assert "worktrees" not in plan
                 assert {r["id"] for r in plan["threads"] if r["action"] == "candidate"} == {
                     "finished", "stale", "resuming", "changed", "reloaded",
                 }
@@ -201,6 +201,7 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
                 assert "\033[36mretained" in human.stdout
                 assert "\033[33mcandidate" in human.stdout
                 assert "client attachment status unavailable" in human.stdout
+                assert "Worktrees:" not in human.stdout
                 lines = re.sub(r"\033\[[0-9;]*m", "", human.stdout).splitlines()
                 header = next(line for line in lines if line.startswith("ACTION"))
                 primary = next(line for line in lines
@@ -323,7 +324,6 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                     time.sleep(0.02)
                 command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
                            "--socket", str(folder / "daemon.sock"),
-                           "--worktree-root", str(folder),
                            "--min-idle-minutes", "0", "--json"]
                 script_env = {**os.environ, "CODEX_HOME": str(folder)}
                 preview = subprocess.run(command, capture_output=True, text=True,
@@ -356,108 +356,6 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                         os.kill(orphan_pid, signal.SIGTERM)
                     except ProcessLookupError:
                         pass
-                try:
-                    os.killpg(server.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                server.wait(timeout=5)
-
-
-def test_worktree_audit_identifies_merged_unused_checkout_and_retains_agent_checkouts():
-    uv = shutil.which("uv")
-    assert uv, "uv is required to run the cleanup command"
-    with tempfile.TemporaryDirectory(prefix="codex-worktrees-", dir="/tmp") as name:
-        folder = Path(name).resolve()
-        repo = folder / "project"
-        repo.mkdir()
-        git_env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
-
-        def git(directory, *args):
-            return subprocess.check_output(
-                ["git", "-c", "user.name=Cleanup fixture",
-                 "-c", "user.email=cleanup@example.invalid", "-c", "commit.gpgsign=false",
-                 "-C", str(directory), *args], env=git_env, text=True,
-            ).strip()
-
-        git(repo, "init", "-q", "--initial-branch", "main")
-        (repo / ".gitignore").write_text(".worktrees/\n")
-        git(repo, "add", ".gitignore")
-        git(repo, "commit", "-qm", "Initialize fixture")
-        merged = repo / ".worktrees/merged"
-        git(repo, "worktree", "add", "-b", "merged-task", str(merged))
-        (merged / "feature.txt").write_text("merged feature\n")
-        git(merged, "add", "feature.txt")
-        git(merged, "commit", "-qm", "Complete feature")
-        git(repo, "merge", "--ff-only", "merged-task")
-        git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
-        git(repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
-        active = repo / ".worktrees/codex-held"
-        git(repo, "worktree", "add", "-b", "codex-task", str(active))
-        (active / "src").mkdir()
-        paseo_held = repo / ".worktrees/paseo-held"
-        git(repo, "worktree", "add", "-b", "paseo-task", str(paseo_held))
-        unmerged = repo / ".worktrees/unmerged"
-        git(repo, "worktree", "add", "-b", "unfinished-task", str(unmerged))
-        (unmerged / "future.txt").write_text("unmerged feature\n")
-        git(unmerged, "add", "future.txt")
-        git(unmerged, "commit", "-qm", "Unmerged work")
-        wrappers = folder / "wrappers"
-        wrappers.mkdir()
-        paseo = wrappers / "paseo"
-        paseo.write_text(
-            "#!" + sys.executable + "\nprint(" + repr(json.dumps([
-                {"id": "paseo-fixture", "cwd": str(paseo_held), "status": "running"},
-            ])) + ")\n"
-        )
-        paseo.chmod(0o755)
-        (folder / "threads.json").write_text(json.dumps({
-            "primary": {"id": "primary", "parentThreadId": None,
-                        "status": {"type": "active"}, "cwd": str(active / "src")},
-        }))
-        server_file = folder / "server.py"
-        server_file.write_text(SERVER)
-        with (folder / "server.log").open("w") as log:
-            server = subprocess.Popen(
-                [uv, "run", "--script", str(server_file), str(folder)],
-                stdout=log, stderr=log, start_new_session=True,
-            )
-            try:
-                deadline = time.monotonic() + 30
-                while not (folder / "ready").exists():
-                    if server.poll() is not None or time.monotonic() >= deadline:
-                        raise AssertionError((folder / "server.log").read_text())
-                    time.sleep(0.02)
-                command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
-                           "--socket", str(folder / "daemon.sock"),
-                           "--worktree-root", str(repo), "--worktree-age-hours", "0", "--json"]
-                script_env = {
-                    **git_env, "CODEX_HOME": str(folder),
-                    "PATH": str(wrappers) + os.pathsep + os.environ["PATH"],
-                    "XDG_CACHE_HOME": str(folder / "cache"),
-                    "UV_CACHE_DIR": subprocess.check_output([uv, "cache", "dir"], text=True).strip(),
-                }
-                preview = subprocess.run(command, capture_output=True, text=True,
-                                         timeout=30, env=script_env)
-                assert preview.returncode == 0, preview.stderr + preview.stdout
-                plan = json.loads(preview.stdout)
-                rows = {row["path"]: row for row in plan["worktrees"]}
-                assert rows[str(merged)]["action"] == "candidate"
-                assert rows[str(merged)]["base"] == "origin/main"
-                assert rows[str(active)]["action"] == "retained"
-                assert rows[str(active)]["agent_references"][0]["source"] == "Codex"
-                assert rows[str(paseo_held)]["action"] == "retained"
-                assert rows[str(paseo_held)]["agent_references"][0]["source"] == "Paseo"
-                assert rows[str(unmerged)]["action"] == "retained"
-                assert rows[str(unmerged)]["reason"] == "not merged"
-                assert plan["worktree_repositories_checked"] == 1
-                applied = subprocess.run(command + ["--apply"], capture_output=True,
-                                         text=True, timeout=30, env=script_env)
-                assert applied.returncode == 0, applied.stderr + applied.stdout
-                assert json.loads(applied.stdout)["worktree_summary"]["candidate"] == 1
-                assert merged.is_dir() and active.is_dir() and paseo_held.is_dir()
-                assert (unmerged / "future.txt").read_text() == "unmerged feature\n"
-                assert git(repo, "show-ref", "--verify", "refs/heads/merged-task")
-            finally:
                 try:
                     os.killpg(server.pid, signal.SIGTERM)
                 except ProcessLookupError:
