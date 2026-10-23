@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tomllib
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,12 +25,18 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
     (home / ".claude/plugins").mkdir(parents=True)
     (home / ".codex").mkdir()
+    (home / ".codex/config.toml").write_text(
+        '# Local settings\nmodel = "local-model"\n'
+        'approval_policy = "never"\napprovals_reviewer = "user"\n'
+        'sandbox_mode = "read-only"\n'
+        '[apps.local]\napprovals_reviewer = "user"\n')
 
-    for name in ("sync-codex-mcp-servers", "sync-codex-skills",
+    for name in ("sync-codex-permissions", "sync-codex-mcp-servers", "sync-codex-skills",
                  "sync-codex-agents", "sync-claude-shared", "claude-remove-blocked-plugins"):
         (repo / "bin" / name).symlink_to(ROOT / "bin" / name)
     shutil.copy2(ROOT / "bin/sync-codex-tmux-hooks", repo / "bin/sync-codex-tmux-hooks")
     shutil.copy2(ROOT / "bin/codex-worktree-config", repo / "bin/codex-worktree-config")
+    shutil.copy2(ROOT / "bin/codex-worktree-exit-hook", repo / "bin/codex-worktree-exit-hook")
     shutil.copy2(ROOT / "codex/tmux-hooks.json", repo / "codex/tmux-hooks.json")
     shutil.copy2(ROOT / "codex/AGENTS.md", repo / "codex/AGENTS.md")
     (repo / "scripts").mkdir()
@@ -52,7 +59,8 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     uv.write_text(f"#!{sys.executable}\n" + f'''
 import os
 from pathlib import Path
-assert "PASEO_HOOK_CLI" not in (Path.home() / ".codex/hooks.json").read_text(), "hook installation overlapped broker migration"
+if not any(argument.endswith("/sync-codex-permissions") for argument in os.sys.argv):
+    assert "PASEO_HOOK_CLI" not in (Path.home() / ".codex/hooks.json").read_text(), "hook installation overlapped broker migration"
 os.execv({shutil.which("uv")!r}, [{shutil.which("uv")!r}, *os.sys.argv[1:]])
 ''')
     uv.chmod(0o755)
@@ -148,6 +156,14 @@ else:
                    check=True, capture_output=True, text=True)
     subprocess.run([*command, "codex"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
+    installed_config = (home / ".codex/config.toml").read_text()
+    config = tomllib.loads(installed_config)
+    assert config["approval_policy"] == "on-request"
+    assert config["approvals_reviewer"] == "auto_review"
+    assert config["sandbox_mode"] == "workspace-write"
+    assert config["model"] == "local-model"
+    assert config["apps"]["local"]["approvals_reviewer"] == "user"
+    assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
         "enableTerminalAgentHooks": False, "retained": "kept"}
     assert (home / "paseo-reloaded").exists()
@@ -184,5 +200,6 @@ else:
     previous_state = state.read_bytes()
     subprocess.run([*command, "codex"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
+    assert (home / ".codex/config.toml").read_text() == installed_config
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
