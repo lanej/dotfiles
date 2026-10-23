@@ -27,6 +27,8 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     (home / ".codex").mkdir()
     (home / ".codex/config.toml").write_text(
         '# Local settings\nmodel = "local-model"\n'
+        'developer_instructions = """\n[Review guidance]\n'
+        'approval_policy = "leave this instruction alone"\n"""\n'
         'approval_policy = "never"\napprovals_reviewer = "user"\n'
         'sandbox_mode = "read-only"\n'
         '[apps.local]\napprovals_reviewer = "user"\n')
@@ -162,6 +164,8 @@ else:
     assert config["approvals_reviewer"] == "auto_review"
     assert config["sandbox_mode"] == "workspace-write"
     assert config["model"] == "local-model"
+    assert config["developer_instructions"] == (
+        '[Review guidance]\napproval_policy = "leave this instruction alone"\n')
     assert config["apps"]["local"]["approvals_reviewer"] == "user"
     assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {

@@ -15,6 +15,17 @@ DEFAULTS = {
 }
 
 
+def find_assignment(pattern, text):
+    """Ignore apparent syntax inside unfinished multiline TOML values."""
+    for match in re.finditer(pattern, text, re.MULTILINE):
+        try:
+            tomllib.loads(text[:match.start()])
+        except tomllib.TOMLDecodeError:
+            continue
+        return match
+    return None
+
+
 def main():
     root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
     path = root / "config.toml"
@@ -27,12 +38,12 @@ def main():
 
     # Only root assignments belong to these defaults; nested app/profile
     # overrides remain local configuration.
-    table = re.search(r"(?m)^[ \t]*\[", original)
+    table = find_assignment(r"^[ \t]*\[", original)
     end = table.start() if table else len(original)
     header = original[:end]
     for key in DEFAULTS:
-        assignment = re.search(
-            rf"""(?m)^[ \t]*(?:{key}|"{key}"|'{key}')[ \t]*=""", header)
+        assignment = find_assignment(
+            rf"""^[ \t]*(?:{key}|"{key}"|'{key}')[ \t]*=""", header)
         if assignment:
             value_end = assignment.start()
             for line in header[assignment.start():].splitlines(keepends=True):

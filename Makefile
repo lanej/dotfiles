@@ -317,7 +317,9 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 codex-permissions:
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-permissions"
-codex-config: codex-env codex-skills codex-permissions
+.PHONY: codex-guidance
+codex-config: codex-guidance codex-permissions
+codex-guidance: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
