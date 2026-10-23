@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Install Approve for me defaults without replacing local Codex configuration."""
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+import tomllib
+
+
+DEFAULTS = {
+    "approval_policy": "on-request",
+    "approvals_reviewer": "auto_review",
+    "sandbox_mode": "workspace-write",
+}
+
+
+def find_assignment(pattern, text):
+    """Ignore apparent syntax inside unfinished multiline TOML values."""
+    for match in re.finditer(pattern, text, re.MULTILINE):
+        try:
+            tomllib.loads(text[:match.start()])
+        except tomllib.TOMLDecodeError:
+            continue
+        return match
+    return None
+
+
+def main():
+    root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    path = root / "config.toml"
+    if path.is_symlink():
+        path = path.resolve(strict=True)
+    original = path.read_text() if path.exists() else ""
+    config = tomllib.loads(original)
+    if all(config.get(key) == value for key, value in DEFAULTS.items()):
+        return
+
+    # Only root assignments belong to these defaults; nested app/profile
+    # overrides remain local configuration.
+    table = find_assignment(r"^[ \t]*\[", original)
+    end = table.start() if table else len(original)
+    header = original[:end]
+    for key in DEFAULTS:
+        assignment = find_assignment(
+            rf"""^[ \t]*(?:{key}|"{key}"|'{key}')[ \t]*=""", header)
+        if assignment:
+            value_end = assignment.start()
+            for line in header[assignment.start():].splitlines(keepends=True):
+                value_end += len(line)
+                try:
+                    parsed = tomllib.loads(header[assignment.start():value_end])
+                except tomllib.TOMLDecodeError:
+                    continue
+                if key in parsed:
+                    break
+            header = header[:assignment.start()] + header[value_end:]
+    settings = "".join(f'{key} = "{value}"\n' for key, value in DEFAULTS.items())
+    updated = settings + header + original[end:]
+    expected = config | DEFAULTS
+    if tomllib.loads(updated) != expected:
+        raise ValueError("could not preserve unrelated Codex configuration")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=".permissions-", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(updated)
+        temporary.chmod(mode)
+        temporary.replace(path)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        print(f"sync-codex-permissions: {error}", file=sys.stderr)
+        sys.exit(1)

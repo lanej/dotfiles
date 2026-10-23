@@ -286,7 +286,8 @@ agent-status-broker:
 # The aggregate waits for hook migration before installing Codex hooks. The
 # standalone config target remains usable without the broker.
 codex-tmux: agent-status-broker
-codex-tmux codex-tmux-config:
+# Both installers edit config.toml; sequence them even under parallel make.
+codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 SETUP_TARGETS += codex-worktree-hook
@@ -312,7 +313,13 @@ codex-env:
 		fi; \
 	fi
 codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
-codex-config: codex-env codex-skills
+.PHONY: codex-permissions
+codex-permissions:
+	$(call require-command,$(UV))
+	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-permissions"
+.PHONY: codex-guidance
+codex-config: codex-guidance codex-permissions
+codex-guidance: codex-env codex-skills
 	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
 		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
 		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
