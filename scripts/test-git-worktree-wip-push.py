@@ -30,6 +30,7 @@ def main():
             **os.environ,
             "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
             "NO_COLOR": "1", "XDG_CACHE_HOME": str(temporary / "cache"),
+            "CODEX_HOME": str(temporary / "codex"),
             "PATH": str(wrappers) + os.pathsep + os.environ["PATH"],
             "WORKTREE_TEST_GIT": shutil.which("git"),
             "WORKTREE_TEST_URL": approved_url,

@@ -11,6 +11,7 @@ WIP_PUSH=0
 JSON=0
 INTEGRATED=0
 TARGET_WORKTREE=""
+CONFLICT_FILES=5
 target_seen=0
 SIZE_CACHE_SECONDS=900
 SIZE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/git-worktree-cleanup"
@@ -47,11 +48,18 @@ Shows allocated disk usage; the combined reclaimable total includes only
 removal candidates. Actual savings may vary with shared filesystem blocks.
 Rows are sorted by disk usage, smallest first; unknown sizes are listed last.
 Sizes are cached for 15 minutes under $XDG_CACHE_HOME/git-worktree-cleanup
-(default: ~/.cache/git-worktree-cleanup). SIZE AGE marks cached estimates.
+(default: ~/.cache/git-worktree-cleanup). AGE shows HEAD commit age;
+SIZE AGE shows disk-estimate freshness.
 Directory identity changes invalidate cached sizes. Eligibility is never cached.
 Terminal progress is shown on stderr; colors respect NO_COLOR.
 Checks for unresolved index conflicts and whether unmerged HEADs conflict
 with the base branch, without changing working files (requires Git 2.38+).
+Below the table, merge conflicts list the top five files by combined changed
+lines on HEAD and the base since their common ancestor, with per-side +/- stats.
+Binary or unavailable line counts are labeled; omitted files are counted.
+CODEX SESSION shows the most recently updated primary conversation matching
+the worktree path (or a subdirectory), plus a count of other matches. Reads
+Codex's local state database without modifying it; unavailable metadata is labeled.
 
   -a HOURS   minimum HEAD commit age (default: 24h; env WORKTREE_CLEANUP_AGE_HOURS)
   -b BRANCH  base ref for every repository (default: each repository's
@@ -62,6 +70,7 @@ with the base branch, without changing working files (requires Git 2.38+).
   --json     emit a structured dry-run report (requires uv; excludes -y/--wip-push)
   --worktree PATH  inspect only this registered checkout; excludes DIRECTORY
   --integrated    also accept changes already integrated into the base
+  --conflict-files N  maximum files per merge-conflict report (default: 5)
   -h         show this help
 EOF
 }
@@ -77,6 +86,11 @@ while getopts ":a:b:yh-:" opt; do
                wip-push) WIP_PUSH=1 ;;
                json) JSON=1 ;;
                integrated) INTEGRATED=1 ;;
+               conflict-files)
+                   [[ "$OPTIND" -le $# ]] || { usage >&2; exit 1; }
+                   CONFLICT_FILES="${!OPTIND}"
+                   OPTIND=$(( OPTIND + 1 ))
+                   ;;
                worktree)
                    [[ "$OPTIND" -le $# ]] || { usage >&2; exit 1; }
                    TARGET_WORKTREE="${!OPTIND}"
@@ -96,6 +110,9 @@ if [[ "$JSON" -eq 1 && ( "$APPLY" -eq 1 || "$WIP_PUSH" -eq 1 ) ]]; then
 fi
 [[ "$AGE_HOURS" =~ ^[0-9]+$ ]] \
     || { echo "error: age must be a nonnegative integer" >&2; exit 1; }
+[[ "$CONFLICT_FILES" =~ ^[0-9]{1,6}$ ]] \
+    || { echo "error: conflict-files must be a nonnegative integer up to 999999" >&2; exit 1; }
+CONFLICT_FILES=$(( 10#$CONFLICT_FILES ))
 SCAN_TREE=1
 if [[ -n "$TARGET_WORKTREE" ]]; then
     [[ $# -eq 0 ]] || { echo "error: --worktree excludes DIRECTORY" >&2; exit 1; }
@@ -129,11 +146,15 @@ repositories=() repository_ids=()
 repositories_checked=0 errors=0
 row_status=() row_reason=() row_size=() row_path=()
 row_repo=() row_base=()
+row_age=() row_age_seconds=()
+row_codex=()
 row_size_age=()
 row_push=()
 row_kib=()
 status_width=6 reason_width=6 size_width=11
 repo_width=10 base_width=4 size_age_width=8
+age_width=3
+codex_width=13
 push_width=7
 reclaim_kib=0 unknown_sizes=0
 GREEN="" YELLOW="" CYAN="" RED="" MAGENTA="" BLUE="" GRAY="" RESET=""
@@ -208,6 +229,25 @@ human_size() {
     }'
 }
 
+human_age() {
+    local seconds="$1" prefix=""
+    if (( seconds < 0 )); then
+        prefix="in "
+        seconds=$(( -seconds ))
+    fi
+    if (( seconds >= 31536000 )); then
+        printf '%s%sy %sd' "$prefix" "$(( seconds / 31536000 ))" "$(( seconds % 31536000 / 86400 ))"
+    elif (( seconds >= 86400 )); then
+        printf '%s%sd %sh' "$prefix" "$(( seconds / 86400 ))" "$(( seconds % 86400 / 3600 ))"
+    elif (( seconds >= 3600 )); then
+        printf '%s%sh %sm' "$prefix" "$(( seconds / 3600 ))" "$(( seconds % 3600 / 60 ))"
+    elif (( seconds >= 60 )); then
+        printf '%s%sm %ss' "$prefix" "$(( seconds / 60 ))" "$(( seconds % 60 ))"
+    else
+        printf '%s%ss' "$prefix" "$seconds"
+    fi
+}
+
 size_cache_file() {
     local key
     CACHE_FILE=""
@@ -267,6 +307,11 @@ measure_size() {
 
 add_row() {
     local size="$3" repo="${5:-${REPOSITORY:-$4}}" base="${6:-${BASE_BRANCH:--}}" size_age="${7:--}" push="${8:--}" kib="${9:-}"
+    local age_seconds="${10:-}" age="-"
+    local codex
+    match_codex_sessions "$4" "${#row_status[@]}"
+    codex="$CODEX_SESSION"
+    [[ -z "$age_seconds" ]] || age="$(human_age "$age_seconds")"
     [[ "$repo" != "$ROOT"/* ]] || repo="${repo#"$ROOT"/}"
     if [[ "$size" == - ]]; then
         measure_size "$4"
@@ -280,10 +325,14 @@ add_row() {
     fi
     row_status+=("$1") row_reason+=("$2") row_size+=("$size") row_path+=("$4")
     row_repo+=("$repo") row_base+=("$base")
+    row_age+=("$age") row_age_seconds+=("$age_seconds")
+    row_codex+=("$codex")
     row_size_age+=("$size_age")
     row_push+=("$push")
     row_kib+=("$kib")
     (( ${#push} > push_width )) && push_width=${#push}
+    (( ${#age} > age_width )) && age_width=${#age}
+    (( ${#codex} > codex_width )) && codex_width=${#codex}
     (( ${#size_age} > size_age_width )) && size_age_width=${#size_age}
     (( ${#repo} > repo_width )) && repo_width=${#repo}
     (( ${#base} > base_width )) && base_width=${#base}
@@ -293,9 +342,244 @@ add_row() {
     return 0
 }
 
+load_codex_sessions() {
+    local directory="${CODEX_HOME:-$HOME/.codex}" database="" file version newest=-1
+    local cwd title id updated archived normalized decoded i found
+    local seen_cwds=() canonical_keys=()
+    codex_metadata="absent"
+    : > "$scratch/codex-sessions"
+    for file in "$directory"/state_*.sqlite; do
+        [[ -f "$file" ]] || continue
+        version="${file##*/state_}" version="${version%.sqlite}"
+        [[ "$version" =~ ^[0-9]{1,6}$ ]] || continue
+        if (( 10#$version > newest )); then
+            newest=$(( 10#$version ))
+            database="$file"
+        fi
+    done
+    [[ -n "$database" ]] || return 0
+    codex_metadata="unavailable"
+    command -v sqlite3 >/dev/null 2>&1 || return 0
+    # Hex keeps tabs/newlines in titles from becoming record delimiters.
+    # Modern Codex stores the sidebar title in name; older schemas use title.
+    if ! sqlite3 -readonly -noheader -separator $'\t' "$database" \
+        "SELECT hex(rtrim(cwd, '/')), hex(coalesce(nullif(trim(name), ''), title)),
+                hex(id), updated_at, archived
+         FROM threads WHERE source NOT LIKE '%subagent%'
+         ORDER BY updated_at DESC, id ASC;" > "$scratch/codex-raw" 2>/dev/null; then
+        if ! sqlite3 -readonly -noheader -separator $'\t' "$database" \
+            "SELECT hex(rtrim(cwd, '/')), hex(title), hex(id), updated_at, archived
+             FROM threads WHERE source NOT LIKE '%subagent%'
+             ORDER BY updated_at DESC, id ASC;" > "$scratch/codex-raw" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    while IFS=$'\t' read -r cwd title id updated archived; do
+        found=-1
+        for (( i=0; i<${#seen_cwds[@]}; i++ )); do
+            [[ "${seen_cwds[i]}" != "$cwd" ]] || { found="$i"; break; }
+        done
+        if [[ "$found" -lt 0 ]]; then
+            decode_hex "$cwd" || continue
+            decoded="$DECODED_HEX"
+            normalized="$(canonical_codex_path "$decoded")"
+            normalized="$(encode_hex "$normalized")"
+            seen_cwds+=("$cwd") canonical_keys+=("$normalized")
+        else
+            normalized="${canonical_keys[found]}"
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$normalized" "$title" "$id" \
+            "$updated" "$archived" >> "$scratch/codex-sessions"
+    done < "$scratch/codex-raw"
+    codex_metadata="available"
+}
+
+encode_hex() {
+    printf '%s' "$1" | od -An -v -tx1 | tr -d ' \n' | tr 'a-f' 'A-F'
+}
+
+decode_hex() {
+    local encoded="$1" escapes=""
+    [[ "$encoded" =~ ^([0-9A-Fa-f]{2})*$ ]] || return 1
+    while [[ -n "$encoded" ]]; do
+        escapes+="\\x${encoded:0:2}"
+        encoded="${encoded:2}"
+    done
+    printf -v DECODED_HEX '%b' "$escapes"
+}
+
+canonical_codex_path() {
+    local original="$1" path="$1" suffix="" physical
+    [[ "$path" == /* ]] || { printf '%s' "$original"; return 0; }
+    # Resolve the closest existing parent for archived or removed worktrees.
+    while [[ ! -d "$path" && "$path" != / ]]; do
+        suffix="/${path##*/}$suffix"
+        path="${path%/*}"
+        [[ -n "$path" ]] || path="/"
+    done
+    if ! physical="$(cd "$path" 2>/dev/null && pwd -P)"; then
+        printf '%s' "$original"
+    elif [[ -n "$suffix" ]]; then
+        printf '%s%s' "${physical%/}" "$suffix"
+    else
+        printf '%s' "$physical"
+    fi
+}
+
+match_codex_sessions() {
+    local path="$1" index="$2" canonical key canonical_key cwd normalized title id updated archived count=0 display
+    CODEX_SESSION="-"
+    [[ "$codex_metadata" != unavailable ]] || CODEX_SESSION="unavailable"
+    [[ "$codex_metadata" == available ]] || return 0
+    canonical="$(canonical_codex_path "$path")"
+    key="$(encode_hex "${path%/}")"
+    canonical_key="$(encode_hex "${canonical%/}")"
+    : > "$scratch/codex-$index.data"
+    while IFS=$'\t' read -r cwd normalized title id updated archived; do
+        # Require a whole path boundary, never a similar directory/branch name.
+        [[ "$cwd" == "$key" || "$cwd" == "$key"2F* \
+            || "$normalized" == "$canonical_key" || "$normalized" == "$canonical_key"2F* ]] || continue
+        decode_hex "$title" || continue
+        title="$DECODED_HEX"
+        decode_hex "$id" || continue
+        id="$DECODED_HEX"
+        [[ "$updated" =~ ^[0-9]+$ && "$archived" =~ ^[01]$ ]] || continue
+        [[ -n "$title" ]] || continue
+        printf '%s\0' "$id" "$title" "$updated" "$archived" >> "$scratch/codex-$index.data"
+        if [[ "$count" -eq 0 ]]; then
+            display="$(printf '%s' "$title" | LC_ALL=C tr '\t\r\n' '   ' | LC_ALL=C tr -d '\000-\010\013-\037\177')"
+            [[ ${#display} -le 48 ]] || display="${display:0:45}..."
+            CODEX_SESSION="$display"
+        fi
+        count=$(( count + 1 ))
+    done < "$scratch/codex-sessions"
+    (( count <= 1 )) || CODEX_SESSION+=" (+$(( count - 1 )) more)"
+    return 0
+}
+
+conflict_stats() {
+    local ref="$1" side="$2" record added deleted file i
+    if ! git --literal-pathspecs -C "$REPOSITORY" diff --numstat -z --no-renames \
+        --no-ext-diff --no-textconv "$conflict_ancestor" "$ref" -- "${conflict_paths[@]}" \
+        > "$scratch/conflict-stats" 2>/dev/null; then
+        return 1
+    fi
+    while IFS= read -r -d '' record; do
+        added="${record%%$'\t'*}" record="${record#*$'\t'}"
+        deleted="${record%%$'\t'*}" file="${record#*$'\t'}"
+        [[ "$added" =~ ^[0-9]+$ && "$deleted" =~ ^[0-9]+$ ]] \
+            || [[ "$added" == - && "$deleted" == - ]] || return 1
+        for (( i=0; i<${#conflict_paths[@]}; i++ )); do
+            [[ "${conflict_paths[i]}" == "$file" ]] || continue
+            if [[ "$side" == head ]]; then
+                conflict_head_added[i]="$added" conflict_head_deleted[i]="$deleted"
+            else
+                conflict_base_added[i]="$added" conflict_base_deleted[i]="$deleted"
+            fi
+            break
+        done
+    done < "$scratch/conflict-stats"
+}
+
+print_conflict_count() {
+    local value="$1" color="$2" reset="$RESET"
+    case "$value" in
+        -) value="binary"; color="$CYAN" ;;
+        '?') value="n/a"; color="$YELLOW" ;;
+        0) color="" reset="" ;;
+    esac
+    printf '%s%8s%s' "$color" "$value" "$reset"
+}
+
+collect_conflicts() {
+    local path="$1" index="${#row_status[@]}" tree file i value score shown=0 display
+    local conflict_paths=() conflict_head_added=() conflict_head_deleted=()
+    local conflict_base_added=() conflict_base_deleted=() conflict_ancestor="" note=""
+    # --name-only --no-messages -z emits a tree OID followed by unique paths.
+    # Keep NUL delimiters through parsing; filenames may contain tabs/newlines.
+    exec 3< "$scratch/merge-tree"
+    if ! IFS= read -r -d '' tree <&3 || [[ ! "$tree" =~ ^[0-9a-f]{40,64}$ ]]; then
+        exec 3<&-
+        printf '\nMerge conflicts: %s\n  File details unavailable.\n' "$path" > "$scratch/conflicts-$index.txt"
+        return 0
+    fi
+    while IFS= read -r -d '' file <&3; do
+        [[ -n "$file" ]] || continue
+        conflict_paths+=("$file")
+        conflict_head_added+=(0) conflict_head_deleted+=(0)
+        conflict_base_added+=(0) conflict_base_deleted+=(0)
+    done
+    exec 3<&-
+    if (( ${#conflict_paths[@]} == 0 )); then
+        note="Git reported merge conflicts without a file list."
+    elif ! conflict_ancestor="$(git -C "$REPOSITORY" merge-base --all "$CHECK_CONFLICT_BASE" "$CHECK_CONFLICT_HEAD" 2>/dev/null)" \
+        || [[ ! "$conflict_ancestor" =~ ^[0-9a-f]{40,64}$ ]]; then
+        note="Line stats unavailable: no single common ancestor."
+        conflict_ancestor=""
+    elif ! conflict_stats "$CHECK_CONFLICT_HEAD" head \
+        || ! conflict_stats "$CHECK_CONFLICT_BASE" base; then
+        note="Line stats unavailable: git diff failed."
+    fi
+    : > "$scratch/conflict-order"
+    for (( i=0; i<${#conflict_paths[@]}; i++ )); do
+        if [[ -n "$note" ]]; then
+            conflict_head_added[i]="?" conflict_head_deleted[i]="?"
+            conflict_base_added[i]="?" conflict_base_deleted[i]="?"
+        fi
+        score=0
+        for value in "${conflict_head_added[i]}" "${conflict_head_deleted[i]}" \
+            "${conflict_base_added[i]}" "${conflict_base_deleted[i]}"; do
+            [[ ! "$value" =~ ^[0-9]+$ ]] || score=$(( score + value ))
+        done
+        # Merge-tree may invent a path when resolving a directory/file clash.
+        # Its absence in every input is not evidence of zero changed lines.
+        if [[ -z "$note" && "$score" -eq 0 && "${conflict_head_added[i]}" == 0 \
+            && "${conflict_base_added[i]}" == 0 ]] \
+            && ! git -C "$REPOSITORY" cat-file -e "$CHECK_CONFLICT_HEAD:${conflict_paths[i]}" 2>/dev/null \
+            && ! git -C "$REPOSITORY" cat-file -e "$CHECK_CONFLICT_BASE:${conflict_paths[i]}" 2>/dev/null \
+            && ! git -C "$REPOSITORY" cat-file -e "$conflict_ancestor:${conflict_paths[i]}" 2>/dev/null; then
+            conflict_head_added[i]="?" conflict_head_deleted[i]="?"
+            conflict_base_added[i]="?" conflict_base_deleted[i]="?"
+        fi
+        printf '%s\t%s\n' "$score" "$i" >> "$scratch/conflict-order"
+    done
+    LC_ALL=C sort -t $'\t' -k1,1nr -k2,2n "$scratch/conflict-order" > "$scratch/conflict-sorted"
+    printf '%s\0' "${#conflict_paths[@]}" "$CHECK_CONFLICT_HEAD" "$CHECK_CONFLICT_BASE" \
+        "$conflict_ancestor" "$note" > "$scratch/conflicts-$index.data"
+    {
+        printf '\n%sMerge conflicts:%s %s\n' "$RED" "$RESET" "$path"
+        printf '  HEAD vs %s; +/- lines since the common ancestor.\n' "$BASE_BRANCH"
+        [[ -z "$note" ]] || printf '  %s\n' "$note"
+        printf '  %s%8s  %8s  %8s  %8s  %s%s\n' "$CYAN" "HEAD +" "HEAD -" "BASE +" "BASE -" FILE "$RESET"
+        while IFS=$'\t' read -r score i; do
+            (( shown < CONFLICT_FILES )) || break
+            display="${conflict_paths[i]}"
+            [[ ! "$display" =~ [[:cntrl:]] ]] || printf -v display '%q' "$display"
+            printf '  '
+            print_conflict_count "${conflict_head_added[i]}" "$GREEN"
+            printf '  '
+            print_conflict_count "${conflict_head_deleted[i]}" "$RED"
+            printf '  '
+            print_conflict_count "${conflict_base_added[i]}" "$GREEN"
+            printf '  '
+            print_conflict_count "${conflict_base_deleted[i]}" "$RED"
+            printf '  %s\n' "$display"
+            printf '%s\0' "${conflict_paths[i]}" "${conflict_head_added[i]}" \
+                "${conflict_head_deleted[i]}" "${conflict_base_added[i]}" \
+                "${conflict_base_deleted[i]}" >> "$scratch/conflicts-$index.data"
+            shown=$(( shown + 1 ))
+        done < "$scratch/conflict-sorted"
+        printf '  Showing %s of %s conflicting files' "$shown" "${#conflict_paths[@]}"
+        (( shown == ${#conflict_paths[@]} )) \
+            || printf '; %s more omitted (use --conflict-files N)' "$(( ${#conflict_paths[@]} - shown ))"
+        printf '.\n'
+    } > "$scratch/conflicts-$index.txt"
+}
+
 print_rows() {
-    printf '%s%-*s  %-*s  %-*s  %-*s  %*s  %-*s  ' "$CYAN" "$repo_width" REPOSITORY "$base_width" BASE "$status_width" STATUS "$reason_width" REASON "$size_width" "DISK USAGE" "$size_age_width" "SIZE AGE"
+    printf '%s%-*s  %-*s  %-*s  %-*s  %-*s  %*s  %-*s  ' "$CYAN" "$repo_width" REPOSITORY "$base_width" BASE "$status_width" STATUS "$reason_width" REASON "$age_width" AGE "$size_width" "DISK USAGE" "$size_age_width" "SIZE AGE"
     [[ "$WIP_PUSH" -eq 0 ]] || printf '%-*s  ' "$push_width" "PUSH TO"
+    printf '%-*s  ' "$codex_width" "CODEX SESSION"
     printf '%s%s\n' PATH "$RESET"
     local i color status_color unknown _unknown _kib
     # Sort numeric KiB rather than rounded display strings, preserving discovery
@@ -319,9 +603,13 @@ print_rows() {
         status_color="$YELLOW"
         case "${row_status[i]}" in remove|wip-push) status_color="$GREEN" ;; esac
         [[ "${row_status[i]}" != error ]] || status_color="$RED"
-        printf '%-*s  %-*s  %s%-*s%s  %s%-*s%s  %*s  %-*s  ' "$repo_width" "${row_repo[i]}" "$base_width" "${row_base[i]}" "$status_color" "$status_width" "${row_status[i]}" "$RESET" "$color" "$reason_width" "${row_reason[i]}" "$RESET" "$size_width" "${row_size[i]}" "$size_age_width" "${row_size_age[i]}"
+        printf '%-*s  %-*s  %s%-*s%s  %s%-*s%s  %-*s  %*s  %-*s  ' "$repo_width" "${row_repo[i]}" "$base_width" "${row_base[i]}" "$status_color" "$status_width" "${row_status[i]}" "$RESET" "$color" "$reason_width" "${row_reason[i]}" "$RESET" "$age_width" "${row_age[i]}" "$size_width" "${row_size[i]}" "$size_age_width" "${row_size_age[i]}"
         [[ "$WIP_PUSH" -eq 0 ]] || printf '%-*s  ' "$push_width" "${row_push[i]}"
+        printf '%-*s  ' "$codex_width" "${row_codex[i]}"
         printf '%s\n' "${row_path[i]}"
+    done < "$scratch/sorted-rows"
+    while IFS=$'\t' read -r _unknown _kib i; do
+        [[ ! -f "$scratch/conflicts-$i.txt" ]] || cat "$scratch/conflicts-$i.txt"
     done < "$scratch/sorted-rows"
 }
 
@@ -331,6 +619,8 @@ print_json() {
     for (( i=0; i<${#row_status[@]}; i++ )); do
         printf '%s\0' "${row_status[i]}" "${row_reason[i]}" "${row_path[i]}" \
             "${row_repo[i]}" "${row_base[i]}" "${row_kib[i]}" "${row_size_age[i]}" \
+            "${row_age_seconds[i]}" \
+            "$codex_metadata" \
             >> "$scratch/json-rows"
     done
     : > "$scratch/json-repositories"
@@ -339,23 +629,53 @@ print_json() {
     done
     uv run --no-project --python '>=3.11' python - "$scratch" "$ROOT" "$AGE_HOURS" "$errors" <<'PY'
 import json
+import os
 from pathlib import Path
 import sys
 
 scratch, root = Path(sys.argv[1]), Path(sys.argv[2])
 fields = (scratch / "json-rows").read_bytes().split(b"\0")[:-1]
-keys = ["action", "reason", "path", "repository", "base", "size_kib", "size_age"]
+keys = ["action", "reason", "path", "repository", "base", "size_kib", "size_age", "head_age_seconds",
+        "codex_metadata"]
 rows = []
 for offset in range(0, len(fields), len(keys)):
     row = dict(zip(keys, [value.decode() for value in fields[offset:offset + len(keys)]]))
     row["repository"] = str(root / row["repository"])
     row["size_kib"] = int(row["size_kib"]) if row["size_kib"] else None
+    row["head_age_seconds"] = int(row["head_age_seconds"]) if row["head_age_seconds"] else None
+    row["codex_sessions"] = []
+    codex_file = scratch / f"codex-{offset // len(keys)}.data"
+    if codex_file.exists():
+        sessions = [os.fsdecode(value) for value in codex_file.read_bytes().split(b"\0")[:-1]]
+        for start in range(0, len(sessions), 4):
+            session_id, title, updated, archived = sessions[start:start + 4]
+            row["codex_sessions"].append({"id": session_id, "title": title,
+                                          "updated_at": int(updated), "archived": archived == "1"})
+    conflict_file = scratch / f"conflicts-{offset // len(keys)}.data"
+    row["conflict_details"] = None
+    if conflict_file.exists():
+        details = [os.fsdecode(value) for value in conflict_file.read_bytes().split(b"\0")[:-1]]
+        total, head, base, ancestor, note = details[:5]
+        files = []
+        def stats(added, deleted):
+            return {"added": int(added) if added.isdigit() else None,
+                    "deleted": int(deleted) if deleted.isdigit() else None,
+                    "binary": added == "-", "available": added != "?"}
+        for start in range(5, len(details), 5):
+            path, ha, hd, ba, bd = details[start:start + 5]
+            files.append({"path": path, "head": stats(ha, hd), "base": stats(ba, bd)})
+        row["conflict_details"] = {"total_files": int(total), "omitted_files": int(total) - len(files),
+                                   "head": head, "base": base, "merge_base": ancestor or None,
+                                   "stats_note": note or None, "files": files}
     rows.append(row)
 rows.sort(key=lambda row: (row["size_kib"] is None, row["size_kib"] or 0))
 repositories = [value.decode() for value in
                 (scratch / "json-repositories").read_bytes().split(b"\0")[:-1]]
-print(json.dumps({"root": str(root), "age_hours": int(sys.argv[3]), "errors": int(sys.argv[4]),
-                  "repositories": repositories, "worktrees": rows}, ensure_ascii=False))
+report = json.dumps({"root": str(root), "age_hours": int(sys.argv[3]), "errors": int(sys.argv[4]),
+                     "repositories": repositories, "worktrees": rows}, ensure_ascii=False)
+# Preserve arbitrary Git filename bytes via escaped filesystem surrogates while
+# emitting valid UTF-8 and keeping ordinary Unicode names readable.
+print(report.encode("utf-8", errors="backslashreplace").decode("utf-8"))
 PY
 }
 
@@ -422,7 +742,7 @@ $remotes"
 }
 
 inspect_worktree() {
-    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 ignored open_path marker marker_path key slug entry head_tree base_tree branch branch_head
+    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 ignored open_path marker marker_path key slug entry head_tree base_tree branch branch_head conflict_base
     CHECK_REASON=""
     CHECK_DIRTY=0 CHECK_PUSH_URL="" CHECK_PUSH_REMOTE="" CHECK_WIP_BRANCH=""
     CHECK_MERGE="merged"
@@ -489,10 +809,15 @@ inspect_worktree() {
                 CHECK_MERGE="changes integrated"
             else
                 merge_status=0
-                git -C "$REPOSITORY" merge-tree --write-tree "$BASE_BRANCH" "$head" >/dev/null 2>&1 || merge_status=$?
+                if ! conflict_base="$(git -C "$REPOSITORY" rev-parse --verify "$BASE_BRANCH^{commit}" 2>/dev/null)"; then
+                    CHECK_REASON="merge check failed"; return 1
+                fi
+                git -C "$REPOSITORY" merge-tree --write-tree --name-only --no-messages -z \
+                    "$conflict_base" "$head" > "$scratch/merge-tree" 2>/dev/null || merge_status=$?
                 case "$merge_status" in
                     0) CHECK_REASON="not merged" ;;
-                    1) CHECK_REASON="merge conflicts" ;;
+                    1) CHECK_REASON="merge conflicts"
+                       CHECK_CONFLICT_HEAD="$head" CHECK_CONFLICT_BASE="$conflict_base" ;;
                     *) CHECK_REASON="merge check failed" ;;
                 esac
                 return 1
@@ -586,9 +911,15 @@ save_wip_worktree() {
 }
 
 evaluate() {
-    local path="$1" locked="$2"
+    local path="$1" locked="$2" head="${3:-}" commit_ts age_seconds=""
+    if [[ -n "$head" ]] \
+        && commit_ts="$(git -C "$REPOSITORY" log -1 --format=%ct "$head" 2>/dev/null)" \
+        && [[ "$commit_ts" =~ ^[0-9]+$ ]]; then
+        age_seconds=$(( NOW - commit_ts ))
+    fi
     if ! inspect_worktree "$path" "$locked"; then
-        add_row skip "$CHECK_REASON" - "$path"
+        [[ "$CHECK_REASON" != "merge conflicts" ]] || collect_conflicts "$path"
+        add_row skip "$CHECK_REASON" - "$path" "$REPOSITORY" "${BASE_BRANCH:--}" - - "" "$age_seconds"
         case "$CHECK_REASON" in *failed|*unavailable) errors=$(( errors + 1 )) ;; esac
         return 0
     fi
@@ -604,9 +935,9 @@ evaluate() {
     if [[ "$WIP_PUSH" -eq 1 ]]; then
         local state="push HEAD"
         [[ "$CHECK_DIRTY" -eq 0 ]] || state="commit WIP"
-        add_row wip-push "$state, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "${BASE_BRANCH:--}" "$MEASURED_AGE" "$CHECK_PUSH_REMOTE/$CHECK_WIP_BRANCH" "$MEASURED_KIB"
+        add_row wip-push "$state, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "${BASE_BRANCH:--}" "$MEASURED_AGE" "$CHECK_PUSH_REMOTE/$CHECK_WIP_BRANCH" "$MEASURED_KIB" "$CHECK_AGE"
     else
-        add_row remove "$CHECK_MERGE, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB"
+        add_row remove "$CHECK_MERGE, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB" "$CHECK_AGE"
     fi
     to_remove+=("$path")
     removal_repos+=("$REPOSITORY")
@@ -638,7 +969,7 @@ add_repository() {
 }
 
 scan_repository() {
-    local REPOSITORY="$1" BASE_BRANCH="$REQUESTED_BASE" PRIMARY_WORKTREE="" candidate path="" locked=0 line
+    local REPOSITORY="$1" BASE_BRANCH="$REQUESTED_BASE" PRIMARY_WORKTREE="" candidate path="" head="" locked=0 line
     repositories_checked=$(( repositories_checked + 1 ))
     start_spinner "Scanning repositories $repositories_checked/${#repositories[@]}; worktrees checked: $checked_worktrees..."
     if [[ -z "$BASE_BRANCH" ]]; then
@@ -667,8 +998,8 @@ scan_repository() {
     fi
     while IFS= read -r -d '' line; do
         if [[ -z "$line" ]]; then
-            [[ -z "$path" ]] || check_worktree "$path" "$locked"
-            path="" locked=0
+            [[ -z "$path" ]] || check_worktree "$path" "$locked" "$head"
+            path="" head="" locked=0
             continue
         fi
         case "$line" in
@@ -677,11 +1008,13 @@ scan_repository() {
                 [[ -n "$PRIMARY_WORKTREE" ]] || PRIMARY_WORKTREE="$path"
                 ;;
             locked*) locked=1 ;;
+            HEAD\ *) head="${line#HEAD }" ;;
         esac
     done < "$scratch/worktrees"
-    [[ -z "$path" ]] || check_worktree "$path" "$locked"
+    [[ -z "$path" ]] || check_worktree "$path" "$locked" "$head"
 }
 
+load_codex_sessions
 start_spinner "Checking process activity..."
 load_activity
 start_spinner "Discovering repositories..."
