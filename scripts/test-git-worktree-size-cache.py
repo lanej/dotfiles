@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 
 def main():
@@ -21,7 +20,7 @@ def main():
         wrappers.mkdir()
         clock = root / "clock"
         calls = root / "du-calls"
-        now = int(time.time())
+        now = 946684800 + 51 * 3600  # HEAD is two days and three hours old.
         clock.write_text(str(now))
         env = {
             **os.environ,
@@ -29,6 +28,7 @@ def main():
             "GIT_AUTHOR_DATE": "2000-01-01T00:00:00Z",
             "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z",
             "NO_COLOR": "1", "XDG_CACHE_HOME": str(root / "cache"),
+            "CODEX_HOME": str(root / "codex"),
             "PATH": str(wrappers) + os.pathsep + os.environ["PATH"],
             "WORKTREE_TEST_DU": shutil.which("du"),
             "WORKTREE_TEST_DATE": shutil.which("date"),
@@ -74,9 +74,11 @@ else:
                           if line.startswith("REPOSITORY"))
             line = next(line for line in result.stdout.splitlines()
                         if line.endswith(str(checkout)))
-            size_at, age_at, path_at = (header.index(name)
-                                       for name in ("DISK USAGE", "SIZE AGE", "PATH"))
-            return line, line[size_at:age_at].strip(), line[age_at:path_at].strip()
+            head_age_at = header.index("AGE")
+            size_at, age_at, codex_at = (header.index(name)
+                                        for name in ("DISK USAGE", "SIZE AGE", "CODEX SESSION"))
+            assert line[head_age_at:size_at].strip() == "2d 3h", line
+            return line, line[size_at:age_at].strip(), line[age_at:codex_at].strip()
 
         git("init", "-q", "--initial-branch", "main")
         (repo / ".gitignore").write_text(".worktrees/\nnode_modules/\n")

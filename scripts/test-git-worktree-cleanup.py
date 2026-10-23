@@ -3,8 +3,10 @@
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -101,6 +103,51 @@ def main():
         git(library, "worktree", "add", "--detach", str(completed))
         active = library / ".worktrees/background"
         git(library, "worktree", "add", "--detach", str(active))
+        # One conflicting merge includes enough files to exercise ranking and
+        # truncation, plus a tabbed filename and a binary file in its full list.
+        conflict_names = ["largest file.txt", "a\tfile.txt", "small-1.txt", "small-2.txt"]
+        for name in conflict_names:
+            (app / name).write_text("original\n")
+        (app / "binary.dat").write_bytes(b"\0original")
+        (app / "mode.txt").write_text("original\n")
+        git(app, "add", ".")
+        git(app, "commit", "-qm", "Initialize conflicting files")
+        conflicted = app / ".worktrees/conflicted"
+        git(app, "worktree", "add", "-b", "conflict-report", str(conflicted))
+        for name in conflict_names:
+            (conflicted / name).write_text("head\n")
+            (app / name).write_text("base\n")
+        (conflicted / "largest file.txt").write_text("head\n" * 7)
+        (app / "largest file.txt").write_text("base\n" * 2)
+        (conflicted / "binary.dat").write_bytes(b"\0head")
+        (app / "binary.dat").write_bytes(b"\0base")
+        (conflicted / "mode.txt").chmod(0o755)
+        git(app, "rm", "-q", "mode.txt")
+        git(conflicted, "commit", "-qam", "Conflicting HEAD edits")
+        git(app, "commit", "-qam", "Conflicting base edits")
+        git(app, "update-ref", "refs/remotes/origin/main", "HEAD")
+        conflict_head = git(conflicted, "rev-parse", "HEAD")
+        conflict_index = Path(git(conflicted, "rev-parse", "--path-format=absolute",
+                                  "--git-path", "index")).read_bytes()
+        codex_directory = temporary / "codex"
+        codex_directory.mkdir()
+        env["CODEX_HOME"] = str(codex_directory)
+        codex_path_alias = temporary / "codex-worktree-alias"
+        codex_path_alias.symlink_to(app, target_is_directory=True)
+        database = codex_directory / "state_5.sqlite"
+        with sqlite3.connect(database) as metadata:
+            metadata.execute("CREATE TABLE threads "
+                             "(id TEXT, cwd TEXT, name TEXT, title TEXT, source TEXT, "
+                             "updated_at INTEGER, archived INTEGER)")
+            metadata.executemany("INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)", [
+                ("latest", str(codex_path_alias / ".worktrees/conflicted"),
+                 "Resolve\tcleanup conflicts", "Original long prompt", "cli", 100, 0),
+                ("older", str(conflicted / "src"), "Earlier conversation", "Old prompt", "vscode", 90, 1),
+                ("helper", str(conflicted), "Review helper", "Helper prompt",
+                 '{"subagent":"review"}', 200, 0),
+                ("unrelated", str(conflicted) + "-other", "Wrong conversation", "Other prompt", "cli", 300, 0),
+            ])
+        database_before = database.read_bytes()
         trigger = temporary / "start-background"
         ready = temporary / "background-ready"
         wrappers = temporary / "wrappers"
@@ -145,22 +192,28 @@ time.sleep(120)
 """], cwd=temporary, env=tool_env,
         )
         try:
-            # A terminal on stderr keeps progress visible when stdout is logged.
+            # Terminals exercise both table coloring and progress output.
             terminal, terminal_output = pty.openpty()
+            table_terminal, table_output = pty.openpty()
             progress_chunks = []
+            preview_chunks = []
             finished = threading.Event()
 
-            def read_progress():
-                while not finished.is_set() or select.select([terminal], [], [], 0)[0]:
-                    if select.select([terminal], [], [], 0.1)[0]:
-                        progress_chunks.append(os.read(terminal, 65536))
+            def read_terminal(fd, chunks):
+                while not finished.is_set() or select.select([fd], [], [], 0)[0]:
+                    if select.select([fd], [], [], 0.1)[0]:
+                        chunks.append(os.read(fd, 65536))
 
-            reader = threading.Thread(target=read_progress)
+            reader = threading.Thread(target=read_terminal, args=(terminal, progress_chunks))
+            table_reader = threading.Thread(target=read_terminal, args=(table_terminal, preview_chunks))
             reader.start()
+            table_reader.start()
+            preview_env = {**env, "TERM": "xterm"}
+            preview_env.pop("NO_COLOR", None)
             try:
                 preview_run = subprocess.run(
                     ["/bin/bash", str(tool)], cwd=root,
-                    env={**env, "TERM": "xterm"}, stdout=subprocess.PIPE,
+                    env=preview_env, stdout=table_output,
                     stderr=terminal_output, text=True, timeout=60,
                 )
             finally:
@@ -168,17 +221,31 @@ time.sleep(120)
                 # output when the final slave descriptor closes.
                 finished.set()
                 reader.join(timeout=5)
+                table_reader.join(timeout=5)
                 os.close(terminal_output)
                 os.close(terminal)
-            assert not reader.is_alive(), "Terminal progress reader did not stop"
+                os.close(table_output)
+                os.close(table_terminal)
+            assert not reader.is_alive() and not table_reader.is_alive(), "Terminal reader did not stop"
             progress = b"".join(progress_chunks).decode()
-            preview = preview_run.stdout
+            colored_preview = b"".join(preview_chunks).decode()
+            assert "\x1b[32m       7\x1b[0m" in colored_preview, colored_preview
+            assert "\x1b[31m       1\x1b[0m" in colored_preview, colored_preview
+            assert "\x1b[31mMerge conflicts:\x1b[0m" in colored_preview, colored_preview
+            zero_line = next(line for line in colored_preview.splitlines() if line.endswith("mode.txt"))
+            assert not re.search(r"\x1b\[[0-9;]*m *0", zero_line), zero_line
+            preview = re.sub(r"\x1b\[[0-9;]*m", "", colored_preview).replace("\r\n", "\n")
             assert preview_run.returncode == 0, preview + progress
             assert "Discovering repositories" in progress, progress
             assert "Scanning repositories 2/2" in progress, progress
             assert "Repositories checked: 2" in preview, preview
             assert preview.count("DISK USAGE") == 1, preview
             assert "REPOSITORY" in preview and "BASE" in preview, preview
+            assert "CODEX SESSION" in preview, preview
+            conflict_row = next(line for line in preview.splitlines() if line.endswith(str(conflicted)))
+            assert "Resolve cleanup conflicts (+1 more)" in conflict_row, conflict_row
+            assert "Review helper" not in preview and "Wrong conversation" not in preview, preview
+            assert database.read_bytes() == database_before, "Codex metadata was modified"
             assert str(nested) not in preview, preview
             assert "4 worktree(s) would be removed" in preview, preview
             assert "Estimated reclaimable space" in preview, preview
@@ -186,6 +253,19 @@ time.sleep(120)
             assert "ignored files" in preview, preview
             assert "hidden index flags" in preview, preview
             assert "Git operation in progress" in preview, preview
+            details = preview.split(f"Merge conflicts: {conflicted}\n", 1)[1]
+            assert "HEAD vs origin/main" in details, details
+            assert "Showing 5 of 6 conflicting files; 1 more omitted" in details, details
+            assert "HEAD +" in details and "HEAD -" in details and "BASE +" in details and "BASE -" in details
+            file_lines = details.split("FILE\n", 1)[1].split("  Showing", 1)[0].splitlines()
+            assert file_lines[0].endswith("largest file.txt"), details
+            assert file_lines[0].split()[:4] == ["7", "1", "2", "1"], details
+            assert next(line for line in file_lines if line.endswith("mode.txt")).split()[:4] == ["0", "0", "0", "1"], details
+            assert "a\\tfile.txt" in details and "binary.dat" not in details, details
+            assert git(conflicted, "status", "--porcelain") == ""
+            assert git(conflicted, "rev-parse", "HEAD") == conflict_head
+            assert Path(git(conflicted, "rev-parse", "--path-format=absolute",
+                            "--git-path", "index")).read_bytes() == conflict_index
             header = next(line for line in preview.splitlines() if line.startswith("REPOSITORY"))
             size_at, age_at = header.index("DISK USAGE"), header.index("SIZE AGE")
             table = preview.split(header + "\n", 1)[1].split("\n\n", 1)[0].splitlines()
@@ -198,12 +278,14 @@ time.sleep(120)
             # Start a process during the first removal, after planning and any
             # initial activity snapshot. The later candidate must stay alive.
             result = run(temporary, "-y", str(root), run_env=tool_env)
+            assert "\x1b[" not in result, result
             assert "Removed 3 worktree(s)" in result, result
             assert "active process" in result, result
             assert not disposable.exists() and not dependencies.exists() and not completed.exists(), result
             assert dirty.is_dir() and active.is_dir() and locked.is_dir()
             assert nested_checkout.is_dir()
             assert operation.is_dir()
+            assert conflicted.is_dir() and "merge conflicts" in result
             assert (dirty / ".gitignore").read_text() == "unfinished edit\n"
             assert (hidden / ".gitignore").read_text() == "edit hidden from git status\n"
             assert (evidence / "evidence/report.txt").read_text() == "retain ignored evidence"
