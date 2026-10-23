@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 
@@ -13,11 +14,21 @@ import pytest
 
 @pytest.fixture
 def load_script():
-    def load(name):
-        loader = SourceFileLoader(name.replace("-", "_"), str(Path(__file__).with_name(name)))
+    def load(name, path=None, register=False):
+        loader = SourceFileLoader(name.replace("-", "_"),
+                                  str(path or Path(__file__).with_name(name)))
+        if register and loader.name in sys.modules:
+            return sys.modules[loader.name]
         spec = importlib.util.spec_from_loader(loader.name, loader)
         app = importlib.util.module_from_spec(spec)
-        loader.exec_module(app)
+        if register:
+            sys.modules[loader.name] = app
+        try:
+            loader.exec_module(app)
+        except BaseException:
+            if register:
+                del sys.modules[loader.name]
+            raise
         return app
     return load
 
