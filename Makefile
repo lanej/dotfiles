@@ -446,6 +446,9 @@ test-yabai-browser-focus:
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
+test-tmux-session-fallback:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-tmux-session-fallback.py"
+
 atuin-server:
 	@test "$(UNAME_S)" = Linux
 	@test -x "$(HOME)/.local/bin/atuin-server"

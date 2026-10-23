@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Keep regular clients attached to regular sessions when their session closes.
+set -euo pipefail
+
+socket=$1
+event=$2
+
+tmux() { command tmux -S "$socket" "$@"; }
+
+track_client() {
+    local client=$1 state session popup previous target option
+    option="@fallback-session-$client"
+    state=$(tmux list-clients -F '#{client_name}|#{session_id}|#{==:#{session_name},popup}' |
+        awk -F '|' -v client="$client" '$1 == client { print $2 "|" $3; exit }')
+    [[ -n "$state" ]] || return 0
+    session=${state%|*}
+    popup=${state##*|}
+    previous=$(tmux show-option -gqv "$option")
+
+    if [[ "$popup" == 1 ]]; then
+        # A popup client should exit when its own session closes.
+        tmux set-option -t "$session" detach-on-destroy on
+        if [[ -n "$previous" && "$previous" != "$session" ]] &&
+            ! tmux has-session -t "$previous" 2>/dev/null; then
+            # Destruction clears client_last_session, so remember the last
+            # observed session instead. An ordinary switch has a live source.
+            target=$(tmux list-sessions -F '#{?#{!=:#{session_name},popup},#{session_id},}' |
+                awk 'NF { print; exit }')
+            if [[ -z "$target" ]]; then
+                tmux detach-client -t "$client"
+                tmux set-option -gu "$option"
+                return 0
+            fi
+            # Record before switching so the resulting hook accepts the move.
+            tmux set-option -g "$option" "$target"
+            tmux switch-client -c "$client" -t "$target"
+            return 0
+        fi
+    fi
+    tmux set-option -g "$option" "$session"
+}
+
+case "$event" in
+    sync)
+        while IFS= read -r client; do
+            # Reloading establishes the current attachment as the starting point.
+            tmux set-option -gu "@fallback-session-$client"
+            track_client "$client"
+        done < <(tmux list-clients -F '#{client_name}')
+        ;;
+    changed) track_client "$3" ;;
+    detached) tmux set-option -gu "@fallback-session-$3" ;;
+    *) printf 'Unknown event: %s\n' "$event" >&2; exit 2 ;;
+esac
