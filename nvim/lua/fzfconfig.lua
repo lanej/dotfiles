@@ -323,14 +323,7 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list document symbols using fzf-lua
 vim.keymap.set("n", "<leader>bs", function()
-	require("fzf-lua").lsp_document_symbols({
-		winopts = {
-			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
-			width = 0.5, -- width of the window (50% of the editor)
-			height = 0.8, -- height of the window (30% of the editor)
-			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
-		},
-	})
+	require("navigation").buffer_symbols()
 end, { noremap = true, silent = true })
 
 -- Keymap to list incoming calls using fzf-lua
@@ -349,14 +342,14 @@ vim.keymap.set("n", "<leader>ck", function()
 end, { noremap = true, silent = true })
 
 vim.keymap.set({ "n", "v" }, "<leader>cr", function()
-	require("fzf-lua").lsp_references()
+	require("navigation").references()
 end, {
 	noremap = true,
 	silent = true,
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>cd", function()
-	require("fzf-lua").lsp_definitions({ jump1 = true })
+	require("navigation").goto_definition()
 end, {
 	noremap = true,
 	silent = true,
@@ -364,12 +357,12 @@ end, {
 
 -- Keymap to list implementation calls using fzf-lua
 vim.keymap.set("n", "<leader>cy", function()
-	require("fzf-lua").lsp_implementations()
+	require("navigation").implementations()
 end, { noremap = true, silent = true })
 
 -- Keymap to list workspace symbols using fzf-lua
 vim.keymap.set("n", "<leader>ws", function()
-	require("fzf-lua").lsp_live_workspace_symbols({})
+	require("navigation").workspace_symbols()
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>wd", function()

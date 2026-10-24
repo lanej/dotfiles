@@ -469,11 +469,6 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = "norg",
 	command = "setlocal shiftwidth=2 spell",
 })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_norg",
-	pattern = "norg",
-	command = "let g:gutentags_enabled = 0",
-})
 
 -- Markdown settings
 vim.api.nvim_create_augroup("filetype_markdown", { clear = true })
@@ -1508,17 +1503,11 @@ require("lazy").setup({
 	"tpope/vim-repeat",
 	{ "norcalli/nvim-colorizer.lua", dependencies = "nvim-treesitter/nvim-treesitter" },
 	{
-		"JMarkin/gentags.lua",
-		cond = vim.fn.executable("ctags") == 1,
-		dependencies = { "nvim-lua/plenary.nvim" },
-		config = function()
-			local ctags_bin = "/opt/homebrew/bin/ctags"
-			if vim.fn.executable(ctags_bin) == 0 then
-				ctags_bin = "ctags"
-			end
-			require("gentags").setup({ bin = ctags_bin })
+		"ludovicchabant/vim-gutentags",
+		init = function()
+			require("tag-index").setup()
 		end,
-		event = "VeryLazy",
+		event = { "BufReadPost", "BufNewFile" },
 	},
 	{
 		"vim-test/vim-test",

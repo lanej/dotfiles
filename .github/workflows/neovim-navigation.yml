@@ -1,0 +1,45 @@
+name: Neovim navigation acceptance
+
+on:
+  pull_request:
+    paths: ['nvim/**', 'scripts/test-nvim-navigation.py', '.github/workflows/neovim-navigation.yml']
+  push:
+    branches: [master]
+    paths: ['nvim/**', 'scripts/test-nvim-navigation.py', '.github/workflows/neovim-navigation.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: Install native dependencies on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y universal-ctags ripgrep build-essential
+      - name: Install native dependencies on macOS
+        if: runner.os == 'macOS'
+        run: brew install universal-ctags ripgrep
+      - name: Install pinned Neovim and fzf
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) nvim_platform=linux-x86_64; fzf_platform=linux_amd64 ;;
+            Darwin-arm64) nvim_platform=macos-arm64; fzf_platform=darwin_arm64 ;;
+            Darwin-x86_64) nvim_platform=macos-x86_64; fzf_platform=darwin_amd64 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/navigation-tools/bin"
+          curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/navigation-tools"
+          curl --fail --location --retry 3 "https://github.com/junegunn/fzf/releases/download/v0.59.0/fzf-0.59.0-$fzf_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/navigation-tools/bin"
+          echo "$RUNNER_TEMP/navigation-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/navigation-tools/bin" >> "$GITHUB_PATH"
+      - name: Accept navigation without user configuration or cloud tools
+        run: uv run --no-project scripts/test-nvim-navigation.py
