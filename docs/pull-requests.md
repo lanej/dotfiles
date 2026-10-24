@@ -67,3 +67,5 @@ This is enough for a routine UI fix; a screenshot can follow the paragraph when 
 Use the existing PR when updating a change. Confirm the repository, branch, review base, and publication authorization before creating a new one. Inspect the published title, rendered body, any included images, and stack relationship.
 
 Pass multiline descriptions through a file or structured API field so Markdown and literal text survive unchanged. Creating or updating a PR does not authorize merging it. The writer drafts; the calling agent publishes and verifies the saved result.
+
+Rendering checks verify presentation and links. They do not introduce a separate critic/editorial stage or routine second writing pass. Correct concrete factual or rendering defects when found.

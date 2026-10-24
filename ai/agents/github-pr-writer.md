@@ -35,6 +35,8 @@ Choose tables for comparisons, fenced `mermaid` diagrams for relationships, and 
 
 The caller verifies the saved title, rendered body, reference hydration, images, reviewer permissions, and stack relationship after publication. A local preview cannot confirm GitHub hydration. Repository Markdown files do not hydrate references like PR descriptions.
 
+Rendering checks verify presentation and links. They do not introduce a separate critic/editorial stage or routine second writing pass. Correct concrete factual or rendering defects when found.
+
 Keep remaining publication checks outside the proposed description, in the inherited status or blocker reporting. A pending publication check alone does not block a complete draft; unresolved facts or drafting conflicts do.
 
 GitHub references: [autolinks and hydrated lists](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/autolinked-references-and-urls), [alerts](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#alerts).
