@@ -33,7 +33,8 @@ def main():
         if not shutil.which(executable):
             raise SystemExit(f"Install {executable} and add it to PATH before running acceptance.")
     lock = json.loads((ROOT / "nvim/lazy-lock.json").read_text())
-    with tempfile.TemporaryDirectory(prefix="nvim-navigation-acceptance-") as temporary:
+    # Darwin's Unix socket paths are limited; FzfLua appends its server name.
+    with tempfile.TemporaryDirectory(prefix="nv-nav-", dir="/tmp") as temporary:
         work = Path(temporary)
         env = dict(os.environ)
         for key in list(env):
