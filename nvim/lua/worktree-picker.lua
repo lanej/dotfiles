@@ -4,6 +4,10 @@ local function display(text)
 	return text:gsub("[%c]", " ")
 end
 
+local function color(text, code)
+	return "\27[" .. code .. "m" .. text .. "\27[0m"
+end
+
 local function column(text, width)
 	text = display(text)
 	if vim.fn.strdisplaywidth(text) > width then
@@ -113,24 +117,24 @@ local function summary(tree)
 	end
 	local parts = {}
 	if tree.ahead and (tree.ahead > 0 or tree.behind > 0) then
-		table.insert(parts, "↑" .. tree.ahead .. " ↓" .. tree.behind)
+		table.insert(parts, color("↑" .. tree.ahead .. " ↓" .. tree.behind, 36))
 	elseif not tree.ahead then
-		table.insert(parts, "↑? ↓?")
+		table.insert(parts, color("↑? ↓?", 33))
 	end
 	local counts = tree.changes
 	if counts.staged > 0 then
-		table.insert(parts, "S" .. counts.staged)
+		table.insert(parts, color("S" .. counts.staged, 32))
 	end
 	if counts.modified > 0 then
-		table.insert(parts, "M" .. counts.modified)
+		table.insert(parts, color("M" .. counts.modified, 33))
 	end
 	if counts.untracked > 0 then
-		table.insert(parts, "?" .. counts.untracked)
+		table.insert(parts, color("?" .. counts.untracked, 36))
 	end
 	if counts.conflicts > 0 then
-		table.insert(parts, "!" .. counts.conflicts)
+		table.insert(parts, color("!" .. counts.conflicts, 31))
 	end
-	return #parts > 0 and table.concat(parts, " ") or "clean"
+	return #parts > 0 and table.concat(parts, " ") or color("clean", 32)
 end
 
 local function preview_command(tree, primary, height, width)
@@ -361,7 +365,11 @@ function M.pick()
 				-- The default hide profile retains stale rows after changing cwd.
 				-- Closing on selection lets resume inspect Git and cwd again.
 				no_hide = true,
+				fzf_colors = true,
 				fzf_opts = {
+					["--ansi"] = true,
+					-- A color base enables ANSI input; role overrides alone may not.
+					["--color"] = vim.o.background,
 					["--delimiter"] = "\t",
 					["--with-nth"] = "2..",
 					["--no-sort"] = true,

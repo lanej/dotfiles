@@ -6,7 +6,24 @@ local plugins = vim.fn.stdpath("data") .. "/lazy/"
 vim.opt.rtp:append(plugins .. "fzf-lua")
 vim.opt.rtp:append(plugins .. "nvim-web-devicons")
 vim.g.mapleader = " "
+vim.env.TERM = "xterm-256color"
 require("fzfconfig")
+
+-- Observe the real fzf input; selected entries have their ANSI codes stripped.
+local rows = {}
+local fzf = require("fzf-lua")
+local execute = fzf.fzf_exec
+fzf.fzf_exec = function(contents, opts)
+	return execute(function(cb)
+		rows = {}
+		return contents(function(entry, ...)
+			if entry then
+				table.insert(rows, entry)
+			end
+			return cb(entry, ...)
+		end)
+	end, opts)
+end
 
 local temporary = vim.fn.tempname()
 local repo = temporary .. "/repo with spaces"
@@ -123,6 +140,12 @@ local function workflow()
 	assert(not vim.uv.fs_stat(linked .. "/escaped"), "Preview executed part of a worktree path")
 	local current_preview = picker()._previewer._last_entry
 	assert(current_preview:find("● feature/work", 1, true), "Current worktree was not first")
+	local input = table.concat(rows, "\n")
+	assert(input:find("\27[32mS13\27[0m", 1, true), "Staged count lost its green color")
+	assert(input:find("\27[33mM13\27[0m", 1, true), "Unstaged count lost its yellow color")
+	assert(input:find("\27[36m?1\27[0m", 1, true), "Untracked count lost its cyan color")
+	assert(input:find("\27[32mclean\27[0m", 1, true), "Clean checkout lost its green color")
+	assert(not text:find("\27", 1, true), "Results displayed ANSI escapes instead of interpreting them")
 	local function layout()
 		local win = picker()
 		return vim.api.nvim_win_get_config(win.fzf_winid), vim.api.nvim_win_get_config(win.preview_winid)
