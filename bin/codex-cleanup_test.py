@@ -287,9 +287,6 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
             "signal.signal(signal.SIGTERM, stop)\n"
             "while True: time.sleep(1)\n"
         )
-        config = (f"[mcp_servers.fixture]\ncommand = {json.dumps(sys.executable)}\n"
-                  f"args = [{json.dumps(str(fixture))}]\n")
-        (folder / "config.toml").write_text(config)
         (folder / "threads.json").write_text(json.dumps({
             "primary": {"id": "primary", "parentThreadId": None, "status": {"type": "active"}},
         }))
@@ -322,6 +319,14 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                     if server.poll() is not None or time.monotonic() >= deadline:
                         raise AssertionError((folder / "server.log").read_text())
                     time.sleep(0.02)
+                # Framework Python launchers exec Python.app; configure the running
+                # binary so the fixture satisfies cleanup's exact identity contract.
+                executable = subprocess.check_output(
+                    ["ps", "-ww", "-p", str(owned.pid), "-o", "comm="], text=True,
+                ).strip()
+                config = (f"[mcp_servers.fixture]\ncommand = {json.dumps(executable)}\n"
+                          f"args = [{json.dumps(str(fixture))}]\n")
+                (folder / "config.toml").write_text(config)
                 command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
                            "--socket", str(folder / "daemon.sock"),
                            "--min-idle-minutes", "0", "--json"]
@@ -331,7 +336,7 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                 assert preview.returncode == 0, preview.stderr
                 plan = json.loads(preview.stdout)
                 assert {row["pid"] for row in plan["mcp_processes"]
-                        if row["action"] == "candidate"} == {orphan_pid}
+                        if row["action"] == "candidate"} == {orphan_pid}, plan
                 assert next(row for row in plan["mcp_processes"]
                             if row["pid"] == owned.pid)["reason"] == "live client parent"
                 assert not (folder / "orphan.stopped").exists()
