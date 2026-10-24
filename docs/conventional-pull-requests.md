@@ -33,7 +33,7 @@ The words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in [RF
 7. Supporting context SHOULD supply information needed for review that the opening prose, diff, and automated checks do not already provide. The body SHOULD omit headings for short descriptions. A longer body MAY use headings that name the actual subject when they help navigation; generic category headings SHOULD NOT be used unless required by the repository.
 8. Material compatibility constraints, rollout requirements, and known verification gaps MUST be disclosed when they affect acceptance or use. Claims about behavior and verification MUST be supported by actual evidence.
 9. A visual SHOULD be included when it explains the result more clearly than prose. It MUST show actual evidence or clearly identified conceptual design, have descriptive alt text, and use a durable URL that renders for the intended reviewers. Visuals MUST NOT fabricate evidence.
-10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on GitHub and be linked to the relevant version. GitHub issues and PRs MUST use native references: `#52` within the PR's repository or `easypost/claims-service#132` across repositories. Published references MUST be plain text without backticks or Markdown links so GitHub autolinks them. Other GitHub objects MUST use direct links. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
+10. References MUST be accessible to the intended reviewers. Referenced files MUST exist on the review platform and be linked to the relevant version. Cited objects MUST be linked with full URLs or the platform's supported references. Local machine or session paths MUST NOT be used as evidence. Relevant issues and design decisions SHOULD be linked when available.
 11. The description SHOULD NOT repeat file inventories, commit history, test cases, coverage figures, test counts, or automated check results. Empty sections and boilerplate checklists SHOULD be omitted.
 12. The title and description MUST reflect the final scope of the PR. A stacked PR MUST identify its parent and describe its own change.
 13. Bulleted lists SHOULD be used when multiple independent points are easier to scan than prose. Tables SHOULD be used when several items need comparison across shared attributes. Connected explanations SHOULD remain prose; numbered lists SHOULD be reserved for sequences where order matters. Measurement tables MUST preserve units, workload scope, evidence source, and material caveats without implying unsupported comparisons.
@@ -79,7 +79,7 @@ Table cells follow the same prose and linking rules. Split overloaded columns. C
 
 Pin file and code-symbol links to the relevant commit SHA, with line anchors when useful.
 
-Use `#52` for issues and PRs in the PR's repository and `easypost/claims-service#132` for another repository. In the published description, leave these references as plain text; do not wrap them in backticks or Markdown links or replace them with full URLs. Link other GitHub objects and non-GitHub evidence directly.
+Use the review platform's native references for issues and PRs, or full URLs. Link other cited objects directly. The [GitHub PR writer](../ai/agents/github-pr-writer.md) supplies GitHub-specific syntax and rendering guidance.
 
 ## Examples
 
