@@ -532,6 +532,30 @@ paseo-start:
 	done
 	@open -a Paseo
 
+# Start the existing host and print its live pairing offer for another device.
+paseo-pair:
+	$(call require-os,Darwin)
+	$(call require-command,paseo)
+	$(call require-command,jq)
+	@$(MAKE) --no-print-directory paseo-start
+	@certificate="$(HOME)/.local/share/paseo-secure/pairing/paseo-lan-ca.cer"; \
+	if test -f "$$certificate"; then \
+		printf '\nAirDrop this certificate to the new iPhone/iPad:\n  %s\n' "$$certificate"; \
+		printf '%s\n' 'Open Settings > General > VPN & Device Management, select the downloaded certificate profile, and tap Install.'; \
+		printf '%s\n' 'Then enable it in Settings > General > About > Certificate Trust Settings.'; \
+	fi
+	@set -eu; deadline="$$(($$(date +%s) + 30))"; \
+	until status="$$(paseo --home "$(HOME)/.paseo" daemon status --json)" && \
+		printf '%s\n' "$$status" | jq -e -s 'any(.[]; .localDaemon == "running" and .connectedDaemon == "reachable")' >/dev/null; do \
+		if test "$$(date +%s)" -ge "$$deadline"; then \
+			printf '%s\n' 'Paseo did not become reachable. Check paseo daemon status and the LaunchAgent logs.' >&2; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done; \
+	endpoint="$$(printf '%s\n' "$$status" | jq -er '.listen')"; \
+	paseo --host "$$endpoint" daemon pair --relay
+
 paseo-stop:
 	$(call require-os,Darwin)
 	@domain="gui/$$(id -u)"; status=0; \
@@ -547,6 +571,6 @@ paseo-stop:
 test-paseo-lifecycle:
 	@python3 "$(DOTFILES)/scripts/test-paseo-lifecycle.py"
 
-.PHONY: paseo-start paseo-stop test-paseo-lifecycle
+.PHONY: paseo-start paseo-pair paseo-stop test-paseo-lifecycle
 
 .PHONY: test-pragmatic-hexagonal
