@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One Makefile workflow: stop, stay stopped, start, and stop again."""
+"""Makefile workflows for persistent lifecycle control and live device pairing."""
 import json
 import os
 from pathlib import Path
@@ -45,6 +45,25 @@ elif command == "pkill" and args == ["-TERM", "-u", str(os.getuid()), "-x", "Pas
     if not state["app_running"]:
         sys.exit(1)
     state["app_running"] = False
+elif command == "paseo":
+    if args == ["--home", str(Path.home() / ".paseo"), "daemon", "status", "--json"]:
+        state["status_checks"] += 1
+        ready = state["status_checks"] > 1 and state["jobs"]["local.paseo.daemon"]["loaded"]
+        print(json.dumps({
+            "localDaemon": "running" if ready else "not_ready",
+            "connectedDaemon": "reachable" if ready else "not_probed",
+            "listen": "127.0.0.1:6767" if ready else None,
+        }))
+    elif args == ["--host", "127.0.0.1:6767", "daemon", "pair", "--relay"]:
+        if state["status_checks"] < 2 or not all(
+            state["jobs"][label]["loaded"]
+            for label in ("local.paseo.daemon", "local.paseo.relay", "local.paseo.lan-ingress")
+        ):
+            sys.exit(1)
+        state["pair_calls"] += 1
+        print("Scan to pair:\\n[fixture QR code]\\nPairing link:\\nhttps://fixture.invalid/#offer=fixture")
+    else:
+        sys.exit(2)
 else:
     sys.exit(2)
 path.write_text(json.dumps(state))
@@ -59,9 +78,12 @@ def main():
         agents.mkdir(parents=True)
         for label in LABELS:
             (agents / f"{label}.plist").write_text("fixture LaunchAgent\n")
+        certificate = home / ".local/share/paseo-secure/pairing/paseo-lan-ca.cer"
+        certificate.parent.mkdir(parents=True)
+        certificate.write_text("fixture public certificate\n")
         executables = fixture / "bin"
         executables.mkdir()
-        for name in ("launchctl", "open", "pkill"):
+        for name in ("launchctl", "open", "pkill", "paseo"):
             command = executables / name
             command.write_text(f"#!{sys.executable}\n{BOUNDARY}")
             command.chmod(0o755)
@@ -71,16 +93,22 @@ def main():
             "jobs": {**{label: {"loaded": True, "disabled": False} for label in LABELS},
                      "local.unrelated": unrelated},
             "app_running": True,
+            "status_checks": 0,
+            "pair_calls": 0,
         }))
         env = {**os.environ, "HOME": str(home),
                "PATH": f"{executables}{os.pathsep}{os.environ['PATH']}",
-               "PASEO_FIXTURE_STATE": str(state)}
+               "PASEO_FIXTURE_STATE": str(state),
+               "PASEO_HOST": "unrelated.invalid:9999",
+               "PASEO_HOME": str(fixture / "unrelated-home")}
+        outputs = {}
 
         def run(target):
             result = subprocess.run(
                 [shutil.which("make"), "--no-print-directory", "UNAME_S=Darwin", target],
                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
             assert result.returncode == 0, result.stdout + result.stderr
+            outputs[target] = result.stdout
             return json.loads(state.read_text())
 
         def expect_stopped(observed):
@@ -98,6 +126,16 @@ def main():
         assert started["jobs"]["local.unrelated"] == unrelated, started
         expect_stopped(run("paseo-stop"))
         print("PASS: Paseo stops persistently, starts through launchd, and leaves unrelated jobs alone.")
+        paired = run("paseo-pair")
+        assert paired["app_running"], paired
+        assert paired["status_checks"] == 2 and paired["pair_calls"] == 1, paired
+        assert "[fixture QR code]" in outputs["paseo-pair"], outputs["paseo-pair"]
+        assert "https://fixture.invalid/#offer=fixture" in outputs["paseo-pair"], outputs["paseo-pair"]
+        assert str(certificate) in outputs["paseo-pair"], outputs["paseo-pair"]
+        assert "VPN & Device Management" in outputs["paseo-pair"], outputs["paseo-pair"]
+        assert "Certificate Trust Settings" in outputs["paseo-pair"], outputs["paseo-pair"]
+        assert paired["jobs"]["local.unrelated"] == unrelated, paired
+        print("PASS: Device pairing starts the local host, waits for readiness, and prints its live offer.")
 
 
 if __name__ == "__main__":
