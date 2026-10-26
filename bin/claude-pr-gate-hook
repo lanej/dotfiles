@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PreToolUse:Bash — deny raw `gh pr create`; PRs open via gh-pr-create-from.
 
-A raw `gh pr create` skips the pull-request-writer description and its checks,
+A raw `gh pr create` skips the github-pr-writer description and its checks,
 so Claude gets told what to run instead. `gh pr create --help` stays allowed.
 """
 import json
@@ -13,7 +13,7 @@ RAW_CREATE = re.compile(
     r"gh\s+pr\s+(?:create|new)\b(?P<rest>[^;&|\n]*)"
 )
 REASON = (
-    "Raw `gh pr create` is blocked here. Have the pull-request-writer agent write the "
+    "Raw `gh pr create` is blocked here. Have the github-pr-writer agent write the "
     "title and description to a file (title on line 1, blank line, body), then open "
     "the PR with `~/.files/bin/gh-pr-create-from <file> [--draft] [--base ...]`. It "
     "checks the description and passes other gh flags through. If the user wants a "

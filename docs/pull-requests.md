@@ -30,17 +30,17 @@ Use tables when several items need comparison across shared attributes, such as 
 
 Reserve Before/After columns for matching workloads and layers; otherwise identify each measured workload and layer by row or use separate tables. Label API timings accurately when browser rendering was not measured. Mark missing values as "Not measured" or "Not reported" rather than unexplained dashes.
 
-Apply prose and linking rules inside cells too: no `<br>` for appearance, and cited GitHub objects must be linked. Split overloaded columns or move detail outside the table. Do not call workloads "the same" without evidence; keep why the change matters explicit in the opening prose.
+Apply prose and linking rules inside cells too: no `<br>` for appearance, and cited objects must be linked. Split overloaded columns or move detail outside the table. Do not call workloads "the same" without evidence; keep why the change matters explicit in the opening prose.
 
-Write each paragraph and list item on one source line. Let GitHub wrap text for the reader's screen; preserve meaningful line breaks in code and actual example output.
+Write each paragraph and list item on one source line. Let the review interface wrap text for the reader's screen; preserve meaningful line breaks in code and actual example output.
 
-Referenced files must already exist on GitHub. Link them with descriptive text to the relevant commit's full GitHub file URL, adding line anchors when useful. Use native GitHub references for issues and PRs: `#52` within the PR's repository and `easypost/claims-service#132` across repositories. In published descriptions, write these references as plain text without backticks or Markdown links so GitHub creates its native links; do not substitute full URLs. Link commits, reviews, discussions, releases, comparisons, and Actions runs directly to the specific object cited. Verify each target exists and is accessible to reviewers. Do not reference local-only files or leave cited paths and object names unlinked.
+Link referenced files to the relevant published revision, adding line anchors when useful. Link issues, PRs, commits, reviews, and other cited objects using the review platform's supported references. Verify each target exists and is accessible to reviewers. Do not reference local-only files or leave cited paths and object names unlinked. For GitHub-specific formatting and references, use the [GitHub PR writer](../ai/agents/github-pr-writer.md).
 
 ## Show the result
 
 Include a screenshot when it helps reviewers understand or assess a visual change, such as a UI, chart, or rendered document. Omit it when the diff and prose already explain the change adequately; screenshots are not a universal PR requirement.
 
-When included, show the actual current result, use descriptive alt text and a durable image URL, and verify that it renders inline on GitHub. A local path or downloadable CI artifact is insufficient. Keep the image current when the visible result changes. Do not invent an image URL or substitute a mockup for the implemented result.
+When included, show the actual current result, use descriptive alt text and a durable image URL, and verify that it renders inline in the review interface. A local path or downloadable CI artifact is insufficient. Keep the image current when the visible result changes. Do not invent an image URL or substitute a mockup for the implemented result.
 
 ## Description template
 
@@ -66,4 +66,6 @@ This is enough for a routine UI fix; a screenshot can follow the paragraph when 
 
 Use the existing PR when updating a change. Confirm the repository, branch, review base, and publication authorization before creating a new one. Inspect the published title, rendered body, any included images, and stack relationship.
 
-Pass multiline descriptions through a file (for example, `gh pr create --body-file /tmp/pr-body.md`) so Markdown and literal text survive unchanged. Creating or updating a PR does not authorize merging it.
+Pass multiline descriptions through a file or structured API field so Markdown and literal text survive unchanged. Creating or updating a PR does not authorize merging it. The writer drafts; the calling agent publishes and verifies the saved result.
+
+Rendering checks verify presentation and links. They do not introduce a separate critic/editorial stage or routine second writing pass. Correct concrete factual or rendering defects when found.

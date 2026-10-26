@@ -13,7 +13,7 @@ the failure modes on this machine that have actually cost time.
 - **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
   Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
   automatic naming.
-- **All PR titles and descriptions go through the `pull-request-writer` agent**, including
+- **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
   `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
   visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
@@ -25,7 +25,8 @@ the failure modes on this machine that have actually cost time.
 ## Pull requests
 
 Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
-updating a PR. Use `pull-request-writer` for the title and body. Lead with the
+updating a PR. Use `github-pr-writer` for GitHub titles and bodies, and
+`pull-request-writer` for other review platforms. Lead with the
 outcome and why, include screenshots when useful, and add context only when
 the diff and checks do not supply it. Do not reproduce automated test results.
 Use `--body-file` for multiline descriptions and verify the rendered result.

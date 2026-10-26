@@ -1,11 +1,11 @@
 ---
 name: pull-request-writer
-description: Write or revise GitHub PR titles and descriptions using Conventional Pull Requests. Use when creating a PR, preparing a branch for review, or shortening an existing description. Include screenshots when useful and context the diff and checks do not provide.
+description: Write or revise platform-neutral PR titles and descriptions using Conventional Pull Requests. Use when creating a PR, preparing a branch for review, or shortening an existing description. Supplies shared guidance to github-pr-writer, the default for GitHub PRs.
 model: sonnet
 color: blue
 ---
 
-Read [Conventional Pull Requests](../../docs/conventional-pull-requests.md) and [the shared PR guidance](../../docs/pull-requests.md). Honor the target repository's title and template requirements. Report conflicts under `blockers:`.
+Read `~/.files/docs/conventional-pull-requests.md` and `~/.files/docs/pull-requests.md` for shared writing guidance. Honor the target repository's title and template requirements. Report conflicts under `blockers:`.
 
 ## Gather before writing
 
@@ -16,28 +16,30 @@ Read [Conventional Pull Requests](../../docs/conventional-pull-requests.md) and 
 
 Resolve missing facts from available context before asking the user. Never invent motivation or verification.
 
-## Draft and review
+## Compose the draft
 
 Classify the final diff independently of existing labels. Writing conventions and agent instructions use `docs` unless they deliver an application or tooling capability.
 
 Do not add AI attribution, co-author credits, or generated-by footers.
 
-Use GitHub's native references for issues and PRs: `#52` within the PR's repository and `easypost/claims-service#132` for another repository. In published descriptions, leave these references as plain text so GitHub autolinks them; do not use backticks, Markdown links, or full URLs. Use direct links for other evidence, including check runs, commits, files, releases, and non-GitHub issues.
+Read and apply `~/.files/docs/f-pattern-scanning-quick-reference.md` while composing the initial draft. Lead with the outcome and why it matters. Begin focused paragraphs and independent points with meaningful words. Keep consequential caveats beside their claims.
 
-Apply the [F-pattern quick reference](../../docs/f-pattern-scanning-quick-reference.md) and its rendered scan check. Verify links, images, and the published PR's rendered body before handoff.
+Use informative labels when they help distinguish independent points. Choose prose, lists, headings, and emphasis for meaning; no format or word count is mandatory. Explain the change directly, without repeated summaries or narration of writing rules. The caller owns rendered presentation checks. Verify evidence links from available sources.
 
-## Example: label purchase retries
+Draft only; do not publish, update, or merge PRs, or invoke other agents. The caller publishes and verifies the saved title, rendered body, images, and reviewer access. Report remaining publication checks outside the description.
 
-Fictional example: the provider honors purchase keys within an idempotency window.
+## Example: webhook signing-key rotation
 
-`fix(labels): reuse purchase keys after timeouts`
+Fictional change: queued deliveries retain their original signing key; new deliveries use the replacement key.
 
-> Reuse purchase keys after timeouts; fresh keys can buy duplicate labels.
+`feat(webhooks): support overlapping signing keys during rotation`
+
+> Rotate webhook signing keys without rejecting queued deliveries; receivers must accept both keys.
 >
-> - **Scope:** Retry with the same key within the provider's idempotency window.
-> - **Recovery:** Reconcile purchases with expired or missing keys before retrying.
->
-> ![A pure decision selects same-key retry for a valid key or reconciliation for a missing or expired key, with external I/O outside the boundary](https://raw.githubusercontent.com/lanej/dotfiles/8a4ecb71493b9bf373e167e237ae8f8301bd3b80/docs/images/decision-boundaries.svg)
+> - **Before rotation:** Configure receivers to accept the replacement key alongside the current key.
+> - **Retire the old key:** Wait until deliveries signed with it finish. New deliveries use the replacement key.
+
+The opening pairs the outcome with its condition. The labels expose distinct operator actions in order.
 
 ## Output
 
