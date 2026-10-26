@@ -1952,25 +1952,12 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"3rd/image.nvim",
-		build = false,
-		-- Disable in tmux due to known issues with allow-passthrough and session switching
-		-- See: https://github.com/3rd/image.nvim/issues/145
-		-- Images may appear on wrong tmux session when switching sessions
-		cond = function()
-			return vim.env.TMUX == nil
-		end,
+		"folke/snacks.nvim",
+		priority = 1000,
+		lazy = false,
 		opts = {
-			processor = "magick_cli",
-			integrations = {
-				markdown = {
-					enabled = true,
-					download_remote_images = true,
-					filetypes = { "markdown" },
-				},
-			},
+			image = { enabled = true },
 		},
-		ft = { "markdown" },
 	},
 	{
 		"brenoprata10/nvim-highlight-colors",
