@@ -24,16 +24,26 @@ import time
 
 _state_loader = SourceFileLoader(
     "tmux_claude_state", str(Path(__file__).with_name("tmux-claude-state")))
+_state_spec = importlib.util.spec_from_loader(_state_loader.name, _state_loader)
 state = sys.modules.get(_state_loader.name)
+_new_state = state is None
 if state is None:
-    _state_spec = importlib.util.spec_from_loader(_state_loader.name, _state_loader)
     state = importlib.util.module_from_spec(_state_spec)
     sys.modules[_state_loader.name] = state
-    try:
-        _state_loader.exec_module(state)
-    except BaseException:
-        del sys.modules[_state_loader.name]
-        raise
+else:
+    _state_template = importlib.util.module_from_spec(_state_spec)
+    for _attribute in ("__loader__", "__spec__", "__file__", "__cached__",
+                       "__package__", "__path__"):
+        if _attribute in _state_template.__dict__:
+            setattr(state, _attribute, getattr(_state_template, _attribute))
+        else:
+            state.__dict__.pop(_attribute, None)
+try:
+    _state_loader.exec_module(state)
+except BaseException:
+    if _new_state:
+        sys.modules.pop(_state_loader.name, None)
+    raise
 
 # The shared idle threshold was chosen for Claude's one-hour prompt cache.
 # Codex uses the same visual aging interval, independent of its cache policy.
