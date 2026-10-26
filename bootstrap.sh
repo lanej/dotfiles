@@ -953,6 +953,7 @@ install_dependencies() {
 	install_package_version stylua 2.0.2
 
 	# editor
+	install_from_package_manager imagemagick || return 1
 	install_package_version neovim 0.12.5 # Treesitter's main branch requires 0.12+
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh
