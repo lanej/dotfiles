@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 
@@ -12,12 +13,51 @@ import pytest
 
 
 @pytest.fixture
-def load_script():
-    def load(name):
-        loader = SourceFileLoader(name.replace("-", "_"), str(Path(__file__).with_name(name)))
+def load_script(request):
+    missing = object()
+    registered = {}
+    active = {}
+
+    def restore_registered_modules():
+        for name, module in registered.items():
+            if module is missing:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
+
+    request.addfinalizer(restore_registered_modules)
+
+    def load(name, path=None, register=False):
+        loader = SourceFileLoader(name.replace("-", "_"),
+                                  str(path or Path(__file__).with_name(name)))
         spec = importlib.util.spec_from_loader(loader.name, loader)
-        app = importlib.util.module_from_spec(spec)
-        loader.exec_module(app)
+        previous = active.get(loader.name) if register else None
+        template = importlib.util.module_from_spec(spec)
+        app = previous
+        if app is None:
+            app = template
+        else:
+            for attribute in ("__loader__", "__spec__", "__file__", "__cached__",
+                              "__package__", "__path__"):
+                if attribute in template.__dict__:
+                    setattr(app, attribute, getattr(template, attribute))
+                else:
+                    app.__dict__.pop(attribute, None)
+        if register:
+            registered.setdefault(loader.name, sys.modules.get(loader.name, missing))
+            active[loader.name] = app
+            sys.modules[loader.name] = app
+        try:
+            loader.exec_module(app)
+        except BaseException:
+            if register and previous is None:
+                active.pop(loader.name, None)
+                original = registered[loader.name]
+                if original is missing:
+                    sys.modules.pop(loader.name, None)
+                else:
+                    sys.modules[loader.name] = original
+            raise
         return app
     return load
 
