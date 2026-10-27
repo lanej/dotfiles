@@ -1726,7 +1726,7 @@ require("lazy").setup({
 				formatters_by_ft = {
 					lua = { "stylua" },
 					-- Conform will run multiple formatters sequentially
-					python = { "isort", "black" },
+					python = { "isort", "black", timeout_ms = 5000 },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
