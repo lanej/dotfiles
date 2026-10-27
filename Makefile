@@ -271,10 +271,6 @@ claude-config: software-standard
 	@git -C $(DOTFILES) config filter.claude-settings.clean 'jq --indent 2 "del(.feedbackSurveyState)"'
 	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
 	$(call require-command,jq)
-	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
-	@temporary=$$(mktemp "$(HOME)/.claude.json.XXXXXX") || exit 1; \
-	trap 'rm -f "$$temporary"' 0; \
-	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
