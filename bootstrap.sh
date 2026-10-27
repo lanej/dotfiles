@@ -604,8 +604,12 @@ install_no-mistakes_from_release() {
 	install_firstmate_release no-mistakes "$1"
 }
 
-install_firstmate_tools() {
+install_treehouse_tools() {
 	install_package_version treehouse 3.1.6 || return 1
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
+}
+
+install_firstmate_tools() {
 	install_package_version no-mistakes 1.84.0 || return 1
 	local tool version tool_version
 	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
@@ -978,6 +982,7 @@ install_dependencies() {
 	# AI coding tools, installed before Make links their configuration.
 	install_package_version codex 0.162.0
 	install_package_version claude-code 2.1.295
+	install_treehouse_tools || return 1
 	install_firstmate_tools || return 1
 
 	# terminal candy
