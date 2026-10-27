@@ -297,7 +297,7 @@ codex-skills: software-standard
 SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:
-	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" $(AGENT_STATUS_INSTALL_FLAGS)
+	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" --no-start $(AGENT_STATUS_INSTALL_FLAGS)
 	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
 # The aggregate waits for hook migration before installing Codex hooks. The
 # standalone config target remains usable without the broker.

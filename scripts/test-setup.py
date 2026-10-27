@@ -44,9 +44,17 @@ def main():
                        '  echo "Fixture network unavailable" >&2; exit 1\nfi\n'
                        f'exec "{shutil.which("git")}" "$@"\n')
         git.chmod(0o755)
+        broker = executables / "agent-status-broker"
+        broker.write_text('#!/bin/sh\n[ "$1" = install ] || exit 1\n'
+                          'case " $* " in\n'
+                          '  *" --no-start "*) ;;\n'
+                          '  *) touch "$HOME/broker-started" ;;\n'
+                          'esac\ntouch "$HOME/broker-installed"\n')
+        broker.chmod(0o755)
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
         env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
+               "AGENT_STATUS_BIN": str(broker),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
         dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
@@ -75,6 +83,9 @@ def main():
         assert "Missing dependency: tmux." in partial.stdout, partial.stdout
         assert "\033[32m✓\033[0m cargo" in partial.stdout, partial.stdout
         assert "\033[32m✓\033[0m tmux-config" in partial.stdout, partial.stdout
+        assert "\033[32m✓\033[0m agent-status-broker" in partial.stdout, partial.stdout
+        assert (home / "broker-installed").is_file()
+        assert not (home / "broker-started").exists(), "default make started the broker"
         assert "incomplete" in partial.stdout
         assert "instruction-size" not in partial.stdout and "audit-skills" not in partial.stdout
         assert "test-ui-review" not in partial.stdout
@@ -164,6 +175,7 @@ def main():
         assert "\033[" not in repeated.stdout, repeated.stdout
         assert snapshot(home) == installed, "rerun changed installed configuration"
         assert Path(env["SETUP_TMUX_STATE"]).read_text() == "user-session"
+        assert not (home / "broker-started").exists(), "rerun started the broker"
         print("PASS: default make gates OS tools, reports partial setup, and preserves installed configuration, local plugins, and user sessions on retry.")
 
 
