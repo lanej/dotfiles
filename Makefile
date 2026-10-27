@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := setup
 SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
 SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
-SETUP_TARGETS += dev-cache-config
+SETUP_TARGETS += dev-cache-config ep-direnv
 SETUP_TARGETS += firstmate-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
@@ -59,7 +59,9 @@ dev:
 	@mkdir -p $(HOME)/src
 shell:
 	@mkdir -p $(HOME)/.local/bin
-	@ln -fs $(DOTFILES)/bin/* $(HOME)/.local/bin/
+	@for source in "$(DOTFILES)"/bin/*; do \
+		[ "$${source##*/}" = ep-direnv ] || ln -fs "$$source" "$(HOME)/.local/bin/"; \
+	done
 	@ln -fs $(DOTFILES)/sh/alias $(HOME)/.alias
 	@ln -fs $(DOTFILES)/sh/profile $(HOME)/.profile
 	@mkdir -p $(HOME)/.config/htop
@@ -285,10 +287,6 @@ claude-config: software-standard
 	@git -C $(DOTFILES) config filter.claude-settings.clean 'jq --indent 2 "del(.feedbackSurveyState)"'
 	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
 	$(call require-command,jq)
-	@[ -f $(HOME)/.claude.json ] || echo '{}' > $(HOME)/.claude.json
-	@temporary=$$(mktemp "$(HOME)/.claude.json.XXXXXX") || exit 1; \
-	trap 'rm -f "$$temporary"' 0; \
-	jq --slurpfile mcp $(DOTFILES)/.claude/mcp-servers.json '.mcpServers = ((.mcpServers // {}) + $$mcp[0])' $(HOME)/.claude.json > "$$temporary" && mv "$$temporary" $(HOME)/.claude.json
 SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
@@ -588,3 +586,19 @@ test-paseo-lifecycle:
 .PHONY: paseo-start paseo-pair paseo-stop test-paseo-lifecycle
 
 .PHONY: test-pragmatic-hexagonal
+
+.PHONY: ep-direnv ep-direnv-uninstall
+ep-direnv:
+	@sh "$(DOTFILES)/scripts/install-ep-direnv.sh" install "$(DOTFILES)" "$(HOME)"
+ep-direnv-uninstall:
+	@sh "$(DOTFILES)/scripts/install-ep-direnv.sh" uninstall "$(DOTFILES)" "$(HOME)"
+
+.PHONY: epenv
+epenv: ep-direnv
+	@target="$(HOME)/.local/bin/epenv"; source="$(DOTFILES)/bin/epenv"; \
+	if [ -e "$$target" ] || [ -L "$$target" ]; then \
+		[ -L "$$target" ] && [ "$$(readlink "$$target")" = "$$source" ] || { \
+			printf 'epenv: preserving existing destination: %s\n' "$$target" >&2; exit 1; }; \
+	else \
+		mkdir -p "$(HOME)/.local/bin" && ln -s "$$source" "$$target"; \
+	fi

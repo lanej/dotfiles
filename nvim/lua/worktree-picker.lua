@@ -389,8 +389,6 @@ function M.pick()
 					width = 0.94,
 					height = math.min(math.floor(vim.o.lines * 0.85), 36),
 					preview = {
-						layout = "flex",
-						flip_columns = 150,
 						horizontal = "right:45%",
 						vertical = "down:60%",
 						wrap = true,

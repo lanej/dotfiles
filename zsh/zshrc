@@ -470,9 +470,8 @@ fi
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"
 
-# direnv is wired lazily in zsh/lazy-load.zsh (only hooks in on a directory
-# with .envrc); a second unconditional hook here used to run on every shell
-# regardless, defeating that.
+# direnv detection and evaluation run at startup and on directory changes.
+# The integration lives in zsh/lazy-load.zsh.
 
 # Load tmux auto-titling functionality
 [[ -r "${HOME}/.local/share/zsh/tmux-auto-title.zsh" ]] && source "${HOME}/.local/share/zsh/tmux-auto-title.zsh"

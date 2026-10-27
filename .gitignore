@@ -6,6 +6,9 @@ bin/mate
 bin/*
 !bin/firstmate
 !bin/firstmate-*
+!bin/ep-direnv
+!bin/epenv
+!bin/epenv_test.py
 vim/spell
 vim/plugged
 vim/session

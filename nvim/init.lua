@@ -1596,13 +1596,7 @@ require("lazy").setup({
 	{
 		"folke/todo-comments.nvim",
 		config = function()
-			require("todo-comments").setup({
-				keywords = {
-					WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
-					SEE = { icon = "👀", color = "info", alt = { "REF" } },
-					TODO = { icon = "🫥", color = "info", alt = { "FIXME" } },
-				},
-			})
+			require("annotations").setup()
 		end,
 	},
 	{
@@ -1726,7 +1720,7 @@ require("lazy").setup({
 				formatters_by_ft = {
 					lua = { "stylua" },
 					-- Conform will run multiple formatters sequentially
-					python = { "isort", "black" },
+					python = { "isort", "black", timeout_ms = 5000 },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },

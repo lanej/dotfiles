@@ -103,17 +103,22 @@ os.execv({shutil.which("uv")!r}, [{shutil.which("uv")!r}, *os.sys.argv[1:]])
             "disabled@local": [{"scope": "user", "installPath": str(disabled)}],
         },
     }))
-    (repo / ".claude/mcp-servers.json").write_text(json.dumps({
+    user_servers = {
         "workspace": {"command": "tool with spaces", "args": ["mcp", "arg with space", ""],
                       "env": {"REGION": "us west"}},
         "no-args": {"command": "standalone"},
         "qmd": {"type": "http", "url": "http://localhost:8181/mcp"},
         "kagi": {"type": "http", "url": "https://mcp.kagi.com/mcp",
                  "headers": {"Authorization": "Bearer ${KAGI_MCP_BEARER}"}},
+    }
+    (repo / ".claude/mcp-servers.json").write_text(json.dumps({
+        "unwanted-default": {"command": "unwanted"},
     }))
-    (home / ".claude.json").write_text(json.dumps({
-        "mcpServers": {"codex": {"command": "codex", "args": ["mcp-server"]}},
-    }))
+    claude_config = {
+        "mcpServers": {**user_servers, "codex": {"command": "codex", "args": ["mcp-server"]}},
+        "localPreference": "retained",
+    }
+    (home / ".claude.json").write_text(json.dumps(claude_config))
     qmd = {"transport": {"type": "streamable_http", "url": "http://localhost:8181/mcp"},
            "enabled": False, "startup_timeout_sec": 42}
     state = home / ".codex/servers.json"
@@ -159,6 +164,7 @@ else:
     subprocess.run([*command, "codex"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     installed_config = (home / ".codex/config.toml").read_text()
+    assert json.loads((home / ".claude.json").read_text()) == claude_config
     config = tomllib.loads(installed_config)
     assert config["approval_policy"] == "on-request"
     assert config["approvals_reviewer"] == "auto_review"
@@ -205,5 +211,11 @@ else:
     subprocess.run([*command, "codex"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     assert (home / ".codex/config.toml").read_text() == installed_config
+    assert json.loads((home / ".claude.json").read_text()) == claude_config
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
+    claude_config["mcpServers"] = {}
+    (home / ".claude.json").write_text(json.dumps(claude_config))
+    subprocess.run([*command, "claude-config"], cwd=repo, env=env,
+                   check=True, capture_output=True, text=True)
+    assert json.loads((home / ".claude.json").read_text()) == claude_config

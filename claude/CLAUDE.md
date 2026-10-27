@@ -1,11 +1,8 @@
 @CONSTITUTION.md
 
-This file holds tool-specific procedure. Principles live in the Constitution and
-are not restated here; incident narratives live in memory files, reachable via
-the `(detail: memory "‹slug›")` pointers. Constitution principles carrying their own
-incident history: III second-occurrence escalation (memory
-"feedback_escalate_second_occurrence"), IV root-cause-over-workaround (memory
-"feedback_root_cause_over_workaround").
+Tool procedures live here; principles in the Constitution; incidents in memory
+via `(detail: memory "‹slug›")`. Constitution III: memory
+"feedback_escalate_second_occurrence"; IV: "feedback_root_cause_over_workaround".
 
 ## Identity & Communication
 
@@ -17,6 +14,11 @@ Constitution II's retroactive domain correction covers text you rewrote from sou
 
 Auto-memory (`.claude/projects/…/memory/`, `MEMORY.md` index) is authoritative over claude-mem (unfiltered log) when they disagree — trust the memory file, don't reconcile or cite claude-mem over it. New incident-motivated rules: write the narrative to a memory file, leave only the rule + `(detail: memory "‹slug›")` here — this file loads every session, memory files load on demand.
 The claude-mem startup-hook timeline fires only for the primary agent — sub-agents start cold on it; include explicit domain/claude-mem search framing when briefing them on established projects.
+
+## Code Comments
+
+When editing comments, read `~/.files/docs/conventional-code-comments.md`.
+Use tags selectively, honor repository conventions, and leave unrelated comments.
 
 ## Execution & Delegation
 
