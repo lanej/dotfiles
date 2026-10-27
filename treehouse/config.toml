@@ -1,0 +1,2 @@
+root = ".worktrees"
+unique_leaf = true

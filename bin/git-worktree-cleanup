@@ -747,6 +747,11 @@ inspect_worktree() {
     CHECK_DIRTY=0 CHECK_PUSH_URL="" CHECK_PUSH_REMOTE="" CHECK_WIP_BRANCH=""
     CHECK_MERGE="merged"
     [[ "$path" == "$PRIMARY_WORKTREE" ]] && { CHECK_REASON="primary"; return 1; }
+    # The configured Treehouse pool keeps these slots warm between tasks.
+    # Its own return/prune commands own their lifecycle, including idle slots.
+    if [[ "$path" == "$PRIMARY_WORKTREE"/.worktrees/.treehouse/* ]]; then
+        CHECK_REASON="reserved Treehouse pool"; return 1
+    fi
     [[ "$locked" -eq 0 ]] || { CHECK_REASON="locked"; return 1; }
     if [[ "$path" == *\\* || "$path" =~ [[:cntrl:]] ]]; then
         CHECK_REASON="unsupported activity path"; return 1

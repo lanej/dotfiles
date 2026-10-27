@@ -565,6 +565,63 @@ install_codex_from_release() {
 	npm install -g "@openai/codex@$1"
 }
 
+install_firstmate_release() (
+	local tool=$1 version=$2 release_os release_arch stage archive
+	case "$(uname -s)" in
+		Darwin) release_os=darwin ;;
+		Linux) release_os=linux ;;
+		*) echo "Unsupported Firstmate tool OS" >&2; exit 1 ;;
+	esac
+	case "$(uname -m)" in
+		arm64|aarch64) release_arch=arm64 ;;
+		x86_64|amd64) release_arch=amd64 ;;
+		*) echo "Unsupported Firstmate tool architecture" >&2; exit 1 ;;
+	esac
+	stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$stage"' EXIT
+	archive="$tool-v$version-$release_os-$release_arch.tar.gz"
+	local url="https://github.com/kunchenguid/$tool/releases/download/v$version"
+	curl -fsSL "$url/$archive" -o "$stage/$archive" || exit 1
+	curl -fsSL "$url/checksums.txt" -o "$stage/checksums.txt" || exit 1
+	awk -v archive="$archive" '$2 == archive { print }' "$stage/checksums.txt" > "$stage/selected.sha256"
+	test -s "$stage/selected.sha256" || exit 1
+	cd "$stage" || exit 1
+	if command -v sha256sum >/dev/null; then
+		sha256sum -c selected.sha256 || exit 1
+	else
+		shasum -a 256 -c selected.sha256 || exit 1
+	fi
+	tar -xzf "$archive" || exit 1
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 "$tool" "$HOME/.local/bin/$tool"
+)
+
+install_treehouse_from_release() {
+	install_firstmate_release treehouse "$1"
+}
+
+install_no-mistakes_from_release() {
+	install_firstmate_release no-mistakes "$1"
+}
+
+install_firstmate_tools() {
+	install_package_version treehouse 3.1.6 || return 1
+	install_package_version no-mistakes 1.84.0 || return 1
+	local tool version tool_version
+	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
+		tool=${tool_version%:*}
+		version=${tool_version#*:}
+		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
+			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
+		fi
+	done
+	if [ ! -e "$HOME/src/firstmate" ]; then
+		mkdir -p "$HOME/src" || return 1
+		git clone https://github.com/kunchenguid/firstmate "$HOME/src/firstmate" || return 1
+	fi
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" firstmate-config
+}
+
 claude-code_current_semver() {
 	current_heuristic_semver claude
 }
@@ -921,6 +978,7 @@ install_dependencies() {
 	# AI coding tools, installed before Make links their configuration.
 	install_package_version codex 0.162.0
 	install_package_version claude-code 2.1.295
+	install_firstmate_tools || return 1
 
 	# terminal candy
 	if ! command -v tmux >/dev/null; then

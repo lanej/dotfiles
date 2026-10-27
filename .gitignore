@@ -4,6 +4,7 @@ vim/.netrwhist
 bin/mate
 .ssh_config
 bin/*
+!bin/firstmate
 vim/spell
 vim/plugged
 vim/session

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+firstmate_root=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+
+if [[ ${1:-} == --help ]]; then
+	printf '%s\n' \
+		'Usage: firstmate [Codex arguments]' \
+		'Launch or attach to Firstmate with Codex in its own tmux server.' \
+		'FIRSTMATE_HOME overrides ~/src/firstmate.'
+	exit 0
+fi
+
+[[ -x "$firstmate_root/bin/fm-session-start.sh" ]] || {
+	printf 'Firstmate checkout missing: %s\n' "$firstmate_root" >&2
+	exit 1
+}
+
+if [[ ${1:-} == --inside ]]; then
+	shift
+	cd "$firstmate_root"
+	export FM_HOME="$PWD" FM_BACKEND=tmux
+	export FM_CODEX_WATCH_CHECKPOINT=45
+	exec codex --approve-for-me "$@"
+fi
+
+launcher=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+# Clear the caller's tmux identity before connecting to the dedicated server.
+exec env -u TMUX -u TMUX_PANE tmux -f "$HOME/.config/firstmate/tmux.conf" -L firstmate new-session -A \
+	-s firstmate -n captain -c "$firstmate_root" "$launcher" --inside "$@"

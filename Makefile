@@ -2,6 +2,7 @@
 SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
 SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config
+SETUP_TARGETS += firstmate-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
 DOTFILES := $(shell pwd)
@@ -38,6 +39,16 @@ instruction-size:
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
 lint: audit-skills instruction-size
+
+firstmate-config:
+	@test -x "$(HOME)/src/firstmate/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
+	@mkdir -p "$(HOME)/.local/bin" "$(HOME)/.config/treehouse" "$(HOME)/.config/firstmate" "$(HOME)/src/firstmate/config"
+	@ln -fs "$(DOTFILES)/bin/firstmate" "$(HOME)/.local/bin/firstmate"
+	@ln -fs "$(DOTFILES)/firstmate/tmux.conf" "$(HOME)/.config/firstmate/tmux.conf"
+	@ln -fs "$(DOTFILES)/treehouse/config.toml" "$(HOME)/.config/treehouse/config.toml"
+	@ln -fs "$(DOTFILES)/firstmate/backend" "$(HOME)/src/firstmate/config/backend"
+	@ln -fs "$(DOTFILES)/firstmate/crew-harness" "$(HOME)/src/firstmate/config/crew-harness"
+	@ln -fs "$(DOTFILES)/firstmate/codex-approval-mode" "$(HOME)/src/firstmate/config/codex-approval-mode"
 
 banner:
 	@cat banner.txt
