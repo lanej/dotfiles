@@ -1666,10 +1666,20 @@ require("lazy").setup({
 			"ibhagwan/fzf-lua",
 			"nvim-tree/nvim-web-devicons",
 		},
-		cmd = "Octo",
+		cmd = { "Octo", "PRReviews", "PRReviewsAll", "PRReviewCheckout", "PRReviewCleanup" },
+		keys = {
+			{
+				"<leader>gR",
+				function()
+					require("pr-reviews").pick()
+				end,
+				desc = "PR review requests",
+			},
+		},
 		config = function()
 			require("octo").setup({
 				picker = "fzf-lua",
+				mappings = require("pr-reviews").octo_mappings,
 				picker_config = {
 					use_emojis = false,
 					mappings = {
@@ -1677,6 +1687,7 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("pr-reviews").setup()
 		end,
 	},
 	{
