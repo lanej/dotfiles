@@ -25,6 +25,5 @@ if [[ ${1:-} == --inside ]]; then
 fi
 
 launcher=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
-# Clear the caller's tmux identity before connecting to the dedicated server.
-exec env -u TMUX -u TMUX_PANE tmux -f "$HOME/.config/firstmate/tmux.conf" -L firstmate new-session -A \
+exec "$(dirname "$launcher")/firstmate-tmux" new-session -A \
 	-s firstmate -n captain -c "$firstmate_root" "$launcher" --inside "$@"

@@ -5,6 +5,7 @@ bin/mate
 .ssh_config
 bin/*
 !bin/firstmate
+!bin/firstmate-*
 vim/spell
 vim/plugged
 vim/session

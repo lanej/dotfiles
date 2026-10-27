@@ -44,6 +44,9 @@ firstmate-config:
 	@test -x "$(HOME)/src/firstmate/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
 	@mkdir -p "$(HOME)/.local/bin" "$(HOME)/.config/treehouse" "$(HOME)/.config/firstmate" "$(HOME)/src/firstmate/config"
 	@ln -fs "$(DOTFILES)/bin/firstmate" "$(HOME)/.local/bin/firstmate"
+	@ln -fs "$(DOTFILES)/bin/firstmate-tmux" "$(HOME)/.local/bin/firstmate-tmux"
+	@ln -fs "$(DOTFILES)/bin/firstmate-attach" "$(HOME)/.local/bin/firstmate-attach"
+	@ln -fs "$(DOTFILES)/bin/firstmate-reload" "$(HOME)/.local/bin/firstmate-reload"
 	@ln -fs "$(DOTFILES)/firstmate/tmux.conf" "$(HOME)/.config/firstmate/tmux.conf"
 	@ln -fs "$(DOTFILES)/treehouse/config.toml" "$(HOME)/.config/treehouse/config.toml"
 	@ln -fs "$(DOTFILES)/firstmate/backend" "$(HOME)/src/firstmate/config/backend"

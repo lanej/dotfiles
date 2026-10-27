@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ${1:-} == --help ]]; then
+	printf '%s\n' 'Usage: firstmate-attach [attach-session options]' \
+		'Attach to the running Firstmate session. Use firstmate to start it.'
+	exit 0
+fi
+
+helper_dir=$(cd "$(dirname "$0")" && pwd)
+exec "$helper_dir/firstmate-tmux" attach-session -t firstmate "$@"
