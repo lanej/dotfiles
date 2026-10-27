@@ -154,7 +154,7 @@ def forward(name, args):
     worktree = state['configs'].get(str(gitdir / 'config.worktree'), [])
     local = state['configs'].get(str(common / 'config'), [])
     original = (worktree or local or [state['inherited']])[-1]
-    hook = Path(original) / name  # Relative paths retain the invoking Git cwd.
+    hook = Path(original).expanduser() / name  # Relative paths retain the invoking Git cwd.
     status = 0
     if hook.is_file() and os.access(hook, os.X_OK):
         status = subprocess.run([str(hook.absolute()), *args]).returncode

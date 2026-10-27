@@ -149,6 +149,18 @@ def workflow():
         setup('uninstall')
         assert git('config', '--local', '--get', 'core.hooksPath').stdout.strip() == 'custom-hooks'
         assert git('config', '--worktree', '--get', 'core.hooksPath', cwd=wt).stdout.strip() == 'worktree-hooks'
+        # Git expands home-relative hook paths; forwarding must do the same.
+        custom = home / 'custom-hooks'
+        custom.mkdir()
+        hook = custom / 'pre-commit'
+        hook.write_text('#!/bin/sh\nprintf preserved > "$HOME/home-hook"\nexit 8\n')
+        hook.chmod(0o755)
+        git('config', 'core.hooksPath', '~/custom-hooks')
+        setup()
+        result = git('commit', '--allow-empty', '-m', 'blocked', check=False)
+        assert result.returncode != 0 and (home / 'home-hook').read_text() == 'preserved'
+        setup('uninstall')
+        assert git('config', '--get', 'core.hooksPath').stdout.strip() == '~/custom-hooks'
         # Existing custom, symlinked and tracked files are never approved or rewritten.
         (repo / '.envrc').write_text('export CUSTOM=yes\n')
         setup()
