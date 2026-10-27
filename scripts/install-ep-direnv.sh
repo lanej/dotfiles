@@ -4,6 +4,9 @@ set -eu
 action=$1
 source_dir=$2
 target_home=$3
+if [ "$action" = install ] && ! command -v withenv >/dev/null 2>&1; then
+    action=uninstall
+fi
 bin_target="$target_home/.local/bin/ep-direnv"
 lib_target="$target_home/.config/direnv/lib/easypost_legacy.sh"
 check_target() {

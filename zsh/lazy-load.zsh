@@ -53,6 +53,9 @@ bq() {
 
 # Detect legacy applications before evaluating direnv, including after initialization.
 if command -v direnv >/dev/null; then
+    eval "$(direnv hook zsh)"
+fi
+if command -v direnv >/dev/null && command -v withenv >/dev/null; then
     _ep_direnv_enter() {
         if command -v ep-direnv >/dev/null; then
             ep-direnv ensure "$PWD" || return
@@ -60,7 +63,6 @@ if command -v direnv >/dev/null; then
         _direnv_hook
     }
     autoload -U add-zsh-hook
-    eval "$(direnv hook zsh)"
     add-zsh-hook -d chpwd _direnv_hook
     add-zsh-hook chpwd _ep_direnv_enter
     _ep_direnv_enter

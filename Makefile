@@ -45,7 +45,9 @@ dev:
 	@mkdir -p $(HOME)/src
 shell:
 	@mkdir -p $(HOME)/.local/bin
-	@ln -fs $(DOTFILES)/bin/* $(HOME)/.local/bin/
+	@for source in "$(DOTFILES)"/bin/*; do \
+		[ "$${source##*/}" = ep-direnv ] || ln -fs "$$source" "$(HOME)/.local/bin/"; \
+	done
 	@ln -fs $(DOTFILES)/sh/alias $(HOME)/.alias
 	@ln -fs $(DOTFILES)/sh/profile $(HOME)/.profile
 	@mkdir -p $(HOME)/.config/htop
