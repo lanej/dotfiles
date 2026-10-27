@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accept navigation through real Neovim, Ctags, Tree-sitter, rg, and FzfLua.
+"""Accept navigation and annotations through real Neovim and locked plugins.
 
 Run: uv run --no-project scripts/test-nvim-navigation.py
 Requires Neovim 0.12+, Universal Ctags, git, cc, fzf 0.59+, rg, and network
@@ -57,6 +57,8 @@ def main():
             ("fzf-lua", "ibhagwan/fzf-lua"),
             ("nvim-treesitter", "nvim-treesitter/nvim-treesitter"),
             ("vim-gutentags", "ludovicchabant/vim-gutentags"),
+            ("todo-comments.nvim", "folke/todo-comments.nvim"),
+            ("plenary.nvim", "nvim-lua/plenary.nvim"),
         ):
             checkout(f"https://github.com/{repository}.git", lock[name]["commit"], plugins / name, env)
         # Use the grammar revision selected by the locked Tree-sitter plugin.
@@ -75,8 +77,9 @@ def main():
             sources.append(source / "src/scanner.c")
         run(["cc", "-shared", "-fPIC", "-O2", "-I", str(source / "src"),
              *map(str, sources), "-o", str(parser)])
-        print("Running isolated navigation acceptance with locked plugins", flush=True)
+        print("Running isolated navigation and annotations acceptance with locked plugins", flush=True)
         run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/navigation.lua"], env=env)
+        run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/annotations.lua"], env=env)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-name: Neovim navigation acceptance
+name: Neovim navigation and annotations acceptance
 
 on:
   pull_request:
@@ -41,5 +41,5 @@ jobs:
           curl --fail --location --retry 3 "https://github.com/junegunn/fzf/releases/download/v0.59.0/fzf-0.59.0-$fzf_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/navigation-tools/bin"
           echo "$RUNNER_TEMP/navigation-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP/navigation-tools/bin" >> "$GITHUB_PATH"
-      - name: Accept navigation without user configuration or cloud tools
+      - name: Accept navigation and annotations without user configuration or cloud tools
         run: uv run --no-project scripts/test-nvim-navigation.py
