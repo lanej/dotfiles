@@ -2,6 +2,7 @@
 local repo = vim.fn.getcwd()
 local temp = vim.fn.tempname()
 vim.fn.mkdir(temp, "p")
+temp = assert(vim.uv.fs_realpath(temp))
 local lazy = vim.env.NVIM_TEST_PLUGIN_ROOT or vim.fn.expand("~/.local/share/nvim/lazy")
 vim.opt.runtimepath:prepend(repo .. "/nvim")
 vim.opt.runtimepath:append(lazy .. "/todo-comments.nvim")
