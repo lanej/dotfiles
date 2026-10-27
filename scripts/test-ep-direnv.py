@@ -22,13 +22,18 @@ def workflow():
         base = Path(tmp)
         home = base / 'home'
         home.mkdir()
+        machine_bin = base / 'machine-bin'
+        machine_bin.mkdir()
+        withenv = machine_bin / 'withenv'
+        withenv.write_text('#!/bin/sh\nexit 0\n')
+        withenv.chmod(0o755)
         lib = home / '.config/direnv/lib'
         lib.mkdir(parents=True)
         (lib / 'easypost_legacy.sh').symlink_to(SOURCE / 'direnv/easypost_legacy.sh')
         env = {**os.environ, 'HOME': str(home), 'XDG_CONFIG_HOME': str(home / '.config'),
                'XDG_DATA_HOME': str(home / '.local/share'), 'XDG_CACHE_HOME': str(home / '.cache'),
                'GIT_CONFIG_GLOBAL': '/dev/null', 'GIT_CONFIG_NOSYSTEM': '1',
-               'PATH': str(SOURCE / 'bin') + ':' + str(Path(DIRENV).parent) + ':' + os.environ['PATH'],
+               'PATH': str(machine_bin) + ':' + str(SOURCE / 'bin') + ':' + str(Path(DIRENV).parent) + ':' + os.environ['PATH'],
                'DIRENV_LOG_FORMAT': '', 'KEEP_PARENT': 'present'}
         for key in ('DIRENV_DIR', 'DIRENV_DIFF', 'DIRENV_WATCHES', 'ENVFILE', 'EXTRA_ENVFILES', 'IN_SRVENV'):
             env.pop(key, None)
@@ -109,6 +114,13 @@ def workflow():
         lazy = SOURCE / 'zsh/lazy-load.zsh'
         if not lazy.exists():
             lazy = SOURCE / 'lazy-load.zsh'
+        personal_bin = base / 'personal-bin'
+        personal_bin.mkdir()
+        for tool in ('direnv', 'bash', 'zsh', 'sh', 'dirname', 'readlink', 'rm'):
+            (personal_bin / tool).symlink_to(run('which', tool).stdout.strip())
+        personal_env = {**env, 'PATH': str(personal_bin)}
+        shell = 'source "$1"; (( $+functions[_direnv_hook] )) && (( ! $+functions[_ep_direnv_enter] )) && (( ${chpwd_functions[(Ie)_direnv_hook]} ))'
+        run('zsh', '-f', '-i', '-c', shell, 'test', str(lazy), cwd=home, env=personal_env)
         shell = 'source "$1"; test "$SHARED" = updated || exit 2; cd "$HOME"; test -z "${SHARED+x}" || exit 3; cd "$2"; test "$SHARED" = updated'
         run('zsh', '-f', '-i', '-c', shell, 'test', str(lazy), str(wt), cwd=wt, env=env)
         shell = 'source "$1"; cd "$2"; test "$SHARED" = updated'
@@ -225,6 +237,10 @@ def workflow():
         run('sh', installer, 'install', str(SOURCE), str(install_home))
         run('sh', installer, 'install', str(SOURCE), str(install_home))
         assert destination.is_symlink()
+        run('sh', installer, 'install', str(SOURCE), str(install_home), env=personal_env)
+        assert not destination.exists()
+        assert not (install_home / '.config/direnv/lib/easypost_legacy.sh').exists()
+        run('sh', installer, 'install', str(SOURCE), str(install_home))
         destination.unlink()
         destination.write_text('later-user-file\n')
         run('sh', installer, 'uninstall', str(SOURCE), str(install_home))
