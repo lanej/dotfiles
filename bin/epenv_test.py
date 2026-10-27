@@ -6,11 +6,14 @@ import shutil
 import shlex
 import subprocess
 
+import pytest
+
 
 def test_profile_command_is_independent_of_the_parent_shell(tmp_path):
+    if not shutil.which('withenv'):
+        pytest.skip('EasyPost machine required: withenv is unavailable')
     assert shutil.which('ep-direnv'), 'Install ep-direnv to run this detector'
     assert shutil.which('direnv'), 'Install direnv to run this detector'
-    assert shutil.which('withenv'), 'Install legacy EasyPost withenv to run this detector'
     program = Path(__file__).with_name('epenv')
     root = tmp_path / 'app'
     child = root / 'nested'
