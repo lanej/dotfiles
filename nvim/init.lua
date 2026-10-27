@@ -1596,13 +1596,7 @@ require("lazy").setup({
 	{
 		"folke/todo-comments.nvim",
 		config = function()
-			require("todo-comments").setup({
-				keywords = {
-					WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
-					SEE = { icon = "👀", color = "info", alt = { "REF" } },
-					TODO = { icon = "🫥", color = "info", alt = { "FIXME" } },
-				},
-			})
+			require("annotations").setup()
 		end,
 	},
 	{

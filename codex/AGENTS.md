@@ -6,6 +6,14 @@ For software design, implementation, modification, debugging, and review, read
 and follow the Builder skill, architecture standard, and construction policy it identifies.
 <!-- builder:end -->
 
+# Code comments
+
+When adding or changing source comments, read
+`~/.files/docs/conventional-code-comments.md` and use `TAG: explanation`
+selectively for rationale, constraints, or consequences. Honor the target
+repository's conventions; keep ordinary comments, documentation comments, and
+docstrings when they communicate better. Do not rewrite unrelated comments.
+
 # Unix philosophy
 
 Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
