@@ -4,6 +4,9 @@ vim/.netrwhist
 bin/mate
 .ssh_config
 bin/*
+!bin/ep-direnv
+!bin/epenv
+!bin/epenv_test.py
 vim/spell
 vim/plugged
 vim/session

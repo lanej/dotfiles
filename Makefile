@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := setup
 SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
 SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
-SETUP_TARGETS += dev-cache-config
+SETUP_TARGETS += dev-cache-config ep-direnv
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
 DOTFILES := $(shell pwd)
@@ -574,3 +574,19 @@ test-paseo-lifecycle:
 .PHONY: paseo-start paseo-pair paseo-stop test-paseo-lifecycle
 
 .PHONY: test-pragmatic-hexagonal
+
+.PHONY: ep-direnv ep-direnv-uninstall
+ep-direnv:
+	@sh "$(DOTFILES)/scripts/install-ep-direnv.sh" install "$(DOTFILES)" "$(HOME)"
+ep-direnv-uninstall:
+	@sh "$(DOTFILES)/scripts/install-ep-direnv.sh" uninstall "$(DOTFILES)" "$(HOME)"
+
+.PHONY: epenv
+epenv: ep-direnv
+	@target="$(HOME)/.local/bin/epenv"; source="$(DOTFILES)/bin/epenv"; \
+	if [ -e "$$target" ] || [ -L "$$target" ]; then \
+		[ -L "$$target" ] && [ "$$(readlink "$$target")" = "$$source" ] || { \
+			printf 'epenv: preserving existing destination: %s\n' "$$target" >&2; exit 1; }; \
+	else \
+		mkdir -p "$(HOME)/.local/bin" && ln -s "$$source" "$$target"; \
+	fi
