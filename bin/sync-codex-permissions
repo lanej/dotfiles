@@ -1,11 +1,18 @@
-#!/usr/bin/env python3
-"""Install Approve for me defaults without replacing local Codex configuration."""
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["tomlkit>=0.13,<1"]
+# ///
+"""Install approval defaults and host-specific GitHub access in Codex."""
+import copy
 import os
 from pathlib import Path
-import re
+import socket
 import sys
 import tempfile
 import tomllib
+
+import tomlkit
 
 
 DEFAULTS = {
@@ -13,17 +20,8 @@ DEFAULTS = {
     "approvals_reviewer": "auto_review",
     "sandbox_mode": "workspace-write",
 }
-
-
-def find_assignment(pattern, text):
-    """Ignore apparent syntax inside unfinished multiline TOML values."""
-    for match in re.finditer(pattern, text, re.MULTILINE):
-        try:
-            tomllib.loads(text[:match.start()])
-        except tomllib.TOMLDecodeError:
-            continue
-        return match
-    return None
+GITHUB_APP = "connector_76869538009648d5b282a4bb21c3d157"
+GITHUB_PLUGINS = ("github@openai-curated", "github@openai-curated-remote")
 
 
 def main():
@@ -33,31 +31,24 @@ def main():
         path = path.resolve(strict=True)
     original = path.read_text() if path.exists() else ""
     config = tomllib.loads(original)
-    if all(config.get(key) == value for key, value in DEFAULTS.items()):
+    hostname = os.environ.get("CODEX_HOSTNAME") or socket.gethostname()
+    github_enabled = "easypost" not in hostname.casefold()
+    expected = copy.deepcopy(config)
+    expected.update(DEFAULTS)
+    expected.setdefault("apps", {}).setdefault(GITHUB_APP, {})["enabled"] = github_enabled
+    for plugin in GITHUB_PLUGINS:
+        expected.setdefault("plugins", {}).setdefault(plugin, {})["enabled"] = github_enabled
+    if config == expected:
         return
 
-    # Only root assignments belong to these defaults; nested app/profile
-    # overrides remain local configuration.
-    table = find_assignment(r"^[ \t]*\[", original)
-    end = table.start() if table else len(original)
-    header = original[:end]
-    for key in DEFAULTS:
-        assignment = find_assignment(
-            rf"""^[ \t]*(?:{key}|"{key}"|'{key}')[ \t]*=""", header)
-        if assignment:
-            value_end = assignment.start()
-            for line in header[assignment.start():].splitlines(keepends=True):
-                value_end += len(line)
-                try:
-                    parsed = tomllib.loads(header[assignment.start():value_end])
-                except tomllib.TOMLDecodeError:
-                    continue
-                if key in parsed:
-                    break
-            header = header[:assignment.start()] + header[value_end:]
-    settings = "".join(f'{key} = "{value}"\n' for key, value in DEFAULTS.items())
-    updated = settings + header + original[end:]
-    expected = config | DEFAULTS
+    document = tomlkit.parse(original)
+    document.update(DEFAULTS)
+    apps = document.setdefault("apps", tomlkit.table())
+    apps.setdefault(GITHUB_APP, tomlkit.table())["enabled"] = github_enabled
+    plugins = document.setdefault("plugins", tomlkit.table())
+    for plugin in GITHUB_PLUGINS:
+        plugins.setdefault(plugin, tomlkit.table())["enabled"] = github_enabled
+    updated = tomlkit.dumps(document)
     if tomllib.loads(updated) != expected:
         raise ValueError("could not preserve unrelated Codex configuration")
 
@@ -70,6 +61,8 @@ def main():
             temporary = Path(output.name)
             output.write(updated)
         temporary.chmod(mode)
+        if (path.read_text() if path.exists() else "") != original:
+            raise ValueError("Codex configuration changed during installation")
         temporary.replace(path)
     finally:
         if temporary and temporary.exists():

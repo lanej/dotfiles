@@ -31,7 +31,12 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
         'approval_policy = "leave this instruction alone"\n"""\n'
         'approval_policy = "never"\napprovals_reviewer = "user"\n'
         'sandbox_mode = "read-only"\n'
-        '[apps.local]\napprovals_reviewer = "user"\n')
+        '[apps.local]\napprovals_reviewer = "user"\n'
+        '[apps.connector_76869538009648d5b282a4bb21c3d157]\n'
+        'enabled = true # local GitHub setting\nopen_world_enabled = false\n'
+        '[plugins."github@openai-curated"]\nenabled = true\n'
+        '[plugins."github@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."retained@local"]\nenabled = false\n')
 
     for name in ("sync-codex-permissions", "sync-codex-mcp-servers", "sync-codex-skills",
                  "sync-codex-agents", "sync-claude-shared", "claude-remove-blocked-plugins"):
@@ -152,6 +157,7 @@ else:
     subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
     env = dict(os.environ, PATH=f"{executables}:/usr/bin:/bin",
                UV="uv",
+               CODEX_HOSTNAME="lanej.EasyPost",
                AGENT_STATUS_INSTALL_FLAGS="--no-start",
                AGENT_STATUS_BIN=str(broker),
                UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
@@ -173,6 +179,13 @@ else:
     assert config["developer_instructions"] == (
         '[Review guidance]\napproval_policy = "leave this instruction alone"\n')
     assert config["apps"]["local"]["approvals_reviewer"] == "user"
+    github = config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]
+    assert github["enabled"] is False
+    assert github["open_world_enabled"] is False
+    assert config["plugins"]["github@openai-curated"]["enabled"] is False
+    assert config["plugins"]["github@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["retained@local"]["enabled"] is False
+    assert "# local GitHub setting" in installed_config
     assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
         "enableTerminalAgentHooks": False, "retained": "kept"}
@@ -212,6 +225,21 @@ else:
                    check=True, capture_output=True, text=True)
     assert (home / ".codex/config.toml").read_text() == installed_config
     assert json.loads((home / ".claude.json").read_text()) == claude_config
+    assert state.read_bytes() == previous_state
+    assert (home / ".codex/hooks.json").read_text() == installed_hooks
+
+    # Moving this installation to a personal host restores GitHub app access.
+    subprocess.run([*command, "codex-permissions"], cwd=repo,
+                   env={**env, "CODEX_HOSTNAME": "lanej.personal"},
+                   check=True, capture_output=True, text=True)
+    personal_config = tomllib.loads((home / ".codex/config.toml").read_text())
+    assert personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] is True
+    assert personal_config["plugins"]["github@openai-curated"]["enabled"] is True
+    assert personal_config["plugins"]["github@openai-curated-remote"]["enabled"] is True
+    personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] = False
+    personal_config["plugins"]["github@openai-curated"]["enabled"] = False
+    personal_config["plugins"]["github@openai-curated-remote"]["enabled"] = False
+    assert personal_config == config, "host policy changed unrelated configuration"
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
     claude_config["mcpServers"] = {}

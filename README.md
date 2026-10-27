@@ -61,6 +61,8 @@ remain linked to their sources. File-linked or lowercase entrypoints are
 normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
 those entrypoints. Missing external skill sources are reported and skipped.
 
+`make`, `make codex`, and `make codex-permissions` disable the Codex GitHub app and its plugins when the hostname contains `easypost` (case-insensitive), so GitHub work uses `gh` on EasyPost equipment. Other hostnames enable the app for personal installs. This updates only the installation's local Codex configuration; unrelated settings are preserved. For machines with different names, supply the classification hostname explicitly, for example `CODEX_HOSTNAME=easypost make codex-permissions` or `CODEX_HOSTNAME=personal make codex-permissions`. Reload Codex after installation to apply changed app access to existing sessions.
+
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
 Names, descriptions, and instructions are preserved; Claude model aliases and

@@ -332,7 +332,7 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-permissions"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
