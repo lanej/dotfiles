@@ -29,8 +29,9 @@ require("fzf-lua").setup({
 	winopts = {
 		border = "single",
 		preview = {
-			layout = "flex", -- use flex layout to enable flipping
-			flip_columns = 140, -- #cols to switch to horizontal on flex
+			layout = "flex",
+			-- WHY: Keep search results full-width until both panes have room.
+			flip_columns = 180,
 			vertical = "down:45%", -- vertical preview when flipped (results top, preview bottom)
 			horizontal = "right:50%", -- horizontal preview default (results left, preview right)
 		},
@@ -41,12 +42,6 @@ require("fzf-lua").setup({
 		-- e.g., ~/.co/nv/lua/file.lua instead of ~/.config/nvim/lua/file.lua
 		path_shorten = 2, -- shorten to 2 chars per directory (more readable than 1)
 		rg_glob = true, -- enable glob parsing
-		winopts = {
-			preview = {
-				layout = "flex",
-				flip_columns = 120, -- when terminal < 120 cols, flip to vertical
-			},
-		},
 	},
 	lsp = {
 		code_actions = {
@@ -366,16 +361,14 @@ vim.keymap.set("n", "<leader>ws", function()
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>wd", function()
-	-- prefer a larger preview window and horizontal split
 	require("fzf-lua").diagnostics_workspace({
-		winopts = { preview = { vertical = "up:68%", layout = "vertical:68%" } },
+		winopts = { preview = { vertical = "up:68%" } },
 	})
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>bd", function()
-	-- prefer a larger preview window and horizontal split
 	require("fzf-lua").diagnostics_document({
-		winopts = { preview = { vertical = "up:68%", layout = "vertical:68%" } },
+		winopts = { preview = { vertical = "up:68%" } },
 	})
 end, { noremap = true, silent = true })
 
@@ -404,8 +397,6 @@ vim.keymap.set({ "n", "v" }, "<leader>ca", function()
 			height = 0.5,
 			border = "double",
 			preview = {
-				layout = "flex",
-				flip_columns = 100,
 				vertical = "down:50%",
 				horizontal = "right:50%",
 			},
@@ -533,8 +524,6 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 			previewer = "builtin",
 			winopts = {
 				preview = {
-					layout = "flex",
-					flip_columns = 120,
 					vertical = "down:60%",
 					horizontal = "right:60%",
 				},

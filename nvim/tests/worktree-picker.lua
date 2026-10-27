@@ -102,7 +102,7 @@ local function workflow()
 	fixture_date = "2002-01-01T00:00:00Z"
 	git(repo, "worktree", "add", "--detach", codex, "main")
 	vim.cmd.cd(linked)
-	vim.o.columns, vim.o.lines = 180, 50
+	vim.o.columns, vim.o.lines = 240, 50
 	vim.fn.maparg(" gw", "n", false, true).callback()
 	wait_for(function()
 		return picker() and picker().fzf_bufnr
@@ -113,6 +113,8 @@ local function workflow()
 		return terminal():find("S13 M13 ?1", 1, true)
 			and preview():find("branch change", 1, true)
 			and picker()._previewer.loaded_entry
+			and preview():find("Branch diff vs primary", 1, true)
+			and preview():find("13 files changed", 1, true)
 	end, "Picker did not render worktree changes and commit preview:\n" .. terminal() .. "\n" .. preview())
 	local text = terminal()
 	assert(text:find("local/t", 1, true) and text:find("touch escaped)", 1, true), text)
@@ -174,7 +176,7 @@ local function workflow()
 		"\n"
 	)
 	assert(visible:find("branch change", 1, true), "Recent commits are not visible below the limited status list")
-	vim.o.columns = 180
+	vim.o.columns = 240
 	vim.api.nvim_exec_autocmds("VimResized", {})
 	wait_for(function()
 		list, detail = layout()
