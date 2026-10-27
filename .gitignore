@@ -5,7 +5,6 @@ bin/mate
 .ssh_config
 bin/*
 !bin/firstmate
-!bin/firstmate-*
 !bin/ep-direnv
 !bin/epenv
 !bin/epenv_test.py
