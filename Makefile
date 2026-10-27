@@ -127,7 +127,7 @@ sql-formatters:
 	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/sql-format-bigquery" --help >/dev/null
 vim: vim-config sql-formatters
-vim-config:
+vim-config: nvim-gh-review
 	@touch $(HOME)/.netrc
 	@mkdir -p $(HOME)/.cache/nvim/undo
 	@mkdir -p $(HOME)/.config/
@@ -138,6 +138,10 @@ vim-config:
 	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
 	@mkdir -p $(HOME)/.local/share/nvim/min
 	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
+.PHONY: nvim-gh-review
+nvim-gh-review:
+	@mkdir -p "$(HOME)/.local/bin"
+	@ln -fs "$(DOTFILES)/bin/nvim-gh-review" "$(HOME)/.local/bin/nvim-gh-review"
 X:
 	$(call require-os,Linux)
 	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources

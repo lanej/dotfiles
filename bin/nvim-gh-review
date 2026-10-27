@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Keep the dedicated review UI outside project sessions and startup buffer resets.
+exec nvim \
+  --cmd "let g:pr_review_default_scope = 'all' | let g:prosession_on_startup = 0" \
+  -c "autocmd VimEnter * ++once lua vim.schedule(function() vim.cmd('PRReviewsAll') end)" \
+  "$@"
