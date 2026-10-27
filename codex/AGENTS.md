@@ -6,6 +6,10 @@ For software design, implementation, modification, debugging, and review, read
 and follow the Builder skill, architecture standard, and construction policy it identifies.
 <!-- builder:end -->
 
+# Markdown formatting
+
+Keep each Markdown paragraph on one source line. Do not hard-wrap prose to a fixed column width; let editors and renderers wrap it.
+
 # Code comments
 
 When adding or changing source comments, read
