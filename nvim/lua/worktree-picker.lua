@@ -432,7 +432,20 @@ function M.pick()
 							vim.notify("Worktree is missing: " .. tree.path, vim.log.levels.ERROR)
 							return
 						end
+						local switching = not tree.current
+						if switching then
+							-- WHY: Prosession wipes buffers even when they contain unsaved edits.
+							for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+								if vim.bo[buffer].modified then
+									vim.notify("Save unsaved buffers before switching worktrees", vim.log.levels.WARN)
+									return
+								end
+							end
+						end
 						vim.cmd("cd " .. vim.fn.fnameescape(tree.path))
+						if switching then
+							vim.cmd("ProsessionReset")
+						end
 						vim.notify("cwd → " .. tree.path)
 					end,
 				},

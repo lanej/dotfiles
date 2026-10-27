@@ -26,6 +26,13 @@ fzf.fzf_exec = function(contents, opts)
 end
 
 local temporary = vim.fn.tempname()
+vim.opt.rtp:append(plugins .. "vim-obsession")
+vim.opt.rtp:append(plugins .. "vim-prosession")
+vim.g.prosession_dir = temporary .. "/sessions/"
+vim.g.prosession_on_startup = 0
+vim.g.prosession_per_branch = 1
+vim.cmd("runtime plugin/obsession.vim")
+vim.cmd("runtime plugin/prosession.vim")
 local repo = temporary .. "/repo with spaces"
 local linked = repo .. "/.worktrees/task $(touch escaped)"
 local codex = temporary .. "/codex-worktrees/session/repo with spaces"
@@ -101,7 +108,16 @@ local function workflow()
 	vim.fn.writefile({ "untracked" }, linked .. "/new file.txt")
 	fixture_date = "2002-01-01T00:00:00Z"
 	git(repo, "worktree", "add", "--detach", codex, "main")
+	vim.cmd.cd(codex)
+	vim.cmd("ProsessionReset")
+	vim.cmd.edit(vim.fn.fnameescape(codex .. "/sample file.txt"))
+	local codex_session = vim.g.this_obsession
 	vim.cmd.cd(linked)
+	vim.cmd("ProsessionReset")
+	vim.cmd.edit(vim.fn.fnameescape(linked .. "/renamed file.txt"))
+	vim.cmd.vsplit(vim.fn.fnameescape(linked .. "/committed.txt"))
+	local linked_session = vim.g.this_obsession
+	assert(codex_session ~= linked_session, "Worktrees share a session")
 	vim.o.columns, vim.o.lines = 240, 50
 	vim.fn.maparg(" gw", "n", false, true).callback()
 	wait_for(function()
@@ -190,6 +206,9 @@ local function workflow()
 	wait_for(function()
 		return vim.uv.fs_realpath(vim.fn.getcwd()) == vim.uv.fs_realpath(codex)
 	end, "Selection did not switch to the exact worktree path")
+	assert(vim.g.this_obsession == codex_session, "Selection did not restore the destination session")
+	assert(vim.api.nvim_buf_get_name(0) == codex .. "/sample file.txt", "Destination buffer was not restored")
+	assert(#vim.api.nvim_tabpage_list_wins(0) == 1, "Previous worktree windows leaked into the destination")
 	require("fzf-lua").resume()
 	wait_for(function()
 		local win = picker()
@@ -202,6 +221,37 @@ local function workflow()
 		local entry = win and win._previewer and win._previewer._last_entry
 		return terminal():find("S13 M13 ?1", 1, true) and entry and entry:find("● detached@", 1, true)
 	end, "Resuming lost the worktree list")
+	send("\21feature/work")
+	wait_for(function()
+		return preview():find(linked, 1, true)
+	end, "Filtering did not select the original worktree")
+	send("\r")
+	wait_for(function()
+		return vim.g.this_obsession == linked_session
+	end, "Returning did not restore the original session")
+	assert(vim.fn.getcwd() == linked, "Returning restored the wrong working directory")
+	assert(vim.api.nvim_buf_get_name(0) == linked .. "/committed.txt", "Original active buffer was not restored")
+	assert(#vim.api.nvim_tabpage_list_wins(0) == 2, "Original split layout was not restored")
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved edit" })
+	require("fzf-lua").resume()
+	wait_for(function()
+		return terminal():find("feature/work", 1, true)
+	end, "Picker did not reopen with unsaved edits")
+	send("\21codex/session")
+	wait_for(function()
+		return preview():find("codex-worktrees", 1, true)
+	end, "Filtering did not select the other worktree with unsaved edits")
+	send("\r")
+	wait_for(function()
+		return not picker()
+	end, "Blocked selection did not close the picker")
+	assert(vim.fn.getcwd() == linked and vim.g.this_obsession == linked_session, "Unsaved edit did not block switching")
+	assert(vim.bo.modified and vim.api.nvim_get_current_line() == "unsaved edit", "Switching discarded unsaved edits")
+	vim.bo.modified = false
+	require("fzf-lua").resume()
+	wait_for(function()
+		return terminal():find("detached@", 1, true)
+	end, "Picker did not reopen after blocked selection")
 	send("\3")
 	wait_for(function()
 		return not picker()
@@ -214,11 +264,12 @@ local function workflow()
 	wait_for(function()
 		return terminal():find("S13 M13 ?1", 1, true)
 	end, "Cancel then resume left the picker empty")
-	print("Worktree picker: compact rows, changes, Git recency, responsive preview and switching passed")
+	print("Worktree picker: previews, session switching, restored layouts and unsaved edit protection passed")
 end
 
 local ok, err = xpcall(workflow, debug.traceback)
 require("fzf-lua").win.close()
+vim.cmd("Obsession")
 vim.cmd.cd(checkout)
 vim.fn.delete(temporary, "rf")
 if not ok then
