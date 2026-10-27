@@ -521,7 +521,28 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		end,
 		{
 			prompt = "ChangedFiles❯ ",
-			previewer = "builtin",
+			previewer = {
+				_ctor = function()
+					local previewer = require("fzf-lua.previewer.builtin").buffer_or_file:extend()
+					function previewer:parse_entry(entry_str)
+						local entry = self:entry_to_file(entry_str)
+						vim.fn.system({
+							"git", "-C", git_root, "diff", "--quiet", "--no-ext-diff", merge_base or "HEAD", "--", entry.path,
+						})
+						if vim.v.shell_error == 1 then
+							return {
+								path = entry.path,
+								cmd = {
+									"git", "-C", git_root, "diff", "--no-ext-diff", "--color=always", merge_base or "HEAD", "--", entry.path,
+								},
+								do_not_cache = true,
+							}
+						end
+						return self.super.parse_entry(self, entry_str)
+					end
+					return previewer
+				end,
+			},
 			winopts = {
 				preview = {
 					vertical = "down:60%",
