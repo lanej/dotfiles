@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+firstmate_root=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+
+usage() {
+	printf '%s\n' \
+		'Usage: firstmate [command] [arguments]' \
+		'  start [Codex arguments]       Start or attach (the default).' \
+		'  attach [tmux attach options]  Attach to the running captain.' \
+		'  stop                         Stop the captain and crew tmux panes.' \
+		'  reload                       Reload the shared tmux configuration.' \
+		'  tmux [options] command ...    Run commands on the Firstmate server.' \
+		'  help                         Show this help.' \
+		'FIRSTMATE_HOME overrides ~/src/firstmate.' \
+		'FIRSTMATE_TMUX_SOCKET overrides the socket name (default: firstmate).'
+}
+
+require_checkout() {
+	[[ -x "$firstmate_root/bin/fm-session-start.sh" ]] || {
+		printf 'Firstmate checkout missing: %s\n' "$firstmate_root" >&2
+		exit 1
+	}
+}
+
+tmux_exec() {
+	# Clear the caller's tmux identity before connecting to the dedicated server.
+	exec env -u TMUX -u TMUX_PANE tmux \
+		-f "$HOME/.config/firstmate/tmux.conf" \
+		-L "${FIRSTMATE_TMUX_SOCKET:-firstmate}" "$@"
+}
+
+case ${1:-start} in
+	help|-h|--help)
+		usage
+		exit 0
+		;;
+	attach)
+		shift
+		tmux_exec attach-session -t firstmate "$@"
+		;;
+	stop)
+		[[ $# == 1 ]] || { usage >&2; exit 2; }
+		tmux_exec kill-server
+		;;
+	reload)
+		[[ $# == 1 ]] || { usage >&2; exit 2; }
+		tmux_exec source-file "$HOME/.config/firstmate/tmux.conf"
+		;;
+	tmux)
+		shift
+		[[ $# != 0 ]] || { usage >&2; exit 2; }
+		tmux_exec "$@"
+		;;
+	--inside)
+		shift
+		require_checkout
+		cd "$firstmate_root"
+		export FM_HOME="$PWD" FM_BACKEND=tmux
+		export FM_CODEX_WATCH_CHECKPOINT=45
+		exec codex --approve-for-me "$@"
+		;;
+	start)
+		if [[ $# != 0 ]]; then shift; fi
+		;;
+esac
+
+# Preserve direct Codex arguments as a shorthand for "firstmate start".
+require_checkout
+
+launcher=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+tmux_exec new-session -A \
+	-s firstmate -n captain -c "$firstmate_root" "$launcher" --inside "$@"

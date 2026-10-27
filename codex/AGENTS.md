@@ -114,17 +114,15 @@ writers and workflows.
 
 # Git worktree location
 
-Create agent-owned worktrees at `<primary-checkout>/.worktrees/<task-slug>` so
-each repository's work stays together and within its writable root. Resolve the
-primary checkout with `git worktree list --porcelain`, including when starting
-from a linked worktree, and choose a unique task slug. Verify that
-`git check-ignore` excludes the destination before creating it.
+Use the `treehouse` skill at `~/.agents/skills/dotfiles/treehouse/SKILL.md` for task isolation and agent-created worktrees.
 
-Use this repository-relative layout for worktrees you create through shell
-commands. Honor an explicit user-selected location or a host-managed worktree.
-Keep existing worktrees in place unless the user requests relocation.
+Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts.
+Do not nest worktrees or claim their leases.
 
 # Git worktree cleanup
+
+Return pooled Treehouse leases through the `treehouse` skill.
+Apply the following rules to non-pool temporary worktrees.
 
 Treat cleanup of temporary worktrees created for the task as part of completion.
 This includes temporary worktrees created by subagents for the same task.

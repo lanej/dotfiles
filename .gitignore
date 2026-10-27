@@ -4,6 +4,7 @@ vim/.netrwhist
 bin/mate
 .ssh_config
 bin/*
+!bin/firstmate
 !bin/ep-direnv
 !bin/epenv
 !bin/epenv_test.py

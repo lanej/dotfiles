@@ -48,7 +48,8 @@ def main():
     def run(cwd, *args, run_env=env):
         result = subprocess.run(
             ["/bin/bash", str(tool), *args], cwd=cwd, env=run_env,
-            capture_output=True, text=True, timeout=60,
+            # Real lsof scans scale with the host's other running processes.
+            capture_output=True, text=True, timeout=180,
         )
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout
@@ -69,6 +70,8 @@ def main():
         git(nested, "worktree", "add", "--detach", str(nested_checkout))
         disposable = app / ".worktrees/merged"
         git(app, "worktree", "add", "-b", "completed-task", str(disposable))
+        pooled = app / ".worktrees/.treehouse/app-fixture/1/app-1"
+        git(app, "worktree", "add", "--detach", str(pooled))
         (disposable / "node_modules").mkdir()
         (disposable / "node_modules/disposable-cache").write_bytes(b"x" * 2 * 1024 * 1024)
         dirty = app / ".worktrees/unfinished"
@@ -183,12 +186,13 @@ os.execv(os.environ["WORKTREE_TEST_GIT"], ["git", *args])
             [sys.executable, "-c", """
 import os
 from pathlib import Path
+import signal
 import time
 while not Path(os.environ["WORKTREE_TEST_TRIGGER"]).exists():
     time.sleep(0.01)
 os.chdir(os.environ["WORKTREE_TEST_ACTIVE"])
 Path(os.environ["WORKTREE_TEST_READY"]).touch()
-time.sleep(120)
+signal.pause()
 """], cwd=temporary, env=tool_env,
         )
         try:
@@ -250,6 +254,7 @@ time.sleep(120)
             assert "4 worktree(s) would be removed" in preview, preview
             assert "Estimated reclaimable space" in preview, preview
             assert disposable.is_dir() and dependencies.is_dir() and completed.is_dir()
+            assert "reserved Treehouse pool" in preview, preview
             assert "ignored files" in preview, preview
             assert "hidden index flags" in preview, preview
             assert "Git operation in progress" in preview, preview
@@ -283,6 +288,7 @@ time.sleep(120)
             assert "active process" in result, result
             assert not disposable.exists() and not dependencies.exists() and not completed.exists(), result
             assert dirty.is_dir() and active.is_dir() and locked.is_dir()
+            assert pooled.is_dir() and str(pooled) in git(app, "worktree", "list", "--porcelain")
             assert nested_checkout.is_dir()
             assert operation.is_dir()
             assert conflicted.is_dir() and "merge conflicts" in result
