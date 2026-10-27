@@ -43,9 +43,10 @@ function M.graphql(query, variables, callback)
 	end)
 end
 
+-- Broad team searches can time out while resolving a large page of rich PR nodes.
 local search_query = [[
 query PRReviewSearch($query:String!, $cursor:String) {
-  search(query:$query, type:ISSUE, first:100, after:$cursor) {
+  search(query:$query, type:ISSUE, first:10, after:$cursor) {
     issueCount pageInfo { hasNextPage endCursor }
     nodes { ... on PullRequest {
       id number title body url createdAt headRefOid isDraft state
