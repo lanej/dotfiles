@@ -10,16 +10,15 @@ the failure modes on this machine that have actually cost time.
 
 ## Commits
 
-- **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
-  Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
-  automatic naming.
+- Write commit messages directly from the staged diff and relevant context.
+  `/git:commit [context]` provides the commit workflow.
 - **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
   `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
   visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
-- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution.
+- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the [verification reference](../../../docs/verification.md)) or `user`. This is measurement, not attribution.
 - `--amend` only when the user asked for it, or to fold in a pre-commit hook's own edits.
 
 ## Pull requests

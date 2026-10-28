@@ -9,6 +9,10 @@ Tool and technology decisions, organized by ring.
 | **Assess** | Worth watching; not yet trialed |
 | **Hold** | Not adopted; rationale documented |
 
+<!-- Entry conventions: use a ### heading under the current ring, explain the tool and
+placement briefly, link related entries where useful, and state any revisit condition.
+Update only the requested decisions; preserve unrelated entries. -->
+
 ---
 
 ## Adopt

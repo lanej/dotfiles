@@ -1,10 +1,11 @@
 ---
 name: xlsx
-description: Use xlsx binary for Excel file manipulation including viewing, SQL-like filtering, cell editing, conversion to/from CSV, and data analysis operations. Use this instead of Python (openpyxl, pandas, xlrd) or Node.js libraries for ALL .xlsx file operations — reading, writing, filtering, conversion, and analysis. Trigger on any request involving .xlsx or Excel files.
+description: Use the xlsx CLI for local workbook inspection, row filtering, extraction, conversion, and targeted edits when a command-line workflow fits the task. For workbook authoring, charts, formatting, and recalculation, use the available spreadsheet authoring workflow.
 ---
 # XLSX Skill
 
-The `xlsx` binary covers the full Excel manipulation surface without Python or Node.js.
+Use this reference when working with the `xlsx` CLI. Preserve an explicitly requested
+tool or authoring workflow; this skill does not mandate the CLI for every Excel task.
 
 ## Commands
 
