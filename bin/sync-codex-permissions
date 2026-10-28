@@ -3,11 +3,11 @@
 # requires-python = ">=3.11"
 # dependencies = ["tomlkit>=0.13,<1"]
 # ///
-"""Install approval defaults and host-specific GitHub access in Codex."""
+"""Install approval defaults and explicitly selected GitHub access in Codex."""
+import argparse
 import copy
 import os
 from pathlib import Path
-import socket
 import sys
 import tempfile
 import tomllib
@@ -25,14 +25,15 @@ GITHUB_PLUGINS = ("github@openai-curated", "github@openai-curated-remote")
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--github-enabled", choices=("true", "false"), required=True)
+    github_enabled = parser.parse_args().github_enabled == "true"
     root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
     path = root / "config.toml"
     if path.is_symlink():
         path = path.resolve(strict=True)
     original = path.read_text() if path.exists() else ""
     config = tomllib.loads(original)
-    hostname = os.environ.get("CODEX_HOSTNAME") or socket.gethostname()
-    github_enabled = "easypost" not in hostname.casefold()
     expected = copy.deepcopy(config)
     expected.update(DEFAULTS)
     expected.setdefault("apps", {}).setdefault(GITHUB_APP, {})["enabled"] = github_enabled

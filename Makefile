@@ -9,6 +9,22 @@ DOTFILES := $(shell pwd)
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
+ifeq ($(origin IS_EASYPOST),undefined)
+INSTALL_HOSTNAME := $(shell install_hostname=$$(uname -n) && printf '%s' "$$install_hostname" | tr '[:upper:]' '[:lower:]')
+ifeq ($(strip $(INSTALL_HOSTNAME)),)
+$(error Could not determine hostname; set IS_EASYPOST=true or false)
+endif
+IS_EASYPOST := $(if $(findstring easypost,$(INSTALL_HOSTNAME)),true,false)
+endif
+export IS_EASYPOST
+ifeq ($(IS_EASYPOST),true)
+CODEX_GITHUB_ENABLED := false
+else ifeq ($(IS_EASYPOST),false)
+CODEX_GITHUB_ENABLED := true
+else
+$(error IS_EASYPOST must be true or false)
+endif
+
 ifeq ($(UNAME_S),Linux)
 SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
 else ifeq ($(UNAME_S),Darwin)
@@ -332,7 +348,7 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(CODEX_GITHUB_ENABLED)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
