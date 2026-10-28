@@ -8,7 +8,9 @@ tags:
 
 # /delegate — Sub-Task Routing Reference
 
-The **trigger** is already a standing rule (`CLAUDE.md` → Execution & Delegation): delegate anything touching 2+ files, needing 2+ tool calls to gather context, all research, and off-topic side tasks. This file is not that rule restated — it's the *routing* table for when you've decided to delegate and need to pick a target, plus the cases where the trigger is genuinely ambiguous.
+Use this routing reference after deciding that a self-contained sub-task benefits from
+context isolation, independent judgment, or parallel work. File and tool-call counts
+alone do not justify delegation. Follow any session-specific delegation constraints.
 
 ## `/delegate` vs `/handoff`
 
@@ -26,28 +28,17 @@ If you'll still be working after the agent returns, it's delegation. If you're l
 | Implementation approach, step-by-step plan, trade-offs | `Plan` |
 | Long docs → key points | `document-summarizer` |
 | Review a PR / large diff | `code-reviewer`, `pull-request-commentor` |
-| Commit message | `git-commit-message-writer` |
 
 Dispatch with the `Agent` tool. Every call needs the six briefing fields from `CLAUDE.md`: Context, Domain, Sub-problem, Success, Constraints, Output format. Search breadth for `Explore` goes in the prompt prose ("medium", "very thorough") — there is no `thoroughness` parameter.
 
 **Never dispatch `fork` when the brief depends on it not writing** — see `CLAUDE.md`. The attempted `PreToolUse` gate was removed; verify the output independently.
 
-## Borderline calls
+## Choosing a boundary
 
-Delegate when the trigger is arguable but any of these hold:
-
-- You're about to run a **second** grep/glob toward the same goal
-- The thing could be named several ways (`login` / `signin` / `authenticate` / `auth`)
-- You don't know where to look, so you can't bound the result size
-- Results would be large and mostly discarded
-
-Do it yourself when:
-
-- The user named the exact file or asked *you* to make the edit
-- It's a needle query — one exact class/function name
-- It's already in context from earlier in this session
-
-Note the asymmetry: a wasted delegation costs one round-trip; a wasted search costs context permanently. When genuinely torn, delegate.
+Keep bounded lookups, routine commit messages, and small edits in the primary task.
+Delegate investigations with a clear question and bounded sources when the returned
+synthesis will save substantial context, or independent tasks that can safely run in
+parallel. Do not expand the user's scope by silently starting unrelated background work.
 
 ## Verify what comes back
 

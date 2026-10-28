@@ -94,10 +94,10 @@ Determine:
 - whether the spec's Feedback Loop Design (signal, cost/cadence, fallback) was actually invoked during execution
 - whether plan.md's per-task `Feedback signal:` entries (if present) were actually run, not just written
 - if not invoked, whether that's a spec gap (no Feedback Loop Design was ever specified) or an execution gap (designed but skipped)
-- for engineering execution, whether the **branch-level gate** ran on the final code after the last task and any review fixes (full suite + full lint/type-check) — per-task signals are deliberately scoped (tier V1) and do not substitute for it. A run of per-task signals with no branch gate is an execution gap, not a pass
-- whether any escalation trip-wire fired during execution (see `CLAUDE.md`, Proportional Verification) and, if so, whether remaining tasks were actually promoted to full-suite checks
-- whether a **wave review (V3a)** ran at each dependency-graph wave boundary, and whether its findings were fixed before the next wave started rather than carried forward — a carried-forward finding is the compounding case the checkpoint exists to prevent
-- whether each review dispatch was briefed with the `methodology` skill's Review Fault Classes, or was an unguided "review this diff"
+- whether the checks required by the repository and validation contract ran on the final affected code, including relevant interactions
+- whether failures or unresolved risks required broader checks, and whether that evidence was obtained
+- whether independent review was required by complexity or repository policy, and whether actionable findings were addressed
+- whether review briefs included relevant fault classes from `~/.files/docs/verification.md`
 
 For writing, analysis, or other non-code work, apply the equivalent checks actually specified in the validation contract; do not invent a software suite or dependency graph. Surface "loop skipped" separately from "acceptance test failed."
 

@@ -117,7 +117,7 @@ Prepare the current branch for PR by following these steps:
 
 For each logical commit:
 1. Stage only the files relevant to that commit: `git add <files>`
-2. Use the git-commit-message-writer agent to generate a professional commit message
+2. Write a commit message directly from the staged diff
 3. Ensure the message:
    - Uses conventional commit format (feat/fix/refactor/test/docs)
    - Has a clear, concise subject line (<50 chars)
@@ -180,7 +180,7 @@ Or with an issue number:
 ## Important Guidelines
 
 - **Always read files before editing** - use Read tool before Edit tool
-- **Use the git-commit-message-writer agent** for ALL commit messages
+- **Write commit messages directly** using the repository conventions
 - **Use the pull-request-writer agent** for PR titles and descriptions
 - **Verify each commit independently** - each should compile and pass tests
 - **Keep the user informed** - explain your reasoning for the commit structure

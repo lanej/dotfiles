@@ -235,7 +235,7 @@ Rules:
 - A task that depends on another must be sequenced after it, even if the dependency is indirect
 - Circular dependencies are a planning failure — surface them and return to Stage 3
 - A task's `Feedback signal:` must name a check specific to that task's own deliverable — never a pointer to the final whole-plan review
-- It must be the *narrowest* such check (tier V1, see the `methodology` skill's Verification Rigor Tiers). A full-suite run is not a valid per-task Feedback signal: the full suite is a branch-level gate (V2) that runs once, in Stage 6. Broader tests can catch interactions they exercise; they do not replace the Stage 6 whole-branch review. The escalation rule overrides the default scoped signal
+- Choose the affected feature's acceptance check (V1, see `~/.files/docs/verification.md`). Broaden it when shared behavior or evidence of an interaction requires more coverage. State which uncertainty the additional check resolves.
 - Every task ends in its own commit. That, not suite breadth, is what preserves attribution when Stage 6 surfaces a fault
 
 Planning may not:
@@ -254,28 +254,26 @@ Recommend invoking `Workflow` directly (author a script matching Stage 4's task 
 
 Otherwise execute sequentially with one `Agent` dispatch per task, following Stage 4's dependency order. Never use inline execution.
 
-**Wave review checkpoint (V3a).** At each wave boundary in Stage 4's graph — after the last task of a parallel wave completes, or after each task in a fully sequential plan's natural grouping — dispatch a review agent over **only the diff since the last checkpoint**, briefed with the `methodology` skill's Review Fault Classes. Do not re-review the whole branch here; that is Stage 6's job and its cost grows with the branch, while this one stays bounded.
-
-This is the cadence lever on compounding. The historical audit found faults that the existing tests missed, so review wave 1 when it lands rather than waiting until Stage 6. A wave-boundary checkpoint also keeps attribution tight: a finding traces to the two or three tasks in that wave, not to a forty-file branch diff.
-
-Fix wave-review findings before starting the next wave. A finding carried forward is the compounding case this checkpoint exists to prevent.
+**Incremental review (V3a).** Use a bounded review at a wave boundary when interacting
+changes or unresolved uncertainty warrant independent judgment. Brief it with the relevant
+fault classes in `~/.files/docs/verification.md`. Address actionable findings before work
+that depends on them. Reserve review of the assembled change for Stage 6 when required
+by its complexity or repository policy.
 
 ### Stage 6 — Verification
 
-Runs on the final branch after the last task; repeat affected checks and the branch gate if review fixes change verified code. This is the *full-suite and whole-branch* pass — it does not run between tasks. (Incremental review does, at Stage 5's wave checkpoints; that is a different, bounded thing.) Three steps in order, each gating the next:
+Validate the assembled result against `spec.md` and the repository's requirements:
 
-1. **Branch gate (V2)** — full test suite, full lint/type-check, on the complete branch. First point in the flow where the whole suite runs.
-2. **Whole-branch review (V3b)** — review agent over the complete diff against `spec.md`. This is the stage that catches what per-task checks structurally cannot: cross-task interaction faults, pattern-level bug classes, spec drift. Budget rigor here, not in Stages 4–5.
-3. **`/verify`** — validate the spec's validation contract.
+1. Run affected acceptance checks and any broader suite, lint, or type checks needed for
+   the changed interactions (V1/V2). Avoid repeating valid results without a new reason.
+2. Obtain independent review of the complete diff when complexity or repository policy
+   requires it (V3b). Address actionable findings and rerun checks invalidated by fixes.
+3. Use `/verify` to assess the spec's validation contract and report unresolved gaps.
 
-Where the branch merges into a repo with CI, **V4** follows: poll the merged commit's own check-runs and classify against the pre-merge commit. A clean local V2 is not a CI pass — one audited fault was a task's own regression test passing locally and failing on main's post-merge CI.
-
-Goal:
-- validate true-positive completion
-- evaluate regression boundaries
-- detect silent failure
-
-If step 1 or 2 surfaces a fault a per-task `Feedback signal:` should have caught, the trip-wire in `CLAUDE.md` (Proportional Verification) applies to any remaining or follow-up work: promote per-task checks to V2 and say so.
+Where CI exists, distinguish its results from local validation. After an authorized merge,
+check the merged commit's CI status (V4) before claiming CI success. A failed check or
+review finding may justify broader validation of related work; name the concrete risk
+and choose checks that can detect it.
 
 ## Transition Rules
 

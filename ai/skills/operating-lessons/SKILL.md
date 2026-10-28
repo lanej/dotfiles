@@ -49,4 +49,4 @@ Read when double-checking a procedure this index names.
 
 - If a cited memory file no longer exists, treat the rule as still in force and note the missing citation — don't drop the rule on that basis alone.
 - If a rule here conflicts with something newer in CLAUDE.md, CLAUDE.md wins — this file is the detail layer, not the source of truth.
-- If unsure whether a specific check applies to the current task, run it — the cost of an unnecessary verification is far lower than a fabricated or stale claim reaching the user.
+- Choose checks that resolve a concrete uncertainty in the requested task. Keep unrelated historical procedures out of scope.

@@ -28,7 +28,7 @@ Find all open GitHub issues without associated PRs, create git worktrees for eac
        - **Write regression tests** based on the reproduction case
        - Run tests to verify the fix works and provides regression protection
        - Verify the reproduction steps now pass
-       - Commit changes using git-commit-message-writer agent
+       - Commit changes with a message based on the staged diff
        - Push branch to origin
        - Write the PR title and description with the pull-request-writer agent (output to a file), then `gh-pr-create-from <file>`; the body must include `Fixes #{number}`
        - Wait for CI checks to pass using `gh pr checks`
@@ -180,7 +180,7 @@ Each parallel Task agent should:
 - **Write regression tests** based on the reproduction case
 - Run tests to verify the fix works and provides regression protection
 - Verify the reproduction steps now pass
-- Commit with proper message (using git-commit-message-writer agent)
+- Commit with a message based on the staged diff
 - Push and create PR (description from the pull-request-writer agent)
 - Monitor CI checks
 - **If passing: immediately auto-merge, close issue, and remove worktree**

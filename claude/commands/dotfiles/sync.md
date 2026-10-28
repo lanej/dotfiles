@@ -119,7 +119,7 @@ Only commit if:
 cd ~/.files
 git status
 git add -f <tool>/<config-file>
-# Use git-commit-message-writer agent for commit message
+# Write a Conventional Commit message from the staged diff
 git commit -m "feat(<tool>): <description>"
 ```
 

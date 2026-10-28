@@ -63,11 +63,10 @@ The goal is a clippy run where every remaining warning is actionable.
 
 ## Cargo lock contention
 
-"resource busy", Cargo.lock contention, or a hanging build usually means orphaned cargo processes:
-
-```bash
-pkill -f cargo
-```
+For lock contention, identify the process holding the lock and determine whether it is
+an active build or an orphan from this task. Wait for active builds. Stop an orphan only
+after confirming task ownership, using its specific PID or owned process group. Do not
+kill all Cargo processes; other sessions may be building.
 
 ## Cargo.toml style
 
