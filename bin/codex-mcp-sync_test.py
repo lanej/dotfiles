@@ -31,7 +31,12 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
         'approval_policy = "leave this instruction alone"\n"""\n'
         'approval_policy = "never"\napprovals_reviewer = "user"\n'
         'sandbox_mode = "read-only"\n'
-        '[apps.local]\napprovals_reviewer = "user"\n')
+        '[apps.local]\napprovals_reviewer = "user"\n'
+        '[apps.connector_76869538009648d5b282a4bb21c3d157]\n'
+        'enabled = true # local GitHub setting\nopen_world_enabled = false\n'
+        '[plugins."github@openai-curated"]\nenabled = true\n'
+        '[plugins."github@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."retained@local"]\nenabled = false\n')
 
     for name in ("sync-codex-permissions", "sync-codex-mcp-servers", "sync-codex-skills",
                  "sync-codex-agents", "sync-claude-shared", "claude-remove-blocked-plugins"):
@@ -55,12 +60,19 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     # Exercise macOS's bundled Bash too; the Codex CLI boundary is simulated below.
     (executables / "bash").symlink_to("/bin/bash")
     (executables / "python3").symlink_to(sys.executable)
+    uname = executables / "uname"
+    unavailable_hostname = ('#!/bin/sh\nif [ "$1" = -n ]; then\n'
+                            '  exit 1\nelse\n'
+                            f'  exec "{shutil.which("uname")}" "$@"\nfi\n')
+    uname.write_text(unavailable_hostname)
+    uname.chmod(0o755)
     # At the hook-installation boundary, migration must already have removed
     # Paseo's old handlers. Exercise that invariant with parallel make enabled.
     uv = executables / "uv"
     uv.write_text(f"#!{sys.executable}\n" + f'''
 import os
 from pathlib import Path
+(Path.home() / ".codex/install-is-easypost").write_text(os.environ["IS_EASYPOST"])
 if not any(argument.endswith("/sync-codex-permissions") for argument in os.sys.argv):
     assert "PASEO_HOOK_CLI" not in (Path.home() / ".codex/hooks.json").read_text(), "hook installation overlapped broker migration"
 os.execv({shutil.which("uv")!r}, [{shutil.which("uv")!r}, *os.sys.argv[1:]])
@@ -157,8 +169,18 @@ else:
                UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
                HOME=str(home), CODEX_HOME=str(home / ".codex"),
                PASEO_HOME=str(home / ".paseo"), CLAUDE_CONFIG_DIR=str(home / ".claude"))
+    env.pop("IS_EASYPOST", None)
     command = [shutil.which("make"), "-j4", "-f", str(ROOT / "Makefile"),
                f"DOTFILES={repo}", f"HOME={home}"]
+    original_config = (home / ".codex/config.toml").read_bytes()
+    unknown_host = subprocess.run([*command, "codex-permissions"], cwd=repo, env=env,
+                                  capture_output=True, text=True)
+    assert unknown_host.returncode != 0
+    assert "Could not determine hostname" in unknown_host.stderr
+    assert (home / ".codex/config.toml").read_bytes() == original_config
+    uname.write_text('#!/bin/sh\nif [ "$1" = -n ]; then\n'
+                     '  printf "%s\\n" lanej.EasyPost\nelse\n'
+                     f'  exec "{shutil.which("uname")}" "$@"\nfi\n')
     subprocess.run([*command, "codex-tmux"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     subprocess.run([*command, "codex"], cwd=repo, env=env,
@@ -173,6 +195,14 @@ else:
     assert config["developer_instructions"] == (
         '[Review guidance]\napproval_policy = "leave this instruction alone"\n')
     assert config["apps"]["local"]["approvals_reviewer"] == "user"
+    github = config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]
+    assert github["enabled"] is False
+    assert github["open_world_enabled"] is False
+    assert config["plugins"]["github@openai-curated"]["enabled"] is False
+    assert config["plugins"]["github@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["retained@local"]["enabled"] is False
+    assert (home / ".codex/install-is-easypost").read_text() == "true"
+    assert "# local GitHub setting" in installed_config
     assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
         "enableTerminalAgentHooks": False, "retained": "kept"}
@@ -212,6 +242,24 @@ else:
                    check=True, capture_output=True, text=True)
     assert (home / ".codex/config.toml").read_text() == installed_config
     assert json.loads((home / ".claude.json").read_text()) == claude_config
+    assert state.read_bytes() == previous_state
+    assert (home / ".codex/hooks.json").read_text() == installed_hooks
+
+    # NOTE: The shared Make override must reach the installer and other scripts.
+    uname.write_text(unavailable_hostname)
+    env["IS_EASYPOST"] = "false"
+    subprocess.run([*command, "codex-permissions"], cwd=repo,
+                   env=env,
+                   check=True, capture_output=True, text=True)
+    personal_config = tomllib.loads((home / ".codex/config.toml").read_text())
+    assert personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] is True
+    assert personal_config["plugins"]["github@openai-curated"]["enabled"] is True
+    assert personal_config["plugins"]["github@openai-curated-remote"]["enabled"] is True
+    assert (home / ".codex/install-is-easypost").read_text() == "false"
+    personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] = False
+    personal_config["plugins"]["github@openai-curated"]["enabled"] = False
+    personal_config["plugins"]["github@openai-curated-remote"]["enabled"] = False
+    assert personal_config == config, "host policy changed unrelated configuration"
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
     claude_config["mcpServers"] = {}

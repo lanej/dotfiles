@@ -61,6 +61,10 @@ remain linked to their sources. File-linked or lowercase entrypoints are
 normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
 those entrypoints. Missing external skill sources are reported and skipped.
 
+The Makefile classifies a hostname containing `easypost` (case-insensitive) as EasyPost equipment and exports `IS_EASYPOST=true`; other hostnames use `false`. Targets can use `ifeq ($(IS_EASYPOST),true)`, and scripts receive `IS_EASYPOST` in their environment. Override the classification with `make IS_EASYPOST=true` or `make IS_EASYPOST=false` for machines with different names. If hostname lookup fails, setup requires an explicit override.
+
+`make`, `make codex`, and `make codex-permissions` use this shared condition to disable the Codex GitHub app and its plugins on EasyPost equipment, so GitHub work uses `gh`. Personal installs enable the app. The installer receives the choice explicitly and preserves unrelated local Codex settings. Reload Codex after installation to apply changed app access to existing sessions.
+
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
 Names, descriptions, and instructions are preserved; Claude model aliases and

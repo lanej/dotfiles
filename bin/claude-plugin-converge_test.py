@@ -46,7 +46,7 @@ else:
     sys.exit(1)
 ''')
     cli.chmod(0o755)
-    env = dict(os.environ, PATH=str(executables),
+    env = dict(os.environ, PATH=str(executables), IS_EASYPOST="false",
                TEST_PLUGIN_STATE=str(state), TEST_PLUGIN_CALLS=str(calls))
     command = [shutil.which("make"), "claude-plugins", f"DOTFILES={tmp_path}"]
 
