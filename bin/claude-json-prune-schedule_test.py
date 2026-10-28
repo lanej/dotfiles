@@ -60,7 +60,8 @@ def _run_schedule(tmp_path, uname_value):
     calls_log.write_text("")
     executables = _build_executables(tmp_path / f"bin-{uname_value}", calls_log, uname_value)
 
-    env = dict(os.environ, PATH=str(executables), TEST_CALLS_LOG=str(calls_log))
+    env = dict(os.environ, PATH=str(executables), IS_EASYPOST="false",
+               TEST_CALLS_LOG=str(calls_log))
     command = [shutil.which("make"), "claude-json-prune-schedule",
                f"DOTFILES={ROOT}", f"HOME={home}"]
     result = subprocess.run(command, cwd=str(ROOT), env=env,
