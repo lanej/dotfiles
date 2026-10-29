@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Preview or remove idle, merged worktrees for one repository or a project tree.
+# Preview or remove idle worktrees for one repository or a project tree.
 set -euo pipefail
 
 AGE_HOURS="${WORKTREE_CLEANUP_AGE_HOURS:-24}"
@@ -8,6 +8,11 @@ APPLY=0
 RECHECK=0
 REFRESH=0
 WIP_PUSH=0
+FORCE=0
+ACCEPT_DIRTY=0
+ACCEPT_IGNORED=0
+ACCEPT_UNMERGED=0
+ACCEPT_RECENT=0
 JSON=0
 INTEGRATED=0
 TARGET_WORKTREE=""
@@ -18,7 +23,7 @@ SIZE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/git-worktree-cleanup"
 
 usage() {
     cat <<'EOF'
-Usage: git-worktree-cleanup [-a HOURS] [-b BRANCH] [-y] [--refresh] [--wip-push] [--json] [DIRECTORY]
+Usage: git-worktree-cleanup [OPTIONS] [DIRECTORY]
        git-worktree-cleanup [OPTIONS] --worktree PATH
 
 Inside a repository, checks its registered worktrees wherever they live on disk.
@@ -28,7 +33,7 @@ Linked checkouts of the same repository are checked only once. Dependency,
 build, and managed worktree directories are excluded from repository discovery.
 Discovery stops at each repository; repositories nested inside it are excluded.
 
-Only idle, clean worktrees merged into their repository's base branch whose
+By default, only idle, clean worktrees merged into their repository's base branch whose
 HEAD commit is older than the age threshold are eligible. Primary and locked worktrees are
 retained, as are ignored files other than disposable dependency/build caches.
 Requires lsof to check for processes using a worktree. Dry-run by default;
@@ -43,6 +48,18 @@ easypost-sandbox are allowed. Changes are committed, pushed, and verified before
 removal. The age threshold applies to HEAD before the WIP commit. Ignored
 artifacts, locks, active processes, and unfinished Git operations still prevent
 cleanup. Dry-run shows the proposed recovery branch without committing or pushing.
+Each --accept-* flag relaxes only its named check:
+--accept-dirty discards tracked edits, untracked files, and hidden index edits.
+--accept-ignored discards ignored artifacts beyond disposable build caches.
+--accept-unmerged accepts HEAD retained by the checkout's named local branch.
+--accept-recent bypasses the age threshold, including with --wip-push.
+--force is shorthand for all four. Detached non-ancestor commits are retained.
+Primary checkouts,
+Treehouse pool slots, locks, active processes, unresolved index conflicts,
+unfinished Git operations, and failed safety checks still prevent removal.
+Base-ref discovery remains required. Preview is the default; add -y to remove.
+--force, --accept-dirty, --accept-ignored, and --accept-unmerged exclude
+--wip-push. All branches are preserved.
 
 Shows allocated disk usage; the combined reclaimable total includes only
 removal candidates. Actual savings may vary with shared filesystem blocks.
@@ -67,11 +84,25 @@ Codex's local state database without modifying it; unavailable metadata is label
   -y         actually remove; without this, only lists candidates
   --refresh  remeasure sizes and update their cache entries
   --wip-push preserve work on an easypost-sandbox remote before removal
+  --accept-dirty     discard tracked edits, untracked files, and hidden index edits
+  --accept-ignored   discard ignored artifacts beyond disposable build caches
+  --accept-unmerged  accept unmerged HEAD retained by the checkout's local branch
+  --accept-recent    bypass the age threshold
+  --force    shorthand for all four --accept-* flags
   --json     emit a structured dry-run report (requires uv; excludes -y/--wip-push)
   --worktree PATH  inspect only this registered checkout; excludes DIRECTORY
   --integrated    also accept changes already integrated into the base
   --conflict-files N  maximum files per merge-conflict report (default: 5)
   -h         show this help
+
+Examples:
+  git-worktree-cleanup --accept-dirty --worktree /path/to/checkout
+  git-worktree-cleanup --accept-dirty -y --worktree /path/to/checkout
+  git-worktree-cleanup --accept-unmerged --accept-recent ~/src
+  git-worktree-cleanup --force --worktree /path/to/checkout
+  git-worktree-cleanup --force -y --worktree /path/to/checkout
+  git-worktree-cleanup --force ~/src
+  git-worktree-cleanup --force -y ~/src
 EOF
 }
 
@@ -84,6 +115,11 @@ while getopts ":a:b:yh-:" opt; do
         -) case "$OPTARG" in
                refresh) REFRESH=1 ;;
                wip-push) WIP_PUSH=1 ;;
+               force) FORCE=1 ;;
+               accept-dirty) ACCEPT_DIRTY=1 ;;
+               accept-ignored) ACCEPT_IGNORED=1 ;;
+               accept-unmerged) ACCEPT_UNMERGED=1 ;;
+               accept-recent) ACCEPT_RECENT=1 ;;
                json) JSON=1 ;;
                integrated) INTEGRATED=1 ;;
                conflict-files)
@@ -104,6 +140,22 @@ while getopts ":a:b:yh-:" opt; do
 done
 shift $((OPTIND - 1))
 [[ $# -le 1 ]] || { usage >&2; exit 1; }
+if [[ "$FORCE" -eq 1 && "$WIP_PUSH" -eq 1 ]]; then
+    echo "error: --force excludes --wip-push" >&2
+    exit 1
+fi
+if [[ "$FORCE" -eq 1 ]]; then
+    ACCEPT_DIRTY=1 ACCEPT_IGNORED=1 ACCEPT_UNMERGED=1 ACCEPT_RECENT=1
+fi
+if [[ "$WIP_PUSH" -eq 1 && ( "$ACCEPT_DIRTY" -eq 1 || "$ACCEPT_IGNORED" -eq 1 || "$ACCEPT_UNMERGED" -eq 1 ) ]]; then
+    echo "error: --accept-dirty, --accept-ignored, and --accept-unmerged exclude --wip-push" >&2
+    exit 1
+fi
+ACCEPTED_CHECKS=()
+[[ "$ACCEPT_DIRTY" -eq 0 ]] || ACCEPTED_CHECKS+=(dirty)
+[[ "$ACCEPT_IGNORED" -eq 0 ]] || ACCEPTED_CHECKS+=(ignored)
+[[ "$ACCEPT_UNMERGED" -eq 0 ]] || ACCEPTED_CHECKS+=(unmerged)
+[[ "$ACCEPT_RECENT" -eq 0 ]] || ACCEPTED_CHECKS+=(recent)
 if [[ "$JSON" -eq 1 && ( "$APPLY" -eq 1 || "$WIP_PUSH" -eq 1 ) ]]; then
     echo "error: --json supports inspection only; omit -y and --wip-push" >&2
     exit 1
@@ -134,8 +186,16 @@ NOW=$(date +%s)
 
 if [[ "$JSON" -eq 0 ]]; then
     echo "Project root:  $ROOT"
-    echo "Age threshold: ${AGE_HOURS}h"
+    if [[ "$ACCEPT_RECENT" -eq 1 ]]; then
+        echo "Age threshold: bypassed (--accept-recent)"
+    else
+        echo "Age threshold: ${AGE_HOURS}h"
+    fi
     echo "Mode:          $([[ $APPLY -eq 1 ]] && echo REMOVE || echo "dry-run (pass -y to remove)")"
+    [[ ${#ACCEPTED_CHECKS[@]} -eq 0 ]] || echo "Accept checks: ${ACCEPTED_CHECKS[*]}"
+    if [[ "$ACCEPT_DIRTY" -eq 1 || "$ACCEPT_IGNORED" -eq 1 ]]; then
+        echo "Local files:   accepted local files will be discarded"
+    fi
     [[ "$WIP_PUSH" -eq 0 ]] || echo "WIP-push owner: easypost-sandbox"
     echo
 fi
@@ -601,7 +661,7 @@ print_rows() {
             *) color="$GRAY" ;;
         esac
         status_color="$YELLOW"
-        case "${row_status[i]}" in remove|wip-push) status_color="$GREEN" ;; esac
+        case "${row_status[i]}" in remove|force-remove|wip-push) status_color="$GREEN" ;; esac
         [[ "${row_status[i]}" != error ]] || status_color="$RED"
         printf '%-*s  %-*s  %s%-*s%s  %s%-*s%s  %-*s  %*s  %-*s  ' "$repo_width" "${row_repo[i]}" "$base_width" "${row_base[i]}" "$status_color" "$status_width" "${row_status[i]}" "$RESET" "$color" "$reason_width" "${row_reason[i]}" "$RESET" "$age_width" "${row_age[i]}" "$size_width" "${row_size[i]}" "$size_age_width" "${row_size_age[i]}"
         [[ "$WIP_PUSH" -eq 0 ]] || printf '%-*s  ' "$push_width" "${row_push[i]}"
@@ -627,7 +687,8 @@ print_json() {
     for repo in ${repositories[@]+"${repositories[@]}"}; do
         printf '%s\0' "$repo" >> "$scratch/json-repositories"
     done
-    uv run --no-project --python '>=3.11' python - "$scratch" "$ROOT" "$AGE_HOURS" "$errors" <<'PY'
+    uv run --no-project --python '>=3.11' python - "$scratch" "$ROOT" "$AGE_HOURS" "$errors" \
+        "$ACCEPT_DIRTY" "$ACCEPT_IGNORED" "$ACCEPT_UNMERGED" "$ACCEPT_RECENT" <<'PY'
 import json
 import os
 from pathlib import Path
@@ -672,6 +733,9 @@ rows.sort(key=lambda row: (row["size_kib"] is None, row["size_kib"] or 0))
 repositories = [value.decode() for value in
                 (scratch / "json-repositories").read_bytes().split(b"\0")[:-1]]
 report = json.dumps({"root": str(root), "age_hours": int(sys.argv[3]), "errors": int(sys.argv[4]),
+                     "accepted_checks": [name for name, accepted in
+                                         zip(("dirty", "ignored", "unmerged", "recent"), sys.argv[5:9])
+                                         if accepted == "1"],
                      "repositories": repositories, "worktrees": rows}, ensure_ascii=False)
 # Preserve arbitrary Git filename bytes via escaped filesystem surrogates while
 # emitting valid UTF-8 and keeping ordinary Unicode names readable.
@@ -741,8 +805,56 @@ $remotes"
     return 1
 }
 
+inspect_git_state() {
+    local path="$1" marker marker_path status
+    if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path locked 2>/dev/null)"; then
+        CHECK_REASON="lock check failed"; return 1
+    fi
+    [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="locked"; return 1; }
+    if ! CHECK_HEAD="$(git -C "$path" rev-parse --verify HEAD 2>/dev/null)" \
+        || ! status="$(git -C "$path" ls-files --unmerged 2>/dev/null)"; then
+        CHECK_REASON="index check failed"; return 1
+    fi
+    [[ -z "$status" ]] || { CHECK_REASON="unresolved conflicts"; return 1; }
+    for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer index.lock; do
+        if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path "$marker" 2>/dev/null)"; then
+            CHECK_REASON="operation check failed"; return 1
+        fi
+        [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="Git operation in progress"; return 1; }
+    done
+}
+
+inspect_ignored_files() {
+    local path="$1" ignored
+    if ! git -C "$path" ls-files --others --ignored --exclude-standard --directory -z \
+        > "$scratch/ignored" 2>/dev/null; then
+        CHECK_REASON="ignored-file check failed"; return 1
+    fi
+    while IFS= read -r -d '' ignored; do
+        case "$ignored" in
+            node_modules/*|*/node_modules/*|.venv/*|*/.venv/*|target/*|*/target/*|\
+            .next/*|*/.next/*|__pycache__/*|*/__pycache__/*|.pytest_cache/*|*/.pytest_cache/*|\
+            .mypy_cache/*|*/.mypy_cache/*|.ruff_cache/*|*/.ruff_cache/*) ;;
+            *) [[ "$ACCEPT_IGNORED" -eq 1 ]] || { CHECK_REASON="ignored files"; return 1; } ;;
+        esac
+    done < "$scratch/ignored"
+}
+
+inspect_index_flags() {
+    local path="$1" entry
+    # WARN: Status can hide tracked edits under these flags; --accept-dirty permits discarding them.
+    if ! git -C "$path" ls-files -v -z > "$scratch/index-flags" 2>/dev/null; then
+        CHECK_REASON="index flag check failed"; return 1
+    fi
+    while IFS= read -r -d '' entry; do
+        if [[ "$ACCEPT_DIRTY" -eq 0 && "$entry" == [a-zS]\ * ]]; then
+            CHECK_REASON="hidden index flags"; return 1
+        fi
+    done < "$scratch/index-flags"
+}
+
 inspect_worktree() {
-    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 ignored open_path marker marker_path key slug entry head_tree base_tree branch branch_head conflict_base
+    local path="$1" locked="$2" saved_head="${3:-}" head top status commit_ts merge_status=0 branch_status=0 open_path key slug head_tree base_tree branch branch_head conflict_base
     CHECK_REASON=""
     CHECK_DIRTY=0 CHECK_PUSH_URL="" CHECK_PUSH_REMOTE="" CHECK_WIP_BRANCH=""
     CHECK_MERGE="merged"
@@ -760,34 +872,12 @@ inspect_worktree() {
     if ! top="$(git -C "$path" rev-parse --show-toplevel 2>/dev/null)" || [[ "$top" != "$path" ]]; then
         CHECK_REASON="checkout check failed"; return 1
     fi
-    if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path locked 2>/dev/null)"; then
-        CHECK_REASON="lock check failed"; return 1
-    fi
-    [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="locked"; return 1; }
-    if ! head="$(git -C "$path" rev-parse --verify HEAD 2>/dev/null)" \
-        || ! status="$(git -C "$path" ls-files --unmerged 2>/dev/null)"; then
-        CHECK_REASON="index check failed"; return 1
-    fi
-    [[ -z "$status" ]] || { CHECK_REASON="unresolved conflicts"; return 1; }
-    # Status and even ordinary worktree removal can overlook tracked edits
-    # hidden by these flags. Retain the checkout without changing its index.
-    if ! git -C "$path" ls-files -v -z > "$scratch/index-flags" 2>/dev/null; then
-        CHECK_REASON="index flag check failed"; return 1
-    fi
-    while IFS= read -r -d '' entry; do
-        if [[ "$entry" == [a-zS]\ * ]]; then
-            CHECK_REASON="hidden index flags"; return 1
-        fi
-    done < "$scratch/index-flags"
+    inspect_git_state "$path" || return 1
+    head="$CHECK_HEAD"
+    inspect_index_flags "$path" || return 1
     if [[ -n "$saved_head" && "$head" != "$saved_head" ]]; then
         CHECK_REASON="HEAD changed after snapshot"; return 1
     fi
-    for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer index.lock; do
-        if ! marker_path="$(git -C "$path" rev-parse --path-format=absolute --git-path "$marker" 2>/dev/null)"; then
-            CHECK_REASON="operation check failed"; return 1
-        fi
-        [[ ! -e "$marker_path" && ! -L "$marker_path" ]] || { CHECK_REASON="Git operation in progress"; return 1; }
-    done
     if [[ "$WIP_PUSH" -eq 1 ]]; then
         resolve_wip_remote "$path" || return 1
         if ! key="$(printf '%s' "$path" | git hash-object --stdin 2>/dev/null)" \
@@ -801,9 +891,24 @@ inspect_worktree() {
         git -C "$REPOSITORY" merge-base --is-ancestor "$head" "$BASE_BRANCH" 2>/dev/null || merge_status=$?
         if [[ "$merge_status" -ne 0 ]]; then
             [[ "$merge_status" -eq 1 ]] || { CHECK_REASON="merge check failed"; return 1; }
+            if [[ "$ACCEPT_UNMERGED" -eq 1 ]]; then
+                branch="$(git -C "$path" symbolic-ref --quiet HEAD 2>/dev/null)" || branch_status=$?
+                if [[ "$branch_status" -eq 0 ]]; then
+                    if [[ "$branch" != refs/heads/* ]] \
+                        || ! branch_head="$(git -C "$path" rev-parse --verify "$branch^{commit}" 2>/dev/null)" \
+                        || [[ "$branch_head" != "$head" ]]; then
+                        CHECK_REASON="branch retention check failed"; return 1
+                    fi
+                    CHECK_MERGE="HEAD retained on branch"
+                elif [[ "$branch_status" -ne 1 ]]; then
+                    CHECK_REASON="branch check failed"; return 1
+                fi
+            fi
             # Tree equality cannot be influenced by a custom merge driver.
             # A named branch retains non-ancestor history after squash/rebase.
-            if [[ "$INTEGRATED" -eq 1 ]] \
+            if [[ "$CHECK_MERGE" == "HEAD retained on branch" ]]; then
+                :
+            elif [[ "$INTEGRATED" -eq 1 ]] \
                 && head_tree="$(git -C "$REPOSITORY" rev-parse "$head^{tree}")" \
                 && base_tree="$(git -C "$REPOSITORY" rev-parse "$BASE_BRANCH^{tree}")" \
                 && [[ "$head_tree" == "$base_tree" ]] \
@@ -835,7 +940,7 @@ inspect_worktree() {
         CHECK_REASON="history check failed"; return 1
     fi
     CHECK_AGE=$(( NOW - commit_ts ))
-    if [[ -z "$saved_head" ]] && (( CHECK_AGE < AGE_SECONDS )); then
+    if [[ "$ACCEPT_RECENT" -eq 0 && -z "$saved_head" ]] && (( CHECK_AGE < AGE_SECONDS )); then
         CHECK_REASON="too new"; return 1
     fi
 
@@ -844,22 +949,11 @@ inspect_worktree() {
     fi
     if [[ -n "$status" ]]; then
         CHECK_DIRTY=1
-        if [[ "$WIP_PUSH" -eq 0 || -n "$saved_head" ]]; then
+        if [[ "$ACCEPT_DIRTY" -eq 0 && ( "$WIP_PUSH" -eq 0 || -n "$saved_head" ) ]]; then
             CHECK_REASON="dirty"; return 1
         fi
     fi
-    if ! git -C "$path" ls-files --others --ignored --exclude-standard --directory -z \
-        > "$scratch/ignored" 2>/dev/null; then
-        CHECK_REASON="ignored-file check failed"; return 1
-    fi
-    while IFS= read -r -d '' ignored; do
-        case "$ignored" in
-            node_modules/*|*/node_modules/*|.venv/*|*/.venv/*|target/*|*/target/*|\
-            .next/*|*/.next/*|__pycache__/*|*/__pycache__/*|.pytest_cache/*|*/.pytest_cache/*|\
-            .mypy_cache/*|*/.mypy_cache/*|.ruff_cache/*|*/.ruff_cache/*) ;;
-            *) CHECK_REASON="ignored files"; return 1 ;;
-        esac
-    done < "$scratch/ignored"
+    inspect_ignored_files "$path" || return 1
     # A later candidate may become busy while earlier worktrees are removed.
     [[ "$RECHECK" -eq 0 ]] || load_activity
     [[ "$activity_ok" -eq 1 ]] || { CHECK_REASON="activity unavailable"; return 1; }
@@ -870,6 +964,26 @@ inspect_worktree() {
             "$path"|"$path"/*) CHECK_REASON="active process"; return 1 ;;
         esac
     done < "$scratch/activity"
+    if [[ "$RECHECK" -eq 1 ]]; then
+        # WARN: Ordinary removal can discard ignored files and hidden edits created during the activity check.
+        if [[ "$ACCEPT_DIRTY" -eq 0 ]]; then
+            inspect_index_flags "$path" || return 1
+        fi
+        if [[ "$ACCEPT_IGNORED" -eq 0 ]]; then
+            inspect_ignored_files "$path" || return 1
+        fi
+        # WHY: Native --force bypasses Git's dirty-index refusal; refresh Git state after the slower checks.
+        inspect_git_state "$path" || return 1
+        [[ "$CHECK_HEAD" == "$head" ]] || { CHECK_REASON="HEAD changed during inspection"; return 1; }
+        if [[ "$CHECK_MERGE" == "HEAD retained on branch" || "$CHECK_MERGE" == "changes integrated" ]]; then
+            if ! branch="$(git -C "$path" symbolic-ref --quiet HEAD 2>/dev/null)" \
+                || [[ "$branch" != refs/heads/* ]] \
+                || ! branch_head="$(git -C "$path" rev-parse --verify "$branch^{commit}" 2>/dev/null)" \
+                || [[ "$branch_head" != "$head" ]]; then
+                CHECK_REASON="branch retention check failed"; return 1
+            fi
+        fi
+    fi
     return 0
 }
 
@@ -941,6 +1055,10 @@ evaluate() {
         local state="push HEAD"
         [[ "$CHECK_DIRTY" -eq 0 ]] || state="commit WIP"
         add_row wip-push "$state, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "${BASE_BRANCH:--}" "$MEASURED_AGE" "$CHECK_PUSH_REMOTE/$CHECK_WIP_BRANCH" "$MEASURED_KIB" "$CHECK_AGE"
+    elif [[ "$ACCEPT_DIRTY" -eq 1 ]]; then
+        add_row force-remove "$CHECK_MERGE; discard local files" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB" "$CHECK_AGE"
+    elif [[ "$ACCEPT_IGNORED" -eq 1 ]]; then
+        add_row remove "$CHECK_MERGE; discard ignored artifacts" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB" "$CHECK_AGE"
     else
         add_row remove "$CHECK_MERGE, $(( CHECK_AGE / 3600 ))h old" "$size" "$path" "$REPOSITORY" "$BASE_BRANCH" "$MEASURED_AGE" "-" "$MEASURED_KIB" "$CHECK_AGE"
     fi
@@ -1097,8 +1215,16 @@ for (( i=0; i<${#to_remove[@]}; i++ )); do
         errors=$(( errors + 1 ))
         continue
     fi
-    echo "Removing $path"
-    if git -C "$REPOSITORY" worktree remove "$path"; then
+    remove_options=()
+    if [[ "$ACCEPT_DIRTY" -eq 1 ]]; then
+        remove_options+=(--force)
+        echo "Force-removing $path; local files will be discarded"
+    elif [[ "$ACCEPT_IGNORED" -eq 1 ]]; then
+        echo "Removing $path; ignored artifacts will be discarded"
+    else
+        echo "Removing $path"
+    fi
+    if git -C "$REPOSITORY" worktree remove ${remove_options[@]+"${remove_options[@]}"} "$path"; then
         removed=$(( removed + 1 ))
     else
         echo "error: removal failed for $path; continuing" >&2

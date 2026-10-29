@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Sweep real repositories, removing idle merged worktrees and retaining work."""
+import json
 import os
 from pathlib import Path
 import pty
@@ -28,12 +29,12 @@ def main():
     env.pop("WORKTREE_CLEANUP_BASE_BRANCH", None)
     env.pop("WORKTREE_CLEANUP_AGE_HOURS", None)
 
-    def git(repo, *args):
+    def git(repo, *args, run_env=env):
         return subprocess.check_output(
             ["git", "-c", "user.name=Cleanup check",
              "-c", "user.email=cleanup@example.invalid",
              "-c", "commit.gpgsign=false", *args],
-            cwd=repo, env=env, text=True,
+            cwd=repo, env=run_env, text=True,
         ).strip()
 
     def project(repo, branch):
@@ -163,6 +164,10 @@ import sys
 import time
 
 args = sys.argv[1:]
+checked_path = os.environ.get("WORKTREE_TEST_CHECKED_PATH")
+if (checked_path and args[:1] == ["-C"]
+        and args[2:5] == ["ls-files", "--others", "--ignored"]):
+    Path(checked_path).write_text(args[1])
 trigger = Path(os.environ["WORKTREE_TEST_TRIGGER"])
 if len(args) >= 3 and args[-3:-1] == ["worktree", "remove"] and not trigger.exists():
     trigger.touch()
@@ -298,11 +303,216 @@ signal.pause()
             assert git(app, "show-ref", "--verify", "refs/heads/completed-task")
             assert git(app, "status", "--porcelain") == ""
             assert git(library, "status", "--porcelain") == ""
+
+            git(library, "worktree", "add", "--detach", str(dependencies))
+            git(library, "worktree", "lock", "--reason", "Retain library discovery", str(dependencies))
+            force_checkout = app / ".worktrees/discard-recent"
+            git(app, "worktree", "add", "-b", "force-unmerged", str(force_checkout))
+            (force_checkout / "tracked.txt").write_text("committed source\n")
+            (force_checkout / "assumed.txt").write_text("committed assumed file\n")
+            (force_checkout / "skipped.txt").write_text("committed skipped file\n")
+            git(force_checkout, "add", ".")
+            recent_env = dict(env)
+            recent_env.pop("GIT_AUTHOR_DATE")
+            recent_env.pop("GIT_COMMITTER_DATE")
+            git(force_checkout, "commit", "-qm", "Recent unmerged work", run_env=recent_env)
+            force_head = git(force_checkout, "rev-parse", "HEAD")
+            git(force_checkout, "update-index", "--assume-unchanged", "assumed.txt")
+            git(force_checkout, "update-index", "--skip-worktree", "skipped.txt")
+            (force_checkout / "tracked.txt").write_text("discard tracked edit\n")
+            (force_checkout / "assumed.txt").write_text("discard hidden assumed edit\n")
+            (force_checkout / "skipped.txt").write_text("discard hidden skipped edit\n")
+            (force_checkout / "untracked.txt").write_text("discard untracked source\n")
+            (force_checkout / "evidence").mkdir()
+            (force_checkout / "evidence/report.txt").write_text("discard ignored artifact\n")
+            force_status = git(force_checkout, "status", "--porcelain")
+            assert "assumed.txt" not in force_status and "skipped.txt" not in force_status
+            detached = app / ".worktrees/unmerged-detached"
+            git(app, "worktree", "add", "--detach", str(detached))
+            (detached / "detached.txt").write_text("retain detached work\n")
+            git(detached, "add", "detached.txt")
+            git(detached, "commit", "-qm", "Unmerged detached work")
+            detached_head = git(detached, "rev-parse", "HEAD")
+            conflict_merge = subprocess.run(
+                ["git", "-c", "user.name=Cleanup check",
+                 "-c", "user.email=cleanup@example.invalid",
+                 "-C", str(conflicted), "merge", "main"],
+                env=env, capture_output=True, text=True,
+            )
+            assert conflict_merge.returncode == 1, conflict_merge.stdout + conflict_merge.stderr
+            assert git(conflicted, "ls-files", "--unmerged")
+            recheck = app / ".worktrees/during-recheck"
+            git(app, "worktree", "add", "-b", "force-recheck-conflict", str(recheck), conflict_head)
+            git(app, "commit", "--allow-empty", "-qm", "Recent merged base", run_env=recent_env)
+            git(app, "update-ref", "refs/remotes/origin/main", "HEAD")
+            late_ignored = app / ".worktrees/late-ignored"
+            git(app, "worktree", "add", "--detach", str(late_ignored))
+            late_hidden = app / ".worktrees/late-hidden"
+            git(app, "worktree", "add", "--detach", str(late_hidden), "HEAD~1")
+            protected_registration = git(app, "worktree", "list", "--porcelain")
+            force_index = Path(git(force_checkout, "rev-parse", "--path-format=absolute",
+                                   "--git-path", "index"))
+            force_index_before = force_index.read_bytes()
+            force_preview = run(temporary, "--force", str(root))
+            assert "force-remove" in force_preview and "local files will be discarded" in force_preview
+            assert "discard local files" in force_preview and "HEAD retained on branch" in force_preview
+            assert "unresolved conflicts" in force_preview and "active process" in force_preview, force_preview
+            assert git(app, "worktree", "list", "--porcelain") == protected_registration
+            assert force_index.read_bytes() == force_index_before
+            assert git(force_checkout, "rev-parse", "HEAD") == force_head
+            assert git(force_checkout, "status", "--porcelain") == force_status
+            assert (force_checkout / "tracked.txt").read_text() == "discard tracked edit\n"
+            assert (force_checkout / "assumed.txt").read_text() == "discard hidden assumed edit\n"
+            assert (force_checkout / "skipped.txt").read_text() == "discard hidden skipped edit\n"
+            assert (force_checkout / "untracked.txt").read_text() == "discard untracked source\n"
+            assert (force_checkout / "evidence/report.txt").read_text() == "discard ignored artifact\n"
+            accepts = ("--accept-dirty", "--accept-ignored", "--accept-unmerged", "--accept-recent")
+            recent_retained = json.loads(run(
+                temporary, "--accept-dirty", "--accept-ignored", "--accept-unmerged",
+                "--json", "--worktree", str(force_checkout),
+            ))
+            assert recent_retained["worktrees"][0]["reason"] == "too new", recent_retained
+            ignored_retained = json.loads(run(
+                temporary, "--accept-dirty", "--accept-unmerged", "--accept-recent",
+                "--json", "--worktree", str(force_checkout),
+            ))
+            assert ignored_retained["worktrees"][0]["reason"] == "ignored files", ignored_retained
+            single_preview = json.loads(run(
+                temporary, *accepts, "--integrated", "--json", "--worktree", str(force_checkout),
+            ))
+            assert len(single_preview["worktrees"]) == 1, single_preview
+            assert single_preview["accepted_checks"] == ["dirty", "ignored", "unmerged", "recent"], single_preview
+            assert single_preview["worktrees"][0]["action"] == "force-remove", single_preview
+            assert single_preview["worktrees"][0]["head_age_seconds"] < 24 * 3600, single_preview
+            incompatible = subprocess.run(
+                ["/bin/bash", str(tool), "--force", "--wip-push", "-y", str(root)],
+                cwd=temporary, env=env, capture_output=True, text=True, timeout=60,
+            )
+            assert incompatible.returncode == 1 and "--force excludes --wip-push" in incompatible.stderr
+            assert force_checkout.is_dir() and not git(app, "for-each-ref", "refs/heads/wip/cleanup/")
+            checked_path = temporary / "last-inspected-checkout"
+            late_merge = temporary / "merge-during-activity"
+            lsof_wrapper = wrappers / "lsof"
+            lsof_wrapper.write_text("#!" + sys.executable + "\n" + """
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+checked = Path(os.environ["WORKTREE_TEST_CHECKED_PATH"])
+marker = Path(os.environ["WORKTREE_TEST_ACTIVITY_MARKER"])
+checkout = Path(os.environ["WORKTREE_TEST_RECHECK"])
+if checked.exists() and checked.read_text() == str(checkout) and not marker.exists():
+    marker.touch()
+    event = os.environ["WORKTREE_TEST_ACTIVITY_EVENT"]
+    if event == "ignored":
+        (checkout / "evidence").mkdir()
+        (checkout / "evidence/report.txt").write_text("retain late ignored artifact\\n")
+    elif event == "hidden":
+        subprocess.run(
+            [os.environ["WORKTREE_TEST_GIT"], "-C", str(checkout),
+             "update-index", "--skip-worktree", ".gitignore"], check=True,
+        )
+        (checkout / ".gitignore").write_text("retain late hidden edit\\n")
+    else:
+        assert event == "merge", event
+        result = subprocess.run(
+            [os.environ["WORKTREE_TEST_GIT"], "-c", "user.name=Cleanup check",
+             "-c", "user.email=cleanup@example.invalid", "-C", str(checkout), "merge", "main"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 1, result.stdout + result.stderr
+os.execv(os.environ["WORKTREE_TEST_LSOF"], ["lsof", *sys.argv[1:]])
+""")
+            lsof_wrapper.chmod(0o755)
+            ignored_marker = temporary / "ignored-during-activity"
+            ignored_env = {
+                **tool_env,
+                "WORKTREE_TEST_CHECKED_PATH": str(checked_path),
+                "WORKTREE_TEST_ACTIVITY_MARKER": str(ignored_marker),
+                "WORKTREE_TEST_ACTIVITY_EVENT": "ignored",
+                "WORKTREE_TEST_RECHECK": str(late_ignored),
+                "WORKTREE_TEST_LSOF": shutil.which("lsof"),
+            }
+            ignored_race = run(
+                temporary, "--accept-recent", "-y", "--worktree", str(late_ignored), run_env=ignored_env,
+            )
+            assert ignored_marker.exists() and "Removed 0 worktree(s)" in ignored_race, ignored_race
+            assert f"Retaining {late_ignored}: ignored files" in ignored_race, ignored_race
+            assert (late_ignored / "evidence/report.txt").read_text() == "retain late ignored artifact\n"
+            assert str(late_ignored) in git(app, "worktree", "list", "--porcelain")
+            hidden_marker = temporary / "hidden-edit-during-activity"
+            hidden_env = {
+                **ignored_env,
+                "WORKTREE_TEST_ACTIVITY_MARKER": str(hidden_marker),
+                "WORKTREE_TEST_ACTIVITY_EVENT": "hidden",
+                "WORKTREE_TEST_RECHECK": str(late_hidden),
+            }
+            hidden_race = run(
+                temporary, "--accept-ignored", "-y", "--worktree", str(late_hidden), run_env=hidden_env,
+            )
+            assert hidden_marker.exists() and "Removed 0 worktree(s)" in hidden_race, hidden_race
+            assert f"Retaining {late_hidden}: hidden index flags" in hidden_race, hidden_race
+            assert (late_hidden / ".gitignore").read_text() == "retain late hidden edit\n"
+            assert str(late_hidden) in git(app, "worktree", "list", "--porcelain")
+            dirty_result = run(temporary, "--accept-dirty", "-y", str(root))
+            assert "Removed 3 worktree(s)" in dirty_result, dirty_result
+            assert not dirty.exists() and not hidden.exists() and not late_hidden.exists()
+            assert evidence.is_dir() and force_checkout.is_dir() and detached.is_dir()
+            assert (evidence / "evidence/report.txt").read_text() == "retain ignored evidence"
+            assert "ignored files" in dirty_result and "not merged" in dirty_result, dirty_result
+            ignored_result = run(temporary, "--accept-ignored", "-y", "--worktree", str(evidence))
+            assert "Removed 1 worktree(s)" in ignored_result, ignored_result
+            assert not evidence.exists() and force_checkout.is_dir()
+            force_env = {
+                **ignored_env,
+                "WORKTREE_TEST_ACTIVITY_MARKER": str(late_merge),
+                "WORKTREE_TEST_ACTIVITY_EVENT": "merge",
+                "WORKTREE_TEST_RECHECK": str(recheck),
+            }
+            force_result = run(temporary, *accepts, "-y", str(root), run_env=force_env)
+            assert "Removed 2 worktree(s)" in force_result, force_result
+            assert late_merge.exists(), "The merge did not start during the removal recheck"
+            assert f"Retaining {recheck}: unresolved conflicts" in force_result, force_result
+            assert not force_checkout.exists() and not dirty.exists()
+            assert not hidden.exists() and not evidence.exists()
+            app_registration = {
+                line.removeprefix("worktree ") for line in
+                git(app, "worktree", "list", "--porcelain").splitlines() if line.startswith("worktree ")
+            }
+            library_registration = {
+                line.removeprefix("worktree ") for line in
+                git(library, "worktree", "list", "--porcelain").splitlines() if line.startswith("worktree ")
+            }
+            assert str(force_checkout) not in app_registration and str(dirty) not in app_registration
+            assert str(hidden) not in app_registration and str(evidence) not in app_registration
+            assert not late_ignored.exists() and str(late_ignored) not in app_registration
+            assert str(late_hidden) not in app_registration
+            assert str(app) in app_registration and app.is_dir()
+            assert str(pooled) in app_registration and pooled.is_dir()
+            assert str(locked) in app_registration and locked.is_dir()
+            assert str(operation) in app_registration and operation.is_dir()
+            assert str(conflicted) in app_registration and conflicted.is_dir()
+            assert str(recheck) in app_registration and recheck.is_dir()
+            assert git(recheck, "ls-files", "--unmerged")
+            assert Path(git(recheck, "rev-parse", "--path-format=absolute",
+                            "--git-path", "MERGE_HEAD")).is_file()
+            assert git(app, "rev-parse", "refs/heads/force-recheck-conflict") == conflict_head
+            assert str(active) in library_registration and active.is_dir()
+            assert str(dependencies) in library_registration and dependencies.is_dir()
+            assert str(detached) in app_registration and detached.is_dir()
+            assert git(detached, "rev-parse", "HEAD") == detached_head
+            assert (detached / "detached.txt").read_text() == "retain detached work\n"
+            assert git(app, "rev-parse", "refs/heads/force-unmerged") == force_head
+            assert git(app, "show", "force-unmerged:tracked.txt") == "committed source"
+            assert git(app, "show", "force-unmerged:assumed.txt") == "committed assumed file"
+            assert git(app, "show", "force-unmerged:skipped.txt") == "committed skipped file"
         finally:
             process.terminate()
             process.wait(timeout=5)
     print("PASS: repository sweep previews and removes eligible checkouts; "
-          "deduplicates repositories and preserves active, dirty, locked, and ignored work.")
+          "deduplicates repositories and preserves protected work; explicit acceptance "
+          "flags relax only their checks while preserving branches and detached history.")
 
 
 if __name__ == "__main__":

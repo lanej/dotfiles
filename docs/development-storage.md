@@ -42,6 +42,12 @@ without stopping the remaining sweep, and branches are retained.
 Tracked files marked assume-unchanged or skip-worktree retain their checkout,
 because Git status can hide edits to those files.
 
+Use explicit exceptions to relax individual eligibility checks. `--accept-dirty` permits discarding tracked edits, untracked files, and edits hidden by assume-unchanged or skip-worktree flags. `--accept-ignored` permits discarding ignored artifacts beyond the usual disposable build caches. `--accept-unmerged` permits removing a checkout whose named local branch retains its unmerged HEAD. `--accept-recent` bypasses the age threshold. Each flag leaves the other checks in place. Preview one dirty checkout with `git-worktree-cleanup --accept-dirty --worktree /path/to/checkout`, then apply with `git-worktree-cleanup --accept-dirty -y --worktree /path/to/checkout`. Combine flags as needed for one checkout or a project sweep, such as `git-worktree-cleanup --accept-unmerged --accept-recent ~/src`.
+
+`--force` is shorthand for all four exceptions. Preview with `git-worktree-cleanup --force ~/src` and apply with `git-worktree-cleanup --force -y ~/src`. Flags apply to all eligible worktrees in the requested scan; local-file exceptions explicitly report that accepted files will be discarded. `--accept-dirty` removals use the `force-remove` action in table and JSON reports. `--json` previews and `--integrated` are supported. `--accept-recent` also works with `--wip-push`; the other exceptions and `--force` exclude that preservation mode.
+
+Branches and their commits remain accessible after removal. Detached HEAD still requires the usual merge eligibility. Primary checkouts, Treehouse pool slots, locked or active worktrees, unresolved index conflicts, and unfinished Git operations remain protected. A valid base ref and successful safety checks are still required, and eligibility is rechecked immediately before removal. Unaccepted ignored artifacts and hidden index flags are checked again after the activity check, followed by Git-operation and commit-retention checks.
+
 Preview preservation of dirty or unmerged work with
 `git-worktree-cleanup --wip-push ~/src`. This mode accepts only effective GitHub
 push URLs owned by `easypost-sandbox`, preferring `origin` or another approved
