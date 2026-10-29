@@ -39,6 +39,7 @@
   },
   "model": "claude-sonnet-5-5",
   "enableAllProjectMcpServers": true,
+  "disableClaudeAiConnectors": true,
   "hooks": {
     "SessionStart": [
       {
@@ -189,9 +190,9 @@
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": false,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
-    "claude-mem@thedotmack": true,
+    "claude-mem@thedotmack": false,
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false,
@@ -200,7 +201,7 @@
     "feature-dev@claude-plugins-official": true,
     "viewrule@viewrule": true,
     "bigquery@easypost-sandbox": false,
-    "looker@easypost-sandbox": true
+    "looker@easypost-sandbox": false
   },
   "extraKnownMarketplaces": {
     "agent-plugins-for-aws": {
