@@ -55,6 +55,11 @@ def main():
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout
 
+    def table_status(output, path):
+        header = next(line for line in output.splitlines() if line.startswith("REPOSITORY"))
+        row = next(line for line in output.splitlines() if line.endswith(str(path)))
+        return row[header.index("STATUS"):header.index("REASON")].strip()
+
     with tempfile.TemporaryDirectory(prefix="worktree-cleanup-check-") as folder:
         temporary = Path(folder).resolve()
         env["XDG_CACHE_HOME"] = str(temporary / "cache")
@@ -354,8 +359,14 @@ signal.pause()
                                    "--git-path", "index"))
             force_index_before = force_index.read_bytes()
             force_preview = run(temporary, "--force", str(root))
-            assert "force-remove" in force_preview and "local files will be discarded" in force_preview
+            assert force_preview.splitlines()[:2] == ["Dry-run (pass -y to remove).", ""], force_preview
+            assert force_preview.splitlines()[2].startswith("REPOSITORY"), force_preview
             assert "discard local files" in force_preview and "HEAD retained on branch" in force_preview
+            assert table_status(force_preview, force_checkout) == "force-remove (dirty,ignored,unmerged,recent)", force_preview
+            assert table_status(force_preview, evidence) == "force-remove (ignored)", force_preview
+            assert table_status(force_preview, late_ignored) == "force-remove (recent)", force_preview
+            assert table_status(force_preview, late_hidden) == "force-remove", force_preview
+            assert table_status(force_preview, pooled) == "skip", force_preview
             assert "unresolved conflicts" in force_preview and "active process" in force_preview, force_preview
             assert git(app, "worktree", "list", "--porcelain") == protected_registration
             assert force_index.read_bytes() == force_index_before
@@ -372,17 +383,21 @@ signal.pause()
                 "--json", "--worktree", str(force_checkout),
             ))
             assert recent_retained["worktrees"][0]["reason"] == "too new", recent_retained
+            assert recent_retained["worktrees"][0]["status"] == "skip (dirty,unmerged)", recent_retained
             ignored_retained = json.loads(run(
                 temporary, "--accept-dirty", "--accept-unmerged", "--accept-recent",
                 "--json", "--worktree", str(force_checkout),
             ))
             assert ignored_retained["worktrees"][0]["reason"] == "ignored files", ignored_retained
+            assert ignored_retained["worktrees"][0]["status"] == "skip (dirty,unmerged,recent)", ignored_retained
             single_preview = json.loads(run(
                 temporary, *accepts, "--integrated", "--json", "--worktree", str(force_checkout),
             ))
             assert len(single_preview["worktrees"]) == 1, single_preview
             assert single_preview["accepted_checks"] == ["dirty", "ignored", "unmerged", "recent"], single_preview
             assert single_preview["worktrees"][0]["action"] == "force-remove", single_preview
+            assert single_preview["worktrees"][0]["status"] == "force-remove (dirty,ignored,unmerged,recent)", single_preview
+            assert single_preview["worktrees"][0]["accepted_conditions"] == ["dirty", "ignored", "unmerged", "recent"], single_preview
             assert single_preview["worktrees"][0]["head_age_seconds"] < 24 * 3600, single_preview
             incompatible = subprocess.run(
                 ["/bin/bash", str(tool), "--force", "--wip-push", "-y", str(root)],
@@ -457,12 +472,16 @@ os.execv(os.environ["WORKTREE_TEST_LSOF"], ["lsof", *sys.argv[1:]])
             assert str(late_hidden) in git(app, "worktree", "list", "--porcelain")
             dirty_result = run(temporary, "--accept-dirty", "-y", str(root))
             assert "Removed 3 worktree(s)" in dirty_result, dirty_result
+            assert dirty_result.startswith("Applying cleanup.\n\nREPOSITORY"), dirty_result
+            assert table_status(dirty_result, dirty) == "force-remove (dirty)", dirty_result
+            assert table_status(dirty_result, force_checkout) == "skip (dirty)", dirty_result
             assert not dirty.exists() and not hidden.exists() and not late_hidden.exists()
             assert evidence.is_dir() and force_checkout.is_dir() and detached.is_dir()
             assert (evidence / "evidence/report.txt").read_text() == "retain ignored evidence"
             assert "ignored files" in dirty_result and "not merged" in dirty_result, dirty_result
             ignored_result = run(temporary, "--accept-ignored", "-y", "--worktree", str(evidence))
             assert "Removed 1 worktree(s)" in ignored_result, ignored_result
+            assert table_status(ignored_result, evidence) == "remove (ignored)", ignored_result
             assert not evidence.exists() and force_checkout.is_dir()
             force_env = {
                 **ignored_env,

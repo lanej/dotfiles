@@ -123,7 +123,7 @@ os.execv(os.environ["WORKTREE_TEST_GIT"], ["git", *args])
         (checkout / "node_modules/disposable").write_bytes(b"x" * 65536)
         original_status = git(checkout, "status", "--porcelain")
 
-        preview = scan("--wip-push")
+        preview = scan("--wip-push", "--min-size", "1KiB")
         assert preview.count("DISK USAGE") == 1 and "PUSH TO" in preview, preview
         assert "wip-push" in preview and "commit WIP" in preview, preview
         assert "no easypost-sandbox push remote" in preview, preview
