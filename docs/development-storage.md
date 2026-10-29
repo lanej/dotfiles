@@ -54,13 +54,24 @@ apply. Unfinished Git operations are retained. Commit or push failures, remote
 verification failures, and changes made during publication leave the checkout
 in place, with any completed WIP commit retained on its local recovery branch.
 
-These are periodic size budgets. Busy caches and targets are deferred and
-checked again on the next run. Native managers clean over-budget caches;
+These are periodic size budgets. Go build cache entries are trimmed oldest first,
+retaining entries whose mtimes are within the last 25 hours, open, or referenced by an
+external symlink. This works while builds and language servers run; protected
+entries can keep the cache above its soft budget. Other busy caches and targets
+are deferred and checked again on the next run. Native managers clean those caches;
 Cargo trims old entries. npm's installed `_npx` tools, installed Rust toolchains,
 virtual environments, source, datasets, and browser installations are retained.
-Go cleanup waits until Go processes and language servers stop. Downloaded
+Go module cleanup waits until Go processes and language servers stop. Downloaded
 Go modules and cached Go toolchain downloads may be fetched again afterward.
 Environment or tool symlinks into a cache prevent its eviction.
+
+On macOS, an over-budget Go cache also uses transparent filesystem compression
+for verified compiler archives whose mtimes are between 10 minutes and 25 hours old.
+Decoded contents and cache keys stay identical; Go reads them normally.
+Open, linked, hardlinked, and already-compressed entries are retained.
+Compression extends each archive's retention time and reduces allocated storage
+without shortening the 25-hour eviction grace period. Savings depend on the
+archive contents, so the budget remains a soft target.
 
 Worktrees already share their Git object database. Reuse each package manager's
 normal download cache rather than allocating one per task. Keep Python caches
