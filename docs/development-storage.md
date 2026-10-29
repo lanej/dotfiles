@@ -28,6 +28,8 @@ directories invalidate their entries. Git state and activity checks run fresh,
 including immediately before removal. If the cache is unavailable, sizes are
 measured directly.
 
+Prune only large checkouts with `git-worktree-cleanup --min-size 1GiB ~/src`; add `-y` to apply. `--min-size` also works with `--worktree`, `--json`, the acceptance flags, and `--wip-push`. It compares allocated disk usage, retaining checkouts below the threshold and reporting the reason in the table. Filtering always measures eligible checkouts fresh and remeasures before removal, so a cached estimate cannot qualify a checkout that has shrunk. Unknown sizes remain registered. K/M/G/T and KiB/MiB/GiB/TiB use binary units; KB/MB/GB/TB use decimal units. Bare values and B mean bytes, and fractions such as `0.5GiB` are accepted.
+
 Add `-y` to remove eligible worktrees. The tool retains primary, locked, active,
 dirty, and unmerged checkouts, plus those with recent HEAD commits, and checks
 eligibility again before each removal. Checkout creation time does not set its
@@ -41,6 +43,12 @@ so refresh them before relying on the report. Project errors are reported
 without stopping the remaining sweep, and branches are retained.
 Tracked files marked assume-unchanged or skip-worktree retain their checkout,
 because Git status can hide edits to those files.
+
+Use explicit exceptions to relax individual eligibility checks. `--accept-dirty` permits discarding tracked edits, untracked files, and edits hidden by assume-unchanged or skip-worktree flags. `--accept-ignored` permits discarding ignored artifacts beyond the usual disposable build caches. `--accept-unmerged` permits removing a checkout whose named local branch retains its unmerged HEAD. `--accept-recent` bypasses the age threshold. Each flag leaves the other checks in place. Preview one dirty checkout with `git-worktree-cleanup --accept-dirty --worktree /path/to/checkout`, then apply with `git-worktree-cleanup --accept-dirty -y --worktree /path/to/checkout`. Combine flags as needed for one checkout or a project sweep, such as `git-worktree-cleanup --accept-unmerged --accept-recent ~/src`.
+
+`--force` is shorthand for all four exceptions. Preview with `git-worktree-cleanup --force ~/src` and apply with `git-worktree-cleanup --force -y ~/src`. Flags apply to all eligible worktrees in the requested scan; local-file exceptions explicitly report that accepted files will be discarded. The table starts with one preview/apply line. Its `STATUS` column shows the action followed by accepted conditions observed for that checkout, such as `force-remove (dirty,unmerged,recent)`; unused exceptions are omitted. JSON exposes the same `status` and per-row `accepted_conditions` while preserving the machine-readable `action`. `--json` previews and `--integrated` are supported. `--accept-recent` also works with `--wip-push`; the other exceptions and `--force` exclude that preservation mode.
+
+Branches and their commits remain accessible after removal. Detached HEAD still requires the usual merge eligibility. Primary checkouts, Treehouse pool slots, locked or active worktrees, unresolved index conflicts, and unfinished Git operations remain protected. A valid base ref and successful safety checks are still required, and eligibility is rechecked immediately before removal. Unaccepted ignored artifacts and hidden index flags are checked again after the activity check, followed by Git-operation and commit-retention checks.
 
 Preview preservation of dirty or unmerged work with
 `git-worktree-cleanup --wip-push ~/src`. This mode accepts only effective GitHub

@@ -123,7 +123,7 @@ os.execv(os.environ["WORKTREE_TEST_GIT"], ["git", *args])
         (checkout / "node_modules/disposable").write_bytes(b"x" * 65536)
         original_status = git(checkout, "status", "--porcelain")
 
-        preview = scan("--wip-push")
+        preview = scan("--wip-push", "--min-size", "1KiB")
         assert preview.count("DISK USAGE") == 1 and "PUSH TO" in preview, preview
         assert "wip-push" in preview and "commit WIP" in preview, preview
         assert "no easypost-sandbox push remote" in preview, preview
@@ -132,6 +132,9 @@ os.execv(os.environ["WORKTREE_TEST_GIT"], ["git", *args])
         assert git(checkout, "status", "--porcelain") == original_status
         assert git(repo, "for-each-ref", "refs/heads/wip/cleanup/") == ""
         assert not calls.exists()
+        incompatible = scan("--wip-push", "--accept-ignored", "-y", status=1)
+        assert "--accept-ignored" in incompatible and "exclude --wip-push" in incompatible, incompatible
+        assert not calls.exists() and git(checkout, "rev-parse", "HEAD") == original_head
 
         # A URL can expand once into the allowed owner, then expand elsewhere
         # when that literal is used for publication. Such a chain must stay out.
@@ -161,7 +164,7 @@ os.execv(os.environ["WORKTREE_TEST_GIT"], ["git", *args])
 
         rejection.unlink()
         edit_during_push.touch()
-        changed = scan("--wip-push", "-a", "0", "-y", status=1)
+        changed = scan("--wip-push", "--accept-recent", "-y", status=1)
         assert "Retaining" in changed and "dirty" in changed, changed
         assert checkout.is_dir() and (checkout / "late.txt").is_file()
         published_branch = git(checkout, "symbolic-ref", "--short", "HEAD")
