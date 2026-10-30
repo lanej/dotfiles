@@ -16,6 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: sudo apt-get update && sudo apt-get install -y lsof zsh shellcheck
       - name: Install native Treehouse
+        working-directory: ${{ runner.temp }}
         run: |
           curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/treehouse-v3.1.7-linux-amd64.tar.gz
           curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/checksums.txt
