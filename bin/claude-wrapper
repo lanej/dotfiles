@@ -26,12 +26,5 @@ if [ -f "$CACHE_FILE" ]; then
   fi
 fi
 
-# Launch Claude Code with all original arguments.
-# exec -a pins argv[0] to "claude" so process-snapshot tools (tmux-resurrect)
-# see a stable "claude ..." command line. Plain `exec command claude "$@"`
-# resolves `command` externally (exec can't hand off to a builtin), landing on
-# /usr/bin/command — a #!/bin/sh script on macOS — which shows up in `ps` as
-# "/bin/sh /usr/bin/command claude ..." until it finishes re-exec'ing, making
-# tmux-resurrect's restore strategy match intermittently.
-real_claude="$(command -v claude)"
-exec -a claude "$real_claude" "$@"
+launcher_dir=$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parent)' "${BASH_SOURCE[0]}") || exit
+exec python3 "$launcher_dir/agent-treehouse" claude "$@"
