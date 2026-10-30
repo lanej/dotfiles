@@ -474,9 +474,11 @@ cbd() {
 }
 
 codex() {
-	# Keep ordinary launches eligible for the shared daemon. Pane identity is
-	# configured by make codex-tmux, since -c overrides force embedded mode.
-	command codex "$@"
+	"$HOME/.files/bin/codex-wrapper" "$@"
+}
+
+claude() {
+	"$HOME/.files/bin/claude-wrapper" "$@"
 }
 
 codex-bedrock() {

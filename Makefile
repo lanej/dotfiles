@@ -425,6 +425,10 @@ codex-worktree-exit-hook: codex-tmux
 test-codex-worktree-exit:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-codex-worktree-exit.py"
 
+.PHONY: test-agent-treehouse
+test-agent-treehouse:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-agent-treehouse.py"
+
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 

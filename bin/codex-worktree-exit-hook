@@ -261,6 +261,11 @@ def main():
     if (not isinstance(event.get("session_id"), str) or not event["session_id"]
             or not isinstance(event.get("cwd"), str) or not Path(event["cwd"]).is_absolute()):
         raise ValueError("session identity or working directory unavailable")
+    adapter = SOURCE.with_name("agent-treehouse")
+    if adapter.is_file() and not args.reap:
+        integration = runpy.run_path(str(adapter))
+        if integration["codex_end"](event):
+            return 0
     if args.reap:
         try:
             reap(event)
