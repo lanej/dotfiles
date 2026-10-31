@@ -135,9 +135,11 @@ dev-cache-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 FORCE:
 DEV_CACHE_NODE_PATH ?=
+DEV_CACHE_PYTHON ?=
+DEV_CACHE_GO_PATH ?=
 DEV_CACHE_GOPATH ?=
 dev-cache-schedule: dev-cache-config FORCE
-	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" dev-cache "$(DOTFILES)" "$(HOME)" "$(UNAME_S)" "$(DEV_CACHE_NODE_PATH)" "$(DEV_CACHE_GOPATH)"
+	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" dev-cache "$(DOTFILES)" "$(HOME)" "$(UNAME_S)" "$(DEV_CACHE_NODE_PATH)" "$(DEV_CACHE_GOPATH)" "$(DEV_CACHE_PYTHON)" "$(DEV_CACHE_GO_PATH)"
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"

@@ -9,23 +9,31 @@ case "$task" in
     dev-cache)
         node_path=${5:-}
         gopath=${6:-}
+        python=${7:-}
+        go_path=${8:-}
         if [ -z "$node_path" ]; then
             node_path="$(dirname "$(command -v node || echo /usr/bin/node)"):$(dirname "$(command -v npm || echo /usr/bin/npm)")"
         fi
         if [ -z "$gopath" ]; then
             gopath=$(GOTOOLCHAIN=local GOWORK=off go env GOPATH 2>/dev/null) || gopath=
         fi
+        if [ -z "$python" ]; then
+            python=$(command -v python3)
+        fi
+        if [ -z "$go_path" ]; then
+            go_path=$(dirname "$(command -v go || echo /usr/bin/go)")
+        fi
         mkdir -p "$setup_home/.local/state/dev-cache-prune"
         if [ "$os" = Darwin ]; then
             mkdir -p "$setup_home/Library/LaunchAgents"
             plist="$setup_home/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
-            sed -e "s|__HOME__|$setup_home|g" -e "s|__NODE_PATH__|$node_path|g" -e "s|__GOPATH__|$gopath|g" \
+            sed -e "s|__HOME__|$setup_home|g" -e "s|__NODE_PATH__|$node_path|g" -e "s|__PYTHON__|$python|g" -e "s|__GO_PATH__|$go_path|g" -e "s|__GOPATH__|$gopath|g" \
                 "$dotfiles/rc/launchd/com.joshlane.dev-cache-prune.plist.template" > "$plist"
             launchctl unload "$plist" 2>/dev/null || true
             launchctl load -w "$plist"
         else
             mkdir -p "$setup_home/.config/systemd/user"
-            sed -e "s|__HOME__|$setup_home|g" -e "s|__NODE_PATH__|$node_path|g" -e "s|__GOPATH__|$gopath|g" \
+            sed -e "s|__HOME__|$setup_home|g" -e "s|__NODE_PATH__|$node_path|g" -e "s|__PYTHON__|$python|g" -e "s|__GO_PATH__|$go_path|g" -e "s|__GOPATH__|$gopath|g" \
                 "$dotfiles/rc/systemd/dev-cache-prune.service.template" > "$setup_home/.config/systemd/user/dev-cache-prune.service"
             cp "$dotfiles/rc/systemd/dev-cache-prune.timer.template" "$setup_home/.config/systemd/user/dev-cache-prune.timer"
             systemctl --user daemon-reload

@@ -1,15 +1,6 @@
 # Development storage
 
-`make dev-cache-schedule` installs an hourly user job and the editable
-`~/.config/dev-cache-budgets.json`. Defaults are 4 GiB for uv, 2 GiB each for
-Go build, npm download, and Cargo download caches, 4 GiB for Go modules,
-and 8 GiB across Rust
-`target` directories in `~/src`, `~/Documents/Codex`, and Paseo worktrees.
-Run `dev-cache-prune --dry-run` to inspect usage.
-Setup records the installed Node/npm directories and Go workspace path.
-Rerun the setup target after replacing Node or changing the Go workspace.
-Developer temporary folders are scanned for borrowed cache files; macOS Apple
-app-private temporary folders are excluded.
+`make dev-cache-schedule` installs an hourly user job and the editable `~/.config/dev-cache-budgets.json`. Defaults are 4 GiB for uv, 2 GiB each for Go build, npm download, and Cargo download caches, 4 GiB for Go modules, and 8 GiB across Rust `target` directories in `~/src`, `~/Documents/Codex`, and Paseo worktrees. Run `dev-cache-prune --dry-run` to inspect usage. Setup records the installed Python executable, Node/npm and Go directories, and Go workspace path. Rerun the setup target after replacing Python, Node, or Go or changing the Go workspace. Developer temporary folders are scanned for borrowed cache files; macOS Apple app-private temporary folders are excluded.
 
 Preview worktree cleanup across all projects with `git-worktree-cleanup ~/src`,
 or run it from `~/src` without an argument. Inside a repository, the command
