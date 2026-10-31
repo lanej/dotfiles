@@ -30,3 +30,4 @@ memory.json
 
 **/.claude/.cc-writes/
 .codex/
+__pycache__/
