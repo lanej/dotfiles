@@ -21,6 +21,7 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
+PROMPT = b"zellij-ready> "
 
 
 class Terminal:
@@ -117,9 +118,61 @@ class Terminal:
         except ChildProcessError:
             client_status = "already reaped"
         details.append(f"Client process: {client_status}")
+        details.extend(self.startup_diagnostics())
         output = self.output[-4000:].decode(errors="replace")
         details.append(f"Terminal output:\n{output or '<empty>'}")
         raise AssertionError("\n".join(details))
+
+    def startup_diagnostics(self):
+        details = []
+        sample_pids = set()
+        try:
+            process = subprocess.run(
+                ["ps", "-axo", "pid=,ppid=,stat=,command="],
+                capture_output=True, text=True, timeout=5,
+            )
+            rows = [line.split(None, 3) for line in process.stdout.splitlines()]
+            rows = [row for row in rows if len(row) == 4]
+            # The server daemon reparents itself. Its unique socket path still
+            # identifies it without exposing unrelated processes' arguments.
+            socket_dir = self.env["ZELLIJ_SOCKET_DIR"]
+            selected = {str(self.pid)} | {row[0] for row in rows if socket_dir in row[3]}
+            while True:
+                children = {row[0] for row in rows if row[1] in selected}
+                if children <= selected:
+                    break
+                selected |= children
+            related = [row for row in rows if row[0] in selected]
+            details.append("Process snapshot (PID PPID STAT COMMAND):\n" +
+                           "\n".join(" ".join(row) for row in related))
+            sample_pids = {row[0] for row in related
+                           if row[0] == str(self.pid) or "--server " in row[3]}
+            if process.stderr:
+                details.append(process.stderr)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            details.append(f"Could not inspect test processes: {error}")
+        if os.uname().sysname == "Darwin" and shutil.which("sample"):
+            for pid in sorted(sample_pids):
+                sample_path = Path(self.env["HOME"]) / f"process-{pid}.sample"
+                try:
+                    sample = subprocess.run(
+                        ["sample", pid, "1", "1", "-file", str(sample_path)],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    details.append(f"Process sample {pid}:\n{sample.stdout}{sample.stderr}")
+                    if sample_path.exists():
+                        details.append(sample_path.read_text(errors="replace")[:16000])
+                except (OSError, subprocess.TimeoutExpired) as error:
+                    details.append(f"Could not sample process {pid}: {error}")
+        log = Path(self.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
+        try:
+            with log.open("rb") as handle:
+                handle.seek(0, os.SEEK_END)
+                handle.seek(max(0, handle.tell() - 16000))
+                details.append("Zellij log:\n" + handle.read(16000).decode(errors="replace"))
+        except OSError as error:
+            details.append(f"Could not read isolated Zellij log: {error}")
+        return details
 
     def close(self):
         os.close(self.fd)
@@ -146,15 +199,17 @@ def main():
         home.mkdir()
         runtime = temporary / "run"
         runtime.mkdir(mode=0o700)
-        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh",
+        temp_files = temporary / "tmp"
+        temp_files.mkdir(mode=0o700)
+        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": PROMPT.decode(),
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
-               "ZELLIJ_SOCKET_DIR": str(runtime),
+               "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
-                    "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND"):
+                    "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=env,
                        check=True, capture_output=True, text=True)
@@ -166,7 +221,10 @@ def main():
         try:
             terminal = Terminal(binary, env, name)
             clients.append(terminal)
-            terminal.until("first shell starts", lambda: len(terminal.terminals()) == 1)
+            # CLI probes during first-client setup can race server initialization.
+            # An actual rendered shell prompt proves that setup has completed.
+            terminal.until("first shell starts", lambda:
+                           PROMPT in terminal.output and len(terminal.terminals()) == 1)
 
             def top_bars():
                 # list-panes excludes non-selectable bar plugins. Observe the
@@ -225,7 +283,8 @@ def main():
 
             second = Terminal(binary, env, second_name)
             clients.append(second)
-            second.until("second session starts", lambda: len(second.terminals()) == 1)
+            second.until("second session starts", lambda:
+                         PROMPT in second.output and len(second.terminals()) == 1)
             second.prefix(b"d")
             second.until("second session is detached", lambda:
                          not second.action("list-clients").strip().splitlines()[1:])
@@ -243,7 +302,8 @@ def main():
             restored = Terminal(binary, env, name)
             clients.append(restored)
             restored.until("reattach preserves original panes", lambda:
-                           {p["id"] for p in restored.terminals()} == ids)
+                           PROMPT in restored.output
+                           and {p["id"] for p in restored.terminals()} == ids)
             assert len(restored.tabs()) == 2
             restored.prefix(b"2")
             restored.send(b'printf "%s" "$zellij_test_state" > "$HOME/retained-state"\r')
