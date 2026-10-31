@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _build_executables(bin_dir, calls_log, uname_value):
     bin_dir.mkdir()
-    for tool in ("sed", "mkdir"):
+    for tool in ("bash", "sed", "mkdir"):
         resolved = shutil.which(tool)
         assert resolved, f"{tool} must be resolvable on PATH to run this test"
         (bin_dir / tool).symlink_to(resolved)

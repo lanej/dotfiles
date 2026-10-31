@@ -5,12 +5,13 @@ SETUP_TARGETS += dev-cache-config ep-direnv
 SETUP_TARGETS += treehouse-config firstmate-config
 LINUX_SETUP_TARGETS := X polybar bspwm
 DARWIN_SETUP_TARGETS := yabai
-DOTFILES := $(shell pwd)
+DOTFILES := $(CURDIR)
+MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 GO ?= go
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 ifeq ($(origin IS_EASYPOST),undefined)
-INSTALL_HOSTNAME := $(shell install_hostname=$$(uname -n) && printf '%s' "$$install_hostname" | tr '[:upper:]' '[:lower:]')
+INSTALL_HOSTNAME := $(shell bash "$(MAKE_SCRIPTS)/hostname.sh")
 ifeq ($(strip $(INSTALL_HOSTNAME)),)
 $(error Could not determine hostname; set IS_EASYPOST=true or false)
 endif
@@ -42,11 +43,11 @@ else
 endif
 
 define require-command
-	@command -v "$(1)" >/dev/null 2>&1 || { printf '%s\n' 'Missing dependency: $(1). Install it or add it to PATH, then rerun make.' >&2; exit 1; }
+	@bash "$(MAKE_SCRIPTS)/require.sh" command "$(1)"
 endef
 
 define require-os
-	@test "$(UNAME_S)" = "$(1)" || { printf '%s\n' '$@: requires $(1); detected $(UNAME_S).' >&2; exit 1; }
+	@bash "$(MAKE_SCRIPTS)/require.sh" os "$(1)" "$(UNAME_S)" "$@"
 endef
 
 instruction-size:
@@ -54,79 +55,32 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: audit-skills instruction-size
+lint: shellcheck audit-skills instruction-size
+
+shellcheck:
+	$(call require-command,shellcheck)
+	@bash "$(MAKE_SCRIPTS)/shellcheck.sh" "$(DOTFILES)"
 
 treehouse-config:
-	@mkdir -p "$(HOME)/.config/treehouse"
-	@ln -fs "$(DOTFILES)/treehouse/config.toml" "$(HOME)/.config/treehouse/config.toml"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 firstmate-config: treehouse-config
-	@test -x "$(HOME)/src/firstmate/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
-	@mkdir -p "$(HOME)/.local/bin" "$(HOME)/.config/firstmate" "$(HOME)/src/firstmate/config"
-	@ln -fs "$(DOTFILES)/bin/firstmate" "$(HOME)/.local/bin/firstmate"
-	@ln -fs "$(DOTFILES)/firstmate/tmux.conf" "$(HOME)/.config/firstmate/tmux.conf"
-	@ln -fs "$(DOTFILES)/firstmate/backend" "$(HOME)/src/firstmate/config/backend"
-	@ln -fs "$(DOTFILES)/firstmate/crew-harness" "$(HOME)/src/firstmate/config/crew-harness"
-	@ln -fs "$(DOTFILES)/firstmate/codex-approval-mode" "$(HOME)/src/firstmate/config/codex-approval-mode"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 banner:
 	@cat banner.txt
 dev:
-	@mkdir -p $(HOME)/src
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 shell:
-	@mkdir -p $(HOME)/.local/bin
-	@for source in "$(DOTFILES)"/bin/*; do \
-		[ "$${source##*/}" = ep-direnv ] || ln -fs "$$source" "$(HOME)/.local/bin/"; \
-	done
-	@ln -fs $(DOTFILES)/sh/alias $(HOME)/.alias
-	@ln -fs $(DOTFILES)/sh/profile $(HOME)/.profile
-	@mkdir -p $(HOME)/.config/htop
-	@ln -fs $(DOTFILES)/sh/htoprc $(HOME)/.config/htop/htoprc
-	@mkdir -p $(HOME)/.config/bottom
-	@ln -fs $(DOTFILES)/sh/bottom.toml $(HOME)/.config/bottom/bottom.toml
-	@mkdir -p $(HOME)/.config/btop
-	@ln -fs $(DOTFILES)/btop/btop.conf $(HOME)/.config/btop/btop.conf
-	@mkdir -p $(HOME)/.local/share/z
-	@touch "$(HOME)/.z"
-	@ln -fs $(DOTFILES)/share/z.sh $(HOME)/.local/share/z/z.sh
-	@ln -fs $(DOTFILES)/sh/starship.toml $(HOME)/.config/starship.toml
-	@mkdir -p $(HOME)/.config/atuin
-	@ln -fs $(DOTFILES)/sh/atuin.toml $(HOME)/.config/atuin/config.toml
-	@ln -fs $(DOTFILES)/sh/dircolors $(HOME)/.dir_colors
-	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
-	@ln -fs $(DOTFILES)/bash/bashenv $(HOME)/.bashenv
-	@ln -fs $(DOTFILES)/bash/bashrc $(HOME)/.bashrc
-	@ln -fs $(DOTFILES)/bash/bashprofile $(HOME)/.bash_profile
-	@ln -fns $(DOTFILES)/bat $(HOME)/.config/bat
-	@ln -fs $(HOME)/.alias $(HOME)/.bashalias
-	@mkdir -p $(HOME)/.config/glow
-	@ln -fs $(DOTFILES)/sh/glow.yml $(HOME)/.config/glow/glow.yml
-	@ln -fs $(DOTFILES)/sh/glow.nord.json $(HOME)/.config/glow/nord.json
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh: zsh-config zsh-plugins
 zsh-config: shell
-	@ln -fs $(DOTFILES)/zsh/zshrc $(HOME)/.zshrc
-	@ln -fs $(DOTFILES)/zsh/zlogout $(HOME)/.zlogout
-	@ln -fs $(DOTFILES)/zsh/zlogin $(HOME)/.zlogin
-	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
-	@mkdir -p $(HOME)/.config/zsh/
-	@mkdir -p $(HOME)/.local/share/zsh/
-	@mkdir -p $(HOME)/.local/share/zsh/site-functions
-	@mkdir -p $(HOME)/.zsh/completions
-	@mkdir -p $(HOME)/.zsh/cache
-	@ln -fs $(DOTFILES)/zsh/zshenv $(HOME)/.zshenv
-	@ln -fns $(DOTFILES)/zsh/zsh-autosuggestions $(HOME)/.local/share/zsh/autosuggestions
-	@ln -fns $(DOTFILES)/zsh/zsh-syntax-highlighting $(HOME)/.local/share/zsh/zsh-syntax-highlighting
-	@ln -fns $(DOTFILES)/zsh/zsh-github-copilot.plugin.zsh $(HOME)/.local/share/zsh/zsh-github-copilot.zsh
-	@ln -fs $(DOTFILES)/zsh/tmux-auto-title.zsh $(HOME)/.local/share/zsh/tmux-auto-title.zsh
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh-plugins: zsh-config
-	$(call require-command,git)
-	@[ -e "$(HOME)/.local/share/fzf-tab/.git" ] || \
-		git clone -q https://github.com/Aloxaf/fzf-tab "$(HOME)/.local/share/fzf-tab"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 tmux: tmux-config tmux-plugins
 tmux-config:
-	@mkdir -p $(HOME)/.config/tmux/
-	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.config/tmux
-	@ln -fs $(DOTFILES)/rc/tmux.conf $(HOME)/.tmux.conf
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 tmux-plugins: tmux-config
 	$(call require-command,tmux)
 	$(call require-command,git)
@@ -137,144 +91,53 @@ tmux-program-status:
 	@"$(if $(AGENT_STATUS_SOURCE),$(AGENT_STATUS_SOURCE),$(HOME)/src/agent-status-broker)/tmux/build" "$(HOME)/.local/bin/tmux-program-status"
 zellij: zellij-config
 zellij-config:
-	@mkdir -p "$(HOME)/.config/zellij/layouts" "$(HOME)/.local/bin"
-	@ln -fs "$(DOTFILES)/zellij/config.kdl" "$(HOME)/.config/zellij/config.kdl"
-	@for source in "$(DOTFILES)"/zellij/layouts/*.kdl; do \
-		[ -f "$$source" ] || continue; \
-		ln -fs "$$source" "$(HOME)/.config/zellij/layouts/" || exit 1; \
-	done
-	@for source in "$(DOTFILES)"/bin/zellij-*; do \
-		[ -f "$$source" ] && [ -x "$$source" ] || continue; \
-		ln -fs "$$source" "$(HOME)/.local/bin/" || exit 1; \
-	done
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 sql-formatters:
-	@mkdir -p $(HOME)/.local/bin
-	@ln -fs $(DOTFILES)/rc/sql-formatter.json $(HOME)/.sql-formatter.json
-	@ln -fs $(DOTFILES)/rc/sqlfluff $(HOME)/.sqlfluff
-	@ln -fs $(DOTFILES)/bin/sql-format-bigquery $(HOME)/.local/bin/sql-format-bigquery
-	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sql-format-bigquery" --help >/dev/null
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim: vim-config sql-formatters
 vim-config: nvim-gh-review
-	@touch $(HOME)/.netrc
-	@mkdir -p $(HOME)/.cache/nvim/undo
-	@mkdir -p $(HOME)/.config/
-	@ln -fns $(DOTFILES)/vim $(HOME)/.vim
-	@ln -fs $(DOTFILES)/vim/init.vim $(HOME)/.vimrc
-	@ln -fns $(DOTFILES)/nvim $(HOME)/.config/nvim
-	@ln -fs $(DOTFILES)/.lua-format $(HOME)/.lua-format
-	@mkdir -p $(HOME)/.local/share/nvim/site/autoload
-	@mkdir -p $(HOME)/.local/share/nvim/min
-	@ln -fns $(DOTFILES)/ctags $(HOME)/.ctags.d
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 .PHONY: nvim-gh-review
 nvim-gh-review:
-	@mkdir -p "$(HOME)/.local/bin"
-	@ln -fs "$(DOTFILES)/bin/nvim-gh-review" "$(HOME)/.local/bin/nvim-gh-review"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 X:
-	$(call require-os,Linux)
-	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xresources
-	@ln -fs $(DOTFILES)/rc/Xresources $(HOME)/.Xdefaults
-	@ln -fs $(DOTFILES)/rc/xinitrc $(HOME)/.xinitrc
-	@ln -fs $(DOTFILES)/rc/xsessionrc $(HOME)/.xsessionrc
-	@ln -fs $(DOTFILES)/rc/xscreensaver $(HOME)/.xscreensaver
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 ruby:
-	@ln -fs $(DOTFILES)/ruby/irbrc $(HOME)/.irbrc
-	@ln -fs $(DOTFILES)/ruby/pryrc $(HOME)/.pryrc
-	@ln -fs $(DOTFILES)/ruby/rdebugrc $(HOME)/.rdebugrc
-	@ln -fs $(DOTFILES)/ruby/gemrc $(HOME)/.gemrc
-	@ln -fs $(DOTFILES)/ruby/rspec $(HOME)/.rspec
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 git:
-	@ln -fs $(DOTFILES)/git/gitconfig $(HOME)/.gitconfig
-	@ln -fs $(DOTFILES)/git/gitignore $(HOME)/.gitignore
-	@ln -fs $(DOTFILES)/git/gitcommit $(HOME)/.gitcommit
-	@ln -fs $(DOTFILES)/git/gitattributes $(HOME)/.gitattributes
-	@ln -fs $(DOTFILES)/git/hooks/pre-commit $(DOTFILES)/.git/hooks/pre-commit
-	@ln -fs $(DOTFILES)/git/hooks/commit-msg $(DOTFILES)/.git/hooks/commit-msg
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 gpg:
-	@mkdir -p $(HOME)/.gnupg
-	@ln -fs $(DOTFILES)/rc/gpg.conf $(HOME)/.gnupg/gpg.conf
-	@ln -fs $(DOTFILES)/rc/gpg-agent.conf $(HOME)/.gnupg/gpg-agent.conf
-	@chmod 700 $(HOME)/.gnupg
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 yabai:
-	$(call require-os,Darwin)
-	@mkdir -p $(HOME)/.config/skhd
-	@ln -fs $(DOTFILES)/yabai/skhdrc $(HOME)/.config/skhd/skhdrc
-	@mkdir -p $(HOME)/.config/yabai
-	@ln -fs $(DOTFILES)/yabai/yabairc $(HOME)/.config/yabai/yabairc
-	@mkdir -p $(HOME)/.config/borders
-	@ln -fs $(DOTFILES)/yabai/bordersrc $(HOME)/.config/borders/bordersrc
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 polybar:
-	$(call require-os,Linux)
-	@mkdir -p $(HOME)/.config
-	@ln -fns $(DOTFILES)/polybar $(HOME)/.config/polybar
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 bspwm:
-	$(call require-os,Linux)
-	@mkdir -p $(HOME)/.config/bspwm
-	@mkdir -p $(HOME)/.config/sxhkd
-	@mkdir -p $(HOME)/.config/rofi
-	@touch $(HOME)/.xsession
-	@ln -fs $(DOTFILES)/bspwm/bspwmrc $(HOME)/.config/bspwm/bspwmrc
-	@ln -fs $(DOTFILES)/bspwm/sxhkdrc $(HOME)/.config/sxhkd/sxhkdrc
-	@ln -fs $(DOTFILES)/rc/config.rasi $(HOME)/.config/rofi/config.rasi
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 kitty: kitty-config kitty-terminfo
 kitty-config:
-	@mkdir -p $(HOME)/.config/kitty
-	@ln -fs $(DOTFILES)/kitty/kittyconf $(HOME)/.config/kitty/kitty.conf
-	@ln -fs $(DOTFILES)/kitty/close_tab_with_confirmation.py $(HOME)/.config/kitty/close_tab_with_confirmation.py
-	@ln -fs $(DOTFILES)/kitty/open_last_url.py $(HOME)/.config/kitty/open_last_url.py
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 python:
-	@mkdir -p $(HOME)/.config/
-	@ln -fs $(DOTFILES)/python/pycodestyle $(HOME)/.config/pycodestyle
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 wezterm:
-	@mkdir -p $(HOME)/.config/wezterm
-	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.wezterm.lua
-	@ln -fs $(DOTFILES)/wezterm.lua $(HOME)/.config/wezterm/wezterm.lua
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 # Opt-in restore: quit Amphetamine first; its preferences must not be symlinked.
 AMPHETAMINE_PREFS ?= $(HOME)/Library/Containers/com.if.Amphetamine/Data/Library/Preferences/com.if.Amphetamine
 amphetamine:
-ifeq ($(UNAME_S),Darwin)
-	@pgrep -x Amphetamine >/dev/null; status=$$?; \
-	if [ "$$status" -eq 0 ]; then \
-		echo "Quit Amphetamine before restoring its settings." >&2; exit 1; \
-	elif [ "$$status" -ne 1 ]; then \
-		exit "$$status"; \
-	fi
-	@plutil -lint "$(DOTFILES)/amphetamine/settings.plist" >/dev/null
-	@defaults write "$(AMPHETAMINE_PREFS)" "Trigger Data" "$$(plutil -extract 'Trigger Data' xml1 -o - "$(DOTFILES)/amphetamine/settings.plist")"
-	@defaults write "$(AMPHETAMINE_PREFS)" "Enable Triggers" -bool "$$(plutil -extract 'Enable Triggers' raw -o - "$(DOTFILES)/amphetamine/settings.plist")"
-	@echo "Amphetamine trigger settings restored. Reopen Amphetamine."
-else
-	@echo "Amphetamine settings require macOS." >&2; exit 1
-endif
+	@bash "$(MAKE_SCRIPTS)/amphetamine.sh" "$(DOTFILES)" "$(AMPHETAMINE_PREFS)" "$(UNAME_S)"
 undercurl:
-	/bin/bash -c "printf '\e[4:3mUndercurled?\n'"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 go:
-	@mkdir -p $(HOME)/.config/go
-	@ln -fs $(DOTFILES)/go/env $(HOME)/.config/go/env
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 cargo:
-	@mkdir -p $(HOME)/.cargo
-	@ln -fs $(DOTFILES)/cargo/config.toml $(HOME)/.cargo/config.toml
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 dev-cache-config:
-	@mkdir -p "$(HOME)/.local/bin" "$(HOME)/.config"
-	@ln -fs "$(DOTFILES)/bin/dev-cache-prune" "$(HOME)/.local/bin/dev-cache-prune"
-	@test -f "$(HOME)/.config/dev-cache-budgets.json" || cp "$(DOTFILES)/rc/dev-cache-budgets.json" "$(HOME)/.config/dev-cache-budgets.json"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 FORCE:
-DEV_CACHE_NODE_PATH = $(shell dirname "$$(command -v node || echo /usr/bin/node)"):$(shell dirname "$$(command -v npm || echo /usr/bin/npm)")
-DEV_CACHE_GOPATH = $(shell GOTOOLCHAIN=local GOWORK=off go env GOPATH 2>/dev/null)
+DEV_CACHE_NODE_PATH ?=
+DEV_CACHE_GOPATH ?=
 dev-cache-schedule: dev-cache-config FORCE
-	@mkdir -p "$(HOME)/.local/state/dev-cache-prune"
-ifeq ($(UNAME_S),Darwin)
-	@mkdir -p "$(HOME)/Library/LaunchAgents"
-	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' -e 's|__GOPATH__|$(DEV_CACHE_GOPATH)|g' "$(DOTFILES)/rc/launchd/com.joshlane.dev-cache-prune.plist.template" > "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
-	@launchctl unload "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist" 2>/dev/null || true
-	@launchctl load -w "$(HOME)/Library/LaunchAgents/com.joshlane.dev-cache-prune.plist"
-else
-	@mkdir -p "$(HOME)/.config/systemd/user"
-	@sed -e 's|__HOME__|$(HOME)|g' -e 's|__NODE_PATH__|$(DEV_CACHE_NODE_PATH)|g' -e 's|__GOPATH__|$(DEV_CACHE_GOPATH)|g' "$(DOTFILES)/rc/systemd/dev-cache-prune.service.template" > "$(HOME)/.config/systemd/user/dev-cache-prune.service"
-	@cp "$(DOTFILES)/rc/systemd/dev-cache-prune.timer.template" "$(HOME)/.config/systemd/user/dev-cache-prune.timer"
-	@systemctl --user daemon-reload
-	@systemctl --user enable --now dev-cache-prune.timer
-endif
+	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" dev-cache "$(DOTFILES)" "$(HOME)" "$(UNAME_S)" "$(DEV_CACHE_NODE_PATH)" "$(DEV_CACHE_GOPATH)"
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
@@ -295,30 +158,7 @@ claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
 claude-config: software-standard
-	@mkdir -p $(HOME)/.claude
-	@mkdir -p $(HOME)/.claude/local
-	@ln -fs $(DOTFILES)/.claude/settings.json $(HOME)/.claude/settings.json
-	@ln -fs $(DOTFILES)/claude/CLAUDE.md $(HOME)/.claude/CLAUDE.md
-	@ln -fs $(DOTFILES)/claude/CONSTITUTION.md $(HOME)/.claude/CONSTITUTION.md
-	@for d in commands workflows; do \
-		[ -L $(HOME)/.claude/$$d ] && rm $(HOME)/.claude/$$d; \
-		mkdir -p $(HOME)/.claude/$$d; \
-		for link in "$(HOME)/.claude/$$d/"*; do \
-			[ -L "$$link" ] && [ ! -e "$$link" ] || continue; \
-			case "$$(readlink "$$link")" in \
-				"$(DOTFILES)/claude/$$d/"*) rm "$$link" || exit 1 ;; \
-			esac; \
-		done; \
-		for f in $(DOTFILES)/claude/$$d/*; do \
-			[ -e "$$f" ] || continue; \
-			ln -fs "$$f" $(HOME)/.claude/$$d/; \
-		done; \
-	done
-	@ln -fs $(DOTFILES)/bin/claude-wrapper $(HOME)/.claude/local/claude-wrapper
-	$(call require-command,git)
-	@git -C $(DOTFILES) config filter.claude-settings.clean 'jq --indent 2 "del(.feedbackSurveyState)"'
-	@git -C $(DOTFILES) config filter.claude-settings.smudge cat
-	$(call require-command,jq)
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
@@ -347,15 +187,7 @@ SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
-	@mkdir -p $(HOME)/.codex
-	@if [ ! -e "$(HOME)/.codex/.env" ] && [ ! -L "$(HOME)/.codex/.env" ] || \
-		[ "$$(readlink "$(HOME)/.codex/.env")" = "$(DOTFILES)/codex/env" ]; then \
-		if [ -f "$(HOME)/.config/bedrock/env" ]; then \
-			ln -fs "$(HOME)/.config/bedrock/env" "$(HOME)/.codex/.env"; \
-		else \
-			ln -fs "$(DOTFILES)/codex/env" "$(HOME)/.codex/.env"; \
-		fi; \
-	fi
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
@@ -364,60 +196,19 @@ codex-permissions:
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
-	@if [ ! -e "$(HOME)/.codex/bedrock.config.toml" ] && [ ! -L "$(HOME)/.codex/bedrock.config.toml" ] && \
-		[ -f "$(DOTFILES)/codex/bedrock.config.toml" ]; then \
-		ln -fs "$(DOTFILES)/codex/bedrock.config.toml" "$(HOME)/.codex/bedrock.config.toml"; \
-	fi
-	@cat $(DOTFILES)/codex/AGENTS.md $(DOTFILES)/codex/AGENTS.local.md > $(HOME)/.codex/AGENTS.md 2>/dev/null || cp $(DOTFILES)/codex/AGENTS.md $(HOME)/.codex/AGENTS.md
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 codex-mcp: claude-config codex-config
 	$(call require-command,codex)
 	$(call require-command,jq)
-	@$(DOTFILES)/bin/sync-codex-mcp-servers
+	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
 quarto:
-	@mkdir -p $(HOME)/.config/quarto
-	@ln -fns $(DOTFILES)/quarto/styles $(HOME)/.config/quarto/styles
-	@ln -fs $(DOTFILES)/quarto/_quarto.yml $(HOME)/.config/quarto/_quarto.yml
-	@echo "✓ Quarto configuration linked"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 gpg-restore:
-	@if gpg --list-secret-keys 6DAE70CE5C232C03 >/dev/null 2>&1; then \
-		echo "✓ GPG key 6DAE70CE5C232C03 already present"; \
-	else \
-		echo "Restoring GPG key from 1Password..."; \
-		if ! command -v op >/dev/null 2>&1; then \
-			echo "Error: 1Password CLI (op) not found"; \
-			exit 1; \
-		fi; \
-		op read "op://Personal/d4xe37k5vnkkjmx5hk3vxiinn4/private_key" --account my.1password.com | gpg --import; \
-		echo "✓ GPG key imported"; \
-		echo ""; \
-		echo "Now setting key trust level..."; \
-		echo "Run the following commands:"; \
-		echo "  gpg --edit-key 6DAE70CE5C232C03"; \
-		echo "  trust"; \
-		echo "  5 (ultimate)"; \
-		echo "  y"; \
-		echo "  quit"; \
-	fi
+	@bash "$(MAKE_SCRIPTS)/gpg-restore.sh"
 presenterm:
-	@mkdir -p $(HOME)/.config/presenterm/themes
-	@ln -fs $(DOTFILES)/presenterm/config.toml $(HOME)/.config/presenterm/config.toml
-	@ln -fs $(DOTFILES)/presenterm/themes/nord.yaml $(HOME)/.config/presenterm/themes/nord.yaml
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 mail:
-	@echo "Setting up email configuration..."
-	@mkdir -p $(HOME)/.config/neomutt
-	@mkdir -p $(HOME)/.cache/neomutt/headers
-	@mkdir -p $(HOME)/.cache/neomutt/bodies
-	@mkdir -p $(HOME)/.local/share/msmtp
-	@ln -fs $(DOTFILES)/mail/mbsyncrc $(HOME)/.mbsyncrc
-	@ln -fs $(DOTFILES)/mail/notmuch-config $(HOME)/.notmuch-config
-	@ln -fs $(DOTFILES)/mail/msmtprc $(HOME)/.msmtprc
-	@ln -fs $(DOTFILES)/mail/neomuttrc $(HOME)/.config/neomutt/neomuttrc
-	@echo "✓ Email configuration files linked"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Run: bash $(DOTFILES)/mail/setup-email.sh"
-	@echo "  2. Follow the prompts to configure your Gmail account"
-	@echo "  3. Launch neomutt when done"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 test-pragmatic-hexagonal:
 	@python3 "$(DOTFILES)/ai/skills/builder/scripts/check_examples.py"
 
@@ -446,15 +237,9 @@ audit-skills:
 
 SETUP_TARGETS += ui-review
 ui-review:
-	$(call require-command,node)
-	$(call require-command,npm)
-	@python3 $(DOTFILES)/scripts/install-viewrule.py
-	@mkdir -p $(HOME)/.local/bin
-	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/ui-review
-	@ln -fs $(DOTFILES)/bin/ui-review $(HOME)/.local/bin/viewrule
-	@echo "Viewrule installed. Use /ui-review in Claude Code or viewrule --help."
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 test-ui-review:
-	@python3 $(DOTFILES)/scripts/test-viewrule.py
+	@python3 "$(DOTFILES)/scripts/test-viewrule.py"
 
 # Opt-in services stay out of SETUP_TARGETS.
 # The helper remembers the selected server, falling back to dev on first setup.
@@ -475,7 +260,7 @@ bedrock-credentials:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-bedrock-credentials.py"
 
 bedrock-router: codex-env
-	@bash -ec 'source "$$1"; prepare_bootstrap_environment; setup_bedrock_router' bash "$(DOTFILES)/bootstrap.sh"
+	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
 
 test-bootstrap-nvim:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"
@@ -483,7 +268,7 @@ test-bootstrap-nvim:
 kitty-terminfo:
 	$(call require-command,tic)
 	$(call require-command,infocmp)
-	@bash -ec 'source "$$1"; setup_kitty_terminfo' bash "$(DOTFILES)/bootstrap.sh"
+	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
 
 test-kitty-ssh:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-kitty-ssh.py"
@@ -498,50 +283,15 @@ test-tmux-session-fallback:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-tmux-session-fallback.py"
 
 atuin-server:
-	@test "$(UNAME_S)" = Linux
-	@test -x "$(HOME)/.local/bin/atuin-server"
-	@mkdir -p "$(HOME)/.config/atuin" "$(HOME)/.config/systemd/user"
-	@mkdir -p "$(HOME)/.local/share/atuin-server"
-	@chmod 700 "$(HOME)/.local/share/atuin-server"
-	@sed 's|__HOME__|$(HOME)|g' "$(DOTFILES)/sh/atuin-server.toml.template" \
-		> "$(HOME)/.config/atuin/server.toml"
-	@ln -fs "$(DOTFILES)/rc/systemd/atuin-server.service" \
-		"$(HOME)/.config/systemd/user/atuin-server.service"
-	@systemctl --user daemon-reload
-	@systemctl --user enable --now atuin-server.service
-	@systemctl --user restart atuin-server.service
+	@bash "$(MAKE_SCRIPTS)/atuin-server.sh" "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
 atuin-tunnel:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-atuin-sync.py" --host "$(ATUIN_SYNC_HOST)" --tunnel-only
 
 claude-json-prune-schedule:
-	@os=$$(uname -s); \
-	if [ "$$os" = "Darwin" ]; then \
-		mkdir -p $(HOME)/.local/state/claude-json-prune; \
-		mkdir -p $(HOME)/Library/LaunchAgents; \
-		sed -e 's|__HOME__|$(HOME)|g' \
-			$(DOTFILES)/rc/launchd/com.joshlane.claude-json-prune.plist.template \
-			> $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist; \
-		launchctl unload $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist 2>/dev/null || true; \
-		launchctl load -w $(HOME)/Library/LaunchAgents/com.joshlane.claude-json-prune.plist; \
-		echo "claude-json-prune scheduled via launchd (daily, 4am)"; \
-	elif [ "$$os" = "Linux" ]; then \
-		mkdir -p $(HOME)/.local/state/claude-json-prune; \
-		mkdir -p $(HOME)/.config/systemd/user; \
-		sed -e 's|__HOME__|$(HOME)|g' \
-			$(DOTFILES)/rc/systemd/claude-json-prune.service.template \
-			> $(HOME)/.config/systemd/user/claude-json-prune.service; \
-		sed -e 's|__HOME__|$(HOME)|g' \
-			$(DOTFILES)/rc/systemd/claude-json-prune.timer.template \
-			> $(HOME)/.config/systemd/user/claude-json-prune.timer; \
-		systemctl --user daemon-reload; \
-		systemctl --user enable --now claude-json-prune.timer; \
-		echo "claude-json-prune scheduled via systemd --user timer (daily, 4am). Headless/no-login box: also run 'loginctl enable-linger $$USER' (not run automatically here — that's an account-level setting change, Josh's call)"; \
-	else \
-		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
-	fi
+	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
@@ -570,18 +320,7 @@ ac-awake-uninstall:
 PASEO_LAUNCH_AGENTS := local.paseo.relay local.paseo.daemon local.paseo.lan-ingress
 paseo-start:
 	$(call require-os,Darwin)
-	@set -eu; domain="gui/$$(id -u)"; \
-	for label in $(PASEO_LAUNCH_AGENTS); do \
-		test -f "$(HOME)/Library/LaunchAgents/$$label.plist" || \
-			{ printf 'Missing LaunchAgent: %s\n' "$$label" >&2; exit 1; }; \
-	done; \
-	for label in $(PASEO_LAUNCH_AGENTS); do \
-		launchctl enable "$$domain/$$label"; \
-		if ! launchctl print "$$domain/$$label" >/dev/null 2>&1; then \
-			launchctl bootstrap "$$domain" "$(HOME)/Library/LaunchAgents/$$label.plist"; \
-		fi; \
-	done
-	@open -a Paseo
+	@bash "$(MAKE_SCRIPTS)/paseo-lifecycle.sh" start "$(HOME)" $(PASEO_LAUNCH_AGENTS)
 
 # Start the existing host and print its live pairing offer for another device.
 paseo-pair:
@@ -589,35 +328,11 @@ paseo-pair:
 	$(call require-command,paseo)
 	$(call require-command,jq)
 	@$(MAKE) --no-print-directory paseo-start
-	@certificate="$(HOME)/.local/share/paseo-secure/pairing/paseo-lan-ca.cer"; \
-	if test -f "$$certificate"; then \
-		printf '\nAirDrop this certificate to the new iPhone/iPad:\n  %s\n' "$$certificate"; \
-		printf '%s\n' 'Open Settings > General > VPN & Device Management, select the downloaded certificate profile, and tap Install.'; \
-		printf '%s\n' 'Then enable it in Settings > General > About > Certificate Trust Settings.'; \
-	fi
-	@set -eu; deadline="$$(($$(date +%s) + 30))"; \
-	until status="$$(paseo --home "$(HOME)/.paseo" daemon status --json)" && \
-		printf '%s\n' "$$status" | jq -e -s 'any(.[]; .localDaemon == "running" and .connectedDaemon == "reachable")' >/dev/null; do \
-		if test "$$(date +%s)" -ge "$$deadline"; then \
-			printf '%s\n' 'Paseo did not become reachable. Check paseo daemon status and the LaunchAgent logs.' >&2; \
-			exit 1; \
-		fi; \
-		sleep 1; \
-	done; \
-	endpoint="$$(printf '%s\n' "$$status" | jq -er '.listen')"; \
-	paseo --host "$$endpoint" daemon pair --relay
+	@bash "$(MAKE_SCRIPTS)/paseo-lifecycle.sh" pair "$(HOME)"
 
 paseo-stop:
 	$(call require-os,Darwin)
-	@domain="gui/$$(id -u)"; status=0; \
-	for label in $(PASEO_LAUNCH_AGENTS); do \
-		launchctl disable "$$domain/$$label" || status=1; \
-		if launchctl print "$$domain/$$label" >/dev/null 2>&1; then \
-			launchctl bootout "$$domain/$$label" || status=1; \
-		fi; \
-	done; \
-	pkill -TERM -u "$$(id -u)" -x Paseo || { test $$? -eq 1 || status=1; }; \
-	exit $$status
+	@bash "$(MAKE_SCRIPTS)/paseo-lifecycle.sh" stop "$(HOME)" $(PASEO_LAUNCH_AGENTS)
 
 test-paseo-lifecycle:
 	@python3 "$(DOTFILES)/scripts/test-paseo-lifecycle.py"
@@ -634,10 +349,4 @@ ep-direnv-uninstall:
 
 .PHONY: epenv
 epenv: ep-direnv
-	@target="$(HOME)/.local/bin/epenv"; source="$(DOTFILES)/bin/epenv"; \
-	if [ -e "$$target" ] || [ -L "$$target" ]; then \
-		[ -L "$$target" ] && [ "$$(readlink "$$target")" = "$$source" ] || { \
-			printf 'epenv: preserving existing destination: %s\n' "$$target" >&2; exit 1; }; \
-	else \
-		mkdir -p "$(HOME)/.local/bin" && ln -s "$$source" "$$target"; \
-	fi
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

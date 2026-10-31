@@ -20,6 +20,7 @@ def main():
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         (checkout / "scripts").mkdir()
+        shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",

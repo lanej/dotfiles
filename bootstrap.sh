@@ -1,10 +1,6 @@
 #!/bin/bash
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or linux
-bitness=$(getconf LONG_BIT)                                           # 64 or 32
-distro="$os-$(uname -m)"
-short_arch=$(uname -m | sed 's,^x86_64$,x64,') # arm64 or x64
-short_distro="$os-$short_arch"
 
 install_from_package_manager() {
 	if declare -f "install_$1_package" >/dev/null; then
@@ -581,7 +577,10 @@ install_node_from_release() {
 
 	# Set up nvm environment - must be sourced fresh for new installation
 	export NVM_DIR="$HOME/.nvm"
+	# NOTE: NVM generates these files outside the repository.
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
@@ -898,6 +897,8 @@ install_cargo_from_release() {
 	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y ||
 		{ rm -f "$rust_stage"; return 1; }
 	rm -f "$rust_stage"
+	# NOTE: rustup generates this file outside the repository.
+	# shellcheck disable=SC1091
 	source "$HOME"/.cargo/env
 }
 
@@ -925,6 +926,8 @@ prepare_bootstrap_environment() {
 	# Reuse an NVM default without changing the checked-in shell profiles.
 	if [ -s "$HOME/.nvm/nvm.sh" ]; then
 		export NVM_DIR="$HOME/.nvm"
+		# NOTE: NVM generates this file outside the repository.
+		# shellcheck disable=SC1091
 		source "$NVM_DIR/nvm.sh"
 	fi
 }

@@ -5,7 +5,7 @@ export LC_ALL=C
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 config="$root/claude/evals/skill-maintenance/size-budgets.json"
-base= installed_home=
+base='' installed_home=''
 while (($#)); do
     case $1 in
         --base) base=$2; shift 2 ;;

@@ -9,7 +9,7 @@ while [[ $# -gt 0 && $1 != -- ]]; do
 done
 shift
 
-green= red= reset=
+green='' red='' reset=''
 if [[ -z ${NO_COLOR+x} && ( ( -t 1 && ${TERM:-dumb} != dumb ) || ${CLICOLOR_FORCE:-0} != 0 ) ]]; then
     green=$'\033[32m' red=$'\033[31m' reset=$'\033[0m'
 fi

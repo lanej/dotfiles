@@ -33,6 +33,7 @@ to pin a specific version) and, if they need config symlinked, to the
 - **Cross-platform**: scripts handle both macOS (`darwin`) and Linux (checking for `apt`, `dnf`, `pacman`, `brew`).
 - **Symlinks**: prefer `ln -fs` (force symbolic) to overwrite existing files/links.
 - **Dependencies**: `bootstrap.sh` prefers installing from binary releases (GitHub Releases) or Cargo when system package managers are outdated.
+- **Makefiles**: Keep Makefiles declarative: targets, dependencies, variables, and calls to scripts or tools. Put shell logic in scripts, including loops, conditionals, pipelines, redirections, and command substitutions. Scripts called by Make must pass `make shellcheck`; include new shell entrypoints in that check, which also runs through `make lint` and CI.
 
 ## Testing
 
