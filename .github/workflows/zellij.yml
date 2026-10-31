@@ -1,0 +1,49 @@
+name: Zellij workflow
+
+on:
+  pull_request:
+    paths:
+      - 'zellij/**'
+      - 'bin/zellij-*'
+      - 'scripts/test-zellij.py'
+      - 'bootstrap.sh'
+      - 'Makefile'
+      - '.github/workflows/zellij.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'zellij/**'
+      - 'bin/zellij-*'
+      - 'scripts/test-zellij.py'
+      - 'bootstrap.sh'
+      - 'Makefile'
+      - '.github/workflows/zellij.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  workflow:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zellij 0.45.1
+        shell: bash
+        run: |
+          source ./bootstrap.sh
+          install_zellij_from_release 0.45.1
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install fzf on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fzf
+      - name: Install fzf on macOS
+        if: runner.os == 'macOS'
+        run: command -v fzf || brew install fzf
+      - run: make test-zellij

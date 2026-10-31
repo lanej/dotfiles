@@ -1,0 +1,307 @@
+// Zellij 0.45.1. See docs/zellij.md for tmux mappings and remaining gaps.
+// Start explicitly with `zellij --session NAME`; shell startup is unchanged.
+default_mode "locked"
+default_layout "tmux"
+theme "lane-nord"
+on_force_close "detach"
+auto_layout false
+pane_frames true
+pane_frame_style "titles"
+mouse_mode true
+mouse_hover_tips false
+mouse_scroll_resize false
+scroll_mode_sync false
+show_startup_tips false
+show_release_notes false
+scrollback_editor "nvim"
+copy_clipboard "system"
+copy_on_select true
+
+// A bounded history, not a RAM-byte guarantee. Recovery snapshots are smaller
+// than the live buffer so long-running agents do not rewrite 100k lines/second.
+scroll_buffer_size 100000
+session_serialization true
+serialize_pane_viewport true
+scrollback_lines_to_serialize 10000
+serialization_interval 60
+
+keybinds clear-defaults=true {
+    locked {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    normal {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    tmux {
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+        // tmux.conf's later picker overrides its earlier Ctrl-f send-prefix.
+        // Ctrl-f f still sends a literal Ctrl-f to the application.
+        bind "f" { Write 6; SwitchToMode "Locked"; }
+        bind "Ctrl f" {
+            Run "zellij-picker" "tabs" {
+                floating true
+                close_on_exit true
+            }
+            SwitchToMode "Locked"
+        }
+        bind "Ctrl w" {
+            Run "zellij-picker" "sessions" {
+                floating true
+                close_on_exit true
+            }
+            SwitchToMode "Locked"
+        }
+
+        bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
+        bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
+        bind "k" "Up" { MoveFocus "Up"; SwitchToMode "Locked"; }
+        bind "l" "Right" { MoveFocus "Right"; SwitchToMode "Locked"; }
+        bind "Tab" "o" { FocusNextPane; SwitchToMode "Locked"; }
+        bind ";" { FocusLastPane; SwitchToMode "Locked"; }
+        bind "s" "\"" { NewPane "Down"; SwitchToMode "Locked"; }
+        bind "v" "%" { NewPane "Right"; SwitchToMode "Locked"; }
+        bind "c" { NewTab; SwitchToMode "Locked"; }
+        bind "Ctrl n" "n" { GoToNextTab; SwitchToMode "Locked"; }
+        bind "Ctrl p" { ToggleTab; SwitchToMode "Locked"; }
+        bind "r" "," { SwitchToMode "RenameTab"; TabNameInput 0; }
+        bind "d" { SwitchToMode "Locked"; Detach; }
+        bind "x" { CloseFocus; SwitchToMode "Locked"; }
+        bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
+        bind "Z" { ToggleFocusNoUiFullscreen; SwitchToMode "Locked"; }
+        bind "J" { MovePane "Down"; SwitchToMode "Locked"; }
+        bind "K" { MovePane "Up"; SwitchToMode "Locked"; }
+        bind "<" { Resize "Increase Left"; SwitchToMode "Locked"; }
+        bind ">" { Resize "Increase Right"; SwitchToMode "Locked"; }
+        bind "+" { Resize "Increase Up"; SwitchToMode "Locked"; }
+        bind "-" { Resize "Increase Down"; SwitchToMode "Locked"; }
+        // Zellij has no timed tmux repeat table; Ctrl-r enables explicit repeats.
+        bind "Ctrl r" { SwitchToMode "Resize"; }
+        bind "Space" { NextSwapLayout; SwitchToMode "Locked"; }
+        bind "Ctrl o" { PreviousSwapLayout; SwitchToMode "Locked"; }
+        bind "P" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        bind "!" { BreakPane; SwitchToMode "Locked"; }
+        bind "m" { SwitchToMode "Move"; }
+        bind "W" { SwitchToMode "Tab"; }
+
+        // New-session and rename-session actions live in the built-in manager.
+        bind "C" "w" {
+            LaunchOrFocusPlugin "zellij:session-manager" {
+                floating true
+                move_to_focused_tab true
+            }
+            SwitchToMode "Locked"
+        }
+        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "[" { SwitchToMode "Scroll"; }
+        bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
+        bind "0" "1" { GoToTab 1; SwitchToMode "Locked"; }
+        bind "2" { GoToTab 2; SwitchToMode "Locked"; }
+        bind "3" { GoToTab 3; SwitchToMode "Locked"; }
+        bind "4" { GoToTab 4; SwitchToMode "Locked"; }
+        bind "5" { GoToTab 5; SwitchToMode "Locked"; }
+        bind "6" { GoToTab 6; SwitchToMode "Locked"; }
+        bind "7" { GoToTab 7; SwitchToMode "Locked"; }
+        bind "8" { GoToTab 8; SwitchToMode "Locked"; }
+        bind "9" { GoToTab 9; SwitchToMode "Locked"; }
+    }
+    resize {
+        bind "h" "Left" { Resize "Increase Left"; }
+        bind "j" "Down" { Resize "Increase Down"; }
+        bind "k" "Up" { Resize "Increase Up"; }
+        bind "l" "Right" { Resize "Increase Right"; }
+        bind "H" { Resize "Decrease Left"; }
+        bind "J" { Resize "Decrease Down"; }
+        bind "K" { Resize "Decrease Up"; }
+        bind "L" { Resize "Decrease Right"; }
+        bind "=" "+" { Resize "Increase"; }
+        bind "-" { Resize "Decrease"; }
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+    move {
+        bind "h" "Left" { MovePane "Left"; }
+        bind "j" "Down" { MovePane "Down"; }
+        bind "k" "Up" { MovePane "Up"; }
+        bind "l" "Right" { MovePane "Right"; }
+        bind "Tab" "n" { MovePane; }
+        bind "p" { MovePaneBackwards; }
+        bind "[" { BreakPaneLeft; SwitchToMode "Locked"; }
+        bind "]" { BreakPaneRight; SwitchToMode "Locked"; }
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+    tab {
+        bind "h" "Left" { MoveTab "Left"; }
+        bind "l" "Right" { MoveTab "Right"; }
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+    renametab {
+        bind "Enter" { SwitchToMode "Locked"; }
+        bind "Esc" "Ctrl c" { UndoRenameTab; SwitchToMode "Locked"; }
+    }
+    scroll {
+        bind "j" "Down" { ScrollDown; }
+        bind "k" "Up" { ScrollUp; }
+        bind "Ctrl f" "PageDown" { PageScrollDown; }
+        bind "Ctrl b" "PageUp" { PageScrollUp; }
+        bind "d" "Ctrl d" { HalfPageScrollDown; }
+        bind "u" "Ctrl u" { HalfPageScrollUp; }
+        bind "g" "Home" { ScrollToTop; }
+        bind "G" "End" { ScrollToBottom; }
+        bind "[" { ScrollToPreviousPrompt; }
+        bind "]" { ScrollToNextPrompt; }
+        bind "/" "s" { SwitchToMode "EnterSearch"; SearchInput 0; }
+        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "m" { SelectCommandAtScrollPosition; }
+        bind "y" { Copy; ScrollToBottom; SwitchToMode "Locked"; }
+        bind "c" { CopyLastCommandOutput; ScrollToBottom; SwitchToMode "Locked"; }
+        bind "Esc" "Enter" "q" "Ctrl c" { ScrollToBottom; SwitchToMode "Locked"; }
+    }
+    entersearch {
+        bind "Enter" { SwitchToMode "Search"; }
+        bind "Esc" "Ctrl c" { SwitchToMode "Scroll"; }
+    }
+    search {
+        bind "n" { Search "down"; }
+        bind "N" "p" { Search "up"; }
+        bind "j" "Down" { ScrollDown; }
+        bind "k" "Up" { ScrollUp; }
+        bind "Ctrl f" "PageDown" { PageScrollDown; }
+        bind "Ctrl b" "PageUp" { PageScrollUp; }
+        bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
+        bind "c" { SearchToggleOption "CaseSensitivity"; }
+        bind "w" { SearchToggleOption "Wrap"; }
+        bind "o" { SearchToggleOption "WholeWord"; }
+        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "Esc" "Enter" "q" "Ctrl c" { ScrollToBottom; SwitchToMode "Locked"; }
+    }
+}
+
+// Nord colors with tmux's purple active tab, cyan inactive labels, and quiet
+// frames. Built-in UI plugins are bundled with the validated Zellij release.
+themes {
+    lane-nord {
+        text_unselected {
+            base 229 233 240
+            background 46 52 64
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        text_selected {
+            base 229 233 240
+            background 59 66 82
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        ribbon_selected {
+            base 46 52 64
+            background 180 142 173
+            emphasis_0 191 97 106
+            emphasis_1 46 52 64
+            emphasis_2 46 52 64
+            emphasis_3 46 52 64
+        }
+        ribbon_unselected {
+            base 136 192 208
+            background 59 66 82
+            emphasis_0 208 135 112
+            emphasis_1 229 233 240
+            emphasis_2 136 192 208
+            emphasis_3 180 142 173
+        }
+        table_title {
+            base 136 192 208
+            background 0
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        table_cell_selected {
+            base 229 233 240
+            background 46 52 64
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        table_cell_unselected {
+            base 229 233 240
+            background 59 66 82
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        list_selected {
+            base 229 233 240
+            background 46 52 64
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        list_unselected {
+            base 229 233 240
+            background 59 66 82
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 163 190 140
+            emphasis_3 180 142 173
+        }
+        frame_unselected {
+            base 76 86 106
+            background 0
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 180 142 173
+            emphasis_3 0
+        }
+        frame_selected {
+            base 180 142 173
+            background 0
+            emphasis_0 208 135 112
+            emphasis_1 136 192 208
+            emphasis_2 180 142 173
+            emphasis_3 0
+        }
+        frame_highlight {
+            base 136 192 208
+            background 0
+            emphasis_0 180 142 173
+            emphasis_1 136 192 208
+            emphasis_2 136 192 208
+            emphasis_3 136 192 208
+        }
+        exit_code_success {
+            base 163 190 140
+            background 0
+            emphasis_0 136 192 208
+            emphasis_1 59 66 82
+            emphasis_2 180 142 173
+            emphasis_3 129 161 193
+        }
+        exit_code_error {
+            base 191 97 106
+            background 0
+            emphasis_0 235 203 139
+            emphasis_1 0
+            emphasis_2 0
+            emphasis_3 0
+        }
+        multiplayer_user_colors {
+            player_1 180 142 173
+            player_2 129 161 193
+            player_3 0
+            player_4 235 203 139
+            player_5 136 192 208
+            player_6 0
+            player_7 191 97 106
+            player_8 0
+            player_9 0
+            player_10 0
+        }
+    }
+}

@@ -128,6 +128,20 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
+    elif url == "https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-aarch64-unknown-linux-musl.tar.gz":
+        with tarfile.open(target, "w:gz") as archive:
+            payload = (fixture / "driver").read_bytes()
+            member = tarfile.TarInfo("zellij")
+            member.size = len(payload)
+            member.mode = 0o755
+            member.uid = member.gid = 1001
+            archive.addfile(member, io.BytesIO(payload))
+        record("zellij")
+        sys.exit(0)
+    elif url == "https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-aarch64-unknown-linux-musl.sha256sum":
+        digest = hashlib.sha256((fixture / "driver").read_bytes()).hexdigest()
+        Path(target).write_text(digest + "  target/aarch64-unknown-linux-musl/release/zellij\n")
+        sys.exit(0)
     elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
         assert url.startswith("https://github.com/lanej/bedrock-router/releases/download/v0.1.1/")
         with tarfile.open(target, "w:gz") as archive:
@@ -181,6 +195,9 @@ elif name in ("eza", "yq"):
     print(name + " " + {"eza": "0.20.19", "yq": "4.45.4"}[name])
 elif name == "btop":
     print("btop version: 1.4.7")
+elif name == "zellij":
+    assert args == ["--version"], args
+    print("zellij 0.45.1")
 elif name == "nvim" and args == ["--version"]:
     print("NVIM v0.12.5" if managed else "NVIM v0.11.0")
 elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
@@ -189,13 +206,18 @@ elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
         record("neovim build")
     else:
         assert args == ["clean"], args
+elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]):
+    # These integrations configure their already-installed tools before the
+    # full environment is ready; the final make below checks all runtimes.
+    sys.exit(0)
 elif name == "make":
-    for tool in ("node", "python3", "uv", "codex", "claude", "btop"):
+    for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
             "codex": "codex 0.162.0", "claude": "claude 2.1.295",
             "btop": "btop version: 1.4.7",
+            "zellij": "zellij 0.45.1",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
@@ -263,6 +285,8 @@ else:
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
             "direnv", "just", "loginctl",
+            "treehouse", "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
+            "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
         env = {
@@ -292,6 +316,8 @@ else:
         assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
+        assert (home / ".local/bin/zellij").is_file()
+        assert events.index("zellij") < events.index("make")
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
         assert not (font_dir / "HackNerdFont-Regular.ttf").exists()

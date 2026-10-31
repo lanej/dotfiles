@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""Pick a Zellij tab or running session without interpolating titles into a shell.
+
+Run in a floating pane with close_on_exit. The picker only changes client focus;
+it never moves, closes, or restarts the pane from which it was opened.
+"""
+
+import base64
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+
+
+def run_zellij(*args, session=None):
+    command = ["zellij"]
+    if session is not None:
+        command += ["--session=" + session]
+    result = subprocess.run(
+        command + list(args), capture_output=True, text=True, timeout=5
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Zellij command failed")
+    return result.stdout
+
+
+def snapshot(session, kind):
+    result = json.loads(run_zellij("action", f"list-{kind}", "--json", session=session))
+    if not isinstance(result, list):
+        raise RuntimeError(f"Zellij did not return a {kind} list")
+    return result
+
+
+def label(value):
+    # Titles are display data, including when they contain tabs, newlines or ANSI.
+    return "".join(c if c.isprintable() else " " for c in str(value))
+
+
+def session_names():
+    # --short includes resurrectable, exited sessions without marking them.
+    # Keep only running sessions; resurrection remains in the native manager.
+    names = []
+    for line in run_zellij("list-sessions", "--no-formatting").splitlines():
+        name, separator, metadata = line.rpartition(" [Created ")
+        if not separator or not re.fullmatch(
+            r".+ ago\] (?:\(current\)|\(EXITED - attach to resurrect\))?", metadata
+        ):
+            raise RuntimeError("Cannot parse session names; use the native session manager")
+        if not metadata.endswith("(EXITED - attach to resurrect)"):
+            names.append(name)
+    return names
+
+
+def own_pane_id():
+    value = os.environ.get("ZELLIJ_PANE_ID", "")
+    return int(value) if value.isdecimal() else None
+
+
+def preview_tab(session, tab_id):
+    own_id = own_pane_id() if session == os.environ.get("ZELLIJ_SESSION_NAME") else None
+    panes = [
+        pane
+        for pane in snapshot(session, "panes")
+        if pane.get("tab_id") == tab_id
+        and not pane.get("is_plugin")
+        and not pane.get("is_suppressed")
+        and pane["id"] != own_id
+    ]
+    if not panes:
+        print("No other terminal pane in this tab.")
+        return
+    panes.sort(key=lambda pane: (not pane.get("is_focused"), pane["id"]))
+    for pane in panes:
+        print(f"{pane['id']}: {label(pane.get('title', ''))}")
+    print()
+    contents = run_zellij(
+        "action", "dump-screen", "--pane-id", f"terminal_{panes[0]['id']}", session=session
+    )
+    for line in contents.rstrip().splitlines()[-30:]:
+        print(label(line))
+
+
+def preview_session(session):
+    tabs = snapshot(session, "tabs")
+    for tab in sorted(tabs, key=lambda tab: tab["position"]):
+        marker = "*" if tab.get("active") else " "
+        print(f"{marker} {tab['position'] + 1}: {label(tab['name'])}")
+
+
+def choose(rows, heading, preview):
+    # fzf shell-quotes its {1} replacement. Only an integer or base64 token is
+    # ever in that column; untrusted names never become command text.
+    preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
+    result = subprocess.run(
+        [
+            "fzf", "--height=100%", "--reverse", "--no-multi",
+            "--delimiter=\t", "--with-nth=2..", "--header=" + heading,
+            "--color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf",
+            "--preview=" + preview_command + " {1}", "--preview-window=right:60%",
+        ],
+        input="\n".join(rows) + "\n", stdout=subprocess.PIPE, text=True,
+    )
+    if result.returncode in (1, 130):
+        return None
+    if result.returncode:
+        raise RuntimeError(f"fzf exited with status {result.returncode}")
+    return result.stdout.split("\t", 1)[0].strip()
+
+
+def pick_tab(session):
+    tabs = snapshot(session, "tabs")
+    pane_id = own_pane_id()
+    source_tab = next(
+        (pane.get("tab_id") for pane in snapshot(session, "panes")
+         if not pane.get("is_plugin") and pane["id"] == pane_id), None
+    )
+    # Native bells retain a useful attention signal while the tmux-specific
+    # agent-status renderer is not ported. Stable IDs survive tab reordering.
+    tabs.sort(key=lambda tab: (not tab.get("has_bell_notification"), tab["position"]))
+    choices = {str(tab["tab_id"]): tab for tab in tabs}
+    rows = []
+    for token, tab in choices.items():
+        flags = " [current]" if tab["tab_id"] == source_tab else ""
+        if tab.get("has_bell_notification"):
+            flags += " [bell]"
+        rows.append(f"{token}\t{tab['position'] + 1}: {label(tab['name'])}{flags}")
+    token = choose(rows, "Tabs (bells first)", "--preview-tab")
+    if token is None:
+        return
+    if token not in choices or not any(
+        str(tab["tab_id"]) == token for tab in snapshot(session, "tabs")
+    ):
+        raise RuntimeError("The selected tab no longer exists")
+    run_zellij("action", "go-to-tab-by-id", token, session=session)
+
+
+def pick_session(session):
+    choices = {
+        base64.urlsafe_b64encode(name.encode()).decode(): name
+        for name in session_names()
+    }
+    rows = [
+        f"{token}\t{label(name)}" + (" [current]" if name == session else "")
+        for token, name in choices.items()
+    ]
+    token = choose(rows, "Running sessions", "--preview-session")
+    if token is None:
+        return
+    destination = choices.get(token)
+    if destination is None or destination not in session_names():
+        raise RuntimeError("The selected session is no longer running")
+    if destination != session:
+        run_zellij("action", "switch-session", "--", destination, session=session)
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] not in (
+        "tabs", "sessions", "--preview-tab", "--preview-session"
+    ):
+        raise RuntimeError("Usage: zellij-picker tabs|sessions (inside Zellij)")
+    session = os.environ.get("ZELLIJ_SESSION_NAME")
+    if not session:
+        raise RuntimeError("Run zellij-picker inside a Zellij session")
+    mode = sys.argv[1]
+    if mode == "--preview-tab":
+        preview_tab(session, int(sys.argv[2]))
+    elif mode == "--preview-session":
+        preview_session(base64.urlsafe_b64decode(sys.argv[2]).decode())
+    elif mode == "tabs":
+        pick_tab(session)
+    else:
+        pick_session(session)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except (OSError, RuntimeError, ValueError, KeyError, IndexError, subprocess.TimeoutExpired) as error:
+        print(f"zellij-picker: {error}", file=sys.stderr)
+        if len(sys.argv) > 1 and not sys.argv[1].startswith("--preview") and sys.stdin.isatty():
+            input("Press Enter to close.")
+        sys.exit(1)

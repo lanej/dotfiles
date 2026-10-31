@@ -121,11 +121,14 @@ Unlock your SSH agent and authenticate to any bastion before running the target.
 | [starship](https://starship.rs/) | Cross-shell prompt |
 | [neovim](https://neovim.io/) | Editor (Lua config) |
 | [tmux](https://github.com/tmux/tmux) | Terminal multiplexer |
+| [zellij](https://zellij.dev/) | Optional terminal multiplexer trial with tmux-style bindings |
 | [kitty](https://sw.kovidgoyal.net/kitty/) | GPU-accelerated terminal |
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder |
 | [skim](https://github.com/skim-rs/skim) | Rust-native fuzzy finder |
 
 See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
+
+Bootstrap installs Zellij 0.45.1 or newer. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
 
 In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
@@ -146,6 +149,7 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 | `make codex-tmux` | Install shared tmux window-status hooks for Codex |
 | `make git` | Symlink git configuration |
 | `make tmux` | Symlink tmux configuration |
+| `make zellij` / `make zellij-config` | Symlink the optional Zellij configuration, layouts, and helpers |
 | `make zsh` | Symlink zsh configuration |
 | `make cargo` | Symlink Cargo/Rust configuration |
 
@@ -158,6 +162,7 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 ├── git/           # Git config and global gitignore
 ├── kitty/         # Kitty terminal config
 ├── tmux/          # Tmux config
+├── zellij/        # Optional Zellij config and layouts
 ├── yabai/         # macOS tiling WM config
 ├── ai/            # Shared skills and agents (selectively versioned)
 ├── claude/        # Claude configuration and commands

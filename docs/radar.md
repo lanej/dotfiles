@@ -29,6 +29,12 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### Zellij
+
+[Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for Firstmate and existing agent-status integrations.
+
+Revisit adoption after validating long-running sessions, scrollback-heavy workloads, and the documented integration gaps.
+
 ### UI review
 
 [UI review](ui-review.md): local Playwright layout checks, screenshot references, and a feedback-to-rule workflow for Claude Code. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
