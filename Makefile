@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins vim-config sql-formatters ruby kitty-config kitty-terminfo
+SETUP_TARGETS += shell git tmux-config tmux-plugins zellij-config vim-config sql-formatters ruby kitty-config kitty-terminfo
 SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
 SETUP_TARGETS += dev-cache-config ep-direnv
 SETUP_TARGETS += treehouse-config firstmate-config
@@ -135,6 +135,18 @@ tmux-status-legend:
 	@"$(DOTFILES)/bin/tmux-claude-state" legend
 tmux-program-status:
 	@"$(if $(AGENT_STATUS_SOURCE),$(AGENT_STATUS_SOURCE),$(HOME)/src/agent-status-broker)/tmux/build" "$(HOME)/.local/bin/tmux-program-status"
+zellij: zellij-config
+zellij-config:
+	@mkdir -p "$(HOME)/.config/zellij/layouts" "$(HOME)/.local/bin"
+	@ln -fs "$(DOTFILES)/zellij/config.kdl" "$(HOME)/.config/zellij/config.kdl"
+	@for source in "$(DOTFILES)"/zellij/layouts/*.kdl; do \
+		[ -f "$$source" ] || continue; \
+		ln -fs "$$source" "$(HOME)/.config/zellij/layouts/" || exit 1; \
+	done
+	@for source in "$(DOTFILES)"/bin/zellij-*; do \
+		[ -f "$$source" ] && [ -x "$$source" ] || continue; \
+		ln -fs "$$source" "$(HOME)/.local/bin/" || exit 1; \
+	done
 sql-formatters:
 	@mkdir -p $(HOME)/.local/bin
 	@ln -fs $(DOTFILES)/rc/sql-formatter.json $(HOME)/.sql-formatter.json
@@ -529,10 +541,13 @@ claude-json-prune-schedule:
 		echo "claude-json-prune-schedule: unsupported OS ($$os)"; exit 1; \
 	fi
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
+
+test-zellij:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"

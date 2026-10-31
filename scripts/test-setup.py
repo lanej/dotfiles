@@ -62,6 +62,16 @@ def main():
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
 
+        # The opt-in multiplexer can be configured before its binary is
+        # installed, without pulling in tmux plugins or unrelated integrations.
+        zellij = subprocess.run([*command, "zellij"], cwd=repo, env=env,
+                                capture_output=True, text=True, timeout=30)
+        assert zellij.returncode == 0, zellij.stdout + zellij.stderr
+        assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config.kdl"
+        assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
+        picker = home / ".local/bin/zellij-picker"
+        assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
+
         # Missing required source is an incomplete step, not a successful skip.
         # The actual setup runner must still complete independent configuration.
         entrypoint = repo / "ai/skills/builder/SKILL.md"
@@ -138,6 +148,8 @@ def main():
         # Local cache budgets are deliberately editable and must survive reruns.
         budgets = home / ".config/dev-cache-budgets.json"
         budgets.write_text('{"local": "retained"}\n')
+        local_layout = home / ".config/zellij/layouts/local.kdl"
+        local_layout.write_text("layout { pane }\n")
 
         # Install the missing dependency and fixture TPM at their external
         # boundaries, then retry through the same default make entrypoint.
@@ -160,6 +172,7 @@ def main():
                                   capture_output=True, text=True, timeout=30)
         assert "\033[32m✓\033[0m tmux-plugins" in repaired.stdout, repaired.stdout
         assert local_plugin.read_text() == "user-managed plugin configuration\n"
+        assert local_layout.read_text() == "layout { pane }\n"
         assert not Path(env["SETUP_TMUX_STATE"]).exists(), "bootstrap session leaked"
         strategy = home / ".config/tmux/plugins/tmux-resurrect/strategies/claude.sh"
         assert strategy.resolve() == repo / "bin/tmux-resurrect-claude"

@@ -1,0 +1,32 @@
+// One row at the top on every tab; terminal panes use the configured title frames.
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+    }
+    tab { pane; }
+
+    tab_template name="with_bar" {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+    }
+    swap_tiled_layout name="columns" {
+        with_bar {
+            pane split_direction="vertical" { children; }
+        }
+    }
+    swap_tiled_layout name="rows" {
+        with_bar {
+            pane split_direction="horizontal" { children; }
+        }
+    }
+    swap_tiled_layout name="stacked" {
+        with_bar {
+            pane stacked=true { children; }
+        }
+    }
+}
