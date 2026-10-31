@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def test_make_converges_blocked_plugins_without_removing_other_installations(tmp_path):
     executables = tmp_path / "bin"
     executables.mkdir()
+    (executables / "bash").symlink_to(shutil.which("bash"))
     (executables / "python3").symlink_to(sys.executable)
     (executables / "claude-remove-blocked-plugins").symlink_to(ROOT / "bin/claude-remove-blocked-plugins")
     (tmp_path / "claude").mkdir()

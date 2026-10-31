@@ -1,9 +1,9 @@
 name: Paseo lifecycle
 on:
   push:
-    paths: ['Makefile', 'scripts/test-paseo-lifecycle.py', '.github/workflows/paseo.yml']
+    paths: ['Makefile', 'scripts/make/paseo-lifecycle.sh', 'scripts/make/require.sh', 'scripts/test-paseo-lifecycle.py', '.github/workflows/paseo.yml']
   pull_request:
-    paths: ['Makefile', 'scripts/test-paseo-lifecycle.py', '.github/workflows/paseo.yml']
+    paths: ['Makefile', 'scripts/make/paseo-lifecycle.sh', 'scripts/make/require.sh', 'scripts/test-paseo-lifecycle.py', '.github/workflows/paseo.yml']
   workflow_dispatch:
 jobs:
   lifecycle:

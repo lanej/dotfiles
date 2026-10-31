@@ -11,10 +11,10 @@ bin_target="$target_home/.local/bin/ep-direnv"
 lib_target="$target_home/.config/direnv/lib/easypost_legacy.sh"
 check_target() {
     if [ -e "$1" ] || [ -L "$1" ]; then
-        [ -L "$1" ] && [ "$(readlink "$1")" = "$2" ] || {
+        if [ ! -L "$1" ] || [ "$(readlink "$1")" != "$2" ]; then
             printf 'ep-direnv: preserving existing destination: %s\n' "$1" >&2
             return 1
-        }
+        fi
     fi
 }
 case "$action" in

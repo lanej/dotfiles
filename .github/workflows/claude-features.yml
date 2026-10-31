@@ -36,6 +36,7 @@ on:
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
+      - 'scripts/make/**'
       - '.github/workflows/claude-features.yml'
   push:
     branches: [master]
@@ -73,6 +74,7 @@ on:
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
+      - 'scripts/make/**'
       - '.github/workflows/claude-features.yml'
 
 permissions:
