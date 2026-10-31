@@ -684,6 +684,16 @@ install_bash-language-server_from_release() {
 	npm install -g "bash-language-server@$1"
 }
 
+install_mmdc_from_release() (
+	install_package_version node 24 || exit 1
+	npm install -g --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
+	local mermaid_root
+	mermaid_root=$(npm root -g) || exit 1
+	cd "$mermaid_root/@mermaid-js/mermaid-cli/node_modules/puppeteer" || exit 1
+	# WHY: npm can block Puppeteer's browser download; run only that setup explicitly.
+	node install.mjs
+)
+
 install_jq_from_release() (
 	case "$(uname -m)" in
 		x86_64) jq_arch=amd64 ;;
@@ -1055,6 +1065,9 @@ install_dependencies() {
 
 	# editor
 	install_from_package_manager imagemagick || return 1
+	if [ "${BOOTSTRAP_MERMAID:-0}" = 1 ]; then
+		install_package_version mmdc 12.0.0 || return 1
+	fi
 	install_package_version neovim 0.12.5 # Treesitter's main branch requires 0.12+
 	install_package_version shfmt 3.10.0
 	install_package_version bash-language-server 5.4.3       # bash/sh

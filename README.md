@@ -10,6 +10,8 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
+Set `BOOTSTRAP_MERMAID=1 bash bootstrap.sh` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim. This optional dependency is skipped by default.
+
 `make` defaults to `setup` and prints a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
 `uv`, or `jq` do not stop other setup steps, and configuration links are installed
