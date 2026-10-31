@@ -121,7 +121,8 @@ def main():
     binary = shutil.which("zellij")
     assert binary and shutil.which("fzf"), "Install Zellij >=0.45.1 and fzf before make test-zellij"
     with tempfile.TemporaryDirectory(prefix="zj-", dir="/tmp") as directory:
-        temporary = Path(directory)
+        # macOS reports process cwd through /private/tmp, the target of /tmp.
+        temporary = Path(directory).resolve()
         home = temporary / "home"
         home.mkdir()
         runtime = temporary / "run"
@@ -166,7 +167,7 @@ def main():
             terminal.until("vertical split", lambda: len(terminal.terminals()) == 2)
             panes = sorted(terminal.terminals(), key=lambda p: p["pane_x"])
             assert panes[0]["pane_x"] < panes[1]["pane_x"]
-            assert {p["pane_cwd"] for p in panes} == {str(home)}
+            assert {p["pane_cwd"] for p in panes} == {str(home)}, panes
             terminal.prefix(b"h")
             terminal.until("focus left", lambda: next(p for p in terminal.terminals()
                            if p["is_focused"])["id"] == panes[0]["id"])
