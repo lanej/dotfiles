@@ -29,9 +29,11 @@ class Terminal:
         self.output = bytearray()
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
+            # Set the slave's size before Zellij can query it. Doing this in the
+            # parent after fork races the child's startup on a zero-sized PTY.
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
             os.chdir(env["HOME"])
             os.execvpe(binary, [binary, "attach", "--create", name], env)
-        fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
 
     def drain(self, duration=0.08):
         end = time.monotonic() + duration
@@ -99,8 +101,25 @@ class Terminal:
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
                     json.JSONDecodeError) as error:
                 last_error = error
-        detail = self.output[-4000:].decode(errors="replace")
-        raise AssertionError(f"Timed out: {description}\n{last_error}\n{detail}")
+        details = [f"Timed out: {description}"]
+        if last_error is not None:
+            details.append(str(last_error))
+            for stream in ("stdout", "stderr"):
+                output = getattr(last_error, stream, None)
+                if output:
+                    if isinstance(output, bytes):
+                        output = output.decode(errors="replace")
+                    details.append(f"CLI {stream}:\n{output[-4000:]}")
+        try:
+            waited, status = os.waitpid(self.pid, os.WNOHANG)
+            client_status = (f"exited with code {os.waitstatus_to_exitcode(status)}"
+                             if waited else "still running")
+        except ChildProcessError:
+            client_status = "already reaped"
+        details.append(f"Client process: {client_status}")
+        output = self.output[-4000:].decode(errors="replace")
+        details.append(f"Terminal output:\n{output or '<empty>'}")
+        raise AssertionError("\n".join(details))
 
     def close(self):
         os.close(self.fd)
