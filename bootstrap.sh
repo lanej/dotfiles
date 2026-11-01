@@ -674,6 +674,11 @@ install_claude-code_from_release() (
 	bash "$claude_stage" "$1" || exit 1
 )
 
+install_pi_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
+}
+
 install_stylua_from_release() {
 	install_package_version node 24
 	npm install -g "@johnnymorganz/stylua-bin@$1"
@@ -1033,6 +1038,10 @@ install_dependencies() {
 	# AI coding tools, installed before Make links their configuration.
 	install_package_version codex 0.162.0
 	install_package_version claude-code 2.1.295
+	if [ "${BOOTSTRAP_PI:-0}" = 1 ]; then
+		install_package_version pi 1.4.0 || return 1
+		make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" pi-config || return 1
+	fi
 	install_treehouse_tools || return 1
 	install_firstmate_tools || return 1
 

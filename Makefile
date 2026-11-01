@@ -165,6 +165,13 @@ claude-config: software-standard
 SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
+# Pi reads the same ~/.agents/skills catalog; it needs no second skill copy.
+.PHONY: pi pi-config test-pi-resources
+pi: pi-config
+pi-config: codex-skills
+	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
+test-pi-resources:
+	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
 SETUP_TARGETS += codex-tmux-config
 SETUP_TARGETS += agent-status-broker
 agent-status-broker:

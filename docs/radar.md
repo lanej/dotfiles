@@ -29,6 +29,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### Pi
+
+[Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.
+
 ### Zellij
 
 [Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for Firstmate and existing agent-status integrations.
