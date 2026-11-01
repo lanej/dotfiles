@@ -647,7 +647,8 @@ install_treehouse_tools() {
 
 install_firstmate_tools() {
 	install_package_version no-mistakes 1.84.0 || return 1
-	local tool version tool_version
+	local tool version tool_version firstmate_checkout
+	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
 	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
 		tool=${tool_version%:*}
 		version=${tool_version#*:}
@@ -655,11 +656,11 @@ install_firstmate_tools() {
 			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
 		fi
 	done
-	if [ ! -e "$HOME/src/firstmate" ]; then
-		mkdir -p "$HOME/src" || return 1
-		git clone https://github.com/kunchenguid/firstmate "$HOME/src/firstmate" || return 1
+	if [ ! -e "$firstmate_checkout" ]; then
+		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
+		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
 	fi
-	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" firstmate-config
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
 }
 
 claude-code_current_semver() {

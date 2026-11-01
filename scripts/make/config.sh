@@ -23,13 +23,16 @@ case "$target" in
         ln -fs "${dotfiles}/treehouse/config.toml" "${setup_home}/.config/treehouse/config.toml"
         ;;
     firstmate-config)
-        test -x "${setup_home}/src/firstmate/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
-        mkdir -p "${setup_home}/.local/bin" "${setup_home}/.config/firstmate" "${setup_home}/src/firstmate/config"
-        ln -fs "${dotfiles}/bin/firstmate" "${setup_home}/.local/bin/firstmate"
-        ln -fs "${dotfiles}/firstmate/tmux.conf" "${setup_home}/.config/firstmate/tmux.conf"
-        ln -fs "${dotfiles}/firstmate/backend" "${setup_home}/src/firstmate/config/backend"
-        ln -fs "${dotfiles}/firstmate/crew-harness" "${setup_home}/src/firstmate/config/crew-harness"
-        ln -fs "${dotfiles}/firstmate/codex-approval-mode" "${setup_home}/src/firstmate/config/codex-approval-mode"
+        firstmate_home=${6:-$setup_home/src/firstmate}
+        test -x "$firstmate_home/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
+        mkdir -p "$setup_home/.local/bin" "$setup_home/.config/firstmate" "$firstmate_home/config"
+        ln -fs "$dotfiles/bin/firstmate" "$setup_home/.local/bin/firstmate"
+        ln -fs "$dotfiles/firstmate/tmux.conf" "$setup_home/.config/firstmate/tmux.conf"
+        if [ ! -e "$firstmate_home/config/backend" ] && [ ! -L "$firstmate_home/config/backend" ]; then
+            ln -s "$dotfiles/firstmate/backend" "$firstmate_home/config/backend"
+        fi
+        ln -fs "$dotfiles/firstmate/crew-harness" "$firstmate_home/config/crew-harness"
+        ln -fs "$dotfiles/firstmate/codex-approval-mode" "$firstmate_home/config/codex-approval-mode"
         ;;
     dev)
         mkdir -p "${setup_home}/src"
