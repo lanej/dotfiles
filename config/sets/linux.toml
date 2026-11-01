@@ -1,0 +1,4 @@
+[tools]
+x11 = true
+polybar = true
+bspwm = true

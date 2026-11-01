@@ -52,7 +52,10 @@ def main():
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
-        env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
+        machine_config = temporary / "machine.toml"
+        platform_set = "macos" if sys.platform == "darwin" else "linux"
+        machine_config.write_text('sets = ["shell"]\n')
+        env = {"DOTFILES_CONFIG": str(machine_config), "HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
@@ -61,6 +64,15 @@ def main():
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
+
+        # Start with a smaller bundle, then add the rest of the workstation.
+        selected_only = subprocess.run(command, cwd=repo, env=env,
+                                       capture_output=True, text=True, timeout=30)
+        assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
+        assert not (home / ".config/nvim").exists()
+        assert not (home / ".tmux.conf").exists()
+        assert not (home / "broker-installed").exists()
+        machine_config.write_text('sets = ["workstation", "' + platform_set + '"]\n')
 
         # The opt-in multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.

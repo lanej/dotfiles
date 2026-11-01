@@ -1,7 +1,9 @@
-# Copy to ~/.config/dotfiles/config.toml and select this machine's sets.
-# Other sets: personal, zellij-patched, zellij-release, mermaid.
-sets = ["easypost", "zellij-patched"]
+# Select platform and tool bundles explicitly. Use linux instead of macos on Linux.
+sets = ["macos", "workstation", "easypost"]
 
-# Local settings override the selected sets, for example:
-# [bootstrap]
-# mermaid = true
+# Individual properties override the bundles.
+[tools]
+mermaid = true
+
+[zellij]
+source = "patched"

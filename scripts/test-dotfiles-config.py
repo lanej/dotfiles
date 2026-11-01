@@ -31,22 +31,24 @@ def main():
         baseline = json.loads(run(*command, "--format", "json").stdout)
         schema = json.loads(run(*command, "--format", "schema").stdout)
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
-        assert baseline["settings"] == {
-            "codex.github_enabled": False, "zellij.source": "patched", "bootstrap.mermaid": False,
-        }
+        assert baseline["tools"] == [] and baseline["setup"] == []
+        assert baseline["settings"]["codex.github_enabled"] is False
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
-        (sets / "workstation.toml").write_text('sets = ["easypost", "zellij-main", "mermaid"]\n')
-        config.write_text('sets = ["workstation"]\n[bootstrap]\nmermaid = false\n')
+        (sets / "my-workstation.toml").write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = true\n')
+        config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
-        assert selected["sets"] == ["base", "easypost", "zellij-main", "mermaid", "workstation"]
-        assert selected["settings"] == {
-            "codex.github_enabled": False, "zellij.source": "main", "bootstrap.mermaid": False,
-        }
-        assert selected["sources"]["bootstrap.mermaid"] == str(config.resolve())
+        assert selected["sets"] == ["base", "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
+        assert selected["settings"]["tools.mermaid"] is False
+        assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
+        names = [tool["name"] for tool in selected["tools"]]
+        assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
+        assert selected["sources"]["tools.mermaid"] == str(config.resolve())
         preview = tomllib.loads(run("make", "--no-print-directory", "config").stdout)
         assert preview["zellij"]["source"] == "main"
+        plan = json.loads(run("make", "--no-print-directory", "plan").stdout)
+        assert plan["tools"] == selected["tools"] and plan["setup"] == selected["setup"]
 
         # Exercise the real Make -> bootstrap -> installer path. Only compilation
         # and release downloads are fixtures; the installed binaries and source
@@ -95,7 +97,7 @@ else:
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.46.0"
 
         # A later set overrides earlier sets, and explicit local values win.
-        config.write_text('sets = ["easypost", "personal", "zellij-release"]\n[codex]\ngithub_enabled = false\n')
+        config.write_text('sets = ["shell", "terminal", "personal"]\n[codex]\ngithub_enabled = false\n[zellij]\nsource = "release"\n')
         overridden = tomllib.loads(run(*command).stdout)
         assert overridden["codex"]["github_enabled"] is False
         assert overridden["zellij"]["source"] == "release"
@@ -104,7 +106,7 @@ else:
 
         # An explicit alternate config is also shared by Make and bootstrap.
         alternate = home / "personal.toml"
-        alternate.write_text('sets = ["personal", "zellij-main"]\n')
+        alternate.write_text('sets = ["personal"]\n[zellij]\nsource = "main"\n')
         explicit = run("make", "--no-print-directory", "config", f"DOTFILES_CONFIG={alternate}")
         assert tomllib.loads(explicit.stdout)["codex"]["github_enabled"] is True
         permissions = run("make", "--no-print-directory", "-n", "codex-permissions", f"DOTFILES_CONFIG={alternate}")
@@ -115,6 +117,9 @@ else:
         propagated = run("bash", "-ec", 'source ./bootstrap.sh; load_dotfiles_config; cd /; python3 "$1/scripts/dotfiles-config.py"', "config-test", str(ROOT))
         assert tomllib.loads(propagated.stdout)["codex"]["github_enabled"] is True
         env.pop("DOTFILES_CONFIG")
+        config.write_text('sets = ["terminal"]\n[tools]\nrust = false\n')
+        blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
+        assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

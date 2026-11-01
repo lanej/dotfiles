@@ -6,11 +6,15 @@ Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux
 
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
-$ make          # symlink configuration files
-$ bash bootstrap.sh # install packages and tools
+$ mkdir -p ~/.config/dotfiles
+$ cp config/example.toml ~/.config/dotfiles/config.toml
+$ # Edit the platform and tool sets before applying them.
+$ make plan     # preview selected tools and configuration
+$ make          # symlink selected configuration files
+$ bash bootstrap.sh # install selected packages and tools
 ```
 
-Select this machine's [configuration sets](#configuration-sets) before running setup. The `mermaid` set also installs Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
+Select this machine's [configuration sets](#configuration-sets) before running setup. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
 
 `make` defaults to `setup` and prints a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
@@ -22,12 +26,12 @@ Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
 run separately with `make lint` and the `test` targets. Color is enabled in
 terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
 
-Platform-specific setup is included only on its supported OS:
+Platform-specific setup is selected explicitly and rejected on an unsupported OS:
 
-| Platform | Additional configuration |
+| Set | Additional configuration |
 |---|---|
-| Linux | X11, Polybar, bspwm/sxhkd/rofi |
-| macOS | Yabai/skhd/borders, SuperWhisper |
+| `linux` | X11, Polybar, bspwm/sxhkd/rofi configuration |
+| `macos` | Yabai/skhd installation and window-manager configuration |
 
 Explicitly requesting an unsupported target fails before writing configuration.
 Existing tmux plugin directories are preserved, including local plugins without
@@ -77,26 +81,39 @@ make config
 For example:
 
 ```toml
-sets = ["easypost", "zellij-patched", "mermaid"]
+sets = ["macos", "workstation", "easypost"]
 
-# Optional machine-specific overrides take precedence over sets.
-[bootstrap]
-mermaid = false
+# Individual properties override the composed bundles.
+[tools]
+mermaid = true
+neovim = false
+
+[zellij]
+source = "release"
 ```
 
-| Set | Effect |
+| Set | Groups |
 |---|---|
-| `base` | Always applied first: GitHub app access off, patched Zellij, Mermaid off |
-| `easypost` | Disable the Codex GitHub app and its plugins; use `gh` for GitHub work |
-| `personal` | Enable the Codex GitHub app and its plugins |
-| `zellij-patched` | Build pinned upstream Zellij with this checkout's native reliability fixes |
-| `zellij-release` | Install the checksummed upstream 0.45.1 release |
-| `zellij-main` | Build a pinned upstream main revision for OSC 7501; experimental and without the local native fixes |
-| `mermaid` | Install Mermaid CLI and its headless browser during bootstrap |
+| `shell` | Zsh, Git, history, search, navigation, and command-line tools |
+| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring |
+| `editor` | Neovim, formatters, language servers, and parser tooling |
+| `development` | Language runtimes, Rust maintenance, and development cache configuration |
+| `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
+| `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
+| `macos` | Yabai/skhd installation and their configuration |
+| `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
+| `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
+| `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
-The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier settings. Machine settings apply last. Unknown settings, invalid values, missing sets, and dependency cycles fail instead of applying a partial configuration.
+Platform bundles are additive; a headless host can select `shell`, `development`, and `ai` without desktop configuration. Tool choices are not inferred from the hostname or OS. OS detection is used to check compatibility and choose the native installation method.
 
-Use `make DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh` for an alternate configuration. An explicitly selected file must exist. With no machine file, only `base` applies; no work/personal identity is inferred. Available settings are `codex.github_enabled` (boolean), `zellij.source` (`"patched"`, `"release"`, or `"main"`), and `bootstrap.mermaid` (boolean).
+The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last. The always-applied `base` supplies property defaults and selects no tools; an unconfigured machine applies no tool or platform bundle.
+
+Each `[tools]` property enables or disables one catalog recipe. Shared tool dependencies are added once and installed first. Explicitly disabling a required dependency, selecting an unsupported platform tool, or naming an unknown property fails before the tool plan runs. `false` skips that recipe; it does not uninstall an existing application or change that application's own package/plugin management. GUI, mail, and Ruby entries retain the existing configuration-only behavior; those applications are installed separately.
+
+[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. Bootstrap first ensures uv and Python are available to read TOML, then executes the selected plan through the existing installers. Make uses the same plan to choose configuration targets. Use `make config` to inspect values and their sources, or `make plan` to inspect tools and execution phases without applying them.
+
+Use `make DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh` for an alternate configuration. An explicitly selected file must exist. Every catalog tool has a boolean `tools.<name>` property; `codex.github_enabled` controls Codex GitHub access and `zellij.source` selects `"patched"`, `"release"`, or `"main"`.
 
 Neovim installs Taplo through Mason and automatically uses the checkout's local [JSON Schema](config/schema.json) for these settings, private sets, and repository examples. This provides property and value completion, hover documentation, and inline diagnostics for wrong types, unsupported values, and unknown properties. The schema is read locally; its use does not depend on a hosted schema. Set names can reference private files, so missing sets and dependency cycles remain runtime checks. If you select an alternate machine file outside the conventional directory, launch Neovim with the same `DOTFILES_CONFIG` environment variable.
 
@@ -108,7 +125,7 @@ python3 scripts/dotfiles-config.py --format schema > config/schema.json
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select the corresponding sets instead; personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and the desired platform bundle to retain the previous broad setup. Without a machine file, no tool bundle is selected. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
@@ -139,7 +156,7 @@ and event mapping.
 
 ## Shared shell history
 
-Mac bootstrap installs `uv` and configures Atuin sharing with `dev` automatically.
+With the Atuin recipe selected, bootstrap configures sharing when an explicit sync host or saved account is available.
 Have current dotfiles installed in `~/.files` on the SSH host and authenticate
 to any bastion first. Choose another host with
 `ATUIN_SYNC_HOST=dev2 bash bootstrap.sh`.

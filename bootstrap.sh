@@ -486,7 +486,7 @@ load_dotfiles_config() {
 	local dotfiles_root resolved
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	resolved=$(python3 "$dotfiles_root/scripts/dotfiles-config.py" --format shell) || return 1
-	# Only validated booleans and enum values under fixed names are emitted.
+	# The resolver validates the plan and shell-quotes every emitted value.
 	eval "$resolved"
 }
 
@@ -992,17 +992,16 @@ install_build_dependencies() {
 	fi
 }
 
+install_macos_window_tool() {
+	[ "$os" = macos ] || { echo "$1 requires macOS" >&2; return 1; }
+	command -v "$1" >/dev/null && return 0
+	command -v brew >/dev/null || { echo "Homebrew is required to install $1" >&2; return 1; }
+	brew install "koekeishiya/formulae/$1"
+}
+
 install_macos_window_tools() {
 	[ "$os" = macos ] || return 0
-	local tool
-	for tool in yabai skhd; do
-		command -v "$tool" >/dev/null && continue
-		if ! command -v brew >/dev/null; then
-			echo "Homebrew is required to install $tool" >&2
-			return 1
-		fi
-		brew install "koekeishiya/formulae/$tool" || return 1
-	done
+	install_macos_window_tool yabai && install_macos_window_tool skhd
 }
 
 install_hack_nerd_font() (
@@ -1056,88 +1055,59 @@ setup_neovim() (
 		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
 )
 
-install_dependencies() {
-	# install rust
+install_config_runtime() {
+	# The configuration parser needs Python 3.11+ even on older system images.
+	install_package_version uv 0.12.11 || return 1
+	uv python install 3.12 --default || return 1
+	hash -r
+}
+
+install_rust_runtime() {
+	local minimum=$1 rust_version
 	if ! command -v rustup >/dev/null; then
-		local rust_version
 		rust_version=$(rust_current_semver) || rust_version=""
-		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" 1.93.1; then
-			rust_version=1.93.1
+		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" "$minimum"; then
+			rust_version=$minimum
 		fi
-		install_cargo_from_release "$rust_version"
+		install_cargo_from_release "$rust_version" || return 1
 	fi
-	install_package_version cargo 1.93.1
-	install_package_version uv 0.12.11
-	uv python install 3.12 --default
+	install_package_version cargo "$minimum"
+}
+
+install_dependencies() {
+	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	install_package_version node 24
-	install_package_version go 1.26.2
-	local go_bin
-	go_bin=$(go env GOBIN)
-	if [ -z "$go_bin" ]; then
-		go_bin=$(go env GOPATH)
-		go_bin="${go_bin%%:*}/bin"
-	fi
-	export PATH="$go_bin:$PATH"
-
-	# AI coding tools, installed before Make links their configuration.
-	install_package_version codex 0.162.0
-	install_package_version claude-code 2.1.295
-	install_treehouse_tools || return 1
-	install_firstmate_tools || return 1
-
-	# terminal candy
-	if ! command -v tmux >/dev/null; then
-		install_from_package_manager tmux || return 1
-	fi
-	install_zellij_runtime || return 1
-	install_macos_window_tools || return 1
-	install_hack_nerd_font || return 1
-	install_package_version btop 1.4.7
-	install_package_version fzf 0.59.0
-	install_package_version starship 1.22.1
-	install_package_version atuin 18.21.0
-	install_package_version skim 0.16.0
-	install_package_version git-delta 0.18.2
-	install_package_version glow 2.0.0
-	install_package_version bat 0.25.0
-	install_package_version fd 10.2.0
-	install_package_version eza 0.20.19
-	install_package_version zsh-autosuggestions 0.7.1
-
-	# rust development tools
-	install_package_version cargo-sweep 0.7.0
-	install_package_version cargo-cache 0.8.3
-
-	# command candy
-	install_package_version gh 2.66.0
-	install_package_version git-crypt 0.8.0
-	install_package_version jq 1.7.1
-	install_package_version yq 4.45.4
-	install_package_version ripgrep 14.1.0
-	install_package_version stylua 2.0.2
-
-	# editor
-	install_from_package_manager imagemagick || return 1
-	if [ "$DOTFILES_MERMAID" = true ]; then
-		install_package_version mmdc 12.0.0 || return 1
-	fi
-	install_package_version neovim 0.12.5 # Treesitter's main branch requires 0.12+
-	install_package_version shfmt 3.10.0
-	install_package_version bash-language-server 5.4.3       # bash/sh
-	install_package_version rust-analyzer 1.84.1             # rust
-	install_package_version typescript-language-server 4.3.3 # typescript
-	install_package_version gopls 0.23.0                     # go
-	install_package_version gotestsum 1.13.0                 # go test runner with color
-	install_package_version yaml-language-server 0.16.0      # yaml
-	install_package_version ctags-lsp 0.6.1                  # ctags fallback
-	install_package_version tree-sitter-cli 0.27.0           # nvim-treesitter TSInstall parser builds
-
-	# tools
-	install_package_version hexyl 0.16.0
-	install_package_version direnv 2.35.0
-	install_package_version just 1.40.0
-
+	local tool installer package version go_bin
+	while IFS=$'\t' read -r tool installer package version; do
+		[ -n "$tool" ] || continue
+		echo "Configuring tool: $tool"
+		case "$installer" in
+			package) install_package_version "$package" "$version" || return 1 ;;
+			system)
+				if ! command -v "$package" >/dev/null; then
+					install_from_package_manager "$package" || return 1
+				fi
+				;;
+			config) ;;
+			build) install_build_dependencies || return 1 ;;
+			rust) install_rust_runtime "$version" || return 1 ;;
+			go)
+				install_package_version go "$version" || return 1
+				go_bin=$(go env GOBIN)
+				if [ -z "$go_bin" ]; then
+					go_bin=$(go env GOPATH)
+					go_bin="${go_bin%%:*}/bin"
+				fi
+				export PATH="$go_bin:$PATH"
+				;;
+			zellij) install_zellij_runtime || return 1 ;;
+			font) install_hack_nerd_font || return 1 ;;
+			treehouse) install_treehouse_tools || return 1 ;;
+			firstmate) install_firstmate_tools || return 1 ;;
+			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
+			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
+		esac
+	done <<< "$DOTFILES_INSTALL_PLAN"
 }
 
 setup_atuin_sync() {
@@ -1213,21 +1183,38 @@ setup_bedrock_router() (
 	fi
 )
 
+run_configured_hooks() {
+	local hooks=$1 hook
+	for hook in ${hooks//,/ }; do
+		case "$hook" in
+			github-auth) setup_gh_auth || return 1 ;;
+			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
+			bedrock-router) setup_bedrock_router || return 1 ;;
+			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
+			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
+			neovim) setup_neovim || return 1 ;;
+			atuin-sync) setup_atuin_sync || return 1 ;;
+			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
+			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
+		esac
+	done
+}
+
+dotfiles_has_tool() {
+	case ",$DOTFILES_TOOLS," in
+		*",$1,"*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 post_install_setup() {
-	setup_bedrock_router || return 1
-	make -C "$HOME/.files" agent-status-broker || return 1
-	setup_kitty_terminfo || return 1
-	setup_neovim || return 1
-	setup_atuin_sync || return 1
-	local sql_format_uv
-	sql_format_uv=$(command -v uv) || sql_format_uv="$HOME/.local/bin/uv"
-	make -C "$HOME/.files" sql-formatters UV="$sql_format_uv" || return 1
+	run_configured_hooks "$DOTFILES_POST_HOOKS" || return 1
 	echo ""
 	echo "🎉 Bootstrap installation completed!"
 	echo ""
 
 	# Setup GitHub CLI authentication if not already done
-	if command -v gh &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null; then
 		setup_gh_auth
 	fi
 
@@ -1235,7 +1222,7 @@ post_install_setup() {
 	echo "📝 Next steps:"
 	echo "  1. Restart your shell or run: source ~/.zshrc"
 	echo "  2. Configure your tools as needed"
-	if command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
 		echo "  3. Authenticate with GitHub: gh auth login"
 	fi
 	echo ""
@@ -1250,11 +1237,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
 	fi
 	prepare_bootstrap_environment
-	install_build_dependencies
 	install_dependencies
-	# Private standalone tool releases need access before Make installs them.
-	setup_gh_auth
-	setup_bedrock_credentials
+	# Selected integrations prepare credentials before Make links configuration.
+	run_configured_hooks "$DOTFILES_PREPARE_HOOKS"
 	make -C "$HOME"/.files
 	post_install_setup
 fi

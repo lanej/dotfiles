@@ -1,9 +1,6 @@
-# Applied first on every machine. Identity and additional tools are opt-in.
+# Always applied first. No tools or machine identity are inferred.
 [codex]
 github_enabled = false
 
 [zellij]
 source = "patched"
-
-[bootstrap]
-mermaid = false

@@ -23,9 +23,12 @@ Always edit files within `~/.files`, not the symlinked targets under `~`.
 Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on
 shell/editor reload because they're symlinked. Adding a *new* file to be
 symlinked requires a corresponding rule in the `Makefile` plus a re-run of
-`make`. New tools are added to `bootstrap.sh` (use `install_package_version`
-to pin a specific version) and, if they need config symlinked, to the
-`Makefile`.
+`make`. Declare tool recipes and version pins in `bootstrap/tools.toml`, then
+group their `tools.<name>` switches under `config/sets/`. The resolver derives
+selected Make targets and bootstrap phases from that catalog. Reuse the
+installers in `bootstrap.sh`; add a new adapter there only when needed.
+Configuration symlink rules remain in the `Makefile` and its helper scripts.
+Do not add tools to an unconditional install or setup list.
 
 ## Development Conventions
 

@@ -1,3 +1,0 @@
-# Pinned upstream main for OSC 7501. This omits the patched runtime's local fixes.
-[zellij]
-source = "main"

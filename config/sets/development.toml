@@ -1,0 +1,9 @@
+[tools]
+rust = true
+node = true
+go = true
+python = true
+ruby = true
+cargo-sweep = true
+cargo-cache = true
+dev-cache = true

@@ -1,0 +1,8 @@
+[tools]
+tmux = true
+zellij = true
+nerd-font = true
+btop = true
+kitty = true
+wezterm = true
+presenterm = true

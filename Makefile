@@ -1,10 +1,4 @@
 .DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins zellij-config vim-config sql-formatters ruby kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
-SETUP_TARGETS += dev-cache-config ep-direnv
-SETUP_TARGETS += treehouse-config firstmate-config
-LINUX_SETUP_TARGETS := X polybar bspwm
-DARWIN_SETUP_TARGETS := yabai
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 GO ?= go
@@ -12,7 +6,7 @@ FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 # Share one validated TOML resolver with bootstrap. No generated files or host
-# classification; only the resolver's fixed setting names and enum values enter Make.
+# classification; the resolver emits fixed variables and validated target names.
 ifneq ($(origin DOTFILES_CONFIG),undefined)
 export DOTFILES_CONFIG
 endif
@@ -26,19 +20,18 @@ ifeq ($(strip $(DOTFILES_RESOLVED)),)
 $(error Invalid dotfiles configuration; see diagnostic above)
 endif
 $(foreach setting,$(DOTFILES_RESOLVED),$(eval override $(setting)))
-
-ifeq ($(UNAME_S),Linux)
-SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
-else ifeq ($(UNAME_S),Darwin)
-SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
-endif
+comma := ,
+SETUP_TARGETS := $(subst $(comma), ,$(DOTFILES_SETUP_TARGETS))
 
 # The runner reports every step and returns failure only after trying them all.
 all: setup
 
-.PHONY: config test-dotfiles-config test-dotfiles-config-editor
+.PHONY: config plan test-dotfiles-config test-dotfiles-config-editor
 config:
 	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG)
+
+plan:
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --format plan
 
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
@@ -49,10 +42,14 @@ test-dotfiles-config-editor:
 	@nvim --headless -u NONE -i NONE -n -l "$(DOTFILES)/nvim/tests/dotfiles-config-schema.lua"
 
 setup:
+ifeq ($(strip $(SETUP_TARGETS)),)
+	@echo "No tools selected; choose configuration sets in ~/.config/dotfiles/config.toml. See make config."
+else
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(SETUP_TARGETS)
 else
 	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SETUP_TARGETS)
+endif
 endif
 
 define require-command
@@ -167,25 +164,19 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-SETUP_TARGETS += software-standard
 software-standard:
 	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
 
-SETUP_TARGETS += claude-shared
 claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
 claude-config: software-standard
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
-SETUP_TARGETS += codex-tmux-config
-SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" --no-start $(AGENT_STATUS_INSTALL_FLAGS)
 	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
@@ -196,7 +187,6 @@ codex-tmux: agent-status-broker
 codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
-SETUP_TARGETS += codex-worktree-hook
 # The codex aggregate runs this after its other hook installers finish.
 codex codex-worktree-hook:
 	$(call require-command,$(UV))
@@ -205,7 +195,6 @@ codex codex-worktree-hook:
 test-codex-worktree-hook: FORCE
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/scripts/test-codex-worktree-hook.py"
-SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
@@ -241,7 +230,6 @@ test:
 test-codex-cleanup:
 	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py
 
-SETUP_TARGETS += codex-worktree-exit-hook
 codex: codex-worktree-exit-hook
 codex-worktree-exit-hook: codex-tmux
 	@python3 "$(DOTFILES)/bin/codex-worktree-exit-hook" --install
@@ -257,7 +245,6 @@ test-agent-treehouse:
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 
-SETUP_TARGETS += ui-review
 ui-review:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 test-ui-review:
@@ -313,7 +300,7 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all setup $(subst $(comma), ,$(DOTFILES_CONFIG_TARGETS)) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
