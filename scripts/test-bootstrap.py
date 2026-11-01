@@ -296,16 +296,25 @@ else:
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
+        # Keep deliberately missing dependencies absent on provisioned CI hosts.
+        system_bin = home / "system-bin"
+        system_bin.mkdir()
+        missing = {"tmux", "yq", "btop", "eza", "zellij", "pi"}
+        for directory in (Path("/usr/bin"), Path("/bin")):
+            for executable in directory.iterdir():
+                target = system_bin / executable.name
+                if (executable.name not in missing and executable.is_file()
+                        and not target.exists()):
+                    target.symlink_to(executable)
         env = {
             **os.environ,
             "HOME": str(home),
-            "PATH": f"{fixture}:/usr/bin:/bin",
+            "PATH": f"{fixture}:{system_bin}",
             "ATUIN_SYNC_HOST": "fixture-host",
             "BOOTSTRAP_PI": "1",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
-        existing_tmux = shutil.which("tmux", path=env["PATH"])
         # Exercise the documented relative launch on ARM Linux, including an
         # older Neovim that needs a source build and missing eza/yq/btop.
         result = subprocess.run(
@@ -322,9 +331,8 @@ else:
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
-        if existing_tmux is None:
-            assert (home / ".local/bin/tmux").is_file()
-            assert events.index("tmux package") < events.index("make")
+        assert (home / ".local/bin/tmux").is_file()
+        assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
