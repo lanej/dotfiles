@@ -215,14 +215,22 @@ finally:
                   received.read_bytes().count(b"\x1b[200~") >= 2)
             assert received.read_bytes() == expected * 2, received.read_bytes()
 
-            # Closing the first tab removes the receiver plugin. Its surviving
-            # peer must reinstall the client-directed binding. Both clients now
-            # focus one pane, so another paste also detects duplicate delivery.
+            # The hidden receiver must keep one stable native identity when
+            # its containing tab closes. Both clients then focus one pane, so
+            # another paste also detects duplicate delivery.
+            def clipboard_receivers():
+                return [p["id"] for p in terminal.panes() if p["is_plugin"] and p["is_suppressed"]
+                        and p.get("plugin_url", "").endswith("/lane-status.wasm")]
+
+            receivers = clipboard_receivers()
+            assert len(receivers) == 1, receivers
+            clipboard_receiver = receivers[0]
             terminal.prefix(b"0")
             until("first client returns to receiver's tab", lambda:
                   sorted(client_panes()) == sorted([f"terminal_{original_pane}", f"terminal_{destination}"]))
             terminal.prefix(b"x")
             until("receiver plugin's tab closes", lambda: len(terminal.tabs()) == 1)
+            assert clipboard_receivers() == [clipboard_receiver], clipboard_receivers()
             until("surviving bar renders the new tab position", lambda:
                   b"0:copy-destination" in terminal.output)
             terminal.prefix(b"Z")
@@ -232,13 +240,28 @@ finally:
             deadline = time.monotonic() + 1
             while time.monotonic() < deadline:
                 terminal.drain(); other.drain()
+
+            # Errors from the hidden receiver belong in this client's visible
+            # bar and must not send any bytes to the waiting application.
+            terminal.prefix(b"Z")
+            until("destination leaves fullscreen", lambda:
+                  any(p["id"] == destination and not p["is_fullscreen"] for p in terminal.terminals()))
+            subprocess.run([str(installed), "clear", "--session", name], env=env, check=True)
+            before, other_before = len(terminal.output), len(other.output)
+            terminal.prefix(b"p")
+            notice = b"paste: zellij-clipboard: The session buffer is empty"
+            until("missing buffer notice reaches requesting client's bar", lambda:
+                  notice in terminal.output[before:])
+            other.drain()
+            assert notice not in other.output[other_before:]
+            assert received.read_bytes() == expected * 3, received.read_bytes()
             terminal.action("write", "--pane-id", f"terminal_{destination}", "4")
             until("destination finished reading", lambda: received.read_bytes().endswith(b"\x04"))
             assert received.read_bytes() == expected * 3 + b"\x04", received.read_bytes()
-            assert not any(p["is_floating"] for p in terminal.terminals())
+            assert not any(p["is_floating"] for p in terminal.panes())
             print("Installed scrollback copy and client-scoped paste passed: another client's pane stays untouched, "
-                  "focus changes preserve the target, disk reload and receiver replacement keep both clients' "
-                  "bindings, and obsolete URL messages do not paste.")
+                  "focus changes preserve the target, disk reload and tab closure preserve the single hidden "
+                  "receiver, missing-buffer notices stay client-scoped, and obsolete URL messages do not paste.")
         finally:
             subprocess.run([shutil.which("zellij"), "kill-session", name], env=env, capture_output=True)
             if other is not None:
