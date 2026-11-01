@@ -10,6 +10,8 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 Use **Zellij 0.45.1 or newer**, Python 3, and fzf. Neovim is used to edit scrollback. `bootstrap.sh` currently builds a pinned upstream `main` revision because [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) has merged but is absent from stable 0.45.1. It installs the multiplexer in `~/.local/bin`, ahead of an existing stable installation, and caches the source build for subsequent runs. The build uses a separate Rust 1.95 toolchain without changing your default compiler. Return bootstrap to a stable release once it includes OSC support. Installing this build supplies Zellij's native OSC capability; broker delivery remains separate integration work.
 
+This pinned build has an upstream startup race: an external CLI probe that disconnects before the first layout can interfere with [initial client registration](https://github.com/zellij-org/zellij/blob/bf517077c848d91f75091f66d1996cfeb84f4732/zellij-server/src/screen.rs#L6706-L6710). Wait for a new session's first shell prompt before querying it. The session detector follows that ordering; the upstream race remains present.
+
 From the dotfiles checkout:
 
 ```sh
@@ -141,7 +143,7 @@ make test-zellij-layout
 make test-zellij-sessions
 ```
 
-The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against Zellij 0.45.1. They do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
+The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned upstream revision as bootstrap. They do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
 

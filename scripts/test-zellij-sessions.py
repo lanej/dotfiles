@@ -50,8 +50,11 @@ def open_popup(terminal):
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
     terminal.prefix(b"P")
-    # The outer pane can render later than its attached guest. Observe the
-    # guest directly, then its host's visible nesting-focus indication.
+    # Probing before the first render can disrupt main's client registration.
+    # Observe this guest's prompt before opening any additional CLI connection.
+    terminal.until("popup renders its ready shell", lambda:
+                   f"{POPUP}:zellij-ready> ".encode() in terminal.output[rendered:])
+    # Confirm the guest through the CLI, then its host's nesting-focus indication.
     terminal.until("popup client attaches to its ready shell", lambda:
                    bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
                    and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
@@ -207,7 +210,8 @@ def main():
         runtime.mkdir(mode=0o700)
         temp_files = temporary / "tmp"
         temp_files.mkdir(mode=0o700)
-        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": "zellij-ready> ",
+        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh",
+               "PS1": "${ZELLIJ_SESSION_NAME}:zellij-ready> ",
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
