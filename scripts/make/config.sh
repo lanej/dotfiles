@@ -28,6 +28,10 @@ case "$target" in
         mkdir -p "$setup_home/.local/bin" "$setup_home/.config/firstmate" "$firstmate_home/config"
         ln -fs "$dotfiles/bin/firstmate" "$setup_home/.local/bin/firstmate"
         ln -fs "$dotfiles/firstmate/tmux.conf" "$setup_home/.config/firstmate/tmux.conf"
+        primary_config="$setup_home/.config/firstmate/primary-harness"
+        if [[ ! -e "$primary_config" && ! -L "$primary_config" ]]; then
+            ln -s "$dotfiles/firstmate/primary-harness" "$primary_config"
+        fi
         if [ ! -e "$firstmate_home/config/backend" ] && [ ! -L "$firstmate_home/config/backend" ]; then
             ln -s "$dotfiles/firstmate/backend" "$firstmate_home/config/backend"
         fi

@@ -68,6 +68,10 @@ treehouse-config:
 firstmate-config: treehouse-config zellij-config
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
+.PHONY: test-firstmate-primary
+test-firstmate-primary:
+	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
+
 banner:
 	@cat banner.txt
 dev:
