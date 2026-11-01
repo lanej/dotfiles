@@ -305,6 +305,7 @@ else:
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
+        existing_tmux = shutil.which("tmux", path=env["PATH"])
         # Exercise the documented relative launch on ARM Linux, including an
         # older Neovim that needs a source build and missing eza/yq/btop.
         result = subprocess.run(
@@ -321,8 +322,9 @@ else:
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
-        assert (home / ".local/bin/tmux").is_file()
-        assert events.index("tmux package") < events.index("make")
+        if existing_tmux is None:
+            assert (home / ".local/bin/tmux").is_file()
+            assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
