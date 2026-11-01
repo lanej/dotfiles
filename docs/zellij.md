@@ -23,7 +23,7 @@ zellij attach --create main
 
 Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. Run `python3 scripts/install-zellij --check` to verify the installed executable matches this checkout. The runtime keeps the upstream `0.45.1` protocol version so existing plugins remain compatible; the installer records the patch-set and binary hashes separately.
 
-On first launch, the bar asks for permission to read application state, run its local status helper, and switch tabs. Focus that permission prompt with **Ctrl-f k**, then press **y**. Zellij remembers the grant for this plugin. The bar becomes unselectable after permission is granted.
+On first launch, the bar asks for permission to read application state, run its local helpers, switch tabs, write to pane input, and configure each client's runtime paste binding. Focus that permission prompt with **Ctrl-f k**, then press **y**. Zellij remembers the grant for this plugin. The bar becomes unselectable after permission is granted.
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
@@ -64,6 +64,7 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `W` | Enter tab reorder mode |
 | `C`, `w` | Open the native session manager for creating, switching, renaming, and restoring sessions |
 | `e` | Open the pane's scrollback in Neovim |
+| `p` | Paste this session's last Neovim yank into the requesting pane |
 | `[` | Enter scroll mode |
 | `/` | Search the pane's scrollback |
 
@@ -73,7 +74,19 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 
 **Scroll mode:** `j/k` scroll, Ctrl-f/Ctrl-b page, Ctrl-d/Ctrl-u half-page, and `g/G` jump to the start/end. `/` starts a search; `n/N` find next/previous matches. `e` opens Neovim for arbitrary Vim selection. `y` copies an existing selection and returns to the prompt. `m` selects a command at the scroll position, and `c` copies the last command output when the application supplies OSC 133 shell markers. Esc or `q` returns to the bottom.
 
-Clipboard copying uses OSC 52, including over SSH. Use the terminal's paste shortcut; `Ctrl-f p` is deliberately unbound because Zellij does not share tmux's paste buffers. The config does not replace it with a different action.
+### Keyboard selection and paste
+
+Use `Ctrl-f e` to open scrollback in Neovim, then use `v` for character selection, `V` for whole lines, or `Ctrl-v` for a rectangle. Move to extend the selection and press `y`. `:q!` returns to the original terminal. The installed Neovim integration preserves Unicode, multiline text, rectangle padding, and the final newline of a linewise yank. Zellij's scrollback export itself trims invisible spaces at the end of terminal lines; it cannot recover whitespace that is absent from the exported text.
+
+Inside Zellij, each Neovim yank writes two destinations: the session copy buffer and a write-only OSC 52 request to the terminal's system clipboard. The same integration works in ordinary Neovim files as well as scrollback. It requires Neovim 0.10 or newer. The installed `zellij-context` helper identifies the nearest multiplexer in Neovim's process ancestry: an inner Zellij enables this integration even when it inherits `TMUX`, while an inner tmux keeps its existing clipboard integration.
+
+**`Ctrl-f p` reads the dedicated session buffer.** The buffer is shared by panes and tabs with the same session name, user, and host. It survives detach/reattach and lasts until another yank replaces it, `zellij-clipboard clear` removes it, or the operating system clears its temporary runtime files. A renamed session uses a different buffer. The private file lives under `$XDG_RUNTIME_DIR/zellij-clipboard-<uid>` when that directory is configured, otherwise the host's temporary directory. It has a 1 MiB limit. Mouse selection and Zellij's native command-copy actions update the terminal clipboard; they do not replace this Neovim buffer.
+
+The local `lane-status` plugin installs the paste binding separately for each attached client without changing the configuration file. Each keypress reaches only that client's receiver, including when the bar is hidden or on another tab. The plugin captures the requesting terminal pane and its process ID before reading the buffer. It checks that process again and sends bracketed paste to that pane, even if focus changes while the read is pending. Text is never interpolated into a shell command. Missing buffers, invalid UTF-8, oversized copies, and terminal control characters are reported instead of pasted. Tabs, carriage returns, and newlines remain valid text. Grant the plugin's **Write to standard input** and **Reconfigure** permissions when prompted; these enable the shortcut and its client-specific routing.
+
+**The terminal's paste shortcut remains the path from the system clipboard.** The configuration does not enable clipboard reads. OSC 52 copying also carries the selected text through SSH to the local terminal when that terminal permits OSC 52 writes; its policy and size limits still apply. [Zellij's compatibility guide](https://zellij.dev/documentation/compatibility.html) documents this transport, and [Kitty's `clipboard_control`](https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.clipboard_control) controls Kitty's clipboard access. There is no success acknowledgement from an OSC 52 write, so emitting the request does not establish that a particular terminal accepted it.
+
+`make test-zellij-clipboard` runs the installed scrollback editor and checks the actual OSC 52 payload and session-buffer bytes for character, line, and rectangle selections. With two attached clients it changes focus while a read is pending, verifies exactly one bracketed paste in the original pane and no text in the other client's pane, reloads the configuration while the receiver's tab is inactive, and closes that tab to check receiver replacement. It also rejects obsolete URL broadcasts. It runs against Zellij 0.45.1 and Neovim 0.12.5. Desktop clipboard acceptance on macOS/Linux and the supported terminal over SSH still require a terminal-level check: copy the same multiline Unicode selection, paste into a local editor, compare the exact text, then repeat from a remote Zellij session. Record the terminal name/version and both outcomes before treating [#101](https://github.com/lanej/dotfiles/issues/101) as fully verified.
 
 ## Smart editor and shell navigation
 
@@ -147,7 +160,7 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Rex OSC 7501 delivery through the patched tmux server | No replacement transport in this configuration. Upstream development features are not assumed to exist in stable 0.45.1. |
 | Smart bare Ctrl-h/j/k/l across Neovim and tmux panes | Supported in Neovim normal/insert modes and at configured Zsh prompts. Other foreground applications retain their keys; use prefix navigation there. |
 | Moving live windows/panes across sessions, including parking in `later` | Unsupported by Zellij. `H`, `S`, and `M` are not assigned a restart-based substitute. Native movement between tabs in the same session is available. |
-| Vi visual/rectangle copy mode and shared paste buffers | Use Neovim scrollback editing, mouse selection, or supported whole-command selection; use terminal paste. |
+| Vi visual/rectangle copy mode and shared paste buffers | Neovim provides keyboard selection. `Ctrl-f p` uses the session's private Neovim-yank buffer; the terminal shortcut pastes the system clipboard. |
 | Zero-based windows | Tab labels, picker labels, and `0`–`9` keys are zero-based; Zellij's underlying CLI positions remain one-based. |
 | Three-cell resizing and timed repeat bindings | Native Zellij resize steps; an explicit repeatable mode under prefix+Ctrl-r. |
 | Golden-ratio helper (`g/G`) | Unbound; the width guard, exact ratio, and cap are not safely implemented with stable APIs. |

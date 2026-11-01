@@ -320,6 +320,10 @@ test-zellij-layout:
 test-zellij-sessions:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
+.PHONY: test-zellij-clipboard
+test-zellij-clipboard:
+	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
+
 test-zellij-status:
 	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 

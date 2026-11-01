@@ -2,6 +2,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
+mod clipboard;
 
 #[derive(Default)]
 struct State {
@@ -14,6 +15,7 @@ struct State {
     busy: bool,
     roots: BTreeMap<u32, i32>,
     clicks: Vec<(usize, usize, u32)>,
+    clipboard: clipboard::Clipboard,
 }
 
 register_plugin!(State);
@@ -109,13 +111,16 @@ impl ZellijPlugin for State {
         self.visible = true;
         subscribe(&[EventType::ModeUpdate, EventType::TabUpdate, EventType::PaneUpdate,
             EventType::RunCommandResult, EventType::Timer, EventType::PermissionRequestResult,
-            EventType::Visible, EventType::Mouse, EventType::SessionUpdate]);
+            EventType::Visible, EventType::Mouse, EventType::InitialKeybinds,
+            EventType::SessionUpdate]);
         request_permission(&[PermissionType::ReadApplicationState,
-            PermissionType::RunCommands, PermissionType::ChangeApplicationState]);
+            PermissionType::RunCommands, PermissionType::ChangeApplicationState,
+            PermissionType::WriteToStdin, PermissionType::Reconfigure]);
         set_timeout(1.0);
     }
 
     fn update(&mut self, event: Event) -> bool {
+        let bindings_changed = matches!(&event, Event::InitialKeybinds(..));
         match event {
             Event::PermissionRequestResult(PermissionStatus::Granted) => {
                 // 0.45.1 can replay another client's cached grant while this
@@ -132,7 +137,11 @@ impl ZellijPlugin for State {
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
             Event::PaneUpdate(panes) => { self.panes = panes; }
             Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
-            Event::Timer(_) => { self.poll(); set_timeout(1.0); }
+            Event::Timer(_) => { self.clipboard.tick(); self.poll(); set_timeout(1.0); }
+            Event::RunCommandResult(code, out, error, context)
+                if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
+                self.clipboard.finish(code, out, error);
+            }
             Event::RunCommandResult(code, out, error, _) => {
                 self.busy = false;
                 self.view = if code == Some(0) {
@@ -149,7 +158,17 @@ impl ZellijPlugin for State {
             }
             _ => {}
         }
+        if self.allowed { self.clipboard.route_binding(&self.panes, bindings_changed); }
         true
+    }
+
+    fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
+            if let Some(session) = self.mode.session_name.as_deref() {
+                return self.clipboard.begin(session, &message);
+            }
+        }
+        false
     }
 
     fn render(&mut self, _rows: usize, cols: usize) {
@@ -170,7 +189,9 @@ impl ZellijPlugin for State {
         let counts = if self.view["available"].as_bool() == Some(true) {
             format!("!{} ●{}", attention, working)
         } else { "!? ●? broker?".into() };
-        let right = format!(" {} {} {} ", counts, battery, clock);
+        let right = if let Some(notice) = self.clipboard.notice() {
+            format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
+        } else { format!(" {} {} {} ", counts, battery, clock) };
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
         let host = plain(self.view["host"].as_str().unwrap_or(""));

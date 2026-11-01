@@ -117,6 +117,14 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "p" {
+            // The bar replaces this marker with a client-specific runtime
+            // MessagePluginId binding after its permissions are granted.
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "clipboard-paste"
+            }
+            SwitchToMode "Locked"
+        }
         bind "[" { SwitchToMode "Scroll"; }
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
         // Display zero-based indices; Zellij's GoToTab API is one-based.
