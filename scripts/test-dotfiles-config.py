@@ -44,7 +44,7 @@ def main():
         assert selected["settings"] == {
             "codex.github_enabled": False, "zellij.source": "main", "bootstrap.mermaid": False,
         }
-        assert selected["sources"]["bootstrap.mermaid"] == str(config)
+        assert selected["sources"]["bootstrap.mermaid"] == str(config.resolve())
         preview = tomllib.loads(run("make", "--no-print-directory", "config").stdout)
         assert preview["zellij"]["source"] == "main"
 

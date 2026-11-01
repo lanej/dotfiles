@@ -11,16 +11,20 @@ local function literal_uri(path)
 end
 
 local associations = {}
+local function associate(path, suffix)
+	for _, alias in ipairs({ path, vim.uv.fs_realpath(path) }) do
+		associations["^" .. literal_uri(alias) .. suffix] = schema
+	end
+end
 local function directory(path)
-	associations["^" .. literal_uri(path) .. "/(?:sets/)?[^/]+\\.toml$"] = schema
+	associate(path, "/(?:sets/)?[^/]+\\.toml$")
 end
 directory(vim.fs.joinpath(root, "config"))
 directory(vim.fs.joinpath(config_home, "dotfiles"))
-if vim.env.DOTFILES_CONFIG then
-	local machine = vim.fs.normalize(vim.fn.expand(vim.env.DOTFILES_CONFIG))
-	associations["^" .. literal_uri(machine) .. "$"] = schema
-	directory(vim.fs.joinpath(vim.fs.dirname(machine), "sets"))
-end
+local machine = vim.fs.normalize(vim.fn.expand(vim.env.DOTFILES_CONFIG or vim.fs.joinpath(config_home, "dotfiles/config.toml")))
+associate(machine, "$")
+-- Match the resolver's canonical parent when the machine file is a symlink.
+directory(vim.fs.joinpath(vim.fs.dirname(vim.uv.fs_realpath(machine) or machine), "sets"))
 
 return {
 	cmd = { "taplo", "lsp", "stdio" },

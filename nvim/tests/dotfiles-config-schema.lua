@@ -2,7 +2,10 @@
 local root = vim.fn.getcwd()
 vim.opt.rtp:append(root .. "/nvim")
 local temporary = vim.fn.tempname() .. " (TOML editing)"
-vim.env.XDG_CONFIG_HOME = temporary
+vim.fn.mkdir(temporary .. "/real-config", "p")
+local config_home = temporary .. "/linked-config"
+assert(vim.uv.fs_symlink(assert(vim.uv.fs_realpath(temporary .. "/real-config")), config_home))
+vim.env.XDG_CONFIG_HOME = config_home
 vim.env.XDG_CACHE_HOME = temporary .. "/cache"
 vim.env.XDG_STATE_HOME = temporary .. "/state"
 vim.env.XDG_DATA_HOME = temporary .. "/data"
@@ -11,7 +14,7 @@ vim.env.TAPLO_CONFIG = nil
 local client_id
 
 local function workflow()
-	local machine = temporary .. "/dotfiles/config.toml"
+	local machine = config_home .. "/dotfiles/config.toml"
 	vim.fn.mkdir(vim.fs.dirname(machine), "p")
 	vim.fn.writefile({
 		'sets = ["easypost"]',
@@ -27,7 +30,7 @@ local function workflow()
 	vim.lsp.config("taplo", config)
 	vim.lsp.enable("taplo")
 	vim.cmd("filetype on")
-	vim.cmd.edit(vim.fn.fnameescape(machine))
+	vim.cmd.edit(vim.fn.fnameescape(assert(vim.uv.fs_realpath(machine))))
 	local buffer = vim.api.nvim_get_current_buf()
 	assert(vim.bo[buffer].filetype == "toml", "Machine configuration did not receive TOML filetype")
 	assert(vim.wait(15000, function()
