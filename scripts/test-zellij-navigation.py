@@ -37,7 +37,8 @@ def nested_workflow(binary, env, work, init):
         binary, "attach", "--create", name,
     ])
     try:
-        terminal.until("Zellij starts inside tmux", lambda: PROMPT in terminal.output)
+        # tmux may render the prompt's trailing blank with erase-to-end-of-line.
+        terminal.until("Zellij starts inside tmux", lambda: PROMPT.rstrip() in terminal.output)
         outer_pane = mux(outer_socket, "display-message", "-p", "#{pane_id}")
         mux(outer_socket, "split-window", "-h", "-d", "/bin/sh")
         terminal.prefix(b"v")
