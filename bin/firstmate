@@ -147,7 +147,7 @@ case ${1:-start} in
 		if [[ "$primary_harness" == pi ]]; then
 			unset FM_CODEX_WATCH_CHECKPOINT
 			export FM_PI_HARNESS=pi
-			exec pi "$@"
+			exec codex "$@"
 		fi
 		export FM_CODEX_WATCH_CHECKPOINT=45
 		exec codex --approve-for-me "$@"
