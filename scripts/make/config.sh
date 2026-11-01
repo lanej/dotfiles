@@ -81,6 +81,7 @@ case "$target" in
         ln -fns "${dotfiles}/zsh/zsh-syntax-highlighting" "${setup_home}/.local/share/zsh/zsh-syntax-highlighting"
         ln -fns "${dotfiles}/zsh/zsh-github-copilot.plugin.zsh" "${setup_home}/.local/share/zsh/zsh-github-copilot.zsh"
         ln -fs "${dotfiles}/zsh/tmux-auto-title.zsh" "${setup_home}/.local/share/zsh/tmux-auto-title.zsh"
+        ln -fs "${dotfiles}/zsh/zellij-navigation.zsh" "${setup_home}/.local/share/zsh/zellij-navigation.zsh"
         ;;
     zsh-plugins)
         check_command "git"

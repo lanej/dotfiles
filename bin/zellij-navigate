@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Move from the calling editor or shell to a neighbouring Zellij pane.
+
+The application owns its keys. This helper runs only at an editor boundary or
+from a shell prompt, and never changes tabs or leaves a zoomed pane.
+"""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import runpy
+import subprocess
+import sys
+import time
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("direction", choices=("left", "down", "up", "right", "previous"))
+    args = parser.parse_args()
+    session = os.environ.get("ZELLIJ_SESSION_NAME", "")
+    pane_id = os.environ.get("ZELLIJ_PANE_ID", "")
+    if not session or not pane_id.isdecimal():
+        raise RuntimeError("Run navigation inside a Zellij terminal pane")
+    context = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-context")))
+    if context["provider"]() != "zellij":
+        raise RuntimeError("The calling pane belongs to another multiplexer")
+
+    deadline = time.monotonic() + 2
+
+    def action(*arguments):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("Timed out checking the navigation target")
+        result = subprocess.run(
+            ["zellij", "--session=" + session, "action", *arguments],
+            capture_output=True, text=True, timeout=remaining,
+        )
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip() or "Zellij navigation failed")
+        return result.stdout
+
+    def source_client():
+        # Unlike PaneInfo.is_focused, this listing restricts ownership to
+        # clients' currently active tabs. Reject malformed/ambiguous results.
+        lines = action("list-clients").splitlines()
+        if not lines or lines[0].split() != ["CLIENT_ID", "ZELLIJ_PANE_ID", "RUNNING_COMMAND"]:
+            raise RuntimeError("Cannot establish the active Zellij client")
+        clients = [line.split(None, 2) for line in lines[1:] if line.strip()]
+        if any(len(row) < 2 or not row[0].isdecimal() for row in clients):
+            raise RuntimeError("Cannot establish the active Zellij client")
+        if len(clients) > 1:
+            raise RuntimeError("Pane navigation needs one attached client; use Ctrl-f h/j/k/l")
+        if not clients or clients[0][1] != "terminal_" + pane_id:
+            return None
+        # list-clients omits clients focused on scrollback editors. Native
+        # tab metadata includes all attached client IDs, even those without
+        # a serializable active pane; check every tab before trusting a row.
+        tabs = json.loads(action("list-tabs", "--json"))
+        attached = {client_id for tab in tabs for client_id in tab["other_focused_clients"]}
+        if attached != {int(clients[0][0])}:
+            raise RuntimeError("Pane navigation needs one attached client; use Ctrl-f h/j/k/l")
+        return clients[0][:2]
+
+    owner = source_client()
+    if owner is None:
+        return
+    panes = json.loads(action("list-panes", "--json"))
+    pane = next((p for p in panes if not p["is_plugin"] and p["id"] == int(pane_id)), None)
+    if pane is None:
+        raise RuntimeError("The calling Zellij pane no longer exists")
+    current_tab = json.loads(action("current-tab-info", "--json"))
+    if (not pane["is_focused"] or pane["is_fullscreen"]
+            or current_tab["tab_id"] != pane["tab_id"]
+            or current_tab["is_fullscreen_active"]):
+        return
+    # Preserve the original client/pane and revalidate immediately before the
+    # client-relative action. Stable CLI has no atomic compare-and-focus API:
+    # a small preflight/action window remains. Inactive or ambiguous snapshots
+    # are rejected instead of treating remembered focus as current ownership.
+    if source_client() != owner:
+        return
+    if args.direction == "previous":
+        action("focus-last-pane")
+    else:
+        action("move-focus", args.direction)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, RuntimeError) as error:
+        print(f"zellij-navigate: {error}", file=sys.stderr)
+        sys.exit(1)

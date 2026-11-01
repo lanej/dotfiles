@@ -1356,18 +1356,7 @@ require("lazy").setup({
 	{
 		"numToStr/Navigator.nvim",
 		config = function()
-			require("Navigator").setup({
-				-- Auto-detect multiplexer (WezTerm, tmux, etc.)
-				auto_save = "current",
-				disable_on_zoom = false, -- Set to false since mux integration is enabled
-			})
-
-			-- Keymaps matching previous tmux-navigator setup
-			-- Use <Cmd> to execute commands without changing modes
-			vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>NavigatorLeft<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>NavigatorDown<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>NavigatorUp<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>NavigatorRight<cr>", { noremap = true, silent = true })
+			require("pane-navigation").setup()
 		end,
 	},
 	{
