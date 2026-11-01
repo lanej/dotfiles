@@ -1,6 +1,6 @@
 # Firstmate sessions
 
-The `firstmate` launcher starts a Codex captain in a dedicated session. Choose tmux or Zellij explicitly; installing or running Zellij does not change the selected backend.
+The `firstmate` launcher starts a captain in a dedicated session. Codex is the default; [primary selection](firstmate-primary.md) can opt into Pi independently of the Codex crew and the terminal backend. Choose tmux or Zellij explicitly; installing or running Zellij does not change the selected backend.
 
 ## Install and choose a backend
 
@@ -36,7 +36,7 @@ Use an absolute `FIRSTMATE_HOME` path. Give independent homes distinct `FM_ZELLI
 
 ```sh
 firstmate start                  # Also the default when no command is given
-firstmate start --model <model>  # Codex arguments apply when creating the captain
+firstmate start --model <model>  # Selected agent's arguments apply to a new captain
 firstmate attach
 firstmate reload
 firstmate stop
@@ -67,4 +67,4 @@ The backend remains experimental. Creating a task can briefly take focus before 
 FIRSTMATE_SOURCE=/path/to/firstmate make test-firstmate
 ```
 
-The check needs Zellij 0.45.1+, tmux, jq, Treehouse 3.1.6+, an upstream Firstmate checkout, and the normal TPM installation (or `TPM_SOURCE=/path/to/tpm`). It installs into a temporary home and drives the actual launcher and upstream task spawn/send/peek/teardown commands against real local sessions and a disposable Git project. Captain and worker commands use controlled interactive shells, so the check makes no model calls and does not establish autonomous agent supervision. Linux and macOS CI use the linked upstream revision. Cleanup addresses only the check's own named sessions.
+The check needs Zellij 0.45.1+, tmux, jq, Treehouse 3.1.6+, an upstream Firstmate checkout, and the normal TPM installation (or `TPM_SOURCE=/path/to/tpm`). It installs into a temporary home and drives a Pi captain and upstream task spawn/send/peek/teardown commands against real local sessions and a disposable Git project, then checks the Codex default through an explicit tmux selection. Agent commands use controlled interactive shells, so the check makes no model calls and does not establish live Pi extension loading or autonomous agent supervision. Linux and macOS CI use the linked upstream revision. Cleanup addresses only the check's own named sessions.

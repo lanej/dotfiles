@@ -11,4 +11,5 @@ shellcheck -x \
     "$dotfiles/scripts/install-ep-direnv.sh" \
     "$dotfiles/scripts/install-agent-status-broker" \
     "$dotfiles/bin/ac-awake-service" \
+    "$dotfiles/bin/firstmate" \
     "$dotfiles/bin/sync-codex-mcp-servers"

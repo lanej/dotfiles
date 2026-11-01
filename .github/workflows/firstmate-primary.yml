@@ -1,0 +1,35 @@
+name: Firstmate primary selection
+
+on:
+  pull_request:
+    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', 'Makefile', '.github/workflows/firstmate-primary.yml']
+  push:
+    branches: [master]
+    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', 'Makefile', '.github/workflows/firstmate-primary.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  primary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
+      - name: Install tools on macOS
+        if: runner.os == 'macOS'
+        run: |
+          command -v tmux || brew install tmux
+          command -v shellcheck || brew install shellcheck
+      - run: shellcheck bin/firstmate scripts/make/config.sh
+      - run: make test-firstmate-primary

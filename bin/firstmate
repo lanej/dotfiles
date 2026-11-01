@@ -6,7 +6,7 @@ firstmate_root=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
 usage() {
 	printf '%s\n' \
 		'Usage: firstmate [command] [arguments]' \
-		'  start [Codex arguments]       Start or attach (the default).' \
+		'  start [agent arguments]       Start or attach (the default).' \
 		'  attach [backend options]     Attach to the running captain.' \
 		'  stop                         Stop only the selected Firstmate session.' \
 		'  reload                       Reload tmux; validate Zellij live configuration.' \
@@ -14,6 +14,7 @@ usage() {
 		'  zellij command ...           Run commands on the Firstmate session.' \
 		'  help                         Show this help.' \
 		'FM_BACKEND selects tmux or zellij; otherwise config/backend is used (default: tmux).' \
+		'FM_PRIMARY_HARNESS selects codex or pi; otherwise ~/.config/firstmate/primary-harness is used.' \
 		'FIRSTMATE_HOME overrides ~/src/firstmate.' \
 		'FIRSTMATE_TMUX_SOCKET overrides the tmux socket name (default: firstmate).' \
 		'FM_ZELLIJ_SESSION overrides the Zellij session name (default: firstmate).'
@@ -26,7 +27,48 @@ require_checkout() {
 	}
 }
 
+select_primary() {
+	primary_harness=${FM_PRIMARY_HARNESS:-}
+	if [[ -z "$primary_harness" && -f "$HOME/.config/firstmate/primary-harness" ]]; then
+		primary_harness=$(awk 'NF {gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit}' "$HOME/.config/firstmate/primary-harness")
+	fi
+	primary_harness=${primary_harness:-codex}
+}
+
+require_primary() {
+	case "$primary_harness" in
+		codex|pi) ;;
+		*) printf 'Unsupported Firstmate primary harness: %s (use codex or pi)\n' "$primary_harness" >&2; exit 2 ;;
+	esac
+	command -v "$primary_harness" >/dev/null || {
+		printf 'Firstmate primary executable is missing: %s. Install it and retry.\n' "$primary_harness" >&2
+		[[ "$primary_harness" != pi ]] || printf '%s\n' 'Pi requires version 1.4.0 or newer: BOOTSTRAP_PI=1 bash bootstrap.sh' >&2
+		exit 1
+	}
+	[[ "$primary_harness" == pi ]] || return 0
+	local version major minor extension
+	version=$(pi --version) || { printf '%s\n' 'Cannot read the Pi version; repair the Pi installation and retry.' >&2; exit 1; }
+	if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+		printf 'Cannot verify Pi release version: %s. Install Pi 1.4.0 or newer.\n' "$version" >&2
+		exit 1
+	fi
+	major=$((10#${BASH_REMATCH[1]}))
+	minor=$((10#${BASH_REMATCH[2]}))
+	if (( major < 1 || (major == 1 && minor < 4) )); then
+		printf 'Pi %s is too old; install Pi 1.4.0 or newer.\n' "$version" >&2
+		exit 1
+	fi
+	for extension in fm-primary-pi-watch fm-primary-turnend-guard fm-branch-supervision; do
+		[[ -r "$firstmate_root/.pi/extensions/$extension.ts" ]] || {
+			printf 'Firstmate checkout lacks .pi/extensions/%s.ts: %s\n' "$extension" "$firstmate_root" >&2
+			printf '%s\n' 'Update that Firstmate checkout deliberately, or select an updated checkout with FIRSTMATE_HOME.' >&2
+			exit 1
+		}
+	done
+}
+
 tmux_exec() {
+	command -v tmux >/dev/null || { printf '%s\n' 'tmux is missing. Install it before starting or attaching to Firstmate.' >&2; exit 1; }
 	# Do not carry the caller's pane identity into a different multiplexer.
 	exec env -u TMUX -u TMUX_PANE -u ZELLIJ -u ZELLIJ_PANE_ID -u ZELLIJ_SESSION_NAME tmux \
 		-f "$HOME/.config/firstmate/tmux.conf" \
@@ -98,8 +140,15 @@ case ${1:-start} in
 	--inside)
 		shift
 		require_checkout
+		select_primary
+		require_primary
 		cd "$firstmate_root"
 		export FM_HOME="$PWD"
+		if [[ "$primary_harness" == pi ]]; then
+			unset FM_CODEX_WATCH_CHECKPOINT
+			export FM_PI_HARNESS=pi
+			exec pi "$@"
+		fi
 		export FM_CODEX_WATCH_CHECKPOINT=45
 		exec codex --approve-for-me "$@"
 		;;
@@ -108,10 +157,18 @@ case ${1:-start} in
 		;;
 esac
 
-# Preserve direct Codex arguments as a shorthand for "firstmate start".
+# Preserve direct agent arguments as a shorthand for "firstmate start".
 require_checkout
 firstmate_root=$(cd "$firstmate_root" && pwd -P)
 export FIRSTMATE_HOME="$firstmate_root" FM_HOME="$firstmate_root"
+
+# The selected primary applies only to a new captain. An existing tmux
+# captain remains attachable if the configured executable is later removed.
+if [[ "$backend" == tmux ]] && env -u TMUX -u TMUX_PANE -u ZELLIJ -u ZELLIJ_PANE_ID -u ZELLIJ_SESSION_NAME \
+	tmux -L "${FIRSTMATE_TMUX_SOCKET:-firstmate}" has-session -t =firstmate 2>/dev/null; then
+	tmux_exec attach-session -t =firstmate
+fi
+select_primary
 
 launcher=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 if [[ "$backend" == zellij ]]; then
@@ -120,9 +177,14 @@ if [[ "$backend" == zellij ]]; then
 	cd "$firstmate_root"
 	# The initial command runs only when the session is created. Do not probe a
 	# half-started server with list-sessions/list-panes (Zellij issue #5632).
+	# Primary prerequisites are checked by --inside only for a new captain.
 	zellij_exec attach --create "$FM_ZELLIJ_SESSION" -- env \
 		"FIRSTMATE_HOME=$firstmate_root" "FM_BACKEND=zellij" "FM_ZELLIJ_SESSION=$FM_ZELLIJ_SESSION" \
+		"FM_PRIMARY_HARNESS=$primary_harness" "PATH=$PATH" \
 		"$launcher" --inside "$@"
 fi
+require_primary
 tmux_exec new-session -A \
-	-s firstmate -n captain -c "$firstmate_root" "$launcher" --inside "$@"
+	-s firstmate -n captain -c "$firstmate_root" env \
+	"FIRSTMATE_HOME=$firstmate_root" "FM_BACKEND=tmux" "FM_PRIMARY_HARNESS=$primary_harness" "PATH=$PATH" \
+	"$launcher" --inside "$@"
