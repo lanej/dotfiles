@@ -1,0 +1,307 @@
+diff --git a/zellij-server/src/lib.rs b/zellij-server/src/lib.rs
+index d631955..ca9ce15 100644
+--- a/zellij-server/src/lib.rs
++++ b/zellij-server/src/lib.rs
+@@ -1484,13 +1484,18 @@ pub fn start_server_impl(
+             },
+             ServerInstruction::KillSession => {
+                 let client_ids = session_state.read().unwrap().client_ids();
++                for client_id in &client_ids {
++                    os_input
++                        .send_to_client(
++                            *client_id,
++                            ServerToClientMsg::Exit {
++                                exit_reason: ExitReason::Normal,
++                            },
++                        )
++                        .non_fatal();
++                }
++                os_input.flush_clients(&client_ids).non_fatal();
+                 for client_id in client_ids {
+-                    let _ = os_input.send_to_client(
+-                        client_id,
+-                        ServerToClientMsg::Exit {
+-                            exit_reason: ExitReason::Normal,
+-                        },
+-                    );
+                     remove_client!(client_id, os_input, session_state, session_data);
+                 }
+                 break;
+diff --git a/zellij-server/src/os_input_output.rs b/zellij-server/src/os_input_output.rs
+index be19d03..f514f38 100644
+--- a/zellij-server/src/os_input_output.rs
++++ b/zellij-server/src/os_input_output.rs
+@@ -31,6 +31,7 @@ use std::{
+     path::PathBuf,
+     process::Command,
+     sync::{Arc, Mutex},
++    time::{Duration, Instant},
+ };
+ 
+ pub use async_trait::async_trait;
+@@ -211,10 +212,16 @@ fn build_command(
+ // this client and we'll stop sending messages to it.
+ // If the client ever becomes responsive again, we'll send one final "Buffer full" message so it
+ // knows what happened.
++#[derive(Debug)]
++enum ClientBufferMessage {
++    Message(ServerToClientMsg),
++    Flush(channels::Sender<()>),
++}
++
+ #[derive(Clone)]
+ struct ClientSender {
+     client_id: ClientId,
+-    client_buffer_sender: channels::Sender<ServerToClientMsg>,
++    client_buffer_sender: channels::Sender<ClientBufferMessage>,
+ }
+ 
+ impl ClientSender {
+@@ -232,11 +239,19 @@ impl ClientSender {
+         let (client_buffer_sender, client_buffer_receiver) = channels::bounded(5000);
+         std::thread::spawn(move || {
+             let err_context = || format!("failed to send message to client {client_id}");
+-            for msg in client_buffer_receiver.iter() {
+-                sender
+-                    .send_server_msg(msg)
+-                    .with_context(err_context)
+-                    .non_fatal();
++            for message in client_buffer_receiver.iter() {
++                match message {
++                    ClientBufferMessage::Message(msg) => {
++                        if let Err(err) = sender.send_server_msg(msg).with_context(err_context) {
++                            Err::<(), _>(err).non_fatal();
++                            // A flush barrier must not report success after a failed write.
++                            return;
++                        }
++                    },
++                    ClientBufferMessage::Flush(completed) => {
++                        let _ = completed.send(());
++                    },
++                }
+             }
+             let _ = sender.send_server_msg(ServerToClientMsg::Exit {
+                 exit_reason: ExitReason::Disconnect,
+@@ -256,7 +271,7 @@ impl ClientSender {
+         };
+ 
+         self.client_buffer_sender
+-            .try_send(msg)
++            .try_send(ClientBufferMessage::Message(msg))
+             .or_else(|err| {
+                 if let TrySendError::Full(_) = err {
+                     log::warn!(
+@@ -268,6 +283,14 @@ impl ClientSender {
+             })
+             .with_context(err_context)
+     }
++
++    fn flush(&self) -> Result<channels::Receiver<()>> {
++        let (completed, completion) = channels::bounded(1);
++        self.client_buffer_sender
++            .try_send(ClientBufferMessage::Flush(completed))
++            .with_context(|| format!("failed to queue flush for client {}", self.client_id))?;
++        Ok(completion)
++    }
+ }
+ 
+ #[derive(Clone)]
+@@ -332,6 +355,10 @@ pub trait ServerOsApi: Send + Sync {
+     /// Returns a [`Box`] pointer to this [`ServerOsApi`] struct.
+     fn box_clone(&self) -> Box<dyn ServerOsApi>;
+     fn send_to_client(&self, client_id: ClientId, msg: ServerToClientMsg) -> Result<()>;
++    /// Wait for queued messages to reach the clients' IPC streams before server shutdown.
++    fn flush_clients(&self, _client_ids: &[ClientId]) -> Result<()> {
++        Ok(())
++    }
+     fn new_client(
+         &mut self,
+         client_id: ClientId,
+@@ -461,6 +488,39 @@ impl ServerOsApi for ServerOsInputOutput {
+         }
+     }
+ 
++    fn flush_clients(&self, client_ids: &[ClientId]) -> Result<()> {
++        // One deadline for the whole session: a stalled terminal must not prevent shutdown
++        // or make the shutdown delay grow with the number of attached clients.
++        let deadline = Instant::now() + Duration::from_millis(500);
++        let completions = {
++            let senders = self.client_senders.lock().to_anyhow()?;
++            client_ids
++                .iter()
++                .filter_map(|client_id| {
++                    senders
++                        .get(client_id)
++                        .map(|sender| (*client_id, sender.flush()))
++                })
++                .collect::<Vec<_>>()
++        };
++        let mut failures = vec![];
++        for (client_id, completion) in completions {
++            let result = completion.and_then(|completion| {
++                completion
++                    .recv_deadline(deadline)
++                    .with_context(|| format!("failed to flush client {client_id}"))
++            });
++            if let Err(err) = result {
++                failures.push(format!("{err:#}"));
++            }
++        }
++        if failures.is_empty() {
++            Ok(())
++        } else {
++            Err(anyhow!("{}", failures.join("; ")))
++        }
++    }
++
+     fn new_client(
+         &mut self,
+         client_id: ClientId,
+diff --git a/zellij-server/src/unit/os_input_output_tests.rs b/zellij-server/src/unit/os_input_output_tests.rs
+index 71e08b7..0e1ad36 100644
+--- a/zellij-server/src/unit/os_input_output_tests.rs
++++ b/zellij-server/src/unit/os_input_output_tests.rs
+@@ -5,6 +5,105 @@ fn make_server() -> ServerOsInputOutput {
+     get_server_os_input().expect("failed to create server os input")
+ }
+ 
++#[cfg(unix)]
++fn connect_output_client(
++    server: &mut ServerOsInputOutput,
++    client_id: ClientId,
++) -> IpcReceiverWithContext<ServerToClientMsg> {
++    use interprocess::local_socket::prelude::*;
++    let dir = tempfile::TempDir::new().unwrap();
++    let path = dir.path().join("client.sock");
++    let listener = zellij_utils::consts::ipc_bind(&path).unwrap();
++    let client = zellij_utils::consts::ipc_connect(&path).unwrap();
++    let stream = listener.accept().unwrap();
++    server.new_client(client_id, stream).unwrap();
++    IpcReceiverWithContext::new(client)
++}
++
++#[cfg(unix)]
++#[test]
++fn dotfiles_flush_clients_delivers_queued_exit_before_shutdown() {
++    let mut server = make_server();
++    let mut client = connect_output_client(&mut server, 1);
++    // Fill the real socket buffer so the sender cannot reach Exit until the client reads.
++    let render = "x".repeat(8 * 1024 * 1024);
++    server
++        .send_to_client(
++            1,
++            ServerToClientMsg::Render {
++                content: render.clone(),
++            },
++        )
++        .unwrap();
++    server
++        .send_to_client(
++            1,
++            ServerToClientMsg::Exit {
++                exit_reason: ExitReason::Normal,
++            },
++        )
++        .unwrap();
++    let (started_tx, started_rx) = channels::bounded(1);
++    let (finished_tx, finished_rx) = channels::bounded(1);
++    let worker = std::thread::spawn(move || {
++        started_tx.send(()).unwrap();
++        let result = server.flush_clients(&[1]);
++        finished_tx.send(result).unwrap();
++        server.remove_client(1).unwrap();
++    });
++    started_rx.recv().unwrap();
++    assert!(matches!(
++        finished_rx.recv_timeout(Duration::from_millis(20)),
++        Err(channels::RecvTimeoutError::Timeout)
++    ));
++    assert_eq!(
++        client.recv_server_msg().unwrap().0,
++        ServerToClientMsg::Render { content: render }
++    );
++    assert_eq!(
++        client.recv_server_msg().unwrap().0,
++        ServerToClientMsg::Exit {
++            exit_reason: ExitReason::Normal
++        }
++    );
++    finished_rx
++        .recv_timeout(Duration::from_secs(2))
++        .unwrap()
++        .unwrap();
++    worker.join().unwrap();
++}
++
++#[cfg(unix)]
++#[test]
++fn dotfiles_flush_clients_bounds_stalled_peers_and_reports_closed_streams() {
++    let mut server = make_server();
++    let stalled_one = connect_output_client(&mut server, 1);
++    let stalled_two = connect_output_client(&mut server, 2);
++    let closed = connect_output_client(&mut server, 3);
++    drop(closed);
++    let render = ServerToClientMsg::Render {
++        content: "x".repeat(8 * 1024 * 1024),
++    };
++    server.send_to_client(1, render.clone()).unwrap();
++    server.send_to_client(2, render).unwrap();
++    server
++        .send_to_client(
++            3,
++            ServerToClientMsg::Exit {
++                exit_reason: ExitReason::Normal,
++            },
++        )
++        .unwrap();
++    let started = Instant::now();
++    let err = server.flush_clients(&[1, 2, 3]).unwrap_err();
++    assert!(started.elapsed() < Duration::from_millis(900));
++    let error = format!("{err:#}");
++    assert!(error.contains("client 1"));
++    assert!(error.contains("client 2"));
++    assert!(error.contains("client 3"));
++    drop((stalled_one, stalled_two));
++}
++
+ // --- Cross-platform command helpers ---
+ 
+ #[allow(dead_code)]
+diff --git a/zellij-utils/src/ipc.rs b/zellij-utils/src/ipc.rs
+index ee07fa2..9545342 100644
+--- a/zellij-utils/src/ipc.rs
++++ b/zellij-utils/src/ipc.rs
+@@ -397,7 +397,7 @@ impl<T: Serialize> IpcSenderWithContext<T> {
+     pub fn send_server_msg(&mut self, msg: ServerToClientMsg) -> Result<()> {
+         let proto_msg: ProtoServerToClientMsg = msg.into();
+         write_protobuf_message(&mut self.sender, &proto_msg)?;
+-        let _ = self.sender.flush();
++        self.sender.flush()?;
+         Ok(())
+     }
+ 
+diff --git a/zellij-utils/src/ipc/tests/socket_tests.rs b/zellij-utils/src/ipc/tests/socket_tests.rs
+index 6d98b13..6800f1e 100644
+--- a/zellij-utils/src/ipc/tests/socket_tests.rs
++++ b/zellij-utils/src/ipc/tests/socket_tests.rs
+@@ -10,6 +10,20 @@ use std::sync::atomic::{AtomicU32, Ordering};
+ 
+ static IPC_COUNTER: AtomicU32 = AtomicU32::new(0);
+ 
++#[test]
++fn dotfiles_server_message_reports_flush_failure() {
++    let (_guard, name) = new_ipc();
++    let listener = bind_listener(&name);
++    let client = connect_stream(&name);
++    let stream = listener.incoming().next().unwrap().unwrap();
++    drop(client);
++    let mut sender: IpcSenderWithContext<ServerToClientMsg> = IpcSenderWithContext::new(stream);
++    // This small message fits in BufWriter: the socket error occurs only at flush.
++    assert!(sender
++        .send_server_msg(ServerToClientMsg::Connected)
++        .is_err());
++}
++
+ // --- Cross-platform IPC helpers ---
+ // On Unix: use filesystem-based sockets (TempDir + PathBuf + GenericFilePath)
+ // On Windows: use named pipes (no guard needed, String name + GenericNamespaced)

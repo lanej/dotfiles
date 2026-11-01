@@ -8,16 +8,20 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 ## Start a session
 
-Use **Zellij 0.45.1 or newer**, Python 3, and fzf. Neovim is used to edit scrollback. `bootstrap.sh` installs the required Zellij version through the existing minimum-version installer, retaining a newer installed version; its release fallback verifies the executable's upstream checksum. On macOS, `brew install zellij fzf` also installs the two terminal tools.
+Use the **patched Zellij 0.45.1 runtime** installed by this checkout, Python 3, fzf, and Rust through rustup. `bootstrap.sh` and `make zellij-runtime` build a pinned, checksummed upstream source archive with the native fixes in [`zellij/patches`](../zellij/patches). The native build uses Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback.
+
+The first native build takes longer than installing an upstream binary and needs a C/C++ compiler, Make, CMake, pkg-config, and OpenSSL development files. `bootstrap.sh` installs those build dependencies. On macOS, install Xcode command line tools and run `brew install cmake pkg-config openssl@3 fzf`. Later installs reuse the Cargo cache and skip an unchanged executable after checking its hash against the installed patch set. The stock Homebrew or upstream 0.45.1 executable does not include these fixes.
 
 From the dotfiles checkout:
 
 ```sh
-make zellij
+make zellij-runtime zellij
 zellij attach --create main
 ```
 
-`make zellij` installs configuration and helpers; it does not install the binary or start a session. Default `make` also installs this configuration. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
+`make zellij-runtime` installs the patched executable. `make zellij` installs configuration and helpers without installing a runtime or starting a session. Default `make` also installs this configuration. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
+
+Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. Run `python3 scripts/install-zellij --check` to verify the installed executable matches this checkout. The runtime keeps the upstream `0.45.1` protocol version so existing plugins remain compatible; the installer records the patch-set and binary hashes separately.
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
