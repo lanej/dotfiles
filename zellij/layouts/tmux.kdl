@@ -29,4 +29,14 @@ layout {
             pane stacked=true { children; }
         }
     }
+    // The left work pane occupies half the width. Remaining panes share the
+    // right column vertically. Percent sizes continue to fit window resizes.
+    swap_tiled_layout name="equalize" {
+        with_bar {
+            pane split_direction="vertical" {
+                pane size="50%"
+                pane { children; }
+            }
+        }
+    }
 }
