@@ -11,21 +11,21 @@ GO ?= go
 FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
-ifeq ($(origin IS_EASYPOST),undefined)
-INSTALL_HOSTNAME := $(shell bash "$(MAKE_SCRIPTS)/hostname.sh")
-ifeq ($(strip $(INSTALL_HOSTNAME)),)
-$(error Could not determine hostname; set IS_EASYPOST=true or false)
+# Share one validated TOML resolver with bootstrap. No generated files or host
+# classification; only the resolver's fixed setting names and enum values enter Make.
+ifneq ($(origin DOTFILES_CONFIG),undefined)
+export DOTFILES_CONFIG
 endif
-IS_EASYPOST := $(if $(findstring easypost,$(INSTALL_HOSTNAME)),true,false)
+ifneq ($(origin IS_EASYPOST),undefined)
+$(error IS_EASYPOST is retired; select configuration sets in ~/.config/dotfiles/config.toml)
 endif
-export IS_EASYPOST
-ifeq ($(IS_EASYPOST),true)
-CODEX_GITHUB_ENABLED := false
-else ifeq ($(IS_EASYPOST),false)
-CODEX_GITHUB_ENABLED := true
-else
-$(error IS_EASYPOST must be true or false)
+shell-quote = '$(subst ','"'"',$(1))'
+DOTFILES_CONFIG_ARG = $(if $(filter undefined,$(origin DOTFILES_CONFIG)),,--config $(call shell-quote,$(DOTFILES_CONFIG)))
+DOTFILES_RESOLVED := $(shell python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --format make)
+ifeq ($(strip $(DOTFILES_RESOLVED)),)
+$(error Invalid dotfiles configuration; see diagnostic above)
 endif
+$(foreach setting,$(DOTFILES_RESOLVED),$(eval override $(setting)))
 
 ifeq ($(UNAME_S),Linux)
 SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
@@ -35,6 +35,18 @@ endif
 
 # The runner reports every step and returns failure only after trying them all.
 all: setup
+
+.PHONY: config test-dotfiles-config test-dotfiles-config-editor
+config:
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG)
+
+test-dotfiles-config:
+	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
+
+test-dotfiles-config-editor:
+	$(call require-command,nvim)
+	$(call require-command,taplo)
+	@nvim --headless -u NONE -i NONE -n -l "$(DOTFILES)/nvim/tests/dotfiles-config-schema.lua"
 
 setup:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
@@ -97,7 +109,7 @@ tmux-program-status:
 zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
-	@python3 "$(DOTFILES)/scripts/install-zellij"
+	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
 zellij-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 sql-formatters:
@@ -202,7 +214,7 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(CODEX_GITHUB_ENABLED)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(DOTFILES_CODEX_GITHUB_ENABLED)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills

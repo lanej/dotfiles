@@ -1,0 +1,7 @@
+# Copy to ~/.config/dotfiles/config.toml and select this machine's sets.
+# Other sets: personal, zellij-patched, zellij-release, mermaid.
+sets = ["easypost", "zellij-patched"]
+
+# Local settings override the selected sets, for example:
+# [bootstrap]
+# mermaid = true

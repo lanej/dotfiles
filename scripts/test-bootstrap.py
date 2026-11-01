@@ -22,7 +22,12 @@ def main():
         checkout.mkdir()
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
+        shutil.copytree(root / "config", checkout / "config")
         (checkout / "scripts").mkdir()
+        shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        machine_config = home / ".config/dotfiles/config.toml"
+        machine_config.parent.mkdir(parents=True)
+        machine_config.write_text('sets = ["easypost", "mermaid", "zellij-patched"]\n[bootstrap]\nmermaid = false\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         # Execute the installer against a small source fixture. Network and
@@ -345,10 +350,14 @@ else:
             "ATUIN_SYNC_HOST": "fixture-host",
             "XDG_CACHE_HOME": str(home / ".cache"),
             "XDG_STATE_HOME": str(home / ".local/state"),
+            "XDG_CONFIG_HOME": str(home / ".config"),
             "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
+        env.pop("DOTFILES_CONFIG", None)
+        env.pop("IS_EASYPOST", None)
+        env.pop("BOOTSTRAP_MERMAID", None)
         # Exercise the documented relative launch on ARM Linux, including an
         # older Neovim that needs a source build and missing eza/yq/btop.
         result = subprocess.run(

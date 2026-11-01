@@ -10,7 +10,7 @@ $ make          # symlink configuration files
 $ bash bootstrap.sh # install packages and tools
 ```
 
-Set `BOOTSTRAP_MERMAID=1 bash bootstrap.sh` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim. This optional dependency is skipped by default.
+Select this machine's [configuration sets](#configuration-sets) before running setup. The `mermaid` set also installs Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
 
 `make` defaults to `setup` and prints a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
@@ -63,9 +63,52 @@ remain linked to their sources. File-linked or lowercase entrypoints are
 normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
 those entrypoints. Missing external skill sources are reported and skipped.
 
-The Makefile classifies a hostname containing `easypost` (case-insensitive) as EasyPost equipment and exports `IS_EASYPOST=true`; other hostnames use `false`. Targets can use `ifeq ($(IS_EASYPOST),true)`, and scripts receive `IS_EASYPOST` in their environment. Override the classification with `make IS_EASYPOST=true` or `make IS_EASYPOST=false` for machines with different names. If hostname lookup fails, setup requires an explicit override.
+## Configuration sets
 
-`make`, `make codex`, and `make codex-permissions` use this shared condition to disable the Codex GitHub app and its plugins on EasyPost equipment, so GitHub work uses `gh`. Personal installs enable the app. The installer receives the choice explicitly and preserves unrelated local Codex settings. Reload Codex after installation to apply changed app access to existing sessions.
+`make` and `bootstrap.sh` read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). Configuration is explicit; the hostname has no effect. Python 3.11+ is required for `make`; bootstrap installs Python before resolving settings.
+
+```sh
+mkdir -p ~/.config/dotfiles
+cp config/example.toml ~/.config/dotfiles/config.toml
+# Edit the selected sets, then inspect their resolved settings and source files.
+make config
+```
+
+For example:
+
+```toml
+sets = ["easypost", "zellij-patched", "mermaid"]
+
+# Optional machine-specific overrides take precedence over sets.
+[bootstrap]
+mermaid = false
+```
+
+| Set | Effect |
+|---|---|
+| `base` | Always applied first: GitHub app access off, patched Zellij, Mermaid off |
+| `easypost` | Disable the Codex GitHub app and its plugins; use `gh` for GitHub work |
+| `personal` | Enable the Codex GitHub app and its plugins |
+| `zellij-patched` | Build pinned upstream Zellij with this checkout's native reliability fixes |
+| `zellij-release` | Install the checksummed upstream 0.45.1 release |
+| `zellij-main` | Build a pinned upstream main revision for OSC 7501; experimental and without the local native fixes |
+| `mermaid` | Install Mermaid CLI and its headless browser during bootstrap |
+
+The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier settings. Machine settings apply last. Unknown settings, invalid values, missing sets, and dependency cycles fail instead of applying a partial configuration.
+
+Use `make DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh` for an alternate configuration. An explicitly selected file must exist. With no machine file, only `base` applies; no work/personal identity is inferred. Available settings are `codex.github_enabled` (boolean), `zellij.source` (`"patched"`, `"release"`, or `"main"`), and `bootstrap.mermaid` (boolean).
+
+Neovim installs Taplo through Mason and automatically uses the checkout's local [JSON Schema](config/schema.json) for these settings, private sets, and repository examples. This provides property and value completion, hover documentation, and inline diagnostics for wrong types, unsupported values, and unknown properties. The schema is read locally; its use does not depend on a hosted schema. Set names can reference private files, so missing sets and dependency cycles remain runtime checks. If you select an alternate machine file outside the conventional directory, launch Neovim with the same `DOTFILES_CONFIG` environment variable.
+
+Other Taplo-based editors can associate the same local schema or use a header comment such as `#:schema file:///absolute/path/to/dotfiles/config/schema.json`. The repository's `.taplo.toml` associates its example and set files automatically. The schema is generated from the runtime field definitions and baseline defaults; `make test-dotfiles-config` checks that it has not drifted. After changing those definitions, regenerate it with:
+
+```sh
+python3 scripts/dotfiles-config.py --format schema > config/schema.json
+```
+
+`make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
+
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select the corresponding sets instead; personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
@@ -130,7 +173,7 @@ Unlock your SSH agent and authenticate to any bastion before running the target.
 
 See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
 
-Bootstrap installs Zellij 0.45.1 or newer. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
+Bootstrap installs the Zellij runtime selected by your configuration sets; the default is pinned upstream main with native fixes. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
 
 In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.

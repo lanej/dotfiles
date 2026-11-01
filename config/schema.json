@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Dotfiles configuration",
+  "description": "Machine settings and reusable sets. Individual properties override selected sets. All fields are optional; omitted values inherit the base configuration.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sets": {
+      "type": "array",
+      "description": "Compose named sets in order, then apply this file's individual settings. Local sets are supported; existence and dependency cycles are checked at runtime.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]*$",
+        "anyOf": [
+          {
+            "enum": [
+              "base",
+              "easypost",
+              "mermaid",
+              "personal",
+              "zellij-main",
+              "zellij-patched",
+              "zellij-release"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "github_enabled": {
+          "type": "boolean",
+          "description": "Enable the Codex GitHub app and its plugins. False keeps GitHub access through gh.",
+          "default": false
+        }
+      }
+    },
+    "zellij": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Runtime source: patched includes the checkout's native fixes; release uses upstream stable; main builds pinned upstream without local patches.",
+          "default": "patched",
+          "enum": [
+            "patched",
+            "release",
+            "main"
+          ]
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mermaid": {
+          "type": "boolean",
+          "description": "Install Mermaid CLI and its headless browser during bootstrap. False does not uninstall existing tools.",
+          "default": false
+        }
+      }
+    }
+  }
+}
