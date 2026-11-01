@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Pick a Zellij tab or running session without interpolating titles into a shell.
+"""Pick a Zellij tab, running session, attention target, or client to detach.
 
-Run in a floating pane with close_on_exit. The picker only changes client focus;
-it never moves, closes, or restarts the pane from which it was opened.
+Run in a floating pane with close_on_exit. Titles never become shell commands.
 """
 
 import base64
@@ -13,6 +12,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 
 
 def broker_records():
@@ -37,20 +37,20 @@ def record_label(record):
     return f"{record['provider']}:{state}"
 
 
-def run_zellij(*args, session=None):
+def run_zellij(*args, session=None, timeout=5):
     command = ["zellij"]
     if session is not None:
         command += ["--session=" + session]
     result = subprocess.run(
-        command + list(args), capture_output=True, text=True, timeout=5
+        command + list(args), capture_output=True, text=True, timeout=timeout
     )
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "Zellij command failed")
     return result.stdout
 
 
-def snapshot(session, kind):
-    result = json.loads(run_zellij("action", f"list-{kind}", "--json", session=session))
+def snapshot(session, kind, timeout=5):
+    result = json.loads(run_zellij("action", f"list-{kind}", "--json", session=session, timeout=timeout))
     if not isinstance(result, list):
         raise RuntimeError(f"Zellij did not return a {kind} list")
     return result
@@ -112,16 +112,19 @@ def preview_session(session):
         print(f"{marker} {tab['position']}: {label(tab['name'])}")
 
 
-def choose(rows, heading, preview):
+def choose(rows, heading, preview=None):
     # fzf shell-quotes its {1} replacement. Only an integer or base64 token is
     # ever in that column; untrusted names never become command text.
-    preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
+    preview_args = []
+    if preview:
+        preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
+        preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=right:60%"]
     result = subprocess.run(
         [
             "fzf", "--height=100%", "--reverse", "--no-multi",
             "--delimiter=\t", "--with-nth=2..", "--header=" + heading,
             "--color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf",
-            "--preview=" + preview_command + " {1}", "--preview-window=right:60%",
+            *preview_args,
         ],
         input="\n".join(rows) + "\n", stdout=subprocess.PIPE, text=True,
     )
@@ -130,6 +133,51 @@ def choose(rows, heading, preview):
     if result.returncode:
         raise RuntimeError(f"fzf exited with status {result.returncode}")
     return result.stdout.split("\t", 1)[0].strip()
+
+
+def client_choices(session):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        try:
+            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--", "list",
+                                session=session, timeout=max(0.01, deadline - time.monotonic()))
+            rows = [json.loads(line) for line in output.splitlines() if line.strip()]
+            # A new attachment can render its shell before its plugin clone is
+            # ready. Use native tab metadata, which includes scrollback-editor
+            # clients, to require a complete read rather than a partial picker.
+            tabs = snapshot(session, "tabs", timeout=max(0.01, deadline - time.monotonic()))
+            attached = {str(client) for tab in tabs for client in tab["other_focused_clients"]}
+            choices = {str(row["token"]["client_id"]): row for row in rows
+                       if row["token"]["session"] == session
+                       and str(row["token"]["client_id"]) in attached}
+            if attached and choices.keys() == attached:
+                return choices
+        except (subprocess.TimeoutExpired, json.JSONDecodeError):
+            pass
+        # Retry only the read. Never merge tokens from different snapshots or
+        # replay a detach: its result can be lost after the mutation succeeds.
+        time.sleep(min(0.1, max(0, deadline - time.monotonic())))
+    raise RuntimeError("Timed out waiting for all attached clients. Check lane-status permission prompts on each attached client, then reopen the chooser")
+
+
+def pick_client(session):
+    print("Loading attached clients...", flush=True)
+    choices = client_choices(session)
+    selected = choose(
+        [f"{key}\tClient {key} | {label(row.get('tab') or '')} | {label(row.get('pane') or '')}"
+         for key, row in sorted(choices.items(), key=lambda item: int(item[0]))],
+        "Detach one client: Enter confirms; Esc cancels",
+    )
+    if selected is None:
+        return
+    if selected not in choices:
+        raise RuntimeError("Invalid client selection")
+    # The receiver compares its observed attachment epoch, then queries native
+    # client state again. Never fall back to disconnecting all other clients.
+    reply = run_zellij("pipe", "--name", "lane-client-detach", "--",
+                       json.dumps(choices[selected]["token"]), session=session).strip()
+    if reply != "detached":
+        raise RuntimeError(reply or "The selected attachment is unavailable; reopen the client chooser")
 
 
 def pick_tab(session):
@@ -239,9 +287,9 @@ def pick_attention(session):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-        "tabs", "sessions", "attention", "--preview-tab", "--preview-session", "--preview-attention"
+        "tabs", "sessions", "attention", "clients", "--preview-tab", "--preview-session", "--preview-attention"
     ):
-        raise RuntimeError("Usage: zellij-picker tabs|sessions|attention (inside Zellij)")
+        raise RuntimeError("Usage: zellij-picker tabs|sessions|attention|clients (inside Zellij)")
     session = os.environ.get("ZELLIJ_SESSION_NAME")
     if not session:
         raise RuntimeError("Run zellij-picker inside a Zellij session")
@@ -257,6 +305,8 @@ def main():
         pick_attention(session)
     elif mode == "tabs":
         pick_tab(session)
+    elif mode == "clients":
+        pick_client(session)
     else:
         pick_session(session)
 
