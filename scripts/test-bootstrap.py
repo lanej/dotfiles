@@ -302,10 +302,20 @@ else:
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
+        # Keep this fresh-box workflow independent of tools preinstalled on CI.
+        system_bin = home / "system-bin"
+        system_bin.mkdir()
+        missing_tools = {"tmux", "eza", "yq", "btop", "rustup"}
+        for system_dir in (Path("/usr/bin"), Path("/bin")):
+            for tool in system_dir.iterdir():
+                destination = system_bin / tool.name
+                if (tool.name not in missing_tools and tool.is_file()
+                        and os.access(tool, os.X_OK) and not destination.is_symlink()):
+                    destination.symlink_to(tool)
         env = {
             **os.environ,
             "HOME": str(home),
-            "PATH": f"{fixture}:/usr/bin:/bin",
+            "PATH": f"{fixture}:{system_bin}",
             "ATUIN_SYNC_HOST": "fixture-host",
         }
         env.pop("GOPATH", None)
