@@ -74,6 +74,9 @@ def main():
         executables = temporary / "bin"
         fixture_home.mkdir()
         executables.mkdir()
+        machine_config = fixture_home / ".config/dotfiles/config.toml"
+        machine_config.parent.mkdir(parents=True)
+        machine_config.write_text('sets = ["personal"]\n')
         (executables / "tmux").symlink_to(tmux)
         firstmate = fixture_home / "src/firstmate"
         (firstmate / "bin").mkdir(parents=True)
@@ -117,11 +120,13 @@ for _ in sys.stdin:
         # macOS's default temporary path can exceed the Unix socket limit.
         socket_dir = Path(sockets)
         env = {key: value for key, value in os.environ.items()
-               if not key.startswith(("FM_", "FIRSTMATE_", "TMUX", "ZELLIJ"))}
+               if not key.startswith(("FM_", "FIRSTMATE_", "TMUX", "ZELLIJ"))
+               and key not in {"IS_EASYPOST", "BOOTSTRAP_MERMAID"}}
         env.update(HOME=str(fixture_home), PATH=str(executables) + os.pathsep + os.environ["PATH"],
                    SHELL="/bin/bash", TERM="xterm-256color", TMUX_TMPDIR=str(socket_dir),
-                   FIRSTMATE_TMUX_SOCKET="primary-test", FM_BACKEND="tmux")
-        install = ["make", "--no-print-directory", "firstmate-config", "IS_EASYPOST=false"]
+                   FIRSTMATE_TMUX_SOCKET="primary-test", FM_BACKEND="tmux",
+                   DOTFILES_CONFIG=str(machine_config))
+        install = ["make", "--no-print-directory", "firstmate-config"]
         subprocess.run(install, cwd=ROOT, env=env, check=True, capture_output=True, timeout=15)
         launcher = str(fixture_home / ".local/bin/firstmate")
         primary_config = fixture_home / ".config/firstmate/primary-harness"
