@@ -2,6 +2,9 @@
 # Timestamp and enqueue naming/status; all tmux work runs in the broker.
 broker="${AGENT_STATUS_BIN:-$HOME/.local/lib/agent-status/agent-status-broker}"
 [ -x "$broker" ] || exit 0
+if [ -n "${ZELLIJ_SESSION_NAME:-}" ]; then
+    exec "$broker" send --provider claude --zellij-session "$ZELLIJ_SESSION_NAME" --zellij-pane "${ZELLIJ_PANE_ID:-}"
+fi
 tmux_context="${TMUX:-}"
 tmux_socket="${tmux_context%,*,*}"
 exec "$broker" send --provider claude --tmux-socket "$tmux_socket" --pane "${TMUX_PANE:-}"

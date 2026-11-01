@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lanej/agent-status-broker
-          ref: v0.1.7
+          ref: a3b9881df6bae8f3434bdb8943550b59a6e871d9
           path: agent-status-broker-source
           ssh-key: ${{ secrets.AGENT_STATUS_BROKER_DEPLOY_KEY }}
           persist-credentials: false

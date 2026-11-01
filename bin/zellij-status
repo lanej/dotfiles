@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Read broker-owned Zellij state; unavailable status remains visibly unknown."""
+
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import time
+
+
+def read(manifest=None):
+    broker = os.environ.get("AGENT_STATUS_BIN", str(Path.home() / ".local/lib/agent-status/agent-status-broker"))
+    command = [broker, "zellij-view"]
+    if manifest is not None:
+        command += ["--manifest", manifest]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=3)
+    if result.returncode:
+        raise RuntimeError("Install the Zellij-enabled agent-status-broker; see docs/zellij.md")
+    value = json.loads(result.stdout)
+    value["available"] = True
+    return value
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "records"
+    if mode not in ("view", "records"):
+        raise RuntimeError("Usage: zellij-status view <manifest>|records")
+    try:
+        value = read(sys.argv[2] if mode == "view" else None)
+    except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired):
+        if mode != "view":
+            raise
+        value = {"available": False, "records": [], "host": socket.gethostname().split(".")[0],
+                 "clock": time.strftime("%H:%M"), "battery": ""}
+    print(json.dumps(value))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, RuntimeError, ValueError, IndexError, subprocess.TimeoutExpired) as error:
+        print(f"zellij-status: {error}", file=sys.stderr)
+        sys.exit(1)

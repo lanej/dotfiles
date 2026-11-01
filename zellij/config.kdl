@@ -53,6 +53,13 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        bind "Ctrl a" {
+            Run "zellij-picker" "attention" {
+                floating true
+                close_on_exit true
+            }
+            SwitchToMode "Locked"
+        }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
         bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
@@ -112,15 +119,17 @@ keybinds clear-defaults=true {
         bind "e" { EditScrollback; SwitchToMode "Locked"; }
         bind "[" { SwitchToMode "Scroll"; }
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
-        bind "0" "1" { GoToTab 1; SwitchToMode "Locked"; }
-        bind "2" { GoToTab 2; SwitchToMode "Locked"; }
-        bind "3" { GoToTab 3; SwitchToMode "Locked"; }
-        bind "4" { GoToTab 4; SwitchToMode "Locked"; }
-        bind "5" { GoToTab 5; SwitchToMode "Locked"; }
-        bind "6" { GoToTab 6; SwitchToMode "Locked"; }
-        bind "7" { GoToTab 7; SwitchToMode "Locked"; }
-        bind "8" { GoToTab 8; SwitchToMode "Locked"; }
-        bind "9" { GoToTab 9; SwitchToMode "Locked"; }
+        // Display zero-based indices; Zellij's GoToTab API is one-based.
+        bind "0" { GoToTab 1; SwitchToMode "Locked"; }
+        bind "1" { GoToTab 2; SwitchToMode "Locked"; }
+        bind "2" { GoToTab 3; SwitchToMode "Locked"; }
+        bind "3" { GoToTab 4; SwitchToMode "Locked"; }
+        bind "4" { GoToTab 5; SwitchToMode "Locked"; }
+        bind "5" { GoToTab 6; SwitchToMode "Locked"; }
+        bind "6" { GoToTab 7; SwitchToMode "Locked"; }
+        bind "7" { GoToTab 8; SwitchToMode "Locked"; }
+        bind "8" { GoToTab 9; SwitchToMode "Locked"; }
+        bind "9" { GoToTab 10; SwitchToMode "Locked"; }
     }
     resize {
         bind "h" "Left" { Resize "Increase Left"; }

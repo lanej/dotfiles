@@ -121,11 +121,21 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     def wait_for_broker():
         deadline = time.monotonic() + 5
         while True:
-            stats = json.loads(subprocess.check_output(
-                [str(broker_binary), "status"], text=True))
-            if not stats["pending"]:
-                return
-            assert time.monotonic() < deadline, json.dumps(stats)
+            assert broker.poll() is None, broker.stderr.read()
+            result = subprocess.run([str(broker_binary), "status"], text=True,
+                                    capture_output=True, timeout=1)
+            diagnostic = result.stderr.strip()
+            if result.returncode:
+                # Each RPC is capped at 100 ms. A missed observation must not
+                # shorten this workflow's existing convergence deadline.
+                if not diagnostic.endswith(": i/o timeout"):
+                    result.check_returncode()
+            else:
+                stats = json.loads(result.stdout)
+                if not stats["pending"]:
+                    return
+                diagnostic = json.dumps(stats)
+            assert time.monotonic() < deadline, diagnostic
             time.sleep(0.02)
 
     def in_pane(target, command):

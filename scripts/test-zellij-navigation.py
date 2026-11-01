@@ -123,6 +123,7 @@ def main():
                "XDG_STATE_HOME": str(work / "state"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temporary),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        workflow.preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "NVIM", "NVIM_LISTEN_ADDRESS",
                     "ENV", "BASH_ENV", "TERM_PROGRAM"):
@@ -197,6 +198,7 @@ vim.cmd("wincmd h")
         name = "navigation-" + work.name
         terminal = Terminal(binary, env, name)
         try:
+            terminal.grant_status_permissions()
             terminal.until("installed Zsh starts", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
             terminal.prefix(b"v")

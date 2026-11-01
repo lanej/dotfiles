@@ -26,7 +26,7 @@ def main():
         home.mkdir()
         executables.mkdir()
         shutil.copytree(ROOT, repo, symlinks=True,
-                        ignore=shutil.ignore_patterns(".git", "__pycache__"))
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", "target"))
         # Exercise supported local Codex preferences even in a clean CI checkout.
         local_guidance = repo / "codex/AGENTS.local.md"
         if not local_guidance.exists():
@@ -51,10 +51,15 @@ def main():
                           '  *) touch "$HOME/broker-started" ;;\n'
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
+        # This detector checks installation and symlinks. The Zellij workflow
+        # builds and executes the real plugin; setup accepts a prebuilt artifact.
+        plugin = temporary / "lane-status.wasm"
+        plugin.write_bytes(b"\x00asm\x01\x00\x00\x00")
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
         env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
+               "ZELLIJ_STATUS_WASM": str(plugin),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
         dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
@@ -69,6 +74,7 @@ def main():
         assert zellij.returncode == 0, zellij.stdout + zellij.stderr
         assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config.kdl"
         assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
+        assert (home / ".config/zellij/plugins/lane-status.wasm").resolve() == plugin
         picker = home / ".local/bin/zellij-picker"
         assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
 

@@ -24,6 +24,13 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPT = b"zellij-ready> "
 
 
+def preserve_rust_homes(env):
+    # Installing the real status plugin still needs the caller's toolchain and
+    # cache after application state moves into this workflow's private HOME.
+    for key, default in (("CARGO_HOME", ".cargo"), ("RUSTUP_HOME", ".rustup")):
+        env[key] = os.environ.get(key, str(Path.home() / default))
+
+
 class Terminal:
     def __init__(self, binary, env, name, command=None):
         self.binary, self.env, self.name = binary, env, name
@@ -57,6 +64,13 @@ class Terminal:
 
     def prefix(self, key):
         self.send(b"\x06" + key)
+
+    def grant_status_permissions(self):
+        # Exercise the actual first-use dialog instead of injecting a cached
+        # grant. Further sessions in this private HOME share the saved grant.
+        self.until("status permission request", lambda: b"(y/n)" in self.output.lower())
+        self.prefix(b"k")
+        self.send(b"y")
 
     def action(self, *args, session=None):
         with subprocess.Popen(
@@ -213,6 +227,7 @@ def main():
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
@@ -227,6 +242,7 @@ def main():
         try:
             terminal = Terminal(binary, env, name)
             clients.append(terminal)
+            terminal.grant_status_permissions()
             # CLI probes during first-client setup can race server initialization.
             # An actual rendered shell prompt proves that setup has completed.
             terminal.until("first shell starts", lambda:
@@ -289,7 +305,7 @@ def main():
             terminal.prefix(b"\x06")
             # Pane creation precedes fzf entering raw mode. Wait for its actual
             # render so query keys cannot be consumed by the starting terminal.
-            terminal.until("fzf opens in floating pane", lambda: "Tabs (bells first)" in picker_screen())
+            terminal.until("fzf opens in floating pane", lambda: "Tabs (attention" in picker_screen())
             terminal.send(b"review")
             # fzf filters asynchronously. Accept only after its visible result
             # count and selected row reflect the query, not the initial list.
@@ -327,7 +343,7 @@ def main():
                            PROMPT in restored.output
                            and {p["id"] for p in restored.terminals()} == ids)
             assert len(restored.tabs()) == 2
-            restored.prefix(b"2")
+            restored.prefix(b"1")
             restored.send(b'printf "%s" "$zellij_test_state" > "$HOME/retained-state"\r')
             restored.until("the original shell's memory survives detach", lambda:
                            (home / "retained-state").exists()

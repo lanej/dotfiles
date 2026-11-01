@@ -10,9 +10,13 @@ on:
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
+      - 'bin/claude-session-start-hook'
+      - 'bin/claude-tmux-state-hook'
+      - 'bin/codex-tmux-state-hook'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/install-agent-status-broker'
       - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
@@ -32,9 +36,13 @@ on:
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
+      - 'bin/claude-session-start-hook'
+      - 'bin/claude-tmux-state-hook'
+      - 'bin/codex-tmux-state-hook'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/install-agent-status-broker'
       - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
@@ -50,6 +58,9 @@ permissions:
 
 jobs:
   workflow:
+    env:
+      TRUSTED_BROKER_TEST: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      AGENT_STATUS_SOURCE: ${{ github.workspace }}/agent-status-broker-source
     strategy:
       fail-fast: false
       matrix:
@@ -68,9 +79,25 @@ jobs:
           repository: tmux-plugins/tpm
           ref: e261deb1b47614eed3400089ce7197dc68acc4eb
           path: .tmux-tpm
+      - name: Checkout Zellij broker provider
+        if: env.TRUSTED_BROKER_TEST == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: lanej/agent-status-broker
+          ref: a3b9881df6bae8f3434bdb8943550b59a6e871d9
+          path: agent-status-broker-source
+          ssh-key: ${{ secrets.AGENT_STATUS_BROKER_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        if: env.TRUSTED_BROKER_TEST == 'true'
+        with:
+          go-version-file: agent-status-broker-source/go.mod
+          cache: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install status plugin toolchain
+        run: rustup toolchain install 1.93.1 --profile minimal --target wasm32-wasip1
       - name: Install native build tools on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
@@ -125,3 +152,9 @@ jobs:
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
       - run: make test-zellij-sessions
+      - name: Exercise installed hooks, broker, status bar and triage
+        if: env.TRUSTED_BROKER_TEST == 'true'
+        run: make test-zellij-status
+      - name: Explain private integration restriction for forks
+        if: env.TRUSTED_BROKER_TEST != 'true'
+        run: echo '::notice::Broker integration requires private source access and runs on trusted repository branches.'

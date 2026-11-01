@@ -16,7 +16,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 
 
 def export_checkout(source, destination):
@@ -95,6 +96,7 @@ os.execv("/bin/sh", ["/bin/sh"])
                "XDG_RUNTIME_DIR": str(runtime), "ZELLIJ_SOCKET_DIR": str(runtime),
                "TMPDIR": str(temp_files), "TMUX_TMPDIR": str(runtime),
                "PATH": str(executables) + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("FM_BACKEND", "FM_HOME", "FM_ROOT_OVERRIDE", "FM_CONFIG_OVERRIDE",
                     "FM_STATE_OVERRIDE", "FM_DATA_OVERRIDE", "ZELLIJ", "ZELLIJ_SESSION_NAME",
                     "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR", "ZELLIJ_CONFIG_FILE", "TMUX",
@@ -109,6 +111,7 @@ os.execv("/bin/sh", ["/bin/sh"])
         other_name = "unrelated-" + temporary.name
         tmux_env = {**env, "FM_BACKEND": "tmux", "FIRSTMATE_TMUX_SOCKET": temporary.name}
         try:
+            terminal.grant_status_permissions()
             terminal.until("Firstmate captain starts", lambda: b"FIRSTMATE_CAPTAIN_READY" in terminal.output)
             captain = json.loads((home / "captain.json").read_text())
             assert captain["argv"] == ["--approve-for-me", "--model", "literal ; $(false)"], captain
@@ -133,9 +136,49 @@ os.execv("/bin/sh", ["/bin/sh"])
             brief = fleet / "data/smoke/brief.md"
             brief.write_text(brief.read_text().replace("{TASK}", "Exercise the local fixture.")
                              .replace("{FIRSTMATE_SPEC}", "Use the controlled shell; make no network requests."))
-            run([str(fleet / "bin/fm-spawn.sh"), "smoke", str(project), "--scout",
-                 'pwd > "$HOME/worker-cwd"; printf "FIRSTMATE_WORKER_READY\\n"; exec /bin/sh'],
-                fleet_env, terminal)
+            # Log native ownership reads only during this single spawn. Shell
+            # tracing would contaminate upstream's captured stderr values.
+            diagnostics = temporary / "first-spawn-reads.jsonl"
+            diagnostics.touch(mode=0o600, exist_ok=False)
+            probe_bin = temporary / "spawn-diagnostics"
+            probe_bin.mkdir(mode=0o700)
+            proxy = probe_bin / "zellij"
+            proxy.write_text(f'''#!/usr/bin/env python3
+import json, os, signal, subprocess, sys
+args = sys.argv[1:]
+real = {binary!r}
+action = next((args[i+1] for i in range(len(args)-1)
+               if args[i] == "action" and args[i+1] in ("list-panes", "list-tabs")), None)
+if action is None:
+    os.execv(real, [real, *args])
+result = subprocess.run([real, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+record = {{"action": action, "returncode": result.returncode,
+          "stdout_bytes": len(result.stdout), "stderr_bytes": len(result.stderr),
+          "stdout": result.stdout[:4096].decode("utf-8", errors="replace"),
+          "stderr": result.stderr[:4096].decode("utf-8", errors="replace")}}
+with open({str(diagnostics)!r}, "ab", buffering=0) as log:
+    log.write((json.dumps(record) + "\\n").encode())
+sys.stdout.buffer.write(result.stdout)
+sys.stdout.buffer.flush()
+sys.stderr.buffer.write(result.stderr)
+sys.stderr.buffer.flush()
+if result.returncode < 0:
+    number = -result.returncode
+    if number not in (signal.SIGKILL, signal.SIGSTOP):
+        signal.signal(number, signal.SIG_DFL)
+    os.kill(os.getpid(), number)
+sys.exit(result.returncode)
+''')
+            proxy.chmod(0o700)
+            try:
+                run([str(fleet / "bin/fm-spawn.sh"), "smoke", str(project), "--scout",
+                     'pwd > "$HOME/worker-cwd"; printf "FIRSTMATE_WORKER_READY\\n"; exec /bin/sh'],
+                    {**fleet_env, "PATH": str(probe_bin) + os.pathsep + fleet_env["PATH"]}, terminal)
+            except AssertionError as error:
+                with diagnostics.open("rb") as captured:
+                    captured.seek(max(0, captured.seek(0, os.SEEK_END) - 65536))
+                    tail = captured.read().decode("utf-8", errors="replace")
+                raise AssertionError(f"{error}\nFirstmate native read diagnostics (last 64 KiB):\n{tail}") from error
             meta = dict(line.split("=", 1) for line in (fleet / "state/smoke.meta").read_text().splitlines()
                         if "=" in line)
             assert meta["backend"] == "zellij" and meta["zellij_session"] == name, meta

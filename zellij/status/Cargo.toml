@@ -1,0 +1,15 @@
+[package]
+name = "lane-status"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zellij-tile = "=0.45.1"
+serde_json = "1"
+unicode-width = "0.2"
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true

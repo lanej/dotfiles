@@ -15,6 +15,28 @@ import subprocess
 import sys
 
 
+def broker_records():
+    try:
+        result = subprocess.run(["zellij-status", "records"], capture_output=True, text=True, timeout=4)
+        return json.loads(result.stdout)["records"] if result.returncode == 0 else []
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired):
+        return []
+
+
+def priority(record):
+    state = record.get("state")
+    if state in ("question", "approval", "plan", "failed"):
+        return 0
+    if record.get("result_ready"):
+        return 1
+    return 2 if state in ("thinking", "tool", "waiting") else 3
+
+
+def record_label(record):
+    state = "done" if record.get("result_ready") else record["state"]
+    return f"{record['provider']}:{state}"
+
+
 def run_zellij(*args, session=None):
     command = ["zellij"]
     if session is not None:
@@ -87,7 +109,7 @@ def preview_session(session):
     tabs = snapshot(session, "tabs")
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
-        print(f"{marker} {tab['position'] + 1}: {label(tab['name'])}")
+        print(f"{marker} {tab['position']}: {label(tab['name'])}")
 
 
 def choose(rows, heading, preview):
@@ -117,17 +139,22 @@ def pick_tab(session):
         (pane.get("tab_id") for pane in snapshot(session, "panes")
          if not pane.get("is_plugin") and pane["id"] == pane_id), None
     )
-    # Native bells retain a useful attention signal while the tmux-specific
-    # agent-status renderer is not ported. Stable IDs survive tab reordering.
-    tabs.sort(key=lambda tab: (not tab.get("has_bell_notification"), tab["position"]))
+    records = [r for r in broker_records() if r["session"] == session]
+    def rank(tab):
+        matching = [priority(r) for r in records if r["tab_id"] == tab["tab_id"]]
+        return min(matching, default=0 if tab.get("has_bell_notification") else 4)
+    tabs.sort(key=lambda tab: (rank(tab), tab["position"]))
     choices = {str(tab["tab_id"]): tab for tab in tabs}
     rows = []
     for token, tab in choices.items():
         flags = " [current]" if tab["tab_id"] == source_tab else ""
         if tab.get("has_bell_notification"):
             flags += " [bell]"
-        rows.append(f"{token}\t{tab['position'] + 1}: {label(tab['name'])}{flags}")
-    token = choose(rows, "Tabs (bells first)", "--preview-tab")
+        states = [record_label(r) for r in records if r["tab_id"] == tab["tab_id"]]
+        if states:
+            flags += " [" + ", ".join(states) + "]"
+        rows.append(f"{token}\t{tab['position']}: {label(tab['name'])}{flags}")
+    token = choose(rows, "Tabs (attention first)", "--preview-tab")
     if token is None:
         return
     if token not in choices or not any(
@@ -156,11 +183,65 @@ def pick_session(session):
         run_zellij("action", "switch-session", "--", destination, session=session)
 
 
+def identity(record):
+    return tuple(record.get(key) for key in (
+        "provider", "session_id", "server_pid", "server_start", "pane",
+        "root_pid", "root_start", "client_pid", "client_start"))
+
+
+def pick_attention(session):
+    running = set(session_names())
+    records = [r for r in broker_records() if r["session"] in running and priority(r) < 3]
+    records.sort(key=lambda r: (priority(r), r["at_ns"], r["session"], r["pane"]))
+    choices = {}
+    for record in records:
+        token = base64.urlsafe_b64encode(json.dumps(record).encode()).decode()
+        choices[token] = record
+    # Native bells remain useful when the broker is absent or has no record.
+    for name in sorted(running):
+        for tab in snapshot(name, "tabs"):
+            if not tab.get("has_bell_notification") or any(r["session"] == name and r["tab_id"] == tab["tab_id"] for r in records):
+                continue
+            record = {"session": name, "tab_id": tab["tab_id"], "tab_position": tab["position"], "title": tab["name"], "native_bell": True}
+            token = base64.urlsafe_b64encode(json.dumps(record).encode()).decode()
+            choices[token] = record
+    if not choices:
+        print("No agent needs attention or is working; no native bells are pending.")
+        return
+    rows = [f"{token}\t{label(r['session'])} / {r['tab_position']}: {label(r['title'])} [{record_label(r) if not r.get('native_bell') else 'bell'}]"
+            for token, r in choices.items()]
+    token = choose(rows, "Attention (needs input, done, working; native bells as fallback)", "--preview-attention")
+    if token is None:
+        return
+    if token not in choices:
+        raise RuntimeError("Invalid attention selection")
+    target = choices[token]
+    if not target.get("native_bell"):
+        current = next((r for r in broker_records() if identity(r) == identity(target)), None)
+        if current is None:
+            raise RuntimeError("The selected agent no longer owns that pane")
+        target = current
+        pane_id = target["pane"]
+    else:
+        destination = target["session"]
+        panes = [p for p in snapshot(destination, "panes") if not p["is_plugin"] and p["tab_id"] == target["tab_id"]]
+        if not panes:
+            raise RuntimeError("The selected tab no longer has a terminal")
+        pane_id = next((p["id"] for p in panes if p["is_focused"]), panes[0]["id"])
+    destination = target["session"]
+    if destination not in session_names():
+        raise RuntimeError("The selected session is no longer running")
+    if destination == session:
+        run_zellij("action", "focus-pane-id", f"terminal_{pane_id}", session=session)
+    else:
+        run_zellij("action", "switch-session", "--pane-id", f"terminal_{pane_id}", "--", destination, session=session)
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-        "tabs", "sessions", "--preview-tab", "--preview-session"
+        "tabs", "sessions", "attention", "--preview-tab", "--preview-session", "--preview-attention"
     ):
-        raise RuntimeError("Usage: zellij-picker tabs|sessions (inside Zellij)")
+        raise RuntimeError("Usage: zellij-picker tabs|sessions|attention (inside Zellij)")
     session = os.environ.get("ZELLIJ_SESSION_NAME")
     if not session:
         raise RuntimeError("Run zellij-picker inside a Zellij session")
@@ -169,6 +250,11 @@ def main():
         preview_tab(session, int(sys.argv[2]))
     elif mode == "--preview-session":
         preview_session(base64.urlsafe_b64decode(sys.argv[2]).decode())
+    elif mode == "--preview-attention":
+        target = json.loads(base64.urlsafe_b64decode(sys.argv[2]).decode())
+        preview_tab(target["session"], target["tab_id"])
+    elif mode == "attention":
+        pick_attention(session)
     elif mode == "tabs":
         pick_tab(session)
     else:

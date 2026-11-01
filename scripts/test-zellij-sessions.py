@@ -13,7 +13,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 POPUP = "dotfiles-popup"
 
 
@@ -52,10 +53,21 @@ def prove_popup_startup(binary, env, runtime):
     print("Popup startup: a native server survives an acknowledged early IPC disconnect.")
 
 
-def tab_is_dimmed(terminal, name, offset):
-    """Read the native tab bar's latest focus rendition from actual PTY output."""
+def tab_is_dimmed(terminal, tab, offset):
+    """Read the top bar's native nesting-focus rendition from actual PTY output."""
     output = bytes(terminal.output[offset:])
-    title = output.rfind(name.encode())
+    # A long hostname or tab name can clip the displayed label. Identify the
+    # same tab by its visible index and full name or ellipsis-terminated prefix.
+    # Continue reading its actual SGR style; a ready popup alone is not proof
+    # that the host handed over keyboard focus.
+    marker = re.escape(f" {tab['position']}:".encode())
+    title = -1
+    for match in re.finditer(marker + rb"([^\x1b\r\n]*)", output):
+        label = match[1].decode(errors="replace")
+        prefix, ellipsis, _ = label.partition("…")
+        if (label.startswith(tab["name"] + " ")
+                or (prefix and ellipsis and tab["name"].startswith(prefix))):
+            title = match.start()
     if title < 0:
         return None
     italic = None
@@ -82,18 +94,15 @@ def floating_screen(terminal):
 
 
 def open_popup(terminal):
-    host_tab = next(tab["name"] for tab in terminal.tabs() if tab["active"])
+    host_tab = next(tab for tab in terminal.tabs() if tab["active"])
+    panes = {pane["id"] for pane in terminal.terminals()}
     rendered = len(terminal.output)
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
     terminal.prefix(b"P")
-    # The outer pane can render later than its attached guest. Observe the
-    # guest directly, then its host's visible nesting-focus indication.
-    terminal.until("popup client attaches to its ready shell", lambda:
-                   bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
-                   and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
-    # The shell can render before native nesting registration finishes. Wait
-    # for its acknowledged host before sending keys intended for the guest.
+    # Even host-targeted CLI queries probe every session socket and can crash
+    # a starting guest. First observe a fresh acknowledgement for this host,
+    # emitted by the initialized guest screen after this open's log offset.
     def nested_ready():
         if not log.exists():
             return False
@@ -103,6 +112,16 @@ def open_popup(terminal):
         return ("nested session handshake complete: this session is nested inside ancestry "
                 f'["{terminal.name}"]') in output
     terminal.until("popup registers its containing session", nested_ready)
+    def guest_rendered():
+        floating = [pane for pane in terminal.terminals()
+                    if pane["id"] not in panes and pane["is_floating"]
+                    and pane["tab_id"] == host_tab["tab_id"]]
+        return len(floating) == 1 and "zellij-ready>" in terminal.action(
+            "dump-screen", "--pane-id", f"terminal_{floating[0]['id']}")
+    terminal.until("fresh host popup pane renders the guest shell", guest_rendered)
+    terminal.until("popup client attaches to its ready shell", lambda:
+                   bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
+                   and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
     terminal.until("host tab shows keyboard focus in the popup", lambda:
                    tab_is_dimmed(terminal, host_tab, rendered) is True)
 
@@ -122,9 +141,13 @@ def prove_popup(terminal, home, expected, filename):
 
 
 def popup_workflow(first, second, home):
+    # Force the installed bar to clip a real tab label on every host, including
+    # runners whose own long hostname leaves less room for the tab list.
+    host_label = "host-controls-with-a-clipped-tab-title"
     first.prefix(b"r")
     first.send(b"popup-origin\r")
     first.until("distinct host tab label", lambda: first.tabs()[0]["name"] == "popup-origin")
+    host_tab = first.tabs()[0]
     first.send(b"outer_token=untouched\r")
     open_popup(first)
     first.send(b"mkdir -p \"$HOME/scratch\"; cd \"$HOME/scratch\"; popup_token=live-memory; "
@@ -139,14 +162,15 @@ def popup_workflow(first, second, home):
     # FocusHostSession queues a frame; its completion is not the host's
     # completed handoff. Observe the fresh, non-italic host tab before keys.
     first.until("host tab regains keyboard focus", lambda:
-                tab_is_dimmed(first, "popup-origin", rendered) is False)
+                tab_is_dimmed(first, host_tab, rendered) is False)
     first.prefix(b"r")
-    first.send(b"host-controls\r")
-    first.until("nested escape returns control to the host", lambda: first.tabs()[0]["name"] == "host-controls")
+    first.send(host_label.encode() + b"\r")
+    first.until("nested escape returns control to the host", lambda: first.tabs()[0]["name"] == host_label)
+    host_tab = first.tabs()[0]
     rendered = len(first.output)
     first.prefix(b"i")
     first.until("host tab shows returned guest focus", lambda:
-                tab_is_dimmed(first, "host-controls", rendered) is True)
+                tab_is_dimmed(first, host_tab, rendered) is True)
     prove_popup(first, home, expected, "popup-after-focus-return")
     hide_popup(first)
 
@@ -212,7 +236,13 @@ def shutdown_workflow(clients, names, home, popup_expected):
         replacement.drain()
         waited, status = os.waitpid(replacement.pid, os.WNOHANG)
         if waited:
-            assert os.waitstatus_to_exitcode(status) == 0
+            exit_code = os.waitstatus_to_exitcode(status)
+            assert exit_code == 0, "\n".join([
+                f"Confirmed shutdown client {replacement.name} exited with code {exit_code} "
+                f"(wait status {status})",
+                *replacement.startup_diagnostics(),
+                "Replacement terminal output:\n" + replacement.output[-4000:].decode(errors="replace"),
+            ])
         return bool(waited)
     first.until("only the confirmed session stops", target_stopped)
     sessions = subprocess.run([first.binary, "list-sessions", "--no-formatting"], env=first.env,
@@ -250,6 +280,7 @@ def main():
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
@@ -264,6 +295,8 @@ def main():
             for name in names:
                 terminal = Terminal(binary, env, name)
                 clients.append(terminal)
+                if len(clients) == 1:
+                    terminal.grant_status_permissions()
                 terminal.until("outer shell starts", lambda:
                                b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             first, second = clients
