@@ -61,7 +61,7 @@ jobs:
     env:
       TRUSTED_BROKER_TEST: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       AGENT_STATUS_SOURCE: ${{ github.workspace }}/agent-status-broker-source
-      ZELLIJ_TEST_ARTIFACTS: ${{ runner.temp }}/zellij-diagnostics
+      ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/zellij-diagnostics
     strategy:
       fail-fast: false
       matrix:
