@@ -2,6 +2,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
+mod clipboard;
 
 #[derive(Default)]
 struct State {
@@ -14,6 +15,10 @@ struct State {
     busy: bool,
     roots: BTreeMap<u32, i32>,
     clicks: Vec<(usize, usize, u32)>,
+    clipboard: clipboard::Clipboard,
+    clipboard_receiver: bool,
+    clipboard_prepared: bool,
+    permissions_requested: bool,
 }
 
 register_plugin!(State);
@@ -57,7 +62,7 @@ fn mark(state: &str, done: bool) -> (&str, &str) {
 
 impl State {
     fn poll(&mut self) {
-        if !self.allowed || self.busy {
+        if self.clipboard_receiver || !self.allowed || self.busy {
             return;
         }
         // Client-targeted broadcasts stop when the last client detaches. The
@@ -78,7 +83,7 @@ impl State {
         // detached or the top bar is hidden by fullscreen. Other invisible
         // bars need not duplicate that background work.
         let leader = self.panes.panes.values().flatten()
-            .filter(|pane| pane.is_plugin && !pane.exited
+            .filter(|pane| pane.is_plugin && !pane.exited && !pane.is_suppressed
                 && pane.plugin_url.as_deref().map(|url| url.ends_with("/lane-status.wasm")).unwrap_or(false))
             .map(|pane| pane.id).min().unwrap_or(ids.plugin_id);
         if !self.visible && ids.plugin_id != leader { return; }
@@ -104,35 +109,67 @@ impl State {
     }
 }
 
+fn request_permissions() {
+    request_permission(&[PermissionType::ReadApplicationState,
+        PermissionType::RunCommands, PermissionType::ChangeApplicationState,
+        PermissionType::WriteToStdin, PermissionType::Reconfigure,
+        PermissionType::MessageAndLaunchOtherPlugins]);
+}
+
+fn subscribe_events() {
+    subscribe(&[EventType::ModeUpdate, EventType::TabUpdate, EventType::PaneUpdate,
+        EventType::RunCommandResult, EventType::Timer, EventType::PermissionRequestResult,
+        EventType::Visible, EventType::Mouse, EventType::InitialKeybinds,
+        EventType::SessionUpdate]);
+}
+
 impl ZellijPlugin for State {
-    fn load(&mut self, _configuration: BTreeMap<String, String>) {
+    fn load(&mut self, configuration: BTreeMap<String, String>) {
+        self.clipboard_receiver = configuration.get("role").map(String::as_str) == Some(clipboard::ROLE);
         self.visible = true;
-        subscribe(&[EventType::ModeUpdate, EventType::TabUpdate, EventType::PaneUpdate,
-            EventType::RunCommandResult, EventType::Timer, EventType::PermissionRequestResult,
-            EventType::Visible, EventType::Mouse, EventType::SessionUpdate]);
-        request_permission(&[PermissionType::ReadApplicationState,
-            PermissionType::RunCommands, PermissionType::ChangeApplicationState]);
+        // Only the visible bar asks for first-use consent. The suppressed
+        // receiver waits for that bar to confirm its native permission grant.
+        if !self.clipboard_receiver {
+            subscribe_events();
+            request_permissions();
+            self.permissions_requested = true;
+        } else {
+            subscribe(&[EventType::PermissionRequestResult]);
+        }
         set_timeout(1.0);
     }
 
     fn update(&mut self, event: Event) -> bool {
+        let bindings_changed = matches!(&event, Event::InitialKeybinds(..));
         match event {
             Event::PermissionRequestResult(PermissionStatus::Granted) => {
+                if self.clipboard_receiver { subscribe_events(); }
                 // 0.45.1 can replay another client's cached grant while this
                 // instance still lacks permissions. Changing selectability
                 // requests a state broadcast; only a granted instance can
                 // receive SessionUpdate and safely make synchronous queries.
                 set_selectable(false);
             }
-            Event::SessionUpdate(..) if !self.allowed => {
+            Event::SessionUpdate(sessions, _) if !self.allowed => {
                 self.allowed = true;
+                if self.clipboard_receiver {
+                    self.mode.session_name = sessions.iter().find(|session| session.is_current_session)
+                        .map(|session| session.name.clone());
+                }
                 self.poll();
             }
             Event::ModeUpdate(mode) => { self.mode = mode; self.poll(); }
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
             Event::PaneUpdate(panes) => { self.panes = panes; }
             Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
-            Event::Timer(_) => { self.poll(); set_timeout(1.0); }
+            Event::Timer(_) => { self.clipboard.tick(); self.poll(); set_timeout(1.0); }
+            Event::RunCommandResult(code, out, error, context)
+                if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
+                // Native client-attach replay can broadcast cached results.
+                if context.get("client") == Some(&get_plugin_ids().client_id.to_string()) {
+                    self.clipboard.finish(code, out, error);
+                }
+            }
             Event::RunCommandResult(code, out, error, _) => {
                 self.busy = false;
                 self.view = if code == Some(0) {
@@ -149,10 +186,40 @@ impl ZellijPlugin for State {
             }
             _ => {}
         }
-        true
+        if self.allowed {
+            if self.clipboard_receiver {
+                self.clipboard.route_binding(bindings_changed);
+            } else if !self.clipboard_prepared {
+                self.clipboard_prepared = clipboard::prepare_receiver(&self.panes);
+            }
+        }
+        !self.clipboard_receiver
+    }
+
+    fn pipe(&mut self, message: PipeMessage) -> bool {
+        if matches!(message.source, PipeSource::Plugin(_)) {
+            if self.clipboard_receiver && message.is_private && !self.permissions_requested
+                && message.name == clipboard::PREPARE && clipboard::is_own_client(&message)
+            {
+                // The bar sends this only after a permitted SessionUpdate.
+                // Both roles use the same URL and permission set, so native
+                // request_permission now applies the already-consented cache.
+                request_permissions();
+                self.permissions_requested = true;
+            } else if !self.clipboard_receiver && self.allowed && message.name == clipboard::NOTICE {
+                return self.clipboard.receive_notice(&message);
+            }
+        }
+        if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
+            if let Some(session) = self.mode.session_name.as_deref() {
+                return self.clipboard.begin(session, &message);
+            }
+        }
+        false
     }
 
     fn render(&mut self, _rows: usize, cols: usize) {
+        if self.clipboard_receiver { return; }
         self.clicks.clear();
         if !self.allowed {
             print!("Grant lane-status permissions to enable the top bar");
@@ -170,7 +237,9 @@ impl ZellijPlugin for State {
         let counts = if self.view["available"].as_bool() == Some(true) {
             format!("!{} ●{}", attention, working)
         } else { "!? ●? broker?".into() };
-        let right = format!(" {} {} {} ", counts, battery, clock);
+        let right = if let Some(notice) = self.clipboard.notice() {
+            format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
+        } else { format!(" {} {} {} ", counts, battery, clock) };
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
         let host = plain(self.view["host"].as_str().unwrap_or(""));

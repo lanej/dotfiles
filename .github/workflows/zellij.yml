@@ -23,6 +23,7 @@ on:
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
+      - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
       - 'Makefile'
       - '.github/workflows/zellij.yml'
@@ -49,6 +50,7 @@ on:
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
+      - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
       - 'Makefile'
       - '.github/workflows/zellij.yml'
@@ -153,6 +155,7 @@ jobs:
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
       - run: make test-zellij-sessions
+      - run: make test-zellij-clipboard
       - name: Exercise installed hooks, broker, status bar and triage
         if: env.TRUSTED_BROKER_TEST == 'true'
         run: make test-zellij-status

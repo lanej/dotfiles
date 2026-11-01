@@ -19,6 +19,15 @@ scrollback_editor "nvim"
 copy_clipboard "system"
 copy_on_select true
 
+// Keep clipboard ownership outside any tab's visible status bar. Suppressed
+// background plugins survive when their containing tab closes.
+load_plugins {
+    "zellij:link"
+    "file:~/.config/zellij/plugins/lane-status.wasm" {
+        role "clipboard-receiver"
+    }
+}
+
 // A bounded history, not a RAM-byte guarantee. Recovery snapshots are smaller
 // than the live buffer so long-running agents do not rewrite 100k lines/second.
 scroll_buffer_size 100000
@@ -117,6 +126,14 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "p" {
+            // After visible-bar consent, the background clipboard receiver
+            // replaces this marker with a client-specific MessagePluginId.
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "clipboard-paste"
+            }
+            SwitchToMode "Locked"
+        }
         bind "[" { SwitchToMode "Scroll"; }
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
         // Display zero-based indices; Zellij's GoToTab API is one-based.
