@@ -53,7 +53,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -69,11 +69,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Zellij 0.45.1
+      - name: Install pinned upstream Zellij
         shell: bash
         run: |
           source ./bootstrap.sh
-          install_zellij_from_release 0.45.1
+          install_build_dependencies
+          install_zellij_from_main
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install Treehouse 3.1.6
         shell: bash

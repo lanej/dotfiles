@@ -8,7 +8,7 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 ## Start a session
 
-Use **Zellij 0.45.1 or newer**, Python 3, and fzf. Neovim is used to edit scrollback. `bootstrap.sh` installs the required Zellij version through the existing minimum-version installer, retaining a newer installed version; its release fallback verifies the executable's upstream checksum. On macOS, `brew install zellij fzf` also installs the two terminal tools.
+Use **Zellij 0.45.1 or newer**, Python 3, and fzf. Neovim is used to edit scrollback. `bootstrap.sh` currently builds a pinned upstream `main` revision because [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) has merged but is absent from stable 0.45.1. It installs the multiplexer in `~/.local/bin`, ahead of an existing stable installation, and caches the source build for subsequent runs. The build uses a separate Rust 1.95 toolchain without changing your default compiler. Return bootstrap to a stable release once it includes OSC support. Installing this build supplies Zellij's native OSC capability; broker delivery remains separate integration work.
 
 From the dotfiles checkout:
 

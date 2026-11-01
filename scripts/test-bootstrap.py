@@ -198,7 +198,7 @@ elif name == "btop":
     print("btop version: 1.4.7")
 elif name == "zellij":
     assert args == ["--version"], args
-    print("zellij 0.45.1")
+    print("zellij 0.46.0" if managed or "/zellij-build/" in sys.argv[0] else "zellij 0.45.1")
 elif name == "nvim" and args == ["--version"]:
     print("NVIM v0.12.5" if managed else "NVIM v0.11.0")
 elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
@@ -218,7 +218,7 @@ elif name == "make":
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
             "codex": "codex 0.162.0", "claude": "claude 2.1.295",
             "btop": "btop version: 1.4.7",
-            "zellij": "zellij 0.45.1",
+            "zellij": "zellij 0.46.0",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
@@ -249,6 +249,18 @@ elif name == "git-crypt":
     if args != ["version"]:
         sys.exit(2)
     print("git-crypt 0.8.0")
+elif name == "cargo" and "install" in args:
+    assert args[:2] == ["+1.95.0", "install"], args
+    assert args[args.index("--git") + 1] == "https://github.com/zellij-org/zellij.git", args
+    revision = args[args.index("--rev") + 1]
+    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision), revision
+    assert "--locked" in args and args[-1] == "zellij", args
+    destination = Path(args[args.index("--root") + 1]) / "bin"
+    destination.mkdir(parents=True)
+    (destination / "zellij").symlink_to(fixture / "driver")
+    record("zellij source")
+elif name == "rustup" and args[:2] == ["toolchain", "install"]:
+    assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
@@ -285,7 +297,7 @@ else:
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
-            "direnv", "just", "loginctl",
+            "direnv", "just", "loginctl", "zellij",
             "treehouse", "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
@@ -318,7 +330,14 @@ else:
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
-        assert events.index("zellij") < events.index("make")
+        assert events.index("zellij source") < events.index("make")
+        # The managed development build replaces stable and is reused on reruns.
+        zellij_rerun = subprocess.run(
+            ["bash", "-ec", 'source "$1"; install_zellij_from_main', "bash", str(checkout / "bootstrap.sh")],
+            env=env, capture_output=True, text=True,
+        )
+        assert zellij_rerun.returncode == 0, zellij_rerun.stdout + zellij_rerun.stderr
+        assert (home / "events").read_text().splitlines().count("zellij source") == 1
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
         assert not (font_dir / "HackNerdFont-Regular.ttf").exists()

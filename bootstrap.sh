@@ -482,6 +482,28 @@ install_starship_from_release() {
 	cargo install starship -q --locked --version "$1"
 }
 
+install_zellij_from_main() (
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# Pin upstream until a stable release includes it, then use the release installer.
+	local zellij_revision=bf517077c848d91f75091f66d1996cfeb84f4732
+	local zellij_prefix="$HOME/.local/share/zellij-build/$zellij_revision" zellij_stage
+	if [ ! -x "$zellij_prefix/bin/zellij" ]; then
+		# This revision requires Rust 1.95; keep the user's default toolchain.
+		rustup toolchain install 1.95.0 --profile minimal || exit 1
+		cargo +1.95.0 install --locked --git https://github.com/zellij-org/zellij.git \
+			--rev "$zellij_revision" --root "$zellij_prefix" --bin zellij \
+			--no-default-features --features plugins_from_target,vendored_curl,web_server_capability \
+			zellij || exit 1
+	fi
+	"$zellij_prefix/bin/zellij" --version || exit 1
+	mkdir -p "$HOME/.local/bin" || exit 1
+	zellij_stage=$(mktemp "$HOME/.local/bin/.zellij-XXXXXX") || exit 1
+	trap 'rm -f "$zellij_stage"' EXIT
+	install -m 755 "$zellij_prefix/bin/zellij" "$zellij_stage" || exit 1
+	mv -f "$zellij_stage" "$HOME/.local/bin/zellij" || exit 1
+)
+
 install_zellij_from_release() (
 	local zellij_arch zellij_target zellij_stage zellij_url
 	case "$(uname -m)" in
@@ -1040,7 +1062,7 @@ install_dependencies() {
 	if ! command -v tmux >/dev/null; then
 		install_from_package_manager tmux || return 1
 	fi
-	install_package_version zellij 0.45.1 || return 1
+	install_zellij_from_main || return 1
 	install_macos_window_tools || return 1
 	install_hack_nerd_font || return 1
 	install_package_version btop 1.4.7
