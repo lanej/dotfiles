@@ -47,9 +47,13 @@ def nested_workflow(binary, env, work, init):
         left, right = panes[0]["id"], panes[1]["id"]
         terminal.until("nested Zsh is ready", lambda:
                        PROMPT.decode().strip() in terminal.action("dump-screen", "--pane-id", str(right)))
+        # A native pane-close/reload notification can acknowledge a concurrent
+        # read without its JSON reply. Lose one reply during this real keypress.
+        (work / "query-empty-once").write_text("list-panes")
         terminal.send(b"\x08")
         terminal.until("Zsh navigation stays in nested Zellij", lambda:
                        next(p for p in terminal.terminals() if p["id"] == left)["is_focused"])
+        assert not (work / "query-empty-once").exists()
 
         socket = work / "nested-nvim.sock"
         terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(socket)]) + "\r").encode())
@@ -126,12 +130,12 @@ def main():
         subprocess.run(["make", "--no-print-directory", "zellij", "zsh-config", "vim-config"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
         binary = shutil.which("zellij")
-        # Delay one real query to exercise a tab switch while application-owned
-        # navigation waits. All answers still come from the actual server.
+        # Delay a real query during a tab switch, or drop one query's stdout to
+        # reproduce native empty acknowledgements. All data comes from the server.
         proxy = work / "tools"
         proxy.mkdir()
         (proxy / "zellij").write_text('''#!/usr/bin/env python3
-import os, pathlib, sys, time
+import os, pathlib, subprocess, sys, time
 work = pathlib.Path(os.environ["NAVIGATION_WORK"])
 armed = work / "query-armed"
 if armed.exists() and (armed.read_text() or "list-panes") in sys.argv:
@@ -139,6 +143,11 @@ if armed.exists() and (armed.read_text() or "list-panes") in sys.argv:
     (work / "query-blocked").touch()
     while not (work / "query-release").exists():
         time.sleep(0.01)
+empty = work / "query-empty-once"
+if empty.exists() and empty.read_text() in sys.argv:
+    empty.unlink()
+    sys.exit(subprocess.call([os.environ["NAVIGATION_ZELLIJ"], *sys.argv[1:]],
+                             stdout=subprocess.DEVNULL))
 os.execv(os.environ["NAVIGATION_ZELLIJ"], [os.environ["NAVIGATION_ZELLIJ"], *sys.argv[1:]])
 ''')
         (proxy / "zellij").chmod(0o700)
