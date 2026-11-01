@@ -48,7 +48,10 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `<`, `>`, `+`, `-` | Resize toward left/right/up/down |
 | `Ctrl-r` | Enter repeatable resize mode |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
-| `P` | Show/hide floating panes; create a floating shell if needed |
+| `P` | Open the shared persistent popup; the same key inside it hides that view |
+| `F` | Show/hide the current tab's other floating panes |
+| `Ctrl-q` | Confirm shutdown of the current Zellij session |
+| `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
 | `!` | Move the focused pane to a new tab |
 | `m` | Enter pane movement mode |
 | `W` | Enter tab reorder mode |
@@ -85,6 +88,20 @@ Start a new session with the updated `tmux` layout after `make zellij`; existing
 
 Upstream implementation references: [native resize step](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/panes/tiled_panes/tiled_pane_grid.rs), [layout reuse and overrides](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/tab/layout_applier.rs), and [CLI actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs).
 
+## Shared popup and session shutdown
+
+**Ctrl-f P** opens a floating view of the dedicated `dotfiles-popup` session. Press **Ctrl-f P** again inside the popup to detach that view. Reopening it from another tab or another Zellij session on the same host and socket namespace returns to the same live shell, including its working directory and unexported variables. Each opening attaches a client to that session; it does not move a working pane between sessions. The outer configuration automatically focuses nested sessions so the popup receives its own prefix keys.
+
+The popup has one shell, no inner tab bar or status plugin, and a 10,000-line live history limit. Its prefix keys are deliberately small: `P` or `d` hides the view, `f` sends Ctrl-f, `u/i` changes nested-session focus, and Esc, Enter, or Ctrl-c cancels prefix mode. Other main-session controls, including prefix `p` clipboard pasting and the shutdown shortcut, are unavailable inside this scratch session; the terminal's paste shortcut remains available. The popup stays alive after its view closes or its outer session shuts down. Running `exit` in the scratch shell ends it; its in-memory state does not survive server exit or reboot, and this dedicated session does not create resurrection snapshots. Keep `dotfiles-popup` reserved for this workflow. The previous floating-layer toggle is available as **Ctrl-f F**.
+
+Automatic nesting focus applies to other compatible Zellij sessions too, including sessions reached over SSH. With these dotfiles in the guest, **Ctrl-f u** returns to its containing session without detaching; **Ctrl-f i** in the host enters its focused nested session again. A guest with another configuration uses its own `FocusHostSession` binding (upstream 0.45.1 defaults to Ctrl-o, then `]`). Detaching the guest also returns control to its host.
+
+**Ctrl-f Ctrl-q** in the main configuration opens a confirmation naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients, or press Enter or Ctrl-c to cancel. The helper checks the owning server's Unix socket identity again before executing, rejecting a session that was renamed or replaced while confirmation was open. This ends one Zellij session and its server; other sessions, including a separately running popup, continue. **Ctrl-f d** still detaches the current client without shutting down its session.
+
+**Selected-client detachment remains unsupported.** Prefix `D` is unbound. Stable 0.45.1 exposes a client list and current-client detach, but its CLI has no client-ID detach argument; the plugin API's disconnect-other-clients action affects every other client. Use `zellij action list-clients` to inspect the current session and detach from the intended client's terminal. A chooser must wait for a genuinely targeted API.
+
+Implementation references: [native nesting options and focus behavior](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-integration-tests/tests/nested_session_handling_config.rs), [CLI session actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs), and [plugin client controls](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-tile/src/shim.rs).
+
 ## History and recovery
 
 - **Live history:** at most 100,000 scrollback lines per pane.
@@ -107,9 +124,10 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Three-cell resizing and timed repeat bindings | Native Zellij resize steps; an explicit repeatable mode under prefix+Ctrl-r. |
 | Golden-ratio helper (`g/G`) | Unbound; the width guard, exact ratio, and cap are not safely implemented with stable APIs. |
 | Equalization (`=`) | The native equalize preset is available through layout cycling. Direct `=` selection and preserving each pane's position during equalization remain unsupported. |
-| Dedicated shared `popup` session | `P` toggles the current tab's floating layer. |
+| Dedicated shared `popup` session | `P` attaches to the live `dotfiles-popup` scratch session across tabs and sessions on the same host; `F` toggles other floating panes. |
 | Custom clock, battery, host, and agent status segments | One bundled top tab bar, with no bottom status bar or additional plugin download. |
-| Kill-server confirmation and client-detach chooser | No destructive replacement shortcut; use the native session manager or explicit CLI commands. |
+| Kill-server confirmation | `Ctrl-q` confirms shutdown of the current session's server. It does not shut down every Zellij session. |
+| Client-detach chooser | `D` remains unbound because stable APIs cannot detach one selected client. Ordinary `d` detaches the current client. |
 
 Reference: [Zellij 0.45.1](https://github.com/zellij-org/zellij/releases/tag/v0.45.1), [session resurrection](https://zellij.dev/documentation/session-resurrection.html), and [the upstream cross-session movement limitation](https://github.com/zellij-org/zellij/issues/5118).
 
@@ -120,8 +138,11 @@ zellij setup --check
 make test-zellij
 make test-zellij-navigation
 make test-zellij-layout
+make test-zellij-sessions
 ```
 
 The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against Zellij 0.45.1. They do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
+
+The session checks observe host/guest focus control and the same popup shell PID, cwd, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory.

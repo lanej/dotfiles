@@ -108,3 +108,4 @@ jobs:
           FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
+      - run: make test-zellij-sessions

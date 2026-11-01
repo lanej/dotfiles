@@ -1,0 +1,27 @@
+// The shared live scratch session has one shell and no nested UI bars.
+default_mode "locked"
+on_force_close "detach"
+pane_frames false
+mouse_mode true
+show_startup_tips false
+show_release_notes false
+scroll_buffer_size 10000
+// Hiding preserves the running server. Exiting the shell ends the scratch
+// session; do not present a later command relaunch as its original process.
+session_serialization false
+
+keybinds clear-defaults=true {
+    locked {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    normal {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    tmux {
+        bind "P" "d" { SwitchToMode "Locked"; Detach; }
+        bind "f" { Write 6; SwitchToMode "Locked"; }
+        bind "u" { SwitchToMode "Locked"; FocusHostSession; }
+        bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+}
