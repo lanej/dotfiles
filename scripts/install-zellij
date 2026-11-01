@@ -14,11 +14,11 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "0.45.1"
-REVISION = "efd8fd5a89a20c07a111d248ad7fce53848d2c18"
-SOURCE_SHA256 = "dc3907fd59927f70394409f29bb9005475dfdede7b94bbaeeae10f0dc4d979f2"
+VERSION = "0.46.0"
+REVISION = "bf517077c848d91f75091f66d1996cfeb84f4732"
+SOURCE_SHA256 = "24b09baed04d93e0beca91a3a50f42a95b5603ed3af97c1ad4486996ac6d75d8"
 TOOLCHAIN = "1.95.0"
-FEATURES = "vendored_curl,web_server_capability"
+FEATURES = "plugins_from_target,vendored_curl,web_server_capability"
 
 
 def digest(path):

@@ -483,6 +483,9 @@ install_starship_from_release() {
 }
 
 install_zellij_runtime() {
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# Pin upstream with our native fixes until a stable release includes both.
 	local dotfiles_root
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	python3 "$dotfiles_root/scripts/install-zellij"
