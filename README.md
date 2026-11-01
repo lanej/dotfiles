@@ -8,27 +8,28 @@ Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
 $ mkdir -p ~/.config/dotfiles
 $ cp config/example.toml ~/.config/dotfiles/config.toml
-$ # Edit the platform and tool sets before applying them.
+$ # Edit the additional tool and work-context sets before applying them.
 $ make plan     # preview selected tools and configuration
-$ make          # symlink selected configuration files
+$ make          # configure the native macos or linux baseline
+$ make configure # add the tool sets selected in config.toml
 $ bash bootstrap.sh # install selected packages and tools
 ```
 
-Select this machine's [configuration sets](#configuration-sets) before running setup. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
+Select this machine's additional [configuration sets](#configuration-sets) before running `make configure` or bootstrap. The native OS baseline works without a machine file. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
 
-`make` defaults to `setup` and prints a checklist: green `✓` for completed
+`make` defaults to `base`, which detects the OS and applies its baseline configuration. `make configure` adds the bundles selected in TOML; `make setup` and `make all` are aliases for that full configuration. Both paths print a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
 `uv`, or `jq` do not stop other setup steps, and configuration links are installed
 independently of optional integrations. It exits nonzero after the full checklist
 if anything needs attention. Install the missing dependencies or fix the reported
-issue, then rerun `make`; existing links and user configuration are safe to reuse.
+issue, then rerun the same target; existing links and user configuration are safe to reuse.
 Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
 run separately with `make lint` and the `test` targets. Color is enabled in
 terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
 
-Platform-specific setup is selected explicitly and rejected on an unsupported OS:
+The native platform set is selected automatically. Explicit platform tools are rejected on an unsupported OS:
 
-| Set | Additional configuration |
+| Set | Baseline configuration |
 |---|---|
 | `linux` | X11, Polybar, bspwm/sxhkd/rofi configuration |
 | `macos` | Yabai/skhd installation and window-manager configuration |
@@ -50,7 +51,7 @@ with global rc files skipped. It inherits your `HOME` and `PATH`; run it on your
 workstation for representative timings. Use
 `ZSH_BENCHMARK_ARGS='--runs 60 --json'` for more samples and JSON output.
 
-`make` (or `make claude`) also removes installed Claude Code plugins listed in
+`make configure` with the AI bundle (or `make claude`) also removes installed Claude Code plugins listed in
 [`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
 the Claude CLI is available. Add a marketplace-qualified plugin ID to that list
 to retire another plugin; Superpowers is the initial entry. Already-absent
@@ -69,7 +70,7 @@ those entrypoints. Missing external skill sources are reported and skipped.
 
 ## Configuration sets
 
-`make` and `bootstrap.sh` read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). Configuration is explicit; the hostname has no effect. Python 3.11+ is required for `make`; bootstrap installs Python before resolving settings.
+`make` and `bootstrap.sh` read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect. Python 3.11+ is required for `make`; bootstrap installs Python before resolving settings.
 
 ```sh
 mkdir -p ~/.config/dotfiles
@@ -81,7 +82,7 @@ make config
 For example:
 
 ```toml
-sets = ["macos", "workstation", "easypost"]
+sets = ["workstation", "easypost"]
 
 # Individual properties override the composed bundles.
 [tools]
@@ -105,13 +106,13 @@ source = "release"
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
 | `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
-Platform bundles are additive; a headless host can select `shell`, `development`, and `ai` without desktop configuration. Tool choices are not inferred from the hostname or OS. OS detection is used to check compatibility and choose the native installation method.
+The native platform baseline applies first, then the selected bundles extend it. A headless host can select `shell`, `development`, and `ai` and disable desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
 
-The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last. The always-applied `base` supplies property defaults and selects no tools; an unconfigured machine applies no tool or platform bundle.
+The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies shared property defaults, followed by the native OS set. An unconfigured machine applies only that baseline.
 
 Each `[tools]` property enables or disables one catalog recipe. Shared tool dependencies are added once and installed first. Explicitly disabling a required dependency, selecting an unsupported platform tool, or naming an unknown property fails before the tool plan runs. `false` skips that recipe; it does not uninstall an existing application or change that application's own package/plugin management. GUI, mail, and Ruby entries retain the existing configuration-only behavior; those applications are installed separately.
 
-[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. Bootstrap first ensures uv and Python are available to read TOML, then executes the selected plan through the existing installers. Make uses the same plan to choose configuration targets. Use `make config` to inspect values and their sources, or `make plan` to inspect tools and execution phases without applying them.
+[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. Bootstrap first ensures uv and Python are available to read TOML, then executes the selected plan through the existing installers and invokes `make configure`. Default `make` chooses only baseline targets; `make configure` applies the baseline plus selected additions. Both respect individual property overrides. Use `make config` to inspect values and their sources, or `make plan` to inspect the baseline, full tool selection, and execution phases without applying them.
 
 Use `make DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh` for an alternate configuration. An explicitly selected file must exist. Every catalog tool has a boolean `tools.<name>` property; `codex.github_enabled` controls Codex GitHub access and `zellij.source` selects `"patched"`, `"release"`, or `"main"`.
 
@@ -125,7 +126,7 @@ python3 scripts/dotfiles-config.py --format schema > config/schema.json
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and the desired platform bundle to retain the previous broad setup. Without a machine file, no tool bundle is selected. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make configure` to retain the previous broad setup; the native platform set is automatic. Without a machine file, default `make` configures only the native baseline. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.

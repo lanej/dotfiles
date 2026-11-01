@@ -1,4 +1,4 @@
-# Always applied first. No tools or machine identity are inferred.
+# Shared property defaults, followed automatically by the native OS set.
 [codex]
 github_enabled = false
 

@@ -1,5 +1,5 @@
-# Select platform and tool bundles explicitly. Use linux instead of macos on Linux.
-sets = ["macos", "workstation", "easypost"]
+# The native macos or linux baseline is automatic. Add tool and context bundles.
+sets = ["workstation", "easypost"]
 
 # Individual properties override the bundles.
 [tools]

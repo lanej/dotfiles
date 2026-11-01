@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve explicit dotfiles configuration sets without inspecting the machine."""
+"""Compose the native OS baseline with explicit dotfiles configuration sets."""
 
 import argparse
 import json
@@ -164,6 +164,9 @@ def resolve(path, environment, explicit=False, host="linux"):
         applied.append(name)
 
     apply("base")
+    apply(host)
+    baseline_sets = applied.copy()
+    baseline_keys = {key for key in specified if key.startswith("tools.")}
     # A missing conventional file uses the baseline. An explicitly selected
     # DOTFILES_CONFIG must exist, so a typo cannot silently change policy.
     document = read(path) if path.exists() or explicit or "DOTFILES_CONFIG" in environment else {}
@@ -174,18 +177,26 @@ def resolve(path, environment, explicit=False, host="linux"):
     missing = SETTINGS.keys() - values.keys()
     if missing:
         raise ValueError("missing settings: " + ", ".join(sorted(missing)))
+    # The default Make target configures only the OS baseline. Its tool
+    # switches still respect later overrides, without selecting extra recipes.
+    baseline_values = {key: value if not key.startswith("tools.") or key in baseline_keys else False
+                       for key, value in values.items()}
+    baseline_specified = {key for key in specified if key in baseline_keys or values[key] is False}
+    baseline_plan, baseline_setup, baseline_prepare, baseline_post = tool_plan(
+        baseline_values, origins.copy(), baseline_specified, host)
     plan, setup, prepare, post = tool_plan(values, origins, specified, host)
     all_setup = list(dict.fromkeys(target for recipe in TOOLS.values() for target in recipe.get("setup", [])))
     if any(not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target) for target in all_setup):
         raise ValueError(f"{TOOL_FILE}: invalid setup target")
     return {"sets": applied, "settings": values, "sources": origins, "config": str(path),
             "tools": plan, "setup": setup, "prepare": prepare, "post": post,
-            "all_setup": all_setup}
+            "all_setup": all_setup,
+            "baseline": {"sets": baseline_sets, "tools": baseline_plan, "setup": baseline_setup,
+                         "prepare": baseline_prepare, "post": baseline_post}}
 
 
 def editor_schema():
     _, defaults = validate(read(ROOT / "config/sets/base.toml"), ROOT / "config/sets/base.toml")
-    defaults.update({f"tools.{name}": False for name in TOOLS})
     properties = {
         "sets": {
             "type": "array",
@@ -208,15 +219,16 @@ def editor_schema():
         field = {
             "type": {bool: "boolean", str: "string"}[definition["type"]],
             "description": definition["description"],
-            "default": defaults[key],
         }
+        if not key.startswith("tools."):
+            field["default"] = defaults[key]
         if "enum" in definition:
             field["enum"] = list(definition["enum"])
         group["properties"][name] = field
     return {
         "$schema": "http://json-schema.org/draft-04/schema#",
         "title": "Dotfiles configuration",
-        "description": "Machine settings and reusable sets. Individual properties override selected sets. All fields are optional; omitted values inherit the base configuration.",
+        "description": "Machine settings and reusable sets. Individual properties override selected sets. All fields are optional; omitted values inherit the native OS baseline and selected sets.",
         "type": "object",
         "additionalProperties": False,
         "properties": properties,
@@ -230,6 +242,7 @@ def literal(value):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, help="use an alternate machine configuration")
+    parser.add_argument("--platform", help="native OS for the plan (macos or linux); defaults to this host")
     parser.add_argument("--format", choices=("toml", "json", "plan", "make", "shell", "schema"), default="toml")
     options = parser.parse_args()
     if options.format == "schema":
@@ -237,12 +250,15 @@ def main():
         return
     directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
     path = Path(options.config or os.environ.get("DOTFILES_CONFIG", str(directory / "dotfiles/config.toml"))).expanduser().resolve()
-    host = {"darwin": "macos", "linux": "linux"}.get(sys.platform, sys.platform)
+    platform = (options.platform or sys.platform).lower()
+    host = "macos" if platform == "darwin" else platform
+    if host not in {"macos", "linux"}:
+        raise ValueError(f"unsupported OS {host!r}; expected macos or linux")
     result = resolve(path, os.environ, explicit=options.config is not None, host=host)
     if options.format == "json":
         print(json.dumps(result, indent=2))
     elif options.format == "plan":
-        print(json.dumps({key: result[key] for key in ("sets", "tools", "setup", "prepare", "post")}, indent=2))
+        print(json.dumps({key: result[key] for key in ("baseline", "sets", "tools", "setup", "prepare", "post")}, indent=2))
     elif options.format in ("make", "shell"):
         if options.format == "shell" and (options.config is not None or "DOTFILES_CONFIG" in os.environ):
             # Bootstrap changes directories when it invokes Make. Carry the
@@ -258,6 +274,7 @@ def main():
         for variable, values in (
             ("DOTFILES_TOOLS", [tool["name"] for tool in result["tools"]]),
             ("DOTFILES_SETUP_TARGETS", result["setup"]),
+            ("DOTFILES_BASE_TARGETS", result["baseline"]["setup"]),
             ("DOTFILES_CONFIG_TARGETS", result["all_setup"]),
             ("DOTFILES_PREPARE_HOOKS", result["prepare"]),
             ("DOTFILES_POST_HOOKS", result["post"]),
@@ -268,6 +285,7 @@ def main():
             print(f"DOTFILES_INSTALL_PLAN={shlex.quote(chr(10).join(rows))}")
     else:
         print(f"# Machine configuration: {path}")
+        print(f"# OS baseline: {', '.join(result['baseline']['sets'])}")
         print(f"# Applied sets: {', '.join(result['sets'])}")
         print("# Unlisted bootstrap recipes are disabled.")
         section = None

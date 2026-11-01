@@ -485,7 +485,7 @@ install_starship_from_release() {
 load_dotfiles_config() {
 	local dotfiles_root resolved
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
-	resolved=$(python3 "$dotfiles_root/scripts/dotfiles-config.py" --format shell) || return 1
+	resolved=$(python3 "$dotfiles_root/scripts/dotfiles-config.py" --platform "$os" --format shell) || return 1
 	# The resolver validates the plan and shell-quotes every emitted value.
 	eval "$resolved"
 }
@@ -1240,6 +1240,6 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	install_dependencies
 	# Selected integrations prepare credentials before Make links configuration.
 	run_configured_hooks "$DOTFILES_PREPARE_HOOKS"
-	make -C "$HOME"/.files
+	make -C "$HOME"/.files configure
 	post_install_setup
 fi

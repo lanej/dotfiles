@@ -31,15 +31,21 @@ def main():
         baseline = json.loads(run(*command, "--format", "json").stdout)
         schema = json.loads(run(*command, "--format", "schema").stdout)
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
-        assert baseline["tools"] == [] and baseline["setup"] == []
+        platform_set = "macos" if sys.platform == "darwin" else "linux"
+        native_tools = {"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"}
+        disabled_native = "yabai" if platform_set == "macos" else "polybar"
+        assert baseline["sets"] == ["base", platform_set]
+        assert {tool["name"] for tool in baseline["tools"]} == native_tools
+        assert baseline["setup"] == baseline["baseline"]["setup"]
         assert baseline["settings"]["codex.github_enabled"] is False
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
         (sets / "my-workstation.toml").write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = true\n')
-        config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n[zellij]\nsource = "main"\n')
+        config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n' + disabled_native + ' = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
-        assert selected["sets"] == ["base", "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
+        assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
+        assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
         assert selected["settings"]["tools.mermaid"] is False
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
         names = [tool["name"] for tool in selected["tools"]]
@@ -49,6 +55,7 @@ def main():
         assert preview["zellij"]["source"] == "main"
         plan = json.loads(run("make", "--no-print-directory", "plan").stdout)
         assert plan["tools"] == selected["tools"] and plan["setup"] == selected["setup"]
+        assert plan["baseline"] == selected["baseline"]
 
         # Exercise the real Make -> bootstrap -> installer path. Only compilation
         # and release downloads are fixtures; the installed binaries and source

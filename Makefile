@@ -1,12 +1,12 @@
-.DEFAULT_GOAL := setup
+.DEFAULT_GOAL := base
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 GO ?= go
 FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
-# Share one validated TOML resolver with bootstrap. No generated files or host
-# classification; the resolver emits fixed variables and validated target names.
+# Share one validated TOML resolver with bootstrap. Only the native OS set is
+# inferred; additional tool and work-context sets remain explicit.
 ifneq ($(origin DOTFILES_CONFIG),undefined)
 export DOTFILES_CONFIG
 endif
@@ -15,23 +15,24 @@ $(error IS_EASYPOST is retired; select configuration sets in ~/.config/dotfiles/
 endif
 shell-quote = '$(subst ','"'"',$(1))'
 DOTFILES_CONFIG_ARG = $(if $(filter undefined,$(origin DOTFILES_CONFIG)),,--config $(call shell-quote,$(DOTFILES_CONFIG)))
-DOTFILES_RESOLVED := $(shell python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --format make)
+DOTFILES_RESOLVED := $(shell python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format make)
 ifeq ($(strip $(DOTFILES_RESOLVED)),)
 $(error Invalid dotfiles configuration; see diagnostic above)
 endif
 $(foreach setting,$(DOTFILES_RESOLVED),$(eval override $(setting)))
 comma := ,
 SETUP_TARGETS := $(subst $(comma), ,$(DOTFILES_SETUP_TARGETS))
+BASE_TARGETS := $(subst $(comma), ,$(DOTFILES_BASE_TARGETS))
 
 # The runner reports every step and returns failure only after trying them all.
-all: setup
+all setup: configure
 
 .PHONY: config plan test-dotfiles-config test-dotfiles-config-editor
 config:
-	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG)
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)"
 
 plan:
-	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --format plan
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format plan
 
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
@@ -41,16 +42,17 @@ test-dotfiles-config-editor:
 	$(call require-command,taplo)
 	@nvim --headless -u NONE -i NONE -n -l "$(DOTFILES)/nvim/tests/dotfiles-config-schema.lua"
 
-setup:
-ifeq ($(strip $(SETUP_TARGETS)),)
-	@echo "No tools selected; choose configuration sets in ~/.config/dotfiles/config.toml. See make config."
-else
+base: SELECTED_TARGETS = $(BASE_TARGETS)
+configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
-	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(SETUP_TARGETS)
+	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)
 else
-	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SETUP_TARGETS)
+	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SELECTED_TARGETS)
 endif
-endif
+
+setup-empty:
+	@echo "No configuration targets selected. See make config."
 
 define require-command
 	@bash "$(MAKE_SCRIPTS)/require.sh" command "$(1)"
@@ -300,7 +302,7 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all setup $(subst $(comma), ,$(DOTFILES_CONFIG_TARGETS)) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty $(subst $(comma), ,$(DOTFILES_CONFIG_TARGETS)) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"

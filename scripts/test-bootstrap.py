@@ -245,6 +245,7 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
 elif name == "make":
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {

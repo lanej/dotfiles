@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One default-setup workflow: partial install, dependency repair, safe rerun."""
+"""One setup workflow: native baseline, additions, dependency repair, safe rerun."""
 import os
 from pathlib import Path
 import shutil
@@ -53,7 +53,6 @@ def main():
         broker.chmod(0o755)
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
         machine_config = temporary / "machine.toml"
-        platform_set = "macos" if sys.platform == "darwin" else "linux"
         machine_config.write_text('sets = ["shell"]\n')
         env = {"DOTFILES_CONFIG": str(machine_config), "HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
@@ -65,14 +64,24 @@ def main():
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
 
-        # Start with a smaller bundle, then add the rest of the workstation.
-        selected_only = subprocess.run(command, cwd=repo, env=env,
+        # Default Make configures the native baseline, without tool additions.
+        native = subprocess.run(command, cwd=repo, env=env,
+                                capture_output=True, text=True, timeout=30)
+        assert native.returncode == 0, native.stdout + native.stderr
+        native_path = ".config/yabai/yabairc" if sys.platform == "darwin" else ".xinitrc"
+        assert (home / native_path).is_symlink()
+        assert not (home / ".bashrc").exists()
+        assert not (home / ".config/nvim").exists()
+
+        # Configure adds the chosen bundles to that same baseline.
+        configure = [*command, "configure"]
+        selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
         assert not (home / ".config/nvim").exists()
         assert not (home / ".tmux.conf").exists()
         assert not (home / "broker-installed").exists()
-        machine_config.write_text('sets = ["workstation", "' + platform_set + '"]\n')
+        machine_config.write_text('sets = ["workstation"]\n')
 
         # The opt-in multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
@@ -89,7 +98,7 @@ def main():
         entrypoint = repo / "ai/skills/builder/SKILL.md"
         entrypoint_bytes = entrypoint.read_bytes()
         entrypoint.unlink()
-        missing = subprocess.run(command, cwd=repo, env=env,
+        missing = subprocess.run(configure, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert missing.returncode != 0, missing.stdout + missing.stderr
         assert "\033[31m✗\033[0m software-standard" in missing.stdout, missing.stdout
@@ -98,7 +107,7 @@ def main():
         assert not (home / ".local/share/software-standards/builder").exists()
         entrypoint.write_bytes(entrypoint_bytes)
 
-        partial = subprocess.run(command, cwd=repo, env=env,
+        partial = subprocess.run(configure, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert partial.returncode != 0, partial.stdout + partial.stderr
         assert "\033[31m✗\033[0m tmux-plugins" in partial.stdout, partial.stdout + partial.stderr
@@ -164,7 +173,7 @@ def main():
         local_layout.write_text("layout { pane }\n")
 
         # Install the missing dependency and fixture TPM at their external
-        # boundaries, then retry through the same default make entrypoint.
+        # boundaries, then retry through the same make configure entrypoint.
         tmux = executables / "tmux"
         tmux.write_text('#!/bin/sh\ncase "$1" in\n'
                         '  list-sessions) test -f "$SETUP_TMUX_STATE" ;;\n'
@@ -180,7 +189,7 @@ def main():
         local_plugin = home / ".config/tmux/plugins/local-plugin/settings.conf"
         local_plugin.parent.mkdir(parents=True)
         local_plugin.write_text("user-managed plugin configuration\n")
-        repaired = subprocess.run(command, cwd=repo, env=env,
+        repaired = subprocess.run(configure, cwd=repo, env=env,
                                   capture_output=True, text=True, timeout=30)
         assert "\033[32m✓\033[0m tmux-plugins" in repaired.stdout, repaired.stdout
         assert local_plugin.read_text() == "user-managed plugin configuration\n"
@@ -193,7 +202,7 @@ def main():
         # A subsequent run must leave a user's existing tmux session and all
         # installed file contents/symlink destinations unchanged.
         Path(env["SETUP_TMUX_STATE"]).write_text("user-session")
-        repeated = subprocess.run(command, cwd=repo, env={**env, "NO_COLOR": "1"},
+        repeated = subprocess.run(configure, cwd=repo, env={**env, "NO_COLOR": "1"},
                                   capture_output=True, text=True, timeout=30)
         assert repeated.returncode == repaired.returncode
         assert "✓ tmux-plugins" in repeated.stdout, repeated.stdout
@@ -201,7 +210,7 @@ def main():
         assert snapshot(home) == installed, "rerun changed installed configuration"
         assert Path(env["SETUP_TMUX_STATE"]).read_text() == "user-session"
         assert not (home / "broker-started").exists(), "rerun started the broker"
-        print("PASS: default make gates OS tools, reports partial setup, and preserves installed configuration, local plugins, and user sessions on retry.")
+        print("PASS: make configures the native baseline, make configure adds selected bundles, and retries preserve installed configuration and user sessions.")
 
 
 if __name__ == "__main__":
