@@ -11,6 +11,7 @@ on:
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
+      - 'scripts/make/zellij-config.py'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
       - 'nvim/lua/pane-navigation.lua'
@@ -32,6 +33,7 @@ on:
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
+      - 'scripts/make/zellij-config.py'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
       - 'nvim/lua/pane-navigation.lua'
@@ -69,13 +71,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/cache/restore@v4
+        id: zellij_cache
+        with:
+          path: ~/.local/share/zellij-build
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bootstrap.sh') }}
       - name: Install pinned upstream Zellij
+        id: zellij_install
         shell: bash
         run: |
           source ./bootstrap.sh
           install_build_dependencies
           install_zellij_from_main
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache/save@v4
+        if: steps.zellij_cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.local/share/zellij-build
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Install Treehouse 3.1.6
         shell: bash
         run: |
@@ -103,10 +116,15 @@ jobs:
           curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/zellij-tools"
           echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-firstmate
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         env:
           FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-sessions
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

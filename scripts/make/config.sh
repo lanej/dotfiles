@@ -97,6 +97,7 @@ case "$target" in
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.tmux.conf"
         ;;
     zellij-config)
+        python3 "$make_scripts/zellij-config.py" "$setup_home"
         mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin"
         ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
