@@ -482,42 +482,11 @@ install_starship_from_release() {
 	cargo install starship -q --locked --version "$1"
 }
 
-install_zellij_from_release() (
-	local zellij_arch zellij_target zellij_stage zellij_url
-	case "$(uname -m)" in
-		x86_64) zellij_arch=x86_64 ;;
-		arm64|aarch64) zellij_arch=aarch64 ;;
-		*) echo "Unsupported Zellij architecture" >&2; exit 1 ;;
-	esac
-	case "$(uname -s)" in
-		Darwin) zellij_target="$zellij_arch-apple-darwin" ;;
-		Linux) zellij_target="$zellij_arch-unknown-linux-musl" ;;
-		*) echo "Unsupported Zellij OS" >&2; exit 1 ;;
-	esac
-	zellij_stage=$(mktemp -d) || exit 1
-	trap 'rm -rf "$zellij_stage"' EXIT
-	zellij_url="https://github.com/zellij-org/zellij/releases/download/v$1/zellij-$zellij_target.tar.gz"
-	curl -fsSL "$zellij_url" -o "$zellij_stage/zellij.tar.gz" || exit 1
-	curl -fsSL "${zellij_url%.tar.gz}.sha256sum" -o "$zellij_stage/release.sha256sum" || exit 1
-	tar --no-same-owner -xzf "$zellij_stage/zellij.tar.gz" -C "$zellij_stage" || exit 1
-	# Upstream checksums identify the extracted binary by its CI build path.
-	awk '$1 ~ /^[[:xdigit:]]+$/ && length($1) == 64 { print $1 "  zellij"; exit }' \
-		"$zellij_stage/release.sha256sum" > "$zellij_stage/binary.sha256sum"
-	test -s "$zellij_stage/binary.sha256sum" || exit 1
-	cd "$zellij_stage" || exit 1
-	if command -v sha256sum >/dev/null; then
-		sha256sum -c binary.sha256sum || exit 1
-	else
-		shasum -a 256 -c binary.sha256sum || exit 1
-	fi
-	if [ "$(./zellij --version | parse_semver | head -n1)" != "$1" ]; then
-		echo "Zellij release does not report expected version $1" >&2
-		exit 1
-	fi
-	mkdir -p "$HOME/.local/bin" || exit 1
-	install -m 755 zellij "$HOME/.local/bin/zellij.new" || exit 1
-	mv -f "$HOME/.local/bin/zellij.new" "$HOME/.local/bin/zellij" || exit 1
-)
+install_zellij_runtime() {
+	local dotfiles_root
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	python3 "$dotfiles_root/scripts/install-zellij"
+}
 
 install_btop_from_release() (
 	case "$os" in
@@ -934,12 +903,18 @@ prepare_bootstrap_environment() {
 }
 
 install_build_dependencies() {
+	if [ "$os" = macos ]; then
+		brew install cmake pkg-config openssl@3
+		return $?
+	fi
 	[ "$os" = linux ] || return 0
 	if command -v dnf >/dev/null; then
 		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
 		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses
 	fi
 }
 
@@ -1040,7 +1015,7 @@ install_dependencies() {
 	if ! command -v tmux >/dev/null; then
 		install_from_package_manager tmux || return 1
 	fi
-	install_package_version zellij 0.45.1 || return 1
+	install_zellij_runtime || return 1
 	install_macos_window_tools || return 1
 	install_hack_nerd_font || return 1
 	install_package_version btop 1.4.7

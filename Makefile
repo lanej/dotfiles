@@ -91,6 +91,9 @@ tmux-status-legend:
 tmux-program-status:
 	@"$(if $(AGENT_STATUS_SOURCE),$(AGENT_STATUS_SOURCE),$(HOME)/src/agent-status-broker)/tmux/build" "$(HOME)/.local/bin/tmux-program-status"
 zellij: zellij-config
+.PHONY: zellij-runtime
+zellij-runtime:
+	@python3 "$(DOTFILES)/scripts/install-zellij"
 zellij-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 sql-formatters:

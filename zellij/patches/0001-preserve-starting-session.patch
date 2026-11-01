@@ -1,0 +1,35 @@
+diff --git a/zellij-server/src/lib.rs b/zellij-server/src/lib.rs
+index c86de12..7db744b 100644
+--- a/zellij-server/src/lib.rs
++++ b/zellij-server/src/lib.rs
+@@ -1455,22 +1455,14 @@ pub fn start_server_impl(
+                     }
+                     // Handle regular client removal
+                     remove_client!(client_id, os_input, session_state, session_data);
+-                    session_data
+-                        .write()
+-                        .unwrap()
+-                        .as_ref()
+-                        .unwrap()
+-                        .senders
+-                        .send_to_screen(ScreenInstruction::RemoveClient(client_id))
+-                        .unwrap();
+-                    session_data
+-                        .write()
+-                        .unwrap()
+-                        .as_ref()
+-                        .unwrap()
+-                        .senders
+-                        .send_to_plugin(PluginInstruction::RemoveClient(client_id))
+-                        .unwrap();
++                    if let Some(session_data) = session_data.write().unwrap().as_ref() {
++                        let _ = session_data
++                            .senders
++                            .send_to_screen(ScreenInstruction::RemoveClient(client_id));
++                        let _ = session_data
++                            .senders
++                            .send_to_plugin(PluginInstruction::RemoveClient(client_id));
++                    }
+                 }
+             },
+             ServerInstruction::SendWebClientsForbidden(client_id) => {
