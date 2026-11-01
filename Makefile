@@ -218,6 +218,10 @@ test-pragmatic-hexagonal:
 test:
 	@pytest bin/*_test.py
 
+.PHONY: test-pi-review
+test-pi-review:
+	@python3 "$(DOTFILES)/scripts/test-pi-review.py"
+
 .PHONY: test-codex-cleanup
 test-codex-cleanup:
 	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py

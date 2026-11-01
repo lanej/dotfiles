@@ -33,7 +33,7 @@ STATE_ROOT="$HOME/.local/state/dispatcher"
 mkdir -p "$STATE_ROOT"
 
 usage() {
-  echo "Usage: dispatcher-worker <recover|start|check|verify|finish|unlock|gc> ..." >&2
+  echo "Usage: dispatcher-worker <recover|start|check|verify|review-pi|finish|unlock|gc> ..." >&2
   exit 1
 }
 
@@ -159,6 +159,27 @@ resolve_cwd() {
 cmd="${1:-}"; shift || true
 
 case "$cmd" in
+  # A bounded reviewer for an existing builder checkout; verification and
+  # finish remain separate dispatcher operations. See docs/pi-dispatcher-review.md.
+  review-pi)
+    id="${1:?builder id required}"; shift
+    case "$id" in
+      ''|.|..|*..*|*[!a-zA-Z0-9._-]*)
+        echo "ERROR: invalid builder id" >&2; exit 1 ;;
+    esac
+    state_file="$(state_file_for "$id")"
+    [ -f "$state_file" ] || { echo "ERROR: no state for $id in $STATE_DIR" >&2; exit 1; }
+    require_config
+    cwd="$(resolve_cwd "$state_file" "$id")"
+    [ -d "$cwd" ] || { echo "ERROR: builder checkout is unavailable" >&2; exit 1; }
+    common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)"
+    worker_common_dir="$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir)"
+    [ "$common_dir" = "$worker_common_dir" ] || { echo "ERROR: builder checkout belongs to another repository" >&2; exit 1; }
+    target_branch="$(config_get targetBranch main)"
+    reviewer="${DISPATCHER_PI_REVIEW:-$HOME/.files/bin/pi-review}"
+    exec "$reviewer" "$@" --cwd "$cwd" --base "origin/$target_branch"
+    ;;
+
   # -------------------------------------------------------------------
   start)
     slug="${1:?slug required}"; prompt_file="${2:?prompt file required}"

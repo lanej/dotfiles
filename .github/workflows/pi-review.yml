@@ -1,0 +1,48 @@
+name: Pi dispatcher review
+
+on:
+  pull_request:
+    paths:
+      - 'bin/pi-review'
+      - 'scripts/test-pi-review.py'
+      - 'ai/skills/dispatcher/scripts/dispatcher-worker'
+      - 'ai/skills/dispatcher/SKILL.md'
+      - 'ai/skills/dispatcher/references/**'
+      - 'ai/agents/code-reviewer.md'
+      - 'ai/skills/builder/references/standard.md'
+      - 'ai/skills/builder/references/construction.md'
+      - 'Makefile'
+      - '.github/workflows/pi-review.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bin/pi-review'
+      - 'scripts/test-pi-review.py'
+      - 'ai/skills/dispatcher/scripts/dispatcher-worker'
+      - 'ai/skills/dispatcher/SKILL.md'
+      - 'ai/skills/dispatcher/references/**'
+      - 'ai/agents/code-reviewer.md'
+      - 'ai/skills/builder/references/standard.md'
+      - 'ai/skills/builder/references/construction.md'
+      - 'Makefile'
+      - '.github/workflows/pi-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the supported Pi runtime
+        run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.4.0
+      - name: Review through native Pi with a local fixture model
+        run: python3 scripts/test-pi-review.py --native
