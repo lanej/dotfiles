@@ -4,6 +4,8 @@ default_mode "locked"
 default_layout "tmux"
 theme "lane-nord"
 on_force_close "detach"
+// Give the dedicated nested popup client its own prefix keys immediately.
+nested_session_handling "descend"
 auto_layout false
 pane_frames true
 pane_frame_style "titles"
@@ -78,7 +80,23 @@ keybinds clear-defaults=true {
         bind "Ctrl r" { SwitchToMode "Resize"; }
         bind "Space" { NextSwapLayout; SwitchToMode "Locked"; }
         bind "Ctrl o" { PreviousSwapLayout; SwitchToMode "Locked"; }
-        bind "P" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        bind "P" {
+            Run "zellij-popup" {
+                floating true
+                close_on_exit true
+                name "Shared popup — Ctrl-f P hides"
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
+        bind "F" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        bind "u" { SwitchToMode "Locked"; FocusHostSession; }
+        bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
+        bind "Ctrl q" {
+            Run "zellij-shutdown" { floating true; close_on_exit true; }
+            SwitchToMode "Locked"
+        }
         bind "!" { BreakPane; SwitchToMode "Locked"; }
         bind "m" { SwitchToMode "Move"; }
         bind "W" { SwitchToMode "Tab"; }

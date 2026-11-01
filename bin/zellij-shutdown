@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Confirm shutdown of the explicitly named session that owns this pane."""
+
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+
+
+def panes(session):
+    result = subprocess.run(
+        ["zellij", "--session=" + session, "action", "list-panes", "--json"],
+        capture_output=True, text=True, timeout=5,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Cannot inspect the target session")
+    return json.loads(result.stdout)
+
+
+def identity(snapshot, pane_id):
+    pane = next((p for p in snapshot if not p["is_plugin"] and p["id"] == pane_id), None)
+    if pane is None:
+        raise RuntimeError("The confirmation pane no longer belongs to the target session")
+    return pane["tab_id"], pane["terminal_command"], pane.get("pane_cwd")
+
+
+def socket_identity(path):
+    info = path.lstat()
+    if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
+        raise RuntimeError("The target is not a Unix socket owned by this user")
+    return info.st_dev, info.st_ino, info.st_ctime_ns
+
+
+def session_socket(session):
+    # Run launches this helper directly from the server. Its process argument
+    # identifies the real socket directory on Linux and macOS, including custom
+    # XDG/TMPDIR paths. Do not guess a directory or trust a pane ID as generation.
+    result = subprocess.run(["ps", "-ww", "-p", str(os.getppid()), "-o", "command="],
+                            capture_output=True, text=True, check=True, timeout=5)
+    parent, separator, address = result.stdout.strip().partition(" --server ")
+    if not separator or Path(parent).name != "zellij" or not Path(address).is_absolute():
+        raise RuntimeError("Open shutdown with Ctrl-f Ctrl-q so its owning server can be identified")
+    if Path(session).name != session or session in (".", ".."):
+        raise RuntimeError("Cannot identify the session socket safely")
+    path = Path(address).parent / session
+    return path, socket_identity(path)
+
+
+def main():
+    session = os.environ.get("ZELLIJ_SESSION_NAME", "")
+    pane_id = os.environ.get("ZELLIJ_PANE_ID", "")
+    if not session or not pane_id.isdecimal():
+        raise RuntimeError("Run shutdown from a Zellij pane")
+    socket_path, original_socket = session_socket(session)
+    original = identity(panes(session), int(pane_id))
+    print("Shut down Zellij session " + json.dumps(session, ensure_ascii=True))
+    print("\nCloses every pane in this session and disconnects all its clients.")
+    if session == "dotfiles-popup":
+        print("Other sessions keep running.")
+    else:
+        print("Other sessions, including the shared popup, keep running.")
+    try:
+        confirm = input("\nType SHUTDOWN to confirm; Enter or Ctrl-c cancels: ")
+    except (EOFError, KeyboardInterrupt):
+        return
+    if confirm != "SHUTDOWN":
+        return
+    if identity(panes(session), int(pane_id)) != original:
+        raise RuntimeError("The target changed; reopen shutdown confirmation")
+    if socket_identity(socket_path) != original_socket:
+        raise RuntimeError("The session was renamed or replaced; reopen shutdown confirmation")
+    result = subprocess.run(["zellij", "kill-session", "--", session],
+                            capture_output=True, text=True, timeout=5)
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "Session shutdown failed")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, RuntimeError, ValueError, KeyError, subprocess.SubprocessError) as error:
+        print(f"zellij-shutdown: {error}", file=sys.stderr)
+        if sys.stdin.isatty():
+            input("Press Enter to close.")
+        sys.exit(1)

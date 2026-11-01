@@ -36,6 +36,8 @@ class Terminal:
             os.chdir(env["HOME"])
             command = command or [binary, "attach", "--create", name]
             os.execvpe(command[0], command, env)
+        # A later PTY child must not keep earlier masters open across exec.
+        os.set_inheritable(self.fd, False)
 
     def drain(self, duration=0.08):
         end = time.monotonic() + duration
@@ -177,16 +179,19 @@ class Terminal:
 
     def close(self):
         os.close(self.fd)
-        deadline = time.monotonic() + 2
-        while time.monotonic() < deadline:
-            try:
-                waited, _ = os.waitpid(self.pid, os.WNOHANG)
-            except ChildProcessError:
-                return
-            if waited:
-                return
-            time.sleep(0.05)
-        os.kill(self.pid, signal.SIGTERM)
+        for termination in (None, signal.SIGTERM):
+            if termination is not None:
+                os.kill(self.pid, termination)
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                try:
+                    waited, _ = os.waitpid(self.pid, os.WNOHANG)
+                except ChildProcessError:
+                    return
+                if waited:
+                    return
+                time.sleep(0.05)
+        os.kill(self.pid, signal.SIGKILL)
         os.waitpid(self.pid, 0)
 
 
