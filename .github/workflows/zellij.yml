@@ -8,12 +8,11 @@ on:
       - 'bin/firstmate'
       - 'firstmate/**'
       - 'treehouse/config.toml'
-      - 'scripts/test-zellij.py'
+      - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
-      - 'scripts/test-zellij-navigation.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -30,12 +29,11 @@ on:
       - 'bin/firstmate'
       - 'firstmate/**'
       - 'treehouse/config.toml'
-      - 'scripts/test-zellij.py'
+      - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
-      - 'scripts/test-zellij-navigation.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -109,3 +107,4 @@ jobs:
         env:
           FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
+      - run: make test-zellij-layout
