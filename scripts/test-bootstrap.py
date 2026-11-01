@@ -181,15 +181,17 @@ elif name == "node":
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
-    package, version = args[2].rsplit("@", 1)
-    assert package == "@openai/codex", args
+    package, version = args[-1].rsplit("@", 1)
+    tool = {"@openai/codex": "codex", "@earendil-works/pi-coding-agent": "pi"}[package]
+    if tool == "pi":
+        assert args[2] == "--ignore-scripts", args
     node_bin = Path(shutil.which("node")).parent
-    (node_bin / "codex").symlink_to(fixture / "driver")
-    (home / "codex-version").write_text(version)
-    record("codex")
-elif name in ("codex", "claude"):
+    (node_bin / tool).symlink_to(fixture / "driver")
+    (home / (tool + "-version")).write_text(version)
+    record(tool)
+elif name in ("codex", "claude", "pi"):
     assert args == ["--version"], args
-    print(name + " " + (home / (name + "-version")).read_text().strip())
+    print(("" if name == "pi" else name + " ") + (home / (name + "-version")).read_text().strip())
 elif name == "jq" and args[:1] == ["-r"]:
     print("99.0.0")
 elif name in ("eza", "yq"):
@@ -211,12 +213,16 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # These integrations configure their already-installed tools before the
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
+elif name == "make" and args[-1:] == ["pi-config"]:
+    assert subprocess.check_output(["pi", "--version"], text=True).strip() == "1.4.0"
+    record("pi config")
 elif name == "make":
-    for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
+    for tool in ("node", "python3", "uv", "codex", "claude", "pi", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
             "codex": "codex 0.162.0", "claude": "claude 2.1.295",
+            "pi": "1.4.0",
             "btop": "btop version: 1.4.7",
             "zellij": "zellij 0.45.1",
         }[tool]
@@ -290,11 +296,22 @@ else:
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
+        # Keep deliberately missing dependencies absent on provisioned CI hosts.
+        system_bin = home / "system-bin"
+        system_bin.mkdir()
+        missing = {"tmux", "yq", "btop", "eza", "zellij", "pi"}
+        for directory in (Path("/usr/bin"), Path("/bin")):
+            for executable in directory.iterdir():
+                target = system_bin / executable.name
+                if (executable.name not in missing and executable.is_file()
+                        and not target.exists()):
+                    target.symlink_to(executable)
         env = {
             **os.environ,
             "HOME": str(home),
-            "PATH": f"{fixture}:/usr/bin:/bin",
+            "PATH": f"{fixture}:{system_bin}",
             "ATUIN_SYNC_HOST": "fixture-host",
+            "BOOTSTRAP_PI": "1",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
@@ -308,8 +325,9 @@ else:
             raise AssertionError(result.stdout + result.stderr)
         events = (home / "events").read_text().splitlines()
         assert events.index("make") > max(
-            events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
+            events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude", "pi")
         )
+        assert events.index("pi") < events.index("pi config") < events.index("make")
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
