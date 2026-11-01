@@ -8,6 +8,7 @@ DARWIN_SETUP_TARGETS := yabai
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 GO ?= go
+FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 ifeq ($(origin IS_EASYPOST),undefined)
@@ -64,8 +65,8 @@ shellcheck:
 treehouse-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-config: treehouse-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+firstmate-config: treehouse-config zellij-config
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
 banner:
 	@cat banner.txt
@@ -293,7 +294,7 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
@@ -303,6 +304,9 @@ test-zellij:
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
+
+test-firstmate:
+	@python3 "$(DOTFILES)/scripts/test-firstmate.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"

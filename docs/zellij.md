@@ -19,7 +19,7 @@ zellij attach --create main
 
 `make zellij` installs configuration and helpers; it does not install the binary or start a session. Default `make` also installs this configuration. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
 
-Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration, shell startup, and Firstmate's backend selection are unchanged.
+Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
 ## Familiar keys
 

@@ -5,7 +5,11 @@ on:
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - 'bin/firstmate'
+      - 'firstmate/**'
+      - 'treehouse/config.toml'
       - 'scripts/test-zellij.py'
+      - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
@@ -23,7 +27,11 @@ on:
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - 'bin/firstmate'
+      - 'firstmate/**'
+      - 'treehouse/config.toml'
       - 'scripts/test-zellij.py'
+      - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
@@ -50,6 +58,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: kunchenguid/firstmate
+          ref: 30d6d15ec07e1efaeb3c795f0a24e817251d0718
+          path: .firstmate-upstream
+      - uses: actions/checkout@v4
+        with:
+          repository: tmux-plugins/tpm
+          ref: e261deb1b47614eed3400089ce7197dc68acc4eb
+          path: .tmux-tpm
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -59,14 +77,20 @@ jobs:
           source ./bootstrap.sh
           install_zellij_from_release 0.45.1
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install Treehouse 3.1.6
+        shell: bash
+        run: |
+          source ./bootstrap.sh
+          install_treehouse_from_release 3.1.6
       - name: Install shell tools on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fzf zsh tmux
+        run: sudo apt-get update && sudo apt-get install -y fzf jq zsh tmux
       - name: Install shell tools on macOS
         if: runner.os == 'macOS'
         run: |
           command -v fzf || brew install fzf
           command -v tmux || brew install tmux
+          command -v jq || brew install jq
       - name: Install Neovim 0.12.5
         shell: bash
         run: |
@@ -81,3 +105,7 @@ jobs:
           echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
       - run: make test-zellij
       - run: make test-zellij-navigation
+      - run: make test-firstmate
+        env:
+          FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
+          TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm

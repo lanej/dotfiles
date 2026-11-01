@@ -7,13 +7,16 @@ usage() {
 	printf '%s\n' \
 		'Usage: firstmate [command] [arguments]' \
 		'  start [Codex arguments]       Start or attach (the default).' \
-		'  attach [tmux attach options]  Attach to the running captain.' \
-		'  stop                         Stop the captain and crew tmux panes.' \
-		'  reload                       Reload the shared tmux configuration.' \
+		'  attach [backend options]     Attach to the running captain.' \
+		'  stop                         Stop only the selected Firstmate session.' \
+		'  reload                       Reload tmux; validate Zellij live configuration.' \
 		'  tmux [options] command ...    Run commands on the Firstmate server.' \
+		'  zellij command ...           Run commands on the Firstmate session.' \
 		'  help                         Show this help.' \
+		'FM_BACKEND selects tmux or zellij; otherwise config/backend is used (default: tmux).' \
 		'FIRSTMATE_HOME overrides ~/src/firstmate.' \
-		'FIRSTMATE_TMUX_SOCKET overrides the socket name (default: firstmate).'
+		'FIRSTMATE_TMUX_SOCKET overrides the tmux socket name (default: firstmate).' \
+		'FM_ZELLIJ_SESSION overrides the Zellij session name (default: firstmate).'
 }
 
 require_checkout() {
@@ -24,39 +27,79 @@ require_checkout() {
 }
 
 tmux_exec() {
-	# Clear the caller's tmux identity before connecting to the dedicated server.
-	exec env -u TMUX -u TMUX_PANE tmux \
+	# Do not carry the caller's pane identity into a different multiplexer.
+	exec env -u TMUX -u TMUX_PANE -u ZELLIJ -u ZELLIJ_PANE_ID -u ZELLIJ_SESSION_NAME tmux \
 		-f "$HOME/.config/firstmate/tmux.conf" \
 		-L "${FIRSTMATE_TMUX_SOCKET:-firstmate}" "$@"
 }
 
+zellij_exec() {
+	exec env -u TMUX -u TMUX_PANE -u ZELLIJ -u ZELLIJ_PANE_ID -u ZELLIJ_SESSION_NAME \
+		zellij --config "$HOME/.config/zellij/config.kdl" "$@"
+}
+
 case ${1:-start} in
-	help|-h|--help)
-		usage
-		exit 0
+	help|-h|--help) usage; exit 0 ;;
+esac
+
+# Match upstream's explicit choices without its unrelated runtime auto-detection.
+backend=${FM_BACKEND:-}
+if [[ -z "$backend" && -f "$firstmate_root/config/backend" ]]; then
+	backend=$(awk 'NF {gsub(/[[:space:]]/, ""); print; exit}' "$firstmate_root/config/backend")
+fi
+backend=${backend:-tmux}
+case "$backend" in
+	tmux) ;;
+	zellij)
+		export FM_ZELLIJ_SESSION=${FM_ZELLIJ_SESSION:-firstmate}
+		# Upstream targets use session:pane; ':' and path characters are not names.
+		[[ "$FM_ZELLIJ_SESSION" =~ ^[[:alnum:]_][[:alnum:]_.-]*$ ]] || {
+			printf 'Invalid Firstmate Zellij session name: %s\n' "$FM_ZELLIJ_SESSION" >&2
+			exit 2
+		}
 		;;
+	*) printf 'Unsupported Firstmate launcher backend: %s (use tmux or zellij)\n' "$backend" >&2; exit 2 ;;
+esac
+export FM_BACKEND=$backend
+
+case ${1:-start} in
 	attach)
 		shift
-		tmux_exec attach-session -t firstmate "$@"
+		if [[ "$backend" == zellij ]]; then
+			zellij_exec attach "$FM_ZELLIJ_SESSION" "$@"
+		fi
+		tmux_exec attach-session -t =firstmate "$@"
 		;;
 	stop)
 		[[ $# == 1 ]] || { usage >&2; exit 2; }
-		tmux_exec kill-server
+		if [[ "$backend" == zellij ]]; then
+			zellij_exec kill-session "$FM_ZELLIJ_SESSION"
+		fi
+		tmux_exec kill-session -t =firstmate
 		;;
 	reload)
 		[[ $# == 1 ]] || { usage >&2; exit 2; }
+		if [[ "$backend" == zellij ]]; then
+			zellij --config "$HOME/.config/zellij/config.kdl" setup --check
+			printf '%s\n' 'Zellij watches this configuration automatically. Creation-only settings and layouts apply to new panes or sessions.'
+			exit 0
+		fi
 		tmux_exec source-file "$HOME/.config/firstmate/tmux.conf"
 		;;
-	tmux)
+	tmux|zellij)
+		[[ "$1" == "$backend" ]] || { printf 'Selected backend is %s; set FM_BACKEND to change it.\n' "$backend" >&2; exit 2; }
 		shift
 		[[ $# != 0 ]] || { usage >&2; exit 2; }
+		if [[ "$backend" == zellij ]]; then
+			zellij_exec --session "$FM_ZELLIJ_SESSION" "$@"
+		fi
 		tmux_exec "$@"
 		;;
 	--inside)
 		shift
 		require_checkout
 		cd "$firstmate_root"
-		export FM_HOME="$PWD" FM_BACKEND=tmux
+		export FM_HOME="$PWD"
 		export FM_CODEX_WATCH_CHECKPOINT=45
 		exec codex --approve-for-me "$@"
 		;;
@@ -67,7 +110,19 @@ esac
 
 # Preserve direct Codex arguments as a shorthand for "firstmate start".
 require_checkout
+firstmate_root=$(cd "$firstmate_root" && pwd -P)
+export FIRSTMATE_HOME="$firstmate_root" FM_HOME="$firstmate_root"
 
 launcher=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+if [[ "$backend" == zellij ]]; then
+	[[ -r "$firstmate_root/bin/backends/zellij.sh" ]] || { printf '%s\n' 'Update the Firstmate checkout: its Zellij backend is missing.' >&2; exit 1; }
+	command -v jq >/dev/null || { printf '%s\n' 'Firstmate Zellij tasks require jq; run bootstrap.sh first.' >&2; exit 1; }
+	cd "$firstmate_root"
+	# The initial command runs only when the session is created. Do not probe a
+	# half-started server with list-sessions/list-panes (Zellij issue #5632).
+	zellij_exec attach --create "$FM_ZELLIJ_SESSION" -- env \
+		"FIRSTMATE_HOME=$firstmate_root" "FM_BACKEND=zellij" "FM_ZELLIJ_SESSION=$FM_ZELLIJ_SESSION" \
+		"$launcher" --inside "$@"
+fi
 tmux_exec new-session -A \
 	-s firstmate -n captain -c "$firstmate_root" "$launcher" --inside "$@"
