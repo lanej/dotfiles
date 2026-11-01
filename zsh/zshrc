@@ -431,6 +431,9 @@ fi
 autoload -U select-word-style
 select-word-style bash
 
+# Install after optional prompt plugins and before syntax-highlighting wraps ZLE.
+[[ -r "${HOME}/.local/share/zsh/zellij-navigation.zsh" ]] && source "${HOME}/.local/share/zsh/zellij-navigation.zsh"
+
 # Set completion styles (must be after compinit)
 zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}

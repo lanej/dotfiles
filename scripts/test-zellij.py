@@ -25,7 +25,7 @@ PROMPT = b"zellij-ready> "
 
 
 class Terminal:
-    def __init__(self, binary, env, name):
+    def __init__(self, binary, env, name, command=None):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
         self.pid, self.fd = pty.fork()
@@ -34,7 +34,8 @@ class Terminal:
             # parent after fork races the child's startup on a zero-sized PTY.
             fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
             os.chdir(env["HOME"])
-            os.execvpe(binary, [binary, "attach", "--create", name], env)
+            command = command or [binary, "attach", "--create", name]
+            os.execvpe(command[0], command, env)
 
     def drain(self, duration=0.08):
         end = time.monotonic() + duration
@@ -272,10 +273,24 @@ def main():
             terminal.until("Ctrl-p returns to last tab", lambda: any(t["name"] == "work"
                            and t["active"] for t in terminal.tabs()))
 
+            def picker_screen():
+                pane = next((p for p in terminal.terminals() if p["is_floating"]), None)
+                return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+
+            def picker_has_result(name):
+                screen = picker_screen()
+                return "1/2" in screen and name in screen
+
             terminal.prefix(b"\x06")
-            terminal.until("fzf opens in floating pane", lambda: any(p["is_floating"]
-                           for p in terminal.terminals()))
-            terminal.send(b"review\r")
+            # Pane creation precedes fzf entering raw mode. Wait for its actual
+            # render so query keys cannot be consumed by the starting terminal.
+            terminal.until("fzf opens in floating pane", lambda: "Tabs (bells first)" in picker_screen())
+            terminal.send(b"review")
+            # fzf filters asynchronously. Accept only after its visible result
+            # count and selected row reflect the query, not the initial list.
+            terminal.until("fzf filters to the requested tab", lambda:
+                           picker_has_result("review [ready]"))
+            terminal.send(b"\r")
             terminal.until("picker focuses selected tab and closes itself", lambda:
                            any(t["name"] == "review [ready]" and t["active"] for t in terminal.tabs())
                            and not any(p["is_floating"] for p in terminal.terminals()))
@@ -289,9 +304,11 @@ def main():
             second.until("second session is detached", lambda:
                          not second.action("list-clients").strip().splitlines()[1:])
             terminal.prefix(b"\x17")
-            terminal.until("session picker opens", lambda: any(p["is_floating"]
-                           for p in terminal.terminals()))
-            terminal.send(second_name.encode() + b"\r")
+            terminal.until("session picker opens", lambda: "Running sessions" in picker_screen())
+            terminal.send(second_name.encode())
+            terminal.until("fzf filters to the requested session", lambda:
+                           picker_has_result(second_name))
+            terminal.send(b"\r")
             terminal.until("client switches to the selected live session", lambda:
                            bool(terminal.action("list-clients", session=second_name).strip().splitlines()[1:]))
             assert not any(p["is_floating"] for p in terminal.terminals())

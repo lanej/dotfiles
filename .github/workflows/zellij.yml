@@ -9,6 +9,12 @@ on:
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/test-zellij-navigation.py'
+      - 'nvim/lua/pane-navigation.lua'
+      - 'nvim/init.lua'
+      - 'nvim/lazy-lock.json'
+      - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zshrc'
       - 'bootstrap.sh'
       - 'Makefile'
       - '.github/workflows/zellij.yml'
@@ -21,6 +27,12 @@ on:
       - 'scripts/make/config.sh'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/test-zellij-navigation.py'
+      - 'nvim/lua/pane-navigation.lua'
+      - 'nvim/init.lua'
+      - 'nvim/lazy-lock.json'
+      - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zshrc'
       - 'bootstrap.sh'
       - 'Makefile'
       - '.github/workflows/zellij.yml'
@@ -47,10 +59,25 @@ jobs:
           source ./bootstrap.sh
           install_zellij_from_release 0.45.1
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install fzf on Linux
+      - name: Install shell tools on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fzf
-      - name: Install fzf on macOS
+        run: sudo apt-get update && sudo apt-get install -y fzf zsh tmux
+      - name: Install shell tools on macOS
         if: runner.os == 'macOS'
-        run: command -v fzf || brew install fzf
+        run: |
+          command -v fzf || brew install fzf
+          command -v tmux || brew install tmux
+      - name: Install Neovim 0.12.5
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) nvim_platform=linux-x86_64 ;;
+            Darwin-arm64) nvim_platform=macos-arm64 ;;
+            Darwin-x86_64) nvim_platform=macos-x86_64 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/zellij-tools"
+          curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/zellij-tools"
+          echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
       - run: make test-zellij
+      - run: make test-zellij-navigation

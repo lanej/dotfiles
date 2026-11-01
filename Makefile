@@ -300,6 +300,9 @@ test-setup:
 
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
+.PHONY: test-zellij-navigation
+test-zellij-navigation:
+	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
