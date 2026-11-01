@@ -14,6 +14,7 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -36,6 +37,7 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/hostname.sh'
       - 'scripts/make/require.sh'
+      - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -55,7 +57,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -71,23 +73,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/cache/restore@v4
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config openssl@3
+      - name: Cache native Zellij build
+        uses: actions/cache/restore@v4
         id: zellij_cache
         with:
-          path: ~/.local/share/zellij-build
-          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bootstrap.sh') }}
-      - name: Install pinned upstream Zellij
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij', 'zellij/patches/*.patch') }}
+          restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Build and verify pinned upstream Zellij
         id: zellij_install
-        shell: bash
         run: |
-          source ./bootstrap.sh
-          install_build_dependencies
-          install_zellij_from_main
+          python3 scripts/install-zellij --test
+          python3 scripts/install-zellij --check
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache/save@v4
-        if: steps.zellij_cache.outputs.cache-hit != 'true'
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
         with:
-          path: ~/.local/share/zellij-build
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Install Treehouse 3.1.6
         shell: bash

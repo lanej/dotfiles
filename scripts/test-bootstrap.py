@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
+import hashlib
+import io
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 
@@ -21,6 +24,22 @@ def main():
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         (checkout / "scripts").mkdir()
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
+        shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
+        # Execute the installer against a small source fixture. Network and
+        # compilation remain simulated; checksum verification, patch application,
+        # binary installation and the installation receipt use the real code.
+        patches = checkout / "zellij/patches"
+        patches.mkdir(parents=True)
+        (patches / "0001-runtime.patch").write_text(
+            "diff --git a/runtime-marker b/runtime-marker\n"
+            "--- a/runtime-marker\n+++ b/runtime-marker\n"
+            "@@ -1 +1 @@\n-unpatched\n+patched\n"
+        )
+        with tarfile.open(fixture / "zellij-source.tar.gz", "w:gz") as archive:
+            payload = b"unpatched\n"
+            member = tarfile.TarInfo("zellij-fixture/runtime-marker")
+            member.size = len(payload)
+            archive.addfile(member, io.BytesIO(payload))
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
@@ -36,6 +55,8 @@ import os
 from pathlib import Path
 import io
 import hashlib
+import importlib.machinery
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -58,6 +79,8 @@ if name == "uname":
 elif name == "git":
     if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
+    elif args[:1] == ["apply"]:
+        os.execv("/usr/bin/git", ["/usr/bin/git", *args])
 elif name == "sudo":
     if args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
         (home / ".local/bin/tmux").symlink_to(fixture / "driver")
@@ -78,7 +101,7 @@ elif name == "dnf":
     print("Version : 0.20.19")
 elif name == "curl":
     url = next(arg for arg in args if arg.startswith("https://"))
-    target = args[args.index("-o") + 1]
+    target = args[args.index("-o" if "-o" in args else "--output") + 1]
     if "uv-installer.sh" in url:
         event = "uv"
         script = 'mkdir -p "$HOME/.local/bin"\nln -fs "$HOME/fixture/driver" "$HOME/.local/bin/uv"\n'
@@ -129,19 +152,8 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url == "https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-aarch64-unknown-linux-musl.tar.gz":
-        with tarfile.open(target, "w:gz") as archive:
-            payload = (fixture / "driver").read_bytes()
-            member = tarfile.TarInfo("zellij")
-            member.size = len(payload)
-            member.mode = 0o755
-            member.uid = member.gid = 1001
-            archive.addfile(member, io.BytesIO(payload))
-        record("zellij")
-        sys.exit(0)
-    elif url == "https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-aarch64-unknown-linux-musl.sha256sum":
-        digest = hashlib.sha256((fixture / "driver").read_bytes()).hexdigest()
-        Path(target).write_text(digest + "  target/aarch64-unknown-linux-musl/release/zellij\n")
+    elif url == "https://codeload.github.com/zellij-org/zellij/tar.gz/bf517077c848d91f75091f66d1996cfeb84f4732":
+        shutil.copyfile(fixture / "zellij-source.tar.gz", target)
         sys.exit(0)
     elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
         assert url.startswith("https://github.com/lanej/bedrock-router/releases/download/v0.1.1/")
@@ -175,7 +187,20 @@ elif name == "uv":
     else:
         print("uv 0.12.11" if managed else "uv 0.10.12")
 elif name == "python3":
-    print("Python 3.12.0" if managed else "Python 3.6.8")
+    if args == ["--version"]:
+        print("Python 3.12.0" if managed else "Python 3.6.8")
+    elif args and Path(args[0]).name == "install-zellij":
+        loader = importlib.machinery.SourceFileLoader("zellij_installer", args[0])
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        installer = importlib.util.module_from_spec(spec)
+        loader.exec_module(installer)
+        installer.SOURCE_SHA256 = hashlib.sha256((fixture / "zellij-source.tar.gz").read_bytes()).hexdigest()
+        sys.argv = args
+        installer.main()
+    else:
+        # Unknown invocations must execute or fail, rather than silently treating
+        # a missing installer script as a successful version query.
+        os.execv(sys.executable, [sys.executable, *args])
 elif name == "node":
     print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else "v16.19.1")
 elif name == "npm" and args[:1] == ["list"]:
@@ -198,7 +223,7 @@ elif name == "btop":
     print("btop version: 1.4.7")
 elif name == "zellij":
     assert args == ["--version"], args
-    print("zellij 0.46.0" if managed or "/zellij-build/" in sys.argv[0] else "zellij 0.45.1")
+    print("zellij 0.45.1" if Path(sys.argv[0]).parent == fixture else "zellij 0.46.0")
 elif name == "nvim" and args == ["--version"]:
     print("NVIM v0.12.5" if managed else "NVIM v0.11.0")
 elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
@@ -249,18 +274,19 @@ elif name == "git-crypt":
     if args != ["version"]:
         sys.exit(2)
     print("git-crypt 0.8.0")
-elif name == "cargo" and "install" in args:
-    assert args[:2] == ["+1.95.0", "install"], args
-    assert args[args.index("--git") + 1] == "https://github.com/zellij-org/zellij.git", args
-    revision = args[args.index("--rev") + 1]
-    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision), revision
-    assert "--locked" in args and args[-1] == "zellij", args
-    destination = Path(args[args.index("--root") + 1]) / "bin"
-    destination.mkdir(parents=True)
-    (destination / "zellij").symlink_to(fixture / "driver")
-    record("zellij source")
-elif name == "rustup" and args[:2] == ["toolchain", "install"]:
-    assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
+elif name == "rustup" and args[:3] == ["run", "1.95.0", "rustc"]:
+    assert args[3:] == ["-vV"], args
+    print("rustc 1.95.0\nhost: aarch64-unknown-linux-gnu\n")
+elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
+    assert args[3] == "build", args
+    assert (Path.cwd() / "runtime-marker").read_text() == "patched\n"
+    target = args[args.index("--target") + 1]
+    assert target == "aarch64-unknown-linux-gnu", args
+    output = Path(os.environ["CARGO_TARGET_DIR"]) / target / "release/zellij"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(fixture / "driver", output)
+    output.chmod(0o755)
+    record("zellij")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
@@ -291,7 +317,7 @@ else:
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
             "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm",
-            "python3", "make", "cargo", "rustc", "rust-analyzer", "go",
+            "python3", "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
@@ -317,6 +343,9 @@ else:
             "HOME": str(home),
             "PATH": f"{fixture}:{system_bin}",
             "ATUIN_SYNC_HOST": "fixture-host",
+            "XDG_CACHE_HOME": str(home / ".cache"),
+            "XDG_STATE_HOME": str(home / ".local/state"),
+            "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
@@ -340,14 +369,20 @@ else:
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
-        assert events.index("zellij source") < events.index("make")
-        # The managed development build replaces stable and is reused on reruns.
-        zellij_rerun = subprocess.run(
-            ["bash", "-ec", 'source "$1"; install_zellij_from_main', "bash", str(checkout / "bootstrap.sh")],
-            env=env, capture_output=True, text=True,
-        )
-        assert zellij_rerun.returncode == 0, zellij_rerun.stdout + zellij_rerun.stderr
-        assert (home / "events").read_text().splitlines().count("zellij source") == 1
+        assert events.index("zellij") < events.index("make")
+        receipt = home / ".local/state/dotfiles/zellij-runtime.json"
+        record = json.loads(receipt.read_text())
+        installed = home / ".local/bin/zellij"
+        assert record["sha256"] == hashlib.sha256(installed.read_bytes()).hexdigest()
+        assert record["executable"] == str(installed)
+        # The same real installer verifies and reuses the installed artifact;
+        # the fixture compiler must not be invoked again for an unchanged tree.
+        runtime_command = [str(fixture / "python3"), str(checkout / "scripts/install-zellij")]
+        checked = subprocess.run([*runtime_command, "--check"], env=env, capture_output=True, text=True)
+        assert checked.returncode == 0, checked.stdout + checked.stderr
+        repeated = subprocess.run(runtime_command, env=env, capture_output=True, text=True)
+        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert (home / "events").read_text().splitlines().count("zellij") == 1
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
         assert not (font_dir / "HackNerdFont-Regular.ttf").exists()
