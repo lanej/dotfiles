@@ -135,7 +135,11 @@ class Terminal:
         except ChildProcessError:
             client_status = "already reaped"
         details.append(f"Client process: {client_status}")
-        details.extend(self.startup_diagnostics())
+        try:
+            details.extend(self.startup_diagnostics())
+        except Exception as error:
+            # Diagnostics must never replace the workflow's original failure.
+            details.append(f"Could not collect startup diagnostics: {error}")
         output = self.output[-4000:].decode(errors="replace")
         details.append(f"Terminal output:\n{output or '<empty>'}")
         raise AssertionError("\n".join(details))
@@ -143,6 +147,20 @@ class Terminal:
     def startup_diagnostics(self):
         details = []
         sample_pids = set()
+        artifacts = None
+        artifact_root = os.environ.get("ZELLIJ_TEST_ARTIFACTS")
+        if artifact_root:
+            try:
+                Path(artifact_root).mkdir(parents=True, exist_ok=True)
+                artifacts = Path(tempfile.mkdtemp(prefix="startup-", dir=artifact_root))
+                (artifacts / "terminal-output.bin").write_bytes(self.output)
+                (artifacts / "context.json").write_text(json.dumps({
+                    "session": self.name, "client_pid": self.pid,
+                    "executable": self.binary, "captured_at": time.time(),
+                }, indent=2) + "\n")
+                details.append(f"Complete failure artifacts: {artifacts}")
+            except OSError as error:
+                details.append(f"Could not preserve failure artifacts: {error}")
         try:
             process = subprocess.run(
                 ["ps", "-axo", "pid=,ppid=,stat=,command="],
@@ -160,17 +178,20 @@ class Terminal:
                     break
                 selected |= children
             related = [row for row in rows if row[0] in selected]
-            details.append("Process snapshot (PID PPID STAT COMMAND):\n" +
-                           "\n".join(" ".join(row) for row in related))
+            snapshot = ("Process snapshot (PID PPID STAT COMMAND):\n" +
+                        "\n".join(" ".join(row) for row in related))
+            details.append(snapshot)
             sample_pids = {row[0] for row in related
                            if row[0] == str(self.pid) or "--server " in row[3]}
+            if artifacts:
+                (artifacts / "processes.txt").write_text(snapshot + "\n")
             if process.stderr:
                 details.append(process.stderr)
         except (OSError, subprocess.TimeoutExpired) as error:
             details.append(f"Could not inspect test processes: {error}")
         if os.uname().sysname == "Darwin" and shutil.which("sample"):
             for pid in sorted(sample_pids):
-                sample_path = Path(self.env["HOME"]) / f"process-{pid}.sample"
+                sample_path = (artifacts or Path(self.env["HOME"])) / f"process-{pid}.sample"
                 try:
                     sample = subprocess.run(
                         ["sample", pid, "1", "1", "-file", str(sample_path)],
@@ -178,17 +199,42 @@ class Terminal:
                     )
                     details.append(f"Process sample {pid}:\n{sample.stdout}{sample.stderr}")
                     if sample_path.exists():
-                        details.append(sample_path.read_text(errors="replace")[:16000])
+                        if artifacts:
+                            details.append(f"Complete process sample: {sample_path}")
+                        else:
+                            details.append(sample_path.read_text(errors="replace")[:16000])
                 except (OSError, subprocess.TimeoutExpired) as error:
                     details.append(f"Could not sample process {pid}: {error}")
         log = Path(self.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
         try:
+            if artifacts:
+                shutil.copyfile(log, artifacts / "zellij.log")
             with log.open("rb") as handle:
                 handle.seek(0, os.SEEK_END)
                 handle.seek(max(0, handle.tell() - 16000))
                 details.append("Zellij log:\n" + handle.read(16000).decode(errors="replace"))
         except OSError as error:
             details.append(f"Could not read isolated Zellij log: {error}")
+        if artifacts:
+            # macOS uses Library/Caches while Linux uses XDG_CACHE_HOME. Both
+            # locations belong to this test's private home, and the session name
+            # excludes other sessions created by the same workflow.
+            cache_roots = (Path(self.env["XDG_CACHE_HOME"]),
+                           Path(self.env["HOME"]) / "Library" / "Caches")
+            metadata_count = 0
+            for cache in cache_roots:
+                for metadata in cache.glob(
+                        f"*/contract_version_*/session_info/{self.name}/session-metadata.kdl"):
+                    try:
+                        shutil.copyfile(metadata, artifacts / f"session-metadata-{metadata_count}.kdl")
+                        metadata_count += 1
+                    except OSError as error:
+                        details.append(f"Could not preserve session metadata: {error}")
+            details.append(f"Saved {metadata_count} isolated session metadata file(s)")
+            try:
+                (artifacts / "diagnostics.txt").write_text("\n".join(details) + "\n")
+            except OSError as error:
+                details.append(f"Could not preserve diagnostic summary: {error}")
         return details
 
     def close(self):

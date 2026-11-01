@@ -61,6 +61,7 @@ jobs:
     env:
       TRUSTED_BROKER_TEST: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       AGENT_STATUS_SOURCE: ${{ github.workspace }}/agent-status-broker-source
+      ZELLIJ_TEST_ARTIFACTS: ${{ runner.temp }}/zellij-diagnostics
     strategy:
       fail-fast: false
       matrix:
@@ -158,3 +159,11 @@ jobs:
       - name: Explain private integration restriction for forks
         if: env.TRUSTED_BROKER_TEST != 'true'
         run: echo '::notice::Broker integration requires private source access and runs on trusted repository branches.'
+      - name: Preserve failed workflow diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zellij-diagnostics-${{ matrix.os }}
+          path: ${{ env.ZELLIJ_TEST_ARTIFACTS }}
+          if-no-files-found: ignore
+          retention-days: 7
