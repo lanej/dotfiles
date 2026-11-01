@@ -23,7 +23,7 @@ zellij attach --create main
 
 Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. Run `python3 scripts/install-zellij --check` to verify the installed executable matches this checkout. The runtime keeps the upstream `0.45.1` protocol version so existing plugins remain compatible; the installer records the patch-set and binary hashes separately.
 
-On first launch, the bar asks for permission to read application state, run its local helpers, switch tabs, write to pane input, configure each client's runtime paste binding, and exchange messages with its clipboard receiver. Focus that permission prompt with **Ctrl-f k**, then press **y**. Zellij remembers the grant for this plugin. The bar becomes unselectable after permission is granted.
+On first launch, the bar asks for permission to read application state, run its local helpers, switch tabs or detach a client, write to pane input, configure each client's runtime paste binding, exchange messages with its clipboard receiver, and receive CLI messages from the client chooser. Focus that permission prompt with **Ctrl-f k**, then press **y**. Zellij remembers the grant for this plugin. The bar becomes unselectable after permission is granted. An existing installation may ask again when these permissions expand.
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
@@ -48,6 +48,7 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `r`, `,` | Rename the tab; Enter accepts and Esc restores the name |
 | `0`–`9` | Select the tab at that zero-based position |
 | `d` | Detach, keeping the session running |
+| `D` | Choose one attached client to detach; Enter confirms and Esc cancels |
 | `x` | Close the focused pane |
 | `z` | Toggle pane zoom |
 | `Z` | Toggle zoom without the surrounding UI |
@@ -120,7 +121,9 @@ Automatic nesting focus applies to other compatible Zellij sessions too, includi
 
 **Ctrl-f Ctrl-q** in the main configuration opens a confirmation naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients, or press Enter or Ctrl-c to cancel. The helper checks the owning server's Unix socket identity again before executing, rejecting a session that was renamed or replaced while confirmation was open. This ends one Zellij session and its server; other sessions, including a separately running popup, continue. **Ctrl-f d** still detaches the current client without shutting down its session.
 
-**Selected-client detachment remains unsupported.** Prefix `D` is unbound. Stable 0.45.1 exposes a client list and current-client detach, but its CLI has no client-ID detach argument; the plugin API's disconnect-other-clients action affects every other client. Use `zellij action list-clients` to inspect the current session and detach from the intended client's terminal. A chooser must wait for a genuinely targeted API.
+**Ctrl-f D** opens a fuzzy chooser of clients attached to the current session, showing each client's native ID, focused tab, and pane title. Enter detaches the selected attachment; Esc or Ctrl-c cancels. The other clients, panes, and sessions keep running. The chooser waits up to five seconds for a complete list while newly attached clients become ready. Every attached client needs the status plugin's permissions; check its permission prompt on each client if the chooser times out. A missing receiver produces an error instead of falling back to detaching every other client.
+
+Zellij 0.45.1 retains plugin instances and reuses client IDs after detach. Each receiver therefore tracks the native attachment lifecycle and rejects a selection made before that client disconnected, reconnected, or its plugin reloaded. It checks native client state again immediately before calling that client's own detach action. This rejects stale choices after a completed reconnect, but it is not an atomic server-side attachment identity check: a disconnect and ID reuse in the final native check/action window can still detach the replacement. Closing that last race requires an upstream action that accepts and checks a connection generation. Ordinary **Ctrl-f d** remains the direct current-client detach.
 
 Implementation references: [native nesting options and focus behavior](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-integration-tests/tests/nested_session_handling_config.rs), [CLI session actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs), and [plugin client controls](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-tile/src/shim.rs).
 
@@ -170,7 +173,7 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Dedicated shared `popup` session | `P` attaches to the live `dotfiles-popup` scratch session across tabs and sessions on the same host; `F` toggles other floating panes. |
 | Custom clock, battery, host, and agent status segments | Built from the checked-in bar source; no third-party plugin download or bottom status bar. |
 | Kill-server confirmation | `Ctrl-q` confirms shutdown of the current session's server. It does not shut down every Zellij session. |
-| Client-detach chooser | `D` remains unbound because stable APIs cannot detach one selected client. Ordinary `d` detaches the current client. |
+| Client-detach chooser | `D` detaches one selected attachment and rejects observed stale choices. Native 0.45.1 still has a final client-ID check/action window; `d` directly detaches the current client. |
 
 Reference: [Zellij 0.45.1](https://github.com/zellij-org/zellij/releases/tag/v0.45.1), [session resurrection](https://zellij.dev/documentation/session-resurrection.html), and [the upstream cross-session movement limitation](https://github.com/zellij-org/zellij/issues/5118).
 
@@ -189,6 +192,6 @@ The workflow check installs into a temporary home, sends real prefix keys to Zel
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
 
-The session checks observe host/guest focus control and the same popup shell PID, cwd, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory.
+The session checks use two real attachments to exercise chooser cancellation, exact selected-client detach, stale selection after reconnect reuses the same client ID, self-selection and helper cleanup before reattachment, and ordinary detach while another session survives. They also observe host/guest focus control and the same popup shell PID, cwd, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory.
 
 The status workflow builds the real broker and plugin and drives the installed Claude/Codex hook entrypoints with local executable fixtures. It checks concurrent identities, Codex without inherited mux hints, cross-session counts and triage, process continuity, owner exit, broker restart, detached pane discovery, and background leadership after closing the original bar's tab. The fixtures do not call models or validate a production agent's current UI. The private broker portion runs only for trusted repository branches; public/fork runs still exercise the installed Zellij UI.

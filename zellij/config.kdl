@@ -83,6 +83,10 @@ keybinds clear-defaults=true {
         bind "Ctrl p" { ToggleTab; SwitchToMode "Locked"; }
         bind "r" "," { SwitchToMode "RenameTab"; TabNameInput 0; }
         bind "d" { SwitchToMode "Locked"; Detach; }
+        bind "D" {
+            Run "zellij-picker" "clients" { floating true; close_on_exit true; }
+            SwitchToMode "Locked"
+        }
         bind "x" { CloseFocus; SwitchToMode "Locked"; }
         bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
         bind "Z" { ToggleFocusNoUiFullscreen; SwitchToMode "Locked"; }

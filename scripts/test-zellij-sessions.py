@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Observe persistent popup state and confirmed shutdown through installed keys."""
+"""Observe popup state, selected-client detach, and shutdown through installed keys."""
 
 import os
 from pathlib import Path
@@ -140,6 +140,98 @@ def prove_popup(terminal, home, expected, filename):
                    proof.exists() and proof.read_text().strip() == expected)
 
 
+def detach_workflow(clients):
+    first, unrelated = clients[:2]
+
+    def attached_ids():
+        return {client for tab in first.tabs() for client in tab["other_focused_clients"]}
+
+    def exited(terminal):
+        try:
+            waited, status = os.waitpid(terminal.pid, os.WNOHANG)
+        except ChildProcessError:
+            return True
+        if waited:
+            assert os.waitstatus_to_exitcode(status) == 0
+        return bool(waited)
+
+    def until(description, predicate):
+        def observed():
+            for terminal in clients[1:]:
+                terminal.drain(0.01)
+            return predicate()
+        return first.until(description, observed)
+
+    original = attached_ids()
+    assert len(original) == 1
+    panes = {pane["id"] for pane in first.terminals()}
+
+    def attach():
+        terminal = Terminal(first.binary, first.env, first.name)
+        clients.append(terminal)
+        until("second attachment uses the live session", lambda:
+              b"zellij-ready> " in terminal.output and len(attached_ids()) == 2)
+        return terminal
+
+    target = attach()
+    target_id = (attached_ids() - original).pop()
+
+    def choose(invoker=first):
+        invoker.prefix(b"D")
+        until("client chooser lists both real attachments", lambda:
+              "Detach one client" in floating_screen(first)
+              and f"Client {target_id}" in floating_screen(first))
+        # The two rows are sorted by native ID; select the second attachment.
+        invoker.send(b"\x1b[B")
+
+    choose()
+    first.send(b"\x1b")
+    until("cancel closes only the chooser", lambda:
+          not any(p["is_floating"] for p in first.terminals()))
+    assert attached_ids() == original | {target_id}
+    assert not exited(target) and not exited(unrelated)
+    choose()
+    first.send(b"\r")
+    until("only the selected client detaches", lambda:
+          exited(target) and attached_ids() == original
+          and not any(p["is_floating"] for p in first.terminals()))
+    assert not exited(first) and not exited(unrelated)
+    assert {pane["id"] for pane in first.terminals()} == panes
+
+    old_attachment = attach()
+    assert attached_ids() == original | {target_id}
+    choose()
+    old_attachment.prefix(b"d")
+    until("ordinary detach closes its own attachment", lambda:
+          exited(old_attachment) and attached_ids() == original)
+    replacement = attach()
+    assert attached_ids() == original | {target_id}, "the reconnect must reuse the selected ID"
+    first.send(b"\r")
+    until("old chooser entry rejects the replacement attachment", lambda:
+          "selected attachment changed" in floating_screen(first))
+    assert not exited(replacement) and not exited(first) and not exited(unrelated)
+    assert attached_ids() == original | {target_id}
+    first.send(b"\r")
+    until("stale selection closes without side effects", lambda:
+          not any(p["is_floating"] for p in first.terminals()))
+    choose(replacement)
+    replacement.send(b"\r")
+    until("self-selection detaches and its acknowledged helper exits", lambda:
+          exited(replacement) and attached_ids() == original
+          and not any(p["is_floating"] for p in first.terminals()))
+    reattached = attach()
+    assert {pane["id"] for pane in first.terminals()} == panes
+    reattached.prefix(b"d")
+    until("ordinary detach remains unchanged after rejection", lambda:
+          exited(reattached) and attached_ids() == original)
+    assert {pane["id"] for pane in first.terminals()} == panes
+    assert unrelated.action("list-clients").strip().splitlines()[1:]
+    print("Client detach: cancel preserves both attachments; selection closes exactly one; "
+          "a stale entry cannot detach a completed reconnect reusing its ID; "
+          "self-selection closes its helper and reattaches to the original panes; "
+          "ordinary detach and another session survive.")
+
+
 def popup_workflow(first, second, home):
     # Force the installed bar to clip a real tab label on every host, including
     # runners whose own long hostname leaves less room for the tab list.
@@ -265,7 +357,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
 
 def main():
     binary = shutil.which("zellij")
-    assert binary, "Install Zellij >=0.45.1 before make test-zellij-sessions"
+    assert binary and shutil.which("fzf"), "Install Zellij >=0.45.1 and fzf before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
         temporary = Path(directory).resolve()
         home = temporary / "home"
@@ -282,7 +374,8 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=env,
                        check=True, capture_output=True, text=True)
@@ -300,6 +393,7 @@ def main():
                 terminal.until("outer shell starts", lambda:
                                b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             first, second = clients
+            detach_workflow(clients)
             expected = popup_workflow(first, second, home)
             shutdown_workflow(clients, names, home, expected)
         finally:
