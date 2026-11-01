@@ -96,8 +96,19 @@ case "$target" in
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.config/tmux"
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.tmux.conf"
         ;;
+    zellij-status)
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        if [ "$status_wasm" = "$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm" ]; then
+            cd "$dotfiles/zellij/status"
+            cargo build --locked --release --target wasm32-wasip1 --target-dir target
+        else
+            test -s "$status_wasm"
+        fi
+        ;;
     zellij-config)
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin"
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin"
+        ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
         ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
             [ -f "$source" ] || continue

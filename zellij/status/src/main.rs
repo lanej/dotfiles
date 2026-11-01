@@ -1,0 +1,225 @@
+use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use zellij_tile::prelude::*;
+
+#[derive(Default)]
+struct State {
+    mode: ModeInfo,
+    tabs: Vec<TabInfo>,
+    panes: PaneManifest,
+    view: Value,
+    allowed: bool,
+    visible: bool,
+    busy: bool,
+    roots: BTreeMap<u32, i32>,
+    clicks: Vec<(usize, usize, u32)>,
+}
+
+register_plugin!(State);
+
+fn plain(value: &str) -> String {
+    value.chars().filter(|c| !c.is_control()).collect()
+}
+
+fn clipped(value: &str, budget: usize) -> String {
+    if value.width() <= budget { return value.to_owned(); }
+    let mut text = String::new();
+    let mut used = 0;
+    for c in value.chars() {
+        let width = c.width().unwrap_or(0);
+        if used + width + 1 > budget { break; }
+        text.push(c); used += width;
+    }
+    if budget > 0 { text.push('…'); }
+    text
+}
+
+fn rank(state: &str, done: bool) -> u8 {
+    match state {
+        "approval" | "question" | "plan" | "failed" => 0,
+        _ if done => 1,
+        "thinking" | "tool" | "waiting" => 2,
+        _ => 3,
+    }
+}
+
+fn mark(state: &str, done: bool) -> (&str, &str) {
+    match state {
+        "question" => ("?", "235;203;139"),
+        "approval" | "plan" => ("!", "235;203;139"),
+        "failed" => ("×", "191;97;106"),
+        _ if done => ("✓", "163;190;140"),
+        "thinking" | "tool" | "waiting" => ("●", "136;192;208"),
+        _ => ("·", "129;161;193"),
+    }
+}
+
+impl State {
+    fn poll(&mut self) {
+        if !self.allowed || self.busy {
+            return;
+        }
+        // Client-targeted broadcasts stop when the last client detaches. The
+        // native session snapshot still discovers new tabs/panes and removes
+        // a closed leader, allowing a surviving bar to take over.
+        if let Ok(snapshot) = get_session_list() {
+            if let Some(session) = snapshot.live_sessions.into_iter().find(|s| s.is_current_session) {
+                self.mode.session_name = Some(session.name);
+                if !self.visible || session.connected_clients == 0 || self.panes.panes.is_empty() {
+                    self.tabs = session.tabs;
+                    self.panes = session.panes;
+                }
+            }
+        }
+        if self.mode.session_name.is_none() { return; }
+        let ids = get_plugin_ids();
+        // Keep one session-wide manifest current even when every client is
+        // detached or the top bar is hidden by fullscreen. Other invisible
+        // bars need not duplicate that background work.
+        let leader = self.panes.panes.values().flatten()
+            .filter(|pane| pane.is_plugin && !pane.exited
+                && pane.plugin_url.as_deref().map(|url| url.ends_with("/lane-status.wasm")).unwrap_or(false))
+            .map(|pane| pane.id).min().unwrap_or(ids.plugin_id);
+        if !self.visible && ids.plugin_id != leader { return; }
+        let mut panes = Vec::new();
+        self.roots.clear();
+        for (position, entries) in &self.panes.panes {
+            let Some(tab) = self.tabs.iter().find(|tab| tab.position == *position) else { continue };
+            for pane in entries.iter().filter(|p| !p.is_plugin && !p.exited) {
+                // PaneUpdate broadcasts stop with no connected clients. Query
+                // the native pane directly so detached title changes are seen.
+                let Some(current) = get_pane_info(PaneId::Terminal(pane.id)) else { continue };
+                if let Ok(pid) = get_pane_pid(PaneId::Terminal(pane.id)) {
+                    self.roots.insert(pane.id, pid);
+                    panes.push(json!({"pane": pane.id, "root_pid": pid, "tab_id": tab.tab_id,
+                        "tab_position": position, "title": current.title}));
+                }
+            }
+        }
+        let manifest = json!({"server_pid": ids.zellij_pid, "session": self.mode.session_name,
+            "panes": panes}).to_string();
+        run_command(&["zellij-status", "view", &manifest], BTreeMap::new());
+        self.busy = true;
+    }
+}
+
+impl ZellijPlugin for State {
+    fn load(&mut self, _configuration: BTreeMap<String, String>) {
+        self.visible = true;
+        subscribe(&[EventType::ModeUpdate, EventType::TabUpdate, EventType::PaneUpdate,
+            EventType::RunCommandResult, EventType::Timer, EventType::PermissionRequestResult,
+            EventType::Visible, EventType::Mouse, EventType::SessionUpdate]);
+        request_permission(&[PermissionType::ReadApplicationState,
+            PermissionType::RunCommands, PermissionType::ChangeApplicationState]);
+        set_timeout(1.0);
+    }
+
+    fn update(&mut self, event: Event) -> bool {
+        match event {
+            Event::PermissionRequestResult(PermissionStatus::Granted) => {
+                // 0.45.1 can replay another client's cached grant while this
+                // instance still lacks permissions. Changing selectability
+                // requests a state broadcast; only a granted instance can
+                // receive SessionUpdate and safely make synchronous queries.
+                set_selectable(false);
+            }
+            Event::SessionUpdate(..) if !self.allowed => {
+                self.allowed = true;
+                self.poll();
+            }
+            Event::ModeUpdate(mode) => { self.mode = mode; self.poll(); }
+            Event::TabUpdate(tabs) => { self.tabs = tabs; }
+            Event::PaneUpdate(panes) => { self.panes = panes; }
+            Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
+            Event::Timer(_) => { self.poll(); set_timeout(1.0); }
+            Event::RunCommandResult(code, out, error, _) => {
+                self.busy = false;
+                self.view = if code == Some(0) {
+                    serde_json::from_slice(&out).unwrap_or(json!({"available": false}))
+                } else {
+                    eprintln!("lane-status helper failed: {}", String::from_utf8_lossy(&error));
+                    json!({"available": false})
+                };
+            }
+            Event::Mouse(Mouse::LeftClick(_, col)) if self.allowed => {
+                if let Some((_, _, index)) = self.clicks.iter().find(|(start, end, _)| col >= *start && col < *end) {
+                    switch_tab_to(*index);
+                }
+            }
+            _ => {}
+        }
+        true
+    }
+
+    fn render(&mut self, _rows: usize, cols: usize) {
+        self.clicks.clear();
+        if !self.allowed {
+            print!("Grant lane-status permissions to enable the top bar");
+            return;
+        }
+        let ids = get_plugin_ids();
+        let records = self.view["records"].as_array().cloned().unwrap_or_default();
+        let relevant: Vec<_> = records.iter().filter(|r| r["server_pid"].as_u64() == Some(ids.zellij_pid as u64)
+            && r["pane"].as_u64().and_then(|id| self.roots.get(&(id as u32)))
+                .map(|pid| Some(*pid as i64) == r["root_pid"].as_i64()).unwrap_or(false)).collect();
+        let attention = records.iter().filter(|r| rank(r["state"].as_str().unwrap_or(""), r["result_ready"].as_bool().unwrap_or(false)) <= 1).count();
+        let working = records.iter().filter(|r| rank(r["state"].as_str().unwrap_or(""), false) == 2).count();
+        let clock = plain(self.view["clock"].as_str().unwrap_or(""));
+        let battery = plain(self.view["battery"].as_str().unwrap_or(""));
+        let counts = if self.view["available"].as_bool() == Some(true) {
+            format!("!{} ●{}", attention, working)
+        } else { "!? ●? broker?".into() };
+        let right = format!(" {} {} {} ", counts, battery, clock);
+        let right_width = right.width().min(cols);
+        let available = cols.saturating_sub(right_width);
+        let host = plain(self.view["host"].as_str().unwrap_or(""));
+        let prefix = if self.mode.mode != InputMode::Locked && self.mode.mode != InputMode::Normal { " PREFIX " } else { " " };
+        let mut used = 0;
+        // Match the native tab bar's host/guest focus signal. A dimmed session
+        // is still visible, but its keys currently belong to another session.
+        let dimmed = self.mode.session_ascended == Some(true)
+            || self.mode.session_dimmed == Some(true);
+        print!("\x1b[{}m", if dimmed { 3 } else { 23 });
+        print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
+        let heading = format!("{}{} │", prefix, host);
+        for c in heading.chars() {
+            let width = c.width().unwrap_or(0);
+            if used + width > available { break; }
+            print!("{}", c); used += width;
+        }
+        let tab_space = available.saturating_sub(used);
+        let visible = (tab_space / 12).max(1).min(self.tabs.len());
+        let active = self.tabs.iter().position(|t| t.active).unwrap_or(0);
+        let end = (active.saturating_sub(visible / 2) + visible).min(self.tabs.len());
+        let start = end.saturating_sub(visible);
+        let budget = if visible > 0 { (tab_space / visible).min(32) } else { 0 };
+        for tab in &self.tabs[start..end] {
+            let record = relevant.iter().filter(|r| r["tab_id"].as_u64() == Some(tab.tab_id as u64))
+                .min_by_key(|r| rank(r["state"].as_str().unwrap_or(""), r["result_ready"].as_bool().unwrap_or(false)));
+            let (glyph, color) = record.map(|r| mark(r["state"].as_str().unwrap_or(""), r["result_ready"].as_bool().unwrap_or(false)))
+                .unwrap_or(if tab.has_bell_notification { ("!", "235;203;139") } else { ("", "136;192;208") });
+            let zoom = if tab.is_fullscreen_active { " Z" } else { "" };
+            let name_budget = budget.saturating_sub(tab.position.to_string().len() + 5 + zoom.len());
+            let name = clipped(&plain(&tab.name), name_budget);
+            let label = format!(" {}:{} {}{} ", tab.position, name, glyph, zoom);
+            let start = used;
+            print!("\x1b[48;2;{}m\x1b[38;2;{}m", if tab.active { "76;65;82" } else { "46;52;64" }, if tab.active && glyph.is_empty() { "180;142;173" } else { color });
+            for c in label.chars() {
+                let width = c.width().unwrap_or(0);
+                if used + width > available { break; }
+                print!("{}", c); used += width;
+            }
+            if used > start { self.clicks.push((start, used, tab.position as u32 + 1)); }
+            if used >= available { break; }
+        }
+        print!("\x1b[48;2;46;52;64m{}\x1b[38;2;129;161;193m", " ".repeat(available.saturating_sub(used)));
+        let mut right_used = 0;
+        for c in right.chars() {
+            let width = c.width().unwrap_or(0);
+            if right_used + width > right_width { break; }
+            print!("{}", c); right_used += width;
+        }
+        print!("\x1b[0m");
+    }
+}
