@@ -1,4 +1,5 @@
 [tools]
+editor-minimal = false
 neovim = true
 imagemagick = true
 stylua = true

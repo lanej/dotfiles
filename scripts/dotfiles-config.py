@@ -46,6 +46,16 @@ def tool_plan(values, origins, specified, host):
     """Resolve a concrete ordered tool plan; explicit disables constrain dependencies."""
     ordered, visiting = [], []
 
+    def check_conflicts():
+        for name, recipe in TOOLS.items():
+            if not values[f"tools.{name}"]:
+                continue
+            for conflict in recipe.get("conflicts", []):
+                if conflict not in TOOLS:
+                    raise ValueError(f"{TOOL_FILE}: unknown conflicting tool {conflict!r}")
+                if values[f"tools.{conflict}"]:
+                    raise ValueError(f"tools.{name} conflicts with tools.{conflict}; disable one in your configuration")
+
     def enable(name, required_by=None):
         if name not in TOOLS:
             raise ValueError(f"unknown tool dependency {name!r}")
@@ -87,9 +97,13 @@ def tool_plan(values, origins, specified, host):
             origins[key] = f"required by tools.{required_by}"
         ordered.append(name)
 
+    # Reject incompatible choices before traversing their dependencies, then
+    # check again after dependencies have been enabled.
+    check_conflicts()
     for name in TOOLS:
         if values[f"tools.{name}"]:
             enable(name)
+    check_conflicts()
     plan = [{"name": name, **TOOLS[name]} for name in ordered]
 
     def phase(key):

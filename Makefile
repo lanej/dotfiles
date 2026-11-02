@@ -40,7 +40,7 @@ all setup: configure
 bootstrap install:
 	@bash "$(DOTFILES)/bootstrap.sh" "$@"
 
-.PHONY: config-init config plan test-dotfiles-config test-dotfiles-config-editor
+.PHONY: config-init config plan test-dotfiles-config test-dotfiles-config-editor test-editor-minimal
 config-init:
 	@bash "$(MAKE_SCRIPTS)/init-config.sh" "$(HOME)" "$(NATIVE_SET)"
 
@@ -52,6 +52,9 @@ plan:
 
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
+
+test-editor-minimal:
+	@python3 "$(DOTFILES)/scripts/test-editor-minimal.py"
 
 test-dotfiles-config-editor:
 	$(call require-command,nvim)
@@ -131,6 +134,8 @@ zellij-config:
 sql-formatters:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim: vim-config sql-formatters
+editor-minimal:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim-config: nvim-gh-review
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 .PHONY: nvim-gh-review

@@ -19,6 +19,7 @@
               "development",
               "easypost",
               "editor",
+              "editor-minimal",
               "linux",
               "macos",
               "personal",
@@ -235,6 +236,10 @@
         "kitty": {
           "type": "boolean",
           "description": "Link Kitty configuration for a separately installed terminal."
+        },
+        "editor-minimal": {
+          "type": "boolean",
+          "description": "Link plugin-free Vim and Neovim configuration for an existing editor."
         },
         "neovim": {
           "type": "boolean",

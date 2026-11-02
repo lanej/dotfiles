@@ -1,10 +1,10 @@
 name: Dotfiles setup
 on:
   pull_request:
-    paths: ['.taplo.toml', 'nvim/init.lua', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['.taplo.toml', 'nvim/init.lua', 'editor-minimal/**', 'scripts/test-editor-minimal.py', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
   push:
     branches: [master]
-    paths: ['.taplo.toml', 'nvim/init.lua', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['.taplo.toml', 'nvim/init.lua', 'editor-minimal/**', 'scripts/test-editor-minimal.py', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
 permissions:
   contents: read
 jobs:
@@ -27,9 +27,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install zsh on Linux
+      - name: Install zsh and Vim on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y zsh
+        run: sudo apt-get update && sudo apt-get install -y zsh vim
       - name: Install TOML editing tools
         shell: bash
         run: |
@@ -49,6 +49,7 @@ jobs:
           echo "$schema_tools" >> "$GITHUB_PATH"
       - run: make test-dotfiles-config
       - run: make test-dotfiles-config-editor
+      - run: make test-editor-minimal
       - run: python3 scripts/test-bootstrap.py
       - run: make test-setup
       - run: make test-zsh-startup

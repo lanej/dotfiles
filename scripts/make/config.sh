@@ -122,6 +122,20 @@ case "$target" in
         check_command "${uv}"
         "${uv}" run --script "${dotfiles}/bin/sql-format-bigquery" --help >/dev/null
         ;;
+    editor-minimal)
+        editor_config_home=${XDG_CONFIG_HOME:-$setup_home/.config}
+        # Check both destinations first: never write through the full config's
+        # directory symlink or replace a user's real configuration.
+        for destination in "$setup_home/.vimrc" "$editor_config_home/nvim"; do
+            if [[ -e "$destination" && ! -L "$destination" ]]; then
+                printf 'Preserving existing configuration at %s; move it before running make editor-minimal.\n' "$destination" >&2
+                exit 1
+            fi
+        done
+        mkdir -p "$setup_home" "$editor_config_home"
+        ln -fns "$dotfiles/editor-minimal/init.vim" "$setup_home/.vimrc"
+        ln -fns "$dotfiles/editor-minimal" "$editor_config_home/nvim"
+        ;;
     vim-config)
         touch "${setup_home}/.netrc"
         mkdir -p "${setup_home}/.cache/nvim/undo"
