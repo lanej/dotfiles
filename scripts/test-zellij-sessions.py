@@ -100,9 +100,16 @@ def open_popup(terminal):
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
     terminal.prefix(b"P")
-    # Even host-targeted CLI queries probe every session socket and can crash
-    # a starting guest. First observe a fresh acknowledgement for this host,
-    # emitted by the initialized guest screen after this open's log offset.
+    # Probing before the first render can disrupt main's client registration.
+    # Observe this guest's prompt before opening any additional CLI connection.
+    terminal.until("popup renders its ready shell", lambda:
+                   f"{POPUP}:zellij-ready> ".encode() in terminal.output[rendered:])
+    # Confirm the guest through the CLI, then its host's nesting-focus indication.
+    terminal.until("popup client attaches to its ready shell", lambda:
+                   bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
+                   and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
+    # The shell can render before native nesting registration finishes. Wait
+    # for its acknowledged host before sending keys intended for the guest.
     def nested_ready():
         if not log.exists():
             return False
@@ -177,10 +184,11 @@ def detach_workflow(clients):
     target_id = (attached_ids() - original).pop()
 
     def choose(invoker=first):
+        selected_id = (attached_ids() - original).pop()
         invoker.prefix(b"D")
         until("client chooser lists both real attachments", lambda:
               "Detach one client" in floating_screen(first)
-              and f"Client {target_id}" in floating_screen(first))
+              and f"Client {selected_id}" in floating_screen(first))
         # The two rows are sorted by native ID; select the second attachment.
         invoker.send(b"\x1b[B")
 
@@ -199,18 +207,20 @@ def detach_workflow(clients):
     assert {pane["id"] for pane in first.terminals()} == panes
 
     old_attachment = attach()
-    assert attached_ids() == original | {target_id}
+    old_id = (attached_ids() - original).pop()
+    assert old_id > target_id, "the pinned runtime must allocate a fresh attachment ID"
     choose()
     old_attachment.prefix(b"d")
     until("ordinary detach closes its own attachment", lambda:
           exited(old_attachment) and attached_ids() == original)
     replacement = attach()
-    assert attached_ids() == original | {target_id}, "the reconnect must reuse the selected ID"
+    replacement_id = (attached_ids() - original).pop()
+    assert replacement_id > old_id, "the reconnect must have a new native attachment ID"
     first.send(b"\r")
     until("old chooser entry rejects the replacement attachment", lambda:
           "selected attachment changed" in floating_screen(first))
     assert not exited(replacement) and not exited(first) and not exited(unrelated)
-    assert attached_ids() == original | {target_id}
+    assert attached_ids() == original | {replacement_id}
     first.send(b"\r")
     until("stale selection closes without side effects", lambda:
           not any(p["is_floating"] for p in first.terminals()))
@@ -227,7 +237,7 @@ def detach_workflow(clients):
     assert {pane["id"] for pane in first.terminals()} == panes
     assert unrelated.action("list-clients").strip().splitlines()[1:]
     print("Client detach: cancel preserves both attachments; selection closes exactly one; "
-          "a stale entry cannot detach a completed reconnect reusing its ID; "
+          "a stale entry cannot detach a replacement attachment with a new native ID; "
           "self-selection closes its helper and reattaches to the original panes; "
           "ordinary detach and another session survive.")
 
@@ -357,7 +367,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
 
 def main():
     binary = shutil.which("zellij")
-    assert binary and shutil.which("fzf"), "Install Zellij >=0.45.1 and fzf before make test-zellij-sessions"
+    assert binary and shutil.which("fzf"), "Install the pinned Zellij runtime and fzf before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
         temporary = Path(directory).resolve()
         home = temporary / "home"
@@ -366,7 +376,8 @@ def main():
         runtime.mkdir(mode=0o700)
         temp_files = temporary / "tmp"
         temp_files.mkdir(mode=0o700)
-        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": "zellij-ready> ",
+        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh",
+               "PS1": "${ZELLIJ_SESSION_NAME}:zellij-ready> ",
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),

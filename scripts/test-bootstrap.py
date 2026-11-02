@@ -152,7 +152,7 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url == "https://codeload.github.com/zellij-org/zellij/tar.gz/efd8fd5a89a20c07a111d248ad7fce53848d2c18":
+    elif url == "https://codeload.github.com/zellij-org/zellij/tar.gz/bf517077c848d91f75091f66d1996cfeb84f4732":
         shutil.copyfile(fixture / "zellij-source.tar.gz", target)
         sys.exit(0)
     elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
@@ -223,7 +223,7 @@ elif name == "btop":
     print("btop version: 1.4.7")
 elif name == "zellij":
     assert args == ["--version"], args
-    print("zellij 0.45.1")
+    print("zellij 0.45.1" if Path(sys.argv[0]).parent == fixture else "zellij 0.46.0")
 elif name == "nvim" and args == ["--version"]:
     print("NVIM v0.12.5" if managed else "NVIM v0.11.0")
 elif name == "make" and Path.cwd() == (home / "src/oss/neovim").resolve():
@@ -243,7 +243,7 @@ elif name == "make":
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
             "codex": "codex 0.162.0", "claude": "claude 2.1.295",
             "btop": "btop version: 1.4.7",
-            "zellij": "zellij 0.45.1",
+            "zellij": "zellij 0.46.0",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
@@ -323,15 +323,25 @@ else:
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
-            "direnv", "just", "loginctl",
+            "direnv", "just", "loginctl", "zellij",
             "treehouse", "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
+        # Keep this fresh-box workflow independent of tools preinstalled on CI.
+        system_bin = home / "system-bin"
+        system_bin.mkdir()
+        missing_tools = {"tmux", "eza", "yq", "btop", "rustup"}
+        for system_dir in (Path("/usr/bin"), Path("/bin")):
+            for tool in system_dir.iterdir():
+                destination = system_bin / tool.name
+                if (tool.name not in missing_tools and tool.is_file()
+                        and os.access(tool, os.X_OK) and not destination.is_symlink()):
+                    destination.symlink_to(tool)
         env = {
             **os.environ,
             "HOME": str(home),
-            "PATH": f"{fixture}:/usr/bin:/bin",
+            "PATH": f"{fixture}:{system_bin}",
             "ATUIN_SYNC_HOST": "fixture-host",
             "XDG_CACHE_HOME": str(home / ".cache"),
             "XDG_STATE_HOME": str(home / ".local/state"),

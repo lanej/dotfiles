@@ -142,14 +142,16 @@ def client_choices(session):
             output = run_zellij("pipe", "--name", "lane-client-snapshot", "--", "list",
                                 session=session, timeout=max(0.01, deadline - time.monotonic()))
             rows = [json.loads(line) for line in output.splitlines() if line.strip()]
+            for row in rows:
+                if row.get("error"):
+                    raise RuntimeError(row["error"])
             # A new attachment can render its shell before its plugin clone is
             # ready. Use native tab metadata, which includes scrollback-editor
             # clients, to require a complete read rather than a partial picker.
             tabs = snapshot(session, "tabs", timeout=max(0.01, deadline - time.monotonic()))
             attached = {str(client) for tab in tabs for client in tab["other_focused_clients"]}
             choices = {str(row["token"]["client_id"]): row for row in rows
-                       if row["token"]["session"] == session
-                       and str(row["token"]["client_id"]) in attached}
+                       if str(row["token"]["client_id"]) in attached}
             if attached and choices.keys() == attached:
                 return choices
         except (subprocess.TimeoutExpired, json.JSONDecodeError):
@@ -172,12 +174,12 @@ def pick_client(session):
         return
     if selected not in choices:
         raise RuntimeError("Invalid client selection")
-    # The receiver compares its observed attachment epoch, then queries native
-    # client state again. Never fall back to disconnecting all other clients.
+    # The receiver compares its native attachment and plugin identity, then
+    # queries native focus again. Never disconnect all other clients.
     reply = run_zellij("pipe", "--name", "lane-client-detach", "--",
                        json.dumps(choices[selected]["token"]), session=session).strip()
     if reply != "detached":
-        raise RuntimeError(reply or "The selected attachment is unavailable; reopen the client chooser")
+        raise RuntimeError(reply or "The selected attachment changed; reopen the client chooser")
 
 
 def pick_tab(session):

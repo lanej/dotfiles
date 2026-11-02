@@ -30,5 +30,6 @@ jobs:
       - name: Install zsh on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh
+      - run: python3 scripts/test-bootstrap.py
       - run: make test-setup
       - run: make test-zsh-startup

@@ -1,33 +1,5 @@
-diff --git a/zellij-server/src/lib.rs b/zellij-server/src/lib.rs
-index 7db744b..d631955 100644
---- a/zellij-server/src/lib.rs
-+++ b/zellij-server/src/lib.rs
-@@ -707,6 +707,12 @@ impl SessionState {
-     pub fn client_ids(&self) -> Vec<ClientId> {
-         self.clients.keys().copied().collect()
-     }
-+    pub fn interactive_client_ids(&self) -> Vec<ClientId> {
-+        self.clients
-+            .iter()
-+            .filter_map(|(client_id, client_data)| client_data.map(|_| *client_id))
-+            .collect()
-+    }
-     pub fn watcher_client_ids(&self) -> Vec<ClientId> {
-         self.watchers.keys().copied().collect()
-     }
-@@ -1285,7 +1291,9 @@ pub fn start_server_impl(
-                     .unwrap();
-             },
-             ServerInstruction::UnblockInputThread => {
--                let client_ids = session_state.read().unwrap().client_ids();
-+                // CLI connections receive completion from their own route thread. A broadcast
-+                // from another client's pane closure must not finish a pending CLI action.
-+                let client_ids = session_state.read().unwrap().interactive_client_ids();
-                 for client_id in client_ids {
-                     send_to_client!(
-                         client_id,
 diff --git a/zellij-integration-tests/tests/clients.rs b/zellij-integration-tests/tests/clients.rs
-index aeda26a..b6b06d6 100644
+index aeda26a..349006e 100644
 --- a/zellij-integration-tests/tests/clients.rs
 +++ b/zellij-integration-tests/tests/clients.rs
 @@ -114,6 +114,81 @@ fn go_to_first_tab(client: &TestClient) {
@@ -47,7 +19,7 @@ index aeda26a..b6b06d6 100644
 +    let _second = split_right_marked(&zellij, zellij.main_client(), "closing-pane");
 +
 +    let (cli, _) = FakeClientOsApi::new(TERMINAL_SIZE, None);
-+    cli.connect_to_server(&zellij_utils::consts::ZELLIJ_SOCK_DIR.join(zellij.session_name()));
++    cli.connect_to_server(&zellij.socket_path());
 +    let reader = cli.clone();
 +    let (messages_tx, messages_rx) = crossbeam::channel::unbounded();
 +    let receiver_thread = std::thread::spawn(move || {
@@ -112,3 +84,31 @@ index aeda26a..b6b06d6 100644
  #[test]
  fn mirrored_sessions() {
      let mut zellij = TestRunner::new(TERMINAL_SIZE)
+diff --git a/zellij-server/src/lib.rs b/zellij-server/src/lib.rs
+index 35fe752..d8732ad 100644
+--- a/zellij-server/src/lib.rs
++++ b/zellij-server/src/lib.rs
+@@ -1685,6 +1685,12 @@ impl SessionState {
+     pub fn client_ids(&self) -> Vec<ClientId> {
+         self.clients.keys().copied().collect()
+     }
++    pub fn interactive_client_ids(&self) -> Vec<ClientId> {
++        self.clients
++            .iter()
++            .filter_map(|(client_id, client_data)| client_data.map(|_| *client_id))
++            .collect()
++    }
+     pub fn watcher_client_ids(&self) -> Vec<ClientId> {
+         self.watchers.keys().copied().collect()
+     }
+@@ -4362,7 +4368,9 @@ pub fn start_server_impl(
+                     .unwrap();
+             },
+             ServerInstruction::UnblockInputThread => {
+-                let client_ids = session_state.read().unwrap().client_ids();
++                // CLI connections receive completion from their own route thread. A broadcast
++                // from another client's pane closure must not finish a pending CLI action.
++                let client_ids = session_state.read().unwrap().interactive_client_ids();
+                 for client_id in client_ids {
+                     send_to_client!(
+                         client_id,

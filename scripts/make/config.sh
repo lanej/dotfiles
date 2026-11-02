@@ -106,6 +106,7 @@ case "$target" in
         fi
         ;;
     zellij-config)
+        python3 "$make_scripts/zellij-config.py" "$setup_home"
         status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
         mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin"
         ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"

@@ -158,7 +158,6 @@ impl ZellijPlugin for State {
                 set_selectable(false);
             }
             Event::SessionUpdate(sessions, _) => {
-                if !self.clipboard_receiver { self.clients.observe(&sessions); }
                 if !self.allowed {
                     self.allowed = true;
                     if self.clipboard_receiver {
