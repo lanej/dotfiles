@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := base
+.DEFAULT_GOAL := configure
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 # Bootstrap installs its managed runtime here even before shell setup exists.
