@@ -23,14 +23,25 @@ Manage and synchronize dotfile configurations across systems following the repos
 
 This dotfiles repository uses:
 - **Makefile**: Creates symbolic links from dotfiles to home directory
-- **bootstrap.sh**: Installs packages and dependencies
+- **bootstrap.sh**: Implements minimal bootstrap and explicit selected-tool installation
+- **bootstrap/tools.toml**: Declares tool recipes, pins, dependencies, and configuration targets
+- **config/sets/**: Composes reusable platform, tool, and context bundles
+- **Machine TOML**: Selects additional sets and individual property overrides
 - **Selective versioning**: Only commit stable/useful configurations
+
+Read [the configuration guide](../../../README.md#configuration-sets) for the
+current selection rules. Default `make` initializes a missing machine TOML and
+links the native OS baseline without Python or software installation.
+`make bootstrap` prepares uv and Python for TOML-driven commands;
+`make install` explicitly installs selected tools. `make configure` reapplies
+selected configuration. Preserve existing machine files, explicit tool disables,
+and individual overrides.
 
 ## Usage
 
 ```bash
 /dotfiles/sync [tool-name]  # Update specific tool config
-/dotfiles/sync all          # Update all configs
+/dotfiles/sync all          # Apply the machine's selected configuration
 /dotfiles/sync              # Interactive mode
 ```
 
@@ -40,6 +51,11 @@ This dotfiles repository uses:
 
 **If tool name provided in `$ARGUMENTS`:**
 - Use specified tool (e.g., "zsh", "nvim", "git")
+- Resolve its existing Make target; Neovim uses `make vim`, not `make nvim`.
+
+**If `all` is provided:**
+- Apply the machine's selected configuration with `make configure`.
+- Do not enable every repository tool or replace the machine's selected sets.
 
 **If no arguments:**
 - Ask user which tool to configure
@@ -66,8 +82,10 @@ ls -la ~/.config/<tool>/
 ```
 
 **Review existing configuration:**
+- Read the machine file selected by `DOTFILES_CONFIG`, or `$XDG_CONFIG_HOME/dotfiles/config.toml` (default `~/.config/dotfiles/config.toml`).
+- Run `make config` and `make plan` to inspect effective properties, their sources, and selected recipes before applying changes.
 - Read current dotfiles: `~/.files/<tool>/`
-- Check Makefile target: `grep -A 10 "^<tool>:" ~/.files/Makefile`
+- Read the existing Make target and its helper script.
 - Identify linked files and their sources
 
 ### 3. Make Configuration Changes
@@ -86,12 +104,24 @@ ls -la ~/.config/<tool>/
 - Remove deprecated settings
 - Reorganize structure
 
+For a new tool, declare its recipe and configuration targets in
+`bootstrap/tools.toml`, reuse the bootstrap installers, and add its `tools.<name>`
+switch to the appropriate reusable set. Keep machine-specific selections and
+overrides in the private machine TOML.
+
 ### 4. Test Configuration
 
 **Install/reinstall the configuration:**
 ```bash
 cd ~/.files
 make <tool>
+```
+
+For `all`, preview and apply the selected plan instead:
+
+```bash
+make plan
+make configure
 ```
 
 **Verify the changes:**
@@ -150,7 +180,7 @@ make <tool>
 # Workflow:
 # 1. Edit ~/.files/nvim/lua/plugins/<plugin-file>.lua
 # 2. Add plugin configuration
-# 3. Run: make nvim
+# 3. Run: make vim
 # 4. Test: nvim (verify plugin loads)
 # 5. Commit if stable: git add -f nvim/lua/plugins/<file>.lua
 ```
@@ -161,7 +191,7 @@ make <tool>
 /dotfiles/sync zsh
 
 # Workflow:
-# 1. Edit ~/.files/sh/aliases (shared across shells)
+# 1. Edit ~/.files/sh/alias (shared across shells)
 # 2. Add/modify aliases
 # 3. Run: make zsh
 # 4. Test: source ~/.zshrc
@@ -174,22 +204,23 @@ make <tool>
 /dotfiles/sync kitty
 
 # Workflow:
-# 1. Create ~/.files/kitty/kittyconf (if not exists)
+# 1. Create ~/.files/kitty/kitty.conf (if not exists)
 # 2. Add configuration
 # 3. Update Makefile with kitty target (if needed)
+#    Declare its recipe in bootstrap/tools.toml and select it through a set.
 # 4. Run: make kitty
 # 5. Test: kitty --version
 ```
 
-### Scenario 4: Sync All Configs
+### Scenario 4: Apply Selected Configuration
 
 ```bash
 /dotfiles/sync all
 
 # Workflow:
-# 1. Run: make (installs all targets)
-# 2. Verify all symbolic links
-# 3. Test each tool
+# 1. Run: make plan (inspect the baseline and selected additions)
+# 2. Run: make configure (apply that selection)
+# 3. Verify the selected configuration links and tools
 ```
 
 ## File Structure Reference
@@ -198,6 +229,8 @@ make <tool>
 ~/.files/
 ├── Makefile              # Installation targets
 ├── bootstrap.sh          # Dependency installer
+├── bootstrap/tools.toml  # Tool recipes and configuration targets
+├── config/sets/          # Reusable configuration bundles
 ├── <tool>/               # Tool-specific configs
 │   ├── config-file       # Main config
 │   └── subdir/           # Additional configs
@@ -212,10 +245,12 @@ make <tool>
 ## Makefile Target Pattern
 
 ```makefile
-<tool>:
-	@mkdir -p $(HOME)/.config/<tool>
-	@ln -fs $(DOTFILES)/<tool>/config $(HOME)/.config/<tool>/config
+<tool>-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 ```
+
+Keep Make declarative. Add configuration logic to the helper script and declare
+the target in the tool catalog's `setup` list.
 
 ## Important Notes
 
@@ -236,7 +271,7 @@ make <tool>
 ```
 
 **Makefile target not found:**
-- Check available targets: `make help` or `grep "^[a-z]" Makefile`
+- Read the Makefile and tool catalog to find the supported target or alias.
 - Create new target if needed
 - Follow existing pattern
 
@@ -258,6 +293,6 @@ make <tool>
 | Update ZSH | `/dotfiles/sync zsh` |
 | Update Neovim | `/dotfiles/sync nvim` |
 | Update Git | `/dotfiles/sync git` |
-| Install all | `/dotfiles/sync all` |
+| Apply selected sets | `/dotfiles/sync all` |
 | Reinstall tool | `cd ~/.files && make <tool>` |
 | Commit config | `git add -f <tool>/<file> && git commit` |
