@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - 'bin/pi-review'
-      - 'scripts/pi-review.mjs'
       - 'scripts/test-pi-review.mjs'
       - 'ai/skills/dispatcher/scripts/dispatcher-worker'
       - 'ai/skills/dispatcher/SKILL.md'
@@ -18,7 +17,6 @@ on:
     branches: [master]
     paths:
       - 'bin/pi-review'
-      - 'scripts/pi-review.mjs'
       - 'scripts/test-pi-review.mjs'
       - 'ai/skills/dispatcher/scripts/dispatcher-worker'
       - 'ai/skills/dispatcher/SKILL.md'
