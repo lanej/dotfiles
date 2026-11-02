@@ -255,6 +255,7 @@ def main():
         print("# Regenerate: python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk")
         for host, uname in (("macos", "Darwin"), ("linux", "Linux")):
             native = resolve(None, {}, host=host)
+            print(f"DOTFILES_NATIVE_SET_{uname} := {host}")
             print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['setup'])}")
         print(f".PHONY: {' '.join(native['all_setup'])}")
         return

@@ -30,7 +30,8 @@ endef
 config-value = $(strip $(resolve-dotfiles-config)$($(1)))
 comma := ,
 SETUP_TARGETS = $(subst $(comma), ,$(call config-value,DOTFILES_SETUP_TARGETS))
-BASE_TARGETS = $(if $(filter undefined,$(origin DOTFILES_NATIVE_TARGETS_$(UNAME_S))),$(error Unsupported OS $(UNAME_S)),$(DOTFILES_NATIVE_TARGETS_$(UNAME_S)))
+NATIVE_SET = $(or $(DOTFILES_NATIVE_SET_$(UNAME_S)),$(error Unsupported OS $(UNAME_S)))
+BASE_TARGETS = $(DOTFILES_NATIVE_TARGETS_$(UNAME_S))
 
 # The runner reports every step and returns failure only after trying them all.
 all setup: configure
@@ -39,7 +40,10 @@ all setup: configure
 bootstrap install:
 	@bash "$(DOTFILES)/bootstrap.sh" "$@"
 
-.PHONY: config plan test-dotfiles-config test-dotfiles-config-editor
+.PHONY: config-init config plan test-dotfiles-config test-dotfiles-config-editor
+config-init:
+	@bash "$(MAKE_SCRIPTS)/init-config.sh" "$(HOME)" "$(NATIVE_SET)"
+
 config:
 	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)"
 
@@ -54,6 +58,7 @@ test-dotfiles-config-editor:
 	$(call require-command,taplo)
 	@nvim --headless -u NONE -i NONE -n -l "$(DOTFILES)/nvim/tests/dotfiles-config-schema.lua"
 
+base: config-init
 base: SELECTED_TARGETS = $(BASE_TARGETS)
 configure: SELECTED_TARGETS = $(SETUP_TARGETS)
 base configure:

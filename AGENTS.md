@@ -16,6 +16,7 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
+make           # Initialize the machine TOML and native OS baseline
 make bootstrap # Native macos or linux baseline plus uv and Python
 make plan      # Inspect the selected tool bundles
 make install   # Install selected tools and apply their configuration
@@ -31,8 +32,9 @@ selected Make targets and bootstrap phases from that catalog. Default `make`
 applies the native OS baseline; `make configure` adds the configured bundles.
 Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed.
 Configuration symlink rules remain in the `Makefile` and its helper scripts.
-Default `make` links only the built-in native baseline without Python or machine
-TOML; `make configure` applies the full resolved configuration without installing
+Default `make` initializes a missing machine TOML with the detected native set
+and links the built-in baseline without Python. Preserve existing machine files
+and symlinks. `make configure` applies the full resolved configuration without installing
 packages. Keep `config/targets.mk` generated from the native sets and tool catalog
 with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`.
 Do not add tools to an unconditional install or setup list.

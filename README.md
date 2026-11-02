@@ -6,19 +6,18 @@ Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux
 
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
-$ mkdir -p ~/.config/dotfiles
-$ cp config/example.toml ~/.config/dotfiles/config.toml
-$ # Edit the additional tool and work-context sets before applying them.
+$ make           # initialize the native baseline and its machine TOML
+$ # Add tool and work-context sets to ~/.config/dotfiles/config.toml.
 $ make bootstrap # native OS configuration plus uv and Python
 $ make plan      # preview the selected tools and configuration
 $ make install   # install and configure the selected tool sets
 ```
 
-Installation has two stages. `make bootstrap` (or `bash bootstrap.sh`) applies the built-in native OS baseline and installs only uv and Python, without reading machine TOML or installing optional tools. `make install` (or `bash bootstrap.sh install`) validates this machine's [configuration sets](#configuration-sets), installs their tools, and applies their configuration and integrations. It also ensures uv and Python are available, so it can be run directly or retried independently. Both stages operate on the current checkout without pulling updates.
+Default `make` installs configuration only. Software installation has two explicit stages. `make bootstrap` (or `bash bootstrap.sh`) applies the built-in native OS baseline and installs only uv and Python, without reading machine TOML or installing optional tools. `make install` (or `bash bootstrap.sh install`) validates this machine's [configuration sets](#configuration-sets), installs their tools, and applies their configuration and integrations. It also ensures uv and Python are available, so it can be run directly or retried independently. Both stages operate on the current checkout without pulling updates.
 
 Select `workstation` for the broad installation, add work-context sets, and override individual properties as needed. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
 
-`make` defaults to `base`, which detects the OS and links its built-in baseline without Python or a machine file. `make shell git` also links basic shell and Git configuration without Python. After bootstrap, `make configure` applies the baseline plus selected bundles and individual overrides without installing packages; `make setup` and `make all` are aliases for that configuration step. Both configuration paths print a checklist: green `✓` for completed
+`make` defaults to `base`, which detects the OS and links its built-in baseline without Python. It also creates a missing machine TOML with `sets = ["macos"]` or `sets = ["linux"]`, respecting `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`; existing files and symlinks are preserved. `make shell git` also links basic shell and Git configuration without Python. After bootstrap, `make configure` applies the baseline plus selected bundles and individual overrides without installing packages; `make setup` and `make all` are aliases for that configuration step. Both configuration paths print a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
 `uv`, or `jq` do not stop other setup steps, and configuration links are installed
 independently of optional integrations. It exits nonzero after the full checklist
@@ -76,9 +75,9 @@ those entrypoints. Missing external skill sources are reported and skipped.
 The built-in native baseline and basic linking targets such as `make shell git` need only Make, Bash, and standard system utilities. Python 3.11+ is required for configuration-driven targets such as `make configure`, `make config`, and `make plan`; `make bootstrap` installs that runtime before the full installation stage.
 
 ```sh
-mkdir -p ~/.config/dotfiles
-cp config/example.toml ~/.config/dotfiles/config.toml
+make # Initialize the machine TOML with the detected native set.
 # Edit the selected sets, then inspect their resolved settings and source files.
+make bootstrap
 make config
 ```
 
