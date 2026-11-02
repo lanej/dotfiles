@@ -26,6 +26,7 @@ def _build_executables(bin_dir, calls_log, uname_value):
         resolved = shutil.which(tool)
         assert resolved, f"{tool} must be resolvable on PATH to run this test"
         (bin_dir / tool).symlink_to(resolved)
+    (bin_dir / "python3").symlink_to(sys.executable)
 
     def write_script(name, body):
         script = bin_dir / name
@@ -56,12 +57,17 @@ sys.exit(0)
 def _run_schedule(tmp_path, uname_value):
     home = tmp_path / f"home-{uname_value}"
     home.mkdir()
+    machine_config = home / ".config/dotfiles/config.toml"
+    machine_config.parent.mkdir(parents=True)
+    machine_config.write_text('sets = ["personal"]\n')
     calls_log = tmp_path / f"calls-{uname_value}.jsonl"
     calls_log.write_text("")
     executables = _build_executables(tmp_path / f"bin-{uname_value}", calls_log, uname_value)
 
-    env = dict(os.environ, PATH=str(executables), IS_EASYPOST="false",
+    env = dict(os.environ, PATH=str(executables), DOTFILES_CONFIG=str(machine_config),
                TEST_CALLS_LOG=str(calls_log))
+    env.pop("IS_EASYPOST", None)
+    env.pop("BOOTSTRAP_MERMAID", None)
     command = [shutil.which("make"), "claude-json-prune-schedule",
                f"DOTFILES={ROOT}", f"HOME={home}"]
     result = subprocess.run(command, cwd=str(ROOT), env=env,
