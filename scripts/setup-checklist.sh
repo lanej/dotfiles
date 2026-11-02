@@ -37,6 +37,6 @@ for target in "$@"; do
 done
 printf '\n%d completed; %d incomplete.\n' "$completed" "$failed"
 if ((failed)); then
-    printf 'Fix the reported issues and rerun make to finish setup.\n'
+    printf 'Fix the reported issues and rerun the same make target to finish setup.\n'
     exit 1
 fi

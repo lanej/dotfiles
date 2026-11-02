@@ -29,11 +29,9 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
-### Pi subagents
+### Firstmate through Paseo and GitHub
 
-[pi-subagents](https://github.com/nicobailon/pi-subagents), pinned to 0.84.0 with Pi 1.4.0, supplies native worker sessions, managed worktrees, verification evidence, and fresh reviews for the [Pi dispatcher workflow](pi-dispatcher-review.md). The parent retains request authorization, resource locks, integration checks, and finish policy.
-
-The native fixture exercises an isolated fix through review and patch integration. Revisit adoption after a live provider run and FirstMate/Paseo completion and recovery checks.
+[Firstmate mobile workflow](firstmate-mobile.md): one Paseo conversation coordinates work, while assigned Pi sessions handle GitHub feedback directly through native Firstmate task records and steering inboxes. This replaces the standalone Claude dispatchers. Keep it opt-in pending live Bedrock/provider, upstream supervision, and phone reconnect evidence described in [#134](https://github.com/lanej/dotfiles/issues/134).
 
 ### Zellij
 

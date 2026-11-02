@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""One default-setup workflow: partial install, dependency repair, safe rerun."""
+"""One setup workflow: selected configuration, minimal base, repair, safe rerun."""
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,7 +39,6 @@ def main():
                      "pwd", "readlink", "rm", "sed", "sort", "tail", "touch", "tr",
                      "uname", "wc"):
             (executables / name).symlink_to(shutil.which(name))
-        (executables / "python3").symlink_to(sys.executable)
         git = executables / "git"
         git.write_text('#!/bin/sh\nif [ "$1" = clone ]; then\n'
                        '  echo "Fixture network unavailable" >&2; exit 1\nfi\n'
@@ -52,15 +52,68 @@ def main():
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
+        machine_config = home / ".config/dotfiles/config.toml"
         env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
-        dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
+
+        # Basic linking must work before bootstrap provides Python. Use the
+        # same restricted PATH on developer machines and CI runners alike.
+        minimal_home = temporary / "minimal-home"
+        minimal_home.mkdir()
+        minimal_env = {**env, "HOME": str(minimal_home)}
+        minimal_preview = subprocess.run([*command, "-n", "shell", "git"], cwd=repo, env=minimal_env,
+                                         capture_output=True, text=True, timeout=30)
+        assert minimal_preview.returncode == 0, minimal_preview.stdout + minimal_preview.stderr
+        assert snapshot(minimal_home) == {}, "make -n must not install configuration"
+        minimal = subprocess.run([*command, "shell", "git"], cwd=repo, env=minimal_env,
+                                 capture_output=True, text=True, timeout=30)
+        assert minimal.returncode == 0, minimal.stdout + minimal.stderr
+        assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
+        assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+
+        dry_run = subprocess.run([*command, "-n", "base"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
+
+        # NOTE: Explicit base remains usable before Python and optional tools are installed.
+        native = subprocess.run([*command, "base"], cwd=repo, env=env,
+                                capture_output=True, text=True, timeout=30)
+        assert native.returncode == 0, native.stdout + native.stderr
+        native_path = ".config/yabai/yabairc" if sys.platform == "darwin" else ".xinitrc"
+        assert (home / native_path).is_symlink()
+        assert machine_config.is_file(), "make base must initialize the machine TOML."
+        platform_set = "macos" if sys.platform == "darwin" else "linux"
+        assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
+        assert not (home / ".bashrc").exists()
+        assert not (home / ".config/nvim").exists()
+
+        # NOTE: Minimal setup preserves selected sets for the configuration stage.
+        machine_config.write_text('# Local preferences\nsets = ["shell"]\n[tools]\nmermaid = false\n')
+        local_config = machine_config.read_bytes()
+        native_again = subprocess.run([*command, "base"], cwd=repo, env=env,
+                                      capture_output=True, text=True, timeout=30)
+        assert native_again.returncode == 0, native_again.stdout + native_again.stderr
+        assert machine_config.read_bytes() == local_config
+
+        (executables / "python3").symlink_to(sys.executable)
+        # NOTE: Plain make must apply the chosen bundles to that same baseline.
+        configure = command
+        selected_preview = subprocess.run([*configure, "-n"], cwd=repo, env=env,
+                                          capture_output=True, text=True, timeout=30)
+        assert selected_preview.returncode == 0, selected_preview.stdout + selected_preview.stderr
+        assert machine_config.read_bytes() == local_config
+        assert not (home / ".bashrc").exists(), "make -n applied selected configuration"
+        selected_only = subprocess.run(configure, cwd=repo, env=env,
+                                       capture_output=True, text=True, timeout=30)
+        assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
+        assert not (home / ".config/nvim").exists()
+        assert not (home / ".tmux.conf").exists()
+        assert not (home / "broker-installed").exists()
+        machine_config.write_text('sets = ["workstation"]\n')
 
         # The opt-in multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
@@ -77,7 +130,7 @@ def main():
         entrypoint = repo / "ai/skills/builder/SKILL.md"
         entrypoint_bytes = entrypoint.read_bytes()
         entrypoint.unlink()
-        missing = subprocess.run(command, cwd=repo, env=env,
+        missing = subprocess.run(configure, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert missing.returncode != 0, missing.stdout + missing.stderr
         assert "\033[31m✗\033[0m software-standard" in missing.stdout, missing.stdout
@@ -86,7 +139,7 @@ def main():
         assert not (home / ".local/share/software-standards/builder").exists()
         entrypoint.write_bytes(entrypoint_bytes)
 
-        partial = subprocess.run(command, cwd=repo, env=env,
+        partial = subprocess.run(configure, cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert partial.returncode != 0, partial.stdout + partial.stderr
         assert "\033[31m✗\033[0m tmux-plugins" in partial.stdout, partial.stdout + partial.stderr
@@ -168,7 +221,7 @@ def main():
         local_plugin = home / ".config/tmux/plugins/local-plugin/settings.conf"
         local_plugin.parent.mkdir(parents=True)
         local_plugin.write_text("user-managed plugin configuration\n")
-        repaired = subprocess.run(command, cwd=repo, env=env,
+        repaired = subprocess.run(configure, cwd=repo, env=env,
                                   capture_output=True, text=True, timeout=30)
         assert "\033[32m✓\033[0m tmux-plugins" in repaired.stdout, repaired.stdout
         assert local_plugin.read_text() == "user-managed plugin configuration\n"
@@ -181,7 +234,7 @@ def main():
         # A subsequent run must leave a user's existing tmux session and all
         # installed file contents/symlink destinations unchanged.
         Path(env["SETUP_TMUX_STATE"]).write_text("user-session")
-        repeated = subprocess.run(command, cwd=repo, env={**env, "NO_COLOR": "1"},
+        repeated = subprocess.run(configure, cwd=repo, env={**env, "NO_COLOR": "1"},
                                   capture_output=True, text=True, timeout=30)
         assert repeated.returncode == repaired.returncode
         assert "✓ tmux-plugins" in repeated.stdout, repeated.stdout
@@ -189,7 +242,7 @@ def main():
         assert snapshot(home) == installed, "rerun changed installed configuration"
         assert Path(env["SETUP_TMUX_STATE"]).read_text() == "user-session"
         assert not (home / "broker-started").exists(), "rerun started the broker"
-        print("PASS: default make gates OS tools, reports partial setup, and preserves installed configuration, local plugins, and user sessions on retry.")
+        print("PASS: make applies selected configuration, make base stays minimal, and retries preserve installed configuration and user sessions.")
 
 
 if __name__ == "__main__":

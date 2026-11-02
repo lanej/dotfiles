@@ -7,6 +7,10 @@ dotfiles=$2
 # shellcheck source-path=SCRIPTDIR source=../../bootstrap.sh
 source "$dotfiles/bootstrap.sh"
 case "$task" in
+    zellij-runtime)
+        prepare_bootstrap_environment
+        install_zellij_runtime
+        ;;
     bedrock-router)
         prepare_bootstrap_environment
         setup_bedrock_router

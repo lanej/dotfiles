@@ -6,13 +6,50 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import socket
 import subprocess
 import tempfile
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
 Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
 POPUP = "dotfiles-popup"
+
+
+def prove_popup_startup(binary, env, runtime):
+    """A discovery connection must not kill a guest before its first client."""
+    name = "starting-" + runtime.parent.name
+    path = runtime / "contract_version_1" / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    log = Path(env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
+    try:
+        subprocess.run([binary, "--server", str(path)], env=env, check=True,
+                       capture_output=True, text=True, timeout=5)
+        deadline = time.monotonic() + 5
+        while not path.exists():
+            assert time.monotonic() < deadline, "uninitialized guest socket did not appear"
+            time.sleep(0.01)
+        with socket.socket(socket.AF_UNIX) as probe:
+            probe.settimeout(5)
+            probe.connect(str(path))
+            probe.shutdown(socket.SHUT_WR)
+            # EOF acknowledges that native removal released its connection;
+            # keep the first real client absent throughout this controlled gap.
+            while probe.recv(4096):
+                pass
+        result = subprocess.run([binary, "list-sessions", "--short", "--no-formatting"],
+                                env=env, capture_output=True, text=True, timeout=5)
+        assert result.returncode == 0 and name in result.stdout.splitlines(), "\n".join([
+            "Guest server did not survive a connection closing before its first client",
+            result.stdout, result.stderr,
+            log.read_text()[-4000:] if log.exists() else "No native log",
+        ])
+    finally:
+        # This name is scoped to the workflow's private socket directory.
+        subprocess.run([binary, "kill-session", "--", name], env=env,
+                       capture_output=True, timeout=5)
+    print("Popup startup: a native server survives an acknowledged early IPC disconnect.")
 
 
 def tab_is_dimmed(terminal, name, offset):
@@ -50,8 +87,10 @@ def open_popup(terminal):
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
     terminal.prefix(b"P")
-    # The outer pane can render later than its attached guest. Observe the
-    # guest directly, then its host's visible nesting-focus indication.
+    # Observe this guest's ready shell before querying its session metadata.
+    terminal.until("popup renders its ready shell", lambda:
+                   f"{POPUP}:zellij-ready> ".encode() in terminal.output[rendered:])
+    # Confirm the guest through the CLI, then its host's nesting-focus indication.
     terminal.until("popup client attaches to its ready shell", lambda:
                    bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
                    and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
@@ -207,7 +246,8 @@ def main():
         runtime.mkdir(mode=0o700)
         temp_files = temporary / "tmp"
         temp_files.mkdir(mode=0o700)
-        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": "zellij-ready> ",
+        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh",
+               "PS1": "${ZELLIJ_SESSION_NAME}:zellij-ready> ",
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
@@ -223,6 +263,7 @@ def main():
         names = ["first-" + temporary.name, "second-" + temporary.name]
         clients = []
         try:
+            prove_popup_startup(binary, env, runtime)
             for name in names:
                 terminal = Terminal(binary, env, name)
                 clients.append(terminal)

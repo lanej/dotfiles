@@ -1,0 +1,6 @@
+[codex]
+github_enabled = true
+
+[tools]
+ep-direnv = false
+bedrock = false

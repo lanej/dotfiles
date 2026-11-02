@@ -11,8 +11,9 @@ on:
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
-      - 'scripts/make/hostname.sh'
+      - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
+      - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -32,8 +33,9 @@ on:
       - 'scripts/test-zellij*.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
-      - 'scripts/make/hostname.sh'
+      - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
+      - 'scripts/install-zellij'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -53,7 +55,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -69,12 +71,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Zellij 0.45.1
-        shell: bash
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config openssl@3
+      - name: Cache native Zellij build
+        uses: actions/cache/restore@v4
+        id: zellij_cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+          restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install pinned Zellij fork
+        id: zellij_install
         run: |
-          source ./bootstrap.sh
-          install_zellij_from_release 0.45.1
+          bash scripts/install-zellij
+          "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Install Treehouse 3.1.6
         shell: bash
         run: |
@@ -102,10 +129,15 @@ jobs:
           curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/zellij-tools"
           echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-firstmate
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         env:
           FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
           TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-sessions
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

@@ -8,16 +8,22 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 ## Start a session
 
-Use **Zellij 0.45.1 or newer**, Python 3, and fzf. Neovim is used to edit scrollback. `bootstrap.sh` installs the required Zellij version through the existing minimum-version installer, retaining a newer installed version; its release fallback verifies the executable's upstream checksum. On macOS, `brew install zellij fzf` also installs the two terminal tools.
+Use the **pinned [lanej/zellij fork](https://github.com/lanej/zellij)** installed by this checkout, Python 3 for the configuration helpers, fzf, and Rust through rustup. The selected Zellij recipe defaults to the exact fork revision in [`scripts/install-zellij`](../scripts/install-zellij). The fork builds on upstream `main` at `bf517077`, which includes [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) and the startup repair; it carries the CLI completion, shutdown flush, and initial-client registration fixes with their native regressions. Select the runtime explicitly through [configuration sets](../README.md#configuration-sets): `tools.zellij = true` enables the recipe; `zellij.source = "patched"` installs the fork, `"release"` installs upstream stable, and `"main"` builds pinned upstream main without the fork's fixes. The `terminal` and `workstation` bundles enable Zellij. The main and release choices omit the fork's fixes; the documented popup, query, and shutdown acceptance applies to the patched runtime. The native builds use Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback. Return the default pin to a stable release once it includes OSC support and these reliability fixes; broker delivery remains separate integration work.
+
+The first native build takes longer than installing an upstream binary and needs a C/C++ compiler, Make, CMake, pkg-config, and OpenSSL development files. `make install` installs those build dependencies when Zellij is selected. On macOS, install Xcode command line tools and run `brew install cmake pkg-config openssl@3 fzf`. Cargo uses the fork's lockfile and caches compilation artifacts under `${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target`. Each fork installation replaces the executable, including binaries left by the previous installer, while reusing the build cache. Cargo manages installation ownership and locking. The stock Homebrew or upstream 0.45.1 executable does not include these fixes.
+
+The fork also preserves the initial terminal client's registration when a temporary CLI connection closes before the first layout. A client that really disconnects remains absent when that late layout finishes. Existing session servers need a restart to use this repair.
 
 From the dotfiles checkout:
 
 ```sh
-make zellij
+make zellij-runtime zellij
 zellij attach --create main
 ```
 
-`make zellij` installs configuration and helpers; it does not install the binary or start a session. Default `make` also installs this configuration. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
+`make config` shows the selected source before installation. `make zellij-runtime` installs that runtime, replacing the managed executable even when switching from a newer development version back to stable. `make zellij` installs configuration and helpers without installing a runtime or starting a session. `make configure` also applies this configuration when Zellij is selected. Setup records Zellij's native "never show again" choice for its configuration wizard, preserving other desktop settings, so the wizard does not block the managed keybindings on first launch. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
+
+Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. The fork reports the pinned upstream version, `0.46.0`, and includes its matching bundled plugins.
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
@@ -70,7 +76,7 @@ Clipboard copying uses OSC 52, including over SSH. Use the terminal's paste shor
 
 ## Smart editor and shell navigation
 
-Bare **Ctrl-h/j/k/l** move among Neovim splits first, then cross into the adjacent Zellij pane at an editor boundary. They work in normal and insert modes. The same keys at the configured **Zsh prompt** move back into Neovim or another pane, preserving a partially typed command. Run `make zellij zsh-config vim-config` and restart the shell/editor to install both sides.
+Bare **Ctrl-h/j/k/l** move among Neovim splits first, then cross into the adjacent Zellij pane at an editor boundary. They work in normal and insert modes. The same keys at the configured **Zsh prompt** move back into Neovim or another pane, preserving a partially typed command. `make zellij` installs both the navigation commands and the Zsh keybindings. After updating, run `make zellij` and `exec zsh` in existing shell panes. A fresh shell/editor installation also needs `make zsh-config vim-config`; restart Neovim after installing its configuration.
 
 Navigation stays in the current tab and does not leave a zoomed pane. Internal Neovim split movement continues while zoomed; use `Ctrl-f z` to restore the outer layout before crossing a pane boundary. Outside Zellij, Zsh keeps its normal Ctrl-h/backspace binding and Neovim keeps Navigator's existing tmux/WezTerm detection. The shared `zellij-context provider` helper identifies the nearest live multiplexer from process ancestry: Zellij inside tmux navigates its own panes, and tmux inside Zellij retains tmux navigation despite inherited outer environment variables.
 
@@ -96,7 +102,7 @@ The popup has one shell, no inner tab bar or status plugin, and a 10,000-line li
 
 Automatic nesting focus applies to other compatible Zellij sessions too, including sessions reached over SSH. With these dotfiles in the guest, **Ctrl-f u** returns to its containing session without detaching; **Ctrl-f i** in the host enters its focused nested session again. A guest with another configuration uses its own `FocusHostSession` binding (upstream 0.45.1 defaults to Ctrl-o, then `]`). Detaching the guest also returns control to its host.
 
-**Ctrl-f Ctrl-q** in the main configuration opens a confirmation naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients, or press Enter or Ctrl-c to cancel. The helper checks the owning server's Unix socket identity again before executing, rejecting a session that was renamed or replaced while confirmation was open. This ends one Zellij session and its server; other sessions, including a separately running popup, continue. **Ctrl-f d** still detaches the current client without shutting down its session.
+**Ctrl-f Ctrl-q** in the main configuration opens a confirmation naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients, or press Enter or Ctrl-c to cancel. The helper checks the owning server's Unix socket identity again before executing; development builds also check Zellij's session-ID index. It rejects a session that was renamed or replaced while confirmation was open. This ends one Zellij session and its server; other sessions, including a separately running popup, continue. **Ctrl-f d** still detaches the current client without shutting down its session.
 
 **Selected-client detachment remains unsupported.** Prefix `D` is unbound. Stable 0.45.1 exposes a client list and current-client detach, but its CLI has no client-ID detach argument; the plugin API's disconnect-other-clients action affects every other client. Use `zellij action list-clients` to inspect the current session and detach from the intended client's terminal. A chooser must wait for a genuinely targeted API.
 
@@ -141,7 +147,7 @@ make test-zellij-layout
 make test-zellij-sessions
 ```
 
-The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against Zellij 0.45.1. They do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
+The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned fork revision as bootstrap. Native Rust regressions live with the fixes in the fork. These checks do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
 

@@ -1293,6 +1293,7 @@ require("lazy").setup({
 					"bqls",
 					-- "ruby_lsp",
 					"jsonls",
+					"taplo",
 					"pylsp",
 					"html",
 					"yamlls",

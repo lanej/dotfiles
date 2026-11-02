@@ -1,0 +1,33 @@
+name: Firstmate GitHub feedback
+
+on:
+  pull_request:
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', 'Makefile', '.github/workflows/firstmate-github.yml']
+  push:
+    branches: [master]
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', 'Makefile', '.github/workflows/firstmate-github.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  feedback:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: kunchenguid/firstmate
+          ref: 21180385d1cb782941df13ed91ba7c44f0d76351
+          path: .firstmate-upstream
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --prefix /tmp/firstmate-github-runtime --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.4.0 @getpaseo/server@0.14.0 @getpaseo/cli@0.14.0 tasks-axi@0.2.6
+      - run: make test-firstmate-github
+        env:
+          FIRSTMATE_TEST_RUNTIME: /tmp/firstmate-github-runtime
+          FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream

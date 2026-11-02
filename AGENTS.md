@@ -5,8 +5,9 @@
 This repository manages Josh Lane's personal configuration files ("dotfiles")
 and development environment setup, portable across macOS and Linux. The
 `Makefile` symlinks configuration from this repo (`~/.files`) into the home
-directory; `bootstrap.sh` installs system packages and tools (Neovim, Rust,
-fzf, and others) via OS-specific package managers or direct downloads.
+directory. `make bootstrap` applies the built-in OS baseline and installs uv
+and Python; `make install` installs selected tools (Neovim, Rust, fzf, and
+others) via the installers in `bootstrap.sh`, then applies configuration.
 Primary shell is Zsh (`zsh-autosuggestions`, syntax-highlighting, starship
 prompt); primary editor is Neovim (Lua config in `nvim/`).
 
@@ -15,17 +16,14 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
-make          # Symlinks configuration files to ~
-./bootstrap.sh # Installs packages and dependencies
+make base      # Initialize the machine TOML and native OS baseline
+# Add this machine's tool and work-context sets to its TOML.
+make bootstrap # Native macos or linux baseline plus uv and Python
+make plan      # Inspect the selected tool bundles
+make install   # Install selected tools and apply their configuration
 ```
 
-Always edit files within `~/.files`, not the symlinked targets under `~`.
-Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on
-shell/editor reload because they're symlinked. Adding a *new* file to be
-symlinked requires a corresponding rule in the `Makefile` plus a re-run of
-`make`. New tools are added to `bootstrap.sh` (use `install_package_version`
-to pin a specific version) and, if they need config symlinked, to the
-`Makefile`.
+Always edit files within `~/.files`, not the symlinked targets under `~`. Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on shell/editor reload because they're symlinked. Adding a *new* file to be symlinked requires a corresponding rule in the `Makefile` plus a re-run of its target, or `make` when that target's recipe is selected. Declare tool recipes and version pins in `bootstrap/tools.toml`, then group their `tools.<name>` switches under `config/sets/`. The resolver derives selected Make targets and bootstrap phases from that catalog. Default `make` applies the full resolved configuration, including selected bundles and individual overrides, without installing packages; `make configure`, `make setup`, and `make all` are aliases. It requires Python 3.11+, installed by `make bootstrap`. Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed. Configuration symlink rules remain in the `Makefile` and its helper scripts. `make base` initializes a missing machine TOML with the detected native set and links only the built-in baseline without Python. Preserve existing machine files and symlinks. Keep `config/targets.mk` generated from the native sets and tool catalog with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`. Do not add tools to an unconditional install or setup list.
 
 ## Development Conventions
 

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Enforce development cache budgets using native cache managers."""
+"""Enforce development cache budgets, retaining cache entries still in use."""
 import argparse
 import fcntl
+import hashlib
 import json
 import math
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -100,7 +103,7 @@ def external_links(user_home):
         ".paseo/worktrees", ".local/share/uv/tools", ".local/bin", ".cargo/bin"
     )]
     temporary = [Path("/tmp").resolve(), Path(tempfile.gettempdir()).resolve()]
-    system_temp_names = {"homed", "icdd"}
+    system_temp_names = {"homed", "icdd", "gamed"}
     if sys.platform == "darwin":
         system = run(["ps", "-axww", "-o", "comm="])
         if system.returncode:
@@ -175,6 +178,213 @@ def dedicated_go_modules(path):
 def identity(path):
     info = path.stat()
     return info.st_dev, info.st_ino
+
+
+def trim_go_build(path, measured, limit, user_home, dry_run):
+    # Go refreshes last-use mtimes at most once an hour, and its cache contract
+    # recommends keeping at least a day's recent outputs during concurrent use.
+    cutoff = time.time() - 25 * 60 * 60
+    original_identity = identity(path)
+    candidates = []
+    entry_name = re.compile(r"^[0-9a-f]{64}-[ad]$")
+    for bucket in path.iterdir():
+        if not re.fullmatch(r"[0-9a-f]{2}", bucket.name) or bucket.is_symlink():
+            continue
+        if not bucket.is_dir():
+            continue
+        bucket_identity = identity(bucket)
+        with os.scandir(bucket) as entries:
+            for entry in entries:
+                if not entry_name.fullmatch(entry.name) or not entry.name.startswith(bucket.name):
+                    continue
+                if entry.is_symlink():
+                    continue
+                try:
+                    info = entry.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if info.st_mtime >= cutoff:
+                    continue
+                if not stat.S_ISREG(info.st_mode) and not (
+                    stat.S_ISDIR(info.st_mode) and entry.name.endswith("-d")
+                ):
+                    continue
+                candidate = Path(entry.path)
+                amount = size(candidate) if stat.S_ISDIR(info.st_mode) else info.st_blocks * 512
+                candidates.append((info.st_mtime, candidate, info, bucket_identity, amount))
+    if not candidates:
+        print("  Above budget: no entry mtimes older than 25 hours")
+        return measured
+
+    links = external_links(user_home)
+    linked_paths = [destination for origin, destination in links
+                    if destination.is_relative_to(path) and not origin.is_relative_to(path)]
+    protected = set()
+    last_activity = -math.inf
+    removed = 0
+    count = 0
+    for _, candidate, scanned, bucket_identity, amount in sorted(candidates):
+        if measured - removed <= limit:
+            break
+        if time.monotonic() - last_activity >= 2:
+            _, opened = activity()
+            references = linked_paths + [Path(name) for name in opened
+                                         if Path(name).is_relative_to(path)]
+            protected = {path.joinpath(*reference.relative_to(path).parts[:2])
+                         for reference in references}
+            last_activity = time.monotonic()
+        # A reference to a cache bucket protects its descendants too; a mapped
+        # executable inside a -d directory protects that whole output entry.
+        if candidate in protected or candidate.parent in protected or path in protected:
+            continue
+        cache_path(path)
+        if identity(path) != original_identity:
+            raise RuntimeError("Go cache directory changed during inspection")
+        cache_path(candidate.parent)
+        if identity(candidate.parent) != bucket_identity:
+            raise RuntimeError("Go cache bucket changed during inspection")
+        try:
+            current = candidate.lstat()
+        except FileNotFoundError:
+            continue
+        if (current.st_dev, current.st_ino, current.st_mode, current.st_mtime_ns,
+            current.st_size, current.st_nlink) != (
+            scanned.st_dev, scanned.st_ino, scanned.st_mode, scanned.st_mtime_ns,
+            scanned.st_size, scanned.st_nlink
+        ):
+            continue
+        if current.st_mtime >= cutoff or (stat.S_ISREG(current.st_mode) and current.st_nlink > 1):
+            continue
+        if not dry_run:
+            try:
+                if stat.S_ISDIR(current.st_mode):
+                    shutil.rmtree(candidate)
+                else:
+                    candidate.unlink()
+            except FileNotFoundError:
+                continue
+        removed += amount
+        count += 1
+    print("  {} {} older entries ({:.2f} GiB)".format(
+        "Would trim" if dry_run else "Trimmed", count, removed / 1024**3))
+    return measured - removed if dry_run else size(path)
+
+
+def compress_go_build(path, measured, limit, user_home, dry_run):
+    """Reduce physical storage without evicting recently used compiler archives."""
+    if sys.platform != "darwin" or not shutil.which("ditto"):
+        return measured
+    now = time.time()
+    original_identity = identity(path)
+    candidates = []
+    for bucket in path.iterdir():
+        if not re.fullmatch(r"[0-9a-f]{2}", bucket.name) or bucket.is_symlink():
+            continue
+        if not bucket.is_dir():
+            continue
+        bucket_identity = identity(bucket)
+        with os.scandir(bucket) as entries:
+            for entry in entries:
+                if (not re.fullmatch(r"[0-9a-f]{64}-d", entry.name)
+                        or not entry.name.startswith(bucket.name)):
+                    continue
+                try:
+                    info = entry.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                        or info.st_uid != os.getuid() or info.st_size < 4096
+                        or info.st_flags != 0
+                        or not now - 25 * 3600 < info.st_mtime < now - 10 * 60):
+                    continue
+                candidates.append((info.st_blocks, Path(entry.path), info, bucket_identity))
+    if not candidates:
+        return measured
+    links = external_links(user_home)
+    linked_paths = [destination for origin, destination in links
+                    if destination.is_relative_to(path) and not origin.is_relative_to(path)]
+    if dry_run:
+        print("  Would inspect recent compiler archives for transparent compression")
+        return measured
+
+    def fingerprint(info):
+        return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+                info.st_size, info.st_mtime_ns, info.st_nlink, info.st_flags)
+
+    def archive_hash(filename):
+        with os.fdopen(os.open(filename, os.O_RDONLY | os.O_NOFOLLOW), "rb") as stream:
+            header = stream.read(8)
+            if header != b"!<arch>\n":
+                return None
+            digest = hashlib.sha256(header)
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+            return digest.hexdigest()
+
+    removed = 0
+    count = 0
+    last_activity = -math.inf
+    protected = set()
+    with tempfile.TemporaryDirectory(prefix=".dev-cache-compress-", dir=path) as folder:
+        temporary = Path(folder) / "archive"
+        for _, candidate, scanned, bucket_identity in sorted(candidates, reverse=True):
+            if measured - removed <= limit:
+                break
+            if time.monotonic() - last_activity >= 2:
+                _, opened = activity()
+                references = linked_paths + [Path(name) for name in opened
+                                             if Path(name).is_relative_to(path)]
+                protected = {path.joinpath(*reference.relative_to(path).parts[:2])
+                             for reference in references}
+                last_activity = time.monotonic()
+            if candidate in protected or candidate.parent in protected or path in protected:
+                continue
+            cache_path(path)
+            cache_path(candidate.parent)
+            if identity(path) != original_identity or identity(candidate.parent) != bucket_identity:
+                raise RuntimeError("Go cache directory changed during compression")
+            try:
+                if fingerprint(candidate.lstat()) != fingerprint(scanned):
+                    continue
+                # Go's output ID is the decoded content hash. Preserve that
+                # invariant, rather than trusting an arbitrary existing file.
+                output_id = candidate.name[:-2]
+                if archive_hash(candidate) != output_id:
+                    continue
+                try:
+                    result = run(["ditto", "--hfsCompression", str(candidate), str(temporary)],
+                                 timeout=60)
+                    if result.returncode:
+                        raise RuntimeError(result.stderr.strip() or "Archive compression failed")
+                    copied = temporary.lstat()
+                    if (not stat.S_ISREG(copied.st_mode) or copied.st_nlink != 1
+                            or copied.st_size != scanned.st_size
+                            or (copied.st_uid, copied.st_gid, copied.st_mode) !=
+                            (scanned.st_uid, scanned.st_gid, scanned.st_mode)
+                            or archive_hash(temporary) != output_id):
+                        raise RuntimeError("Compressed archive failed verification")
+                    savings = (scanned.st_blocks - copied.st_blocks) * 512
+                    if not copied.st_flags & 0x20 or savings <= 0:
+                        continue
+                    cache_path(path)
+                    cache_path(candidate.parent)
+                    if (identity(path) != original_identity
+                            or identity(candidate.parent) != bucket_identity
+                            or fingerprint(candidate.lstat()) != fingerprint(scanned)):
+                        continue
+                    # Extend the lease: a concurrent Go markUsed on the old
+                    # inode must never leave the replacement looking stale.
+                    os.utime(temporary, None)
+                    os.replace(temporary, candidate)
+                    removed += savings
+                    count += 1
+                finally:
+                    temporary.unlink(missing_ok=True)
+            except FileNotFoundError:
+                continue
+    print("  Compressed {} compiler archives ({:.2f} GiB less allocated storage)".format(
+        count, removed / 1024**3))
+    return size(path)
 
 
 def linked(paths, links):
@@ -254,8 +464,8 @@ def main():
     specs = [
         ("uv", uv_path, "uv_gib", ["uv", "cache", "clean", "--cache-dir", str(uv_path)],
          {"uv"}, dedicated_uv_cache),
-        ("Go build", go_path, "go_build_gib", ["go", "clean", "-cache"],
-         {"go", "compile", "link", "gopls"}, lambda p: (p / "README").is_file()),
+        ("Go build", go_path, "go_build_gib", ["go"],
+         set(), lambda p: (p / "README").is_file()),
         ("Go modules", modules_path, "go_modules_gib", ["go", "clean", "-modcache"],
          {"go", "compile", "link", "gopls"}, dedicated_go_modules),
         ("npm", npm_path / "_cacache" if npm_path else None, "npm_gib",
@@ -281,6 +491,15 @@ def main():
                 continue
             if not valid(path):
                 raise RuntimeError("Not a dedicated native cache directory")
+            if label == "Go build":
+                remaining = trim_go_build(path, measured, limit, user_home, options.dry_run)
+                if remaining > limit:
+                    remaining = compress_go_build(path, remaining, limit, user_home, options.dry_run)
+                if not options.dry_run:
+                    print("  Remaining: {:.2f} GiB".format(remaining / 1024**3))
+                if remaining > limit:
+                    print("  Soft limit: recent, open, linked, and other retained entries remain above budget")
+                continue
             commands, opened = activity()
             if writers & commands or any(busy(subtree, opened) for subtree in evicted):
                 print("  Deferred: cache is in use")

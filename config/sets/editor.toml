@@ -1,0 +1,13 @@
+[tools]
+neovim = true
+imagemagick = true
+stylua = true
+shfmt = true
+bash-language-server = true
+rust-analyzer = true
+typescript-language-server = true
+gopls = true
+gotestsum = true
+yaml-language-server = true
+ctags-lsp = true
+tree-sitter-cli = true
