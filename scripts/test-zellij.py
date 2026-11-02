@@ -379,6 +379,10 @@ def main():
             clients.append(second)
             second.until("second session starts", lambda:
                          PROMPT in second.output and len(second.terminals()) == 1)
+            second.prefix(b"r")
+            second.send(b"session-preview\r")
+            second.until("name the session preview tab", lambda:
+                         second.tabs()[0]["name"] == "session-preview")
             second.prefix(b"d")
             second.until("second session is detached", lambda:
                          not second.action("list-clients").strip().splitlines()[1:])
@@ -387,6 +391,8 @@ def main():
             terminal.send(second_name.encode())
             terminal.until("fzf filters to the requested session", lambda:
                            picker_has_result(second_name))
+            terminal.until("session preview lists the selected session's tab", lambda:
+                           "session-preview" in picker_screen())
             terminal.send(b"\r")
             terminal.until("client switches to the selected live session", lambda:
                            bool(terminal.action("list-clients", session=second_name).strip().splitlines()[1:]))
@@ -401,7 +407,10 @@ def main():
                            PROMPT in restored.output
                            and {p["id"] for p in restored.terminals()} == ids)
             assert len(restored.tabs()) == 2
-            restored.prefix(b"1")
+            legacy = (home / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
+            restored.prefix(b"2" if legacy else b"1")
+            restored.until("return to the retained shell's tab", lambda:
+                           any(t["name"] == "review [ready]" and t["active"] for t in restored.tabs()))
             restored.send(b'printf "%s" "$zellij_test_state" > "$HOME/retained-state"\r')
             restored.until("the original shell's memory survives detach", lambda:
                            (home / "retained-state").exists()

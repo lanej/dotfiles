@@ -1198,7 +1198,8 @@ run_configured_hooks() {
 			atuin-sync) setup_atuin_sync || return 1 ;;
 			zellij-status)
 				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
-					make -C "$configuration_root" zellij-status zellij-config || return 1
+					make -C "$configuration_root" zellij-status || return 1
+					make -C "$configuration_root" zellij-config || return 1
 				fi
 				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
