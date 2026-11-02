@@ -19,6 +19,15 @@ import pyte
 workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
+
+class Display(pyte.Screen):
+    def report_device_status(self, mode, **kwargs):
+        # Zellij asks the real PTY for private terminal status. This decoder
+        # observes rendered cells; Terminal handles the interactive endpoint.
+        if not kwargs.get("private"):
+            super().report_device_status(mode)
+
+
 EMITTER = r'''
 import os
 from pathlib import Path
@@ -69,7 +78,7 @@ def main():
 
         def top_line(client):
             if client not in screens:
-                screen = pyte.Screen(120, 32)
+                screen = Display(120, 32)
                 screens[client] = [screen, pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0]
             screen, stream, decoder, offset = screens[client]
             stream.feed(decoder.decode(bytes(client.output[offset:])))

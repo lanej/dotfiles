@@ -130,7 +130,7 @@ def pick_tab(session):
         if tab.get("has_bell_notification"):
             flags += " [bell]"
         rows.append(f"{token}\t{tab['position'] + int(legacy)}: {label(tab['name'])}{flags}")
-    token = choose(rows, "Tabs (native attention first)", "--preview-tab")
+    token = choose(rows, "Tabs (attention first)", "--preview-tab")
     if token is None:
         return
     if token not in choices or not any(
