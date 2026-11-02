@@ -191,7 +191,7 @@ Unlock your SSH agent and authenticate to any bastion before running the target.
 
 See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
 
-Bootstrap installs the Zellij runtime selected by your configuration sets; the default is pinned upstream main with native fixes. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
+Bootstrap installs the Zellij runtime selected by your configuration sets; the default is the pinned [lanej/zellij fork](https://github.com/lanej/zellij) with native fixes. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
 
 In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.

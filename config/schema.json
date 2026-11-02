@@ -50,7 +50,7 @@
       "properties": {
         "source": {
           "type": "string",
-          "description": "Runtime source: patched includes the checkout's native fixes; release uses upstream stable; main builds pinned upstream without local patches.",
+          "description": "Runtime source: patched installs the pinned lanej/zellij fork with native fixes; release uses upstream stable; main builds pinned upstream without the fork's fixes.",
           "default": "patched",
           "enum": [
             "patched",
@@ -94,7 +94,7 @@
         },
         "zellij": {
           "type": "boolean",
-          "description": "Enable the zellij bootstrap recipe."
+          "description": "Install the selected Zellij runtime; patched uses the lanej/zellij fork with native fixes."
         },
         "nerd-font": {
           "type": "boolean",
