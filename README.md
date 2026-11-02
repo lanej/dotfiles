@@ -4,6 +4,8 @@ Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux
 
 ## Installation
 
+The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.
+
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
 $ make           # initialize the native baseline and its machine TOML
