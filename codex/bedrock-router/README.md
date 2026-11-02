@@ -43,8 +43,7 @@ extra Bedrock provider settings requires a manual merge. A different `.env`
 source requires the explicit `--keep-env` option.
 `--no-start` writes files without starting the service.
 
-The installer also registers a separate browsing MCP tool; see
-[Delegated web browsing](#delegated-web-browsing) for setup and behavior.
+Installs preserve MCP removals, custom settings, and disabled flags.
 
 On Linux, allow the service to survive logout and start at boot:
 
@@ -147,12 +146,12 @@ arguments to Luna in West.
 Luna browsing was verified with the existing credentials; its relative price
 has not been verified.
 
-### Built-in search denial recovery
+## Built-in search denial recovery
 
 When built-in search is enabled, a denial remains visible as a failed stream.
 The router adds a recovery hint to Codex's next attempt in the same session,
-directing it to use `bedrock_browse` when available or continue useful work
-through another approach. The hint does not change the search setting.
+directing it to use any available separate search or browsing tool, or continue
+useful work if none is available. The hint does not change the search setting.
 Codex owns retries; the router does not replay the generation or invent a
 successful completion.
 

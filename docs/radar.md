@@ -9,6 +9,10 @@ Tool and technology decisions, organized by ring.
 | **Assess** | Worth watching; not yet trialed |
 | **Hold** | Not adopted; rationale documented |
 
+<!-- Entry conventions: use a ### heading under the current ring, explain the tool and
+placement briefly, link related entries where useful, and state any revisit condition.
+Update only the requested decisions; preserve unrelated entries. -->
+
 ---
 
 ## Adopt
@@ -24,6 +28,12 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 ---
 
 ## Trial
+
+### Zellij
+
+[Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for Firstmate and existing agent-status integrations.
+
+Revisit adoption after validating long-running sessions, scrollback-heavy workloads, and the documented integration gaps.
 
 ### UI review
 

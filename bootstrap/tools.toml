@@ -1,0 +1,284 @@
+# Installation recipes and version pins. Machine files select tools; sets group them.
+# installer = "config" delegates configuration/integration to Make and hooks.
+
+[tools.build]
+installer = "build"
+
+[tools.rust]
+installer = "rust"
+requires = ["build"]
+setup = ["cargo"]
+version = "1.93.1"
+
+[tools.node]
+version = "24"
+
+[tools.go]
+installer = "go"
+setup = ["go"]
+version = "1.26.2"
+
+[tools.git]
+installer = "system"
+setup = ["git"]
+
+[tools.zsh]
+installer = "system"
+setup = ["shell", "zsh-config", "zsh-plugins"]
+
+[tools.tmux]
+installer = "system"
+setup = ["tmux-config", "tmux-plugins"]
+
+[tools.zellij]
+installer = "zellij"
+requires = ["rust"]
+setup = ["zellij-config"]
+
+[tools.nerd-font]
+installer = "font"
+requires = ["unzip"]
+
+[tools.btop]
+version = "1.4.7"
+
+[tools.fzf]
+version = "0.59.0"
+
+[tools.starship]
+requires = ["rust"]
+version = "1.22.1"
+
+[tools.atuin]
+version = "18.21.0"
+post = ["atuin-sync"]
+
+[tools.skim]
+requires = ["rust"]
+version = "0.16.0"
+
+[tools.git-delta]
+requires = ["rust"]
+version = "0.18.2"
+
+[tools.glow]
+requires = ["go"]
+version = "2.0.0"
+
+[tools.bat]
+requires = ["rust"]
+version = "0.25.0"
+
+[tools.fd]
+requires = ["rust"]
+version = "10.2.0"
+
+[tools.eza]
+requires = ["rust"]
+version = "0.20.19"
+
+[tools.zsh-autosuggestions]
+version = "0.7.1"
+
+[tools.gh]
+version = "2.66.0"
+prepare = ["github-auth"]
+
+[tools.git-crypt]
+requires = ["build"]
+version = "0.8.0"
+
+[tools.jq]
+version = "1.7.1"
+
+[tools.yq]
+version = "4.45.4"
+
+[tools.ripgrep]
+requires = ["rust"]
+version = "14.1.0"
+
+[tools.stylua]
+requires = ["node"]
+version = "2.0.2"
+
+[tools.shfmt]
+requires = ["go"]
+version = "3.10.0"
+
+[tools.bash-language-server]
+requires = ["node"]
+version = "5.4.3"
+
+[tools.rust-analyzer]
+requires = ["rust"]
+version = "1.84.1"
+
+[tools.typescript-language-server]
+requires = ["node"]
+version = "4.3.3"
+
+[tools.gopls]
+requires = ["go"]
+version = "0.23.0"
+
+[tools.gotestsum]
+requires = ["go"]
+version = "1.13.0"
+
+[tools.yaml-language-server]
+requires = ["node"]
+version = "0.16.0"
+
+[tools.ctags-lsp]
+requires = ["go"]
+version = "0.6.1"
+
+[tools.tree-sitter-cli]
+requires = ["rust"]
+version = "0.27.0"
+
+[tools.hexyl]
+requires = ["rust"]
+version = "0.16.0"
+
+[tools.direnv]
+version = "2.35.0"
+
+[tools.just]
+requires = ["rust"]
+version = "1.40.0"
+
+[tools.cargo-sweep]
+requires = ["rust"]
+version = "0.7.0"
+
+[tools.cargo-cache]
+requires = ["rust"]
+version = "0.8.3"
+
+[tools.imagemagick]
+installer = "system"
+
+[tools.mermaid]
+package = "mmdc"
+requires = ["node"]
+version = "12.0.0"
+
+[tools.kitty]
+description = "Link Kitty configuration for a separately installed terminal."
+installer = "config"
+setup = ["kitty-config", "kitty-terminfo"]
+post = ["kitty-terminfo"]
+
+
+[tools.neovim]
+requires = ["build", "node", "go", "rust", "tree-sitter-cli"]
+setup = ["vim-config", "sql-formatters", "ui-review"]
+post = ["neovim", "sql-formatters"]
+version = "0.12.5"
+
+[tools.python]
+description = "Link Python configuration; bootstrap provides the interpreter."
+installer = "config"
+setup = ["python"]
+
+[tools.ruby]
+description = "Link Ruby tool configuration for a separately installed runtime."
+installer = "config"
+setup = ["ruby"]
+
+
+[tools.wezterm]
+description = "Link WezTerm configuration for a separately installed terminal."
+installer = "config"
+setup = ["wezterm"]
+
+[tools.presenterm]
+description = "Link Presenterm configuration for a separately installed application."
+installer = "config"
+setup = ["presenterm"]
+
+[tools.mail]
+description = "Link mail client configuration for a separately installed application."
+installer = "config"
+setup = ["mail"]
+
+[tools.quarto]
+description = "Link Quarto configuration for a separately installed application."
+installer = "config"
+setup = ["quarto"]
+
+[tools.dev-cache]
+description = "Configure development cache maintenance budgets."
+installer = "config"
+setup = ["dev-cache-config"]
+
+[tools.claude-code]
+requires = ["node"]
+setup = ["claude-config", "claude-plugins", "software-standard", "claude-shared"]
+version = "2.1.295"
+
+[tools.codex]
+requires = ["node", "jq", "claude-code"]
+setup = ["codex-config", "codex-mcp", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
+version = "0.162.0"
+
+[tools.treehouse]
+installer = "treehouse"
+requires = ["go"]
+setup = ["treehouse-config"]
+
+[tools.firstmate]
+installer = "firstmate"
+requires = ["treehouse", "jq", "node"]
+setup = ["firstmate-config"]
+
+[tools.agent-status-broker]
+description = "Install the agent-status broker and share its hooks."
+installer = "config"
+requires = ["go"]
+setup = ["agent-status-broker"]
+post = ["agent-status-broker"]
+
+[tools.bedrock]
+description = "Prepare Bedrock credentials and configure the standalone router."
+installer = "config"
+prepare = ["bedrock-credentials"]
+post = ["bedrock-router"]
+
+[tools.ep-direnv]
+description = "Configure EasyPost direnv integration when withenv is available."
+installer = "config"
+setup = ["ep-direnv"]
+
+[tools.yabai]
+installer = "macos-window-tool"
+platform = "macos"
+setup = ["yabai"]
+
+[tools.skhd]
+installer = "macos-window-tool"
+platform = "macos"
+setup = ["yabai"]
+
+[tools.x11]
+description = "Link X11 session configuration for a separately installed desktop."
+installer = "config"
+platform = "linux"
+setup = ["X"]
+
+[tools.polybar]
+description = "Link Polybar configuration for a separately installed application."
+installer = "config"
+platform = "linux"
+setup = ["polybar"]
+
+[tools.bspwm]
+description = "Link bspwm, sxhkd, and rofi configuration for separately installed applications."
+installer = "config"
+platform = "linux"
+setup = ["bspwm"]
+
+[tools.unzip]
+installer = "system"

@@ -385,10 +385,10 @@ print(json.dumps({
         fi
         ;;
       pr)
-        # The PR opens from a pull-request-writer description file (title
+        # The PR opens from a github-pr-writer description file (title
         # line, blank line, body). Check it before pushing so a bad file
         # never leaves a pushed branch without a PR.
-        [ -n "$pr_file" ] || { echo "ERROR: finish $id pr needs a pull-request-writer description file: finish $id pr <file>" >&2; exit 1; }
+        [ -n "$pr_file" ] || { echo "ERROR: finish $id pr needs a github-pr-writer description file: finish $id pr <file>" >&2; exit 1; }
         pr_file="$(cd "$(dirname "$pr_file")" && pwd)/$(basename "$pr_file")"
         pr_helper="$(command -v gh-pr-create-from || echo "$HOME/.files/bin/gh-pr-create-from")"
         "$pr_helper" --check "$pr_file" || exit 1

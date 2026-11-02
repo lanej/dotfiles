@@ -1,0 +1,17 @@
+name: Codex worktree hook
+on:
+  pull_request:
+    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', 'Makefile', '.github/workflows/codex-worktree-hook.yml']
+  push:
+    branches: [master]
+    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', 'Makefile', '.github/workflows/codex-worktree-hook.yml']
+permissions:
+  contents: read
+jobs:
+  worktree-hook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make test-codex-worktree-hook

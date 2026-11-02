@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Attach a floating client to the shared live scratch session."""
+
+import os
+from pathlib import Path
+import sys
+
+
+POPUP_SESSION = "dotfiles-popup"
+
+
+def main():
+    current = os.environ.get("ZELLIJ_SESSION_NAME")
+    if not current:
+        raise RuntimeError("Open the popup with Ctrl-f P inside a Zellij session")
+    if current == POPUP_SESSION:
+        raise RuntimeError("The popup is already open; Ctrl-f d detaches this view")
+    config = Path(__file__).resolve().parent.parent / "zellij" / "popup.kdl"
+    if not config.is_file():
+        raise RuntimeError("The popup configuration is missing from the dotfiles checkout")
+    env = os.environ.copy()
+    # Start a separate client, keeping the same socket and XDG directories so
+    # every outer tab/session attaches to the same existing scratch process.
+    for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID",
+                "ZELLIJ_CONFIG_FILE", "ZELLIJ_CONFIG_DIR"):
+        env.pop(key, None)
+    os.execvpe("zellij", ["zellij", "--config", str(config),
+                         "--layout-string", "layout { pane; }",
+                         "attach", "--create", POPUP_SESSION], env)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, RuntimeError) as error:
+        print(f"zellij-popup: {error}", file=sys.stderr)
+        if sys.stdin.isatty():
+            input("Press Enter to close.")
+        sys.exit(1)

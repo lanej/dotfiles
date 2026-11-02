@@ -1,0 +1,5 @@
+sets = ["shell", "terminal", "editor", "development", "ai"]
+
+[tools]
+mail = true
+quarto = true

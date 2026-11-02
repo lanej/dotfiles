@@ -1,0 +1,326 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Dotfiles configuration",
+  "description": "Machine settings and reusable sets. Individual properties override selected sets. All fields are optional; omitted values inherit the native OS baseline and selected sets.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sets": {
+      "type": "array",
+      "description": "Compose named sets in order, then apply this file's individual settings. Local sets are supported; existence and dependency cycles are checked at runtime.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]*$",
+        "anyOf": [
+          {
+            "enum": [
+              "ai",
+              "base",
+              "development",
+              "easypost",
+              "editor",
+              "linux",
+              "macos",
+              "personal",
+              "shell",
+              "terminal",
+              "workstation"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "github_enabled": {
+          "type": "boolean",
+          "description": "Enable the Codex GitHub app and its plugins. False keeps GitHub access through gh.",
+          "default": false
+        }
+      }
+    },
+    "zellij": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Runtime source: patched includes the checkout's native fixes; release uses upstream stable; main builds pinned upstream without local patches.",
+          "default": "patched",
+          "enum": [
+            "patched",
+            "release",
+            "main"
+          ]
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "type": "boolean",
+          "description": "Enable the build bootstrap recipe."
+        },
+        "rust": {
+          "type": "boolean",
+          "description": "Enable the rust bootstrap recipe."
+        },
+        "node": {
+          "type": "boolean",
+          "description": "Enable the node bootstrap recipe."
+        },
+        "go": {
+          "type": "boolean",
+          "description": "Enable the go bootstrap recipe."
+        },
+        "git": {
+          "type": "boolean",
+          "description": "Enable the git bootstrap recipe."
+        },
+        "zsh": {
+          "type": "boolean",
+          "description": "Enable the zsh bootstrap recipe."
+        },
+        "tmux": {
+          "type": "boolean",
+          "description": "Enable the tmux bootstrap recipe."
+        },
+        "zellij": {
+          "type": "boolean",
+          "description": "Enable the zellij bootstrap recipe."
+        },
+        "nerd-font": {
+          "type": "boolean",
+          "description": "Enable the nerd-font bootstrap recipe."
+        },
+        "btop": {
+          "type": "boolean",
+          "description": "Enable the btop bootstrap recipe."
+        },
+        "fzf": {
+          "type": "boolean",
+          "description": "Enable the fzf bootstrap recipe."
+        },
+        "starship": {
+          "type": "boolean",
+          "description": "Enable the starship bootstrap recipe."
+        },
+        "atuin": {
+          "type": "boolean",
+          "description": "Enable the atuin bootstrap recipe."
+        },
+        "skim": {
+          "type": "boolean",
+          "description": "Enable the skim bootstrap recipe."
+        },
+        "git-delta": {
+          "type": "boolean",
+          "description": "Enable the git-delta bootstrap recipe."
+        },
+        "glow": {
+          "type": "boolean",
+          "description": "Enable the glow bootstrap recipe."
+        },
+        "bat": {
+          "type": "boolean",
+          "description": "Enable the bat bootstrap recipe."
+        },
+        "fd": {
+          "type": "boolean",
+          "description": "Enable the fd bootstrap recipe."
+        },
+        "eza": {
+          "type": "boolean",
+          "description": "Enable the eza bootstrap recipe."
+        },
+        "zsh-autosuggestions": {
+          "type": "boolean",
+          "description": "Enable the zsh-autosuggestions bootstrap recipe."
+        },
+        "gh": {
+          "type": "boolean",
+          "description": "Enable the gh bootstrap recipe."
+        },
+        "git-crypt": {
+          "type": "boolean",
+          "description": "Enable the git-crypt bootstrap recipe."
+        },
+        "jq": {
+          "type": "boolean",
+          "description": "Enable the jq bootstrap recipe."
+        },
+        "yq": {
+          "type": "boolean",
+          "description": "Enable the yq bootstrap recipe."
+        },
+        "ripgrep": {
+          "type": "boolean",
+          "description": "Enable the ripgrep bootstrap recipe."
+        },
+        "stylua": {
+          "type": "boolean",
+          "description": "Enable the stylua bootstrap recipe."
+        },
+        "shfmt": {
+          "type": "boolean",
+          "description": "Enable the shfmt bootstrap recipe."
+        },
+        "bash-language-server": {
+          "type": "boolean",
+          "description": "Enable the bash-language-server bootstrap recipe."
+        },
+        "rust-analyzer": {
+          "type": "boolean",
+          "description": "Enable the rust-analyzer bootstrap recipe."
+        },
+        "typescript-language-server": {
+          "type": "boolean",
+          "description": "Enable the typescript-language-server bootstrap recipe."
+        },
+        "gopls": {
+          "type": "boolean",
+          "description": "Enable the gopls bootstrap recipe."
+        },
+        "gotestsum": {
+          "type": "boolean",
+          "description": "Enable the gotestsum bootstrap recipe."
+        },
+        "yaml-language-server": {
+          "type": "boolean",
+          "description": "Enable the yaml-language-server bootstrap recipe."
+        },
+        "ctags-lsp": {
+          "type": "boolean",
+          "description": "Enable the ctags-lsp bootstrap recipe."
+        },
+        "tree-sitter-cli": {
+          "type": "boolean",
+          "description": "Enable the tree-sitter-cli bootstrap recipe."
+        },
+        "hexyl": {
+          "type": "boolean",
+          "description": "Enable the hexyl bootstrap recipe."
+        },
+        "direnv": {
+          "type": "boolean",
+          "description": "Enable the direnv bootstrap recipe."
+        },
+        "just": {
+          "type": "boolean",
+          "description": "Enable the just bootstrap recipe."
+        },
+        "cargo-sweep": {
+          "type": "boolean",
+          "description": "Enable the cargo-sweep bootstrap recipe."
+        },
+        "cargo-cache": {
+          "type": "boolean",
+          "description": "Enable the cargo-cache bootstrap recipe."
+        },
+        "imagemagick": {
+          "type": "boolean",
+          "description": "Enable the imagemagick bootstrap recipe."
+        },
+        "mermaid": {
+          "type": "boolean",
+          "description": "Enable the mermaid bootstrap recipe."
+        },
+        "kitty": {
+          "type": "boolean",
+          "description": "Link Kitty configuration for a separately installed terminal."
+        },
+        "neovim": {
+          "type": "boolean",
+          "description": "Enable the neovim bootstrap recipe."
+        },
+        "python": {
+          "type": "boolean",
+          "description": "Link Python configuration; bootstrap provides the interpreter."
+        },
+        "ruby": {
+          "type": "boolean",
+          "description": "Link Ruby tool configuration for a separately installed runtime."
+        },
+        "wezterm": {
+          "type": "boolean",
+          "description": "Link WezTerm configuration for a separately installed terminal."
+        },
+        "presenterm": {
+          "type": "boolean",
+          "description": "Link Presenterm configuration for a separately installed application."
+        },
+        "mail": {
+          "type": "boolean",
+          "description": "Link mail client configuration for a separately installed application."
+        },
+        "quarto": {
+          "type": "boolean",
+          "description": "Link Quarto configuration for a separately installed application."
+        },
+        "dev-cache": {
+          "type": "boolean",
+          "description": "Configure development cache maintenance budgets."
+        },
+        "claude-code": {
+          "type": "boolean",
+          "description": "Enable the claude-code bootstrap recipe."
+        },
+        "codex": {
+          "type": "boolean",
+          "description": "Enable the codex bootstrap recipe."
+        },
+        "treehouse": {
+          "type": "boolean",
+          "description": "Enable the treehouse bootstrap recipe."
+        },
+        "firstmate": {
+          "type": "boolean",
+          "description": "Enable the firstmate bootstrap recipe."
+        },
+        "agent-status-broker": {
+          "type": "boolean",
+          "description": "Install the agent-status broker and share its hooks."
+        },
+        "bedrock": {
+          "type": "boolean",
+          "description": "Prepare Bedrock credentials and configure the standalone router."
+        },
+        "ep-direnv": {
+          "type": "boolean",
+          "description": "Configure EasyPost direnv integration when withenv is available."
+        },
+        "yabai": {
+          "type": "boolean",
+          "description": "Enable the yabai bootstrap recipe."
+        },
+        "skhd": {
+          "type": "boolean",
+          "description": "Enable the skhd bootstrap recipe."
+        },
+        "x11": {
+          "type": "boolean",
+          "description": "Link X11 session configuration for a separately installed desktop."
+        },
+        "polybar": {
+          "type": "boolean",
+          "description": "Link Polybar configuration for a separately installed application."
+        },
+        "bspwm": {
+          "type": "boolean",
+          "description": "Link bspwm, sxhkd, and rofi configuration for separately installed applications."
+        },
+        "unzip": {
+          "type": "boolean",
+          "description": "Enable the unzip bootstrap recipe."
+        }
+      }
+    }
+  }
+}

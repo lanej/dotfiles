@@ -13,6 +13,7 @@ vim.opt.cmdheight = 2
 vim.opt.cursorline = true
 vim.opt.encoding = "utf-8"
 vim.opt.exrc = true
+vim.opt.expandtab = true
 vim.opt.fileformats:append("mac")
 vim.opt.guicursor = {
 	"n-v-c:block-Cursor/lCursor",
@@ -31,13 +32,16 @@ vim.opt.modelines = 5
 vim.opt.backup = false
 vim.opt.scrolloff = 7
 vim.opt.shell = os.getenv("SHELL")
+vim.opt.shiftwidth = 2
 vim.opt.showcmd = true
 vim.opt.showmatch = true
 vim.opt.matchtime = 2
 vim.opt.showmode = true
 vim.opt.smartcase = true
 vim.opt.smarttab = true
+vim.opt.softtabstop = -1
 vim.opt.tabpagemax = 15
+vim.opt.tabstop = 2
 vim.opt.title = true
 vim.opt.titlestring = "󰅷 %t"
 
@@ -467,12 +471,7 @@ vim.api.nvim_create_augroup("filetype_norg", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_norg",
 	pattern = "norg",
-	command = "setlocal shiftwidth=2 spell",
-})
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_norg",
-	pattern = "norg",
-	command = "let g:gutentags_enabled = 0",
+	command = "setlocal spell",
 })
 
 -- Markdown settings
@@ -480,7 +479,7 @@ vim.api.nvim_create_augroup("filetype_markdown", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
+	command = "setlocal tabstop=2 shiftwidth=2 spell conceallevel=0",
 })
 
 vim.api.nvim_create_autocmd("BufWritePre", {
@@ -537,7 +536,7 @@ vim.api.nvim_create_augroup("filetype_mdx", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_mdx",
 	pattern = "mdx",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
+	command = "setlocal spell wrap linebreak",
 })
 
 -- XML-specific configuration
@@ -548,11 +547,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.opt_local.foldmethod = "expr"
 		vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"
 		vim.opt_local.foldenable = false -- Start with folds open
-
-		-- Indent settings
-		vim.opt_local.shiftwidth = 2
-		vim.opt_local.tabstop = 2
-		vim.opt_local.softtabstop = 2
 	end,
 })
 
@@ -560,7 +554,7 @@ vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typespec",
 	pattern = "typespec",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell nowrap conceallevel=1",
+	command = "setlocal spell nowrap conceallevel=1",
 })
 
 -- Typescript settings
@@ -568,17 +562,11 @@ vim.api.nvim_create_augroup("filetype_typescript", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typescript",
 	pattern = { "typescript", "typescriptreact" },
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap",
+	command = "setlocal spell wrap",
 })
 
 -- Ruby settings
 vim.api.nvim_create_augroup("filetype_ruby", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_ruby",
-	pattern = "ruby",
-	command = "setlocal shiftwidth=2 tabstop=2 softtabstop=2 expandtab autoindent",
-})
-
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_ruby",
 	pattern = "ruby",
@@ -612,7 +600,7 @@ vim.api.nvim_create_augroup("filetype_python", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_python",
 	pattern = "python",
-	command = "setlocal tabstop=4 shiftwidth=4 expandtab autoindent",
+	command = "setlocal tabstop=4 shiftwidth=4",
 })
 
 -- Lua settings
@@ -620,7 +608,7 @@ vim.api.nvim_create_augroup("filetype_lua", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_lua",
 	pattern = "lua",
-	command = "setlocal colorcolumn=122 tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal colorcolumn=122 nospell",
 })
 vim.keymap.set("n", "<leader>tj", ":TestFile --no-keep-going<CR>", { noremap = true, silent = true })
 
@@ -629,7 +617,7 @@ vim.api.nvim_create_augroup("filetype_gitcommit", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_gitcommit",
 	pattern = "gitcommit",
-	command = "setlocal colorcolumn=73 tabstop=2 shiftwidth=2 expandtab autoindent spell wrap",
+	command = "setlocal colorcolumn=73 tabstop=2 spell wrap",
 })
 
 -- Disable folding for git files
@@ -643,7 +631,7 @@ vim.api.nvim_create_augroup("filetype_go", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_go",
 	pattern = "go",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal shiftwidth=2 expandtab nospell",
 })
 vim.keymap.set("n", "<leader><t-d>", ":lua DebugNearest()<CR>", { noremap = true, silent = true })
 
@@ -655,12 +643,6 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- JavaScript settings
 vim.api.nvim_create_augroup("filetype_javascript", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_javascript",
-	pattern = "javascript",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_javascript",
 	pattern = ".eslintrc",
@@ -671,38 +653,6 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_javascript",
 	pattern = ".jsonl",
 	command = "set filetype=json",
-})
-
--- Haml settings
-vim.api.nvim_create_augroup("filetype_haml", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_haml",
-	pattern = "haml",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- SSH config settings
-vim.api.nvim_create_augroup("filetype_sshconfig", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_sshconfig",
-	pattern = "sshconfig",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- JSON settings
-vim.api.nvim_create_augroup("filetype_json", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_json",
-	pattern = { "json", "jsonc" },
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- YAML settings
-vim.api.nvim_create_augroup("filetype_yaml", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_yaml",
-	pattern = "yaml",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
 })
 
 -- Perl settings
@@ -723,7 +673,7 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_sh",
 	pattern = "sh",
-	command = "setlocal tabstop=2 noexpandtab autoindent nospell",
+	command = "setlocal noexpandtab nospell",
 })
 
 -- Vim settings
@@ -731,7 +681,7 @@ vim.api.nvim_create_augroup("filetype_vim", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_vim",
 	pattern = "vim",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal nospell",
 })
 
 -- Typst settings
@@ -739,7 +689,7 @@ vim.api.nvim_create_augroup("filetype_typst", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typst",
 	pattern = "typst",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
+	command = "setlocal spell wrap linebreak",
 })
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_typst",
@@ -1343,6 +1293,7 @@ require("lazy").setup({
 					"bqls",
 					-- "ruby_lsp",
 					"jsonls",
+					"taplo",
 					"pylsp",
 					"html",
 					"yamlls",
@@ -1406,18 +1357,7 @@ require("lazy").setup({
 	{
 		"numToStr/Navigator.nvim",
 		config = function()
-			require("Navigator").setup({
-				-- Auto-detect multiplexer (WezTerm, tmux, etc.)
-				auto_save = "current",
-				disable_on_zoom = false, -- Set to false since mux integration is enabled
-			})
-
-			-- Keymaps matching previous tmux-navigator setup
-			-- Use <Cmd> to execute commands without changing modes
-			vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>NavigatorLeft<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>NavigatorDown<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>NavigatorUp<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>NavigatorRight<cr>", { noremap = true, silent = true })
+			require("pane-navigation").setup()
 		end,
 	},
 	{
@@ -1508,17 +1448,11 @@ require("lazy").setup({
 	"tpope/vim-repeat",
 	{ "norcalli/nvim-colorizer.lua", dependencies = "nvim-treesitter/nvim-treesitter" },
 	{
-		"JMarkin/gentags.lua",
-		cond = vim.fn.executable("ctags") == 1,
-		dependencies = { "nvim-lua/plenary.nvim" },
-		config = function()
-			local ctags_bin = "/opt/homebrew/bin/ctags"
-			if vim.fn.executable(ctags_bin) == 0 then
-				ctags_bin = "ctags"
-			end
-			require("gentags").setup({ bin = ctags_bin })
+		"ludovicchabant/vim-gutentags",
+		init = function()
+			require("tag-index").setup()
 		end,
-		event = "VeryLazy",
+		event = { "BufReadPost", "BufNewFile" },
 	},
 	{
 		"vim-test/vim-test",
@@ -1607,13 +1541,7 @@ require("lazy").setup({
 	{
 		"folke/todo-comments.nvim",
 		config = function()
-			require("todo-comments").setup({
-				keywords = {
-					WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
-					SEE = { icon = "👀", color = "info", alt = { "REF" } },
-					TODO = { icon = "🫥", color = "info", alt = { "FIXME" } },
-				},
-			})
+			require("annotations").setup()
 		end,
 	},
 	{
@@ -1683,10 +1611,20 @@ require("lazy").setup({
 			"ibhagwan/fzf-lua",
 			"nvim-tree/nvim-web-devicons",
 		},
-		cmd = "Octo",
+		cmd = { "Octo", "PRReviews", "PRReviewsAll", "PRReviewCheckout", "PRReviewCleanup" },
+		keys = {
+			{
+				"<leader>gR",
+				function()
+					require("pr-reviews").pick()
+				end,
+				desc = "PR review requests",
+			},
+		},
 		config = function()
 			require("octo").setup({
 				picker = "fzf-lua",
+				mappings = require("pr-reviews").octo_mappings,
 				picker_config = {
 					use_emojis = false,
 					mappings = {
@@ -1694,6 +1632,7 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("pr-reviews").setup()
 		end,
 	},
 	{
@@ -1737,7 +1676,7 @@ require("lazy").setup({
 				formatters_by_ft = {
 					lua = { "stylua" },
 					-- Conform will run multiple formatters sequentially
-					python = { "isort", "black" },
+					python = { "isort", "black", timeout_ms = 5000 },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
@@ -1963,25 +1902,12 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"3rd/image.nvim",
-		build = false,
-		-- Disable in tmux due to known issues with allow-passthrough and session switching
-		-- See: https://github.com/3rd/image.nvim/issues/145
-		-- Images may appear on wrong tmux session when switching sessions
-		cond = function()
-			return vim.env.TMUX == nil
-		end,
+		"folke/snacks.nvim",
+		priority = 1000,
+		lazy = false,
 		opts = {
-			processor = "magick_cli",
-			integrations = {
-				markdown = {
-					enabled = true,
-					download_remote_images = true,
-					filetypes = { "markdown" },
-				},
-			},
+			image = { enabled = true },
 		},
-		ft = { "markdown" },
 	},
 	{
 		"brenoprata10/nvim-highlight-colors",

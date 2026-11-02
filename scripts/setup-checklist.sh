@@ -9,7 +9,7 @@ while [[ $# -gt 0 && $1 != -- ]]; do
 done
 shift
 
-green= red= reset=
+green='' red='' reset=''
 if [[ -z ${NO_COLOR+x} && ( ( -t 1 && ${TERM:-dumb} != dumb ) || ${CLICOLOR_FORCE:-0} != 0 ) ]]; then
     green=$'\033[32m' red=$'\033[31m' reset=$'\033[0m'
 fi
@@ -37,6 +37,6 @@ for target in "$@"; do
 done
 printf '\n%d completed; %d incomplete.\n' "$completed" "$failed"
 if ((failed)); then
-    printf 'Fix the reported issues and rerun make to finish setup.\n'
+    printf 'Fix the reported issues and rerun the same make target to finish setup.\n'
     exit 1
 fi

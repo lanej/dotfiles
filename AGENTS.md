@@ -5,8 +5,9 @@
 This repository manages Josh Lane's personal configuration files ("dotfiles")
 and development environment setup, portable across macOS and Linux. The
 `Makefile` symlinks configuration from this repo (`~/.files`) into the home
-directory; `bootstrap.sh` installs system packages and tools (Neovim, Rust,
-fzf, and others) via OS-specific package managers or direct downloads.
+directory. `make bootstrap` applies the built-in OS baseline and installs uv
+and Python; `make install` installs selected tools (Neovim, Rust, fzf, and
+others) via the installers in `bootstrap.sh`, then applies configuration.
 Primary shell is Zsh (`zsh-autosuggestions`, syntax-highlighting, starship
 prompt); primary editor is Neovim (Lua config in `nvim/`).
 
@@ -15,17 +16,30 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
-make          # Symlinks configuration files to ~
-./bootstrap.sh # Installs packages and dependencies
+make           # Initialize the machine TOML and native OS baseline
+# Add this machine's tool and work-context sets to its TOML.
+make bootstrap # Native macos or linux baseline plus uv and Python
+make plan      # Inspect the selected tool bundles
+make install   # Install selected tools and apply their configuration
 ```
 
 Always edit files within `~/.files`, not the symlinked targets under `~`.
 Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on
 shell/editor reload because they're symlinked. Adding a *new* file to be
-symlinked requires a corresponding rule in the `Makefile` plus a re-run of
-`make`. New tools are added to `bootstrap.sh` (use `install_package_version`
-to pin a specific version) and, if they need config symlinked, to the
-`Makefile`.
+symlinked requires a corresponding rule in the `Makefile` plus a re-run of its
+target, or `make configure` when that target's recipe is selected. Declare tool
+recipes and version pins in `bootstrap/tools.toml`, then
+group their `tools.<name>` switches under `config/sets/`. The resolver derives
+selected Make targets and bootstrap phases from that catalog. Default `make`
+applies the native OS baseline; `make configure` adds the configured bundles.
+Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed.
+Configuration symlink rules remain in the `Makefile` and its helper scripts.
+Default `make` initializes a missing machine TOML with the detected native set
+and links the built-in baseline without Python. Preserve existing machine files
+and symlinks. `make configure` applies the full resolved configuration without installing
+packages. Keep `config/targets.mk` generated from the native sets and tool catalog
+with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`.
+Do not add tools to an unconditional install or setup list.
 
 ## Development Conventions
 
@@ -33,6 +47,7 @@ to pin a specific version) and, if they need config symlinked, to the
 - **Cross-platform**: scripts handle both macOS (`darwin`) and Linux (checking for `apt`, `dnf`, `pacman`, `brew`).
 - **Symlinks**: prefer `ln -fs` (force symbolic) to overwrite existing files/links.
 - **Dependencies**: `bootstrap.sh` prefers installing from binary releases (GitHub Releases) or Cargo when system package managers are outdated.
+- **Makefiles**: Keep Makefiles declarative: targets, dependencies, variables, and calls to scripts or tools. Put shell logic in scripts, including loops, conditionals, pipelines, redirections, and command substitutions. Scripts called by Make must pass `make shellcheck`; include new shell entrypoints in that check, which also runs through `make lint` and CI.
 
 ## Testing
 
@@ -43,8 +58,8 @@ input variant, or failure mode is not a separate feature.
 A detector is sufficient when it goes red if you delete the behavior it covers.
 Establish falsifiability once when wiring a new harness: delete representative
 behavior, confirm red, restore it, and confirm green. Do not repeat this mutation
-check for each test or task in an established harness. See `methodology`'s V1
-acceptance definition and harness verification procedure.
+check for each test or task in an established harness. See the [verification guide](docs/verification.md) for the acceptance
+definition and harness verification procedure.
 
 When repairing a regression, improve that feature's existing detector. Multiple
 assertions may describe the same workflow; do not hide a case matrix in loops,
@@ -95,4 +110,4 @@ New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by d
 
 ## Tech Radar
 
-Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Use the `tech-radar` agent for updates.
+Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Edit the radar directly using the entry conventions documented there.

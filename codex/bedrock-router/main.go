@@ -105,6 +105,10 @@ func main() {
 	clientIdle := flag.Duration("client-write-timeout", 0, "Override the configured client write timeout")
 	flag.Parse()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if flag.NArg() != 0 {
+		log.Error("invalid_arguments", "message", "unexpected arguments; use --help for supported commands and flags")
+		os.Exit(1)
+	}
 	path := effectiveConfigPath(*configPath, executable)
 
 	cfg, err := loadConfiguration(path)

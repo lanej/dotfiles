@@ -81,9 +81,3 @@ downstream action:
 The recipient needs to validate two things: are the people right, are the numbers right. This
 surfaces both without requiring them to read anything unless they want to. No process language
 ("please approve," "please process").
-
-## Delegation
-
-Draft via `human-writer`, loaded with this skill — don't hand-craft email prose inline turn by
-turn. A specialized pass applies these conventions in one shot instead of surfacing them as
-sequential corrections.

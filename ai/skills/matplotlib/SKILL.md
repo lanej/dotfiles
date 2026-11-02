@@ -146,3 +146,10 @@ def _merc_y(lat_deg: float) -> float:
     return np.log(np.tan(np.pi / 4 + lat_rad / 2))
 ```
 Apply to all coordinate rings in the GeoJSON before drawing polygons. Apply to all destination/origin lat values before placing dots and arcs. xlim/ylim must be set in Mercator-y space, not degrees.
+
+## Visual verification
+
+Render the changed figure and inspect the image for clipping, overlap, readability, and
+contrast against each label's actual background. A successful render does not establish
+that the figure communicates correctly. Save before closing the figure. Use the current
+project's render commands and output paths.

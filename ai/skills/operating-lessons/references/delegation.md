@@ -87,10 +87,10 @@ CLAUDE.md carries the trigger: before asking Josh a scoping, sequencing, or pure
 
 ## Receipt contract: which agents can comply
 
-CLAUDE.md carries the contract itself (write findings to a file, reply `status:` / `wrote:` / `blockers:`). Which agents it can be asked of:
+For a caller-selected file receipt (`status:` / `wrote:` / `blockers:`), check that the agent can write before requesting one:
 
 - **Write-capable built-ins** such as `general-purpose`: state the contract in the brief.
-- **Custom agents that always produce prose** should carry it in their own definition rather than in your brief — a definition is always loaded, a brief's instructions are not. `document-summarizer` does.
+- **Prose agents**, including `document-summarizer`, return findings inline by default. A file receipt is an optional caller-selected contract for a write-capable agent; do not assume it applies to every summary.
 - **Read-only agents** (`Explore`, `Plan`, and any custom agent without `Write`) must return concise findings inline. Do not request a file they cannot create; use a write-capable agent when a file is required.
 - **`code-reviewer`** has no `Write` tool and structurally cannot comply. Leave it returning prose, or grant it `Write` deliberately. It also has no `Bash` (Read/Glob/Grep only) — don't brief it to run `git diff`/`git log` itself; pre-compute the diff to a file and point it there instead. (detail: memory "reference_code_reviewer_no_bash_access")
 - Compliance measured 12/12, but `wrote:` is still an unverified claim — check the file exists before relying on it.
