@@ -136,6 +136,7 @@ def main():
         subprocess.run(["make", "--no-print-directory", "zellij"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
         config = home / ".config/zellij/config.kdl"
+        legacy_config = config.resolve().name == "config-legacy.kdl"
         configuration = config.read_text()
         config.unlink()
         config.write_text(configuration)
@@ -207,7 +208,8 @@ vim.cmd("wincmd h")
         name = "navigation-" + work.name
         terminal = Terminal(binary, env, name)
         try:
-            terminal.grant_status_permissions()
+            if not legacy_config:
+                terminal.grant_status_permissions()
             terminal.until("installed Zsh starts", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
             terminal.prefix(b"v")
