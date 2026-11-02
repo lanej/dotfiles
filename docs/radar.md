@@ -29,6 +29,12 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### Pi subagents
+
+[pi-subagents](https://github.com/nicobailon/pi-subagents), pinned to 0.84.0 with Pi 1.4.0, supplies native worker sessions, managed worktrees, verification evidence, and fresh reviews for the [Pi dispatcher workflow](pi-dispatcher-review.md). The parent retains request authorization, resource locks, integration checks, and finish policy.
+
+The native fixture exercises an isolated fix through review and patch integration. Revisit adoption after a live provider run and FirstMate/Paseo completion and recovery checks.
+
 ### Zellij
 
 [Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for Firstmate and existing agent-status integrations.

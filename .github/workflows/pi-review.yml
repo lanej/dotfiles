@@ -1,29 +1,17 @@
-name: Pi dispatcher review
+name: Pi dispatcher workflow
 
 on:
   pull_request:
     paths:
-      - 'bin/pi-review'
+      - 'pi/workflows/**'
       - 'scripts/test-pi-review.mjs'
-      - 'ai/skills/dispatcher/scripts/dispatcher-worker'
-      - 'ai/skills/dispatcher/SKILL.md'
-      - 'ai/skills/dispatcher/references/**'
-      - 'ai/agents/code-reviewer.md'
-      - 'ai/skills/builder/references/standard.md'
-      - 'ai/skills/builder/references/construction.md'
       - 'Makefile'
       - '.github/workflows/pi-review.yml'
   push:
     branches: [master]
     paths:
-      - 'bin/pi-review'
+      - 'pi/workflows/**'
       - 'scripts/test-pi-review.mjs'
-      - 'ai/skills/dispatcher/scripts/dispatcher-worker'
-      - 'ai/skills/dispatcher/SKILL.md'
-      - 'ai/skills/dispatcher/references/**'
-      - 'ai/agents/code-reviewer.md'
-      - 'ai/skills/builder/references/standard.md'
-      - 'ai/skills/builder/references/construction.md'
       - 'Makefile'
       - '.github/workflows/pi-review.yml'
 
@@ -34,12 +22,14 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    env:
+      PI_DISPATCHER_RUNTIME: ${{ runner.temp }}/pi-dispatcher-runtime
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install the supported Pi runtime
-        run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.4.0
-      - name: Review through native Pi with a local fixture model
-        run: node scripts/test-pi-review.mjs --native
+      - name: Install the pinned Pi and native subagent runtime
+        run: npm install --prefix "$PI_DISPATCHER_RUNTIME" --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.4.0 pi-subagents@0.84.0
+      - name: Native isolated bug-fix, verification, review, and handoff
+        run: make test-pi-review
