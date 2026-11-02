@@ -24,6 +24,9 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     (repo / "ai/agents").mkdir()
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
     (home / ".claude/plugins").mkdir(parents=True)
+    machine_config = home / ".config/dotfiles/config.toml"
+    machine_config.parent.mkdir(parents=True)
+    machine_config.write_text('sets = ["easypost"]\n')
     (home / ".codex").mkdir()
     (home / ".codex/config.toml").write_text(
         '# Local settings\nmodel = "local-model"\n'
@@ -72,8 +75,10 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     uv.write_text(f"#!{sys.executable}\n" + f'''
 import os
 from pathlib import Path
-(Path.home() / ".codex/install-is-easypost").write_text(os.environ["IS_EASYPOST"])
-if not any(argument.endswith("/sync-codex-permissions") for argument in os.sys.argv):
+if any(argument.endswith("/sync-codex-permissions") for argument in os.sys.argv):
+    enabled = os.sys.argv[os.sys.argv.index("--github-enabled") + 1]
+    (Path.home() / ".codex/install-github-enabled").write_text(enabled)
+else:
     assert "PASEO_HOOK_CLI" not in (Path.home() / ".codex/hooks.json").read_text(), "hook installation overlapped broker migration"
 os.execv({shutil.which("uv")!r}, [{shutil.which("uv")!r}, *os.sys.argv[1:]])
 ''')
@@ -164,23 +169,16 @@ else:
     subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
     env = dict(os.environ, PATH=f"{executables}:/usr/bin:/bin",
                UV="uv",
+               DOTFILES_CONFIG=str(machine_config),
                AGENT_STATUS_INSTALL_FLAGS="--no-start",
                AGENT_STATUS_BIN=str(broker),
                UV_CACHE_DIR=os.environ.get("UV_CACHE_DIR", str(Path.home() / ".cache/uv")),
                HOME=str(home), CODEX_HOME=str(home / ".codex"),
                PASEO_HOME=str(home / ".paseo"), CLAUDE_CONFIG_DIR=str(home / ".claude"))
     env.pop("IS_EASYPOST", None)
+    env.pop("BOOTSTRAP_MERMAID", None)
     command = [shutil.which("make"), "-j4", "-f", str(ROOT / "Makefile"),
                f"DOTFILES={repo}", f"HOME={home}"]
-    original_config = (home / ".codex/config.toml").read_bytes()
-    unknown_host = subprocess.run([*command, "codex-permissions"], cwd=repo, env=env,
-                                  capture_output=True, text=True)
-    assert unknown_host.returncode != 0
-    assert "Could not determine hostname" in unknown_host.stderr
-    assert (home / ".codex/config.toml").read_bytes() == original_config
-    uname.write_text('#!/bin/sh\nif [ "$1" = -n ]; then\n'
-                     '  printf "%s\\n" lanej.EasyPost\nelse\n'
-                     f'  exec "{shutil.which("uname")}" "$@"\nfi\n')
     subprocess.run([*command, "codex-tmux"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     subprocess.run([*command, "codex"], cwd=repo, env=env,
@@ -201,7 +199,7 @@ else:
     assert config["plugins"]["github@openai-curated"]["enabled"] is False
     assert config["plugins"]["github@openai-curated-remote"]["enabled"] is False
     assert config["plugins"]["retained@local"]["enabled"] is False
-    assert (home / ".codex/install-is-easypost").read_text() == "true"
+    assert (home / ".codex/install-github-enabled").read_text() == "false"
     assert "# local GitHub setting" in installed_config
     assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
@@ -245,9 +243,8 @@ else:
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
 
-    # NOTE: The shared Make override must reach the installer and other scripts.
-    uname.write_text(unavailable_hostname)
-    env["IS_EASYPOST"] = "false"
+    # The selected context must reach the installer without hostname detection.
+    machine_config.write_text('sets = ["personal"]\n')
     subprocess.run([*command, "codex-permissions"], cwd=repo,
                    env=env,
                    check=True, capture_output=True, text=True)
@@ -255,11 +252,11 @@ else:
     assert personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] is True
     assert personal_config["plugins"]["github@openai-curated"]["enabled"] is True
     assert personal_config["plugins"]["github@openai-curated-remote"]["enabled"] is True
-    assert (home / ".codex/install-is-easypost").read_text() == "false"
+    assert (home / ".codex/install-github-enabled").read_text() == "true"
     personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] = False
     personal_config["plugins"]["github@openai-curated"]["enabled"] = False
     personal_config["plugins"]["github@openai-curated-remote"]["enabled"] = False
-    assert personal_config == config, "host policy changed unrelated configuration"
+    assert personal_config == config, "configuration context changed unrelated settings"
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
     claude_config["mcpServers"] = {}

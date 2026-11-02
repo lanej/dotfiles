@@ -1,10 +1,10 @@
 name: Dotfiles setup
 on:
   pull_request:
-    paths: ['Makefile', 'scripts/make/**', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['.taplo.toml', 'nvim/init.lua', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
   push:
     branches: [master]
-    paths: ['Makefile', 'scripts/make/**', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
+    paths: ['.taplo.toml', 'nvim/init.lua', 'nvim/lua/lspconfig-spec.lua', 'nvim/lua/dotfiles-config-lsp.lua', 'nvim/tests/dotfiles-config-schema.lua', 'Makefile', 'scripts/make/**', 'config/**', 'bootstrap/**', 'scripts/dotfiles-config.py', 'scripts/test-dotfiles-config.py', 'scripts/install-software-standard.py', 'codex/AGENTS.md', 'ai/skills/builder/**', 'bootstrap.sh', 'claude/evals/skill-maintenance/check_size.sh', 'bin/ac-awake-service', 'bin/sync-codex-mcp-servers', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/test-bootstrap.py', 'scripts/test-setup.py', 'scripts/test-zsh-startup.py', 'zsh/zsh*', 'zsh/zlogin', 'zsh/zlogout', 'zsh/lazy-load.zsh', 'sh/profile', 'sh/alias', 'sh/functions', '.github/workflows/setup.yml']
 permissions:
   contents: read
 jobs:
@@ -30,6 +30,25 @@ jobs:
       - name: Install zsh on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Install TOML editing tools
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) nvim_platform=linux-x86_64; taplo_platform=linux-x86_64 ;;
+            Darwin-arm64) nvim_platform=macos-arm64; taplo_platform=darwin-aarch64 ;;
+            Darwin-x86_64) nvim_platform=macos-x86_64; taplo_platform=darwin-x86_64 ;;
+            *) exit 1 ;;
+          esac
+          schema_tools="$RUNNER_TEMP/dotfiles-toml"
+          mkdir -p "$schema_tools"
+          curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar --no-same-owner -xz -C "$schema_tools"
+          curl --fail --location --retry 3 "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-$taplo_platform.gz" -o "$schema_tools/taplo.gz"
+          gzip -dc "$schema_tools/taplo.gz" > "$schema_tools/taplo"
+          chmod +x "$schema_tools/taplo"
+          echo "$schema_tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
+          echo "$schema_tools" >> "$GITHUB_PATH"
+      - run: make test-dotfiles-config
+      - run: make test-dotfiles-config-editor
       - run: python3 scripts/test-bootstrap.py
       - run: make test-setup
       - run: make test-zsh-startup

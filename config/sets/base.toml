@@ -1,0 +1,6 @@
+# Shared property defaults, followed automatically by the native OS set.
+[codex]
+github_enabled = false
+
+[zellij]
+source = "patched"

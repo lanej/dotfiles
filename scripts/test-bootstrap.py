@@ -22,7 +22,13 @@ def main():
         checkout.mkdir()
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
+        shutil.copytree(root / "config", checkout / "config")
+        shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
+        shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        machine_config = home / ".config/dotfiles/config.toml"
+        machine_config.parent.mkdir(parents=True)
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         # Execute the installer against a small source fixture. Network and
@@ -180,7 +186,9 @@ echo "$1" > "$HOME/claude-version"
 elif name == "uv":
     if args[:2] == ["python", "install"]:
         record("python")
-        (home / ".local/bin/python3").symlink_to(fixture / "driver")
+        destination = home / ".local/bin/python3"
+        if not destination.exists():
+            destination.symlink_to(fixture / "driver")
     elif args[:3] == ["run", "--no-project", "python"]:
         record("bedrock setup")
         os.execv(sys.executable, [sys.executable, *args[3:]])
@@ -237,6 +245,7 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
 elif name == "make":
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
@@ -345,10 +354,14 @@ else:
             "ATUIN_SYNC_HOST": "fixture-host",
             "XDG_CACHE_HOME": str(home / ".cache"),
             "XDG_STATE_HOME": str(home / ".local/state"),
+            "XDG_CONFIG_HOME": str(home / ".config"),
             "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu",
         }
         env.pop("GOPATH", None)
         env.pop("GOBIN", None)
+        env.pop("DOTFILES_CONFIG", None)
+        env.pop("IS_EASYPOST", None)
+        env.pop("BOOTSTRAP_MERMAID", None)
         # Exercise the documented relative launch on ARM Linux, including an
         # older Neovim that needs a source build and missing eza/yq/btop.
         result = subprocess.run(
@@ -435,6 +448,19 @@ else:
         assert selected_loaded.returncode == 0, "Explicitly selected credentials were not installed."
         assert not (checkout / "selected-token-executed").exists()
         assert "Bootstrap installation completed!" in result.stdout
+
+        # A local property removes the editor from the same composed bundles.
+        # Keep an older system editor present: bootstrap must leave it alone
+        # and skip both the source install and Neovim's post-install setup.
+        machine_config.write_text(machine_config.read_text() + "neovim = false\n")
+        (home / ".local/bin/nvim").unlink()
+        previous_events = len((home / "events").read_text().splitlines())
+        reduced = subprocess.run(["/bin/bash", "./bootstrap.sh"], cwd=checkout, env=env,
+                                 capture_output=True, text=True)
+        assert reduced.returncode == 0, reduced.stdout + reduced.stderr
+        new_events = (home / "events").read_text().splitlines()[previous_events:]
+        assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert not (home / ".local/bin/nvim").exists()
         print("PASS: fresh-box bootstrap installs runtimes, AI CLIs, and private Bedrock credentials.")
 
 
