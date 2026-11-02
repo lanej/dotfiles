@@ -1,6 +1,6 @@
 # Zellij with the tmux bindings
 
-An opt-in Zellij configuration that follows [the existing tmux setup](../rc/tmux.conf): `Ctrl-f` prefix, Vim-style splits and navigation, a single top tab bar, and the Nord purple/cyan palette. The terminal normally stays in locked mode so application shortcuts pass through.
+An opt-in Zellij configuration that follows [the existing tmux setup](../rc/tmux.conf): `Ctrl-f` prefix, Vim-style splits and navigation, a single top tab bar, and the Nord purple/cyan palette. The terminal normally stays in locked mode, with bare Ctrl-h/j/k/l reserved for smart pane navigation.
 
 ![Zellij with the Nord top tab bar and split terminal panes](images/zellij-tmux.png)
 
@@ -93,15 +93,17 @@ Grant permissions through the visible bar's first-use dialog. **Write to standar
 
 `make test-zellij-clipboard` runs the installed scrollback editor and checks the actual OSC 52 payload and session-buffer bytes for character, line, and rectangle selections. With two attached clients it changes focus while a read is pending, verifies exactly one bracketed paste in the original pane and no text in the other client's pane, reloads the configuration while the receiver's containing tab is inactive, and closes that tab to check that the receiver and paste binding survive. It also rejects obsolete URL broadcasts. It runs against Zellij 0.45.1 and Neovim 0.12.5. Desktop clipboard acceptance on macOS/Linux and the supported terminal over SSH still require a terminal-level check: copy the same multiline Unicode selection, paste into a local editor, compare the exact text, then repeat from a remote Zellij session. Record the terminal name/version and both outcomes before treating [#101](https://github.com/lanej/dotfiles/issues/101) as fully verified.
 
-## Smart editor and shell navigation
+## Smart pane navigation
 
-Bare **Ctrl-h/j/k/l** move among Neovim splits first, then cross into the adjacent Zellij pane at an editor boundary. They work in normal and insert modes. The same keys at the configured **Zsh prompt** move back into Neovim or another pane, preserving a partially typed command. `make zellij` installs both the navigation commands and the Zsh keybindings. After updating, run `make zellij` and `exec zsh` in existing shell panes. A fresh shell/editor installation also needs `make zsh-config vim-config`; restart Neovim after installing its configuration.
+Bare **Ctrl-h/j/k/l** move between Zellij panes from the shell and foreground applications, including Codex while a task is running. Zellij captures the key before the application receives it. Vim/Neovim receives the key instead, moving among editor splits first and crossing into the adjacent Zellij pane at an editor boundary. Neovim normal and insert modes are supported. Navigation preserves a partially typed shell command.
+
+The Zellij installer builds the local [pane-navigation plugin](../zellij/navigation/README.md), and `make zellij` applies its configuration and required permissions. To add navigation to an existing runtime without rebuilding that runtime, run `python3 scripts/install-zellij-navigation.py` followed by `make zellij`. New sessions load the background plugin automatically. In an existing session, run `zellij action launch-plugin --no-focus "file:$HOME/.local/share/zellij/plugins/pane-navigation.wasm"` once. Its keys are registered separately for each attached client and restored after configuration reloads. A fresh editor installation also needs `make vim-config`; restart Neovim after installing its configuration.
 
 Navigation stays in the current tab and does not leave a zoomed pane. Internal Neovim split movement continues while zoomed; use `Ctrl-f z` to restore the outer layout before crossing a pane boundary. Outside Zellij, Zsh keeps its normal Ctrl-h/backspace binding and Neovim keeps Navigator's existing tmux/WezTerm detection. The shared `zellij-context provider` helper identifies the nearest live multiplexer from process ancestry: Zellij inside tmux navigates its own panes, and tmux inside Zellij retains tmux navigation despite inherited outer environment variables.
 
 The helper verifies one attached client's current source pane and tab, then rechecks the same client/pane immediately before moving focus. It rejects ambiguous multiple-client ownership; use `Ctrl-f h/j/k/l` with multiple clients attached. This fixes delayed navigation acting on another tab. Stable Zellij's CLI does not offer an atomic conditional focus action, so a small window between the final check and the action remains; it is not a strict server-side compare-and-focus guarantee. Missing helpers or failed ownership inspection leave pane crossing disabled rather than selecting an outer multiplexer from stale variables.
 
-These are editor and prompt bindings: other foreground applications receive their own Ctrl-h/j/k/l shortcuts. Use `Ctrl-f h/j/k/l` from those applications or from other shells. Zellij remains in locked mode and no additional WASM plugin is installed.
+The background plugin uses the focused pane and foreground command for its own attached client, then rechecks that the pane and tab still match before acting. It passes the keys to Vim and nested tmux/Zellij, and moves focus for other terminal programs. The final check and focus action remain separate server requests. Other application shortcuts continue to pass through locked mode.
 
 ## Equalize layout
 
@@ -154,7 +156,7 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Agent status and cross-session attention | The native program-status protocol supplies the bar and `Ctrl-f Ctrl-a` triage. Programs must emit OSC 7501. |
 | Exact Claude conversation restoration via saved session IDs | Zellij's native command restoration is enabled; the custom `claude --resume` session-ID integration remains tmux-specific. |
 | Rex OSC 7501 delivery through the patched tmux server | No replacement transport in this configuration. Upstream development features are not assumed to exist in stable 0.45.1. |
-| Smart bare Ctrl-h/j/k/l across Neovim and tmux panes | Supported in Neovim normal/insert modes and at configured Zsh prompts. Other foreground applications retain their keys; use prefix navigation there. |
+| Smart bare Ctrl-h/j/k/l across Neovim and tmux panes | Supported in Neovim normal/insert modes, shells, and foreground applications such as Codex. Nested tmux/Zellij retains its own controls. |
 | Moving live windows/panes across sessions, including parking in `later` | Unsupported by Zellij. `H`, `S`, and `M` are not assigned a restart-based substitute. Native movement between tabs in the same session is available. |
 | Vi visual/rectangle copy mode and shared paste buffers | Neovim provides keyboard selection. `Ctrl-f p` uses the session's private Neovim-yank buffer; the terminal shortcut pastes the system clipboard. |
 | Zero-based windows | Tab labels, picker labels, and `0`–`9` keys are zero-based; Zellij's underlying CLI positions remain one-based. |
@@ -178,7 +180,7 @@ make test-zellij-layout
 make test-zellij-sessions
 ```
 
-The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses installed Zsh bindings, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, application key passthrough, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned fork revision as bootstrap. Native Rust regressions live with the fixes in the fork. These checks do not establish performance under production agent output or clipboard behavior in a particular terminal emulator.
+The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses the installed pane-navigation artifact, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, navigation from a raw-terminal foreground application, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires the installed navigation plugin, Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned fork revision as bootstrap. Native Rust regressions live with the fixes in the fork. These checks do not establish performance under production agent output, a live Codex model task, or clipboard behavior in a particular terminal emulator.
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
 

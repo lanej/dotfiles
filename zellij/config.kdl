@@ -22,6 +22,7 @@ copy_on_select true
 // Keep clipboard ownership outside any tab's visible status bar. Suppressed
 // background plugins survive when their containing tab closes.
 load_plugins {
+    pane-navigation
     "zellij:link"
     "file:~/.config/zellij/plugins/lane-status.wasm" {
         role "clipboard-receiver"
@@ -36,6 +37,9 @@ serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 serialization_interval 60
 
+plugins {
+    pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
+}
 keybinds clear-defaults=true {
     locked {
         bind "Ctrl f" { SwitchToMode "Tmux"; }
