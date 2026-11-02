@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     with tempfile.TemporaryDirectory(prefix="dotfiles-config-") as temporary:
         home = Path(temporary)
-        env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
+        env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+               "XDG_CACHE_HOME": str(home / ".cache")}
         for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID"):
             env.pop(name, None)
         command = [sys.executable, str(ROOT / "scripts/dotfiles-config.py")]
@@ -80,7 +81,17 @@ home = Path(os.environ["HOME"])
 args = sys.argv[1:]
 name = Path(sys.argv[0]).name
 if name == "rustup":
-    assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
+    if args[:2] == ["toolchain", "install"]:
+        assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
+    elif args[:2] == ["target", "add"]:
+        assert args[-1] == "wasm32-wasip1", args
+    elif args[:4] == ["run", "1.95.0", "cargo", "build"]:
+        assert "--locked" in args, args
+        destination = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"\0asmfixture")
+    else:
+        raise AssertionError(args)
 elif name == "cargo":
     assert args[:2] == ["+1.95.0", "install"] and "--locked" in args, args
     assert args[args.index("--rev") + 1] == "bf517077c848d91f75091f66d1996cfeb84f4732", args
@@ -103,6 +114,7 @@ else:
         run("make", "--no-print-directory", "zellij-runtime")
         installed = home / ".local/bin/zellij"
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.46.0"
+        assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
 
         # A later set overrides earlier sets, and explicit local values win.
         config.write_text('sets = ["shell", "terminal", "personal"]\n[codex]\ngithub_enabled = false\n[zellij]\nsource = "release"\n')
