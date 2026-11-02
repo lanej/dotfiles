@@ -12,7 +12,7 @@ Use the **pinned upstream Zellij runtime with native fixes** installed by this c
 
 The first native build takes longer than installing an upstream binary and needs a C/C++ compiler, Make, CMake, pkg-config, and OpenSSL development files. `bootstrap.sh` installs those build dependencies. On macOS, install Xcode command line tools and run `brew install cmake pkg-config openssl@3 fzf`. Later installs reuse the Cargo cache and skip an unchanged executable after checking its hash against the installed patch set. The stock Homebrew or upstream 0.45.1 executable does not include these fixes.
 
-This pinned build has an upstream startup race: an external CLI probe that disconnects before the first layout can interfere with [initial client registration](https://github.com/zellij-org/zellij/blob/bf517077c848d91f75091f66d1996cfeb84f4732/zellij-server/src/screen.rs#L6706-L6710). Wait for a new session's first shell prompt before querying it. The session detector follows that ordering; the upstream race remains present.
+The native patches also preserve the initial terminal client's registration when a temporary CLI connection closes before the first layout. A client that really disconnects remains absent when that late layout finishes. Existing session servers need a restart to use this repair.
 
 From the dotfiles checkout:
 
