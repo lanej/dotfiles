@@ -28,6 +28,12 @@ class Terminal:
     def __init__(self, binary, env, name, command=None):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
+        navigation = Path.home() / ".local/share/zellij/plugins/pane-navigation.wasm"
+        assert navigation.exists(), "Install pane navigation with scripts/install-zellij-navigation.py"
+        installed = Path(env["HOME"]) / ".local/share/zellij/plugins/pane-navigation.wasm"
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        if not installed.exists():
+            shutil.copyfile(navigation, installed)
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             # Set the slave's size before Zellij can query it. Doing this in the

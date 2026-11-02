@@ -501,7 +501,8 @@ install_zellij_runtime() {
 		patched) bash "$dotfiles_root/scripts/install-zellij" ;;
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
-	esac
+	esac || return 1
+	python3 "$dotfiles_root/scripts/install-zellij-navigation.py"
 }
 
 install_zellij_from_main() (

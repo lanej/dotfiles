@@ -47,13 +47,9 @@ def nested_workflow(binary, env, work, init):
         left, right = panes[0]["id"], panes[1]["id"]
         terminal.until("nested Zsh is ready", lambda:
                        PROMPT.decode().strip() in terminal.action("dump-screen", "--pane-id", str(right)))
-        # A native pane-close/reload notification can acknowledge a concurrent
-        # read without its JSON reply. Lose one reply during this real keypress.
-        (work / "query-empty-once").write_text("list-panes")
         terminal.send(b"\x08")
         terminal.until("Zsh navigation stays in nested Zellij", lambda:
                        next(p for p in terminal.terminals() if p["id"] == left)["is_focused"])
-        assert not (work / "query-empty-once").exists()
 
         socket = work / "nested-nvim.sock"
         terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(socket)]) + "\r").encode())
@@ -65,9 +61,13 @@ def nested_workflow(binary, env, work, init):
         terminal.until("nested editor has two splits", lambda: socket.exists() and editor('winnr("$")') == "2")
         terminal.send(b"\x0c")
         terminal.until("nested editor crosses its internal split", lambda: editor("winnr()") == "2")
+        # A native notification can acknowledge a CLI query without its JSON.
+        # The editor boundary still retries that empty ownership observation.
+        (work / "query-empty-once").write_text("list-panes")
         terminal.send(b"\x0c")
         terminal.until("editor boundary moves the inner Zellij pane", lambda:
                        next(p for p in terminal.terminals() if p["id"] == right)["is_focused"])
+        assert not (work / "query-empty-once").exists()
         assert mux(outer_socket, "display-message", "-p", "#{pane_id}") == outer_pane
 
         # Reverse the innermost ownership without clearing either inherited
@@ -134,6 +134,10 @@ def main():
         (home / ".local/share/zsh/zellij-navigation.zsh").unlink()
         subprocess.run(["make", "--no-print-directory", "zellij"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+        config = home / ".config/zellij/config.kdl"
+        configuration = config.read_text()
+        config.unlink()
+        config.write_text(configuration)
         binary = shutil.which("zellij")
         # Delay a real query during a tab switch, or drop one query's stdout to
         # reproduce native empty acknowledgements. All data comes from the server.
@@ -330,6 +334,18 @@ vim.cmd("wincmd h")
                 second_client.prefix(b"l")
                 terminal.until("second client focuses the right shell", lambda:
                                any(row[1] == f"terminal_{right}" for row in listed_clients()))
+                client_focus = {row[0]: row[1] for row in listed_clients()}
+                editor("execute('wincmd h')")
+                editor("execute('wincmd k')")
+                original_window = editor("win_getid()")
+                terminal.send(b"\x0c")
+                terminal.until("one client's key moves its internal editor split", lambda:
+                               editor("win_getid()") != original_window)
+                terminal.send(b"\x08")
+                terminal.until("the same client returns to its editor split", lambda:
+                               editor("win_getid()") == original_window)
+                assert {row[0]: row[1] for row in listed_clients()} == client_focus, \
+                    "Bare navigation changed another attached client's focus"
                 known_panes = {p["id"] for p in terminal.terminals()}
                 second_client.prefix(b"e")
                 terminal.until("scrollback editor hides its client from the pane listing", lambda:
@@ -365,8 +381,8 @@ vim.cmd("wincmd h")
                 (work / "query-release").touch()
                 second_client.close()
 
-            # Foreground TUIs receive these same bytes rather than having their
-            # own controls globally intercepted by the multiplexer.
+            # A foreground raw-terminal app stands in for a busy Codex TUI.
+            # Zellij must capture navigation before the app receives its keys.
             raw = work / "raw.py"
             ready, received = work / "raw-ready", work / "raw-input"
             raw.write_text('''import os, pathlib, termios, tty
@@ -375,22 +391,38 @@ try:
     tty.setraw(0)
     pathlib.Path(os.environ["RAW_READY"]).touch()
     data = b""
-    while len(data) < 4:
-        data += os.read(0, 4 - len(data))
+    while not data.endswith(b"q"):
+        data += os.read(0, 1)
     pathlib.Path(os.environ["RAW_INPUT"]).write_bytes(data)
 finally:
     termios.tcsetattr(0, termios.TCSADRAIN, state)
 ''')
-            terminal.prefix(b"l")
-            terminal.until("focus the right shell", lambda: focused() == right)
+            terminal.send(b":qa!\r")
+            terminal.until("the editor returns to its shell", lambda:
+                           PROMPT.decode().strip() in terminal.action("dump-screen", "--pane-id", str(left)))
+            # Observe the real disk reload before exercising the plugin from
+            # a raw-terminal program, where no shell binding can mask a failure.
+            config.write_text(configuration.replace(
+                '    locked {\n',
+                '    locked {\n        bind "Ctrl t" { Write 21; WriteChars "reload-ready"; }\n',
+                1))
+            def reloaded():
+                terminal.send(b"\x14")
+                return "reload-ready" in terminal.action("dump-screen", "--pane-id", str(left))
+            terminal.until("Zellij applies the configuration reload", reloaded)
+            terminal.send(b"\x15")
             command = shlex.join(["env", f"RAW_READY={ready}", f"RAW_INPUT={received}", "python3", str(raw)])
             terminal.send((command + "\r").encode())
             terminal.until("foreground application is reading keys", ready.exists)
-            terminal.send(b"\x08\x0a\x0b\x0c")
-            terminal.until("foreground application receives all four control keys", lambda:
-                           received.exists() and received.read_bytes() == b"\x08\x0a\x0b\x0c")
-            assert focused() == right
-            print("PASS: installed navigation preserves editor modes/zoom and application keys; "
+            terminal.send(b"\x0c")
+            terminal.until("Ctrl-l leaves the foreground application", lambda: focused() == right)
+            terminal.send(b"\x08")
+            terminal.until("Ctrl-h returns to the running application", lambda: focused() == left)
+            terminal.send(b"\x08q")
+            terminal.until("Ctrl-h at the edge stays out of the application", lambda:
+                           received.exists() and received.read_bytes() == b"q")
+            assert focused() == left
+            print("PASS: bare navigation works from foreground applications and preserves editor modes/zoom; "
                   "delayed requests cannot use inactive-tab focus or an omitted scrollback client.")
         except Exception:
             print("Pane state:", terminal.panes())
