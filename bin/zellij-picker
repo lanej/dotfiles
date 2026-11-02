@@ -86,6 +86,7 @@ def preview_tab(session, tab_id):
 
 def preview_session(session):
     tabs = snapshot(session, "tabs")
+    legacy = (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
         print(f"{marker} {tab['position'] + int(legacy)}: {label(tab['name'])}")
