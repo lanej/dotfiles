@@ -1,0 +1,6 @@
+# Every common tool bundle, including the optional Mermaid renderer/browser.
+# Select personal or easypost separately; full does not infer work context.
+sets = ["workstation"]
+
+[tools]
+mermaid = true

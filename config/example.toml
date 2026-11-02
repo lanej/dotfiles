@@ -1,9 +1,10 @@
 # The native macos or linux baseline is automatic. Add tool and context bundles.
-sets = ["workstation", "easypost"]
+sets = ["full", "easypost"]
 
 # Individual properties override the bundles.
 [tools]
-mermaid = true
+# Skip Mermaid's browser download even when the full set is selected.
+mermaid = false
 
 [zellij]
 source = "patched"
