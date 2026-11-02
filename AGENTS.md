@@ -17,6 +17,7 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
 make           # Initialize the machine TOML and native OS baseline
+# Add this machine's tool and work-context sets to its TOML.
 make bootstrap # Native macos or linux baseline plus uv and Python
 make plan      # Inspect the selected tool bundles
 make install   # Install selected tools and apply their configuration
@@ -25,8 +26,9 @@ make install   # Install selected tools and apply their configuration
 Always edit files within `~/.files`, not the symlinked targets under `~`.
 Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on
 shell/editor reload because they're symlinked. Adding a *new* file to be
-symlinked requires a corresponding rule in the `Makefile` plus a re-run of
-`make`. Declare tool recipes and version pins in `bootstrap/tools.toml`, then
+symlinked requires a corresponding rule in the `Makefile` plus a re-run of its
+target, or `make configure` when that target's recipe is selected. Declare tool
+recipes and version pins in `bootstrap/tools.toml`, then
 group their `tools.<name>` switches under `config/sets/`. The resolver derives
 selected Make targets and bootstrap phases from that catalog. Default `make`
 applies the native OS baseline; `make configure` adds the configured bundles.

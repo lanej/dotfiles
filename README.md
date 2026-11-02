@@ -70,7 +70,7 @@ those entrypoints. Missing external skill sources are reported and skipped.
 
 ## Configuration sets
 
-`make` and `bootstrap.sh` read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect.
+The full install and configuration stages read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect.
 
 The built-in native baseline and basic linking targets such as `make shell git` need only Make, Bash, and standard system utilities. Python 3.11+ is required for configuration-driven targets such as `make configure`, `make config`, and `make plan`; `make bootstrap` installs that runtime before the full installation stage.
 
@@ -205,7 +205,13 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
 | Target | Description |
 |---|---|
-| `make` / `make setup` | Install configuration and integrations with a checklist |
+| `make` / `make base` | Initialize missing machine TOML and link the native baseline without Python |
+| `make config-init` | Initialize a missing machine TOML without applying configuration |
+| `make bootstrap` | Apply the native baseline and install only uv and Python |
+| `make install` | Install and configure the selected tool sets |
+| `make configure` / `make setup` / `make all` | Reapply the selected configuration without installing packages |
+| `make plan` | Preview the baseline, selected tools, and execution phases |
+| `make config` | Show effective properties and their sources |
 | `make lint` | Run skill audits and instruction-size checks |
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
