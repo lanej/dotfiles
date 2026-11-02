@@ -31,6 +31,7 @@ def main():
         baseline = json.loads(run(*command, "--format", "json").stdout)
         schema = json.loads(run(*command, "--format", "schema").stdout)
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
+        assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         native_tools = {"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"}
         disabled_native = "yabai" if platform_set == "macos" else "polybar"

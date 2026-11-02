@@ -38,7 +38,6 @@ def main():
                      "pwd", "readlink", "rm", "sed", "sort", "tail", "touch", "tr",
                      "uname", "wc"):
             (executables / name).symlink_to(shutil.which(name))
-        (executables / "python3").symlink_to(sys.executable)
         git = executables / "git"
         git.write_text('#!/bin/sh\nif [ "$1" = clone ]; then\n'
                        '  echo "Fixture network unavailable" >&2; exit 1\nfi\n'
@@ -59,6 +58,22 @@ def main():
                "AGENT_STATUS_BIN": str(broker),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
+
+        # Basic linking must work before bootstrap provides Python. Use the
+        # same restricted PATH on developer machines and CI runners alike.
+        minimal_home = temporary / "minimal-home"
+        minimal_home.mkdir()
+        minimal_env = {**env, "HOME": str(minimal_home)}
+        minimal_preview = subprocess.run([*command, "-n", "shell", "git"], cwd=repo, env=minimal_env,
+                                         capture_output=True, text=True, timeout=30)
+        assert minimal_preview.returncode == 0, minimal_preview.stdout + minimal_preview.stderr
+        assert snapshot(minimal_home) == {}, "make -n must not install configuration"
+        minimal = subprocess.run([*command, "shell", "git"], cwd=repo, env=minimal_env,
+                                 capture_output=True, text=True, timeout=30)
+        assert minimal.returncode == 0, minimal.stdout + minimal.stderr
+        assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
+        assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+
         dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
@@ -73,6 +88,7 @@ def main():
         assert not (home / ".bashrc").exists()
         assert not (home / ".config/nvim").exists()
 
+        (executables / "python3").symlink_to(sys.executable)
         # Configure adds the chosen bundles to that same baseline.
         configure = [*command, "configure"]
         selected_only = subprocess.run(configure, cwd=repo, env=env,

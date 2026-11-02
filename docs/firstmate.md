@@ -4,7 +4,7 @@ The `firstmate` launcher starts a captain in a dedicated session. Codex is the d
 
 ## Install and choose a backend
 
-`bootstrap.sh` installs Firstmate and its tools. To update the launcher and configuration from an existing dotfiles checkout:
+`make install` installs Firstmate and its tools when the `ai` or `workstation` set is selected. To update the launcher and configuration from an existing dotfiles checkout:
 
 ```sh
 make firstmate-config
@@ -21,7 +21,7 @@ firstmate start
 
 For the managed default, change `firstmate/backend` in this checkout to `zellij`. The installer links that file when the Firstmate home has no backend configuration; it preserves an existing selection. If the home already owns a separate `config/backend`, update that file instead. Set `FM_BACKEND=tmux` to override either configuration for a launch.
 
-Zellij requires version 0.45.1 or newer and `jq`; the normal bootstrap installs the terminal tools. The installed Firstmate checkout must include its experimental Zellij adapter. `make firstmate-config` also installs the shared [Zellij configuration](zellij.md), but does not install binaries or start a session.
+Zellij requires version 0.45.1 or newer and `jq`; `make install` installs them with the `terminal` and `shell` sets. The installed Firstmate checkout must include its experimental Zellij adapter. `make firstmate-config` also installs the shared [Zellij configuration](zellij.md), but does not install binaries or start a session.
 
 | Setting | Purpose | Default |
 | --- | --- | --- |

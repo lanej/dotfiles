@@ -1210,7 +1210,7 @@ dotfiles_has_tool() {
 post_install_setup() {
 	run_configured_hooks "$DOTFILES_POST_HOOKS" || return 1
 	echo ""
-	echo "🎉 Bootstrap installation completed!"
+	echo "🎉 Dotfiles installation completed!"
 	echo ""
 
 	# Setup GitHub CLI authentication if not already done
@@ -1228,18 +1228,34 @@ post_install_setup() {
 	echo ""
 }
 
-# Detect if the user is running the script directly
+bootstrap_dotfiles() {
+	local stage=${1:-bootstrap} root
+	if [ "$#" -gt 1 ] || { [ "$stage" != bootstrap ] && [ "$stage" != install ]; }; then
+		printf 'Usage: bash bootstrap.sh [bootstrap|install]\n' >&2
+		return 2
+	fi
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	case "$stage" in
+		bootstrap)
+			# No machine configuration or optional tool setup is needed here.
+			export PATH="$HOME/.local/bin:$PATH"
+			make -C "$root" base || return 1
+			install_config_runtime || return 1
+			printf '\nBootstrap complete. Run make install to install the selected tool sets.\n'
+			;;
+		install)
+			prepare_bootstrap_environment
+			install_dependencies || return 1
+			# Selected integrations prepare credentials before Make links configuration.
+			run_configured_hooks "$DOTFILES_PREPARE_HOOKS" || return 1
+			make -C "$root" configure || return 1
+			post_install_setup
+			;;
+	esac
+}
+
+# Sourcing this file exposes installers without starting either stage.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	set -eo pipefail
-	if [ -d "$HOME"/.files ]; then
-		git -C "$HOME"/.files pull
-	else
-		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
-	fi
-	prepare_bootstrap_environment
-	install_dependencies
-	# Selected integrations prepare credentials before Make links configuration.
-	run_configured_hooks "$DOTFILES_PREPARE_HOOKS"
-	make -C "$HOME"/.files configure
-	post_install_setup
+	bootstrap_dotfiles "$@"
 fi

@@ -5,8 +5,9 @@
 This repository manages Josh Lane's personal configuration files ("dotfiles")
 and development environment setup, portable across macOS and Linux. The
 `Makefile` symlinks configuration from this repo (`~/.files`) into the home
-directory; `bootstrap.sh` installs system packages and tools (Neovim, Rust,
-fzf, and others) via OS-specific package managers or direct downloads.
+directory. `make bootstrap` applies the built-in OS baseline and installs uv
+and Python; `make install` installs selected tools (Neovim, Rust, fzf, and
+others) via the installers in `bootstrap.sh`, then applies configuration.
 Primary shell is Zsh (`zsh-autosuggestions`, syntax-highlighting, starship
 prompt); primary editor is Neovim (Lua config in `nvim/`).
 
@@ -15,9 +16,9 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
-make          # Configures the native macos or linux baseline
-make configure # Adds the configured tool bundles
-./bootstrap.sh # Installs packages and dependencies
+make bootstrap # Native macos or linux baseline plus uv and Python
+make plan      # Inspect the selected tool bundles
+make install   # Install selected tools and apply their configuration
 ```
 
 Always edit files within `~/.files`, not the symlinked targets under `~`.
@@ -30,6 +31,10 @@ selected Make targets and bootstrap phases from that catalog. Default `make`
 applies the native OS baseline; `make configure` adds the configured bundles.
 Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed.
 Configuration symlink rules remain in the `Makefile` and its helper scripts.
+Default `make` links only the built-in native baseline without Python or machine
+TOML; `make configure` applies the full resolved configuration without installing
+packages. Keep `config/targets.mk` generated from the native sets and tool catalog
+with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`.
 Do not add tools to an unconditional install or setup list.
 
 ## Development Conventions

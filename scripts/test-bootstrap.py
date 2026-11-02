@@ -26,9 +26,12 @@ def main():
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\n')
+        # Bootstrap must work before the machine's TOML is valid or Python is
+        # available. The full stage will consume the repaired configuration.
+        machine_config.write_text('sets = ["not-a-set"]\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         # Execute the installer against a small source fixture. Network and
@@ -244,6 +247,9 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # These integrations configure their already-installed tools before the
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
+elif name == "make" and args[-1:] == ["base"]:
+    subprocess.run(["/usr/bin/make", *args], check=True)
+    record("base")
 elif name == "make":
     assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
@@ -326,7 +332,7 @@ else:
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
             "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm",
-            "python3", "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
+            "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
@@ -340,7 +346,7 @@ else:
         # Keep this fresh-box workflow independent of tools preinstalled on CI.
         system_bin = home / "system-bin"
         system_bin.mkdir()
-        missing_tools = {"tmux", "eza", "yq", "btop", "rustup"}
+        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup"}
         for system_dir in (Path("/usr/bin"), Path("/bin")):
             for tool in system_dir.iterdir():
                 destination = system_bin / tool.name
@@ -362,10 +368,38 @@ else:
         env.pop("DOTFILES_CONFIG", None)
         env.pop("IS_EASYPOST", None)
         env.pop("BOOTSTRAP_MERMAID", None)
-        # Exercise the documented relative launch on ARM Linux, including an
-        # older Neovim that needs a source build and missing eza/yq/btop.
+        # Stage one provides the native baseline and configuration runtime,
+        # without installing the selected workstation or work integrations.
         result = subprocess.run(
             ["/bin/bash", "./bootstrap.sh"],
+            cwd=checkout, env=env, capture_output=True, text=True,
+        )
+        if result.returncode:
+            raise AssertionError(result.stdout + result.stderr)
+        assert (home / ".xinitrc").is_symlink()
+        assert (home / ".local/bin/uv").is_file()
+        assert (home / ".local/bin/python3").is_file()
+        assert not (home / ".nvm").exists()
+        assert not (home / ".cargo").exists()
+        assert not (home / ".local/bin/codex").exists()
+        assert not (home / ".config/bedrock/env").exists()
+
+        # Stage two installs the configured workstation on ARM Linux, including
+        # an older Neovim that needs a source build and missing eza/yq/btop.
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\n')
+        plan = subprocess.run(
+            ["/usr/bin/make", "--no-print-directory", "plan"],
+            cwd=checkout, env=env, capture_output=True, text=True,
+        )
+        assert plan.returncode == 0, plan.stdout + plan.stderr
+        assert "codex" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
+        preview = subprocess.run(
+            ["/usr/bin/make", "--no-print-directory", "-n", "configure"],
+            cwd=checkout, env=env, capture_output=True, text=True,
+        )
+        assert preview.returncode == 0, preview.stdout + preview.stderr
+        result = subprocess.run(
+            ["/usr/bin/make", "--no-print-directory", "install"],
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         if result.returncode:
@@ -390,7 +424,7 @@ else:
         assert record["executable"] == str(installed)
         # The same real installer verifies and reuses the installed artifact;
         # the fixture compiler must not be invoked again for an unchanged tree.
-        runtime_command = [str(fixture / "python3"), str(checkout / "scripts/install-zellij")]
+        runtime_command = [str(home / ".local/bin/python3"), str(checkout / "scripts/install-zellij")]
         checked = subprocess.run([*runtime_command, "--check"], env=env, capture_output=True, text=True)
         assert checked.returncode == 0, checked.stdout + checked.stderr
         repeated = subprocess.run(runtime_command, env=env, capture_output=True, text=True)
@@ -447,21 +481,21 @@ else:
         )
         assert selected_loaded.returncode == 0, "Explicitly selected credentials were not installed."
         assert not (checkout / "selected-token-executed").exists()
-        assert "Bootstrap installation completed!" in result.stdout
+        assert "Dotfiles installation completed!" in result.stdout
 
         # A local property removes the editor from the same composed bundles.
-        # Keep an older system editor present: bootstrap must leave it alone
+        # Keep an older system editor present: installation must leave it alone
         # and skip both the source install and Neovim's post-install setup.
         machine_config.write_text(machine_config.read_text() + "neovim = false\n")
         (home / ".local/bin/nvim").unlink()
         previous_events = len((home / "events").read_text().splitlines())
-        reduced = subprocess.run(["/bin/bash", "./bootstrap.sh"], cwd=checkout, env=env,
+        reduced = subprocess.run(["/bin/bash", "./bootstrap.sh", "install"], cwd=checkout, env=env,
                                  capture_output=True, text=True)
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
         assert not (home / ".local/bin/nvim").exists()
-        print("PASS: fresh-box bootstrap installs runtimes, AI CLIs, and private Bedrock credentials.")
+        print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 
 if __name__ == "__main__":

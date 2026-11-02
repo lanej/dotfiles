@@ -1,12 +1,15 @@
 .DEFAULT_GOAL := base
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
+# Bootstrap installs its managed runtime here even before shell setup exists.
+export PATH := $(HOME)/.local/bin:$(PATH)
 GO ?= go
 FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
-# Share one validated TOML resolver with bootstrap. Only the native OS set is
-# inferred; additional tool and work-context sets remain explicit.
+include $(MAKE_SCRIPTS)/../../config/targets.mk
+# Share one validated TOML resolver with bootstrap. Resolve only when a target
+# consumes settings, so basic linking remains usable before Python is installed.
 ifneq ($(origin DOTFILES_CONFIG),undefined)
 export DOTFILES_CONFIG
 endif
@@ -15,17 +18,26 @@ $(error IS_EASYPOST is retired; select configuration sets in ~/.config/dotfiles/
 endif
 shell-quote = '$(subst ','"'"',$(1))'
 DOTFILES_CONFIG_ARG = $(if $(filter undefined,$(origin DOTFILES_CONFIG)),,--config $(call shell-quote,$(DOTFILES_CONFIG)))
-DOTFILES_RESOLVED := $(shell python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format make)
-ifeq ($(strip $(DOTFILES_RESOLVED)),)
-$(error Invalid dotfiles configuration; see diagnostic above)
-endif
+# Make's shell expressions use the incoming PATH rather than the recipe export.
+DOTFILES_PYTHON = $(or $(wildcard $(HOME)/.local/bin/python3),python3)
+# Cache validated settings after the first consumer requests them.
+define resolve-dotfiles-config
+$(eval DOTFILES_RESOLVED := $(shell $(call shell-quote,$(DOTFILES_PYTHON)) "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format make))
+$(if $(strip $(DOTFILES_RESOLVED)),,$(error Invalid dotfiles configuration; see diagnostic above))
 $(foreach setting,$(DOTFILES_RESOLVED),$(eval override $(setting)))
+$(eval resolve-dotfiles-config :=)
+endef
+config-value = $(strip $(resolve-dotfiles-config)$($(1)))
 comma := ,
-SETUP_TARGETS := $(subst $(comma), ,$(DOTFILES_SETUP_TARGETS))
-BASE_TARGETS := $(subst $(comma), ,$(DOTFILES_BASE_TARGETS))
+SETUP_TARGETS = $(subst $(comma), ,$(call config-value,DOTFILES_SETUP_TARGETS))
+BASE_TARGETS = $(if $(filter undefined,$(origin DOTFILES_NATIVE_TARGETS_$(UNAME_S))),$(error Unsupported OS $(UNAME_S)),$(DOTFILES_NATIVE_TARGETS_$(UNAME_S)))
 
 # The runner reports every step and returns failure only after trying them all.
 all setup: configure
+
+.PHONY: bootstrap install
+bootstrap install:
+	@bash "$(DOTFILES)/bootstrap.sh" "$@"
 
 .PHONY: config plan test-dotfiles-config test-dotfiles-config-editor
 config:
@@ -205,7 +217,7 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(DOTFILES_CODEX_GITHUB_ENABLED)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
@@ -302,7 +314,7 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all base configure setup setup-empty $(subst $(comma), ,$(DOTFILES_CONFIG_TARGETS)) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
