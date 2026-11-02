@@ -27,6 +27,13 @@ serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 serialization_interval 60
 
+plugins {
+    pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
+}
+load_plugins {
+    pane-navigation
+}
+
 keybinds clear-defaults=true {
     locked {
         bind "Ctrl f" { SwitchToMode "Tmux"; }
