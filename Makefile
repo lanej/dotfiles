@@ -220,7 +220,7 @@ test:
 
 .PHONY: test-pi-review
 test-pi-review:
-	@python3 "$(DOTFILES)/scripts/test-pi-review.py"
+	@node "$(DOTFILES)/scripts/test-pi-review.mjs"
 
 .PHONY: test-codex-cleanup
 test-codex-cleanup:

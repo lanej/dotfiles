@@ -4,7 +4,8 @@ on:
   pull_request:
     paths:
       - 'bin/pi-review'
-      - 'scripts/test-pi-review.py'
+      - 'scripts/pi-review.mjs'
+      - 'scripts/test-pi-review.mjs'
       - 'ai/skills/dispatcher/scripts/dispatcher-worker'
       - 'ai/skills/dispatcher/SKILL.md'
       - 'ai/skills/dispatcher/references/**'
@@ -17,7 +18,8 @@ on:
     branches: [master]
     paths:
       - 'bin/pi-review'
-      - 'scripts/test-pi-review.py'
+      - 'scripts/pi-review.mjs'
+      - 'scripts/test-pi-review.mjs'
       - 'ai/skills/dispatcher/scripts/dispatcher-worker'
       - 'ai/skills/dispatcher/SKILL.md'
       - 'ai/skills/dispatcher/references/**'
@@ -39,10 +41,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
       - name: Install the supported Pi runtime
         run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.4.0
       - name: Review through native Pi with a local fixture model
-        run: python3 scripts/test-pi-review.py --native
+        run: node scripts/test-pi-review.mjs --native

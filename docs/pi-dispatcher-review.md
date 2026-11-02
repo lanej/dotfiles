@@ -29,10 +29,14 @@ For a checkout outside an existing dispatcher lifecycle:
 
 ## Runtime and result
 
-Install Pi **1.4.0** and configure the chosen provider normally. The worker uses
-Pi's documented RPC protocol so Pi owns authentication and model compatibility.
-The model argument is required. `--pi-bin` selects a specific executable; it
-does not accept a shell command. An unsupported Pi version fails before review.
+Install the Node package **@earendil-works/pi-coding-agent@1.4.0** and configure
+the chosen provider normally. The worker uses Pi's exported `RpcClient`, so Pi
+owns RPC framing, authentication, and model compatibility. There is no build
+step or additional npm dependency. The model argument is required. `--pi-bin`
+selects the installed package's CLI executable, including an npm symlink; it
+does not accept a shell command or standalone binary. An unsupported Pi version
+fails before review. The shared dispatcher retains its existing Python helpers;
+the review worker and its fixture tests run in Node.
 
 Each invocation writes a new owner-only directory under
 `~/.local/state/pi-reviews/<session-id>/`, or the new outside-checkout directory
@@ -61,6 +65,11 @@ Shutdown first requests an abort, then terminates the child process group if it
 does not exit. Cleanup may take up to three additional seconds. A hard-killed
 host can leave a nonterminal result; never interpret it as a completed review.
 
+The recorded `pid` identifies a detached Node supervisor. It runs `RpcClient`
+and its Pi subprocess in one owned process group, so cleanup can stop remaining
+descendants even if the supervisor or Pi exits first. Diagnostics are captured
+in `stderr.log`.
+
 ## Tool and instruction boundary
 
 The reviewer exposes only `read`, `grep`, `find`, and `ls`. It disables automatic
@@ -79,7 +88,8 @@ appropriately restricted account or environment when those boundaries matter.
 ## Verification
 
 `make test-pi-review` exercises the actual dispatcher and review entrypoints with
-a simulated Pi process. `python3 scripts/test-pi-review.py --native` runs that
+Pi's installed `RpcClient` and a simulated Pi CLI. Pi 1.4.0 must be installed for
+both forms of the check. `node scripts/test-pi-review.mjs --native` runs that
 same review workflow through Pi 1.4.0 with a local HTTP fixture model. CI runs
 the native form without paid API calls or provider credentials. It checks the
 review result, selected tools, shared instructions, concrete checkout/session,
