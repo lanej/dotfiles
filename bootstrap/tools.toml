@@ -31,6 +31,7 @@ installer = "system"
 setup = ["tmux-config", "tmux-plugins"]
 
 [tools.zellij]
+description = "Install the selected Zellij runtime; patched uses the lanej/zellij fork with native fixes."
 installer = "zellij"
 requires = ["rust"]
 setup = ["zellij-config"]

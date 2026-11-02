@@ -493,12 +493,12 @@ load_dotfiles_config() {
 install_zellij_runtime() {
 	# OSC 7501 is merged on main but absent from stable 0.45.1:
 	# https://github.com/zellij-org/zellij/pull/5734
-	# Pin upstream with our native fixes until a stable release includes both.
+	# Pin lanej/zellij with our native fixes until a stable release includes both.
 	local dotfiles_root
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	load_dotfiles_config || return 1
 	case "$DOTFILES_ZELLIJ_SOURCE" in
-		patched) python3 "$dotfiles_root/scripts/install-zellij" ;;
+		patched) bash "$dotfiles_root/scripts/install-zellij" ;;
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
 	esac

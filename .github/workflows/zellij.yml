@@ -85,13 +85,13 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
-          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij', 'zellij/patches/*.patch') }}
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
           restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
-      - name: Build and verify pinned upstream Zellij
+      - name: Install pinned Zellij fork
         id: zellij_install
         run: |
-          python3 scripts/install-zellij --test
-          python3 scripts/install-zellij --check
+          bash scripts/install-zellij
+          "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Save native Zellij build
         uses: actions/cache/save@v4
