@@ -1184,6 +1184,7 @@ setup_bedrock_router() (
 )
 
 run_configured_hooks() {
+	local configuration_root=${2:-$HOME/.files}
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
@@ -1194,6 +1195,11 @@ run_configured_hooks() {
 			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
 			neovim) setup_neovim || return 1 ;;
 			atuin-sync) setup_atuin_sync || return 1 ;;
+			zellij-status)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+					make -C "$configuration_root" zellij-status zellij-config || return 1
+				fi
+				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
 			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
 		esac
@@ -1208,7 +1214,7 @@ dotfiles_has_tool() {
 }
 
 post_install_setup() {
-	run_configured_hooks "$DOTFILES_POST_HOOKS" || return 1
+	run_configured_hooks "$DOTFILES_POST_HOOKS" "${1:-$HOME/.files}" || return 1
 	echo ""
 	echo "🎉 Dotfiles installation completed!"
 	echo ""
@@ -1249,7 +1255,7 @@ bootstrap_dotfiles() {
 			# Selected integrations prepare credentials before Make links configuration.
 			run_configured_hooks "$DOTFILES_PREPARE_HOOKS" || return 1
 			make -C "$root" configure || return 1
-			post_install_setup
+			post_install_setup "$root"
 			;;
 	esac
 }

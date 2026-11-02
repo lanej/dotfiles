@@ -100,15 +100,43 @@ case "$target" in
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.config/tmux"
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.tmux.conf"
         ;;
+    zellij-status)
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        if [ "$status_wasm" = "$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm" ]; then
+            cd "$dotfiles/zellij/status"
+            cargo build --locked --release --target wasm32-wasip1 --target-dir target
+        else
+            test -s "$status_wasm"
+        fi
+        ;;
     zellij-config)
         python3 "$make_scripts/zellij-config.py" "$setup_home"
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
-        ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        status_available=false
+        if [ -s "$status_wasm" ]; then
+            status_available=true
+            if command -v zellij >/dev/null 2>&1; then
+                case "$(zellij --version 2>/dev/null || true)" in
+                    'zellij 0.46.'*) ;;
+                    *) status_available=false ;;
+                esac
+            fi
+        fi
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        if [ "$status_available" = true ]; then
+            ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
+            ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
+        else
+            ln -fs "$dotfiles/zellij/config-legacy.kdl" "$setup_home/.config/zellij/config.kdl"
+        fi
         ln -fs "$dotfiles/zsh/zellij-navigation.zsh" "$setup_home/.local/share/zsh/zellij-navigation.zsh"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
             [ -f "$source" ] || continue
             ln -fs "$source" "$setup_home/.config/zellij/layouts/"
         done
+        if [ "$status_available" != true ]; then
+            ln -fs "$dotfiles/zellij/layouts/tmux-native.kdl" "$setup_home/.config/zellij/layouts/tmux.kdl"
+        fi
         for source in "$dotfiles"/bin/zellij-*; do
             if [ -f "$source" ] && [ -x "$source" ]; then
                 ln -fs "$source" "$setup_home/.local/bin/"

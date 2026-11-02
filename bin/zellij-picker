@@ -9,6 +9,7 @@ import base64
 import json
 import os
 from pathlib import Path
+from pathlib import Path
 import re
 import shlex
 import subprocess
@@ -87,7 +88,7 @@ def preview_session(session):
     tabs = snapshot(session, "tabs")
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
-        print(f"{marker} {tab['position'] + 1}: {label(tab['name'])}")
+        print(f"{marker} {tab['position'] + int(legacy)}: {label(tab['name'])}")
 
 
 def choose(rows, heading, preview):
@@ -117,17 +118,19 @@ def pick_tab(session):
         (pane.get("tab_id") for pane in snapshot(session, "panes")
          if not pane.get("is_plugin") and pane["id"] == pane_id), None
     )
-    # Native bells retain a useful attention signal while the tmux-specific
-    # agent-status renderer is not ported. Stable IDs survive tab reordering.
-    tabs.sort(key=lambda tab: (not tab.get("has_bell_notification"), tab["position"]))
+    priorities = {"NeedsYou": 0, "Failed": 0, "Done": 1, "Working": 2}
+    tabs.sort(key=lambda tab: (
+        priorities.get(tab.get("attention", {}).get("status"),
+                       0 if tab.get("has_bell_notification") else 3), tab["position"]))
     choices = {str(tab["tab_id"]): tab for tab in tabs}
     rows = []
+    legacy = (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
     for token, tab in choices.items():
         flags = " [current]" if tab["tab_id"] == source_tab else ""
         if tab.get("has_bell_notification"):
             flags += " [bell]"
-        rows.append(f"{token}\t{tab['position'] + 1}: {label(tab['name'])}{flags}")
-    token = choose(rows, "Tabs (bells first)", "--preview-tab")
+        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {label(tab['name'])}{flags}")
+    token = choose(rows, "Tabs (native attention first)", "--preview-tab")
     if token is None:
         return
     if token not in choices or not any(
