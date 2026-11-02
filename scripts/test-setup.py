@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,7 +39,6 @@ def main():
                      "pwd", "readlink", "rm", "sed", "sort", "tail", "touch", "tr",
                      "uname", "wc"):
             (executables / name).symlink_to(shutil.which(name))
-        (executables / "python3").symlink_to(sys.executable)
         git = executables / "git"
         git.write_text('#!/bin/sh\nif [ "$1" = clone ]; then\n'
                        '  echo "Fixture network unavailable" >&2; exit 1\nfi\n'
@@ -52,27 +52,56 @@ def main():
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
-        machine_config = temporary / "machine.toml"
-        machine_config.write_text('sets = ["shell"]\n')
-        env = {"DOTFILES_CONFIG": str(machine_config), "HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
+        machine_config = home / ".config/dotfiles/config.toml"
+        env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
+
+        # Basic linking must work before bootstrap provides Python. Use the
+        # same restricted PATH on developer machines and CI runners alike.
+        minimal_home = temporary / "minimal-home"
+        minimal_home.mkdir()
+        minimal_env = {**env, "HOME": str(minimal_home)}
+        minimal_preview = subprocess.run([*command, "-n", "shell", "git"], cwd=repo, env=minimal_env,
+                                         capture_output=True, text=True, timeout=30)
+        assert minimal_preview.returncode == 0, minimal_preview.stdout + minimal_preview.stderr
+        assert snapshot(minimal_home) == {}, "make -n must not install configuration"
+        minimal = subprocess.run([*command, "shell", "git"], cwd=repo, env=minimal_env,
+                                 capture_output=True, text=True, timeout=30)
+        assert minimal.returncode == 0, minimal.stdout + minimal.stderr
+        assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
+        assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+
         dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
 
-        # Default Make configures the native baseline, without tool additions.
+        # Default Make configures the native baseline without Python, package
+        # managers, or downloaders available on PATH.
         native = subprocess.run(command, cwd=repo, env=env,
                                 capture_output=True, text=True, timeout=30)
         assert native.returncode == 0, native.stdout + native.stderr
         native_path = ".config/yabai/yabairc" if sys.platform == "darwin" else ".xinitrc"
         assert (home / native_path).is_symlink()
+        assert machine_config.is_file(), "Default make must initialize the machine TOML."
+        platform_set = "macos" if sys.platform == "darwin" else "linux"
+        assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
         assert not (home / ".bashrc").exists()
         assert not (home / ".config/nvim").exists()
 
+        # Local choices survive another Python-free default make before the
+        # full configuration stage reads them.
+        machine_config.write_text('# Local preferences\nsets = ["shell"]\n[tools]\nmermaid = false\n')
+        local_config = machine_config.read_bytes()
+        native_again = subprocess.run(command, cwd=repo, env=env,
+                                      capture_output=True, text=True, timeout=30)
+        assert native_again.returncode == 0, native_again.stdout + native_again.stderr
+        assert machine_config.read_bytes() == local_config
+
+        (executables / "python3").symlink_to(sys.executable)
         # Configure adds the chosen bundles to that same baseline.
         configure = [*command, "configure"]
         selected_only = subprocess.run(configure, cwd=repo, env=env,

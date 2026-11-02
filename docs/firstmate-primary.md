@@ -19,7 +19,7 @@ The choice applies when creating a new captain. `firstmate start` attaches to an
 
 ## Pi prerequisites
 
-Install Pi 1.4.0 or newer with `BOOTSTRAP_PI=1 bash bootstrap.sh`. Provider authentication remains Pi's own setup; the launcher does not change credentials. Use an updated [Firstmate checkout with Pi primary support](https://github.com/kunchenguid/firstmate#recommended-harnesses). The launcher requires these tracked files under its `.pi/extensions/` directory:
+Install Pi 1.4.0 or newer separately; it is not currently included in the tool catalog. Provider authentication remains Pi's own setup; the launcher does not change credentials. Use an updated [Firstmate checkout with Pi primary support](https://github.com/kunchenguid/firstmate#recommended-harnesses). The launcher requires these tracked files under its `.pi/extensions/` directory:
 
 - `fm-primary-pi-watch.ts`
 - `fm-primary-turnend-guard.ts`

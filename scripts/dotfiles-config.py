@@ -136,7 +136,7 @@ def resolve(path, environment, explicit=False, host="linux"):
     origins = {key: "not selected" for key in values}
     applied, visiting, specified = [], [], set()
     repository_sets = ROOT / "config/sets"
-    local_sets = path.parent / "sets"
+    local_sets = path.parent / "sets" if path is not None else None
 
     def merge(settings, source):
         values.update(settings)
@@ -151,7 +151,7 @@ def resolve(path, environment, explicit=False, host="linux"):
         # The repository baseline always supplies the defaults. Local sets may
         # override other names, or compose them into a machine/role preset.
         source = repository_sets / f"{name}.toml"
-        if name != "base" and (local_sets / f"{name}.toml").exists():
+        if name != "base" and local_sets is not None and (local_sets / f"{name}.toml").exists():
             source = local_sets / f"{name}.toml"
         if not source.is_file():
             raise ValueError(f"unknown configuration set {name!r} (requested by {visiting[-1] if visiting else path})")
@@ -169,7 +169,9 @@ def resolve(path, environment, explicit=False, host="linux"):
     baseline_keys = {key for key in specified if key.startswith("tools.")}
     # A missing conventional file uses the baseline. An explicitly selected
     # DOTFILES_CONFIG must exist, so a typo cannot silently change policy.
-    document = read(path) if path.exists() or explicit or "DOTFILES_CONFIG" in environment else {}
+    document = {}
+    if path is not None and (path.exists() or explicit or "DOTFILES_CONFIG" in environment):
+        document = read(path)
     selected, overrides = validate(document, path)
     for name in selected:
         apply(name)
@@ -177,8 +179,8 @@ def resolve(path, environment, explicit=False, host="linux"):
     missing = SETTINGS.keys() - values.keys()
     if missing:
         raise ValueError("missing settings: " + ", ".join(sorted(missing)))
-    # The default Make target configures only the OS baseline. Its tool
-    # switches still respect later overrides, without selecting extra recipes.
+    # Keep a native-only plan for inspection, with the machine's overrides.
+    # The Python-free Make baseline is generated separately from built-in sets.
     baseline_values = {key: value if not key.startswith("tools.") or key in baseline_keys else False
                        for key, value in values.items()}
     baseline_specified = {key for key in specified if key in baseline_keys or values[key] is False}
@@ -188,7 +190,7 @@ def resolve(path, environment, explicit=False, host="linux"):
     all_setup = list(dict.fromkeys(target for recipe in TOOLS.values() for target in recipe.get("setup", [])))
     if any(not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target) for target in all_setup):
         raise ValueError(f"{TOOL_FILE}: invalid setup target")
-    return {"sets": applied, "settings": values, "sources": origins, "config": str(path),
+    return {"sets": applied, "settings": values, "sources": origins, "config": str(path) if path is not None else None,
             "tools": plan, "setup": setup, "prepare": prepare, "post": post,
             "all_setup": all_setup,
             "baseline": {"sets": baseline_sets, "tools": baseline_plan, "setup": baseline_setup,
@@ -243,10 +245,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, help="use an alternate machine configuration")
     parser.add_argument("--platform", help="native OS for the plan (macos or linux); defaults to this host")
-    parser.add_argument("--format", choices=("toml", "json", "plan", "make", "shell", "schema"), default="toml")
+    parser.add_argument("--format", choices=("toml", "json", "plan", "make", "shell", "schema", "make-targets"), default="toml")
     options = parser.parse_args()
     if options.format == "schema":
         print(json.dumps(editor_schema(), indent=2))
+        return
+    if options.format == "make-targets":
+        print("# Generated from built-in sets and the tool catalog; no machine configuration is read.")
+        print("# Regenerate: python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk")
+        for host, uname in (("macos", "Darwin"), ("linux", "Linux")):
+            native = resolve(None, {}, host=host)
+            print(f"DOTFILES_NATIVE_SET_{uname} := {host}")
+            print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['setup'])}")
+        print(f".PHONY: {' '.join(native['all_setup'])}")
         return
     directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
     path = Path(options.config or os.environ.get("DOTFILES_CONFIG", str(directory / "dotfiles/config.toml"))).expanduser().resolve()
