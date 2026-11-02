@@ -1,4 +1,4 @@
-// One row at the top on every tab; terminal panes use the configured title frames.
+// One row at the top on every tab; terminal panes use the configured pane frames.
 layout {
     default_tab_template {
         pane size=1 borderless=true {
