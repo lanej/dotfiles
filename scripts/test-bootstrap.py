@@ -223,7 +223,7 @@ elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
 elif name == "make":
-    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status"}.intersection(args), args
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
