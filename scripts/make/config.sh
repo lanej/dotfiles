@@ -102,8 +102,9 @@ case "$target" in
         ;;
     zellij-config)
         python3 "$make_scripts/zellij-config.py" "$setup_home"
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin"
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
         ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
+        ln -fs "$dotfiles/zsh/zellij-navigation.zsh" "$setup_home/.local/share/zsh/zellij-navigation.zsh"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
             [ -f "$source" ] || continue
             ln -fs "$source" "$setup_home/.config/zellij/layouts/"
