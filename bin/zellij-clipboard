@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Store the last Neovim yank for a named Zellij session on this host.
+
+This private temporary buffer is separate from the system clipboard. It is
+shared by panes in a session, survives detach, and lasts until replaced,
+explicitly cleared, or removed with the operating system's temporary files.
+"""
+
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import stat
+import sys
+import tempfile
+
+
+MAX_BYTES = 1024 * 1024
+
+
+def buffer_path(session):
+    base = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir())
+    directory = base / f"zellij-clipboard-{os.getuid()}"
+    directory.mkdir(mode=0o700, exist_ok=True)
+    info = directory.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise RuntimeError("The copy-buffer directory must be private and owned by this user")
+    return directory / hashlib.sha256(session.encode()).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=("copy", "read", "clear"))
+    parser.add_argument("--session", default=os.environ.get("ZELLIJ_SESSION_NAME"))
+    args = parser.parse_args()
+    if not args.session:
+        raise RuntimeError("Run inside Zellij or specify --session")
+    path = buffer_path(args.session)
+    if args.action == "clear":
+        path.unlink(missing_ok=True)
+        return
+    if args.action == "copy":
+        data = sys.stdin.buffer.read(MAX_BYTES + 1)
+        if len(data) > MAX_BYTES:
+            raise RuntimeError("The selection exceeds the 1 MiB copy-buffer limit")
+        data.decode("utf-8")
+        name = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as target:
+                name = target.name
+                target.write(data)
+            os.replace(name, path)
+        finally:
+            if name and os.path.exists(name):
+                os.unlink(name)
+        return
+
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        raise RuntimeError("The session buffer is empty; yank a selection in Neovim first") from None
+    with os.fdopen(fd, "rb") as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise RuntimeError("The copy buffer must be a private regular file")
+        data = source.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise RuntimeError("The copy buffer exceeds 1 MiB")
+    text = data.decode("utf-8")
+    # An embedded bracketed-paste terminator must not turn subsequent text into
+    # terminal commands. Ordinary text, tabs and newlines remain byte-for-byte.
+    if any((ord(c) < 32 and c not in "\t\n\r") or 0x7F <= ord(c) < 0xA0 for c in text):
+        raise RuntimeError("The selection contains terminal control characters; paste was cancelled")
+    sys.stdout.buffer.write(data)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, UnicodeError, RuntimeError) as error:
+        print(f"zellij-clipboard: {error}", file=sys.stderr)
+        sys.exit(1)

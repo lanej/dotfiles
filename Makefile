@@ -339,6 +339,10 @@ test-firstmate:
 test-zellij-layout:
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
 
+.PHONY: test-zellij-clipboard
+test-zellij-clipboard:
+	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
+
 test-zellij-status:
 	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 
