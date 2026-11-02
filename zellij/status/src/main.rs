@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
 mod clipboard;
+mod clients;
 
 #[derive(Default)]
 struct State {
@@ -20,9 +21,17 @@ struct State {
     clipboard_receiver: bool,
     clipboard_prepared: bool,
     permissions_requested: bool,
+    clients: clients::Clients,
 }
 
 register_plugin!(State);
+
+fn leader(panes: &PaneManifest) -> u32 {
+    panes.panes.values().flatten()
+        .filter(|pane| pane.is_plugin && !pane.exited && !pane.is_suppressed
+            && pane.plugin_url.as_deref().map(|url| url.ends_with("/lane-status.wasm")).unwrap_or(false))
+        .map(|pane| pane.id).min().unwrap_or_else(|| get_plugin_ids().plugin_id)
+}
 
 fn plain(value: &str) -> String {
     value.chars().filter(|c| !c.is_control()).collect()
@@ -67,14 +76,14 @@ fn request_permissions() {
     request_permission(&[PermissionType::ReadApplicationState,
         PermissionType::RunCommands, PermissionType::ChangeApplicationState,
         PermissionType::WriteToStdin, PermissionType::Reconfigure,
-        PermissionType::MessageAndLaunchOtherPlugins]);
+        PermissionType::MessageAndLaunchOtherPlugins, PermissionType::ReadCliPipes]);
 }
 
 fn subscribe_events() {
     subscribe(&[EventType::ModeUpdate, EventType::TabUpdate, EventType::PaneUpdate,
         EventType::RunCommandResult, EventType::Timer, EventType::PermissionRequestResult,
         EventType::Visible, EventType::Mouse, EventType::InitialKeybinds,
-        EventType::SessionUpdate, EventType::GlobalAttentionUpdate]);
+        EventType::SessionUpdate, EventType::GlobalAttentionUpdate, EventType::ListClients]);
 }
 
 impl ZellijPlugin for State {
@@ -84,6 +93,7 @@ impl ZellijPlugin for State {
         // Only the visible bar asks for first-use consent. The suppressed
         // receiver waits for that bar to confirm its native permission grant.
         if !self.clipboard_receiver {
+            self.clients.start();
             subscribe_events();
             request_permissions();
             self.permissions_requested = true;
@@ -104,14 +114,17 @@ impl ZellijPlugin for State {
                 // receive SessionUpdate and safely make synchronous queries.
                 set_selectable(false);
             }
-            Event::SessionUpdate(sessions, _) if !self.allowed => {
-                self.allowed = true;
-                if self.clipboard_receiver {
-                    self.mode.session_name = sessions.iter().find(|session| session.is_current_session)
-                        .map(|session| session.name.clone());
+            Event::SessionUpdate(sessions, _) => {
+                if !self.allowed {
+                    self.allowed = true;
+                    if self.clipboard_receiver {
+                        self.mode.session_name = sessions.iter().find(|session| session.is_current_session)
+                            .map(|session| session.name.clone());
+                    }
+                    self.poll();
                 }
-                self.poll();
             }
+            Event::ListClients(_) if self.allowed && !self.clipboard_receiver => self.clients.finish(),
             Event::ModeUpdate(mode) => { self.mode = mode; self.poll(); }
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
             Event::GlobalAttentionUpdate(attention) => {
@@ -155,6 +168,9 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.allowed && !self.clipboard_receiver && matches!(message.source, PipeSource::Cli(_)) {
+            return self.clients.pipe(&message, &self.panes);
+        }
         if matches!(message.source, PipeSource::Plugin(_)) {
             if self.clipboard_receiver && message.is_private && !self.permissions_requested
                 && message.name == clipboard::PREPARE && clipboard::is_own_client(&message)
