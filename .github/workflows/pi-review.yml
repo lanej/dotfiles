@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      PI_DISPATCHER_RUNTIME: ${{ runner.temp }}/pi-dispatcher-runtime
+      PI_DISPATCHER_RUNTIME: /tmp/pi-dispatcher-runtime
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
