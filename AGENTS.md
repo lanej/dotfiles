@@ -13,6 +13,8 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 
 ## Getting Started
 
+Follow [the setup requirements](docs/setup-requirements.md) when changing configuration, bootstrap, or software installation.
+
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
