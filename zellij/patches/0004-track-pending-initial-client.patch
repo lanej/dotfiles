@@ -1,0 +1,425 @@
+--- a/zellij-server/src/lib.rs
++++ b/zellij-server/src/lib.rs
+@@ -5631,6 +5631,7 @@
+                     screen_bus,
+                     max_panes,
+                     client_attributes_clone,
++                    client_id,
+                     config,
+                     debug,
+                     layout,
+--- a/zellij-server/src/screen.rs
++++ b/zellij-server/src/screen.rs
+@@ -2050,7 +2050,9 @@
+     terminal_emulator_color_codes: Rc<RefCell<HashMap<usize, String>>>,
+     connected_clients: Rc<RefCell<HashMap<ClientId, bool>>>, // bool -> is_web_client
+     client_display_slots: Rc<RefCell<HashMap<ClientId, usize>>>,
+-    highest_client_id_seen: ClientId,
++    // The first client is attached only after its initial layout is ready. Keep its
++    // identity until then so unrelated CLI disconnects cannot cancel that attach.
++    pending_first_client_id: Option<ClientId>,
+     /// The indices of this [`Screen`]'s active [`Tab`]s.
+     active_tab_ids: BTreeMap<ClientId, usize>,
+     client_sizes: HashMap<ClientId, Size>,
+@@ -2357,6 +2359,7 @@
+     pub fn new(
+         bus: Bus<ScreenInstruction>,
+         client_attributes: &ClientAttributes,
++        initial_client_id: ClientId,
+         max_panes: Option<usize>,
+         mut mode_info: ModeInfo,
+         pane_frame_style: PaneFrameStyle,
+@@ -2421,7 +2424,7 @@
+             style: client_attributes.style,
+             connected_clients: Rc::new(RefCell::new(HashMap::new())),
+             client_display_slots: Rc::new(RefCell::new(HashMap::new())),
+-            highest_client_id_seen: 0,
++            pending_first_client_id: Some(initial_client_id),
+             active_tab_ids: BTreeMap::new(),
+             client_sizes: HashMap::new(),
+             global_last_active_tab_id: 0,
+@@ -6580,20 +6583,12 @@
+             }
+             return Ok(());
+         }
+-        let (client_id, mut is_web_client) = client_id_and_is_web_client;
++        let (client_id, is_web_client) = client_id_and_is_web_client;
++        let pending_first_client =
++            (self.pending_first_client_id == Some(client_id)).then_some((client_id, is_web_client));
+         let client_id = if self.get_active_tab(client_id).is_ok() {
+-            if let Some(connected_client_is_web_client) =
+-                self.connected_clients.borrow().get(&client_id)
+-            {
+-                is_web_client = *connected_client_is_web_client;
+-            }
+             client_id
+         } else if let Some(first_client_id) = self.get_first_client_id() {
+-            if let Some(first_client_is_web_client) =
+-                self.connected_clients.borrow().get(&first_client_id)
+-            {
+-                is_web_client = *first_client_is_web_client;
+-            }
+             first_client_id
+         } else {
+             client_id
+@@ -6671,10 +6666,10 @@
+             None
+         };
+ 
+-        if !self.active_tab_ids.contains_key(&client_id) {
++        if let Some((pending_client_id, pending_client_is_web)) = pending_first_client {
+             self.connected_clients
+                 .borrow_mut()
+-                .insert(client_id, is_web_client);
++                .insert(pending_client_id, pending_client_is_web);
+         }
+ 
+         // apply the layout to the new tab
+@@ -6703,9 +6698,8 @@
+             })
+             .with_context(err_context)?;
+ 
+-        let client_has_since_disconnected = client_id <= self.highest_client_id_seen;
+-        if !self.active_tab_ids.contains_key(&client_id) && !client_has_since_disconnected {
+-            self.add_client(client_id, is_web_client)
++        if let Some((pending_client_id, pending_client_is_web)) = pending_first_client {
++            self.add_client(pending_client_id, pending_client_is_web)
+                 .with_context(err_context)?;
+         }
+ 
+@@ -6776,7 +6770,9 @@
+             bail!("Can't find a valid tab to attach client to!");
+         };
+ 
+-        self.highest_client_id_seen = self.highest_client_id_seen.max(client_id);
++        if self.pending_first_client_id == Some(client_id) {
++            self.pending_first_client_id = None;
++        }
+         self.active_tab_ids.insert(client_id, tab_index);
+         self.release_kitty_host_state(client_id);
+         self.connected_clients
+@@ -6838,7 +6834,9 @@
+ 
+     pub fn remove_client(&mut self, client_id: ClientId) -> Result<()> {
+         let err_context = || format!("failed to remove client {client_id}");
+-        self.highest_client_id_seen = self.highest_client_id_seen.max(client_id);
++        if self.pending_first_client_id == Some(client_id) {
++            self.pending_first_client_id = None;
++        }
+ 
+         self.set_client_dimmed(client_id, false, None);
+         self.close_popup_for_client(client_id);
+@@ -10700,6 +10698,7 @@
+     bus: Bus<ScreenInstruction>,
+     max_panes: Option<usize>,
+     client_attributes: ClientAttributes,
++    initial_client_id: ClientId,
+     config: Config,
+     debug: bool,
+     default_layout: Box<Layout>,
+@@ -10808,6 +10807,7 @@
+     let mut screen = Screen::new(
+         bus,
+         &client_attributes,
++        initial_client_id,
+         max_panes,
+         get_mode_info(
+             config_options.default_mode.unwrap_or_default(),
+--- a/zellij-server/src/panes/tiled_panes/mod.rs
++++ b/zellij-server/src/panes/tiled_panes/mod.rs
+@@ -1174,8 +1174,7 @@
+         self.connected_clients
+             .borrow()
+             .iter()
+-            .next()
+-            .and_then(|first_client_id| self.active_panes.get(first_client_id).copied())
++            .find_map(|client_id| self.active_panes.get(client_id).copied())
+     }
+     pub fn focused_pane_id(&self, client_id: ClientId) -> Option<PaneId> {
+         self.active_panes.get(&client_id).copied()
+--- a/zellij-server/src/unit/screen_tests.rs
++++ b/zellij-server/src/unit/screen_tests.rs
+@@ -363,6 +363,7 @@
+     let screen = Screen::new(
+         bus,
+         &client_attributes,
++        1, // initial client
+         max_panes,
+         mode_info,
+         draw_pane_frames,
+@@ -450,6 +451,7 @@
+         let mut config = self.config.clone();
+         config.options.advanced_mouse_actions = Some(self.advanced_mouse_actions);
+         let client_attributes = self.client_attributes.clone();
++        let initial_client_id = self.main_client_id;
+         let screen_bus = Bus::new(
+             vec![self.screen_receiver.take().unwrap()],
+             Some(&self.to_screen.clone()),
+@@ -472,6 +474,7 @@
+                     screen_bus,
+                     None,
+                     client_attributes,
++                    initial_client_id,
+                     config,
+                     debug,
+                     Box::new(Layout::default()),
+@@ -536,6 +539,7 @@
+     pub fn run_without_tabs(&mut self) -> std::thread::JoinHandle<()> {
+         let config = self.config.clone();
+         let client_attributes = self.client_attributes.clone();
++        let initial_client_id = self.main_client_id;
+         let screen_bus = Bus::new(
+             vec![self.screen_receiver.take().unwrap()],
+             Some(&self.to_screen.clone()),
+@@ -557,6 +561,7 @@
+                     screen_bus,
+                     None,
+                     client_attributes,
++                    initial_client_id,
+                     config,
+                     false,
+                     Box::new(Layout::default()),
+@@ -576,6 +581,7 @@
+     ) -> std::thread::JoinHandle<()> {
+         let config = self.config.clone();
+         let client_attributes = self.client_attributes.clone();
++        let initial_client_id = self.main_client_id;
+         let screen_bus = Bus::new(
+             vec![self.screen_receiver.take().unwrap()],
+             Some(&self.to_screen.clone()),
+@@ -598,6 +604,7 @@
+                     screen_bus,
+                     None,
+                     client_attributes,
++                    initial_client_id,
+                     config,
+                     debug,
+                     Box::new(Layout::default()),
+@@ -1011,6 +1018,195 @@
+ }
+ 
+ #[test]
++fn dotfiles_initial_layout_ignores_unrelated_cli_disconnect() {
++    let size = Size { cols: 80, rows: 24 };
++    let (mut screen, _, server_receiver) =
++        create_new_screen_with_capture(size, true, true, true, false);
++    screen
++        .new_tab(0, (vec![], vec![]), None, Some(1))
++        .expect("create initial tab");
++
++    // A short-lived CLI connection can finish while the plugin/PTY threads are
++    // still preparing the first terminal client's layout.
++    screen
++        .remove_client(2)
++        .expect("remove unrelated CLI client");
++    screen
++        .apply_layout(
++            TiledPaneLayout::default(),
++            vec![],
++            vec![(1, None)],
++            vec![],
++            HashMap::new(),
++            0,
++            true,
++            (1, false),
++            None,
++        )
++        .expect("apply initial layout");
++
++    assert_eq!(screen.active_tab_ids.get(&1), Some(&0));
++    screen
++        .apply_pty_bytes(1, b"initial client is live".to_vec())
++        .expect("write first terminal output");
++    screen.render_to_clients().expect("render initial layout");
++    let rendered = collect_rendered_output_per_client(&server_receiver);
++    assert!(rendered
++        .get(&1)
++        .is_some_and(|output| output.contains("initial client is live")));
++    assert!(!rendered.contains_key(&2));
++}
++
++#[test]
++fn dotfiles_initial_layout_keeps_pending_client_when_another_attaches() {
++    let size = Size { cols: 80, rows: 24 };
++    let (mut screen, _, server_receiver) =
++        create_new_screen_with_capture(size, true, true, true, false);
++    screen
++        .new_tab(0, (vec![], vec![]), None, Some(1))
++        .expect("create initial tab");
++    screen.set_client_size(2, size);
++    screen.add_client(2, false).expect("attach second client");
++    screen
++        .apply_layout(
++            TiledPaneLayout::default(),
++            vec![],
++            vec![(1, None)],
++            vec![],
++            HashMap::new(),
++            0,
++            true,
++            (1, false),
++            None,
++        )
++        .expect("apply initial client's layout");
++
++    assert_eq!(screen.active_tab_ids.get(&1), Some(&0));
++    assert_eq!(screen.active_tab_ids.get(&2), Some(&0));
++    assert_eq!(screen.get_active_pane_id(&1), Some(PaneId::Terminal(1)));
++    assert_eq!(screen.get_active_pane_id(&2), Some(PaneId::Terminal(1)));
++    screen
++        .apply_pty_bytes(1, b"both attachments are live".to_vec())
++        .expect("write shared terminal output");
++    screen.render_to_clients().expect("render both attachments");
++    let rendered = collect_rendered_output_per_client(&server_receiver);
++    assert!(rendered
++        .get(&1)
++        .is_some_and(|output| output.contains("both attachments are live")));
++    assert!(rendered
++        .get(&2)
++        .is_some_and(|output| output.contains("both attachments are live")));
++}
++
++#[test]
++fn dotfiles_initial_layout_moves_existing_mirrored_attachment() {
++    let size = Size { cols: 80, rows: 24 };
++    let (mut screen, _, server_receiver) =
++        create_new_screen_with_capture(size, true, true, true, true);
++    screen
++        .new_tab(0, (vec![], vec![]), None, Some(1))
++        .expect("create pending initial tab");
++    screen
++        .new_tab(1, (vec![], vec![]), None, Some(2))
++        .expect("create second client's tab");
++    screen.set_client_size(2, size);
++    screen.add_client(2, false).expect("attach second client");
++    screen
++        .go_to_tab(2, 2)
++        .expect("move second client to its tab");
++    screen
++        .apply_layout(
++            TiledPaneLayout::default(),
++            vec![],
++            vec![(2, None)],
++            vec![],
++            HashMap::new(),
++            1,
++            true,
++            (2, false),
++            None,
++        )
++        .expect("finish second client's tab first");
++    assert_eq!(screen.active_tab_ids.get(&2), Some(&1));
++    assert_eq!(screen.get_active_pane_id(&2), Some(PaneId::Terminal(2)));
++
++    screen
++        .apply_layout(
++            TiledPaneLayout::default(),
++            vec![],
++            vec![(1, None)],
++            vec![],
++            HashMap::new(),
++            0,
++            true,
++            (1, true),
++            None,
++        )
++        .expect("finish the initial web client's layout");
++
++    assert_eq!(screen.active_tab_ids.get(&1), Some(&0));
++    assert_eq!(screen.active_tab_ids.get(&2), Some(&0));
++    assert_eq!(screen.get_active_pane_id(&1), Some(PaneId::Terminal(1)));
++    assert_eq!(screen.get_active_pane_id(&2), Some(PaneId::Terminal(1)));
++    assert!(screen.tabs.get(&1).unwrap().has_no_connected_clients());
++    assert_eq!(screen.connected_clients.borrow().get(&1), Some(&true));
++    assert_eq!(screen.connected_clients.borrow().get(&2), Some(&false));
++    screen
++        .apply_pty_bytes(1, b"mirrored attachments are live".to_vec())
++        .expect("write destination terminal output");
++    screen.render_to_clients().expect("render destination tab");
++    let rendered = collect_rendered_output_per_client(&server_receiver);
++    assert!(rendered
++        .get(&1)
++        .is_some_and(|output| output.contains("mirrored attachments are live")));
++    assert!(rendered
++        .get(&2)
++        .is_some_and(|output| output.contains("mirrored attachments are live")));
++}
++
++#[test]
++fn dotfiles_initial_layout_does_not_revive_disconnected_client() {
++    let size = Size { cols: 80, rows: 24 };
++    let (mut screen, _, server_receiver) =
++        create_new_screen_with_capture(size, true, true, true, false);
++    screen
++        .new_tab(0, (vec![], vec![]), None, Some(1))
++        .expect("create initial tab");
++    screen.remove_client(1).expect("remove initial client");
++    screen
++        .apply_layout(
++            TiledPaneLayout::default(),
++            vec![],
++            vec![(1, None)],
++            vec![],
++            HashMap::new(),
++            0,
++            true,
++            (1, false),
++            None,
++        )
++        .expect("finish layout after disconnect");
++    screen.render_to_clients().expect("render detached layout");
++
++    assert!(!screen.active_tab_ids.contains_key(&1));
++    assert!(!screen.connected_clients.borrow().contains_key(&1));
++    assert!(screen.tabs.get(&0).unwrap().has_no_connected_clients());
++    assert!(!collect_rendered_output_per_client(&server_receiver).contains_key(&1));
++
++    screen.set_client_size(3, size);
++    screen.add_client(3, false).expect("attach a new client");
++    screen
++        .apply_pty_bytes(1, b"new attachment is live".to_vec())
++        .expect("write to the retained terminal");
++    screen.render_to_clients().expect("render new attachment");
++    let rendered = collect_rendered_output_per_client(&server_receiver);
++    assert!(rendered
++        .get(&3)
++        .is_some_and(|output| output.contains("new attachment is live")));
++    assert!(!rendered.contains_key(&1));
++}
++
++#[test]
+ fn open_new_tab() {
+     let size = Size {
+         cols: 121,
+@@ -5987,6 +6183,7 @@
+     let screen = Screen::new(
+         bus,
+         &client_attributes,
++        1, // initial client
+         max_panes,
+         mode_info,
+         draw_pane_frames,
+@@ -9233,6 +9430,7 @@
+     let screen = Screen::new(
+         bus,
+         &client_attributes,
++        1, // initial client
+         max_panes,
+         mode_info,
+         draw_pane_frames,
+@@ -10226,6 +10424,7 @@
+     let screen = Screen::new(
+         bus,
+         &client_attributes,
++        1, // initial client
+         None,
+         mode_info,
+         PaneFrameStyle::None,
+@@ -11051,6 +11250,7 @@
+     let screen = Screen::new(
+         bus,
+         &client_attributes,
++        1,    // initial client
+         None, // max_panes
+         mode_info,
+         PaneFrameStyle::None,

@@ -87,8 +87,7 @@ def open_popup(terminal):
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
     terminal.prefix(b"P")
-    # Probing before the first render can disrupt main's client registration.
-    # Observe this guest's prompt before opening any additional CLI connection.
+    # Observe this guest's ready shell before querying its session metadata.
     terminal.until("popup renders its ready shell", lambda:
                    f"{POPUP}:zellij-ready> ".encode() in terminal.output[rendered:])
     # Confirm the guest through the CLI, then its host's nesting-focus indication.
