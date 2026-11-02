@@ -348,6 +348,19 @@ def main():
             terminal.send(b"review [ready]\r")
             terminal.until("name second tab", lambda: any(t["name"] == "review [ready]"
                            and t["active"] for t in terminal.tabs()))
+            terminal.send(b"printf 'LEFT SCREEN: a long visible line that wraps in the miniature, with wrapped-end\\n'\r")
+            terminal.prefix(b"v")
+            terminal.until("preview tab has two panes", lambda:
+                           len([p for p in terminal.terminals()
+                                if p["tab_name"] == "review [ready]"]) == 2)
+            right_pane = max(
+                (p for p in terminal.terminals() if p["tab_name"] == "review [ready]"),
+                key=lambda p: p["pane_x"],
+            )
+            terminal.until("right preview shell starts", lambda:
+                           PROMPT.decode().strip() in terminal.action(
+                               "dump-screen", "--pane-id", f"terminal_{right_pane['id']}"))
+            terminal.send(b"printf 'RIGHT SCREEN\\n'\r")
             terminal.prefix(b"\x10")
             terminal.until("Ctrl-p returns to last tab", lambda: any(t["name"] == "work"
                            and t["active"] for t in terminal.tabs()))
@@ -369,6 +382,18 @@ def main():
             # count and selected row reflect the query, not the initial list.
             terminal.until("fzf filters to the requested tab", lambda:
                            picker_has_result("review [ready]"))
+
+            def preview_shows_both_panes():
+                screen = picker_screen()
+                left_row = next((line for line in screen.splitlines() if "LEFT SCREEN:" in line), "")
+                right_row = next((line for line in screen.splitlines() if "RIGHT SCREEN" in line), "")
+                bottom_row = screen.rstrip().splitlines()[-1] if screen.strip() else ""
+                return (left_row and right_row and "wrapped-end" in screen
+                        and left_row.index("LEFT SCREEN:") < right_row.index("RIGHT SCREEN")
+                        and bottom_row.count("└") == 2 and bottom_row.count("┘") == 2)
+
+            terminal.until("tab preview fits both panes in their split positions",
+                           preview_shows_both_panes)
             terminal.send(b"\r")
             terminal.until("picker focuses selected tab and closes itself", lambda:
                            any(t["name"] == "review [ready]" and t["active"] for t in terminal.tabs())

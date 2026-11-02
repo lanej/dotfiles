@@ -8,12 +8,12 @@ import base64
 import json
 import os
 from pathlib import Path
-from pathlib import Path
 import re
 import shlex
 import subprocess
 import sys
 import time
+import unicodedata
 
 
 def run_zellij(*args, session=None, timeout=5):
@@ -60,6 +60,45 @@ def own_pane_id():
     return int(value) if value.isdecimal() else None
 
 
+def screen_rows(text, width):
+    """Wrap printable text into terminal cells without splitting wide glyphs."""
+    rows = []
+    for line in text.splitlines() or [""]:
+        cells = []
+        for character in label(line):
+            if unicodedata.category(character) in ("Mn", "Me"):
+                if cells:
+                    index = -2 if cells[-1] == "" else -1
+                    cells[index] += character
+                continue
+            size = 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
+            if size > width:
+                character, size = "?", 1
+            if len(cells) + size > width:
+                rows.append(cells + [" "] * (width - len(cells)))
+                cells = []
+            cells.append(character)
+            if size == 2:
+                cells.append("")
+        rows.append(cells + [" "] * (width - len(cells)))
+    return rows
+
+
+def pane_title(pane):
+    title = label(pane.get("title", ""))
+    title = re.sub(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F-]+(?:\.{3}|…)?", "", title)
+    return " | ".join(part.strip() for part in title.split("|") if part.strip())
+
+
+def pane_screen(session, pane):
+    try:
+        return run_zellij(
+            "action", "dump-screen", "--pane-id", f"terminal_{pane['id']}", session=session
+        ).rstrip()
+    except RuntimeError as error:
+        return f"Preview unavailable: {label(error)}"
+
+
 def preview_tab(session, tab_id):
     own_id = own_pane_id() if session == os.environ.get("ZELLIJ_SESSION_NAME") else None
     panes = [
@@ -73,15 +112,70 @@ def preview_tab(session, tab_id):
     if not panes:
         print("No other terminal pane in this tab.")
         return
-    panes.sort(key=lambda pane: (not pane.get("is_focused"), pane["id"]))
+    tab = next((tab for tab in snapshot(session, "tabs") if tab["tab_id"] == tab_id), None)
+    if tab is None:
+        print("Tab closed while loading preview.")
+        return
+    panes = [pane for pane in panes
+             if not pane.get("is_floating") or tab.get("are_floating_panes_visible")]
+    fullscreen = any(pane.get("is_fullscreen") for pane in panes)
+    panes = [pane for pane in panes
+             if not fullscreen or pane.get("is_fullscreen") or pane.get("is_floating")]
+    if not panes:
+        print("No visible terminal pane in this tab.")
+        return
+    width = max(1, int(os.environ.get("FZF_PREVIEW_COLUMNS", "100")))
+    height = max(1, int(os.environ.get("FZF_PREVIEW_LINES", "30")))
+    left = min(pane["pane_x"] for pane in panes)
+    top = min(pane["pane_y"] for pane in panes)
+    span_x = max(pane["pane_x"] + pane["pane_columns"] for pane in panes) - left
+    span_y = max(pane["pane_y"] + pane["pane_rows"] for pane in panes) - top
+    rectangles = []
     for pane in panes:
-        print(f"{pane['id']}: {label(pane.get('title', ''))}")
-    print()
-    contents = run_zellij(
-        "action", "dump-screen", "--pane-id", f"terminal_{panes[0]['id']}", session=session
-    )
-    for line in contents.rstrip().splitlines()[-30:]:
-        print(label(line))
+        x = round((pane["pane_x"] - left) * width / span_x)
+        y = round((pane["pane_y"] - top) * height / span_y)
+        right = round((pane["pane_x"] + pane["pane_columns"] - left) * width / span_x)
+        bottom = round((pane["pane_y"] + pane["pane_rows"] - top) * height / span_y)
+        rectangles.append((pane, x, y, right, bottom))
+    if any(right - x < 4 or bottom - y < 4 for _, x, y, right, bottom in rectangles):
+        rows = []
+        per_pane = max(1, height // len(panes))
+        for pane in sorted(panes, key=lambda pane: (pane["pane_y"], pane["pane_x"])):
+            rows.append(screen_rows(f"{pane['id']}: {pane_title(pane)}", width)[0])
+            if per_pane > 1:
+                rows.extend(screen_rows(pane_screen(session, pane), width)[-(per_pane - 1):])
+        if len(rows) > height:
+            rows = rows[:height - 1] + [screen_rows("More panes; enlarge preview", width)[0]]
+        print("\n".join("".join(row) for row in rows))
+        return
+    canvas = [[" "] * width for _ in range(height)]
+    # WHY: Draw floating panes last so the snapshot reflects their visible overlay.
+    for pane, x, y, right, bottom in sorted(
+        rectangles, key=lambda rect: (rect[0].get("is_floating", False), rect[0]["id"])
+    ):
+        columns, lines = right - x, bottom - y
+        inner = columns - 2
+        for row in range(y, bottom):
+            if canvas[row][x] == "" and x:
+                canvas[row][x - 1] = " "
+            if right < width and canvas[row][right] == "":
+                canvas[row][right] = " "
+            canvas[row][x:right] = ["│"] + [" "] * inner + ["│"]
+        canvas[y][x:right] = ["┌"] + ["─"] * inner + ["┐"]
+        canvas[bottom - 1][x:right] = ["└"] + ["─"] * inner + ["┘"]
+        marker = "*" if pane.get("is_focused") else ""
+        title = f" {marker}{pane['id']}: {pane_title(pane)} "
+        canvas[y][x + 1:right - 1] = screen_rows(title, inner)[0]
+        command = label(pane.get("pane_command") or "terminal")
+        cwd = Path(pane.get("pane_cwd") or "").name
+        canvas[y + 1][x + 1:right - 1] = screen_rows(f"{command} | {cwd}", inner)[0]
+        rows = screen_rows(pane_screen(session, pane), inner)
+        available = lines - 3
+        if len(rows) > available:
+            rows = [screen_rows("↑ earlier screen lines", inner)[0]] + rows[-(available - 1):]
+        for index, row in enumerate(rows[:available]):
+            canvas[y + 2 + index][x + 1:right - 1] = row
+    print("\n".join("".join(row) for row in canvas))
 
 
 def preview_session(session):
@@ -98,7 +192,8 @@ def choose(rows, heading, preview=None):
     preview_args = []
     if preview:
         preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
-        preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=right:60%"]
+        window = "right:70%:border-left:noinfo" if preview == "--preview-tab" else "right:60%"
+        preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=" + window]
     result = subprocess.run(
         [
             "fzf", "--height=100%", "--reverse", "--no-multi",
