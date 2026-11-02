@@ -27,7 +27,7 @@ SETTINGS = {
         "type": str,
         "enum": ("patched", "release", "main"),
         "variable": "DOTFILES_ZELLIJ_SOURCE",
-        "description": "Runtime source: patched includes the checkout's native fixes; release uses upstream stable; main builds pinned upstream without local patches.",
+        "description": "Runtime source: patched installs the pinned lanej/zellij fork with native fixes; release uses upstream stable; main builds pinned upstream without the fork's fixes.",
     },
 }
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
