@@ -100,15 +100,22 @@ source = "release"
 | `shell` | Zsh, Git, history, search, navigation, and command-line tools |
 | `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring |
 | `editor` | Neovim, formatters, language servers, and parser tooling |
+| `editor-minimal` | Plugin-free configuration for an existing Vim or Neovim, with basic editing and navigation |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
-| `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
+| `workstation` | Composes `shell`, `terminal`, `editor`, `development`, and `ai`, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
 | `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
 The native platform baseline applies first, then the selected bundles extend it. A headless host can select `shell`, `development`, and `ai` and disable desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
+
+For a remote host with an existing Vim or Neovim, run `make editor-minimal` directly; this needs only Make, Bash, and standard utilities, with no Python, editor installation, or plugin downloads. It links the shared [`editor-minimal/init.vim`](editor-minimal/init.vim) to `~/.vimrc` and `$XDG_CONFIG_HOME/nvim` (default `~/.config/nvim`). Both editors get built-in syntax and filetype support, two-space default indentation, smart-case search, split navigation, `,w` to save, and `,x` to save and quit. Cached workstation plugins are excluded from this profile.
+
+To manage that choice through TOML, select `sets = ["editor-minimal"]` and run `make configure` after the Python runtime is available. The native baseline still applies; disable its desktop recipes on a headless host as described above. When composing editor profiles, the later set wins: `["workstation", "editor-minimal"]` replaces the editor bundle while retaining the other workstation tools. Individual properties still override sets; enabling both `tools.editor-minimal` and `tools.neovim` is rejected before configuration runs. The minimal set installs no editor binary, formatters, language servers, or plugins; `make install` still ensures uv/Python for its full installation stage.
+
+The minimal target replaces existing editor symlinks and preserves real configuration files or directories by stopping before changing either destination. Move those aside yourself to switch profiles, or try the configuration without installing links using `vim -u ~/.files/editor-minimal/init.vim` or `nvim -u ~/.files/editor-minimal/init.vim`. Run `make test-editor-minimal` with Vim and Neovim on `PATH` to exercise the remote editing workflow.
 
 The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies shared property defaults, followed by the native OS set. An unconfigured machine applies only that baseline.
 

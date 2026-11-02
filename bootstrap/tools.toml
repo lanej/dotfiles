@@ -172,6 +172,12 @@ setup = ["kitty-config", "kitty-terminfo"]
 post = ["kitty-terminfo"]
 
 
+[tools.editor-minimal]
+description = "Link plugin-free Vim and Neovim configuration for an existing editor."
+installer = "config"
+setup = ["editor-minimal"]
+conflicts = ["neovim"]
+
 [tools.neovim]
 requires = ["build", "node", "go", "rust", "tree-sitter-cli"]
 setup = ["vim-config", "sql-formatters", "ui-review"]

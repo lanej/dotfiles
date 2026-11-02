@@ -1,0 +1,15 @@
+# Configure an existing Vim or Neovim; no editor or plugin installation.
+[tools]
+editor-minimal = true
+neovim = false
+imagemagick = false
+stylua = false
+shfmt = false
+bash-language-server = false
+rust-analyzer = false
+typescript-language-server = false
+gopls = false
+gotestsum = false
+yaml-language-server = false
+ctags-lsp = false
+tree-sitter-cli = false
