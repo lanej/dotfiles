@@ -27,7 +27,7 @@ def main():
         home.mkdir()
         executables.mkdir()
         shutil.copytree(ROOT, repo, symlinks=True,
-                        ignore=shutil.ignore_patterns(".git", "__pycache__"))
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", "target"))
         # Exercise supported local Codex preferences even in a clean CI checkout.
         local_guidance = repo / "codex/AGENTS.local.md"
         if not local_guidance.exists():
@@ -51,11 +51,16 @@ def main():
                           '  *) touch "$HOME/broker-started" ;;\n'
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
+        # This detector checks installation and symlinks. The Zellij workflow
+        # builds and executes the real plugin; setup accepts a prebuilt artifact.
+        plugin = temporary / "lane-status.wasm"
+        plugin.write_bytes(b"\x00asm\x01\x00\x00\x00")
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
         machine_config = home / ".config/dotfiles/config.toml"
         env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
+               "ZELLIJ_STATUS_WASM": str(plugin),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
 
@@ -117,11 +122,19 @@ def main():
 
         # The opt-in multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
+        bare_env = {**env, "ZELLIJ_STATUS_WASM": str(temporary / "not-built.wasm")}
+        bare = subprocess.run([*command, "zellij"], cwd=repo, env=bare_env,
+                              capture_output=True, text=True, timeout=30)
+        assert bare.returncode == 0, bare.stdout + bare.stderr
+        assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config-legacy.kdl"
+        assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux-native.kdl"
+        # A separately installed artifact enables the richer bar on reconfigure.
         zellij = subprocess.run([*command, "zellij"], cwd=repo, env=env,
                                 capture_output=True, text=True, timeout=30)
         assert zellij.returncode == 0, zellij.stdout + zellij.stderr
         assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config.kdl"
         assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
+        assert (home / ".config/zellij/plugins/lane-status.wasm").resolve() == plugin
         picker = home / ".local/bin/zellij-picker"
         assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
 

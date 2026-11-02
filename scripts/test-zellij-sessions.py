@@ -267,6 +267,7 @@ def main():
             for name in names:
                 terminal = Terminal(binary, env, name)
                 clients.append(terminal)
+                terminal.grant_status_permissions()
                 terminal.until("outer shell starts", lambda:
                                b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             first, second = clients

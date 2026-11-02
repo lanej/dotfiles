@@ -8,7 +8,7 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 ## Start a session
 
-Use the **pinned [lanej/zellij fork](https://github.com/lanej/zellij)** installed by this checkout, Python 3 for the configuration helpers, fzf, and Rust through rustup. The selected Zellij recipe defaults to the exact fork revision in [`scripts/install-zellij`](../scripts/install-zellij). The fork builds on upstream `main` at `bf517077`, which includes [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) and the startup repair; it carries the CLI completion, shutdown flush, and initial-client registration fixes with their native regressions. Select the runtime explicitly through [configuration sets](../README.md#configuration-sets): `tools.zellij = true` enables the recipe; `zellij.source = "patched"` installs the fork, `"release"` installs upstream stable, and `"main"` builds pinned upstream main without the fork's fixes. The `terminal` and `workstation` bundles enable Zellij. The main and release choices omit the fork's fixes; the documented popup, query, and shutdown acceptance applies to the patched runtime. The native builds use Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback. Return the default pin to a stable release once it includes OSC support and these reliability fixes; broker delivery remains separate integration work.
+Use the **pinned [lanej/zellij fork](https://github.com/lanej/zellij)** installed by this checkout, Python 3 for the configuration helpers, fzf, and Rust through rustup. The selected Zellij recipe defaults to the exact fork revision in [`scripts/install-zellij`](../scripts/install-zellij). The fork builds on upstream `main` at `bf517077`, which includes [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) and the startup repair; it carries the CLI completion, shutdown flush, and initial-client registration fixes with their native regressions. Select the runtime explicitly through [configuration sets](../README.md#configuration-sets): `tools.zellij = true` enables the recipe; `zellij.source = "patched"` installs the fork, `"release"` installs upstream stable, and `"main"` builds pinned upstream main without the fork's fixes. The `terminal` and `workstation` bundles enable Zellij. The main and release choices omit the fork's fixes; the documented popup, query, and shutdown acceptance applies to the patched runtime. The native builds use Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback. Return the default pin to a stable release once it includes OSC support and these reliability fixes; the status bar uses its native attention protocol.
 
 The first native build takes longer than installing an upstream binary and needs a C/C++ compiler, Make, CMake, pkg-config, and OpenSSL development files. `make install` installs those build dependencies when Zellij is selected. On macOS, install Xcode command line tools and run `brew install cmake pkg-config openssl@3 fzf`. Cargo uses the fork's lockfile and caches compilation artifacts under `${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target`. Each fork installation replaces the executable, including binaries left by the previous installer, while reusing the build cache. Cargo manages installation ownership and locking. The stock Homebrew or upstream 0.45.1 executable does not include these fixes.
 
@@ -21,7 +21,7 @@ make zellij-runtime zellij
 zellij attach --create main
 ```
 
-`make config` shows the selected source before installation. `make zellij-runtime` installs that runtime, replacing the managed executable even when switching from a newer development version back to stable. `make zellij` installs configuration and helpers without installing a runtime or starting a session. `make configure` also applies this configuration when Zellij is selected. Setup records Zellij's native "never show again" choice for its configuration wizard, preserving other desktop settings, so the wizard does not block the managed keybindings on first launch. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
+`make config` shows the selected source before installation. `make zellij-runtime` installs that runtime, replacing the managed executable even when switching from a newer development version back to stable. `make zellij` installs configuration and helpers without installing software or starting a session. Without a built bar, or with an older runtime, it selects the built-in tab bar and compatible keys. `make install` builds the native-attention bar for the patched/main runtime and reapplies configuration; `make zellij-status zellij` explicitly does the same on an existing installation. The bar uses Rust 1.95.0 and `wasm32-wasip1`; pass `ZELLIJ_STATUS_WASM=/absolute/path/lane-status.wasm` to use an already-built bar. `make configure` also applies this configuration when Zellij is selected. Setup records Zellij's native "never show again" choice for its configuration wizard, preserving other desktop settings, so the wizard does not block the managed keybindings on first launch. In a new shell, `zj main` is the short form of the attach-or-create command. Configuration and individual layouts are symlinked, preserving additional user layout files.
 
 Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. The fork reports the pinned upstream version, `0.46.0`, and includes its matching bundled plugins.
 
@@ -34,7 +34,8 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | Key | Action |
 | --- | --- |
 | `f` | Send a literal Ctrl-f to the application |
-| `Ctrl-f` | Fuzzy tab picker, with native bell tabs first and pane previews |
+| `Ctrl-f` | Fuzzy tab picker, with native attention first and pane previews |
+| `Ctrl-a` | Focus the next native attention item across sessions |
 | `Ctrl-w` | Fuzzy picker for running sessions, with a tab-tree preview |
 | `h`, `j`, `k`, `l` / arrows | Focus the adjacent pane |
 | `Tab`, `o` | Focus the next pane |
@@ -45,7 +46,7 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `Ctrl-n`, `n` | Next tab |
 | `Ctrl-p` | Last-focused tab |
 | `r`, `,` | Rename the tab; Enter accepts and Esc restores the name |
-| `1`–`9` | Select the tab at that one-based position; `0` also selects the first |
+| `0`–`9` | Select the tab at that zero-based position |
 | `d` | Detach, keeping the session running |
 | `x` | Close the focused pane |
 | `z` | Toggle pane zoom |
@@ -108,6 +109,16 @@ Automatic nesting focus applies to other compatible Zellij sessions too, includi
 
 Implementation references: [native nesting options and focus behavior](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-integration-tests/tests/nested_session_handling_config.rs), [CLI session actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs), and [plugin client controls](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-tile/src/shim.rs).
 
+## Native agent status and attention
+
+With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
+
+Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.
+
+Claude Code 2.1.295 and Codex 0.164.0 publish OSC 7501 program status; the installation catalog pins those versions. Other applications need to emit that protocol for detailed native states. The existing agent-status broker remains available for tmux. Configuration-only setup and the stable 0.45.1 runtime use the built-in bar and one-based tab keys until a compatible native-attention bar is available.
+
+On first use, the bar asks to read application state, run its local host-metadata helper, and switch tabs. Focus the permission prompt with `Ctrl-f k`, then press `y`. The bar becomes unselectable after consent. Restart the session after changing the plugin/runtime; replacing an executable does not update an existing server.
+
 ## History and recovery
 
 - **Live history:** at most 100,000 scrollback lines per pane.
@@ -120,7 +131,7 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 
 | tmux behavior | This configuration |
 | --- | --- |
-| Agent-status glyphs/colors, cross-session attention counts, `Ctrl-f Ctrl-a` triage | The existing broker's tmux renderer is not ported. The picker can prioritize native bells but cannot infer agent state from terminal output. |
+| Agent status and cross-session attention | The native program-status protocol supplies the bar and `Ctrl-f Ctrl-a` triage. Programs must emit OSC 7501. |
 | Exact Claude conversation restoration via saved session IDs | Zellij's native command restoration is enabled; the custom `claude --resume` session-ID integration remains tmux-specific. |
 | Rex OSC 7501 delivery through the patched tmux server | No replacement transport in this configuration. Upstream development features are not assumed to exist in stable 0.45.1. |
 | Smart bare Ctrl-h/j/k/l across Neovim and tmux panes | Supported in Neovim normal/insert modes and at configured Zsh prompts. Other foreground applications retain their keys; use prefix navigation there. |
