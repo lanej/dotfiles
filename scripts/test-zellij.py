@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import shutil
 import signal
@@ -70,9 +71,12 @@ class Terminal:
             return
         # Exercise the actual first-use dialog instead of injecting a cached
         # grant. Further sessions in this private HOME share the saved grant.
-        self.until("status permission request", lambda: b"(y/n)" in self.output.lower())
-        self.prefix(b"k")
-        self.send(b"y")
+        self.until("status permission request or remembered grant", lambda:
+                   b"(y/n)" in self.output.lower()
+                   or re.search(rb"!\d+ \xe2\x97\x8f\d+", self.output))
+        if b"(y/n)" in self.output.lower():
+            self.prefix(b"k")
+            self.send(b"y")
 
     def action(self, *args, session=None):
         with subprocess.Popen(
