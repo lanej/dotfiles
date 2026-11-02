@@ -127,7 +127,12 @@ def main():
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "NVIM", "NVIM_LISTEN_ADDRESS",
                     "ENV", "BASH_ENV", "TERM_PROGRAM"):
             env.pop(key, None)
-        subprocess.run(["make", "--no-print-directory", "zellij", "zsh-config", "vim-config"],
+        subprocess.run(["make", "--no-print-directory", "zsh-config", "vim-config"],
+                       cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+        # Upgrade an already configured shell: the documented Zellij setup
+        # command must install its key bindings as well as its CLI helpers.
+        (home / ".local/share/zsh/zellij-navigation.zsh").unlink()
+        subprocess.run(["make", "--no-print-directory", "zellij"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
         binary = shutil.which("zellij")
         # Delay a real query during a tab switch, or drop one query's stdout to
