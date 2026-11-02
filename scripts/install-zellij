@@ -1,171 +1,37 @@
-#!/usr/bin/env python3
-"""Install the pinned Zellij runtime with the dotfiles' native reliability fixes."""
+#!/usr/bin/env bash
+set -euo pipefail
 
-import argparse
-import fcntl
-import hashlib
-import json
-import os
-from pathlib import Path
-import shutil
-import subprocess
-import sys
-import tempfile
+if [ "$#" -ne 0 ]; then
+    printf 'Usage: %s\n' "$0" >&2
+    exit 2
+fi
 
+zellij_revision=69c7e7ce2c5e08fa1b0dacbb5901cd7b9d60d46e
+zellij_toolchain=1.95.0
 
-ROOT = Path(__file__).resolve().parent.parent
-VERSION = "0.46.0"
-REVISION = "bf517077c848d91f75091f66d1996cfeb84f4732"
-SOURCE_SHA256 = "24b09baed04d93e0beca91a3a50f42a95b5603ed3af97c1ad4486996ac6d75d8"
-TOOLCHAIN = "1.95.0"
-FEATURES = "plugins_from_target,vendored_curl,web_server_capability"
+rustup toolchain install "$zellij_toolchain" --profile minimal
+# Override inherited cross-compilation settings when installing a local runtime.
+zellij_host=$(rustup run "$zellij_toolchain" rustc -vV | sed -n 's/^host: //p')
+if [ -z "$zellij_host" ]; then
+    printf '%s\n' 'The Rust compiler did not report its host target.' >&2
+    exit 1
+fi
 
+export CARGO_TARGET_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target"
+export CARGO_PROFILE_RELEASE_LTO=false
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 
-def digest(path):
-    result = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            result.update(chunk)
-    return result.hexdigest()
+# --force replaces the binary left by the previous installer. Cargo retains
+# ownership metadata and reuses the build cache on subsequent installations.
+rustup run "$zellij_toolchain" cargo install \
+    --git https://github.com/lanej/zellij.git \
+    --rev "$zellij_revision" \
+    --locked --force \
+    --root "$HOME/.local" \
+    --target "$zellij_host" \
+    --no-default-features \
+    --features plugins_from_target,vendored_curl,web_server_capability \
+    --bin zellij zellij
 
-
-def run(*args, **kwargs):
-    return subprocess.run(args, check=True, **kwargs)
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="check the installed executable against this patch set")
-    parser.add_argument("--test", action="store_true",
-                        help="run the native regressions before installing")
-    options = parser.parse_args()
-    if options.check and options.test:
-        parser.error("--check and --test cannot be combined")
-
-    patches = [(patch.name, patch.read_bytes())
-               for patch in sorted((ROOT / "zellij" / "patches").glob("*.patch"))]
-    if not patches:
-        raise RuntimeError("The Zellij runtime patches are missing")
-    signature = hashlib.sha256(Path(__file__).read_bytes())
-    for name, content in patches:
-        signature.update(name.encode() + b"\0" + content)
-    signature = signature.hexdigest()
-
-    home = Path.home()
-    destination = home / ".local" / "bin" / "zellij"
-    state = Path(os.environ.get("XDG_STATE_HOME", home / ".local" / "state"))
-    receipt = state / "dotfiles" / "zellij-runtime.json"
-    current = False
-    try:
-        saved = json.loads(receipt.read_text())
-        current = (saved["patch_set"] == signature
-                   and saved["executable"] == str(destination)
-                   and saved["sha256"] == digest(destination)
-                   and os.access(destination, os.X_OK))
-    except (OSError, ValueError, KeyError, TypeError):
-        pass
-    if options.check:
-        if not current:
-            raise RuntimeError("The patched Zellij runtime is not installed; run make zellij-runtime")
-        print(f"Zellij {VERSION}: installed native fixes match this checkout")
-        return
-    if current and not options.test:
-        print(f"Zellij {VERSION}: native fixes are already installed")
-        return
-
-    missing = [tool for tool in ("rustup", "curl", "tar", "git", "cc", "make", "cmake")
-               if not shutil.which(tool)]
-    if missing:
-        raise RuntimeError("Missing build tools: " + ", ".join(missing)
-                           + ". Run bootstrap.sh to install build dependencies.")
-    cache = Path(os.environ.get("XDG_CACHE_HOME", home / ".cache")) / "dotfiles" / "zellij"
-    cache.mkdir(parents=True, exist_ok=True)
-    # Cargo releases its own lock before we copy its output. Serialize different
-    # checkouts through that copy, so one cannot install another patch set's build.
-    with (cache / "install.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        build_and_install(patches, signature, cache, destination, receipt, options.test)
-    print(f"Installed Zellij {VERSION} with native fixes: {destination}")
-    print("Existing sessions use their previous server until you restart those sessions.")
-
-
-def build_and_install(patches, signature, cache, destination, receipt, run_tests):
-    archive = cache / f"{REVISION}.tar.gz"
-    if not archive.exists():
-        with tempfile.TemporaryDirectory(prefix="download-", dir=cache) as directory:
-            download = Path(directory) / "source.tar.gz"
-            run("curl", "--fail", "--location", "--retry", "3", "--max-time", "120",
-                f"https://codeload.github.com/zellij-org/zellij/tar.gz/{REVISION}",
-                "--output", str(download))
-            if digest(download) != SOURCE_SHA256:
-                raise RuntimeError("Zellij source checksum does not match the pinned revision")
-            os.replace(download, archive)
-    if digest(archive) != SOURCE_SHA256:
-        raise RuntimeError(f"Zellij source checksum mismatch: {archive}; remove it and retry")
-
-    run("rustup", "toolchain", "install", TOOLCHAIN, "--profile", "minimal")
-    environment = dict(os.environ)
-    environment["CARGO_TARGET_DIR"] = str(cache / "target")
-    # Keep optimized, stripped builds practical on laptop and macOS CI memory.
-    environment["CARGO_PROFILE_RELEASE_LTO"] = "false"
-    environment["CARGO_PROFILE_RELEASE_CODEGEN_UNITS"] = "16"
-    environment.setdefault("CARGO_BUILD_JOBS", "2")
-    cargo = ("rustup", "run", TOOLCHAIN, "cargo")
-    compiler = run("rustup", "run", TOOLCHAIN, "rustc", "-vV",
-                   capture_output=True, text=True).stdout
-    host = next((line.removeprefix("host: ") for line in compiler.splitlines()
-                 if line.startswith("host: ")), None)
-    if not host:
-        raise RuntimeError("The pinned Rust compiler did not report its host target")
-    # An inherited CARGO_BUILD_TARGET or Cargo config may select a cross target.
-    # Pin this build to the compiler's host and copy only that target's output.
-    target = ("--target", host)
-    with tempfile.TemporaryDirectory(prefix="source-", dir=cache) as directory:
-        source = Path(directory)
-        run("tar", "-xzf", str(archive), "--strip-components=1", "-C", str(source))
-        for name, content in patches:
-            patch = source / name
-            patch.write_bytes(content)
-            run("git", "apply", "--check", str(patch), cwd=source)
-            run("git", "apply", str(patch), cwd=source)
-            patch.unlink()
-        if run_tests:
-            run(*cargo, "test", "--locked", "--release", "-p", "zellij-server",
-                "-p", "zellij-utils", "--lib", "--no-default-features", "--features",
-                "zellij-utils/vendored_curl,zellij-server/web_server_capability,"
-                "zellij-utils/web_server_capability", *target, "dotfiles_",
-                cwd=source, env=environment)
-            run(*cargo, "test", "--locked", "--release", "-p", "zellij-integration-tests",
-                "--test", "clients", "--no-default-features", "--features",
-                "zellij-utils/vendored_curl,zellij-server/web_server_capability,"
-                "zellij-client/web_server_capability,zellij-utils/web_server_capability",
-                *target, "dotfiles_cli_query",
-                cwd=source, env=environment)
-        run(*cargo, "build", "--locked", "--release", "--no-default-features",
-            "--features", FEATURES, *target, cwd=source, env=environment)
-        executable = cache / "target" / host / "release" / "zellij"
-        actual = run(str(executable), "--version", capture_output=True, text=True).stdout.strip()
-        if actual != f"zellij {VERSION}":
-            raise RuntimeError(f"Unexpected Zellij build version: {actual}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".zellij-install-", dir=destination.parent) as directory:
-            staged = Path(directory) / "zellij"
-            shutil.copyfile(executable, staged)
-            staged.chmod(0o755)
-            record = {"version": VERSION, "revision": REVISION, "patch_set": signature,
-                      "executable": str(destination), "sha256": digest(staged)}
-            os.replace(staged, destination)
-        receipt.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="zellij-receipt-", dir=receipt.parent) as directory:
-            staged = Path(directory) / "receipt.json"
-            staged.write_text(json.dumps(record, indent=2) + "\n")
-            os.replace(staged, receipt)
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
-        print(f"install-zellij: {error}", file=sys.stderr)
-        sys.exit(1)
+printf '%s\n' 'Restart existing Zellij sessions to use the installed runtime.'
