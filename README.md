@@ -15,7 +15,7 @@ $ make install   # install and configure the selected tool sets
 
 Default `make` installs configuration only. Software installation has two explicit stages. `make bootstrap` (or `bash bootstrap.sh`) applies the built-in native OS baseline and installs only uv and Python, without reading machine TOML or installing optional tools. `make install` (or `bash bootstrap.sh install`) validates this machine's [configuration sets](#configuration-sets), installs their tools, and applies their configuration and integrations. It also ensures uv and Python are available, so it can be run directly or retried independently. Both stages operate on the current checkout without pulling updates.
 
-Select `full` for all common tools, including Mermaid CLI (`mmdc`) and its headless browser, or use `macos-full` / `linux-full` to name the platform composition explicitly. Add work-context sets and override individual properties as needed. `workstation` remains the broad tool bundle without the optional Mermaid renderer/browser.
+Select `full` for all common tools, including Mermaid CLI (`mmdc`) and its headless browser. Compose it with the existing `macos` or `linux` set, add work-context sets, and override individual properties as needed. `workstation` remains the broad tool bundle without the optional Mermaid renderer/browser.
 
 `make` defaults to `base`, which detects the OS and links its built-in baseline without Python. It also creates a missing machine TOML with `sets = ["macos"]` or `sets = ["linux"]`, respecting `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`; existing files and symlinks are preserved. `make shell git` also links basic shell and Git configuration without Python. After bootstrap, `make configure` applies the baseline plus selected bundles and individual overrides without installing packages; `make setup` and `make all` are aliases for that configuration step. Both configuration paths print a checklist: green `✓` for completed
 configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
@@ -104,14 +104,12 @@ source = "release"
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
 | `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
 | `full` | All common tools: workstation plus Mermaid CLI and its browser |
-| `macos-full` | Composes `macos` and `full` |
-| `linux-full` | Composes `linux` and `full` |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
 | `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
-The full sets enable all common recipes, with the matching platform recipes added by `macos-full` or `linux-full`. Work context remains explicit: compose, for example, `sets = ["macos-full", "personal"]` or `sets = ["linux-full", "easypost"]`. Individual properties still override those sets; `tools.mermaid = false` skips its browser download. Set selection changes the plan used by `make install` and `make configure`; default `make` continues to apply only the native baseline and never installs software.
+The `full` set enables all common recipes. Compose the existing sets directly, for example `sets = ["macos", "full", "personal"]` or `sets = ["linux", "full", "easypost"]`. The native baseline is also detected automatically when only `full` is listed; work context remains explicit. Individual properties still override those sets; `tools.mermaid = false` skips its browser download. Set selection changes the plan used by `make install` and `make configure`; default `make` continues to apply only the native baseline and never installs software.
 
 The native platform baseline applies first, then the selected bundles extend it. A headless host can select `shell`, `development`, and `ai` and disable desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
 

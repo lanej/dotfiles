@@ -44,17 +44,16 @@ def main():
         sets.mkdir(parents=True)
         # Start with a complete native plan, then compose work context and
         # override individual properties through a private set and machine file.
-        full_set = f"{platform_set}-full"
-        config.write_text(f'sets = ["{full_set}"]\n')
+        config.write_text(f'sets = ["{platform_set}", "full"]\n')
         full_plan = json.loads(run("make", "--no-print-directory", "plan").stdout)
         catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
         common_tools = {name for name, recipe in catalog.items() if "platform" not in recipe} - {"bedrock", "ep-direnv"}
         assert {tool["name"] for tool in full_plan["tools"]} == common_tools | native_tools
-        assert "full" in full_plan["sets"] and full_set in full_plan["sets"]
-        (sets / "my-workstation.toml").write_text(f'sets = ["{full_set}", "easypost"]\n')
+        assert "full" in full_plan["sets"] and full_plan["sets"].count(platform_set) == 1
+        (sets / "my-workstation.toml").write_text(f'sets = ["{platform_set}", "full", "easypost"]\n')
         config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n' + disabled_native + ' = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
-        assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "full", full_set, "easypost", "my-workstation"]
+        assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "full", "easypost", "my-workstation"]
         assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
         assert selected["settings"]["tools.mermaid"] is False
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
