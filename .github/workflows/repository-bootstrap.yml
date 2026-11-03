@@ -1,0 +1,51 @@
+name: Repository bootstrap
+
+on:
+  pull_request:
+    paths:
+      - 'bin/repo-bootstrap'
+      - 'scripts/test-repo-bootstrap.py'
+      - 'ai/skills/builder/**'
+      - 'ai/skills/architecture/**'
+      - 'ai/skills/pr-writer/**'
+      - 'ai/agents/*pr-writer.md'
+      - 'ai/agents/pull-request-writer.md'
+      - 'ai/templates/**'
+      - 'docs/pull-requests.md'
+      - 'docs/conventional-pull-requests.md'
+      - 'docs/f-pattern-scanning*.md'
+      - 'docs/diagrams-and-charts.md'
+      - '.github/workflows/repository-bootstrap.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bin/repo-bootstrap'
+      - 'scripts/test-repo-bootstrap.py'
+      - 'ai/skills/builder/**'
+      - 'ai/skills/architecture/**'
+      - 'ai/skills/pr-writer/**'
+      - 'ai/agents/*pr-writer.md'
+      - 'ai/agents/pull-request-writer.md'
+      - 'ai/templates/**'
+      - 'docs/pull-requests.md'
+      - 'docs/conventional-pull-requests.md'
+      - 'docs/f-pattern-scanning*.md'
+      - 'docs/diagrams-and-charts.md'
+      - '.github/workflows/repository-bootstrap.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  repository-bootstrap:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: make test-repo-bootstrap
