@@ -42,6 +42,11 @@
           "type": "boolean",
           "description": "Enable the Codex GitHub app and its plugins. False keeps GitHub access through gh.",
           "default": false
+        },
+        "easypost": {
+          "type": "boolean",
+          "description": "Apply EasyPost integration restrictions and supplemental Codex guidance.",
+          "default": false
         }
       }
     },
