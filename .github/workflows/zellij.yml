@@ -5,6 +5,11 @@ on:
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - 'bin/codex-zellij-title-hook'
+      - 'bin/codex-tmux-state-hook'
+      - 'bin/sync-codex-tmux-hooks'
+      - 'codex/tmux-hooks.json'
+      - 'codex/zellij-title.json'
       - 'bin/firstmate'
       - 'firstmate/**'
       - 'treehouse/config.toml'
@@ -29,6 +34,11 @@ on:
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - 'bin/codex-zellij-title-hook'
+      - 'bin/codex-tmux-state-hook'
+      - 'bin/sync-codex-tmux-hooks'
+      - 'codex/tmux-hooks.json'
+      - 'codex/zellij-title.json'
       - 'bin/firstmate'
       - 'firstmate/**'
       - 'treehouse/config.toml'
@@ -144,6 +154,8 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
