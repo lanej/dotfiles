@@ -1,10 +1,6 @@
 # Using Builder
 
-Builder is the shared software skill for Claude, Codex, and other assistants.
-It loads two distinct documents: [Pragmatic Hexagonal Architecture](pragmatic-hexagonal-architecture.md)
-defines properties of the resulting software; [Software construction](software-construction.md)
-defines the working-and-verifying approach. Neither installation checks nor a
-particular development sequence establishes architecture compliance.
+Builder is the shared software skill for Claude, Codex and other assistants. Its required `SKILL.md` core retains all twelve PHA requirement IDs, material applicability limits and construction safeguards. The full [Pragmatic Hexagonal Architecture](pragmatic-hexagonal-architecture.md) standard defines software properties; [Software construction](software-construction.md) supplies construction detail. Read those references for the task triggers in the core: boundary/model/adapter/consequential effect changes or architecture reviews, and uncertain feasibility/retained prototypes/manual-only protection/security or performance viability/verification-timing ambiguity, respectively. Neither installation checks nor a development sequence establishes compliance.
 
 ## Install and activate
 
@@ -24,9 +20,7 @@ It remains readable after temporary checkouts disappear.
 Any assistant can read its `SKILL.md`, `references/standard.md`, and
 `references/construction.md` directly.
 
-Claude loads the shared instructions through `~/.claude/rules/builder.md`.
-Codex global `~/.codex/AGENTS.md` explicitly directs loading of those same
-instructions; activation does not depend only on optional skill selection.
+Claude routes through the compact shared instructions at `~/.claude/rules/builder.md`. Codex global `~/.codex/AGENTS.md` selects an explicitly configured repository-local Builder core when present, otherwise the installed core. This avoids reading two copies and does not depend only on optional skill selection. Required properties still apply during ordinary work; conditional routing changes the amount of supporting detail loaded.
 Skill links expose the package at `~/.claude/skills/builder` and
 `~/.agents/skills/dotfiles/builder`.
 Other assistants need their own instruction entrypoint to load the shared files.
@@ -71,9 +65,7 @@ or a credible experiment for uncertain feasibility. Once meaningful behavior
 will be retained, protect it before expanding or materially restructuring it.
 Plan working-and-verifying increments rather than separate implementation and
 testing phases. This does not waive delivery gates or explicit project mandates.
-Implementation-agent briefs direct loading of Builder and its two references,
-not a blanket test-first sequence. Explicit user or project test-first
-requirements still govern that work.
+When writing implementation-agent briefs, direct loading of the Builder core and task-relevant detail. Explicit user or project test-first requirements still govern that work.
 
 Apply the architecture standard to consequential claims, conditions,
 contradictory evidence, and interpretation limits. Use existing software
@@ -103,13 +95,9 @@ Installation checks establish placement, migration, and readable references, not
 assistant adherence. The migration fixture represents the previous filesystem
 layout; it is not a live assistant session.
 
-For a loading check, start a fresh session from a directory outside dotfiles and
-ask the assistant to load Builder's skill, architecture standard, and construction
-policy. Inspect actual tool reads of all three files and the shared instructions.
-Check that the assistant distinguishes solution properties from construction
-procedure and describes when retained behavior gains repeatable protection.
-A read-only response can demonstrate loading in that session, not reliable
-adherence in future implementation work.
+For a loading check, start a fresh session outside dotfiles. Use an ordinary small software task and a boundary/effect task; inspect reads to confirm the selected core is loaded once and detailed references are loaded by their triggers. Check distinctions between solution properties and construction procedure, retained-behavior protection, unknown outcomes, and supported verification claims. A read-only exercise checks behavior in those scenarios; it cannot establish reliable future adherence or measure all host-injected context.
+
+Global Codex instructions keep essential triggers and safeguards in `codex/AGENTS.md`; workflow detail remains binding in [agent operating procedures](agent-operating-procedures.md). Full Codex setup regenerates its global file, so edit canonical sources rather than the installed file. Preserve personal additions before regeneration. Logistics Services separately checks measured `o200k_base` startup/task reading, including its core and declared required references. File-text counts exclude catalogs, host prompts, tools and history.
 
 ### Historical loading evidence — before the Builder rename
 
@@ -121,10 +109,7 @@ skill metadata, then reported “Not logged in” before model or tool reads.
 Authentication remained unchanged.
 
 Those observations predate Builder and `construction.md`. They do not establish
-loading of the renamed skill or the new construction policy. A fresh live
-Codex/Claude loading check is still required; this update's execution environment
-has neither runtime. The Anthropic skill-creator workflow and independent
-PR-writer/reviewer delegation are also unavailable in that environment.
+loading of the renamed skill or the new construction policy. At that update, a fresh live Codex/Claude loading check remained required; its execution environment had neither runtime, Anthropic skill-creator, nor independent writer/reviewer delegation. These historical observations do not establish loading of the later compact core.
 
 ## Official integration references
 
