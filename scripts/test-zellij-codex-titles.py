@@ -37,6 +37,8 @@ def main():
         subprocess.run([sys.executable, str(ROOT / "bin/sync-codex-tmux-hooks")],
                        env=env, check=True, capture_output=True, timeout=5)
         hooks = json.loads((home / ".codex/hooks.json").read_text())["hooks"]
+        subprocess.run([sys.executable, str(ROOT / "scripts/make/zellij-config.py"), str(home)],
+                       env=env, check=True, capture_output=True, timeout=5)
         config = work / "config.kdl"
         config.write_text('default_mode "locked"\npane_frames true\npane_frame_style "full"\n'
                           'show_startup_tips false\nshow_release_notes false\n'
@@ -78,6 +80,7 @@ def main():
                     for hook in group["hooks"]:
                         subprocess.run(["/bin/sh", "-c", hook["command"]], env=hook_env,
                                        input=json.dumps(payload), text=True, check=True, timeout=4)
+                        terminal.drain()
 
             emit("SessionStart", source="startup")
             assert title(left["id"]) == "󰚩 01a19d8f  | project"
