@@ -51,7 +51,8 @@ def main():
         try:
             terminal.until("the private shell starts", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
-            terminal.action("new-pane", "--direction", "right")
+            terminal.action("new-pane", "--direction", "right", "--cwd", str(home),
+                            "--", "/bin/sh")
             terminal.until("both private shells start", lambda: len(terminal.terminals()) == 2)
             left, right = sorted(terminal.terminals(), key=lambda pane: pane["pane_x"])
             identity = "01a19d8f-d3f1-7490-a292-603901234567"
@@ -126,4 +127,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(error.stderr or error.stdout or str(error)) from error
