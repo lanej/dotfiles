@@ -96,6 +96,16 @@ treehouse-config:
 firstmate-config: treehouse-config zellij-config
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
+.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+pi-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+firstmate-mobile-config: firstmate-config pi-config
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
+
+test-firstmate-github:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
+
 .PHONY: test-firstmate-primary
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"

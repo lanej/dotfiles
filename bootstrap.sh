@@ -1083,6 +1083,12 @@ install_dependencies() {
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
 		case "$installer" in
+			npm)
+				current_npm_version=$(npm list --global --prefix "$HOME/.local" "$package" --depth=0 --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version || ""))' "$package") || current_npm_version=
+				if [ "$current_npm_version" != "$version" ]; then
+					npm install --global --prefix "$HOME/.local" "$package@$version" || return 1
+				fi
+				;;
 			package) install_package_version "$package" "$version" || return 1 ;;
 			system)
 				if ! command -v "$package" >/dev/null; then

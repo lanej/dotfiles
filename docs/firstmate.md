@@ -1,5 +1,7 @@
 # Firstmate sessions
 
+For one mobile conversation with direct GitHub task feedback, use the opt-in [Paseo/Pi workflow](firstmate-mobile.md). Its primary runs through Paseo's native provider independently of the terminal backend described here.
+
 The `firstmate` launcher starts a captain in a dedicated session. Codex is the default; [primary selection](firstmate-primary.md) can opt into Pi independently of the Codex crew and the terminal backend. Choose tmux or Zellij explicitly; installing or running Zellij does not change the selected backend.
 
 ## Install and choose a backend

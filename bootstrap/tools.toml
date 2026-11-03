@@ -236,6 +236,24 @@ installer = "firstmate"
 requires = ["treehouse", "jq", "node"]
 setup = ["firstmate-config"]
 
+[tools.pi]
+installer = "npm"
+package = "@earendil-works/pi-coding-agent"
+version = "1.4.0"
+requires = ["node"]
+setup = ["pi-config"]
+
+[tools.paseo]
+installer = "npm"
+package = "@getpaseo/cli"
+version = "0.14.0"
+requires = ["node"]
+
+[tools.firstmate-mobile]
+installer = "config"
+requires = ["firstmate", "pi", "paseo"]
+setup = ["firstmate-mobile-config"]
+
 [tools.agent-status-broker]
 description = "Install the agent-status broker and share its hooks."
 installer = "config"

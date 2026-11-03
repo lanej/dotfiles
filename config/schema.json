@@ -19,6 +19,7 @@
               "development",
               "easypost",
               "editor",
+              "firstmate-mobile",
               "linux",
               "macos",
               "personal",
@@ -283,6 +284,18 @@
         "firstmate": {
           "type": "boolean",
           "description": "Enable the firstmate bootstrap recipe."
+        },
+        "pi": {
+          "type": "boolean",
+          "description": "Enable the pi bootstrap recipe."
+        },
+        "paseo": {
+          "type": "boolean",
+          "description": "Enable the paseo bootstrap recipe."
+        },
+        "firstmate-mobile": {
+          "type": "boolean",
+          "description": "Enable the firstmate-mobile bootstrap recipe."
         },
         "agent-status-broker": {
           "type": "boolean",

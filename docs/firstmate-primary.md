@@ -19,7 +19,7 @@ The choice applies when creating a new captain. `firstmate start` attaches to an
 
 ## Pi prerequisites
 
-Install Pi 1.4.0 or newer separately; it is not currently included in the tool catalog. Provider authentication remains Pi's own setup; the launcher does not change credentials. Use an updated [Firstmate checkout with Pi primary support](https://github.com/kunchenguid/firstmate#recommended-harnesses). The launcher requires these tracked files under its `.pi/extensions/` directory:
+The opt-in `pi` tool installs Pi 1.4.0 from the tool catalog; the [mobile workflow](firstmate-mobile.md) composes it with Firstmate and Paseo. Provider selection remains Pi's own setup. The Pi launch reuses the existing work Bedrock environment when needed; it does not rewrite credentials or select another provider. Use an updated [Firstmate checkout with Pi primary support](https://github.com/kunchenguid/firstmate#recommended-harnesses). The launcher requires these tracked files under its `.pi/extensions/` directory:
 
 - `fm-primary-pi-watch.ts`
 - `fm-primary-turnend-guard.ts`

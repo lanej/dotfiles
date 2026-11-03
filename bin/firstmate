@@ -2,11 +2,22 @@
 set -euo pipefail
 
 firstmate_root=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+source_path=${BASH_SOURCE[0]}
+while [[ -L "$source_path" ]]; do
+	source_dir=$(cd "$(dirname "$source_path")" && pwd)
+	source_path=$(readlink "$source_path")
+	[[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+done
+dotfiles_root=$(cd "$(dirname "$source_path")/.." && pwd)
 
 usage() {
 	printf '%s\n' \
 		'Usage: firstmate [command] [arguments]' \
 		'  start [agent arguments]       Start or attach (the default).' \
+		'  rpc [Pi arguments]           Run the Pi primary for Paseo (no terminal backend).' \
+		'  github poll                  Catch up tracked GitHub feedback.' \
+		'  github intake <issue URL>    Queue a linked issue through Firstmate.' \
+		'  github configure-paseo       Add the dedicated Firstmate Paseo provider.' \
 		'  attach [backend options]     Attach to the running captain.' \
 		'  stop                         Stop only the selected Firstmate session.' \
 		'  reload                       Reload tmux; validate Zellij live configuration.' \
@@ -67,6 +78,16 @@ require_primary() {
 	done
 }
 
+pi_environment() {
+	unset FM_CODEX_WATCH_CHECKPOINT
+	export FM_PI_HARNESS=pi
+	# GUI-launched Paseo need not inherit the login shell's work credentials.
+	if [[ -z ${AWS_BEARER_TOKEN_BEDROCK:-} && -r "$HOME/.config/bedrock/env" ]]; then
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bedrock/env"
+	fi
+}
+
 tmux_exec() {
 	command -v tmux >/dev/null || { printf '%s\n' 'tmux is missing. Install it before starting or attaching to Firstmate.' >&2; exit 1; }
 	# Do not carry the caller's pane identity into a different multiplexer.
@@ -82,6 +103,22 @@ zellij_exec() {
 
 case ${1:-start} in
 	help|-h|--help) usage; exit 0 ;;
+	github)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/github-feedback.mjs" "$@"
+		;;
+	rpc)
+		shift
+		require_checkout
+		primary_harness=pi
+		require_primary
+		cd "$firstmate_root"
+		export FM_HOME="$PWD" FIRSTMATE_HOME="$PWD"
+		pi_environment
+		# Paseo supplies RPC mode and the persisted session reference. It owns stdin.
+		exec pi --extension "$dotfiles_root/pi/extensions/firstmate-github.mjs" "$@"
+		;;
 esac
 
 # Match upstream's explicit choices without its unrelated runtime auto-detection.
@@ -145,8 +182,7 @@ case ${1:-start} in
 		cd "$firstmate_root"
 		export FM_HOME="$PWD"
 		if [[ "$primary_harness" == pi ]]; then
-			unset FM_CODEX_WATCH_CHECKPOINT
-			export FM_PI_HARNESS=pi
+			pi_environment
 			exec pi "$@"
 		fi
 		export FM_CODEX_WATCH_CHECKPOINT=45

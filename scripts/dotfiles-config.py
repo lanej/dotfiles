@@ -33,7 +33,7 @@ SETTINGS = {
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
 TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
-INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "treehouse", "firstmate", "macos-window-tool"}
+INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "treehouse", "firstmate", "macos-window-tool", "npm"}
 HOOKS = {"github-auth", "bedrock-credentials", "bedrock-router", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status"}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {
@@ -63,11 +63,12 @@ def tool_plan(values, origins, specified, host):
             raise ValueError(f"{TOOL_FILE}: unknown installer for {name}")
         package = recipe.get("package", name)
         version = recipe.get("version", "-")
-        if not isinstance(package, str) or not SET_NAME.fullmatch(package):
+        package_pattern = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+" if recipe.get("installer") == "npm" else SET_NAME.pattern
+        if not isinstance(package, str) or not re.fullmatch(package_pattern, package):
             raise ValueError(f"{TOOL_FILE}: invalid package name for {name}")
         if not isinstance(version, str) or (version != "-" and not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", version)):
             raise ValueError(f"{TOOL_FILE}: invalid version for {name}")
-        if recipe.get("installer", "package") in {"package", "rust", "go"} and version == "-":
+        if recipe.get("installer", "package") in {"package", "rust", "go", "npm"} and version == "-":
             raise ValueError(f"{TOOL_FILE}: missing version for {name}")
         for target in recipe.get("setup", []):
             if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target):
