@@ -31,7 +31,8 @@ def tree(root):
 
 
 with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as temporary:
-    workspace = Path(temporary)
+    # macOS commonly exposes its temporary directory through /var -> /private/var.
+    workspace = Path(temporary).resolve()
     # A private source copy lets the workflow exercise a real subsequent update.
     source = workspace / "dotfiles"
     (source / "bin").mkdir(parents=True)
