@@ -10,22 +10,22 @@ the failure modes on this machine that have actually cost time.
 
 ## Commits
 
-- **All commits go through the `git-commit-message-writer` agent** (or `/git:commit [context]`).
-  Do not hand-write commit messages. `/git:worktree <branch>` creates a worktree with
-  automatic naming.
-- **All PR titles and descriptions go through the `pull-request-writer` agent**, including
+- Write commit messages directly from the staged diff and relevant context.
+  `/git:commit [context]` provides the commit workflow.
+- **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
   `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
   visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
-- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the `methodology` skill's Verification Rigor Tiers) or `user`. This is measurement, not attribution.
+- **`Detected-By:` trailer** on any commit fixing a fault found after the code was written — the tier that caught it (`V0`–`V4`, see the [verification reference](../../../docs/verification.md)) or `user`. This is measurement, not attribution.
 - `--amend` only when the user asked for it, or to fold in a pre-commit hook's own edits.
 
 ## Pull requests
 
 Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
-updating a PR. Use `pull-request-writer` for the title and body. Lead with the
+updating a PR. Use `github-pr-writer` for GitHub titles and bodies, and
+`pull-request-writer` for other review platforms. Lead with the
 outcome and why, include screenshots when useful, and add context only when
 the diff and checks do not supply it. Do not reproduce automated test results.
 Use `--body-file` for multiline descriptions and verify the rendered result.

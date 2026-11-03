@@ -6,6 +6,18 @@ For software design, implementation, modification, debugging, and review, read
 and follow the Builder skill, architecture standard, and construction policy it identifies.
 <!-- builder:end -->
 
+# Markdown formatting
+
+Keep each Markdown paragraph on one source line. Do not hard-wrap prose to a fixed column width; let editors and renderers wrap it.
+
+# Code comments
+
+When adding or changing source comments, read
+`~/.files/docs/conventional-code-comments.md` and use `TAG: explanation`
+selectively for rationale, constraints, or consequences. Honor the target
+repository's conventions; keep ordinary comments, documentation comments, and
+docstrings when they communicate better. Do not rewrite unrelated comments.
+
 # Unix philosophy
 
 Follow Eric S. Raymond's 17 Unix rules when designing and changing software:
@@ -41,13 +53,16 @@ Sandboxed macOS launches can abort during application registration and trigger c
 
 # Automatic PR writing and code review
 
-For every pull request, invoke the `pull-request-writer` custom agent as a
+For every GitHub pull request, invoke the `github-pr-writer` custom agent as a
 separate subagent to draft or revise its title and description before opening
 the PR or completing an update to it. Give it the final diff against the base
 branch, the motivation, repository PR requirements, and relevant validation
 evidence. Wait for its draft, resolve any blockers, and use its title and
 description. This applies to simple and documentation-only PRs too. Run it
 for each proposed PR revision, rather than every commit.
+
+Use `pull-request-writer` for other review platforms; it supplies the shared
+writing guidance inherited by the GitHub specialist.
 
 Invoke `code-reviewer` separately when a change is complex: interacting
 components, nontrivial algorithms or state transitions, concurrency, migrations,
@@ -99,17 +114,15 @@ writers and workflows.
 
 # Git worktree location
 
-Create agent-owned worktrees at `<primary-checkout>/.worktrees/<task-slug>` so
-each repository's work stays together and within its writable root. Resolve the
-primary checkout with `git worktree list --porcelain`, including when starting
-from a linked worktree, and choose a unique task slug. Verify that
-`git check-ignore` excludes the destination before creating it.
+Use the `treehouse` skill at `~/.agents/skills/dotfiles/treehouse/SKILL.md` for task isolation and agent-created worktrees.
 
-Use this repository-relative layout for worktrees you create through shell
-commands. Honor an explicit user-selected location or a host-managed worktree.
-Keep existing worktrees in place unless the user requests relocation.
+Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts.
+Do not nest worktrees or claim their leases.
 
 # Git worktree cleanup
+
+Return pooled Treehouse leases through the `treehouse` skill.
+Apply the following rules to non-pool temporary worktrees.
 
 Treat cleanup of temporary worktrees created for the task as part of completion.
 This includes temporary worktrees created by subagents for the same task.

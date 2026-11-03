@@ -1,0 +1,124 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["tomlkit>=0.13,<1"]
+# ///
+"""Fill in a repository's missing Codex worktree root on SessionStart."""
+
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+import tomlkit
+
+
+HOOK_COMMAND = '"$HOME/.files/bin/codex-worktree-config"'
+HOOK_GROUP = {
+    "matcher": "^(startup|resume)$",
+    "hooks": [{"type": "command", "command": HOOK_COMMAND, "timeout": 10}],
+}
+
+
+@contextmanager
+def directory_lock(directory):
+    """Serialize our updates without leaving lock files in the repository."""
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def read_existing(path):
+    if path.is_symlink():
+        raise ValueError(f"refusing to replace symlinked configuration: {path}")
+    return path.read_bytes() if path.exists() else None
+
+
+def write_atomic(path, text, original):
+    mode = path.stat().st_mode & 0o777 if original is not None else 0o600
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+            temporary = Path(output.name)
+            output.write(text.encode("utf-8"))
+        temporary.chmod(mode)
+        if read_existing(path) != original:
+            raise ValueError(f"configuration changed during update: {path}")
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def install():
+    directory = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+    with directory_lock(directory):
+        path = directory / "hooks.json"
+        original = read_existing(path)
+        document = json.loads(original) if original is not None else {}
+        groups = document.setdefault("hooks", {}).setdefault("SessionStart", [])
+        for group in groups:
+            for handler in group.get("hooks", []):
+                if handler.get("command") == HOOK_COMMAND:
+                    return
+        groups.append(HOOK_GROUP)
+        write_atomic(path, json.dumps(document, indent=2, ensure_ascii=False) + "\n", original)
+    print("Codex repository worktree hook installed.")
+
+
+def configure(cwd):
+    root_result = subprocess.run(
+        ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+        capture_output=True, timeout=5,
+    )
+    if root_result.returncode != 0:
+        return
+    root = Path(os.fsdecode(root_result.stdout).removesuffix("\n"))
+    worktrees = subprocess.run(
+        ["git", "-C", str(root), "worktree", "list", "--porcelain", "-z"],
+        capture_output=True, check=True, timeout=5,
+    ).stdout
+    primary_record = worktrees.split(b"\0", 1)[0]
+    if not primary_record.startswith(b"worktree "):
+        raise ValueError("could not determine the primary checkout")
+    default = str(Path(os.fsdecode(primary_record[len(b"worktree "):])) / ".worktrees")
+    directory = root / ".codex"
+    with directory_lock(directory):
+        path = directory / "config.toml"
+        original = read_existing(path)
+        document = tomlkit.parse(original.decode("utf-8") if original is not None else "")
+        desktop = document.setdefault("desktop", tomlkit.table())
+        if "git-worktree-root" in desktop:
+            return
+        desktop["git-worktree-root"] = default
+        write_atomic(path, tomlkit.dumps(document), original)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--install", action="store_true", help="register the user SessionStart hook")
+    args = parser.parse_args()
+    if args.install:
+        install()
+    else:
+        event = json.load(sys.stdin)
+        if event.get("hook_event_name") == "SessionStart":
+            configure(event.get("cwd") or os.getcwd())
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError) as error:
+        print(f"codex-worktree-config: {error}", file=sys.stderr)
+        sys.exit(1)

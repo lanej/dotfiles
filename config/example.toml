@@ -1,0 +1,9 @@
+# The native macos or linux baseline is automatic. Add tool and context bundles.
+sets = ["workstation", "easypost"]
+
+# Individual properties override the bundles.
+[tools]
+mermaid = true
+
+[zellij]
+source = "patched"

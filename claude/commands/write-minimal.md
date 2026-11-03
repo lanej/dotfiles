@@ -586,23 +586,6 @@ Next meeting: Jan 29
 
 **All iterations edit the SAME file. Never create new versions.**
 
-## Integration
-
-This command uses the **human-writer agent** for:
-- Enforcing brevity principles
-- Avoiding AI patterns
-- Ensuring human-readable output
-- Checking for duplication
-- **Editing ONE document** (never creating new files)
-
-The agent will:
-1. Help you identify core message
-2. Cut your draft by 50%
-3. Ensure it passes the 30-second test
-4. Flag any AI tell phrases
-5. Verify zero duplication
-6. **Edit existing document** instead of creating new versions
-
 ## File Management Rules
 
 **CRITICAL - Read this:**

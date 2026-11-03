@@ -28,15 +28,11 @@ Unknown JSON fields and stream events must continue to pass through.
 - After the specific streamed error `Access denied: web search is not authorized
   for this identity.`, append a developer recovery hint to the next response
   creation request in that session. The hint asks the model to avoid repeating
-  the denied call unchanged and continue useful work. Tools, existing input
+  the denied call unchanged, use any available separate search or browsing tool,
+  or continue useful work when none is available. Tools, existing input
   items (including encrypted history), and unknown fields are preserved.
   This is the only request-body rewriting exception. The pending hint expires
   after 15 minutes and does not survive a router restart.
-- The separate `browse-mcp` stdio command exposes `bedrock_browse`. It submits
-  only the supplied research task to its configured model and region, without
-  using the proxy's session pins or replaying the caller's generation. Tool
-  results contain the browsing answer and citation URLs. No task or result is
-  logged; upstream error bodies are not returned.
 - Relay upstream statuses, response bytes, and SSE bytes without schema
   decoding or serialization. Streaming transport removes fixed content lengths
   so incomplete streams can be reported.
@@ -79,9 +75,7 @@ Router errors use `{"error":{"code":"…","message":"…"}}`. Rejections include
 router request ID in the message, with regional source and available underlying
 causes in the logs. Region conflicts distinguish saved session pins from
 inherited parent pins. Local configuration and startup errors report the path
-or operation and underlying cause. Browsing rejections identify the model,
-region, HTTP status, and upstream request ID without returning upstream error
-bodies, which may echo research input or credentials. Invalid paths return
+or operation and underlying cause. Invalid paths return
 `404`; missing bearer authorization returns `401`; invalid bodies return `400`;
 state failures return `503`; upstream connection failures return `502`; upstream
 timeouts before headers return `504`. Failures after headers abort the stream.

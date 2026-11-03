@@ -1,0 +1,27 @@
+name: Agent Treehouse launchers
+on:
+  pull_request:
+    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'Makefile', '.github/workflows/agent-treehouse.yml']
+  push:
+    branches: [master]
+    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'Makefile', '.github/workflows/agent-treehouse.yml']
+permissions:
+  contents: read
+jobs:
+  launchers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update && sudo apt-get install -y lsof zsh shellcheck
+      - name: Install native Treehouse
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/treehouse-v3.1.7-linux-amd64.tar.gz
+          curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/checksums.txt
+          awk '$2 == "treehouse-v3.1.7-linux-amd64.tar.gz"' checksums.txt | sha256sum -c -
+          tar -xzf treehouse-v3.1.7-linux-amd64.tar.gz treehouse
+          sudo install -m 755 treehouse /usr/local/bin/treehouse
+      - run: shellcheck bin/codex-wrapper bin/claude-wrapper
+      - run: make test-agent-treehouse

@@ -225,47 +225,6 @@ func launchAgent(executable, dir string) []byte {
 	return out.Bytes()
 }
 
-func configureBrowsing(text, executable, credentials string, delegated bool) (string, error) {
-	// Replace only our MCP table, preserving other server definitions verbatim.
-	var preserved strings.Builder
-	skip := false
-	for _, line := range strings.SplitAfter(text, "\n") {
-		header := strings.TrimSpace(strings.SplitN(line, "#", 2)[0])
-		if strings.HasPrefix(header, "[") {
-			skip = header == "[mcp_servers.bedrock_browse]" || strings.HasPrefix(header, "[mcp_servers.bedrock_browse.")
-		}
-
-		if !skip {
-			preserved.WriteString(line)
-		}
-	}
-
-	text = preserved.String()
-	if delegated {
-		text = regexp.MustCompile(`(?m)^[\t ]*web_search[\t ]*=.*$`).ReplaceAllString(text, `web_search = "disabled"`)
-	}
-
-	fragment, err := toml.Marshal(map[string]any{
-		"command": "/bin/sh",
-		// Pass paths as positional arguments, never interpolate them into shell code.
-		"args": []string{"-c", `set -a; . "$1"; shift; exec "$@"`, "bedrock-browse", credentials,
-			executable, "browse-mcp", "--model", "openai.gpt-5.6-luna", "--region", "us-west-2"},
-		"tool_timeout_sec": 150,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	updated := strings.TrimSpace(text) + "\n\n[mcp_servers.bedrock_browse]\n" + string(fragment)
-
-	var check map[string]any
-	if err := toml.Unmarshal([]byte(updated), &check); err != nil {
-		return "", fmt.Errorf("parse updated browsing configuration; a manual merge is required: %w", err)
-	}
-
-	return updated, nil
-}
-
 func systemdUnit(executable, dir string) []byte {
 	escape := func(value string) string { return strings.ReplaceAll(value, "%", "%%") }
 	var caLine string
@@ -307,7 +266,6 @@ func install(args []string, env installEnvironment) error {
 	flags := flag.NewFlagSet("install", flag.ContinueOnError)
 	noStart := flags.Bool("no-start", false, "Write files without starting the service")
 	configPath := flags.String("config", "", "Configuration file; defaults are embedded in this binary")
-	delegatedBrowsing := flags.Bool("delegated-browsing", false, "Use Luna browsing MCP instead of built-in web search")
 	keepEnv := flags.Bool("keep-env", false, "Preserve an existing custom Codex .env source")
 
 	if err := flags.Parse(args); err != nil {
@@ -377,11 +335,6 @@ func install(args []string, env installEnvironment) error {
 		return err
 	}
 
-	updated, err = configureBrowsing(updated, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
-	if err != nil {
-		return err
-	}
-
 	profile := filepath.Join(env.root, "bedrock.config.toml")
 	oldProfile, err := os.ReadFile(profile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -391,11 +344,6 @@ func install(args []string, env installEnvironment) error {
 	if err != nil {
 		return fmt.Errorf("configure Bedrock profile: %w", err)
 	}
-	updatedProfile, err = configureBrowsing(updatedProfile, filepath.Join(env.root, "bedrock-router", "bedrock-router"), credentials, *delegatedBrowsing)
-	if err != nil {
-		return err
-	}
-
 	binary, err := os.ReadFile(env.executable)
 	if err != nil {
 		return err

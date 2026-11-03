@@ -22,6 +22,7 @@ on:
       - 'bin/claude-plugin-converge_test.py'
       - 'bin/claude-remove-blocked-plugins'
       - 'bin/conftest.py'
+      - 'bin/codex-cleanup*'
       - 'bin/sync-codex-*'
       - 'bin/codex-mcp-sync_test.py'
       - 'bin/codex-skills-sync_test.py'
@@ -30,11 +31,10 @@ on:
       - 'bin/codex-agents-sync_test.py'
       - 'bin/sync-claude-shared'
       - 'bin/claude-shared-sync_test.py'
-      - 'bin/dispatcher-launch_test.py'
-      - 'ai/skills/dispatcher/scripts/dispatcher-launch'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
+      - 'scripts/make/**'
       - '.github/workflows/claude-features.yml'
   push:
     branches: [master]
@@ -58,6 +58,7 @@ on:
       - 'bin/claude-plugin-converge_test.py'
       - 'bin/claude-remove-blocked-plugins'
       - 'bin/conftest.py'
+      - 'bin/codex-cleanup*'
       - 'bin/sync-codex-*'
       - 'bin/codex-mcp-sync_test.py'
       - 'bin/codex-skills-sync_test.py'
@@ -66,11 +67,10 @@ on:
       - 'bin/codex-agents-sync_test.py'
       - 'bin/sync-claude-shared'
       - 'bin/claude-shared-sync_test.py'
-      - 'bin/dispatcher-launch_test.py'
-      - 'ai/skills/dispatcher/scripts/dispatcher-launch'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
       - 'Makefile'
+      - 'scripts/make/**'
       - '.github/workflows/claude-features.yml'
 
 permissions:

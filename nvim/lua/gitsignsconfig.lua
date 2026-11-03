@@ -9,25 +9,14 @@ require("gitsigns").setup({
 	diff_opts = {
 		internal = true, -- Use internal diff library for better performance
 	},
-	-- Automatically set base to origin/HEAD (main/master) on BufEnter
+	-- Bright signs compare the buffer with the index; staged signs stay dim.
+	signs_staged_enable = true,
+	sign_priority = 6,
+	linehl = false,
 	on_attach = function(bufnr)
-		local gitsigns = require("gitsigns")
-
-		-- Get the default branch (origin/HEAD -> origin/main or origin/master)
-		local origin_head = vim.fn.systemlist("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")[1]
-		if origin_head and origin_head ~= "" then
-			-- Extract just the branch name (e.g., "refs/remotes/origin/main" -> "origin/main")
-			local default_branch = origin_head:match("refs/remotes/(.*)")
-			if default_branch then
-				-- Get merge base between current branch and default branch
-				local merge_base =
-					vim.fn.systemlist(string.format("git merge-base HEAD %s 2>/dev/null", default_branch))[1]
-				if merge_base and merge_base ~= "" then
-					-- Set base to the merge-base commit
-					gitsigns.change_base(merge_base, true) -- true = global (affects all buffers)
-				end
-			end
-		end
+		vim.schedule(function()
+			require("git-branch-signs").refresh(bufnr)
+		end)
 	end,
 })
 
@@ -35,6 +24,17 @@ require("gitsigns").setup({
 -- Using Nord's pre-defined dim diff colors for background-only highlighting
 -- Base background is nord0 (#2E3440), these are barely-tinted versions from Nord theme
 local function set_gitsigns_highlights()
+	local colors = {
+		Add = { "#A3BE8C", "#66755B" },
+		Change = { "#EBCB8B", "#80704F" },
+		Delete = { "#BF616A", "#80565B" },
+		Topdelete = { "#BF616A", "#80565B" },
+		Changedelete = { "#EBCB8B", "#80704F" },
+	}
+	for kind, color in pairs(colors) do
+		vim.api.nvim_set_hl(0, "GitSigns" .. kind, { fg = color[1] })
+		vim.api.nvim_set_hl(0, "GitSignsStaged" .. kind, { fg = color[2] })
+	end
 	vim.api.nvim_set_hl(0, "GitSignsAddInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded
 	vim.api.nvim_set_hl(0, "GitSignsDeleteInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved
 	vim.api.nvim_set_hl(0, "GitSignsChangeInline", { bg = "#524633", fg = nil }) -- Nord DiffModified
@@ -45,6 +45,8 @@ local function set_gitsigns_highlights()
 	vim.api.nvim_set_hl(0, "GitSignsDeleteVirtLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (virtual lines)
 	vim.api.nvim_set_hl(0, "GitSignsChangeVirtLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (virtual lines)
 end
+
+require("git-branch-signs").setup()
 
 -- Apply highlights immediately
 set_gitsigns_highlights()
@@ -59,10 +61,10 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 vim.keymap.set("n", "<leader>gW", require("gitsigns").stage_buffer, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>gl", require("gitsigns").blame_line, { silent = true, noremap = true })
 vim.keymap.set("n", "]c", function()
-	require("gitsigns").nav_hunk("next")
+	require("git-branch-signs").navigate("next")
 end, { silent = true, noremap = true })
 vim.keymap.set("n", "[c", function()
-	require("gitsigns").nav_hunk("prev")
+	require("git-branch-signs").navigate("prev")
 end, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>hp", require("gitsigns").preview_hunk, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>hs", require("gitsigns").stage_hunk, { silent = true, noremap = true })
@@ -86,22 +88,13 @@ vim.keymap.set(
 	{ silent = true, noremap = true, desc = "Toggle deleted lines" }
 )
 
--- Toggle between comparing against HEAD (uncommitted changes) and merge-base (branch changes)
+-- Keep hunk actions based on the index; toggle only the branch gutter layer.
 vim.keymap.set("n", "<leader>gx", function()
-	require("gitsigns").change_base(nil, true) -- Reset to default (HEAD/index)
-	vim.notify("Gitsigns: comparing against HEAD (uncommitted changes)", vim.log.levels.INFO)
-end, { silent = true, noremap = true, desc = "Compare against HEAD" })
+	require("git-branch-signs").enable(false)
+	vim.notify("Gitsigns: showing unstaged and staged changes", vim.log.levels.INFO)
+end, { silent = true, noremap = true, desc = "Hide committed branch signs" })
 
 vim.keymap.set("n", "<leader>gX", function()
-	local origin_head = vim.fn.systemlist("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")[1]
-	if origin_head and origin_head ~= "" then
-		local default_branch = origin_head:match("refs/remotes/(.*)")
-		if default_branch then
-			local merge_base = vim.fn.systemlist(string.format("git merge-base HEAD %s 2>/dev/null", default_branch))[1]
-			if merge_base and merge_base ~= "" then
-				require("gitsigns").change_base(merge_base, true)
-				vim.notify("Gitsigns: comparing against " .. default_branch .. " (branch changes)", vim.log.levels.INFO)
-			end
-		end
-	end
-end, { silent = true, noremap = true, desc = "Compare against default branch" })
+	require("git-branch-signs").enable(true)
+	vim.notify("Gitsigns: also showing committed branch changes", vim.log.levels.INFO)
+end, { silent = true, noremap = true, desc = "Show committed branch signs" })

@@ -80,6 +80,10 @@ if ! command -v tmx >/dev/null 2>&1; then
 	alias tmx="tmux attach || tmux new"
 fi
 
+if ! command -v zj >/dev/null 2>&1; then
+	alias zj='zellij attach --create'
+fi
+
 if command -v eza >/dev/null 2>&1; then
 	# Only alias ls to eza in login shells
 	# Rationale: Scripts and non-interactive shells expect POSIX-compliant ls behavior.
@@ -474,9 +478,11 @@ cbd() {
 }
 
 codex() {
-	# Keep ordinary launches eligible for the shared daemon. Pane identity is
-	# configured by make codex-tmux, since -c overrides force embedded mode.
-	command codex "$@"
+	"$HOME/.files/bin/codex-wrapper" "$@"
+}
+
+claude() {
+	"$HOME/.files/bin/claude-wrapper" "$@"
 }
 
 codex-bedrock() {
