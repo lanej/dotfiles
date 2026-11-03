@@ -36,6 +36,8 @@ def main():
         machine_config.write_text('sets = ["not-a-set"]\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
+        shutil.copyfile(root / "scripts/install-zellij-navigation.py", checkout / "scripts/install-zellij-navigation.py")
+        shutil.copytree(root / "zellij/navigation", checkout / "zellij/navigation")
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
@@ -223,17 +225,18 @@ elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
 elif name == "make":
-    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters"}.intersection(args), args
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
-            "codex": "codex 0.162.0", "claude": "claude 2.1.295",
+            "codex": "codex 0.164.0", "claude": "claude 2.1.295",
             "btop": "btop version: 1.4.7",
             "zellij": "zellij 0.46.0",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
+    assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
     assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
     subprocess.run(
         ["/usr/bin/make", "-f", str(home / ".files/Makefile"), "codex-env"],
@@ -264,6 +267,12 @@ elif name == "git-crypt":
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "rustc"]:
     assert args[3:] == ["-vV"], args
     print("rustc 1.95.0\nhost: aarch64-unknown-linux-gnu\n")
+elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
+    assert "--locked" in args and args[args.index("--target") + 1] == "wasm32-wasip1", args
+    assert Path(args[args.index("--manifest-path") + 1]).is_file(), args
+    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert args[3] == "install", args
     assert args[args.index("--git") + 1] == "https://github.com/lanej/zellij.git", args

@@ -1,4 +1,4 @@
-// Zellij 0.45.1. See docs/zellij.md for tmux mappings and remaining gaps.
+// Zellij 0.46.0. See docs/zellij.md for tmux mappings and remaining gaps.
 // Start explicitly with `zellij --session NAME`; shell startup is unchanged.
 default_mode "locked"
 default_layout "tmux"
@@ -8,7 +8,7 @@ on_force_close "detach"
 nested_session_handling "descend"
 auto_layout false
 pane_frames true
-pane_frame_style "titles"
+pane_frame_style "full"
 mouse_mode true
 mouse_hover_tips false
 mouse_scroll_resize false
@@ -19,6 +19,16 @@ scrollback_editor "nvim"
 copy_clipboard "system"
 copy_on_select true
 
+// Keep clipboard ownership outside any tab's visible status bar. Suppressed
+// background plugins survive when their containing tab closes.
+load_plugins {
+    pane-navigation
+    "zellij:link"
+    "file:~/.config/zellij/plugins/lane-status.wasm" {
+        role "clipboard-receiver"
+    }
+}
+
 // A bounded history, not a RAM-byte guarantee. Recovery snapshots are smaller
 // than the live buffer so long-running agents do not rewrite 100k lines/second.
 scroll_buffer_size 100000
@@ -27,6 +37,9 @@ serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 serialization_interval 60
 
+plugins {
+    pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
+}
 keybinds clear-defaults=true {
     locked {
         bind "Ctrl f" { SwitchToMode "Tmux"; }
@@ -53,6 +66,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        bind "Ctrl a" { GoToNextAttention; SwitchToMode "Locked"; }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
         bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
@@ -67,6 +81,10 @@ keybinds clear-defaults=true {
         bind "Ctrl p" { ToggleTab; SwitchToMode "Locked"; }
         bind "r" "," { SwitchToMode "RenameTab"; TabNameInput 0; }
         bind "d" { SwitchToMode "Locked"; Detach; }
+        bind "D" {
+            Run "zellij-picker" "clients" { floating true; close_on_exit true; }
+            SwitchToMode "Locked"
+        }
         bind "x" { CloseFocus; SwitchToMode "Locked"; }
         bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
         bind "Z" { ToggleFocusNoUiFullscreen; SwitchToMode "Locked"; }
@@ -110,17 +128,27 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "p" {
+            // After visible-bar consent, the background clipboard receiver
+            // replaces this marker with a client-specific MessagePluginId.
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "clipboard-paste"
+            }
+            SwitchToMode "Locked"
+        }
         bind "[" { SwitchToMode "Scroll"; }
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
-        bind "0" "1" { GoToTab 1; SwitchToMode "Locked"; }
-        bind "2" { GoToTab 2; SwitchToMode "Locked"; }
-        bind "3" { GoToTab 3; SwitchToMode "Locked"; }
-        bind "4" { GoToTab 4; SwitchToMode "Locked"; }
-        bind "5" { GoToTab 5; SwitchToMode "Locked"; }
-        bind "6" { GoToTab 6; SwitchToMode "Locked"; }
-        bind "7" { GoToTab 7; SwitchToMode "Locked"; }
-        bind "8" { GoToTab 8; SwitchToMode "Locked"; }
-        bind "9" { GoToTab 9; SwitchToMode "Locked"; }
+        // Display zero-based indices; Zellij's GoToTab API is one-based.
+        bind "0" { GoToTab 1; SwitchToMode "Locked"; }
+        bind "1" { GoToTab 2; SwitchToMode "Locked"; }
+        bind "2" { GoToTab 3; SwitchToMode "Locked"; }
+        bind "3" { GoToTab 4; SwitchToMode "Locked"; }
+        bind "4" { GoToTab 5; SwitchToMode "Locked"; }
+        bind "5" { GoToTab 6; SwitchToMode "Locked"; }
+        bind "6" { GoToTab 7; SwitchToMode "Locked"; }
+        bind "7" { GoToTab 8; SwitchToMode "Locked"; }
+        bind "8" { GoToTab 9; SwitchToMode "Locked"; }
+        bind "9" { GoToTab 10; SwitchToMode "Locked"; }
     }
     resize {
         bind "h" "Left" { Resize "Increase Left"; }

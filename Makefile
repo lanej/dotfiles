@@ -136,8 +136,11 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
+.PHONY: zellij-status test-zellij-status
+zellij-status:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 sql-formatters:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim: vim-config sql-formatters
@@ -345,6 +348,13 @@ test-firstmate:
 
 test-zellij-layout:
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
+
+.PHONY: test-zellij-clipboard
+test-zellij-clipboard:
+	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
+
+test-zellij-status:
+	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 
 test-zellij-sessions:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"

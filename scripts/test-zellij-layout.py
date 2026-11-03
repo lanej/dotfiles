@@ -14,7 +14,8 @@ import termios
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 
 
 def geometry(panes):
@@ -40,6 +41,7 @@ def main():
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
@@ -50,6 +52,7 @@ def main():
         name = "layout-" + temporary.name
         terminal = Terminal(binary, env, name)
         try:
+            terminal.grant_status_permissions()
             terminal.until("first shell starts", lambda:
                            b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             terminal.prefix(b"v")
