@@ -402,6 +402,10 @@ def main():
                 left_row = next((line for line in screen.splitlines() if "LEFT SCREEN:" in line), "")
                 right_row = next((line for line in screen.splitlines() if "RIGHT SCREEN" in line), "")
                 bottom_row = screen.rstrip().splitlines()[-1] if screen.strip() else ""
+                left_start = bottom_row.find("└") + 1
+                left_end = bottom_row.find("┘", left_start)
+                left_text = "".join(line[left_start:left_end] for line in screen.splitlines())
+                left_output = left_text.rpartition("LEFT SCREEN:")[2]
                 colored = picker_screen(ansi=True)
                 preview_sample.update(
                     screen=screen,
@@ -413,7 +417,7 @@ def main():
                 green_on_blue = re.search(
                     r"\x1b\[38;2;80;190;120m\x1b\[(?:44|48;5;4)m"
                     + attributes + "RIGHT SCREEN", colored)
-                return (left_row and right_row and "wrapped-end" in screen
+                return (left_row and right_row and "wrapped-end" in left_output
                         and left_row.index("LEFT SCREEN:") < right_row.index("RIGHT SCREEN")
                         and bottom_row.count("└") == 2 and bottom_row.count("┘") == 2
                         and red and green_on_blue)
