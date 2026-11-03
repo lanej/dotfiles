@@ -152,6 +152,18 @@ inside tmux so hooks inherit the launching pane. See
 [tmux window status](docs/tmux.md#claude-and-codex-window-status) for the states
 and event mapping.
 
+## Repository skills and PR templates
+
+Bootstrap or retrofit a repository with portable Builder, architecture, and PR-writer skills, plus a PR template. Preview first; choose shareable files or a locally excluded installation:
+
+```sh
+~/.files/bin/repo-bootstrap --repo ~/src/new-project --init --dry-run
+~/.files/bin/repo-bootstrap --repo ~/src/new-project --init
+~/.files/bin/repo-bootstrap --repo ~/src/existing-project --mode local
+```
+
+The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [repository bootstrap guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades.
+
 ## Shared shell history
 
 With the Atuin recipe selected, `make install` configures sharing when an explicit sync host or saved account is available.

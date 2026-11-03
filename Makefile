@@ -53,6 +53,10 @@ plan:
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
 
+.PHONY: test-repo-bootstrap
+test-repo-bootstrap:
+	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
+
 test-dotfiles-config-editor:
 	$(call require-command,nvim)
 	$(call require-command,taplo)
