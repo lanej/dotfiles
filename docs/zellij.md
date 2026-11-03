@@ -133,6 +133,8 @@ Implementation references: [native nesting options and focus behavior](https://g
 
 ## Native agent status and attention
 
+Codex pane titles are configured in [`codex/zellij-title.json`](../codex/zellij-title.json) through the existing Codex lifecycle hooks and Zellij's pane-name command. Run `make codex-tmux-config` to install missing hooks, then review any new hooks in Codex's `/hooks` screen. The configuration produces `󰚩 01a19d8f  | .files`; `{id:.8}` selects eight characters from the thread ID, and the configured glyphs distinguish working, ready, attention, and interrupted states. These are event-driven glyphs rather than an animated spinner. The helper identifies the owning pane from Codex's native thread title, preserves that association while the compact title is displayed, and restores application-controlled titles on `SessionEnd`. It does not change the Zellij runtime or require restarting its server.
+
 With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
 
 Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.

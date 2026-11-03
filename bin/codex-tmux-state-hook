@@ -1,7 +1,34 @@
-#!/bin/sh
-# Timestamp and enqueue cosmetic status updates; never wait for tmux.
-broker="${AGENT_STATUS_BIN:-$HOME/.local/lib/agent-status/agent-status-broker}"
-[ -x "$broker" ] || exit 0
-tmux_context="${TMUX:-}"
-tmux_socket="${tmux_context%,*,*}"
-exec "$broker" send --tmux-socket "$tmux_socket" --pane "${TMUX_PANE:-}"
+#!/usr/bin/env python3
+"""Send the original hook event to tmux and optional Zellij title configuration."""
+
+import time
+
+# WHY: Capture producer ordering before stdin or either status backend can wait.
+started = time.time_ns()
+
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+payload = sys.stdin.buffer.read()
+broker = os.environ.get("AGENT_STATUS_BIN", str(
+    Path.home() / ".local/lib/agent-status/agent-status-broker"))
+if os.access(broker, os.X_OK):
+    try:
+        subprocess.run([
+            broker, "send", "--timestamp", str(started),
+            "--tmux-socket", os.environ.get("TMUX", "").rsplit(",", 2)[0],
+            "--pane", os.environ.get("TMUX_PANE", ""),
+        ], input=payload, timeout=0.25, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+helper = Path.home() / ".files/bin/codex-zellij-title-hook"
+if os.access(helper, os.X_OK):
+    try:
+        subprocess.run([str(helper), "--timestamp", str(started)],
+                       input=payload, timeout=2.7, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass

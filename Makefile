@@ -343,6 +343,9 @@ test-setup:
 
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
+.PHONY: test-zellij-codex-titles
+test-zellij-codex-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
