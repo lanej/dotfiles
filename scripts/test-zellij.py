@@ -348,13 +348,38 @@ def main():
             terminal.send(b"review [ready]\r")
             terminal.until("name second tab", lambda: any(t["name"] == "review [ready]"
                            and t["active"] for t in terminal.tabs()))
+            left_pane = next(p for p in terminal.terminals()
+                             if p["tab_name"] == "review [ready]")
+            terminal.until("left preview shell starts", lambda:
+                           PROMPT.decode().strip() in terminal.action(
+                               "dump-screen", "--pane-id", f"terminal_{left_pane['id']}"))
+            terminal.send(b"printf '\\033[31mLEFT SCREEN: a long visible line that wraps in the miniature, with wrapped-end\\033[0m\\n'\r")
+            terminal.until("left preview output is visible", lambda:
+                           "wrapped-end\n" in terminal.action(
+                               "dump-screen", "--pane-id", f"terminal_{left_pane['id']}"))
+            terminal.prefix(b"v")
+            terminal.until("preview tab has two panes", lambda:
+                           len([p for p in terminal.terminals()
+                                if p["tab_name"] == "review [ready]"]) == 2)
+            right_pane = max(
+                (p for p in terminal.terminals() if p["tab_name"] == "review [ready]"),
+                key=lambda p: p["pane_x"],
+            )
+            terminal.until("right preview shell starts", lambda:
+                           PROMPT.decode().strip() in terminal.action(
+                               "dump-screen", "--pane-id", f"terminal_{right_pane['id']}"))
+            terminal.send(b"printf '\\033[1;38;2;80;190;120;48;5;4mRIGHT SCREEN\\033[0m\\n'\r")
+            terminal.until("right preview output is visible", lambda:
+                           "RIGHT SCREEN\n" in terminal.action(
+                               "dump-screen", "--pane-id", f"terminal_{right_pane['id']}"))
             terminal.prefix(b"\x10")
             terminal.until("Ctrl-p returns to last tab", lambda: any(t["name"] == "work"
                            and t["active"] for t in terminal.tabs()))
 
-            def picker_screen():
+            def picker_screen(ansi=False):
                 pane = next((p for p in terminal.terminals() if p["is_floating"]), None)
-                return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+                return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}",
+                                       *(["--ansi"] if ansi else [])) if pane else ""
 
             def picker_has_result(name):
                 screen = picker_screen()
@@ -369,6 +394,42 @@ def main():
             # count and selected row reflect the query, not the initial list.
             terminal.until("fzf filters to the requested tab", lambda:
                            picker_has_result("review [ready]"))
+
+            preview_sample = {}
+
+            def preview_shows_both_panes():
+                screen = picker_screen()
+                left_row = next((line for line in screen.splitlines() if "LEFT SCREEN:" in line), "")
+                right_row = next((line for line in screen.splitlines() if "RIGHT SCREEN" in line), "")
+                bottom_row = screen.rstrip().splitlines()[-1] if screen.strip() else ""
+                left_start = bottom_row.find("└") + 1
+                left_end = bottom_row.find("┘", left_start)
+                left_text = "".join(line[left_start:left_end] for line in screen.splitlines())
+                left_output = left_text.rpartition("LEFT SCREEN:")[2]
+                colored = picker_screen(ansi=True)
+                preview_sample.update(
+                    screen=screen,
+                    colored_lines=[line for line in colored.splitlines() if "SCREEN" in line],
+                )
+                attributes = r"(?:\x1b\[(?:[1-9]|2[1-9]|59)m)*"
+                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[49m)?"
+                                + attributes + "LEFT SCREEN:", colored)
+                green_on_blue = re.search(
+                    r"\x1b\[38;2;80;190;120m\x1b\[(?:44|48;5;4)m"
+                    + attributes + "RIGHT SCREEN", colored)
+                return (left_row and right_row and "wrapped-end" in left_output
+                        and left_row.index("LEFT SCREEN:") < right_row.index("RIGHT SCREEN")
+                        and bottom_row.count("└") == 2 and bottom_row.count("┘") == 2
+                        and red and green_on_blue)
+
+            try:
+                terminal.until("tab preview fits both panes in their split positions",
+                               preview_shows_both_panes)
+            except AssertionError as error:
+                raise AssertionError(
+                    f"{error}\nPicker snapshot:\n{preview_sample.get('screen', '')}"
+                    f"\nColored preview lines:\n{preview_sample.get('colored_lines', [])!r}"
+                ) from error
             terminal.send(b"\r")
             terminal.until("picker focuses selected tab and closes itself", lambda:
                            any(t["name"] == "review [ready]" and t["active"] for t in terminal.tabs())

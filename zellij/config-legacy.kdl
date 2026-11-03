@@ -50,6 +50,8 @@ keybinds clear-defaults=true {
             Run "zellij-picker" "tabs" {
                 floating true
                 close_on_exit true
+                width "90%"
+                height "90%"
             }
             SwitchToMode "Locked"
         }

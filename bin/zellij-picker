@@ -8,12 +8,13 @@ import base64
 import json
 import os
 from pathlib import Path
-from pathlib import Path
 import re
 import shlex
 import subprocess
 import sys
 import time
+from typing import NamedTuple
+import unicodedata
 
 
 def run_zellij(*args, session=None, timeout=5):
@@ -60,6 +61,115 @@ def own_pane_id():
     return int(value) if value.isdecimal() else None
 
 
+class Cell(NamedTuple):
+    text: str
+    style: tuple = ()
+
+
+def update_style(style, parameters):
+    codes = [int(value or "0") for value in parameters.split(";")]
+    resets = {
+        22: (1, 2), 23: (3,), 24: (4, 21), 25: (5, 6),
+        27: (7,), 28: (8,), 29: (9,), 39: (38,), 49: (48,), 59: (58,),
+    }
+    index = 0
+    while index < len(codes):
+        code = codes[index]
+        index += 1
+        if code == 0:
+            style.clear()
+        elif code in resets:
+            for key in resets[code]:
+                style.pop(key, None)
+        elif code in (38, 48, 58):
+            if index >= len(codes):
+                break
+            mode = codes[index]
+            count = {2: 4, 5: 2}.get(mode)
+            if count is None or index + count > len(codes):
+                break
+            style[code] = (code, *codes[index:index + count])
+            index += count
+        elif 30 <= code <= 37 or 90 <= code <= 97:
+            style[38] = (code,)
+        elif 40 <= code <= 47 or 100 <= code <= 107:
+            style[48] = (code,)
+        elif 1 <= code <= 9 or code == 21:
+            style[code] = (code,)
+    return tuple(value for key in sorted(style) for value in style[key])
+
+
+def screen_rows(text, width, ansi=False):
+    """Wrap printable text into terminal cells without splitting wide glyphs."""
+    rows, cells, style = [], [], {}
+    active = ()
+    # WHY: Preserve only text styles; cursor movement and OSC commands cannot enter fzf.
+    tokens = r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\n|."
+    for token in re.finditer(tokens, text, re.DOTALL):
+        character = token.group()
+        if character.startswith("\x1b"):
+            sgr = re.fullmatch(r"\x1b\[([0-9;]*)m", character)
+            if ansi and sgr:
+                active = update_style(style, sgr[1])
+            continue
+        if character == "\n":
+            rows.append(cells + [Cell(" ")] * (width - len(cells)))
+            cells = []
+            continue
+        if not character.isprintable():
+            character = " "
+        if unicodedata.category(character) in ("Mn", "Me"):
+            if cells:
+                index = -2 if cells[-1].text == "" else -1
+                cells[index] = cells[index]._replace(text=cells[index].text + character)
+            continue
+        size = 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
+        if size > width:
+            character, size = "?", 1
+        if len(cells) + size > width:
+            rows.append(cells + [Cell(" ")] * (width - len(cells)))
+            cells = []
+        cells.append(Cell(character, active))
+        if size == 2:
+            cells.append(Cell(""))
+    if cells or not rows:
+        rows.append(cells + [Cell(" ")] * (width - len(cells)))
+    return rows
+
+
+def render_rows(rows):
+    rendered = []
+    for row in rows:
+        active, line = (), []
+        for cell in row:
+            if not cell.text:
+                continue
+            if cell.style != active:
+                line.append("\x1b[0m")
+                if cell.style:
+                    line.append("\x1b[" + ";".join(map(str, cell.style)) + "m")
+                active = cell.style
+            line.append(cell.text)
+        rendered.append("".join(line) + "\x1b[0m")
+    return "\n".join(rendered)
+
+
+def pane_title(pane):
+    title = label(pane.get("title", ""))
+    title = re.sub(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F-]+(?:\.{3}|…)?", "", title)
+    return " | ".join(part.strip() for part in title.split("|") if part.strip())
+
+
+def pane_screen(session, pane):
+    try:
+        return run_zellij(
+            "action", "dump-screen", "--ansi", "--pane-id", f"terminal_{pane['id']}",
+            session=session
+        ).rstrip()
+    except RuntimeError as error:
+        return f"Preview unavailable: {label(error)}"
+
+
 def preview_tab(session, tab_id):
     own_id = own_pane_id() if session == os.environ.get("ZELLIJ_SESSION_NAME") else None
     panes = [
@@ -73,15 +183,70 @@ def preview_tab(session, tab_id):
     if not panes:
         print("No other terminal pane in this tab.")
         return
-    panes.sort(key=lambda pane: (not pane.get("is_focused"), pane["id"]))
+    tab = next((tab for tab in snapshot(session, "tabs") if tab["tab_id"] == tab_id), None)
+    if tab is None:
+        print("Tab closed while loading preview.")
+        return
+    panes = [pane for pane in panes
+             if not pane.get("is_floating") or tab.get("are_floating_panes_visible")]
+    fullscreen = any(pane.get("is_fullscreen") for pane in panes)
+    panes = [pane for pane in panes
+             if not fullscreen or pane.get("is_fullscreen") or pane.get("is_floating")]
+    if not panes:
+        print("No visible terminal pane in this tab.")
+        return
+    width = max(1, int(os.environ.get("FZF_PREVIEW_COLUMNS", "100")))
+    height = max(1, int(os.environ.get("FZF_PREVIEW_LINES", "30")))
+    left = min(pane["pane_x"] for pane in panes)
+    top = min(pane["pane_y"] for pane in panes)
+    span_x = max(pane["pane_x"] + pane["pane_columns"] for pane in panes) - left
+    span_y = max(pane["pane_y"] + pane["pane_rows"] for pane in panes) - top
+    rectangles = []
     for pane in panes:
-        print(f"{pane['id']}: {label(pane.get('title', ''))}")
-    print()
-    contents = run_zellij(
-        "action", "dump-screen", "--pane-id", f"terminal_{panes[0]['id']}", session=session
-    )
-    for line in contents.rstrip().splitlines()[-30:]:
-        print(label(line))
+        x = round((pane["pane_x"] - left) * width / span_x)
+        y = round((pane["pane_y"] - top) * height / span_y)
+        right = round((pane["pane_x"] + pane["pane_columns"] - left) * width / span_x)
+        bottom = round((pane["pane_y"] + pane["pane_rows"] - top) * height / span_y)
+        rectangles.append((pane, x, y, right, bottom))
+    if any(right - x < 4 or bottom - y < 4 for _, x, y, right, bottom in rectangles):
+        rows = []
+        per_pane = max(1, height // len(panes))
+        for pane in sorted(panes, key=lambda pane: (pane["pane_y"], pane["pane_x"])):
+            rows.append(screen_rows(f"{pane['id']}: {pane_title(pane)}", width)[0])
+            if per_pane > 1:
+                rows.extend(screen_rows(pane_screen(session, pane), width, ansi=True)[-(per_pane - 1):])
+        if len(rows) > height:
+            rows = rows[:height - 1] + [screen_rows("More panes; enlarge preview", width)[0]]
+        print(render_rows(rows))
+        return
+    canvas = [[Cell(" ")] * width for _ in range(height)]
+    # WHY: Draw floating panes last so the snapshot reflects their visible overlay.
+    for pane, x, y, right, bottom in sorted(
+        rectangles, key=lambda rect: (rect[0].get("is_floating", False), rect[0]["id"])
+    ):
+        columns, lines = right - x, bottom - y
+        inner = columns - 2
+        for row in range(y, bottom):
+            if canvas[row][x].text == "" and x:
+                canvas[row][x - 1] = Cell(" ")
+            if right < width and canvas[row][right].text == "":
+                canvas[row][right] = Cell(" ")
+            canvas[row][x:right] = [Cell("│")] + [Cell(" ")] * inner + [Cell("│")]
+        canvas[y][x:right] = [Cell("┌")] + [Cell("─")] * inner + [Cell("┐")]
+        canvas[bottom - 1][x:right] = [Cell("└")] + [Cell("─")] * inner + [Cell("┘")]
+        marker = "*" if pane.get("is_focused") else ""
+        title = f" {marker}{pane['id']}: {pane_title(pane)} "
+        canvas[y][x + 1:right - 1] = screen_rows(title, inner)[0]
+        command = label(pane.get("pane_command") or "terminal")
+        cwd = Path(pane.get("pane_cwd") or "").name
+        canvas[y + 1][x + 1:right - 1] = screen_rows(f"{command} | {cwd}", inner)[0]
+        rows = screen_rows(pane_screen(session, pane), inner, ansi=True)
+        available = lines - 3
+        if len(rows) > available:
+            rows = [screen_rows("↑ earlier screen lines", inner)[0]] + rows[-(available - 1):]
+        for index, row in enumerate(rows[:available]):
+            canvas[y + 2 + index][x + 1:right - 1] = row
+    print(render_rows(canvas))
 
 
 def preview_session(session):
@@ -98,12 +263,13 @@ def choose(rows, heading, preview=None):
     preview_args = []
     if preview:
         preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
-        preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=right:60%"]
+        window = "right:70%:border-left" if preview == "--preview-tab" else "right:60%"
+        preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=" + window]
     result = subprocess.run(
         [
             "fzf", "--height=100%", "--reverse", "--no-multi",
             "--delimiter=\t", "--with-nth=2..", "--header=" + heading,
-            "--color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf",
+            "--color=dark,pointer:#d787d7,header:#d787d7,hl+:#ffafaf",
             *preview_args,
         ],
         input="\n".join(rows) + "\n", stdout=subprocess.PIPE, text=True,
