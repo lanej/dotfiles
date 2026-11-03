@@ -14,7 +14,7 @@ When invoked:
 
 ## Software architecture and construction
 
-Load `builder`, its architecture standard, and construction policy for reviews.
+Load the `builder` core for reviews. Load its full architecture standard for changed capability boundaries, models, adapters, consequential effects or architecture reviews, and construction detail by the core's stated triggers.
 Judge the resulting behavior and evidence, not directories or pattern names.
 Report specific requirement violations, affected behavior, and supporting
 observations; separate established facts, assumptions, and verification gaps.
