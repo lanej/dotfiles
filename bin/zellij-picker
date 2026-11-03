@@ -263,7 +263,7 @@ def choose(rows, heading, preview=None):
     preview_args = []
     if preview:
         preview_command = shlex.join([sys.executable, str(Path(__file__).resolve()), preview])
-        window = "right:70%:border-left:noinfo" if preview == "--preview-tab" else "right:60%"
+        window = "right:70%:border-left" if preview == "--preview-tab" else "right:60%"
         preview_args = ["--preview=" + preview_command + " {1}", "--preview-window=" + window]
     result = subprocess.run(
         [
