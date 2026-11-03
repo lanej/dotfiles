@@ -348,7 +348,7 @@ def main():
             terminal.send(b"review [ready]\r")
             terminal.until("name second tab", lambda: any(t["name"] == "review [ready]"
                            and t["active"] for t in terminal.tabs()))
-            terminal.send(b"printf 'LEFT SCREEN: a long visible line that wraps in the miniature, with wrapped-end\\n'\r")
+            terminal.send(b"printf '\\033[31mLEFT SCREEN: a long visible line that wraps in the miniature, with wrapped-end\\033[0m\\n'\r")
             terminal.prefix(b"v")
             terminal.until("preview tab has two panes", lambda:
                            len([p for p in terminal.terminals()
@@ -360,14 +360,15 @@ def main():
             terminal.until("right preview shell starts", lambda:
                            PROMPT.decode().strip() in terminal.action(
                                "dump-screen", "--pane-id", f"terminal_{right_pane['id']}"))
-            terminal.send(b"printf 'RIGHT SCREEN\\n'\r")
+            terminal.send(b"printf '\\033[1;38;2;80;190;120;48;5;4mRIGHT SCREEN\\033[0m\\n'\r")
             terminal.prefix(b"\x10")
             terminal.until("Ctrl-p returns to last tab", lambda: any(t["name"] == "work"
                            and t["active"] for t in terminal.tabs()))
 
-            def picker_screen():
+            def picker_screen(ansi=False):
                 pane = next((p for p in terminal.terminals() if p["is_floating"]), None)
-                return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+                return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}",
+                                       *(["--ansi"] if ansi else [])) if pane else ""
 
             def picker_has_result(name):
                 screen = picker_screen()
@@ -388,9 +389,17 @@ def main():
                 left_row = next((line for line in screen.splitlines() if "LEFT SCREEN:" in line), "")
                 right_row = next((line for line in screen.splitlines() if "RIGHT SCREEN" in line), "")
                 bottom_row = screen.rstrip().splitlines()[-1] if screen.strip() else ""
+                colored = picker_screen(ansi=True)
+                attributes = r"(?:\x1b\[(?:[1-9]|2[1-9]|59)m)*"
+                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[49m)?"
+                                + attributes + "LEFT SCREEN:", colored)
+                green_on_blue = re.search(
+                    r"\x1b\[38;2;80;190;120m\x1b\[(?:44|48;5;4)m"
+                    + attributes + "RIGHT SCREEN", colored)
                 return (left_row and right_row and "wrapped-end" in screen
                         and left_row.index("LEFT SCREEN:") < right_row.index("RIGHT SCREEN")
-                        and bottom_row.count("└") == 2 and bottom_row.count("┘") == 2)
+                        and bottom_row.count("└") == 2 and bottom_row.count("┘") == 2
+                        and red and green_on_blue)
 
             terminal.until("tab preview fits both panes in their split positions",
                            preview_shows_both_panes)
