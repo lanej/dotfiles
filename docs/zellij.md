@@ -133,6 +133,8 @@ Implementation references: [native nesting options and focus behavior](https://g
 
 ## Native agent status and attention
 
+The patched runtime displays Codex pane titles as `󰚩 01a19d8f  | .files`: a robot glyph, the first eight characters of the agent thread ID, a status glyph, and the project. Working panes retain Codex's animated spinner; `` means ready, `` needs attention, `` is idle or interrupted, and `` indicates failure. These glyphs require a Nerd Font. The formatter preserves Codex's original title and live updates, and honors explicitly renamed panes. Start a new Zellij session after installing the updated runtime.
+
 With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
 
 Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.
