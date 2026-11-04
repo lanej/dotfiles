@@ -4,6 +4,7 @@ test('copy setup instructions and find the Zellij workflow', async ({ page, cont
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('./');
   await expect(page).toHaveURL(/\/dotfiles\/$/);
+  await expect(page.getByRole('link', { name: 'Back to lanej.io open source' })).toHaveAttribute('href', 'https://lanej.io/open-source/#dotfiles');
   await expect(page.getByRole('link', { name: 'Set up a machine', exact: true })).toHaveAttribute('href', '/dotfiles/reference/install/');
   await page.locator('.expressive-code').first().getByRole('button', { name: 'Copy to clipboard' }).click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('curl -fsSL https://raw.githubusercontent.com/lanej/dotfiles/master/install.sh | sh');
