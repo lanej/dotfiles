@@ -49,6 +49,26 @@ package_semver() {
 	fi
 }
 
+install_imagemagick_package() {
+	# NOTE: ImageMagick 6 provides convert; version 7 provides magick.
+	if command -v magick >/dev/null || command -v convert >/dev/null; then
+		return 0
+	fi
+	if command -v brew >/dev/null; then
+		brew install imagemagick
+	elif command -v yay >/dev/null; then
+		sudo yay -S --noconfirm imagemagick
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm imagemagick
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y ImageMagick
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y imagemagick
+	else
+		return 1
+	fi
+}
+
 install_fd_package() {
 	# Check if fd is already installed and working
 	if command -v fd &>/dev/null; then
@@ -672,6 +692,19 @@ install_firstmate_release() (
 		shasum -a 256 -c selected.sha256 || exit 1
 	fi
 	tar -xzf "$archive" || exit 1
+	if ! "./$tool" --version; then
+		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
+			echo "Downloaded $tool cannot run on this host" >&2
+			exit 1
+		fi
+		# WHY: Upstream Linux releases may require a newer glibc than this host.
+		echo "Building Treehouse v$version from source for this host"
+		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
+		mkdir source || exit 1
+		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
+		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
+		"./$tool" --version || exit 1
+	fi
 	mkdir -p "$HOME/.local/bin" || exit 1
 	install -m 755 "$tool" "$HOME/.local/bin/$tool"
 )
@@ -983,13 +1016,14 @@ install_build_dependencies() {
 		return $?
 	fi
 	[ "$os" = linux ] || return 0
+	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
 	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
 	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
 	fi
 }
 

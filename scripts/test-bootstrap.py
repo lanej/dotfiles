@@ -76,13 +76,20 @@ elif name == "git":
     if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
-    if args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
+    if args == ["dnf", "install", "-y", "ImageMagick"]:
+        (home / ".local/bin/convert").symlink_to(fixture / "driver")
+        record("imagemagick package")
+    elif args == ["dnf", "install", "-y", "imagemagick"]:
+        sys.exit("No match for argument: imagemagick")
+    elif args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
         (home / ".local/bin/tmux").symlink_to(fixture / "driver")
         record("tmux package")
     elif args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
         (home / ".local/bin/eza").symlink_to(fixture / "driver")
         record("eza package")
     else:
+        if args[:3] == ["dnf", "install", "-y"] and {"perl-IPC-Cmd", "perl-Time-Piece"}.issubset(args):
+            (home / "openssl-perl-installed").touch()
         record("build dependencies")
 elif name == "apt-cache":
     assert args[:1] == ["policy"], args
@@ -158,6 +165,26 @@ echo "$1" > "$HOME/claude-version"
                 member.mode = 0o755 if path == "bedrock-router" else 0o644
                 archive.addfile(member, io.BytesIO(payload))
         record("router release")
+        sys.exit(0)
+    elif url.endswith("/treehouse-v3.1.6-linux-arm64.tar.gz"):
+        with tarfile.open(target, "w:gz") as archive:
+            payload = b"#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n"
+            member = tarfile.TarInfo("treehouse")
+            member.size = len(payload)
+            member.mode = 0o755
+            archive.addfile(member, io.BytesIO(payload))
+        sys.exit(0)
+    elif url == "https://github.com/kunchenguid/treehouse/releases/download/v3.1.6/checksums.txt":
+        release_archive = Path(target).with_name("treehouse-v3.1.6-linux-arm64.tar.gz")
+        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
+        Path(target).write_text(digest + "  " + release_archive.name + "\n")
+        sys.exit(0)
+    elif url == "https://github.com/kunchenguid/treehouse/archive/refs/tags/v3.1.6.tar.gz":
+        with tarfile.open(target, "w:gz") as archive:
+            payload = b"module github.com/kunchenguid/treehouse/v3\n"
+            member = tarfile.TarInfo("treehouse-3.1.6/go.mod")
+            member.size = len(payload)
+            archive.addfile(member, io.BytesIO(payload))
         sys.exit(0)
     elif url == "https://github.com/lanej/bedrock-router/releases/download/v0.1.1/SHA256SUMS":
         release_archive = Path(target).with_name("bedrock-router_v0.1.1_linux_arm64.tar.gz")
@@ -236,6 +263,7 @@ elif name == "make":
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
+    assert shutil.which("convert"), "ImageMagick missing"
     assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
     assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
     subprocess.run(
@@ -275,6 +303,7 @@ elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
     output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert args[3] == "install", args
+    assert (home / "openssl-perl-installed").exists(), "vendored OpenSSL needs IPC::Cmd and Time::Piece"
     assert args[args.index("--git") + 1] == "https://github.com/lanej/zellij.git", args
     revision = args[args.index("--rev") + 1]
     assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision), args
@@ -295,7 +324,15 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
-    if args == ["env", "GOBIN"]:
+    if args[:1] == ["build"]:
+        assert os.environ["CGO_ENABLED"] == "0"
+        assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
+        assert Path("go.mod").is_file()
+        output = Path(args[args.index("-o") + 1])
+        shutil.copyfile(fixture / "driver", output)
+        output.chmod(0o755)
+        record("treehouse build")
+    elif args == ["env", "GOBIN"]:
         print("")
     elif args == ["env", "GOPATH"]:
         print(os.environ["GOPATH"])
@@ -311,6 +348,8 @@ elif name == "go":
         print("go version go1.26.2 linux/amd64")
 elif name == "glow":
     print("glow version master")
+elif name == "treehouse":
+    print("treehouse v3.1.6")
 elif name == "gh" and args == ["auth", "status"]:
     sys.exit(1)
 else:
@@ -329,14 +368,14 @@ else:
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
             "direnv", "just", "loginctl", "zellij",
-            "treehouse", "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
+            "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
         # Keep this fresh-box workflow independent of tools preinstalled on CI.
         system_bin = home / "system-bin"
         system_bin.mkdir()
-        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup"}
+        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup", "convert", "magick", "imagemagick", "treehouse"}
         for system_dir in (Path("/usr/bin"), Path("/bin")):
             for tool in system_dir.iterdir():
                 destination = system_bin / tool.name
@@ -401,6 +440,7 @@ else:
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
+        assert "treehouse build" in events
         assert (home / ".local/bin/tmux").is_file()
         assert events.index("tmux package") < events.index("make")
         assert "yq" in events
