@@ -29,6 +29,14 @@ On first launch, the bar asks for permission to read application state, run its 
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
 
+## Forwarded SSH agents
+
+When shell startup loads these dotfiles, a fresh SSH login with agent forwarding publishes its socket through the owner-only `~/.ssh/dotfiles-agent/agent.sock` link before attaching to tmux or Zellij. Forwarded shells use that stable path, so existing panes follow the next forwarded login without restarting their session. The helper does not require `SSH_TTY`; a remote command that skips shell setup must source `~/.local/bin/fix-ssh` explicitly to publish its forwarded socket. No private keys are copied or local agents started on the remote host. A fresh login without forwarding does not adopt another login's agent.
+
+The most recent forwarded login wins for this user on this host. Concurrent forwarded connections share that selection; disconnecting the selected connection leaves the link unavailable until another forwarded login refreshes it. There is no search for other agent sockets. Existing panes created before this change may retain an old direct or `sshtmux` path; run `fixssh` once to select the managed link and list the agent's keys. The `git-ssh` helper makes the same repair when its inherited socket disappears, for both multiplexers. After installing the change with `make shell`, reconnect with forwarding before attaching an existing session.
+
+Run `make test-ssh-agent` to exercise reconnects with real temporary agents and confirm a surviving pane reaches the replacement agent. This check simulates the inherited multiplexer environment; it does not open a real SSH connection.
+
 ## Familiar keys
 
 Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefix mode. Most actions return immediately to locked mode.
