@@ -21,11 +21,13 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 ## Quick start
 
-For a fresh checkout, copy this one-liner to initialize the native OS configuration and install uv and Python:
+Copy this one-liner to clone the repository, initialize the native OS configuration, and install uv and Python:
 
 ```sh
-git clone https://github.com/lanej/dotfiles.git "$HOME/.files" && cd "$HOME/.files" && make base && make bootstrap
+curl -fsSL https://raw.githubusercontent.com/lanej/dotfiles/master/install.sh | sh
 ```
+
+Requires Git, Make, and Bash on macOS or Linux. An existing `~/.files` checkout is reused without pulling updates or changing branches. [Read the installer](../install.sh) before running it.
 
 Then [choose this machine’s tool sets](../README.md#configuration-sets) in `~/.config/dotfiles/config.toml`, for example `workstation` for the broad setup. From the checkout, preview and install that selection:
 

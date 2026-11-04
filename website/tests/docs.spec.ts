@@ -4,7 +4,7 @@ test('copy setup instructions and find the Zellij workflow', async ({ page, cont
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
   await page.locator('.expressive-code').first().getByRole('button', { name: 'Copy to clipboard' }).click();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('git clone https://github.com/lanej/dotfiles.git "$HOME/.files" && cd "$HOME/.files" && make base && make bootstrap');
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('curl -fsSL https://raw.githubusercontent.com/lanej/dotfiles/master/install.sh | sh');
   await page.getByRole('link', { name: 'Know where things live' }).click();
   await expect(page.getByRole('heading', { name: 'How configuration fits together', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/architecture.mdx');

@@ -10,6 +10,8 @@ The Astro Starlight site in [`website/`](website/) renders the shared [documenta
 
 The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.
 
+For the copyable `curl | sh` entrypoint, use the [shared quick start](docs/index.mdx#quick-start). It clones or reuses `~/.files` and runs the existing minimal bootstrap. The same setup with each step explicit:
+
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
 $ make base      # initialize the native baseline and its machine TOML

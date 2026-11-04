@@ -296,6 +296,10 @@ atuin-sync:
 test-atuin-sync:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-atuin-sync.py"
 
+.PHONY: test-install-entrypoint
+test-install-entrypoint:
+	@python3 "$(DOTFILES)/scripts/test-install-entrypoint.py"
+
 test-bootstrap:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap.py"
 
