@@ -14,12 +14,12 @@
   "pages": [
     {
       "name": "home",
-      "path": "/",
+      "path": "/dotfiles/",
       "ready": "main h1"
     },
     {
       "name": "terminal",
-      "path": "/terminal/",
+      "path": "/dotfiles/terminal/",
       "ready": "main h1"
     }
   ],

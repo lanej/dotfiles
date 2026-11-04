@@ -6,6 +6,7 @@ export default defineConfig({
   base,
   integrations: [starlight({
     title: 'Dotfiles',
+    components: { SiteTitle: './src/components/SiteTitle.astro' },
     favicon: '/source/docs/brand/dotfiles-logo.png',
     description: "My working environment. Configuration, tools, and terminal workflows for macOS and Linux.",
     logo: { src: '../docs/brand/dotfiles-logo.png' },
