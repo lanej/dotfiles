@@ -36,4 +36,12 @@ The browser detector copies the quick-start command without executing it, opens 
 
 For visual changes, preview the built site with `npm run preview`, inspect desktop and mobile layouts, and exercise keyboard navigation, search, the mobile menu, and theme selection. Search is indexed during the production build; validate it in the preview, not the development server.
 
-CI runs only for changes to the site and its source documents. It builds and checks the documentation; it does not deploy it. Hosting, the final domain, and any URL base path are separate decisions.
+## GitHub Pages
+
+The site targets `https://lanej.github.io/dotfiles/`. Its origin and `/dotfiles` base path live in `website/site.config.mjs`, shared by Astro and the documentation synchronizer so generated links and copied images use the same prefix. Local development and previews also serve the site under `/dotfiles/`.
+
+In the repository’s **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source. Leave the custom domain empty. The `github-pages` environment must permit deployments from `master`.
+
+The **Documentation site** workflow checks and builds relevant pull requests without deploying them. On relevant pushes to `master`, it runs the same checks, uploads `website/dist`, and deploys that artifact to Pages. Use **Actions → Documentation site → Run workflow → master** to publish again without a source change. A failed check prevents deployment.
+
+After deployment, open the URL reported by the deployment job and check navigation, images, and search. If the account’s user Pages site has a custom domain, GitHub may redirect project sites to that domain; check the reported address before changing the configured origin. No separate documentation copy or generated build output needs committing.

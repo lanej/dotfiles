@@ -1,8 +1,12 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { site, base } from './site.config.mjs';
 export default defineConfig({
+  site,
+  base,
   integrations: [starlight({
     title: 'Dotfiles',
+    favicon: '/source/docs/brand/dotfiles-logo.png',
     description: "My working environment. Configuration, tools, and terminal workflows for macOS and Linux.",
     logo: { src: '../docs/brand/dotfiles-logo.png' },
     social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lanej/dotfiles' }],

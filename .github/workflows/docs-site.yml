@@ -1,5 +1,6 @@
 name: Documentation site
 on:
+  workflow_dispatch:
   pull_request:
     paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
   push:
@@ -26,3 +27,28 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: website/dist
+  deploy:
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    needs: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

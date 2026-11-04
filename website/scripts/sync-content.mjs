@@ -8,6 +8,7 @@ import remarkMdx from 'remark-mdx';
 import remarkStringify from 'remark-stringify';
 import { parse, stringify } from 'yaml';
 import { visit } from 'unist-util-visit';
+import { base } from '../site.config.mjs';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(site, '..');
@@ -34,6 +35,9 @@ const imageOutput = resolve(site, 'public/source');
 await rm(output, { recursive: true, force: true });
 await rm(imageOutput, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
+// Starlight's favicon uses the existing repository logo as a public asset.
+await mkdir(resolve(imageOutput, 'docs/brand'), { recursive: true });
+await cp(resolve(repo, 'docs/brand/dotfiles-logo.png'), resolve(imageOutput, 'docs/brand/dotfiles-logo.png'));
 for (const page of pages) {
   const mdx = page.file.endsWith('.mdx');
   const destination = resolve(output, `${page.slug || 'index'}.${mdx ? 'mdx' : 'md'}`);
@@ -61,10 +65,10 @@ for (const page of pages) {
     const target = path ? relative(repo, resolve(repo, dirname(page.file), path)) : page.file;
     if (image) {
       images.add(target);
-      return `/source/${target}`;
+      return `${base}/source/${target}`;
     }
     const mapped = pages.find((entry) => entry.file === target && (!entry.section || headingId(entry.section) === fragment));
-    if (mapped) return `${mapped.slug ? `/${mapped.slug}/` : '/'}${fragment && !mapped.section ? `#${fragment}` : ''}`;
+    if (mapped) return `${base}${mapped.slug ? `/${mapped.slug}/` : '/'}${fragment && !mapped.section ? `#${fragment}` : ''}`;
     if (!path && !page.section) return `#${fragment}`;
     return `${github}/blob/master/${target}${fragment ? `#${fragment}` : ''}`;
   }
