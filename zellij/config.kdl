@@ -9,7 +9,7 @@ nested_session_handling "descend"
 auto_layout false
 pane_frames true
 pane_frame_style "full"
-mouse_mode true
+mouse_mode false
 mouse_hover_tips false
 mouse_scroll_resize false
 scroll_mode_sync false
