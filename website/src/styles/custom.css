@@ -1,45 +1,67 @@
+/* Shared visual language: lanej/lanej.github.com assets/css/site.css and STYLE.md.
+   Reference revision: 7c90d7406cfb111b8be0fdbfb8c9009468c1bad3. */
 :root {
-  --sl-color-accent-low: #263e51;
-  --sl-color-accent: #88c0d0;
-  --sl-color-accent-high: #b9e3ee;
-  --sl-color-white: #eceff4;
-  --sl-color-gray-1: #d8dee9;
-  --sl-color-gray-2: #b4bfd1;
-  --sl-color-gray-3: #8492a7;
-  --sl-color-gray-4: #4c566a;
-  --sl-color-gray-5: #3b4252;
-  --sl-color-gray-6: #292f3b;
-  --sl-color-black: #222833;
-  --sl-font: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --sl-color-accent-low: #21372b;
+  --sl-color-accent: #acc8b7;
+  --sl-color-accent-high: #acc8b7;
+  --sl-color-white: #eef1ee;
+  --sl-color-gray-1: #d7dfd9;
+  --sl-color-gray-2: #afbbb4;
+  --sl-color-gray-3: #9aaa9f;
+  --sl-color-gray-4: #607b6c;
+  --sl-color-gray-5: #2b3a34;
+  --sl-color-gray-6: #14201c;
+  --sl-color-black: #0d1513;
+  --sl-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --sl-content-width: 48rem;
+  --sl-line-height: 1.8;
 }
+/* lanej.io is dark-only; this companion palette preserves Starlight's light mode. */
 :root[data-theme='light'] {
-  --sl-color-accent-low: #e0edf1;
-  --sl-color-accent: #356278;
-  --sl-color-accent-high: #22475c;
-  --sl-color-white: #242d3b;
-  --sl-color-gray-1: #3b4252;
-  --sl-color-gray-2: #4c566a;
-  --sl-color-gray-3: #657389;
-  --sl-color-gray-4: #a3afc1;
-  --sl-color-gray-5: #d8dee9;
-  --sl-color-gray-6: #edf0f5;
-  --sl-color-gray-7: #f5f7fa;
-  --sl-color-black: #fff;
+  --sl-color-accent-low: #e1ece5;
+  --sl-color-accent: #365c47;
+  --sl-color-accent-high: #284b38;
+  --sl-color-white: #17251d;
+  --sl-color-gray-1: #2b3a34;
+  --sl-color-gray-2: #465c50;
+  --sl-color-gray-3: #536b5d;
+  --sl-color-gray-4: #869c8e;
+  --sl-color-gray-5: #cdd9d0;
+  --sl-color-gray-6: #edf2ed;
+  --sl-color-gray-7: #f1f5f0;
+  --sl-color-black: #f8faf6;
 }
-.site-title { gap: .55rem; letter-spacing: -.035em; font-weight: 750; }
+:root,
+:root[data-theme='light'] {
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-hairline: var(--sl-color-gray-5);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+}
+.site-title { gap: .55rem; letter-spacing: -.03em; font-weight: 550; }
 .site-title img { height: 2.7rem; width: 2.7rem; }
-h1, h2, h3 { letter-spacing: -.025em; }
+h1, h2, h3 { letter-spacing: -.025em; font-weight: 550; }
 .hero { padding-block: 2rem 1.5rem; gap: 2rem; }
-.hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); max-width: 14ch; line-height: 1.06; }
-.hero .tagline { max-width: 46ch; font-size: 1.15rem; }
-.hero img { width: min(16rem, 100%); }
-.card { border-radius: .65rem; background: var(--sl-color-gray-6); }
-.card .title { font-size: 1.1rem; }
+.hero h1 { font-size: clamp(2.4rem, 4.4vw, 3.75rem); max-width: 19ch; line-height: 1.1; letter-spacing: -.045em; font-weight: 550; }
+.hero .tagline { max-width: 46ch; font-size: 1.05rem; line-height: 1.65; }
+.hero img { width: min(11rem, 100%); }
+.sl-link-button { border-radius: 4px; min-height: 44px; font-weight: 550; }
+.sl-link-button.secondary { border-color: var(--sl-color-gray-5); }
+.sl-link-card {
+  border: 0;
+  border-top: 1px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1.25rem 0;
+}
+.sl-link-card .title { font-size: 1.35rem; font-weight: 550; letter-spacing: -.025em; }
+.sl-link-card .description { color: var(--sl-color-gray-2); line-height: 1.65; }
+.sl-link-card:hover { background: transparent; border-color: var(--sl-color-text-accent); }
+.sl-link-card:hover .title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
 .sl-markdown-content table { font-size: .94rem; }
-.eyebrow { color: var(--sl-color-text-accent); font: 600 .8rem var(--sl-font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.workflow { border-inline-start: 3px solid var(--sl-color-accent); padding-inline-start: 1.2rem; }
-:focus-visible { outline: 3px solid var(--sl-color-text-accent); outline-offset: 4px; }
+.eyebrow { color: var(--sl-color-text-accent); font: 650 .875rem/1.5 var(--sl-font); letter-spacing: .12em; text-transform: uppercase; }
+.workflow { border-inline-start: 4px solid var(--sl-color-text-accent); padding: .25rem 1.25rem; background: var(--sl-color-gray-6); }
+:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 5px; }
 .sl-markdown-content :not(pre) > code { font-size: max(.875rem, .85em); }
 @media (max-width: 49.99rem) {
   .hero { padding-block: 1.5rem; }
