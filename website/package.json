@@ -1,0 +1,31 @@
+{
+  "name": "dotfiles-docs",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "content": "node scripts/sync-content.mjs",
+    "dev": "npm run content && astro dev --host 127.0.0.1",
+    "build": "npm run content && astro build",
+    "preview": "astro preview --host 127.0.0.1",
+    "check": "npm run content && astro check",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^8.1.2",
+    "@astrojs/starlight": "^0.42.8",
+    "astro": "^7.4.5",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@playwright/test": "^1.64.1",
+    "typescript": "^6.0.3"
+  }
+}

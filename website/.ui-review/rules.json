@@ -1,0 +1,25 @@
+[
+  {
+    "id": "baseline-readable-text",
+    "type": "min-font-size",
+    "selector": "main",
+    "min": 14,
+    "severity": "error",
+    "reason": "Start with at least 14 CSS px for visible main-content text; calibrate to the project's readable type scale.",
+    "designRules": [
+      "DR-007"
+    ]
+  },
+  {
+    "id": "baseline-content-clipping",
+    "type": "no-clip",
+    "selector": "main p, main label, main button",
+    "optional": true,
+    "severity": "warning",
+    "reason": "Keep prose and controls readable; reference tables and code intentionally scroll horizontally.",
+    "designRules": [
+      "DR-006",
+      "DR-007"
+    ]
+  }
+]

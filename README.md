@@ -2,6 +2,10 @@
 
 Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux).
 
+## Documentation website
+
+The Astro Starlight site in [`website/`](website/) provides searchable guides and reference pages built from the documentation in this checkout. See the [site maintenance guide](website/src/content/docs/maintaining.mdx) for local development and verification.
+
 ## Installation
 
 The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.

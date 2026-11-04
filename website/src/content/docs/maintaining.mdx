@@ -1,0 +1,35 @@
+---
+title: Maintain this site
+description: Run, edit, and verify the documentation without installing dotfiles.
+---
+
+The Astro Starlight application lives in `website/` and uses npm with a committed lockfile. Use Node 22.23.4 or newer.
+
+```sh
+cd website
+npm ci
+npm run dev
+```
+
+The development server prints its local URL. The site does not run the dotfiles installer.
+
+## Edit the source of truth
+
+Write website-specific guides in `website/src/content/docs/*.mdx`. Keep installation and component details in their existing repository Markdown sources. `scripts/sync-content.mjs` selects the README installation and configuration sections plus an explicit set of reference documents, then generates ignored pages under `src/content/docs/reference/`.
+
+`npm run dev`, `npm run check`, and `npm run build` refresh these pages. After editing a repository Markdown source during development, run `npm run content` to refresh it. Reference links route to the site when the destination is included; other file links go to GitHub. Images are copied locally. Each generated page’s edit link points to its original file.
+
+## Verify the result
+
+```sh
+npm run check
+npm run build
+npx playwright install chromium
+npm test
+```
+
+The browser detector searches for the Zellij copy workflow and follows the result in the production build. It checks that the documented session-buffer distinction remains discoverable. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for the test command.
+
+For visual changes, preview the built site with `npm run preview`, inspect desktop and mobile layouts, and exercise keyboard navigation, search, the mobile menu, and theme selection. Search is indexed during the production build; validate it in the preview, not the development server.
+
+CI runs only for changes to the site and its source documents. It builds and checks the documentation; it does not deploy it. Hosting, the final domain, and any URL base path are separate decisions.
