@@ -1,10 +1,10 @@
 name: Documentation site
 on:
   pull_request:
-    paths: ['website/**', 'README.md', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
   push:
     branches: [master]
-    paths: ['website/**', 'README.md', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
 permissions:
   contents: read
 jobs:

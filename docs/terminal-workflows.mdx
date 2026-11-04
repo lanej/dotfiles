@@ -21,7 +21,7 @@ In Zellij, `:q!` leaves the scrollback editor and returns to the original termin
 Local session-buffer checks do not establish terminal clipboard behavior. The Zellij guide explicitly leaves terminal clipboard acceptance unverified for [issue #101](https://github.com/lanej/dotfiles/issues/101). OSC 52 behavior depends on the terminal, including over SSH.
 </Aside>
 
-See [keyboard selection and paste](/reference/zellij/#keyboard-selection-and-paste) for buffer lifetime, permissions, runtime requirements, and the complete distinction. Zellij scroll mode remains useful for searching; it does not provide tmux’s arbitrary inline visual selection.
+See [keyboard selection and paste](./zellij.md#keyboard-selection-and-paste) for buffer lifetime, permissions, runtime requirements, and the complete distinction. Zellij scroll mode remains useful for searching; it does not provide tmux’s arbitrary inline visual selection.
 
 ## Start and return to work
 
@@ -31,11 +31,11 @@ For a configured Zellij installation:
 zellij attach --create main
 ```
 
-**Ctrl-f d** detaches while keeping the session running. In a new shell, `zj main` is the short form. Runtime installation and restarting existing servers are covered in the [Zellij guide](/reference/zellij/).
+**Ctrl-f d** detaches while keeping the session running. In a new shell, `zj main` is the short form. Runtime installation and restarting existing servers are covered in the [Zellij guide](./zellij.md).
 
-For tmux, `tmux-sessions list` shows saved snapshots and `tmux-sessions restore` opens the restore picker. Restoration asks for confirmation. See the [session guide](/reference/tmux/) for persistence and agent status.
+For tmux, `tmux-sessions list` shows saved snapshots and `tmux-sessions restore` opens the restore picker. Restoration asks for confirmation. See the [session guide](./tmux.md) for persistence and agent status.
 
 <CardGrid>
-  <LinkCard title="Zellij reference" description="Bindings, native attention, scrollback, clipboard, and remaining gaps." href="/reference/zellij/" />
-  <LinkCard title="tmux reference" description="Session persistence, saved snapshots, Claude and Codex window status." href="/reference/tmux/" />
+  <LinkCard title="Zellij reference" description="Bindings, native attention, scrollback, clipboard, and remaining gaps." href="./zellij.md" />
+  <LinkCard title="tmux reference" description="Session persistence, saved snapshots, Claude and Codex window status." href="./tmux.md" />
 </CardGrid>

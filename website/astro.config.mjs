@@ -8,7 +8,6 @@ export default defineConfig({
     social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lanej/dotfiles' }],
     expressiveCode: { shiki: { langAlias: { tmux: 'shellscript' } } },
     customCss: ['./src/styles/custom.css'],
-    editLink: { baseUrl: 'https://github.com/lanej/dotfiles/edit/master/website/' },
     sidebar: [
       { label: 'Start here', items: [
         { label: 'Overview', slug: '' },

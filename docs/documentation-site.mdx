@@ -1,0 +1,39 @@
+---
+title: Maintain this site
+description: Run, edit, and verify the documentation without installing dotfiles.
+---
+
+The Astro Starlight application lives in `website/` and uses npm with a committed lockfile. Use Node 22.23.4 or newer.
+
+```sh
+cd website
+npm ci
+npm run dev
+```
+
+The development server prints its local URL. The site does not run the dotfiles installer.
+
+## Edit the source of truth
+
+Maintain documentation in the repository’s `README.md` and `docs/` directory. The same MDX guides serve repository readers and the website: [overview](./index.mdx), [architecture](./architecture.mdx), [components](./components.mdx), and [terminal workflows](./terminal-workflows.mdx). There are no separately authored guides under `website/`.
+
+The site’s `scripts/sync-content.mjs` reads an explicit list of these sources, including existing Markdown references and the README installation/configuration sections. It creates disposable pages under `website/src/content/docs/`, rebases repository-relative links and image paths, and points every **Edit page** link to the original document. Generated pages and copied images are ignored by Git and replaced on regeneration; never edit them.
+
+Use relative repository links in Markdown, MDX link components, and hero actions. MDX remains MDX through generation, so Starlight components render alongside the shared prose. Existing `.md` references do not need a format conversion to share their content.
+
+`npm run dev`, `npm run check`, and `npm run build` refresh the generated pages. After editing a source during a development session, run `npm run content`; Astro picks up the generated changes. Only the source file needs maintaining.
+
+## Verify the result
+
+```sh
+npm run check
+npm run build
+npx playwright install chromium
+npm test
+```
+
+The browser detector searches for the Zellij copy workflow and follows the result in the production build. It checks that the documented session-buffer distinction remains discoverable. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for the test command.
+
+For visual changes, preview the built site with `npm run preview`, inspect desktop and mobile layouts, and exercise keyboard navigation, search, the mobile menu, and theme selection. Search is indexed during the production build; validate it in the preview, not the development server.
+
+CI runs only for changes to the site and its source documents. It builds and checks the documentation; it does not deploy it. Hosting, the final domain, and any URL base path are separate decisions.

@@ -6,13 +6,13 @@ hero:
   title: Dotfiles
   tagline: My dotfiles for macOS and Linux. One checkout for the shell, editor, terminal, and tools I work in every day.
   image:
-    file: ../../../../docs/brand/dotfiles-logo.png
+    file: ./brand/dotfiles-logo.png
   actions:
     - text: Set up a machine
-      link: /reference/install/
+      link: ../README.md#installation
       icon: right-arrow
     - text: Explore the configuration
-      link: /reference/configuration/
+      link: ../README.md#configuration-sets
       variant: secondary
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
@@ -22,10 +22,10 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 ## Find your next step
 
 <CardGrid>
-  <LinkCard title="Compose your setup" description="Start with the native baseline. Add bundles and private sets, then override only what this machine needs." href="/reference/configuration/" />
-  <LinkCard title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="/terminal/" />
-  <LinkCard title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="/architecture/" />
-  <LinkCard title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="/components/" />
+  <LinkCard title="Compose your setup" description="Start with the native baseline. Add bundles and private sets, then override only what this machine needs." href="../README.md#configuration-sets" />
+  <LinkCard title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="./terminal-workflows.mdx" />
+  <LinkCard title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="./architecture.mdx" />
+  <LinkCard title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="./components.mdx" />
 </CardGrid>
 
 ## Configure first. Install deliberately.
@@ -34,7 +34,7 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 `make base` initializes the native baseline. `make bootstrap` provisions uv and Python. `make plan` shows the selection. `make install` installs the selected tools and applies their configuration.
 
-After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](/reference/install/) for prerequisites and machine settings.
+After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](../README.md#installation) for prerequisites and machine settings.
 
 </div>
 

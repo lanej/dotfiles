@@ -1,7 +1,7 @@
 node_modules/
 dist/
 .astro/
-src/content/docs/reference/
+src/content/docs/
 public/source/
 playwright-report/
 test-results/

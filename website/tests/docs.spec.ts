@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test('find the Zellij copy workflow from the documentation home', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('link', { name: 'Know where things live' }).click();
+  await expect(page.getByRole('heading', { name: 'How configuration fits together', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/architecture.mdx');
   await page.getByRole('button', { name: 'Search' }).click();
   await page.getByPlaceholder('Search', { exact: true }).fill('dedicated session buffer');
   await page.locator('.pagefind-ui__result-link').filter({ hasText: 'Zellij' }).first().click();

@@ -4,7 +4,7 @@ Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux
 
 ## Documentation website
 
-The Astro Starlight site in [`website/`](website/) provides searchable guides and reference pages built from the documentation in this checkout. See the [site maintenance guide](website/src/content/docs/maintaining.mdx) for local development and verification.
+The Astro Starlight site in [`website/`](website/) renders the shared [documentation](docs/index.mdx) from `README.md` and `docs/`; those files are the only documentation sources to maintain. See the [site maintenance guide](docs/documentation-site.mdx) for local development and verification.
 
 ## Installation
 
