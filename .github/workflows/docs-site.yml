@@ -1,0 +1,28 @@
+name: Documentation site
+on:
+  pull_request:
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+  push:
+    branches: [master]
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

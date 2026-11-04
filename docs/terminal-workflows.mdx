@@ -1,0 +1,41 @@
+---
+title: Terminal workflows
+description: Navigate sessions and copy text with the right mental model for tmux and Zellij.
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Both multiplexers use **Ctrl-f** as the prefix and Vim-style pane navigation. Zellij is an opt-in trial; familiar keys do not imply identical copy behavior.
+
+## Copying is a deliberate difference
+
+| Task | tmux | Zellij |
+| --- | --- | --- |
+| Select arbitrary text | Inline Vim-style copy mode | Open scrollback in Neovim with **Ctrl-f e** |
+| Select a region | tmux copy-mode selection | Neovim **v**, **V**, or **Ctrl-v**, then **y** |
+| Paste the multiplexer copy | **Ctrl-f p** pastes the tmux buffer | **Ctrl-f p** pastes the session’s last Neovim yank |
+| Paste the system clipboard | Terminal paste shortcut | Terminal paste shortcut |
+
+In Zellij, `:q!` leaves the scrollback editor and returns to the original terminal. Neovim yanks write a private session buffer and send a **write-only OSC 52** request to the terminal clipboard. Mouse selection and native command-copy actions do not update that Neovim buffer. The configuration does not enable system clipboard reads.
+
+<Aside type="caution" title="Terminal acceptance is still open">
+Local session-buffer checks do not establish terminal clipboard behavior. The Zellij guide explicitly leaves terminal clipboard acceptance unverified for [issue #101](https://github.com/lanej/dotfiles/issues/101). OSC 52 behavior depends on the terminal, including over SSH.
+</Aside>
+
+See [keyboard selection and paste](./zellij.md#keyboard-selection-and-paste) for buffer lifetime, permissions, runtime requirements, and the complete distinction. Zellij scroll mode remains useful for searching; it does not provide tmux’s arbitrary inline visual selection.
+
+## Start and return to work
+
+For a configured Zellij installation:
+
+```sh
+zellij attach --create main
+```
+
+**Ctrl-f d** detaches while keeping the session running. In a new shell, `zj main` is the short form. Runtime installation and restarting existing servers are covered in the [Zellij guide](./zellij.md).
+
+For tmux, `tmux-sessions list` shows saved snapshots and `tmux-sessions restore` opens the restore picker. Restoration asks for confirmation. See the [session guide](./tmux.md) for persistence and agent status.
+
+<CardGrid>
+  <LinkCard title="Zellij reference" description="Bindings, native attention, scrollback, clipboard, and remaining gaps." href="./zellij.md" />
+  <LinkCard title="tmux reference" description="Session persistence, saved snapshots, Claude and Codex window status." href="./tmux.md" />
+</CardGrid>

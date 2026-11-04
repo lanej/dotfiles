@@ -2,9 +2,15 @@
 
 Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux).
 
+## Documentation website
+
+The Astro Starlight site in [`website/`](website/) renders the shared [documentation](docs/index.mdx) from `README.md` and `docs/`; those files are the only documentation sources to maintain. See the [site maintenance guide](docs/documentation-site.mdx) for local development and verification.
+
 ## Installation
 
 The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.
+
+For the copyable `curl | sh` entrypoint, use the [shared quick start](docs/index.mdx#quick-start). It clones or reuses `~/.files` and runs the existing minimal bootstrap. The same setup with each step explicit:
 
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
