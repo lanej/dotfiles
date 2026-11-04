@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 export default defineConfig({
   integrations: [starlight({
-    title: 'My dotfiles',
+    title: 'Dotfiles',
     description: "My working environment. Configuration, tools, and terminal workflows for macOS and Linux.",
     logo: { src: '../docs/brand/dotfiles-logo.png' },
     social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lanej/dotfiles' }],
