@@ -60,7 +60,6 @@ h1, h2, h3 { letter-spacing: -.025em; font-weight: 550; }
 .sl-link-card:hover .title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
 .sl-markdown-content table { font-size: .94rem; }
 .eyebrow { color: var(--sl-color-text-accent); font: 650 .875rem/1.5 var(--sl-font); letter-spacing: .12em; text-transform: uppercase; }
-.workflow { border-inline-start: 4px solid var(--sl-color-text-accent); padding: .25rem 1.25rem; background: var(--sl-color-gray-6); }
 :focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 5px; }
 .sl-markdown-content :not(pre) > code { font-size: max(.875rem, .85em); }
 @media (max-width: 49.99rem) {
@@ -68,3 +67,6 @@ h1, h2, h3 { letter-spacing: -.025em; font-weight: 550; }
   .hero img { width: 7rem; }
   .hero h1 { max-width: 18ch; }
 }
+
+/* Make copying setup commands discoverable without requiring a hover. */
+.expressive-code .copy button { opacity: .85; }

@@ -19,6 +19,20 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 <p className="eyebrow">Make + symlinks · macOS + Linux</p>
 
+## Quick start
+
+For a fresh checkout, copy this one-liner to initialize the native OS configuration and install uv and Python:
+
+```sh
+git clone https://github.com/lanej/dotfiles.git "$HOME/.files" && cd "$HOME/.files" && make base && make bootstrap
+```
+
+Then [choose this machine’s tool sets](../README.md#configuration-sets) in `~/.config/dotfiles/config.toml`, for example `workstation` for the broad setup. From the checkout, preview and install that selection:
+
+```sh
+make plan && make install
+```
+
 ## Find your next step
 
 <CardGrid>
@@ -30,12 +44,13 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 ## Configure first. Install deliberately.
 
-<div className="workflow">
-
-`make base` initializes the native baseline. `make bootstrap` provisions uv and Python. `make plan` shows the selection. `make install` installs the selected tools and applies their configuration.
+| Command | What it does |
+| --- | --- |
+| `make base` | Create a missing machine configuration and link the native OS baseline. |
+| `make bootstrap` | Apply the native baseline and provision uv and Python. |
+| `make plan` | Show the tools and configuration selected by this machine’s settings. |
+| `make install` | Install the selected tools and apply their configuration. |
 
 After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](../README.md#installation) for prerequisites and machine settings.
-
-</div>
 
 The reference pages are built directly from this checkout’s documentation. Their **Edit page** links lead to the original source, so the website and repository stay in step.

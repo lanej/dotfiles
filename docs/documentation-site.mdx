@@ -32,7 +32,7 @@ npx playwright install chromium
 npm test
 ```
 
-The browser detector searches for the Zellij copy workflow and follows the result in the production build. It checks that the documented session-buffer distinction remains discoverable. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for the test command.
+The browser detector copies the quick-start command without executing it, opens a shared MDX guide, and searches for the Zellij copy workflow in the production build. It checks that the documented session-buffer distinction remains discoverable. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for the test command.
 
 For visual changes, preview the built site with `npm run preview`, inspect desktop and mobile layouts, and exercise keyboard navigation, search, the mobile menu, and theme selection. Search is indexed during the production build; validate it in the preview, not the development server.
 
