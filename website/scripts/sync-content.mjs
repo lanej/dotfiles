@@ -24,7 +24,9 @@ const pages = [
 const headingId = (text) => text.toLowerCase().replaceAll(' ', '-');
 const processor = unified().use(remarkParse).use(remarkGfm).use(remarkStringify);
 const output = resolve(site, 'src/content/docs/reference');
+const imageOutput = resolve(site, 'public/source');
 await rm(output, { recursive: true, force: true });
+await rm(imageOutput, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 for (const page of pages) {
   let source = await readFile(resolve(repo, page.file), 'utf8');
@@ -56,7 +58,7 @@ for (const page of pages) {
     }
   });
   for (const image of images) {
-    const dest = resolve(site, 'public/source', image);
+    const dest = resolve(imageOutput, image);
     await mkdir(dirname(dest), { recursive: true });
     await cp(resolve(repo, image), dest);
   }
