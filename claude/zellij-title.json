@@ -1,0 +1,10 @@
+{
+  "format": "✳ {id:.8} {status} | {project}",
+  "states": {
+    "working": "",
+    "ready": "",
+    "attention": "",
+    "idle": "",
+    "failed": ""
+  }
+}

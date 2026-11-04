@@ -135,6 +135,8 @@ Implementation references: [native nesting options and focus behavior](https://g
 
 Codex pane titles are configured in [`codex/zellij-title.json`](../codex/zellij-title.json) through the existing Codex lifecycle hooks and Zellij's pane-name command. Run `make codex-tmux-config` to install missing hooks, then review any new hooks in Codex's `/hooks` screen. The configuration produces `󰚩 01a19d8f  | .files`; `{id:.8}` selects eight characters from the thread ID, and the configured glyphs distinguish working, ready, attention, and interrupted states. These are event-driven glyphs rather than an animated spinner. The helper identifies the owning pane from Codex's native thread title, preserves that association while the compact title is displayed, and restores application-controlled titles on `SessionEnd`. It does not change the Zellij runtime or require restarting its server.
 
+Claude pane titles use [`claude/zellij-title.json`](../claude/zellij-title.json), producing `✳ b4ae3f92  | .files` with an eight-character session ID and the same status glyphs, plus `` for failure. Run `make claude-config` to apply the managed hooks, then start a new Claude session. The helper uses Claude's process-local Zellij pane identity and nearest multiplexer, retains the full session ID for ownership checks, and restores application-controlled titles on `SessionEnd`. Nested tmux sessions keep their tmux title handling. These titles update on lifecycle events and require no Zellij server restart.
+
 With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
 
 Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.
@@ -177,6 +179,8 @@ Reference: [Zellij 0.45.1](https://github.com/zellij-org/zellij/releases/tag/v0.
 ```sh
 zellij setup --check
 make test-zellij
+make test-zellij-codex-titles
+make test-zellij-claude-titles
 make test-zellij-navigation
 make test-zellij-layout
 make test-zellij-sessions
@@ -185,5 +189,7 @@ make test-zellij-sessions
 The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses the installed pane-navigation artifact, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, navigation from a raw-terminal foreground application, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires the installed navigation plugin, Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned fork revision as bootstrap. Native Rust regressions live with the fixes in the fork. These checks do not establish performance under production agent output, a live Codex model task, or clipboard behavior in a particular terminal emulator.
 
 The layout check cycles through the installed layout control with an explicit-command shell, observes equalize dimensions before and after a terminal resize, and checks stable pane IDs, focus, shell PIDs, unexported shell variables, and scrollback.
+
+The agent title checks run configured lifecycle hooks against private native panes and observe the compact titles, ownership changes, and restoration of application-controlled titles. They use representative hook payloads and do not exercise a live Claude or Codex model task.
 
 The session checks use two real attachments to exercise chooser cancellation, exact selected-client detach, rejection after reconnect, self-selection and helper cleanup, and ordinary detach while another session survives. They also observe host/guest focus control and the same popup shell PID, cwd, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory.
