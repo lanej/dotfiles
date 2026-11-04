@@ -350,6 +350,9 @@ test-zellij:
 .PHONY: test-zellij-codex-titles
 test-zellij-codex-titles:
 	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
+.PHONY: test-zellij-claude-titles
+test-zellij-claude-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"

@@ -6,6 +6,9 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - 'bin/codex-zellij-title-hook'
+      - 'bin/claude-zellij-title-hook'
+      - '.claude/settings.json'
+      - 'claude/zellij-title.json'
       - 'bin/codex-tmux-state-hook'
       - 'bin/sync-codex-tmux-hooks'
       - 'codex/tmux-hooks.json'
@@ -35,6 +38,9 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - 'bin/codex-zellij-title-hook'
+      - 'bin/claude-zellij-title-hook'
+      - '.claude/settings.json'
+      - 'claude/zellij-title.json'
       - 'bin/codex-tmux-state-hook'
       - 'bin/sync-codex-tmux-hooks'
       - 'codex/tmux-hooks.json'
@@ -156,6 +162,8 @@ jobs:
       - run: make test-zellij
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-claude-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

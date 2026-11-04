@@ -50,6 +50,15 @@
             "command": "command -v python3 >/dev/null 2>&1 && \"$HOME/.files/bin/claude-session-start-hook\" || true"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "Notification": [
@@ -59,6 +68,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-notification-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -112,6 +130,15 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "Stop": [
@@ -123,6 +150,15 @@
             "command": "$HOME/.files/bin/claude-stop-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "StopFailure": [
@@ -131,6 +167,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-stop-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -144,6 +189,15 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -153,6 +207,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -173,6 +236,37 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-sandbox-bypass-narration-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
