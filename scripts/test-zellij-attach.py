@@ -42,6 +42,7 @@ else:
             "LISTING": str(listing),
             "ATTACHED": str(attached),
         }
+        env.pop("ZELLIJ", None)
         command = [
             shutil.which("bash"), "-c",
             'shopt -s expand_aliases; source "$1"; shift; eval \'zj "$@"\'',
@@ -70,6 +71,10 @@ else:
                                 capture_output=True, text=True)
         assert failed.returncode != 0 and "session discovery failed" in failed.stderr
         assert not attached.exists(), "Failed discovery must not start another session"
+        nested = subprocess.run(command, env={**env, "ZELLIJ": "1", "LIST_FAIL": "1"},
+                                capture_output=True, text=True)
+        assert nested.returncode != 0 and "already inside Zellij" in nested.stderr
+        assert not attached.exists(), "Nested invocation must not attach or create a session"
         print("PASS: zj selects a regular session, creates when needed, forwards names, and preserves discovery failures.")
 
 

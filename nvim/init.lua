@@ -533,6 +533,11 @@ vim.filetype.add({
 	},
 	pattern = {
 		[".*%.dashboard%.lookml"] = "yaml",
+		[".*%x+%-%x+%-%x+%-%x+%-%x+%.dump"] = function()
+			if vim.env.ZELLIJ then
+				return "zellij-scrollback"
+			end
+		end,
 	},
 })
 
@@ -757,6 +762,13 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
+	{
+		"m00qek/baleia.nvim",
+		ft = "zellij-scrollback",
+		config = function()
+			require("zellij-scrollback").setup()
+		end,
+	},
 	"folke/which-key.nvim",
 	{
 		"lanej/hotreload.nvim",

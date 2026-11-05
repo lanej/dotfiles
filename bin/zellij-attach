@@ -2,6 +2,11 @@
 # Attach to the newest running regular session, or start a new one.
 set -eu
 
+if [ -n "${ZELLIJ:-}" ]; then
+	printf '%s\n' 'zj: already inside Zellij; detach before attaching to another session.' >&2
+	exit 1
+fi
+
 if [ "$#" -gt 0 ]; then
 	exec zellij attach --create "$@"
 fi
