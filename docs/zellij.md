@@ -63,53 +63,9 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 ## Familiar keys
 
-Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefix mode. Most actions return immediately to locked mode.
+Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
-| Key | Action |
-| --- | --- |
-| `f` | Send a literal Ctrl-f to the application |
-| `Ctrl-f` | Fuzzy tab picker, with native attention first and pane previews |
-| `Ctrl-a` | Focus the next native attention item across sessions |
-| `Ctrl-w` | Fuzzy picker for running sessions, with a tab-tree preview |
-| `h`, `j`, `k`, `l` / arrows | Focus the adjacent pane |
-| `Tab`, `o` | Focus the next pane |
-| `;` | Focus the previously focused pane |
-| `s`, `"` | Split below, inheriting the working directory |
-| `v`, `%` | Split right, inheriting the working directory |
-| `c` | New tab |
-| `Ctrl-n`, `n` | Next tab |
-| `Ctrl-p` | Last-focused tab |
-| `r`, `,` | Rename the tab; Enter accepts and Esc restores the name |
-| `0`–`9` | Select the tab at that zero-based position |
-| `d` | Detach, keeping the session running |
-| `D` | Choose one attached client to detach; Enter confirms and Esc cancels |
-| `x` | Close the focused pane |
-| `z` | Toggle pane zoom |
-| `Z` | Toggle zoom without the surrounding UI |
-| `J`, `K` | Move the pane down/up |
-| `<`, `>`, `+`, `-` | Resize toward left/right/up/down |
-| `Ctrl-r` | Enter repeatable resize mode |
-| `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
-| `P` | Open the shared persistent popup; the same key inside it hides that view |
-| `F` | Show/hide the current tab's other floating panes |
-| `Ctrl-q` | Confirm shutdown of the current Zellij session |
-| `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
-| `!` | Move the focused pane to a new tab |
-| `m` | Fuzzy pane destination picker: New Tab or an existing tab in this session |
-| `W` | Enter tab reorder mode |
-| `C`, `w` | Open the native session manager for creating, switching, renaming, and restoring sessions |
-| `e` | Open the pane's scrollback in Neovim |
-| `p` | Paste this session's last Neovim yank into the requesting pane |
-| `[` | Enter scroll mode |
-| `/` | Search the pane's scrollback |
-
-`Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
-
-**Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
-
-`Ctrl-f m` follows the tmux pane-movement menu. It moves the original live pane, preserving its process and scrollback. Esc cancels; choosing the current tab does nothing. This menu needs the compiled status plugin and pinned runtime; rerun `make zellij-status zellij` and restart old sessions after upgrading. Existing-tab moves reserve a temporary inert split and replace it with the original pane, without running the default shell’s startup hooks or requiring additional plugin permissions. Cross-session movement remains unsupported. `Ctrl-f !` remains an optional direct shortcut, not a replacement for the menu.
-
-**Scroll mode:** `j/k` scroll, Ctrl-f/Ctrl-b page, Ctrl-d/Ctrl-u half-page, and `g/G` jump to the start/end. `/` starts a search; `n/N` find next/previous matches. `e` opens Neovim for arbitrary Vim selection. `y` copies an existing selection and returns to the prompt. `m` selects a command at the scroll position, and `c` copies the last command output when the application supplies OSC 133 shell markers. Esc or `q` returns to the bottom.
+The reference documents the current configuration, including unbound tmux shortcuts. The sections below explain setup, clipboard ownership, navigation, layout limitations, and session behavior.
 
 ### Keyboard selection and paste
 

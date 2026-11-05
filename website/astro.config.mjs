@@ -23,6 +23,7 @@ export default defineConfig({
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },
         { label: 'Zellij', slug: 'reference/zellij' },
+        { label: 'Zellij keybindings', slug: 'reference/zellij-keybinds' },
         { label: 'tmux sessions', slug: 'reference/tmux' },
       ] },
       { label: 'Reference', items: [
