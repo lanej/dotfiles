@@ -121,6 +121,11 @@ dev:
 shell:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh: zsh-config zsh-plugins
+.PHONY: zsh-completions test-zsh-completions
+zsh-completions:
+	@bash "$(MAKE_SCRIPTS)/completions.sh" "$(HOME)"
+test-zsh-completions:
+	@python3 "$(DOTFILES)/scripts/test-zsh-completions.py"
 zsh-config: shell
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh-plugins: zsh-config
