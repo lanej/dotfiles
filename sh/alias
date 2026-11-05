@@ -81,7 +81,7 @@ if ! command -v tmx >/dev/null 2>&1; then
 fi
 
 if ! command -v zj >/dev/null 2>&1; then
-	alias zj='zellij attach --create'
+	alias zj='zellij-attach'
 fi
 
 if command -v eza >/dev/null 2>&1; then
