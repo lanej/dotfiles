@@ -25,7 +25,9 @@ zellij attach --create main
 
 Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. The fork reports the pinned upstream version, `0.46.0`, and includes its matching bundled plugins.
 
-Run `zssh myhost` inside your local Zellij to open a tab named `myhost` and attach to or create the remote `main` session. Use `zssh myhost work` to choose another remote session. Each host needs Zellij installed and available on its SSH command path. The command uses Kitty's SSH kitten when available, otherwise ordinary SSH; outside Zellij it connects in the current terminal. Remote sessions remain available after disconnecting. With this configuration on both hosts, `Ctrl-f u` returns control to the local Zellij and `Ctrl-f i` enters the remote one.
+Run `zssh myhost` inside your local Zellij to open a tab named `myhost` and attach to or create the remote `main` session. Use `zssh myhost work` to choose another remote session. Each host needs Zellij installed and discoverable in its interactive login shell. `zssh` runs the remote account's Bash or Zsh with `-lic`, loading its usual `PATH` rather than assuming an installation directory. This also runs interactive startup integrations before attaching. The command uses Kitty's SSH kitten when available, otherwise ordinary SSH; outside Zellij it connects in the current terminal. Remote sessions remain available after disconnecting. With this configuration on both hosts, `Ctrl-f u` returns control to the local Zellij and `Ctrl-f i` enters the remote one.
+
+After updating the local checkout, start a new shell or run `source ~/.files/sh/functions` to refresh `zssh` in an existing one.
 
 `Ctrl-f e` opens scrollback in Neovim with the terminal's original colors, including syntax colors emitted by commands. Neovim's Baleia plugin renders the ANSI colors and removes escape codes from the displayed text. Install the pinned plugin with `:Lazy restore` and restart Zellij to load the updated binding. The legacy configuration exports plain text, which receives shell syntax highlighting instead.
 
