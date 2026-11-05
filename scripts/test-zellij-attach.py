@@ -134,16 +134,16 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
             shutil.which("bash"), "-c", 'source "$1"; shift; zssh "$@"',
             "zssh-check", str(ROOT / "sh/functions"), "fixture-host",
         ]
-        subprocess.run(remote, env=env, check=True, capture_output=True, text=True, timeout=15)
+        subprocess.run(remote, env=env, check=True, timeout=15)
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
         assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket}
         assert not tab.exists(), "Outside Zellij, SSH must use the current terminal"
         session = "chosen 'session; $(printf injected) $HOME"
         subprocess.run([zsh, "-dfc", *remote[2:], session], env=env, check=True,
-                       capture_output=True, text=True, timeout=15)
+                       timeout=15)
         assert json.loads(attached.read_text()) == ["attach", "--create", session]
         subprocess.run(remote, env={**env, "ZELLIJ": "1", "REMOTE_SHELL": shutil.which("bash")}, check=True,
-                       capture_output=True, text=True, timeout=15)
+                       timeout=15)
         assert json.loads(tab.read_text()) == ["action", "new-tab", "--name", "fixture-host"]
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
         assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket}
