@@ -1,10 +1,11 @@
 name: Temporary cleanup
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/tmp-cleanup', 'bin/system-cleanup', 'scripts/test-tmp-cleanup.py', 'Makefile', '.github/workflows/tmp-cleanup.yml']
+    paths: ['bin/tmp-cleanup', 'bin/system-cleanup', 'scripts/test-tmp-cleanup.py', '.github/workflows/tmp-cleanup.yml']
   push:
     branches: [master]
-    paths: ['bin/tmp-cleanup', 'bin/system-cleanup', 'scripts/test-tmp-cleanup.py', 'Makefile', '.github/workflows/tmp-cleanup.yml']
+    paths: ['bin/tmp-cleanup', 'bin/system-cleanup', 'scripts/test-tmp-cleanup.py', '.github/workflows/tmp-cleanup.yml']
 permissions:
   contents: read
 jobs:
