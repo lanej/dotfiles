@@ -246,7 +246,7 @@ setup = ["pi-config"]
 [tools.paseo]
 installer = "npm"
 package = "@getpaseo/cli"
-version = "0.14.0"
+version = "0.15.1"
 requires = ["node"]
 
 [tools.firstmate-mobile]

@@ -327,10 +327,11 @@ export async function finishEvent(home, id, eventId, summary, needsFirstmate) {
 export async function configurePaseo(path, home) {
   const saved = await readJSON(path, {});
   saved.agents ??= {}; saved.agents.providers ??= {};
-  const provider = { extends: 'pi', label: 'Firstmate', command: [join(root, 'bin/firstmate'), 'rpc'],
-    env: { FIRSTMATE_HOME: resolve(home) } };
+  const provider = { extends: 'pi', enabled: true, label: 'Firstmate', command: [join(root, 'bin/firstmate'), 'rpc'],
+    env: { FIRSTMATE_HOME: resolve(home), FM_BACKEND: 'zellij' } };
   const previous = saved.agents.providers.firstmate;
-  if (previous && JSON.stringify(previous) !== JSON.stringify(provider)) throw new Error('Existing Paseo firstmate provider differs; preserve it and reconcile explicitly');
+  const legacy = { extends: 'pi', label: 'Firstmate', command: provider.command, env: { FIRSTMATE_HOME: resolve(home) } };
+  if (previous && JSON.stringify(previous) !== JSON.stringify(provider) && JSON.stringify(previous) !== JSON.stringify(legacy)) throw new Error('Existing Paseo firstmate provider differs; preserve it and reconcile explicitly');
   saved.agents.providers.firstmate = provider;
   await atomicJSON(path, saved);
 }
@@ -338,8 +339,21 @@ export async function configurePi(path) {
   const saved = await readJSON(path, {});
   saved.extensions ??= [];
   if (!Array.isArray(saved.extensions) || saved.extensions.some(entry => typeof entry !== 'string')) throw new Error('Preserve and reconcile the existing Pi extensions configuration');
-  const extension = join(root, 'pi/extensions/firstmate-github.mjs');
-  if (!saved.extensions.includes(extension)) saved.extensions.push(extension);
+  for (const name of ['firstmate-github.mjs', 'firstmate-peers.mjs', 'firstmate-tasks.mjs', 'firstmate-bedrock-router.mjs']) {
+    const extension = join(root, 'pi/extensions', name);
+    if (!saved.extensions.includes(extension)) saved.extensions.push(extension);
+  }
+  await atomicJSON(path, saved);
+}
+export async function configurePiRouter(path) {
+  const saved = await readJSON(path, {});
+  const template = await readJSON(join(root, 'pi/bedrock-router.models.json'));
+  saved.providers ??= {};
+  if (typeof saved.providers !== 'object' || Array.isArray(saved.providers)) throw new Error('Preserve and reconcile the existing Pi providers configuration');
+  const expected = template.providers['bedrock-router'];
+  const previous = saved.providers['bedrock-router'];
+  if (previous && JSON.stringify(previous) !== JSON.stringify(expected)) throw new Error('Existing Pi bedrock-router provider differs; preserve it and reconcile explicitly');
+  saved.providers['bedrock-router'] = expected;
   await atomicJSON(path, saved);
 }
 export async function intake(home, url, client) {
@@ -361,6 +375,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const home = resolve(process.env.FIRSTMATE_HOME || process.env.FM_HOME || join(process.env.HOME, 'src/firstmate'));
   try {
     if (action === 'configure-pi') await configurePi(argument || join(process.env.HOME, '.pi/agent/settings.json'));
+    else if (action === 'configure-pi-router') await configurePiRouter(argument || join(process.env.HOME, '.pi/agent/models.json'));
     else if (action === 'configure-paseo') await configurePaseo(argument || join(process.env.PASEO_HOME || join(process.env.HOME, '.paseo'), 'config.json'), home);
     else if (action === 'intake') console.log(JSON.stringify(await intake(home, argument, new GitHub()), null, 2));
     else if (action === 'poll') {

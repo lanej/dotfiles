@@ -18,6 +18,12 @@ usage() {
 		'  github poll                  Catch up tracked GitHub feedback.' \
 		'  github intake <issue URL>    Queue a linked issue through Firstmate.' \
 		'  github configure-paseo       Add the dedicated Firstmate Paseo provider.' \
+		'  tasks [--all] [--json]       Show current tasks, decisions, queue, and recent completions.' \
+		'  tasks show <id>              Inspect a local task, including its full backlog record.' \
+		'  peer list                    Discover exact agent endpoints on remote boats.' \
+		'  peer send <address> <text> [id]  Durably message an existing peer.' \
+		'  peer status [id]             Reconcile queued messages and collect replies.' \
+		'  peer connect <boat>          Authenticate SSH once and install its helper.' \
 		'  attach [backend options]     Attach to the running captain.' \
 		'  stop                         Stop only the selected Firstmate session.' \
 		'  reload                       Reload tmux; validate Zellij live configuration.' \
@@ -81,7 +87,7 @@ require_primary() {
 pi_environment() {
 	unset FM_CODEX_WATCH_CHECKPOINT
 	export FM_PI_HARNESS=pi
-	# GUI-launched Paseo need not inherit the login shell's work credentials.
+	# WHY: GUI-launched Paseo need not inherit the login shell's work credentials.
 	if [[ -z ${AWS_BEARER_TOKEN_BEDROCK:-} && -r "$HOME/.config/bedrock/env" ]]; then
 		# shellcheck source=/dev/null
 		source "$HOME/.config/bedrock/env"
@@ -108,16 +114,39 @@ case ${1:-start} in
 		export FIRSTMATE_HOME="$firstmate_root"
 		exec node "$dotfiles_root/firstmate/github-feedback.mjs" "$@"
 		;;
+	peer)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/peers.mjs" "$@"
+		;;
+	tasks)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/tasks.mjs" "$@"
+		;;
 	rpc)
 		shift
 		require_checkout
 		primary_harness=pi
 		require_primary
 		cd "$firstmate_root"
+		if [[ $# == 2 && "$1" == --mode && "$2" == rpc ]]; then
+			# WHY: Paseo 0.15.1 metadata probes carry only --mode rpc; agent launches carry an extension or saved session.
+			pi_environment
+			exec pi --mode rpc --no-session --no-extensions --extension builtin:mcp --extension builtin:llama.cpp \
+				--no-skills --no-prompt-templates --no-themes --no-tools
+		fi
 		export FM_HOME="$PWD" FIRSTMATE_HOME="$PWD"
+		export FM_BACKEND=zellij
 		pi_environment
-		# Paseo supplies RPC mode and the persisted session reference. It owns stdin.
-		exec pi --extension "$dotfiles_root/pi/extensions/firstmate-github.mjs" "$@"
+		# WHY: Paseo owns stdin and the persisted session; the launch guard only serializes captains.
+		exec python3 "$dotfiles_root/firstmate/mobile-rpc.py" pi \
+			--extension "$firstmate_root/.pi/extensions/fm-primary-pi-watch.ts" \
+			--extension "$firstmate_root/.pi/extensions/fm-primary-turnend-guard.ts" \
+			--extension "$firstmate_root/.pi/extensions/fm-branch-supervision.ts" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-github.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-peers.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-tasks.mjs" "$@"
 		;;
 esac
 

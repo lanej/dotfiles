@@ -27,6 +27,9 @@ case "$target" in
         if [[ ! -e "$firstmate_home/config/github-feedback.json" && ! -L "$firstmate_home/config/github-feedback.json" ]]; then
             cp "$dotfiles/firstmate/github-feedback.json" "$firstmate_home/config/github-feedback.json"
         fi
+        if [[ ! -e "$firstmate_home/config/peers.json" && ! -L "$firstmate_home/config/peers.json" ]]; then
+            cp "$dotfiles/firstmate/peers.json" "$firstmate_home/config/peers.json"
+        fi
         FIRSTMATE_HOME="$firstmate_home" node "$dotfiles/firstmate/github-feedback.mjs" configure-paseo
         # Remove only stale links that this checkout's retired dispatcher owned.
         for entry in bugfix-dispatcher-launch bugfix-worker; do

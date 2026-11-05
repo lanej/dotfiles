@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { run } from '../firstmate/github-feedback.mjs';
+import { run, configurePi, configurePiRouter } from '../firstmate/github-feedback.mjs';
+import { renderBoard, localTaskObservations } from '../firstmate/tasks.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const delay = ms => new Promise(accept => setTimeout(accept, ms));
@@ -20,13 +21,84 @@ async function json(path) { return JSON.parse(await fs.readFile(path, 'utf8')); 
 async function write(path, value) { await fs.mkdir(resolve(path, '..'), { recursive: true }); await fs.writeFile(path, value); }
 const logger = { child() { return this; }, debug() {}, info() {}, warn() {}, error() {}, trace() {} };
 
+test('Pi discovers the Bedrock router and preserves its session identity across a resumed Sol exchange', { timeout: 60000 }, async () => {
+  const runtime = process.env.FIRSTMATE_TEST_RUNTIME;
+  assert.ok(runtime, 'Set FIRSTMATE_TEST_RUNTIME with Pi 1.4.0 and Paseo 0.15.1');
+  const modules = join(resolve(runtime), 'node_modules');
+  const { PiCliRuntime } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/cli-runtime.js')));
+  const directory = await fs.mkdtemp('/tmp/firstmate-router-'), agentDir = join(directory, '.pi/agent');
+  const settingsPath = join(agentDir, 'settings.json'), modelsPath = join(agentDir, 'models.json');
+  const defaults = { theme: 'dark', defaultProvider: 'amazon-bedrock', defaultModel: 'us.anthropic.claude-sonnet-5-5', defaultThinkingLevel: 'medium' };
+  const unrelated = { api: 'openai-completions', apiKey: 'fixture', baseUrl: 'http://127.0.0.1:1/v1', models: [{ id: 'unrelated' }] };
+  const requests = [], failures = [];
+  let client, server;
+  try {
+    await write(settingsPath, JSON.stringify(defaults));
+    await write(modelsPath, JSON.stringify({ providers: { unrelated } }));
+    await configurePi(settingsPath); await configurePiRouter(modelsPath);
+    await configurePi(settingsPath); await configurePiRouter(modelsPath);
+    const installedSettings = await json(settingsPath);
+    assert.deepEqual(Object.fromEntries(Object.keys(defaults).map(key => [key, installedSettings[key]])), defaults);
+    const installedModels = await json(modelsPath);
+    assert.deepEqual(installedModels.providers.unrelated, unrelated);
+    server = createServer(async (request, response) => {
+      try {
+        let body = ''; for await (const chunk of request) body += chunk;
+        const payload = JSON.parse(body);
+        assert.equal(request.url, '/openai/v1/responses');
+        assert.equal(request.headers.authorization, 'Bearer fixture-bedrock-token');
+        assert.equal(payload.model, 'openai.gpt-6.1-sol');
+        assert.equal(payload.store, false, 'The local route keeps Pi response storage disabled');
+        assert.ok(request.headers['session-id'], 'The router must receive its recognized session field');
+        requests.push({ sessionId: request.headers['session-id'] });
+        const item = { id: `msg_${requests.length}`, type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'ROUTER_FIXTURE_OK', annotations: [] }] };
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        for (const event of [
+          { type: 'response.output_item.added', output_index: 0, item: { ...item, content: [] } },
+          { type: 'response.content_part.added', item_id: item.id, output_index: 0, content_index: 0, part: { type: 'output_text', text: '', annotations: [] } },
+          { type: 'response.output_text.delta', item_id: item.id, output_index: 0, content_index: 0, delta: 'ROUTER_FIXTURE_OK' },
+          { type: 'response.output_item.done', output_index: 0, item },
+          { type: 'response.completed', response: { id: `resp_${requests.length}`, status: 'completed', output: [item], usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } } },
+        ]) response.write(`data: ${JSON.stringify(event)}\n\n`);
+        response.end();
+      } catch (error) { failures.push(error.message); response.writeHead(500); response.end('Fixture rejected request'); }
+    });
+    await new Promise(accept => server.listen(0, '127.0.0.1', accept));
+    installedModels.providers['bedrock-router'].baseUrl = `http://127.0.0.1:${server.address().port}/openai/v1`;
+    await write(modelsPath, JSON.stringify(installedModels));
+    const env = { ...process.env, HOME: directory, PI_CODING_AGENT_DIR: agentDir, PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0',
+      AWS_BEARER_TOKEN_BEDROCK: 'fixture-bedrock-token' };
+    for (const key of ['NODE_TEST_CONTEXT', 'FM_HOME', 'FIRSTMATE_HOME', 'FM_TASK_ID']) delete env[key];
+    const launch = session => new PiCliRuntime({ logger, command: [join(modules, '.bin/pi')] }).startSession({
+      cwd: directory, env, model: 'bedrock-router/openai.gpt-6.1-sol', session,
+      extraArgs: ['--no-extensions', '--extension', join(ROOT, 'pi/extensions/firstmate-bedrock-router.mjs')],
+    });
+    client = await launch();
+    assert.ok((await client.getAvailableModels()).some(model => model.provider === 'bedrock-router' && model.id === 'openai.gpt-6.1-sol'));
+    const before = await client.getState();
+    await client.prompt('Reply through the router fixture');
+    await until(async () => !(await client.getState()).isStreaming, 'Sol response through the router');
+    assert.ok((await client.getMessages()).some(message => message.role === 'assistant' && JSON.stringify(message).includes('ROUTER_FIXTURE_OK')));
+    await client.close(); client = await launch(before.sessionFile);
+    assert.equal((await client.getState()).sessionId, before.sessionId);
+    await client.prompt('Reply after reconnect');
+    await until(async () => !(await client.getState()).isStreaming, 'resumed Sol response through the router');
+    assert.deepEqual(requests, [{ sessionId: before.sessionId }, { sessionId: before.sessionId }]);
+    assert.deepEqual(failures, []);
+  } finally {
+    await client?.close();
+    if (server) { server.closeAllConnections(); await new Promise(accept => server.close(accept)); }
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('Paseo resumes Firstmate and its Pi owner, catches up GitHub review, and records one verified revision', { timeout: 120000 }, async () => {
   const runtime = process.env.FIRSTMATE_TEST_RUNTIME;
   const source = process.env.FIRSTMATE_SOURCE;
-  assert.ok(runtime && source, 'Set FIRSTMATE_TEST_RUNTIME (Pi 1.4.0, Paseo 0.14.0, tasks-axi 0.2.6) and FIRSTMATE_SOURCE');
+  assert.ok(runtime && source, 'Set FIRSTMATE_TEST_RUNTIME (Pi 1.4.0, Paseo 0.15.1, tasks-axi 0.2.6) and FIRSTMATE_SOURCE');
   const modules = join(resolve(runtime), 'node_modules');
   assert.equal((await json(join(modules, '@earendil-works/pi-coding-agent/package.json'))).version, '1.4.0');
-  assert.equal((await json(join(modules, '@getpaseo/server/package.json'))).version, '0.14.0');
+  assert.equal((await json(join(modules, '@getpaseo/server/package.json'))).version, '0.15.1');
   const { PiCliRuntime } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/cli-runtime.js')));
   const { ProviderOverridesSchema } = await import(pathToFileURL(join(modules, '@getpaseo/protocol/dist/provider-config.js')));
   const directory = await fs.mkdtemp(join(tmpdir(), 'firstmate-github-'));
@@ -38,7 +110,7 @@ test('Paseo resumes Firstmate and its Pi owner, catches up GitHub review, and re
   const remote = join(directory, 'origin.git');
   let task, originalHead;
   const remoteHead = branch => execFileSync('git', ['--git-dir', remote, 'rev-parse', `refs/heads/${branch}`], { encoding: 'utf8' }).trim();
-  let main, worker, origin;
+  let main, worker, origin, runtimeEnv;
   const server = createServer(async (request, response) => {
     try {
       let body = ''; for await (const chunk of request) body += chunk;
@@ -134,7 +206,9 @@ test('Paseo resumes Firstmate and its Pi owner, catches up GitHub review, and re
     git('switch', '-qc', 'fix-fee'); git('push', '-q', 'origin', 'fix-fee');
     assert.throws(() => execFileSync('node', ['--test'], { cwd: worktree, env: childEnv, stdio: 'pipe' }), 'The actual fee regression starts red');
     const env = { ...childEnv, HOME: home, FIRSTMATE_HOME: fleet, FIRSTMATE_SOURCE: resolve(source), GH_TOKEN: 'fixture-token',
-      PATH: `${join(modules, '.bin')}:${process.env.PATH}`, PI_CODING_AGENT_DIR: join(home, '.pi/agent'), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0' };
+      PATH: `${join(modules, '.bin')}:${process.env.PATH}`, PI_CODING_AGENT_DIR: join(home, '.pi/agent'), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0',
+      FM_ZELLIJ_SESSION: `firstmate-github-${process.pid}` };
+    runtimeEnv = env;
     delete env.FM_TASK_ID; delete env.FM_TASK_INBOX; delete env.FM_HOME; delete env.GITHUB_TOKEN;
     await write(join(fleet, 'config/crew-harness'), 'pi\n');
     await write(join(home, '.pi/agent/settings.json'), JSON.stringify({ theme: 'dark', extensions: [] }));
@@ -204,9 +278,300 @@ test('Paseo resumes Firstmate and its Pi owner, catches up GitHub review, and re
     assert.ok(modelRequests.some(payload => payload.model === 'worker'));
   } finally {
     await worker?.close(); await main?.close();
+    try { execFileSync('zellij', ['kill-session', `firstmate-github-${process.pid}`], { env: runtimeEnv, stdio: 'ignore' }); } catch {}
     server.closeAllConnections(); await new Promise(accept => server.close(accept));
     await fs.rm(directory, { recursive: true, force: true });
     if (errors.length) console.error(errors.join('\n'));
     if (testContext !== undefined) process.env.NODE_TEST_CONTEXT = testContext;
+  }
+});
+
+test('Mobile chat dispatches a native Zellij scout, receives completion, and resumes one captain', { timeout: 120000 }, async () => {
+  const runtime = process.env.FIRSTMATE_TEST_RUNTIME, source = resolve(process.env.FIRSTMATE_SOURCE);
+  const modules = join(resolve(runtime), 'node_modules');
+  const { PiCliRuntime } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/cli-runtime.js')));
+  const { PiRpcAgentClient } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/agent.js')));
+  const directory = await fs.mkdtemp('/tmp/firstmate-chat-'), home = join(directory, 'home');
+  const fleet = join(directory, 'fleet'), project = join(directory, 'project'), session = `firstmate-chat-${process.pid}`;
+  const env = { ...process.env, HOME: home, FIRSTMATE_HOME: fleet, FM_HOME: fleet, FM_ROOT_OVERRIDE: fleet,
+    FM_ZELLIJ_SESSION: session, FM_POLL: '1', FM_SIGNAL_GRACE: '1', FM_WATCH_EXTENSION_LOG_KEEP_LINES: '100',
+    PATH: `${join(home, '.local/bin')}:${join(modules, '.bin')}:${process.env.PATH}`,
+    PI_CODING_AGENT_DIR: join(home, '.pi/agent'), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0' };
+  for (const key of ['NODE_TEST_CONTEXT', 'TMUX', 'TMUX_PANE', 'ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'FM_TASK_ID']) delete env[key];
+  const testContext = process.env.NODE_TEST_CONTEXT; delete process.env.NODE_TEST_CONTEXT;
+  let captain, server, duplicate, orphanPid, rawCaptain, rpcInput, rpcOutput;
+  const failures = [];
+  const quote = text => `'${text.replaceAll("'", "'\\''")}'`;
+  try {
+    await fs.mkdir(home); await fs.mkdir(fleet); await fs.mkdir(project);
+    const archive = join(directory, 'fleet.tar');
+    execFileSync('git', ['-C', source, 'archive', '--format=tar', `--output=${archive}`, 'HEAD']);
+    execFileSync('tar', ['-xf', archive, '-C', fleet]); await fs.unlink(archive);
+    await write(join(fleet, 'config/backend'), 'tmux\n');
+    await write(join(fleet, 'config/crew-harness'), 'codex\n');
+    // WHY: Exercise the native Pi watcher; unrelated branch/turn-end policies have their own detectors.
+    for (const name of ['fm-primary-turnend-guard', 'fm-branch-supervision']) {
+      await write(join(fleet, '.pi/extensions', `${name}.ts`), 'export default function () {}\n');
+    }
+    await write(join(fleet, 'data/backlog.md'), '# Backlog\n\n## In flight\n\n## Queued\n\n## Done\n');
+    await write(join(project, 'README.md'), 'MOBILE_CHAT_OK\n');
+    const workerFixture = join(home, '.local/bin/codex');
+    await write(workerFixture, `#!/usr/bin/env python3
+import os,sys,time
+from pathlib import Path
+if '--help' in sys.argv or '--version' in sys.argv:
+ print('--approve-for-me --model --config')
+ raise SystemExit(0)
+state=Path(os.environ['FM_HOME'])/'state'
+(state/'chat-smoke.worker-pid').write_text(str(os.getpid()))
+status=state/'chat-smoke.status'
+status.write_text('working: bounded scout\\n')
+while not (state/'chat-smoke.meta').exists(): time.sleep(.1)
+time.sleep(5)
+token=Path('README.md').read_text().strip()
+status.write_text('done: '+token+'\\n')
+for line in sys.stdin: pass
+`);
+    await fs.chmod(workerFixture, 0o700);
+    execFileSync('git', ['-C', project, 'init', '-q', '-b', 'main']);
+    execFileSync('git', ['-C', project, 'add', '.']);
+    execFileSync('git', ['-C', project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture']);
+    execFileSync('make', ['firstmate-mobile-config', `FIRSTMATE_HOME=${fleet}`], { cwd: ROOT, env, stdio: 'pipe' });
+    const fixture = join(directory, 'ownership.mjs');
+    await write(fixture, `import {writeFileSync} from 'node:fs';export default function(pi){pi.on('session_start',()=>writeFileSync(${JSON.stringify(join(fleet, 'state/.lock'))},String(process.pid)));}\n`);
+    let origin, calls = 0;
+    server = createServer(async (request, response) => {
+      try {
+        let body = ''; for await (const chunk of request) body += chunk;
+        const payload = JSON.parse(body);
+        assert.ok(++calls < 40, 'Mobile model fixture did not converge');
+        const text = message => typeof message.content === 'string' ? message.content : (message.content ?? []).filter(item => item.type === 'text').map(item => item.text).join('\n');
+        const at = payload.messages.findLastIndex(message => message.role === 'user' &&
+          !text(message).includes('This Firstmate home uses GitHub') && !text(message).includes('Use firstmate_peer_list/send/status'));
+        const prompt = text(payload.messages[at]), outputs = payload.messages.slice(at + 1).filter(message => message.role === 'tool');
+        const call = (name, args) => ({ tool_calls: [{ index: 0, id: `mobile-${calls}`, type: 'function', function: { name, arguments: JSON.stringify(args) } }] });
+        let delta = { content: 'Captain ready; waiting for the crew.' };
+        if (prompt.includes('Initialize this mobile captain') && !outputs.length) delta = call('fm_watch_arm_pi', {});
+        else if (prompt.includes('Show my task board')) {
+          if (!outputs.length) delta = call('firstmate_task_board', {});
+          else delta = { content: 'Task board refreshed from native records.' };
+        }
+        else if (prompt.includes('Dispatch the bounded chat-smoke scout') && !outputs.length) {
+          const fill = "from pathlib import Path;p=Path('data/chat-smoke/brief.md');p.write_text(p.read_text().replace('{TASK}','Read README and report its token.').replace('{FIRSTMATE_SPEC}','Scout only. No source edits or network.'))";
+          delta = call('bash', { command: `bin/fm-tasks-axi.sh add chat-smoke 'Mobile chat scout' --kind scout && bin/fm-brief.sh chat-smoke ${quote(project)} --scout && python3 -c ${quote(fill)} && bin/fm-spawn.sh chat-smoke ${quote(project)} --scout`, timeout: 60 });
+        } else if (prompt.includes('wake') || prompt.includes('signal:')) {
+          if (!outputs.length) delta = call('bash', { command: 'cat state/chat-smoke.status' });
+          else if (outputs.some(item => text(item).includes('done: MOBILE_CHAT_OK'))) delta = { content: 'Scout completed: MOBILE_CHAT_OK' };
+        }
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        response.end(`data: ${JSON.stringify({ choices: [{ index: 0, delta, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: delta.tool_calls ? 'tool_calls' : 'stop' }] })}\n\ndata: [DONE]\n\n`);
+      } catch (error) { failures.push(error.stack); response.writeHead(500); response.end(); }
+    });
+    await new Promise(accept => server.listen(0, '127.0.0.1', accept));
+    origin = `http://127.0.0.1:${server.address().port}`;
+    await write(join(home, '.pi/agent/models.json'), JSON.stringify({ providers: { fixture: { baseUrl: `${origin}/v1`, apiKey: 'fixture', api: 'openai-completions',
+      models: [{ id: 'mobile', name: 'mobile', reasoning: false, input: ['text'], contextWindow: 128000, maxTokens: 2048,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }] } } }));
+    const launch = sessionFile => new PiCliRuntime({ logger, command: [join(ROOT, 'bin/firstmate'), 'rpc'] }).startSession({
+      cwd: fleet, env, model: 'fixture/mobile', session: sessionFile, extraArgs: ['--no-extensions', '--extension', fixture],
+    });
+    captain = await launch();
+    await captain.prompt('Initialize this mobile captain');
+    await until(async () => !(await captain.getState()).isStreaming, 'native mobile watcher armed');
+    const before = await captain.getState();
+    const ownerBeforeCatalog = await fs.readFile(join(fleet, 'state/.lock'), 'utf8');
+    const sessionFiles = await fs.readdir(resolve(before.sessionFile, '..'));
+    const catalogClient = new PiRpcAgentClient({ logger, runtime: new PiCliRuntime({
+      logger, command: [join(ROOT, 'bin/firstmate'), 'rpc'], runtimeSettings: { env },
+    }) });
+    const catalog = await catalogClient.fetchCatalog({ scope: 'workspace', cwd: fleet, force: true });
+    assert.ok(catalog.models.some(model => model.id === 'fixture/mobile'), 'The official provider refresh returns authenticated models while a captain runs');
+    const injection = await catalogClient.prepareMcpInjection(fleet, { fixture: { type: 'http', url: `${origin}/mcp` } }, env, catalogClient.runtime);
+    assert.equal(injection?.kind, 'builtin', 'The official bare-RPC capability probe preserves configured MCP injection');
+    assert.equal(injection.servers.fixture.url, `${origin}/mcp`);
+    assert.equal(await fs.readFile(join(fleet, 'state/.lock'), 'utf8'), ownerBeforeCatalog, 'Catalog refresh preserves the captain owner');
+    assert.deepEqual(await fs.readdir(resolve(before.sessionFile, '..')), sessionFiles, 'Catalog refresh creates no persisted conversation');
+    assert.equal((await captain.getState()).sessionId, before.sessionId);
+    assert.equal(execFileSync('zellij', ['--session', session, 'action', 'list-clients'], { env, encoding: 'utf8' }).trim().split('\n').length, 2, 'Catalog refresh creates no crew viewport');
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['add', 'tracked-queue', 'Queued tracking example', '--kind', 'scout'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['add', 'tracked-blocked', 'Wait for queued task', '--kind', 'scout'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['block', 'tracked-blocked', '--by', 'tracked-queue'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['add', 'tracked-decision', 'Choose the task scope', '--kind', 'scout'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['hold', 'tracked-decision', '--kind', 'captain', '--reason', 'Choose a scope'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['add', 'tracked-deferred', 'Wait until the planned date', '--kind', 'scout'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['hold', 'tracked-deferred', '--kind', 'captain', '--reason', 'Scheduled later', '--until', '2099-01-01'], { env });
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['add', 'tracked-done', 'Completed tracking example', '--kind', 'scout'], { env });
+    await write(join(fleet, 'data/tracked-done/report.md'), 'Tracking example completed.\n');
+    await run(join(fleet, 'bin/fm-tasks-axi.sh'), ['done', 'tracked-done', '--report', 'data/tracked-done/report.md'], { env });
+    await captain.prompt('Show my task board');
+    await until(async () => !(await captain.getState()).isStreaming, 'task board tool finishes');
+    const taskBoard = () => captain.getMessages().then(messages => messages.findLast(message => message.role === 'toolResult' && message.toolName === 'firstmate_task_board'));
+    const queueBoard = await taskBoard();
+    assert.equal(queueBoard.isError, false);
+    assert.ok(queueBoard.details.gates.some(row => row.id === 'tracked-queue'));
+    assert.ok(queueBoard.details.gates.some(row => row.id === 'tracked-blocked' && row.blocked_by === 'tracked-queue'), 'Unresolved blockers remain visible');
+    assert.ok(queueBoard.details.decisions_open.some(row => row.id === 'tracked-decision'), 'A captain hold stays distinct from ordinary queued work');
+    assert.ok(queueBoard.details.landed.some(row => row.id === 'tracked-done' && row.artifact === 'data/tracked-done/report.md'), 'Completed canonical records retain their outcome artifact');
+    const desktopBoard = JSON.parse(await run(join(ROOT, 'bin/firstmate'), ['tasks', '--json'], { env }));
+    assert.deepEqual(desktopBoard.gates, queueBoard.details.gates, 'Desktop and mobile read the same canonical queue');
+    const expandedBoard = JSON.parse(await run(join(ROOT, 'bin/firstmate'), ['tasks', '--all', '--json'], { env }));
+    assert.equal(expandedBoard.decisions_open.some(row => row.id === 'tracked-deferred'), false, 'An expanded board does not promote a deferred hold into an actionable decision');
+    assert.ok(expandedBoard.gates.some(row => row.id === 'tracked-deferred' && row.reason.includes('2099-01-01')), 'The deferred date remains visible in the expanded queue');
+    const unavailableSnapshot = { ...expandedBoard, gates: [...expandedBoard.gates,
+      { id: 'tracked-blocked', owner: 'remote-cached', title: 'Independent remote task', reason: '-', blocked_by: 'remote-dependency' },
+    ], secondmates: [
+      { id: 'remote-unavailable', state: 'unknown', freshness: 'unavailable', provenance: 'parent-fallback',
+        age_seconds: 120, reason: 'structured home unreadable', doing: '-', contradiction: false },
+      { id: 'remote-cached', state: 'working', freshness: 'cached', provenance: 'remote-ledger-cache',
+        age_seconds: 900, reason: '-', doing: 'cached task observation', contradiction: true },
+    ] };
+    const unavailableHome = renderBoard(unavailableSnapshot);
+    assert.match(unavailableHome, /remote-unavailable.*unknown.*unavailable.*parent-fallback/);
+    assert.match(unavailableHome, /structured home unreadable/);
+    assert.match(unavailableHome, /remote-cached.*cached.*remote-ledger-cache/);
+    assert.match(unavailableHome, /900 seconds/);
+    assert.match(unavailableHome, /Conflicting observations require reconciliation/, 'Rendered output preserves uncertainty even when child rows show work');
+    assert.match(unavailableHome, /remote-cached\/tracked-blocked/, 'A secondmate queue row displays its qualified home identity');
+    assert.match(unavailableHome, /Blocked by in remote-cached: remote-dependency/, 'Native bounded blocker text retains its owning home');
+    assert.deepEqual(localTaskObservations(unavailableSnapshot, 'tracked-blocked').gates.map(row => row.blocked_by), ['tracked-queue'], 'A same-named foreign task cannot contaminate local detail');
+    await assert.rejects(run(join(ROOT, 'bin/firstmate'), ['tasks', 'show', 'absent-task'], { env }), /Archived records require the native archive/);
+    await assert.rejects(run(join(ROOT, 'bin/firstmate'), ['tasks', 'show', 'other-home/child'], { env }), /Qualified secondmate task IDs belong to that operational home/);
+    const requestsBeforeSlash = calls;
+    await captain.prompt('/tasks');
+    await until(async () => (await captain.getMessages()).some(message => message.role === 'custom' &&
+      message.customType === 'firstmate-task-board' && String(message.content).includes('tracked-blocked')), 'slash task board displayed in the persisted conversation');
+    assert.equal(calls, requestsBeforeSlash, 'Direct task board needs no model turn');
+    duplicate = spawn(join(ROOT, 'bin/firstmate'), ['rpc', '--mode', 'rpc', '--model', 'fixture/mobile', '--extension', fixture], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let refusal = ''; duplicate.stderr.on('data', chunk => { refusal += chunk; });
+    const duplicateCode = await new Promise(accept => duplicate.once('exit', accept));
+    assert.notEqual(duplicateCode, 0);
+    assert.match(refusal, /already running|live captain/);
+    await captain.prompt('Dispatch the bounded chat-smoke scout');
+    await until(async () => {
+      const messages = await captain.getMessages();
+      assert.equal(messages.some(message => message.role === 'toolResult' && message.isError), false, 'Native dispatch tools must succeed');
+      return messages.some(message => message.role === 'assistant' && JSON.stringify(message).includes('Scout completed: MOBILE_CHAT_OK'));
+    }, 'native completion returns to the same chat without another prompt');
+    const meta = Object.fromEntries((await fs.readFile(join(fleet, 'state/chat-smoke.meta'), 'utf8')).split('\n').filter(line => line.includes('=')).map(line => {
+      const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1)];
+    }));
+    assert.equal(meta.backend, 'zellij'); assert.equal(meta.zellij_session, session);
+    assert.equal(meta.harness, 'codex'); assert.notEqual(meta.worktree, project);
+    assert.equal(await fs.readFile(join(fleet, 'config/backend'), 'utf8'), 'tmux\n', 'Desktop selection preserved');
+    await captain.prompt('Show my task board');
+    await until(async () => !(await captain.getState()).isStreaming, 'completed task board finishes');
+    const completedBoard = await taskBoard();
+    assert.equal(completedBoard.isError, false);
+    assert.ok(completedBoard.details.in_flight.some(row => row.id === 'chat-smoke' && row.state === 'unknown'), 'The unverified harness fixture stays unknown despite its historical done event');
+    assert.equal(completedBoard.details.landed.some(row => row.id === 'chat-smoke'), false, 'A wake event cannot invent landed work');
+    const workerPid = Number(await fs.readFile(join(fleet, 'state/chat-smoke.worker-pid'), 'utf8'));
+    const previousPiPid = (await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim();
+    await captain.close(); captain = await launch(before.sessionFile);
+    await until(async () => (await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim() !== previousPiPid, 'resumed captain acquires native ownership');
+    assert.equal((await captain.getState()).sessionId, before.sessionId, 'Resume retains the original captain conversation');
+    assert.doesNotThrow(() => process.kill(workerPid, 0), 'Captain resume retains the existing crew process');
+    await captain.prompt('/tasks tracked-blocked');
+    await until(async () => (await captain.getMessages()).some(message => message.role === 'custom' &&
+      message.customType === 'firstmate-task-board' && message.details?.id === 'tracked-blocked'), 'resumed captain shows full task detail');
+    const detail = (await captain.getMessages()).findLast(message => message.role === 'custom' && message.details?.id === 'tracked-blocked');
+    assert.match(detail.details.record, /blocked_by: tracked-queue/, 'Reconnect retains the canonical task dependency');
+    const piPid = Number((await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim());
+    const leasePid = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(piPid)], { encoding: 'utf8' }).trim());
+    const wrapperPid = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(leasePid)], { encoding: 'utf8' }).trim());
+    const privateClient = () => execFileSync('ps', ['-axo', 'pid=,ppid=,comm='], { encoding: 'utf8' }).split('\n').map(line => line.trim().split(/\s+/))
+      .find(row => Number(row[1]) === wrapperPid && row[2]?.split('/').at(-1) === 'zellij')?.[0];
+    const oldClient = privateClient();
+    assert.ok(oldClient, 'Captain owns a private crew viewport');
+    process.kill(Number(oldClient), 'SIGKILL');
+    await until(() => privateClient() && privateClient() !== oldClient, 'lost viewport reattaches to the same crew');
+    await until(async () => execFileSync('zellij', ['--session', session, 'action', 'list-clients'], { env, encoding: 'utf8' }).trim().split('\n').length === 2, 'one replacement viewport ready');
+    assert.equal((await captain.getState()).sessionId, before.sessionId);
+    await run(join(fleet, 'bin/fm-teardown.sh'), ['chat-smoke', '--force'], { env });
+    const currentPiPid = (await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim();
+    await captain.close(); captain = undefined;
+    const fifo = join(directory, 'rpc-input');
+    execFileSync('mkfifo', [fifo]);
+    rpcInput = await fs.open(fifo, 'r+'); rpcOutput = await fs.open(join(directory, 'rpc-output'), 'w');
+    // WHY: Caller-owned descriptors keep Pi alive; Paseo normally closes RPC pipes when its launcher exits.
+    rawCaptain = spawn(join(ROOT, 'bin/firstmate'), ['rpc', '--mode', 'rpc', '--model', 'fixture/mobile',
+      '--session', before.sessionFile, '--no-extensions', '--extension', fixture],
+      { env, stdio: [rpcInput.fd, rpcOutput.fd, rpcOutput.fd] });
+    await until(async () => (await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim() !== currentPiPid, 'raw resumed captain owns native lock');
+    // WHY: Challenge wrapper loss in the native preclaim window while the actual Pi demonstrably survives.
+    orphanPid = Number((await fs.readFile(join(fleet, 'state/.lock'), 'utf8')).trim());
+    await fs.unlink(join(fleet, 'state/.lock'));
+    rawCaptain.kill('SIGKILL');
+    await new Promise(accept => rawCaptain.once('exit', accept));
+    await rpcInput.write(JSON.stringify({ type: 'get_state', id: 'survival-probe' }) + '\n');
+    await until(async () => (await fs.readFile(join(directory, 'rpc-output'), 'utf8')).includes('"id":"survival-probe"'),
+      'surviving Pi answers RPC after outer wrapper loss');
+    await assert.rejects(run(join(ROOT, 'bin/firstmate'), ['rpc', '--version'], { env }), /already running/);
+    process.kill(orphanPid, 'SIGKILL'); orphanPid = undefined;
+    assert.deepEqual(failures, []);
+  } catch (error) {
+    console.error(JSON.stringify({ messages: (await captain?.getMessages().catch(() => []) ?? []).slice(-8),
+      status: await fs.readFile(join(fleet, 'state/chat-smoke.status'), 'utf8').catch(() => null),
+      meta: await fs.readFile(join(fleet, 'state/chat-smoke.meta'), 'utf8').catch(() => null),
+      watcher: await fs.readFile(join(fleet, 'state/.watch-extension.log'), 'utf8').catch(() => null),
+      arm: await Promise.all((await fs.readdir(join(fleet, 'state')).catch(() => [])).filter(name => name.startsWith('.watch-arm-output'))
+        .map(async name => [name, await fs.readFile(join(fleet, 'state', name), 'utf8')])),
+      files: await fs.readdir(join(fleet, 'state')).catch(() => []), failures }));
+    throw error;
+  } finally {
+    if (orphanPid) { try { process.kill(orphanPid, 'SIGKILL'); } catch {} }
+    await captain?.close();
+    if (rawCaptain?.exitCode === null && rawCaptain.signalCode === null) rawCaptain.kill('SIGTERM');
+    await rpcInput?.close(); await rpcOutput?.close();
+    await run(join(fleet, 'bin/fm-watch-arm.sh'), ['--stop'], { env }).catch(error => console.error(error.message));
+    if (await fs.stat(join(fleet, 'state/chat-smoke.meta')).catch(() => null)) {
+      await run(join(fleet, 'bin/fm-teardown.sh'), ['chat-smoke', '--force'], { env }).catch(error => console.error(error.message));
+    }
+    if (duplicate?.exitCode === null) duplicate.kill('SIGKILL');
+    try { execFileSync('zellij', ['kill-session', session], { env, stdio: 'ignore' }); } catch {}
+    if (server) { server.closeAllConnections(); await new Promise(accept => server.close(accept)); }
+    await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    if (testContext !== undefined) process.env.NODE_TEST_CONTEXT = testContext;
+  }
+});
+
+test('Mobile lease parent allows graceful cleanup and reaps an unresponsive child before releasing its launch lock', { timeout: 30000 }, async () => {
+  const directory = await fs.mkdtemp('/tmp/firstmate-lease-');
+  try {
+    const driver = `import fcntl,os,signal,subprocess,sys,time
+from pathlib import Path
+root=Path(sys.argv[1])
+for graceful in (True,False):
+ pid_file=root/('graceful.pid' if graceful else 'stubborn.pid')
+ lock=open(root/'lease','a'); fcntl.flock(lock,fcntl.LOCK_EX)
+ handler="lambda *_:(time.sleep(1),Path("+repr(str(root/'cleaned'))+").write_text('clean'),sys.exit(0))" if graceful else "signal.SIG_IGN"
+ child_code="import os,signal,sys,time;from pathlib import Path;signal.signal(signal.SIGTERM,"+handler+");Path("+repr(str(pid_file))+").write_text(str(os.getpid()));time.sleep(60)"
+ guardian=subprocess.Popen([sys.executable,sys.argv[2],'--hold-lease',str(lock.fileno()),sys.executable,'-c',child_code],pass_fds=(lock.fileno(),))
+ lock.close(); pid=None
+ try:
+  deadline=time.monotonic()+5
+  while not pid_file.exists():
+   assert time.monotonic()<deadline, 'Child startup timeout'
+   time.sleep(.05)
+  pid=int(pid_file.read_text())
+  with open(root/'lease','a') as probe:
+   try: fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
+   except BlockingIOError: pass
+   else: raise AssertionError('Lease released while child still lives')
+  guardian.terminate(); guardian.wait(timeout=18)
+  if graceful: assert (root/'cleaned').read_text()=='clean', 'Child lost its graceful cleanup interval'
+  try: os.kill(pid,0)
+  except ProcessLookupError: pass
+  else: raise AssertionError('Guardian exited without reaping its child')
+  with open(root/'lease','a') as probe: fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ finally:
+  if guardian.poll() is None:
+   if pid:
+    try: os.kill(pid,signal.SIGKILL)
+    except ProcessLookupError: pass
+   guardian.wait(timeout=5)
+`;
+    await run('python3', ['-c', driver, directory, join(ROOT, 'firstmate/mobile-rpc.py')]);
+  } finally {
+    await fs.rm(directory, { recursive: true, force: true });
   }
 });

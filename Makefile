@@ -110,6 +110,10 @@ firstmate-mobile-config: firstmate-config pi-config
 test-firstmate-github:
 	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
 
+.PHONY: test-firstmate-peers
+test-firstmate-peers:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
+
 .PHONY: test-firstmate-primary
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"

@@ -1,0 +1,7 @@
+{
+  "pollSeconds": 10,
+  "boats": {
+    "dev": { "ssh": "dev" },
+    "dev2": { "ssh": "dev2" }
+  }
+}
