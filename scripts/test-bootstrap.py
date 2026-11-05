@@ -116,8 +116,10 @@ nvm() {
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/node"
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/npm"
   echo 24 > "$HOME/.nvm/alias/default"
-  export PATH="$HOME/.nvm/versions/node/v24.0.0/bin:$PATH"
+  export NVM_BIN="$HOME/.nvm/versions/node/v24.0.0/bin"
+  export PATH="${PATH/$HOME\/.nvm\/versions\/node\/v16.19.1\/bin/$NVM_BIN}"
 }
+nvm use
 NVM
 """
     elif "rustup" in url:
@@ -214,7 +216,8 @@ elif name == "python3":
         # a missing installer script as a successful version query.
         os.execv(sys.executable, [sys.executable, *args])
 elif name == "node":
-    print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else "v16.19.1")
+    print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else
+          "v22.23.3" if managed else "v16.19.1")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
@@ -303,6 +306,10 @@ elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
     output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert args[3] == "install", args
+    if args[4:] == ["--list", "--root", str(home / ".local")]:
+        if (home / "zellij-owned").exists():
+            print("zellij v0.46.0:\n    zellij")
+        sys.exit(0)
     assert (home / "openssl-perl-installed").exists(), "vendored OpenSSL needs IPC::Cmd and Time::Piece"
     assert args[args.index("--git") + 1] == "https://github.com/lanej/zellij.git", args
     revision = args[args.index("--rev") + 1]
@@ -316,10 +323,13 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert install_root == home / ".local", args
     output = install_root / "bin/zellij"
     if output.exists() and "--force" not in args:
+        if (home / "zellij-owned").exists():
+            sys.exit(0)
         sys.exit("zellij already exists; use --force to overwrite")
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(fixture / "driver", output)
     output.chmod(0o755)
+    (home / "zellij-owned").touch()
     record("zellij")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
@@ -427,12 +437,18 @@ else:
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         assert preview.returncode == 0, preview.stdout + preview.stderr
+        # WHY: NVM replaces an inherited NVM entry in place, so another Node
+        # executable earlier in PATH can still shadow the selected version.
+        shadow_node = home / ".local/bin/node"
+        shadow_node.symlink_to(driver)
+        env["PATH"] = f"{fixture}:{home}/.nvm/versions/node/v16.19.1/bin:{system_bin}"
         result = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "install"],
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
+        assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
@@ -456,6 +472,7 @@ else:
         repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
         assert installed.read_bytes() == previous
+        assert (home / "events").read_text().splitlines().count("zellij") == 1
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
         assert not (font_dir / "HackNerdFont-Regular.ttf").exists()
@@ -520,6 +537,7 @@ else:
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 

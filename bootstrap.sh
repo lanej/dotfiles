@@ -648,16 +648,16 @@ install_node_from_release() {
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
-	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
-	nvm alias default "$1"
-	nvm use "$1"
+	nvm install "$1" || { echo "Failed to install node@$1 via nvm" >&2; return 1; }
+	nvm alias default "$1" || return 1
+	nvm use "$1" || return 1
+	# WHY: NVM can replace its PATH entry in place, behind another Node executable.
+	export PATH="$NVM_BIN:$PATH"
+	hash -r
 
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
 	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
-
-	# Update hash table so shell can find the new binaries
-	hash -r
 }
 
 install_codex_from_release() {
@@ -1007,6 +1007,10 @@ prepare_bootstrap_environment() {
 		# NOTE: NVM generates this file outside the repository.
 		# shellcheck disable=SC1091
 		source "$NVM_DIR/nvm.sh"
+		if [ -n "${NVM_BIN:-}" ]; then
+			export PATH="$NVM_BIN:$PATH"
+			hash -r
+		fi
 	fi
 }
 
