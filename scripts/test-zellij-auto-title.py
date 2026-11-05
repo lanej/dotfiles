@@ -63,13 +63,15 @@ esac
                 assert result.returncode == 0, result.stderr
                 if not terminal:
                     return result.stdout
-                os.close(slave)
-                slave = None
+                # Keep the slave open until queued bytes are drained: macOS
+                # can discard unread PTY output when its last slave closes.
+                # The child has exited, so no later output is expected.
+                os.set_blocking(master, False)
                 output = b""
                 while True:
                     try:
                         part = os.read(master, 4096)
-                    except OSError:
+                    except BlockingIOError:
                         break
                     if not part:
                         break
