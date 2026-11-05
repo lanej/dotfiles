@@ -88,10 +88,18 @@ printf '#compdef epf\nprint -r -- completion-v1\n'
         (executables / "zsh").symlink_to(shutil.which("zsh"))
         cache.unlink()
         epf.write_text("#!/bin/sh\nprintf '#compdef epf\\nprint -r -- completion-v2\\n'\n")
+        # Machine-wide completion paths can be group/world-writable. Refresh
+        # must ignore those paths without prompting, not disable security checks.
+        insecure = home / "insecure-completions"
+        insecure.mkdir()
+        insecure.chmod(0o777)
+        (insecure / "_unsafe").write_text("#compdef unsafe\n")
         probe = '''
 [[ $_comps[epf] == _epf ]] || exit 10
 [[ $(_epf) == completion-v1 ]] || exit 11
+fpath=( "$HOME/insecure-completions" $fpath )
 recomp || exit 12
+[[ -z $_comps[unsafe] ]] || exit 16
 [[ $_comps[epf] == _epf ]] || exit 13
 [[ $(_epf) == completion-v2 ]] || exit 14
 [[ -f $HOME/.zcompdump ]] || exit 15

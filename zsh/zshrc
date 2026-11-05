@@ -480,7 +480,8 @@ function recomp {
 		unfunction "${completion:t}" 2>/dev/null
 	done
 	autoload -Uz compinit
-	compinit || return
+	# Ignore insecure completion paths rather than prompting or trusting them.
+	compinit -i || return
 	return "$result"
 }
 
