@@ -29,9 +29,16 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Restore pinned executable
+        uses: actions/cache/restore@v4
+        id: executable_cache
+        with:
+          path: ~/.local/bin/zellij
+          key: zellij-executable-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
       - name: Restore native Zellij build
         uses: actions/cache/restore@v4
         id: zellij_cache
+        if: steps.executable_cache.outputs.cache-hit != 'true'
         with:
           path: |
             ~/.cargo/registry
@@ -39,40 +46,35 @@ jobs:
             ~/.cache/dotfiles/zellij
           key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
           restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
-      - name: Reuse exact pinned binary
-        id: cached_binary
-        if: steps.zellij_cache.outputs.cache-hit == 'true'
-        run: |
-          host=$(rustc -vV | sed -n 's/^host: //p')
-          cached="$HOME/.cache/dotfiles/zellij/target/$host/release/zellij"
-          if [ -n "$host" ] && [ -x "$cached" ]; then
-            mkdir -p "$HOME/.local/bin"
-            cp "$cached" "$HOME/.local/bin/zellij"
-            echo 'ready=true' >> "$GITHUB_OUTPUT"
-          fi
       - name: Install native build tools on Linux
-        if: runner.os == 'Linux' && steps.cached_binary.outputs.ready != 'true'
+        if: runner.os == 'Linux' && steps.executable_cache.outputs.cache-hit != 'true'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
       - name: Install native build tools on macOS
-        if: runner.os == 'macOS' && steps.cached_binary.outputs.ready != 'true'
+        if: runner.os == 'macOS' && steps.executable_cache.outputs.cache-hit != 'true'
         run: brew install cmake pkg-config openssl@3
       - name: Install existing pinned Zellij runtime
         id: zellij_install
         env:
-          CACHED_BINARY: ${{ steps.cached_binary.outputs.ready }}
+          CACHED_BINARY: ${{ steps.executable_cache.outputs.cache-hit }}
         run: |
           if [ "$CACHED_BINARY" != true ]; then bash scripts/install-zellij; fi
           "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Save native Zellij build
         uses: actions/cache/save@v4
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' && steps.zellij_cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Save pinned executable
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ~/.local/bin/zellij
+          key: ${{ steps.executable_cache.outputs.cache-primary-key }}
       - name: Verify native SSH agent updater route
         run: python3 scripts/test-zellij-agent-update.py
       - name: Preserve failed probe diagnostics

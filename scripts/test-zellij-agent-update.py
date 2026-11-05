@@ -172,7 +172,7 @@ exec "$PROBE_ZELLIJ" attach "$1"
                               command=["/bin/sh", str(launcher), name, raw] if failed_update else None,
                               install_navigation=False)
             clients.append(client)
-            client.until("native shell is ready", lambda: b"agent-probe-ready> " in client.output)
+            client.until("native shell is ready", lambda: b"agent-probe-ready>" in client.output)
             return client
 
         def prepare_tiled_workspace(client):
@@ -185,13 +185,26 @@ exec "$PROBE_ZELLIJ" attach "$1"
             if any(tab["active"] and tab["are_floating_panes_visible"] for tab in tabs):
                 client.action("toggle-floating-panes")
             target = max(tiled, key=lambda pane: pane["pane_x"])
-            client.action("focus-pane-id", f"terminal_{target['id']}")
-            client.until("fixture has tiled focus and ready shells", lambda:
-                         any(pane["id"] == target["id"] and pane["is_focused"]
-                             for pane in client.terminals())
-                         and not any(tab["are_floating_panes_visible"] for tab in client.tabs())
-                         and all("agent-probe-ready> " in client.action(
-                             "dump-screen", "--pane-id", f"terminal_{pane['id']}") for pane in tiled))
+            observed = {}
+
+            def ready():
+                current_panes, current_tabs = client.terminals(), client.tabs()
+                screens = {str(pane["id"]): client.action(
+                    "dump-screen", "--pane-id", f"terminal_{pane['id']}") for pane in tiled}
+                checks = {
+                    "right_tiled_pane_focused": any(pane["id"] == target["id"] and pane["is_focused"]
+                                                   for pane in current_panes),
+                    "floating_layer_hidden": not any(tab["are_floating_panes_visible"] for tab in current_tabs),
+                    "both_shell_prompts_ready": all("agent-probe-ready>" in screen for screen in screens.values()),
+                }
+                observed.update(checks=checks, panes=current_panes, tabs=current_tabs, screens=screens)
+                return all(checks.values())
+
+            try:
+                client.until("fixture has tiled focus and ready shells", ready)
+            except AssertionError:
+                print("Fixture readiness components and dump-screen output: " + json.dumps(observed), flush=True)
+                raise
             print(f"Prepared workspace {client.name}: " + json.dumps({
                 "panes": client.panes(), "tabs": client.tabs(),
             }), flush=True)
