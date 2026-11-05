@@ -23,6 +23,7 @@ const pages = [
   { file: 'README.md', section: 'Installation', slug: 'reference/install', title: 'Install & set up' },
   { file: 'README.md', section: 'Configuration sets', slug: 'reference/configuration', title: 'Configuration composition' },
   { file: 'docs/zellij.md', slug: 'reference/zellij', title: 'Zellij' },
+  { file: 'docs/zellij-keybinds.mdx', slug: 'reference/zellij-keybinds' },
   { file: 'docs/tmux.md', slug: 'reference/tmux', title: 'tmux sessions' },
   { file: 'docs/stack-darwin.md', slug: 'reference/macos', title: 'macOS stack' },
   { file: 'docs/stack-linux.md', slug: 'reference/linux', title: 'Linux stack' },

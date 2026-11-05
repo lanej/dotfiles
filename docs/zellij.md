@@ -63,7 +63,7 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 ## Familiar keys
 
-Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefix mode. Most actions return immediately to locked mode.
+Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
 | Key | Action |
 | --- | --- |
