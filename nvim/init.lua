@@ -525,6 +525,8 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 	end,
 })
 
+require("zellij-scrollback").register_filetype()
+
 -- Custom filetypes, including YAML-based LookML dashboards.
 vim.filetype.add({
 	extension = {
@@ -533,11 +535,6 @@ vim.filetype.add({
 	},
 	pattern = {
 		[".*%.dashboard%.lookml"] = "yaml",
-		[".*%x+%-%x+%-%x+%-%x+%-%x+%.dump"] = function()
-			if vim.env.ZELLIJ then
-				return "zellij-scrollback"
-			end
-		end,
 	},
 })
 
