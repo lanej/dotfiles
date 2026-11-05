@@ -442,3 +442,7 @@ ep-direnv-uninstall:
 .PHONY: epenv
 epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: test-ssh-agent
+test-ssh-agent:
+	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"

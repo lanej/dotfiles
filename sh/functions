@@ -17,7 +17,7 @@ zssh() {
 	fi
 	local host="$1" session="${2:-main}" remote_command quote="'\\''"
 	# WHY: Use the remote login environment, including PATH configured in interactive rc files.
-	remote_command='exec "$SHELL" -lic '\''exec zellij attach --create "$1"'\'' zssh '
+	remote_command='exec "$SHELL" -lic '\''exec "$HOME/.local/bin/zellij-attach" "$1"'\'' zssh '
 	# Pass the session as an argument, not code evaluated by the login shell.
 	remote_command+="'${session//\'/$quote}'"
 	if [ -z "${ZELLIJ:-}" ]; then

@@ -28,6 +28,9 @@ import subprocess
 import sys
 
 args = sys.argv[1:]
+if args == ["setup", "--check"]:
+    print("[CACHE DIR]: " + str(Path(os.environ["HOME"]) / "zellij-cache"))
+    raise SystemExit(0)
 if args[:2] == ["action", "new-tab"]:
     Path(os.environ["TAB"]).write_text(json.dumps(args[:args.index("--")]))
     raise SystemExit(subprocess.run(args[args.index("--") + 1:]).returncode)
@@ -83,6 +86,10 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         runtime.mkdir(parents=True)
         (runtime / "zellij").symlink_to(proxy)
         (remote_home / ".files").symlink_to(ROOT)
+        remote_bin = remote_home / ".local/bin"
+        remote_bin.mkdir(parents=True)
+        (remote_bin / "zellij-attach").symlink_to(ROOT / "bin/zellij-attach")
+        (remote_bin / "zellij-agent").symlink_to(ROOT / "bin/zellij-agent")
         # Isolate runner-wide startup (including Ubuntu's interactive compinit)
         # while still exercising the repository's real user startup files.
         (remote_home / ".zshenv").write_text(
