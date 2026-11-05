@@ -1,10 +1,11 @@
 name: Viewrule integration
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', '.github/workflows/ui-review.yml']
   push:
     branches: [master]
-    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', '.github/workflows/ui-review.yml']
 permissions:
   contents: read
 jobs:

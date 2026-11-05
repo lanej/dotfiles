@@ -1,6 +1,7 @@
 name: Agent feature regressions
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'bin/claude-autoname-hook*'
@@ -33,8 +34,8 @@ on:
       - 'bin/claude-shared-sync_test.py'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
-      - 'Makefile'
-      - 'scripts/make/**'
+      - 'scripts/make/config.sh'
+      - 'scripts/make/require.sh'
       - '.github/workflows/claude-features.yml'
   push:
     branches: [master]
@@ -69,8 +70,8 @@ on:
       - 'bin/claude-shared-sync_test.py'
       - 'claude/blocked-plugins.json'
       - '.claude/settings.json'
-      - 'Makefile'
-      - 'scripts/make/**'
+      - 'scripts/make/config.sh'
+      - 'scripts/make/require.sh'
       - '.github/workflows/claude-features.yml'
 
 permissions:

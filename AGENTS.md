@@ -37,30 +37,19 @@ Always edit files within `~/.files`, not the symlinked targets under `~`. Most c
 
 ## Testing
 
-Keep one regression detector per user-visible feature. Prefer one representative
-workflow through the real entrypoint and observable result. A helper, branch,
-input variant, or failure mode is not a separate feature.
+Choose the smallest check that can expose a defect in the changed behavior. Scale verification to consequences and uncertainty: a small alias or wrapper needs a focused check, while installation, destructive cleanup, concurrency, and terminal interactions may need stronger evidence. Routine documentation and simple configuration edits need diff review and applicable syntax or structural checks.
 
-A detector is sufficient when it goes red if you delete the behavior it covers.
-Establish falsifiability once when wiring a new harness: delete representative
-behavior, confirm red, restore it, and confirm green. Do not repeat this mutation
-check for each test or task in an established harness. See the [verification guide](docs/verification.md) for the acceptance
-definition and harness verification procedure.
+Prefer focused protection through the caller's real entrypoint and an observable result. Improve existing coverage before adding another harness. Keep separate features independently runnable; do not force unrelated checks into one oversized journey to meet a test-count rule. Add cases for meaningful risks, not every helper, branch, or input variation. Do not mirror implementation details, assert exact source strings, or merely count configured hooks.
 
-When repairing a regression, improve that feature's existing detector. Multiple
-assertions may describe the same workflow; do not hide a case matrix in loops,
-parameterization, or one oversized test. Add broader coverage only when the
-owner explicitly requests it.
+Control external commands or services when testing decisions and argument forwarding. Use real integrations when the claim depends on actual platform or external behavior; a simulated boundary cannot establish compatibility. A wrapper test should not require an editor, terminal stack, native build, credentials, or network unless those are part of the behavior being checked.
 
-Run the affected detector once after the change; rerun it to resolve a failure
-or after changing the implementation. Use syntax checks and diff review for
-simple configuration/documentation edits. Do not add tests that mirror code,
-check exact source strings, or merely count configured hooks.
+Run the affected check once after the change. Rerun it after relevant edits or to resolve a failure; broaden only when changed shared behavior or an unresolved interaction justifies it. Run both operating systems when platform differences matter, rather than automatically duplicating every check. Treat test setup time, flakiness, and failure isolation as maintenance costs.
 
-Routine maintenance needs no evaluation bundles, source snapshots, provenance
-receipts, or separate review narratives. Put the outcome and any manual findings
-or verification gaps in the PR; let automated checks report their own results.
-Keep CI scoped to the features it exercises.
+A detector must fail when the behavior it protects is broken. Establish sensitivity once when introducing a new harness, then reuse that evidence; do not repeat mutation checks for routine changes. See the [verification guide](docs/verification.md) for the procedure.
+
+Keep CI selection scoped to affected features. Shared Makefile or lint-wiring edits must not automatically start every integration suite. Run the affected detector explicitly when changing a feature's Make recipe. Relevant checks and required repository checks govern merging; unrelated pending suites are not automatic merge gates. Investigate failures before classifying them as unrelated, and state unresolved limits.
+
+Routine maintenance needs no evaluation bundles, source snapshots, provenance receipts, or separate review narratives. Put material manual findings and verification gaps in the PR; let automated checks report their own results.
 
 ## Pull requests
 
