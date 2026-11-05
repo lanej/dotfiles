@@ -149,11 +149,12 @@ exec /bin/sh -i
             assert path.is_socket(), f"ssh-agent did not create {path}"
             return str(path)
 
-        def attach(name, raw):
+        def attach(name, raw, native_control=False):
             if name not in names:
                 names.append(name)
             client = Terminal(binary, {**env, "SSH_AUTH_SOCK": raw}, name,
-                              command=[str(bindir / "zellij-attach"), name],
+                              command=([binary, "attach", name] if native_control else
+                                       [str(bindir / "zellij-attach"), name]),
                               install_navigation=False)
             clients.append(client)
             client.until("native shell is ready", lambda: b"agent-probe-ready>" in client.output)
@@ -228,6 +229,15 @@ exec /bin/sh -i
             raw1, raw2, raw3 = (start_agent(f"agent-{number}.sock") for number in (1, 2, 3))
             first = attach("probe-original", raw1)
             prepare_tiled_workspace(first)
+            # Establish the pinned runtime's own reconnect behavior without our
+            # attach helper. Later assertions compare against that native state.
+            before_native_reconnect = snapshot(first.name)
+            detach(first)
+            first = attach("probe-original", raw1, native_control=True)
+            native_reconnected = snapshot(first.name)
+            print("Native reconnect control (no updater): " + json.dumps({
+                "before": before_native_reconnect, "after": native_reconnected,
+            }), flush=True)
             server1, stable1 = identity()
             first.send(b"probe_token=survived; printf '%s\\n' \"$SSH_AUTH_SOCK\" > \"$HOME/retained-socket\"\r")
             first.until("pane records its stable socket", lambda: (home / "retained-socket").exists())
