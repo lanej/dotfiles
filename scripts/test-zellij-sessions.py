@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Observe popup state, selected-client detach, and shutdown through installed keys."""
 
+import argparse
 import os
 from pathlib import Path
 import re
@@ -219,6 +220,10 @@ def detach_workflow(clients):
 
 
 def popup_workflow(first, second, home):
+    def popup_panes(terminal):
+        # Native metadata also includes the suppressed built-in bars plugin.
+        return [pane for pane in terminal.panes(POPUP) if not pane["is_plugin"]]
+
     first.prefix(b"r")
     first.send(b"popup-origin\r")
     first.until("distinct host tab label", lambda: first.tabs()[0]["name"] == "popup-origin")
@@ -229,8 +234,38 @@ def popup_workflow(first, second, home):
     first.until("record scratch shell PID", lambda: (home / "popup-pid").exists())
     pid = (home / "popup-pid").read_text().strip()
     expected = f"live-memory|{pid}|{home / 'scratch'}"
-    popup_ids = {p["id"] for p in first.panes(POPUP) if not p["is_plugin"]}
+    popup_ids = {p["id"] for p in popup_panes(first)}
     assert len(popup_ids) == 1
+    original = next(iter(popup_ids))
+    first.prefix(b"v")
+    first.until("popup splits into two tiled panes", lambda:
+                len(popup_panes(first)) == 2)
+    left, right = sorted(popup_panes(first), key=lambda pane: pane["pane_x"])
+    assert left["id"] == original and left["pane_x"] < right["pane_x"]
+    assert not left["is_floating"] and not right["is_floating"]
+    first.until("split shell is ready", lambda:
+                "zellij-ready>" in first.action("dump-screen", "--pane-id", str(right["id"]),
+                                              session=POPUP))
+    first.send(b"popup_token=split-memory; printf '%s|%s|%s\\n' \"$popup_token\" \"$$\" \"$PWD\" "
+               b"> \"$HOME/popup-split-state\"\r")
+    first.until("split inherits scratch cwd", lambda:
+                (home / "popup-split-state").exists())
+    split_expected = (home / "popup-split-state").read_text().strip()
+    assert split_expected.split("|")[0] == "split-memory"
+    assert split_expected.split("|")[1] != pid
+    assert split_expected.split("|")[2] == str(home / "scratch")
+    first.prefix(b"s")
+    first.until("popup also splits downward", lambda: len(popup_panes(first)) == 3)
+    bottom = next(pane for pane in popup_panes(first)
+                  if pane["id"] not in (original, right["id"]))
+    assert bottom["pane_y"] > right["pane_y"] and bottom["pane_x"] == right["pane_x"]
+    first.prefix(b"x")
+    popup_ids.add(right["id"])
+    first.until("close removes only the temporary popup split", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    first.prefix(b"h")
+    first.until("popup navigation returns to the original shell", lambda:
+                next(pane for pane in popup_panes(first) if pane["is_focused"])["id"] == original)
     rendered = len(first.output)
     first.prefix(b"u")
     # FocusHostSession queues a frame; its completion is not the host's
@@ -254,10 +289,22 @@ def popup_workflow(first, second, home):
     hide_popup(first)
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")
-    assert {p["id"] for p in second.panes(POPUP) if not p["is_plugin"]} == popup_ids
+    assert {p["id"] for p in popup_panes(second)} == popup_ids
+    second.prefix(b"l")
+    # Native focus metadata can retain other client focus; the following shell
+    # proof establishes which live pane actually receives this client's keys.
+    second.until("reopened popup can focus its surviving split", lambda:
+                 any(pane["id"] == right["id"] and pane["is_focused"]
+                     for pane in popup_panes(second)))
+    prove_popup(second, home, split_expected, "popup-split-other-session")
+    second.prefix(b"x")
+    second.until("closing a surviving split keeps the original shell", lambda:
+                 {pane["id"] for pane in popup_panes(second)} == {original})
+    prove_popup(second, home, expected, "popup-after-split-close")
     hide_popup(second)
-    print("Popup: host/guest focus keys work; one original shell PID, unexported state and cwd "
-          "survive hiding, another tab, and another outer session.")
+    print("Popup: native splits and focus work inside the floating view; both shells retain "
+          "their PID, unexported state and cwd across hiding, another tab, and another "
+          "outer session. Closing a split preserves the original shell.")
     return expected
 
 
@@ -331,6 +378,10 @@ def shutdown_workflow(clients, names, home, popup_expected):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--popup-only", action="store_true",
+                        help="exercise the shared popup without unrelated client/shutdown checks")
+    args = parser.parse_args()
     binary = shutil.which("zellij")
     assert binary and shutil.which("fzf"), "Install the pinned Zellij runtime and fzf before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
@@ -359,7 +410,8 @@ def main():
         names = ["first-" + temporary.name, "second-" + temporary.name]
         clients = []
         try:
-            prove_popup_startup(binary, env, runtime)
+            if not args.popup_only:
+                prove_popup_startup(binary, env, runtime)
             for name in names:
                 terminal = Terminal(binary, env, name)
                 clients.append(terminal)
@@ -367,9 +419,11 @@ def main():
                 terminal.until("outer shell starts", lambda:
                                b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             first, second = clients
-            detach_workflow(clients)
+            if not args.popup_only:
+                detach_workflow(clients)
             expected = popup_workflow(first, second, home)
-            shutdown_workflow(clients, names, home, expected)
+            if not args.popup_only:
+                shutdown_workflow(clients, names, home, expected)
         finally:
             # All names live only in this test's private socket directory.
             for name in [*names, POPUP]:
