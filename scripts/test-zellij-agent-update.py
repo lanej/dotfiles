@@ -201,7 +201,7 @@ exec "$PROBE_ZELLIJ" attach "$1"
             raw1, raw2, raw3 = (start_agent(f"agent-{number}.sock") for number in (1, 2, 3))
             first = attach("probe-original", raw1)
             server1, stable1 = identity()
-            first.action("new-pane", "--direction", "right")
+            first.action("new-pane", "--direction", "right", "--", str(shell))
             first.until("two original panes", lambda: len(first.terminals()) == 2)
             first.send(b"probe_token=survived; printf '%s\\n' \"$SSH_AUTH_SOCK\" > \"$HOME/retained-socket\"\r")
             first.until("pane records its stable socket", lambda: (home / "retained-socket").exists())
@@ -263,4 +263,8 @@ exec "$PROBE_ZELLIJ" attach "$1"
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except subprocess.CalledProcessError as error:
+        print(f"Native CLI failed: {error.cmd}\nstdout:\n{error.stdout}\nstderr:\n{error.stderr}", flush=True)
+        raise
