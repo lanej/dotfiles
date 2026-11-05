@@ -40,6 +40,8 @@ confirm_os_window_close 1
 tab_bar_edge top
 tab_bar_style powerline
 tab_powerline_style slanted
+# WHY: Keep Zellij session names stable as the focused pane changes.
+tab_title_template "{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title.split(' | ', 1)[0] if tab.active_exe == 'zellij' else title}"
 active_tab_foreground   #000
 active_tab_background   #eee
 active_tab_font_style   bold
