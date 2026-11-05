@@ -89,7 +89,7 @@ cd {shlex.quote(str(unsafe))}
         observed = run(script)
         assert observed == (b"\x1b]2;project with spaces [topic]\x07"
                                b"\x1b]2;project with spaces [other]\x07"
-                               b"\x1b]2;plain\x07\x1b]2;bad   name\x07")
+                               b"\x1b]2;plain\x07\x1b]2;bad   name\x07"), repr(observed)
         assert not (work / "tmux.log").exists(), "inner Zellij renamed outer tmux"
         cd = f"cd {shlex.quote(str(plain))}\n"
         assert run(cd, terminal=False) == b""

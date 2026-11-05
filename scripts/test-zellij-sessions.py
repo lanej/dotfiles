@@ -82,7 +82,10 @@ def floating_screen(terminal):
 
 
 def open_popup(terminal):
-    host_tab = next(tab["name"] for tab in terminal.tabs() if tab["active"])
+    # The bar's zero-based position is stable across shell/default-name display
+    # policies; list-tabs returns the raw native name, not that presentation.
+    tab = next(tab for tab in terminal.tabs() if tab["active"])
+    host_tab = f" {tab['position']}:"
     rendered = len(terminal.output)
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
