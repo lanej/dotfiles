@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise zj through its shell alias with Zellij's CLI boundary simulated."""
+"""Exercise zj and zssh through their shell entrypoints with simulated transports."""
 
 import json
 import os
@@ -21,61 +21,82 @@ def main():
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 
-if sys.argv[1:2] == ["list-sessions"]:
-    if os.environ.get("LIST_FAIL"):
-        print("session discovery failed", file=sys.stderr)
-        raise SystemExit(1)
-    lines = Path(os.environ["LISTING"]).read_text().splitlines()
-    if "--reverse" in sys.argv:
-        lines.reverse()
-    print("\\n".join(lines))
-else:
-    Path(os.environ["ATTACHED"]).write_text(json.dumps(sys.argv[1:]))
+args = sys.argv[1:]
+if args[:2] == ["action", "new-tab"]:
+    Path(os.environ["TAB"]).write_text(json.dumps(args[:args.index("--")]))
+    raise SystemExit(subprocess.run(args[args.index("--") + 1:]).returncode)
+if os.environ.get("ATTACH_FAIL"):
+    print("attachment failed", file=sys.stderr)
+    raise SystemExit(17)
+Path(os.environ["ATTACHED"]).write_text(json.dumps(args))
 ''')
         proxy.chmod(0o755)
-        listing, attached = work / "listing", work / "attached"
+        ssh = work / "ssh"
+        ssh.write_text(f"#!{sys.executable}\n" + '''
+import os
+import subprocess
+import sys
+
+assert sys.argv[1:3] == ["-t", "fixture-host"], sys.argv
+# SSH starts a remote shell outside the local Zellij session.
+env = dict(os.environ)
+env.pop("ZELLIJ", None)
+raise SystemExit(subprocess.run(["/bin/sh", "-c", sys.argv[3]], env=env).returncode)
+''')
+        ssh.chmod(0o755)
+        home = work / "home"
+        (home / ".local/bin").mkdir(parents=True)
+        (home / ".local/bin/zellij-attach").symlink_to(ROOT / "bin/zellij-attach")
+        attached, tab = work / "attached", work / "tab"
         env = {
             **os.environ,
+            "HOME": str(home),
             "PATH": os.pathsep.join((str(work), str(ROOT / "bin"), os.environ["PATH"])),
-            "LISTING": str(listing),
             "ATTACHED": str(attached),
+            "TAB": str(tab),
         }
-        env.pop("ZELLIJ", None)
+        for name in ("ZELLIJ", "KITTY_WINDOW_ID", "SSH_CONNECTION", "SSH_AUTH_SOCK"):
+            env.pop(name, None)
         command = [
             shutil.which("bash"), "-c",
             'shopt -s expand_aliases; source "$1"; shift; eval \'zj "$@"\'',
             "zj-check", str(ROOT / "sh/alias"),
         ]
 
-        listing.write_text(
-            "older [Created 4s ago] \n"
-            "new regular [Created 3s ago] \n"
-            "exited [Created 2s ago] (EXITED - attach to resurrect)\n"
-            "dotfiles-popup [Created 1s ago] \n"
-        )
         subprocess.run(command, env=env, check=True, capture_output=True, text=True)
-        assert json.loads(attached.read_text()) == ["attach", "new regular"]
-
-        listing.write_text("dotfiles-popup [Created 1s ago] \n")
-        subprocess.run(command, env=env, check=True, capture_output=True, text=True)
-        assert json.loads(attached.read_text()) == []
-
+        assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
         subprocess.run([*command, "chosen session"], env=env, check=True,
                        capture_output=True, text=True)
         assert json.loads(attached.read_text()) == ["attach", "--create", "chosen session"]
 
         attached.unlink()
-        failed = subprocess.run(command, env={**env, "LIST_FAIL": "1"},
+        failed = subprocess.run(command, env={**env, "ATTACH_FAIL": "1"},
                                 capture_output=True, text=True)
-        assert failed.returncode != 0 and "session discovery failed" in failed.stderr
-        assert not attached.exists(), "Failed discovery must not start another session"
-        nested = subprocess.run(command, env={**env, "ZELLIJ": "1", "LIST_FAIL": "1"},
+        assert failed.returncode == 17 and "attachment failed" in failed.stderr
+        assert not attached.exists(), "Failed attachment must not start another session"
+        nested = subprocess.run(command, env={**env, "ZELLIJ": "1"},
                                 capture_output=True, text=True)
         assert nested.returncode != 0 and "already inside Zellij" in nested.stderr
         assert not attached.exists(), "Nested invocation must not attach or create a session"
-        print("PASS: zj selects a regular session, creates when needed, forwards names, and preserves discovery failures.")
+
+        remote = [
+            shutil.which("bash"), "-c", 'source "$1"; shift; zssh "$@"',
+            "zssh-check", str(ROOT / "sh/functions"), "fixture-host",
+        ]
+        subprocess.run(remote, env=env, check=True, capture_output=True, text=True)
+        assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
+        assert not tab.exists(), "Outside Zellij, SSH must use the current terminal"
+        subprocess.run([*remote, "chosen 'session"], env=env, check=True,
+                       capture_output=True, text=True)
+        assert json.loads(attached.read_text()) == ["attach", "--create", "chosen 'session"]
+        subprocess.run(remote, env={**env, "ZELLIJ": "1"}, check=True,
+                       capture_output=True, text=True)
+        assert json.loads(tab.read_text()) == ["action", "new-tab", "--name", "fixture-host"]
+        assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
+        print("PASS: zj and zssh default to main, preserve explicit names, and retain launcher safeguards.")
 
 
 if __name__ == "__main__":
