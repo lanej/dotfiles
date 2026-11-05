@@ -44,9 +44,19 @@ The custom fzf integration requires both `fzf` and `fd`; it activates in a new
 shell once they are installed. Failed integration generators do not replace
 working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
 
-`make` / `make configure` (with the shell set selected), `make install`, and `make zsh-config` generate Zsh completions for supported tools already on `PATH`, including `epf`, uv, Rust, GitHub CLI, Codex, Zellij, Atuin, and the shell utilities. `make zsh-completions` refreshes just those files without configuring plugins or installing software. The tool-specific commands live in [`scripts/make/completions.sh`](scripts/make/completions.sh); tools without generators continue using their packaged completions or existing shell integrations.
+`make` / `make configure` (with the shell set selected), `make install`, and `make zsh-config` generate Zsh completions for supported tools already on `PATH`, including fd, uv, Rust, GitHub CLI, Codex, Zellij, Atuin, and the shell utilities. `make zsh-completions` refreshes just those files without configuring plugins or installing software. The tool-specific commands live in [`scripts/make/completions.sh`](scripts/make/completions.sh); tools without generators continue using their packaged completions or existing shell integrations.
 
-Generated files go to `~/.zsh/completions/_<tool>`. Missing tools are skipped; failed or empty generators report failure and keep the last working file. Files and symlinks created by hand are preserved. To let dotfiles manage one, move that file aside and rerun setup. Unchanged output preserves the file and completion cache. Changed output invalidates the dump for the next shell. Run `recomp` to regenerate and reload completions in the current Zsh, including files added manually with `epf completions zsh > ~/.zsh/completions/_epf`. It no longer runs plugin setup. `make test-zsh-completions` exercises this workflow.
+Generated files go to `~/.zsh/completions/_<tool>`. Missing tools are skipped; failed or empty generators report failure and keep the last working file. Files and symlinks created by hand are preserved. To let dotfiles manage one, move that file aside and rerun setup. Unchanged output preserves the file and completion cache. Changed output invalidates the dump for the next shell. Run `recomp` to regenerate and reload completions in the current Zsh, including files added manually. It no longer runs plugin setup. `make test-zsh-completions` exercises this workflow.
+
+Register work-only or other locally installed tools in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Keep this machine-specific file outside the checkout. Each non-comment line is a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
+
+```text
+epf epf completions zsh
+```
+
+Run `make zsh-completions` or `recomp` after editing it. Local entries take precedence over built-ins and use the same validation and file preservation. Both the target binary and generator must be on `PATH`; missing targets are skipped before generation or packaged-file lookup. The first entry for a name wins. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. Put a more involved generator in an executable wrapper on `PATH` and register that command instead. Dotfiles does not install tools listed here.
+
+Older fd builds without `--gen-completions` use their packaged `_fd` from standard Zsh completion locations or the fd release directory. If neither source is available, setup explains how to install it and preserves the previous file.
 
 `make benchmark-zsh-startup` measures the current home's interactive login-shell
 startup and exit over 30 runs after three warmups. It reports median and p95
