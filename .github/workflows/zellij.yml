@@ -172,6 +172,8 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-claude-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-move
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-firstmate

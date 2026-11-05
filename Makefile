@@ -363,6 +363,10 @@ test-setup:
 test-zellij-attach:
 	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
 
+.PHONY: test-zellij-move
+test-zellij-move:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles

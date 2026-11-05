@@ -107,7 +107,15 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "!" { BreakPane; SwitchToMode "Locked"; }
-        bind "m" { SwitchToMode "Move"; }
+        bind "m" {
+            Run "zellij-picker" "move-pane" {
+                floating true
+                close_on_exit true
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
         bind "W" { SwitchToMode "Tab"; }
 
         // New-session and rename-session actions live in the built-in manager.
