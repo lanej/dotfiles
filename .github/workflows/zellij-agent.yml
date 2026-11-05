@@ -1,0 +1,87 @@
+name: SSH agent reconnect
+
+on:
+  pull_request:
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+  push:
+    branches: [master]
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ssh-agent-native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  updater:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Restore pinned executable
+        uses: actions/cache/restore@v4
+        id: executable_cache
+        with:
+          path: ~/.local/bin/zellij
+          key: zellij-executable-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+      - name: Restore native Zellij build
+        uses: actions/cache/restore@v4
+        id: zellij_cache
+        if: steps.executable_cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+          restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux' && steps.executable_cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS' && steps.executable_cache.outputs.cache-hit != 'true'
+        run: brew install cmake pkg-config openssl@3
+      - name: Install existing pinned Zellij runtime
+        id: zellij_install
+        env:
+          CACHED_BINARY: ${{ steps.executable_cache.outputs.cache-hit }}
+        run: |
+          if [ "$CACHED_BINARY" != true ]; then bash scripts/install-zellij; fi
+          "$HOME/.local/bin/zellij" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Save pinned executable
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ~/.local/bin/zellij
+          key: ${{ steps.executable_cache.outputs.cache-primary-key }}
+      - name: Verify native SSH agent reconnects
+        run: python3 scripts/test-zellij-agent-update.py
+      - name: Preserve failed reconnect diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-agent-diagnostics-${{ matrix.os }}
+          path: ${{ github.workspace }}/.zellij-diagnostics
+          if-no-files-found: ignore
+          include-hidden-files: true

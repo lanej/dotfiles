@@ -1,5 +1,18 @@
 local M = {}
 
+-- Register before lazy-loading Baleia on the resulting FileType event.
+function M.register_filetype()
+	vim.filetype.add({
+		pattern = {
+			[".*%x+%-%x+%-%x+%-%x+%-%x+%.dump"] = function()
+				if vim.env.ZELLIJ then
+					return "zellij-scrollback"
+				end
+			end,
+		},
+	})
+end
+
 function M.setup()
 	local colors = require("baleia").setup({})
 	local function colorize(buf)
