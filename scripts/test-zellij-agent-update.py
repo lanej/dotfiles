@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Probe a shell-only agent updater on the pinned native Zellij runtime.
 
-Run after installing the pinned runtime and pane-navigation fixture:
+Run after installing the pinned runtime:
     python3 scripts/test-zellij-agent-update.py
 
 This is an evaluation, not a production updater. All shell helpers, sockets,
@@ -154,7 +154,8 @@ exec "$PROBE_ZELLIJ" attach "$1"
             if name not in names:
                 names.append(name)
             client = Terminal(binary, {**env, "SSH_AUTH_SOCK": raw}, name,
-                              command=["/bin/sh", str(launcher), name, raw] if failed_update else None)
+                              command=["/bin/sh", str(launcher), name, raw] if failed_update else None,
+                              install_navigation=False)
             clients.append(client)
             client.until("native shell is ready", lambda: b"agent-probe-ready> " in client.output)
             return client

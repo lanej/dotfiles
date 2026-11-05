@@ -1,0 +1,66 @@
+name: SSH agent native probe
+
+on:
+  pull_request:
+    paths: ['scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+  push:
+    branches: [master]
+    paths: ['scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  updater:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config openssl@3
+      - name: Restore native Zellij build
+        uses: actions/cache/restore@v4
+        id: zellij_cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+          restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install existing pinned Zellij runtime
+        id: zellij_install
+        run: |
+          bash scripts/install-zellij
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Verify native SSH agent updater route
+        run: python3 scripts/test-zellij-agent-update.py
+      - name: Preserve failed probe diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-agent-diagnostics-${{ matrix.os }}
+          path: ${{ github.workspace }}/.zellij-diagnostics
+          if-no-files-found: ignore
