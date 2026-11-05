@@ -293,7 +293,8 @@ test('Mobile chat dispatches a native Zellij scout, receives completion, and res
   const { PiRpcAgentClient } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/agent.js')));
   const directory = await fs.mkdtemp('/tmp/firstmate-chat-'), home = join(directory, 'home');
   const fleet = join(directory, 'fleet'), project = join(directory, 'project'), session = `firstmate-chat-${process.pid}`;
-  const env = { ...process.env, HOME: home, FIRSTMATE_HOME: fleet, FM_HOME: fleet, FM_ROOT_OVERRIDE: fleet,
+  // Keep native panes and Treehouse's nested shell on the fixture-first PATH.
+  const env = { ...process.env, HOME: home, SHELL: '/bin/sh', FIRSTMATE_HOME: fleet, FM_HOME: fleet, FM_ROOT_OVERRIDE: fleet,
     FM_ZELLIJ_SESSION: session, FM_POLL: '1', FM_SIGNAL_GRACE: '1', FM_WATCH_EXTENSION_LOG_KEEP_LINES: '100',
     PATH: `${join(home, '.local/bin')}:${join(modules, '.bin')}:${process.env.PATH}`,
     PI_CODING_AGENT_DIR: join(home, '.pi/agent'), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0' };
