@@ -124,6 +124,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install pane navigation
         run: python3 scripts/install-zellij-navigation.py
+      - name: Verify native SSH agent updater route
+        run: python3 scripts/test-zellij-agent-update.py
       - name: Save native Zellij build
         uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
