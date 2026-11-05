@@ -69,7 +69,7 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
 | `!` | Move the focused pane to a new tab |
-| `m` | Enter pane movement mode |
+| `m` | Fuzzy pane destination picker: New Tab or an existing tab in this session |
 | `W` | Enter tab reorder mode |
 | `C`, `w` | Open the native session manager for creating, switching, renaming, and restoring sessions |
 | `e` | Open the pane's scrollback in Neovim |
@@ -79,7 +79,9 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 
 `Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
 
-**Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Move mode:** `h/j/k/l` or arrows move the pane, `Tab` cycles positions, and `[`/`]` moves it to the adjacent tab. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
+**Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
+
+`Ctrl-f m` follows the tmux pane-movement menu. It moves the original live pane, preserving its process and scrollback. Esc cancels; choosing the current tab does nothing. This menu needs the compiled status plugin and pinned runtime; rerun `make zellij-status zellij` and restart old sessions after upgrading. Existing-tab moves reserve a temporary inert split and replace it with the original pane, without running the default shell’s startup hooks or requiring additional plugin permissions. Cross-session movement remains unsupported. `Ctrl-f !` remains an optional direct shortcut, not a replacement for the menu.
 
 **Scroll mode:** `j/k` scroll, Ctrl-f/Ctrl-b page, Ctrl-d/Ctrl-u half-page, and `g/G` jump to the start/end. `/` starts a search; `n/N` find next/previous matches. `e` opens Neovim for arbitrary Vim selection. `y` copies an existing selection and returns to the prompt. `m` selects a command at the scroll position, and `c` copies the last command output when the application supplies OSC 133 shell markers. Esc or `q` returns to the bottom.
 
