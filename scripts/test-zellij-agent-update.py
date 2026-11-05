@@ -93,7 +93,11 @@ exec "$PROBE_ZELLIJ" attach "$1"
         (config / "config.kdl").write_text(
             f'default_shell {json.dumps(str(shell))}\n'
             'default_layout "probe"\n'
-            'keybinds clear-defaults=true { normal { bind "Ctrl f" { Detach; } } }\n'
+            'keybinds clear-defaults=true {\n'
+            '    normal {\n'
+            '        bind "Ctrl f" { Detach; }\n'
+            '    }\n'
+            '}\n'
         )
         env = {
             **os.environ, "HOME": str(home), "SHELL": "/bin/sh", "TERM": "xterm-256color",
