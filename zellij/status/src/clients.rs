@@ -46,10 +46,10 @@ impl Clients {
                 }
                 let Ok((tab_id, pane_id)) = get_focused_pane_info() else { return false };
                 let tab = get_tab_info(tab_id);
-                let pane = get_pane_info(pane_id);
+                let Some(pane) = get_pane_info(pane_id) else { return false };
                 let row = json!({"token": self.token(),
-                    "tab": tab.map(|tab| format!("{}: {}", tab.position, tab.name)),
-                    "pane": pane.map(|pane| pane.title)});
+                    "tab": tab.map(|tab| format!("{}: {}", tab.position, crate::tab_name(&tab, panes, Some(&pane)))),
+                    "pane": pane.title});
                 cli_pipe_output(pipe, &(row.to_string() + "\n"));
             }
             DETACH => {

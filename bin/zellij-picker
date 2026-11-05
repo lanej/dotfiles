@@ -41,6 +41,22 @@ def label(value):
     return "".join(c if c.isprintable() else " " for c in str(value))
 
 
+def display_tab_name(tab, panes, *, legacy=False):
+    # Keep explicit names. Native generated names are based on stable IDs,
+    # which can differ from positions after tabs close or move.
+    if legacy or tab["name"] != f"Tab #{tab['tab_id'] + 1}":
+        return label(tab["name"])
+    # Native focus is aggregated across attachments, not scoped to this picker.
+    focused = [pane for pane in panes if pane.get("tab_id") == tab["tab_id"]
+               and pane.get("is_focused") and not pane.get("is_plugin")
+               and not pane.get("is_floating") and not pane.get("is_suppressed")
+               and not pane.get("exited")]
+    title = label(focused[0].get("title", "")) if len(focused) == 1 else ""
+    if title and not re.fullmatch(r"Pane #[0-9]+", title):
+        return title
+    return f"Tab #{tab['position']}"
+
+
 def session_names():
     # --short includes resurrectable, exited sessions without marking them.
     # Keep only running sessions; resurrection remains in the native manager.
@@ -251,10 +267,11 @@ def preview_tab(session, tab_id):
 
 def preview_session(session):
     tabs = snapshot(session, "tabs")
+    panes = snapshot(session, "panes")
     legacy = (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
-        print(f"{marker} {tab['position'] + int(legacy)}: {label(tab['name'])}")
+        print(f"{marker} {tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy)}")
 
 
 def choose(rows, heading, preview=None):
@@ -330,9 +347,10 @@ def pick_client(session):
 
 def pick_tab(session):
     tabs = snapshot(session, "tabs")
+    panes = snapshot(session, "panes")
     pane_id = own_pane_id()
     source_tab = next(
-        (pane.get("tab_id") for pane in snapshot(session, "panes")
+        (pane.get("tab_id") for pane in panes
          if not pane.get("is_plugin") and pane["id"] == pane_id), None
     )
     priorities = {"NeedsYou": 0, "Failed": 0, "Done": 1, "Working": 2}
@@ -346,7 +364,7 @@ def pick_tab(session):
         flags = " [current]" if tab["tab_id"] == source_tab else ""
         if tab.get("has_bell_notification"):
             flags += " [bell]"
-        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {label(tab['name'])}{flags}")
+        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy)}{flags}")
     token = choose(rows, "Tabs (attention first)", "--preview-tab")
     if token is None:
         return

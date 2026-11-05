@@ -30,6 +30,8 @@ on:
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zellij-auto-title.zsh'
+      - 'zsh/tmux-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
@@ -63,6 +65,8 @@ on:
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zellij-auto-title.zsh'
+      - 'zsh/tmux-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
@@ -163,6 +167,10 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-auto-title
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-tab-labels
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

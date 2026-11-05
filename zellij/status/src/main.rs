@@ -37,6 +37,33 @@ fn plain(value: &str) -> String {
     value.chars().filter(|c| !c.is_control()).collect()
 }
 
+fn tab_name(tab: &TabInfo, panes: &PaneManifest, own_pane: Option<&PaneInfo>) -> String {
+    // Native defaults use a stable ID + 1, not the tab's current position.
+    // Render a shell/application title without renaming the actual tab, so a
+    // manual tab name and explicit pane titles retain native ownership.
+    if tab.name != format!("Tab #{}", tab.tab_id + 1) {
+        return plain(&tab.name);
+    }
+    // PaneUpdate focus is aggregated and cached. The client snapshot supplies
+    // its fresh native PaneInfo; tab-wide views require unambiguous focus.
+    let eligible = |pane: &PaneInfo| !pane.is_plugin && !pane.is_floating
+        && !pane.is_suppressed && !pane.exited;
+    let mut focused = panes.panes.get(&tab.position).into_iter().flatten()
+        .filter(|pane| eligible(pane) && pane.is_focused);
+    let pane = match own_pane {
+        Some(pane) => Some(pane).filter(|pane| eligible(pane)),
+        None => focused.next().filter(|_| focused.next().is_none()),
+    };
+    if let Some(pane) = pane {
+        let title = plain(&pane.title);
+        let generated = title.strip_prefix("Pane #")
+            .map(|number| !number.is_empty() && number.bytes().all(|b| b.is_ascii_digit()))
+            .unwrap_or(false);
+        if !title.is_empty() && !generated { return title; }
+    }
+    format!("Tab #{}", tab.position)
+}
+
 fn clipped(value: &str, budget: usize) -> String {
     if value.width() <= budget { return value.to_owned(); }
     let mut text = String::new();
@@ -242,7 +269,7 @@ impl ZellijPlugin for State {
             } else { mark(tab.attention.status, question) };
             let zoom = if tab.is_fullscreen_active { " Z" } else { "" };
             let name_budget = budget.saturating_sub(tab.position.to_string().len() + 5 + zoom.len());
-            let name = clipped(&plain(&tab.name), name_budget);
+            let name = clipped(&tab_name(tab, &self.panes, None), name_budget);
             let label = format!(" {}:{} {}{} ", tab.position, name, glyph, zoom);
             let start = used;
             print!("\x1b[48;2;{}m\x1b[38;2;{}m", if tab.active { "76;65;82" } else { "46;52;64" }, if tab.active && glyph.is_empty() { "180;142;173" } else { color });
