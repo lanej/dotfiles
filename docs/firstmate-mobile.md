@@ -23,6 +23,10 @@ Paseo 0.15.1 discovers models and MCP capabilities with a bare `firstmate rpc --
 
 If the private crew client exits, the launcher reattaches to the same existing session; a missing session ends the captain with a recovery error. A small parent holds the launch lease until its Pi child exits, including if the outer launcher is forcibly killed. Reconcile that surviving captain before restarting; a wrapper crash can interrupt its private viewport and requires operator recovery.
 
+The captain's RPC launch registers `ask_user_question`, which Paseo renders as native question cards. It supports one to four questions, each with two to four choices and a typed answer through Other. Answers return to the same captain turn; cancellation provides no approval. This extension is loaded only for the mobile captain, preserving crew harnesses. After installing it, reload/resume the same idle Firstmate agent to load the tool; refreshing models does not reload extensions. A disconnected app can recover a pending question while the host captain keeps running.
+
+Paseo 0.15.1 can retain a question card after Stop or rejected question arguments. Dismiss that card before continuing; this clears the pending request without supplying an answer. If the app cannot dismiss it, reload/resume the same idle Firstmate agent. A stopped or failed question never supplies approval, and reloading the captain preserves its conversation and existing crew.
+
 ## Existing peers on remote boats
 
 `config/peers.json` registers `dev` and `dev2` through their existing SSH aliases. Authenticate each boat once from a local terminal:
