@@ -25,6 +25,10 @@ zellij attach --create main
 
 Restart existing session servers to use the fixes: replacing the executable does not replace a running server. Keep `$HOME/.local/bin` before package-manager directories in `PATH`. The fork reports the pinned upstream version, `0.46.0`, and includes its matching bundled plugins.
 
+Run `zssh myhost` inside your local Zellij to open a tab named `myhost` and attach to or create the remote `main` session. Use `zssh myhost work` to choose another remote session. Each host needs Zellij installed and available on its SSH command path. The command uses Kitty's SSH kitten when available, otherwise ordinary SSH; outside Zellij it connects in the current terminal. Remote sessions remain available after disconnecting. With this configuration on both hosts, `Ctrl-f u` returns control to the local Zellij and `Ctrl-f i` enters the remote one.
+
+`Ctrl-f e` opens scrollback in Neovim with the terminal's original colors, including syntax colors emitted by commands. Neovim's Baleia plugin renders the ANSI colors and removes escape codes from the displayed text. Install the pinned plugin with `:Lazy restore` and restart Zellij to load the updated binding. The legacy configuration exports plain text, which receives shell syntax highlighting instead.
+
 On first launch, the bar asks for permission to read application state, run its local helpers, switch tabs or detach a client, write to pane input, configure each client's runtime paste binding, exchange messages with its clipboard receiver, and receive CLI messages from the client chooser. Focus that permission prompt with **Ctrl-f k**, then press **y**. Zellij remembers the grant for this plugin. The bar becomes unselectable after permission is granted. An existing installation may ask again when these permissions expand.
 
 Use `Ctrl-f d` to detach and run the same attach command to return. Closing the terminal also detaches. Existing tmux configuration and shell startup are unchanged. [Firstmate can explicitly select Zellij](firstmate.md) through `FM_BACKEND=zellij` or its backend configuration; its default remains tmux.
