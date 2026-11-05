@@ -16,8 +16,10 @@ zssh() {
 		return 2
 	fi
 	local host="$1" session="${2:-main}" remote_command quote="'\\''"
-	# WHY: SSH passes the remote command through the host's shell.
-	remote_command="zellij attach --create '${session//\'/$quote}'"
+	# WHY: SSH's noninteractive shell skips the profile that adds managed binaries.
+	remote_command='export PATH="$HOME/.local/bin:$PATH"; exec zellij attach --create '
+	# SSH passes this command through the host's shell; quote the session there.
+	remote_command+="'${session//\'/$quote}'"
 	if [ -z "${ZELLIJ:-}" ]; then
 		kssh -t "$host" "$remote_command"
 		return

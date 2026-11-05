@@ -41,19 +41,24 @@ import subprocess
 import sys
 
 assert sys.argv[1:3] == ["-t", "fixture-host"], sys.argv
-# SSH starts a remote shell outside the local Zellij session.
+# SSH starts a noninteractive remote shell, without the local session or PATH.
 env = dict(os.environ)
 env.pop("ZELLIJ", None)
+env["HOME"] = env.pop("REMOTE_HOME")
+env["PATH"] = os.defpath
 raise SystemExit(subprocess.run(["/bin/sh", "-c", sys.argv[3]], env=env).returncode)
 ''')
         ssh.chmod(0o755)
         home = work / "home"
-        (home / ".local/bin").mkdir(parents=True)
-        (home / ".local/bin/zellij-attach").symlink_to(ROOT / "bin/zellij-attach")
+        home.mkdir()
+        remote_home = work / "remote user's home"
+        (remote_home / ".local/bin").mkdir(parents=True)
+        (remote_home / ".local/bin/zellij").symlink_to(proxy)
         attached, tab = work / "attached", work / "tab"
         env = {
             **os.environ,
             "HOME": str(home),
+            "REMOTE_HOME": str(remote_home),
             "PATH": os.pathsep.join((str(work), str(ROOT / "bin"), os.environ["PATH"])),
             "ATTACHED": str(attached),
             "TAB": str(tab),
