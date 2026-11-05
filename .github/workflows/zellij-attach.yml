@@ -1,0 +1,23 @@
+name: Zellij launcher
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['bin/zellij-attach', 'sh/alias', 'scripts/test-zellij-attach.py', '.github/workflows/zellij-attach.yml']
+  push:
+    branches: [master]
+    paths: ['bin/zellij-attach', 'sh/alias', 'scripts/test-zellij-attach.py', '.github/workflows/zellij-attach.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python3 scripts/test-zellij-attach.py

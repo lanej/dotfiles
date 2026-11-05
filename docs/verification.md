@@ -23,6 +23,16 @@ a failure, or an unresolved interaction justifies it. After a fix, rerun checks 
 results the fix invalidated. State boundaries such as local-only or simulated validation;
 a local pass does not establish a CI or live-integration pass.
 
+## Selecting CI
+
+Feature workflows follow their implementation, configuration, and detector paths. A shared `Makefile` edit runs setup checks rather than every feature suite. When changing a feature's Make recipe, run its affected detector explicitly; feature workflows also support manual dispatch.
+
+Shell lint wiring has its own workflow. Small command wrappers should exercise the real wrapper with controlled external-command responses when that establishes their behavior; they do not need a terminal, editor, or native plugin build for argument selection alone. Such a check establishes the wrapper's decisions, not compatibility with the external program.
+
+Keep independently selectable features out of long acceptance journeys. For example, `make test-zellij-attach` checks launcher selection through the `zj` alias with the Zellij CLI simulated; `make test-zellij-sessions` checks real popup, detach, and shutdown interactions.
+
+Wait for checks relevant to the changed behavior before merging. Unrelated pending integration jobs do not automatically become merge gates; investigate failed checks and report unresolved limits. Required repository checks still apply.
+
 ## Acceptance checks and harness verification
 
 An acceptance check uses the real entrypoint a caller uses, asserts an observable

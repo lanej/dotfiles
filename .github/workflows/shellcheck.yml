@@ -1,0 +1,23 @@
+name: Shell checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/zellij-attach', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+  push:
+    branches: [master]
+    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/zellij-attach', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: bash scripts/make/shellcheck.sh "$PWD"
+      - run: bash -n sh/alias
+      - run: bash -n sh/functions

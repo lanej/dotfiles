@@ -1,10 +1,11 @@
 name: Worktree cleanup
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', '.github/workflows/worktree-cleanup.yml']
   push:
     branches: [master]
-    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', '.github/workflows/worktree-cleanup.yml']
 permissions:
   contents: read
 jobs:

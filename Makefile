@@ -345,6 +345,10 @@ claude-json-prune-schedule:
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
+.PHONY: test-zellij-attach
+test-zellij-attach:
+	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles

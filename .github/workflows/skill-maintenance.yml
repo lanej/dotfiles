@@ -1,6 +1,7 @@
 name: Skill maintenance
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '**/SKILL.md'
@@ -11,7 +12,6 @@ on:
       - '**/CLAUDE.md'
       - '**/GEMINI.md'
       - 'claude/CONSTITUTION.md'
-      - 'Makefile'
       - 'claude/commands/**'
       - 'ai/agents/**'
       - 'claude/evals/skill-maintenance/check_size.sh'
@@ -30,7 +30,6 @@ on:
       - '**/CLAUDE.md'
       - '**/GEMINI.md'
       - 'claude/CONSTITUTION.md'
-      - 'Makefile'
       - 'claude/commands/**'
       - 'ai/agents/**'
       - 'claude/evals/skill-maintenance/check_size.sh'
