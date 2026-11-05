@@ -1,11 +1,12 @@
 name: Firstmate primary selection
 
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', 'Makefile', '.github/workflows/firstmate-primary.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', '.github/workflows/firstmate-primary.yml']
   push:
     branches: [master]
-    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', 'Makefile', '.github/workflows/firstmate-primary.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'scripts/make/config.sh', 'scripts/test-firstmate-primary.py', '.github/workflows/firstmate-primary.yml']
 
 permissions:
   contents: read

@@ -1,10 +1,12 @@
 name: Zellij workflow
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - '!bin/zellij-attach'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -17,6 +19,7 @@ on:
       - 'firstmate/**'
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
+      - '!scripts/test-zellij-attach.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
@@ -30,13 +33,13 @@ on:
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
-      - 'Makefile'
       - '.github/workflows/zellij.yml'
   push:
     branches: [master]
     paths:
       - 'zellij/**'
       - 'bin/zellij-*'
+      - '!bin/zellij-attach'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -49,6 +52,7 @@ on:
       - 'firstmate/**'
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
+      - '!scripts/test-zellij-attach.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
@@ -62,7 +66,6 @@ on:
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'bootstrap.sh'
-      - 'Makefile'
       - '.github/workflows/zellij.yml'
 
 permissions:

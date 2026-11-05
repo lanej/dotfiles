@@ -4,6 +4,16 @@ Choose checks for the behavior and risks being changed. Follow explicit reposito
 requirements; routine prose and configuration edits usually need diff review and
 applicable syntax or structural checks. Software construction follows Builder.
 
+## Proportionate verification
+
+Start with the smallest check that could contradict the intended behavior. A simple alias, argument selector, or configuration edit should not require a full application environment merely because it shares a directory or Makefile with one. Retain stronger protection for work preservation, destructive operations, installation, concurrent state, and real terminal interactions.
+
+Prefer improving an existing focused check. Add independent checks when features need independent execution or failure isolation; the number of tests is not the goal. Cover meaningful failure risks without enumerating every branch. A failed setup or unrelated assertion must not be mistaken for evidence about behavior the test never reached.
+
+Use controlled external responses to verify local decisions, while exercising the actual caller entrypoint. Use a real dependency when establishing compatibility or behavior at that boundary. State that distinction clearly. Choose cross-platform runs for actual OS differences, and avoid making routine feedback depend on credentials, network downloads, or native builds unnecessarily.
+
+Run the affected check once, then stop when it passes unless relevant changes, a failure, or a concrete unresolved interaction require more evidence. Consider execution time, setup cost, flakiness, and the ability to diagnose failures when retaining or expanding a test.
+
 ## Verification Rigor Tiers
 
 These names classify evidence and `Detected-By` trailers. They do not require every
@@ -23,14 +33,23 @@ a failure, or an unresolved interaction justifies it. After a fix, rerun checks 
 results the fix invalidated. State boundaries such as local-only or simulated validation;
 a local pass does not establish a CI or live-integration pass.
 
+## Selecting CI
+
+Feature workflows follow their implementation, configuration, and detector paths. A shared `Makefile` edit runs setup checks rather than every feature suite. When changing a feature's Make recipe, run its affected detector explicitly; feature workflows also support manual dispatch.
+
+Shell lint wiring has its own workflow. Small command wrappers should exercise the real wrapper with controlled external-command responses when that establishes their behavior; they do not need a terminal, editor, or native plugin build for argument selection alone. Such a check establishes the wrapper's decisions, not compatibility with the external program.
+
+Keep independently selectable features out of long acceptance journeys. For example, `make test-zellij-attach` checks launcher selection through the `zj` alias with the Zellij CLI simulated; `make test-zellij-sessions` checks real popup, detach, and shutdown interactions.
+
+Wait for checks relevant to the changed behavior before merging. Unrelated pending integration jobs do not automatically become merge gates; investigate failed checks and report unresolved limits. Required repository checks still apply.
+
 ## Acceptance checks and harness verification
 
 An acceptance check uses the real entrypoint a caller uses, asserts an observable
 outcome, and fails if the behavior it protects is deleted. An internal helper call or
 mock invocation count alone does not establish that outcome.
 
-Keep one regression detector per user-visible feature. A helper, input variant, or
-failure mode is not a separate feature. Improve the existing detector for a regression.
+Keep focused regression protection for each user-visible feature. Improve the existing detector for a regression, and keep independently selectable features independently runnable. Neither a helper nor an input variant automatically needs another test; neither a test-count target nor a shared fixture justifies combining unrelated features.
 
 When wiring a new harness, establish sensitivity once:
 

@@ -15,6 +15,7 @@ shellcheck -x \
     "$dotfiles/scripts/install-zellij" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/firstmate" \
+    "$dotfiles/bin/zellij-attach" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/git-ssh" \
     "$dotfiles/bin/sync-codex-mcp-servers"

@@ -129,7 +129,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
         bind "p" {
             // After visible-bar consent, the background clipboard receiver
             // replaces this marker with a client-specific MessagePluginId.
@@ -197,7 +197,7 @@ keybinds clear-defaults=true {
         bind "[" { ScrollToPreviousPrompt; }
         bind "]" { ScrollToNextPrompt; }
         bind "/" "s" { SwitchToMode "EnterSearch"; SearchInput 0; }
-        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
         bind "m" { SelectCommandAtScrollPosition; }
         bind "y" { Copy; ScrollToBottom; SwitchToMode "Locked"; }
         bind "c" { CopyLastCommandOutput; ScrollToBottom; SwitchToMode "Locked"; }
@@ -218,7 +218,7 @@ keybinds clear-defaults=true {
         bind "c" { SearchToggleOption "CaseSensitivity"; }
         bind "w" { SearchToggleOption "Wrap"; }
         bind "o" { SearchToggleOption "WholeWord"; }
-        bind "e" { EditScrollback; SwitchToMode "Locked"; }
+        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
         bind "Esc" "Enter" "q" "Ctrl c" { ScrollToBottom; SwitchToMode "Locked"; }
     }
 }

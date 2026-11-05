@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Keep a forwarded SSH socket scoped to one Zellij session."""
+from pathlib import Path
+import hashlib
+import os
+import re
+import sqlite3
+import subprocess
+import stat
+import sys
+import tempfile
+
+
+def owned_socket(path):
+    try:
+        info = path.stat()
+        return stat.S_ISSOCK(info.st_mode) and info.st_uid == os.geteuid()
+    except OSError:
+        return False
+
+
+def private_directory(path, create=False):
+    if create:
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+    info = path.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid()
+            or info.st_mode & 0o022):
+        raise ValueError(f"refusing unsafe directory: {path}")
+
+
+def session_identity(session):
+    # The pinned runtime keeps this ID across rename; names can be reused.
+    # Match the same read-only index contract as zellij-shutdown.
+    result = subprocess.run(["zellij", "setup", "--check"], capture_output=True,
+                            text=True, check=True, timeout=5)
+    cache = next((line.removeprefix("[CACHE DIR]: ") for line in result.stdout.splitlines()
+                  if line.startswith("[CACHE DIR]: ")), "")
+    if not cache or not Path(cache).is_absolute():
+        raise ValueError("cannot locate the pinned Zellij session index")
+    index = Path(cache) / "contract_version_1" / "session_index.sqlite"
+    if not index.exists():
+        return None
+    with sqlite3.connect(index.as_uri() + "?mode=ro", uri=True, timeout=2) as connection:
+        row = connection.execute(
+            "SELECT COALESCE(id, name) FROM sessions WHERE name = ?", (session,),
+        ).fetchone()
+    return (str(index), row[0]) if row else None
+
+
+def main():
+    if len(sys.argv) != 3 or sys.argv[1] not in ("publish", "init") or not sys.argv[2]:
+        raise ValueError("usage: zellij-agent publish|init SESSION")
+    operation, session = sys.argv[1:]
+    source = os.environ.get("SSH_AUTH_SOCK")
+    # A login without forwarding must not inherit another session's agent.
+    if not os.environ.get("SSH_CONNECTION") or not source:
+        return
+    source = Path(source)
+    directory = Path.home() / ".ssh" / "dotfiles-agent"
+    # A surviving pane already holds its immutable link, even after rename.
+    if (operation == "init" and source.parent == directory
+            and re.fullmatch(r"zellij-[0-9a-f]{32}\.sock", source.name)
+            and source.is_symlink()):
+        private_directory(directory.parent)
+        private_directory(directory)
+        if source.exists() and not owned_socket(source):
+            raise ValueError(f"refusing unsafe agent target: {source}")
+        print(source)
+        return
+    identity = session_identity(session)
+    if identity is None:
+        # New sessions register their ID before the first pane starts. Leave the
+        # raw socket for that first shell to initialize, without a name-based link.
+        if operation == "init":
+            raise ValueError("session identity unavailable; automatic agent recovery requires the pinned Zellij runtime")
+        return
+    name = hashlib.sha256("\0".join(identity).encode()).hexdigest()[:32]
+    link = directory / f"zellij-{name}.sock"
+    can_publish = source.is_absolute() and not source.is_symlink() and owned_socket(source)
+    if not directory.exists() and not can_publish:
+        return
+    private_directory(directory.parent, create=can_publish)
+    private_directory(directory, create=can_publish)
+    if can_publish:
+        directory.chmod(0o700)
+    if link.is_symlink():
+        if operation == "init":
+            if link.exists() and not owned_socket(link):
+                raise ValueError(f"refusing unsafe agent target: {link}")
+            print(link)
+            return
+    elif link.exists():
+        raise ValueError(f"refusing unmanaged socket path: {link}")
+    if can_publish:
+        # Publishing only happens in the attaching client. New panes may initialize
+        # a new session, but can never overwrite its existing selection.
+        with tempfile.TemporaryDirectory(prefix=".refresh-", dir=directory) as temporary:
+            candidate = Path(temporary) / "agent.sock"
+            candidate.symlink_to(source)
+            if operation == "init":
+                try:
+                    os.symlink(source, link)
+                except FileExistsError:
+                    pass
+            else:
+                os.replace(candidate, link)
+        if owned_socket(link):
+            print(link)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
+        print(f"zellij-agent: {error}", file=sys.stderr)
+        sys.exit(1)

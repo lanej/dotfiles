@@ -110,6 +110,10 @@ firstmate-mobile-config: firstmate-config pi-config
 test-firstmate-github:
 	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
 
+.PHONY: test-firstmate-peers
+test-firstmate-peers:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
+
 .PHONY: test-firstmate-primary
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
@@ -121,6 +125,11 @@ dev:
 shell:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh: zsh-config zsh-plugins
+.PHONY: zsh-completions test-zsh-completions
+zsh-completions:
+	@bash "$(MAKE_SCRIPTS)/completions.sh" "$(HOME)"
+test-zsh-completions:
+	@python3 "$(DOTFILES)/scripts/test-zsh-completions.py"
 zsh-config: shell
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh-plugins: zsh-config
@@ -196,6 +205,8 @@ dev-cache-schedule: dev-cache-config FORCE
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
+test-tmp-cleanup: FORCE
+	@python3 "$(DOTFILES)/scripts/test-tmp-cleanup.py"
 test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
@@ -344,6 +355,10 @@ claude-json-prune-schedule:
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
+
+.PHONY: test-zellij-attach
+test-zellij-attach:
+	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
 
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"

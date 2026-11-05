@@ -7,6 +7,15 @@ shift 2
 export FM_HOME="$feedback_home"
 code=${FIRSTMATE_SOURCE:-$feedback_home}
 case "$action" in
+    primary-available)
+        # shellcheck source=/dev/null
+        source "$code/bin/fm-session-lock-lib.sh"
+        fm_session_lock_inspect "$feedback_home/state"
+        case "$FM_LOCK_INSPECT_STATE" in
+            free|stale) ;;
+            *) printf '%s\n' 'An existing Firstmate captain owns this home, or its identity is unreadable. Reconcile it and resume the recorded Paseo conversation before launching.' >&2; exit 1 ;;
+        esac
+        ;;
     owns-primary)
         # shellcheck source=/dev/null
         source "$code/bin/fm-session-lock-lib.sh"
@@ -17,6 +26,12 @@ case "$action" in
         ;;
     task-add)
         "$code/bin/fm-tasks-axi.sh" add "$@"
+        ;;
+    task-board)
+        "$code/bin/fm-bearings-snapshot.sh" --json "$@"
+        ;;
+    task-show)
+        "$code/bin/fm-tasks-axi.sh" show "$1" --full
         ;;
     snapshot)
         snapshot=$(mktemp)

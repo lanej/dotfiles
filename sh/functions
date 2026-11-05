@@ -10,6 +10,28 @@ kssh() {
 	fi
 }
 
+zssh() {
+	if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || [ -z "$1" ] || [[ "$1" == -* ]]; then
+		printf '%s\n' 'Usage: zssh host [session]' >&2
+		return 2
+	fi
+	local host="$1" session="${2:-main}" remote_command quote="'\\''"
+	# WHY: Use the remote login environment, including PATH configured in interactive rc files.
+	remote_command='exec "$SHELL" -lic '\''exec "$HOME/.local/bin/zellij-attach" "$1"'\'' zssh '
+	# Pass the session as an argument, not code evaluated by the login shell.
+	remote_command+="'${session//\'/$quote}'"
+	if [ -z "${ZELLIJ:-}" ]; then
+		kssh -t "$host" "$remote_command"
+		return
+	fi
+	local -a ssh_command
+	ssh_command=(ssh)
+	if [ -n "${KITTY_WINDOW_ID:-}" ] && command -v kitten >/dev/null 2>&1; then
+		ssh_command=(kitten ssh)
+	fi
+	command zellij action new-tab --name "$host" -- "${ssh_command[@]}" -t "$host" "$remote_command"
+}
+
 # Smart FZF preview window positioning based on terminal width
 # Returns preview window configuration string for fzf --preview-window
 # Wide terminals (>=140 cols): right side preview at 60%

@@ -7,7 +7,7 @@
 # This path is documented by 1Password and matches the IdentityAgent config in ~/.ssh/config
 ONEPASSWORD_SSH_AGENT="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# WHY: A stable link lets surviving tmux/Zellij panes follow SSH reconnects.
+# WHY: Refresh mux panes without replacing a local 1Password agent.
 if [ -n "$SSH_CONNECTION" ]; then
     if [ -r "$HOME/.local/bin/fix-ssh" ]; then
         # shellcheck disable=SC1091

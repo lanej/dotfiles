@@ -1,5 +1,5 @@
 #!/bin/sh
-if [ -r "$HOME/.local/bin/fix-ssh" ] && [ -n "$SSH_CONNECTION" ] && [ ! -S "$SSH_AUTH_SOCK" ]; then
+if [ -r "$HOME/.local/bin/fix-ssh" ] && { [ -n "$SSH_CONNECTION" ] || [ -n "$TMUX" ]; } && [ ! -S "$SSH_AUTH_SOCK" ]; then
 	# shellcheck disable=SC1091
 	. "$HOME/.local/bin/fix-ssh"
 fi

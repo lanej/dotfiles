@@ -44,6 +44,10 @@ The custom fzf integration requires both `fzf` and `fd`; it activates in a new
 shell once they are installed. Failed integration generators do not replace
 working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
 
+`make` / `make configure` (with the shell set selected), `make install`, and `make zsh-config` generate Zsh completions for supported tools already on `PATH`, including `epf`, uv, Rust, GitHub CLI, Codex, Zellij, Atuin, and the shell utilities. `make zsh-completions` refreshes just those files without configuring plugins or installing software. The tool-specific commands live in [`scripts/make/completions.sh`](scripts/make/completions.sh); tools without generators continue using their packaged completions or existing shell integrations.
+
+Generated files go to `~/.zsh/completions/_<tool>`. Missing tools are skipped; failed or empty generators report failure and keep the last working file. Files and symlinks created by hand are preserved. To let dotfiles manage one, move that file aside and rerun setup. Unchanged output preserves the file and completion cache. Changed output invalidates the dump for the next shell. Run `recomp` to regenerate and reload completions in the current Zsh, including files added manually with `epf completions zsh > ~/.zsh/completions/_epf`. It no longer runs plugin setup. `make test-zsh-completions` exercises this workflow.
+
 `make benchmark-zsh-startup` measures the current home's interactive login-shell
 startup and exit over 30 runs after three warmups. It reports median and p95
 wall time for `zsh -d -i -l -c exit`, including process launch and logout,

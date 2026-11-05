@@ -27,6 +27,9 @@ case "$target" in
         if [[ ! -e "$firstmate_home/config/github-feedback.json" && ! -L "$firstmate_home/config/github-feedback.json" ]]; then
             cp "$dotfiles/firstmate/github-feedback.json" "$firstmate_home/config/github-feedback.json"
         fi
+        if [[ ! -e "$firstmate_home/config/peers.json" && ! -L "$firstmate_home/config/peers.json" ]]; then
+            cp "$dotfiles/firstmate/peers.json" "$firstmate_home/config/peers.json"
+        fi
         FIRSTMATE_HOME="$firstmate_home" node "$dotfiles/firstmate/github-feedback.mjs" configure-paseo
         # Remove only stale links that this checkout's retired dispatcher owned.
         for entry in bugfix-dispatcher-launch bugfix-worker; do
@@ -110,6 +113,7 @@ case "$target" in
         ln -fns "${dotfiles}/zsh/zsh-github-copilot.plugin.zsh" "${setup_home}/.local/share/zsh/zsh-github-copilot.zsh"
         ln -fs "${dotfiles}/zsh/tmux-auto-title.zsh" "${setup_home}/.local/share/zsh/tmux-auto-title.zsh"
         ln -fs "${dotfiles}/zsh/zellij-navigation.zsh" "${setup_home}/.local/share/zsh/zellij-navigation.zsh"
+        bash "$make_scripts/completions.sh" "$setup_home"
         ;;
     zsh-plugins)
         check_command "git"

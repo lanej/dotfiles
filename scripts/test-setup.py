@@ -34,7 +34,7 @@ def main():
             local_guidance.write_text("Keep fixture-local Codex preferences.\n")
         # Only base utilities are available; optional tools cannot leak in from
         # the developer machine or CI runner. Network boundaries stay offline.
-        for name in ("awk", "basename", "bash", "cat", "cp", "dirname", "find",
+        for name in ("awk", "basename", "bash", "cat", "cmp", "cp", "dirname", "find",
                      "grep", "head", "ln", "make", "mkdir", "mktemp", "mv",
                      "pwd", "readlink", "rm", "sed", "sort", "tail", "touch", "tr",
                      "uname", "wc"):
@@ -105,6 +105,13 @@ def main():
         assert machine_config.read_bytes() == local_config
 
         (executables / "python3").symlink_to(sys.executable)
+        # Plain make must also configure completions for installed tools.
+        epf = executables / "epf"
+        epf.write_text('#!/bin/sh\n[ "$*" = "completions zsh" ] || exit 7\n'
+                       "printf '#compdef epf\\n# Installed epf completion\\n'\n")
+        epf.chmod(0o755)
+        completion_cache = home / ".zcompdump"
+        completion_cache.write_text("stale completion cache")
         # NOTE: Plain make must apply the chosen bundles to that same baseline.
         configure = command
         selected_preview = subprocess.run([*configure, "-n"], cwd=repo, env=env,
@@ -115,6 +122,8 @@ def main():
         selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
+        assert "Installed epf completion" in (home / ".zsh/completions/_epf").read_text()
+        assert not completion_cache.exists(), "default setup left a stale completion cache"
         assert not (home / ".config/nvim").exists()
         assert not (home / ".tmux.conf").exists()
         assert not (home / "broker-installed").exists()

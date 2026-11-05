@@ -1,10 +1,11 @@
 name: Codex worktree hook
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', 'Makefile', '.github/workflows/codex-worktree-hook.yml']
+    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', '.github/workflows/codex-worktree-hook.yml']
   push:
     branches: [master]
-    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', 'Makefile', '.github/workflows/codex-worktree-hook.yml']
+    paths: ['bin/codex-worktree-config', 'scripts/test-codex-worktree-hook.py', '.github/workflows/codex-worktree-hook.yml']
 permissions:
   contents: read
 jobs:
