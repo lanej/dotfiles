@@ -29,12 +29,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Install native build tools on Linux
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
-      - name: Install native build tools on macOS
-        if: runner.os == 'macOS'
-        run: brew install cmake pkg-config openssl@3
       - name: Restore native Zellij build
         uses: actions/cache/restore@v4
         id: zellij_cache
@@ -45,10 +39,30 @@ jobs:
             ~/.cache/dotfiles/zellij
           key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
           restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Reuse exact pinned binary
+        id: cached_binary
+        if: steps.zellij_cache.outputs.cache-hit == 'true'
+        run: |
+          host=$(rustc -vV | sed -n 's/^host: //p')
+          cached="$HOME/.cache/dotfiles/zellij/target/$host/release/zellij"
+          if [ -n "$host" ] && [ -x "$cached" ]; then
+            mkdir -p "$HOME/.local/bin"
+            cp "$cached" "$HOME/.local/bin/zellij"
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux' && steps.cached_binary.outputs.ready != 'true'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS' && steps.cached_binary.outputs.ready != 'true'
+        run: brew install cmake pkg-config openssl@3
       - name: Install existing pinned Zellij runtime
         id: zellij_install
+        env:
+          CACHED_BINARY: ${{ steps.cached_binary.outputs.ready }}
         run: |
-          bash scripts/install-zellij
+          if [ "$CACHED_BINARY" != true ]; then bash scripts/install-zellij; fi
+          "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Save native Zellij build
         uses: actions/cache/save@v4

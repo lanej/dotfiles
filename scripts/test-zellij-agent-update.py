@@ -89,7 +89,14 @@ exec "$PROBE_ZELLIJ" attach "$1"
             path.chmod(0o700)
         config = home / ".config/zellij"
         (config / "layouts").mkdir(parents=True)
-        (config / "layouts/probe.kdl").write_text('layout { pane; }\n')
+        (config / "layouts/probe.kdl").write_text(
+            'layout {\n'
+            '    pane split_direction="vertical" {\n'
+            '        pane\n'
+            '        pane focus=true\n'
+            '    }\n'
+            '}\n'
+        )
         (config / "config.kdl").write_text(
             f'default_shell {json.dumps(str(shell))}\n'
             'default_layout "probe"\n'
@@ -143,7 +150,9 @@ exec "$PROBE_ZELLIJ" attach "$1"
             keys = ("id", "tab_id", "is_plugin", "is_floating", "is_suppressed", "is_focused",
                     "is_fullscreen", "pane_x", "pane_y", "pane_columns", "pane_rows")
             return (sorted(tuple(p.get(key) for key in keys) for p in panes),
-                    sorted((t["tab_id"], t["name"], t["active"]) for t in tabs))
+                    sorted((t["tab_id"], t["name"], t["active"],
+                            t["are_floating_panes_visible"])
+                           for t in tabs))
 
         def start_agent(name):
             path = temporary / name
@@ -165,6 +174,27 @@ exec "$PROBE_ZELLIJ" attach "$1"
             clients.append(client)
             client.until("native shell is ready", lambda: b"agent-probe-ready> " in client.output)
             return client
+
+        def prepare_tiled_workspace(client):
+            # Establish the fixture only when creating a fresh session. Never
+            # repair focus/layer state after an updater or after reconnecting.
+            panes, tabs = client.panes(), client.tabs()
+            print(f"Initial workspace {client.name}: " + json.dumps({"panes": panes, "tabs": tabs}), flush=True)
+            tiled = [pane for pane in panes if not pane["is_plugin"] and not pane["is_floating"]]
+            assert len(tiled) == 2, "Probe layout did not create two tiled shell panes"
+            if any(tab["active"] and tab["are_floating_panes_visible"] for tab in tabs):
+                client.action("toggle-floating-panes")
+            target = max(tiled, key=lambda pane: pane["pane_x"])
+            client.action("focus-pane-id", f"terminal_{target['id']}")
+            client.until("fixture has tiled focus and ready shells", lambda:
+                         any(pane["id"] == target["id"] and pane["is_focused"]
+                             for pane in client.terminals())
+                         and not any(tab["are_floating_panes_visible"] for tab in client.tabs())
+                         and all("agent-probe-ready> " in client.action(
+                             "dump-screen", "--pane-id", f"terminal_{pane['id']}") for pane in tiled))
+            print(f"Prepared workspace {client.name}: " + json.dumps({
+                "panes": client.panes(), "tabs": client.tabs(),
+            }), flush=True)
 
         def detach(client):
             client.send(b"\x06")
@@ -202,9 +232,8 @@ exec "$PROBE_ZELLIJ" attach "$1"
         try:
             raw1, raw2, raw3 = (start_agent(f"agent-{number}.sock") for number in (1, 2, 3))
             first = attach("probe-original", raw1)
+            prepare_tiled_workspace(first)
             server1, stable1 = identity()
-            first.action("new-pane", "--direction", "right", "--", str(shell))
-            first.until("two original panes", lambda: len(first.terminals()) == 2)
             first.send(b"probe_token=survived; printf '%s\\n' \"$SSH_AUTH_SOCK\" > \"$HOME/retained-socket\"\r")
             first.until("pane records its stable socket", lambda: (home / "retained-socket").exists())
             assert (home / "retained-socket").read_text().strip() == str(stable1)
@@ -230,6 +259,7 @@ exec "$PROBE_ZELLIJ" attach "$1"
             first.name = "probe-renamed"
             names.append(first.name)
             replacement = attach("probe-original", raw2)
+            prepare_tiled_workspace(replacement)
             server2, stable2 = identity()
             assert server2 != server1 and stable2 != stable1, "Reused visible name inherited the renamed server identity"
             assert stable1.resolve() == Path(raw3).resolve()
