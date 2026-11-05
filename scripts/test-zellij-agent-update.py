@@ -11,6 +11,7 @@ build, repository shell startup, or Python helper inside a pane is required.
 
 import json
 import os
+import re
 from pathlib import Path
 import runpy
 import shlex
@@ -193,11 +194,14 @@ exec /bin/sh -i
             }), flush=True)
 
         def detach(client):
-            client.send(b"\x06")
-            client.until("all clients detached", lambda:
-                         not action(client.name, "list-clients").strip().splitlines()[1:])
+            # Close the transport like an SSH disconnect, without depending on
+            # first-run UI/keybinding state or sending keys into a shell.
             client.close()
             clients.remove(client)
+            deadline = time.monotonic() + 5
+            while re.search(r"^\s*\d+\s", action(client.name, "list-clients"), re.MULTILINE):
+                assert time.monotonic() < deadline, "Client remained connected after closing its PTY"
+                time.sleep(0.02)
 
         def identity():
             parent, server, stable = (home / "parent-identity").read_text().splitlines()
