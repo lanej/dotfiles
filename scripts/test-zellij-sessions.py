@@ -220,6 +220,10 @@ def detach_workflow(clients):
 
 
 def popup_workflow(first, second, home):
+    def popup_panes(terminal):
+        # Native metadata also includes the suppressed built-in bars plugin.
+        return [pane for pane in terminal.panes(POPUP) if not pane["is_plugin"]]
+
     first.prefix(b"r")
     first.send(b"popup-origin\r")
     first.until("distinct host tab label", lambda: first.tabs()[0]["name"] == "popup-origin")
@@ -230,18 +234,18 @@ def popup_workflow(first, second, home):
     first.until("record scratch shell PID", lambda: (home / "popup-pid").exists())
     pid = (home / "popup-pid").read_text().strip()
     expected = f"live-memory|{pid}|{home / 'scratch'}"
-    popup_ids = {p["id"] for p in first.panes(POPUP) if not p["is_plugin"]}
+    popup_ids = {p["id"] for p in popup_panes(first)}
     assert len(popup_ids) == 1
     original = next(iter(popup_ids))
     first.prefix(b"v")
     first.until("popup splits into two tiled panes", lambda:
-                len(first.panes(POPUP)) == 2)
-    left, right = sorted(first.panes(POPUP), key=lambda pane: pane["pane_x"])
+                len(popup_panes(first)) == 2)
+    left, right = sorted(popup_panes(first), key=lambda pane: pane["pane_x"])
     assert left["id"] == original and left["pane_x"] < right["pane_x"]
     assert not left["is_floating"] and not right["is_floating"]
     first.until("split shell is ready", lambda:
-                "zellij-ready> " in first.action("dump-screen", "--pane-id", str(right["id"]),
-                                               session=POPUP))
+                "zellij-ready>" in first.action("dump-screen", "--pane-id", str(right["id"]),
+                                              session=POPUP))
     first.send(b"popup_token=split-memory; printf '%s|%s|%s\\n' \"$popup_token\" \"$$\" \"$PWD\" "
                b"> \"$HOME/popup-split-state\"\r")
     first.until("split inherits scratch cwd", lambda:
@@ -251,17 +255,17 @@ def popup_workflow(first, second, home):
     assert split_expected.split("|")[1] != pid
     assert split_expected.split("|")[2] == str(home / "scratch")
     first.prefix(b"s")
-    first.until("popup also splits downward", lambda: len(first.panes(POPUP)) == 3)
-    bottom = next(pane for pane in first.panes(POPUP)
+    first.until("popup also splits downward", lambda: len(popup_panes(first)) == 3)
+    bottom = next(pane for pane in popup_panes(first)
                   if pane["id"] not in (original, right["id"]))
     assert bottom["pane_y"] > right["pane_y"] and bottom["pane_x"] == right["pane_x"]
     first.prefix(b"x")
     popup_ids.add(right["id"])
     first.until("close removes only the temporary popup split", lambda:
-                {pane["id"] for pane in first.panes(POPUP)} == popup_ids)
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
     first.prefix(b"h")
     first.until("popup navigation returns to the original shell", lambda:
-                next(pane for pane in first.panes(POPUP) if pane["is_focused"])["id"] == original)
+                next(pane for pane in popup_panes(first) if pane["is_focused"])["id"] == original)
     rendered = len(first.output)
     first.prefix(b"u")
     # FocusHostSession queues a frame; its completion is not the host's
@@ -285,14 +289,17 @@ def popup_workflow(first, second, home):
     hide_popup(first)
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")
-    assert {p["id"] for p in second.panes(POPUP) if not p["is_plugin"]} == popup_ids
+    assert {p["id"] for p in popup_panes(second)} == popup_ids
     second.prefix(b"l")
+    # Native focus metadata can retain other client focus; the following shell
+    # proof establishes which live pane actually receives this client's keys.
     second.until("reopened popup can focus its surviving split", lambda:
-                 next(pane for pane in second.panes(POPUP) if pane["is_focused"])["id"] == right["id"])
+                 any(pane["id"] == right["id"] and pane["is_focused"]
+                     for pane in popup_panes(second)))
     prove_popup(second, home, split_expected, "popup-split-other-session")
     second.prefix(b"x")
     second.until("closing a surviving split keeps the original shell", lambda:
-                 {pane["id"] for pane in second.panes(POPUP)} == {original})
+                 {pane["id"] for pane in popup_panes(second)} == {original})
     prove_popup(second, home, expected, "popup-after-split-close")
     hide_popup(second)
     print("Popup: native splits and focus work inside the floating view; both shells retain "
