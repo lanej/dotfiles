@@ -76,6 +76,9 @@ keybinds clear-defaults=true {
         bind "l" "Right" { MoveFocus "Right"; SwitchToMode "Locked"; }
         bind "Tab" "o" { FocusNextPane; SwitchToMode "Locked"; }
         bind ";" { FocusLastPane; SwitchToMode "Locked"; }
+        bind "=" { Run "zellij-balance" "equalize" { background true; }; SwitchToMode "Locked"; }
+        bind "g" { Run "zellij-balance" "golden" { background true; }; SwitchToMode "Locked"; }
+        bind "G" { Run "zellij-balance" "golden-force" { background true; }; SwitchToMode "Locked"; }
         bind "s" "\"" { NewPane "Down"; SwitchToMode "Locked"; }
         bind "v" "%" { NewPane "Right"; SwitchToMode "Locked"; }
         bind "c" { NewTab; SwitchToMode "Locked"; }

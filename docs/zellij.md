@@ -89,6 +89,8 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `J`, `K` | Move the pane down/up |
 | `<`, `>`, `+`, `-` | Resize toward left/right/up/down |
 | `Ctrl-r` | Enter repeatable resize mode |
+| `=` | Balance the invoking pane’s aligned row or column group |
+| `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
 | `F` | Show/hide the current tab's other floating panes |
@@ -104,6 +106,10 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `/` | Search the pane's scrollback |
 
 `Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
+
+`Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
+
+Native resizing moves boundaries in roughly 5% increments, so these controls choose a reachable approximation, not tmux’s cell-exact dimensions. For example, three panes in a 120-column terminal with widths 60/30/30 balance to 42/36/42. Only native Decrease actions are used: expanding a pane shrinks its neighbor at the shared edge, avoiding native Increase’s direction-inversion fallback. A blocked edge leaves geometry unchanged. A worse overshoot is reversed only after checking the expected geometry; the 180-column cap takes priority over distance. Helpers target captured pane IDs, serialize per session/tab, and stop on unexpected geometry, native failures, 32 resize calls, or a 20-second overall budget. Manual layout changes are not atomic with helper queries. A crashed helper can leave a lock under `${XDG_CACHE_HOME:-~/.cache}/zellij/balance`; a notice identifies it. Remove that empty lock directory only after confirming no balancing helper is running. The older configuration retains its existing keys because it lacks the required background action. jq is installed with the Zellij tool through normal `make install`; the helper never installs dependencies itself.
 
 **Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
 
@@ -143,9 +149,9 @@ The background plugin uses the focused pane and foreground command for its own a
 
 Use **Ctrl-f Space** or **Ctrl-f Ctrl-o** to cycle to the **equalize** layout. It places one full-height pane in the left half and divides the right half into equal rows for the remaining panes. An indivisible column or row goes to one pane, so dimensions can differ by one cell; the pane title and separator still consume their normal space. This is a native layout change: pane positions can change, while the original pane IDs, focused terminal, shell processes, and scrollback survive. Percentage sizing continues to fit when the outer terminal changes size.
 
-Start a new session with the updated `tmux` layout after `make zellij`; existing sessions retain their loaded swap layouts. The preset uses the same one-row top bar as columns, rows, and stacked layouts. Prefix `=` remains unbound: stable Zellij has no direct selection of an arbitrary named swap layout, and a helper that cycles while searching could change a custom tab before discovering that its layout is unavailable. The native cycle makes each layout change explicit.
+Start a new session with the updated `tmux` layout after `make zellij`; existing sessions retain their loaded swap layouts. The preset uses the same one-row top bar as columns, rows, and stacked layouts. The native cycle explicitly rearranges panes; the pinned configuration’s `Ctrl-f =` helper instead balances an existing aligned group with approximate resize steps. The legacy configuration keeps the native cycle and leaves `=` unbound.
 
-**Golden-ratio sizing and exact three-cell resizing remain unavailable.** The tmux policy skips an ordinary `g` when the left pane is already at least 120 columns; forced `G` uses `floor(window width × 0.382)`, capped at 180 columns, with no 120-column floor. Stable Zellij's native resize action uses percentage steps and exposes no cell-count or timed-repeat option. Layout overrides match original launch metadata, which can create extra shells for existing panes that do not match; fixed-cell layouts also fail to adapt reliably when the outer window becomes narrower. Those overrides are not installed as a substitute. Prefix `g/G` remain unbound, and Ctrl-f Ctrl-r remains an explicit mode that ends with Enter or Esc, rather than tmux's timed repeat window.
+**Exact cell sizing and tmux’s timed resize-repeat window remain unavailable.** The pinned configuration’s `g/G` helper implements the golden-ratio skip and cap policy using nearest-reachable native percentage steps, as described above. Legacy `g/G` remain unbound. Layout overrides can create extra shells when launch metadata does not match, so the helper does not use them. Ctrl-f Ctrl-r remains an explicit resize mode that ends with Enter or Esc.
 
 Upstream implementation references: [native resize step](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/panes/tiled_panes/tiled_pane_grid.rs), [layout reuse and overrides](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/tab/layout_applier.rs), and [CLI actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs).
 
@@ -201,8 +207,8 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Vi visual/rectangle copy mode and shared paste buffers | Neovim provides keyboard selection. `Ctrl-f p` uses the session's private Neovim-yank buffer; the terminal shortcut pastes the system clipboard. |
 | Zero-based windows | Tab labels, picker labels, and `0`–`9` keys are zero-based; Zellij's underlying CLI positions remain one-based. |
 | Three-cell resizing and timed repeat bindings | Native Zellij resize steps; an explicit repeatable mode under prefix+Ctrl-r. |
-| Golden-ratio helper (`g/G`) | Unbound; the width guard, exact ratio, and cap are not safely implemented with stable APIs. |
-| Equalization (`=`) | The native equalize preset is available through layout cycling. Direct `=` selection and preserving each pane's position during equalization remain unsupported. |
+| Golden-ratio helper (`g/G`) | Pinned runtime: jq helper preserves the width guard and cap using approximate native steps. Legacy bindings remain unbound. |
+| Equalization (`=`) | Pinned runtime: balance one existing aligned group with approximate native steps. The separate native equalize preset remains available through layout cycling, including legacy configurations. |
 | Dedicated shared `popup` session | `P` attaches to the live `dotfiles-popup` scratch session across tabs and sessions on the same host; `F` toggles other floating panes. |
 | Custom clock, battery, host, and agent status segments | One bundled top tab bar, with no bottom status bar or additional plugin download. |
 | Kill-server confirmation | `Ctrl-q` confirms shutdown of the current session's server. It does not shut down every Zellij session. |

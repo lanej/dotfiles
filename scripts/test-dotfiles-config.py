@@ -137,9 +137,13 @@ else:
         propagated = run("bash", "-ec", 'source ./bootstrap.sh; load_dotfiles_config; cd /; python3 "$1/scripts/dotfiles-config.py"', "config-test", str(ROOT))
         assert tomllib.loads(propagated.stdout)["codex"]["github_enabled"] is True
         env.pop("DOTFILES_CONFIG")
-        config.write_text('sets = ["terminal"]\n[tools]\nrust = false\n')
-        blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
-        assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
+        config.write_text('[tools]\nzellij = true\n')
+        names = [tool["name"] for tool in json.loads(run(*command, "--format", "json").stdout)["tools"]]
+        assert names.index("jq") < names.index("zellij")
+        for dependency in ("rust", "jq"):
+            config.write_text(f'[tools]\nzellij = true\n{dependency} = false\n')
+            blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
+            assert blocked.returncode != 0 and f"requires tools.{dependency}" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)
