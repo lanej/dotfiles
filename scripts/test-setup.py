@@ -106,10 +106,10 @@ def main():
 
         (executables / "python3").symlink_to(sys.executable)
         # Plain make must also configure completions for installed tools.
-        epf = executables / "epf"
-        epf.write_text('#!/bin/sh\n[ "$*" = "completions zsh" ] || exit 7\n'
-                       "printf '#compdef epf\\n# Installed epf completion\\n'\n")
-        epf.chmod(0o755)
+        fd = executables / "fd"
+        fd.write_text('#!/bin/sh\n[ "$*" = "--gen-completions zsh" ] || exit 7\n'
+                       "printf '#compdef fd\\n# Installed fd completion\\n'\n")
+        fd.chmod(0o755)
         completion_cache = home / ".zcompdump"
         completion_cache.write_text("stale completion cache")
         # NOTE: Plain make must apply the chosen bundles to that same baseline.
@@ -122,7 +122,7 @@ def main():
         selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
-        assert "Installed epf completion" in (home / ".zsh/completions/_epf").read_text()
+        assert "Installed fd completion" in (home / ".zsh/completions/_fd").read_text()
         assert not completion_cache.exists(), "default setup left a stale completion cache"
         assert not (home / ".config/nvim").exists()
         assert not (home / ".tmux.conf").exists()

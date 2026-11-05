@@ -294,8 +294,11 @@ audit-skills:
 
 ui-review:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-test-ui-review:
+test-ui-review: test-ui-review-installer
 	@python3 "$(DOTFILES)/scripts/test-viewrule.py"
+.PHONY: test-ui-review-installer
+test-ui-review-installer:
+	@python3 "$(DOTFILES)/scripts/test-install-viewrule.py"
 
 # Opt-in services stay out of SETUP_TARGETS.
 # The helper remembers the selected server, falling back to dev on first setup.
@@ -443,3 +446,7 @@ ep-direnv-uninstall:
 .PHONY: epenv
 epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: test-ssh-agent
+test-ssh-agent:
+	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"

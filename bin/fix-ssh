@@ -1,7 +1,37 @@
-#!/bin/sh
-for key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
-  if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
-    value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
-    export ${key}="${value}"
-  fi
-done
+#!/usr/bin/env bash
+# Source this file to refresh the calling shell's forwarded agent.
+_dotfiles_fix_ssh() {
+    [ -n "${SSH_CONNECTION:-}" ] || return 0
+    if [ -n "${ZELLIJ:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] &&
+       [ -x "$HOME/.local/bin/zellij-agent" ]; then
+        if _dotfiles_ssh_value=$("$HOME/.local/bin/zellij-agent" init 2>/dev/null) &&
+           [ -n "$_dotfiles_ssh_value" ]; then
+            export SSH_AUTH_SOCK="$_dotfiles_ssh_value"
+            return 0
+        fi
+        # A nested tmux server can inherit ZELLIJ after being reparented away
+        # from it. If no owning Zellij server is found, use tmux's selection.
+    fi
+    if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+        # Keep tmux's session-local selection rather than sharing a host-wide socket.
+        for _dotfiles_ssh_key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
+            _dotfiles_ssh_value=$(tmux show-environment "$_dotfiles_ssh_key" 2>/dev/null) || continue
+            case "$_dotfiles_ssh_value" in
+                "$_dotfiles_ssh_key"=*)
+                    _dotfiles_ssh_value=${_dotfiles_ssh_value#*=}
+                    if [ "$_dotfiles_ssh_key" != SSH_AUTH_SOCK ] ||
+                       { [ -S "$_dotfiles_ssh_value" ] && [ -O "$_dotfiles_ssh_value" ]; }; then
+                        export "$_dotfiles_ssh_key=$_dotfiles_ssh_value"
+                    fi
+                    ;;
+            esac
+        done
+    fi
+}
+_dotfiles_fix_ssh
+_dotfiles_ssh_status=$?
+unset -f _dotfiles_fix_ssh
+unset _dotfiles_ssh_value _dotfiles_ssh_key
+# Keep the caller's error status without exiting a shell that sources us.
+# shellcheck disable=SC2317 # Used when executed rather than sourced.
+return "$_dotfiles_ssh_status" 2>/dev/null || exit "$_dotfiles_ssh_status"
