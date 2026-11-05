@@ -93,6 +93,8 @@ exec "$PROBE_ZELLIJ" attach "$1"
         (config / "config.kdl").write_text(
             f'default_shell {json.dumps(str(shell))}\n'
             'default_layout "probe"\n'
+            'show_startup_tips false\n'
+            'show_release_notes false\n'
             'keybinds clear-defaults=true {\n'
             '    normal {\n'
             '        bind "Ctrl f" { Detach; }\n'
