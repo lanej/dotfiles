@@ -1,11 +1,11 @@
-name: SSH agent native probe
+name: SSH agent reconnect
 
 on:
   pull_request:
-    paths: ['scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
   push:
     branches: [master]
-    paths: ['scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
 
 permissions:
   contents: read
@@ -75,12 +75,13 @@ jobs:
         with:
           path: ~/.local/bin/zellij
           key: ${{ steps.executable_cache.outputs.cache-primary-key }}
-      - name: Verify native SSH agent updater route
+      - name: Verify native SSH agent reconnects
         run: python3 scripts/test-zellij-agent-update.py
-      - name: Preserve failed probe diagnostics
+      - name: Preserve failed reconnect diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: ssh-agent-diagnostics-${{ matrix.os }}
           path: ${{ github.workspace }}/.zellij-diagnostics
           if-no-files-found: ignore
+          include-hidden-files: true

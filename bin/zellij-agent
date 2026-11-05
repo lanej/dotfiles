@@ -1,119 +1,142 @@
-#!/usr/bin/env python3
-"""Keep a forwarded SSH socket scoped to one Zellij session."""
-from pathlib import Path
-import hashlib
-import os
-import re
-import sqlite3
-import subprocess
-import stat
-import sys
-import tempfile
+#!/bin/sh
+# Keep forwarded agents scoped to the actual owning Zellij server.
+# Usage: zellij-agent init
+#        zellij-agent refresh SESSION
+#        zellij-agent publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY
+# Linux dash and macOS /bin/sh both support owner checks.
+# shellcheck disable=SC3067
+set -u
+umask 077
 
+fail() { printf 'zellij-agent: %s\n' "$*" >&2; exit 1; }
 
-def owned_socket(path):
-    try:
-        info = path.stat()
-        return stat.S_ISSOCK(info.st_mode) and info.st_uid == os.geteuid()
-    except OSError:
-        return False
+safe_directory() {
+    # Existing directories must belong to us and must not be writable by others.
+    [ ! -L "$1" ] || return 1
+    if [ "$2" = create ] && [ ! -e "$1" ]; then
+        mkdir -m 700 "$1" 2>/dev/null || [ -d "$1" ] || return 1
+    fi
+    [ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ] || return 1
+    permissions=$(stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null) || return 1
+    case "$permissions" in ''|*[!0-7]*) return 1 ;; esac
+    [ "$((0$permissions & 0022))" -eq 0 ]
+}
 
+owning_socket() {
+    ancestor=$PPID
+    depth=0
+    while [ "$ancestor" -gt 1 ] && [ "$depth" -lt 16 ]; do
+        arguments=$(ps -ww -p "$ancestor" -o command=) || return 1
+        case "$arguments" in
+            *' --server '*)
+                executable=${arguments%% --server *}
+                if [ "${executable##*/}" = zellij ]; then
+                    server=${arguments#* --server }
+                    # The pinned launcher optionally appends this flag.
+                    server=${server% --debug}
+                    case "$server" in /*) ;; *) return 1 ;; esac
+                    [ -S "$server" ] && [ ! -L "$server" ] && [ -O "$server" ] || return 1
+                    key=${server##*/}
+                    # The pinned runtime gives each server a 12-hex persistent ID.
+                    case "$key" in ''|*[!0-9a-f]*) return 1 ;; esac
+                    [ "${#key}" -eq 12 ] || return 1
+                    printf '%s\n' "$key"
+                    return 0
+                fi
+                ;;
+        esac
+        parent=$(ps -p "$ancestor" -o ppid=) || return 1
+        parent=$(printf '%s' "$parent" | tr -d '[:space:]')
+        case "$parent" in ''|*[!0-9]*) return 1 ;; esac
+        [ "$parent" != "$ancestor" ] || return 1
+        ancestor=$parent
+        depth=$((depth + 1))
+    done
+    return 1
+}
 
-def private_directory(path, create=False):
-    if create:
-        try:
-            path.mkdir(mode=0o700)
-        except FileExistsError:
-            pass
-    info = path.lstat()
-    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid()
-            or info.st_mode & 0o022):
-        raise ValueError(f"refusing unsafe directory: {path}")
+validate_link() {
+    [ -L "$link" ] || return 1
+    # A disconnected forwarding socket is allowed: retain its stable name.
+    [ ! -e "$link" ] || { [ -S "$link" ] && [ -O "$link" ]; }
+}
 
+if [ "${1:-}" = refresh ] && [ "$#" -eq 2 ]; then
+    session=$2
+    [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] || exit 0
+    raw=$SSH_AUTH_SOCK
+    [ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || exit 1
+    request=$(mktemp -d "${TMPDIR:-/tmp}/zellij-agent-update.XXXXXX") || exit 1
+    trap 'rm -f "$request/success"; rmdir "$request" 2>/dev/null || :' 0
+    trap 'exit 1' HUP INT TERM
 
-def session_identity(session):
-    # The pinned runtime keeps this ID across rename; names can be reused.
-    # Match the same read-only index contract as zellij-shutdown.
-    result = subprocess.run(["zellij", "setup", "--check"], capture_output=True,
-                            text=True, check=True, timeout=5)
-    cache = next((line.removeprefix("[CACHE DIR]: ") for line in result.stdout.splitlines()
-                  if line.startswith("[CACHE DIR]: ")), "")
-    if not cache or not Path(cache).is_absolute():
-        raise ValueError("cannot locate the pinned Zellij session index")
-    index = Path(cache) / "contract_version_1" / "session_index.sqlite"
-    if not index.exists():
-        return None
-    with sqlite3.connect(index.as_uri() + "?mode=ro", uri=True, timeout=2) as connection:
-        row = connection.execute(
-            "SELECT COALESCE(id, name) FROM sessions WHERE name = ?", (session,),
-        ).fetchone()
-    return (str(index), row[0]) if row else None
+    zellij --session "$session" run --floating --no-focus --close-on-exit --blocking \
+        -- /bin/sh "$0" publish "$raw" "$request" </dev/null >/dev/null 2>&1 &
+    updater=$!
+    (
+        sleep 2
+        kill -TERM "$updater" 2>/dev/null || exit 0
+        sleep 1
+        kill -KILL "$updater" 2>/dev/null || :
+    ) &
+    watchdog=$!
+    wait "$updater" 2>/dev/null || :
+    kill "$watchdog" 2>/dev/null || :
+    wait "$watchdog" 2>/dev/null || :
 
+    # A missing session or failed helper still returns control to ordinary attach.
+    [ -f "$request/success" ] && [ ! -L "$request/success" ] && [ -O "$request/success" ]
+    exit $?
+fi
 
-def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("publish", "init") or not sys.argv[2]:
-        raise ValueError("usage: zellij-agent publish|init SESSION")
-    operation, session = sys.argv[1:]
-    source = os.environ.get("SSH_AUTH_SOCK")
-    # A login without forwarding must not inherit another session's agent.
-    if not os.environ.get("SSH_CONNECTION") or not source:
-        return
-    source = Path(source)
-    directory = Path.home() / ".ssh" / "dotfiles-agent"
-    # A surviving pane already holds its immutable link, even after rename.
-    if (operation == "init" and source.parent == directory
-            and re.fullmatch(r"zellij-[0-9a-f]{32}\.sock", source.name)
-            and source.is_symlink()):
-        private_directory(directory.parent)
-        private_directory(directory)
-        if source.exists() and not owned_socket(source):
-            raise ValueError(f"refusing unsafe agent target: {source}")
-        print(source)
-        return
-    identity = session_identity(session)
-    if identity is None:
-        # New sessions register their ID before the first pane starts. Leave the
-        # raw socket for that first shell to initialize, without a name-based link.
-        if operation == "init":
-            raise ValueError("session identity unavailable; automatic agent recovery requires the pinned Zellij runtime")
-        return
-    name = hashlib.sha256("\0".join(identity).encode()).hexdigest()[:32]
-    link = directory / f"zellij-{name}.sock"
-    can_publish = source.is_absolute() and not source.is_symlink() and owned_socket(source)
-    if not directory.exists() and not can_publish:
-        return
-    private_directory(directory.parent, create=can_publish)
-    private_directory(directory, create=can_publish)
-    if can_publish:
-        directory.chmod(0o700)
-    if link.is_symlink():
-        if operation == "init":
-            if link.exists() and not owned_socket(link):
-                raise ValueError(f"refusing unsafe agent target: {link}")
-            print(link)
-            return
-    elif link.exists():
-        raise ValueError(f"refusing unmanaged socket path: {link}")
-    if can_publish:
-        # Publishing only happens in the attaching client. New panes may initialize
-        # a new session, but can never overwrite its existing selection.
-        with tempfile.TemporaryDirectory(prefix=".refresh-", dir=directory) as temporary:
-            candidate = Path(temporary) / "agent.sock"
-            candidate.symlink_to(source)
-            if operation == "init":
-                try:
-                    os.symlink(source, link)
-                except FileExistsError:
-                    pass
-            else:
-                os.replace(candidate, link)
-        if owned_socket(link):
-            print(link)
+operation=${1:-}
+case "$operation:$#" in
+    init:1)
+        [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] || exit 0
+        raw=$SSH_AUTH_SOCK
+        request=
+        ;;
+    publish:3)
+        raw=$2
+        request=$3
+        # The caller, not the old server environment, supplies the fresh socket.
+        case "$request" in /*) ;; *) fail 'request path must be absolute' ;; esac
+        safe_directory "$request" existing && [ "$permissions" = 700 ] || fail 'unsafe or expired request'
+        ;;
+    *) fail 'usage: zellij-agent init | refresh SESSION | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY' ;;
+esac
 
+key=$(owning_socket) || fail 'cannot identify the owning pinned Zellij server'
+directory=$HOME/.ssh/dotfiles-agent
+safe_directory "$HOME/.ssh" create || fail 'unsafe ~/.ssh directory'
+safe_directory "$directory" create || fail 'unsafe forwarded-agent directory'
+chmod 700 "$directory" || fail 'cannot secure forwarded-agent directory'
+link=$directory/zellij-$key.sock
 
-if __name__ == "__main__":
-    try:
-        main()
-    except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
-        print(f"zellij-agent: {error}", file=sys.stderr)
-        sys.exit(1)
+if [ "$operation" = init ] && [ -L "$link" ]; then
+    validate_link || fail 'unsafe managed agent link'
+    printf '%s\n' "$link"
+    exit 0
+fi
+[ ! -d "$link" ] || fail 'refusing directory at managed agent path'
+[ ! -e "$link" ] || [ -L "$link" ] || fail 'refusing unmanaged agent path'
+case "$raw" in /*) ;; *) fail 'forwarded socket must be absolute' ;; esac
+[ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || fail 'invalid raw forwarded socket'
+
+if [ "$operation" = init ]; then
+    # No replacement: a stale pane cannot undo a simultaneous fresh publication.
+    ln -s "$raw" "$link" 2>/dev/null || validate_link || fail 'cannot initialize session agent'
+else
+    temporary=$(mktemp -d "$directory/.refresh.XXXXXX") || fail 'cannot stage agent update'
+    trap 'rm -f "$temporary/agent.sock"; rmdir "$temporary" 2>/dev/null || :' 0
+    trap 'exit 1' HUP INT TERM
+    ln -s "$raw" "$temporary/agent.sock" || fail 'cannot stage agent link'
+    # Reject queued work that has not reached publication before timeout.
+    # Concurrent updates to one session select the last completed publication.
+    safe_directory "$request" existing && [ "$permissions" = 700 ] || fail 'expired update request'
+    mv -f "$temporary/agent.sock" "$link" || fail 'cannot publish session agent'
+    # Do not trust the native CLI exit status to represent this helper's result.
+    (set -C; printf '%s\n' "$link" > "$request/success") || fail 'cannot acknowledge update'
+fi
+validate_link || fail 'unsafe session agent result'
+printf '%s\n' "$link"

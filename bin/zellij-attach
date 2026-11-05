@@ -16,7 +16,7 @@ if [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ]; then
 		*)
 			agent_helper="$(dirname "$0")/zellij-agent"
 			if [ -x "$agent_helper" ]; then
-				"$agent_helper" publish "$1" >/dev/null
+				"$agent_helper" refresh "$1" >/dev/null 2>&1 || :
 			fi
 			;;
 	esac

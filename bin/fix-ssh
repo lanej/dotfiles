@@ -2,14 +2,17 @@
 # Source this file to refresh the calling shell's forwarded agent.
 _dotfiles_fix_ssh() {
     [ -n "${SSH_CONNECTION:-}" ] || return 0
-    if [ -n "${ZELLIJ:-}" ]; then
-        [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] || return 0
-        [ -n "${ZELLIJ_SESSION_NAME:-}" ] && [ -x "$HOME/.local/bin/zellij-agent" ] || return 0
-        _dotfiles_ssh_value=$("$HOME/.local/bin/zellij-agent" init "$ZELLIJ_SESSION_NAME") || return
-        if [ -n "$_dotfiles_ssh_value" ]; then
+    if [ -n "${ZELLIJ:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] &&
+       [ -x "$HOME/.local/bin/zellij-agent" ]; then
+        if _dotfiles_ssh_value=$("$HOME/.local/bin/zellij-agent" init 2>/dev/null) &&
+           [ -n "$_dotfiles_ssh_value" ]; then
             export SSH_AUTH_SOCK="$_dotfiles_ssh_value"
+            return 0
         fi
-    elif [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+        # A nested tmux server can inherit ZELLIJ after being reparented away
+        # from it. If no owning Zellij server is found, use tmux's selection.
+    fi
+    if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
         # Keep tmux's session-local selection rather than sharing a host-wide socket.
         for _dotfiles_ssh_key in SSH_AUTH_SOCK SSH_CONNECTION SSH_CLIENT; do
             _dotfiles_ssh_value=$(tmux show-environment "$_dotfiles_ssh_key" 2>/dev/null) || continue
