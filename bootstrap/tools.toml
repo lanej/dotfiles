@@ -49,7 +49,7 @@ version = "0.59.0"
 
 [tools.starship]
 requires = ["rust"]
-version = "1.22.1"
+version = "1.25.0"
 
 [tools.atuin]
 version = "18.21.0"
