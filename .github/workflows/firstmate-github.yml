@@ -3,10 +3,10 @@ name: Firstmate GitHub feedback
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'bootstrap.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
   push:
     branches: [master]
-    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'bootstrap.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
 
 permissions:
   contents: read
@@ -60,6 +60,11 @@ jobs:
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Install Treehouse 3.1.6
+        shell: bash
+        run: |
+          source ./bootstrap.sh
+          install_treehouse_from_release 3.1.6
       - run: make test-firstmate-github
         env:
           FIRSTMATE_TEST_RUNTIME: /tmp/firstmate-github-runtime
