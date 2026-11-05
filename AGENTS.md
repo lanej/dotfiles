@@ -49,7 +49,7 @@ A detector must fail when the behavior it protects is broken. Establish sensitiv
 
 Keep CI selection scoped to affected features and their actual dependencies. Trace changed paths to the entrypoints, configuration, shared code, and source content each check consumes; workflow names and directory proximity are not evidence of a dependency. Shared Makefile or lint-wiring edits must not automatically start every integration suite. Run the affected detector explicitly when changing a feature's Make recipe. When an overloaded shared shell file repeatedly causes unrelated checks to run, consider extracting a cohesive feature entrypoint with narrow loading and workflow paths. Preserve coverage for real shared behavior rather than simply removing its path from filters.
 
-Relevant checks and required repository checks govern merging; unrelated pending suites are not automatic merge gates. Investigate failures before classifying them as unrelated, and state unresolved limits.
+Relevant checks and required repository checks govern merging; unrelated pending suites are not automatic merge gates. Documentation-site checks are advisory for pull requests; successful site validation remains required for deployment. Investigate failures before classifying them as unrelated, and state unresolved limits.
 
 Routine maintenance needs no evaluation bundles, source snapshots, provenance receipts, or separate review narratives. Put material manual findings and verification gaps in the PR; let automated checks report their own results.
 
