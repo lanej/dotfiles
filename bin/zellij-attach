@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Attach to the newest running regular session, or start a new one.
+set -eu
+
+if [ "$#" -gt 0 ]; then
+	exec zellij attach --create "$@"
+fi
+
+sessions=$(zellij list-sessions --no-formatting --reverse)
+selected=
+while IFS= read -r line; do
+	case "$line" in
+		''|'No active zellij sessions found.'|*'(EXITED - attach to resurrect)') continue ;;
+		*' [Created '*) name=${line% \[Created *} ;;
+		*) printf 'Cannot parse Zellij session: %s\n' "$line" >&2; exit 1 ;;
+	esac
+	[ "$name" != dotfiles-popup ] || continue
+	selected=$name
+	break
+done <<< "$sessions"
+
+[ -z "$selected" ] || exec zellij attach "$selected"
+exec zellij

@@ -369,6 +369,21 @@ def main():
             first, second = clients
             detach_workflow(clients)
             expected = popup_workflow(first, second, home)
+            attached = Terminal(binary, env, names[1], command=[
+                shutil.which("bash"), "-c",
+                'shopt -s expand_aliases; source "$1"; eval zj',
+                "zj-check", str(ROOT / "sh/alias"),
+            ])
+            clients.append(attached)
+            attached.until("zj attaches to the newest regular session despite the popup",
+                           lambda: names[1].encode() + b":zellij-ready> " in attached.output)
+            attached.send(b"printf '%s' \"$ZELLIJ_SESSION_NAME\" > \"$HOME/zj-attached\"\r")
+            attached.until("zj shell belongs to the regular session",
+                           lambda: (home / "zj-attached").exists()
+                           and (home / "zj-attached").read_text() == names[1])
+            attached.send(b"\x06d")
+            attached.close()
+            clients.remove(attached)
             shutdown_workflow(clients, names, home, expected)
         finally:
             # All names live only in this test's private socket directory.
