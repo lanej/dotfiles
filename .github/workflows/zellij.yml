@@ -20,6 +20,7 @@ on:
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - '!scripts/test-zellij-attach.py'
+      - '!scripts/test-zellij-agent-update.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
@@ -32,6 +33,7 @@ on:
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
+      - 'nvim/lua/zellij-scrollback.lua'
       - 'bootstrap.sh'
       - '.github/workflows/zellij.yml'
   push:
@@ -53,6 +55,7 @@ on:
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - '!scripts/test-zellij-attach.py'
+      - '!scripts/test-zellij-agent-update.py'
       - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
@@ -65,6 +68,7 @@ on:
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
+      - 'nvim/lua/zellij-scrollback.lua'
       - 'bootstrap.sh'
       - '.github/workflows/zellij.yml'
 

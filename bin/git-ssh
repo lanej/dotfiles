@@ -1,5 +1,8 @@
 #!/bin/sh
-if [ -n "$TMUX" ] && [ -r "$HOME/.local/bin/fix-ssh" ] && [ -n "$SSH_TTY" ] && [ ! -S "$SSH_AUTH_SOCK" ]; then
+if [ -r "$HOME/.local/bin/fix-ssh" ] && { [ -n "$SSH_CONNECTION" ] || [ -n "$TMUX" ]; } && [ ! -S "$SSH_AUTH_SOCK" ]; then
+	# shellcheck disable=SC1091
 	. "$HOME/.local/bin/fix-ssh"
 fi
+# WHY: GIT_SSH_ARGS is the existing space-separated argument interface.
+# shellcheck disable=SC2086
 exec /usr/bin/ssh $GIT_SSH_ARGS "$@"
