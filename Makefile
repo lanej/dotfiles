@@ -201,6 +201,8 @@ dev-cache-schedule: dev-cache-config FORCE
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
+test-tmp-cleanup: FORCE
+	@python3 "$(DOTFILES)/scripts/test-tmp-cleanup.py"
 test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
