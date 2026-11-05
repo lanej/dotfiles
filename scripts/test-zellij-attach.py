@@ -83,9 +83,14 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         runtime.mkdir(parents=True)
         (runtime / "zellij").symlink_to(proxy)
         (remote_home / ".files").symlink_to(ROOT)
+        # Isolate runner-wide startup (including Ubuntu's interactive compinit)
+        # while still exercising the repository's real user startup files.
+        (remote_home / ".zshenv").write_text(
+            'unsetopt GLOBAL_RCS\nsource "$HOME/.files/zsh/zshenv"\n'
+        )
         for source, destination in (
             ("sh/profile", ".profile"), ("sh/alias", ".alias"),
-            ("zsh/zshenv", ".zshenv"), ("zsh/zshrc", ".zshrc"),
+            ("zsh/zshrc", ".zshrc"),
             ("zsh/zlogin", ".zlogin"), ("bash/bashrc", ".bashrc"),
             ("bash/bashprofile", ".bash_profile"),
         ):
