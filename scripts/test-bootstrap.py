@@ -448,7 +448,7 @@ else:
         )
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
-        assert shadow_node.is_symlink() and shadow_node.resolve() == driver
+        assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")

@@ -50,18 +50,18 @@ def main():
         result = run()
         assert result.returncode == 0, result.stdout + result.stderr
         current = install_root / "current"
-        assert current.resolve() == destination
+        assert current.resolve() == destination.resolve()
         assert browser_log.read_text() == "installed"
         current.unlink()
         previous = scratch / "previous"
         previous.mkdir()
         current.symlink_to(previous)
         result = run(environment={**env, "BROWSER_FAIL": "1"})
-        assert result.returncode != 0 and current.resolve() == previous
+        assert result.returncode != 0 and current.resolve() == previous.resolve()
         (package / "package.json").write_text(json.dumps({**metadata, "version": "0.0.0"}))
         result = run("--skip-browser")
         assert result.returncode != 0 and "does not match" in result.stderr
-        assert current.resolve() == previous
+        assert current.resolve() == previous.resolve()
         archive = scratch / "bad.tgz"
         archive.write_bytes(b"unreviewed archive")
         result = run("--archive", str(archive), "--skip-browser",
