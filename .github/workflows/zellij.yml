@@ -32,6 +32,7 @@ on:
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
+      - 'nvim/lua/zellij-scrollback.lua'
       - 'bootstrap.sh'
       - '.github/workflows/zellij.yml'
   push:
@@ -65,6 +66,7 @@ on:
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
+      - 'nvim/lua/zellij-scrollback.lua'
       - 'bootstrap.sh'
       - '.github/workflows/zellij.yml'
 
