@@ -110,6 +110,7 @@ case "$target" in
         ln -fns "${dotfiles}/zsh/zsh-github-copilot.plugin.zsh" "${setup_home}/.local/share/zsh/zsh-github-copilot.zsh"
         ln -fs "${dotfiles}/zsh/tmux-auto-title.zsh" "${setup_home}/.local/share/zsh/tmux-auto-title.zsh"
         ln -fs "${dotfiles}/zsh/zellij-navigation.zsh" "${setup_home}/.local/share/zsh/zellij-navigation.zsh"
+        bash "$make_scripts/completions.sh" "$setup_home"
         ;;
     zsh-plugins)
         check_command "git"
