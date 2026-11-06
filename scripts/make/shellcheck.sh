@@ -15,6 +15,7 @@ shellcheck -x \
     "$dotfiles/scripts/install-zellij" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/firstmate" \
+    "$dotfiles/bin/paseo-pi" \
     "$dotfiles/bin/zellij-attach" \
     "$dotfiles/bin/zellij-agent" \
     "$dotfiles/bin/zellij-balance" \

@@ -118,6 +118,22 @@ test-firstmate-peers:
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
 
+.PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
+test-paseo-tasks:
+	@npm --prefix "$(DOTFILES)/paseo-tasks" test
+
+test-paseo-task-import:
+	@node "$(DOTFILES)/scripts/test-paseo-task-import.mjs"
+
+test-paseo-task-router:
+	@node "$(DOTFILES)/scripts/test-paseo-task-router.mjs"
+
+test-paseo-tasks-ui:
+	@node "$(DOTFILES)/scripts/test-paseo-tasks-ui.mjs"
+
+paseo-tasks-config:
+	@node "$(DOTFILES)/scripts/paseo-tasks-config.mjs" "$(HOME)/.pi/agent/settings.json" "$(HOME)/.pi/agent/models.json"
+
 banner:
 	@cat banner.txt
 dev:

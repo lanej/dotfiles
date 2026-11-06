@@ -46,6 +46,7 @@ func fixtureConfig(t *testing.T, upstream http.Handler, cfg configuration) (*rou
 	}
 
 	r.endpoint = func(string) string { return up.URL }
+	r.anthropicEndpoint = func(string) string { return up.URL }
 	srv := httptest.NewServer(r)
 	t.Cleanup(func() { srv.Close(); r.routes.db.Close() })
 	return r, srv, logs
@@ -78,6 +79,41 @@ func drain(t *testing.T, response *http.Response, status int) []byte {
 	}
 
 	return body
+}
+
+func TestAnthropicMessagesPreserveBytesHeadersAndSessionAffinity(t *testing.T) {
+	const payload = `{"model":"us.anthropic.claude-sonnet-5-5","stream":true,"max_tokens":32,"messages":[{"role":"user","content":"probe"}],"output_config":{"effort":"medium"},"future_field":true}`
+	const stream = "event: message_start\ndata: {\"type\":\"message_start\"}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+	r, server, logs := fixture(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		body, _ := io.ReadAll(req.Body)
+		if req.URL.RequestURI() != "/anthropic/v1/messages" || string(body) != payload ||
+			req.Header.Get("X-Api-Key") != "private-token" || req.Header.Get("Anthropic-Version") != "2023-06-01" {
+			t.Errorf("Anthropic request was changed")
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		io.WriteString(w, stream)
+	}))
+	var destination string
+	r.anthropicEndpoint = func(region string) string { destination = region; return r.endpoint(region) }
+	request, _ := http.NewRequest("POST", server.URL+"/anthropic/v1/messages", strings.NewReader(payload))
+	request.Header.Set("X-Api-Key", "private-token")
+	request.Header.Set("Anthropic-Version", "2023-06-01")
+	request.Header.Set("Session-Id", "persistent-pi-session")
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(drain(t, response, 200)) != stream || destination != "us-west-2" {
+		t.Fatal("Anthropic response or destination changed")
+	}
+	pin, err := r.routes.lookup(context.Background(), sessionKeys(request.Header)[0])
+	if err != nil || pin != destination {
+		t.Fatalf("Pi session pin=%q error=%v", pin, err)
+	}
+	if strings.Contains(logs.String(), "private-token") || strings.Contains(logs.String(), "future_field") ||
+		strings.Contains(logs.String(), "incomplete_stream") {
+		t.Fatal("Anthropic stream leaked content or failed to recognize completion")
+	}
 }
 
 func TestSessionAffinityThroughConcurrentStreamsAndRestart(t *testing.T) {

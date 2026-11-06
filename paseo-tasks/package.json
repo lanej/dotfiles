@@ -1,0 +1,27 @@
+{
+  "name": "paseo-tasks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@getpaseo/client": "0.15.1",
+    "@getpaseo/plugin": "0.15.1",
+    "@octokit/rest": "^22.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@getpaseo/protocol": "0.15.1",
+    "@tanstack/react-query": "^5.90.11",
+    "@types/node": "^24.0.0",
+    "@types/react": "~19.2.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -25,23 +25,16 @@ const parameters = {
   } },
 };
 
-export default function firstmateQuestions(pi) {
-  const home = process.env.FM_HOME ?? process.env.FIRSTMATE_HOME;
-  if (!home || process.env.FM_TASK_ID) return;
-  let captain = false;
+export function registerQuestions(pi, requireOwner, active, audience = 'user') {
   pi.registerTool({
     name: 'ask_user_question', label: 'Ask Questions',
-    description: 'Ask the captain 1–4 questions with 2–4 choices each through native Paseo question cards. The captain can always type another answer. Use for needed information, preferences, or decisions. Cancellation is not an answer or approval.',
+    description: `Ask the ${audience} 1–4 questions with 2–4 choices each through native Paseo question cards. They can always type another answer. Use for needed information, preferences, or decisions. Cancellation is not an answer or approval.`,
     // WHY: Paseo's structured question adapter holds one active dialog per session.
     executionMode: 'sequential',
     parameters,
     async execute(_id, params, signal, _onUpdate, ctx) {
-      if (!captain || !ctx.hasUI) {
-        throw new Error('Resume the existing Firstmate captain in Paseo before asking questions');
-      }
-      if (await nativeCall(home, 'owns-primary', [], { signal }) !== 'yes') {
-        throw new Error('The current session does not own the Firstmate captain lock');
-      }
+      if (!active() || !ctx.hasUI) throw new Error('Open this conversation in Paseo before asking native questions');
+      await requireOwner(signal);
       const { questions } = params;
       const unique = values => new Set(values).size === values.length;
       if (!unique(questions.map(question => question.header)) || !unique(questions.map(question => question.question)) ||
@@ -70,11 +63,22 @@ export default function firstmateQuestions(pi) {
       return { content: [{ type: 'text', text: JSON.stringify(details) }], details };
     },
   });
+  pi.on('before_agent_start', event => active() ? {
+    systemPrompt: `${event.systemPrompt}\nYou have ask_user_question available. Use it to request needed ${audience} information, preferences, or decisions through Paseo's question cards. Offer meaningful choices; the ${audience} can also type an answer. A cancelled question provides no answer or approval. Preserve any unanswered decision and wait for ${audience} input. Task workers must record question or decision status before asking and update it after an answer.`,
+  } : undefined);
+}
+
+export default function firstmateQuestions(pi) {
+  const home = process.env.FM_HOME ?? process.env.FIRSTMATE_HOME;
+  if (!home || process.env.FM_TASK_ID || process.env.PASEO_TASK_ROLE) return;
+  let captain = false;
+  registerQuestions(pi, async signal => {
+    if (await nativeCall(home, 'owns-primary', [], { signal }) !== 'yes') {
+      throw new Error('The current session does not own the Firstmate captain lock');
+    }
+  }, () => captain, 'captain');
   pi.on('session_start', async (_event, ctx) => {
     captain = ctx.mode === 'rpc' && await realpath(ctx.cwd) === await realpath(home);
   });
   pi.on('session_shutdown', () => { captain = false; });
-  pi.on('before_agent_start', event => captain ? {
-    systemPrompt: `${event.systemPrompt}\nYou have ask_user_question available. Use it to request needed captain information, preferences, or decisions through Paseo's question cards. Offer meaningful choices; the captain can also type an answer. A cancelled question provides no answer or approval. Preserve any unanswered decision and wait for captain input.`,
-  } : undefined);
 }
