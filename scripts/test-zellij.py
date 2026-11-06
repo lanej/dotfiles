@@ -37,6 +37,18 @@ class Terminal:
     def __init__(self, binary, env, name, command=None, *, install_navigation=True):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
+        command_prompt = Path(env["HOME"]) / ".local/share/zellij/plugins/command-prompt.wasm"
+        config = Path(env["HOME"]) / ".config/zellij/config.kdl"
+        if config.exists() and not command_prompt.exists():
+            # Other feature detectors need neither this optional plugin's build
+            # nor its consent dialog. Keep the real binding, but omit its startup
+            # node in their private config. Its own detector installs and tests it.
+            contents = config.read_text()
+            without_prompt = re.sub(r"(?m)^\s*command-prompt\s*$", "", contents)
+            if without_prompt != contents:
+                if config.is_symlink():
+                    config.unlink()
+                config.write_text(without_prompt)
         if install_navigation:
             navigation = Path.home() / ".local/share/zellij/plugins/pane-navigation.wasm"
             assert navigation.exists(), "Install pane navigation with scripts/install-zellij-navigation.py"

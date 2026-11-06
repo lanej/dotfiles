@@ -28,6 +28,7 @@ on:
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
       - 'scripts/install-zellij-navigation.py'
+      - 'scripts/install-zellij-command-prompt.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -64,6 +65,7 @@ on:
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
       - 'scripts/install-zellij-navigation.py'
+      - 'scripts/install-zellij-command-prompt.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -169,6 +171,8 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-command-prompt
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
