@@ -38,6 +38,13 @@ def main():
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV", "ZDOTDIR"):
             env.pop(key, None)
+        # Isolate host-wide startup (including compinit) while retaining the
+        # installed user configuration in every shell, including new splits.
+        zdot = work / "zdot"
+        zdot.mkdir()
+        (zdot / ".zshenv").write_text('unsetopt GLOBAL_RCS\nsource "$HOME/.zshenv"\n')
+        (zdot / ".zshrc").write_text('source "$HOME/.zshrc"\n')
+        env["ZDOTDIR"] = str(zdot)
         (home / ".files").symlink_to(ROOT)
         subprocess.run(["make", "--no-print-directory", "zsh-config", "zellij"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
