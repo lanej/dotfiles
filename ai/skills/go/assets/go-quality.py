@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
+import re
 import subprocess
 import sys
 import tempfile
@@ -107,7 +108,10 @@ def key(issue):
     if ".." in path.parts:
         raise ValueError(f"issue outside the project: {name}")
     source = "\n".join(line.strip() for line in issue.get("SourceLines", []))
-    return str(path), issue["FromLinter"], issue["Text"], source
+    message = issue["Text"]
+    if issue["FromLinter"] == "govet" and message.startswith("shadow: "):
+        message = re.sub(r"(shadows declaration at line )\d+\b", r"\1<line>", message)
+    return str(path), issue["FromLinter"], message, source
 
 
 def read_baseline():
@@ -195,7 +199,7 @@ def check(args):
         finding = key(issue)
         if remaining[finding]:
             pos = issue["Pos"]
-            print(f"{finding[0]}:{pos['Line']}:{pos['Column']}: {finding[2]} ({finding[1]})")
+            print(f"{finding[0]}:{pos['Line']}:{pos['Column']}: {issue['Text']} ({finding[1]})")
             remaining[finding] -= 1
     if new:
         print(f"Go quality: {sum(new.values())} new findings; existing debt was not expanded.", file=sys.stderr)

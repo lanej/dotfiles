@@ -171,6 +171,20 @@ issues:
     (legacy / ".golangci.yaml").write_text(original_config)
     old_code = CODE.replace('_, err := io.WriteString(writer, "ok")\n\treturn err',
                             '_, _ = io.WriteString(writer, "ok")\n\treturn nil')
+    old_code += '''
+func Shadow(values []int) int {
+	total := 1
+
+	if len(values) > 0 {
+		total := values[0]
+		if total > 0 {
+			return total
+		}
+	}
+
+	return total
+}
+'''
     (legacy / "state.go").write_text(old_code)
     run(["gofmt", "-w", "state.go"], legacy)
     run(["git", "add", "."], legacy)
