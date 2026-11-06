@@ -97,6 +97,7 @@ Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcu
 | `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
+| `:` | Open a centered Zellij command prompt; `help` lists actions and `history` recalls this client's commands |
 | `F` | Show/hide the current tab's other floating panes |
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
@@ -110,6 +111,16 @@ Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcu
 | `/` | Search the pane's scrollback |
 
 `Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
+
+**Command prompt:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax
+without `zellij action`, such as `rename-tab "work"`, `new-pane --direction right`,
+or `move-focus left`. Enter runs it and Esc cancels. `help` opens the action picker;
+`history` recalls the client's in-memory command history for review. This is a
+Zellij command line, not a shell or tmux command interpreter. It uses the native
+popup layer, leaves hidden floating panes hidden, and targets the invoking client.
+For an existing pinned installation, run `make zellij-command-prompt`, apply
+`make zellij`, and restart. See the [command-prompt guide](../zellij/command-prompt/README.md)
+for supported scope, quoting, permissions and verification.
 
 `Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
 

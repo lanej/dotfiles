@@ -79,6 +79,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
+import tomllib
 home = Path(os.environ["HOME"])
 args = sys.argv[1:]
 name = Path(sys.argv[0]).name
@@ -89,7 +90,10 @@ if name == "rustup":
         assert args[-1] == "wasm32-wasip1", args
     elif args[:4] == ["run", "1.95.0", "cargo", "build"]:
         assert "--locked" in args, args
-        destination = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+        manifest = Path(args[args.index("--manifest-path") + 1])
+        package = tomllib.loads(manifest.read_text())["package"]["name"]
+        assert package in ("dotfiles-pane-navigation", "dotfiles-command-prompt"), package
+        destination = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release" / (package + ".wasm")
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(b"\0asmfixture")
     else:
@@ -116,7 +120,8 @@ else:
         run("make", "--no-print-directory", "zellij-runtime")
         installed = home / ".local/bin/zellij"
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.46.0"
-        assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
+        for plugin in ("pane-navigation", "command-prompt"):
+            assert (home / f".local/share/zellij/plugins/{plugin}.wasm").read_bytes() == b"\0asmfixture"
 
         # A later set overrides earlier sets, and explicit local values win.
         config.write_text('sets = ["shell", "terminal", "personal"]\n[codex]\ngithub_enabled = false\n[zellij]\nsource = "release"\n')

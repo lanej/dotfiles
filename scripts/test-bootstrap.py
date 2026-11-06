@@ -39,6 +39,9 @@ def main():
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         shutil.copyfile(root / "scripts/install-zellij-navigation.py", checkout / "scripts/install-zellij-navigation.py")
         shutil.copytree(root / "zellij/navigation", checkout / "zellij/navigation")
+        shutil.copyfile(root / "scripts/install-zellij-command-prompt.py", checkout / "scripts/install-zellij-command-prompt.py")
+        shutil.copytree(root / "zellij/command-prompt", checkout / "zellij/command-prompt",
+                        ignore=shutil.ignore_patterns("target"))
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
@@ -59,6 +62,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tomllib
 import zipfile
 
 home = Path(os.environ["HOME"])
@@ -274,6 +278,7 @@ elif name == "make":
     assert shutil.which("rustup"), "rustup missing"
     assert shutil.which("convert"), "ImageMagick missing"
     assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
+    assert (home / ".local/share/zellij/plugins/command-prompt.wasm").read_bytes() == b"\0asmfixture"
     assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
     subprocess.run(
         ["/usr/bin/make", "-f", str(home / ".files/Makefile"), "codex-env"],
@@ -308,8 +313,10 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "rustc"]:
     print("rustc 1.95.0\nhost: aarch64-unknown-linux-gnu\n")
 elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
     assert "--locked" in args and args[args.index("--target") + 1] == "wasm32-wasip1", args
-    assert Path(args[args.index("--manifest-path") + 1]).is_file(), args
-    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+    manifest = Path(args[args.index("--manifest-path") + 1])
+    package = tomllib.loads(manifest.read_text())["package"]["name"]
+    assert package in ("dotfiles-pane-navigation", "dotfiles-command-prompt"), package
+    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release" / (package + ".wasm")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
