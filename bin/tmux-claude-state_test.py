@@ -40,8 +40,24 @@ def tab_format():
 
 def test_window_tab_separates_needs_from_activity_from_dormancy(
         load_script, private_tmux, monkeypatch):
-    state = load_script("tmux-claude-state")
+    first_state = private_tmux.folder / "state-first.py"
+    second_state = private_tmux.folder / "state-second.py"
+    first_state.write_text('installation = "first"\n')
+    second_state.write_text('installation = "second"\n')
+    state = load_script("tmux-claude-state", path=first_state, register=True)
+    assert load_script("tmux-claude-state", path=second_state, register=True) is state
+    assert state.installation == "second"
+    assert Path(state.__file__).resolve() == second_state.resolve()
+
     sweep = load_script("tmux-claude-sweep")
+    state_path = Path(__file__).with_name("tmux-claude-state").resolve()
+    assert sweep.state is state
+    assert Path(state.__file__).resolve() == state_path
+    assert callable(state.style)
+    state.style = None
+    sweep = load_script("tmux-claude-sweep")
+    assert sweep.state is state
+    assert callable(state.style)
     home = private_tmux.folder / "home"
     home.mkdir()
     (home / ".files").symlink_to(ROOT)
@@ -470,9 +486,10 @@ if "app-name" in items and "thread-id" in items:
     # A same-thread title refresh must preserve a valid approval event.
     # Snapshot interleavings exercise the actual renderer installed from the
     # standalone binary, including its embedded palette.
-    from importlib.machinery import SourceFileLoader
-    hook = SourceFileLoader("agent_status_renderer", str(
-        home / ".local/lib/agent-status/tmux-render.py")).load_module()
+    hook = load_script(
+        "agent_status_renderer",
+        path=home / ".local/lib/agent-status/tmux-render.py",
+        register=True)
     real_tmux = hook.state.tmux
     refreshing = True
 
