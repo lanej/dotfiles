@@ -201,6 +201,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zellij-diagnostics-${{ matrix.os }}
+          include-hidden-files: true
           path: ${{ github.workspace }}/.zellij-diagnostics
           if-no-files-found: ignore
           retention-days: 7

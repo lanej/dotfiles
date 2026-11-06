@@ -5,6 +5,8 @@ on:
   pull_request:
     paths: ['scripts/make/paseo-lifecycle.sh', 'scripts/make/require.sh', 'scripts/test-paseo-lifecycle.py', '.github/workflows/paseo.yml']
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   lifecycle:
     runs-on: ubuntu-latest

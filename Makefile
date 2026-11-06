@@ -271,7 +271,7 @@ codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
+codex: claude codex-skills codex-agents codex-tmux codex-config
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
@@ -280,9 +280,8 @@ codex-permissions:
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
-codex-mcp: claude-config codex-config
-	$(call require-command,codex)
-	$(call require-command,jq)
+# Retain a clear failure for old callers instead of silently restoring servers.
+codex-mcp:
 	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
 quarto:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
