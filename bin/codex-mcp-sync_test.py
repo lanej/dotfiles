@@ -11,7 +11,7 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
+def test_make_codex_preserves_curated_servers_and_local_configuration(tmp_path):
     repo = tmp_path / "dotfiles"
     home = tmp_path / "user"
     executables = tmp_path / "bin"
@@ -251,27 +251,13 @@ else:
                for event, groups in desired_hooks.items() for group in groups)
 
     servers = json.loads(state.read_text())
-    assert servers["workspace"]["transport"] == {
-        "type": "stdio", "command": "tool with spaces", "args": ["mcp", "arg with space", ""],
-        "env": {"REGION": "us west"},
-    }
-    assert servers["no-args"]["transport"]["args"] == []
-    assert servers["kagi"]["transport"]["bearer_token_env_var"] == "KAGI_MCP_BEARER"
-    assert servers["qmd"] == qmd
-    assert servers["search"]["transport"] == {
-        "type": "stdio", "command": "python3", "args": [str(plugin / "server.py")],
-        "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
-    }
-    assert servers["playwright"]["transport"] == {
-        "type": "stdio", "command": "npx", "args": ["@playwright/mcp@latest", "--headless"],
-        "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
-    }
+    assert servers == {"qmd": qmd, "codex-only": {"transport": {"command": "native"}}}
     assert json.loads((plugin / ".mcp.json").read_text())["playwright"]["args"] == [
         "@playwright/mcp@latest",
     ]
-    assert "codex-only" in servers and "codex" not in servers and "disabled-tool" not in servers
 
-    servers["workspace"]["enabled"] = False
+    # User removal and custom disabled settings survive repeated configuration.
+    del servers["codex-only"]
     state.write_text(json.dumps(servers))
     previous_state = state.read_bytes()
     subprocess.run([*command, "codex"], cwd=repo, env=env,
@@ -307,3 +293,12 @@ else:
     subprocess.run([*command, "claude-config"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     assert json.loads((home / ".claude.json").read_text()) == claude_config
+
+    (repo / "codex-mcp").touch()
+    retired = subprocess.run([*command, "codex-mcp"], cwd=repo, env=env,
+                             capture_output=True, text=True)
+    assert retired.returncode != 0 and "user-managed" in retired.stderr
+    direct = subprocess.run([str(repo / "bin/sync-codex-mcp-servers")],
+                            cwd=repo, env=env, capture_output=True, text=True)
+    assert direct.returncode != 0 and "user-managed" in direct.stderr
+    assert state.read_bytes() == previous_state

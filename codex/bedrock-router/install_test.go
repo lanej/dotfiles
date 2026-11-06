@@ -208,7 +208,7 @@ model_reasoning_summary = "none"
 		t.Fatal(err)
 	}
 
-	if err := install([]string{"--config", configPath}, env); err != nil {
+	if err := install([]string{"--config", configPath, "--delegated-browsing"}, env); err != nil {
 		stop()
 		t.Fatalf("install: %v: %s", err, logs.String())
 	}
@@ -241,10 +241,38 @@ model_reasoning_summary = "none"
 	if layerCustom["url"] != nil || layerCustom["command"] != nil ||
 		layerCustom["enabled"] != false || layerCustom["tool_timeout_sec"] != int64(188) ||
 		migratedLayer["web_search"] != nil {
-		t.Fatal("sparse Bedrock profile changed custom MCP policy")
+		t.Fatalf("sparse Bedrock profile changed custom MCP policy: custom=%#v web_search=%#v",
+			layerCustom, migratedLayer["web_search"])
 	}
 
-	// The user removes a custom MCP server from both layers. Ordinary reinstalls
+	browse := registered["mcp_servers"].(map[string]any)["bedrock_browse"].(map[string]any)
+	var browseArgs []string
+	for _, arg := range browse["args"].([]any) {
+		browseArgs = append(browseArgs, arg.(string))
+	}
+
+	browseCommand := exec.Command(browse["command"].(string), browseArgs...)
+	browseCommand.Stdin = strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
+
+	browseOutput, err := browseCommand.Output()
+	if err != nil {
+		t.Fatalf("installed browsing tool failed: %v", err)
+	}
+	browseDecoder := json.NewDecoder(bytes.NewReader(browseOutput))
+	var browseReply struct {
+		Result struct {
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if browseDecoder.Decode(&browseReply) != nil || browseDecoder.Decode(&browseReply) != nil ||
+		len(browseReply.Result.Tools) != 1 || browseReply.Result.Tools[0].Name != "bedrock_browse" {
+		t.Fatal("explicit browsing opt-in did not expose the tool")
+	}
+
+	// The user removes the browsing and custom servers from both layers.
+	// Ordinary reinstalls
 	// must respect that choice while preserving the remaining disabled server.
 	for _, name := range []string{"config.toml", "bedrock.config.toml"} {
 		path := filepath.Join(root, name)
@@ -256,6 +284,7 @@ model_reasoning_summary = "none"
 		if err := toml.Unmarshal(raw, &trimmed); err != nil {
 			t.Fatal(err)
 		}
+		delete(trimmed["mcp_servers"].(map[string]any), "bedrock_browse")
 		trimmedServers, _ := trimmed["mcp_servers"].(map[string]any)
 		delete(trimmedServers, "custom")
 		data, err := toml.Marshal(trimmed)
@@ -333,7 +362,7 @@ model_reasoning_summary = "none"
 		t.Fatal(err)
 	}
 
-	if config["model"] != "existing-model" || config["web_search"] != "live" ||
+	if config["model"] != "existing-model" || config["web_search"] != "disabled" ||
 		mcp["command"] != "fixture" || mcp["enabled"] != false ||
 		!bytes.Contains(installed, []byte("# Keep my settings.")) ||
 		profile["model_provider"] != "amazon-bedrock" || profile["model_reasoning_summary"] != "none" ||

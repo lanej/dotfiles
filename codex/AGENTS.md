@@ -23,3 +23,7 @@ Read the relevant section of `~/.files/docs/agent-operating-procedures.md` when 
 - **Storage:** Share download caches/verified read-only artifacts; isolate mutable dependencies/builds when versions differ. Remove task disposables; read `~/.files/docs/development-storage.md`.
 - **Slack:** Read `~/.agents/skills/dotfiles/slack/SKILL.md`; use its CLI/MCP and `josh-slack-voice` when writing as Josh. Do not use native Slack connector skills, automatic Plugin Management or OpenAI connector key setup. Chrome is only for explicitly requested signed-in work.
 - **Google Workspace:** Read applicable GSpace skills/references under `~/.agents/skills/<product>/`; use installed `gspace` CLI through shell. Cross-product/setup uses `google-workspace`. Skills/help are authoritative; no built-in Workspace knowledge, plugins/connectors, app/MCP tools (including GSpace MCP), direct APIs or browser automation. Do not discover alternate integrations; report unsupported operations without switching tools or inventing commands.
+
+# Codex MCP configuration
+
+Codex MCP servers are manually curated. Preserve user removals, disabled flags, and custom settings. Prefer installed CLIs when available. Do not import servers from Claude, plugins, backups, or other configs, or add or re-enable a server, unless the user explicitly requests that change.
