@@ -7,6 +7,7 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
+      - '!bin/zellij-agent'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -44,6 +45,7 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
+      - '!bin/zellij-agent'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -193,6 +195,10 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-claude-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-shell-titles
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-move
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-firstmate
@@ -214,6 +220,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zellij-diagnostics-${{ matrix.os }}
+          include-hidden-files: true
           path: ${{ github.workspace }}/.zellij-diagnostics
           if-no-files-found: ignore
           retention-days: 7

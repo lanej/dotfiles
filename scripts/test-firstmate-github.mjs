@@ -92,6 +92,149 @@ test('Pi discovers the Bedrock router and preserves its session identity across 
   }
 });
 
+test('Firstmate questions reach native Paseo cards, survive a client reconnect, and preserve answers and cancellation on resume', { timeout: 60000 }, async () => {
+  const runtime = process.env.FIRSTMATE_TEST_RUNTIME, source = process.env.FIRSTMATE_SOURCE;
+  assert.ok(runtime && source, 'Set FIRSTMATE_TEST_RUNTIME and FIRSTMATE_SOURCE for the native Pi/Paseo question bridge');
+  const modules = join(resolve(runtime), 'node_modules');
+  const { PiCliRuntime } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/cli-runtime.js')));
+  const { PiRpcAgentClient } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/agent.js')));
+  const directory = await fs.mkdtemp('/tmp/firstmate-questions-'), fleet = join(directory, 'fleet'), agentDir = join(directory, '.pi/agent');
+  const questions = [
+    { header: 'Scope', question: 'Which fixture scope should I use?', options: [
+      { label: 'Read only', description: 'Inspect the fixture' }, { label: 'Edit', description: 'Change the fixture' },
+    ] },
+    { header: 'Result', question: 'How should I report the fixture result?', options: [
+      { label: 'Brief', description: 'One sentence' }, { label: 'Detailed', description: 'Include evidence' },
+    ] },
+  ];
+  const requests = [], errors = [], events = [], rpcEvents = [];
+  let session, worker, server, unsubscribe;
+  try {
+    await fs.mkdir(join(fleet, 'state'), { recursive: true });
+    const fixture = join(directory, 'ownership.mjs');
+    await write(fixture, `import {writeFileSync} from 'node:fs';export default function(pi){pi.on('session_start',()=>{if(!process.env.FM_TASK_ID)writeFileSync(${JSON.stringify(join(fleet, 'state/.lock'))},String(process.pid));});}\n`);
+    server = createServer(async (request, response) => {
+      try {
+        let body = ''; for await (const chunk of request) body += chunk;
+        const payload = JSON.parse(body); requests.push(payload);
+        assert.ok(requests.length < 15, 'Question fixture did not converge');
+        const at = payload.messages.findLastIndex(message => message.role === 'user');
+        const outputs = payload.messages.slice(at + 1).filter(message => message.role === 'tool');
+        const content = payload.messages[at].content;
+        const prompt = typeof content === 'string' ? content : content.filter(block => block.type === 'text').map(block => block.text).join('\n');
+        const isWorker = prompt === 'Inspect worker tool availability.';
+        assert.equal(payload.tools.some(tool => tool.function.name === 'ask_user_question'), !isWorker,
+          'The question tool must reach the captain model and stay absent from a worker');
+        const batches = prompt === 'Ask two independent question calls.' ? questions.map(question => [question])
+          : prompt === 'Ask malformed questions with duplicate headers.' ? [questions.map(question => ({ ...question, header: 'Repeated' }))] : [questions];
+        const delta = isWorker ? { content: 'Worker has no captain question tool.' }
+          : outputs.length ? { content: `Question result: ${outputs.map(output => output.content).join('\n')}` }
+          : { tool_calls: batches.map((batch, index) => ({ index, id: `question-${requests.length}-${index}`, type: 'function',
+            function: { name: 'ask_user_question', arguments: JSON.stringify({ questions: batch }) } })) };
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        response.end(`data: ${JSON.stringify({ choices: [{ index: 0, delta, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: delta.tool_calls ? 'tool_calls' : 'stop' }] })}\n\ndata: [DONE]\n\n`);
+      } catch (error) { errors.push(error.stack); response.writeHead(500); response.end(); }
+    });
+    await new Promise(accept => server.listen(0, '127.0.0.1', accept));
+    await write(join(agentDir, 'models.json'), JSON.stringify({ providers: { fixture: {
+      baseUrl: `http://127.0.0.1:${server.address().port}/v1`, apiKey: 'fixture', api: 'openai-completions',
+      models: [{ id: 'questions', name: 'questions', reasoning: false, input: ['text'], contextWindow: 128000,
+        maxTokens: 2048, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
+    } } }));
+    const env = { ...process.env, HOME: directory, PI_CODING_AGENT_DIR: agentDir, FIRSTMATE_HOME: fleet,
+      FM_HOME: fleet, FIRSTMATE_SOURCE: resolve(source), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0' };
+    for (const key of ['NODE_TEST_CONTEXT', 'FM_TASK_ID']) delete env[key];
+    const rpc = new PiCliRuntime({ logger, command: [
+      join(modules, '.bin/pi'), '--no-extensions', '--extension', fixture,
+      '--extension', join(ROOT, 'pi/extensions/firstmate-questions.mjs'),
+    ] });
+    const client = new PiRpcAgentClient({ logger, runtime: { async startSession(input) {
+      const channel = await rpc.startSession(input);
+      channel.onEvent(event => rpcEvents.push(event));
+      return channel;
+    } } });
+    session = await client.createSession({ provider: 'pi', cwd: fleet, model: 'fixture/questions' }, { env });
+    unsubscribe = session.subscribe(event => events.push(event));
+    const first = session.run('Ask the fixture questions.');
+    await until(() => session.getPendingPermissions().length === 1, 'native Paseo question card');
+    const card = session.getPendingPermissions()[0], handle = session.describePersistence();
+    assert.equal(card.kind, 'question');
+    assert.ok(card.id.startsWith('rpiv-question:'), 'The structured Paseo adapter recognizes the registered tool');
+    assert.deepEqual(card.input.questions, questions.map(question => ({ ...question, multiSelect: false, allowOther: true })));
+    unsubscribe(); unsubscribe = undefined;
+    await delay(100);
+    assert.equal(session.getPendingPermissions()[0].id, card.id, 'The disconnected client does not dismiss the question');
+    unsubscribe = session.subscribe(event => events.push(event));
+    await session.respondToPermission(card.id, { behavior: 'allow', updatedInput: { answers: {
+      Scope: 'Read only', Result: 'Report the exact token, please.',
+    } } });
+    const result = await first;
+    assert.ok(result.finalText.includes('"answer":"Read only"'), result.finalText);
+    assert.ok(result.finalText.includes('"kind":"custom","answer":"Report the exact token, please."'));
+    assert.ok(events.some(event => event.type === 'timeline' && event.item.type === 'tool_call' &&
+      event.item.detail?.label === 'Questions' && event.item.detail.text.includes('Report the exact token, please.')),
+    'Paseo renders the actual answers in its question tool row');
+    const paired = session.run('Ask two independent question calls.');
+    // WHY: Preserve the card assertion if fixture cleanup rejects this still-running turn.
+    paired.catch(() => {});
+    await until(() => session.getPendingPermissions().length > 0, 'first card from a model question batch');
+    await delay(100);
+    assert.equal(session.getPendingPermissions().length, 1, 'Question calls must serialize through the single-dialog Paseo adapter');
+    const firstCard = session.getPendingPermissions()[0];
+    assert.equal(firstCard.input.questions[0].header, 'Scope');
+    await session.respondToPermission(firstCard.id, { behavior: 'allow', updatedInput: { answers: { Scope: 'Edit' } } });
+    await until(() => session.getPendingPermissions().length === 1 && session.getPendingPermissions()[0].id !== firstCard.id, 'second card after first answer');
+    assert.equal(session.getPendingPermissions()[0].input.questions[0].header, 'Result');
+    await session.respondToPermission(session.getPendingPermissions()[0].id, { behavior: 'allow', updatedInput: { answers: { Result: 'Detailed' } } });
+    const pairedResult = await paired;
+    assert.ok(pairedResult.finalText.includes('"answer":"Edit"') && pairedResult.finalText.includes('"answer":"Detailed"'),
+      'Answers stay correlated to both independent calls in one model message');
+    assert.equal(session.getPendingPermissions().length, 0, 'No question card remains stranded after a batch');
+    unsubscribe(); unsubscribe = undefined;
+    await session.close(); session = await client.resumeSession(handle, undefined, { env });
+    unsubscribe = session.subscribe(event => events.push(event));
+    assert.equal(session.id, handle.sessionId, 'Host resume keeps the same persisted conversation');
+    const cancelled = session.run('Ask again, and allow the captain to cancel.');
+    await until(() => session.getPendingPermissions().length === 1, 'question available after captain resume');
+    await session.respondToPermission(session.getPendingPermissions()[0].id, { behavior: 'deny', message: 'Cancelled fixture question' });
+    const cancellation = await cancelled;
+    assert.ok(cancellation.finalText.includes('"answers":[],"cancelled":true'), 'Cancellation supplies no fabricated approval');
+    const malformed = await session.run('Ask malformed questions with duplicate headers.');
+    assert.ok(malformed.finalText.includes('distinct nonempty headers'), 'Repeated headers fail before any answer can be used');
+    assert.equal(session.getPendingPermissions().length, 1, 'Official Paseo retains a card after execute-side validation failure');
+    await session.respondToPermission(session.getPendingPermissions()[0].id, { behavior: 'deny', message: 'Dismiss failed fixture question' });
+    assert.equal(session.getPendingPermissions().length, 0, 'Dismissing the stale card clears it without an answer');
+    const dialogCount = rpcEvents.filter(event => event.type === 'extension_ui_request' && event.method === 'select').length;
+    const interrupted = session.run('Ask a question that the captain will stop.');
+    await until(() => session.getPendingPermissions().length === 1, 'question pending before Stop');
+    await until(() => rpcEvents.filter(event => event.type === 'extension_ui_request' && event.method === 'select').length > dialogCount,
+      'the question dialog is waiting for an answer before Stop');
+    await session.interrupt(); const stopped = await interrupted;
+    assert.ok(events.some(event => event.type === 'turn_canceled'), 'Stop actually interrupts the native provider turn');
+    assert.ok(stopped.timeline.some(item => item.type === 'tool_call' && item.detail?.label === 'Questions' && item.detail.text === 'Cancelled'),
+      `An aborted dialog records cancellation instead of a choice: ${JSON.stringify(stopped.timeline)}`);
+    assert.equal(session.getPendingPermissions().length, 1, 'Official Paseo retains the stopped question card');
+    await session.respondToPermission(session.getPendingPermissions()[0].id, { behavior: 'deny', message: 'Dismiss stopped fixture question' });
+    assert.equal(session.getPendingPermissions().length, 0, 'Dismissing a stopped card clears the pending request');
+    const recovered = session.run('Ask again after dismissing the stopped card.');
+    await until(() => session.getPendingPermissions().length === 1, 'captain question after Stop recovery');
+    await session.respondToPermission(session.getPendingPermissions()[0].id, { behavior: 'allow', updatedInput: { answers: {
+      Scope: 'Read only', Result: 'Brief',
+    } } });
+    assert.ok((await recovered).finalText.includes('"answer":"Brief"'), 'The same captain session accepts a fresh question after Stop recovery');
+    const owner = await fs.readFile(join(fleet, 'state/.lock'), 'utf8');
+    worker = await client.createSession({ provider: 'pi', cwd: fleet, model: 'fixture/questions' }, { env: { ...env, FM_TASK_ID: 'fixture-worker' } });
+    assert.equal((await worker.run('Inspect worker tool availability.')).finalText, 'Worker has no captain question tool.');
+    assert.equal(await fs.readFile(join(fleet, 'state/.lock'), 'utf8'), owner, 'Checking the worker tool list preserves captain ownership');
+    assert.deepEqual(errors, []);
+  } finally {
+    unsubscribe?.(); await worker?.close(); await session?.close();
+    if (server) { server.closeAllConnections(); await new Promise(accept => server.close(accept)); }
+    await fs.rm(directory, { recursive: true, force: true });
+    if (errors.length) console.error(errors.join('\n'));
+  }
+});
+
 test('Paseo resumes Firstmate and its Pi owner, catches up GitHub review, and records one verified revision', { timeout: 120000 }, async () => {
   const runtime = process.env.FIRSTMATE_TEST_RUNTIME;
   const source = process.env.FIRSTMATE_SOURCE;
@@ -293,7 +436,8 @@ test('Mobile chat dispatches a native Zellij scout, receives completion, and res
   const { PiRpcAgentClient } = await import(pathToFileURL(join(modules, '@getpaseo/server/dist/server/server/agent/providers/pi/agent.js')));
   const directory = await fs.mkdtemp('/tmp/firstmate-chat-'), home = join(directory, 'home');
   const fleet = join(directory, 'fleet'), project = join(directory, 'project'), session = `firstmate-chat-${process.pid}`;
-  const env = { ...process.env, HOME: home, FIRSTMATE_HOME: fleet, FM_HOME: fleet, FM_ROOT_OVERRIDE: fleet,
+  // Keep native panes and Treehouse's nested shell on the fixture-first PATH.
+  const env = { ...process.env, HOME: home, SHELL: '/bin/sh', FIRSTMATE_HOME: fleet, FM_HOME: fleet, FM_ROOT_OVERRIDE: fleet,
     FM_ZELLIJ_SESSION: session, FM_POLL: '1', FM_SIGNAL_GRACE: '1', FM_WATCH_EXTENSION_LOG_KEEP_LINES: '100',
     PATH: `${join(home, '.local/bin')}:${join(modules, '.bin')}:${process.env.PATH}`,
     PI_CODING_AGENT_DIR: join(home, '.pi/agent'), PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0' };

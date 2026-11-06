@@ -5,6 +5,7 @@ Requires Zellij >=0.45.1 and fzf. Sessions, HOME and XDG directories are isolate
 only this check's named sessions are terminated. No user's shell files are read.
 """
 
+import argparse
 import fcntl
 import json
 import os
@@ -33,7 +34,7 @@ def preserve_rust_homes(env):
 
 
 class Terminal:
-    def __init__(self, binary, env, name, command=None, *, install_navigation=True):
+    def __init__(self, binary, env, name, command=None, *, install_navigation=True, columns=120):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
         if install_navigation:
@@ -47,7 +48,7 @@ class Terminal:
         if self.pid == 0:
             # Set the slave's size before Zellij can query it. Doing this in the
             # parent after fork races the child's startup on a zero-sized PTY.
-            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, columns, 0, 0))
             os.chdir(env["HOME"])
             command = command or [binary, "attach", "--create", name]
             os.execvpe(command[0], command, env)
@@ -268,7 +269,135 @@ class Terminal:
         os.waitpid(self.pid, 0)
 
 
+def check_move_picker(terminal, home, clients):
+    terminal.prefix(b"v")
+    terminal.until("split before moving", lambda: len(terminal.terminals()) == 2)
+    source = next(p for p in terminal.terminals() if p["is_focused"])
+    source_id, source_tab = source["id"], source["tab_id"]
+    pane_target = f"terminal_{source_id}"
+    terminal.until("source shell ready", lambda: PROMPT.decode().strip() in
+                   terminal.action("dump-screen", "--pane-id", pane_target))
+    terminal.send(b"move_state=retained; printf '%s' \"$$\" > \"$HOME/move-pid\"; mkdir -p work; cd work; printf 'MOVE-HISTORY\\n'; seq 1 80\r")
+    terminal.until("source process and scrollback ready", lambda:
+                   (home / "move-pid").exists() and "80\n" in
+                   terminal.action("dump-screen", "--pane-id", pane_target))
+    pid = (home / "move-pid").read_text()
+
+    def source_pane():
+        return next(p for p in terminal.terminals() if p["id"] == source_id)
+
+    def popup():
+        return next((p for p in terminal.terminals() if p["is_floating"] and
+                     p["id"] != source_id), None)
+
+    def picker_screen():
+        pane = popup()
+        return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+
+    def open_picker():
+        terminal.prefix(b"m")
+        terminal.until("prefix m opens the destination menu", lambda:
+                       "Move pane to tab" in picker_screen() and "New Tab" in picker_screen())
+
+    # Cancellation must leave the original pane, layout and live shell alone.
+    original_ids = {p["id"] for p in terminal.terminals()}
+    open_picker()
+    terminal.send(b"\x1b")
+    terminal.until("cancel closes picker", lambda: popup() is None)
+    assert {p["id"] for p in terminal.terminals()} == original_ids
+    assert source_pane()["tab_id"] == source_tab and len(terminal.tabs()) == 1
+
+    open_picker()
+    # A second attached client's different focus cannot select the source.
+    other = Terminal(terminal.binary, terminal.env, terminal.name)
+    clients.append(other)
+    other.until("second client attached", lambda: PROMPT in other.output)
+    other.prefix(b"c")
+    terminal.until("second client opens its own tab", lambda: len(terminal.tabs()) == 2)
+    bystander_ids = {p["id"] for p in terminal.terminals()} - {popup()["id"]}
+    terminal.send(b"\r")
+    terminal.until("New Tab transfers the original pane", lambda:
+                   source_pane()["tab_id"] != source_tab and len(terminal.tabs()) == 3 and popup() is None)
+    assert {p["id"] for p in terminal.terminals()} == bystander_ids
+    assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", pane_target)
+    assert source_pane()["pane_cwd"] == str(home / "work")
+    terminal.send(b"printf '%s:%s' \"$$\" \"$move_state\" > \"$HOME/move-after\"\r")
+    terminal.until("live shell identity and memory survive", lambda:
+                   (home / "move-after").exists() and
+                   (home / "move-after").read_text() == pid + ":retained")
+    other.prefix(b"d")
+    other.until("other client detaches", lambda:
+                len(terminal.action("list-clients").splitlines()) == 2)
+
+    # Destination IDs, rather than names or positions, identify the tab.
+    target_name = "destination [literal]; $(false)"
+    terminal.action("rename-tab", target_name, "--tab-id", str(source_tab))
+    terminal.action("move-tab", "right", "--tab-id", str(source_tab))
+    assert next(t for t in terminal.tabs() if t["tab_id"] == source_tab)["position"] != source_tab
+    open_picker()
+    terminal.send(b"destination")
+    terminal.until("destination filtered", lambda: "1/4" in picker_screen())
+    terminal.send(b"\r")
+    terminal.until("existing tab receives original pane", lambda:
+                   source_pane()["tab_id"] == source_tab and popup() is None)
+    assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", pane_target)
+    assert source_pane()["id"] == source_id
+    assert {p["id"] for p in terminal.terminals()} == bystander_ids
+    assert next(t for t in terminal.tabs() if t["tab_id"] == source_tab)["name"] == target_name
+    terminal.send(b"printf '%s:%s' \"$$\" \"$move_state\" > \"$HOME/move-final\"\r")
+    terminal.until("existing-tab transfer preserves process", lambda:
+                   (home / "move-final").exists() and
+                   (home / "move-final").read_text() == pid + ":retained")
+    open_picker()
+    terminal.send(b"destination")
+    terminal.until("current tab filtered", lambda: "1/" in picker_screen())
+    terminal.send(b"\r")
+    terminal.until("current tab selection closes picker", lambda: popup() is None)
+    assert source_pane()["tab_id"] == source_tab
+    # A single working pane can move too; the popup is not the source pane.
+    for pane in terminal.terminals():
+        if pane["tab_id"] == source_tab and pane["id"] != source_id:
+            terminal.action("close-pane", "--pane-id", f"terminal_{pane['id']}")
+    open_picker()
+    terminal.send(b"\r")
+    terminal.until("single working pane moves to New Tab", lambda:
+                   source_pane()["tab_id"] != source_tab and popup() is None)
+    source_tab = source_pane()["tab_id"]
+    assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", pane_target)
+
+    terminal.action("new-tab", "--name", "stale destination", "--no-focus")
+    stale_tab = next(t["tab_id"] for t in terminal.tabs() if t["name"] == "stale destination")
+    open_picker()
+    terminal.send(b"stale")
+    terminal.until("stale destination selected", lambda: "1/" in picker_screen())
+    terminal.action("close-tab", "--tab-id", str(stale_tab))
+    terminal.send(b"\r")
+    terminal.until("closed destination is rejected", lambda: "destination tab closed" in picker_screen())
+    assert source_pane()["tab_id"] == source_tab
+    terminal.send(b"\r")
+    terminal.until("error popup closes", lambda: popup() is None)
+
+    terminal.action("new-tab", "--name", "high-ID destination", "--no-focus")
+    target = next(t for t in terminal.tabs() if t["name"] == "high-ID destination")
+    assert target["tab_id"] >= len(terminal.tabs())
+    open_picker()
+    terminal.send(b"high-ID")
+    terminal.until("high-ID destination selected", lambda: "1/" in picker_screen())
+    terminal.send(b"\r")
+    terminal.until("gapped ID destination receives the live pane", lambda:
+                   source_pane()["tab_id"] == target["tab_id"] and popup() is None)
+    terminal.send(b"printf '%s:%s' \"$$\" \"$move_state\" > \"$HOME/move-gapped\"\r")
+    terminal.until("gapped-ID transfer preserves process", lambda:
+                   (home / "move-gapped").exists() and
+                   (home / "move-gapped").read_text() == pid + ":retained")
+    assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", pane_target)
+    print("PASS: Ctrl-f m moves the original live pane to new/existing tabs, cancels safely, and isolates clients.")
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--move-pane", action="store_true", help="Exercise only the pane destination picker")
+    args = parser.parse_args()
     binary = shutil.which("zellij")
     assert binary and shutil.which("fzf"), "Install Zellij >=0.45.1 and fzf before make test-zellij"
     with tempfile.TemporaryDirectory(prefix="zj-", dir="/tmp") as directory:
@@ -306,6 +435,10 @@ def main():
             # An actual rendered shell prompt proves that setup has completed.
             terminal.until("first shell starts", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
+
+            if args.move_pane:
+                check_move_picker(terminal, home, clients)
+                return
 
             def top_bars():
                 # list-panes excludes non-selectable bar plugins. Observe the

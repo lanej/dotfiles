@@ -146,7 +146,8 @@ case ${1:-start} in
 			--extension "$firstmate_root/.pi/extensions/fm-branch-supervision.ts" \
 			--extension "$dotfiles_root/pi/extensions/firstmate-github.mjs" \
 			--extension "$dotfiles_root/pi/extensions/firstmate-peers.mjs" \
-			--extension "$dotfiles_root/pi/extensions/firstmate-tasks.mjs" "$@"
+			--extension "$dotfiles_root/pi/extensions/firstmate-tasks.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-questions.mjs" "$@"
 		;;
 esac
 

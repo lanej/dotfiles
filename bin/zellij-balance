@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# Resize existing tiled boundaries in native 5% steps. Requires Bash 3.2 and jq.
+set -eu
+umask 077
+session=${ZELLIJ_SESSION_NAME:-}
+origin=${ZELLIJ_ORIGIN_PANE_ID:-}
+mode=${1:-}
+lock='' scratch='' child='' watch=''
+SECONDS=0
+cleanup() {
+    [ -z "$watch" ] || kill "$watch" 2>/dev/null || :
+    [ -z "$child" ] || kill "$child" 2>/dev/null || :
+    [ -z "$scratch" ] || rm -rf "$scratch"
+    [ -z "$lock" ] || rmdir "$lock" 2>/dev/null || :
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+# A native mutation that times out has an uncertain outcome: never retry it.
+bounded() {
+    local seconds=$((20 - SECONDS)) status=0
+    [ "$seconds" -gt 0 ] || return 1
+    [ "$seconds" -le 3 ] || seconds=3
+    "$@" > "$scratch/out" 2> "$scratch/err" & child=$!
+    ( sleep "$seconds"; kill -KILL "$child" 2>/dev/null ) >/dev/null 2>&1 & watch=$!
+    wait "$child" || status=$?
+    kill "$watch" 2>/dev/null || :
+    wait "$watch" 2>/dev/null || :
+    child='' watch=''
+    return "$status"
+}
+fail() {
+    printf 'Pane balance: %s\n' "$*" >&2
+    if [ -n "$scratch" ] && [ -n "$session" ]; then
+        bounded zellij --session "$session" prompt notify "Pane balance: $*" --timeout 5s || :
+    fi
+    exit 1
+}
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/zellij-balance.XXXXXXXX")
+command -v jq >/dev/null 2>&1 || fail 'jq is required; install the selected shell tool set, then retry'
+case "$mode" in equalize|golden|golden-force) ;; *) fail 'expected equalize, golden or golden-force' ;; esac
+if ! [[ "$origin" =~ ^terminal_[0-9]+$ ]] || [ -z "$session" ]; then fail 'requires a background keybinding in the pinned runtime'; fi
+origin=${origin#terminal_}
+cli() {
+    bounded zellij --session "$session" action "$@" || fail 'native command failed or timed out; stopped without retry'
+}
+# Keep only validated numeric/boolean geometry. Names never enter shell parsing.
+filter='
+def uint: type == "number" and . >= 0 and . <= 2147483647 and floor == .;
+def rect: [.pane_x,.pane_y,.pane_columns,.pane_rows];
+def box: [.id, .pane_x,.pane_y,.pane_columns,.pane_rows];
+def valid:
+  all(.[]; (.id|uint) and (.tab_id|uint) and
+    all([.pane_x,.pane_y,.pane_columns,.pane_rows,.pane_content_columns][]; uint) and
+    .pane_columns > 0 and .pane_rows > 0 and .pane_content_columns <= .pane_columns and
+    all([.is_plugin,.is_floating,.is_fullscreen,.is_suppressed,.is_collapsed,.exited][]; type == "boolean") and
+    (.index_in_pane_group|type == "object"));
+'
+tab=null
+snapshot() {
+    cli list-panes --json
+    panes=$(jq -ce "$filter"'
+      if type != "array" or (valid|not) then error("invalid pane metadata") else . end |
+      ([.[]|select(.is_plugin == false and .id == $origin)] |
+        if length != 1 then error("origin disappeared") else .[0].tab_id end) as $current |
+      if $tab != null and $current != $tab then error("origin moved tabs") else . end |
+      [.[]|select(.tab_id == $current)] as $all |
+      [$all[]|select(.is_plugin == false)] as $term |
+      if any($term[]; .is_floating or .is_fullscreen or .is_suppressed or .is_collapsed or .exited or (.index_in_pane_group|length)>0)
+      then error("floating, zoomed, stacked, hidden or exited panes are unsupported") else . end |
+      # Bars outside the terminal rectangle are harmless. Embedded plugin panes are not.
+      ($term|map(.pane_x)|min) as $x | ($term|map(.pane_y)|min) as $y |
+      ($term|map(.pane_x+.pane_columns)|max) as $r | ($term|map(.pane_y+.pane_rows)|max) as $b |
+      if any($all[]; .is_plugin and (.is_suppressed|not) and .pane_x < $r and .pane_x+.pane_columns > $x and .pane_y < $b and .pane_y+.pane_rows > $y)
+      then error("plugin pane overlaps tiled group") else $term|sort_by(.id) end |
+      if (map(.id)|unique|length) != length then error("duplicate pane IDs") else . end
+    ' --argjson origin "$origin" --argjson tab "$tab" "$scratch/out") || fail 'unsupported layout or invalid pane metadata; skipped'
+    tab=$(printf '%s' "$panes" | jq -r '.[0].tab_id')
+}
+geom() { printf '%s' "$1" | jq -c "$filter map(box)"; }
+snapshot
+# mkdir is atomic on both platforms. Never steal a possibly live/stale lock.
+# Hash collisions only serialize unrelated tabs; they cannot redirect a resize.
+key=$(printf '%s\n%s\n%s' "${ZELLIJ_SOCKET_DIR:-${XDG_RUNTIME_DIR:-}}" "$session" "$tab" | cksum)
+key=${key%% *}
+root=${XDG_CACHE_HOME:-$HOME/.cache}/zellij/balance
+mkdir -p "$root"
+while ! mkdir "$root/$key" 2>/dev/null; do
+    [ "$SECONDS" -lt 17 ] || fail "another balance is busy or left a stale lock: $root/$key"
+    sleep 0.1
+done
+lock=$root/$key
+snapshot
+calls=0
+resize() {
+    local before=$panes before_geometry after_geometry delta native_pane=$pane native_direction=$direction
+    before_geometry=$(geom "$before")
+    snapshot
+    [ "$(geom "$panes")" = "$before_geometry" ] || fail 'layout changed concurrently; stopped'
+    if [ "$calls" -ge 32 ] || [ "$SECONDS" -ge 17 ]; then fail 'resize budget reached; stopped'; fi
+    # Check for an internal boundary; verify the actual movement afterward.
+    printf '%s' "$panes" | jq -e --argjson id "$pane" --argjson axis "$axis" '
+      def r: [.pane_x,.pane_y,.pane_columns,.pane_rows];
+      (.[]|select(.id==$id)|r) as $p |
+      any(.[]; (r) as $q | .id!=$id and $q[$axis]==$p[$axis]+$p[$axis+2] and
+        ([$q[1-$axis]+$q[3-$axis],$p[1-$axis]+$p[3-$axis]]|min) > ([$q[1-$axis],$p[1-$axis]]|max))
+    ' >/dev/null || fail 'boundary is no longer internal'
+    # Increase may invert onto another edge when blocked. Only use Decrease:
+    # expanding this pane means shrinking its neighbor toward the shared edge.
+    if [ "$1" = increase ]; then
+        native_pane=$(printf '%s' "$panes" | jq -er --argjson id "$pane" --argjson axis "$axis" --argjson allowed "$allowed" '
+          def r: [.pane_x,.pane_y,.pane_columns,.pane_rows];
+          (.[]|select(.id==$id)|r) as $p |
+          [.[]|. as $q|select(($allowed|index($q.id)) != null and .id!=$id and
+            (r[$axis])==$p[$axis]+$p[$axis+2] and
+            ([r[1-$axis]+r[3-$axis],$p[1-$axis]+$p[3-$axis]]|min) > ([r[1-$axis],$p[1-$axis]]|max))][0].id
+        ') || fail 'no eligible neighbor at the intended boundary'
+        native_direction=left; [ "$axis" = 0 ] || native_direction=up
+    fi
+    calls=$((calls+1))
+    cli resize decrease "$native_direction" --pane-id "terminal_$native_pane"
+    snapshot
+    after_geometry=$(geom "$panes")
+    delta=$(printf '%s' "$panes" | jq -r --argjson old "$before" --argjson id "$pane" --argjson axis "$axis" '
+      def r: [.pane_x,.pane_y,.pane_columns,.pane_rows];
+      (.[]|select(.id==$id)|r)[$axis+2] - ($old[]|select(.id==$id)|r)[$axis+2]')
+    # Every pane must match the single expected boundary translation, including outsiders.
+    printf '%s' "$before" | jq -e "$filter"'
+      (.[]|select(.id==$id)|rect) as $p | ($p[$axis]+$p[$axis+2]) as $edge |
+      map(. as $pane | rect as $r |
+        if ($allowed|index($pane.id)) != null then
+          if $r[$axis]+$r[$axis+2]==$edge then [$pane.id]+($r|.[$axis+2]+=$delta)
+          elif $r[$axis]==$edge then [$pane.id]+($r|.[$axis]+=$delta|.[$axis+2]-=$delta)
+          else box end
+        else box end) == $after
+    ' --argjson id "$pane" --argjson axis "$axis" --argjson delta "$delta" --argjson allowed "$allowed" --argjson after "$after_geometry" >/dev/null || fail 'unexpected boundary or pane change; stopped without rollback'
+}
+approach() {
+    local edge next old old_geometry action reverse distance next_distance
+    while :; do
+        edge=$(printf '%s' "$panes" | jq -r --argjson id "$pane" --argjson axis "$axis" ' .[]|select(.id==$id)|[.pane_x,.pane_y,.pane_columns,.pane_rows]|.[$axis]+.[$axis+2]')
+        [ "$edge" != "$target" ] || return 0
+        [ "$calls" -lt 31 ] || fail 'step budget reached'
+        old=$panes old_geometry=$(geom "$panes")
+        action=decrease reverse=increase
+        if [ "$edge" -lt "$target" ]; then action=increase reverse=decrease; fi
+        resize "$action"
+        [ "$(geom "$panes")" != "$old_geometry" ] || return 0
+        next=$(printf '%s' "$panes" | jq -r --argjson id "$pane" --argjson axis "$axis" '.[]|select(.id==$id)|[.pane_x,.pane_y,.pane_columns,.pane_rows]|.[$axis]+.[$axis+2]')
+        distance=$((edge-target)); distance=${distance#-}
+        next_distance=$((next-target)); next_distance=${next_distance#-}
+        # A ceiling violation is worse than any reachable width below the cap.
+        if { [ "$ceiling" -ge 0 ] && [ "$edge" -le "$ceiling" ] && [ "$next" -gt "$ceiling" ]; } ||
+           { [ "$next_distance" -ge "$distance" ] && { [ "$ceiling" -lt 0 ] || [ "$edge" -le "$ceiling" ] || [ "$next" -gt "$ceiling" ]; }; }; then
+            resize "$reverse"
+            [ "$(geom "$panes")" = "$(geom "$old")" ] || fail 'overshoot reversal was not exact; stopped'
+            return 0
+        fi
+    done
+}
+[ "$(printf '%s' "$panes" | jq length)" -gt 1 ] || exit 0
+ceiling=-1
+if [ "$mode" != equalize ]; then
+    read -r pane width x y height frame total bottom < <(printf '%s' "$panes" | jq -r '
+      (sort_by(.pane_x,.pane_y)|.[0]) as $p |
+      [$p.id,$p.pane_content_columns,$p.pane_x,$p.pane_y,$p.pane_rows,($p.pane_columns-$p.pane_content_columns),
+       ((map(.pane_x+.pane_columns)|max)-(map(.pane_x)|min)),(map(.pane_y+.pane_rows)|max)]|@tsv')
+    [ "$mode" != golden ] || [ "$width" -lt 120 ] || exit 0
+    if [ "$((y+height))" != "$bottom" ] || [ "$y" != "$(printf '%s' "$panes" | jq 'map(.pane_y)|min')" ]; then fail 'golden sizing needs one full-height left pane'; fi
+    target=$((total*382/1000))
+    if [ "$target" -ge 180 ]; then target=180; fi
+    ceiling=$((x+180+frame))
+    target=$((x+target+frame)) axis=0 direction=right
+    allowed=$(printf '%s' "$panes" | jq -c 'map(.id)')
+    approach
+else
+    plan=$(printf '%s' "$panes" | jq -ce --argjson origin "$origin" '
+      def r: [.pane_x,.pane_y,.pane_columns,.pane_rows];
+      [range(0;2) as $a | group_by([r[1-$a],r[3-$a]])[] | sort_by(r[$a]) |
+        select(length>1 and any(.[];.id==$origin)) | . as $g |
+        select(all(range(1;length); . as $i | ($g[$i-1]|r) as $p | ($g[$i]|r) as $q | $p[$a]+$p[$a+2]==$q[$a])) |
+        {axis:$a, ids:map(.id), start:(.[0]|r[$a]), extent:(map(r[$a+2])|add)}] |
+      if length==1 then .[0] else error("no unambiguous aligned group around origin") end') || fail 'origin has no unambiguous aligned row or column group'
+    axis=$(printf '%s' "$plan" | jq .axis)
+    direction=right; [ "$axis" = 0 ] || direction=down
+    allowed=$(printf '%s' "$plan" | jq -c .ids)
+    while read -r pane target; do approach; done < <(printf '%s' "$plan" | jq -r '
+      . as $p | (.ids|length) as $n | range(0;$n-1) as $i |
+      [$p.ids[$i],($p.start+(($p.extent*($i+1)+($n/2|floor))/$n|floor))]|@tsv')
+fi

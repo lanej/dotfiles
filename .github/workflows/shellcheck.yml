@@ -3,10 +3,10 @@ name: Shell checks
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/zellij-attach', 'bin/fix-ssh', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/paseo-pi', 'bin/zellij-attach', 'bin/zellij-balance', 'bin/fix-ssh', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
   push:
     branches: [master]
-    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/zellij-attach', 'bin/fix-ssh', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+    paths: ['scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/firstmate-feedback-native.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'bin/ac-awake-service', 'bin/firstmate', 'bin/paseo-pi', 'bin/zellij-attach', 'bin/zellij-balance', 'bin/fix-ssh', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
 
 permissions:
   contents: read

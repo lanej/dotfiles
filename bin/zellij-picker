@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pick a Zellij tab, running session or client to detach.
+"""Pick a Zellij tab, pane destination, running session or client to detach.
 
 Run in a floating pane with close_on_exit. Titles never become shell commands.
 """
@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -41,10 +42,11 @@ def label(value):
     return "".join(c if c.isprintable() else " " for c in str(value))
 
 
-def display_tab_name(tab, panes, *, legacy=False):
+def display_tab_name(tab, panes, *, legacy=False, owned=None):
     # Keep explicit names. Native generated names are based on stable IDs,
     # which can differ from positions after tabs close or move.
-    if legacy or tab["name"] != f"Tab #{tab['tab_id'] + 1}":
+    if legacy or (tab["name"] != f"Tab #{tab['tab_id'] + 1}"
+                  and (owned or {}).get(str(tab["tab_id"])) != tab["name"]):
         return label(tab["name"])
     # Native focus is aggregated across attachments, not scoped to this picker.
     focused = [pane for pane in panes if pane.get("tab_id") == tab["tab_id"]
@@ -55,6 +57,11 @@ def display_tab_name(tab, panes, *, legacy=False):
     if title and not re.fullmatch(r"Pane #[0-9]+", title):
         return title
     return f"Tab #{tab['position']}"
+
+
+def owned_titles(session):
+    helper = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    return helper["owned_titles"](session)
 
 
 def session_names():
@@ -266,12 +273,13 @@ def preview_tab(session, tab_id):
 
 
 def preview_session(session):
+    owned = owned_titles(session)
     tabs = snapshot(session, "tabs")
     panes = snapshot(session, "panes")
     legacy = (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
-        print(f"{marker} {tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy)}")
+        print(f"{marker} {tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy, owned=owned)}")
 
 
 def choose(rows, heading, preview=None):
@@ -302,7 +310,8 @@ def client_choices(session):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
-            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--", "list",
+            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--",
+                                json.dumps({"auto_titles": owned_titles(session)}),
                                 session=session, timeout=max(0.01, deadline - time.monotonic()))
             rows = [json.loads(line) for line in output.splitlines() if line.strip()]
             for row in rows:
@@ -346,6 +355,7 @@ def pick_client(session):
 
 
 def pick_tab(session):
+    owned = owned_titles(session)
     tabs = snapshot(session, "tabs")
     panes = snapshot(session, "panes")
     pane_id = own_pane_id()
@@ -364,7 +374,7 @@ def pick_tab(session):
         flags = " [current]" if tab["tab_id"] == source_tab else ""
         if tab.get("has_bell_notification"):
             flags += " [bell]"
-        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy)}{flags}")
+        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy, owned=owned)}{flags}")
     token = choose(rows, "Tabs (attention first)", "--preview-tab")
     if token is None:
         return
@@ -373,6 +383,53 @@ def pick_tab(session):
     ):
         raise RuntimeError("The selected tab no longer exists")
     run_zellij("action", "go-to-tab-by-id", token, session=session)
+
+
+def move_pane(session):
+    # Zellij records the originating pane before it opens this floating command.
+    # Never infer it from mutable focus or from the picker’s own pane ID.
+    if (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl":
+        raise RuntimeError("The move picker needs the status plugin and pinned runtime; run make zellij-status zellij and restart this session")
+    origin = os.environ.get("ZELLIJ_ORIGIN_PANE_ID", "")
+    if not re.fullmatch(r"terminal_[0-9]+", origin):
+        raise RuntimeError("The move picker requires the pinned Zellij runtime; restart this session after make zellij-runtime")
+    source_id, picker_id = int(origin.removeprefix("terminal_")), own_pane_id()
+    panes = snapshot(session, "panes")
+    source = next((p for p in panes if not p["is_plugin"] and p["id"] == source_id), None)
+    picker = next((p for p in panes if not p["is_plugin"] and p["id"] == picker_id), None)
+    if not source or not picker or source["tab_id"] != picker["tab_id"]:
+        raise RuntimeError("The original pane changed; reopen the move picker")
+    owners = [row for row in client_choices(session).values()
+              if row.get("pane_id") == f"terminal_{picker_id}"]
+    if len(owners) != 1:
+        raise RuntimeError("Cannot identify the picker’s attached client; reopen the move picker")
+    owned = owned_titles(session)
+    choices = {str(tab["tab_id"]): tab for tab in snapshot(session, "tabs")}
+    rows = ["new\tNew Tab"] + [
+        f"{key}\t{tab['position']}: {display_tab_name(tab, panes, owned=owned)}" +
+        (" [current]" if tab["tab_id"] == source["tab_id"] else "")
+        for key, tab in sorted(choices.items(), key=lambda item: item[1]["position"])
+    ]
+    selected = choose(rows, "Move pane to tab", "--preview-move")
+    if selected is None:
+        return
+    if selected != "new" and selected not in choices:
+        raise RuntimeError("Invalid destination selection")
+    if selected != "new" and not any(str(tab["tab_id"]) == selected
+                                     for tab in snapshot(session, "tabs")):
+        raise RuntimeError("The destination tab closed; reopen the move picker")
+    if not any(not p["is_plugin"] and p["id"] == source_id and
+               p["tab_id"] == source["tab_id"] and not p["is_suppressed"]
+               for p in snapshot(session, "panes")):
+        raise RuntimeError("The original pane changed; reopen the move picker")
+    request = {"token": owners[0]["token"], "source": source_id,
+               "source_tab": source["tab_id"], "picker": picker_id,
+               "destination": None if selected == "new" else int(selected)}
+    # Single-shot mutation. A lost reply must never replay a pane transfer.
+    reply = run_zellij("pipe", "--name", "lane-move-pane", "--",
+                       json.dumps(request), session=session).strip()
+    if reply != "moved":
+        raise RuntimeError(reply or "Pane transfer was not confirmed; inspect the tabs before retrying")
 
 
 def pick_session(session):
@@ -396,19 +453,23 @@ def pick_session(session):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-        "tabs", "sessions", "clients", "--preview-tab", "--preview-session"
+        "tabs", "move-pane", "sessions", "clients", "--preview-tab", "--preview-move", "--preview-session"
     ):
-        raise RuntimeError("Usage: zellij-picker tabs|sessions|clients (inside Zellij)")
+        raise RuntimeError("Usage: zellij-picker tabs|move-pane|sessions|clients (inside Zellij)")
     session = os.environ.get("ZELLIJ_SESSION_NAME")
     if not session:
         raise RuntimeError("Run zellij-picker inside a Zellij session")
     mode = sys.argv[1]
-    if mode == "--preview-tab":
+    if mode == "--preview-move" and sys.argv[2] == "new":
+        print("Move the original live pane to a new tab.")
+    elif mode in ("--preview-tab", "--preview-move"):
         preview_tab(session, int(sys.argv[2]))
     elif mode == "--preview-session":
         preview_session(base64.urlsafe_b64decode(sys.argv[2]).decode())
     elif mode == "tabs":
         pick_tab(session)
+    elif mode == "move-pane":
+        move_pane(session)
     elif mode == "clients":
         pick_client(session)
     else:

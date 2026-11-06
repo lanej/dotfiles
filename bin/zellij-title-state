@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Read automatic title ownership tied to the pinned runtime's live socket."""
+
+from contextlib import closing
+import hashlib
+import json
+import os
+from pathlib import Path
+import sqlite3
+import stat
+import subprocess
+
+
+def run(*args):
+    return subprocess.run(args, check=True, capture_output=True, text=True,
+                          timeout=0.5).stdout
+
+
+def session_identity(session, execute=run):
+    # Like zellij-shutdown, use server argv and its read-only session index.
+    # Shell hooks are grandchildren; previews may target a different session.
+    socket_root = os.environ.get("ZELLIJ_SOCKET_DIR")
+    directory = Path(socket_root) / "contract_version_1" if socket_root and Path(socket_root).is_absolute() else None
+    if directory is None:
+        processes = {}
+        for line in execute("ps", "-ww", "-axo", "pid=,ppid=,command=").splitlines():
+            fields = line.strip().split(None, 2)
+            if len(fields) == 3 and fields[0].isdecimal() and fields[1].isdecimal():
+                processes[int(fields[0])] = (int(fields[1]), fields[2])
+        pid, visited = os.getppid(), set()
+        while pid > 1 and pid not in visited and len(visited) < 64:
+            visited.add(pid)
+            parent, command = processes.get(pid, (0, ""))
+            executable, separator, address = command.partition(" --server ")
+            if separator and Path(executable).name == "zellij" and Path(address).is_absolute():
+                directory = Path(address).parent
+                break
+            pid = parent
+    if directory is None:
+        raise RuntimeError("Cannot identify the owning Zellij server")
+    check = execute("zellij", "setup", "--check").splitlines()
+    if '[Version]: "0.46.0"' not in check:
+        raise RuntimeError("Automatic title ownership requires the pinned runtime")
+    cache = next((line.removeprefix("[CACHE DIR]: ") for line in check
+                  if line.startswith("[CACHE DIR]: ")), "")
+    if not Path(cache).is_absolute():
+        raise RuntimeError("Cannot identify the session index")
+    index = Path(cache) / directory.name / "session_index.sqlite"
+    with closing(sqlite3.connect(index.as_uri() + "?mode=ro", uri=True, timeout=0.1)) as connection:
+        row = connection.execute("SELECT COALESCE(id, name) FROM sessions WHERE name = ?",
+                                 (session,)).fetchone()
+    if not row or not isinstance(row[0], str) or Path(row[0]).name != row[0] or row[0] in (".", ".."):
+        raise RuntimeError("Cannot identify the target session")
+    socket = directory / row[0]
+    info = socket.lstat()
+    if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
+        raise RuntimeError("The session socket is not owned by this user")
+    # Resurrection can reuse the native ID; the socket incarnation must match too.
+    return [str(socket), info.st_dev, info.st_ino, info.st_ctime_ns]
+
+
+def state_directory():
+    return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "zellij-auto-titles"
+
+
+def session_key(session):
+    return hashlib.sha256(session.encode()).hexdigest()
+
+
+def record_title(path, identity):
+    try:
+        record = json.loads(path.read_text())
+        if isinstance(record, dict) and record.get("identity") == identity and isinstance(record.get("title"), str):
+            return record["title"]
+    except (OSError, ValueError):
+        pass
+    # Legacy string records have no lifecycle proof and cannot claim ownership.
+    return None
+
+
+def owned_titles(session):
+    try:
+        identity = session_identity(session)
+        prefix = session_key(session) + "-"
+        result = {}
+        for path in state_directory().glob(prefix + "*.json"):
+            tab = path.stem[len(prefix):]
+            title = record_title(path, identity)
+            if tab.isdecimal() and title is not None:
+                result[tab] = title
+        # A rename/recreation during the read must not transfer ownership.
+        return result if session_identity(session) == identity else {}
+    except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
+        return {}

@@ -1,0 +1,265 @@
+---
+title: Zellij keybindings
+description: A quick reference to the Ctrl-f prefix, pane and tab controls, scrollback, popup, and mode-specific keys in these dotfiles.
+---
+import { Aside } from '@astrojs/starlight/components';
+
+**Press Ctrl-f, release it, then press the next key.** This is the dotfiles configuration, not Zellij's default keymap. Uppercase letters require Shift; `Ctrl-f p` and `Ctrl-f Ctrl-p` are different commands.
+
+The main session normally stays in **Locked** mode, passing application shortcuts through except for the prefix and smart pane navigation. Most prefix commands immediately return there. **Esc**, **Enter**, or **Ctrl-c** cancels the prefix without acting.
+
+## Everyday keys
+
+| Task | Keys |
+| --- | --- |
+| Split below / right | **Ctrl-f s** / **Ctrl-f v** |
+| Focus a neighboring pane | **Ctrl-h/j/k/l**, or **Ctrl-f h/j/k/l** |
+| Cycle panes / return to the last pane | **Ctrl-f Tab** / **Ctrl-f ;** |
+| Zoom the focused pane | **Ctrl-f z** |
+| New tab / fuzzy tab picker | **Ctrl-f c** / **Ctrl-f Ctrl-f** |
+| Next tab / last-focused tab | **Ctrl-f n** / **Ctrl-f Ctrl-p** |
+| Select a tab by position | **Ctrl-f 0** through **Ctrl-f 9** (modern configuration) |
+| Move this pane to a tab | **Ctrl-f m** |
+| Open or hide the shared popup | **Ctrl-f P** |
+| Select and copy terminal text | **Ctrl-f e**, select in Neovim, **y**, then `:q!` |
+| Paste the session's last Neovim yank | **Ctrl-f p** (modern configuration) |
+| Find text in scrollback | **Ctrl-f /**, type a query, **Enter** |
+| Detach and keep the session running | **Ctrl-f d** |
+| Send a literal Ctrl-f to the application | **Ctrl-f f** |
+
+<Aside type="note" title="Which configuration is active?">
+The reference below uses the modern [config.kdl](../zellij/config.kdl) with the compiled status plugin and pinned Zellij 0.46 runtime. `make zellij` can select [config-legacy.kdl](../zellij/config-legacy.kdl) instead when the bar is missing or the installed runtime is older. Check `readlink ~/.config/zellij/config.kdl`; the [legacy differences](#legacy-configuration) include tab numbering and missing shortcuts. See the [setup guide](./zellij.md#start-a-session) to install or upgrade.
+</Aside>
+
+## Prefix reference
+
+**Every key in this section follows Ctrl-f.** Expand a group for the complete bindings and aliases. Keys inside the later mode tables do not need another prefix.
+
+<details>
+<summary>Pane focus, splits, and zoom</summary>
+
+| Key after Ctrl-f | Action |
+| --- | --- |
+| `h` / `Left` | Focus left |
+| `j` / `Down` | Focus down |
+| `k` / `Up` | Focus up |
+| `l` / `Right` | Focus right |
+| `Tab` / `o` | Focus the next pane |
+| `;` | Focus the last-focused pane |
+| `s` / `"` | Split below, inheriting the working directory |
+| `v` / `%` | Split right, inheriting the working directory |
+| `z` | Toggle fullscreen for the focused pane |
+| `Z` | Toggle fullscreen without the surrounding UI |
+| `x` | Close the focused pane |
+
+**Closing is not detaching.** `x` closes the pane and its running program; there is no extra confirmation in this binding. Use `d` to leave the session running.
+
+Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the prefix table. Neovim normal and insert modes navigate editor splits first, then cross into Zellij at an edge. Other foreground programs navigate Zellij panes directly. It stays in the current tab and does not cross out of a zoomed pane. If ownership is ambiguous with multiple clients, use the explicit **Ctrl-f h/j/k/l** bindings. See [smart navigation](./zellij.md#smart-pane-navigation) for installation and nested-multiplexer behavior.
+
+</details>
+
+<details>
+<summary>Tabs, pane movement, and attention</summary>
+
+| Key after Ctrl-f | Action |
+| --- | --- |
+| `c` | Create a tab |
+| `n` / `Ctrl-n` | Go to the next tab |
+| `Ctrl-p` | Toggle to the last-focused tab, not the previous numeric tab |
+| `Ctrl-f` | Open the fuzzy tab picker with pane previews |
+| `0`–`9` | Select tab positions 0–9 in the modern configuration |
+| `r` / `,` | Rename the tab |
+| `W` | Enter repeatable tab reorder mode |
+| `J` / `K` | Move the pane down / up within the tab |
+| `!` | Move the focused pane to a new tab |
+| `m` | Choose New Tab or an existing destination tab for this pane |
+| `Ctrl-a` | Focus the next native attention item, including in another session |
+
+**Tab positions are not tab names.** Modern numeric shortcuts are zero-based even if an automatically generated name still says `Tab #1`. The underlying Zellij `GoToTab` action is one-based. The custom bar and picker prepend the zero-based position; use that position rather than a number embedded in the name.
+
+**Rename:** type the name, then Enter to keep it. Esc or Ctrl-c restores the previous name and returns to Locked mode.
+
+**Reorder:** after `Ctrl-f W`, press `h`/Left or `l`/Right repeatedly. Esc, Enter, or Ctrl-c returns to Locked mode. This is not tmux's fuzzy window-reorder menu.
+
+**Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
+
+The tab picker lists this session's tabs, prioritizing native attention when available. Native cross-session attention requires a program that emits OSC 7501; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
+
+</details>
+
+<details>
+<summary>Resize and layout controls</summary>
+
+| Key after Ctrl-f | Action |
+| --- | --- |
+| `<` / `>` | Grow toward the left / right |
+| `+` / `-` | Grow toward the top / bottom |
+| `Ctrl-r` | Enter repeatable Resize mode |
+| `Space` | Cycle to the next swap layout |
+| `Ctrl-o` | Cycle to the previous swap layout |
+
+The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equalize**. Equalize places one full-height pane in the left half and shares the right half among the other panes. It can change pane positions, unlike tmux's in-place equalization. Existing sessions retain their loaded swap layouts; start a new session after applying updated layouts.
+
+**Prefix `=`, `g`, and `G` are unbound.** This configuration does not provide direct equalization or the tmux golden-ratio helper. Native resizing uses Zellij's steps, not exact three-cell increments or tmux's timed repeat window. See [equalize layout](./zellij.md#equalize-layout) for the remaining limitations.
+
+</details>
+
+<details>
+<summary>Sessions, popup, and nested focus</summary>
+
+| Key after Ctrl-f | Action |
+| --- | --- |
+| `Ctrl-w` | Open the fuzzy picker for running sessions |
+| `C` / `w` | Open the native session manager |
+| `d` | Detach this client, leaving the session running |
+| `D` | Choose one attached client to detach |
+| `Ctrl-q` | Open confirmation to shut down the current session |
+| `P` | Open the shared persistent popup; inside it, hide that view |
+| `F` | Show or hide the current tab's other floating panes |
+| `u` | Focus the containing Zellij session |
+| `i` | Focus the nested Zellij session in the current pane |
+
+The native manager provides session creation, switching, renaming, and resurrection; follow its displayed controls. `C` and `w` both open that manager rather than creating or renaming immediately. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
+
+**Detach one client:** `D` lists native client IDs, focused tabs, and pane titles. Enter detaches that attachment only. It needs the modern runtime and status-plugin permissions on each attached client.
+
+**Shutdown is destructive:** `Ctrl-q` opens a prompt naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients; Enter or Ctrl-c cancels. Other Zellij sessions, including the separate popup, keep running. This is not tmux's server-wide shutdown.
+
+Use `u`/`i` to switch control between host and guest without detaching, including compatible sessions over SSH. The guest must have its own host-focus binding. The [shared popup](#shared-popup-keys) uses these same controls, with `P` hiding its view.
+
+</details>
+
+<details>
+<summary>Scrollback, clipboard, and prefix control</summary>
+
+| Key after Ctrl-f | Action |
+| --- | --- |
+| `e` | Open scrollback in Neovim, preserving ANSI colors in the modern configuration |
+| `p` | Paste this session's last Neovim yank into the requesting pane |
+| `[` | Enter Scroll mode |
+| `/` | Enter a scrollback search query |
+| `f` | Send a literal Ctrl-f to the application |
+| `Esc` / `Enter` / `Ctrl-c` | Cancel the prefix and return to Locked mode |
+
+**Copy text:** `Ctrl-f e`, then `v` for characters, `V` for lines, or `Ctrl-v` for a rectangle. Extend the selection, press `y`, and use `:q!` to return. This is Neovim selection, not tmux's inline visual copy mode.
+
+**Paste sources differ:** `Ctrl-f p` reads the private session buffer, not the system clipboard. Neovim yanks update both that buffer and a write-only OSC 52 request to the terminal. Native command-copy actions and mouse selection do not update the Neovim buffer. Use the terminal's paste shortcut for the system clipboard. OSC 52 acceptance, including over SSH, depends on the terminal and remains a separate acceptance check.
+
+The session paste binding needs the background clipboard receiver and status-plugin permission grant. A renamed session uses a different buffer. See [keyboard selection and paste](./zellij.md#keyboard-selection-and-paste) for buffer lifetime, limits, permissions, and terminal validation.
+
+`Ctrl-f Ctrl-f` is the tab picker, not send-prefix. It matches the effective tmux binding, where the later picker overrides send-prefix. Likewise, Tab cycles panes; it is not the earlier overridden tmux `Ctrl-i` layout shortcut.
+
+</details>
+
+## Keys inside modes
+
+**Enter the mode once, then use bare keys.** For example, `Ctrl-f Ctrl-r`, `h`, `h`, Enter grows left twice and exits Resize mode. Scroll and Search mode use Ctrl-f to page down, not to start another prefix command.
+
+<details>
+<summary>Resize mode: Ctrl-f Ctrl-r</summary>
+
+| Key in Resize mode | Action |
+| --- | --- |
+| `h/j/k/l` or arrows | Grow toward left/down/up/right |
+| `H/J/K/L` | Shrink from left/down/up/right |
+| `=` / `+` | Increase size |
+| `-` | Decrease size |
+| `Esc` / `Enter` / `Ctrl-c` | Return to Locked mode |
+
+`=` here means increase size, not equalize. Lowercase movement and size commands remain in Resize mode so they can repeat; there is no timeout.
+
+</details>
+
+<details>
+<summary>Scroll mode: Ctrl-f [</summary>
+
+| Key in Scroll mode | Action |
+| --- | --- |
+| `j` / Down, `k` / Up | Scroll down / up |
+| `Ctrl-f` / PageDown, `Ctrl-b` / PageUp | Page down / up |
+| `d` / `Ctrl-d`, `u` / `Ctrl-u` | Half-page down / up |
+| `g` / Home, `G` / End | Jump to the top / bottom |
+| `[` / `]` | Previous / next shell prompt |
+| `/` / `s` | Enter a search query |
+| `m` | Select the command at the scroll position |
+| `y` | Copy an existing selection, return to the bottom, and lock |
+| `c` | Copy the last command output, return to the bottom, and lock |
+| `e` | Open scrollback in Neovim and leave Scroll mode |
+| `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the bottom and Locked mode |
+
+Prompt navigation and command selection/copy depend on OSC 133 shell markers from the application. `y` does not start arbitrary visual selection; use Neovim for that. `n`/`N` are Search-mode keys, not Scroll-mode bindings.
+
+</details>
+
+<details>
+<summary>Search entry and Search mode: Ctrl-f /</summary>
+
+**Search entry:** type the query and press Enter to enter Search mode. Esc or Ctrl-c returns to Scroll mode, not directly to the application.
+
+| Key in Search mode | Action |
+| --- | --- |
+| `n` | Find the next match downward |
+| `N` / `p` | Find the previous match upward |
+| `j` / Down, `k` / Up | Scroll down / up |
+| `Ctrl-f` / PageDown, `Ctrl-b` / PageUp | Page down / up |
+| `/` | Clear the query and enter a new search |
+| `c` | Toggle case sensitivity |
+| `w` | Toggle wrap |
+| `o` | Toggle whole-word matching |
+| `e` | Open scrollback in Neovim and leave Search mode |
+| `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the bottom and Locked mode |
+
+The Scroll-mode half-page, prompt-jump, and copy bindings are not assigned in Search mode. In particular, `c` changes search options rather than copying command output.
+
+</details>
+
+<details>
+<summary>Configured Move mode has no prefix shortcut</summary>
+
+Both main configuration files define a Move mode, but no shipped key enters it. **Ctrl-f m opens the destination picker instead.** Do not expect the following keys to work after `m`; they apply only if Move mode is entered separately, for example through `zellij action switch-mode move`.
+
+| Key in Move mode | Action |
+| --- | --- |
+| `h/j/k/l` or arrows | Move the pane left/down/up/right |
+| `Tab` / `n` | Move the pane forward |
+| `p` | Move the pane backward |
+| `[` / `]` | Break the pane to a tab on the left / right, then lock |
+| `Esc` / `Enter` / `Ctrl-c` | Return to Locked mode |
+
+</details>
+
+## Shared popup keys
+
+**Ctrl-f P** opens a view of the dedicated `dotfiles-popup` session. It preserves its live shells, tabs and splits when hidden or reopened from another tab/session on the same host.
+
+The popup inherits the installed regular keymap, layout and plugins. All the pane, tab, resize, scroll/search, scrollback editor, clipboard and session controls above apply, including bare **Ctrl-h/j/k/l** navigation. Its only key override is **Ctrl-f P**, which detaches this view; **Ctrl-f d** also detaches normally. Modern versus legacy limitations are the same as in a regular window.
+
+The scratch session does not create resurrection snapshots. Closing its last shell or confirming shutdown inside it ends it. Existing popups keep their live processes and old configuration until you finish their work and exit; see [safe application and popup lifetime](./zellij.md#shared-popup-and-session-shutdown).
+
+## Legacy configuration
+
+Most prefix and mode keys are shared. The [legacy configuration](../zellij/config-legacy.kdl) uses the built-in tab bar and differs as follows:
+
+| Area | Modern configuration | Legacy configuration |
+| --- | --- | --- |
+| Numeric tab selection | `0`–`9` selects the first through tenth tab | `0` and `1` both select the first; `2`–`9` select the second through ninth |
+| Tab positions in the bar/picker | Zero-based | One-based |
+| Native attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Client chooser: `Ctrl-f D` | Assigned | Unbound |
+| Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |
+| Scrollback editor: `e` | ANSI color export | Plain text export |
+| Mouse mode | Disabled | Enabled |
+
+**A configured key is not proof its helper can run.** Legacy still binds `m`, but the pane destination helper requires the compiled status plugin and pinned runtime. Older runtimes may not expose the queries needed by the other pickers. The documented popup and shutdown acceptance also applies to the pinned patched runtime, not every upstream release.
+
+Apply configuration with `make zellij`. To build the modern bar and reapply it, use `make zellij-status zellij` with the pinned runtime installed. Restart old session servers when upgrading the runtime or adding background plugins; replacing the executable does not replace an already-running server.
+
+## tmux habits that do not transfer
+
+- **Direct balance and golden ratio:** prefix `=`, `g`, and `G` remain unbound. Cycle to the equalize layout with Space or Ctrl-o; it may rearrange panes.
+- **Move across sessions or park in `later`:** prefix `H`, `S`, and `M` are unbound. Use `m` or `!` only for tabs within this session.
+- **Reload and refresh shortcuts:** prefix `R`, `Ctrl-l`, and `*` have no bindings in these files.
+- **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing and W for repeated tab reordering.
+- **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.
+
+The binding sources are [modern config](../zellij/config.kdl) and [legacy config](../zellij/config-legacy.kdl), with the [popup launcher](../bin/zellij-popup) adding its hide override. Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).

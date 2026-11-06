@@ -44,13 +44,34 @@ impl Clients {
                     cli_pipe_output(pipe, &(json!({"error": UNSUPPORTED_RUNTIME}).to_string() + "\n"));
                     return false;
                 }
+                // The picker reads lifecycle-checked ownership once per
+                // snapshot; hidden plugin clones do not poll host metadata.
+                // A non-TTY CLI sends a trailing EOF message without payload.
+                // It must not overwrite the ownership-aware snapshot rows.
+                let Some(payload) = message.payload.as_deref() else { return false };
+                let request: Value = serde_json::from_str(payload).unwrap_or_default();
+                let owned = &request["auto_titles"];
                 let Ok((tab_id, pane_id)) = get_focused_pane_info() else { return false };
                 let tab = get_tab_info(tab_id);
                 let Some(pane) = get_pane_info(pane_id) else { return false };
                 let row = json!({"token": self.token(),
-                    "tab": tab.map(|tab| format!("{}: {}", tab.position, crate::tab_name(&tab, panes, Some(&pane)))),
+                    "tab": tab.map(|tab| format!("{}: {}", tab.position, crate::tab_name(&tab, panes, Some(&pane), owned))),
+                    "pane_id": pane_id.to_string(),
                     "pane": pane.title});
                 cli_pipe_output(pipe, &(row.to_string() + "\n"));
+            }
+            "lane-move-pane" => {
+                let Ok(request) = serde_json::from_str::<Value>(message.payload.as_deref().unwrap_or("")) else {
+                    return false;
+                };
+                let token = &request["token"];
+                let ids = get_plugin_ids();
+                if token["plugin_id"].as_u64() != Some(ids.plugin_id as u64)
+                    || token["client_id"].as_u64() != Some(ids.client_id as u64) {
+                    return false;
+                }
+                let result = self.move_pane(&request);
+                cli_pipe_output(pipe, &(result.unwrap_or_else(|error| error.to_owned()) + "\n"));
             }
             DETACH => {
                 let Ok(token) = serde_json::from_str::<Value>(message.payload.as_deref().unwrap_or("")) else {
@@ -78,6 +99,75 @@ impl Clients {
             _ => return false,
         }
         false
+    }
+
+    fn move_pane(&self, request: &Value) -> Result<String, &'static str> {
+        if !self.valid(&request["token"]) {
+            return Err("The selected attachment changed; reopen the move picker");
+        }
+        let source = request["source"].as_u64().and_then(|id| u32::try_from(id).ok())
+            .ok_or("Invalid source pane")?;
+        let picker = request["picker"].as_u64().and_then(|id| u32::try_from(id).ok())
+            .ok_or("Invalid picker pane")?;
+        let source_tab = request["source_tab"].as_u64().ok_or("Invalid source tab")? as usize;
+        let source_id = PaneId::Terminal(source);
+        let pane = get_pane_info(source_id).ok_or("The original pane closed")?;
+        if source == picker || pane.exited || pane.is_suppressed {
+            return Err("The original pane changed; reopen the move picker");
+        }
+        let destination = if request["destination"].is_null() { None } else {
+            let id = request["destination"].as_u64().ok_or("Invalid destination tab")? as usize;
+            get_tab_info(id).ok_or("The destination tab closed; reopen the move picker")?;
+            Some(id)
+        };
+        // Native queries can yield. Confirm the requesting client still owns
+        // this picker; never use the globally focused pane for the transfer.
+        if get_focused_pane_info().ok() != Some((source_tab, PaneId::Terminal(picker))) {
+            return Err("Picker focus changed; reopen the move picker");
+        }
+        let result = (|| {
+            let moved = match destination {
+                Some(id) if id == source_tab => Some(id),
+                Some(id) => {
+                    // The pinned BreakPanes APIs mix IDs and positions. Reserve a
+                    // new split, then replace only that owned pane by native ID.
+                    let tab = get_tab_info(id).ok_or("The destination tab closed")?;
+                    go_to_tab(tab.position as u32);
+                    if get_focused_pane_info().ok().map(|focus| focus.0) != Some(id) {
+                        return Err("The destination changed; original pane was not moved");
+                    }
+                    // A held inert command uses the existing RunCommands grant;
+                    // no login/interactive shell hooks can rename the destination.
+                    let placeholder = open_command_pane(
+                        CommandToRun::new_with_args("/bin/sh", vec!["-c", ":"]),
+                        Default::default(),
+                    ).ok_or("Could not create a destination split")?;
+                    focus_pane_with_id(placeholder, false, false);
+                    if get_focused_pane_info().ok() != Some((id, placeholder)) {
+                        close_pane_with_id(placeholder);
+                        return Err("The destination changed; original pane was not moved");
+                    }
+                    replace_pane_with_existing_pane(placeholder, source_id, false);
+                    if get_pane_info(placeholder).is_some() {
+                        close_pane_with_id(placeholder);
+                        return Err("Could not place the original pane in the destination split");
+                    }
+                    Some(id)
+                },
+                None => break_panes_to_new_tab(&[source_id], None, true),
+            };
+            let expected_tab = destination.or(moved).ok_or("Zellij could not transfer the pane")?;
+            focus_terminal_pane(source, false, false);
+            if get_focused_pane_info().ok() != Some((expected_tab, source_id)) {
+                return Err("The destination changed during transfer; inspect the pane before retrying");
+            }
+            Ok("moved".to_owned())
+        })();
+        if result.is_err() && get_pane_info(PaneId::Terminal(picker)).is_some() {
+            // Errors are printed in the chooser, which remains in its source tab.
+            focus_terminal_pane(picker, false, false);
+        }
+        result
     }
 
     pub fn finish(&mut self) {

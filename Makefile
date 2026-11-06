@@ -57,6 +57,10 @@ test-dotfiles-config:
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
 
+.PHONY: test-go-quality
+test-go-quality:
+	@python3 "$(DOTFILES)/scripts/test-go-quality.py"
+
 test-dotfiles-config-editor:
 	$(call require-command,nvim)
 	$(call require-command,taplo)
@@ -117,6 +121,22 @@ test-firstmate-peers:
 .PHONY: test-firstmate-primary
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
+
+.PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
+test-paseo-tasks:
+	@npm --prefix "$(DOTFILES)/paseo-tasks" test
+
+test-paseo-task-import:
+	@node "$(DOTFILES)/scripts/test-paseo-task-import.mjs"
+
+test-paseo-task-router:
+	@node "$(DOTFILES)/scripts/test-paseo-task-router.mjs"
+
+test-paseo-tasks-ui:
+	@node "$(DOTFILES)/scripts/test-paseo-tasks-ui.mjs"
+
+paseo-tasks-config:
+	@node "$(DOTFILES)/scripts/paseo-tasks-config.mjs" "$(HOME)/.pi/agent/settings.json" "$(HOME)/.pi/agent/models.json"
 
 banner:
 	@cat banner.txt
@@ -246,18 +266,17 @@ codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
+codex: claude codex-skills codex-agents codex-tmux codex-config
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)" --easypost "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-codex-mcp: claude-config codex-config
-	$(call require-command,codex)
-	$(call require-command,jq)
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
+# Retain a clear failure for old callers instead of silently restoring servers.
+codex-mcp:
 	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
 quarto:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -363,6 +382,10 @@ test-setup:
 test-zellij-attach:
 	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
 
+.PHONY: test-zellij-move
+test-zellij-move:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles
@@ -371,6 +394,9 @@ test-zellij-codex-titles:
 .PHONY: test-zellij-claude-titles
 test-zellij-claude-titles:
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
+.PHONY: test-zellij-shell-titles
+test-zellij-shell-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"

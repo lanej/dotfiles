@@ -154,15 +154,10 @@ including name collisions. Rerun `make codex-agents` after changing agent
 sources, then start a new Codex session. Missing external sources are reported
 and skipped.
 
-`make codex` shares Claude's user MCP servers and the MCP servers bundled with
-enabled user-scope Claude plugins. Shared definitions come from
-`.claude/mcp-servers.json`, merged into Claude's user configuration. Explicit
-user definitions take precedence over plugin servers. Codex-only servers remain
-installed, and unchanged definitions retain their Codex settings. The Claude
-`codex` MCP server is excluded to avoid recursion. Bearer tokens stay in
-environment variables, and plugin install paths are resolved without modifying
-the plugin cache. Rerun `make codex` after changing server definitions or plugins,
-then restart Codex to load the configuration. See Codex's
+Codex MCP servers are manually curated in `~/.codex/config.toml`. Setup preserves
+user removals, disabled servers, and custom settings; it does not import servers
+from Claude or its plugins. The old `codex-mcp` target and importer are retired.
+See Codex's
 [MCP configuration documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 `make codex` also installs the shared Claude/Codex tmux window-status hooks.
@@ -183,6 +178,8 @@ Bootstrap or retrofit a repository with portable Builder, architecture, and PR-w
 ```
 
 The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [repository bootstrap guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades.
+
+Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `repo-bootstrap --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `repo-bootstrap --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
 
 ## Shared shell history
 

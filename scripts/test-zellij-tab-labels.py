@@ -12,6 +12,7 @@ import shlex
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import termios
 
@@ -99,8 +100,19 @@ def main():
             terminal.prefix(b"W")
             terminal.send(b"h\r")
             terminal.until("reordered fallback follows position rather than stable ID", lambda:
-                           active()["position"] == 9 and "9:Tab #9" in top_line())
+                           active()["tab_id"] == eleventh and active()["position"] == 9 and "9:Tab #9" in top_line())
 
+            terminal.prefix(b"0")
+            terminal.until("leave the reordered tab", lambda: active()["position"] == 0)
+            terminal.prefix(b"\x06")
+            terminal.until("reordered picker opens", lambda: "Tabs (attention" in picker_screen())
+            terminal.send(b"9:")
+            terminal.until("picker exposes the new position", lambda:
+                           "1/11" in picker_screen() and "9: Tab #9" in picker_screen())
+            terminal.send(b"\r")
+            terminal.until("reordered selection retains the stable ID", lambda:
+                           active()["tab_id"] == eleventh
+                           and not any(pane["is_floating"] for pane in terminal.terminals()))
             terminal.prefix(b"v")
             terminal.until("split has two tiled terminals", lambda:
                            len([pane for pane in terminal.terminals() if pane["tab_id"] == eleventh]) == 2)
@@ -108,7 +120,19 @@ def main():
             terminal.send(("zsh -f\rsource " + shlex.quote(str(hook)) + "\rcd "
                            + shlex.quote(str(project)) + "\r").encode())
             terminal.until("directory/git hook titles the generated split tab", lambda:
+                           active()["name"] == "project [topic]" and "9:project [topic]" in top_line())
+            terminal.send(b"printf '\\033]2;application work\\007'; read application_done\r")
+            terminal.until("application title overlays the managed native directory name", lambda:
+                           active()["name"] == "project [topic]" and "9:application work" in top_line())
+            terminal.send(b"done\r")
+            terminal.until("prompt restores the directory pane title", lambda:
                            "9:project [topic]" in top_line())
+            ownership_probe = home / "ownership.json"
+            terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
+                           + shlex.quote(str(ownership_probe)) + "\r").encode())
+            terminal.until("server ancestry identifies ownership without a socket override", lambda:
+                           ownership_probe.exists() and json.loads(ownership_probe.read_text())
+                           ["auto_titles"].get(str(eleventh)) == "project [topic]")
             token = base64.urlsafe_b64encode(name.encode()).decode()
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
@@ -132,10 +156,14 @@ def main():
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
                                      capture_output=True, text=True, timeout=10)
             assert "9: Tab #9" in preview.stdout, preview.stdout
-            clients = subprocess.run([binary, "--session=" + name, "pipe", "--name",
-                                      "lane-client-snapshot", "--", "list"], env=env, check=True,
+            # Use the real chooser's complete-snapshot read, including its
+            # lifecycle ownership payload and attachment-readiness handling.
+            clients = subprocess.run([sys.executable, "-c",
+                                      "import json, runpy, sys; "
+                                      "print(json.dumps(runpy.run_path(sys.argv[1])['client_choices'](sys.argv[2])))",
+                                      str(home / ".local/bin/zellij-picker"), name], env=env, check=True,
                                      capture_output=True, text=True, timeout=10)
-            rows = [json.loads(line) for line in clients.stdout.splitlines() if line.strip()]
+            rows = list(json.loads(clients.stdout).values())
             assert {row.get("tab") for row in rows} == {"9: agent work", "9: Tab #9"}, rows
             other.prefix(b"d")
             terminal.prefix(b"r")

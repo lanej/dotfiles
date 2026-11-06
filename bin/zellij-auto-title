@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Keep the calling shell's Zellij tab named for its directory and Git branch."""
+
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import subprocess
+import sqlite3
+import time
+
+
+def main():
+    session = os.environ.get("ZELLIJ_SESSION_NAME", "")
+    pane_id = os.environ.get("ZELLIJ_PANE_ID", "")
+    if not session or not pane_id.isdecimal():
+        return
+    deadline = time.monotonic() + 0.8
+    context = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-context")))
+    if context["provider"]() != "zellij":
+        return
+
+    def run(*arguments):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError()
+        return subprocess.run(arguments, capture_output=True, text=True,
+                              timeout=remaining, check=True).stdout
+
+    def action(*arguments):
+        return run("zellij", "--session=" + session, "action", *arguments)
+
+    def snapshot():
+        panes = json.loads(action("list-panes", "--json"))
+        pane = next((p for p in panes if p["id"] == int(pane_id)
+                     and not p["is_plugin"]), None)
+        if (not pane or not pane["is_focused"] or pane.get("is_suppressed")
+                or pane.get("exited")):
+            return None
+        tabs = json.loads(action("list-tabs", "--json"))
+        return next((tab for tab in tabs if tab["tab_id"] == pane["tab_id"]), None)
+
+    ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    incarnation = ownership["session_identity"](session, run)
+    directory = ownership["state_directory"]()
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    key = ownership["session_key"](session)
+    # All shells in a session share ownership, so a new split can update the
+    # previous shell's title while an inactive pane cannot overwrite it.
+    with (directory / (key + ".lock")).open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        tab = snapshot()
+        if tab is None:
+            return
+        path = directory / f"{key}-{tab['tab_id']}.json"
+        previous = ownership["record_title"](path, incarnation)
+        # Native defaults also let a newly started session reuse its old name.
+        default_name = not tab["name"] or re.fullmatch(r"Tab #\d+", tab["name"])
+        if not default_name and tab["name"] != previous:
+            return
+        title = Path(os.environ.get("PWD", os.getcwd())).name or "/"
+        try:
+            branch = run("git", "rev-parse", "--abbrev-ref", "HEAD").strip()
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            branch = ""
+        if branch:
+            title += f" [{branch}]"
+        title = "".join(character for character in title if character.isprintable())
+        if title == tab["name"]:
+            return
+        # Check ownership again after Git, then target the stable ID, not the
+        # current tab or its reorderable position. Never follow a focus switch.
+        current = snapshot()
+        if not current or (current["tab_id"], current["name"]) != (tab["tab_id"], tab["name"]):
+            return
+        if ownership["session_identity"](session, run) != incarnation:
+            return
+        action("rename-tab", "--tab-id", str(tab["tab_id"]), "--", title)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"identity": incarnation, "title": title}) + "\n")
+        temporary.replace(path)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
+        # Cosmetic hooks must never interfere with changing directories or prompts.
+        pass
