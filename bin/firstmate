@@ -2,11 +2,28 @@
 set -euo pipefail
 
 firstmate_root=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+source_path=${BASH_SOURCE[0]}
+while [[ -L "$source_path" ]]; do
+	source_dir=$(cd "$(dirname "$source_path")" && pwd)
+	source_path=$(readlink "$source_path")
+	[[ "$source_path" == /* ]] || source_path="$source_dir/$source_path"
+done
+dotfiles_root=$(cd "$(dirname "$source_path")/.." && pwd)
 
 usage() {
 	printf '%s\n' \
 		'Usage: firstmate [command] [arguments]' \
 		'  start [agent arguments]       Start or attach (the default).' \
+		'  rpc [Pi arguments]           Run the Pi primary for Paseo (no terminal backend).' \
+		'  github poll                  Catch up tracked GitHub feedback.' \
+		'  github intake <issue URL>    Queue a linked issue through Firstmate.' \
+		'  github configure-paseo       Add the dedicated Firstmate Paseo provider.' \
+		'  tasks [--all] [--json]       Show current tasks, decisions, queue, and recent completions.' \
+		'  tasks show <id>              Inspect a local task, including its full backlog record.' \
+		'  peer list                    Discover exact agent endpoints on remote boats.' \
+		'  peer send <address> <text> [id]  Durably message an existing peer.' \
+		'  peer status [id]             Reconcile queued messages and collect replies.' \
+		'  peer connect <boat>          Authenticate SSH once and install its helper.' \
 		'  attach [backend options]     Attach to the running captain.' \
 		'  stop                         Stop only the selected Firstmate session.' \
 		'  reload                       Reload tmux; validate Zellij live configuration.' \
@@ -67,6 +84,16 @@ require_primary() {
 	done
 }
 
+pi_environment() {
+	unset FM_CODEX_WATCH_CHECKPOINT
+	export FM_PI_HARNESS=pi
+	# WHY: GUI-launched Paseo need not inherit the login shell's work credentials.
+	if [[ -z ${AWS_BEARER_TOKEN_BEDROCK:-} && -r "$HOME/.config/bedrock/env" ]]; then
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bedrock/env"
+	fi
+}
+
 tmux_exec() {
 	command -v tmux >/dev/null || { printf '%s\n' 'tmux is missing. Install it before starting or attaching to Firstmate.' >&2; exit 1; }
 	# Do not carry the caller's pane identity into a different multiplexer.
@@ -82,6 +109,46 @@ zellij_exec() {
 
 case ${1:-start} in
 	help|-h|--help) usage; exit 0 ;;
+	github)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/github-feedback.mjs" "$@"
+		;;
+	peer)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/peers.mjs" "$@"
+		;;
+	tasks)
+		shift
+		export FIRSTMATE_HOME="$firstmate_root"
+		exec node "$dotfiles_root/firstmate/tasks.mjs" "$@"
+		;;
+	rpc)
+		shift
+		require_checkout
+		primary_harness=pi
+		require_primary
+		cd "$firstmate_root"
+		if [[ $# == 2 && "$1" == --mode && "$2" == rpc ]]; then
+			# WHY: Paseo 0.15.1 metadata probes carry only --mode rpc; agent launches carry an extension or saved session.
+			pi_environment
+			exec pi --mode rpc --no-session --no-extensions --extension builtin:mcp --extension builtin:llama.cpp \
+				--no-skills --no-prompt-templates --no-themes --no-tools
+		fi
+		export FM_HOME="$PWD" FIRSTMATE_HOME="$PWD"
+		export FM_BACKEND=zellij
+		pi_environment
+		# WHY: Paseo owns stdin and the persisted session; the launch guard only serializes captains.
+		exec python3 "$dotfiles_root/firstmate/mobile-rpc.py" pi \
+			--extension "$firstmate_root/.pi/extensions/fm-primary-pi-watch.ts" \
+			--extension "$firstmate_root/.pi/extensions/fm-primary-turnend-guard.ts" \
+			--extension "$firstmate_root/.pi/extensions/fm-branch-supervision.ts" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-github.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-peers.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-tasks.mjs" \
+			--extension "$dotfiles_root/pi/extensions/firstmate-questions.mjs" "$@"
+		;;
 esac
 
 # Match upstream's explicit choices without its unrelated runtime auto-detection.
@@ -145,8 +212,7 @@ case ${1:-start} in
 		cd "$firstmate_root"
 		export FM_HOME="$PWD"
 		if [[ "$primary_harness" == pi ]]; then
-			unset FM_CODEX_WATCH_CHECKPOINT
-			export FM_PI_HARNESS=pi
+			pi_environment
 			exec pi "$@"
 		fi
 		export FM_CODEX_WATCH_CHECKPOINT=45

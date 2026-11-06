@@ -2,11 +2,19 @@
 
 Personal dotfiles managed via `make` + symlinks, cross-platform (macOS and Linux).
 
+## Documentation website
+
+The Astro Starlight site in [`website/`](website/) renders the shared [documentation](docs/index.mdx) from `README.md` and `docs/`; those files are the only documentation sources to maintain. See the [site maintenance guide](docs/documentation-site.mdx) for local development and verification.
+
 ## Installation
+
+The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.
+
+For the copyable `curl | sh` entrypoint, use the [shared quick start](docs/index.mdx#quick-start). It clones or reuses `~/.files` and runs the existing minimal bootstrap. The same setup with each step explicit:
 
 ```sh
 $ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
-$ make           # initialize the native baseline and its machine TOML
+$ make base      # initialize the native baseline and its machine TOML
 $ # Add tool and work-context sets to ~/.config/dotfiles/config.toml.
 $ make bootstrap # native OS configuration plus uv and Python
 $ make plan      # preview the selected tools and configuration
@@ -17,15 +25,7 @@ Default `make` installs configuration only. Software installation has two explic
 
 Select `workstation` for the broad installation, add work-context sets, and override individual properties as needed. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
 
-`make` defaults to `base`, which detects the OS and links its built-in baseline without Python. It also creates a missing machine TOML with `sets = ["macos"]` or `sets = ["linux"]`, respecting `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`; existing files and symlinks are preserved. `make shell git` also links basic shell and Git configuration without Python. After bootstrap, `make configure` applies the baseline plus selected bundles and individual overrides without installing packages; `make setup` and `make all` are aliases for that configuration step. Both configuration paths print a checklist: green `✓` for completed
-configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`,
-`uv`, or `jq` do not stop other setup steps, and configuration links are installed
-independently of optional integrations. It exits nonzero after the full checklist
-if anything needs attention. Install the missing dependencies or fix the reported
-issue, then rerun the same target; existing links and user configuration are safe to reuse.
-Existing fzf-tab checkouts are reused without pulling updates. Linting and tests
-run separately with `make lint` and the `test` targets. Color is enabled in
-terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
+`make` defaults to `configure`, applying the native baseline plus the selected bundles and individual overrides from machine TOML without installing packages. `make setup` and `make all` are aliases for the same configuration step. For initial setup before Python is available, `make base` links only the built-in OS baseline and creates a missing machine TOML with `sets = ["macos"]` or `sets = ["linux"]`, respecting `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`; existing files and symlinks are preserved. `make shell git` also links basic shell and Git configuration without Python. Both configuration paths print a checklist: green `✓` for completed configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`, `uv`, or `jq` do not stop other setup steps, and configuration links are installed independently of optional integrations. It exits nonzero after the full checklist if anything needs attention. Install the missing dependencies or fix the reported issue, then rerun the same target; existing links and user configuration are safe to reuse. Existing fzf-tab checkouts are reused without pulling updates. Linting and tests run separately with `make lint` and the `test` targets. Color is enabled in terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
 
 The native platform set is selected automatically. Explicit platform tools are rejected on an unsupported OS:
 
@@ -43,6 +43,20 @@ optional tools leave the basic prompt, completion, and history available.
 The custom fzf integration requires both `fzf` and `fd`; it activates in a new
 shell once they are installed. Failed integration generators do not replace
 working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
+
+`make` / `make configure` (with the shell set selected), `make install`, and `make zsh-config` generate Zsh completions for supported tools already on `PATH`, including fd, uv, Rust, GitHub CLI, Codex, Zellij, Atuin, and the shell utilities. `make zsh-completions` refreshes just those files without configuring plugins or installing software. The tool-specific commands live in [`scripts/make/completions.sh`](scripts/make/completions.sh); tools without generators continue using their packaged completions or existing shell integrations.
+
+Generated files go to `~/.zsh/completions/_<tool>`. Missing tools are skipped; failed or empty generators report failure and keep the last working file. Files and symlinks created by hand are preserved. To let dotfiles manage one, move that file aside and rerun setup. Unchanged output preserves the file and completion cache. Changed output invalidates the dump for the next shell. Run `recomp` to regenerate and reload completions in the current Zsh, including files added manually. It no longer runs plugin setup. `make test-zsh-completions` exercises this workflow.
+
+Register work-only or other locally installed tools in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Keep this machine-specific file outside the checkout. Each non-comment line is a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
+
+```text
+epf epf completions zsh
+```
+
+Run `make zsh-completions` or `recomp` after editing it. Local entries take precedence over built-ins and use the same validation and file preservation. Both the target binary and generator must be on `PATH`; missing targets are skipped before generation or packaged-file lookup. The first entry for a name wins. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. Put a more involved generator in an executable wrapper on `PATH` and register that command instead. Dotfiles does not install tools listed here.
+
+Older fd builds without `--gen-completions` use their packaged `_fd` from standard Zsh completion locations or the fd release directory. If neither source is available, setup explains how to install it and preserves the previous file.
 
 `make benchmark-zsh-startup` measures the current home's interactive login-shell
 startup and exit over 30 runs after three warmups. It reports median and p95
@@ -72,10 +86,10 @@ those entrypoints. Missing external skill sources are reported and skipped.
 
 The full install and configuration stages read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect.
 
-The built-in native baseline and basic linking targets such as `make shell git` need only Make, Bash, and standard system utilities. Python 3.11+ is required for configuration-driven targets such as `make configure`, `make config`, and `make plan`; `make bootstrap` installs that runtime before the full installation stage.
+The built-in native baseline (`make base`) and basic linking targets such as `make shell git` need only Make, Bash, and standard system utilities. Default `make` and configuration-driven targets such as `make config` and `make plan` require Python 3.11+; `make bootstrap` installs that runtime before the full installation stage.
 
 ```sh
-make # Initialize the machine TOML with the detected native set.
+make base # Initialize the machine TOML with the detected native set.
 # Edit the selected sets, then inspect their resolved settings and source files.
 make bootstrap
 make config
@@ -114,7 +128,7 @@ The repository maintains sets in [`config/sets`](config/sets). Add private sets 
 
 Each `[tools]` property enables or disables one catalog recipe. Shared tool dependencies are added once and installed first. Explicitly disabling a required dependency, selecting an unsupported platform tool, or naming an unknown property fails before the tool plan runs. `false` skips that recipe; it does not uninstall an existing application or change that application's own package/plugin management. GUI, mail, and Ruby entries retain the existing configuration-only behavior; those applications are installed separately.
 
-[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping default `make` independent of Python. This first-stage baseline does not read machine settings or private sets. `make install` and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
+[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping `make base` independent of Python. This first-stage baseline does not read machine settings or private sets. Default `make`, `make install`, and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
 
 Use `make install DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh install` for an alternate configuration. The full stage rejects a missing explicitly selected file. Every catalog tool has a boolean `tools.<name>` property; `codex.github_enabled` controls Codex GitHub access and `zellij.source` selects `"patched"`, `"release"`, or `"main"`.
 
@@ -129,7 +143,7 @@ python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make configure` to reapply configuration without installing tools. Default `make` always links only the built-in native baseline. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
@@ -152,6 +166,20 @@ the new handlers with `/hooks`. The shell's `codex` function uses `--no-daemon`
 inside tmux so hooks inherit the launching pane. See
 [tmux window status](docs/tmux.md#claude-and-codex-window-status) for the states
 and event mapping.
+
+## Repository skills and PR templates
+
+Bootstrap or retrofit a repository with portable Builder, architecture, and PR-writer skills, plus a PR template. Preview first; choose shareable files or a locally excluded installation:
+
+```sh
+~/.files/bin/repo-bootstrap --repo ~/src/new-project --init --dry-run
+~/.files/bin/repo-bootstrap --repo ~/src/new-project --init
+~/.files/bin/repo-bootstrap --repo ~/src/existing-project --mode local
+```
+
+The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [repository bootstrap guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades.
+
+Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `repo-bootstrap --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `repo-bootstrap --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
 
 ## Shared shell history
 
@@ -189,7 +217,7 @@ Unlock your SSH agent and authenticate to any bastion before running the target.
 
 See [docs/stack-darwin.md](docs/stack-darwin.md) and [docs/stack-linux.md](docs/stack-linux.md) for platform-specific tools. See [docs/tmux.md](docs/tmux.md) for session persistence and the `tmux-sessions` command.
 
-`make install` installs the Zellij runtime selected by your configuration sets; the default is pinned upstream main with native fixes. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
+`make install` installs the Zellij runtime selected by your configuration sets; the default is the pinned [lanej/zellij fork](https://github.com/lanej/zellij) with native fixes. Run `make zellij` to refresh its configuration and helpers, then `zellij attach --create main` to start a trial session. The `zj main` alias is available in a new shell. See [the Zellij guide](docs/zellij.md) for bindings and remaining tmux integration gaps.
 
 In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
@@ -200,11 +228,11 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
 | Target | Description |
 |---|---|
-| `make` / `make base` | Initialize missing machine TOML and link the native baseline without Python |
+| `make base` | Initialize missing machine TOML and link the native baseline without Python |
 | `make config-init` | Initialize a missing machine TOML without applying configuration |
 | `make bootstrap` | Apply the native baseline and install only uv and Python |
 | `make install` | Install and configure the selected tool sets |
-| `make configure` / `make setup` / `make all` | Reapply the selected configuration without installing packages |
+| `make` / `make configure` / `make setup` / `make all` | Reapply the selected configuration without installing packages |
 | `make plan` | Preview the baseline, selected tools, and execution phases |
 | `make config` | Show effective properties and their sources |
 | `make lint` | Run skill audits and instruction-size checks |

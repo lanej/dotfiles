@@ -1,0 +1,31 @@
+{
+  "providers": {
+    "bedrock-router": {
+      "name": "Bedrock router",
+      "baseUrl": "http://127.0.0.1:18081/openai/v1",
+      "api": "openai-responses",
+      "apiKey": "${AWS_BEARER_TOKEN_BEDROCK}",
+      "models": [
+        {
+          "id": "openai.gpt-6.1-sol",
+          "name": "GPT-6.1 Sol (Bedrock router)",
+          "reasoning": true,
+          "thinkingLevelMap": { "xhigh": "xhigh" },
+          "input": ["text", "image"],
+          "contextWindow": 1050000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 2.2,
+            "output": 11,
+            "cacheRead": 0.11,
+            "cacheWrite": 2.75,
+            "tiers": [
+              { "inputTokensAbove": 272000, "input": 4.4, "output": 16.5, "cacheRead": 0.22, "cacheWrite": 5.5 }
+            ]
+          },
+          "compat": { "supportsStrictMode": true, "supportsLongCacheRetention": false }
+        }
+      ]
+    }
+  }
+}

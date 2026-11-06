@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Observe persistent popup state and confirmed shutdown through installed keys."""
+"""Observe popup state, selected-client detach, and shutdown through installed keys."""
 
+import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -123,7 +125,106 @@ def prove_popup(terminal, home, expected, filename):
                    proof.exists() and proof.read_text().strip() == expected)
 
 
+def detach_workflow(clients):
+    first, unrelated = clients[:2]
+
+    def attached_ids():
+        return {client for tab in first.tabs() for client in tab["other_focused_clients"]}
+
+    def exited(terminal):
+        try:
+            waited, status = os.waitpid(terminal.pid, os.WNOHANG)
+        except ChildProcessError:
+            return True
+        if waited:
+            assert os.waitstatus_to_exitcode(status) == 0
+        return bool(waited)
+
+    def until(description, predicate):
+        def observed():
+            for terminal in clients[1:]:
+                terminal.drain(0.01)
+            return predicate()
+        return first.until(description, observed)
+
+    original = attached_ids()
+    assert len(original) == 1
+    panes = {pane["id"] for pane in first.terminals()}
+
+    def attach():
+        terminal = Terminal(first.binary, first.env, first.name)
+        clients.append(terminal)
+        until("second attachment uses the live session", lambda:
+              b"zellij-ready> " in terminal.output and len(attached_ids()) == 2)
+        return terminal
+
+    target = attach()
+    target_id = (attached_ids() - original).pop()
+
+    def choose(invoker=first):
+        selected_id = (attached_ids() - original).pop()
+        invoker.prefix(b"D")
+        until("client chooser lists both real attachments", lambda:
+              "Detach one client" in floating_screen(first)
+              and f"Client {selected_id}" in floating_screen(first))
+        # The two rows are sorted by native ID; select the second attachment.
+        invoker.send(b"\x1b[B")
+
+    choose()
+    first.send(b"\x1b")
+    until("cancel closes only the chooser", lambda:
+          not any(p["is_floating"] for p in first.terminals()))
+    assert attached_ids() == original | {target_id}
+    assert not exited(target) and not exited(unrelated)
+    choose()
+    first.send(b"\r")
+    until("only the selected client detaches", lambda:
+          exited(target) and attached_ids() == original
+          and not any(p["is_floating"] for p in first.terminals()))
+    assert not exited(first) and not exited(unrelated)
+    assert {pane["id"] for pane in first.terminals()} == panes
+
+    old_attachment = attach()
+    old_id = (attached_ids() - original).pop()
+    assert old_id > target_id, "the pinned runtime must allocate a fresh attachment ID"
+    choose()
+    old_attachment.prefix(b"d")
+    until("ordinary detach closes its own attachment", lambda:
+          exited(old_attachment) and attached_ids() == original)
+    replacement = attach()
+    replacement_id = (attached_ids() - original).pop()
+    assert replacement_id > old_id, "the reconnect must have a new native attachment ID"
+    first.send(b"\r")
+    until("old chooser entry rejects the replacement attachment", lambda:
+          "selected attachment changed" in floating_screen(first))
+    assert not exited(replacement) and not exited(first) and not exited(unrelated)
+    assert attached_ids() == original | {replacement_id}
+    first.send(b"\r")
+    until("stale selection closes without side effects", lambda:
+          not any(p["is_floating"] for p in first.terminals()))
+    choose(replacement)
+    replacement.send(b"\r")
+    until("self-selection detaches and its acknowledged helper exits", lambda:
+          exited(replacement) and attached_ids() == original
+          and not any(p["is_floating"] for p in first.terminals()))
+    reattached = attach()
+    assert {pane["id"] for pane in first.terminals()} == panes
+    reattached.prefix(b"d")
+    until("ordinary detach remains unchanged after rejection", lambda:
+          exited(reattached) and attached_ids() == original)
+    assert {pane["id"] for pane in first.terminals()} == panes
+    assert unrelated.action("list-clients").strip().splitlines()[1:]
+    print("Client detach: cancel preserves both attachments; selection closes exactly one; "
+          "a stale entry cannot detach a replacement attachment with a new native ID; "
+          "self-selection closes its helper and reattaches to the original panes; "
+          "ordinary detach and another session survive.")
+
+
 def popup_workflow(first, second, home):
+    def popup_panes(terminal):
+        # Native metadata also includes the suppressed built-in bars plugin.
+        return [pane for pane in terminal.panes(POPUP) if not pane["is_plugin"]]
+
     first.prefix(b"r")
     first.send(b"popup-origin\r")
     first.until("distinct host tab label", lambda: first.tabs()[0]["name"] == "popup-origin")
@@ -134,8 +235,92 @@ def popup_workflow(first, second, home):
     first.until("record scratch shell PID", lambda: (home / "popup-pid").exists())
     pid = (home / "popup-pid").read_text().strip()
     expected = f"live-memory|{pid}|{home / 'scratch'}"
-    popup_ids = {p["id"] for p in first.panes(POPUP) if not p["is_plugin"]}
+    popup_ids = {p["id"] for p in popup_panes(first)}
     assert len(popup_ids) == 1
+    original = next(iter(popup_ids))
+    first.prefix(b"v")
+    first.until("popup splits into two tiled panes", lambda:
+                len(popup_panes(first)) == 2)
+    left, right = sorted(popup_panes(first), key=lambda pane: pane["pane_x"])
+    assert left["id"] == original and left["pane_x"] < right["pane_x"]
+    assert not left["is_floating"] and not right["is_floating"]
+    first.until("split shell is ready", lambda:
+                "zellij-ready>" in first.action("dump-screen", "--pane-id", str(right["id"]),
+                                              session=POPUP))
+    first.send(b"popup_token=split-memory; printf '%s|%s|%s\\n' \"$popup_token\" \"$$\" \"$PWD\" "
+               b"> \"$HOME/popup-split-state\"\r")
+    first.until("split inherits scratch cwd", lambda:
+                (home / "popup-split-state").exists())
+    split_expected = (home / "popup-split-state").read_text().strip()
+    assert split_expected.split("|")[0] == "split-memory"
+    assert split_expected.split("|")[1] != pid
+    assert split_expected.split("|")[2] == str(home / "scratch")
+    first.prefix(b"s")
+    first.until("popup also splits downward", lambda: len(popup_panes(first)) == 3)
+    bottom = next(pane for pane in popup_panes(first)
+                  if pane["id"] not in (original, right["id"]))
+    assert bottom["pane_y"] > right["pane_y"] and bottom["pane_x"] == right["pane_x"]
+    first.prefix(b"x")
+    popup_ids.add(right["id"])
+    first.until("close removes only the temporary popup split", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    first.send(b"\x08")
+    first.until("bare Ctrl-h navigation returns to the original popup shell", lambda:
+                next(pane for pane in popup_panes(first) if pane["is_focused"])["id"] == original)
+    # A real scrollback journey: the target is outside the viewport before the
+    # keys run, so a key sent through to the shell cannot accidentally pass.
+    first.send(b"printf 'popup-history-%03d\\n' $(seq 1 160)\r")
+    def screen():
+        return first.action("dump-screen", "--pane-id", str(original), session=POPUP)
+    first.until("history fills the popup viewport", lambda: "popup-history-160" in screen())
+    assert "popup-history-001" not in screen()
+    first.prefix(b"[")
+    first.send(b"g")
+    first.until("scroll mode reaches old popup output", lambda: "popup-history-001" in screen())
+    first.send(b"/")
+    first.send(b"popup-history-080\r")
+    first.until("search finds output outside the initial viewport", lambda:
+                "popup-history-080" in screen())
+    first.send(b"q")
+    first.until("leaving search returns to live output", lambda: "popup-history-160" in screen())
+    first.prefix(b"e")
+    def editor_ready():
+        for pane in popup_panes(first):
+            if pane["id"] in popup_ids:
+                continue
+            contents = first.action("dump-screen", "--pane-id", str(pane["id"]), session=POPUP)
+            # The PTY is not a terminal emulator replying to Neovim's DSR
+            # probe. Acknowledge its startup notice before inspecting the file.
+            if "Press ENTER or type command" in contents:
+                first.send(b"\r")
+            elif "popup-history" in contents:
+                return True
+        return False
+    first.until("scrollback opens in the configured editor", editor_ready)
+    # Ask the actual editor to save its buffer: this proves it received the
+    # history, rather than just observing another terminal pane being created.
+    first.send(b":w! ~/popup-history.txt\r")
+    first.until("editor receives the popup history", lambda:
+                (home / "popup-history.txt").exists()
+                and "popup-history-001" in (home / "popup-history.txt").read_text()
+                and "popup-history-160" in (home / "popup-history.txt").read_text())
+    first.send(b":q!\r")
+    first.until("closing the editor restores the live popup panes", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    # Tab controls need the shared layout's visible bar, not just bindings.
+    first.prefix(b"c")
+    first.until("popup creates an ordinary tab", lambda:
+                len(json.loads(first.action("list-tabs", "--json", session=POPUP))) == 2)
+    first.prefix(b"r")
+    first.send(b"popup-controls\r")
+    first.until("popup tab bar renders its renamed tab", lambda:
+                any(tab["name"] == "popup-controls" and tab["active"]
+                    for tab in json.loads(first.action("list-tabs", "--json", session=POPUP)))
+                and b"1:popup-controls" in first.output)
+    first.prefix(b"x")
+    first.until("closing the temporary tab preserves both scratch panes", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    prove_popup(first, home, expected, "popup-after-controls")
     rendered = len(first.output)
     first.prefix(b"u")
     # FocusHostSession queues a frame; its completion is not the host's
@@ -159,10 +344,23 @@ def popup_workflow(first, second, home):
     hide_popup(first)
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")
-    assert {p["id"] for p in second.panes(POPUP) if not p["is_plugin"]} == popup_ids
+    assert {p["id"] for p in popup_panes(second)} == popup_ids
+    second.prefix(b"l")
+    # Native focus metadata can retain other client focus; the following shell
+    # proof establishes which live pane actually receives this client's keys.
+    second.until("reopened popup can focus its surviving split", lambda:
+                 any(pane["id"] == right["id"] and pane["is_focused"]
+                     for pane in popup_panes(second)))
+    prove_popup(second, home, split_expected, "popup-split-other-session")
+    second.prefix(b"x")
+    second.until("closing a surviving split keeps the original shell", lambda:
+                 {pane["id"] for pane in popup_panes(second)} == {original})
+    prove_popup(second, home, expected, "popup-after-split-close")
     hide_popup(second)
-    print("Popup: host/guest focus keys work; one original shell PID, unexported state and cwd "
-          "survive hiding, another tab, and another outer session.")
+    print("Popup: native splits, bare navigation, scroll/search, scrollback editing and tab keys "
+          "work inside the floating view; both shells retain "
+          "their PID, unexported state and cwd across hiding, another tab, and another "
+          "outer session. Closing a split preserves the original shell.")
     return expected
 
 
@@ -236,12 +434,22 @@ def shutdown_workflow(clients, names, home, popup_expected):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--popup-only", action="store_true",
+                        help="exercise the shared popup without unrelated client/shutdown checks")
+    args = parser.parse_args()
     binary = shutil.which("zellij")
-    assert binary, "Install Zellij >=0.45.1 before make test-zellij-sessions"
+    assert binary and shutil.which("fzf") and shutil.which("nvim"), \
+        "Install the pinned Zellij runtime, fzf and Neovim before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
         temporary = Path(directory).resolve()
         home = temporary / "home"
         home.mkdir()
+        # Exercise the real editor with private state and no unrelated plugins.
+        editor_config = home / ".config/nvim"
+        editor_config.mkdir(parents=True)
+        (editor_config / "init.lua").write_text(
+            'vim.opt.swapfile = false\nvim.opt.shadafile = "NONE"\n')
         runtime = temporary / "run"
         runtime.mkdir(mode=0o700)
         temp_files = temporary / "tmp"
@@ -250,28 +458,35 @@ def main():
                "PS1": "${ZELLIJ_SESSION_NAME}:zellij-ready> ",
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
+               "XDG_STATE_HOME": str(temporary / "state"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
-        subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=env,
+        subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,
                        check=True, capture_output=True, text=True)
         subprocess.run([binary, "setup", "--check"], env=env, check=True,
                        capture_output=True, text=True)
         names = ["first-" + temporary.name, "second-" + temporary.name]
         clients = []
         try:
-            prove_popup_startup(binary, env, runtime)
+            if not args.popup_only:
+                prove_popup_startup(binary, env, runtime)
             for name in names:
                 terminal = Terminal(binary, env, name)
                 clients.append(terminal)
+                terminal.grant_status_permissions()
                 terminal.until("outer shell starts", lambda:
                                b"zellij-ready> " in terminal.output and len(terminal.terminals()) == 1)
             first, second = clients
+            if not args.popup_only:
+                detach_workflow(clients)
             expected = popup_workflow(first, second, home)
-            shutdown_workflow(clients, names, home, expected)
+            if not args.popup_only:
+                shutdown_workflow(clients, names, home, expected)
         finally:
             # All names live only in this test's private socket directory.
             for name in [*names, POPUP]:

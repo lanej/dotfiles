@@ -29,6 +29,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### Firstmate through Paseo and GitHub
+
+[Firstmate mobile workflow](firstmate-mobile.md): one Paseo conversation coordinates work, while assigned Pi sessions handle GitHub feedback directly through native Firstmate task records and steering inboxes. This replaces the standalone Claude dispatchers. Keep it opt-in pending live Bedrock/provider, upstream supervision, and phone reconnect evidence described in [#134](https://github.com/lanej/dotfiles/issues/134).
+
 ### Zellij
 
 [Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for Firstmate and existing agent-status integrations.

@@ -49,6 +49,26 @@ package_semver() {
 	fi
 }
 
+install_imagemagick_package() {
+	# NOTE: ImageMagick 6 provides convert; version 7 provides magick.
+	if command -v magick >/dev/null || command -v convert >/dev/null; then
+		return 0
+	fi
+	if command -v brew >/dev/null; then
+		brew install imagemagick
+	elif command -v yay >/dev/null; then
+		sudo yay -S --noconfirm imagemagick
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm imagemagick
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y ImageMagick
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y imagemagick
+	else
+		return 1
+	fi
+}
+
 install_fd_package() {
 	# Check if fd is already installed and working
 	if command -v fd &>/dev/null; then
@@ -493,15 +513,16 @@ load_dotfiles_config() {
 install_zellij_runtime() {
 	# OSC 7501 is merged on main but absent from stable 0.45.1:
 	# https://github.com/zellij-org/zellij/pull/5734
-	# Pin upstream with our native fixes until a stable release includes both.
+	# Pin lanej/zellij with our native fixes until a stable release includes both.
 	local dotfiles_root
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	load_dotfiles_config || return 1
 	case "$DOTFILES_ZELLIJ_SOURCE" in
-		patched) python3 "$dotfiles_root/scripts/install-zellij" ;;
+		patched) bash "$dotfiles_root/scripts/install-zellij" ;;
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
-	esac
+	esac || return 1
+	python3 "$dotfiles_root/scripts/install-zellij-navigation.py"
 }
 
 install_zellij_from_main() (
@@ -627,16 +648,16 @@ install_node_from_release() {
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
-	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
-	nvm alias default "$1"
-	nvm use "$1"
+	nvm install "$1" || { echo "Failed to install node@$1 via nvm" >&2; return 1; }
+	nvm alias default "$1" || return 1
+	nvm use "$1" || return 1
+	# WHY: NVM can replace its PATH entry in place, behind another Node executable.
+	export PATH="$NVM_BIN:$PATH"
+	hash -r
 
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
 	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
-
-	# Update hash table so shell can find the new binaries
-	hash -r
 }
 
 install_codex_from_release() {
@@ -671,6 +692,19 @@ install_firstmate_release() (
 		shasum -a 256 -c selected.sha256 || exit 1
 	fi
 	tar -xzf "$archive" || exit 1
+	if ! "./$tool" --version; then
+		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
+			echo "Downloaded $tool cannot run on this host" >&2
+			exit 1
+		fi
+		# WHY: Upstream Linux releases may require a newer glibc than this host.
+		echo "Building Treehouse v$version from source for this host"
+		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
+		mkdir source || exit 1
+		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
+		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
+		"./$tool" --version || exit 1
+	fi
 	mkdir -p "$HOME/.local/bin" || exit 1
 	install -m 755 "$tool" "$HOME/.local/bin/$tool"
 )
@@ -973,6 +1007,10 @@ prepare_bootstrap_environment() {
 		# NOTE: NVM generates this file outside the repository.
 		# shellcheck disable=SC1091
 		source "$NVM_DIR/nvm.sh"
+		if [ -n "${NVM_BIN:-}" ]; then
+			export PATH="$NVM_BIN:$PATH"
+			hash -r
+		fi
 	fi
 }
 
@@ -982,13 +1020,14 @@ install_build_dependencies() {
 		return $?
 	fi
 	[ "$os" = linux ] || return 0
+	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
 	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
 	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
 	fi
 }
 
@@ -1082,6 +1121,12 @@ install_dependencies() {
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
 		case "$installer" in
+			npm)
+				current_npm_version=$(npm list --global --prefix "$HOME/.local" "$package" --depth=0 --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version || ""))' "$package") || current_npm_version=
+				if [ "$current_npm_version" != "$version" ]; then
+					npm install --global --prefix "$HOME/.local" "$package@$version" || return 1
+				fi
+				;;
 			package) install_package_version "$package" "$version" || return 1 ;;
 			system)
 				if ! command -v "$package" >/dev/null; then
@@ -1196,6 +1241,7 @@ setup_bedrock_router() (
 )
 
 run_configured_hooks() {
+	local configuration_root=${2:-$HOME/.files}
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
@@ -1206,6 +1252,12 @@ run_configured_hooks() {
 			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
 			neovim) setup_neovim || return 1 ;;
 			atuin-sync) setup_atuin_sync || return 1 ;;
+			zellij-status)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+					make -C "$configuration_root" zellij-status || return 1
+					make -C "$configuration_root" zellij-config || return 1
+				fi
+				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
 			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
 		esac
@@ -1220,7 +1272,7 @@ dotfiles_has_tool() {
 }
 
 post_install_setup() {
-	run_configured_hooks "$DOTFILES_POST_HOOKS" || return 1
+	run_configured_hooks "$DOTFILES_POST_HOOKS" "${1:-$HOME/.files}" || return 1
 	echo ""
 	echo "🎉 Dotfiles installation completed!"
 	echo ""
@@ -1261,7 +1313,7 @@ bootstrap_dotfiles() {
 			# Selected integrations prepare credentials before Make links configuration.
 			run_configured_hooks "$DOTFILES_PREPARE_HOOKS" || return 1
 			make -C "$root" configure || return 1
-			post_install_setup
+			post_install_setup "$root"
 			;;
 	esac
 }

@@ -133,7 +133,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     guidance = global_file.read_text()
     # Follow the actual installed instruction path, without claiming model loading.
     target, = re.findall(r"`(~\/[^`]+)`", guidance)
-    assert (home / target[2:]).read_bytes() == (package / "references/instructions.md").read_bytes()
+    assert (home / target[2:]).read_bytes() == (package / "SKILL.md").read_bytes()
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
     construction_text += "Protect retained behavior during the next increment.\n"

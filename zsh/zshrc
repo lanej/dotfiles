@@ -66,8 +66,8 @@ bindkey -M vicmd v edit-command-line
 # Add custom completions and site-functions to fpath (must be before compinit)
 # ZSH_COMPLETIONS is set in zshenv
 fpath=(
-    ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
     ~/.zsh/completions
+    ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
     /opt/homebrew/share/zsh/site-functions
     /usr/local/share/zsh/site-functions
     $fpath
@@ -469,6 +469,21 @@ if [ -r ~/.local/share/zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]
 fi
 
 [[ -r "${HOME}/.alias" ]] && source "${HOME}/.alias"
+
+# Refresh generated files and the current shell without running plugin installers.
+unalias recomp 2>/dev/null
+function recomp {
+	local completion result=0
+	ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	# A completion already used in this shell must be autoloaded again.
+	for completion in "$HOME"/.zsh/completions/_*(N-.); do
+		unfunction "${completion:t}" 2>/dev/null
+	done
+	autoload -Uz compinit
+	# Ignore insecure completion paths rather than prompting or trusting them.
+	compinit -i || return
+	return "$result"
+}
 
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"

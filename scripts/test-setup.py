@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One setup workflow: native baseline, additions, dependency repair, safe rerun."""
+"""One setup workflow: selected configuration, minimal base, repair, safe rerun."""
 import os
 from pathlib import Path
 import shutil
@@ -27,14 +27,14 @@ def main():
         home.mkdir()
         executables.mkdir()
         shutil.copytree(ROOT, repo, symlinks=True,
-                        ignore=shutil.ignore_patterns(".git", "__pycache__"))
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", "target"))
         # Exercise supported local Codex preferences even in a clean CI checkout.
         local_guidance = repo / "codex/AGENTS.local.md"
         if not local_guidance.exists():
             local_guidance.write_text("Keep fixture-local Codex preferences.\n")
         # Only base utilities are available; optional tools cannot leak in from
         # the developer machine or CI runner. Network boundaries stay offline.
-        for name in ("awk", "basename", "bash", "cat", "cp", "dirname", "find",
+        for name in ("awk", "basename", "bash", "cat", "cmp", "cp", "dirname", "find",
                      "grep", "head", "ln", "make", "mkdir", "mktemp", "mv",
                      "pwd", "readlink", "rm", "sed", "sort", "tail", "touch", "tr",
                      "uname", "wc"):
@@ -51,11 +51,16 @@ def main():
                           '  *) touch "$HOME/broker-started" ;;\n'
                           'esac\ntouch "$HOME/broker-installed"\n')
         broker.chmod(0o755)
+        # This detector checks installation and symlinks. The Zellij workflow
+        # builds and executes the real plugin; setup accepts a prebuilt artifact.
+        plugin = temporary / "lane-status.wasm"
+        plugin.write_bytes(b"\x00asm\x01\x00\x00\x00")
         subprocess.run([shutil.which("git"), "init", "-q", str(repo)], check=True)
         machine_config = home / ".config/dotfiles/config.toml"
         env = {"HOME": str(home), "PATH": str(executables), "TERM": "xterm-256color",
                "CLICOLOR_FORCE": "1", "LC_ALL": "C", "UV": "uv",
                "AGENT_STATUS_BIN": str(broker),
+               "ZELLIJ_STATUS_WASM": str(plugin),
                "SETUP_TMUX_STATE": str(temporary / "tmux-session")}
         command = [shutil.which("make"), "--no-print-directory"]
 
@@ -74,39 +79,51 @@ def main():
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
 
-        dry_run = subprocess.run([*command, "-n"], cwd=repo, env=env,
+        dry_run = subprocess.run([*command, "-n", "base"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
         assert snapshot(home) == {}, "make -n must not install configuration"
 
-        # Default Make configures the native baseline without Python, package
-        # managers, or downloaders available on PATH.
-        native = subprocess.run(command, cwd=repo, env=env,
+        # NOTE: Explicit base remains usable before Python and optional tools are installed.
+        native = subprocess.run([*command, "base"], cwd=repo, env=env,
                                 capture_output=True, text=True, timeout=30)
         assert native.returncode == 0, native.stdout + native.stderr
         native_path = ".config/yabai/yabairc" if sys.platform == "darwin" else ".xinitrc"
         assert (home / native_path).is_symlink()
-        assert machine_config.is_file(), "Default make must initialize the machine TOML."
+        assert machine_config.is_file(), "make base must initialize the machine TOML."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
         assert not (home / ".bashrc").exists()
         assert not (home / ".config/nvim").exists()
 
-        # Local choices survive another Python-free default make before the
-        # full configuration stage reads them.
+        # NOTE: Minimal setup preserves selected sets for the configuration stage.
         machine_config.write_text('# Local preferences\nsets = ["shell"]\n[tools]\nmermaid = false\n')
         local_config = machine_config.read_bytes()
-        native_again = subprocess.run(command, cwd=repo, env=env,
+        native_again = subprocess.run([*command, "base"], cwd=repo, env=env,
                                       capture_output=True, text=True, timeout=30)
         assert native_again.returncode == 0, native_again.stdout + native_again.stderr
         assert machine_config.read_bytes() == local_config
 
         (executables / "python3").symlink_to(sys.executable)
-        # Configure adds the chosen bundles to that same baseline.
-        configure = [*command, "configure"]
+        # Plain make must also configure completions for installed tools.
+        fd = executables / "fd"
+        fd.write_text('#!/bin/sh\n[ "$*" = "--gen-completions zsh" ] || exit 7\n'
+                       "printf '#compdef fd\\n# Installed fd completion\\n'\n")
+        fd.chmod(0o755)
+        completion_cache = home / ".zcompdump"
+        completion_cache.write_text("stale completion cache")
+        # NOTE: Plain make must apply the chosen bundles to that same baseline.
+        configure = command
+        selected_preview = subprocess.run([*configure, "-n"], cwd=repo, env=env,
+                                          capture_output=True, text=True, timeout=30)
+        assert selected_preview.returncode == 0, selected_preview.stdout + selected_preview.stderr
+        assert machine_config.read_bytes() == local_config
+        assert not (home / ".bashrc").exists(), "make -n applied selected configuration"
         selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
+        assert "Installed fd completion" in (home / ".zsh/completions/_fd").read_text()
+        assert not completion_cache.exists(), "default setup left a stale completion cache"
         assert not (home / ".config/nvim").exists()
         assert not (home / ".tmux.conf").exists()
         assert not (home / "broker-installed").exists()
@@ -114,11 +131,19 @@ def main():
 
         # The opt-in multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
+        bare_env = {**env, "ZELLIJ_STATUS_WASM": str(temporary / "not-built.wasm")}
+        bare = subprocess.run([*command, "zellij"], cwd=repo, env=bare_env,
+                              capture_output=True, text=True, timeout=30)
+        assert bare.returncode == 0, bare.stdout + bare.stderr
+        assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config-legacy.kdl"
+        assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux-native.kdl"
+        # A separately installed artifact enables the richer bar on reconfigure.
         zellij = subprocess.run([*command, "zellij"], cwd=repo, env=env,
                                 capture_output=True, text=True, timeout=30)
         assert zellij.returncode == 0, zellij.stdout + zellij.stderr
         assert (home / ".config/zellij/config.kdl").resolve() == repo / "zellij/config.kdl"
         assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
+        assert (home / ".config/zellij/plugins/lane-status.wasm").resolve() == plugin
         picker = home / ".local/bin/zellij-picker"
         assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
 
@@ -202,7 +227,7 @@ def main():
         local_layout.write_text("layout { pane }\n")
 
         # Install the missing dependency and fixture TPM at their external
-        # boundaries, then retry through the same make configure entrypoint.
+        # boundaries, then retry through the same default make entrypoint.
         tmux = executables / "tmux"
         tmux.write_text('#!/bin/sh\ncase "$1" in\n'
                         '  list-sessions) test -f "$SETUP_TMUX_STATE" ;;\n'
@@ -239,7 +264,7 @@ def main():
         assert snapshot(home) == installed, "rerun changed installed configuration"
         assert Path(env["SETUP_TMUX_STATE"]).read_text() == "user-session"
         assert not (home / "broker-started").exists(), "rerun started the broker"
-        print("PASS: make configures the native baseline, make configure adds selected bundles, and retries preserve installed configuration and user sessions.")
+        print("PASS: make applies selected configuration, make base stays minimal, and retries preserve installed configuration and user sessions.")
 
 
 if __name__ == "__main__":

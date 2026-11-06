@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     with tempfile.TemporaryDirectory(prefix="dotfiles-config-") as temporary:
         home = Path(temporary)
-        env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")}
+        env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+               "XDG_CACHE_HOME": str(home / ".cache")}
         for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID"):
             env.pop(name, None)
         command = [sys.executable, str(ROOT / "scripts/dotfiles-config.py")]
@@ -39,6 +40,7 @@ def main():
         assert {tool["name"] for tool in baseline["tools"]} == native_tools
         assert baseline["setup"] == baseline["baseline"]["setup"]
         assert baseline["settings"]["codex.github_enabled"] is False
+        assert baseline["settings"]["codex.easypost"] is False
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
@@ -48,6 +50,7 @@ def main():
         assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
         assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
         assert selected["settings"]["tools.mermaid"] is False
+        assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
         names = [tool["name"] for tool in selected["tools"]]
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
@@ -80,7 +83,17 @@ home = Path(os.environ["HOME"])
 args = sys.argv[1:]
 name = Path(sys.argv[0]).name
 if name == "rustup":
-    assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
+    if args[:2] == ["toolchain", "install"]:
+        assert args == ["toolchain", "install", "1.95.0", "--profile", "minimal"], args
+    elif args[:2] == ["target", "add"]:
+        assert args[-1] == "wasm32-wasip1", args
+    elif args[:4] == ["run", "1.95.0", "cargo", "build"]:
+        assert "--locked" in args, args
+        destination = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"\0asmfixture")
+    else:
+        raise AssertionError(args)
 elif name == "cargo":
     assert args[:2] == ["+1.95.0", "install"] and "--locked" in args, args
     assert args[args.index("--rev") + 1] == "bf517077c848d91f75091f66d1996cfeb84f4732", args
@@ -103,11 +116,13 @@ else:
         run("make", "--no-print-directory", "zellij-runtime")
         installed = home / ".local/bin/zellij"
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.46.0"
+        assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
 
         # A later set overrides earlier sets, and explicit local values win.
         config.write_text('sets = ["shell", "terminal", "personal"]\n[codex]\ngithub_enabled = false\n[zellij]\nsource = "release"\n')
         overridden = tomllib.loads(run(*command).stdout)
         assert overridden["codex"]["github_enabled"] is False
+        assert overridden["codex"]["easypost"] is False
         assert overridden["zellij"]["source"] == "release"
         run("make", "--no-print-directory", "zellij-runtime")
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.45.1"
@@ -125,9 +140,13 @@ else:
         propagated = run("bash", "-ec", 'source ./bootstrap.sh; load_dotfiles_config; cd /; python3 "$1/scripts/dotfiles-config.py"', "config-test", str(ROOT))
         assert tomllib.loads(propagated.stdout)["codex"]["github_enabled"] is True
         env.pop("DOTFILES_CONFIG")
-        config.write_text('sets = ["terminal"]\n[tools]\nrust = false\n')
-        blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
-        assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
+        config.write_text('[tools]\nzellij = true\n')
+        names = [tool["name"] for tool in json.loads(run(*command, "--format", "json").stdout)["tools"]]
+        assert names.index("jq") < names.index("zellij")
+        for dependency in ("rust", "jq"):
+            config.write_text(f'[tools]\nzellij = true\n{dependency} = false\n')
+            blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
+            assert blocked.returncode != 0 and f"requires tools.{dependency}" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

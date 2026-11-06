@@ -1,0 +1,58 @@
+---
+title: Dotfiles
+description: My dotfiles for macOS and Linux. Install deliberately, compose your tools, and keep your terminal close.
+template: splash
+hero:
+  title: Dotfiles
+  tagline: My dotfiles for macOS and Linux. One checkout for the shell, editor, terminal, and tools I work in every day.
+  image:
+    file: ./brand/dotfiles-logo.png
+  actions:
+    - text: Set up a machine
+      link: ../README.md#installation
+      icon: right-arrow
+    - text: Explore the configuration
+      link: ../README.md#configuration-sets
+      variant: secondary
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<p className="eyebrow">Make + symlinks · macOS + Linux</p>
+
+## Quick start
+
+Copy this one-liner to clone the repository, initialize the native OS configuration, and install uv and Python:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/lanej/dotfiles/master/install.sh | sh
+```
+
+Requires Git, Make, and Bash on macOS or Linux. An existing `~/.files` checkout is reused without pulling updates or changing branches. [Read the installer](../install.sh) before running it.
+
+Then [choose this machine’s tool sets](../README.md#configuration-sets) in `~/.config/dotfiles/config.toml`, for example `workstation` for the broad setup. From the checkout, preview and install that selection:
+
+```sh
+make plan && make install
+```
+
+## Find your next step
+
+<CardGrid>
+  <LinkCard title="Compose your setup" description="Start with the native baseline. Add bundles and private sets, then override only what this machine needs." href="../README.md#configuration-sets" />
+  <LinkCard title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="./terminal-workflows.mdx" />
+  <LinkCard title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="./architecture.mdx" />
+  <LinkCard title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="./components.mdx" />
+</CardGrid>
+
+## Configure first. Install deliberately.
+
+| Command | What it does |
+| --- | --- |
+| `make base` | Create a missing machine configuration and link the native OS baseline. |
+| `make bootstrap` | Apply the native baseline and provision uv and Python. |
+| `make plan` | Show the tools and configuration selected by this machine’s settings. |
+| `make install` | Install the selected tools and apply their configuration. |
+
+After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](../README.md#installation) for prerequisites and machine settings.
+
+The reference pages are built directly from this checkout’s documentation. Their **Edit page** links lead to the original source, so the website and repository stay in step.

@@ -11,7 +11,7 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
+def test_make_codex_preserves_curated_servers_and_local_configuration(tmp_path):
     repo = tmp_path / "dotfiles"
     home = tmp_path / "user"
     executables = tmp_path / "bin"
@@ -37,8 +37,20 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
         '[apps.local]\napprovals_reviewer = "user"\n'
         '[apps.connector_76869538009648d5b282a4bb21c3d157]\n'
         'enabled = true # local GitHub setting\nopen_world_enabled = false\n'
+        '[apps.connector_5f3c8c41a1e54ad7a76272c89e2554fa]\n'
+        'enabled = true # local Drive setting\nopen_world_enabled = false\n'
+        '[apps.asdk_app_69a1d78e929881919bba0dbda1f6436d]\n'
+        'enabled = true # local Slack setting\nopen_world_enabled = false\n'
+        '[apps.connector_openai_plugin_management]\nenabled = true\n'
+        '[apps.connector_2de447f3f15448ebab48783d7e4f5d81]\nenabled = true\n'
         '[plugins."github@openai-curated"]\nenabled = true\n'
         '[plugins."github@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."google-drive@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."slack@openai-curated"]\nenabled = true\n'
+        '[plugins."browser@openai-bundled"]\nenabled = true\n'
+        '[plugins."plugin-management@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."openai-developers@openai-curated-remote"]\nenabled = true\n'
+        '[plugins."chrome@openai-bundled"]\nenabled = true\n'
         '[plugins."retained@local"]\nenabled = false\n')
 
     for name in ("sync-codex-permissions", "sync-codex-mcp-servers", "sync-codex-skills",
@@ -48,7 +60,8 @@ def test_make_codex_shares_servers_and_preserves_local_configuration(tmp_path):
     shutil.copy2(ROOT / "bin/codex-worktree-config", repo / "bin/codex-worktree-config")
     shutil.copy2(ROOT / "bin/codex-worktree-exit-hook", repo / "bin/codex-worktree-exit-hook")
     shutil.copy2(ROOT / "codex/tmux-hooks.json", repo / "codex/tmux-hooks.json")
-    shutil.copy2(ROOT / "codex/AGENTS.md", repo / "codex/AGENTS.md")
+    (repo / "codex/AGENTS.md").write_text("Fixture base guidance.\n")
+    (repo / "codex/AGENTS.easypost.md").write_text("Fixture EasyPost guidance.\n")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     (repo / "scripts/install-agent-status-broker").symlink_to(ROOT / "scripts/install-agent-status-broker")
@@ -179,6 +192,7 @@ else:
     env.pop("BOOTSTRAP_MERMAID", None)
     command = [shutil.which("make"), "-j4", "-f", str(ROOT / "Makefile"),
                f"DOTFILES={repo}", f"HOME={home}"]
+    original_config = (home / ".codex/config.toml").read_bytes()
     subprocess.run([*command, "codex-tmux"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     subprocess.run([*command, "codex"], cwd=repo, env=env,
@@ -186,6 +200,8 @@ else:
     installed_config = (home / ".codex/config.toml").read_text()
     assert json.loads((home / ".claude.json").read_text()) == claude_config
     config = tomllib.loads(installed_config)
+    assert (home / ".codex/AGENTS.md").read_text() == (
+        "Fixture base guidance.\nFixture EasyPost guidance.\n")
     assert config["approval_policy"] == "on-request"
     assert config["approvals_reviewer"] == "auto_review"
     assert config["sandbox_mode"] == "workspace-write"
@@ -198,9 +214,31 @@ else:
     assert github["open_world_enabled"] is False
     assert config["plugins"]["github@openai-curated"]["enabled"] is False
     assert config["plugins"]["github@openai-curated-remote"]["enabled"] is False
+    drive = config["apps"]["connector_5f3c8c41a1e54ad7a76272c89e2554fa"]
+    assert drive["enabled"] is False
+    assert drive["open_world_enabled"] is False
+    assert config["apps"]["connector_2128aebfecb84f64a069897515042a44"]["enabled"] is False
+    assert config["apps"]["connector_947e0d954944416db111db556030eea6"]["enabled"] is False
+    assert config["plugins"]["gmail@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["google-calendar@openai-curated"]["enabled"] is False
+    assert config["plugins"]["google-calendar@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["google-drive@openai-curated"]["enabled"] is False
+    assert config["plugins"]["google-drive@openai-curated-remote"]["enabled"] is False
+    slack = config["apps"]["asdk_app_69a1d78e929881919bba0dbda1f6436d"]
+    assert slack["enabled"] is False
+    assert slack["open_world_enabled"] is False
+    assert config["apps"]["connector_openai_plugin_management"]["enabled"] is False
+    assert config["apps"]["connector_2de447f3f15448ebab48783d7e4f5d81"]["enabled"] is False
+    assert config["plugins"]["slack@openai-curated"]["enabled"] is False
+    assert config["plugins"]["browser@openai-bundled"]["enabled"] is False
+    assert config["plugins"]["plugin-management@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["openai-developers@openai-curated-remote"]["enabled"] is False
+    assert config["plugins"]["chrome@openai-bundled"]["enabled"] is True
     assert config["plugins"]["retained@local"]["enabled"] is False
     assert (home / ".codex/install-github-enabled").read_text() == "false"
     assert "# local GitHub setting" in installed_config
+    assert "# local Drive setting" in installed_config
+    assert "# local Slack setting" in installed_config
     assert "# Local settings" in installed_config
     assert json.loads((home / ".paseo/config.json").read_text())["daemon"] == {
         "enableTerminalAgentHooks": False, "retained": "kept"}
@@ -213,27 +251,13 @@ else:
                for event, groups in desired_hooks.items() for group in groups)
 
     servers = json.loads(state.read_text())
-    assert servers["workspace"]["transport"] == {
-        "type": "stdio", "command": "tool with spaces", "args": ["mcp", "arg with space", ""],
-        "env": {"REGION": "us west"},
-    }
-    assert servers["no-args"]["transport"]["args"] == []
-    assert servers["kagi"]["transport"]["bearer_token_env_var"] == "KAGI_MCP_BEARER"
-    assert servers["qmd"] == qmd
-    assert servers["search"]["transport"] == {
-        "type": "stdio", "command": "python3", "args": [str(plugin / "server.py")],
-        "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
-    }
-    assert servers["playwright"]["transport"] == {
-        "type": "stdio", "command": "npx", "args": ["@playwright/mcp@latest", "--headless"],
-        "env": {"CLAUDE_PLUGIN_ROOT": str(plugin)},
-    }
+    assert servers == {"qmd": qmd, "codex-only": {"transport": {"command": "native"}}}
     assert json.loads((plugin / ".mcp.json").read_text())["playwright"]["args"] == [
         "@playwright/mcp@latest",
     ]
-    assert "codex-only" in servers and "codex" not in servers and "disabled-tool" not in servers
 
-    servers["workspace"]["enabled"] = False
+    # User removal and custom disabled settings survive repeated configuration.
+    del servers["codex-only"]
     state.write_text(json.dumps(servers))
     previous_state = state.read_bytes()
     subprocess.run([*command, "codex"], cwd=repo, env=env,
@@ -243,9 +267,10 @@ else:
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
 
-    # The selected context must reach the installer without hostname detection.
+    # NOTE: Explicit sets select integration policy and guidance without hostname detection.
     machine_config.write_text('sets = ["personal"]\n')
-    subprocess.run([*command, "codex-permissions"], cwd=repo,
+    (home / ".codex/config.toml").write_bytes(original_config)
+    subprocess.run([*command, "codex-config"], cwd=repo,
                    env=env,
                    check=True, capture_output=True, text=True)
     personal_config = tomllib.loads((home / ".codex/config.toml").read_text())
@@ -253,10 +278,14 @@ else:
     assert personal_config["plugins"]["github@openai-curated"]["enabled"] is True
     assert personal_config["plugins"]["github@openai-curated-remote"]["enabled"] is True
     assert (home / ".codex/install-github-enabled").read_text() == "true"
-    personal_config["apps"]["connector_76869538009648d5b282a4bb21c3d157"]["enabled"] = False
-    personal_config["plugins"]["github@openai-curated"]["enabled"] = False
-    personal_config["plugins"]["github@openai-curated-remote"]["enabled"] = False
-    assert personal_config == config, "configuration context changed unrelated settings"
+    expected_personal = tomllib.loads(original_config.decode())
+    expected_personal.update({
+        "approval_policy": "on-request",
+        "approvals_reviewer": "auto_review",
+        "sandbox_mode": "workspace-write",
+    })
+    assert personal_config == expected_personal, "personal setup changed integration preferences"
+    assert (home / ".codex/AGENTS.md").read_text() == "Fixture base guidance.\n"
     assert state.read_bytes() == previous_state
     assert (home / ".codex/hooks.json").read_text() == installed_hooks
     claude_config["mcpServers"] = {}

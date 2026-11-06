@@ -1,10 +1,11 @@
 name: Codex worktree exit
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/codex-worktree-exit-hook', 'bin/codex-cleanup', 'bin/git-worktree-cleanup', 'scripts/test-codex-worktree-exit.py', 'Makefile', '.github/workflows/codex-worktree-exit.yml']
+    paths: ['bin/codex-worktree-exit-hook', 'bin/codex-cleanup', 'bin/git-worktree-cleanup', 'scripts/test-codex-worktree-exit.py', '.github/workflows/codex-worktree-exit.yml']
   push:
     branches: [master]
-    paths: ['bin/codex-worktree-exit-hook', 'bin/codex-cleanup', 'bin/git-worktree-cleanup', 'scripts/test-codex-worktree-exit.py', 'Makefile', '.github/workflows/codex-worktree-exit.yml']
+    paths: ['bin/codex-worktree-exit-hook', 'bin/codex-cleanup', 'bin/git-worktree-cleanup', 'scripts/test-codex-worktree-exit.py', '.github/workflows/codex-worktree-exit.yml']
 permissions:
   contents: read
 jobs:

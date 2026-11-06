@@ -13,33 +13,19 @@ prompt); primary editor is Neovim (Lua config in `nvim/`).
 
 ## Getting Started
 
+Follow [the setup requirements](docs/setup-requirements.md) when changing configuration, bootstrap, or software installation.
+
 ```bash
 git clone https://github.com/lanej/dotfiles.git ~/.files
 cd ~/.files
-make           # Initialize the machine TOML and native OS baseline
+make base      # Initialize the machine TOML and native OS baseline
 # Add this machine's tool and work-context sets to its TOML.
 make bootstrap # Native macos or linux baseline plus uv and Python
 make plan      # Inspect the selected tool bundles
 make install   # Install selected tools and apply their configuration
 ```
 
-Always edit files within `~/.files`, not the symlinked targets under `~`.
-Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on
-shell/editor reload because they're symlinked. Adding a *new* file to be
-symlinked requires a corresponding rule in the `Makefile` plus a re-run of its
-target, or `make configure` when that target's recipe is selected. Declare tool
-recipes and version pins in `bootstrap/tools.toml`, then
-group their `tools.<name>` switches under `config/sets/`. The resolver derives
-selected Make targets and bootstrap phases from that catalog. Default `make`
-applies the native OS baseline; `make configure` adds the configured bundles.
-Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed.
-Configuration symlink rules remain in the `Makefile` and its helper scripts.
-Default `make` initializes a missing machine TOML with the detected native set
-and links the built-in baseline without Python. Preserve existing machine files
-and symlinks. `make configure` applies the full resolved configuration without installing
-packages. Keep `config/targets.mk` generated from the native sets and tool catalog
-with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`.
-Do not add tools to an unconditional install or setup list.
+Always edit files within `~/.files`, not the symlinked targets under `~`. Most changes (e.g. `.zshrc`, `init.lua`) take effect immediately or on shell/editor reload because they're symlinked. Adding a *new* file to be symlinked requires a corresponding rule in the `Makefile` plus a re-run of its target, or `make` when that target's recipe is selected. Declare tool recipes and version pins in `bootstrap/tools.toml`, then group their `tools.<name>` switches under `config/sets/`. The resolver derives selected Make targets and bootstrap phases from that catalog. Default `make` applies the full resolved configuration, including selected bundles and individual overrides, without installing packages; `make configure`, `make setup`, and `make all` are aliases. It requires Python 3.11+, installed by `make bootstrap`. Reuse the installers in `bootstrap.sh`; add a new adapter there only when needed. Configuration symlink rules remain in the `Makefile` and its helper scripts. `make base` initializes a missing machine TOML with the detected native set and links only the built-in baseline without Python. Preserve existing machine files and symlinks. Keep `config/targets.mk` generated from the native sets and tool catalog with `python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk`. Do not add tools to an unconditional install or setup list.
 
 ## Development Conventions
 
@@ -51,30 +37,21 @@ Do not add tools to an unconditional install or setup list.
 
 ## Testing
 
-Keep one regression detector per user-visible feature. Prefer one representative
-workflow through the real entrypoint and observable result. A helper, branch,
-input variant, or failure mode is not a separate feature.
+Choose the smallest check that can expose a defect in the changed behavior. Scale verification to consequences and uncertainty: a small alias or wrapper needs a focused check, while installation, destructive cleanup, concurrency, and terminal interactions may need stronger evidence. Routine documentation and simple configuration edits need diff review and applicable syntax or structural checks.
 
-A detector is sufficient when it goes red if you delete the behavior it covers.
-Establish falsifiability once when wiring a new harness: delete representative
-behavior, confirm red, restore it, and confirm green. Do not repeat this mutation
-check for each test or task in an established harness. See the [verification guide](docs/verification.md) for the acceptance
-definition and harness verification procedure.
+Prefer focused protection through the caller's real entrypoint and an observable result. Improve existing coverage before adding another harness. Keep separate features independently runnable; do not force unrelated checks into one oversized journey to meet a test-count rule. Add cases for meaningful risks, not every helper, branch, or input variation. Do not mirror implementation details, assert exact source strings, or merely count configured hooks.
 
-When repairing a regression, improve that feature's existing detector. Multiple
-assertions may describe the same workflow; do not hide a case matrix in loops,
-parameterization, or one oversized test. Add broader coverage only when the
-owner explicitly requests it.
+Control external commands or services when testing decisions and argument forwarding. Use real integrations when the claim depends on actual platform or external behavior; a simulated boundary cannot establish compatibility. Install and start only the runtime dependencies exercised by the selected check. A wrapper test should not require an editor, terminal stack, native build, credentials, or network unless those are part of the behavior being checked.
 
-Run the affected detector once after the change; rerun it to resolve a failure
-or after changing the implementation. Use syntax checks and diff review for
-simple configuration/documentation edits. Do not add tests that mirror code,
-check exact source strings, or merely count configured hooks.
+Run the affected check once after the change. Rerun it after relevant edits or to resolve a failure; broaden only when changed shared behavior or an unresolved interaction justifies it. Run both operating systems when platform differences matter, rather than automatically duplicating every check. Treat test setup time, flakiness, and failure isolation as maintenance costs.
 
-Routine maintenance needs no evaluation bundles, source snapshots, provenance
-receipts, or separate review narratives. Put the outcome and any manual findings
-or verification gaps in the PR; let automated checks report their own results.
-Keep CI scoped to the features it exercises.
+A detector must fail when the behavior it protects is broken. Establish sensitivity once when introducing a new harness, then reuse that evidence; do not repeat mutation checks for routine changes. See the [verification guide](docs/verification.md) for the procedure.
+
+Keep CI selection scoped to affected features and their actual dependencies. Trace changed paths to the entrypoints, configuration, shared code, and source content each check consumes; workflow names and directory proximity are not evidence of a dependency. Shared Makefile or lint-wiring edits must not automatically start every integration suite. Run the affected detector explicitly when changing a feature's Make recipe. When an overloaded shared shell file repeatedly causes unrelated checks to run, consider extracting a cohesive feature entrypoint with narrow loading and workflow paths. Preserve coverage for real shared behavior rather than simply removing its path from filters.
+
+Relevant checks and required repository checks govern merging; unrelated pending suites are not automatic merge gates. Documentation-site checks are advisory for pull requests; successful site validation remains required for deployment. Investigate failures before classifying them as unrelated, and state unresolved limits.
+
+Routine maintenance needs no evaluation bundles, source snapshots, provenance receipts, or separate review narratives. Put material manual findings and verification gaps in the PR; let automated checks report their own results.
 
 ## Pull requests
 

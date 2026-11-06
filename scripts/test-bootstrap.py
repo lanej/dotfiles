@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
-import hashlib
-import io
 import json
 import os
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 
 
@@ -18,6 +15,11 @@ def main():
         home = Path(temporary)
         fixture = home / "fixture"
         fixture.mkdir()
+        # Model the unmanaged executable left by the previous runtime installer.
+        installed = home / ".local/bin/zellij"
+        installed.parent.mkdir(parents=True)
+        installed.write_text('#!/bin/sh\necho "zellij 0.45.1"\n')
+        installed.chmod(0o755)
         checkout = home / ".files"
         checkout.mkdir()
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
@@ -35,21 +37,8 @@ def main():
         machine_config.write_text('sets = ["not-a-set"]\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
-        # Execute the installer against a small source fixture. Network and
-        # compilation remain simulated; checksum verification, patch application,
-        # binary installation and the installation receipt use the real code.
-        patches = checkout / "zellij/patches"
-        patches.mkdir(parents=True)
-        (patches / "0001-runtime.patch").write_text(
-            "diff --git a/runtime-marker b/runtime-marker\n"
-            "--- a/runtime-marker\n+++ b/runtime-marker\n"
-            "@@ -1 +1 @@\n-unpatched\n+patched\n"
-        )
-        with tarfile.open(fixture / "zellij-source.tar.gz", "w:gz") as archive:
-            payload = b"unpatched\n"
-            member = tarfile.TarInfo("zellij-fixture/runtime-marker")
-            member.size = len(payload)
-            archive.addfile(member, io.BytesIO(payload))
+        shutil.copyfile(root / "scripts/install-zellij-navigation.py", checkout / "scripts/install-zellij-navigation.py")
+        shutil.copytree(root / "zellij/navigation", checkout / "zellij/navigation")
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
@@ -65,8 +54,6 @@ import os
 from pathlib import Path
 import io
 import hashlib
-import importlib.machinery
-import importlib.util
 import json
 import shutil
 import subprocess
@@ -89,16 +76,21 @@ if name == "uname":
 elif name == "git":
     if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
-    elif args[:1] == ["apply"]:
-        os.execv("/usr/bin/git", ["/usr/bin/git", *args])
 elif name == "sudo":
-    if args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
+    if args == ["dnf", "install", "-y", "ImageMagick"]:
+        (home / ".local/bin/convert").symlink_to(fixture / "driver")
+        record("imagemagick package")
+    elif args == ["dnf", "install", "-y", "imagemagick"]:
+        sys.exit("No match for argument: imagemagick")
+    elif args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
         (home / ".local/bin/tmux").symlink_to(fixture / "driver")
         record("tmux package")
     elif args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
         (home / ".local/bin/eza").symlink_to(fixture / "driver")
         record("eza package")
     else:
+        if args[:3] == ["dnf", "install", "-y"] and {"perl-IPC-Cmd", "perl-Time-Piece"}.issubset(args):
+            (home / "openssl-perl-installed").touch()
         record("build dependencies")
 elif name == "apt-cache":
     assert args[:1] == ["policy"], args
@@ -125,8 +117,10 @@ nvm() {
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/node"
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/npm"
   echo 24 > "$HOME/.nvm/alias/default"
-  export PATH="$HOME/.nvm/versions/node/v24.0.0/bin:$PATH"
+  export NVM_BIN="$HOME/.nvm/versions/node/v24.0.0/bin"
+  export PATH="${PATH/$HOME\/.nvm\/versions\/node\/v16.19.1\/bin/$NVM_BIN}"
 }
+nvm use
 NVM
 """
     elif "rustup" in url:
@@ -162,9 +156,6 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url == "https://codeload.github.com/zellij-org/zellij/tar.gz/bf517077c848d91f75091f66d1996cfeb84f4732":
-        shutil.copyfile(fixture / "zellij-source.tar.gz", target)
-        sys.exit(0)
     elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
         assert url.startswith("https://github.com/lanej/bedrock-router/releases/download/v0.1.1/")
         with tarfile.open(target, "w:gz") as archive:
@@ -177,6 +168,26 @@ echo "$1" > "$HOME/claude-version"
                 member.mode = 0o755 if path == "bedrock-router" else 0o644
                 archive.addfile(member, io.BytesIO(payload))
         record("router release")
+        sys.exit(0)
+    elif url.endswith("/treehouse-v3.1.6-linux-arm64.tar.gz"):
+        with tarfile.open(target, "w:gz") as archive:
+            payload = b"#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n"
+            member = tarfile.TarInfo("treehouse")
+            member.size = len(payload)
+            member.mode = 0o755
+            archive.addfile(member, io.BytesIO(payload))
+        sys.exit(0)
+    elif url == "https://github.com/kunchenguid/treehouse/releases/download/v3.1.6/checksums.txt":
+        release_archive = Path(target).with_name("treehouse-v3.1.6-linux-arm64.tar.gz")
+        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
+        Path(target).write_text(digest + "  " + release_archive.name + "\n")
+        sys.exit(0)
+    elif url == "https://github.com/kunchenguid/treehouse/archive/refs/tags/v3.1.6.tar.gz":
+        with tarfile.open(target, "w:gz") as archive:
+            payload = b"module github.com/kunchenguid/treehouse/v3\n"
+            member = tarfile.TarInfo("treehouse-3.1.6/go.mod")
+            member.size = len(payload)
+            archive.addfile(member, io.BytesIO(payload))
         sys.exit(0)
     elif url == "https://github.com/lanej/bedrock-router/releases/download/v0.1.1/SHA256SUMS":
         release_archive = Path(target).with_name("bedrock-router_v0.1.1_linux_arm64.tar.gz")
@@ -201,20 +212,13 @@ elif name == "uv":
 elif name == "python3":
     if args == ["--version"]:
         print("Python 3.12.0" if managed else "Python 3.6.8")
-    elif args and Path(args[0]).name == "install-zellij":
-        loader = importlib.machinery.SourceFileLoader("zellij_installer", args[0])
-        spec = importlib.util.spec_from_loader(loader.name, loader)
-        installer = importlib.util.module_from_spec(spec)
-        loader.exec_module(installer)
-        installer.SOURCE_SHA256 = hashlib.sha256((fixture / "zellij-source.tar.gz").read_bytes()).hexdigest()
-        sys.argv = args
-        installer.main()
     else:
         # Unknown invocations must execute or fail, rather than silently treating
         # a missing installer script as a successful version query.
         os.execv(sys.executable, [sys.executable, *args])
 elif name == "node":
-    print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else "v16.19.1")
+    print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else
+          "v22.23.3" if managed else "v16.19.1")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
@@ -252,17 +256,19 @@ elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
 elif name == "make":
-    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters"}.intersection(args), args
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
             "node": "v24.", "python3": "Python 3.12.", "uv": "uv 0.12.",
-            "codex": "codex 0.162.0", "claude": "claude 2.1.295",
+            "codex": "codex 0.164.0", "claude": "claude 2.1.295",
             "btop": "btop version: 1.4.7",
             "zellij": "zellij 0.46.0",
         }[tool]
         assert value.startswith(expected), value
     assert shutil.which("rustup"), "rustup missing"
+    assert shutil.which("convert"), "ImageMagick missing"
+    assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
     assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
     subprocess.run(
         ["/usr/bin/make", "-f", str(home / ".files/Makefile"), "codex-env"],
@@ -295,20 +301,57 @@ elif name == "git-crypt":
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "rustc"]:
     assert args[3:] == ["-vV"], args
     print("rustc 1.95.0\nhost: aarch64-unknown-linux-gnu\n")
+elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
+    assert "--locked" in args and args[args.index("--target") + 1] == "wasm32-wasip1", args
+    assert Path(args[args.index("--manifest-path") + 1]).is_file(), args
+    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
-    assert args[3] == "build", args
-    assert (Path.cwd() / "runtime-marker").read_text() == "patched\n"
+    assert args[3] == "install", args
+    if args[4:] == ["--list", "--root", str(home / ".local")]:
+        if (home / "zellij-owned").exists():
+            print("zellij v0.46.0:\n    zellij")
+        sys.exit(0)
+    assert (home / "openssl-perl-installed").exists(), "vendored OpenSSL needs IPC::Cmd and Time::Piece"
+    assert args[args.index("--git") + 1] == "https://github.com/lanej/zellij.git", args
+    revision = args[args.index("--rev") + 1]
+    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision), args
+    assert "--locked" in args and "--no-default-features" in args, args
+    assert args[args.index("--features") + 1] == "plugins_from_target,vendored_curl,web_server_capability", args
+    assert args[-3:] == ["--bin", "zellij", "zellij"], args
     target = args[args.index("--target") + 1]
     assert target == "aarch64-unknown-linux-gnu", args
-    output = Path(os.environ["CARGO_TARGET_DIR"]) / target / "release/zellij"
+    install_root = Path(args[args.index("--root") + 1])
+    assert install_root == home / ".local", args
+    output = install_root / "bin/zellij"
+    if output.exists() and "--force" not in args:
+        if (home / "zellij-owned").exists():
+            sys.exit(0)
+        sys.exit("zellij already exists; use --force to overwrite")
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(fixture / "driver", output)
     output.chmod(0o755)
+    (home / "zellij-owned").touch()
     record("zellij")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
-    if args == ["env", "GOBIN"]:
+    if args[:1] == ["build"] and Path.cwd().name == "bedrock-router":
+        assert args == ["build", "-trimpath", "-p", "2", "-o", args[5], "."], args
+        output = Path(args[5])
+        shutil.copyfile(fixture / "driver", output)
+        output.chmod(0o755)
+        record("router guarded build")
+    elif args[:1] == ["build"]:
+        assert os.environ["CGO_ENABLED"] == "0"
+        assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
+        assert Path("go.mod").is_file()
+        output = Path(args[args.index("-o") + 1])
+        shutil.copyfile(fixture / "driver", output)
+        output.chmod(0o755)
+        record("treehouse build")
+    elif args == ["env", "GOBIN"]:
         print("")
     elif args == ["env", "GOPATH"]:
         print(os.environ["GOPATH"])
@@ -324,6 +367,8 @@ elif name == "go":
         print("go version go1.26.2 linux/amd64")
 elif name == "glow":
     print("glow version master")
+elif name == "treehouse":
+    print("treehouse v3.1.6")
 elif name == "gh" and args == ["auth", "status"]:
     sys.exit(1)
 else:
@@ -342,14 +387,14 @@ else:
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
             "direnv", "just", "loginctl", "zellij",
-            "treehouse", "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
+            "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
             (fixture / tool).symlink_to(driver)
         # Keep this fresh-box workflow independent of tools preinstalled on CI.
         system_bin = home / "system-bin"
         system_bin.mkdir()
-        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup"}
+        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup", "convert", "magick", "imagemagick", "treehouse"}
         for system_dir in (Path("/usr/bin"), Path("/bin")):
             for tool in system_dir.iterdir():
                 destination = system_bin / tool.name
@@ -401,12 +446,18 @@ else:
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         assert preview.returncode == 0, preview.stdout + preview.stderr
+        # WHY: NVM replaces an inherited NVM entry in place, so another Node
+        # executable earlier in PATH can still shadow the selected version.
+        shadow_node = home / ".local/bin/node"
+        shadow_node.symlink_to(driver)
+        env["PATH"] = f"{fixture}:{home}/.nvm/versions/node/v16.19.1/bin:{system_bin}"
         result = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "install"],
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
+        assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
@@ -414,24 +465,22 @@ else:
         assert "neovim setup" in events
         assert "neovim build" in events
         assert "eza package" in events
+        assert "treehouse build" in events
         assert (home / ".local/bin/tmux").is_file()
         assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
         assert events.index("zellij") < events.index("make")
-        receipt = home / ".local/state/dotfiles/zellij-runtime.json"
-        record = json.loads(receipt.read_text())
+        # Repeat the real entrypoint with the installed executable already in
+        # place. Cargo owns installation and caching; the fixture models its output.
+        runtime_command = ["/bin/bash", str(checkout / "scripts/install-zellij")]
+        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}"}
         installed = home / ".local/bin/zellij"
-        assert record["sha256"] == hashlib.sha256(installed.read_bytes()).hexdigest()
-        assert record["executable"] == str(installed)
-        # The same real installer verifies and reuses the installed artifact;
-        # the fixture compiler must not be invoked again for an unchanged tree.
-        runtime_command = [str(home / ".local/bin/python3"), str(checkout / "scripts/install-zellij")]
-        checked = subprocess.run([*runtime_command, "--check"], env=env, capture_output=True, text=True)
-        assert checked.returncode == 0, checked.stdout + checked.stderr
-        repeated = subprocess.run(runtime_command, env=env, capture_output=True, text=True)
+        previous = installed.read_bytes()
+        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert installed.read_bytes() == previous
         assert (home / "events").read_text().splitlines().count("zellij") == 1
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
@@ -445,7 +494,7 @@ else:
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")
-        assert events.index("router release") < events.index("router setup")
+        assert events.index("router release") < events.index("router guarded build") < events.index("router setup")
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"
@@ -497,6 +546,7 @@ else:
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 

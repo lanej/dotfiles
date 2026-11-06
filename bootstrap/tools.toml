@@ -31,9 +31,11 @@ installer = "system"
 setup = ["tmux-config", "tmux-plugins"]
 
 [tools.zellij]
+description = "Install the selected Zellij runtime; patched uses the lanej/zellij fork with native fixes."
 installer = "zellij"
-requires = ["rust"]
+requires = ["rust", "jq"]
 setup = ["zellij-config"]
+post = ["zellij-status"]
 
 [tools.nerd-font]
 installer = "font"
@@ -47,7 +49,7 @@ version = "0.59.0"
 
 [tools.starship]
 requires = ["rust"]
-version = "1.22.1"
+version = "1.25.0"
 
 [tools.atuin]
 version = "18.21.0"
@@ -222,7 +224,7 @@ version = "2.1.295"
 [tools.codex]
 requires = ["node", "jq", "claude-code"]
 setup = ["codex-config", "codex-mcp", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
-version = "0.162.0"
+version = "0.164.0"
 
 [tools.treehouse]
 installer = "treehouse"
@@ -233,6 +235,24 @@ setup = ["treehouse-config"]
 installer = "firstmate"
 requires = ["treehouse", "jq", "node"]
 setup = ["firstmate-config"]
+
+[tools.pi]
+installer = "npm"
+package = "@earendil-works/pi-coding-agent"
+version = "1.4.0"
+requires = ["node"]
+setup = ["pi-config"]
+
+[tools.paseo]
+installer = "npm"
+package = "@getpaseo/cli"
+version = "0.15.1"
+requires = ["node"]
+
+[tools.firstmate-mobile]
+installer = "config"
+requires = ["firstmate", "pi", "paseo"]
+setup = ["firstmate-mobile-config"]
 
 [tools.agent-status-broker]
 description = "Install the agent-status broker and share its hooks."

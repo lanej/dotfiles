@@ -1,0 +1,6 @@
+# Opt into the Firstmate Pi conversation and direct GitHub feedback loop.
+[tools]
+firstmate = true
+pi = true
+paseo = true
+firstmate-mobile = true

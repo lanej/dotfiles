@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := base
+.DEFAULT_GOAL := configure
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 # Bootstrap installs its managed runtime here even before shell setup exists.
@@ -53,6 +53,14 @@ plan:
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
 
+.PHONY: test-repo-bootstrap
+test-repo-bootstrap:
+	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
+
+.PHONY: test-go-quality
+test-go-quality:
+	@python3 "$(DOTFILES)/scripts/test-go-quality.py"
+
 test-dotfiles-config-editor:
 	$(call require-command,nvim)
 	$(call require-command,taplo)
@@ -96,9 +104,39 @@ treehouse-config:
 firstmate-config: treehouse-config zellij-config
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
+.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+pi-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+firstmate-mobile-config: firstmate-config pi-config
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
+
+test-firstmate-github:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
+
+.PHONY: test-firstmate-peers
+test-firstmate-peers:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
+
 .PHONY: test-firstmate-primary
 test-firstmate-primary:
 	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
+
+.PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
+test-paseo-tasks:
+	@npm --prefix "$(DOTFILES)/paseo-tasks" test
+
+test-paseo-task-import:
+	@node "$(DOTFILES)/scripts/test-paseo-task-import.mjs"
+
+test-paseo-task-router:
+	@node "$(DOTFILES)/scripts/test-paseo-task-router.mjs"
+
+test-paseo-tasks-ui:
+	@node "$(DOTFILES)/scripts/test-paseo-tasks-ui.mjs"
+
+paseo-tasks-config:
+	@node "$(DOTFILES)/scripts/paseo-tasks-config.mjs" "$(HOME)/.pi/agent/settings.json" "$(HOME)/.pi/agent/models.json"
 
 banner:
 	@cat banner.txt
@@ -107,6 +145,11 @@ dev:
 shell:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh: zsh-config zsh-plugins
+.PHONY: zsh-completions test-zsh-completions
+zsh-completions:
+	@bash "$(MAKE_SCRIPTS)/completions.sh" "$(HOME)"
+test-zsh-completions:
+	@python3 "$(DOTFILES)/scripts/test-zsh-completions.py"
 zsh-config: shell
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh-plugins: zsh-config
@@ -126,8 +169,11 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
+.PHONY: zellij-status test-zellij-status
+zellij-status:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 sql-formatters:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim: vim-config sql-formatters
@@ -179,6 +225,8 @@ dev-cache-schedule: dev-cache-config FORCE
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
+test-tmp-cleanup: FORCE
+	@python3 "$(DOTFILES)/scripts/test-tmp-cleanup.py"
 test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
@@ -222,11 +270,11 @@ codex: claude codex-skills codex-agents codex-tmux codex-config
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)" --easypost "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 # Retain a clear failure for old callers instead of silently restoring servers.
 codex-mcp:
 	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
@@ -265,8 +313,11 @@ audit-skills:
 
 ui-review:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-test-ui-review:
+test-ui-review: test-ui-review-installer
 	@python3 "$(DOTFILES)/scripts/test-viewrule.py"
+.PHONY: test-ui-review-installer
+test-ui-review-installer:
+	@python3 "$(DOTFILES)/scripts/test-install-viewrule.py"
 
 # Opt-in services stay out of SETUP_TARGETS.
 # The helper remembers the selected server, falling back to dev on first setup.
@@ -277,6 +328,10 @@ atuin-sync:
 
 test-atuin-sync:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-atuin-sync.py"
+
+.PHONY: test-install-entrypoint
+test-install-entrypoint:
+	@python3 "$(DOTFILES)/scripts/test-install-entrypoint.py"
 
 test-bootstrap:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap.py"
@@ -323,8 +378,22 @@ claude-json-prune-schedule:
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
+.PHONY: test-zellij-attach
+test-zellij-attach:
+	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
+
+.PHONY: test-zellij-move
+test-zellij-move:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
+.PHONY: test-zellij-codex-titles
+test-zellij-codex-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
+.PHONY: test-zellij-claude-titles
+test-zellij-claude-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
@@ -334,6 +403,13 @@ test-firstmate:
 
 test-zellij-layout:
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
+
+.PHONY: test-zellij-clipboard
+test-zellij-clipboard:
+	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
+
+test-zellij-status:
+	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 
 test-zellij-sessions:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
@@ -389,3 +465,7 @@ ep-direnv-uninstall:
 .PHONY: epenv
 epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: test-ssh-agent
+test-ssh-agent:
+	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"

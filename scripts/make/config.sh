@@ -18,6 +18,27 @@ check_os() {
 }
 
 case "$target" in
+    pi-config)
+        node "$dotfiles/firstmate/github-feedback.mjs" configure-pi "$setup_home/.pi/agent/settings.json"
+        ;;
+    firstmate-mobile-config)
+        firstmate_home=${6:-$setup_home/src/firstmate}
+        mkdir -p "$firstmate_home/config"
+        if [[ ! -e "$firstmate_home/config/github-feedback.json" && ! -L "$firstmate_home/config/github-feedback.json" ]]; then
+            cp "$dotfiles/firstmate/github-feedback.json" "$firstmate_home/config/github-feedback.json"
+        fi
+        if [[ ! -e "$firstmate_home/config/peers.json" && ! -L "$firstmate_home/config/peers.json" ]]; then
+            cp "$dotfiles/firstmate/peers.json" "$firstmate_home/config/peers.json"
+        fi
+        FIRSTMATE_HOME="$firstmate_home" node "$dotfiles/firstmate/github-feedback.mjs" configure-paseo
+        # Remove only stale links that this checkout's retired dispatcher owned.
+        for entry in bugfix-dispatcher-launch bugfix-worker; do
+            destination="$setup_home/.local/bin/$entry"
+            if [[ -L "$destination" && $(readlink "$destination") == "$dotfiles/bin/$entry" ]]; then
+                rm "$destination"
+            fi
+        done
+        ;;
     treehouse-config)
         mkdir -p "${setup_home}/.config/treehouse"
         ln -fs "${dotfiles}/treehouse/config.toml" "${setup_home}/.config/treehouse/config.toml"
@@ -35,8 +56,11 @@ case "$target" in
         if [ ! -e "$firstmate_home/config/backend" ] && [ ! -L "$firstmate_home/config/backend" ]; then
             ln -s "$dotfiles/firstmate/backend" "$firstmate_home/config/backend"
         fi
-        ln -fs "$dotfiles/firstmate/crew-harness" "$firstmate_home/config/crew-harness"
-        ln -fs "$dotfiles/firstmate/codex-approval-mode" "$firstmate_home/config/codex-approval-mode"
+        for setting in crew-harness codex-approval-mode; do
+            if [[ ! -e "$firstmate_home/config/$setting" && ! -L "$firstmate_home/config/$setting" ]]; then
+                ln -s "$dotfiles/firstmate/$setting" "$firstmate_home/config/$setting"
+            fi
+        done
         ;;
     dev)
         mkdir -p "${setup_home}/src"
@@ -89,6 +113,7 @@ case "$target" in
         ln -fns "${dotfiles}/zsh/zsh-github-copilot.plugin.zsh" "${setup_home}/.local/share/zsh/zsh-github-copilot.zsh"
         ln -fs "${dotfiles}/zsh/tmux-auto-title.zsh" "${setup_home}/.local/share/zsh/tmux-auto-title.zsh"
         ln -fs "${dotfiles}/zsh/zellij-navigation.zsh" "${setup_home}/.local/share/zsh/zellij-navigation.zsh"
+        bash "$make_scripts/completions.sh" "$setup_home"
         ;;
     zsh-plugins)
         check_command "git"
@@ -100,15 +125,43 @@ case "$target" in
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.config/tmux"
         ln -fs "${dotfiles}/rc/tmux.conf" "${setup_home}/.tmux.conf"
         ;;
+    zellij-status)
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        if [ "$status_wasm" = "$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm" ]; then
+            cd "$dotfiles/zellij/status"
+            cargo build --locked --release --target wasm32-wasip1 --target-dir target
+        else
+            test -s "$status_wasm"
+        fi
+        ;;
     zellij-config)
         python3 "$make_scripts/zellij-config.py" "$setup_home"
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
-        ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
+        status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
+        status_available=false
+        if [ -s "$status_wasm" ]; then
+            status_available=true
+            if command -v zellij >/dev/null 2>&1; then
+                case "$(zellij --version 2>/dev/null || true)" in
+                    'zellij 0.46.'*) ;;
+                    *) status_available=false ;;
+                esac
+            fi
+        fi
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        if [ "$status_available" = true ]; then
+            ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
+            ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
+        else
+            ln -fs "$dotfiles/zellij/config-legacy.kdl" "$setup_home/.config/zellij/config.kdl"
+        fi
         ln -fs "$dotfiles/zsh/zellij-navigation.zsh" "$setup_home/.local/share/zsh/zellij-navigation.zsh"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
             [ -f "$source" ] || continue
             ln -fs "$source" "$setup_home/.config/zellij/layouts/"
         done
+        if [ "$status_available" != true ]; then
+            ln -fs "$dotfiles/zellij/layouts/tmux-native.kdl" "$setup_home/.config/zellij/layouts/tmux.kdl"
+        fi
         for source in "$dotfiles"/bin/zellij-*; do
             if [ -f "$source" ] && [ -x "$source" ]; then
                 ln -fs "$source" "$setup_home/.local/bin/"
@@ -265,7 +318,15 @@ case "$target" in
             [ -f "${dotfiles}/codex/bedrock.config.toml" ]; then
             ln -fs "${dotfiles}/codex/bedrock.config.toml" "${setup_home}/.codex/bedrock.config.toml"
         fi
-        cat "${dotfiles}/codex/AGENTS.md" "${dotfiles}/codex/AGENTS.local.md" > "${setup_home}/.codex/AGENTS.md" 2>/dev/null || cp "${dotfiles}/codex/AGENTS.md" "${setup_home}/.codex/AGENTS.md"
+        codex_easypost=${6:-false}
+        set -- "${dotfiles}/codex/AGENTS.md"
+        if [ "$codex_easypost" = true ]; then
+            set -- "$@" "${dotfiles}/codex/AGENTS.easypost.md"
+        fi
+        if [ -f "${dotfiles}/codex/AGENTS.local.md" ]; then
+            set -- "$@" "${dotfiles}/codex/AGENTS.local.md"
+        fi
+        cat "$@" > "${setup_home}/.codex/AGENTS.md"
         ;;
     quarto)
         mkdir -p "${setup_home}/.config/quarto"

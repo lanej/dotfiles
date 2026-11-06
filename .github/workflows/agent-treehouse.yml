@@ -1,10 +1,11 @@
 name: Agent Treehouse launchers
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'Makefile', '.github/workflows/agent-treehouse.yml']
+    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', '.github/workflows/agent-treehouse.yml']
   push:
     branches: [master]
-    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'Makefile', '.github/workflows/agent-treehouse.yml']
+    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', '.github/workflows/agent-treehouse.yml']
 permissions:
   contents: read
 jobs:

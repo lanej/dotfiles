@@ -1,16 +1,13 @@
 # Maintaining skills and agent instructions
 
-Follow the testing policy in [AGENTS.md](../AGENTS.md): one regression detector
-per user-visible feature. It applies to repo-owned skills, commands, agents,
-and supporting scripts and references. Existing user instructions and
-authorization remain authoritative.
+Follow the proportionate testing policy in [AGENTS.md](../AGENTS.md): focused protection for changed behavior, independently runnable features, and broader checks only for consequential risks or unresolved interactions. It applies to repo-owned skills, commands, agents, and supporting scripts and references. Existing user instructions and authorization remain authoritative.
 
 ## Authoring
 
 For a substantive change to instructional behavior, load the enabled Anthropic
 **skill-creator:skill-creator** through the runtime's installed catalog. Use the
 parts of its authoring guidance relevant to the change, within the owner's
-one-detector policy. Do not edit plugin caches or update
+proportionate testing policy. Do not edit plugin caches or update
 installed plugins as a side effect. If the workflow is unavailable, report the
 validation limit without claiming it was followed.
 
