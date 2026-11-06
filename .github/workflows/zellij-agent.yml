@@ -2,10 +2,10 @@ name: SSH agent reconnect
 
 on:
   pull_request:
-    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
   push:
     branches: [master]
-    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
 
 permissions:
   contents: read
