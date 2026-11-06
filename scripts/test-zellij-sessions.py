@@ -17,6 +17,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
 POPUP = "dotfiles-popup"
+# Leave room for complete tab titles beside long CI runner hostnames.
+SESSION_COLUMNS = 240
 
 
 def prove_popup_startup(binary, env, runtime):
@@ -152,7 +154,7 @@ def detach_workflow(clients):
     panes = {pane["id"] for pane in first.terminals()}
 
     def attach():
-        terminal = Terminal(first.binary, first.env, first.name)
+        terminal = Terminal(first.binary, first.env, first.name, columns=SESSION_COLUMNS)
         clients.append(terminal)
         until("second attachment uses the live session", lambda:
               b"zellij-ready> " in terminal.output and len(attached_ids()) == 2)
@@ -385,7 +387,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
     names.append(renamed)
     second.action("rename-session", renamed)
     second.name = renamed
-    replacement = Terminal(first.binary, first.env, original_name)
+    replacement = Terminal(first.binary, first.env, original_name, columns=SESSION_COLUMNS)
     clients.append(replacement)
     replacement.until("replacement session starts", lambda: b"zellij-ready> " in replacement.output)
     # Recreate the same visible workspace and command IDs. The old tuple-only
@@ -476,7 +478,7 @@ def main():
             if not args.popup_only:
                 prove_popup_startup(binary, env, runtime)
             for name in names:
-                terminal = Terminal(binary, env, name)
+                terminal = Terminal(binary, env, name, columns=SESSION_COLUMNS)
                 clients.append(terminal)
                 terminal.grant_status_permissions()
                 terminal.until("outer shell starts", lambda:
