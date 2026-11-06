@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sourcePaths": ["index.client.tsx", "client", ".ui-review/tasks-state.mjs"],
+  "accessibility": true,
+  "projectDocuments": ["DESIGN.md"],
+  "storageState": ".ui-review/auth-state.json",
+  "timeoutMs": 30000,
+  "detailCapture": { "width": 1000, "height": 1000, "overlap": 24, "maxTiles": 32 },
+  "pages": [{
+    "name": "tasks",
+    "path": "/",
+    "ready": "body",
+    "checkpoints": [
+      { "name": "light", "setup": ".ui-review/tasks-state.mjs" },
+      { "name": "dark", "setup": ".ui-review/tasks-state.mjs" }
+    ]
+  }],
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 1000 },
+    { "name": "compact", "width": 390, "height": 844 }
+  ]
+}
