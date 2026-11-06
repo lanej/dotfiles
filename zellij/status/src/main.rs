@@ -236,6 +236,18 @@ impl ZellijPlugin for State {
             print!("Grant lane-status permissions to enable the top bar");
             return;
         }
+        // Match the native tab bar's host/guest focus signal. A dimmed session
+        // is still visible, but its keys currently belong to another session.
+        let dimmed = self.mode.session_ascended == Some(true)
+            || self.mode.session_dimmed == Some(true);
+        if self.mode.mode == InputMode::Tmux && !dimmed {
+            // Prefix waiting owns the whole row, even when a narrow terminal
+            // would otherwise give all its space to the clock or a notice.
+            let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
+            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
+                label, " ".repeat(cols.saturating_sub(label.width())));
+            return;
+        }
         let attention = self.attention.counts.needs_you + self.attention.counts.failed
             + self.attention.counts.done;
         let working = self.attention.counts.working;
@@ -250,15 +262,21 @@ impl ZellijPlugin for State {
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
         let host = plain(self.view["host"].as_str().unwrap_or(""));
-        let prefix = if self.mode.mode != InputMode::Locked && self.mode.mode != InputMode::Normal { " PREFIX " } else { " " };
+        let mode = match self.mode.mode {
+            InputMode::Locked | InputMode::Normal => " ",
+            InputMode::Tmux => " PREFIX ",
+            InputMode::Resize => " RESIZE ",
+            InputMode::Move => " MOVE ",
+            InputMode::Tab => " TAB ",
+            InputMode::RenameTab => " RENAME TAB ",
+            InputMode::Scroll => " SCROLL ",
+            InputMode::EnterSearch | InputMode::Search => " SEARCH ",
+            _ => " MODE ",
+        };
         let mut used = 0;
-        // Match the native tab bar's host/guest focus signal. A dimmed session
-        // is still visible, but its keys currently belong to another session.
-        let dimmed = self.mode.session_ascended == Some(true)
-            || self.mode.session_dimmed == Some(true);
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
         print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
-        let heading = format!("{}{} │", prefix, host);
+        let heading = format!("{}{} │", mode, host);
         for c in heading.chars() {
             let width = c.width().unwrap_or(0);
             if used + width > available { break; }

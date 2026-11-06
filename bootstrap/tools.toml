@@ -237,8 +237,8 @@ requires = ["treehouse", "jq", "node"]
 setup = ["firstmate-config"]
 
 [tools.pi]
-installer = "npm"
-package = "@earendil-works/pi-coding-agent"
+installer = "package"
+package = "pi"
 version = "1.4.0"
 requires = ["node"]
 setup = ["pi-config"]

@@ -23,6 +23,7 @@ copy_on_select true
 // background plugins survive when their containing tab closes.
 load_plugins {
     pane-navigation
+    command-prompt
     "zellij:link"
     "file:~/.config/zellij/plugins/lane-status.wasm" {
         role "clipboard-receiver"
@@ -38,6 +39,7 @@ scrollback_lines_to_serialize 10000
 serialization_interval 60
 
 plugins {
+    command-prompt location="file:~/.local/share/zellij/plugins/command-prompt.wasm"
     pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
 }
 keybinds clear-defaults=true {
@@ -49,6 +51,11 @@ keybinds clear-defaults=true {
     }
     tmux {
         bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+        bind ":" {
+            // Consent replaces this marker with this client's private plugin ID.
+            MessagePlugin "command-prompt" { name "command-prompt"; }
+            SwitchToMode "Locked"
+        }
         // tmux.conf's later picker overrides its earlier Ctrl-f send-prefix.
         // Ctrl-f f still sends a literal Ctrl-f to the application.
         bind "f" { Write 6; SwitchToMode "Locked"; }

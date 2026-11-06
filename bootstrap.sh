@@ -522,7 +522,10 @@ install_zellij_runtime() {
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
 	esac || return 1
-	python3 "$dotfiles_root/scripts/install-zellij-navigation.py"
+	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
+	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1
+	fi
 }
 
 install_zellij_from_main() (
@@ -750,6 +753,11 @@ install_claude-code_from_release() (
 	curl -fsSL https://claude.ai/install.sh -o "$claude_stage" || exit 1
 	bash "$claude_stage" "$1" || exit 1
 )
+
+install_pi_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
+}
 
 install_stylua_from_release() {
 	install_package_version node 24

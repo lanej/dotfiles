@@ -39,6 +39,9 @@ def main():
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         shutil.copyfile(root / "scripts/install-zellij-navigation.py", checkout / "scripts/install-zellij-navigation.py")
         shutil.copytree(root / "zellij/navigation", checkout / "zellij/navigation")
+        shutil.copyfile(root / "scripts/install-zellij-command-prompt.py", checkout / "scripts/install-zellij-command-prompt.py")
+        shutil.copytree(root / "zellij/command-prompt", checkout / "zellij/command-prompt",
+                        ignore=shutil.ignore_patterns("target"))
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
@@ -59,6 +62,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tomllib
 import zipfile
 
 home = Path(os.environ["HOME"])
@@ -222,15 +226,17 @@ elif name == "node":
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
-    package, version = args[2].rsplit("@", 1)
-    assert package == "@openai/codex", args
+    package, version = args[-1].rsplit("@", 1)
+    tool = {"@openai/codex": "codex", "@earendil-works/pi-coding-agent": "pi"}[package]
+    if tool == "pi":
+        assert args[2] == "--ignore-scripts", args
     node_bin = Path(shutil.which("node")).parent
-    (node_bin / "codex").symlink_to(fixture / "driver")
-    (home / "codex-version").write_text(version)
-    record("codex")
-elif name in ("codex", "claude"):
+    (node_bin / tool).symlink_to(fixture / "driver")
+    (home / (tool + "-version")).write_text(version)
+    record(tool)
+elif name in ("codex", "claude", "pi"):
     assert args == ["--version"], args
-    print(name + " " + (home / (name + "-version")).read_text().strip())
+    print(("" if name == "pi" else name + " ") + (home / (name + "-version")).read_text().strip())
 elif name == "jq" and args[:1] == ["-r"]:
     print("99.0.0")
 elif name in ("eza", "yq"):
@@ -252,6 +258,9 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # These integrations configure their already-installed tools before the
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
+elif name == "make" and args[-1:] == ["pi-config"]:
+    assert subprocess.check_output(["pi", "--version"], text=True).strip() == "1.4.0"
+    record("pi config")
 elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
@@ -269,6 +278,7 @@ elif name == "make":
     assert shutil.which("rustup"), "rustup missing"
     assert shutil.which("convert"), "ImageMagick missing"
     assert (home / ".local/share/zellij/plugins/pane-navigation.wasm").read_bytes() == b"\0asmfixture"
+    assert (home / ".local/share/zellij/plugins/command-prompt.wasm").read_bytes() == b"\0asmfixture"
     assert (home / ".config/bedrock/env").is_file(), "Bedrock credentials missing"
     subprocess.run(
         ["/usr/bin/make", "-f", str(home / ".files/Makefile"), "codex-env"],
@@ -303,8 +313,10 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "rustc"]:
     print("rustc 1.95.0\nhost: aarch64-unknown-linux-gnu\n")
 elif name == "rustup" and args[:4] == ["run", "1.95.0", "cargo", "build"]:
     assert "--locked" in args and args[args.index("--target") + 1] == "wasm32-wasip1", args
-    assert Path(args[args.index("--manifest-path") + 1]).is_file(), args
-    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release/dotfiles-pane-navigation.wasm"
+    manifest = Path(args[args.index("--manifest-path") + 1])
+    package = tomllib.loads(manifest.read_text())["package"]["name"]
+    assert package in ("dotfiles-pane-navigation", "dotfiles-command-prompt"), package
+    output = Path(os.environ["CARGO_TARGET_DIR"]) / "wasm32-wasip1/release" / (package + ".wasm")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(b"\0asmfixture")
 elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
@@ -394,7 +406,7 @@ else:
         # Keep this fresh-box workflow independent of tools preinstalled on CI.
         system_bin = home / "system-bin"
         system_bin.mkdir()
-        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "rustup", "convert", "magick", "imagemagick", "treehouse"}
+        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "pi", "zellij", "rustup", "convert", "magick", "imagemagick", "treehouse"}
         for system_dir in (Path("/usr/bin"), Path("/bin")):
             for tool in system_dir.iterdir():
                 destination = system_bin / tool.name
@@ -434,7 +446,7 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -460,7 +472,7 @@ else:
         assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
         assert events.index("make") > max(
-            events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude")
+            events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude", "pi")
         )
         assert "neovim setup" in events
         assert "neovim build" in events
@@ -540,12 +552,15 @@ else:
         # and skip both the source install and Neovim's post-install setup.
         machine_config.write_text(machine_config.read_text() + "neovim = false\n")
         (home / ".local/bin/nvim").unlink()
+        (home / "pi-version").write_text("1.5.0")
         previous_events = len((home / "events").read_text().splitlines())
         reduced = subprocess.run(["/bin/bash", "./bootstrap.sh", "install"], cwd=checkout, env=env,
                                  capture_output=True, text=True)
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert "pi" not in new_events
+        assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")

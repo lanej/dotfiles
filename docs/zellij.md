@@ -69,6 +69,10 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
+With the compiled status bar, pressing **Ctrl-f** turns the entire top row pink (#B48EAD), matching the selected pane border, with bold dark **PREFIX  waiting for next key** text and an **Esc cancels** hint. The normal tabs return as soon as you run or cancel the command. Resize, move, tab, rename, and scroll/search modes keep their own labels rather than claiming another prefix key is pending. The cue requires the bar to be visible; UI-free zoom does not show it.
+
+Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waiting for the next key](images/zellij-prefix/waiting.png), and [after returning to Locked mode](images/zellij-prefix/after.png). These captures render the test session’s decoded terminal cells, not a live user session.
+
 | Key | Action |
 | --- | --- |
 | `f` | Send a literal Ctrl-f to the application |
@@ -97,6 +101,7 @@ Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcu
 | `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
+| `:` | Open a centered Zellij command prompt; `help` lists actions and `history` recalls this client's commands |
 | `F` | Show/hide the current tab's other floating panes |
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
@@ -118,6 +123,16 @@ Zsh updates the native tab name and its own terminal title to `directory [git-br
 Automatic ownership requires an exact match with the last name written by the hook and a matching live session socket incarnation. State under `$XDG_STATE_HOME/zellij-auto-titles` cannot claim a recreated session's explicit title. Older records without lifecycle identity are ignored; reset the native tab name to its generated `Tab #<stable ID + 1>` name to resume automatic naming after upgrading an existing session. Zellij does not expose rename provenance: manually choosing exactly the last automatic name remains indistinguishable from automatic ownership. Other explicit names remain literal. If ownership cannot be established, the native name is displayed unchanged.
 
 The configuration-only/0.45.1 fallback still uses Zellij's built-in bar and one-based keys (`0` also selects the first tab). That bar has no base-index option; this change does not replace it or alter the runtime. To use the zero-based bar, install the pinned 0.46 runtime and build the status plugin. Avoid manual names matching Zellij's generated forms (`Tab #<stable ID + 1>` and `Pane #<number>`): its metadata does not expose their origin, so the custom UI can treat them as fallbacks. Other manual names are retained verbatim.
+
+**Command prompt:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax
+without `zellij action`, such as `rename-tab "work"`, `new-pane --direction right`,
+or `move-focus left`. Enter runs it and Esc cancels. `help` opens the action picker;
+`history` recalls the client's in-memory command history for review. This is a
+Zellij command line, not a shell or tmux command interpreter. It uses the native
+popup layer, leaves hidden floating panes hidden, and targets the invoking client.
+For an existing pinned installation, run `make zellij-command-prompt`, apply
+`make zellij`, and restart. See the [command-prompt guide](../zellij/command-prompt/README.md)
+for supported scope, quoting, permissions and verification.
 
 `Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
 
