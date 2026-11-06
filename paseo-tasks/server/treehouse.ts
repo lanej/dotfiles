@@ -58,7 +58,7 @@ export class Treehouse implements Worktrees {
       if (!refs) await command(primary, "git", ["branch", "--", treehouseBase, baseCommit]);
       attempting();
       const response = await command(primary, "treehouse", [
-        "--root", root, "get", "--lease", "--json", "--lease-holder", holder, "--branch", branch, "--base", treehouseBase,
+        "--root", root, "get", "--no-fetch", "--lease", "--json", "--lease-holder", holder, "--branch", branch, "--base", treehouseBase,
       ]);
       leased = allocation.parse(JSON.parse(response));
     }
