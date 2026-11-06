@@ -1,0 +1,21 @@
+---
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+---
+
+<nav class="site-navigation" aria-label="Site navigation">
+  <a class="return-link" href="https://lanej.io/open-source/#dotfiles" aria-label="Back to lanej.io open source">← lanej.io</a>
+  <span class="divider" aria-hidden="true">/</span>
+  <SiteTitle />
+</nav>
+
+<style>
+  .site-navigation { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+  .return-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--sl-color-gray-2); font-size: .875rem; white-space: nowrap; text-decoration: none; }
+  .return-link:hover { color: var(--sl-color-text-accent); text-decoration: underline; text-underline-offset: .2em; }
+  .divider { color: var(--sl-color-gray-4); }
+  @media (max-width: 49.99rem) {
+    .site-navigation { gap: .5rem; }
+    .site-navigation :global(.site-title img) { display: none; }
+    .site-navigation :global(.site-title) { min-height: 44px; font-size: 1.125rem; }
+  }
+</style>

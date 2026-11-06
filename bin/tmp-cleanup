@@ -1,57 +1,380 @@
-#!/usr/bin/env bash
-# Sweep stale entries out of /tmp, mirroring macOS's own periodic /tmp cleaner
-# (3+ day idle threshold), but explicit and on-demand.
-# Run with: tmp-cleanup [--dry-run]
+#!/usr/bin/env python3
+"""Preview or purge idle user-owned entries in system temporary directories."""
+import argparse
+from bisect import bisect_left
+from collections import Counter
+import json
+import math
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+import time
 
-set -euo pipefail
 
-DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-    DRY_RUN=true
-    echo "DRY RUN - no changes will be made"
-fi
+def protected_flags(info):
+    mask = (getattr(stat, "UF_IMMUTABLE", 0) | getattr(stat, "SF_IMMUTABLE", 0)
+            | getattr(stat, "UF_APPEND", 0) | getattr(stat, "SF_APPEND", 0)
+            | getattr(stat, "UF_NOUNLINK", 0) | getattr(stat, "SF_NOUNLINK", 0x100000)
+            | getattr(stat, "UF_DATAVAULT", 0) | getattr(stat, "SF_RESTRICTED", 0))
+    return bool(getattr(info, "st_flags", 0) & mask)
 
-format_size() {
-    numfmt --to=iec-i --suffix=B "$1" 2>/dev/null || echo "$1 bytes"
-}
 
-run() {
-    echo "+ $*"
-    if [[ "$DRY_RUN" == "false" ]]; then
-        "$@"
-    fi
-}
+def temporary_roots():
+    roots = [Path("/tmp").resolve()]
+    if sys.platform == "darwin":
+        result = subprocess.run(
+            ["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True,
+            check=True, timeout=10,
+        )
+        path = Path(result.stdout.strip())
+        if not path.is_absolute() or not str(path).startswith("/var/folders/"):
+            raise RuntimeError("Cannot identify the macOS user temporary directory")
+        roots.append(path.resolve())
+    return list(dict.fromkeys(roots))
 
-REAL_TMP=$(readlink -f /tmp)
-if [[ "$REAL_TMP" != "/private/tmp" ]]; then
-    echo "ERROR: /tmp resolves to $REAL_TMP, not /private/tmp — refusing to sweep" >&2
-    exit 1
-fi
 
-echo "== Disk usage before =="
-size_before=$(du -sk /tmp 2>/dev/null | cut -f1)
-echo "/tmp: $(format_size $((size_before * 1024)))"
+def activity():
+    try:
+        result = subprocess.run(
+            ["lsof", "-nP", "-u", str(os.getuid()), "-F0pcn"],
+            capture_output=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("Cannot inspect open files; retaining temporary entries") from exc
+    if result.returncode not in (0, 1) or result.stderr or not result.stdout.startswith(b"p"):
+        raise RuntimeError("Cannot inspect open files; retaining temporary entries")
+    paths = set()
+    for field in result.stdout.split(b"\0"):
+        field = field.lstrip(b"\n")
+        if field.startswith(b"n/"):
+            path = os.fsdecode(field[1:]).removesuffix(" (deleted)")
+            if sys.platform == "darwin" and path.startswith(("/tmp/", "/var/")):
+                path = "/private" + path
+            paths.add(path)
+    return sorted(paths)
 
-echo
-echo "== Stale entries (mtime > 3 days, owned by $(id -un)) =="
-mapfile -d '' -t entries < <(find /tmp -mindepth 1 -maxdepth 1 -mtime +3 -user "$(id -un)" -print0 2>/dev/null)
 
-if [[ ${#entries[@]} -eq 0 ]]; then
-    echo "nothing to clean"
-else
-    for entry in "${entries[@]}"; do
-        run rm -rf "$entry"
-    done
-fi
+def busy(path, paths):
+    name = str(path)
+    index = bisect_left(paths, name)
+    if index < len(paths) and paths[index] == name:
+        return True
+    prefix = name + "/"
+    index = bisect_left(paths, prefix)
+    return index < len(paths) and paths[index].startswith(prefix)
 
-echo
-echo "== Disk usage after =="
-if [[ "$DRY_RUN" == "false" ]]; then
-    size_after=$(du -sk /tmp 2>/dev/null | cut -f1)
-    echo "/tmp: $(format_size $((size_after * 1024)))"
-else
-    echo "(skipped in dry run)"
-fi
 
-echo
-echo "Removed ${#entries[@]} entries"
+def system_names():
+    if sys.platform != "darwin":
+        return set()
+    result = subprocess.run(
+        ["ps", "-axww", "-o", "comm="], capture_output=True, text=True,
+        check=True, timeout=10,
+    )
+    names = {"TemporaryItems", "homed", "icdd", "gamed"}
+    names.update(Path(command.strip()).name for command in result.stdout.splitlines()
+                 if command.strip().startswith(("/System/Library/", "/usr/libexec/")))
+    return names
+
+
+def recent(info, cutoff):
+    timestamps = [info.st_mtime, info.st_ctime]
+    if stat.S_ISREG(info.st_mode):
+        timestamps.append(info.st_atime)
+    return max(timestamps) >= cutoff
+
+
+def fingerprint(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_uid,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns,
+            info.st_atime_ns if stat.S_ISREG(info.st_mode) else None)
+
+
+def open_directory(name, parent=None):
+    return os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+
+
+def has_git_directory(handle):
+    def exists(name):
+        try:
+            os.stat(name, dir_fd=handle, follow_symlinks=False)
+            return True
+        except FileNotFoundError:
+            return False
+    return exists(".git") or all(exists(name) for name in ("HEAD", "objects", "refs"))
+
+
+def open_root(path, allowed=None, protected_names=()):
+    """Anchor the root without following any symlink in its canonical ancestry."""
+    handle = open_directory("/")
+    current = Path("/")
+    temp_device = None
+    try:
+        for part in path.parts[1:]:
+            child = open_directory(part, handle)
+            os.close(handle)
+            handle = child
+            current /= part
+            if allowed and any(current.is_relative_to(base) for base in allowed):
+                info = os.fstat(handle)
+                device = info.st_dev
+                if current in allowed:
+                    temp_device = device
+                elif device != temp_device:
+                    raise RuntimeError("Scan directory crosses a filesystem mount: " + str(path))
+                if current not in allowed and protected_flags(info):
+                    raise RuntimeError("Scan directory has protected filesystem flags: " + str(path))
+                if current not in allowed and not info.st_mode & stat.S_IWUSR:
+                    raise RuntimeError("Scan directory is read-only: " + str(path))
+                if current not in allowed and sys.platform == "darwin" and (
+                    current.name.startswith("com.apple.") or current.name in protected_names
+                ):
+                    raise RuntimeError("Scan directory is inside a macOS service temp folder: " + str(path))
+                if has_git_directory(handle):
+                    raise RuntimeError("Scan directory is inside a Git repository: " + str(path))
+        return handle
+    except BaseException:
+        os.close(handle)
+        raise
+
+
+def git_directory(names):
+    return ".git" in names or {"HEAD", "objects", "refs"} <= set(names)
+
+
+def inspect(path, root_handle, cutoff, paths):
+    """Return a complete idle-tree snapshot, or a reason to retain the entry."""
+    if busy(path, paths):
+        return None, None, "open file or working directory"
+    snapshot = {}
+    size = 0
+    device = os.fstat(root_handle).st_dev
+
+    def visit(name, parent, relative):
+        nonlocal size
+        info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        if info.st_uid != os.getuid():
+            return "contains entries owned by another user"
+        if info.st_dev != device:
+            return "mounted filesystem"
+        if protected_flags(info):
+            return "protected filesystem flags"
+        if stat.S_ISDIR(info.st_mode) and (
+            (info.st_mode & (stat.S_IWUSR | stat.S_IXUSR)) != (stat.S_IWUSR | stat.S_IXUSR)
+        ):
+            return "read-only or inaccessible directory"
+        if name == ".git":
+            return "Git checkout"
+        if recent(info, cutoff):
+            return "recent contents or metadata: " + relative
+        if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)
+                or stat.S_ISLNK(info.st_mode)):
+            return "socket, pipe, or device"
+        snapshot[relative] = fingerprint(info)
+        size += info.st_blocks * 512
+        if stat.S_ISDIR(info.st_mode):
+            handle = open_directory(name, parent)
+            try:
+                if fingerprint(os.fstat(handle)) != fingerprint(info):
+                    return "directory changed during inspection"
+                children = os.listdir(handle)
+                if git_directory(children):
+                    return "Git repository"
+                for child in children:
+                    key = child if relative == "." else relative + "/" + child
+                    reason = visit(child, handle, key)
+                    if reason:
+                        return reason
+                if fingerprint(os.fstat(handle)) != fingerprint(info):
+                    return "directory changed during inspection"
+            finally:
+                os.close(handle)
+        return ""
+
+    reason = visit(path.name, root_handle, ".")
+    return (None, None, reason) if reason else (snapshot, size, "")
+
+
+def remove(path, root_handle, snapshot):
+    """Remove only the inspected entries through anchored directory handles."""
+    children = {}
+    for relative in snapshot:
+        if relative != ".":
+            parent, _, name = relative.rpartition("/")
+            children.setdefault(parent or ".", set()).add(name)
+
+    def visit(name, parent, relative):
+        expected = snapshot[relative]
+        info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        if fingerprint(info) != expected or protected_flags(info):
+            raise RuntimeError("entry changed before removal")
+        if stat.S_ISDIR(info.st_mode):
+            handle = open_directory(name, parent)
+            try:
+                if fingerprint(os.fstat(handle)) != expected:
+                    raise RuntimeError("directory changed before removal")
+                names = set(os.listdir(handle))
+                if names != children.get(relative, set()) or git_directory(names):
+                    raise RuntimeError("directory contents changed before removal")
+                for child in sorted(names):
+                    key = child if relative == "." else relative + "/" + child
+                    visit(child, handle, key)
+                current = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                if (current.st_dev, current.st_ino) != expected[:2]:
+                    raise RuntimeError("directory replaced during removal")
+            finally:
+                os.close(handle)
+            os.rmdir(name, dir_fd=parent)
+        else:
+            os.unlink(name, dir_fd=parent)
+
+    visit(path.name, root_handle, ".")
+    try:
+        os.stat(path.name, dir_fd=root_handle, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    else:
+        raise RuntimeError("entry was recreated during removal")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("-y", "--yes", action="store_true", help="apply the purge")
+    mode.add_argument("--dry-run", action="store_true", help="preview (the default)")
+    parser.add_argument("--age-hours", type=float, default=168,
+                        help="minimum idle time for every entry (default: 168)")
+    parser.add_argument("--json", action="store_true", help="emit the report as JSON")
+    parser.add_argument("directories", nargs="*", type=Path,
+                        help="scan selected directories inside system temp locations")
+    args = parser.parse_args()
+    if not math.isfinite(args.age_hours) or args.age_hours < 0:
+        parser.error("--age-hours must be a finite nonnegative number")
+    try:
+        allowed = temporary_roots()
+        roots = list(dict.fromkeys(path.resolve() for path in args.directories)) or allowed
+        for root in roots:
+            if not root.is_dir() or not any(root.is_relative_to(base) for base in allowed):
+                raise RuntimeError("Directory must be inside a system temp location: " + str(root))
+            if root not in allowed and root.stat().st_uid != os.getuid():
+                raise RuntimeError("Selected scan directory belongs to another user: " + str(root))
+        for root in roots:
+            if any(other != root and root.is_relative_to(other) for other in roots):
+                raise RuntimeError("Overlapping scan directories: " + str(root))
+        protected_names = system_names()
+        paths = activity()
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        print("tmp-cleanup: " + str(exc), file=sys.stderr)
+        return 1
+
+    cutoff = time.time() - args.age_hours * 3600
+    refreshed_at = time.monotonic()
+    rows = []
+    skipped = Counter()
+    errors = 0
+    for root in roots:
+        root_handle = None
+        try:
+            root_info = root.lstat()
+            root_handle = open_root(root, allowed, protected_names)
+            if fingerprint(os.fstat(root_handle)) != fingerprint(root_info):
+                raise RuntimeError("Scan directory changed before inspection: " + str(root))
+            if git_directory(os.listdir(root_handle)):
+                raise RuntimeError("Scan directory is a Git repository: " + str(root))
+            entries = [root / name for name in sorted(os.listdir(root_handle))]
+        except (OSError, RuntimeError) as exc:
+            if root_handle is not None:
+                os.close(root_handle)
+            print(f"tmp-cleanup: {root}: {exc}", file=sys.stderr)
+            errors += 1
+            continue
+        for path in entries:
+            row = {"path": str(path), "action": "retain", "bytes": None, "reason": ""}
+            try:
+                info = os.stat(path.name, dir_fd=root_handle, follow_symlinks=False)
+                if info.st_uid != os.getuid():
+                    skipped["other owner"] += 1
+                    continue
+                if sys.platform == "darwin" and (
+                    path.name.startswith("com.apple.") or path.name in protected_names
+                ):
+                    skipped["macOS service"] += 1
+                    continue
+                if recent(info, cutoff):
+                    skipped["recent"] += 1
+                    continue
+                snapshot, size, reason = inspect(path, root_handle, cutoff, paths)
+                row.update(bytes=size, reason=reason)
+                if snapshot is not None:
+                    row["action"] = "remove"
+                    row["reason"] = f"idle for at least {args.age_hours:g} hours"
+                    if args.yes:
+                        # NOTE: Refresh activity before a removal when its sample is over five seconds old.
+                        if time.monotonic() - refreshed_at >= 5:
+                            paths = activity()
+                            refreshed_at = time.monotonic()
+                        fresh, _, reason = inspect(path, root_handle, cutoff, paths)
+                        if fresh != snapshot:
+                            row.update(action="retain", reason=reason or "contents changed")
+                        else:
+                            location = open_root(root, allowed, protected_names)
+                            try:
+                                original = os.fstat(root_handle)
+                                current = os.fstat(location)
+                                if (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino):
+                                    raise RuntimeError("Scan directory moved or changed before removal")
+                            finally:
+                                os.close(location)
+                            row["action"] = "removing"
+                            remove(path, root_handle, fresh)
+                            row["action"] = "removed"
+            except FileNotFoundError:
+                if row["action"] == "removing":
+                    row.update(action="error", reason="removal interrupted; entry may be partially removed")
+                    errors += 1
+                else:
+                    row.update(action="retain", reason="entry disappeared during inspection")
+            except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+                partial = row["action"] == "removing"
+                row.update(action="error" if partial else "retain",
+                           reason=("removal failed; entry may be partially removed: " if partial
+                                   else "inspection failed: ") + str(exc))
+                errors += 1
+                # WHY: A failed activity check invalidates all remaining purge decisions.
+                if isinstance(exc, (RuntimeError, subprocess.SubprocessError)) and args.yes:
+                    rows.append(row)
+                    break
+            rows.append(row)
+        else:
+            os.close(root_handle)
+            continue
+        os.close(root_handle)
+        break
+
+    candidates = [row for row in rows if row["action"] in ("remove", "removed")]
+    report = {
+        "mode": "apply" if args.yes else "preview",
+        "roots": [str(root) for root in roots],
+        "age_hours": args.age_hours, "entries": rows,
+        "skipped": dict(skipped), "errors": errors,
+        "eligible_entries": len(candidates),
+        "eligible_bytes": sum(row["bytes"] for row in candidates),
+    }
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False))
+    else:
+        print(f"Temp cleanup {report['mode']}: {args.age_hours:g} hours minimum idle time")
+        for row in sorted(rows, key=lambda row: (row["bytes"] or 0, row["path"])):
+            size = f"{row['bytes'] / 1024**2:.1f} MiB" if row["bytes"] is not None else "unknown"
+            print(f"{row['action']:7} {size:>12}  {row['path']!r}  ({row['reason']})")
+        verb = "Removed" if args.yes else "Would remove"
+        print(f"{verb} {len(candidates)} entries ({report['eligible_bytes'] / 1024**3:.2f} GiB).")
+        if skipped:
+            print("Skipped: " + ", ".join(f"{count} {reason}" for reason, count in skipped.items()))
+    return int(errors > 0)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

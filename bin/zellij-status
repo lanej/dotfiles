@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Supply host metadata for the native Zellij attention bar."""
+
+import json
+from pathlib import Path
+import re
+import socket
+import subprocess
+import sys
+import time
+
+
+def battery():
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(["pmset", "-g", "batt"], capture_output=True,
+                                    text=True, timeout=2, check=True)
+            match = re.search(r"[0-9]+%", result.stdout)
+            return match.group(0) if match else ""
+        except (OSError, subprocess.SubprocessError):
+            return ""
+    for path in Path("/sys/class/power_supply").glob("BAT*/capacity"):
+        try:
+            return f"{int(path.read_text().strip())}%"
+        except (OSError, ValueError):
+            continue
+    return ""
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] != ["view"]:
+        sys.exit("Usage: zellij-status view")
+    print(json.dumps({"host": socket.gethostname().split(".")[0],
+                      "clock": time.strftime("%H:%M"), "battery": battery()}))

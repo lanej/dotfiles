@@ -32,19 +32,38 @@ def main():
     def action(*arguments):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise RuntimeError("Timed out checking the navigation target")
+            raise RuntimeError(f"Timed out before Zellij {arguments[0]}")
         result = subprocess.run(
             ["zellij", "--session=" + session, "action", *arguments],
             capture_output=True, text=True, timeout=remaining,
         )
         if result.returncode:
-            raise RuntimeError(result.stderr.strip() or "Zellij navigation failed")
+            detail = result.stderr.strip() or f"exit status {result.returncode}"
+            raise RuntimeError(f"Zellij {arguments[0]} failed: {detail}")
         return result.stdout
+
+    def query(*arguments):
+        # Native pane-close/reload notifications can unblock an unrelated CLI
+        # query before its output arrives. Retry only empty successful reads,
+        # within the original navigation deadline; focus actions stay single-shot.
+        while time.monotonic() < deadline:
+            output = action(*arguments)
+            if output.strip():
+                return output
+            time.sleep(min(0.02, max(0, deadline - time.monotonic())))
+        raise RuntimeError(f"Zellij {arguments[0]} returned no response before the navigation deadline")
+
+    def query_json(command):
+        output = query(command, "--json")
+        try:
+            return json.loads(output)
+        except json.JSONDecodeError as error:
+            raise RuntimeError(f"Zellij {command} returned invalid JSON: {error}") from error
 
     def source_client():
         # Unlike PaneInfo.is_focused, this listing restricts ownership to
         # clients' currently active tabs. Reject malformed/ambiguous results.
-        lines = action("list-clients").splitlines()
+        lines = query("list-clients").splitlines()
         if not lines or lines[0].split() != ["CLIENT_ID", "ZELLIJ_PANE_ID", "RUNNING_COMMAND"]:
             raise RuntimeError("Cannot establish the active Zellij client")
         clients = [line.split(None, 2) for line in lines[1:] if line.strip()]
@@ -57,7 +76,7 @@ def main():
         # list-clients omits clients focused on scrollback editors. Native
         # tab metadata includes all attached client IDs, even those without
         # a serializable active pane; check every tab before trusting a row.
-        tabs = json.loads(action("list-tabs", "--json"))
+        tabs = query_json("list-tabs")
         attached = {client_id for tab in tabs for client_id in tab["other_focused_clients"]}
         if attached != {int(clients[0][0])}:
             raise RuntimeError("Pane navigation needs one attached client; use Ctrl-f h/j/k/l")
@@ -66,11 +85,11 @@ def main():
     owner = source_client()
     if owner is None:
         return
-    panes = json.loads(action("list-panes", "--json"))
+    panes = query_json("list-panes")
     pane = next((p for p in panes if not p["is_plugin"] and p["id"] == int(pane_id)), None)
     if pane is None:
         raise RuntimeError("The calling Zellij pane no longer exists")
-    current_tab = json.loads(action("current-tab-info", "--json"))
+    current_tab = query_json("current-tab-info")
     if (not pane["is_focused"] or pane["is_fullscreen"]
             or current_tab["tab_id"] != pane["tab_id"]
             or current_tab["is_fullscreen_active"]):

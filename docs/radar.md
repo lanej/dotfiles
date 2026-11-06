@@ -32,6 +32,9 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 ### Pi
 
 [Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.
+### Firstmate through Paseo and GitHub
+
+[Firstmate mobile workflow](firstmate-mobile.md): one Paseo conversation coordinates work, while assigned Pi sessions handle GitHub feedback directly through native Firstmate task records and steering inboxes. This replaces the standalone Claude dispatchers. Keep it opt-in pending live Bedrock/provider, upstream supervision, and phone reconnect evidence described in [#134](https://github.com/lanej/dotfiles/issues/134).
 
 ### Zellij
 

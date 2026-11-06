@@ -7,11 +7,12 @@
 # This path is documented by 1Password and matches the IdentityAgent config in ~/.ssh/config
 ONEPASSWORD_SSH_AGENT="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# If we're in an SSH session, SSH_AUTH_SOCK should be set by agent forwarding
-# Don't start a local agent in this case - just trust the forwarded agent
-if [ -n "$SSH_CONNECTION" ] && [ -n "$SSH_AUTH_SOCK" ]; then
-    # In SSH session with forwarded agent - don't override
-    :
+# WHY: Refresh mux panes without replacing a local 1Password agent.
+if [ -n "$SSH_CONNECTION" ]; then
+    if [ -r "$HOME/.local/bin/fix-ssh" ]; then
+        # shellcheck disable=SC1091
+        . "$HOME/.local/bin/fix-ssh"
+    fi
 elif [ -n "$SSH_AUTH_SOCK" ] && [ -S "$SSH_AUTH_SOCK" ]; then
     # SSH_AUTH_SOCK is already set and the socket exists - keep it
     :

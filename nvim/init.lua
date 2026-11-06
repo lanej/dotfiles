@@ -159,6 +159,7 @@ vim.keymap.set("n", "]q", ":cnext<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "[q", ":cprev<CR>", { noremap = true, silent = true })
 
 -- NOTE: Map <leader>y to yank to system clipboard in normal and visual modes
+local zellij_clipboard = require("zellij-clipboard").setup()
 vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { noremap = true, silent = true })
 
 -- NOTE: Map <leader>yy to yank the current line to system clipboard in normal mode
@@ -202,6 +203,9 @@ vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { noremap = true, silent = true
 -- Strip trailing newlines from clipboard register after every yank
 vim.api.nvim_create_autocmd("TextYankPost", {
 	callback = function()
+		if zellij_clipboard then
+			return
+		end
 		local reg = vim.v.event.regname
 		if reg == "+" or reg == "*" then
 			local text = vim.fn.getreg(reg)
@@ -521,6 +525,8 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 	end,
 })
 
+require("zellij-scrollback").register_filetype()
+
 -- Custom filetypes, including YAML-based LookML dashboards.
 vim.filetype.add({
 	extension = {
@@ -753,6 +759,13 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
+	{
+		"m00qek/baleia.nvim",
+		ft = "zellij-scrollback",
+		config = function()
+			require("zellij-scrollback").setup()
+		end,
+	},
 	"folke/which-key.nvim",
 	{
 		"lanej/hotreload.nvim",
@@ -1293,6 +1306,7 @@ require("lazy").setup({
 					"bqls",
 					-- "ruby_lsp",
 					"jsonls",
+					"taplo",
 					"pylsp",
 					"html",
 					"yamlls",
@@ -1333,12 +1347,12 @@ require("lazy").setup({
 					timeout = 2000, -- timeout for clearing the highlight
 				},
 				tmux = {
-					enabled = true,
+					enabled = not zellij_clipboard,
 					cmd = { "tmux", "set-buffer", "-w" },
 				},
-				clipboard = { enabled = true },
+				clipboard = { enabled = not zellij_clipboard },
 				osc52 = {
-					enabled = true,
+					enabled = not zellij_clipboard,
 					ssh_only = true, -- OSC52 yank also in local sessions
 					silent = true, -- false to disable the "n chars copied" echo
 				},

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# WHY: The GUI daemon may not inherit the work key; reuse its existing private source without rewriting it.
+if [[ -z ${AWS_BEARER_TOKEN_BEDROCK:-} && -r "$HOME/.config/bedrock/env" ]]; then
+    # shellcheck source=/dev/null
+    source "$HOME/.config/bedrock/env"
+fi
+# WHY: Rebuild stale transformed source so worker startup uses the extensions deployed by this rollout.
+export JITI_REBUILD_FS_CACHE=1
+exec pi "$@"

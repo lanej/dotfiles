@@ -1,47 +1,83 @@
-.DEFAULT_GOAL := setup
-SETUP_TARGETS += shell git tmux-config tmux-plugins zellij-config vim-config sql-formatters ruby kitty-config kitty-terminfo
-SETUP_TARGETS += zsh-config zsh-plugins wezterm python go claude-config cargo presenterm mail quarto codex-config codex-mcp
-SETUP_TARGETS += dev-cache-config ep-direnv
-SETUP_TARGETS += treehouse-config firstmate-config
-LINUX_SETUP_TARGETS := X polybar bspwm
-DARWIN_SETUP_TARGETS := yabai
+.DEFAULT_GOAL := configure
 DOTFILES := $(CURDIR)
 MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
+# Bootstrap installs its managed runtime here even before shell setup exists.
+export PATH := $(HOME)/.local/bin:$(PATH)
 GO ?= go
 FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
-ifeq ($(origin IS_EASYPOST),undefined)
-INSTALL_HOSTNAME := $(shell bash "$(MAKE_SCRIPTS)/hostname.sh")
-ifeq ($(strip $(INSTALL_HOSTNAME)),)
-$(error Could not determine hostname; set IS_EASYPOST=true or false)
+include $(MAKE_SCRIPTS)/../../config/targets.mk
+# Share one validated TOML resolver with bootstrap. Resolve only when a target
+# consumes settings, so basic linking remains usable before Python is installed.
+ifneq ($(origin DOTFILES_CONFIG),undefined)
+export DOTFILES_CONFIG
 endif
-IS_EASYPOST := $(if $(findstring easypost,$(INSTALL_HOSTNAME)),true,false)
+ifneq ($(origin IS_EASYPOST),undefined)
+$(error IS_EASYPOST is retired; select configuration sets in ~/.config/dotfiles/config.toml)
 endif
-export IS_EASYPOST
-ifeq ($(IS_EASYPOST),true)
-CODEX_GITHUB_ENABLED := false
-else ifeq ($(IS_EASYPOST),false)
-CODEX_GITHUB_ENABLED := true
-else
-$(error IS_EASYPOST must be true or false)
-endif
-
-ifeq ($(UNAME_S),Linux)
-SETUP_TARGETS += $(LINUX_SETUP_TARGETS)
-else ifeq ($(UNAME_S),Darwin)
-SETUP_TARGETS += $(DARWIN_SETUP_TARGETS)
-endif
+shell-quote = '$(subst ','"'"',$(1))'
+DOTFILES_CONFIG_ARG = $(if $(filter undefined,$(origin DOTFILES_CONFIG)),,--config $(call shell-quote,$(DOTFILES_CONFIG)))
+# Make's shell expressions use the incoming PATH rather than the recipe export.
+DOTFILES_PYTHON = $(or $(wildcard $(HOME)/.local/bin/python3),python3)
+# Cache validated settings after the first consumer requests them.
+define resolve-dotfiles-config
+$(eval DOTFILES_RESOLVED := $(shell $(call shell-quote,$(DOTFILES_PYTHON)) "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format make))
+$(if $(strip $(DOTFILES_RESOLVED)),,$(error Invalid dotfiles configuration; see diagnostic above))
+$(foreach setting,$(DOTFILES_RESOLVED),$(eval override $(setting)))
+$(eval resolve-dotfiles-config :=)
+endef
+config-value = $(strip $(resolve-dotfiles-config)$($(1)))
+comma := ,
+SETUP_TARGETS = $(subst $(comma), ,$(call config-value,DOTFILES_SETUP_TARGETS))
+NATIVE_SET = $(or $(DOTFILES_NATIVE_SET_$(UNAME_S)),$(error Unsupported OS $(UNAME_S)))
+BASE_TARGETS = $(DOTFILES_NATIVE_TARGETS_$(UNAME_S))
 
 # The runner reports every step and returns failure only after trying them all.
-all: setup
+all setup: configure
 
-setup:
+.PHONY: bootstrap install
+bootstrap install:
+	@bash "$(DOTFILES)/bootstrap.sh" "$@"
+
+.PHONY: config-init config plan test-dotfiles-config test-dotfiles-config-editor
+config-init:
+	@bash "$(MAKE_SCRIPTS)/init-config.sh" "$(HOME)" "$(NATIVE_SET)"
+
+config:
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)"
+
+plan:
+	@python3 "$(MAKE_SCRIPTS)/../dotfiles-config.py" $(DOTFILES_CONFIG_ARG) --platform "$(UNAME_S)" --format plan
+
+test-dotfiles-config:
+	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
+
+.PHONY: test-repo-bootstrap
+test-repo-bootstrap:
+	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
+
+.PHONY: test-go-quality
+test-go-quality:
+	@python3 "$(DOTFILES)/scripts/test-go-quality.py"
+
+test-dotfiles-config-editor:
+	$(call require-command,nvim)
+	$(call require-command,taplo)
+	@nvim --headless -u NONE -i NONE -n -l "$(DOTFILES)/nvim/tests/dotfiles-config-schema.lua"
+
+base: config-init
+base: SELECTED_TARGETS = $(BASE_TARGETS)
+configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
-	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(SETUP_TARGETS)
+	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)
 else
-	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SETUP_TARGETS)
+	+@bash "$(DOTFILES)/scripts/setup-checklist.sh" $(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going -- $(SELECTED_TARGETS)
 endif
+
+setup-empty:
+	@echo "No configuration targets selected. See make config."
 
 define require-command
 	@bash "$(MAKE_SCRIPTS)/require.sh" command "$(1)"
@@ -68,6 +104,40 @@ treehouse-config:
 firstmate-config: treehouse-config zellij-config
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
+.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+pi-config: pi-resources
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+firstmate-mobile-config: firstmate-config pi-config
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
+
+test-firstmate-github:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
+
+.PHONY: test-firstmate-peers
+test-firstmate-peers:
+	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
+
+.PHONY: test-firstmate-primary
+test-firstmate-primary:
+	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
+
+.PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
+test-paseo-tasks:
+	@npm --prefix "$(DOTFILES)/paseo-tasks" test
+
+test-paseo-task-import:
+	@node "$(DOTFILES)/scripts/test-paseo-task-import.mjs"
+
+test-paseo-task-router:
+	@node "$(DOTFILES)/scripts/test-paseo-task-router.mjs"
+
+test-paseo-tasks-ui:
+	@node "$(DOTFILES)/scripts/test-paseo-tasks-ui.mjs"
+
+paseo-tasks-config:
+	@node "$(DOTFILES)/scripts/paseo-tasks-config.mjs" "$(HOME)/.pi/agent/settings.json" "$(HOME)/.pi/agent/models.json"
+
 banner:
 	@cat banner.txt
 dev:
@@ -75,6 +145,11 @@ dev:
 shell:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh: zsh-config zsh-plugins
+.PHONY: zsh-completions test-zsh-completions
+zsh-completions:
+	@bash "$(MAKE_SCRIPTS)/completions.sh" "$(HOME)"
+test-zsh-completions:
+	@python3 "$(DOTFILES)/scripts/test-zsh-completions.py"
 zsh-config: shell
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 zsh-plugins: zsh-config
@@ -91,8 +166,14 @@ tmux-status-legend:
 tmux-program-status:
 	@"$(if $(AGENT_STATUS_SOURCE),$(AGENT_STATUS_SOURCE),$(HOME)/src/agent-status-broker)/tmux/build" "$(HOME)/.local/bin/tmux-program-status"
 zellij: zellij-config
+.PHONY: zellij-runtime
+zellij-runtime:
+	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
+.PHONY: zellij-status test-zellij-status
+zellij-status:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 sql-formatters:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 vim: vim-config sql-formatters
@@ -144,36 +225,25 @@ dev-cache-schedule: dev-cache-config FORCE
 
 test-dev-cache-prune: FORCE
 	@python3 "$(DOTFILES)/scripts/test-dev-cache-prune.py"
+test-tmp-cleanup: FORCE
+	@python3 "$(DOTFILES)/scripts/test-tmp-cleanup.py"
 test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-SETUP_TARGETS += claude-plugins
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
-SETUP_TARGETS += software-standard
 software-standard:
 	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
 
-SETUP_TARGETS += claude-shared
 claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
 claude-config: software-standard
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-SETUP_TARGETS += codex-skills
 codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
-# Pi reads the same ~/.agents/skills catalog; it needs no second skill copy.
-.PHONY: pi pi-config test-pi-resources
-pi: pi-config
-pi-config: codex-skills
-	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
-test-pi-resources:
-	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
-SETUP_TARGETS += codex-tmux-config
-SETUP_TARGETS += agent-status-broker
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" --no-start $(AGENT_STATUS_INSTALL_FLAGS)
 	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
@@ -184,7 +254,6 @@ codex-tmux: agent-status-broker
 codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
-SETUP_TARGETS += codex-worktree-hook
 # The codex aggregate runs this after its other hook installers finish.
 codex codex-worktree-hook:
 	$(call require-command,$(UV))
@@ -193,7 +262,6 @@ codex codex-worktree-hook:
 test-codex-worktree-hook: FORCE
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/scripts/test-codex-worktree-hook.py"
-SETUP_TARGETS += codex-agents
 codex-agents:
 	@python3 "$(DOTFILES)/bin/sync-codex-agents" --source "$(DOTFILES)/ai/agents" --home "$(HOME)"
 codex-env:
@@ -202,11 +270,11 @@ codex: claude codex-skills codex-agents codex-tmux codex-config codex-mcp
 .PHONY: codex-permissions
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(CODEX_GITHUB_ENABLED)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)" --easypost "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 codex-mcp: claude-config codex-config
 	$(call require-command,codex)
 	$(call require-command,jq)
@@ -229,7 +297,6 @@ test:
 test-codex-cleanup:
 	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py
 
-SETUP_TARGETS += codex-worktree-exit-hook
 codex: codex-worktree-exit-hook
 codex-worktree-exit-hook: codex-tmux
 	@python3 "$(DOTFILES)/bin/codex-worktree-exit-hook" --install
@@ -245,11 +312,13 @@ test-agent-treehouse:
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
 
-SETUP_TARGETS += ui-review
 ui-review:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
-test-ui-review:
+test-ui-review: test-ui-review-installer
 	@python3 "$(DOTFILES)/scripts/test-viewrule.py"
+.PHONY: test-ui-review-installer
+test-ui-review-installer:
+	@python3 "$(DOTFILES)/scripts/test-install-viewrule.py"
 
 # Opt-in services stay out of SETUP_TARGETS.
 # The helper remembers the selected server, falling back to dev on first setup.
@@ -260,6 +329,10 @@ atuin-sync:
 
 test-atuin-sync:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-atuin-sync.py"
+
+.PHONY: test-install-entrypoint
+test-install-entrypoint:
+	@python3 "$(DOTFILES)/scripts/test-install-entrypoint.py"
 
 test-bootstrap:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap.py"
@@ -301,13 +374,27 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all setup $(SETUP_TARGETS) $(LINUX_SETUP_TARGETS) $(DARWIN_SETUP_TARGETS) lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
+.PHONY: test-zellij-attach
+test-zellij-attach:
+	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
+
+.PHONY: test-zellij-move
+test-zellij-move:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
+.PHONY: test-zellij-codex-titles
+test-zellij-codex-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
+.PHONY: test-zellij-claude-titles
+test-zellij-claude-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
@@ -317,6 +404,13 @@ test-firstmate:
 
 test-zellij-layout:
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
+
+.PHONY: test-zellij-clipboard
+test-zellij-clipboard:
+	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
+
+test-zellij-status:
+	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 
 test-zellij-sessions:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
@@ -372,3 +466,15 @@ ep-direnv-uninstall:
 .PHONY: epenv
 epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: test-ssh-agent
+test-ssh-agent:
+	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"
+
+# Pi shares the existing skill catalog without a second copy.
+.PHONY: pi pi-resources test-pi-resources
+pi: pi-resources
+pi-resources: codex-skills
+	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
+test-pi-resources:
+	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"

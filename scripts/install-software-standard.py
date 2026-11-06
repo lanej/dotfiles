@@ -15,14 +15,7 @@ NAME = "builder"
 LEGACY_NAME = "pragmatic-hexagonal"
 START = f"<!-- {NAME}:start -->"
 END = f"<!-- {NAME}:end -->"
-GUIDANCE = f"""{START}
-# Default software guidance: Builder
-
-For software design, implementation, modification, debugging, and review, read
-`~/.local/share/software-standards/builder/references/instructions.md`
-and follow the Builder skill, architecture standard, and construction policy it identifies.
-{END}
-"""
+GUIDANCE = "<!-- builder:start -->\n# Default software guidance: Builder\n\nFor software design, implementation, modification, debugging and review, use the project's explicitly selected repository-local Builder core when available; otherwise read `~/.local/share/software-standards/builder/SKILL.md`. Load detailed references by its task triggers; preserve project constraints and instruction precedence.\n<!-- builder:end -->\n"
 MARKER = "Installed by dotfiles install-software-standard.py\n"
 
 

@@ -1,3 +1,6 @@
+# macOS AppleDouble metadata
+._*
+
 # vim swap files
 .*.sw*
 vim/.netrwhist
@@ -6,6 +9,7 @@ bin/mate
 bin/*
 !bin/nvim-gh-review
 !bin/firstmate
+!bin/paseo-pi
 !bin/ep-direnv
 !bin/epenv
 !bin/epenv_test.py

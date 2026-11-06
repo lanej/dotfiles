@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""Set compact Codex titles through Zellij's existing pane-name API."""
+
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--timestamp", type=int, default=time.time_ns())
+    started = parser.parse_args().timestamp
+    deadline = time.monotonic() + 2.5
+    configuration = Path(__file__).resolve().parents[1] / "codex/zellij-title.json"
+    options = json.loads(configuration.read_text())
+    event = json.load(sys.stdin)
+    if event.get("agent_id") or event.get("agent_type"):
+        return
+    identity = str(uuid.UUID(event["session_id"]))
+    kind = event["hook_event_name"]
+    binary = shutil.which("zellij")
+    if not binary:
+        return
+
+    def command(*arguments):
+        remaining = min(0.6, deadline - time.monotonic())
+        if remaining <= 0:
+            raise TimeoutError()
+        result = subprocess.run([binary, *arguments], capture_output=True, text=True,
+                                timeout=remaining, check=True)
+        return result.stdout
+
+    def panes(session):
+        return [pane for pane in json.loads(command("--session", session, "action",
+                                                    "list-panes", "--json"))
+                if not pane["is_plugin"] and not pane.get("exited")]
+
+    def owns(title, owner=identity):
+        fields = title.removeprefix("[ ! ] Action Required | ").split(" | ")
+        if len(fields) < 2 or fields[0] != "codex":
+            return False
+        prefix = fields[1].removesuffix("...")
+        return len(prefix) >= 16 and owner.startswith(prefix)
+
+    state_dir = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
+    state_dir /= "codex-zellij-titles"
+    state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    state_path = state_dir / f"{identity}.json"
+
+    def save(state):
+        state["updated_at"] = started
+        with tempfile.NamedTemporaryFile(mode="w", dir=state_dir, delete=False) as output:
+            temporary = Path(output.name)
+            json.dump(state, output, ensure_ascii=False)
+        temporary.replace(state_path)
+
+    def rename(session, pane_id, title):
+        # WHY: Daemon environment variables can identify a different client's pane.
+        command("--session", session, "action", "rename-pane",
+                "--pane-id", f"terminal_{pane_id}", title)
+
+    def records():
+        for path in state_dir.glob("*.json"):
+            yield path.stem, json.loads(path.read_text())
+
+    def reveal(session, pane, record, owner):
+        if pane["title"] != record.get("title"):
+            return pane
+        rename(session, pane["id"], "")
+        native = next((item for item in panes(session) if item["id"] == pane["id"]), None)
+        if native and owner != identity and owns(native["title"], owner):
+            rename(session, pane["id"], record["title"])
+        elif native and not owns(native["title"]):
+            # WHY: Nearby UUIDv7 threads can share the displayed eight-character ID.
+            for other, active in records():
+                if (not active.get("ended") and active.get("session") == session
+                        and active.get("pane") == pane["id"]
+                        and active.get("title") == pane["title"]
+                        and owns(native["title"], other)):
+                    rename(session, pane["id"], active["title"])
+                    break
+        return native
+
+    with (state_dir / ".lock").open("a") as lock:
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    return
+                time.sleep(0.02)
+        state = json.loads(state_path.read_text()) if state_path.exists() else {}
+        if started < state.get("updated_at", 0):
+            return
+        if state.get("ended") and kind not in ("SessionStart", "SessionEnd"):
+            return
+        target = None
+        if state.get("session"):
+            try:
+                candidate = next((pane for pane in panes(state["session"])
+                                  if pane["id"] == state["pane"]), None)
+                if candidate:
+                    candidate = reveal(state["session"], candidate, state, identity)
+                if candidate and owns(candidate["title"]):
+                    target = candidate
+            except (subprocess.SubprocessError, ValueError):
+                pass
+        if kind == "SessionEnd":
+            # WHY: Keep ordering after cleanup so delayed events cannot reclaim the pane.
+            save({**state, "ended": True})
+            return
+        if target is None:
+            matches = []
+            snapshots = {}
+            for session in command("list-sessions", "--short").splitlines():
+                try:
+                    snapshots[session] = panes(session)
+                except (subprocess.SubprocessError, ValueError):
+                    continue
+                for pane in snapshots[session]:
+                    if owns(pane["title"]):
+                        matches.append((session, pane))
+            if not matches:
+                revealed = set()
+                for owner, record in records():
+                    if record.get("ended") or record.get("session") not in snapshots:
+                        continue
+                    session = record["session"]
+                    key = session, record["pane"]
+                    if key in revealed:
+                        continue
+                    candidate = next((pane for pane in snapshots[session]
+                                      if pane["id"] == record["pane"]
+                                      and pane["title"] == record.get("title")), None)
+                    if candidate:
+                        revealed.add(key)
+                        try:
+                            candidate = reveal(session, candidate, record, owner)
+                        except (subprocess.SubprocessError, ValueError):
+                            continue
+                        if candidate and owns(candidate["title"]):
+                            matches.append((session, candidate))
+            if len(matches) != 1:
+                return
+            session, target = matches[0]
+            state = {"session": session, "pane": target["id"]}
+        if kind == "SessionStart":
+            state["ended"] = False
+            state["question"] = False
+        if kind == "UserPromptSubmit":
+            state["question"] = False
+        tool = event.get("tool_name", "").split(".")[-1]
+        if kind == "PreToolUse" and tool in ("request_user_input", "request_user_input_async"):
+            state["question"] = True
+        if kind == "PostToolUse" and tool == "request_user_input":
+            state["question"] = False
+        if kind == "PermissionRequest" or state.get("question"):
+            glyph = options["states"]["attention"]
+        elif kind == "Interrupt":
+            glyph = options["states"]["idle"]
+        elif kind == "Stop" or (kind == "SessionStart" and event.get("source") != "compact"):
+            glyph = options["states"]["ready"]
+        else:
+            glyph = options["states"]["working"]
+        project = Path(event["cwd"]).name
+        project = "".join(character for character in project if character.isprintable())
+        title = options["format"].format(id=identity, status=glyph, project=project)
+        rename(state["session"], target["id"], title)
+        save({**state, "title": title})
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        # WHY: Cosmetic titles must not interrupt the agent's work.
+        pass

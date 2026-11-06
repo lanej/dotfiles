@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Exercise the installed Firstmate launcher against real session backends.
 
-FIRSTMATE_SOURCE must name an upstream checkout. The agent executable is a
-local interactive shell fixture; no model calls or external projects are used.
+FIRSTMATE_SOURCE must name an upstream checkout. Agent executables are local
+interactive shell fixtures; no model calls or external projects are used.
 """
 
 import json
@@ -16,7 +16,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 
 
 def export_checkout(source, destination):
@@ -74,19 +75,26 @@ def main():
         temp_files.mkdir(mode=0o700)
         executables = home / ".local/bin"
         executables.mkdir(parents=True)
-        codex = executables / "codex"
-        codex.write_text('''#!/usr/bin/env python3
+        agent_source = '''#!/usr/bin/env python3
 import json, os, sys
 from pathlib import Path
+if sys.argv[1:] == ["--version"]:
+    print("1.4.0")
+    raise SystemExit(0)
 Path(os.environ["HOME"], "captain.json").write_text(json.dumps({
+    "agent": Path(sys.argv[0]).name, "pid": os.getpid(),
     "argv": sys.argv[1:], "cwd": os.getcwd(),
     "env": {key: os.environ.get(key) for key in (
-        "FM_HOME", "FM_BACKEND", "FM_ZELLIJ_SESSION", "ZELLIJ_SESSION_NAME", "TMUX")}
+        "FIRSTMATE_HOME", "FM_HOME", "FM_BACKEND", "FM_PRIMARY_HARNESS", "FM_PI_HARNESS",
+        "FM_CODEX_WATCH_CHECKPOINT", "FM_ZELLIJ_SESSION", "ZELLIJ_SESSION_NAME", "TMUX", "PATH")}
 }))
 print("FIRSTMATE_CAPTAIN_READY", flush=True)
 os.execv("/bin/sh", ["/bin/sh"])
-''')
-        codex.chmod(0o700)
+'''
+        for name in ("codex", "pi"):
+            agent = executables / name
+            agent.write_text(agent_source)
+            agent.chmod(0o700)
         name = "firstmate-" + temporary.name
         env = {**os.environ, "HOME": str(home), "FIRSTMATE_HOME": str(fleet),
                "FM_ZELLIJ_SESSION": name, "SHELL": "/bin/sh", "PS1": "firstmate-ready> ",
@@ -95,7 +103,9 @@ os.execv("/bin/sh", ["/bin/sh"])
                "XDG_RUNTIME_DIR": str(runtime), "ZELLIJ_SOCKET_DIR": str(runtime),
                "TMPDIR": str(temp_files), "TMUX_TMPDIR": str(runtime),
                "PATH": str(executables) + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("FM_BACKEND", "FM_HOME", "FM_ROOT_OVERRIDE", "FM_CONFIG_OVERRIDE",
+                    "FM_PRIMARY_HARNESS", "FM_PI_HARNESS", "FM_CODEX_WATCH_CHECKPOINT",
                     "FM_STATE_OVERRIDE", "FM_DATA_OVERRIDE", "ZELLIJ", "ZELLIJ_SESSION_NAME",
                     "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR", "ZELLIJ_CONFIG_FILE", "TMUX",
                     "TMUX_PANE", "ENV", "BASH_ENV"):
@@ -103,18 +113,26 @@ os.execv("/bin/sh", ["/bin/sh"])
         subprocess.run(["make", "--no-print-directory", "firstmate-config"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
         assert (fleet / "config/backend").read_text() == "zellij\n", "Installation replaced the selected backend"
+        assert (fleet / "config/crew-harness").read_text().strip() == "codex"
         launcher = str(executables / "firstmate")
-        terminal = Terminal(binary, env, name, [launcher, "start", "--model", "literal ; $(false)"])
+        pi_env = {**env, "FM_PRIMARY_HARNESS": "pi", "FM_CODEX_WATCH_CHECKPOINT": "999"}
+        terminal = Terminal(binary, pi_env, name, [launcher, "start", "--model", "literal ; $(false)"])
         clients = [terminal]
         other_name = "unrelated-" + temporary.name
         tmux_env = {**env, "FM_BACKEND": "tmux", "FIRSTMATE_TMUX_SOCKET": temporary.name}
         try:
+            terminal.grant_status_permissions()
             terminal.until("Firstmate captain starts", lambda: b"FIRSTMATE_CAPTAIN_READY" in terminal.output)
             captain = json.loads((home / "captain.json").read_text())
-            assert captain["argv"] == ["--approve-for-me", "--model", "literal ; $(false)"], captain
+            assert captain["agent"] == "pi", captain
+            assert captain["argv"] == ["--model", "literal ; $(false)"], captain
             assert captain["cwd"] == str(fleet), captain
+            assert captain["env"]["FIRSTMATE_HOME"] == str(fleet), captain
             assert captain["env"]["FM_HOME"] == str(fleet), captain
             assert captain["env"]["FM_BACKEND"] == "zellij", captain
+            assert captain["env"]["FM_PRIMARY_HARNESS"] == captain["env"]["FM_PI_HARNESS"] == "pi", captain
+            assert captain["env"]["FM_CODEX_WATCH_CHECKPOINT"] is None, captain
+            assert captain["env"]["PATH"].split(os.pathsep)[0] == str(executables), captain
             assert captain["env"]["FM_ZELLIJ_SESSION"] == name, captain
             assert captain["env"]["ZELLIJ_SESSION_NAME"] == name, captain
             assert captain["env"]["TMUX"] is None, captain
@@ -133,9 +151,49 @@ os.execv("/bin/sh", ["/bin/sh"])
             brief = fleet / "data/smoke/brief.md"
             brief.write_text(brief.read_text().replace("{TASK}", "Exercise the local fixture.")
                              .replace("{FIRSTMATE_SPEC}", "Use the controlled shell; make no network requests."))
-            run([str(fleet / "bin/fm-spawn.sh"), "smoke", str(project), "--scout",
-                 'pwd > "$HOME/worker-cwd"; printf "FIRSTMATE_WORKER_READY\\n"; exec /bin/sh'],
-                fleet_env, terminal)
+            # Log native ownership reads only during this single spawn. Shell
+            # tracing would contaminate upstream's captured stderr values.
+            diagnostics = temporary / "first-spawn-reads.jsonl"
+            diagnostics.touch(mode=0o600, exist_ok=False)
+            probe_bin = temporary / "spawn-diagnostics"
+            probe_bin.mkdir(mode=0o700)
+            proxy = probe_bin / "zellij"
+            proxy.write_text(f'''#!/usr/bin/env python3
+import json, os, signal, subprocess, sys
+args = sys.argv[1:]
+real = {binary!r}
+action = next((args[i+1] for i in range(len(args)-1)
+               if args[i] == "action" and args[i+1] in ("list-panes", "list-tabs")), None)
+if action is None:
+    os.execv(real, [real, *args])
+result = subprocess.run([real, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+record = {{"action": action, "returncode": result.returncode,
+          "stdout_bytes": len(result.stdout), "stderr_bytes": len(result.stderr),
+          "stdout": result.stdout[:4096].decode("utf-8", errors="replace"),
+          "stderr": result.stderr[:4096].decode("utf-8", errors="replace")}}
+with open({str(diagnostics)!r}, "ab", buffering=0) as log:
+    log.write((json.dumps(record) + "\\n").encode())
+sys.stdout.buffer.write(result.stdout)
+sys.stdout.buffer.flush()
+sys.stderr.buffer.write(result.stderr)
+sys.stderr.buffer.flush()
+if result.returncode < 0:
+    number = -result.returncode
+    if number not in (signal.SIGKILL, signal.SIGSTOP):
+        signal.signal(number, signal.SIG_DFL)
+    os.kill(os.getpid(), number)
+sys.exit(result.returncode)
+''')
+            proxy.chmod(0o700)
+            try:
+                run([str(fleet / "bin/fm-spawn.sh"), "smoke", str(project), "--scout",
+                     'pwd > "$HOME/worker-cwd"; printf "FIRSTMATE_WORKER_READY\\n"; exec /bin/sh'],
+                    {**fleet_env, "PATH": str(probe_bin) + os.pathsep + fleet_env["PATH"]}, terminal)
+            except AssertionError as error:
+                with diagnostics.open("rb") as captured:
+                    captured.seek(max(0, captured.seek(0, os.SEEK_END) - 65536))
+                    tail = captured.read().decode("utf-8", errors="replace")
+                raise AssertionError(f"{error}\nFirstmate native read diagnostics (last 64 KiB):\n{tail}") from error
             meta = dict(line.split("=", 1) for line in (fleet / "state/smoke.meta").read_text().splitlines()
                         if "=" in line)
             assert meta["backend"] == "zellij" and meta["zellij_session"] == name, meta
@@ -158,7 +216,9 @@ os.execv("/bin/sh", ["/bin/sh"])
             terminal.prefix(b"d")
             terminal.until("captain client detaches", lambda:
                            not terminal.action("list-clients").strip().splitlines()[1:])
-            attached = Terminal(binary, env, name, [launcher, "attach"])
+            # Starting with the default Codex selection must attach to this
+            # Pi captain without replacing its process or launch arguments.
+            attached = Terminal(binary, env, name, [launcher, "start", "--model", "must not restart"])
             clients.append(attached)
             attached.until("launcher reattaches to the existing fleet", lambda:
                            b"FIRSTMATE_CAPTAIN_READY" in attached.output
@@ -166,6 +226,7 @@ os.execv("/bin/sh", ["/bin/sh"])
             attached.send(b'printf "%s" "$firstmate_memory" > "$HOME/retained"\r')
             attached.until("captain shell memory survives reattach", lambda:
                            (home / "retained").exists() and (home / "retained").read_text() == "retained")
+            assert json.loads((home / "captain.json").read_text()) == captain, "Reattach replaced the Pi primary"
             reload_output = run([launcher, "reload"], env, attached)
             assert "watches this configuration automatically" in reload_output, reload_output
             assert {p["id"] for p in attached.terminals()} == pane_ids
@@ -182,6 +243,8 @@ os.execv("/bin/sh", ["/bin/sh"])
             clients.append(legacy)
             legacy.until("tmux captain remains available", lambda: b"FIRSTMATE_CAPTAIN_READY" in legacy.output)
             captain = json.loads((home / "captain.json").read_text())
+            assert captain["agent"] == "codex" and captain["argv"] == ["--approve-for-me"], captain
+            assert captain["env"]["FM_CODEX_WATCH_CHECKPOINT"] == "45", captain
             assert captain["env"]["FM_BACKEND"] == "tmux" and captain["env"]["TMUX"], captain
             run([launcher, "tmux", "new-session", "-d", "-s", "unrelated", "/bin/sh"], tmux_env, legacy)
             run([launcher, "reload"], tmux_env, legacy)
@@ -190,7 +253,7 @@ os.execv("/bin/sh", ["/bin/sh"])
             missing = subprocess.run([launcher, "tmux", "has-session", "-t", "=firstmate"],
                                      env=tmux_env, capture_output=True, timeout=5)
             assert missing.returncode == 1, missing
-            print("PASS: Firstmate launches and steers a Zellij task, preserves it across reattach, cleans up only its session, and retains explicit tmux selection.")
+            print("PASS: A Pi captain launches and steers a Zellij task, survives reattach with a different primary selection, cleans up only its session, and retains the Codex default with explicit tmux selection.")
         finally:
             subprocess.run([launcher, "stop"], env=env, capture_output=True, timeout=5)
             subprocess.run([binary, "kill-session", other_name], env=env, capture_output=True, timeout=5)

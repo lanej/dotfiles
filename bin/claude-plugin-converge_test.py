@@ -14,7 +14,12 @@ def test_make_converges_blocked_plugins_without_removing_other_installations(tmp
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "bash").symlink_to(shutil.which("bash"))
+    (executables / "uname").symlink_to(shutil.which("uname"))
     (executables / "python3").symlink_to(sys.executable)
+    home = tmp_path / "home"
+    machine_config = home / ".config/dotfiles/config.toml"
+    machine_config.parent.mkdir(parents=True)
+    machine_config.write_text('sets = ["personal"]\n')
     (executables / "claude-remove-blocked-plugins").symlink_to(ROOT / "bin/claude-remove-blocked-plugins")
     (tmp_path / "claude").mkdir()
     (tmp_path / "claude/blocked-plugins.json").write_text(json.dumps([
@@ -47,8 +52,10 @@ else:
     sys.exit(1)
 ''')
     cli.chmod(0o755)
-    env = dict(os.environ, PATH=str(executables), IS_EASYPOST="false",
+    env = dict(os.environ, PATH=str(executables), HOME=str(home), DOTFILES_CONFIG=str(machine_config),
                TEST_PLUGIN_STATE=str(state), TEST_PLUGIN_CALLS=str(calls))
+    env.pop("IS_EASYPOST", None)
+    env.pop("BOOTSTRAP_MERMAID", None)
     command = [shutil.which("make"), "claude-plugins", f"DOTFILES={tmp_path}"]
 
     subprocess.run(command, cwd=ROOT, env=env, check=True)

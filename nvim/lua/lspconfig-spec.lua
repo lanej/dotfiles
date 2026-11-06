@@ -123,6 +123,7 @@ return {
 					validate = { enable = true },
 				},
 			},
+			taplo = require("dotfiles-config-lsp"),
 			-- marksman = {},
 			-- 				pkm_lsp = {
 			-- 					cmd = { "pkm", "lsp" },

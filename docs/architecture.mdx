@@ -1,0 +1,37 @@
+---
+title: How configuration fits together
+description: From one machine’s TOML to selected tools and symlinked configuration.
+---
+
+The checkout is the source of configuration. Machine TOML selects what applies; Make links the selected files into your home directory. Edit the files in `~/.files`, then reload the affected shell or application.
+
+## Follow the configuration
+
+| Layer | Owns | Source |
+| --- | --- | --- |
+| Machine | Set selection and final property overrides | `~/.config/dotfiles/config.toml` |
+| Sets | Reusable bundles and work context | [config/sets](https://github.com/lanej/dotfiles/tree/master/config/sets) |
+| Catalog | Tool pins, dependencies, installers, configuration targets, hooks | [bootstrap/tools.toml](https://github.com/lanej/dotfiles/blob/master/bootstrap/tools.toml) |
+| Resolver | Validates and composes the selected plan | [scripts/dotfiles-config.py](https://github.com/lanej/dotfiles/blob/master/scripts/dotfiles-config.py) |
+| Installation | Executes selected installers | [bootstrap.sh](https://github.com/lanej/dotfiles/blob/master/bootstrap.sh) |
+| Configuration | Links files and runs selected integrations | [Makefile](https://github.com/lanej/dotfiles/blob/master/Makefile) |
+
+## Composition order
+
+Shared `base` defaults → native OS set → explicitly selected sets → machine properties.
+
+Dependencies apply before the including set. Each named set applies once; later values override earlier ones. Private sets under `~/.config/dotfiles/sets/` can replace repository sets except `base`. Work context is explicit and is never inferred from the hostname.
+
+[Configuration composition](../README.md#configuration-sets) covers examples, validation, alternate paths, and editor schema support.
+
+## Two configuration paths
+
+`make base` works before Python is installed. It initializes a missing machine file and uses the built-in native target list. It does not resolve private sets or machine overrides.
+
+Default `make` resolves the full selection and requires Python 3.11+. `make configure`, `make setup`, and `make all` are aliases. This distinction follows the current Makefile and README; the older default-command wording in the [setup requirements](https://github.com/lanej/dotfiles/blob/master/docs/setup-requirements.md) has not yet caught up.
+
+## Shared definitions, generated views
+
+The local JSON Schema and Python-free Make target list are generated from runtime definitions. The website similarly builds reference pages from existing Markdown. Change the source of truth, then regenerate its derived view.
+
+Adding a configuration file also requires a Makefile link rule or helper update. Selecting a tool as `false` skips that recipe; it does not uninstall an existing application.

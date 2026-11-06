@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+"""Install portable dotfiles skills and PR guidance into a Git repository."""
+
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+SOURCE = Path(__file__).resolve().parents[1]
+DEFAULT_SKILLS = ("builder", "architecture", "pr-writer")
+SKILLS = DEFAULT_SKILLS + ("go",)
+GO_FILES = {
+    ".golangci.yml": "golangci.yml",
+    "scripts/check-go.sh": "check-go.sh",
+    ".github/workflows/go-quality.yml": "go-quality.yml",
+    "scripts/go-quality.py": "go-quality.py",
+    ".go-quality.json": "go-quality.json",
+}
+GO_CONFIGS = (".golangci.yml", ".golangci.yaml", ".golangci.json", ".golangci.toml")
+GO_STRICT = ".golangci.strict.json"
+GO_BASELINE = ".go-quality-baseline.json"
+STATE = ".agents/repo-bootstrap.json"
+START = "# dotfiles repo-bootstrap: start"
+END = "# dotfiles repo-bootstrap: end"
+PR_DOCS = ("conventional-pull-requests.md", "pull-requests.md",
+           "f-pattern-scanning-quick-reference.md", "f-pattern-scanning.md",
+           "diagrams-and-charts.md")
+
+
+def git(root, *args, check=True):
+    env = dict(os.environ)
+    for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"):
+        env.pop(name, None)
+    result = subprocess.run(["git", "-C", str(root), *args],
+                            capture_output=True, text=True, env=env)
+    if check and result.returncode:
+        raise ValueError(result.stderr.strip() or "Git command failed")
+    return result
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_entry(data, executable=False):
+    return {"kind": "file", "sha256": digest(data), "executable": executable}
+
+
+def inspect(root, relative):
+    """Never follow a destination symlink, including an ancestor directory."""
+    path = root / relative
+    parent = path.parent
+    while parent != root:
+        if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+            raise ValueError(f"preserving non-directory or linked parent: {parent}")
+        parent = parent.parent
+    if path.is_symlink():
+        return {"kind": "link", "target": os.readlink(path)}
+    if path.is_file():
+        return file_entry(path.read_bytes(), bool(path.stat().st_mode & 0o111))
+    if path.exists():
+        raise ValueError(f"preserving non-file destination: {path}")
+    return None
+
+
+def allowed_path(relative):
+    path = PurePosixPath(relative)
+    if (not re.fullmatch(r"[A-Za-z0-9._/-]+", relative) or path.is_absolute()
+            or ".." in path.parts or str(path) != relative):
+        return False
+    if relative in (".github/pull_request_template.md",
+                    ".agents/templates/pull_request_template.md", GO_STRICT, GO_BASELINE, *GO_FILES):
+        return True
+    return any(relative.startswith(f".agents/skills/{skill}/")
+               or relative == f".claude/skills/{skill}" for skill in SKILLS)
+
+
+def read_state(root):
+    snapshot = inspect(root, STATE)
+    if snapshot is None:
+        return {"version": 1, "files": {}}, snapshot
+    if snapshot["kind"] != "file":
+        raise ValueError(f"preserving linked manifest: {root / STATE}")
+    state = json.loads((root / STATE).read_text())
+    if not isinstance(state, dict) or state.get("version") != 1 or not isinstance(state.get("files"), dict):
+        raise ValueError(f"unrecognized manifest: {root / STATE}")
+    for path, entry in state["files"].items():
+        if not allowed_path(path) or not isinstance(entry, dict):
+            raise ValueError(f"invalid managed path in manifest: {path}")
+        if entry.get("kind") == "file":
+            valid = (set(entry) == {"kind", "sha256", "executable"}
+                     and isinstance(entry["sha256"], str)
+                     and re.fullmatch(r"[a-f0-9]{64}", entry["sha256"])
+                     and isinstance(entry["executable"], bool))
+        else:
+            valid = (set(entry) == {"kind", "target"}
+                     and path.startswith(".claude/skills/")
+                     and entry.get("target") == f"../../.agents/skills/{Path(path).name}")
+        if not valid:
+            raise ValueError(f"invalid managed entry in manifest: {path}")
+    return state, snapshot
+
+
+def package(skills, agents, template, go_profile=False):
+    """Assemble from canonical sources; only installation paths are adapted."""
+    files = {}
+    payloads = {}
+
+    def add(destination, source, replacements=()):
+        if not allowed_path(destination):
+            raise ValueError(f"unsupported package path: {destination}")
+        if source.is_symlink() or not source.is_file():
+            raise ValueError(f"missing or linked package source: {source}")
+        data = source.read_bytes()
+        for old, new in replacements:
+            data = data.replace(old.encode(), new.encode())
+        files[destination] = file_entry(data, bool(source.stat().st_mode & 0o111))
+        payloads[destination] = data
+
+    for skill in skills:
+        directory = SOURCE / "ai/skills" / skill
+        if not (directory / "SKILL.md").is_file():
+            raise ValueError(f"missing skill: {directory}")
+        for source in sorted(directory.rglob("*")):
+            relative = source.relative_to(directory)
+            if "__pycache__" in relative.parts or source.suffix == ".pyc":
+                continue
+            if source.is_symlink():
+                raise ValueError(f"linked package source is not portable: {source}")
+            if not source.is_file():
+                continue
+            replacements = []
+            if skill == "builder" and str(relative) == "references/instructions.md":
+                replacements = [("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
+                                ("~/.local/share/software-standards/builder/references/", "")]
+            if skill == "pr-writer":
+                replacements = [("../../agents/", "references/")]
+            add(f".agents/skills/{skill}/{relative}", source, replacements)
+        if skill == "pr-writer":
+            for name in ("pull-request-writer.md", "github-pr-writer.md"):
+                add(f".agents/skills/pr-writer/references/{name}", SOURCE / "ai/agents" / name,
+                    [("~/.files/docs/", "docs/"), ("~/.files/ai/agents/", "")])
+            for name in PR_DOCS:
+                add(f".agents/skills/pr-writer/references/docs/{name}", SOURCE / "docs" / name,
+                    [("../ai/agents/", "../")])
+        if "claude" in agents:
+            files[f".claude/skills/{skill}"] = {
+                "kind": "link", "target": f"../../.agents/skills/{skill}"}
+    if template != "none":
+        directory = ".github" if template == "github" else ".agents/templates"
+        add(f"{directory}/pull_request_template.md", SOURCE / "ai/templates/pull_request_template.md")
+    if go_profile:
+        for destination, name in GO_FILES.items():
+            add(destination, SOURCE / "ai/skills/go/assets" / name)
+    return files, payloads
+
+
+def template_conflicts(root):
+    found = []
+    for directory in (root, root / "docs", root / ".github"):
+        if directory.is_dir():
+            for path in directory.iterdir():
+                if ((path.name.lower() == "pull_request_template"
+                     or path.name.lower().startswith("pull_request_template."))
+                        and path != root / ".github/pull_request_template.md"):
+                    found.append(str(path.relative_to(root)))
+    return found
+
+
+def go_configuration(root, state, rollout, desired, payloads):
+    """Layer the profile beside project policy rather than rewriting it."""
+    candidates = [name for name in GO_CONFIGS if inspect(root, name) is not None]
+    if len(candidates) > 1:
+        raise ValueError("multiple existing Go lint configurations; select one before merging: " + ", ".join(candidates))
+    legacy = state.get("go_legacy")
+    if candidates:
+        name = candidates[0]
+        actual = inspect(root, name)
+        if actual["kind"] != "file":
+            raise ValueError(f"preserving linked or non-file Go lint configuration: {name}")
+        if name != ".golangci.yml" or actual != state["files"].get(name):
+            legacy = name
+    if legacy and legacy not in candidates:
+        raise ValueError(f"previous Go lint configuration is missing: {legacy}")
+    if rollout is None:
+        rollout = state.get("go_rollout")
+    if rollout is None:
+        old_source = git(root, "ls-files", "--", "*.go", check=False).stdout.strip()
+        rollout = "ratchet" if legacy or old_source else "strict"
+    if rollout not in ("strict", "ratchet"):
+        raise ValueError("invalid saved Go rollout")
+    settings = {"version": 1, "rollout": rollout, "config": ".golangci.yml", "legacy": None}
+    snapshot = None
+    if legacy:
+        if legacy.endswith(".toml"):
+            raise ValueError("Go config merging supports YAML and JSON; convert the existing TOML config first or use --no-go")
+        helper = SOURCE / "ai/skills/go/assets/go-quality.py"
+        command = [sys.executable, str(helper)]
+        if importlib.util.find_spec("yaml") is None:
+            uv = shutil.which("uv")
+            if not uv:
+                raise ValueError("merging Go YAML requires PyYAML or uv; dotfiles bootstrap provides uv")
+            command = [uv, "run", "--no-project", "--with", "PyYAML==6.0.3", "python", str(helper)]
+        result = subprocess.run([*command, "merge", "--existing", str(root / legacy),
+                                 "--profile", str(SOURCE / "ai/skills/go/assets/golangci.yml")],
+                                capture_output=True, text=True)
+        if result.returncode:
+            raise ValueError(result.stderr.strip() or "Go configuration merge failed")
+        payloads.pop(".golangci.yml")
+        desired.pop(".golangci.yml")
+        data = result.stdout.encode()
+        payloads[GO_STRICT] = data
+        desired[GO_STRICT] = file_entry(data)
+        snapshot = (legacy, inspect(root, legacy))
+        settings["config"] = GO_STRICT
+        settings["legacy"] = {"path": legacy, "sha256": digest((root / legacy).read_bytes())}
+    data = (json.dumps(settings, indent=2) + "\n").encode()
+    payloads[".go-quality.json"] = data
+    desired[".go-quality.json"] = file_entry(data)
+    return rollout, legacy, snapshot
+
+
+def exclude_text(original, paths):
+    """Replace only our block, preserving all unrelated ignore rules."""
+    if (original.count(START) != original.count(END) or original.count(START) > 1
+            or (START in original and original.index(START) > original.index(END))):
+        raise ValueError("malformed repo-bootstrap block in Git info/exclude")
+    if paths and START in original:
+        # info/exclude is shared by linked worktrees. Another local installation
+        # may own additional paths that are absent from this worktree's manifest.
+        existing = original.split(START, 1)[1].split(END, 1)[0].splitlines()
+        for line in existing:
+            if not line:
+                continue
+            if not line.startswith("/") or not (allowed_path(line[1:]) or line[1:] == STATE):
+                raise ValueError("unrecognized rule in repo-bootstrap exclusion block")
+            paths = paths | {line[1:]}
+    block = ""
+    if paths:
+        block = START + "\n" + "\n".join("/" + path for path in sorted(paths)) + "\n" + END + "\n"
+    if START in original:
+        before, rest = original.split(START, 1)
+        _, after = rest.split(END, 1)
+        if after.startswith("\n"):
+            after = after[1:]
+        return before + block + after
+    return original + ("\n" if original and not original.endswith("\n") else "") + block
+
+
+def atomic_file(path, data, executable=False):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".repo-bootstrap-", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+        os.chmod(temporary, 0o755 if executable else 0o644)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def check_visibility(root, paths, exclusions, mode):
+    """Evaluate Git's real ignore precedence against the proposed exclude file."""
+    if not paths:
+        return
+    with tempfile.TemporaryDirectory(prefix="repo-bootstrap-ignore-") as temporary:
+        metadata = Path(temporary)
+        git(metadata, "init", "--bare", "--quiet")
+        (metadata / "info/exclude").write_text(exclusions)
+        worktree = root
+        if not worktree.exists():
+            worktree = metadata / "preview"
+            worktree.mkdir()
+        command = ["--git-dir", str(metadata), "--work-tree", str(worktree)]
+        # Preserve effective repository overrides as well as global defaults.
+        for key in ("core.excludesFile", "core.ignoreCase"):
+            value = git(root, "config", "--path" if key == "core.excludesFile" else "--get", key, check=False)
+            if value.returncode == 0:
+                command += ["-c", f"{key}={value.stdout.strip()}"]
+        ignored = git(worktree, *command, "check-ignore", "--no-index", "--", *sorted(paths), check=False)
+        if ignored.returncode not in (0, 1):
+            raise ValueError(ignored.stderr.strip())
+        ignored_paths = set(ignored.stdout.splitlines())
+        if mode == "tracked" and ignored_paths:
+            raise ValueError("tracked installation is ignored by existing Git rules:\n" + ignored.stdout
+                             + "Adjust those rules explicitly or use --mode local.")
+        if mode == "local" and paths - ignored_paths:
+            raise ValueError("Git rules prevent local exclusion of:\n  " + "\n  ".join(sorted(paths - ignored_paths))
+                             + "\nAdjust the conflicting negation rules explicitly; no files were installed.")
+
+
+def metadata_directory(root):
+    directory = Path(git(root, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError(f"preserving linked or invalid Git metadata: {directory}")
+    return directory
+
+
+def install(args):
+    requested = args.repo.expanduser().resolve()
+    result = git(requested, "rev-parse", "--show-toplevel", check=False)
+    initializing = result.returncode != 0
+    if initializing:
+        if (requested / ".git").exists() or (requested / ".git").is_symlink() or git(requested, "rev-parse", "--is-bare-repository", check=False).stdout.strip() == "true":
+            raise ValueError("target has existing Git metadata but is not a working tree; inspect it before initialization")
+        if not args.init:
+            raise ValueError("target is not a Git working tree; use --init to create one")
+        ancestor = requested.parent
+        while not ancestor.exists() and ancestor != ancestor.parent:
+            ancestor = ancestor.parent
+        containing = git(ancestor, "rev-parse", "--show-toplevel", check=False)
+        if containing.returncode == 0:
+            raise ValueError(f"target is inside {containing.stdout.strip()}; refusing to initialize a nested repository")
+        if requested.exists() and not requested.is_dir():
+            raise ValueError(f"target is not a directory: {requested}")
+        root = requested
+    else:
+        root = Path(result.stdout.strip()).resolve()
+        if args.init and root != requested:
+            raise ValueError(f"target is already inside {root}; refusing to initialize a nested repository")
+    state, state_before = read_state(root)
+    mode = args.mode or state.get("mode", "tracked")
+    if mode not in ("tracked", "local"):
+        raise ValueError("invalid mode in manifest")
+    skills = set(args.skills.split(","))
+    unknown = skills - set(SKILLS)
+    if unknown:
+        raise ValueError("unknown skills: " + ", ".join(sorted(unknown)))
+    if "architecture" in skills:
+        skills.add("builder")
+    go_profile = args.go if args.go is not None else (
+        bool(args.go_rollout) or state.get("go_profile", False) or (root / "go.mod").is_file())
+    if go_profile:
+        skills.add("go")
+    agents = {"codex", "claude"} if args.agents == "both" else {"codex"}
+    template = args.pr_template or ("local" if mode == "local" else "github")
+    if go_profile and args.go_rollout == "ratchet" and args.pr_template is None:
+        template = "none"
+    desired, payloads = package(sorted(skills), agents, template, go_profile)
+    rollout, legacy, legacy_snapshot = None, None, None
+    if go_profile:
+        rollout, legacy, legacy_snapshot = go_configuration(root, state, args.go_rollout, desired, payloads)
+    if template == "github":
+        conflicts = template_conflicts(root)
+        if conflicts:
+            raise ValueError("existing PR template(s): " + ", ".join(conflicts)
+                             + "; choose --pr-template local or none, or reconcile them manually")
+
+    managed = dict(state["files"])
+    if legacy:
+        managed.pop(legacy, None)
+    changes, snapshots, conflicts, skipped = [], {}, [], []
+    if legacy_snapshot:
+        snapshots[legacy_snapshot[0]] = legacy_snapshot[1]
+    for relative, expected in sorted(desired.items()):
+        actual = inspect(root, relative)
+        snapshots[relative] = actual
+        if actual == expected:
+            managed[relative] = expected
+            continue
+        conflict = actual is not None and actual != managed.get(relative)
+        if actual and actual["kind"] != expected["kind"]:
+            conflict = True
+        if conflict:
+            if args.conflict == "skip":
+                skipped.append(relative)
+                continue
+            # Never replace symlinks, even under --conflict replace.
+            if args.conflict != "replace" or actual["kind"] == "link" or expected["kind"] == "link":
+                conflicts.append(relative)
+                continue
+        changes.append((relative, expected, conflict))
+        managed[relative] = expected
+    if conflicts:
+        raise ValueError("preserving existing or locally modified paths:\n  " + "\n  ".join(conflicts)
+                         + "\nChoose --conflict skip, or --conflict replace to back up and replace regular files.")
+    paths = set(managed) | {STATE}
+    if go_profile and rollout == "ratchet":
+        paths.add(GO_BASELINE)
+    visible_paths = paths | {legacy} if mode == "tracked" and legacy else paths
+    if initializing:
+        exclude = root / ".git/info/exclude"
+        old_exclude = ""
+    else:
+        metadata = metadata_directory(root)
+        exclude = metadata / "info/exclude"
+        exclude_entry = inspect(metadata, "info/exclude")
+        if exclude_entry and exclude_entry["kind"] != "file":
+            raise ValueError(f"preserving linked or non-file Git exclude: {exclude}")
+        old_exclude = exclude.read_text() if exclude.exists() else ""
+        if any(replacing for _, _, replacing in changes):
+            inspect(metadata, "repo-bootstrap/backups/.probe")
+        tracked = set(git(root, "ls-files", "-z").stdout.split("\0"))
+        if mode == "local" and paths & tracked:
+            raise ValueError("local mode cannot hide tracked files: " + ", ".join(sorted(paths & tracked))
+                             + "; keep tracked mode or explicitly remove them from the index first")
+    new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
+    check_visibility(root, visible_paths if initializing or mode == "local" else visible_paths - tracked, new_exclude, mode)
+    revision = git(SOURCE, "rev-parse", "HEAD", check=False).stdout.strip() or "unknown"
+    new_state = {"version": 1, "mode": mode, "source_revision": revision,
+                 "go_profile": go_profile, "files": managed}
+    if go_profile:
+        new_state.update(go_rollout=rollout, go_legacy=legacy)
+    else:
+        for name in ("go_rollout", "go_legacy"):
+            if name in state:
+                new_state[name] = state[name]
+    state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
+    state_changed = state_before != file_entry(state_data)
+
+    print(f"repo-bootstrap: {root} ({mode})")
+    if go_profile:
+        print(f"  Go rollout: {rollout}" + (f"; preserve {legacy}, merge into {GO_STRICT}" if legacy else ""))
+    for relative, _, replacing in changes:
+        print(f"  {'replace (backup)' if replacing else 'install/update'} {relative}")
+    for relative in skipped:
+        print(f"  skipped local content: {relative}")
+    if new_exclude != old_exclude:
+        print(f"  update local exclusions: {exclude}")
+    if state_changed:
+        print(f"  update {STATE}")
+    if not changes and not state_changed and new_exclude == old_exclude:
+        print("  already current")
+    if args.dry_run:
+        print("  preview only; no files changed")
+        return
+
+    if initializing:
+        root.mkdir(parents=True, exist_ok=True)
+        git(root, "init", "--quiet")
+        metadata = metadata_directory(root)
+        exclude_entry = inspect(metadata, "info/exclude")
+        if exclude_entry and exclude_entry["kind"] != "file":
+            raise ValueError(f"preserving linked Git exclude: {exclude}")
+        # git init may supply a template's existing exclude file.
+        old_exclude = exclude.read_text() if exclude.exists() else ""
+        new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
+        check_visibility(root, visible_paths, new_exclude, mode)
+    for relative, before in snapshots.items():
+        if inspect(root, relative) != before:
+            raise ValueError(f"destination changed during planning; retry after reviewing: {relative}")
+    if inspect(root, STATE) != state_before:
+        raise ValueError("manifest changed during planning; retry after reviewing")
+    if (exclude.read_text() if exclude.exists() else "") != old_exclude:
+        raise ValueError("Git exclusions changed during planning; retry after reviewing")
+
+    backup = None
+    for relative, expected, replacing in changes:
+        path = root / relative
+        if replacing:
+            if backup is None:
+                inspect(metadata, "repo-bootstrap/backups/.probe")
+                backup_root = metadata / "repo-bootstrap/backups"
+                backup_root.mkdir(parents=True, exist_ok=True)
+                backup = Path(tempfile.mkdtemp(prefix="replace-", dir=backup_root))
+                print(f"  preserving replaced files in {backup}")
+            atomic_file(backup / relative, path.read_bytes(), bool(path.stat().st_mode & 0o111))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if expected["kind"] == "link":
+            path.symlink_to(expected["target"], target_is_directory=True)
+        else:
+            atomic_file(path, payloads[relative], expected["executable"])
+    if new_exclude != old_exclude:
+        atomic_file(exclude, new_exclude.encode())
+    if state_changed:
+        atomic_file(root / STATE, state_data)
+    print("  installed; no files staged, committed, or published")
+    if go_profile and rollout == "ratchet" and not (root / GO_BASELINE).exists():
+        print("  next: bash scripts/check-go.sh baseline (one-time adoption, committed Go source only)")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
+    parser.add_argument("--init", action="store_true", help="create a Git repository if the target is not one")
+    parser.add_argument("--mode", choices=("tracked", "local"), help="shareable files or local Git exclusions (default: previous mode, else tracked)")
+    parser.add_argument("--skills", default=",".join(DEFAULT_SKILLS), help="comma-separated skill names: " + ", ".join(SKILLS))
+    parser.add_argument("--go", action=argparse.BooleanOptionalAction, default=None,
+                        help="install Go correctness checks (default: root go.mod or previously installed); --no-go keeps existing checks")
+    parser.add_argument("--go-rollout", choices=("strict", "ratchet"),
+                        help="whole-project strictness or grandfather existing findings (default: ratchet for existing code/config)")
+    parser.add_argument("--go-retrofit", dest="go_rollout", action="store_const", const="ratchet",
+                        help="prepare merged Go policy and a one-time shrinking baseline")
+    parser.add_argument("--agents", choices=("codex", "both"), default="both", help="Codex skills only, or add Claude aliases (default: both)")
+    parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
+    parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")
+    parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
+    args = parser.parse_args()
+    try:
+        install(args)
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"repo-bootstrap: {error}\nNo existing conflicts were overwritten without explicit replacement. If an I/O error interrupted installation, inspect the reported paths before retrying.\n")
+
+
+if __name__ == "__main__":
+    main()

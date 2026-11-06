@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Set compact Claude titles in the nearest Zellij pane."""
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--timestamp", type=int, default=time.time_ns())
+    started = parser.parse_args().timestamp
+    event = json.load(sys.stdin)
+    if event.get("agent_id"):
+        return
+    identity = str(uuid.UUID(event["session_id"]))
+    kind = event["hook_event_name"]
+    session = os.environ.get("ZELLIJ_SESSION_NAME")
+    pane = os.environ.get("ZELLIJ_PANE_ID", "")
+    binary = shutil.which("zellij")
+    if not session or not pane.isdecimal() or not binary:
+        return
+    pane = int(pane)
+    deadline = time.monotonic() + 2.5
+    root = Path(__file__).resolve().parents[1]
+
+    def run(arguments):
+        remaining = min(0.6, deadline - time.monotonic())
+        if remaining <= 0:
+            raise TimeoutError()
+        return subprocess.run(arguments, capture_output=True, text=True,
+                              timeout=remaining, check=True).stdout
+
+    # WHY: Outer Zellij variables survive when Claude runs inside nested tmux.
+    if run([str(root / "bin/zellij-context"), "provider"]).strip() != "zellij":
+        return
+    options = json.loads((root / "claude/zellij-title.json").read_text())
+
+    def command(*arguments):
+        return run([binary, "--session", session, "action", *arguments])
+
+    def current_title():
+        panes = json.loads(command("list-panes", "--json"))
+        matches = [item for item in panes if item["id"] == pane
+                   and not item["is_plugin"] and not item.get("exited")]
+        return matches[0]["title"] if len(matches) == 1 else None
+
+    def rename(title):
+        command("rename-pane", "--pane-id", f"terminal_{pane}", title)
+
+    def restore_title(title):
+        # WHY: Cleanup must still run when the main cosmetic deadline is exhausted.
+        subprocess.run([binary, "--session", session, "action", "rename-pane",
+                        "--pane-id", f"terminal_{pane}", title],
+                       capture_output=True, timeout=0.6, check=False)
+
+    directory = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
+    directory /= "claude-zellij-titles"
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    key = hashlib.sha256(f"{session}\0{pane}".encode()).hexdigest()
+    state_path = directory / f"{key}.json"
+
+    def save(state):
+        state["updated_at"] = started
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as output:
+                temporary = Path(output.name)
+                json.dump(state, output, ensure_ascii=False)
+            temporary.replace(state_path)
+        finally:
+            if temporary:
+                temporary.unlink(missing_ok=True)
+
+    with (directory / ".lock").open("a") as lock:
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    return
+                time.sleep(0.02)
+        state = json.loads(state_path.read_text()) if state_path.exists() else {}
+        if started < state.get("updated_at", 0):
+            return
+        if kind != "SessionStart" and (
+                state.get("identity") != identity or state.get("ended")):
+            return
+        if kind == "SessionStart" and state.get("identity") != identity:
+            state = {"identity": identity, "title": state.get("title")}
+        if kind == "SessionStart":
+            state["ended"] = False
+            state["question"] = False
+            state["approval"] = False
+        title = current_title()
+        if title is None:
+            return
+        if kind == "SessionEnd":
+            if title == state.get("title"):
+                rename("")
+            save({**state, "ended": True})
+            return
+        if state.get("opted_out"):
+            return
+        if title != state.get("title"):
+            # WHY: Zellij exposes one title; reveal its native title to detect a user name.
+            native = None
+            try:
+                rename("")
+                native = current_title()
+            finally:
+                if native is None or title != native:
+                    restore_title(title)
+            if native is None:
+                return
+            if title != native:
+                save({**state, "opted_out": True})
+                return
+        if kind == "UserPromptSubmit":
+            state["question"] = False
+            state["approval"] = False
+        tool = event.get("tool_name", "")
+        if kind == "PreToolUse" and tool == "AskUserQuestion":
+            state["question"] = True
+        if kind == "PermissionRequest":
+            state["approval"] = True
+        if kind in ("PostToolUse", "PostToolUseFailure"):
+            state["approval"] = False
+            if tool == "AskUserQuestion":
+                state["question"] = False
+        if kind == "Notification":
+            notification = event.get("notification_type")
+            if notification in ("permission_prompt", "elicitation_dialog"):
+                state["approval"] = True
+            elif notification != "idle_prompt":
+                return
+        if kind in ("Stop", "StopFailure") or event.get("is_interrupt"):
+            state["question"] = False
+            state["approval"] = False
+        if kind == "StopFailure":
+            status = "failed"
+        elif event.get("is_interrupt"):
+            status = "idle"
+        elif state.get("question") or state.get("approval"):
+            status = "attention"
+        elif (kind == "Stop" or (kind == "SessionStart" and event.get("source") != "compact")
+              or kind == "Notification"):
+            status = "ready"
+        else:
+            status = "working"
+        project = "".join(character for character in Path(event["cwd"]).name
+                          if character.isprintable())
+        title = options["format"].format(id=identity, status=options["states"][status],
+                                         project=project)
+        rename(title)
+        save({**state, "title": title})
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        # WHY: Cosmetic titles must not interrupt the agent's work.
+        pass

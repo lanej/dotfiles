@@ -88,7 +88,7 @@ class SharedResourceWorkflow(unittest.TestCase):
             def install():
                 result = subprocess.run(
                     ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"),
-                     "pi-config", f"DOTFILES={checkout}", f"HOME={home}", "IS_EASYPOST=false"],
+                     "pi", f"DOTFILES={checkout}", f"HOME={home}"],
                     cwd=checkout, capture_output=True, text=True, timeout=30,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

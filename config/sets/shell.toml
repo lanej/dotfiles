@@ -1,0 +1,21 @@
+[tools]
+git = true
+zsh = true
+fzf = true
+starship = true
+atuin = true
+skim = true
+git-delta = true
+glow = true
+bat = true
+fd = true
+eza = true
+zsh-autosuggestions = true
+gh = true
+git-crypt = true
+jq = true
+yq = true
+ripgrep = true
+hexyl = true
+direnv = true
+just = true

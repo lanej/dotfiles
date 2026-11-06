@@ -1,10 +1,11 @@
 name: Worktree cleanup
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', '.github/workflows/worktree-cleanup.yml']
   push:
     branches: [master]
-    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', 'Makefile', '.github/workflows/worktree-cleanup.yml']
+    paths: ['bin/git-worktree-cleanup', 'scripts/test-git-worktree*.py', '.github/workflows/worktree-cleanup.yml']
 permissions:
   contents: read
 jobs:
@@ -12,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
       - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: sudo apt-get update && sudo apt-get install -y lsof sqlite3
