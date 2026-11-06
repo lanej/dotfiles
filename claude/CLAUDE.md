@@ -51,6 +51,8 @@ Never let a secret value reach tool output (no bare `env | grep`, `cat .envrc`, 
 
 ## Code Changes
 
+For Go work, read the `go` skill. New Go repositories adopt its portable correctness profile with `repo-bootstrap --go`; preserve and reconcile existing project checks, and run the same committed checks locally and in CI.
+
 **Proportional Verification.** Run the affected feature's check after a software change; use diff review and applicable syntax checks for routine prose/configuration edits. Broaden checks for concrete interactions or failures and rerun affected checks after fixes. The acceptance definition, harness sensitivity procedure, and evidence labels live in `~/.files/docs/verification.md`.
 **Independent review.** Follow repository requirements. Use a separate reviewer for complex interactions, state transitions, security-sensitive logic, or material uncertainty. Simple mechanically verifiable changes do not require a review dispatch. Assess available CI separately from local checks and state gaps precisely.
 **Record the detector:** a commit fixing a fault found after the code was written carries `Detected-By: V<n>` (`V0`–`V4`, or `user`).
