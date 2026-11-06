@@ -185,7 +185,16 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - name: Exercise native attention, status bar and detached-session triage
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: make test-zellij-status
+        run: |
+          make test-zellij-status
+          # Temporary diagnostic batch; remove once the intermittent failure is captured.
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            export ZELLIJ_STATUS_WASM="$GITHUB_WORKSPACE/zellij/status/target/wasm32-wasip1/release/lane-status.wasm"
+            for attempt in {1..20}; do
+              echo "Status reattachment reproduction $attempt/20"
+              make test-zellij-status
+            done
+          fi
       - run: make test-zellij-clipboard
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - name: Preserve failed workflow diagnostics
