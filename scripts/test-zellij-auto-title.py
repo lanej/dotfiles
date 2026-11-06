@@ -109,7 +109,7 @@ def ownership_lifecycle():
     import sqlite3
     import sys
 
-    with tempfile.TemporaryDirectory(prefix="zellij-title-state-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="zj-title-state-", dir="/tmp") as temporary:
         work = Path(temporary)
         executables = work / "bin"
         executables.mkdir()
