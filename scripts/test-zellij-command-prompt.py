@@ -62,17 +62,56 @@ class Display(pyte.Screen):
             super().report_device_status(mode)
 
 
+class Decoder:
+    def __init__(self):
+        self.display = Display(120, 32)
+        self.stream = pyte.Stream(self.display)
+        self.utf8 = codecs.getincrementaldecoder("utf-8")("replace")
+        self.pending = ""
+        self.offset = 0
+
+    def feed(self, data):
+        # pyte does not implement DCS. Zellij's attachment metadata (ESC P
+        # 26661n ... ST) must not draw over the popup or move the screen cursor.
+        # Retain incomplete strings and ESC prefixes across arbitrary PTY reads.
+        self.pending += self.utf8.decode(data)
+        while self.pending:
+            start = self.pending.find("\x1bP")
+            if start < 0:
+                end = len(self.pending) - int(self.pending.endswith("\x1b"))
+                self.stream.feed(self.pending[:end])
+                self.pending = self.pending[end:]
+                break
+            self.stream.feed(self.pending[:start])
+            self.pending = self.pending[start:]
+            end = self.pending.find("\x1b\\", 2)
+            if end < 0:
+                break
+            self.pending = self.pending[end + 2:]
+
+
 def screen(terminal):
-    # Use the same terminal decoder as the native status detector. Preserve
-    # cursor state between updates, including UTF-8 split across PTY reads.
     if not hasattr(terminal, "command_display"):
-        display = Display(120, 32)
-        terminal.command_display = [display, pyte.Stream(display),
-            codecs.getincrementaldecoder("utf-8")("replace"), 0]
-    display, stream, decoder, offset = terminal.command_display
-    stream.feed(decoder.decode(bytes(terminal.output[offset:])))
-    terminal.command_display[3] = len(terminal.output)
-    return display.display
+        terminal.command_display = Decoder()
+    decoder = terminal.command_display
+    decoder.feed(bytes(terminal.output[decoder.offset:]))
+    decoder.offset = len(terminal.output)
+    return decoder.display.display
+
+
+def check_decoder():
+    # Reproduce CI's metadata after a dialog render, including chunk boundaries
+    # inside ESC/ST and UTF-8. The message must neither draw nor move the cursor.
+    rendered = '\x1b[12;32HZellij command :\x1b[12;32H'
+    metadata = '\x1bP26661nCh0KF2NvbW1hbmQ=\x1b\\'
+    data = (rendered + metadata + '\x1b[14;32H→ editable').encode()
+    for size in (1, 7, len(data)):
+        decoder = Decoder()
+        for offset in range(0, len(data), size):
+            decoder.feed(data[offset:offset + size])
+        assert decoder.display.display[11][31:47] == 'Zellij command :'
+        assert decoder.display.display[13][31:41] == '→ editable'
+        assert '26661n' not in '\n'.join(decoder.display.display)
 
 
 def text(terminal):
@@ -82,7 +121,11 @@ def text(terminal):
 def open_prompt(terminal):
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
-    terminal.until("Ctrl-f : opens native input", lambda: "Zellij command" in text(terminal))
+    try:
+        terminal.until("Ctrl-f : opens native input", lambda: "Zellij command" in text(terminal))
+    except AssertionError:
+        print("Decoded prompt screen:\n" + text(terminal), flush=True)
+        raise
     title_rows = [row for row, line in enumerate(screen(terminal)) if "Zellij command" in line]
     assert title_rows and all(7 <= row <= 23 for row in title_rows), 'Prompt is not vertically centered'
     assert all(10 <= screen(terminal)[row].index('Zellij command') <= 90
@@ -279,6 +322,7 @@ def exercise(first, second, home):
 
 
 def main():
+    check_decoder()
     binary = shutil.which('zellij')
     assert binary, 'Install the pinned Zellij fork before testing the command prompt'
     with tempfile.TemporaryDirectory(prefix='zj-cmd-', dir='/tmp') as directory:
@@ -321,13 +365,18 @@ def main():
         name = 'command-' + work.name
         clients = []
         try:
-            first = Terminal(binary, env, name, install_navigation=False)
+            # An explicit command skips native desktop-install onboarding in a
+            # fresh HOME. The actual plugin consent and configured layout remain.
+            first = Terminal(binary, env, name,
+                             [binary, 'attach', '--create', name, '--', '/bin/sh'],
+                             install_navigation=False)
             clients.append(first)
             # Attach only after first-use consent, otherwise the permission
             # prompt's own focus can interfere with setting up the two clients.
             first.until('first-use permissions', lambda: '(y/n)' in text(first).lower())
             first.send(b'y')
-            first.until('first shell ready', lambda: PROMPT.rstrip() in first.output)
+            first.until('permission accepted and first shell ready', lambda:
+                        PROMPT.decode().strip() in text(first) and '(y/n)' not in text(first).lower())
             second = Terminal(binary, env, name, install_navigation=False)
             clients.append(second)
             exercise(first, second, home)
