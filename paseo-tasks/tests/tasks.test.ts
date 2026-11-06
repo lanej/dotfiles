@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { PaseoApi } from "@getpaseo/client";
 import type { AgentToolContext, AgentToolDefinition } from "@getpaseo/plugin/server";
-import { WorkspaceCreateRequestSchema, FetchAgentsRequestMessageSchema } from "@getpaseo/protocol/messages";
+import { WorkspaceCreateRequestSchema, FetchAgentsRequestMessageSchema, SendAgentMessageRequestSchema } from "@getpaseo/protocol/messages";
 import { Store } from "../server/store";
 import { Feedback, type GitHubPort, type Observation } from "../server/github";
 import { TaskService, taskWorkspaceId, type Router } from "../server/service";
@@ -15,6 +15,8 @@ import { createInput, brief, type Brief } from "../shared/contracts";
 import { completedPiTurn } from "../server/pi-session";
 import type { Worktrees } from "../server/treehouse";
 import type { PullRequest } from "../server/pr-watch";
+import { Reports } from "../server/reports";
+import type { CoordinatorReport, ConversationAddress } from "../shared/contracts";
 
 const specified: Brief = { title: "Investigate latency", outcome: "Explain the latency regression",
   successCriteria: ["Identify the changed component with measurements"], constraints: ["Do not deploy"],
@@ -83,11 +85,15 @@ class FakePaseo {
       refresh: async () => ({ agent: handle.current() }),
       reloads: 0,
       reload: async () => { handle.reloads++; handle.status = "idle"; handle.lastError = null; return { agent: handle.current() }; },
-      send: async (body: string) => {
+      send: async (body: string, options: any = {}) => {
+        SendAgentMessageRequestSchema.parse({ type: "send_agent_message_request", requestId: randomUUID(),
+          agentId: id, text: body, ...options });
+        handle.sendOptions.push(options);
         handle.messages.push(body); handle.activeTurn = { id: randomUUID() }; handle.status = "running";
         if (this.loseSend) throw new Error("Paseo acknowledgment lost");
       },
       messages: [] as string[],
+      sendOptions: [] as any[],
       timeline: { refetch: async () => ({ entries: this.historyVisible ? handle.messages : [] }) },
     };
     this.agentsById.set(id, handle);
@@ -98,10 +104,10 @@ class FakePaseo {
     for (const [id, value] of this.agentsById) if (value.input.parent) this.agentsById.delete(id);
   }
 }
-function fixture() {
+function fixture(serverId = "mac") {
   const directory = mkdtempSync(join(tmpdir(), "tasks-test-"));
   const file = join(directory, "tasks.sqlite");
-  const store = new Store(file, "mac");
+  const store = new Store(file, serverId);
   const github = new FakeGitHub();
   const paseo = new FakePaseo();
   const router: Router = { call: async () => { throw new Error("Remote host unavailable"); } };
@@ -136,6 +142,293 @@ async function create(f: ReturnType<typeof fixture>, extra: Partial<Brief> = {})
   await tool(managerTools(f.service), "task_create", input);
   return f.store.get(input.requestId);
 }
+async function coordinated(f: ReturnType<typeof fixture>, coordinator?: ConversationAddress) {
+  const owner = coordinator ?? await f.service.newManager("/repo");
+  const input = createInput.parse({ serverId: f.store.serverId, brief: specified, requestId: randomUUID(), coordinator: owner });
+  const value = await f.service.create(input);
+  return { value, owner, worker: f.paseo.agents.ref(value.worker!.agentId), manager: f.paseo.agents.ref(owner.agentId) };
+}
+function complete(f: ReturnType<typeof fixture>, value: { taskId: string; worker: { agentId: string } | null }) {
+  return tool(workerTools(f.service, value.taskId, value.worker!.agentId), "task_update", {
+    status: "complete", progress: "Measured the regression and identified the changed component",
+    evidence: ["Benchmark: 18ms before, 42ms after"], nextAction: "Human can review the proposed remedy",
+  }, { agent: { id: value.worker!.agentId } } as AgentToolContext);
+}
+
+test("manager-scoped creation and adoption report final evidence with native worker provenance at turn boundaries", async () => {
+  const f = fixture();
+  try {
+    const owner = await f.service.newManager("/repo");
+    const context = { agent: { id: owner.agentId } } as AgentToolContext;
+    const input = createInput.parse({ serverId: "mac", brief: specified, requestId: randomUUID() });
+    await tool(managerTools(f.service), "task_create", { ...input, coordinator: { serverId: "other", agentId: "spoof" } }, context);
+    const value = f.store.get(input.requestId);
+    assert.deepEqual(value.coordinator, owner, "Trusted tool context determines the coordinator");
+    const manager = f.paseo.agents.ref(owner.agentId), worker = f.paseo.agents.ref(value.worker!.agentId);
+    worker.activeTurn = { id: "finishing" }; worker.status = "running";
+    await complete(f, value);
+    await f.service.reports.flush();
+    assert.equal(f.store.incomingReports().length, 0, "Final worker output precedes the coordinator report");
+    f.paseo.finish(worker.id);
+    manager.activeTurn = { id: "busy-manager" }; manager.status = "running";
+    await f.service.reports.flush();
+    assert.equal(manager.messages.length, 0);
+    assert.equal(f.store.outgoingReports()[0].delivery, "received", "Host receipt differs from conversation delivery");
+    f.paseo.finish(manager.id);
+    manager.pendingPermissions = [{ id: "question" }];
+    await f.service.reports.flush();
+    assert.equal(manager.messages.length, 0);
+    manager.pendingPermissions = [];
+    f.paseo.historyVisible = false;
+    await f.service.reports.flush();
+    const report = f.store.incomingReports()[0];
+    assert.equal(report.delivery, "awaiting", "Native queue admission cannot establish conversation delivery");
+    assert.deepEqual(manager.sendOptions[0], { messageId: report.report.id, activeTurnBehavior: "steer",
+      sourceAgentId: worker.id, sourceAgentServerId: "mac" });
+    assert.match(manager.messages[0], /complete[\s\S]*18ms before[\s\S]*Human can review/);
+    await f.service.reports.flush();
+    assert.equal(manager.messages.length, 1, "A delayed history marker cannot trigger another send");
+    f.paseo.historyVisible = true;
+    await f.service.reports.flush();
+    assert.equal(f.store.incomingReports()[0].delivery, "accepted");
+    await complete(f, value);
+    f.store.change(value.taskId, current => { current.observedAt = "later"; current.activity = "idle"; });
+    await f.service.reports.flush();
+    assert.equal(f.store.outgoingReports().length, 1, "Repeated updates and observations do not duplicate completion");
+    assert.equal(manager.messages.length, 1);
+    const reports: any = await tool(managerTools(f.service), "task_reports", {}, context);
+    assert.equal(reports.structuredContent.result.reports.length, 1);
+    const other: any = await tool(managerTools(f.service), "task_reports", {}, managerContext);
+    assert.equal(other.structuredContent.result.reports.length, 0);
+    assert.ok(!workerTools(f.service, value.taskId, worker.id).some(value => value.name === "task_coordinate"));
+    const existing = f.paseo.createAgent({ title: "Selected conversation" }, "existing-workspace", "/existing");
+    await tool(managerTools(f.service), "task_adopt", { ...input, requestId: randomUUID(), agentId: existing.id, start: false }, context);
+    assert.deepEqual(f.store.forAgent(existing.id)!.coordinator, owner);
+    assert.equal(f.store.forAgent(existing.id)!.worker!.cwd, "/existing");
+    await assert.rejects(() => f.service.assignCoordinator(value, { serverId: "mac", agentId: worker.id }), /coordinate itself/);
+    await assert.rejects(() => f.service.assignCoordinator(value, { serverId: "mac", agentId: existing.id }), /task manager/);
+  } finally { f.cleanup(); }
+});
+
+test("cross-host reports survive disconnects, forged snapshots and lost host receipts without duplicate native delivery", async () => {
+  const source = fixture("dev"), destination = fixture("mac");
+  try {
+    const owner = await destination.service.newManager("/repo");
+    const { value } = await coordinated(source, owner);
+    let online = false, loseReceipt = true;
+    source.router.call = async (host, method, input) => {
+      assert.equal(host, "mac");
+      if (!online) throw new Error("Coordinator host disconnected");
+      assert.equal(method, "tasks.report_receive");
+      const receipt = await destination.service.reports.receive(input as CoordinatorReport);
+      if (loseReceipt) { loseReceipt = false; throw new Error("Receipt lost after durable inbox write"); }
+      return receipt;
+    };
+    destination.router.call = async (host, method, input: any) => {
+      assert.equal(host, "dev"); assert.equal(method, "tasks.report_verify");
+      return source.service.reports.verification(input.id);
+    };
+    await complete(source, value);
+    await source.service.reports.flush();
+    assert.equal(source.store.outgoingReports()[0].delivery, "unknown");
+    online = true;
+    await source.service.reports.flush();
+    assert.equal(source.store.outgoingReports()[0].delivery, "unknown");
+    assert.equal(destination.store.incomingReports().length, 1);
+    const snapshot = source.store.outgoingReports()[0].report;
+    await assert.rejects(() => destination.service.reports.receive({ ...snapshot,
+      task: { ...snapshot.task, evidence: ["Invented result"] } }), /differs/);
+    await assert.rejects(() => source.service.reports.receive(snapshot), /another host/);
+    await source.service.reports.flush();
+    assert.equal(source.store.outgoingReports()[0].delivery, "received");
+    assert.equal(destination.store.incomingReports().length, 1);
+    await destination.service.reports.flush();
+    await destination.service.reports.flush();
+    assert.equal(destination.store.incomingReports()[0].delivery, "accepted");
+    const manager = destination.paseo.agents.ref(owner.agentId);
+    assert.equal(manager.messages.length, 1);
+    assert.equal(manager.sendOptions[0].sourceAgentServerId, "dev");
+    const reopened = new Store(destination.file, "mac");
+    try {
+      const restored = new Reports(reopened, destination.paseo as unknown as PaseoApi, destination.router, async () => true);
+      await restored.flush();
+      assert.equal(reopened.incomingReports()[0].delivery, "accepted");
+      assert.equal(manager.messages.length, 1);
+    } finally { reopened.close(); }
+  } finally { source.cleanup(); destination.cleanup(); }
+});
+
+test("uncertain native reports reconcile late history after restart and cancellation without resending", async () => {
+  const f = fixture();
+  try {
+    const { value, manager } = await coordinated(f);
+    await complete(f, value);
+    f.paseo.loseSend = true; f.paseo.historyVisible = false;
+    await f.service.reports.flush();
+    assert.equal(f.store.incomingReports()[0].delivery, "unknown");
+    await f.service.assignCoordinator(value, null);
+    const reopened = new Store(f.file, "mac");
+    try {
+      const restored = new Reports(reopened, f.paseo as unknown as PaseoApi, f.router, async () => true);
+      await restored.flush();
+      assert.equal(reopened.incomingReports()[0].delivery, "unknown");
+      assert.equal(manager.messages.length, 1);
+      f.paseo.historyVisible = true;
+      await restored.flush();
+      assert.equal(reopened.incomingReports()[0].delivery, "accepted",
+        "Removing the coordinator cannot erase an earlier accepted native report");
+      assert.equal(manager.messages.length, 1);
+    } finally { reopened.close(); }
+  } finally { f.cleanup(); }
+});
+
+test("coordinators collect reports over one-way registered host connections and durably acknowledge receipts", async () => {
+  const source = fixture("dev"), destination = fixture("mac");
+  try {
+    const owner = await destination.service.newManager("/repo");
+    const { value, worker } = await coordinated(source, owner);
+    destination.paseo.connectedHosts = [{ serverId: "dev", status: "online" }];
+    let loseCollection = true;
+    destination.router.call = async (host, method, input: any) => {
+      assert.equal(host, "dev");
+      if (method === "tasks.report_verify") return source.service.reports.verification(input.id);
+      assert.equal(method, "tasks.report_collect");
+      const pending = await source.service.reports.collect(input.coordinatorHost, input.receipts);
+      if (loseCollection) { loseCollection = false; throw new Error("Collection receipt lost"); }
+      return pending;
+    };
+    await complete(source, value);
+    worker.activeTurn = { id: "finishing" }; worker.status = "running";
+    await destination.service.reports.flush();
+    await destination.service.reports.flush();
+    assert.equal(destination.store.incomingReports().length, 0, "Collection waits for the source worker's boundary");
+    source.paseo.finish(worker.id);
+    await destination.service.reports.flush();
+    assert.equal(destination.store.incomingReports()[0].delivery, "awaiting");
+    const manager = destination.paseo.agents.ref(owner.agentId);
+    await destination.service.reports.flush();
+    assert.equal(destination.store.incomingReports()[0].delivery, "accepted");
+    assert.equal(source.store.outgoingReports()[0].delivery, "received");
+    assert.equal(manager.messages.length, 1);
+    await assert.rejects(() => source.service.reports.collect("another-coordinator", [source.store.outgoingReports()[0].report.id]), /does not belong/);
+    const reopened = new Store(source.file, "dev");
+    try {
+      assert.equal(reopened.outgoingReports()[0].delivery, "received");
+    } finally { reopened.close(); }
+  } finally { source.cleanup(); destination.cleanup(); }
+});
+
+test("directory and worker observation failures preserve unrelated coordinator delivery and recovery", async () => {
+  const f = fixture();
+  try {
+    const { value, manager } = await coordinated(f);
+    const another = await coordinated(f, { serverId: "other-host", agentId: "another-manager" });
+    const healthy = await coordinated(f, { serverId: "other-host", agentId: "another-manager" });
+    another.worker.refresh = async () => { throw new Error("Worker observation unavailable"); };
+    await complete(f, value); await complete(f, another.value); await complete(f, healthy.value);
+    const pending = await f.service.reports.collect("other-host", []);
+    assert.deepEqual(pending.map(value => value.task.taskId), [healthy.value.taskId],
+      "A failed worker cannot hide a healthy worker's report on the same execution host");
+    assert.match(f.store.get(another.value.taskId).coordinatorReport!.error!, /Worker observation unavailable/);
+    f.paseo.hosts.list = async () => { throw new Error("Malformed host registration directory"); };
+    await f.service.reports.flush();
+    assert.equal(manager.messages.length, 1, "Directory failure cannot starve local admission");
+    await f.service.reports.flush();
+    assert.equal(f.store.incomingReports()[0].delivery, "accepted", "Directory failure cannot starve native reconciliation");
+    assert.match(f.store.reportDiagnostics().find(value => value.source === "report-directory")!.error, /Malformed/);
+    assert.equal((await f.service.reports.collect("mac", [])).length, 0, "Acknowledged local reports are not returned again");
+  } finally { f.cleanup(); }
+});
+
+test("independent SDK-style snapshots observe a question arriving during the final remote verification", async () => {
+  const source = fixture("dev"), destination = fixture("mac");
+  try {
+    const owner = await destination.service.newManager("/repo");
+    const { value } = await coordinated(source, owner);
+    await complete(source, value);
+    const native = destination.paseo.agents.ref(owner.agentId);
+    const originalRef = destination.paseo.agents.ref;
+    destination.paseo.agents.ref = (id: string) => {
+      if (id !== owner.agentId) return originalRef(id);
+      let snapshot: any = null;
+      const refresh = async () => {
+        await native.refresh();
+        snapshot = structuredClone({ ...native.current(), pendingPermissions: native.pendingPermissions });
+        return { agent: snapshot };
+      };
+      return { id, current: () => snapshot, refresh, reload: async () => { await native.reload(); return refresh(); },
+        get status() { return snapshot?.status ?? null; }, get archivedAt() { return snapshot?.archivedAt ?? null; },
+        get activeTurn() { return snapshot?.activeTurn ?? null; }, get pendingPermissions() { return snapshot?.pendingPermissions ?? null; },
+        send: native.send, timeline: native.timeline };
+    };
+    let verifications = 0;
+    destination.router.call = async (_host, method, input: any) => {
+      assert.equal(method, "tasks.report_verify");
+      if (++verifications === 3) native.pendingPermissions = [{ id: "late-question" }];
+      return source.service.reports.verification(input.id);
+    };
+    await destination.service.reports.receive(source.store.outgoingReports()[0].report);
+    await destination.service.reports.flush();
+    assert.equal(native.messages.length, 0);
+    assert.equal(destination.store.incomingReports()[0].delivery, "queued");
+    native.pendingPermissions = [];
+    await destination.service.reports.flush();
+    assert.equal(native.messages.length, 1);
+  } finally { source.cleanup(); destination.cleanup(); }
+});
+
+test("reopening, supersession during refresh, and coordinator changes during preparation cancel unsent reports", async () => {
+  for (const race of ["feedback", "worker-refresh", "coordinator-change", "permission"]) {
+    const f = fixture();
+    try {
+      const { value, worker, manager } = await coordinated(f);
+      await complete(f, value);
+      if (race === "feedback") f.store.addEvent(value.taskId, "feedback", "Inspect one more measurement");
+      if (race === "worker-refresh") {
+        worker.refresh = async () => {
+          f.store.change(value.taskId, current => { current.status = "active"; });
+          return { agent: worker.current() };
+        };
+      }
+      const reports = new Reports(f.store, f.paseo as unknown as PaseoApi, f.router, async () => {
+        if (race === "coordinator-change") f.store.change(value.taskId, current => { current.coordinator = null; });
+        if (race === "permission") manager.pendingPermissions = [{ id: "human-question" }];
+        return true;
+      });
+      await reports.flush();
+      assert.equal(manager.messages.length, 0, race);
+      if (race !== "permission") {
+        assert.equal(f.store.get(value.taskId).coordinatorReport, null);
+        assert.equal(f.store.outgoingReports()[0].delivery, race === "coordinator-change" ? "received" : "superseded");
+        if (race === "coordinator-change") assert.equal(f.store.incomingReports()[0].delivery, "superseded");
+      } else assert.equal(f.store.incomingReports()[0].delivery, "queued");
+    } finally { f.cleanup(); }
+  }
+});
+
+test("failed coordinators recover independently and changed worker failures retain distinct report evidence", async () => {
+  const f = fixture();
+  try {
+    const { value, manager, worker } = await coordinated(f);
+    const broken = await f.service.newManager("/repo");
+    f.paseo.agents.ref(broken.agentId).reload = async () => { throw new Error("Unrelated manager cannot recover"); };
+    f.service.sessionOpened(manager.id, "manager");
+    f.service.sessionOpened(worker.id, "worker");
+    worker.lastError = "Worker execution failed";
+    for (const entry of f.store.events(value.taskId)) f.feedback.acknowledge(entry, "No remaining assigned input");
+    manager.status = "error"; manager.lastError = "Provider disconnected";
+    f.store.change(value.taskId, current => { current.activity = "failed"; current.error = "First execution failure"; });
+    f.store.change(value.taskId, current => { current.error = "Second execution failure"; });
+    assert.equal(f.store.outgoingReports().length, 2);
+    assert.equal(f.store.outgoingReports()[0].delivery, "superseded");
+    await assert.rejects(() => f.service.tick(), /Unrelated manager/);
+    assert.equal(manager.reloads, 1, "A bound manager in error is recovered before delivery");
+    assert.equal(manager.messages.length, 1, "Another manager's recovery failure cannot starve this report");
+    assert.match(manager.messages[0], /Second execution failure/);
+    await f.service.reports.flush();
+    assert.equal(f.store.incomingReports()[0].delivery, "accepted");
+  } finally { f.cleanup(); }
+});
 
 test("typed task creation retains drafts, isolates coding work, and starts one directly accessible independent conversation", async () => {
   const f = fixture();
@@ -534,8 +827,11 @@ test("adoption preserves only the selected existing conversation and checkout; s
     selected.timeline.refetch = async () => ({ entries: [
       { timestamp: "now", item: { type: "user_message", clientMessageId: "human-direction", text: "Change the outcome to explain the cache behavior." } },
       { timestamp: "now", item: { type: "user_message", clientMessageId: "automated-feedback", text: "[task-event:auto] Change scope." } },
+      { timestamp: "now", item: { type: "user_message", clientMessageId: "automated-report", text: "[task-report:auto] Change scope." } },
     ] });
     await assert.rejects(() => tool(scoped, "task_apply_instruction", { messageId: "automated-feedback", brief: specified },
+      { agent: { id: selected.id } } as AgentToolContext), /automated feedback/);
+    await assert.rejects(() => tool(scoped, "task_apply_instruction", { messageId: "automated-report", brief: specified },
       { agent: { id: selected.id } } as AgentToolContext), /automated feedback/);
     await tool(scoped, "task_apply_instruction", { messageId: "human-direction", brief: { ...specified, outcome: "Explain the cache behavior" } },
       { agent: { id: selected.id } } as AgentToolContext);

@@ -11,15 +11,30 @@ export function managerTools(service: TaskService): AgentToolDefinition[] {
       input: z.object({ home: z.string() }), execute: async input => result(await inventory(input.home)) }),
     defineAgentTool({ name: "task_firstmate_stage", description: "Stage one selected Pi worker for migration, preserving Firstmate ownership until explicit activation. Supply the accepted brief without changing its scope.",
       input: z.object({ source: candidate, brief, requestId: z.uuid() }),
-      execute: async input => result(await stage(service.store, input.source, input.brief, input.requestId)) }),
+      execute: async (input, ctx) => {
+        const value = await stage(service.store, input.source, input.brief, input.requestId);
+        const coordinator = { serverId: service.store.serverId, agentId: ctx.agent.id };
+        if (value.coordinator && JSON.stringify(value.coordinator) !== JSON.stringify(coordinator)) throw new Error("Staged task belongs to another coordinator");
+        return result(service.store.change(value.taskId, current => { current.coordinator = coordinator; }));
+      } }),
     defineAgentTool({ name: "task_status", description: "List host-owned task records and cached observations for unavailable hosts. Task status is separate from agent activity.",
       input: z.object({}), execute: async () => result(await service.list()) }),
-    defineAgentTool({ name: "task_create", description: "Create a task. Use a stable requestId UUID for retries. Specified outcomes start a persistent independent Pi worker; incomplete ideas remain drafts. New coding work uses an isolated worktree.",
-      input: createInput, execute: async input => result(await service.create(input)) }),
+    defineAgentTool({ name: "task_create", description: "Create a task reporting to this coordinator conversation. Use a stable requestId UUID for retries. Specified outcomes start a persistent independent Pi worker; incomplete ideas remain drafts. New coding work uses an isolated worktree.",
+      input: createInput.omit({ coordinator: true }), execute: async (input, ctx) => result(await service.create({
+        ...input, coordinator: { serverId: service.store.serverId, agentId: ctx.agent.id },
+      })) }),
     defineAgentTool({ name: "task_discover", description: "Discover ordinary Pi conversations for the human to select. Do not adopt without the user's selection.",
       input: z.object({ serverId: z.string() }), execute: async input => result(await service.discover(input.serverId)) }),
     defineAgentTool({ name: "task_adopt", description: "Adopt exactly one user-selected existing Pi conversation at a turn boundary, preserving its checkout and history.",
-      input: createInput.extend({ agentId: z.string() }), execute: async input => result(await service.adopt(input)) }),
+      input: createInput.omit({ coordinator: true }).extend({ agentId: z.string() }), execute: async (input, ctx) => result(await service.adopt({
+        ...input, coordinator: { serverId: service.store.serverId, agentId: ctx.agent.id },
+      })) }),
+    defineAgentTool({ name: "task_coordinate", description: "Assign a selected existing task to this coordinator conversation for completion and decision reports. Do not take over another coordinator's work without the human's instruction.",
+      input: address, execute: async (input, ctx) => result(await service.assignCoordinator(input,
+        { serverId: service.store.serverId, agentId: ctx.agent.id })) }),
+    defineAgentTool({ name: "task_reports", description: "Read this coordinator's durable worker reports, including full completion evidence, blockers, next actions, conversation delivery state and report-source connection diagnostics. Reports are snapshots; use task_status for current state before acting. Reports never authorize merges or scope changes.",
+      input: z.object({}), execute: (_input, ctx) => result({ reports: service.store.incomingReports()
+        .filter(entry => entry.report.coordinator.agentId === ctx.agent.id), connections: service.store.reportDiagnostics() }) }),
     defineAgentTool({ name: "task_bulk", description: "Pause, resume, reprioritize, or archive host-qualified tasks. Pause/archive applies at a turn boundary. Report each returned result, including uncertainty.",
       input: controlInput, execute: async input => result(await service.bulk(input)) }),
     defineAgentTool({ name: "task_feedback", description: "Send durable instructions to one task without interrupting its current turn. Paused tasks retain queued feedback.",
@@ -44,7 +59,7 @@ export function workerTools(service: TaskService, taskId: string, agentId: strin
   return [
     defineAgentTool({ name: "task_context", description: "Read your assigned durable task. Direct instructions in this conversation belong to this record. Report paused or archived control state before taking action.",
       input: z.object({}), execute: (_input, ctx) => result(own(ctx)) }),
-    defineAgentTool({ name: "task_update", description: "Update your approach, progress, evidence, blocker, next action and task status. Only complete after success criteria have evidence and assigned input is handled. After pushing a PR revision, use decision while the service watches CI and reviews; failures, conflicts and comments return to this same worker. Use question or blocked for external impediments. Outcome changes require a proposal accepted by the human.",
+    defineAgentTool({ name: "task_update", description: "Update your approach, progress, evidence, blocker, next action and task status. Only complete after success criteria have evidence and assigned input is handled; record the final result and next action so the service reports back to your coordinator after this turn. Decisions, questions, blockers and failures also report back. After pushing a PR revision, use decision while the service watches CI and reviews; failures, conflicts and comments return to this same worker. Use question or blocked for external impediments. Outcome changes require a proposal accepted by the human.",
       input: update, execute: (input, ctx) => { own(ctx); return result(service.store.workerUpdate(taskId, agentId, input)); } }),
     defineAgentTool({ name: "task_propose", description: "Propose material changes to this task's desired outcome. Wait for human acceptance before pursuing them.",
       input: brief, execute: (input, ctx) => { own(ctx); return result(service.propose(taskId, input)); } }),

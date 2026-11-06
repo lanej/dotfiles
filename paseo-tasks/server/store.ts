@@ -1,8 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, chmodSync } from "node:fs";
 import { dirname } from "node:path";
-import { randomUUID } from "node:crypto";
-import { task, event, ready, type Brief, type Task, type TaskEvent, type Update } from "../shared/contracts";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  task, event, ready, outgoingReport, incomingReport,
+  type Brief, type Task, type TaskEvent, type Update, type OutgoingReport, type IncomingReport,
+} from "../shared/contracts";
 
 export class Store {
   readonly db: DatabaseSync;
@@ -20,6 +23,8 @@ export class Store {
       CREATE TABLE IF NOT EXISTS objects (url TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS replies (event TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS cache (host TEXT PRIMARY KEY, record TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS report_outbox (id TEXT PRIMARY KEY, record TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS report_inbox (id TEXT PRIMARY KEY, record TEXT NOT NULL);
     `);
     this.db.prepare("INSERT OR IGNORE INTO identity VALUES (1,?)").run(serverId);
     if ((this.db.prepare("SELECT server FROM identity").get() as { server: string }).server !== serverId) {
@@ -30,6 +35,12 @@ export class Store {
     for (const row of this.db.prepare("SELECT record FROM events").all()) {
       const value = event.parse(JSON.parse(row.record as string));
       if (value.delivery === "sending") this.saveEvent({ ...value, delivery: "unknown" });
+    }
+    for (const record of this.outgoingReports()) {
+      if (record.delivery === "sending") this.saveOutgoingReport({ ...record, delivery: "unknown" });
+    }
+    for (const record of this.incomingReports()) {
+      if (record.delivery === "sending") this.saveIncomingReport({ ...record, delivery: "unknown" });
     }
   }
   close() { this.db.close(); }
@@ -49,7 +60,7 @@ export class Store {
   }
   forAgent(agentId: string): Task | undefined { return this.list().find(value => value.worker?.agentId === agentId); }
   create(value: Brief, group: string | null = null, id: string = randomUUID(), control: Task["control"] = "running",
-    initial: Partial<Pick<Task, "migration" | "github" | "nextAction">> = {}): Task {
+    initial: Partial<Pick<Task, "migration" | "github" | "nextAction" | "coordinator">> = {}): Task {
     const at = this.now();
     const record = task.parse({ ...value, serverId: this.serverId, taskId: id, revision: 1,
       status: ready(value, !!initial.migration) ? "active" : "draft", control, priority: 50, group,
@@ -66,11 +77,82 @@ export class Store {
       if (revision !== undefined && revision !== value.revision) throw new Error("Task changed; refresh before applying this instruction");
       fn(value);
       value.revision++; value.updatedAt = this.now();
+      this.queueCoordinatorReport(value);
       task.parse(value);
       this.db.prepare("UPDATE tasks SET revision=?,record=? WHERE id=?")
         .run(value.revision, JSON.stringify(value), id);
       return value;
     });
+  }
+  private queueCoordinatorReport(value: Task) {
+    const key = `coordinator-report:${value.taskId}`;
+    const reportable = value.worker && value.coordinator && value.migration?.ownership !== "firstmate" &&
+      (["complete", "decision", "question", "blocked"].includes(value.status) || value.activity === "failed");
+    if (!reportable) {
+      value.coordinatorReport = null;
+      this.write("cache", key, null);
+      for (const entry of this.outgoingReports().filter(entry => entry.report.task.taskId === value.taskId && entry.delivery === "queued")) {
+        this.db.prepare("UPDATE report_outbox SET record=? WHERE id=?")
+          .run(JSON.stringify({ ...entry, delivery: "superseded" }), entry.report.id);
+      }
+      return;
+    }
+    const signature = createHash("sha256").update(JSON.stringify({
+      coordinator: value.coordinator, status: value.status, failed: value.activity === "failed",
+      brief: [value.title, value.outcome, value.successCriteria, value.constraints],
+      progress: value.progress, evidence: value.evidence, blocker: value.blocker, error: value.error, next: value.nextAction,
+      github: value.github, worker: value.worker,
+    })).digest("hex");
+    if (this.read<string>("cache", key) === signature) return;
+    // WHY: Coalesce unsent intermediate updates; confirmed or uncertain deliveries retain their own evidence.
+    for (const entry of this.outgoingReports().filter(entry => entry.report.task.taskId === value.taskId && entry.delivery === "queued")) {
+      this.db.prepare("UPDATE report_outbox SET record=? WHERE id=?")
+        .run(JSON.stringify({ ...entry, delivery: "superseded" }), entry.report.id);
+    }
+    const id = randomUUID();
+    value.coordinatorReport = { id, delivery: "queued", error: null };
+    const entry = outgoingReport.parse({
+      report: { id, coordinator: value.coordinator, task: value, createdAt: this.now() },
+      delivery: "queued", error: null,
+    });
+    this.db.prepare("INSERT INTO report_outbox VALUES (?,?)").run(id, JSON.stringify(entry));
+    this.write("cache", key, signature);
+  }
+  outgoingReports(): OutgoingReport[] {
+    return this.db.prepare("SELECT record FROM report_outbox ORDER BY rowid").all()
+      .map(row => outgoingReport.parse(JSON.parse(row.record as string)));
+  }
+  incomingReports(): IncomingReport[] {
+    return this.db.prepare("SELECT record FROM report_inbox ORDER BY rowid").all()
+      .map(row => incomingReport.parse(JSON.parse(row.record as string)));
+  }
+  reportDiagnostics() {
+    return this.db.prepare("SELECT host,record FROM cache WHERE host='report-directory' OR host LIKE 'report-source:%'").all()
+      .map(row => ({ source: row.host, ...JSON.parse(row.record as string) }));
+  }
+  saveOutgoingReport(entry: OutgoingReport) {
+    outgoingReport.parse(entry);
+    const save = () => {
+      const existing = this.outgoingReports().find(value => value.report.id === entry.report.id);
+      if (!existing) throw new Error("Unknown outgoing report");
+      if (JSON.stringify(existing.report) !== JSON.stringify(entry.report)) throw new Error("Report identity belongs to another snapshot");
+      if (["received", "superseded"].includes(existing.delivery) && entry.delivery !== existing.delivery) return;
+      this.db.prepare("UPDATE report_outbox SET record=? WHERE id=?").run(JSON.stringify(entry), entry.report.id);
+      const value = this.get(entry.report.task.taskId);
+      if (value.coordinatorReport?.id === entry.report.id) {
+        value.coordinatorReport = { id: entry.report.id, delivery: entry.delivery, error: entry.error };
+        this.db.prepare("UPDATE tasks SET record=? WHERE id=?").run(JSON.stringify(task.parse(value)), value.taskId);
+      }
+    };
+    if (this.db.isTransaction) save(); else this.transaction(save);
+  }
+  saveIncomingReport(entry: IncomingReport) {
+    incomingReport.parse(entry);
+    const existing = this.incomingReports().find(value => value.report.id === entry.report.id);
+    if (existing && JSON.stringify(existing.report) !== JSON.stringify(entry.report)) throw new Error("Report identity belongs to another snapshot");
+    if (existing && ["accepted", "superseded"].includes(existing.delivery) && entry.delivery !== existing.delivery) return;
+    this.db.prepare("INSERT INTO report_inbox VALUES (?,?) ON CONFLICT(id) DO UPDATE SET record=excluded.record")
+      .run(entry.report.id, JSON.stringify(entry));
   }
   workerUpdate(id: string, agentId: string, patch: Update): Task {
     return this.change(id, value => {
@@ -110,6 +192,7 @@ export class Store {
         value.migration?.ownership !== "firstmate" && (kind === "feedback" || kind === "github" && record.payload.type !== "state")) {
         value.status = "active"; value.nextAction = "Handle newly assigned feedback within the existing task brief";
         value.revision++; value.updatedAt = this.now();
+        this.queueCoordinatorReport(value);
         task.parse(value);
         this.db.prepare("UPDATE tasks SET revision=?,record=? WHERE id=?").run(value.revision, JSON.stringify(value), id);
       }

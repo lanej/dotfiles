@@ -2,6 +2,7 @@ import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
 export const address = z.object({ serverId: z.string().min(1), taskId: z.uuid() }).strict();
+export const conversationAddress = z.object({ serverId: z.string().min(1), agentId: z.string().min(1) }).strict();
 export const brief = z.object({
   title: z.string().trim().min(1).max(200),
   outcome: z.string().trim().max(8000),
@@ -42,6 +43,11 @@ export const task = brief.extend({
   priority: z.number().int().min(0).max(100),
   group: z.string().max(200).nullable(),
   worker: z.object({ agentId: z.string(), workspaceId: z.string(), cwd: z.string() }).nullable(),
+  coordinator: conversationAddress.nullable().default(null),
+  coordinatorReport: z.object({
+    id: z.uuid(), delivery: z.enum(["queued", "sending", "received", "unknown", "superseded"]),
+    error: z.string().nullable(),
+  }).nullable().default(null),
   treehouseReservation: treehouseReservation.nullable().default(null),
   treehouseLease: treehouseLease.nullable().default(null),
   prWatches: z.array(prWatch).default([]),
@@ -69,6 +75,25 @@ export type Task = z.infer<typeof task>;
 export type Brief = z.infer<typeof brief>;
 export type Address = z.infer<typeof address>;
 export type Update = z.infer<typeof update>;
+export type ConversationAddress = z.infer<typeof conversationAddress>;
+export const coordinatorReport = z.object({
+  id: z.uuid(), coordinator: conversationAddress, task, createdAt: z.string(),
+}).strict().refine(value => value.task.worker !== null &&
+  value.task.coordinator?.agentId === value.coordinator.agentId &&
+  value.task.coordinator?.serverId === value.coordinator.serverId, "Report must name its assigned worker and coordinator");
+export type CoordinatorReport = z.infer<typeof coordinatorReport>;
+export const outgoingReport = z.object({
+  report: coordinatorReport,
+  delivery: z.enum(["queued", "sending", "received", "unknown", "superseded"]),
+  error: z.string().nullable(),
+});
+export const incomingReport = z.object({
+  report: coordinatorReport,
+  delivery: z.enum(["queued", "sending", "awaiting", "accepted", "unknown", "superseded"]),
+  error: z.string().nullable(),
+});
+export type OutgoingReport = z.infer<typeof outgoingReport>;
+export type IncomingReport = z.infer<typeof incomingReport>;
 export const ready = (value: Brief, existingCheckout = false) => !!value.outcome && value.successCriteria.length > 0 &&
   (value.kind !== "coding" || !!value.repository && (existingCheckout || !!value.baseRef));
 export const control = z.enum(["pause", "resume", "archive", "reprioritize"]);
@@ -99,6 +124,7 @@ export const createInput = z.object({
   serverId: z.string(), brief, start: z.boolean().default(true),
   group: z.string().max(200).nullable().default(null),
   requestId: z.uuid(),
+  coordinator: conversationAddress.nullable().default(null),
 });
 export const createRpc = defineRpc({ name: "tasks.create", input: createInput, output: task });
 export const bulkRpc = defineRpc({ name: "tasks.bulk", input: controlInput, output: z.array(controlResult) });

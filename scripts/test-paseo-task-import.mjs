@@ -105,9 +105,28 @@ try {
   const conversations = await service.conversations();
   assert.ok([imported.agentId, launched.worker.agentId, coding.worker.agentId].every(id =>
     conversations.some(agent => agent.id === id)), 'The official directory API exposes imported and created conversations');
+  const coordinator = await api.agents.create({ cwd, title: 'Native coordinator handle fixture',
+    config: { provider: 'pi/amazon-bedrock/us.anthropic.claude-sonnet-5-5' }, labels: { 'tasks.role': 'manager' } });
+  store.change(launched.taskId, value => { value.coordinator = { serverId: store.serverId, agentId: coordinator.id }; });
+  store.workerUpdate(launched.taskId, launched.worker.agentId, { status: 'complete', evidence: ['Native workspace and host verified'] });
+  const nativeRef = api.agents.ref.bind(api.agents);
+  const reportAdmissions = [];
+  api.agents.ref = id => {
+    const handle = nativeRef(id);
+    if (id === coordinator.id) handle.send = async (text, options) => { reportAdmissions.push({ text, options }); };
+    return handle;
+  };
+  await service.reports.flush();
+  assert.equal(reportAdmissions.length, 1, 'Independent official SDK refs must refresh the actual delivery handle');
+  assert.equal(reportAdmissions[0].options.sourceAgentId, launched.worker.agentId);
+  assert.equal(reportAdmissions[0].options.sourceAgentServerId, store.serverId);
+  assert.equal(store.incomingReports()[0].delivery, 'awaiting', 'A controlled queue admission cannot establish native delivery');
+  await service.reports.flush();
+  assert.equal(reportAdmissions.length, 1, 'Missing native confirmation cannot trigger a second admission');
+  api.agents.ref = nativeRef;
   result = { importedThrough: 'paseo import', historyRetained: true, sessionResumed: true,
     checkoutRetained: true, taskLaunch: true, launchReplayRetained: true, codingWorktreeIsolated: true, treehouseLease: true,
-    conversationDirectory: true, pluginsEnabled: false };
+    conversationDirectory: true, coordinatorNativeRefs: true, reportAdmissionControlled: true, pluginsEnabled: false };
 } finally {
   store?.close();
   await api?.dispose();

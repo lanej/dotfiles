@@ -5,7 +5,8 @@ import { homedir, hostname } from "node:os";
 import { join } from "node:path";
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import {
-  address, brief, task, listRpc, createRpc, bulkRpc, discoverRpc, adoptRpc, acceptRpc, managerRpc, event, migrateRpc,
+  address, brief, task, conversationAddress, coordinatorReport, incomingReport,
+  listRpc, createRpc, bulkRpc, discoverRpc, adoptRpc, acceptRpc, managerRpc, event, migrateRpc,
 } from "./shared/contracts";
 import { Connection } from "./server/connection";
 import { Store } from "./server/store";
@@ -13,6 +14,7 @@ import { Feedback, GitHub } from "./server/github";
 import { TaskService, taskWorkspaceId } from "./server/service";
 import { managerTools, workerTools } from "./server/tools";
 import { candidate, inventory, stage, releaseAndImport } from "./server/migration";
+import { reportVerification } from "./server/reports";
 
 export default function contribute(server: PluginServerContext) {
   const home = process.env.PASEO_HOME ?? join(homedir(), ".paseo");
@@ -50,6 +52,40 @@ export default function contribute(server: PluginServerContext) {
   server.handle(adoptRpc, async input => (await ready).adopt(input));
   server.handle(acceptRpc, async input => (await ready).accept(input));
   server.handle(managerRpc, async input => (await ready).newManager(input.cwd));
+  server.handle(defineRpc({
+    name: "tasks.coordinator", input: address.extend({ coordinator: conversationAddress.nullable() }), output: task,
+  }), async input => {
+    const value = await ready; value.assertHost(input.serverId);
+    return value.assignCoordinator(input, input.coordinator);
+  });
+  server.handle(defineRpc({ name: "tasks.coordinator_validate", input: conversationAddress, output: z.object({ valid: z.literal(true) }) }),
+    async input => {
+      const value = await ready; value.assertHost(input.serverId);
+      await value.reports.validate(input);
+      return { valid: true as const };
+    });
+  server.handle(defineRpc({ name: "tasks.report_verify", input: z.object({ serverId: z.string(), id: z.uuid() }), output: reportVerification }),
+    async input => {
+      const value = await ready; value.assertHost(input.serverId);
+      return value.reports.verification(input.id);
+    });
+  server.handle(defineRpc({
+    name: "tasks.report_receive", input: coordinatorReport, output: z.object({ delivery: z.enum(["received", "superseded"]) }),
+  }), async input => (await ready).reports.receive(input));
+  server.handle(defineRpc({
+    name: "tasks.report_collect",
+    input: z.object({ serverId: z.string(), coordinatorHost: z.string(), receipts: z.array(z.uuid()) }),
+    output: z.array(coordinatorReport),
+  }), async input => {
+    const value = await ready; value.assertHost(input.serverId);
+    return value.reports.collect(input.coordinatorHost, input.receipts);
+  });
+  server.handle(defineRpc({
+    name: "tasks.reports", input: conversationAddress, output: z.array(incomingReport),
+  }), async input => {
+    const value = await ready; value.assertHost(input.serverId);
+    return value.store.incomingReports().filter(entry => entry.report.coordinator.agentId === input.agentId);
+  });
   server.handle(defineRpc({ name: "tasks.firstmate_inventory", input: z.object({ home: z.string() }), output: z.array(candidate) }),
     async input => inventory(input.home));
   server.handle(defineRpc({ name: "tasks.firstmate_stage", input: z.object({ source: candidate, brief, requestId: z.uuid() }), output: task }),

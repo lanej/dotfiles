@@ -51,9 +51,14 @@ export function TaskCard({ value, selected, onSelect, refresh, theme, layout, na
     <Text selectable style={muted}>Repository: {value.repository ?? "No repository required"}{value.worker ? `\nCheckout: ${value.worker.cwd}` : ""}</Text>
     {value.treehouseLease && <Text selectable style={muted}>Treehouse lease: {value.treehouseLease.lease_id}{"\n"}Branch: {value.treehouseLease.branch}</Text>}
     {value.prWatches.map(watch => <Text key={watch.url} style={muted}>PR watch: {watch.phase} · {watch.detail}{"\n"}Observed: {watch.observedAt}</Text>)}
+    <Text selectable style={muted}>Coordinator: {value.coordinator ? `${value.coordinator.serverId}/${value.coordinator.agentId}` : "Unassigned"}</Text>
+    {value.coordinatorReport && <Text style={muted}>Coordinator report: {value.coordinatorReport.delivery === "received" ?
+      "Received by coordinator host" : value.coordinatorReport.delivery}{value.coordinatorReport.error ? ` · ${value.coordinatorReport.error}` : ""}</Text>}
     <Text style={muted}>Last task update: {value.updatedAt}{value.observedAt ? `\nAgent observed: ${value.observedAt}` : "\nAgent has not been observed"}</Text>
     {value.worker && <Button title="Open task conversation" theme={theme} disabled={offline || !navigation}
       onPress={() => navigation?.openAgent({ serverId: value.serverId, agentId: value.worker!.agentId })} />}
+    {value.coordinator && <Button title="Open coordinator conversation" theme={theme} disabled={!navigation}
+      onPress={() => navigation?.openAgent(value.coordinator!)} />}
     {value.github.map(url => <ExternalLink key={url} href={url}><Text style={text}>{url}</Text></ExternalLink>)}
     {value.proposals.filter(proposal => !proposal.accepted).map(proposal => <View key={proposal.id} style={{ gap: 8 }}>
       <Text style={text}>Proposed title: {proposal.brief.title}{"\n"}Kind: {proposal.brief.kind}</Text>
