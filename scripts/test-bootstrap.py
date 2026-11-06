@@ -26,6 +26,7 @@ def main():
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
+        (checkout / "codex/bedrock-router").mkdir(parents=True)
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
@@ -284,7 +285,9 @@ elif name == "nvim" and "--headless" in args:
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
 elif name == "bedrock-router":
-    assert args[:2] == ["install", "--config"] and args[3:] == ["--keep-env"], args
+    assert args[:2] == ["install", "--config"] and args[3:] == [
+        "--keep-env", "--preserve-mcp",
+    ], args
     assert json.loads(Path(args[2]).read_text()) == {"fixture": "standalone-router"}
     assert "make" in (home / "events").read_text()
     assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
@@ -334,7 +337,13 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
-    if args[:1] == ["build"]:
+    if args[:1] == ["build"] and Path.cwd().name == "bedrock-router":
+        assert args == ["build", "-trimpath", "-p", "2", "-o", args[5], "."], args
+        output = Path(args[5])
+        shutil.copyfile(fixture / "driver", output)
+        output.chmod(0o755)
+        record("router guarded build")
+    elif args[:1] == ["build"]:
         assert os.environ["CGO_ENABLED"] == "0"
         assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
         assert Path("go.mod").is_file()
@@ -485,7 +494,7 @@ else:
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
         assert events.index("router setup") > events.index("make")
-        assert events.index("router release") < events.index("router setup")
+        assert events.index("router release") < events.index("router guarded build") < events.index("router setup")
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"

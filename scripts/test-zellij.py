@@ -34,7 +34,7 @@ def preserve_rust_homes(env):
 
 
 class Terminal:
-    def __init__(self, binary, env, name, command=None, *, install_navigation=True):
+    def __init__(self, binary, env, name, command=None, *, install_navigation=True, columns=120):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
         if install_navigation:
@@ -48,7 +48,7 @@ class Terminal:
         if self.pid == 0:
             # Set the slave's size before Zellij can query it. Doing this in the
             # parent after fork races the child's startup on a zero-sized PTY.
-            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, columns, 0, 0))
             os.chdir(env["HOME"])
             command = command or [binary, "attach", "--create", name]
             os.execvpe(command[0], command, env)
