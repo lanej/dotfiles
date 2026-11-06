@@ -51,23 +51,19 @@ bq() {
     bq "$@"
 }
 
-# Lazy load direnv (only when entering directory with .envrc)
+# Detect legacy applications before evaluating direnv, including after initialization.
 if command -v direnv >/dev/null; then
-    _direnv_lazy_load() {
-        # .env is unrelated to direnv (it's the plain secrets file .profile
-        # sources directly); it lives in $HOME, so matching it here fired
-        # this hook on every single shell start regardless of directory.
-        if [[ -f .envrc ]]; then
-            eval "$(direnv hook zsh)"
-            add-zsh-hook -d chpwd _direnv_lazy_load
-            _direnv_hook
+    eval "$(direnv hook zsh)"
+fi
+if command -v direnv >/dev/null && command -v withenv >/dev/null; then
+    _ep_direnv_enter() {
+        if command -v ep-direnv >/dev/null; then
+            ep-direnv ensure "$PWD" || return
         fi
+        _direnv_hook
     }
-    
-    # Check on directory change
     autoload -U add-zsh-hook
-    add-zsh-hook chpwd _direnv_lazy_load
-    
-    # Check current directory on startup (async)
-    _direnv_lazy_load &!
+    add-zsh-hook -d chpwd _direnv_hook
+    add-zsh-hook chpwd _ep_direnv_enter
+    _ep_direnv_enter
 fi

@@ -90,3 +90,11 @@ CLAUDE.md carries the rule and the practical bar. The pressure cases behind it:
 
 - **Internal documents are structurally out of reach of web search.** Kagi, WebSearch and Codex index only the public internet; they cannot reach Google Drive however the query is worded or time-boxed. A job description, internal policy or design doc needs `gspace`/Drive tools. Rewording or widening the date range will not help. (detail: memory "feedback_internal_doc_search_tool_capability")
 - **1Password dual-account lookups.** `op read` / `op item list` without `--account` searches only the active account, so a miss can mean "wrong account" rather than "doesn't exist" — check both `easypost.1password.com` and `my.1password.com` before concluding an item is missing. This is CLI history: use the `mcp__1password__*` tools, and treat an operation with no MCP coverage as a gap to flag rather than a reason to fall back to `op`. (detail: memory "reference_1password_dual_account_op_lookup")
+
+## Pooled correlations and confounding
+
+Before making a causal claim from grouped results, check whether population fields are
+historical or current-state snapshots and whether a subgroup drives the pooled effect.
+Statistical significance and a time-split check do not rule out confounding. Compare
+relevant strata and report effects that disappear or reverse. Keep the analysis's intended
+population: restricting to one segment can silently answer a different question.

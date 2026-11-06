@@ -4,12 +4,7 @@ The UI-review engine is now **Viewrule**, an independent tool at
 [lanej/viewrule](https://github.com/lanej/viewrule). This repository owns the
 installer, version pin, personal preferences, and Claude integration.
 
-**Current pin:** [Viewrule v0.8.0](https://github.com/lanej/viewrule/releases/tag/v0.8.0).
-This experimental release retires Stop enforcement, adds explicit verification and
-optional Git gates, and accepts the application's runtime URL for each review.
-Source-only checks use `ui-review lint --target src`; rendered requirements still
-use `check`, and source-only results cannot satisfy rendered-evidence verification.
-The installer verifies the published archive against the checksum in `tool.json`.
+**Current pin:** [Viewrule v0.11.0](https://github.com/lanej/viewrule/releases/tag/v0.11.0). Viewrule uses explicit verification and optional Git gates, and accepts the application's runtime URL for each review. Source-only checks use `ui-review lint --target src`; rendered requirements still use `check`, and source-only results cannot satisfy rendered-evidence verification. The installer verifies the published archive against the checksum in `tool.json`.
 
 ## Install and use
 
@@ -98,11 +93,11 @@ An unconfigured worktree must not inherit its parent checkout's configuration.
 It does not rerun the engine's browser regression. For an unpublished local archive:
 
 ```sh
-VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.8.0.tgz make test-ui-review
+VIEWRULE_ARCHIVE=/absolute/path/to/viewrule-0.11.0.tgz make test-ui-review
 ```
 
 The archive must match the checksum pin. `python3 scripts/install-viewrule.py
---archive /absolute/path/to/viewrule-0.8.0.tgz` installs that same archive locally.
+--archive /absolute/path/to/viewrule-0.11.0.tgz` installs that same archive locally.
 
 Engine documentation lives in the package under `docs/` and upstream:
 [manual](https://github.com/lanej/viewrule/blob/main/docs/ui-review.md),

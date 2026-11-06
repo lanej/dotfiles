@@ -66,8 +66,8 @@ bindkey -M vicmd v edit-command-line
 # Add custom completions and site-functions to fpath (must be before compinit)
 # ZSH_COMPLETIONS is set in zshenv
 fpath=(
-    ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
     ~/.zsh/completions
+    ${ZSH_COMPLETIONS:-$HOME/.local/share/zsh/site-functions}
     /opt/homebrew/share/zsh/site-functions
     /usr/local/share/zsh/site-functions
     $fpath
@@ -431,6 +431,9 @@ fi
 autoload -U select-word-style
 select-word-style bash
 
+# Install after optional prompt plugins and before syntax-highlighting wraps ZLE.
+[[ -r "${HOME}/.local/share/zsh/zellij-navigation.zsh" ]] && source "${HOME}/.local/share/zsh/zellij-navigation.zsh"
+
 # Set completion styles (must be after compinit)
 zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
@@ -467,12 +470,26 @@ fi
 
 [[ -r "${HOME}/.alias" ]] && source "${HOME}/.alias"
 
+# Refresh generated files and the current shell without running plugin installers.
+unalias recomp 2>/dev/null
+function recomp {
+	local completion result=0
+	ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	# A completion already used in this shell must be autoloaded again.
+	for completion in "$HOME"/.zsh/completions/_*(N-.); do
+		unfunction "${completion:t}" 2>/dev/null
+	done
+	autoload -Uz compinit
+	# Ignore insecure completion paths rather than prompting or trusting them.
+	compinit -i || return
+	return "$result"
+}
+
 # FIXME: this shouldn't be necessary
 # . "${HOME}/.zlogin"
 
-# direnv is wired lazily in zsh/lazy-load.zsh (only hooks in on a directory
-# with .envrc); a second unconditional hook here used to run on every shell
-# regardless, defeating that.
+# direnv detection and evaluation run at startup and on directory changes.
+# The integration lives in zsh/lazy-load.zsh.
 
 # Load tmux auto-titling functionality
 [[ -r "${HOME}/.local/share/zsh/tmux-auto-title.zsh" ]] && source "${HOME}/.local/share/zsh/tmux-auto-title.zsh"

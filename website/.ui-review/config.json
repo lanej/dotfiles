@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "enforceOnStop": false,
+  "sourcePaths": [
+    "src",
+    "scripts",
+    "astro.config.mjs"
+  ],
+  "sourceChecks": [],
+  "accessibility": true,
+  "projectDocuments": [
+    "DESIGN.md"
+  ],
+  "pages": [
+    {
+      "name": "home",
+      "path": "/dotfiles/",
+      "ready": "main h1"
+    },
+    {
+      "name": "terminal",
+      "path": "/dotfiles/terminal/",
+      "ready": "main h1"
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ]
+}

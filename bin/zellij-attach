@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Attach to or create a named session, defaulting to main.
+set -eu
+
+if [ -n "${ZELLIJ:-}" ]; then
+	printf '%s\n' 'zj: already inside Zellij; detach before attaching to another session.' >&2
+	exit 1
+fi
+
+[ "$#" -gt 0 ] || set -- main
+# Refresh only the selected session. Keep the client's raw socket because its
+# session manager may create another server with the inherited environment.
+if [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ]; then
+	case "$1" in
+		-*) ;;
+		*)
+			agent_helper="$(dirname "$0")/zellij-agent"
+			if [ -x "$agent_helper" ]; then
+				"$agent_helper" refresh "$1" >/dev/null 2>&1 || :
+			fi
+			;;
+	esac
+fi
+exec zellij attach --create "$@"

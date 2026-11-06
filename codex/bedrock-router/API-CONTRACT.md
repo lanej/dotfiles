@@ -1,8 +1,6 @@
 # Router API contract
 
-The router is a transparent regional proxy for Bedrock Mantle's OpenAI-compatible
-HTTP API. It owns regional routing and transport behavior, while Bedrock owns
-request validation and response schemas.
+The router is a transparent regional proxy for Bedrock Mantle's OpenAI-compatible HTTP API and Bedrock Runtime's Anthropic Messages API. It owns regional routing and transport behavior, while Bedrock owns request validation and response schemas.
 
 ## Upstream reference
 
@@ -17,26 +15,25 @@ generated server interface. Updating the pin requires reviewing changes to
 operations and fields inspected by the router against AWS's supported behavior.
 Unknown JSON fields and stream events must continue to pass through.
 
+Anthropic message creation at `/anthropic/v1/messages` forwards to `https://bedrock-runtime.<region>.amazonaws.com` with the same path. It accepts the existing Bedrock key in `x-api-key` or bearer authorization and recognizes `message_stop` as streamed completion. The [AWS Messages guide](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-messages-api.html) defines this endpoint and key authentication. Pi supplies a `us.anthropic` model ID, Anthropic version header, and its persisted session UUID in `Session-Id`; the router preserves the request bytes and thinking configuration.
+
 ## Proxy boundary
 
 - Accept relative HTTP paths under `/openai/v1/` with bearer authorization.
   Forward the method, path, query, body bytes, and end-to-end headers unchanged.
   Hop-by-hop headers and the router's own request ID are excluded.
+- Accept the exact `/anthropic/v1/messages` route with bearer authorization or a Bedrock key in `x-api-key`. Forward it to Bedrock Runtime; reject other Anthropic paths until their endpoint behavior is verified.
 - Inspect only the top-level `model` for routing. Empty bodies are accepted;
   nonempty bodies must be JSON objects, optionally gzip encoded. The encoded
   and decoded body limits are each 128 MiB.
 - After the specific streamed error `Access denied: web search is not authorized
   for this identity.`, append a developer recovery hint to the next response
   creation request in that session. The hint asks the model to avoid repeating
-  the denied call unchanged and continue useful work. Tools, existing input
+  the denied call unchanged, use any available separate search or browsing tool,
+  or continue useful work when none is available. Tools, existing input
   items (including encrypted history), and unknown fields are preserved.
   This is the only request-body rewriting exception. The pending hint expires
   after 15 minutes and does not survive a router restart.
-- The separate `browse-mcp` stdio command exposes `bedrock_browse`. It submits
-  only the supplied research task to its configured model and region, without
-  using the proxy's session pins or replaying the caller's generation. Tool
-  results contain the browsing answer and citation URLs. No task or result is
-  logged; upstream error bodies are not returned.
 - Relay upstream statuses, response bytes, and SSE bytes without schema
   decoding or serialization. Streaming transport removes fixed content lengths
   so incomplete streams can be reported.
@@ -79,9 +76,7 @@ Router errors use `{"error":{"code":"…","message":"…"}}`. Rejections include
 router request ID in the message, with regional source and available underlying
 causes in the logs. Region conflicts distinguish saved session pins from
 inherited parent pins. Local configuration and startup errors report the path
-or operation and underlying cause. Browsing rejections identify the model,
-region, HTTP status, and upstream request ID without returning upstream error
-bodies, which may echo research input or credentials. Invalid paths return
+or operation and underlying cause. Invalid paths return
 `404`; missing bearer authorization returns `401`; invalid bodies return `400`;
 state failures return `503`; upstream connection failures return `502`; upstream
 timeouts before headers return `504`. Failures after headers abort the stream.

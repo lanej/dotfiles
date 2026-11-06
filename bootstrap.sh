@@ -1,10 +1,6 @@
 #!/bin/bash
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or linux
-bitness=$(getconf LONG_BIT)                                           # 64 or 32
-distro="$os-$(uname -m)"
-short_arch=$(uname -m | sed 's,^x86_64$,x64,') # arm64 or x64
-short_distro="$os-$short_arch"
 
 install_from_package_manager() {
 	if declare -f "install_$1_package" >/dev/null; then
@@ -50,6 +46,26 @@ package_semver() {
 		"$1_package_semver" || (echo "Failed to get semver for based on custom script: $1" >&2 && return 1)
 	else
 		package_manager_semver "$1" || (echo "Failed to get semver for: $1" >&2 && return 1)
+	fi
+}
+
+install_imagemagick_package() {
+	# NOTE: ImageMagick 6 provides convert; version 7 provides magick.
+	if command -v magick >/dev/null || command -v convert >/dev/null; then
+		return 0
+	fi
+	if command -v brew >/dev/null; then
+		brew install imagemagick
+	elif command -v yay >/dev/null; then
+		sudo yay -S --noconfirm imagemagick
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm imagemagick
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y ImageMagick
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y imagemagick
+	else
+		return 1
 	fi
 }
 
@@ -486,6 +502,87 @@ install_starship_from_release() {
 	cargo install starship -q --locked --version "$1"
 }
 
+load_dotfiles_config() {
+	local dotfiles_root resolved
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	resolved=$(python3 "$dotfiles_root/scripts/dotfiles-config.py" --platform "$os" --format shell) || return 1
+	# The resolver validates the plan and shell-quotes every emitted value.
+	eval "$resolved"
+}
+
+install_zellij_runtime() {
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# Pin lanej/zellij with our native fixes until a stable release includes both.
+	local dotfiles_root
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	load_dotfiles_config || return 1
+	case "$DOTFILES_ZELLIJ_SOURCE" in
+		patched) bash "$dotfiles_root/scripts/install-zellij" ;;
+		main) install_zellij_from_main ;;
+		release) install_zellij_from_release 0.45.1 ;;
+	esac || return 1
+	python3 "$dotfiles_root/scripts/install-zellij-navigation.py"
+}
+
+install_zellij_from_main() (
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# This is an explicit experimental choice; the local native fixes are not applied.
+	local zellij_revision=bf517077c848d91f75091f66d1996cfeb84f4732
+	local zellij_prefix="$HOME/.local/share/zellij-build/$zellij_revision" zellij_stage
+	if [ ! -x "$zellij_prefix/bin/zellij" ]; then
+		rustup toolchain install 1.95.0 --profile minimal || exit 1
+		cargo +1.95.0 install --locked --git https://github.com/zellij-org/zellij.git \
+			--rev "$zellij_revision" --root "$zellij_prefix" --bin zellij \
+			--no-default-features --features plugins_from_target,vendored_curl,web_server_capability \
+			zellij || exit 1
+	fi
+	"$zellij_prefix/bin/zellij" --version || exit 1
+	mkdir -p "$HOME/.local/bin" || exit 1
+	zellij_stage=$(mktemp "$HOME/.local/bin/.zellij-XXXXXX") || exit 1
+	trap 'rm -f "$zellij_stage"' EXIT
+	install -m 755 "$zellij_prefix/bin/zellij" "$zellij_stage" || exit 1
+	mv -f "$zellij_stage" "$HOME/.local/bin/zellij" || exit 1
+)
+
+install_zellij_from_release() (
+	local zellij_arch zellij_target zellij_stage zellij_url
+	case "$(uname -m)" in
+		x86_64) zellij_arch=x86_64 ;;
+		arm64|aarch64) zellij_arch=aarch64 ;;
+		*) echo "Unsupported Zellij architecture" >&2; exit 1 ;;
+	esac
+	case "$(uname -s)" in
+		Darwin) zellij_target="$zellij_arch-apple-darwin" ;;
+		Linux) zellij_target="$zellij_arch-unknown-linux-musl" ;;
+		*) echo "Unsupported Zellij OS" >&2; exit 1 ;;
+	esac
+	zellij_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$zellij_stage"' EXIT
+	zellij_url="https://github.com/zellij-org/zellij/releases/download/v$1/zellij-$zellij_target.tar.gz"
+	curl -fsSL "$zellij_url" -o "$zellij_stage/zellij.tar.gz" || exit 1
+	curl -fsSL "${zellij_url%.tar.gz}.sha256sum" -o "$zellij_stage/release.sha256sum" || exit 1
+	tar --no-same-owner -xzf "$zellij_stage/zellij.tar.gz" -C "$zellij_stage" || exit 1
+	# Upstream checksums identify the extracted binary by its CI build path.
+	awk '$1 ~ /^[[:xdigit:]]+$/ && length($1) == 64 { print $1 "  zellij"; exit }' \
+		"$zellij_stage/release.sha256sum" > "$zellij_stage/binary.sha256sum"
+	test -s "$zellij_stage/binary.sha256sum" || exit 1
+	cd "$zellij_stage" || exit 1
+	if command -v sha256sum >/dev/null; then
+		sha256sum -c binary.sha256sum || exit 1
+	else
+		shasum -a 256 -c binary.sha256sum || exit 1
+	fi
+	if [ "$(./zellij --version | parse_semver | head -n1)" != "$1" ]; then
+		echo "Zellij release does not report expected version $1" >&2
+		exit 1
+	fi
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 zellij "$HOME/.local/bin/zellij.new" || exit 1
+	mv -f "$HOME/.local/bin/zellij.new" "$HOME/.local/bin/zellij" || exit 1
+)
+
 install_btop_from_release() (
 	case "$os" in
 		macos) brew install btop; exit $? ;;
@@ -544,25 +641,103 @@ install_node_from_release() {
 
 	# Set up nvm environment - must be sourced fresh for new installation
 	export NVM_DIR="$HOME/.nvm"
+	# NOTE: NVM generates these files outside the repository.
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
-	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
-	nvm alias default "$1"
-	nvm use "$1"
+	nvm install "$1" || { echo "Failed to install node@$1 via nvm" >&2; return 1; }
+	nvm alias default "$1" || return 1
+	nvm use "$1" || return 1
+	# WHY: NVM can replace its PATH entry in place, behind another Node executable.
+	export PATH="$NVM_BIN:$PATH"
+	hash -r
 
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
 	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
-
-	# Update hash table so shell can find the new binaries
-	hash -r
 }
 
 install_codex_from_release() {
 	install_package_version node 24 || return 1
 	npm install -g "@openai/codex@$1"
+}
+
+install_firstmate_release() (
+	local tool=$1 version=$2 release_os release_arch stage archive
+	case "$(uname -s)" in
+		Darwin) release_os=darwin ;;
+		Linux) release_os=linux ;;
+		*) echo "Unsupported Firstmate tool OS" >&2; exit 1 ;;
+	esac
+	case "$(uname -m)" in
+		arm64|aarch64) release_arch=arm64 ;;
+		x86_64|amd64) release_arch=amd64 ;;
+		*) echo "Unsupported Firstmate tool architecture" >&2; exit 1 ;;
+	esac
+	stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$stage"' EXIT
+	archive="$tool-v$version-$release_os-$release_arch.tar.gz"
+	local url="https://github.com/kunchenguid/$tool/releases/download/v$version"
+	curl -fsSL "$url/$archive" -o "$stage/$archive" || exit 1
+	curl -fsSL "$url/checksums.txt" -o "$stage/checksums.txt" || exit 1
+	awk -v archive="$archive" '$2 == archive { print }' "$stage/checksums.txt" > "$stage/selected.sha256"
+	test -s "$stage/selected.sha256" || exit 1
+	cd "$stage" || exit 1
+	if command -v sha256sum >/dev/null; then
+		sha256sum -c selected.sha256 || exit 1
+	else
+		shasum -a 256 -c selected.sha256 || exit 1
+	fi
+	tar -xzf "$archive" || exit 1
+	if ! "./$tool" --version; then
+		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
+			echo "Downloaded $tool cannot run on this host" >&2
+			exit 1
+		fi
+		# WHY: Upstream Linux releases may require a newer glibc than this host.
+		echo "Building Treehouse v$version from source for this host"
+		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
+		mkdir source || exit 1
+		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
+		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
+		"./$tool" --version || exit 1
+	fi
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 "$tool" "$HOME/.local/bin/$tool"
+)
+
+install_treehouse_from_release() {
+	install_firstmate_release treehouse "$1"
+}
+
+install_no-mistakes_from_release() {
+	install_firstmate_release no-mistakes "$1"
+}
+
+install_treehouse_tools() {
+	install_package_version treehouse 3.1.6 || return 1
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
+}
+
+install_firstmate_tools() {
+	install_package_version no-mistakes 1.84.0 || return 1
+	local tool version tool_version firstmate_checkout
+	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
+		tool=${tool_version%:*}
+		version=${tool_version#*:}
+		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
+			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
+		fi
+	done
+	if [ ! -e "$firstmate_checkout" ]; then
+		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
+		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
+	fi
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
 }
 
 claude-code_current_semver() {
@@ -585,6 +760,16 @@ install_bash-language-server_from_release() {
 	install_package_version node 24
 	npm install -g "bash-language-server@$1"
 }
+
+install_mmdc_from_release() (
+	install_package_version node 24 || exit 1
+	npm install -g --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
+	local mermaid_root
+	mermaid_root=$(npm root -g) || exit 1
+	cd "$mermaid_root/@mermaid-js/mermaid-cli/node_modules/puppeteer" || exit 1
+	# WHY: npm can block Puppeteer's browser download; run only that setup explicitly.
+	node install.mjs
+)
 
 install_jq_from_release() (
 	case "$(uname -m)" in
@@ -790,6 +975,8 @@ install_cargo_from_release() {
 	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y ||
 		{ rm -f "$rust_stage"; return 1; }
 	rm -f "$rust_stage"
+	# NOTE: rustup generates this file outside the repository.
+	# shellcheck disable=SC1091
 	source "$HOME"/.cargo/env
 }
 
@@ -817,31 +1004,43 @@ prepare_bootstrap_environment() {
 	# Reuse an NVM default without changing the checked-in shell profiles.
 	if [ -s "$HOME/.nvm/nvm.sh" ]; then
 		export NVM_DIR="$HOME/.nvm"
+		# NOTE: NVM generates this file outside the repository.
+		# shellcheck disable=SC1091
 		source "$NVM_DIR/nvm.sh"
+		if [ -n "${NVM_BIN:-}" ]; then
+			export PATH="$NVM_BIN:$PATH"
+			hash -r
+		fi
 	fi
 }
 
 install_build_dependencies() {
+	if [ "$os" = macos ]; then
+		brew install cmake pkg-config openssl@3
+		return $?
+	fi
 	[ "$os" = linux ] || return 0
+	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
 	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
 	fi
+}
+
+install_macos_window_tool() {
+	[ "$os" = macos ] || { echo "$1 requires macOS" >&2; return 1; }
+	command -v "$1" >/dev/null && return 0
+	command -v brew >/dev/null || { echo "Homebrew is required to install $1" >&2; return 1; }
+	brew install "koekeishiya/formulae/$1"
 }
 
 install_macos_window_tools() {
 	[ "$os" = macos ] || return 0
-	local tool
-	for tool in yabai skhd; do
-		command -v "$tool" >/dev/null && continue
-		if ! command -v brew >/dev/null; then
-			echo "Homebrew is required to install $tool" >&2
-			return 1
-		fi
-		brew install "koekeishiya/formulae/$tool" || return 1
-	done
+	install_macos_window_tool yabai && install_macos_window_tool skhd
 }
 
 install_hack_nerd_font() (
@@ -895,80 +1094,65 @@ setup_neovim() (
 		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
 )
 
-install_dependencies() {
-	# install rust
+install_config_runtime() {
+	# The configuration parser needs Python 3.11+ even on older system images.
+	install_package_version uv 0.12.11 || return 1
+	uv python install 3.12 --default || return 1
+	hash -r
+}
+
+install_rust_runtime() {
+	local minimum=$1 rust_version
 	if ! command -v rustup >/dev/null; then
-		local rust_version
 		rust_version=$(rust_current_semver) || rust_version=""
-		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" 1.93.1; then
-			rust_version=1.93.1
+		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" "$minimum"; then
+			rust_version=$minimum
 		fi
-		install_cargo_from_release "$rust_version"
+		install_cargo_from_release "$rust_version" || return 1
 	fi
-	install_package_version cargo 1.93.1
-	install_package_version uv 0.12.11
-	uv python install 3.12 --default
-	install_package_version node 24
-	install_package_version go 1.26.2
-	local go_bin
-	go_bin=$(go env GOBIN)
-	if [ -z "$go_bin" ]; then
-		go_bin=$(go env GOPATH)
-		go_bin="${go_bin%%:*}/bin"
-	fi
-	export PATH="$go_bin:$PATH"
+	install_package_version cargo "$minimum"
+}
 
-	# AI coding tools, installed before Make links their configuration.
-	install_package_version codex 0.162.0
-	install_package_version claude-code 2.1.295
-
-	# terminal candy
-	if ! command -v tmux >/dev/null; then
-		install_from_package_manager tmux || return 1
-	fi
-	install_macos_window_tools || return 1
-	install_hack_nerd_font || return 1
-	install_package_version btop 1.4.7
-	install_package_version fzf 0.59.0
-	install_package_version starship 1.22.1
-	install_package_version atuin 18.21.0
-	install_package_version skim 0.16.0
-	install_package_version git-delta 0.18.2
-	install_package_version glow 2.0.0
-	install_package_version bat 0.25.0
-	install_package_version fd 10.2.0
-	install_package_version eza 0.20.19
-	install_package_version zsh-autosuggestions 0.7.1
-
-	# rust development tools
-	install_package_version cargo-sweep 0.7.0
-	install_package_version cargo-cache 0.8.3
-
-	# command candy
-	install_package_version gh 2.66.0
-	install_package_version git-crypt 0.8.0
-	install_package_version jq 1.7.1
-	install_package_version yq 4.45.4
-	install_package_version ripgrep 14.1.0
-	install_package_version stylua 2.0.2
-
-	# editor
-	install_package_version neovim 0.12.5 # Treesitter's main branch requires 0.12+
-	install_package_version shfmt 3.10.0
-	install_package_version bash-language-server 5.4.3       # bash/sh
-	install_package_version rust-analyzer 1.84.1             # rust
-	install_package_version typescript-language-server 4.3.3 # typescript
-	install_package_version gopls 0.23.0                     # go
-	install_package_version gotestsum 1.13.0                 # go test runner with color
-	install_package_version yaml-language-server 0.16.0      # yaml
-	install_package_version ctags-lsp 0.6.1                  # ctags fallback
-	install_package_version tree-sitter-cli 0.27.0           # nvim-treesitter TSInstall parser builds
-
-	# tools
-	install_package_version hexyl 0.16.0
-	install_package_version direnv 2.35.0
-	install_package_version just 1.40.0
-
+install_dependencies() {
+	install_config_runtime || return 1
+	load_dotfiles_config || return 1
+	local tool installer package version go_bin
+	while IFS=$'\t' read -r tool installer package version; do
+		[ -n "$tool" ] || continue
+		echo "Configuring tool: $tool"
+		case "$installer" in
+			npm)
+				current_npm_version=$(npm list --global --prefix "$HOME/.local" "$package" --depth=0 --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version || ""))' "$package") || current_npm_version=
+				if [ "$current_npm_version" != "$version" ]; then
+					npm install --global --prefix "$HOME/.local" "$package@$version" || return 1
+				fi
+				;;
+			package) install_package_version "$package" "$version" || return 1 ;;
+			system)
+				if ! command -v "$package" >/dev/null; then
+					install_from_package_manager "$package" || return 1
+				fi
+				;;
+			config) ;;
+			build) install_build_dependencies || return 1 ;;
+			rust) install_rust_runtime "$version" || return 1 ;;
+			go)
+				install_package_version go "$version" || return 1
+				go_bin=$(go env GOBIN)
+				if [ -z "$go_bin" ]; then
+					go_bin=$(go env GOPATH)
+					go_bin="${go_bin%%:*}/bin"
+				fi
+				export PATH="$go_bin:$PATH"
+				;;
+			zellij) install_zellij_runtime || return 1 ;;
+			font) install_hack_nerd_font || return 1 ;;
+			treehouse) install_treehouse_tools || return 1 ;;
+			firstmate) install_firstmate_tools || return 1 ;;
+			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
+			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
+		esac
+	done <<< "$DOTFILES_INSTALL_PLAN"
 }
 
 setup_atuin_sync() {
@@ -1044,21 +1228,45 @@ setup_bedrock_router() (
 	fi
 )
 
+run_configured_hooks() {
+	local configuration_root=${2:-$HOME/.files}
+	local hooks=$1 hook
+	for hook in ${hooks//,/ }; do
+		case "$hook" in
+			github-auth) setup_gh_auth || return 1 ;;
+			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
+			bedrock-router) setup_bedrock_router || return 1 ;;
+			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
+			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
+			neovim) setup_neovim || return 1 ;;
+			atuin-sync) setup_atuin_sync || return 1 ;;
+			zellij-status)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+					make -C "$configuration_root" zellij-status || return 1
+					make -C "$configuration_root" zellij-config || return 1
+				fi
+				;;
+			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
+			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
+		esac
+	done
+}
+
+dotfiles_has_tool() {
+	case ",$DOTFILES_TOOLS," in
+		*",$1,"*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 post_install_setup() {
-	setup_bedrock_router || return 1
-	make -C "$HOME/.files" agent-status-broker || return 1
-	setup_kitty_terminfo || return 1
-	setup_neovim || return 1
-	setup_atuin_sync || return 1
-	local sql_format_uv
-	sql_format_uv=$(command -v uv) || sql_format_uv="$HOME/.local/bin/uv"
-	make -C "$HOME/.files" sql-formatters UV="$sql_format_uv" || return 1
+	run_configured_hooks "$DOTFILES_POST_HOOKS" "${1:-$HOME/.files}" || return 1
 	echo ""
-	echo "🎉 Bootstrap installation completed!"
+	echo "🎉 Dotfiles installation completed!"
 	echo ""
 
 	# Setup GitHub CLI authentication if not already done
-	if command -v gh &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null; then
 		setup_gh_auth
 	fi
 
@@ -1066,26 +1274,40 @@ post_install_setup() {
 	echo "📝 Next steps:"
 	echo "  1. Restart your shell or run: source ~/.zshrc"
 	echo "  2. Configure your tools as needed"
-	if command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
 		echo "  3. Authenticate with GitHub: gh auth login"
 	fi
 	echo ""
 }
 
-# Detect if the user is running the script directly
+bootstrap_dotfiles() {
+	local stage=${1:-bootstrap} root
+	if [ "$#" -gt 1 ] || { [ "$stage" != bootstrap ] && [ "$stage" != install ]; }; then
+		printf 'Usage: bash bootstrap.sh [bootstrap|install]\n' >&2
+		return 2
+	fi
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	case "$stage" in
+		bootstrap)
+			# No machine configuration or optional tool setup is needed here.
+			export PATH="$HOME/.local/bin:$PATH"
+			make -C "$root" base || return 1
+			install_config_runtime || return 1
+			printf '\nBootstrap complete. Run make install to install the selected tool sets.\n'
+			;;
+		install)
+			prepare_bootstrap_environment
+			install_dependencies || return 1
+			# Selected integrations prepare credentials before Make links configuration.
+			run_configured_hooks "$DOTFILES_PREPARE_HOOKS" || return 1
+			make -C "$root" configure || return 1
+			post_install_setup "$root"
+			;;
+	esac
+}
+
+# Sourcing this file exposes installers without starting either stage.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 	set -eo pipefail
-	if [ -d "$HOME"/.files ]; then
-		git -C "$HOME"/.files pull
-	else
-		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
-	fi
-	prepare_bootstrap_environment
-	install_build_dependencies
-	install_dependencies
-	# Private standalone tool releases need access before Make installs them.
-	setup_gh_auth
-	setup_bedrock_credentials
-	make -C "$HOME"/.files
-	post_install_setup
+	bootstrap_dotfiles "$@"
 fi

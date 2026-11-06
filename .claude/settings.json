@@ -39,6 +39,7 @@
   },
   "model": "claude-sonnet-5-5",
   "enableAllProjectMcpServers": true,
+  "disableClaudeAiConnectors": true,
   "hooks": {
     "SessionStart": [
       {
@@ -47,6 +48,15 @@
           {
             "type": "command",
             "command": "command -v python3 >/dev/null 2>&1 && \"$HOME/.files/bin/claude-session-start-hook\" || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -58,6 +68,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-notification-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -111,6 +130,15 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "Stop": [
@@ -122,6 +150,15 @@
             "command": "$HOME/.files/bin/claude-stop-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "StopFailure": [
@@ -130,6 +167,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-stop-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -143,6 +189,15 @@
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -152,6 +207,15 @@
           {
             "type": "command",
             "command": "$HOME/.files/bin/claude-tmux-state-hook"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
           }
         ]
       }
@@ -174,6 +238,37 @@
             "command": "$HOME/.files/bin/claude-sandbox-bypass-narration-hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.files/bin/claude-zellij-title-hook\"",
+            "timeout": 4
+          }
+        ]
       }
     ]
   },
@@ -189,9 +284,9 @@
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": false,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
-    "claude-mem@thedotmack": true,
+    "claude-mem@thedotmack": false,
     "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false,
@@ -200,7 +295,7 @@
     "feature-dev@claude-plugins-official": true,
     "viewrule@viewrule": true,
     "bigquery@easypost-sandbox": false,
-    "looker@easypost-sandbox": true
+    "looker@easypost-sandbox": false
   },
   "extraKnownMarketplaces": {
     "agent-plugins-for-aws": {

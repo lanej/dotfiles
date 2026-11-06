@@ -1,10 +1,11 @@
 name: Viewrule integration
 on:
+  workflow_dispatch:
   pull_request:
-    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', '.github/workflows/ui-review.yml']
   push:
     branches: [master]
-    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', 'Makefile', '.github/workflows/ui-review.yml']
+    paths: ['bin/ui-review', 'scripts/*viewrule.py', 'claude/ui-review/**', 'ai/skills/ui-review/**', '.claude/settings.json', '.github/workflows/ui-review.yml']
 permissions:
   contents: read
 jobs:
@@ -12,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - run: make test-ui-review

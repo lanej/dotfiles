@@ -102,7 +102,7 @@ Would you like to:
 
 If user wants to commit:
 - Use the existing /git:commit workflow
-- Invoke git-commit-message-writer agent for message
+- Write the commit message directly from the staged diff
 - Create the commit
 
 ## Review Criteria

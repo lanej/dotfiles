@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 0 ]; then
+    printf 'Usage: %s\n' "$0" >&2
+    exit 2
+fi
+
+zellij_revision=dfc4f414c1a9386b07911ebd3cfb4e7aaa4289f5
+zellij_toolchain=1.95.0
+
+rustup toolchain install "$zellij_toolchain" --profile minimal
+# Override inherited cross-compilation settings when installing a local runtime.
+zellij_host=$(rustup run "$zellij_toolchain" rustc -vV | sed -n 's/^host: //p')
+if [ -z "$zellij_host" ]; then
+    printf '%s\n' 'The Rust compiler did not report its host target.' >&2
+    exit 1
+fi
+
+export CARGO_TARGET_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target"
+export CARGO_PROFILE_RELEASE_LTO=false
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+
+install_flags=(--locked)
+if [ -e "$HOME/.local/bin/zellij" ] || [ -L "$HOME/.local/bin/zellij" ]; then
+    installed=$(rustup run "$zellij_toolchain" cargo install --list --root "$HOME/.local")
+    # WHY: Only unmanaged binaries need --force; Cargo can skip a matching owned install.
+    if ! grep -Fxq '    zellij' <<< "$installed"; then
+        install_flags+=(--force)
+    fi
+fi
+rustup run "$zellij_toolchain" cargo install \
+    --git https://github.com/lanej/zellij.git \
+    --rev "$zellij_revision" \
+    "${install_flags[@]}" \
+    --root "$HOME/.local" \
+    --target "$zellij_host" \
+    --no-default-features \
+    --features plugins_from_target,vendored_curl,web_server_capability \
+    --bin zellij zellij
+
+printf '%s\n' 'Restart existing Zellij sessions to use the installed runtime.'

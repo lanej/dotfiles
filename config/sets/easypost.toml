@@ -1,0 +1,7 @@
+[codex]
+github_enabled = false
+easypost = true
+
+[tools]
+ep-direnv = true
+bedrock = true
