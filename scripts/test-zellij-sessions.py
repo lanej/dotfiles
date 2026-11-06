@@ -95,9 +95,35 @@ def open_popup(terminal):
     terminal.until("popup renders its ready shell", lambda:
                    f"{POPUP}:zellij-ready> ".encode() in terminal.output[rendered:])
     # Confirm the guest through the CLI, then its host's nesting-focus indication.
-    terminal.until("popup client attaches to its ready shell", lambda:
-                   bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
-                   and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
+    try:
+        terminal.until("popup client attaches to its ready shell", lambda:
+                       bool(terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
+                       and "zellij-ready>" in terminal.action("dump-screen", session=POPUP))
+    except AssertionError as error:
+        # Keep the failing predicate intact. Snapshot both halves separately,
+        # then compare the default dump with explicit terminal panes before
+        # cleanup removes the isolated session.
+        def snapshot(*args):
+            try:
+                return terminal.action(*args, session=POPUP)
+            except Exception as diagnostic_error:
+                return f"Diagnostic failed: {diagnostic_error!r}"
+
+        observations = {
+            "list-clients": snapshot("list-clients"),
+            "default dump-screen": snapshot("dump-screen"),
+            "list-panes": snapshot("list-panes", "--json"),
+        }
+        try:
+            panes = json.loads(observations["list-panes"])
+            observations["terminal dumps"] = {
+                str(pane["id"]): snapshot("dump-screen", "--pane-id", str(pane["id"]))
+                for pane in panes if not pane["is_plugin"]
+            }
+        except Exception as diagnostic_error:
+            observations["terminal dumps error"] = repr(diagnostic_error)
+        raise AssertionError(f"{error}\nPopup readiness snapshot:\n"
+                             f"{json.dumps(observations, indent=2)}") from error
     # The shell can render before native nesting registration finishes. Wait
     # for its acknowledged host before sending keys intended for the guest.
     def nested_ready():

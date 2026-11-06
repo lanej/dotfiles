@@ -105,7 +105,7 @@ firstmate-config: treehouse-config zellij-config
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
 .PHONY: pi-config firstmate-mobile-config test-firstmate-github
-pi-config:
+pi-config: pi-resources
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 firstmate-mobile-config: firstmate-config pi-config
@@ -472,3 +472,11 @@ epenv: ep-direnv
 .PHONY: test-ssh-agent
 test-ssh-agent:
 	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"
+
+# Pi shares the existing skill catalog without a second copy.
+.PHONY: pi pi-resources test-pi-resources
+pi: pi-resources
+pi-resources: codex-skills
+	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
+test-pi-resources:
+	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"

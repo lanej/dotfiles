@@ -751,6 +751,11 @@ install_claude-code_from_release() (
 	bash "$claude_stage" "$1" || exit 1
 )
 
+install_pi_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
+}
+
 install_stylua_from_release() {
 	install_package_version node 24
 	npm install -g "@johnnymorganz/stylua-bin@$1"
