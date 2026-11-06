@@ -13,7 +13,13 @@ import tempfile
 
 
 SOURCE = Path(__file__).resolve().parents[1]
-SKILLS = ("builder", "architecture", "pr-writer")
+DEFAULT_SKILLS = ("builder", "architecture", "pr-writer")
+SKILLS = DEFAULT_SKILLS + ("go",)
+GO_FILES = {
+    ".golangci.yml": "golangci.yml",
+    "scripts/check-go.sh": "check-go.sh",
+    ".github/workflows/go-quality.yml": "go-quality.yml",
+}
 STATE = ".agents/repo-bootstrap.json"
 START = "# dotfiles repo-bootstrap: start"
 END = "# dotfiles repo-bootstrap: end"
@@ -64,7 +70,7 @@ def allowed_path(relative):
             or ".." in path.parts or str(path) != relative):
         return False
     if relative in (".github/pull_request_template.md",
-                    ".agents/templates/pull_request_template.md"):
+                    ".agents/templates/pull_request_template.md", *GO_FILES):
         return True
     return any(relative.startswith(f".agents/skills/{skill}/")
                or relative == f".claude/skills/{skill}" for skill in SKILLS)
@@ -96,7 +102,7 @@ def read_state(root):
     return state, snapshot
 
 
-def package(skills, agents, template):
+def package(skills, agents, template, go_profile=False):
     """Assemble from canonical sources; only installation paths are adapted."""
     files = {}
     payloads = {}
@@ -144,6 +150,9 @@ def package(skills, agents, template):
     if template != "none":
         directory = ".github" if template == "github" else ".agents/templates"
         add(f"{directory}/pull_request_template.md", SOURCE / "ai/templates/pull_request_template.md")
+    if go_profile:
+        for destination, name in GO_FILES.items():
+            add(destination, SOURCE / "ai/skills/go/assets" / name)
     return files, payloads
 
 
@@ -268,9 +277,19 @@ def install(args):
         raise ValueError("unknown skills: " + ", ".join(sorted(unknown)))
     if "architecture" in skills:
         skills.add("builder")
+    go_profile = args.go if args.go is not None else (
+        state.get("go_profile", False) or (root / "go.mod").is_file())
+    if go_profile:
+        skills.add("go")
     agents = {"codex", "claude"} if args.agents == "both" else {"codex"}
     template = args.pr_template or ("local" if mode == "local" else "github")
-    desired, payloads = package(sorted(skills), agents, template)
+    desired, payloads = package(sorted(skills), agents, template, go_profile)
+    if go_profile:
+        alternate_configs = [name for name in (".golangci.yaml", ".golangci.toml", ".golangci.json")
+                             if (root / name).exists() or (root / name).is_symlink()]
+        if alternate_configs:
+            raise ValueError("existing Go lint configuration: " + ", ".join(alternate_configs)
+                             + "; reconcile it or use --no-go to install guidance only")
     if template == "github":
         conflicts = template_conflicts(root)
         if conflicts:
@@ -321,7 +340,8 @@ def install(args):
     new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
     check_visibility(root, paths if initializing or mode == "local" else paths - tracked, new_exclude, mode)
     revision = git(SOURCE, "rev-parse", "HEAD", check=False).stdout.strip() or "unknown"
-    new_state = {"version": 1, "mode": mode, "source_revision": revision, "files": managed}
+    new_state = {"version": 1, "mode": mode, "source_revision": revision,
+                 "go_profile": go_profile, "files": managed}
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
 
@@ -387,7 +407,9 @@ def main():
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
     parser.add_argument("--init", action="store_true", help="create a Git repository if the target is not one")
     parser.add_argument("--mode", choices=("tracked", "local"), help="shareable files or local Git exclusions (default: previous mode, else tracked)")
-    parser.add_argument("--skills", default=",".join(SKILLS), help="comma-separated skill names: " + ", ".join(SKILLS))
+    parser.add_argument("--skills", default=",".join(DEFAULT_SKILLS), help="comma-separated skill names: " + ", ".join(SKILLS))
+    parser.add_argument("--go", action=argparse.BooleanOptionalAction, default=None,
+                        help="install Go correctness checks (default: root go.mod or previously installed); --no-go keeps existing checks")
     parser.add_argument("--agents", choices=("codex", "both"), default="both", help="Codex skills only, or add Claude aliases (default: both)")
     parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
     parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")

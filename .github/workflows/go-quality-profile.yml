@@ -1,0 +1,42 @@
+name: Go correctness profile
+
+on:
+  pull_request:
+    paths:
+      - 'ai/skills/go/**'
+      - 'bin/repo-bootstrap'
+      - 'scripts/test-go-quality.py'
+      - '.github/workflows/go-quality-profile.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ai/skills/go/**'
+      - 'bin/repo-bootstrap'
+      - 'scripts/test-go-quality.py'
+      - '.github/workflows/go-quality-profile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  go-quality-profile:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cache/go-quality
+            ~/go/pkg/mod
+            ~/Library/Caches/go-build
+            ~/.cache/go-build
+          key: go-profile-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ai/skills/go/assets/check-go.sh') }}
+      - run: python3 scripts/test-go-quality.py

@@ -57,6 +57,10 @@ test-dotfiles-config:
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
 
+.PHONY: test-go-quality
+test-go-quality:
+	@python3 "$(DOTFILES)/scripts/test-go-quality.py"
+
 test-dotfiles-config-editor:
 	$(call require-command,nvim)
 	$(call require-command,taplo)

@@ -184,6 +184,8 @@ Bootstrap or retrofit a repository with portable Builder, architecture, and PR-w
 
 The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [repository bootstrap guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades.
 
+Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `repo-bootstrap --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. See [Go correctness defaults](ai/skills/go/references/correctness.md).
+
 ## Shared shell history
 
 With the Atuin recipe selected, `make install` configures sharing when an explicit sync host or saved account is available.

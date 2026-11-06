@@ -1,0 +1,87 @@
+# Go correctness profile. Tool versions are pinned in scripts/check-go.sh.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  # WHY: Review changes to the check set instead of inheriting new style rules.
+  default: none
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gosec
+    - govet
+    - ineffassign
+    - loggercheck
+    - makezero
+    - nilerr
+    - nilnesserr
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - predeclared
+    - reassign
+    - recvcheck
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+    - staticcheck
+    - testifylint
+    - tparallel
+    - unconvert
+    - unused
+    - usetesting
+    - wastedassign
+    - zerologlint
+  settings:
+    exhaustive:
+      check: [switch, map]
+      default-signifies-exhaustive: false
+      default-case-required: true
+    gochecksumtype:
+      default-signifies-exhaustive: false
+      include-shared-interfaces: true
+    errcheck:
+      check-blank: true
+      check-type-assertions: true
+      disable-default-exclusions: true
+    govet:
+      enable-all: true
+      disable: [fieldalignment]
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    testifylint:
+      enable-all: true
+  exclusions:
+    generated: strict
+    presets: []
+    warn-unused: true
+
+formatters:
+  enable: [gofumpt, goimports]
+  exclusions:
+    generated: strict
+
+issues:
+  # WHY: Agents need the complete finding set to fix a batch in one iteration.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false

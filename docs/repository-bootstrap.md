@@ -57,11 +57,25 @@ repo-bootstrap --repo ~/src/app --mode tracked --pr-template none
 repo-bootstrap --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts `builder`, `architecture`, and `pr-writer`, comma-separated. These are curated portable packages, not an automatic copy of every workstation-specific skill. The default selects all three. The source entrypoints live under `ai/skills`; installation bundles the existing writer roles and documentation without maintaining another copy of their policy in dotfiles.
+`--skills` accepts `builder`, `architecture`, `pr-writer`, and `go`, comma-separated. These are curated portable packages, not an automatic copy of every workstation-specific skill. The default selects all three. The source entrypoints live under `ai/skills`; installation bundles the existing writer roles and documentation without maintaining another copy of their policy in dotfiles.
 
 GitHub only discovers committed templates on the repository's default branch. A local drafting template is not a GitHub default. The supplied template contains removable drafting prompts, without mandatory headings or checklists. Fill it with the change's outcome and motivation, then remove the comments before publishing.
 
 When installing a GitHub template, alternate templates in the repository root, `docs`, or `.github` cause an explicit conflict, including multiple-template directories. Choose `--pr-template none` or `local` to retain the existing selection. An existing `.github/pull_request_template.md` uses the same conflict policy as other files.
+
+## Go correctness profile
+
+A repository with a root `go.mod` automatically receives the Go skill, `.golangci.yml`, `scripts/check-go.sh`, and `.github/workflows/go-quality.yml`. For a new Go repository before its module exists:
+
+```sh
+repo-bootstrap --repo ~/src/new-go-project --init --go
+```
+
+Run `bash scripts/check-go.sh lint` while editing, `bash scripts/check-go.sh fmt` to apply formatting, and `bash scripts/check-go.sh` before delivery. The workflow runs that same full command: formatting and module tidiness, strict lint including exhaustive enums and declared sum types, uncached race tests, and vulnerability analysis. Tools are pinned and cached outside the project; initial setup needs Go and network access, and race tests need cgo plus a C compiler. See [the Go correctness guide](../ai/skills/go/references/correctness.md) for coverage and limits.
+
+Existing configs and workflow paths use the same preflight/conflict policy as skills. Alternate `.golangci.yaml`, `.golangci.toml`, or `.golangci.json` files require manual reconciliation. Use `--no-go` to retain the project's checks; `--skills go --no-go` installs only the Go guidance. Reruns remember explicit profile adoption. `--no-go` stops updates to the root checks without uninstalling previously copied files, following the additive policy below.
+
+Local mode can provide local checks, but hidden files do not enforce CI for other checkouts. Commit a tracked installation and make the `Go quality` job required in repository branch rules to enforce a merge gate. Bootstrap does not change GitHub settings. The default runner covers one root module on its host platform; adapt it for nested modules, build tags, platform variants, native dependencies, and required integration tests.
 
 ## Update without losing repository edits
 
@@ -86,6 +100,7 @@ The manifest records content hashes, not proof of origin or security. Keep it wi
 
 ```sh
 make test-repo-bootstrap
+make test-go-quality  # real analyzers, downloads pinned tools on first run
 ```
 
 The single acceptance workflow exercises the real command: bootstrap and clone a tracked installation, resolve its local Markdown resources, run Builder's bundled examples, retrofit a linked worktree, preserve project policy, update unchanged resources, protect and explicitly replace local edits with backups, and verify effective Git exclusion and tracking behavior. It does not invoke an agent model or establish that every client version discovers or follows the instructions.

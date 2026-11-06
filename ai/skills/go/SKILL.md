@@ -1,12 +1,23 @@
 ---
 name: go
-description: Go development conventions including gotestsum for testing, standard tooling (gofmt, go vet, -race flag), and best practices for the Go environment. Use when developing, testing, or debugging Go code. Don't use for deployment, containerization, or Rust/Python projects.
+description: Use when creating, modifying, testing, or reviewing Go code. Apply the portable Go correctness profile with exhaustive enums and sum types, strict error handling, security analysis, race tests, and vulnerability checks; preserve repository-specific policy.
 ---
 
 # Go
 
-Standard `go` tooling works as documented. This file covers the test-runner preference and the
-flags that matter in this workspace.
+Use the repository's Go checks early and before handoff. For a new Go project, adopt the portable profile in `assets/`: copy `golangci.yml` to `.golangci.yml`, `check-go.sh` to `scripts/check-go.sh`, and `go-quality.yml` to `.github/workflows/go-quality.yml`. The dotfiles `repo-bootstrap --go` command installs these with safe conflict handling; it also detects a root `go.mod` automatically. Commit the checks with the project so other machines and CI use the same policy.
+
+Preserve and extend existing project checks; reconcile an existing configuration instead of replacing or weakening it. For nested modules, workspaces, build tags, platform-specific code, or native dependencies, adapt the checks and CI matrix to the actual build surfaces. The supplied runner covers one root module on its host platform. Run relevant extra configurations explicitly.
+
+## Correctness checks
+
+Run `bash scripts/check-go.sh lint` during implementation, `bash scripts/check-go.sh fmt` to apply formatting, and `bash scripts/check-go.sh` before delivery. The same full command runs in CI: formatting, module tidiness, strict lint, uncached race tests, and reachable-vulnerability analysis. `test` and `vuln` modes isolate failures. Read [the correctness guide](references/correctness.md) when adopting, tuning, or explaining the profile.
+
+The runner caches pinned tools outside the project, verifies the linter release checksum, and keeps tool dependencies out of the application's `go.mod`. Initial setup and vulnerability analysis need network access. Missing tools, unavailable dependencies, or failed checks are failures to resolve or report; never silently skip a gate. Preserve all findings for batch repairs. Do not reduce scope to new lines or exclude tests to make CI pass.
+
+Use a named type and typed constants for simple enums. Give zero an intentional meaning or treat it as invalid. Handle every declared value explicitly in switches and enum-keyed maps; a `default` branch must not substitute for a missing declared case. Handle out-of-set values at runtime too: `State(99)` can still compile. For variants carrying different data, use an interface marked `//sumtype:decl` with an unexported marker method and concrete variants; require exhaustive type switches with `gochecksumtype`.
+
+Fix findings at their cause. Use only narrowly scoped suppressions with the named linter and a concrete rationale, including intentional partial enum maps. Do not blanket-disable rules or loosen checks merely to obtain green output. Static analysis and passing tests cannot prove domain correctness or cover unexecuted race paths; retain independent behavioral expectations and meaningful tests.
 
 ## Use `gotestsum`, not bare `go test`
 
@@ -25,15 +36,15 @@ gotestsum --junitfile=junit.xml ./...   # CI
 `--rerun-fails` is for *diagnosing* a flake, not for making CI green. A test that only passes on
 re-run is a bug to fix.
 
-## Pre-commit sequence
+## Existing projects without the profile
 
 ```bash
-gofmt -l .          # non-empty output = unformatted files
+gofmt -l .          # inspect output; this command alone does not fail on differences
 go vet ./...
 gotestsum -- -race ./...
 ```
 
-`-race` matters: Go's data races are silent until they aren't, and CI rarely reproduces them.
+Treat unformatted output as a failed check. Run the project's existing linter and security checks as well. The fallback above does not provide exhaustive-match enforcement; adopt the profile or reconcile equivalent checks before claiming those protections.
 
 ## Coverage
 
@@ -49,15 +60,12 @@ frequently a stale gopls index, not a real error — gopls doesn't reliably inva
 index the instant another process writes and commits new Go source. Recurring pattern, confirmed 7+
 times in one session (`fraud-detector`, 2026-09-26).
 
-**Fix:** Never trust the diagnostic at face value. A plain `go test ./...` reporting `(cached)` PASS
-is not sufficient evidence either — it proves the code passed at some earlier point, not that it
-reflects the current tree. Force a non-cached run before treating the diagnostic as real:
+**Fix:** Check with the actual compiler before treating the diagnostic as real. Go's build and test caches are content-addressed; `(cached)` is not itself evidence that a changed source tree was ignored. Use an uncached test run when resolving uncertainty:
 ```bash
-go build -a ./...          # -a forces rebuild of all packages, bypasses build cache
+go build ./...
 go test ./... -count=1     # -count=1 disables test result caching
 ```
-Clean run = diagnostic was stale, proceed. Reproduced failure = real, fix it. (detail: memory
-"feedback_go_stale_lsp_diagnostics")
+If both pass, investigate editor state rather than rewriting valid code. If the compiler reproduces the failure, fix it.
 
 ## Environment
 
