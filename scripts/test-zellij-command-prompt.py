@@ -263,18 +263,24 @@ def exercise(first, second, home):
     second.until('history belongs to second client', lambda: 'second named tab' in text(second))
     assert 'toggle-floating-panes' not in text(second), 'History leaked from first client'
     second.send(b'\x1b')
+    second.until('history dialog closes before reload', lambda: 'Zellij command' not in text(second))
 
     # Reload an observable ordinary binding in both clients, then verify the
     # plugin's private binding is restored independently for both of them.
+    # Observe native tab state, not shell echo: Ctrl-r before the reload enters
+    # Bash's reverse search and its display can obscure subsequently typed text.
     config = home / '.config/zellij/config.kdl'
-    refreshed = configuration().replace('locked {', 'locked {\n bind "Ctrl r" { WriteChars "reload-observed"; }', 1)
+    marker = 'reload-observed'
+    name_bytes = ' '.join(str(byte) for byte in marker.encode())
+    binding = f'\n bind "Ctrl r" {{ TabNameInput 0; TabNameInput {name_bytes}; }}'
+    refreshed = configuration().replace('locked {', 'locked {' + binding, 1)
     config.write_text(refreshed)
-    for client in (first, second):
+    for client, tab_id in ((first, initial_tab), (second, other_tab)):
         def reload_observed():
             client.send(b'\x12')
-            return 'reload-observed' in text(client)
+            return tabs()[tab_id]['name'] == marker
         client.until('client observes configuration reload', reload_observed)
-        client.send(b'\x15')
+        client.send(b'\x03')
     submit(first, 'rename-tab "first after reload"', second)
     first.until('first binding survives reload', lambda: tabs()[initial_tab]['name'] == 'first after reload')
     submit(second, 'rename-tab "second after reload"', first)
