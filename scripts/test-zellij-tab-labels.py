@@ -161,8 +161,9 @@ def main():
             clients = subprocess.run([sys.executable, "-c",
                                       "import json, runpy, sys; "
                                       "print(json.dumps(runpy.run_path(sys.argv[1])['client_choices'](sys.argv[2])))",
-                                      str(home / ".local/bin/zellij-picker"), name], env=env, check=True,
+                                      str(home / ".local/bin/zellij-picker"), name], env=env, check=False,
                                      capture_output=True, text=True, timeout=10)
+            assert clients.returncode == 0, f"Client snapshot read failed:\n{clients.stderr}\n{clients.stdout}"
             rows = list(json.loads(clients.stdout).values())
             assert {row.get("tab") for row in rows} == {"9: agent work", "9: Tab #9"}, rows
             other.prefix(b"d")
