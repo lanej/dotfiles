@@ -1,6 +1,6 @@
 # Go correctness defaults
 
-Use the shipped `.golangci.yml` and `scripts/check-go.sh` as the starting point for new Go modules. Keep the copied files in the repository, review upgrades, and run the same full command locally and in CI. Existing project policy remains authoritative; reconcile stronger checks rather than replacing them.
+Use the shipped profile and `scripts/check-go.sh` as the starting point for Go modules. Keep the copied files in the repository, review upgrades, and run the same full command locally and in CI. Existing project policy remains authoritative; reconcile stronger checks rather than replacing them.
 
 ## Protections
 
@@ -12,6 +12,7 @@ Use the shipped `.golangci.yml` and `scripts/check-go.sh` as the starting point 
 | Lifetimes and cancellation | HTTP body, SQL row/statement, tracing span, context propagation, and cancellation analyzers. |
 | Security | `gosec`, Unicode identifier checks, and call-graph-based `govulncheck`. |
 | Concurrency | Vet's copy-lock, atomic, and cancellation checks; context checks; uncached `-race` tests on executed paths. |
+| Readability | `wsl_v5` permits one adjacent setup statement, compact exits for blocks up to two lines, and no mandatory trailing blank line for every switch case. |
 | Tests and diagnostics | Tests are linted; test assertion and parallelism checks are enabled. All findings are reported without per-linter or duplicate caps. |
 | Reproducibility | Pinned tools, strict formatting, read-only lint module resolution, and `go mod tidy -diff`. |
 
@@ -42,17 +43,33 @@ Keep concrete variants in the declaring package and handle nil explicitly when a
 
 ## Workflow and adoption
 
-Run `bash scripts/check-go.sh lint` while editing. Apply formatting with `bash scripts/check-go.sh fmt`, then run the full command before handoff. The full run performs lint first for early feedback, then race tests and vulnerability analysis. `tools` preloads both tools when useful. Tools are cached under `${XDG_CACHE_HOME:-$HOME/.cache}/go-quality`, with independent versioned directories; no dotfiles checkout is needed after installation.
+Prefer `repo-bootstrap --go` for a new module or `repo-bootstrap --go-retrofit --pr-template none` for an existing repository. Bootstrap detects root modules, preserves existing config bytes and comments, merges YAML/JSON v2 policy into a separate strict layer, and retains the original lint gate. Existing configs or tracked Go source default to a ratchet; new projects default to strict. V1 configurations must be migrated first; TOML needs conversion.
 
-The runner pins golangci-lint 2.13.2 and govulncheck v1.9.0. It downloads official golangci-lint release binaries and checks their published SHA-256 before extraction. Govulncheck is built through Go's module tooling at its pinned version, separately from application dependencies. Actions are pinned to commits. Review pins together with the configuration; do not change them to `latest`. The vulnerability database stays live so newly disclosed problems are detected.
+Without dotfiles, copy the following files from this package's assets into a new project. Do not overwrite existing policy; use the installer when retrofitting.
 
-The default runner covers a single root module on macOS or Linux, amd64 or arm64. It disables inherited workspaces so parent `go.work` replacements cannot hide dependencies missing in a fresh checkout. Add explicit module/workspace, build-tag, operating-system, and native-service coverage as needed. Race tests require cgo and a C compiler; a static production build's `CGO_ENABLED=0` setting must not disable this check. Keep required integration checks alongside the default runner. CI uses the Go version specified by `go.mod`.
+| Asset | Project path |
+| --- | --- |
+| `golangci.yml` | `.golangci.yml` |
+| `go-quality.json` | `.go-quality.json` |
+| `check-go.sh` | `scripts/check-go.sh` |
+| `go-quality.py` | `scripts/go-quality.py` |
+| `go-quality.yml` | `.github/workflows/go-quality.yml` |
 
-For a new repository before `go.mod` exists, pass `repo-bootstrap --go --init`. Existing root Go modules opt in automatically during bootstrap; `--no-go` installs the requested guidance without modifying checks. Repeated bootstrap runs remember the profile. Local mode excludes the copied files locally; CI enforcement requires committing them in tracked mode. Existing lint files or workflow paths are preserved by the installer's conflict policy, including alternate `.golangci` extensions.
+Run `bash scripts/check-go.sh lint` while editing. Use `fmt path/to/file.go` to format selected files and `fix ./path/to/package` for available cuddling fixes; inspect the diff. Ratchets reject an unscoped `fmt` to avoid whole-project cleanup. The full command runs lint first for early feedback, then race tests and vulnerability analysis. `test`, `vuln`, and `tools` isolate work.
 
-Make the `Go quality` job required in the repository's branch rules when adopting it as a merge gate. A committed workflow runs checks but does not itself prevent an administrator from merging failed checks. Bootstrap does not change GitHub settings, migrate every existing repository, or install Git hooks.
+For a retrofit, run `bash scripts/check-go.sh baseline` once, against committed existing Go source. This records existing strict lint/style findings without changing Go files. It rejects dirty, untracked, and ignored Go source, an existing baseline, or compilation errors. New files have no allowance; new diagnostics in old files also fail, including untouched consumers invalidated by new enum values. Do not apply changed-line filtering.
 
-Suppress only a particular finding with a concrete explanation, for example `//nolint:errcheck // A bytes.Buffer write cannot fail.` Keep `nolintlint` active to reject unspecified, unexplained, or ineffective suppressions. Native analyzer directives such as `//exhaustive:ignore` also need a local explanation; never use them to hide newly added enum values.
+The baseline counts file/linter/message/source-excerpt signatures rather than line numbers. Moving an unchanged finding remains allowed; indistinguishable replacements can share its budget, and formatter findings may represent a whole file. Treat this as gradual adoption, not proof that all legacy code meets the guide. After fixes, `bash scripts/check-go.sh ratchet` removes resolved allowances; it cannot add new ones. Normal lint requires resolved allowances to be removed; commit that reduction with the fix. Manually enlarging a baseline is a policy weakening, not a way to fix a failed check.
+
+Existing custom rules and build context are merged with the added defaults. The added layer owns its checker settings and defaults, strict reporting, and exclusions; the original gate remains unchanged and runs with fixing disabled. If its config changes, rerun bootstrap to refresh the merged copy. Local mode hides copied files and the baseline; shared CI requires tracked files. Existing workflows remain subject to normal conflict protection.
+
+The runner pins golangci-lint 2.13.2 and govulncheck v1.9.0, verifies the official linter release SHA-256, and builds govulncheck separately from application dependencies. Tools are cached under `${XDG_CACHE_HOME:-$HOME/.cache}/go-quality`. Review upgrades rather than switching to `latest`; the vulnerability database remains live. Initial setup and scans need network access.
+
+Go and Python 3.9+ are required by the portable runner. Config merging uses PyYAML; bootstrap can use the workstation's uv to cache PyYAML 6.0.3 when absent. The default runner covers one root module on macOS or Linux, amd64 or arm64. It sets `GOWORK=off` to avoid hidden parent-workspace replacements. Add explicit module/workspace, build-tag, platform, and integration coverage as required. Race tests need cgo and a C compiler even when production binaries are static.
+
+Make the `Go quality` job required in branch rules to enforce a merge gate. Bootstrap does not change GitHub settings, migrate every existing repository, or install Git hooks. The human-readable [Go style guide](https://lanej.github.io/dotfiles/reference/go-style/) publishes the rationale, defaults, examples, and rollout tradeoffs alongside the dotfiles documentation.
+
+Suppress only a particular finding with a concrete explanation. Keep `nolintlint` active for unspecified, unexplained, or ineffective suppressions. Native directives such as `//exhaustive:ignore` also need a local explanation and must not hide newly added enum values.
 
 ## Limits and sources
 

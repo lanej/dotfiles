@@ -3,10 +3,12 @@
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,7 +21,12 @@ GO_FILES = {
     ".golangci.yml": "golangci.yml",
     "scripts/check-go.sh": "check-go.sh",
     ".github/workflows/go-quality.yml": "go-quality.yml",
+    "scripts/go-quality.py": "go-quality.py",
+    ".go-quality.json": "go-quality.json",
 }
+GO_CONFIGS = (".golangci.yml", ".golangci.yaml", ".golangci.json", ".golangci.toml")
+GO_STRICT = ".golangci.strict.json"
+GO_BASELINE = ".go-quality-baseline.json"
 STATE = ".agents/repo-bootstrap.json"
 START = "# dotfiles repo-bootstrap: start"
 END = "# dotfiles repo-bootstrap: end"
@@ -70,7 +77,7 @@ def allowed_path(relative):
             or ".." in path.parts or str(path) != relative):
         return False
     if relative in (".github/pull_request_template.md",
-                    ".agents/templates/pull_request_template.md", *GO_FILES):
+                    ".agents/templates/pull_request_template.md", GO_STRICT, GO_BASELINE, *GO_FILES):
         return True
     return any(relative.startswith(f".agents/skills/{skill}/")
                or relative == f".claude/skills/{skill}" for skill in SKILLS)
@@ -166,6 +173,59 @@ def template_conflicts(root):
                         and path != root / ".github/pull_request_template.md"):
                     found.append(str(path.relative_to(root)))
     return found
+
+
+def go_configuration(root, state, rollout, desired, payloads):
+    """Layer the profile beside project policy rather than rewriting it."""
+    candidates = [name for name in GO_CONFIGS if inspect(root, name) is not None]
+    if len(candidates) > 1:
+        raise ValueError("multiple existing Go lint configurations; select one before merging: " + ", ".join(candidates))
+    legacy = state.get("go_legacy")
+    if candidates:
+        name = candidates[0]
+        actual = inspect(root, name)
+        if actual["kind"] != "file":
+            raise ValueError(f"preserving linked or non-file Go lint configuration: {name}")
+        if name != ".golangci.yml" or actual != state["files"].get(name):
+            legacy = name
+    if legacy and legacy not in candidates:
+        raise ValueError(f"previous Go lint configuration is missing: {legacy}")
+    if rollout is None:
+        rollout = state.get("go_rollout")
+    if rollout is None:
+        old_source = git(root, "ls-files", "--", "*.go", check=False).stdout.strip()
+        rollout = "ratchet" if legacy or old_source else "strict"
+    if rollout not in ("strict", "ratchet"):
+        raise ValueError("invalid saved Go rollout")
+    settings = {"version": 1, "rollout": rollout, "config": ".golangci.yml", "legacy": None}
+    snapshot = None
+    if legacy:
+        if legacy.endswith(".toml"):
+            raise ValueError("Go config merging supports YAML and JSON; convert the existing TOML config first or use --no-go")
+        helper = SOURCE / "ai/skills/go/assets/go-quality.py"
+        command = [sys.executable, str(helper)]
+        if importlib.util.find_spec("yaml") is None:
+            uv = shutil.which("uv")
+            if not uv:
+                raise ValueError("merging Go YAML requires PyYAML or uv; dotfiles bootstrap provides uv")
+            command = [uv, "run", "--no-project", "--with", "PyYAML==6.0.3", "python", str(helper)]
+        result = subprocess.run([*command, "merge", "--existing", str(root / legacy),
+                                 "--profile", str(SOURCE / "ai/skills/go/assets/golangci.yml")],
+                                capture_output=True, text=True)
+        if result.returncode:
+            raise ValueError(result.stderr.strip() or "Go configuration merge failed")
+        payloads.pop(".golangci.yml")
+        desired.pop(".golangci.yml")
+        data = result.stdout.encode()
+        payloads[GO_STRICT] = data
+        desired[GO_STRICT] = file_entry(data)
+        snapshot = (legacy, inspect(root, legacy))
+        settings["config"] = GO_STRICT
+        settings["legacy"] = {"path": legacy, "sha256": digest((root / legacy).read_bytes())}
+    data = (json.dumps(settings, indent=2) + "\n").encode()
+    payloads[".go-quality.json"] = data
+    desired[".go-quality.json"] = file_entry(data)
+    return rollout, legacy, snapshot
 
 
 def exclude_text(original, paths):
@@ -278,18 +338,17 @@ def install(args):
     if "architecture" in skills:
         skills.add("builder")
     go_profile = args.go if args.go is not None else (
-        state.get("go_profile", False) or (root / "go.mod").is_file())
+        bool(args.go_rollout) or state.get("go_profile", False) or (root / "go.mod").is_file())
     if go_profile:
         skills.add("go")
     agents = {"codex", "claude"} if args.agents == "both" else {"codex"}
     template = args.pr_template or ("local" if mode == "local" else "github")
+    if go_profile and args.go_rollout == "ratchet" and args.pr_template is None:
+        template = "none"
     desired, payloads = package(sorted(skills), agents, template, go_profile)
+    rollout, legacy, legacy_snapshot = None, None, None
     if go_profile:
-        alternate_configs = [name for name in (".golangci.yaml", ".golangci.toml", ".golangci.json")
-                             if (root / name).exists() or (root / name).is_symlink()]
-        if alternate_configs:
-            raise ValueError("existing Go lint configuration: " + ", ".join(alternate_configs)
-                             + "; reconcile it or use --no-go to install guidance only")
+        rollout, legacy, legacy_snapshot = go_configuration(root, state, args.go_rollout, desired, payloads)
     if template == "github":
         conflicts = template_conflicts(root)
         if conflicts:
@@ -297,7 +356,11 @@ def install(args):
                              + "; choose --pr-template local or none, or reconcile them manually")
 
     managed = dict(state["files"])
+    if legacy:
+        managed.pop(legacy, None)
     changes, snapshots, conflicts, skipped = [], {}, [], []
+    if legacy_snapshot:
+        snapshots[legacy_snapshot[0]] = legacy_snapshot[1]
     for relative, expected in sorted(desired.items()):
         actual = inspect(root, relative)
         snapshots[relative] = actual
@@ -321,6 +384,9 @@ def install(args):
         raise ValueError("preserving existing or locally modified paths:\n  " + "\n  ".join(conflicts)
                          + "\nChoose --conflict skip, or --conflict replace to back up and replace regular files.")
     paths = set(managed) | {STATE}
+    if go_profile and rollout == "ratchet":
+        paths.add(GO_BASELINE)
+    visible_paths = paths | {legacy} if mode == "tracked" and legacy else paths
     if initializing:
         exclude = root / ".git/info/exclude"
         old_exclude = ""
@@ -338,14 +404,22 @@ def install(args):
             raise ValueError("local mode cannot hide tracked files: " + ", ".join(sorted(paths & tracked))
                              + "; keep tracked mode or explicitly remove them from the index first")
     new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
-    check_visibility(root, paths if initializing or mode == "local" else paths - tracked, new_exclude, mode)
+    check_visibility(root, visible_paths if initializing or mode == "local" else visible_paths - tracked, new_exclude, mode)
     revision = git(SOURCE, "rev-parse", "HEAD", check=False).stdout.strip() or "unknown"
     new_state = {"version": 1, "mode": mode, "source_revision": revision,
                  "go_profile": go_profile, "files": managed}
+    if go_profile:
+        new_state.update(go_rollout=rollout, go_legacy=legacy)
+    else:
+        for name in ("go_rollout", "go_legacy"):
+            if name in state:
+                new_state[name] = state[name]
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
 
     print(f"repo-bootstrap: {root} ({mode})")
+    if go_profile:
+        print(f"  Go rollout: {rollout}" + (f"; preserve {legacy}, merge into {GO_STRICT}" if legacy else ""))
     for relative, _, replacing in changes:
         print(f"  {'replace (backup)' if replacing else 'install/update'} {relative}")
     for relative in skipped:
@@ -370,7 +444,7 @@ def install(args):
         # git init may supply a template's existing exclude file.
         old_exclude = exclude.read_text() if exclude.exists() else ""
         new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
-        check_visibility(root, paths, new_exclude, mode)
+        check_visibility(root, visible_paths, new_exclude, mode)
     for relative, before in snapshots.items():
         if inspect(root, relative) != before:
             raise ValueError(f"destination changed during planning; retry after reviewing: {relative}")
@@ -400,6 +474,8 @@ def install(args):
     if state_changed:
         atomic_file(root / STATE, state_data)
     print("  installed; no files staged, committed, or published")
+    if go_profile and rollout == "ratchet" and not (root / GO_BASELINE).exists():
+        print("  next: bash scripts/check-go.sh baseline (one-time adoption, committed Go source only)")
 
 
 def main():
@@ -410,6 +486,10 @@ def main():
     parser.add_argument("--skills", default=",".join(DEFAULT_SKILLS), help="comma-separated skill names: " + ", ".join(SKILLS))
     parser.add_argument("--go", action=argparse.BooleanOptionalAction, default=None,
                         help="install Go correctness checks (default: root go.mod or previously installed); --no-go keeps existing checks")
+    parser.add_argument("--go-rollout", choices=("strict", "ratchet"),
+                        help="whole-project strictness or grandfather existing findings (default: ratchet for existing code/config)")
+    parser.add_argument("--go-retrofit", dest="go_rollout", action="store_const", const="ratchet",
+                        help="prepare merged Go policy and a one-time shrinking baseline")
     parser.add_argument("--agents", choices=("codex", "both"), default="both", help="Codex skills only, or add Claude aliases (default: both)")
     parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
     parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")

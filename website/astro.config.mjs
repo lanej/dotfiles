@@ -31,6 +31,7 @@ export default defineConfig({
         { label: 'macOS stack', slug: 'reference/macos' },
         { label: 'Linux stack', slug: 'reference/linux' },
         { label: 'Rust', slug: 'reference/rust' },
+        { label: 'Go style guide', slug: 'reference/go-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
       ] },
       { label: 'Contributing', items: [{ label: 'Maintain this site', slug: 'maintaining' }] },

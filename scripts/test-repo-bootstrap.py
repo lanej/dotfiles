@@ -136,23 +136,30 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(go_project, "init", "--quiet")
     (go_project / "go.mod").write_text("module example.invalid/project\n\ngo 1.26.2\n")
     alternate = go_project / ".golangci.yaml"
-    alternate.write_text("# Existing project policy.\n")
+    original_go_policy = '# Existing project policy.\nversion: "2"\nlinters:\n  default: none\n  enable: [unused]\n'
+    alternate.write_text(original_go_policy)
+    go_exclude = go_project / ".git/info/exclude"
+    original_go_exclude = go_exclude.read_text()
+    go_exclude.write_text(original_go_exclude + "\n/.golangci.yaml\n")
     before = tree(go_project)
-    assert "existing Go lint configuration" in install(go_project, expected=1)
-    assert tree(go_project) == before, "Go configuration conflict partially installed files"
-    install(go_project, "--no-go", "--skills", "go")
-    assert alternate.read_text() == "# Existing project policy.\n"
-    assert not (go_project / "scripts/check-go.sh").exists()
-    assert (go_project / ".agents/skills/go/references/correctness.md").is_file()
-    alternate.unlink()
-    install(go_project)
-    assert (go_project / ".golangci.yml").is_file()
+    assert "tracked installation is ignored" in install(go_project, expected=1)
+    assert tree(go_project) == before, "hidden legacy dependency was installed into tracked mode"
+    go_exclude.write_text(original_go_exclude)
+    before = tree(go_project)
+    install(go_project, "--dry-run")
+    assert tree(go_project) == before, "Go merge preview wrote target files"
+    install(go_project, "--skills", "go")
+    assert alternate.read_text() == original_go_policy
+    assert not (go_project / ".golangci.yml").exists()
+    assert (go_project / ".golangci.strict.json").is_file()
+    settings = json.loads((go_project / ".go-quality.json").read_text())
+    assert settings["rollout"] == "ratchet" and settings["legacy"]["path"] == ".golangci.yaml"
     assert os.access(go_project / "scripts/check-go.sh", os.X_OK)
     assert (go_project / ".github/workflows/go-quality.yml").is_file()
     assert (go_project / ".claude/skills/go").resolve() == go_project / ".agents/skills/go"
     # Remember explicit adoption even before a new project has its module file.
     (go_project / "go.mod").unlink()
-    assert "already current" in install(go_project)
+    assert "already current" in install(go_project, "--skills", "go")
     explicit_go = workspace / "future Go module"
     install(explicit_go, "--init", "--go", "--skills", "go", "--pr-template", "none")
     assert (explicit_go / "scripts/check-go.sh").is_file()

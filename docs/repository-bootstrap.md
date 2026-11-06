@@ -57,7 +57,7 @@ repo-bootstrap --repo ~/src/app --mode tracked --pr-template none
 repo-bootstrap --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts `builder`, `architecture`, `pr-writer`, and `go`, comma-separated. These are curated portable packages, not an automatic copy of every workstation-specific skill. The default selects all three. The source entrypoints live under `ai/skills`; installation bundles the existing writer roles and documentation without maintaining another copy of their policy in dotfiles.
+`--skills` accepts `builder`, `architecture`, `pr-writer`, and `go`, comma-separated. These are curated portable packages, not an automatic copy of every workstation-specific skill. The default selects Builder, architecture, and PR writer, with Go added for detected Go modules. The source entrypoints live under `ai/skills`; installation bundles the existing writer roles and documentation without maintaining another copy of their policy in dotfiles.
 
 GitHub only discovers committed templates on the repository's default branch. A local drafting template is not a GitHub default. The supplied template contains removable drafting prompts, without mandatory headings or checklists. Fill it with the change's outcome and motivation, then remove the comments before publishing.
 
@@ -65,17 +65,30 @@ When installing a GitHub template, alternate templates in the repository root, `
 
 ## Go correctness profile
 
-A repository with a root `go.mod` automatically receives the Go skill, `.golangci.yml`, `scripts/check-go.sh`, and `.github/workflows/go-quality.yml`. For a new Go repository before its module exists:
+A root `go.mod` opts into Go guidance, checks, and a portable CI workflow. New repositories use whole-project strictness:
 
 ```sh
 repo-bootstrap --repo ~/src/new-go-project --init --go
 ```
 
-Run `bash scripts/check-go.sh lint` while editing, `bash scripts/check-go.sh fmt` to apply formatting, and `bash scripts/check-go.sh` before delivery. The workflow runs that same full command: formatting and module tidiness, strict lint including exhaustive enums and declared sum types, uncached race tests, and vulnerability analysis. Tools are pinned and cached outside the project; initial setup needs Go and network access, and race tests need cgo plus a C compiler. See [the Go correctness guide](../ai/skills/go/references/correctness.md) for coverage and limits.
+Existing configs or tracked Go source default to a ratchet, so adopting stronger rules does not require rewriting the project. To retrofit explicitly, start with committed Go source:
 
-Existing configs and workflow paths use the same preflight/conflict policy as skills. Alternate `.golangci.yaml`, `.golangci.toml`, or `.golangci.json` files require manual reconciliation. Use `--no-go` to retain the project's checks; `--skills go --no-go` installs only the Go guidance. Reruns remember explicit profile adoption. `--no-go` stops updates to the root checks without uninstalling previously copied files, following the additive policy below.
+```sh
+repo-bootstrap --repo ~/src/service --go-retrofit --pr-template none
+cd ~/src/service
+bash scripts/check-go.sh baseline
+bash scripts/check-go.sh
+```
 
-Local mode can provide local checks, but hidden files do not enforce CI for other checkouts. Commit a tracked installation and make the `Go quality` job required in repository branch rules to enforce a merge gate. Bootstrap does not change GitHub settings. The default runner covers one root module on its host platform; adapt it for nested modules, build tags, platform variants, native dependencies, and required integration tests.
+The installer preserves existing YAML/JSON v2 config bytes and comments. It combines project settings, extra checks, and build context with the defaults in `.golangci.strict.json`; `.go-quality.json` selects that layer and records its original input. The original lint gate still runs unchanged, with autofixing disabled. The added layer owns its checker settings and defaults, full-tree reporting, and its own exclusions; custom settings for additional project checks are retained. Config changes require rerunning bootstrap to refresh the merge. Multiple configs, duplicate YAML keys, unsupported versions, and unsafe linked paths fail before target writes. V1 configs need migration; TOML needs conversion. Go YAML merging uses installed PyYAML, or caches PyYAML 6.0.3 through uv when absent.
+
+Baseline creation records existing lint/style findings against committed Go code and never rewrites it. New file paths have no allowance. New signatures in existing files fail too, including untouched consumers invalidated by a new enum value. After fixing old findings, `bash scripts/check-go.sh ratchet` removes their allowances and refuses to grow the baseline. Normal lint requires resolved allowances to be removed. See [the Go style guide](go-style.md) for the signature-budget limitation, policy choices, and examples. Compilation, the original lint gate, module tidiness, race tests, and vulnerability analysis are not grandfathered.
+
+Use `--go-rollout strict` for whole-project enforcement. Use `--no-go` to retain existing checks without updating the added profile; `--skills go --no-go` installs guidance alone. Existing workflow paths and other managed-file edits retain normal conflict protection. Reruns remember the rollout. As elsewhere, opt-outs do not uninstall previously copied files.
+
+Run `bash scripts/check-go.sh lint` while editing, `fmt path/to/file.go` for formatting, and the full command before delivery. `fix ./path/to/package` applies available cuddling fixes in that package; inspect its diff. A ratchet requires explicit formatting paths to avoid a broad cleanup. Go and Python 3.9+ are required; initial pinned tool setup needs network access, and race tests require cgo and a C compiler.
+
+Local mode hides copied files and the baseline without changing the original config's visibility. Shared CI requires committing a tracked installation, including its required original config. Make the `Go quality` job required in branch rules for a merge gate; bootstrap does not change GitHub settings. The default runner covers one root module on its host platform. Add other modules, build tags, platform variants, native dependencies, and required integration tests explicitly.
 
 ## Update without losing repository edits
 
@@ -86,7 +99,7 @@ repo-bootstrap --repo ~/src/app --dry-run
 repo-bootstrap --repo ~/src/app
 ```
 
-Reruns reuse the saved mode unless `--mode` is supplied. Unchanged managed files update automatically; files matching the new content are left alone. Any changed existing content fails the whole preflight by default, before installed files are written. No repository pulls, source downloads, or branch changes are implicit.
+Reruns reuse the saved mode unless `--mode` is supplied. Unchanged managed files update automatically; files matching the new content are left alone. Any changed existing content fails the whole preflight by default, before installed files are written. No repository pulls or branch changes are implicit. A first YAML configuration merge may cache its pinned parser dependency; the installer does not install project Go tools.
 
 - `--conflict skip` updates independent files and reports preserved local edits. Skipped files are not marked as successfully updated.
 - `--conflict replace` explicitly replaces conflicting regular files after saving their original contents under Git's `repo-bootstrap/backups/replace-*` directory. The command prints the backup location. It never replaces symlinks or directories; reconcile those manually.

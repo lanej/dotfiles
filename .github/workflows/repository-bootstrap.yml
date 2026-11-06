@@ -50,4 +50,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - run: python3 -m pip install PyYAML==6.0.3
       - run: make test-repo-bootstrap

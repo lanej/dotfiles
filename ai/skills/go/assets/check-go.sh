@@ -6,20 +6,26 @@ lint_version=2.13.2
 vuln_version=v1.9.0
 mode=${1:-all}
 case "$mode" in
-    all|lint|fmt|test|vuln|tools) ;;
-    *) printf 'Usage: %s [all|lint|fmt|test|vuln|tools]\n' "$0" >&2; exit 2 ;;
+    all|lint|fmt|fix|test|vuln|tools|baseline|ratchet) ;;
+    *) printf 'Usage: %s [all|lint|fmt [files...]|fix packages...|test|vuln|tools|baseline|ratchet]\n' "$0" >&2; exit 2 ;;
 esac
-if [ "$#" -gt 1 ]; then
-    printf 'Expected at most one check name.\n' >&2
+if [ "$#" -gt 0 ]; then shift; fi
+if [ "$mode" != fmt ] && [ "$mode" != fix ] && [ "$#" -gt 0 ]; then
+    printf 'Only fmt and fix accept additional paths.\n' >&2
     exit 2
 fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-if [ ! -f go.mod ] || [ ! -f .golangci.yml ]; then
-    printf 'Run from a project with go.mod and the committed .golangci.yml profile.\n' >&2
+if [ ! -f go.mod ] || [ ! -f scripts/go-quality.py ]; then
+    printf 'Run from a project with go.mod and the committed Go quality profile.\n' >&2
     exit 1
 fi
 command -v go >/dev/null || { printf 'Install the Go toolchain selected by go.mod.\n' >&2; exit 1; }
+command -v python3 >/dev/null || { printf 'Go quality requires Python 3.9+ for its policy and baseline helper.\n' >&2; exit 1; }
+settings=$(python3 scripts/go-quality.py policy)
+lint_config=$(printf '%s\n' "$settings" | sed -n '1p')
+rollout=$(printf '%s\n' "$settings" | sed -n '2p')
+legacy_config=$(printf '%s\n' "$settings" | sed -n '3p')
 # WHY: A parent workspace must not replace dependencies that CI resolves alone.
 export GOWORK=off
 case "$(uname -s)" in
@@ -79,32 +85,36 @@ install_vuln() (
     mv "$stage/govulncheck" "$vuln"
 )
 
-if [ "$mode" = tools ] || [ "$mode" = lint ] || [ "$mode" = fmt ] || [ "$mode" = all ]; then
-    install_lint
-fi
+case "$mode" in
+    tools|lint|fmt|fix|all|baseline|ratchet) install_lint ;;
+esac
 if [ "$mode" = tools ]; then
     install_vuln
 fi
 if [ "$mode" = fmt ]; then
-    "$lint" fmt --config .golangci.yml
-fi
-if [ "$mode" = lint ] || [ "$mode" = all ]; then
-    "$lint" config verify --config .golangci.yml
-    # WHY: fmt --diff reports changes without consistently failing on them.
-    diff_file=$(mktemp)
-    trap 'rm -f "$diff_file"' EXIT
-    format_status=0
-    "$lint" fmt --config .golangci.yml --diff > "$diff_file" || format_status=$?
-    if [ -s "$diff_file" ]; then
-        cat "$diff_file"
-        printf 'Formatting differs; run scripts/check-go.sh fmt.\n' >&2
+    if [ "$rollout" = ratchet ] && [ "$#" -eq 0 ]; then
+        printf 'Select files explicitly: bash scripts/check-go.sh fmt path/to/file.go\n' >&2
         exit 1
     fi
-    if [ "$format_status" -ne 0 ]; then
-        exit "$format_status"
+    "$lint" fmt --config "$lint_config" "$@"
+fi
+if [ "$mode" = fix ]; then
+    if [ "$#" -eq 0 ]; then
+        printf 'Select packages explicitly: bash scripts/check-go.sh fix ./internal/package\n' >&2
+        exit 1
     fi
+    "$lint" run --config "$lint_config" --enable-only=wsl_v5 --fix "$@"
+fi
+if [ "$mode" = lint ] || [ "$mode" = all ] || [ "$mode" = baseline ] || [ "$mode" = ratchet ]; then
+    if [ -n "$legacy_config" ]; then
+        "$lint" config verify --config "$legacy_config"
+        "$lint" run --config "$legacy_config" --fix=false ./...
+    fi
+    "$lint" config verify --config "$lint_config"
     go mod tidy -diff
-    "$lint" run --config .golangci.yml ./...
+    action=check
+    case "$mode" in baseline|ratchet) action=$mode ;; esac
+    python3 scripts/go-quality.py "$action" --linter "$lint"
 fi
 if [ "$mode" = test ] || [ "$mode" = all ]; then
     if [ "$(go env CGO_ENABLED)" != 1 ]; then

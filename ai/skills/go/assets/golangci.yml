@@ -48,6 +48,7 @@ linters:
     - unused
     - usetesting
     - wastedassign
+    - wsl_v5
     - zerologlint
   settings:
     exhaustive:
@@ -70,6 +71,13 @@ linters:
       require-specific: true
     testifylint:
       enable-all: true
+    wsl_v5:
+      default: default
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      case-max-lines: 0
+      cuddle-max-statements: 1
   exclusions:
     generated: strict
     presets: []
