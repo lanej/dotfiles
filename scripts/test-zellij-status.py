@@ -98,7 +98,7 @@ def main():
         def prefix_banner(client):
             screen = display(client)
             return "PREFIX" in screen.display[0] and all(
-                screen.buffer[0][col].bg == "ebcb8b"
+                screen.buffer[0][col].bg == "b48ead"
                 and screen.buffer[0][col].fg == "2e3440"
                 and screen.buffer[0][col].bold
                 for col in range(screen.columns))

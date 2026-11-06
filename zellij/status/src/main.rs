@@ -207,7 +207,7 @@ impl ZellijPlugin for State {
             // Prefix waiting owns the whole row, even when a narrow terminal
             // would otherwise give all its space to the clock or a notice.
             let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
-            print!("\x1b[1;23;48;2;235;203;139m\x1b[38;2;46;52;64m{}{}\x1b[0m",
+            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
                 label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
