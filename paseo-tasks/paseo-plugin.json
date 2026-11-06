@@ -1,0 +1,7 @@
+{
+  "id": "tasks",
+  "name": "Tasks",
+  "description": "Manage durable tasks with directly accessible Pi conversations.",
+  "requirements": { "paseo": ">=0.15.1 <0.16.0" },
+  "build": [["npm", "ci", "--ignore-scripts"], ["npm", "run", "typecheck"]]
+}

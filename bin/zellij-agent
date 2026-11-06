@@ -2,6 +2,7 @@
 # Keep forwarded agents scoped to the actual owning Zellij server.
 # Usage: zellij-agent init
 #        zellij-agent refresh SESSION
+#        zellij-agent follow-popup
 #        zellij-agent publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY
 # Linux dash and macOS /bin/sh both support owner checks.
 # shellcheck disable=SC3067
@@ -61,17 +62,41 @@ validate_link() {
     [ ! -e "$link" ] || { [ -S "$link" ] && [ -O "$link" ]; }
 }
 
-if [ "${1:-}" = refresh ] && [ "$#" -eq 2 ]; then
-    session=$2
+managed_source() {
+    # Only the one-hop stable link created by this helper is a valid source.
+    # Do not resolve arbitrary symlinks or accept another follower as a source.
+    directory=$HOME/.ssh/dotfiles-agent
+    safe_directory "$HOME/.ssh" existing && safe_directory "$directory" existing || return 1
+    [ "$permissions" = 700 ] || return 1
+    case "$raw" in "$directory"/zellij-*.sock) ;; *) return 1 ;; esac
+    source_key=${raw#"$directory"/zellij-}
+    source_key=${source_key%.sock}
+    case "$source_key" in ''|*[!0-9a-f]*) return 1 ;; esac
+    [ "${#source_key}" -eq 12 ] || return 1
+    [ -L "$raw" ] && [ -O "$raw" ] || return 1
+    source_target=$(readlink "$raw") || return 1
+    case "$source_target" in /*) ;; *) return 1 ;; esac
+    [ -S "$source_target" ] && [ ! -L "$source_target" ] && [ -O "$source_target" ]
+}
+
+if { [ "${1:-}" = refresh ] && [ "$#" -eq 2 ]; } ||
+   { [ "${1:-}" = follow-popup ] && [ "$#" -eq 1 ]; }; then
+    session=${2:-dotfiles-popup}
+    publisher=publish
     [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ] || exit 0
     raw=$SSH_AUTH_SOCK
-    [ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || exit 1
+    if [ "$1" = follow-popup ]; then
+        managed_source || exit 1
+        publisher=publish-popup
+    else
+        [ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || exit 1
+    fi
     request=$(mktemp -d "${TMPDIR:-/tmp}/zellij-agent-update.XXXXXX") || exit 1
     trap 'rm -f "$request/success"; rmdir "$request" 2>/dev/null || :' 0
     trap 'exit 1' HUP INT TERM
 
     zellij --session "$session" run --floating --no-focus --close-on-exit --blocking \
-        -- /bin/sh "$0" publish "$raw" "$request" </dev/null >/dev/null 2>&1 &
+        -- /bin/sh "$0" "$publisher" "$raw" "$request" </dev/null >/dev/null 2>&1 &
     updater=$!
     (
         sleep 2
@@ -96,14 +121,17 @@ case "$operation:$#" in
         raw=$SSH_AUTH_SOCK
         request=
         ;;
-    publish:3)
+    publish:3|publish-popup:3)
         raw=$2
         request=$3
+        if [ "$operation" = publish-popup ]; then
+            [ "${ZELLIJ_SESSION_NAME:-}" = dotfiles-popup ] || fail 'not the shared popup server'
+        fi
         # The caller, not the old server environment, supplies the fresh socket.
         case "$request" in /*) ;; *) fail 'request path must be absolute' ;; esac
         safe_directory "$request" existing && [ "$permissions" = 700 ] || fail 'unsafe or expired request'
         ;;
-    *) fail 'usage: zellij-agent init | refresh SESSION | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY' ;;
+    *) fail 'usage: zellij-agent init | refresh SESSION | follow-popup | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY' ;;
 esac
 
 key=$(owning_socket) || fail 'cannot identify the owning pinned Zellij server'
@@ -121,7 +149,13 @@ fi
 [ ! -d "$link" ] || fail 'refusing directory at managed agent path'
 [ ! -e "$link" ] || [ -L "$link" ] || fail 'refusing unmanaged agent path'
 case "$raw" in /*) ;; *) fail 'forwarded socket must be absolute' ;; esac
-[ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || fail 'invalid raw forwarded socket'
+if [ "$operation" = publish-popup ] || { [ "$operation" = init ] && [ -L "$raw" ]; }; then
+    [ "${ZELLIJ_SESSION_NAME:-}" = dotfiles-popup ] || fail 'only the shared popup may follow a managed agent'
+    [ "$raw" != "$link" ] || fail 'cannot follow the popup itself'
+    managed_source || fail 'invalid managed agent source'
+else
+    [ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || fail 'invalid raw forwarded socket'
+fi
 
 if [ "$operation" = init ]; then
     # No replacement: a stale pane cannot undo a simultaneous fresh publication.

@@ -125,7 +125,7 @@ The native manager provides session creation, switching, renaming, and resurrect
 
 **Shutdown is destructive:** `Ctrl-q` opens a prompt naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients; Enter or Ctrl-c cancels. Other Zellij sessions, including the separate popup, keep running. This is not tmux's server-wide shutdown.
 
-Use `u`/`i` to switch control between host and guest without detaching, including compatible sessions over SSH. The guest must have its own host-focus binding. The [popup has a smaller keymap](#shared-popup-keys), not the complete main-session controls.
+Use `u`/`i` to switch control between host and guest without detaching, including compatible sessions over SSH. The guest must have its own host-focus binding. The [shared popup](#shared-popup-keys) uses these same controls, with `P` hiding its view.
 
 </details>
 
@@ -230,26 +230,11 @@ Both main configuration files define a Move mode, but no shipped key enters it. 
 
 ## Shared popup keys
 
-**Ctrl-f P** opens a view of the dedicated `dotfiles-popup` session. It preserves its live shells and splits when hidden or reopened from another tab/session on the same host. Inside it, use this smaller [popup keymap](../zellij/popup.kdl); every key below still follows Ctrl-f.
+**Ctrl-f P** opens a view of the dedicated `dotfiles-popup` session. It preserves its live shells, tabs and splits when hidden or reopened from another tab/session on the same host.
 
-<details>
-<summary>Keys available inside the popup</summary>
+The popup inherits the installed regular keymap, layout and plugins. All the pane, tab, resize, scroll/search, scrollback editor, clipboard and session controls above apply, including bare **Ctrl-h/j/k/l** navigation. Its only key override is **Ctrl-f P**, which detaches this view; **Ctrl-f d** also detaches normally. Modern versus legacy limitations are the same as in a regular window.
 
-| Key after Ctrl-f | Action |
-| --- | --- |
-| `s` / `"`, `v` / `%` | Split below / right inside the popup |
-| `h/j/k/l` or arrows | Focus an adjacent popup pane |
-| `Tab` / `o`, `;` | Focus the next / last-focused pane |
-| `z` | Toggle zoom |
-| `x` | Close the focused popup pane |
-| `P` / `d` | Hide this view without ending the scratch session |
-| `f` | Send a literal Ctrl-f |
-| `u` / `i` | Focus the containing / nested session |
-| `Esc` / `Enter` / `Ctrl-c` | Cancel the prefix |
-
-</details>
-
-The popup does not load the status or navigation plugins and does not inherit the main keymap. Use prefix navigation inside it. Tab creation/pickers, resize/search modes, `e`, `p`, and the shutdown shortcut are not assigned; the terminal's paste shortcut still works. Closing its last shell ends the scratch session, and it has no resurrection snapshots. See [popup and shutdown behavior](./zellij.md#shared-popup-and-session-shutdown).
+The scratch session does not create resurrection snapshots. Closing its last shell or confirming shutdown inside it ends it. Existing popups keep their live processes and old configuration until you finish their work and exit; see [safe application and popup lifetime](./zellij.md#shared-popup-and-session-shutdown).
 
 ## Legacy configuration
 
@@ -277,4 +262,4 @@ Apply configuration with `make zellij`. To build the modern bar and reapply it, 
 - **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing and W for repeated tab reordering.
 - **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.
 
-The binding sources are [modern config](../zellij/config.kdl), [legacy config](../zellij/config-legacy.kdl), and [popup config](../zellij/popup.kdl). Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).
+The binding sources are [modern config](../zellij/config.kdl) and [legacy config](../zellij/config-legacy.kdl), with the [popup launcher](../bin/zellij-popup) adding its hide override. Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).

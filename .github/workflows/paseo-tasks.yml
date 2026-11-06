@@ -1,0 +1,28 @@
+name: Paseo tasks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['paseo-tasks/**', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+  push:
+    branches: [master]
+    paths: ['paseo-tasks/**', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: paseo-tasks/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: paseo-tasks
+      - run: npm run typecheck
+        working-directory: paseo-tasks
+      - run: make test-paseo-tasks
