@@ -119,6 +119,9 @@ def text(terminal):
 
 
 def open_prompt(terminal):
+    # Esc and accepted actions close asynchronously. A stale title must not
+    # satisfy the next open and let its keystrokes enter the previous dialog.
+    terminal.until("previous command dialog closes", lambda: "Zellij command" not in text(terminal))
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
     try:
