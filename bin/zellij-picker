@@ -22,8 +22,11 @@ def run_zellij(*args, session=None, timeout=5):
     command = ["zellij"]
     if session is not None:
         command += ["--session=" + session]
+    # Requests are complete in argv. Inherited input would become additional
+    # CLI pipe messages and could replace an ownership-aware snapshot.
     result = subprocess.run(
-        command + list(args), capture_output=True, text=True, timeout=timeout
+        command + list(args), stdin=subprocess.DEVNULL,
+        capture_output=True, text=True, timeout=timeout
     )
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "Zellij command failed")

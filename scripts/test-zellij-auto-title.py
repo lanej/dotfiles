@@ -130,7 +130,8 @@ args = sys.argv[1:]
 if args == ["setup", "--check"]:
     print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["XDG_CACHE_HOME"])
 elif "list-panes" in args:
-    print(json.dumps([{"id": 7, "tab_id": 4, "is_plugin": False, "is_focused": True}]))
+    print(json.dumps([{"id": 7, "tab_id": 4, "tab_name": json.loads(state.read_text())["name"],
+                       "is_plugin": False, "is_focused": True}]))
 elif "list-tabs" in args:
     print('[' + state.read_text() + ']')
 elif "rename-tab" in args:

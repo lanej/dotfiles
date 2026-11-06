@@ -12,11 +12,13 @@ import subprocess
 
 
 def run(*args):
+    # Read-only UI lookups can wait through startup contention. The shell
+    # writer supplies its own tighter, overall deadline instead.
     return subprocess.run(args, check=True, capture_output=True, text=True,
-                          timeout=0.5).stdout
+                          timeout=2).stdout
 
 
-def session_identity(session, execute=run):
+def session_location(execute=run):
     # Like zellij-shutdown, use server argv and its read-only session index.
     # Shell hooks are grandchildren; previews may target a different session.
     socket_root = os.environ.get("ZELLIJ_SOCKET_DIR")
@@ -45,7 +47,11 @@ def session_identity(session, execute=run):
                   if line.startswith("[CACHE DIR]: ")), "")
     if not Path(cache).is_absolute():
         raise RuntimeError("Cannot identify the session index")
-    index = Path(cache) / directory.name / "session_index.sqlite"
+    return directory, Path(cache) / directory.name / "session_index.sqlite"
+
+
+def session_identity(session, execute=run, location=None):
+    directory, index = location if location is not None else session_location(execute)
     with closing(sqlite3.connect(index.as_uri() + "?mode=ro", uri=True, timeout=0.1)) as connection:
         row = connection.execute("SELECT COALESCE(id, name) FROM sessions WHERE name = ?",
                                  (session,)).fetchone()
@@ -80,15 +86,21 @@ def record_title(path, identity):
 
 def owned_titles(session):
     try:
-        identity = session_identity(session)
         prefix = session_key(session) + "-"
+        paths = list(state_directory().glob(prefix + "*.json"))
+        if not paths:
+            return {}
+        # Namespace discovery is fixed for this invocation. Only the index
+        # mapping and socket incarnation need to be read again after the files.
+        location = session_location()
+        identity = session_identity(session, location=location)
         result = {}
-        for path in state_directory().glob(prefix + "*.json"):
+        for path in paths:
             tab = path.stem[len(prefix):]
             title = record_title(path, identity)
             if tab.isdecimal() and title is not None:
                 result[tab] = title
         # A rename/recreation during the read must not transfer ownership.
-        return result if session_identity(session) == identity else {}
+        return result if session_identity(session, location=location) == identity else {}
     except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
         return {}

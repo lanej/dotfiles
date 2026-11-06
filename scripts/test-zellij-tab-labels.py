@@ -158,11 +158,12 @@ def main():
             assert "9: Tab #9" in preview.stdout, preview.stdout
             # Use the real chooser's complete-snapshot read, including its
             # lifecycle ownership payload and attachment-readiness handling.
+            # Caller stdin must not become a second, ownership-free request.
             clients = subprocess.run([sys.executable, "-c",
                                       "import json, runpy, sys; "
                                       "print(json.dumps(runpy.run_path(sys.argv[1])['client_choices'](sys.argv[2])))",
                                       str(home / ".local/bin/zellij-picker"), name], env=env, check=False,
-                                     capture_output=True, text=True, timeout=10)
+                                     input="\n", capture_output=True, text=True, timeout=10)
             assert clients.returncode == 0, f"Client snapshot read failed:\n{clients.stderr}\n{clients.stdout}"
             rows = list(json.loads(clients.stdout).values())
             assert {row.get("tab") for row in rows} == {"9: agent work", "9: Tab #9"}, rows
