@@ -2,14 +2,18 @@ name: Documentation site
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/go-style.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
   push:
     branches: [master]
-    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
+    paths: ['website/**', 'README.md', 'docs/*.mdx', 'docs/zellij.md', 'docs/tmux.md', 'docs/stack-darwin.md', 'docs/stack-linux.md', 'docs/rust.md', 'docs/go-style.md', 'docs/repository-bootstrap.md', 'docs/images/**', 'docs/brand/**', '.github/workflows/docs-site.yml']
 permissions:
   contents: read
 jobs:
   docs:
+    name: ${{ github.event_name == 'pull_request' && 'Documentation (advisory)' || 'Documentation (deployment gate)' }}
+    # Keep PR feedback visible without making documentation a merge gate.
+    # Pushes and manual runs remain strict because they can publish the site.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -27,13 +31,19 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - name: Report advisory documentation failure
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "::warning::Documentation validation failed. This PR check is advisory; see the failed steps above."
+          echo "Documentation validation failed. This PR check is advisory; deployment still requires successful validation on master." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: website/dist
   deploy:
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.docs.result == 'success'
     needs: docs
     runs-on: ubuntu-latest
     timeout-minutes: 10

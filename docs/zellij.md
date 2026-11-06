@@ -43,9 +43,13 @@ Use `zj SESSION` or `zssh HOST SESSION` when connecting with agent forwarding. T
 
 Each Zellij session has its own selection. Reconnecting to `work` does not change the agent used by `personal` or by tmux. Multiple clients sharing the same Zellij session share its last completed forwarded-agent update; if that connection closes, reconnect with forwarding to that session to refresh it. A fresh login without forwarding does not adopt an unrelated session's agent. No private keys are copied or local agents started remotely. Direct `zellij attach` bypasses the helper; use `zj SESSION` for forwarded reconnects.
 
+The shared popup follows the containing session's managed agent link, not the raw socket captured when its server first started. Opening it selects that containing session as its source; later reconnects to that session refresh the popup's existing shells too, even while the popup is hidden. Opening the same shared popup from another outer session switches the popup's source without changing either outer session's selection. As with sharing a regular session, all clients of the popup share that selection. Only owned, direct managed links in the private agent directory are accepted; arbitrary symlinks, follower chains, self-reference and loops are rejected. Ordinary session refresh still accepts only raw agent sockets.
+
+This agent repair does not require restarting a live popup. After installing the updated helpers, reconnect the outer session through `zj`/`zssh` and reopen the popup once. Shells already using their popup-specific stable path recover automatically. In older popup shells that still hold a raw socket or the outer session's path, run `source ~/.local/bin/fix-ssh` once to select the popup's stable path. Already-running applications with an old exported path need their own environment refreshed or to be restarted after their work is saved. This is independent of the new-layout migration below.
+
 Tmux retains its existing `tmux show-environment` recovery, which selects the agent from that tmux session. Run `fixssh` in an older pane to refresh its socket and list the available keys. The `git-ssh` helper performs the same recovery when an inherited socket disappears, without requiring `SSH_TTY`. After installing with `make shell`, reconnect through the attach helper and run `fixssh` once in panes created before this change.
 
-Run `make test-ssh-agent` for local-agent, tmux, and attachment-failure checks, and `python3 scripts/test-zellij-agent-update.py` for reconnects through the pinned native runtime. These checks use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
+Run `make test-ssh-agent` for local-agent, tmux, and attachment-failure checks, and `python3 scripts/test-zellij-agent-update.py` for reconnects through the pinned native runtime, including a surviving popup shell, host switching and rejected unsafe agent sources. These checks use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
 
 ### 1Password compatibility
 
@@ -63,7 +67,7 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 ## Familiar keys
 
-Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefix mode. Most actions return immediately to locked mode.
+Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
 | Key | Action |
 | --- | --- |
@@ -89,13 +93,15 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 | `J`, `K` | Move the pane down/up |
 | `<`, `>`, `+`, `-` | Resize toward left/right/up/down |
 | `Ctrl-r` | Enter repeatable resize mode |
+| `=` | Balance the invoking pane’s aligned row or column group |
+| `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
 | `F` | Show/hide the current tab's other floating panes |
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
 | `!` | Move the focused pane to a new tab |
-| `m` | Enter pane movement mode |
+| `m` | Fuzzy pane destination picker: New Tab or an existing tab in this session |
 | `W` | Enter tab reorder mode |
 | `C`, `w` | Open the native session manager for creating, switching, renaming, and restoring sessions |
 | `e` | Open the pane's scrollback in Neovim |
@@ -105,7 +111,13 @@ Every key below follows **Ctrl-f**, unless stated otherwise. `Esc` cancels prefi
 
 `Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
 
-**Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Move mode:** `h/j/k/l` or arrows move the pane, `Tab` cycles positions, and `[`/`]` moves it to the adjacent tab. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
+`Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
+
+Native resizing moves boundaries in roughly 5% increments, so these controls choose a reachable approximation, not tmux’s cell-exact dimensions. For example, three panes in a 120-column terminal with widths 60/30/30 balance to 42/36/42. Only native Decrease actions are used: expanding a pane shrinks its neighbor at the shared edge, avoiding native Increase’s direction-inversion fallback. A blocked edge leaves geometry unchanged. A worse overshoot is reversed only after checking the expected geometry; the 180-column cap takes priority over distance. Helpers target captured pane IDs, serialize per session/tab, and stop on unexpected geometry, native failures, 32 resize calls, or a 20-second overall budget. Manual layout changes are not atomic with helper queries. A crashed helper can leave a lock under `${XDG_CACHE_HOME:-~/.cache}/zellij/balance`; a notice identifies it. Remove that empty lock directory only after confirming no balancing helper is running. The older configuration retains its existing keys because it lacks the required background action. jq is installed with the Zellij tool through normal `make install`; the helper never installs dependencies itself.
+
+**Resize mode:** `h/j/k/l` or arrows grow toward that edge; uppercase `H/J/K/L` shrink. `+`/`=` grows and `-` shrinks. **Tab reorder mode:** `h/l` or arrows reorder the tab. Enter or Esc exits these modes.
+
+`Ctrl-f m` follows the tmux pane-movement menu. It moves the original live pane, preserving its process and scrollback. Esc cancels; choosing the current tab does nothing. This menu needs the compiled status plugin and pinned runtime; rerun `make zellij-status zellij` and restart old sessions after upgrading. Existing-tab moves reserve a temporary inert split and replace it with the original pane, without running the default shell’s startup hooks or requiring additional plugin permissions. Cross-session movement remains unsupported. `Ctrl-f !` remains an optional direct shortcut, not a replacement for the menu.
 
 **Scroll mode:** `j/k` scroll, Ctrl-f/Ctrl-b page, Ctrl-d/Ctrl-u half-page, and `g/G` jump to the start/end. `/` starts a search; `n/N` find next/previous matches. `e` opens Neovim for arbitrary Vim selection. `y` copies an existing selection and returns to the prompt. `m` selects a command at the scroll position, and `c` copies the last command output when the application supplies OSC 133 shell markers. Esc or `q` returns to the bottom.
 
@@ -141,9 +153,9 @@ The background plugin uses the focused pane and foreground command for its own a
 
 Use **Ctrl-f Space** or **Ctrl-f Ctrl-o** to cycle to the **equalize** layout. It places one full-height pane in the left half and divides the right half into equal rows for the remaining panes. An indivisible column or row goes to one pane, so dimensions can differ by one cell; the pane title and separator still consume their normal space. This is a native layout change: pane positions can change, while the original pane IDs, focused terminal, shell processes, and scrollback survive. Percentage sizing continues to fit when the outer terminal changes size.
 
-Start a new session with the updated `tmux` layout after `make zellij`; existing sessions retain their loaded swap layouts. The preset uses the same one-row top bar as columns, rows, and stacked layouts. Prefix `=` remains unbound: stable Zellij has no direct selection of an arbitrary named swap layout, and a helper that cycles while searching could change a custom tab before discovering that its layout is unavailable. The native cycle makes each layout change explicit.
+Start a new session with the updated `tmux` layout after `make zellij`; existing sessions retain their loaded swap layouts. The preset uses the same one-row top bar as columns, rows, and stacked layouts. The native cycle explicitly rearranges panes; the pinned configuration’s `Ctrl-f =` helper instead balances an existing aligned group with approximate resize steps. The legacy configuration keeps the native cycle and leaves `=` unbound.
 
-**Golden-ratio sizing and exact three-cell resizing remain unavailable.** The tmux policy skips an ordinary `g` when the left pane is already at least 120 columns; forced `G` uses `floor(window width × 0.382)`, capped at 180 columns, with no 120-column floor. Stable Zellij's native resize action uses percentage steps and exposes no cell-count or timed-repeat option. Layout overrides match original launch metadata, which can create extra shells for existing panes that do not match; fixed-cell layouts also fail to adapt reliably when the outer window becomes narrower. Those overrides are not installed as a substitute. Prefix `g/G` remain unbound, and Ctrl-f Ctrl-r remains an explicit mode that ends with Enter or Esc, rather than tmux's timed repeat window.
+**Exact cell sizing and tmux’s timed resize-repeat window remain unavailable.** The pinned configuration’s `g/G` helper implements the golden-ratio skip and cap policy using nearest-reachable native percentage steps, as described above. Legacy `g/G` remain unbound. Layout overrides can create extra shells when launch metadata does not match, so the helper does not use them. Ctrl-f Ctrl-r remains an explicit resize mode that ends with Enter or Esc.
 
 Upstream implementation references: [native resize step](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/panes/tiled_panes/tiled_pane_grid.rs), [layout reuse and overrides](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-server/src/tab/layout_applier.rs), and [CLI actions](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/cli.rs).
 
@@ -151,7 +163,11 @@ Upstream implementation references: [native resize step](https://github.com/zell
 
 **Ctrl-f P** opens a floating view of the dedicated `dotfiles-popup` session. Press **Ctrl-f P** again inside the popup to detach that view. Reopening it from another tab or another Zellij session on the same host and socket namespace returns to the same live shell, including its working directory and unexported variables. Each opening attaches a client to that session; it does not move a working pane between sessions. The outer configuration automatically focuses nested sessions so the popup receives its own prefix keys.
 
-The popup has one shell, no inner tab bar or status plugin, and a 10,000-line live history limit. Its prefix keys are deliberately small: `P` or `d` hides the view, `f` sends Ctrl-f, `u/i` changes nested-session focus, and Esc, Enter, or Ctrl-c cancels prefix mode. Other main-session controls, including prefix `p` clipboard pasting and the shutdown shortcut, are unavailable inside this scratch session; the terminal's paste shortcut remains available. The popup stays alive after its view closes or its outer session shuts down. Running `exit` in the scratch shell ends it; its in-memory state does not survive server exit or reboot, and this dedicated session does not create resurrection snapshots. Keep `dotfiles-popup` reserved for this workflow. The previous floating-layer toggle is available as **Ctrl-f F**.
+The popup uses the installed regular configuration and `tmux` layout, including the selected modern or legacy bar, pane-navigation plugin, theme, history limit, and keybindings. Bare **Ctrl-h/j/k/l**, prefix splits and pane controls, tabs and pickers, resize, scroll/search modes, and **Ctrl-f e** scrollback editing work as in a regular window. Modern clipboard paste and client controls have the same visible bar and background receiver as regular sessions, with the same permission requirements. Legacy installations retain their ordinary legacy limitations. The launcher adds only a layout-level **Ctrl-f P** detach override and disables resurrection snapshots; it does not maintain another keymap. Splits are tiled panes inside the nested session, while the outer floating view remains one pane.
+
+Prefix `P` or `d` hides the view without ending its shells. The popup stays alive after its view closes or its outer session shuts down. Closing its last shell or explicitly confirming shutdown inside the popup ends that scratch session; its in-memory state does not survive server exit or reboot. Keep `dotfiles-popup` reserved for this workflow. **Ctrl-f F** toggles other floating panes.
+
+To apply, run `make zellij` after the normal runtime/plugin installation. A newly created popup gets the shared configuration and layout. An already-running popup retains its saved configuration and existing panes on reattach: updating the launcher does **not** reset it, replace shells, or inject a new layout. The retired `zellij/popup.kdl` is left unchanged because old servers may still watch it. Finish or save the work in that old popup and exit its shells when convenient; the next **Ctrl-f P** creates the new version. Do not kill the popup to apply this change while it contains live work. New-session layout/plugin startup and history capacity are not retroactively applied to an old session.
 
 Automatic nesting focus applies to other compatible Zellij sessions too, including sessions reached over SSH. With these dotfiles in the guest, **Ctrl-f u** returns to its containing session without detaching; **Ctrl-f i** in the host enters its focused nested session again. A guest with another configuration uses its own `FocusHostSession` binding (upstream 0.45.1 defaults to Ctrl-o, then `]`). Detaching the guest also returns control to its host.
 
@@ -197,8 +213,8 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 | Vi visual/rectangle copy mode and shared paste buffers | Neovim provides keyboard selection. `Ctrl-f p` uses the session's private Neovim-yank buffer; the terminal shortcut pastes the system clipboard. |
 | Zero-based windows | Tab labels, picker labels, and `0`–`9` keys are zero-based; Zellij's underlying CLI positions remain one-based. |
 | Three-cell resizing and timed repeat bindings | Native Zellij resize steps; an explicit repeatable mode under prefix+Ctrl-r. |
-| Golden-ratio helper (`g/G`) | Unbound; the width guard, exact ratio, and cap are not safely implemented with stable APIs. |
-| Equalization (`=`) | The native equalize preset is available through layout cycling. Direct `=` selection and preserving each pane's position during equalization remain unsupported. |
+| Golden-ratio helper (`g/G`) | Pinned runtime: jq helper preserves the width guard and cap using approximate native steps. Legacy bindings remain unbound. |
+| Equalization (`=`) | Pinned runtime: balance one existing aligned group with approximate native steps. The separate native equalize preset remains available through layout cycling, including legacy configurations. |
 | Dedicated shared `popup` session | `P` attaches to the live `dotfiles-popup` scratch session across tabs and sessions on the same host; `F` toggles other floating panes. |
 | Custom clock, battery, host, and agent status segments | One bundled top tab bar, with no bottom status bar or additional plugin download. |
 | Kill-server confirmation | `Ctrl-q` confirms shutdown of the current session's server. It does not shut down every Zellij session. |
@@ -224,4 +240,4 @@ The layout check cycles through the installed layout control with an explicit-co
 
 The agent title checks run configured lifecycle hooks against private native panes and observe the compact titles, ownership changes, and restoration of application-controlled titles. They use representative hook payloads and do not exercise a live Claude or Codex model task.
 
-The session checks use two real attachments to exercise chooser cancellation, exact selected-client detach, rejection after reconnect, self-selection and helper cleanup, and ordinary detach while another session survives. They also observe host/guest focus control and the same popup shell PID, cwd, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory.
+The session checks use two real attachments to exercise chooser cancellation, exact selected-client detach, rejection after reconnect, self-selection and helper cleanup, and ordinary detach while another session survives. They also observe host/guest focus control, splitting and bare navigation inside the popup, scroll/search and real Neovim scrollback editing, tab creation/rename with the visible bar, and preservation of both shells' PIDs, working directories, and unexported state across hiding, another tab, and another outer session. They exercise shutdown cancellation, reject an old confirmation after renaming its session and recreating the original name, and verify that other sessions and the original popup shell survive a valid targeted shutdown. All servers use a private temporary socket directory. Run `python3 scripts/test-zellij-sessions.py --popup-only` to check the popup without the unrelated client chooser and shutdown workflows.

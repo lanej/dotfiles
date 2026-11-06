@@ -76,6 +76,9 @@ keybinds clear-defaults=true {
         bind "l" "Right" { MoveFocus "Right"; SwitchToMode "Locked"; }
         bind "Tab" "o" { FocusNextPane; SwitchToMode "Locked"; }
         bind ";" { FocusLastPane; SwitchToMode "Locked"; }
+        bind "=" { Run "zellij-balance" "equalize" { background true; }; SwitchToMode "Locked"; }
+        bind "g" { Run "zellij-balance" "golden" { background true; }; SwitchToMode "Locked"; }
+        bind "G" { Run "zellij-balance" "golden-force" { background true; }; SwitchToMode "Locked"; }
         bind "s" "\"" { NewPane "Down"; SwitchToMode "Locked"; }
         bind "v" "%" { NewPane "Right"; SwitchToMode "Locked"; }
         bind "c" { NewTab; SwitchToMode "Locked"; }
@@ -118,7 +121,15 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "!" { BreakPane; SwitchToMode "Locked"; }
-        bind "m" { SwitchToMode "Move"; }
+        bind "m" {
+            Run "zellij-picker" "move-pane" {
+                floating true
+                close_on_exit true
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
         bind "W" { SwitchToMode "Tab"; }
 
         // New-session and rename-session actions live in the built-in manager.

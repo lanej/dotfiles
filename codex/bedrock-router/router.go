@@ -179,16 +179,17 @@ type measurements struct {
 }
 
 type router struct {
-	config    configuration
-	routes    *routes
-	transport http.RoundTripper
-	endpoint  func(string) string
-	log       *slog.Logger
-	stats     measurements
-	sequence  atomic.Uint64
-	started   time.Time
-	writeIdle time.Duration
-	recovery  webRecovery
+	config            configuration
+	routes            *routes
+	transport         http.RoundTripper
+	endpoint          func(string) string
+	anthropicEndpoint func(string) string
+	log               *slog.Logger
+	stats             measurements
+	sequence          atomic.Uint64
+	started           time.Time
+	writeIdle         time.Duration
+	recovery          webRecovery
 }
 
 func newRouter(state string, transport http.RoundTripper, log *slog.Logger, cfg configuration) (*router, error) {
@@ -205,9 +206,10 @@ func newRouter(state string, transport http.RoundTripper, log *slog.Logger, cfg 
 	return &router{
 		config: cfg,
 		routes: s, transport: transport, log: log, started: time.Now(),
-		writeIdle: writeIdle,
-		endpoint:  func(region string) string { return "https://bedrock-mantle." + region + ".api.aws" },
-		stats:     measurements{Regions: make(map[string]uint64), Statuses: make(map[int]uint64)},
+		writeIdle:         writeIdle,
+		endpoint:          func(region string) string { return "https://bedrock-mantle." + region + ".api.aws" },
+		anthropicEndpoint: func(region string) string { return "https://bedrock-runtime." + region + ".amazonaws.com" },
+		stats:             measurements{Regions: make(map[string]uint64), Statuses: make(map[int]uint64)},
 	}, nil
 }
 
@@ -400,12 +402,13 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		sendError(w, code, kind, message+" (router request "+id+")")
 	}
 
-	if req.URL.IsAbs() || !strings.HasPrefix(req.URL.Path, "/openai/v1/") {
+	anthropic := req.URL.Path == "/anthropic/v1/messages"
+	if req.URL.IsAbs() || (!strings.HasPrefix(req.URL.Path, "/openai/v1/") && !anthropic) {
 		fail(404, "unknown_endpoint", "Unknown router endpoint")
 		return
 	}
 
-	if !strings.HasPrefix(req.Header.Get("Authorization"), "Bearer ") {
+	if !strings.HasPrefix(req.Header.Get("Authorization"), "Bearer ") && !(anthropic && req.Header.Get("X-Api-Key") != "") {
 		fail(401, "missing_auth", "Bearer token required")
 		return
 	}
@@ -534,7 +537,11 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer cancelUpstream()
 	headerWait, _ := time.ParseDuration(r.config.HeaderTimeout)
 	forward := func(target string) (*http.Response, error) {
-		up, err := http.NewRequestWithContext(upstreamCtx, req.Method, r.endpoint(target)+req.URL.RequestURI(), bytes.NewReader(body))
+		endpoint := r.endpoint(target)
+		if anthropic {
+			endpoint = r.anthropicEndpoint(target)
+		}
+		up, err := http.NewRequestWithContext(upstreamCtx, req.Method, endpoint+req.URL.RequestURI(), bytes.NewReader(body))
 		if err != nil {
 			return nil, err
 		}
@@ -838,7 +845,7 @@ func (t *terminalTracker) observe(chunk []byte) {
 
 func (t *terminalTracker) event(event string) {
 	switch event {
-	case "response.completed":
+	case "response.completed", "message_stop":
 		t.terminal = true
 	case "response.failed", "response.incomplete", "error":
 		t.terminal, t.failed = true, true

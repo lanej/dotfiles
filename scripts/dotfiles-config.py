@@ -23,6 +23,11 @@ SETTINGS = {
         "variable": "DOTFILES_CODEX_GITHUB_ENABLED",
         "description": "Enable the Codex GitHub app and its plugins. False keeps GitHub access through gh.",
     },
+    "codex.easypost": {
+        "type": bool,
+        "variable": "DOTFILES_CODEX_EASYPOST",
+        "description": "Apply EasyPost integration restrictions and supplemental Codex guidance.",
+    },
     "zellij.source": {
         "type": str,
         "enum": ("patched", "release", "main"),

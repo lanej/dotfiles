@@ -3,10 +3,10 @@ name: Firstmate GitHub feedback
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'bootstrap.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
   push:
     branches: [master]
-    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/make/config.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
+    paths: ['bin/firstmate', 'firstmate/**', 'pi/**', 'scripts/firstmate-feedback-native.sh', 'scripts/test-firstmate-github.mjs', 'scripts/install-zellij', 'scripts/make/config.sh', 'bootstrap.sh', 'config/sets/firstmate-mobile.toml', '.github/workflows/firstmate-github.yml']
 
 permissions:
   contents: read
@@ -14,9 +14,11 @@ permissions:
 jobs:
   feedback:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -27,7 +29,42 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install --prefix /tmp/firstmate-github-runtime --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.4.0 @getpaseo/server@0.14.0 @getpaseo/cli@0.14.0 tasks-axi@0.2.6
+      - run: npm install --prefix /tmp/firstmate-github-runtime --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.4.0 @getpaseo/server@0.15.1 @getpaseo/cli@0.15.1 tasks-axi@0.2.6
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config openssl@3
+      - name: Cache native Zellij build
+        uses: actions/cache/restore@v4
+        id: zellij_cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+          restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install pinned Zellij fork
+        run: |
+          bash scripts/install-zellij
+          "$HOME/.local/bin/zellij" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Install Treehouse 3.1.6
+        shell: bash
+        run: |
+          source ./bootstrap.sh
+          install_treehouse_from_release 3.1.6
       - run: make test-firstmate-github
         env:
           FIRSTMATE_TEST_RUNTIME: /tmp/firstmate-github-runtime

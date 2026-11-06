@@ -7,6 +7,7 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
+      - '!bin/zellij-agent'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -42,6 +43,7 @@ on:
       - 'zellij/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
+      - '!bin/zellij-agent'
       - 'bin/codex-zellij-title-hook'
       - 'bin/claude-zellij-title-hook'
       - '.claude/settings.json'
@@ -171,6 +173,8 @@ jobs:
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-claude-titles
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-move
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

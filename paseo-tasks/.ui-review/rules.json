@@ -1,0 +1,22 @@
+[
+  {
+    "id": "task-fields-wrap",
+    "type": "no-clip",
+    "selector": "[data-testid^='task-card-']",
+    "severity": "error",
+    "reason": "Each outcome and observation must remain readable in the task's available width.",
+    "designRules": ["DR-007"],
+    "sources": ["DESIGN.md#task-001"]
+  },
+  {
+    "id": "conversation-control",
+    "type": "min-size",
+    "selector": "[data-testid='tasks-screen'] [aria-label='Open task conversation']",
+    "minWidth": 24,
+    "minHeight": 24,
+    "severity": "error",
+    "reason": "Direct entry must retain a usable control at desktop and compact widths.",
+    "designRules": ["DR-007"],
+    "sources": ["DESIGN.md#task-001"]
+  }
+]

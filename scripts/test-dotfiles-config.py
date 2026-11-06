@@ -40,6 +40,7 @@ def main():
         assert {tool["name"] for tool in baseline["tools"]} == native_tools
         assert baseline["setup"] == baseline["baseline"]["setup"]
         assert baseline["settings"]["codex.github_enabled"] is False
+        assert baseline["settings"]["codex.easypost"] is False
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
@@ -49,6 +50,7 @@ def main():
         assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
         assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
         assert selected["settings"]["tools.mermaid"] is False
+        assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
         names = [tool["name"] for tool in selected["tools"]]
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
@@ -120,6 +122,7 @@ else:
         config.write_text('sets = ["shell", "terminal", "personal"]\n[codex]\ngithub_enabled = false\n[zellij]\nsource = "release"\n')
         overridden = tomllib.loads(run(*command).stdout)
         assert overridden["codex"]["github_enabled"] is False
+        assert overridden["codex"]["easypost"] is False
         assert overridden["zellij"]["source"] == "release"
         run("make", "--no-print-directory", "zellij-runtime")
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.45.1"
@@ -137,9 +140,13 @@ else:
         propagated = run("bash", "-ec", 'source ./bootstrap.sh; load_dotfiles_config; cd /; python3 "$1/scripts/dotfiles-config.py"', "config-test", str(ROOT))
         assert tomllib.loads(propagated.stdout)["codex"]["github_enabled"] is True
         env.pop("DOTFILES_CONFIG")
-        config.write_text('sets = ["terminal"]\n[tools]\nrust = false\n')
-        blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
-        assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
+        config.write_text('[tools]\nzellij = true\n')
+        names = [tool["name"] for tool in json.loads(run(*command, "--format", "json").stdout)["tools"]]
+        assert names.index("jq") < names.index("zellij")
+        for dependency in ("rust", "jq"):
+            config.write_text(f'[tools]\nzellij = true\n{dependency} = false\n')
+            blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
+            assert blocked.returncode != 0 and f"requires tools.{dependency}" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

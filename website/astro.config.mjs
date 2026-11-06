@@ -23,6 +23,7 @@ export default defineConfig({
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },
         { label: 'Zellij', slug: 'reference/zellij' },
+        { label: 'Zellij keybindings', slug: 'reference/zellij-keybinds' },
         { label: 'tmux sessions', slug: 'reference/tmux' },
       ] },
       { label: 'Reference', items: [
@@ -30,6 +31,7 @@ export default defineConfig({
         { label: 'macOS stack', slug: 'reference/macos' },
         { label: 'Linux stack', slug: 'reference/linux' },
         { label: 'Rust', slug: 'reference/rust' },
+        { label: 'Go style guide', slug: 'reference/go-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
       ] },
       { label: 'Contributing', items: [{ label: 'Maintain this site', slug: 'maintaining' }] },

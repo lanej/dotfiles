@@ -1,0 +1,22 @@
+{
+  "providers": {
+    "bedrock-sonnet-router": {
+      "name": "Sonnet through Bedrock router",
+      "baseUrl": "http://127.0.0.1:18081/anthropic",
+      "api": "anthropic-messages",
+      "apiKey": "${AWS_BEARER_TOKEN_BEDROCK}",
+      "models": [
+        {
+          "id": "us.anthropic.claude-sonnet-5-5",
+          "name": "Sonnet 5.5 (Bedrock router)",
+          "reasoning": true,
+          "compat": { "forceAdaptiveThinking": true },
+          "input": ["text", "image"],
+          "contextWindow": 1000000,
+          "maxTokens": 128000,
+          "cost": { "input": 2.2, "output": 11, "cacheRead": 0.11, "cacheWrite": 2.75 }
+        }
+      ]
+    }
+  }
+}

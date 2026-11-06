@@ -17,6 +17,7 @@ import runpy
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -34,7 +35,7 @@ def main():
             path.mkdir(mode=0o700)
         bindir = home / ".local/bin"
         bindir.mkdir(parents=True)
-        for name in ("zellij-agent", "fix-ssh", "zellij-attach"):
+        for name in ("zellij-agent", "fix-ssh", "zellij-attach", "zellij-popup"):
             (bindir / name).symlink_to(ROOT / "bin" / name)
         shell = home / "pane-shell"
         shell.write_text('''#!/bin/sh
@@ -45,7 +46,7 @@ server=${parent#* --server }
 server=${server% --debug}
 printf '%s\\n%s\\n%s\\n' "$parent" "$server" "$SSH_AUTH_SOCK" > "$HOME/.parent-identity-$$"
 mv -f "$HOME/.parent-identity-$$" "$HOME/parent-identity"
-export PS1='agent-probe-ready> '
+export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
 exec /bin/sh -i
 ''')
         shell.chmod(0o700)
@@ -59,11 +60,13 @@ exec /bin/sh -i
             '    }\n'
             '}\n'
         )
+        (config / "layouts/tmux.kdl").write_text('layout { pane; }\n')
         (config / "config.kdl").write_text(
             f'default_shell {json.dumps(str(shell))}\n'
             'default_layout "probe"\n'
             'show_startup_tips false\n'
             'show_release_notes false\n'
+            'nested_session_handling "descend"\n'
             'keybinds clear-defaults=true {\n'
             '    normal {\n'
             '        bind "Ctrl f" { Detach; }\n'
@@ -81,6 +84,10 @@ exec /bin/sh -i
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
+        # Match managed installations: otherwise Linux's first-run wizard can
+        # own the focused screen even after the underlying shell is ready.
+        subprocess.run([sys.executable, str(ROOT / "scripts/make/zellij-config.py"), str(home)],
+                       env=env, check=True, capture_output=True, text=True)
         clients, agents, names = [], [], []
 
         def command(args, check=True, **updates):
@@ -225,6 +232,46 @@ exec /bin/sh -i
                                     capture_output=True, text=True, timeout=5)
             assert result.returncode == 1 and "no identities" in result.stdout.lower(), result
 
+        popup_expected = None
+
+        def popup_proof():
+            state = home / "popup-agent-state"
+            state.unlink(missing_ok=True)
+            popup_pane = next(pane["id"] for pane in
+                              json.loads(action("dotfiles-popup", "list-panes", "--json"))
+                              if not pane["is_plugin"])
+            action("dotfiles-popup", "write-chars", "--pane-id", str(popup_pane),
+                   'ssh-add -l > "$HOME/popup-agent-output" 2>&1; '
+                   'printf "%s|%s|%s\\n" "$$" "$popup_agent_token" "$SSH_AUTH_SOCK" '
+                   '> "$HOME/popup-agent-state"\n')
+            first.until("existing popup shell can use the current agent", lambda:
+                        state.exists() and "no identities" in
+                        (home / "popup-agent-output").read_text().lower())
+            observed = state.read_text().strip()
+            if popup_expected is not None:
+                assert observed == popup_expected, "Popup shell PID, memory or stable socket changed"
+            return observed
+
+        def open_popup(host):
+            if "dotfiles-popup" not in names:
+                names.append("dotfiles-popup")
+            rendered = len(host.output)
+            command([binary, "--session", host.name, "run", "--floating", "--close-on-exit",
+                     "--", str(bindir / "zellij-popup")])
+            # Do not query a guest still registering its first client. A unique
+            # prompt also prevents a redraw of the outer shell passing readiness.
+            host.until("popup renders its ready shell", lambda:
+                       b"dotfiles-popup:agent-probe-ready> " in host.output[rendered:])
+            host.until("real popup launcher attaches its shell", lambda:
+                       "agent-probe-ready>" in action("dotfiles-popup", "dump-screen")
+                       and any(pane["nested_session_name"] == "dotfiles-popup"
+                               for pane in host.terminals()))
+
+        def hide_popup(host):
+            host.send(b"\x06")
+            host.until("popup view closes without ending its shell", lambda:
+                       not any(pane["is_floating"] for pane in host.terminals()))
+
         try:
             raw1, raw2, raw3 = (start_agent(f"agent-{number}.sock") for number in (1, 2, 3))
             first = attach("probe-original", raw1)
@@ -243,10 +290,17 @@ exec /bin/sh -i
             first.until("pane records its stable socket", lambda: (home / "retained-socket").exists())
             assert (home / "retained-socket").read_text().strip() == str(stable1)
             original_view = snapshot(first.name)
+            open_popup(first)
+            action("dotfiles-popup", "write-chars", "popup_agent_token=survived\n")
+            popup_expected = popup_proof()
+            popup_stable = Path(popup_expected.split("|")[2])
+            assert popup_stable != stable1, "Popup did not initialize its own stable socket"
+            hide_popup(first)
             update(first.name, raw2, stable1)
             agents[0].terminate()
             agents[0].wait(timeout=5)
             prove_agent(stable1)
+            popup_proof()
             # Zellij inside tmux inherits TMUX, but must recover from its own
             # actual server rather than selecting the outer tmux agent.
             first.send((f"SSH_AUTH_SOCK={shlex.quote(raw1)}; TMUX=inherited; export TMUX SSH_AUTH_SOCK; "
@@ -262,6 +316,7 @@ exec /bin/sh -i
             first = attach("probe-original", raw3)
             assert stable1.resolve() == Path(raw3).resolve(), "Real launcher did not refresh the detached session"
             prove_agent(stable1)
+            popup_proof()
             print("Reattached workspace: " + json.dumps({
                 "panes": first.panes(), "tabs": first.tabs(),
             }), flush=True)
@@ -280,11 +335,28 @@ exec /bin/sh -i
             server2, stable2 = identity()
             assert server2 != server1 and stable2 != stable1, "Reused visible name inherited the renamed server identity"
             assert stable1.resolve() == Path(raw3).resolve()
+            open_popup(replacement)
+            popup_proof()
+            assert popup_stable.readlink() == stable2, "Popup did not select its new containing server"
+            hide_popup(replacement)
             update(first.name, raw2, stable1)
             update(replacement.name, raw3, stable2)
             assert stable1.resolve() == Path(raw2).resolve() and stable2.resolve() == Path(raw3).resolve()
             prove_agent(stable1)
             prove_agent(stable2)
+            popup_proof()
+            assert popup_stable.resolve() == Path(raw3).resolve()
+            # An arbitrary symlink must not redirect the surviving popup away
+            # from its selected containing server's managed agent.
+            unmanaged = home / "unmanaged-agent.sock"
+            unmanaged.symlink_to(raw2)
+            rejected = command([str(bindir / "zellij-agent"), "follow-popup"],
+                               check=False, SSH_AUTH_SOCK=str(unmanaged))
+            assert rejected.returncode != 0, "Accepted an unmanaged popup agent source"
+            assert popup_stable.readlink() == stable2
+            popup_proof()
+            print("PASS: the same popup shell follows host agent updates and detached reconnects; "
+                  "opening from another host switches only the popup's source; an unmanaged link is rejected.", flush=True)
             print("PASS: rename keeps the owning identity; reuse of its old name gets an isolated agent link.", flush=True)
 
             before_failure = snapshot(first.name)
