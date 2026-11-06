@@ -69,6 +69,10 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
+With the compiled status bar, pressing **Ctrl-f** turns the entire top row pink (#B48EAD), matching the selected pane border, with bold dark **PREFIX  waiting for next key** text and an **Esc cancels** hint. The normal tabs return as soon as you run or cancel the command. Resize, move, tab, rename, and scroll/search modes keep their own labels rather than claiming another prefix key is pending. The cue requires the bar to be visible; UI-free zoom does not show it.
+
+Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waiting for the next key](images/zellij-prefix/waiting.png), and [after returning to Locked mode](images/zellij-prefix/after.png). These captures render the test session’s decoded terminal cells, not a live user session.
+
 | Key | Action |
 | --- | --- |
 | `f` | Send a literal Ctrl-f to the application |

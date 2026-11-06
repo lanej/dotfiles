@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Exercise native attention and cross-session triage through the installed bar.
+"""Exercise prefix waiting, native attention and triage through the installed bar.
 
 Local protocol emitters stand in for Claude/Codex; no model/account is used.
 Requires Rust, Python with pyte 0.8.2, and the pinned Zellij runtime. State stays in private sessions.
 """
 
 import codecs
+import fcntl
 import importlib
 import os
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import struct
 import tempfile
+import termios
 
 import pyte
 
@@ -76,14 +79,29 @@ def main():
         clients = []
         screens = {}
 
-        def top_line(client):
+        def display(client):
             if client not in screens:
                 screen = Display(120, 32)
                 screens[client] = [screen, pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0]
             screen, stream, decoder, offset = screens[client]
             stream.feed(decoder.decode(bytes(client.output[offset:])))
             screens[client][3] = len(client.output)
-            return screen.display[0]
+            return screen
+
+        def top_line(client):
+            return display(client).display[0]
+
+        def resize(client, cols):
+            display(client).resize(lines=32, columns=cols)
+            fcntl.ioctl(client.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, cols, 0, 0))
+
+        def prefix_banner(client):
+            screen = display(client)
+            return "PREFIX" in screen.display[0] and all(
+                screen.buffer[0][col].bg == "b48ead"
+                and screen.buffer[0][col].fg == "2e3440"
+                and screen.buffer[0][col].bold
+                for col in range(screen.columns))
 
         terminal = Terminal(binary, env, first)
         clients.append(terminal)
@@ -91,6 +109,30 @@ def main():
             terminal.grant_status_permissions()
             terminal.until("first shell is ready", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
+            terminal.until("normal status bar is ready", lambda: "!0 ●0" in top_line(terminal))
+            terminal.send(b"\x06")
+            terminal.until("prefix waiting paints the whole bar with bold high-contrast text", lambda:
+                           prefix_banner(terminal) and "waiting for next key" in top_line(terminal)
+                           and "Esc cancels" in top_line(terminal))
+            # The prefix wins over the clock even when the terminal is narrow.
+            resize(terminal, 28)
+            terminal.until("prefix remains visible after narrowing the terminal", lambda:
+                           prefix_banner(terminal) and top_line(terminal).endswith("…"))
+            terminal.send(b"\x1b")
+            terminal.until("Escape restores the normal bar", lambda:
+                           "PREFIX" not in top_line(terminal)
+                           and display(terminal).buffer[0][0].bg == "2e3440"
+                           and not display(terminal).buffer[0][0].bold)
+            resize(terminal, 120)
+            terminal.send(b"\x06")
+            terminal.until("prefix waiting can be entered again", lambda: prefix_banner(terminal))
+            terminal.send(b"\x12")
+            terminal.until("a command consumes the prefix and labels the resulting mode", lambda:
+                           "RESIZE" in top_line(terminal) and "PREFIX" not in top_line(terminal)
+                           and display(terminal).buffer[0][0].bg == "2e3440")
+            terminal.send(b"\r")
+            terminal.until("leaving resize restores the ordinary bar", lambda:
+                           "RESIZE" not in top_line(terminal) and "!0 ●0" in top_line(terminal))
             first_pane = terminal.terminals()[0]["id"]
             first_pid = home / "first-agent-pid"
             terminal.send((shlex.join(["python3", str(program), str(first_pid)]) + "\r").encode())
@@ -147,7 +189,7 @@ def main():
             other.send(b"exit\r")
             other.until("program exit clears its native status", lambda:
                         not pane(first, first_pane).get("program_status"))
-            print("PASS: installed native status tracks simultaneous programs, retains detached questions, and triages without restarting panes or a broker.")
+            print("PASS: installed status shows full-width prefix waiting, restores the normal bar, tracks simultaneous programs, retains detached questions, and triages without restarting panes or a broker.")
         finally:
             for name in (first, second):
                 subprocess.run([binary, "kill-session", name], env=env,
