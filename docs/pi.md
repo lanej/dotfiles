@@ -6,7 +6,7 @@
 
 Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install `@earendil-works/pi-coding-agent` at version 1.4.0 or retain an already installed newer version, then configure its shared resources. Bootstrap installs Node 24 first. The Pi package is installed with npm lifecycle scripts disabled.
 
-If Pi is already installed, run `make pi` to share resources. `make pi-config` also applies the existing Firstmate Pi settings. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The dotfiles installer does not copy credentials, configure providers, or edit Pi's settings.
+If Pi is already installed, run `make pi` to share resources. `make pi-config` also applies the existing Firstmate Pi settings. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The shared-resource synchronizer does not copy credentials, configure providers, or edit Pi's settings; `make pi-config` and the selected installation also apply the existing Firstmate settings.
 
 This integration uses Pi's default `~/.pi/agent` directory. If you set `PI_CODING_AGENT_DIR`, its resources must be configured separately.
 
