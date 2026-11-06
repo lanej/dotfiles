@@ -17,7 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
 POPUP = "dotfiles-popup"
-# Leave room for full popup tab titles beside long CI hostnames.
+# Leave room for full popup tab titles alongside long CI runner hostnames.
 SESSION_COLUMNS = 240
 
 

@@ -32,6 +32,7 @@ on:
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zellij-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'nvim/lua/zellij-scrollback.lua'
@@ -68,6 +69,7 @@ on:
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
+      - 'zsh/zellij-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'nvim/lua/zellij-scrollback.lua'
@@ -173,6 +175,8 @@ jobs:
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-claude-titles
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-shell-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-move
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

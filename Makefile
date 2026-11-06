@@ -394,6 +394,9 @@ test-zellij-codex-titles:
 .PHONY: test-zellij-claude-titles
 test-zellij-claude-titles:
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
+.PHONY: test-zellij-shell-titles
+test-zellij-shell-titles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
