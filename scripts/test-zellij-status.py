@@ -176,8 +176,16 @@ def main():
             assert first_pid.read_text() == original_pid, "Triage restarted the program"
             assert state(second, second_pane, "Working"), "Triage changed the other program"
             other.name = first
-            other.until("native question glyph renders after reattachment", lambda:
-                        "?" in top_line(other) and "!?" not in top_line(other))
+            try:
+                other.until("native question glyph renders after reattachment", lambda:
+                            "?" in top_line(other) and "!?" not in top_line(other))
+            except AssertionError as error:
+                details = f"Decoded top row: {top_line(other)!r}"
+                try:
+                    details += f"\nNative pane: {pane(first, first_pane)!r}"
+                except Exception as diagnostic_error:
+                    details += f"\nCould not inspect native pane: {diagnostic_error}"
+                raise AssertionError(f"{error}\n{details}") from error
             other.send(b"exit\r")
             other.until("program exit clears its native status", lambda:
                         not pane(first, first_pane).get("program_status"))
