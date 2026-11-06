@@ -29,3 +29,19 @@ test('copy setup instructions and find the Zellij workflow', async ({ page, cont
   await page.getByText('Resize and layout controls', { exact: true }).click();
   await expect(page.getByText('Prefix =, g, and G are unbound.', { exact: true })).toBeVisible();
 });
+
+test('review Go style defaults and gradual adoption on desktop and mobile', async ({ page }) => {
+  await page.goto('./reference/go-style/');
+  await expect(page.getByRole('heading', { name: 'Go style guide', exact: true })).toBeVisible();
+  await expect(page.getByRole('row', { name: /cuddle-max-statements 1/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /branch-max-lines 2/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'lint profile', exact: true })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/blob/master/ai/skills/go/assets/golangci.yml');
+  await expect(page.locator('main')).toContainText('A new file has no allowance.');
+  await expect(page.locator('main')).toContainText('not proof of individual defect identity');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'Go style guide', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole('link', { name: 'repository bootstrap guide', exact: true }).click();
+  await expect(page).toHaveURL(/\/dotfiles\/reference\/repository-bootstrap\//);
+  await expect(page.locator('main')).toContainText('repo-bootstrap --repo ~/src/service --go-retrofit');
+});

@@ -320,7 +320,15 @@ case "$target" in
             [ -f "${dotfiles}/codex/bedrock.config.toml" ]; then
             ln -fs "${dotfiles}/codex/bedrock.config.toml" "${setup_home}/.codex/bedrock.config.toml"
         fi
-        cat "${dotfiles}/codex/AGENTS.md" "${dotfiles}/codex/AGENTS.local.md" > "${setup_home}/.codex/AGENTS.md" 2>/dev/null || cp "${dotfiles}/codex/AGENTS.md" "${setup_home}/.codex/AGENTS.md"
+        codex_easypost=${6:-false}
+        set -- "${dotfiles}/codex/AGENTS.md"
+        if [ "$codex_easypost" = true ]; then
+            set -- "$@" "${dotfiles}/codex/AGENTS.easypost.md"
+        fi
+        if [ -f "${dotfiles}/codex/AGENTS.local.md" ]; then
+            set -- "$@" "${dotfiles}/codex/AGENTS.local.md"
+        fi
+        cat "$@" > "${setup_home}/.codex/AGENTS.md"
         ;;
     quarto)
         mkdir -p "${setup_home}/.config/quarto"

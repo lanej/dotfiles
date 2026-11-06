@@ -1,8 +1,6 @@
 # Router API contract
 
-The router is a transparent regional proxy for Bedrock Mantle's OpenAI-compatible
-HTTP API. It owns regional routing and transport behavior, while Bedrock owns
-request validation and response schemas.
+The router is a transparent regional proxy for Bedrock Mantle's OpenAI-compatible HTTP API and Bedrock Runtime's Anthropic Messages API. It owns regional routing and transport behavior, while Bedrock owns request validation and response schemas.
 
 ## Upstream reference
 
@@ -17,11 +15,14 @@ generated server interface. Updating the pin requires reviewing changes to
 operations and fields inspected by the router against AWS's supported behavior.
 Unknown JSON fields and stream events must continue to pass through.
 
+Anthropic message creation at `/anthropic/v1/messages` forwards to `https://bedrock-runtime.<region>.amazonaws.com` with the same path. It accepts the existing Bedrock key in `x-api-key` or bearer authorization and recognizes `message_stop` as streamed completion. The [AWS Messages guide](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-messages-api.html) defines this endpoint and key authentication. Pi supplies a `us.anthropic` model ID, Anthropic version header, and its persisted session UUID in `Session-Id`; the router preserves the request bytes and thinking configuration.
+
 ## Proxy boundary
 
 - Accept relative HTTP paths under `/openai/v1/` with bearer authorization.
   Forward the method, path, query, body bytes, and end-to-end headers unchanged.
   Hop-by-hop headers and the router's own request ID are excluded.
+- Accept the exact `/anthropic/v1/messages` route with bearer authorization or a Bedrock key in `x-api-key`. Forward it to Bedrock Runtime; reject other Anthropic paths until their endpoint behavior is verified.
 - Inspect only the top-level `model` for routing. Empty bodies are accepted;
   nonempty bodies must be JSON objects, optionally gzip encoded. The encoded
   and decoded body limits are each 128 MiB.

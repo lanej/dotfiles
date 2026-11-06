@@ -3,10 +3,38 @@
 
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 
 POPUP_SESSION = "dotfiles-popup"
+
+
+def refresh_agent(env):
+    if not env.get("SSH_CONNECTION") or not env.get("SSH_AUTH_SOCK"):
+        return
+    helper = Path(__file__).resolve().with_name("zellij-agent")
+    try:
+        # Run commands inherit the host server's original environment, not the
+        # focused shell's exports. Ask the existing helper for that server's
+        # stable selection before clearing the host's Zellij environment.
+        selected = subprocess.run([str(helper), "init"], env=env, check=True,
+                                  capture_output=True, text=True, timeout=5).stdout.strip()
+        if not selected:
+            return
+        # Follow the managed source, not a snapshot of its current raw target:
+        # the popup must survive another host reconnect without being reopened.
+        # zellij-agent validates this source before initializing/publishing it.
+        env["SSH_AUTH_SOCK"] = selected
+        # The host's pane ID is not an insertion target in the guest session.
+        guest_env = {key: value for key, value in env.items()
+                     if key not in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID")}
+        subprocess.run([str(helper), "follow-popup"], env=guest_env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    except (OSError, subprocess.SubprocessError, RuntimeError):
+        # As with ordinary attach, agent recovery must not prevent access to
+        # live work. Never reset the popup or rewrite another session's link.
+        pass
 
 
 def main():
@@ -15,17 +43,35 @@ def main():
         raise RuntimeError("Open the popup with Ctrl-f P inside a Zellij session")
     if current == POPUP_SESSION:
         raise RuntimeError("The popup is already open; Ctrl-f d detaches this view")
-    config = Path(__file__).resolve().parent.parent / "zellij" / "popup.kdl"
-    if not config.is_file():
-        raise RuntimeError("The popup configuration is missing from the dotfiles checkout")
+    # Use the installed layout, including make zellij's modern/legacy selection.
+    # Zellij merges layout-level settings over the ordinary configuration; only
+    # the scratch session's lifetime and hide key differ from a regular window.
+    # Zellij prefers ~/.config/zellij over XDG_CONFIG_HOME when both exist;
+    # make zellij installs there on both macOS and Linux.
+    default_dir = Path.home() / ".config" / "zellij"
+    if not default_dir.is_dir():
+        default_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "zellij"
+    config_dir = Path(os.environ.get("ZELLIJ_CONFIG_DIR", default_dir))
+    layout_path = config_dir / "layouts" / "tmux.kdl"
+    if not layout_path.is_file():
+        raise RuntimeError("The installed tmux layout is missing; run make zellij")
+    layout = layout_path.read_text() + '''
+// Scratch processes survive detaching, but are never resurrected after exit.
+session_serialization false
+keybinds {
+    tmux {
+        bind "P" { SwitchToMode "Locked"; Detach; }
+    }
+}
+'''
     env = os.environ.copy()
+    refresh_agent(env)
     # Start a separate client, keeping the same socket and XDG directories so
     # every outer tab/session attaches to the same existing scratch process.
-    for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID",
-                "ZELLIJ_CONFIG_FILE", "ZELLIJ_CONFIG_DIR"):
+    # Keep the caller's config selection so the same plugins and keys load.
+    for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID"):
         env.pop(key, None)
-    os.execvpe("zellij", ["zellij", "--config", str(config),
-                         "--layout-string", "layout { pane; }",
+    os.execvpe("zellij", ["zellij", "--layout-string", layout,
                          "attach", "--create", POPUP_SESSION], env)
 
 

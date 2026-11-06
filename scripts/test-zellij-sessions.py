@@ -2,6 +2,7 @@
 """Observe popup state, selected-client detach, and shutdown through installed keys."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -16,6 +17,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
 POPUP = "dotfiles-popup"
+# Leave room for full popup tab titles alongside long CI runner hostnames.
+SESSION_COLUMNS = 240
 
 
 def prove_popup_startup(binary, env, runtime):
@@ -151,7 +154,7 @@ def detach_workflow(clients):
     panes = {pane["id"] for pane in first.terminals()}
 
     def attach():
-        terminal = Terminal(first.binary, first.env, first.name)
+        terminal = Terminal(first.binary, first.env, first.name, columns=SESSION_COLUMNS)
         clients.append(terminal)
         until("second attachment uses the live session", lambda:
               b"zellij-ready> " in terminal.output and len(attached_ids()) == 2)
@@ -263,9 +266,63 @@ def popup_workflow(first, second, home):
     popup_ids.add(right["id"])
     first.until("close removes only the temporary popup split", lambda:
                 {pane["id"] for pane in popup_panes(first)} == popup_ids)
-    first.prefix(b"h")
-    first.until("popup navigation returns to the original shell", lambda:
+    first.send(b"\x08")
+    first.until("bare Ctrl-h navigation returns to the original popup shell", lambda:
                 next(pane for pane in popup_panes(first) if pane["is_focused"])["id"] == original)
+    # A real scrollback journey: the target is outside the viewport before the
+    # keys run, so a key sent through to the shell cannot accidentally pass.
+    first.send(b"printf 'popup-history-%03d\\n' $(seq 1 160)\r")
+    def screen():
+        return first.action("dump-screen", "--pane-id", str(original), session=POPUP)
+    first.until("history fills the popup viewport", lambda: "popup-history-160" in screen())
+    assert "popup-history-001" not in screen()
+    first.prefix(b"[")
+    first.send(b"g")
+    first.until("scroll mode reaches old popup output", lambda: "popup-history-001" in screen())
+    first.send(b"/")
+    first.send(b"popup-history-080\r")
+    first.until("search finds output outside the initial viewport", lambda:
+                "popup-history-080" in screen())
+    first.send(b"q")
+    first.until("leaving search returns to live output", lambda: "popup-history-160" in screen())
+    first.prefix(b"e")
+    def editor_ready():
+        for pane in popup_panes(first):
+            if pane["id"] in popup_ids:
+                continue
+            contents = first.action("dump-screen", "--pane-id", str(pane["id"]), session=POPUP)
+            # The PTY is not a terminal emulator replying to Neovim's DSR
+            # probe. Acknowledge its startup notice before inspecting the file.
+            if "Press ENTER or type command" in contents:
+                first.send(b"\r")
+            elif "popup-history" in contents:
+                return True
+        return False
+    first.until("scrollback opens in the configured editor", editor_ready)
+    # Ask the actual editor to save its buffer: this proves it received the
+    # history, rather than just observing another terminal pane being created.
+    first.send(b":w! ~/popup-history.txt\r")
+    first.until("editor receives the popup history", lambda:
+                (home / "popup-history.txt").exists()
+                and "popup-history-001" in (home / "popup-history.txt").read_text()
+                and "popup-history-160" in (home / "popup-history.txt").read_text())
+    first.send(b":q!\r")
+    first.until("closing the editor restores the live popup panes", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    # Tab controls need the shared layout's visible bar, not just bindings.
+    first.prefix(b"c")
+    first.until("popup creates an ordinary tab", lambda:
+                len(json.loads(first.action("list-tabs", "--json", session=POPUP))) == 2)
+    first.prefix(b"r")
+    first.send(b"popup-controls\r")
+    first.until("popup tab bar renders its renamed tab", lambda:
+                any(tab["name"] == "popup-controls" and tab["active"]
+                    for tab in json.loads(first.action("list-tabs", "--json", session=POPUP)))
+                and b"1:popup-controls" in first.output)
+    first.prefix(b"x")
+    first.until("closing the temporary tab preserves both scratch panes", lambda:
+                {pane["id"] for pane in popup_panes(first)} == popup_ids)
+    prove_popup(first, home, expected, "popup-after-controls")
     rendered = len(first.output)
     first.prefix(b"u")
     # FocusHostSession queues a frame; its completion is not the host's
@@ -302,7 +359,8 @@ def popup_workflow(first, second, home):
                  {pane["id"] for pane in popup_panes(second)} == {original})
     prove_popup(second, home, expected, "popup-after-split-close")
     hide_popup(second)
-    print("Popup: native splits and focus work inside the floating view; both shells retain "
+    print("Popup: native splits, bare navigation, scroll/search, scrollback editing and tab keys "
+          "work inside the floating view; both shells retain "
           "their PID, unexported state and cwd across hiding, another tab, and another "
           "outer session. Closing a split preserves the original shell.")
     return expected
@@ -329,7 +387,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
     names.append(renamed)
     second.action("rename-session", renamed)
     second.name = renamed
-    replacement = Terminal(first.binary, first.env, original_name)
+    replacement = Terminal(first.binary, first.env, original_name, columns=SESSION_COLUMNS)
     clients.append(replacement)
     replacement.until("replacement session starts", lambda: b"zellij-ready> " in replacement.output)
     # Recreate the same visible workspace and command IDs. The old tuple-only
@@ -383,11 +441,17 @@ def main():
                         help="exercise the shared popup without unrelated client/shutdown checks")
     args = parser.parse_args()
     binary = shutil.which("zellij")
-    assert binary and shutil.which("fzf"), "Install the pinned Zellij runtime and fzf before make test-zellij-sessions"
+    assert binary and shutil.which("fzf") and shutil.which("nvim"), \
+        "Install the pinned Zellij runtime, fzf and Neovim before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
         temporary = Path(directory).resolve()
         home = temporary / "home"
         home.mkdir()
+        # Exercise the real editor with private state and no unrelated plugins.
+        editor_config = home / ".config/nvim"
+        editor_config.mkdir(parents=True)
+        (editor_config / "init.lua").write_text(
+            'vim.opt.swapfile = false\nvim.opt.shadafile = "NONE"\n')
         runtime = temporary / "run"
         runtime.mkdir(mode=0o700)
         temp_files = temporary / "tmp"
@@ -396,6 +460,7 @@ def main():
                "PS1": "${ZELLIJ_SESSION_NAME}:zellij-ready> ",
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(temporary / "cache"),
+               "XDG_STATE_HOME": str(temporary / "state"),
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
@@ -413,7 +478,7 @@ def main():
             if not args.popup_only:
                 prove_popup_startup(binary, env, runtime)
             for name in names:
-                terminal = Terminal(binary, env, name)
+                terminal = Terminal(binary, env, name, columns=SESSION_COLUMNS)
                 clients.append(terminal)
                 terminal.grant_status_permissions()
                 terminal.until("outer shell starts", lambda:
