@@ -17,6 +17,7 @@ import runpy
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -45,7 +46,7 @@ server=${parent#* --server }
 server=${server% --debug}
 printf '%s\\n%s\\n%s\\n' "$parent" "$server" "$SSH_AUTH_SOCK" > "$HOME/.parent-identity-$$"
 mv -f "$HOME/.parent-identity-$$" "$HOME/parent-identity"
-export PS1='agent-probe-ready> '
+export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
 exec /bin/sh -i
 ''')
         shell.chmod(0o700)
@@ -83,6 +84,10 @@ exec /bin/sh -i
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
+        # Match managed installations: otherwise Linux's first-run wizard can
+        # own the focused screen even after the underlying shell is ready.
+        subprocess.run([sys.executable, str(ROOT / "scripts/make/zellij-config.py"), str(home)],
+                       env=env, check=True, capture_output=True, text=True)
         clients, agents, names = [], [], []
 
         def command(args, check=True, **updates):
@@ -250,8 +255,13 @@ exec /bin/sh -i
         def open_popup(host):
             if "dotfiles-popup" not in names:
                 names.append("dotfiles-popup")
+            rendered = len(host.output)
             command([binary, "--session", host.name, "run", "--floating", "--close-on-exit",
                      "--", str(bindir / "zellij-popup")])
+            # Do not query a guest still registering its first client. A unique
+            # prompt also prevents a redraw of the outer shell passing readiness.
+            host.until("popup renders its ready shell", lambda:
+                       b"dotfiles-popup:agent-probe-ready> " in host.output[rendered:])
             host.until("real popup launcher attaches its shell", lambda:
                        "agent-probe-ready>" in action("dotfiles-popup", "dump-screen")
                        and any(pane["nested_session_name"] == "dotfiles-popup"
