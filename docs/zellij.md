@@ -79,7 +79,7 @@ Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waitin
 | --- | --- |
 | `f` | Send a literal Ctrl-f to the application |
 | `Ctrl-f` | Fuzzy tab picker, with native attention first and pane previews |
-| `Ctrl-a` | Focus the next native attention item across sessions |
+| `Ctrl-a` | Next local tab needing you, otherwise activity/bell, in tab order |
 | `Ctrl-w` | Fuzzy picker for running sessions, with a tab-tree preview |
 | `h`, `j`, `k`, `l` / arrows | Focus the adjacent pane |
 | `Tab`, `o` | Focus the next pane |
@@ -212,7 +212,9 @@ Claude pane titles use [`claude/zellij-title.json`](../claude/zellij-title.json)
 
 With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
 
-Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.
+Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses the existing status plugin to restore tmux's tab selection: exclude the current tab, prefer requests and failures, otherwise visit activity/bell tabs, and wrap in numeric tab order. Quiet completions are not candidates. The key is routed only to the invoking client; it does not switch other clients or jump to another session. Native bells remain useful for programs that do not publish richer state. Explicit native cross-session triage remains available through `Ctrl-f :` → `go-to-next-attention`.
+
+The shared popup currently applies this key inside its own session. Returning to the host with `Ctrl-f u` and pressing `Ctrl-f Ctrl-a` there uses the host's tabs. Automatic popup-to-host triage remains a parity gap: the public plugin API does not provide a client-specific host action, and a broad host-focus message can affect other viewers. This configuration does not add an input interceptor or guess the host client.
 
 Claude Code 2.1.295 and Codex 0.164.0 publish OSC 7501 program status; the installation catalog pins those versions. Other applications need to emit that protocol for detailed native states. The existing agent-status broker remains available for tmux. Configuration-only setup and the stable 0.45.1 runtime use the built-in bar and one-based tab keys until a compatible native-attention bar is available.
 
@@ -230,7 +232,7 @@ These are line limits, **not a byte budget or a guarantee against memory exhaust
 
 | tmux behavior | This configuration |
 | --- | --- |
-| Agent status and cross-session attention | The native program-status protocol supplies the bar and `Ctrl-f Ctrl-a` triage. Programs must emit OSC 7501. |
+| Agent status and attention | Native program status supplies the bar. `Ctrl-f Ctrl-a` restores local tmux-style tab selection; the command prompt retains explicit cross-session triage. Popup-to-host triage is still manual. |
 | Exact Claude conversation restoration via saved session IDs | Zellij's native command restoration is enabled; the custom `claude --resume` session-ID integration remains tmux-specific. |
 | Rex OSC 7501 delivery through the patched tmux server | No replacement transport in this configuration. Upstream development features are not assumed to exist in stable 0.45.1. |
 | Smart bare Ctrl-h/j/k/l across Neovim and tmux panes | Supported in Neovim normal/insert modes, shells, and foreground applications such as Codex. Nested tmux/Zellij retains its own controls. |

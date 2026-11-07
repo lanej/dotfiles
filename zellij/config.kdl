@@ -77,7 +77,13 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "Ctrl a" { GoToNextAttention; SwitchToMode "Locked"; }
+        bind "Ctrl a" {
+            // The consented background receiver installs a client-private target.
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "attention-next-tab"
+            }
+            SwitchToMode "Locked"
+        }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
         bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }

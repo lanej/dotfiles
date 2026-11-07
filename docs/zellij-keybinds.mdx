@@ -73,7 +73,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 | `J` / `K` | Move the pane down / up within the tab |
 | `!` | Move the focused pane to a new tab |
 | `m` | Choose New Tab or an existing destination tab for this pane |
-| `Ctrl-a` | Focus the next native attention item, including in another session |
+| `Ctrl-a` | Next local tab needing you, otherwise activity/bell, in tab order |
 
 **Tab positions are not tab names.** Modern numeric shortcuts are zero-based even if an automatically generated name still says `Tab #1`. The underlying Zellij `GoToTab` action is one-based. The custom bar and picker prepend the zero-based position; use that position rather than a number embedded in the name.
 
@@ -83,7 +83,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 
 **Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
 
-The tab picker lists this session's tabs, prioritizing native attention when available. Native cross-session attention requires a program that emits OSC 7501; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
+The tab picker lists this session's tabs, prioritizing native attention when available. Attention uses native OSC 7501 state and ordinary bells; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
 
 </details>
 
@@ -251,7 +251,7 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | --- | --- | --- |
 | Numeric tab selection | `0`–`9` selects the first through tenth tab | `0` and `1` both select the first; `2`–`9` select the second through ninth |
 | Tab positions in the bar/picker | Zero-based | One-based |
-| Native attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Local attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
 | Session card: `Ctrl-f I` | Assigned; Alt-Enter releases live preview input | Unbound |
 | Client chooser: `Ctrl-f D` | Assigned | Unbound |
 | Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |

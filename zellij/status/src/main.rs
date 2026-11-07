@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
 mod clipboard;
+mod attention;
 mod clients;
 
 #[derive(Default)]
@@ -196,7 +197,7 @@ impl ZellijPlugin for State {
         }
         if self.allowed {
             if self.clipboard_receiver {
-                self.clipboard.route_binding(bindings_changed);
+                self.clipboard.route_bindings(bindings_changed);
             } else if !self.clipboard_prepared {
                 self.clipboard_prepared = clipboard::prepare_receiver(&self.panes);
             }
@@ -220,6 +221,10 @@ impl ZellijPlugin for State {
             } else if !self.clipboard_receiver && self.allowed && message.name == clipboard::NOTICE {
                 return self.clipboard.receive_notice(&message);
             }
+        }
+        if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind
+            && message.name == attention::MESSAGE {
+            attention::jump(&self.tabs, &self.attention, &message);
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
             if let Some(session) = self.mode.session_name.as_deref() {
