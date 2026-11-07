@@ -40,6 +40,13 @@ serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 serialization_interval 60
 
+// Keep ordinary background output quiet. Explicitly watched panes still report
+// activity; successful shell commands become attention after thirty seconds.
+attention {
+    idle_rule "watched"
+    done_threshold_secs 30
+}
+
 plugins {
     command-prompt location="file:~/.local/share/zellij/plugins/command-prompt.wasm"
     pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
@@ -84,6 +91,19 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        bind "b" { SwitchToMode "Locked"; ToggleSessionCard; }
+        bind "B" {
+            Run "zellij-notify" "history" {
+                floating true
+                close_on_exit true
+                name "Notification history"
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
+        bind "a" { WatchPane; SwitchToMode "Locked"; }
+        bind "U" { MutePane; SwitchToMode "Locked"; }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
         bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
