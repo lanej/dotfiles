@@ -149,20 +149,6 @@ jobs:
           bash scripts/install-zellij
           "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Exercise command palette
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: |
-          mkdir -p "$ZELLIJ_TEST_ARTIFACTS/command-palette"
-          set -o pipefail
-          make test-zellij-command-prompt 2>&1 | tee "$ZELLIJ_TEST_ARTIFACTS/command-palette/integration.log"
-      - name: Preserve command palette terminal captures
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: command-palette-${{ matrix.os }}
-          path: ${{ github.workspace }}/.zellij-diagnostics/command-palette
-          if-no-files-found: ignore
-          retention-days: 7
       - name: Install pane navigation
         run: python3 scripts/install-zellij-navigation.py
       - name: Save native Zellij build
@@ -200,6 +186,20 @@ jobs:
           mkdir -p "$RUNNER_TEMP/zellij-tools"
           curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/zellij-tools"
           echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
+      - name: Exercise command palette
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+        run: |
+          mkdir -p "$ZELLIJ_TEST_ARTIFACTS/command-palette"
+          set -o pipefail
+          make test-zellij-command-prompt 2>&1 | tee "$ZELLIJ_TEST_ARTIFACTS/command-palette/integration.log"
+      - name: Preserve command palette terminal captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: command-palette-${{ matrix.os }}
+          path: ${{ github.workspace }}/.zellij-diagnostics/command-palette
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status

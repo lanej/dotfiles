@@ -365,6 +365,13 @@ def exercise(first, second, home):
         p['tab_id'] == other_tab and p['title'] == 'completed tab target' for p in first.terminals()))
     submit(first, 'go-to-tab 1', second)
 
+    # Reopen while a tab switch can still be completing, with the other client
+    # active. The private binding must survive each transition without retries.
+    for position in (2, 1, 2, 1, 2, 1):
+        submit(first, f'go-to-tab {position}', second)
+        open_prompt(first)
+        first.send(b'\x1b')
+
     submit(first, 'list-tabs', second)
     first.until('tab query opens', lambda: 'TAB / NAME' in text(first))
     submit(second, 'rename-tab "live renamed target"', first)

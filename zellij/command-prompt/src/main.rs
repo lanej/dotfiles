@@ -71,6 +71,7 @@ struct CommandPrompt {
     history: VecDeque<String>,
     actions: VecDeque<Action>,
     action_pending: bool,
+    pending_keybind: Option<&'static str>,
     palette: Option<palette::Palette>,
 }
 
@@ -147,51 +148,28 @@ impl ZellijPlugin for CommandPrompt {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
-        if !self.allowed || self.palette.is_some() || !message.is_private || self.action_pending {
+        if !self.allowed || self.palette.is_some() || !message.is_private {
             return false;
         }
         if message.source == PipeSource::Keybind
             && matches!(message.name.as_str(), OPEN | NEW_SESSION)
             && message.payload.as_deref() == Some(self.client_id.to_string().as_str())
         {
-            match get_focused_pane_info() {
-                Ok(origin) => {
-                    if message.name == NEW_SESSION {
-                        match get_pane_cwd(origin.1) {
-                            Ok(cwd) => {
-                                // This API treats /tmp, /host, /data and /cache
-                                // as WASI aliases, but get_pane_cwd returns a
-                                // host path. POSIX /.. is root on macOS/Linux;
-                                // keep that component to avoid alias rewriting.
-                                let Ok(relative) = cwd.strip_prefix("/") else {
-                                    self.notice(
-                                        "The focused pane has no absolute working directory."
-                                            .into(),
-                                    );
-                                    return false;
-                                };
-                                let cwd = std::path::Path::new("/..").join(relative);
-                                // Never reuse a popup's inline layout: its P key
-                                // detaches instead of opening the shared popup.
-                                switch_session_with_layout(
-                                    None,
-                                    LayoutInfo::File("tmux".into(), Default::default()),
-                                    Some(cwd),
-                                );
-                            }
-                            Err(error) => self.notice(error),
-                        }
-                        return false;
-                    }
-                    self.origin = Some(origin);
-                    self.line.clear();
-                    self.input(String::new());
-                }
-                Err(error) => {
-                    prompt(PromptRequest::notify(error).timeout(std::time::Duration::from_secs(4)));
-                }
+            let keybind = if message.name == OPEN {
+                OPEN
+            } else {
+                NEW_SESSION
+            };
+            if self.action_pending {
+                // A popup can close before the previous action completes.
+                // Keep one private request instead of dropping a quick reopen.
+                self.pending_keybind = Some(keybind);
+            } else {
+                self.open_keybind(keybind);
             }
-        } else if matches!(message.source, PipeSource::Plugin(_)) && message.name == palette::REPLY
+        } else if !self.action_pending
+            && matches!(message.source, PipeSource::Plugin(_))
+            && message.name == palette::REPLY
         {
             if let Some(reply) = message
                 .payload
@@ -219,6 +197,45 @@ impl ZellijPlugin for CommandPrompt {
 }
 
 impl CommandPrompt {
+    fn open_keybind(&mut self, name: &str) {
+        match get_focused_pane_info() {
+            Ok(origin) => {
+                if name == NEW_SESSION {
+                    match get_pane_cwd(origin.1) {
+                        Ok(cwd) => {
+                            // This API treats /tmp, /host, /data and /cache
+                            // as WASI aliases, but get_pane_cwd returns a
+                            // host path. POSIX /.. is root on macOS/Linux;
+                            // keep that component to avoid alias rewriting.
+                            let Ok(relative) = cwd.strip_prefix("/") else {
+                                self.notice(
+                                    "The focused pane has no absolute working directory.".into(),
+                                );
+                                return;
+                            };
+                            let cwd = std::path::Path::new("/..").join(relative);
+                            // Never reuse a popup's inline layout: its P key
+                            // detaches instead of opening the shared popup.
+                            switch_session_with_layout(
+                                None,
+                                LayoutInfo::File("tmux".into(), Default::default()),
+                                Some(cwd),
+                            );
+                        }
+                        Err(error) => self.notice(error),
+                    }
+                    return;
+                }
+                self.origin = Some(origin);
+                self.line.clear();
+                self.input(String::new());
+            }
+            Err(error) => {
+                prompt(PromptRequest::notify(error).timeout(std::time::Duration::from_secs(4)));
+            }
+        }
+    }
+
     fn notice(&self, message: String) {
         prompt(PromptRequest::notify(message).timeout(std::time::Duration::from_secs(4)));
     }
@@ -336,6 +353,40 @@ impl CommandPrompt {
             run_action(action, BTreeMap::from([("owner".into(), OPEN.into())]));
         } else {
             self.origin = None;
+            if let Some(keybind) = self.pending_keybind.take() {
+                self.open_keybind(keybind);
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_busy_dispatcher_retains_only_its_clients_latest_keybind_request() {
+        let mut state = CommandPrompt {
+            allowed: true,
+            client_id: 2,
+            action_pending: true,
+            ..Default::default()
+        };
+        let request = |name: &str, client: u16, private| PipeMessage {
+            source: PipeSource::Keybind,
+            name: name.into(),
+            payload: Some(client.to_string()),
+            args: BTreeMap::new(),
+            is_private: private,
+        };
+        state.pipe(request(OPEN, 1, true));
+        state.pipe(request(OPEN, 2, false));
+        assert_eq!(state.pending_keybind, None);
+        state.pipe(request(OPEN, 2, true));
+        assert_eq!(state.pending_keybind, Some(OPEN));
+        state.pipe(request(NEW_SESSION, 2, true));
+        state.pipe(request(OPEN, 1, true));
+        assert_eq!(state.pending_keybind, Some(NEW_SESSION));
+        assert!(state.action_pending);
     }
 }
