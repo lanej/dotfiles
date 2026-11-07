@@ -510,7 +510,23 @@ impl Palette {
             View::Sessions => "Zellij command · sessions",
             View::Documentation => "Zellij command · help",
         };
-        put(0, Text::from(format!(" {title} ")).color_range(0, ..));
+        let title = format!(" {title} ");
+        print_text_with_coordinates(
+            Text::from(&title).color_range(0, ..),
+            2,
+            0,
+            Some(graphemes::display_width(&title).min(width)),
+            Some(1),
+        );
+        let frame_label = |row, label: &str| {
+            print_text_with_coordinates(
+                Text::from(label).dim_range(..),
+                2,
+                row,
+                Some(graphemes::display_width(label).min(width)),
+                Some(1),
+            )
+        };
         if self.view == View::Documentation {
             let lines: Vec<_> = self
                 .documentation
@@ -522,10 +538,7 @@ impl Palette {
             for (i, line) in lines.iter().skip(self.scroll).take(visible).enumerate() {
                 put(i + 1, line.clone());
             }
-            put(
-                rows - 1,
-                Text::from(" ↑↓ scroll · Enter/Esc back ").dim_range(..),
-            );
+            frame_label(rows - 1, " ↑↓ scroll · Enter/Esc back ");
             return;
         }
         self.render_input(columns);
@@ -613,16 +626,15 @@ impl Palette {
                 Text::from(format!("{} suggestions", items.len())).dim_range(..),
             );
         }
-        put(
+        frame_label(
             rows - 1,
-            Text::from(if compact && !self.error.is_empty() {
+            if compact && !self.error.is_empty() {
                 " Ctrl-d details · Esc close "
             } else if compact {
                 " Tab complete · Enter run · Esc close "
             } else {
                 " ↑↓ select · Enter choose · Esc back "
-            })
-            .dim_range(..),
+            },
         );
     }
 }
