@@ -153,6 +153,12 @@ def command_line(terminal):
     return screen(terminal)[top + 1][left + 1:left + width - 1]
 
 
+def prompt_text(terminal):
+    top, left, width, height = prompt_frame(terminal)
+    return '\n'.join(line[left + 1:left + width - 1]
+                     for line in screen(terminal)[top + 1:top + height - 1])
+
+
 def open_prompt(terminal):
     # Wait for asynchronous closure so new keys cannot enter a stale popup.
     terminal.until("previous command dialog closes", lambda: "Zellij command" not in text(terminal))
@@ -280,12 +286,12 @@ def exercise(first, second, home):
         ('definitely-not-a-command', 'Unknown or unsupported command'),
     ):
         submit(first, command, second)
-        first.until('unsupported variant remains editable: ' + command, lambda: message in ' '.join(text(first).split()))
+        first.until('unsupported variant remains editable: ' + command, lambda: message in ' '.join(prompt_text(first).split()))
         unchanged()
         if command == 'new-pane --near-current-pane':
             first.send(b'\x04')
             first.until('full error details are available', lambda: 'Zellij command · help' in text(first)
-                        and message in ' '.join(text(first).split()))
+                        and message in ' '.join(prompt_text(first).split()))
             first.send(b'\x1b')
             first.until('error details return to the original command', lambda:
                         'new-pane --near-current-pane' in text(first) and 'Tab complete' in text(first))

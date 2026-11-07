@@ -54,13 +54,15 @@ pub struct Palette {
     scroll: usize,
     allowed: bool,
     popup_size: Option<(usize, usize)>,
-    input_offset: usize,
 }
 
 impl Palette {
     pub fn new(open: Open) -> Self {
         Self {
-            input: TextInput::new(&open.line).label(":").focused(),
+            input: TextInput::new(&open.line)
+                .label(":")
+                .label_width(2)
+                .focused(),
             error: open.error.clone(),
             open,
             view: View::Command,
@@ -72,7 +74,6 @@ impl Palette {
             scroll: 0,
             allowed: false,
             popup_size: None,
-            input_offset: 0,
         }
     }
 
@@ -204,7 +205,10 @@ impl Palette {
 
     fn back(&mut self) {
         self.view = View::Command;
-        self.input = TextInput::new(&self.open.line).label(":").focused();
+        self.input = TextInput::new(&self.open.line)
+            .label(":")
+            .label_width(2)
+            .focused();
         self.selected = 0;
         self.error.clear();
     }
@@ -322,7 +326,7 @@ impl Palette {
             self.open.line = self.input.get_text().into();
         }
         self.view = view;
-        self.input = TextInput::empty().label("filter").focused();
+        self.input = TextInput::empty().label("filter").label_width(2).focused();
         self.selected = 0;
         self.error.clear();
         self.refresh();
@@ -398,59 +402,22 @@ impl Palette {
         close_self();
     }
 
-    // Keep the SDK editor's grapheme-aware editing, but draw one unboxed line
-    // inside the popup frame instead of nesting a second input box inside it.
-    fn render_input(&mut self, width: usize) {
-        let label = if self.view == View::Command { ":" } else { "/" };
-        print_text_with_coordinates(Text::from(label).color_range(0, ..), 2, 1, Some(1), Some(1));
-        let available = width.saturating_sub(2);
-        let text: String = self
-            .input
-            .get_text()
-            .chars()
-            .filter(|c| !c.is_control())
-            .collect();
-        let prefix: String = self
-            .input
-            .get_text()
-            .chars()
-            .take(self.input.cursor_position())
-            .filter(|c| !c.is_control())
-            .collect();
-        let clusters: Vec<_> = graphemes::clusters(&text).collect();
-        let cursor = graphemes::clusters(&prefix).count().min(clusters.len());
-        let (caret, caret_width) = clusters.get(cursor).copied().unwrap_or((" ", 1));
-        let caret_width = caret_width.max(1);
-        self.input_offset = self.input_offset.min(cursor);
-        while clusters[self.input_offset..cursor]
-            .iter()
-            .map(|(_, w)| *w)
-            .sum::<usize>()
-            + caret_width
-            > available
-        {
-            self.input_offset += 1;
-        }
-        let mut used = 0;
-        let visible: String = clusters
-            .iter()
-            .skip(self.input_offset)
-            .take_while(|(_, w)| {
-                used += *w;
-                used <= available
-            })
-            .map(|(s, _)| *s)
-            .collect();
-        print_text_with_coordinates(Text::from(visible), 4, 1, Some(available), Some(1));
-        let cursor_column = clusters[self.input_offset..cursor]
-            .iter()
-            .map(|(_, w)| *w)
-            .sum::<usize>();
+    fn render_input(&mut self, columns: usize) {
+        // Reuse the native editor's scrolling and grapheme cursor. Its field
+        // brackets share the frame's edges, so replace them with our prompt
+        // and right border rather than drawing another box inside the popup.
+        self.input.render(0, 1, columns);
+        let label = if self.view == View::Command {
+            "│ : "
+        } else {
+            "│ / "
+        };
+        print_text_with_coordinates(Text::from(label).color_range(0, ..), 0, 1, Some(4), Some(1));
         print_text_with_coordinates(
-            Text::from(caret).selected(),
-            4 + cursor_column,
+            Text::from("│").color_range(0, ..),
+            columns - 1,
             1,
-            Some(caret_width.min(available - cursor_column)),
+            Some(1),
             Some(1),
         );
     }
@@ -561,7 +528,7 @@ impl Palette {
             );
             return;
         }
-        self.render_input(width);
+        self.render_input(columns);
         border(2, '├', '┤');
         let table_row = if compact { 3 } else { 4 };
         let visible = if compact {
