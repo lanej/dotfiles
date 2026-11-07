@@ -316,15 +316,23 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert target == "aarch64-unknown-linux-gnu", args
     install_root = Path(args[args.index("--root") + 1])
     assert install_root == home / ".local", args
+    with (home / "zellij-installs").open("a") as installs:
+        installs.write(json.dumps({"revision": revision,
+                                  "target_dir": os.environ["CARGO_TARGET_DIR"],
+                                  "force": "--force" in args}) + "\n")
+    if os.environ.get("FIXTURE_FAIL_ZELLIJ_INSTALL"):
+        sys.exit("fixture native build failed")
     output = install_root / "bin/zellij"
     if output.exists() and "--force" not in args:
         if (home / "zellij-owned").exists():
-            sys.exit(0)
-        sys.exit("zellij already exists; use --force to overwrite")
+            if (home / "zellij-owned").read_text() == revision:
+                sys.exit(0)
+        else:
+            sys.exit("zellij already exists; use --force to overwrite")
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(fixture / "driver", output)
     output.chmod(0o755)
-    (home / "zellij-owned").touch()
+    (home / "zellij-owned").write_text(revision)
     record("zellij")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
@@ -468,6 +476,47 @@ else:
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
         assert installed.read_bytes() == previous
         assert (home / "events").read_text().splitlines().count("zellij") == 1
+        # Model a legacy owned same-revision installation without a receipt.
+        # Keep its populated build cache: cache state cannot verify the binary.
+        def runtime_calls():
+            return [json.loads(line) for line in (home / "zellij-installs").read_text().splitlines()]
+
+        first_call, repeat_call = runtime_calls()
+        revision = first_call["revision"]
+        assert first_call["target_dir"] == str(home / ".cache/dotfiles/zellij/target" / revision)
+        assert first_call["force"] and not repeat_call["force"]
+        (home / ".local/.dotfiles-zellij-install").unlink(missing_ok=True)
+        failed = subprocess.run(runtime_command,
+                                env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},
+                                capture_output=True, text=True)
+        assert failed.returncode != 0 and "fixture native build failed" in failed.stderr
+        assert installed.read_bytes() == previous
+        migrated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert migrated.returncode == 0, migrated.stdout + migrated.stderr
+        assert runtime_calls()[-1]["force"], "A failed build was treated as an installed isolated runtime"
+        assert (home / "events").read_text().splitlines().count("zellij") == 2
+        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert not runtime_calls()[-1]["force"]
+        assert (home / "events").read_text().splitlines().count("zellij") == 2
+        isolated_target = runtime_calls()[-1]["target_dir"]
+        # Exercise a second pinned recipe through the same installer entrypoint.
+        alternate_revision = "1" * 40
+        alternate = home / "install-zellij-other"
+        alternate.write_text((checkout / "scripts/install-zellij").read_text().replace(
+            "zellij_revision=" + revision, "zellij_revision=" + alternate_revision))
+        changed = subprocess.run(["/bin/bash", str(alternate)], env=runtime_env,
+                                 capture_output=True, text=True)
+        assert changed.returncode == 0, changed.stdout + changed.stderr
+        changed_call = runtime_calls()[-1]
+        assert changed_call["revision"] == alternate_revision
+        assert changed_call["target_dir"] != isolated_target and changed_call["force"]
+        assert Path(changed_call["target_dir"]).name == alternate_revision
+        restored = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert restored.returncode == 0, restored.stdout + restored.stderr
+        assert runtime_calls()[-1]["target_dir"] == isolated_target
+        assert runtime_calls()[-1]["force"], "Returning to an old pin trusted build-cache state"
+        assert (home / "zellij-owned").read_text() == revision
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
         assert not (font_dir / "HackNerdFont-Regular.ttf").exists()
