@@ -1,12 +1,11 @@
 use clap::{CommandFactory, Parser};
-use std::path::PathBuf;
-use zellij_tile::prelude::{actions::Action, ChoiceItem};
+use std::{path::PathBuf, sync::OnceLock};
+use zellij_tile::prelude::actions::Action;
 use zellij_utils::cli::CliAction;
 use zellij_utils::plugin_api::action::ProtobufAction;
 
-// Queries need a stdout consumer, and layout-file loading needs host filesystem
-// access. Keep those in the shell rather than silently discarding their output
-// or expanding this plugin's permissions. Parsing remains Zellij's own grammar.
+// Queries are rendered from native state by the palette. These mutations use
+// Zellij's parser and plugin protocol; loading layout files stays in the shell.
 const COMMANDS: &[&str] = &[
     "clear",
     "close-pane",
@@ -44,28 +43,40 @@ const COMMANDS: &[&str] = &[
     "undo-rename-tab",
 ];
 
+pub fn metadata() -> &'static [clap::Command] {
+    static METADATA: OnceLock<Vec<clap::Command>> = OnceLock::new();
+    METADATA.get_or_init(|| {
+        let mut command = CommandLine::command();
+        command.build();
+        command
+            .get_subcommands()
+            .filter(|command| COMMANDS.contains(&command.get_name()))
+            .cloned()
+            .collect()
+    })
+}
+
+pub fn argument_supported(name: &str) -> bool {
+    !matches!(
+        name.replace('_', "-").as_str(),
+        "near-current-pane"
+            | "no-focus"
+            | "stacked"
+            | "in-place"
+            | "layout"
+            | "layout-string"
+            | "initial-plugin"
+            | "plugin"
+            | "pane-id"
+            | "tab-id"
+    )
+}
+
 #[derive(Parser)]
 #[command(name = ":", disable_help_subcommand = true, color = clap::ColorChoice::Never)]
 struct CommandLine {
     #[command(subcommand)]
     action: CliAction,
-}
-
-pub fn choices() -> Vec<ChoiceItem> {
-    CommandLine::command()
-        .get_subcommands()
-        .filter(|command| COMMANDS.contains(&command.get_name()))
-        .map(|command| {
-            let name = command.get_name();
-            ChoiceItem::labeled(
-                name,
-                format!(
-                    "{name}: {}",
-                    command.get_about().cloned().unwrap_or_default()
-                ),
-            )
-        })
-        .collect()
 }
 
 pub enum Parsed {

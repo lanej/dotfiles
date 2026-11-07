@@ -8,7 +8,7 @@ Terminal capture of this configuration running on Zellij 0.45.1.
 
 ## Start a session
 
-Use the **pinned [lanej/zellij fork](https://github.com/lanej/zellij)** installed by this checkout, Python 3 for the configuration helpers, fzf, and Rust through rustup. The selected Zellij recipe defaults to the exact fork revision in [`scripts/install-zellij`](../scripts/install-zellij). The fork builds on upstream `main` at `bf517077`, which includes [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) and the startup repair; it carries the CLI completion, shutdown flush, initial-client registration, and concurrent permission-cache fixes with their native regressions. Select the runtime explicitly through [configuration sets](../README.md#configuration-sets): `tools.zellij = true` enables the recipe; `zellij.source = "patched"` installs the fork, `"release"` installs upstream stable, and `"main"` builds pinned upstream main without the fork's fixes. The `terminal` and `workstation` bundles enable Zellij. The main and release choices omit the fork's fixes; the documented popup, query, and shutdown acceptance applies to the patched runtime. The native builds use Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback. Return the default pin to a stable release once it includes OSC support and these reliability fixes; the status bar uses its native attention protocol.
+Use the **pinned [lanej/zellij fork](https://github.com/lanej/zellij)** installed by this checkout, Python 3 for the configuration helpers, fzf, and Rust through rustup. The selected Zellij recipe defaults to the exact fork revision in [`scripts/install-zellij`](../scripts/install-zellij). The fork builds on upstream `main` at `bf517077`, which includes [OSC 7501 support](https://github.com/zellij-org/zellij/pull/5734) and the startup repair; it carries the CLI completion, shutdown flush, initial-client registration, concurrent permission-cache fixes, popup-paste routing, and lossless Unicode plugin keys with their native regressions. Select the runtime explicitly through [configuration sets](../README.md#configuration-sets): `tools.zellij = true` enables the recipe; `zellij.source = "patched"` installs the fork, `"release"` installs upstream stable, and `"main"` builds pinned upstream main without the fork's fixes. The `terminal` and `workstation` bundles enable Zellij. The main and release choices omit the fork's fixes; the documented popup, query, and shutdown acceptance applies to the patched runtime. The native builds use Rust 1.95.0 without changing your default toolchain. Neovim is used to edit scrollback. Return the default pin to a stable release once it includes OSC support and these reliability fixes; the status bar uses its native attention protocol.
 
 After upgrading the runtime, save your work and restart existing sessions so every session uses the permission-cache lock; an older session process can still perform unlocked writes. Malformed permission caches are preserved for correction rather than silently overwritten.
 
@@ -105,7 +105,7 @@ Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waitin
 | `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
-| `:` | Open a centered Zellij command prompt; `help` lists actions and `history` recalls this client's commands |
+| `:` | Open the command palette with completion, live target tables, help and history |
 | `F` | Show/hide the current tab's other floating panes |
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
@@ -129,15 +129,7 @@ Automatic ownership requires an exact match with the last name written by the ho
 
 The configuration-only/0.45.1 fallback still uses Zellij's built-in bar and one-based keys (`0` also selects the first tab). That bar has no base-index option; this change does not replace it or alter the runtime. To use the zero-based bar, install the pinned 0.46 runtime and build the status plugin. Avoid manual names matching Zellij's generated forms (`Tab #<stable ID + 1>` and `Pane #<number>`): its metadata does not expose their origin, so the custom UI can treat them as fallbacks. Other manual names are retained verbatim.
 
-**Command prompt:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax
-without `zellij action`, such as `rename-tab "work"`, `new-pane --direction right`,
-or `move-focus left`. Enter runs it and Esc cancels. `help` opens the action picker;
-`history` recalls the client's in-memory command history for review. This is a
-Zellij command line, not a shell or tmux command interpreter. It uses the native
-popup layer, leaves hidden floating panes hidden, and targets the invoking client.
-For an existing pinned installation, run `make zellij-command-prompt`, apply
-`make zellij`, and restart. See the [command-prompt guide](../zellij/command-prompt/README.md)
-for supported scope, quoting, permissions and verification.
+**Command palette:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax such as `rename-tab "work"`, in a slim floating command line with up to five completion suggestions. The popup shrinks with its matches; history and live target lists expand when opened. Tab completes the selected action, flag or live target; Enter runs the entered command; Esc closes it. Ctrl-p/Ctrl-n recall this client's history and restore its draft. `help` and `history` open searchable lists. `list-panes`, `list-tabs`, and `list-sessions` open live tables; Enter jumps to the selected target. Parse errors remain editable. The native popup preserves hidden floating panes and dispatches actions for the invoking client. Rebuild with `make zellij-command-prompt`, apply `make zellij`, and restart. See the [command-palette guide](../zellij/command-prompt/README.md) for syntax, permissions and limits.
 
 `Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
 

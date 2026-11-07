@@ -551,6 +551,8 @@ name = "dotfiles-command-prompt"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "serde",
+ "serde_json",
  "shlex",
  "zellij-tile",
  "zellij-utils",
@@ -2616,7 +2618,7 @@ dependencies = [
 [[package]]
 name = "zellij-tile"
 version = "0.46.0"
-source = "git+https://github.com/zellij-org/zellij?rev=bf517077c848d91f75091f66d1996cfeb84f4732#bf517077c848d91f75091f66d1996cfeb84f4732"
+source = "git+https://github.com/lanej/zellij?rev=7d738ed500f973a45df0f19cc6f5b1fe478bd1f0#7d738ed500f973a45df0f19cc6f5b1fe478bd1f0"
 dependencies = [
  "prost",
  "serde",
@@ -2630,7 +2632,7 @@ dependencies = [
 [[package]]
 name = "zellij-utils"
 version = "0.46.0"
-source = "git+https://github.com/zellij-org/zellij?rev=bf517077c848d91f75091f66d1996cfeb84f4732#bf517077c848d91f75091f66d1996cfeb84f4732"
+source = "git+https://github.com/lanej/zellij?rev=7d738ed500f973a45df0f19cc6f5b1fe478bd1f0#7d738ed500f973a45df0f19cc6f5b1fe478bd1f0"
 dependencies = [
  "anyhow",
  "backtrace",
