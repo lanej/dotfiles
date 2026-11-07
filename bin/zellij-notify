@@ -184,7 +184,11 @@ def history():
         if (row["level"], message) in {("success", "done"), ("warn", "has a question")}:
             message = ""
         summary = " — " + message if message else ""
-        choices.append(f"{row['id']}\t{prefix}{glyph}  {row['title']} · {row['session']}{summary}")
+        title = row["title"]
+        if re.fullmatch(r"(?:Pane #[0-9]+|(?:terminal|plugin)_[0-9]+)", title):
+            title = ""
+        label = title + summary if title else message
+        choices.append(f"{row['id']}\t{prefix}{glyph}" + ("  " + label if label else ""))
     preview = shlex.join([str(Path(__file__).resolve()), "show"]) + " {1}"
     empty = ["--header=No notifications"] if not rows else []
     selection = subprocess.run([

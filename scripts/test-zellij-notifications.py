@@ -107,6 +107,21 @@ class History(unittest.TestCase):
         self.assertIn("11-07 09:30", mixed_days)
         self.assertIn("11-08 11:45", mixed_days)
 
+    def test_picker_hides_internal_identifiers_and_generated_labels(self):
+        rows = [event(1, title="Pane #23", session="notifications-zj-opaque-session"),
+                event(2, title="Build checks", session="notifications-zj-opaque-session")]
+        with patch.object(notify, "read_history", return_value=rows):
+            with patch.object(notify.subprocess, "run", return_value=
+                              subprocess.CompletedProcess([], 130, "", "")) as picker:
+                notify.history()
+        choices = picker.call_args.kwargs["input"].splitlines()
+        labels = [choice.split("\t", 1)[1] for choice in choices]
+        self.assertIn("Build checks", "\n".join(labels))
+        self.assertIn("Needs a decision", "\n".join(labels))
+        self.assertNotIn("Pane #23", "\n".join(labels))
+        self.assertNotIn("notifications-zj-opaque-session", "\n".join(labels))
+        self.assertIn("--with-nth=2..", picker.call_args.args[0])
+
     def test_corrupt_history_is_reported_and_preserved(self):
         self.run_tool("record", json.dumps([event(1)]))
         path = Path(self.work.name) / "dotfiles/zellij/notifications.json"

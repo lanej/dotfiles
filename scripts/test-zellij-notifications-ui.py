@@ -51,7 +51,7 @@ Path(sys.argv[1]).write_text(str(os.getpid()))
 def report(value):
     print("\x1b]7501;state=" + value + ":app=fixture\x07", end="", flush=True)
 report("working")
-print("\x1b[2J\x1b[HRelease checks\n\nRunning integration tests…", flush=True)
+print("\x1b]2;Release checks\x07\x1b[2J\x1b[HRelease checks\n\nRunning integration tests…", flush=True)
 for line in sys.stdin:
     value = line.strip()
     report(value)
@@ -138,6 +138,13 @@ for line in sys.stdin:
             client.prefix(b"B")
             client.until("history opens through its real key", lambda:
                          "Notification history" in view() and "Release checks" in view())
+            picker = next(p for p in client.terminals() if p["is_floating"])
+            picker_screen = client.action("dump-screen", "--pane-id", f"terminal_{picker['id']}")
+            for row in history():
+                assert row["id"] not in picker_screen, "Internal notification ID is visible"
+                assert row["session"] not in picker_screen, "Internal session name is visible"
+                assert row["pane_id"] not in picker_screen, "Internal pane ID is visible"
+            assert "Pane #" not in picker_screen, "Generated pane label is visible"
             capture("history")
             glyphs = [(cell.data, cell.fg) for y in range(3, screen.lines)
                       for cell in screen.buffer[y].values()]
@@ -148,7 +155,7 @@ for line in sys.stdin:
             client.send(b"Version ready")
             client.until("history search finds a script notice", lambda:
                          "Version ready" in view() and "zellij-ready>" in view())
-            client.send(b"\x15Pane")
+            client.send(b"\x15Release")
             client.until("source title is searchable", lambda:
                          "Release checks" in view() and "Keep staging" in view())
             client.send(b"\r")
