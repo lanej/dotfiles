@@ -525,6 +525,10 @@ pub fn launch(open: Open) {
     let dispatcher = get_pane_info(PaneId::Plugin(open.owner)).unwrap_or_default();
     let width = tab.display_area_columns.saturating_sub(4).clamp(12, 104);
     let height = tab.display_area_rows.saturating_sub(4).clamp(5, 24);
+    eprintln!("command-palette geometry: screen={}x{} dispatcher={}@{},{} content={},{} wanted={}x{} origin={}",
+        tab.display_area_columns, tab.display_area_rows, open.owner,
+        dispatcher.pane_x, dispatcher.pane_y, dispatcher.pane_content_x, dispatcher.pane_content_y,
+        width, height, open.origin.0);
     let configuration = BTreeMap::from([(
         "palette".into(),
         serde_json::to_string(&open).expect("serializable popup"),

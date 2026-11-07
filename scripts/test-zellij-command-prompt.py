@@ -149,7 +149,8 @@ def open_prompt(terminal):
     title_rows = [row for row, line in enumerate(screen(terminal)) if "Zellij command" in line]
     footer_rows = [row for row, line in enumerate(screen(terminal)) if 'Esc close' in line]
     assert title_rows and footer_rows and 27 <= title_rows[0] + footer_rows[0] <= 36, (
-        f'Palette is not vertically centered: title={title_rows}, footer={footer_rows}\n' + text(terminal))
+        f'Palette is not vertically centered: title={title_rows}, footer={footer_rows}\n'
+        + json.dumps(terminal.tabs()) + '\n' + json.dumps(terminal.panes()) + '\n' + text(terminal))
     assert all(10 <= screen(terminal)[row].index('Zellij command') <= 90
                for row in title_rows), 'Prompt is not horizontally centered'
     # A native prompt renders over the existing panes; it must not create a
@@ -478,6 +479,7 @@ def main():
         except Exception:
             for index, client in enumerate(clients):
                 capture(client, 'failure-client-' + str(index))
+                print('\n'.join(client.startup_diagnostics()), flush=True)
             raise
         finally:
             subprocess.run([binary, 'kill-session', name], env=env, capture_output=True, timeout=5)
