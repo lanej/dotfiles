@@ -172,7 +172,7 @@ keybinds clear-defaults=true {
         }
         bind "w" { SwitchToMode "RenameSession"; SessionNameInput 0; }
         bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
-        bind "p" {
+        bind "p" "]" {
             // After visible-bar consent, the background clipboard receiver
             // replaces this marker with a client-specific MessagePluginId.
             MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {

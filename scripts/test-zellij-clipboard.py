@@ -176,7 +176,7 @@ finally:
             destination = next(p["id"] for p in terminal.terminals()
                                if p["tab_id"] == active_tab)
             assert sorted(client_panes()) == sorted([f"terminal_{original_pane}", f"terminal_{destination}"])
-            terminal.prefix(b"p")
+            terminal.prefix(b"]")
             until("paste captured its destination", started.exists)
             terminal.prefix(b"0")
             release.touch()

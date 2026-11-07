@@ -23,7 +23,7 @@ The main session normally stays in **Locked** mode, passing application shortcut
 | Move all live panes to an existing tab | **Ctrl-f M** (modern configuration) |
 | Open or hide the shared popup | **Ctrl-f P** |
 | Select and copy terminal text | **Ctrl-f e**, select in Neovim, **y**, then `:q!` |
-| Paste the session's last Neovim yank | **Ctrl-f p** (modern configuration) |
+| Paste the session's last Neovim yank | **Ctrl-f p** or **Ctrl-f ]** (modern configuration) |
 | Find text in scrollback | **Ctrl-f /**, type a query, **Enter** |
 | Detach and keep the session running | **Ctrl-f d** |
 | Send a literal Ctrl-f to the application | **Ctrl-f f** |
@@ -102,7 +102,7 @@ The tab picker lists this session's tabs, prioritizing native attention when ava
 
 The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equalize**. Equalize places one full-height pane in the left half and shares the right half among the other panes. It can change pane positions, unlike tmux's in-place equalization. Existing sessions retain their loaded swap layouts; start a new session after applying updated layouts.
 
-**Prefix `=`, `g`, and `G` are unbound.** This configuration does not provide direct equalization or the tmux golden-ratio helper. Native resizing uses Zellij's steps, not exact three-cell increments or tmux's timed repeat window. See [equalize layout](./zellij.md#equalize-layout) for the remaining limitations.
+**Modern prefix `=` balances an aligned pane group in place; `g` applies the golden-ratio width guard and cap, and `G` bypasses the guard.** These helpers preserve live panes and use approximate native resize steps. Legacy `=`, `g`, and `G` remain unbound. Native resizing does not provide exact three-cell increments or tmux's timed repeat window. See [equalize layout](./zellij.md#equalize-layout) for the remaining limitations.
 
 </details>
 
@@ -145,7 +145,7 @@ Both managed configurations clear native default bindings. The legacy runtime do
 | Key after Ctrl-f | Action |
 | --- | --- |
 | `e` | Open scrollback in Neovim, preserving ANSI colors in the modern configuration |
-| `p` | Paste this session's last Neovim yank into the requesting pane |
+| `p` / `]` | Paste this session's last Neovim yank into the requesting pane |
 | `[` | Enter Scroll mode |
 | `/` | Enter a scrollback search query |
 | `f` | Send a literal Ctrl-f to the application |
@@ -153,7 +153,7 @@ Both managed configurations clear native default bindings. The legacy runtime do
 
 **Copy text:** `Ctrl-f e`, then `v` for characters, `V` for lines, or `Ctrl-v` for a rectangle. Extend the selection, press `y`, and use `:q!` to return. This is Neovim selection, not tmux's inline visual copy mode.
 
-**Paste sources differ:** `Ctrl-f p` reads the private session buffer, not the system clipboard. Neovim yanks update both that buffer and a write-only OSC 52 request to the terminal. Native command-copy actions and mouse selection do not update the Neovim buffer. Use the terminal's paste shortcut for the system clipboard. OSC 52 acceptance, including over SSH, depends on the terminal and remains a separate acceptance check.
+**Paste sources differ:** `Ctrl-f p` and `Ctrl-f ]` read the private session buffer, not the system clipboard. Neovim yanks update both that buffer and a write-only OSC 52 request to the terminal. Native command-copy actions and mouse selection do not update the Neovim buffer. Use the terminal's paste shortcut for the system clipboard. OSC 52 acceptance, including over SSH, depends on the terminal and remains a separate acceptance check.
 
 The session paste binding needs the background clipboard receiver and status-plugin permission grant. A renamed session uses a different buffer. See [keyboard selection and paste](./zellij.md#keyboard-selection-and-paste) for buffer lifetime, limits, permissions, and terminal validation.
 
@@ -257,7 +257,7 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | Local attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
 | Session card: `Ctrl-f I` | Assigned; Alt-Enter releases live preview input | Unbound |
 | Client chooser: `Ctrl-f D` | Assigned | Unbound |
-| Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |
+| Session paste: `Ctrl-f p` / `Ctrl-f ]` | Assigned with the clipboard receiver | Unbound |
 | Scrollback editor: `e` | ANSI color export | Plain text export |
 | Mouse mode | Disabled | Enabled |
 
@@ -267,10 +267,28 @@ Apply configuration with `make zellij`. To build the modern bar and reapply it, 
 
 ## tmux habits that do not transfer
 
-- **Direct balance and golden ratio:** prefix `=`, `g`, and `G` remain unbound. Cycle to the equalize layout with Space or Ctrl-o; it may rearrange panes.
+- **Exact balance and golden ratio:** modern `=`, `g`, and `G` use approximate native resize steps, not cell-exact tmux geometry. Legacy leaves these keys unbound; cycling to the equalize layout may rearrange panes.
 - **Move across sessions or park in `later`:** prefix `H` and `S` are unbound. `m`, `M`, and `!` only move panes between tabs within this session. Legacy configuration leaves `M` unbound.
-- **Reload and refresh shortcuts:** prefix `R`, `Ctrl-l`, and `*` have no bindings in these files.
+- **Reload, refresh, and client-list shortcuts:** prefix `R`, `Ctrl-l`, and `*` remain unbound; see the effective-key inventory below.
 - **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing. W is a fuzzy tab swap, not a repeatable reorder mode.
 - **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.
 
 The binding sources are [modern config](../zellij/config.kdl) and [legacy config](../zellij/config-legacy.kdl), with the [popup launcher](../bin/zellij-popup) adding its hide override. Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).
+
+## Remaining effective tmux key differences
+
+Tmux inherits defaults in addition to [this repository's overrides](../rc/tmux.conf); both managed Zellij configurations clear defaults. The [tmux 3.6a default key table](https://github.com/tmux/tmux/blob/3.6a/key-bindings.c) is the source baseline here, not a claim about a running installation: tmux uses the system package version and loaded plugins can add keys.
+
+| Key after Ctrl-f | Remaining difference |
+| --- | --- |
+| `?` | Tmux lists key help. Unbound in both Zellij configurations; the native manager's separate help limitation is described above. |
+| `q` | Tmux displays pane numbers for selection. Unbound; directional focus and Tab cycling remain available. |
+| `]` | Modern alias for `p`, using the session's Neovim buffer, not tmux's server-wide paste buffers. Both paste keys are unavailable in legacy. |
+| `&` | Tmux confirms before closing the whole window. Unbound; `x` closes only the focused pane. |
+| `R` | Tmux reloads its config file. Unbound; Zellij watches configuration changes, but reload does not install missing plugins/layouts or replace a running server. |
+| `*` | Tmux lists its server's clients. Unbound; modern `D` lists this session's clients but Enter detaches one, so it is not a read-only substitute. |
+| `Ctrl-l` | Tmux redraws the client. Unbound; sending Ctrl-l to an application is not the same operation. |
+
+Other inherited tmux aliases are not bound: `$` (use modern `w` to rename the session), `{`/`}` (use `K`/`J` to move panes), `E` (use modern `=` for approximate balance), and PageUp (use `[` to enter Scroll mode). Buffer listing (`#`), index prompting (`'`), session cycling (`(`/`)`/`L`), window movement (`.`), clock view (`t`), message history (`~`), and client suspension (`Ctrl-z`) also have no matching prefix binding. Alt-number layout selection, alert-window navigation, and modified-arrow resizing are not reproduced exactly. Prefix `/` starts scrollback search instead of describing a key; `i` focuses a nested guest instead of displaying tmux window information. These are remaining differences, not assertions of exact parity.
+
+New shared popups inherit the selected regular keymap, with only `P` overridden to detach. Existing popup sessions retain their loaded configuration/plugins until updated; the retired `popup.kdl` is not the current launcher's keymap. See [the parity tracker](https://github.com/lanej/dotfiles/issues/188) for unresolved behavior and verification.

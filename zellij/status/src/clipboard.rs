@@ -51,7 +51,7 @@ impl Clipboard {
                     MessagePluginId {plugin} {{ name "{attention}"; payload "{client}"; }}
                     SwitchToMode "Locked"
                 }}
-                bind "p" {{
+                bind "p" "]" {{
                     MessagePluginId {plugin} {{ name "{MESSAGE}"; payload "{client}"; }}
                     SwitchToMode "Locked"
                 }}

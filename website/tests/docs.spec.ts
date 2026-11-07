@@ -20,14 +20,14 @@ test('copy setup instructions and find the Zellij workflow', async ({ page, cont
   const terminalImage = page.getByRole('img', { name: 'Zellij with the Nord top tab bar and split terminal panes' });
   await terminalImage.scrollIntoViewIfNeeded();
   await expect.poll(() => terminalImage.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
-  await expect(page.locator('main')).toContainText('Ctrl-f p reads the dedicated session buffer.');
+  await expect(page.locator('main')).toContainText('Ctrl-f p or Ctrl-f ] reads the dedicated session buffer.');
   await expect(page.locator('main')).toContainText('The terminal’s paste shortcut remains the path from the system clipboard.');
   await page.getByRole('link', { name: 'Zellij keybindings reference', exact: true }).click();
   await expect(page).toHaveURL(/\/dotfiles\/reference\/zellij-keybinds\//);
   await expect(page.getByRole('heading', { name: 'Everyday keys', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/zellij-keybinds.mdx');
   await page.getByText('Resize and layout controls', { exact: true }).click();
-  await expect(page.getByText('Prefix =, g, and G are unbound.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Modern prefix = balances an aligned pane group in place; g applies the golden-ratio width guard and cap, and G bypasses the guard.', { exact: true })).toBeVisible();
 });
 
 test('review Go style defaults and gradual adoption on desktop and mobile', async ({ page }) => {
