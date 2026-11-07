@@ -159,6 +159,25 @@ def prove_popup(terminal, home, expected, filename):
 def detach_workflow(clients):
     first, unrelated = clients[:2]
 
+    # An unrelated permission dialog must not hold the status plugin's replies
+    # hostage, including acknowledgement of an already-completed detach.
+    home = Path(first.env["HOME"])
+    pending = home / "unrelated-navigation.wasm"
+    shutil.copyfile(home / ".local/share/zellij/plugins/pane-navigation.wasm", pending)
+    origin = next(pane for pane in first.terminals() if pane["is_focused"])
+    rendered = len(first.output)
+    # A no-focus floating launch stays hidden, including its permission prompt.
+    # Observe the actual request, then leave it unanswered behind the shell.
+    pending_id = first.action("launch-plugin", "--floating", "file:" + str(pending)).strip()
+    first.until("unrelated plugin requests permission", lambda:
+                b"unrelated-navigation.wasm" in first.output[rendered:]
+                and b"(y/n)" in first.output[rendered:].lower())
+    first.action("focus-pane-id", f"terminal_{origin['id']}")
+    first.until("original shell regains focus with permission unanswered", lambda:
+                any(pane["id"] == origin["id"] and pane["is_focused"]
+                    for pane in first.terminals()))
+    plugins = {pane["id"] for pane in first.panes() if pane["is_plugin"]}
+
     def attached_ids():
         return {client for tab in first.tabs() for client in tab["other_focused_clients"]}
 
@@ -245,10 +264,14 @@ def detach_workflow(clients):
           exited(reattached) and attached_ids() == original)
     assert {pane["id"] for pane in first.terminals()} == panes
     assert unrelated.action("list-clients").strip().splitlines()[1:]
+    assert {pane["id"] for pane in first.panes() if pane["is_plugin"]} == plugins, \
+        "Chooser requests must address existing status plugins without launching another"
+    first.action("close-pane", "--pane-id", pending_id)
     print("Client detach: cancel preserves both attachments; selection closes exactly one; "
           "a stale entry cannot detach a replacement attachment with a new native ID; "
           "self-selection closes its helper and reattaches to the original panes; "
-          "ordinary detach and another session survive.")
+          "ordinary detach and another session survive; an unrelated pending permission "
+          "does not block snapshots or detach acknowledgement.")
 
 
 def popup_workflow(first, second, home):

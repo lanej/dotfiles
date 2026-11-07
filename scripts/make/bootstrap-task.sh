@@ -11,10 +11,6 @@ case "$task" in
         prepare_bootstrap_environment
         install_zellij_runtime
         ;;
-    bedrock-router)
-        prepare_bootstrap_environment
-        setup_bedrock_router
-        ;;
     kitty-terminfo) setup_kitty_terminfo ;;
     *) printf 'Unknown bootstrap task: %s\n' "$task" >&2; exit 1 ;;
 esac

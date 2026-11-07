@@ -10,7 +10,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const binary = process.env.PASEO_TASK_ROUTER_BIN;
-assert.ok(binary, 'Build the reviewed router and set PASEO_TASK_ROUTER_BIN');
+assert.ok(binary, 'Build the reviewed standalone router and set PASEO_TASK_ROUTER_BIN');
+const routerConfig = process.env.PASEO_TASK_ROUTER_CONFIG;
+assert.ok(routerConfig, 'Set PASEO_TASK_ROUTER_CONFIG to the standalone router config.json');
 const directory = await mkdtemp(join(tmpdir(), 'paseo-task-router-'));
 let router;
 try {
@@ -18,7 +20,7 @@ try {
   await new Promise(resolve => listener.listen(0, '127.0.0.1', resolve));
   const port = listener.address().port;
   await new Promise(resolve => listener.close(resolve));
-  const config = JSON.parse(await readFile(join(root, 'codex/bedrock-router/config.json'), 'utf8'));
+  const config = JSON.parse(await readFile(routerConfig, 'utf8'));
   config.port = port;
   const configPath = join(directory, 'config.json');
   await writeFile(configPath, JSON.stringify(config));

@@ -262,10 +262,9 @@ setup = ["agent-status-broker"]
 post = ["agent-status-broker"]
 
 [tools.bedrock]
-description = "Prepare Bedrock credentials and configure the standalone router."
+description = "Prepare shared Bedrock credentials. Install the router separately."
 installer = "config"
 prepare = ["bedrock-credentials"]
-post = ["bedrock-router"]
 
 [tools.ep-direnv]
 description = "Configure EasyPost direnv integration when withenv is available."

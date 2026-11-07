@@ -308,7 +308,7 @@
         },
         "bedrock": {
           "type": "boolean",
-          "description": "Prepare Bedrock credentials and configure the standalone router."
+          "description": "Prepare shared Bedrock credentials. Install the router separately."
         },
         "ep-direnv": {
           "type": "boolean",

@@ -1182,72 +1182,6 @@ setup_bedrock_credentials() {
 	uv run --no-project python "$root/scripts/setup-bedrock-credentials.py"
 }
 
-setup_bedrock_router() (
-	local staging version platform arch archive release config source_root
-	if [ ! -f "$HOME/.config/bedrock/env" ]; then
-		echo "No Bedrock credentials configured; skipping router setup."
-		return 0
-	fi
-	version="${BEDROCK_ROUTER_VERSION:-v0.1.1}"
-	case "$version" in
-		''|*[!A-Za-z0-9._-]*) echo "Invalid Bedrock router release version" >&2; return 1 ;;
-	esac
-	case "$(uname -s)" in
-		Darwin) platform=darwin ;;
-		Linux) platform=linux ;;
-		*) echo "Unsupported Bedrock router platform" >&2; return 1 ;;
-	esac
-	case "$(uname -m)" in
-		arm64|aarch64) arch=arm64 ;;
-		x86_64|amd64) arch=amd64 ;;
-		*) echo "Unsupported Bedrock router architecture" >&2; return 1 ;;
-	esac
-	staging=$(mktemp -d) || return 1
-	trap 'rm -rf "$staging"' EXIT
-	archive="bedrock-router_${version}_${platform}_${arch}.tar.gz"
-	release="https://github.com/lanej/bedrock-router/releases/download/$version"
-	if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-		gh release download "$version" --repo lanej/bedrock-router \
-			--pattern "$archive" --pattern SHA256SUMS --dir "$staging" || return 1
-	else
-		curl -fsSL --max-time 60 -o "$staging/$archive" "$release/$archive" || return 1
-		curl -fsSL --max-time 60 -o "$staging/SHA256SUMS" "$release/SHA256SUMS" || return 1
-	fi
-	awk -v name="$archive" '$2 == name {print}' "$staging/SHA256SUMS" > "$staging/selected.sha256"
-	[ -s "$staging/selected.sha256" ] || {
-		echo "Bedrock router archive is missing from SHA256SUMS" >&2; return 1
-	}
-	if command -v sha256sum >/dev/null 2>&1; then
-		(cd "$staging" && sha256sum -c selected.sha256) || return 1
-	else
-		(cd "$staging" && shasum -a 256 -c selected.sha256) || return 1
-	fi
-	tar -xzf "$staging/$archive" -C "$staging" bedrock-router config.json || return 1
-	# Older releases silently restore the browsing MCP server on every install.
-	# Use our guarded installer before allowing a release to touch user settings.
-	"$staging/bedrock-router" install --help > "$staging/install-help" 2>&1 || true
-	if ! grep -q -- '-preserve-mcp' "$staging/install-help"; then
-		command -v go >/dev/null 2>&1 || {
-			echo "Bedrock installer cannot preserve MCP settings; Go is required to build the safe local installer." >&2
-			return 1
-		}
-		source_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
-		(cd "$source_root/codex/bedrock-router" &&
-			go build -trimpath -p 2 -o "$staging/bedrock-router" .) || return 1
-	fi
-	config="$staging/config.json"
-	if [ -f "$HOME/.codex/bedrock-router/config.json" ]; then
-		config="$HOME/.codex/bedrock-router/config.json"
-	fi
-	"$staging/bedrock-router" install --config "$config" --keep-env --preserve-mcp || return 1
-	if [ "$os" = linux ]; then
-		if ! loginctl show-user "$USER" -p Linger | grep -q '^Linger=yes$'; then
-			loginctl enable-linger "$USER" ||
-				sudo -n loginctl enable-linger "$USER" || return 1
-		fi
-	fi
-)
-
 run_configured_hooks() {
 	local configuration_root=${2:-$HOME/.files}
 	local hooks=$1 hook
@@ -1255,7 +1189,6 @@ run_configured_hooks() {
 		case "$hook" in
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
-			bedrock-router) setup_bedrock_router || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
 			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
 			neovim) setup_neovim || return 1 ;;

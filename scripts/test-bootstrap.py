@@ -13,6 +13,13 @@ def main():
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-") as temporary:
         home = Path(temporary)
+        router_binary = home / ".codex/bedrock-router/bedrock-router"
+        router_binary.parent.mkdir(parents=True)
+        router_binary.write_bytes(b"externally installed router")
+        router_config = home / ".codex/bedrock-router/config.json"
+        router_config.write_bytes(b"external router configuration")
+        router_state = home / ".codex/bedrock-router/sessions.sqlite3"
+        router_state.write_bytes(b"external session database")
         fixture = home / "fixture"
         fixture.mkdir()
         # Model the unmanaged executable left by the previous runtime installer.
@@ -26,7 +33,6 @@ def main():
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
-        (checkout / "codex/bedrock-router").mkdir(parents=True)
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
@@ -160,19 +166,6 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url.endswith("/bedrock-router_v0.1.1_linux_arm64.tar.gz"):
-        assert url.startswith("https://github.com/lanej/bedrock-router/releases/download/v0.1.1/")
-        with tarfile.open(target, "w:gz") as archive:
-            for path, payload in (
-                ("bedrock-router", (fixture / "driver").read_bytes()),
-                ("config.json", b'{"fixture": "standalone-router"}\n'),
-            ):
-                member = tarfile.TarInfo(path)
-                member.size = len(payload)
-                member.mode = 0o755 if path == "bedrock-router" else 0o644
-                archive.addfile(member, io.BytesIO(payload))
-        record("router release")
-        sys.exit(0)
     elif url.endswith("/treehouse-v3.1.6-linux-arm64.tar.gz"):
         with tarfile.open(target, "w:gz") as archive:
             payload = b"#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n"
@@ -192,11 +185,6 @@ echo "$1" > "$HOME/claude-version"
             member = tarfile.TarInfo("treehouse-3.1.6/go.mod")
             member.size = len(payload)
             archive.addfile(member, io.BytesIO(payload))
-        sys.exit(0)
-    elif url == "https://github.com/lanej/bedrock-router/releases/download/v0.1.1/SHA256SUMS":
-        release_archive = Path(target).with_name("bedrock-router_v0.1.1_linux_arm64.tar.gz")
-        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
-        Path(target).write_text(digest + "  " + release_archive.name + "\n")
         sys.exit(0)
     else:
         raise AssertionError("Unexpected download: " + url)
@@ -294,14 +282,6 @@ elif name == "nvim" and "--headless" in args:
     assert "make" in (home / "events").read_text()
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
-elif name == "bedrock-router":
-    assert args[:2] == ["install", "--config"] and args[3:] == [
-        "--keep-env", "--preserve-mcp",
-    ], args
-    assert json.loads(Path(args[2]).read_text()) == {"fixture": "standalone-router"}
-    assert "make" in (home / "events").read_text()
-    assert (home / ".config/bedrock/env").stat().st_mode & 0o777 == 0o600
-    record("router setup")
 elif name == "loginctl":
     print("Linger=yes")
 elif name == "git-crypt":
@@ -349,13 +329,7 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
-    if args[:1] == ["build"] and Path.cwd().name == "bedrock-router":
-        assert args == ["build", "-trimpath", "-p", "2", "-o", args[5], "."], args
-        output = Path(args[5])
-        shutil.copyfile(fixture / "driver", output)
-        output.chmod(0o755)
-        record("router guarded build")
-    elif args[:1] == ["build"]:
+    if args[:1] == ["build"]:
         assert os.environ["CGO_ENABLED"] == "0"
         assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
         assert Path("go.mod").is_file()
@@ -505,8 +479,9 @@ else:
         assert (home / "events").read_text().splitlines().count("hack font") == 1
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
-        assert events.index("router setup") > events.index("make")
-        assert events.index("router release") < events.index("router guarded build") < events.index("router setup")
+        assert router_binary.read_bytes() == b"externally installed router"
+        assert router_config.read_bytes() == b"external router configuration"
+        assert router_state.read_bytes() == b"external session database"
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"

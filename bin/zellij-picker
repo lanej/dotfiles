@@ -33,6 +33,17 @@ def run_zellij(*args, session=None, timeout=5):
     return result.stdout
 
 
+def status_pipe(name, payload, *, session, timeout=5):
+    # Broadcast pipes also wait for unrelated plugins that are still loading
+    # or requesting permissions. Match the visible bars' configured URL and
+    # empty configuration, not the clipboard receiver's distinct role.
+    # Preserve this spelling: resolving the installed symlink would launch a
+    # different plugin rather than address the bars already in the session.
+    return run_zellij("pipe", "--plugin", "file:~/.config/zellij/plugins/lane-status.wasm",
+                      "--name", name, "--", json.dumps(payload),
+                      session=session, timeout=timeout)
+
+
 def snapshot(session, kind, timeout=5):
     result = json.loads(run_zellij("action", f"list-{kind}", "--json", session=session, timeout=timeout))
     if not isinstance(result, list):
@@ -313,9 +324,8 @@ def client_choices(session):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
-            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--",
-                                json.dumps({"auto_titles": owned_titles(session)}),
-                                session=session, timeout=max(0.01, deadline - time.monotonic()))
+            output = status_pipe("lane-client-snapshot", {"auto_titles": owned_titles(session)},
+                                 session=session, timeout=max(0.01, deadline - time.monotonic()))
             rows = [json.loads(line) for line in output.splitlines() if line.strip()]
             for row in rows:
                 if row.get("error"):
@@ -351,8 +361,7 @@ def pick_client(session):
         raise RuntimeError("Invalid client selection")
     # The receiver compares its native attachment and plugin identity, then
     # queries native focus again. Never disconnect all other clients.
-    reply = run_zellij("pipe", "--name", "lane-client-detach", "--",
-                       json.dumps(choices[selected]["token"]), session=session).strip()
+    reply = status_pipe("lane-client-detach", choices[selected]["token"], session=session).strip()
     if reply != "detached":
         raise RuntimeError(reply or "The selected attachment changed; reopen the client chooser")
 
@@ -429,8 +438,7 @@ def move_pane(session):
                "source_tab": source["tab_id"], "picker": picker_id,
                "destination": None if selected == "new" else int(selected)}
     # Single-shot mutation. A lost reply must never replay a pane transfer.
-    reply = run_zellij("pipe", "--name", "lane-move-pane", "--",
-                       json.dumps(request), session=session).strip()
+    reply = status_pipe("lane-move-pane", request, session=session).strip()
     if reply != "moved":
         raise RuntimeError(reply or "Pane transfer was not confirmed; inspect the tabs before retrying")
 
