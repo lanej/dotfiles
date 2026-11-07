@@ -25,6 +25,99 @@ Display = importlib.import_module("test-zellij-status").Display
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
+
+# Instrument only this test process; keep the installed chooser and its deadline
+# unchanged. Function globals are the namespace actually used by runpy functions.
+CLIENT_SNAPSHOT_PROBE = r"""
+import json, runpy, sys, time
+chooser = runpy.run_path(sys.argv[1])["client_choices"]
+namespace = chooser.__globals__
+started = time.monotonic()
+
+def emit(event, **details):
+    print(json.dumps({"event": event, "elapsed": time.monotonic() - started,
+                      **details}, default=str), file=sys.stderr, flush=True)
+
+def instrument(name):
+    original = namespace[name]
+    def traced(*args, **kwargs):
+        emit(name + ":start", args=args, timeout=kwargs.get("timeout"))
+        try:
+            result = original(*args, **kwargs)
+        except Exception as error:
+            emit(name + ":error", error=repr(error),
+                 stdout=getattr(error, "stdout", None),
+                 stderr=getattr(error, "stderr", None))
+            raise
+        if name == "status_pipe":
+            emit(name + ":result", raw_rows=result)
+            try:
+                rows = [json.loads(line) for line in result.splitlines() if line.strip()]
+                emit("returned-client-ids", ids=[row.get("token", {}).get("client_id")
+                                                 for row in rows])
+            except (ValueError, AttributeError) as error:
+                emit("returned-client-ids:error", error=repr(error))
+        else:
+            emit(name + ":result", native_state=result,
+                 expected_client_ids=sorted({str(client) for tab in result
+                                             for client in tab["other_focused_clients"]}))
+        return result
+    namespace[name] = traced
+
+instrument("status_pipe")
+instrument("snapshot")
+print(json.dumps(chooser(sys.argv[2])))
+"""
+
+
+def capture_failure(terminal, other, error):
+    """Preserve evidence before teardown without retrying the chooser."""
+    print(f"Tab-label failure: {error!r}", file=sys.stderr, flush=True)
+    for field in ("stdout", "stderr"):
+        value = getattr(error, field, None)
+        if value:
+            print(f"Failing subprocess {field}: {value!r}", file=sys.stderr, flush=True)
+    for client in (terminal, other):
+        if client is None:
+            continue
+        try:
+            print("\n".join(client.startup_diagnostics()), file=sys.stderr, flush=True)
+        except Exception as diagnostic_error:
+            print(f"Client {client.pid} diagnostics failed: {diagnostic_error!r}",
+                  file=sys.stderr, flush=True)
+    try:
+        artifact_root = os.environ.get("ZELLIJ_TEST_ARTIFACTS")
+        destination = None
+        if artifact_root:
+            Path(artifact_root).mkdir(parents=True, exist_ok=True)
+            destination = Path(tempfile.mkdtemp(prefix="labels-state-", dir=artifact_root))
+        for index, cache in enumerate((Path(terminal.env["XDG_CACHE_HOME"]) / "zellij",
+                                      Path(terminal.env["HOME"]) / "Library/Caches/zellij")):
+            permissions = cache / "permissions.kdl"
+            if permissions.exists():
+                data = permissions.read_bytes()
+                print(f"Permission cache {permissions}: {data!r}", file=sys.stderr, flush=True)
+                if destination:
+                    (destination / f"permissions-{index}.kdl").write_bytes(data)
+        for kind in ("tabs", "panes"):
+            try:
+                result = subprocess.run([terminal.binary, "--session=" + terminal.name,
+                                         "action", "list-" + kind, "--json"],
+                                        env=terminal.env, capture_output=True, text=True, timeout=5)
+                evidence = {"returncode": result.returncode, "stdout": result.stdout,
+                            "stderr": result.stderr}
+            except Exception as diagnostic_error:
+                evidence = {"error": repr(diagnostic_error),
+                            "stdout": str(getattr(diagnostic_error, "stdout", None)),
+                            "stderr": str(getattr(diagnostic_error, "stderr", None))}
+            text = json.dumps(evidence, indent=2)
+            print(f"Native {kind}: {text}", file=sys.stderr, flush=True)
+            if destination:
+                (destination / f"{kind}.json").write_text(text + "\n")
+    except Exception as diagnostic_error:
+        print(f"Failure state capture failed: {diagnostic_error!r}", file=sys.stderr, flush=True)
+
+
 def main():
     for name in ("zellij", "cargo", "fzf", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing tab labels"
@@ -163,8 +256,7 @@ def main():
             # lifecycle ownership payload and attachment-readiness handling.
             # Caller stdin must not become a second, ownership-free request.
             clients = subprocess.run([sys.executable, "-c",
-                                      "import json, runpy, sys; "
-                                      "print(json.dumps(runpy.run_path(sys.argv[1])['client_choices'](sys.argv[2])))",
+                                      CLIENT_SNAPSHOT_PROBE,
                                       str(home / ".local/bin/zellij-picker"), name], env=env, check=False,
                                      input="\n", capture_output=True, text=True, timeout=10)
             assert clients.returncode == 0, f"Client snapshot read failed:\n{clients.stderr}\n{clients.stdout}"
@@ -177,6 +269,9 @@ def main():
             terminal.until("directory change preserves explicit tab title", lambda:
                            active()["name"] == "manual work" and "9:manual work" in top_line())
             print("PASS: tab positions, direct keys, picker, reorder, directory/git titles, and explicit names agree.")
+        except Exception as error:
+            capture_failure(terminal, other, error)
+            raise
         finally:
             subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
             if other is not None:
