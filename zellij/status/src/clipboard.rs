@@ -45,8 +45,13 @@ impl Clipboard {
         // This receiver is suppressed and survives tab closure, so its ID
         // never needs an asynchronous handoff between visible status bars.
         let attention = crate::attention::MESSAGE;
+        let highest = crate::attention::HIGHEST;
         let config = format!(r#"keybinds {{
             tmux {{
+                bind "a" {{
+                    MessagePluginId {plugin} {{ name "{highest}"; payload "{client}"; }}
+                    SwitchToMode "Locked"
+                }}
                 bind "Ctrl a" {{
                     MessagePluginId {plugin} {{ name "{attention}"; payload "{client}"; }}
                     SwitchToMode "Locked"

@@ -227,9 +227,15 @@ def main():
                         "●2" in top_line(other) and "?" in top_line(other))
             other.prefix(b"0")
             other.until("triage starts on the original tab", lambda: focused_tab() == origin)
-            other.prefix(b"\x01")
-            other.until("question wins over earlier activity and completed work", lambda:
+            other.prefix(b"a")
+            other.until("direct jump chooses the first request over activity and completed work", lambda:
                         focused_tab() == question_tab)
+            other.send(b"\x06")
+            other.until("direct jump can be repeated from the highest-ranked tab", lambda:
+                        prefix_banner(other))
+            other.send(b"a")
+            other.until("direct jump stays on the highest-ranked tab", lambda:
+                        "PREFIX" not in top_line(other) and focused_tab() == question_tab)
             other.prefix(b"\x01")
             other.until("next request follows tab order", lambda: focused_tab() == approval_tab)
             other.prefix(b"\x01")
@@ -243,7 +249,7 @@ def main():
             other.until("both requests have completed", lambda:
                         state(first, question_pane, "Done") and state(first, approval_pane, "Done")
                         and "●2" in top_line(other))
-            other.prefix(b"\x01")
+            other.prefix(b"a")
             other.until("activity is selected after requests clear", lambda: focused_tab() == busy_tab)
             assert state(second, second_pane, "Working"), "Local triage modified another session"
             viewer = Terminal(binary, env, first)
@@ -264,10 +270,10 @@ def main():
             other.action("paste", "--pane-id", f"terminal_{question_pane}", "blocked:kind=question\n")
             other.until("new request reaches the global stream", lambda:
                         state(first, question_pane, "Blocked") and "●2" in top_line(other))
-            other.prefix(b"\x01")
+            other.prefix(b"a")
             other.until("only the invoking client's tab changes", lambda:
                         client_panes() == {f"terminal_{first_pane}", f"terminal_{question_pane}"})
-            print("PASS: installed status preserves prefix display and detached native state; local attention cycles requests before activity, skips quiet completions, and keeps other clients in place.")
+            print("PASS: installed status preserves prefix display and detached native state; direct jumps choose the highest-ranked local tab, attention cycling skips quiet completions, and other clients stay in place.")
         finally:
             for name in (first, second):
                 subprocess.run([binary, "kill-session", name], env=env,

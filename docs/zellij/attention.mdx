@@ -11,15 +11,17 @@ description: "Find work that needs an answer without checking every tab."
 | `✓` | A task completed |
 | `●` | A task is working |
 
-## Visit the next tab that needs you
+## Jump to the highest-ranked activity tab
 
-Press **Ctrl-f Ctrl-a**. Zellij first looks for another tab with a request or failure. If none needs you, it visits a tab with activity or a bell. It wraps through tab order and skips quiet completions.
+Press **Ctrl-f a** to jump directly, without opening a menu. Requests and failures rank ahead of activity or bells; ties use tab order. Quiet completions are skipped. If you are already on the highest-ranked tab, you stay there.
 
-This shortcut stays in the current session and changes only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
+**Ctrl-f Ctrl-a** instead cycles through other tabs at the highest eligible rank, wrapping through tab order.
+
+Both shortcuts stay in the current session and change only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
 
 ## Watch or mute a pane
 
-Focus a pane and press **Ctrl-f a** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.
+Focus a pane and press **Ctrl-f A** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.
 
 Claude and Codex can publish task status directly. Other programs may report only a bell or watched output. Successful shell commands become attention after running for at least thirty seconds; a quick successful command does not interrupt you.
 

@@ -265,7 +265,7 @@ impl ZellijPlugin for State {
             }
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind
-            && message.name == attention::MESSAGE {
+            && matches!(message.name.as_str(), attention::MESSAGE | attention::HIGHEST) {
             attention::jump(&self.tabs, &self.attention, &message);
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {

@@ -1,12 +1,14 @@
 use zellij_tile::prelude::*;
 
 pub const MESSAGE: &str = "attention-next-tab";
+pub const HIGHEST: &str = "attention-highest-tab";
 
 // tmux-quickswitch-alert visits windows, not individual panes. Keep its
 // numeric, current-session policy in the plugin instead of changing native
 // GoToNextAttention's cross-session severity/recency semantics.
 pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage) {
     if !message.is_private || !crate::clipboard::is_own_client(message) { return; }
+    let highest = message.name == HIGHEST;
     let Some(session) = attention.sessions.iter().find(|session| session.is_current
         && session.name == attention.current_session) else { return };
     if session.attention.muted { return; }
@@ -30,7 +32,9 @@ pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage
     let ids: std::collections::BTreeSet<_> = tabs.iter().map(|tab| tab.tab_id)
         .chain(tiers.keys().copied()).collect();
     let mut candidates: Vec<_> = ids.into_iter()
-        .filter(|id| *id != origin.0)
+        // A direct jump stays put when this is already the highest-ranked tab.
+        // Only the cycling shortcut excludes the current tab.
+        .filter(|id| highest || *id != origin.0)
         .filter_map(get_tab_info)
         .filter(|tab| !tab.attention.muted)
         .filter_map(|tab| {
@@ -43,10 +47,13 @@ pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage
         .collect();
     candidates.sort_unstable();
     let Some(&(tier, _, _)) = candidates.first() else { return };
-    let target = candidates.iter().filter(|candidate| candidate.0 == tier)
-        .find(|candidate| candidate.1 > current.position)
-        .or_else(|| candidates.first());
+    let target = if highest { candidates.first() } else {
+        candidates.iter().filter(|candidate| candidate.0 == tier)
+            .find(|candidate| candidate.1 > current.position)
+            .or_else(|| candidates.first())
+    };
     let Some(&(_, _, id)) = target else { return };
+    if id == origin.0 { return; }
     // Queries can yield. Do not steal this client's focus if it has already
     // moved. Native stable-ID routing cannot select an unrelated tab after
     // another client closes or reorders the destination.

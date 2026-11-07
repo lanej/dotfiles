@@ -102,7 +102,13 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "a" { WatchPane; SwitchToMode "Locked"; }
+        bind "a" {
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "attention-highest-tab"
+            }
+            SwitchToMode "Locked"
+        }
+        bind "A" { WatchPane; SwitchToMode "Locked"; }
         bind "U" { MutePane; SwitchToMode "Locked"; }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
