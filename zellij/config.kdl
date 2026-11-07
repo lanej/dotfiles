@@ -125,6 +125,8 @@ keybinds clear-defaults=true {
         bind "F" { ToggleFloatingPanes; SwitchToMode "Locked"; }
         bind "u" { SwitchToMode "Locked"; FocusHostSession; }
         bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
+        // Native F9's inbox action, without stealing a bare application key.
+        bind "I" { SwitchToMode "Locked"; ToggleSessionCard; }
         bind "Ctrl q" {
             Run "zellij-shutdown" { floating true; close_on_exit true; }
             SwitchToMode "Locked"
@@ -141,8 +143,6 @@ keybinds clear-defaults=true {
         }
         bind "W" { SwitchToMode "Tab"; }
 
-        // Native F9's inbox action, without stealing a bare application key.
-        bind "I" { SwitchToMode "Locked"; ToggleSessionCard; }
         // New-session and rename-session actions live in the built-in manager.
         bind "C" "w" {
             LaunchOrFocusPlugin "zellij:session-manager" {

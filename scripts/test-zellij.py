@@ -595,7 +595,7 @@ def main():
                 # Exercise the installed prefix, not a CLI substitute for F9.
                 def manager_pane():
                     return next((p for p in terminal.panes()
-                                 if p["plugin_url"] == "zellij:session-manager"
+                                 if p["plugin_url"] == "session-manager"
                                  and p["is_floating"] and p["is_focused"]
                                  and not p["is_suppressed"]), None)
 
