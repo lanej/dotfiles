@@ -28,7 +28,6 @@ fn level(status: AttentionStatus) -> Option<(&'static str, &'static str)> {
 
 pub struct Notifications {
     started_ms: u64,
-    initialized: bool,
     previous: BTreeMap<(String, PaneId), (AttentionStatus, String)>,
     queue: VecDeque<Value>,
     pending: bool,
@@ -42,7 +41,6 @@ impl Default for Notifications {
                 .duration_since(UNIX_EPOCH)
                 .map(|time| time.as_millis() as u64)
                 .unwrap_or(u64::MAX),
-            initialized: false,
             previous: BTreeMap::new(),
             queue: VecDeque::new(),
             pending: false,
@@ -89,10 +87,10 @@ impl Notifications {
             let Some((severity, glyph)) = level(status) else {
                 continue;
             };
-            // The initial snapshot is useful history, but reattaching must
-            // never replay every outstanding item as a fresh notification.
-            if self.initialized
-                && state.since_ms >= self.started_ms
+            // Cached snapshots can arrive before permissions are ready. A
+            // first observed snapshot may still contain a genuinely new
+            // event; its timestamp, not arrival order, decides freshness.
+            if state.since_ms >= self.started_ms
                 && visible
                 && !state.seen
                 && !(item.is_current && focused == Some(item.item.pane_id))
@@ -115,7 +113,6 @@ impl Notifications {
             }
         }
         self.previous = next;
-        self.initialized = true;
         self.queue.truncate(64);
         self.flush();
     }
@@ -255,7 +252,6 @@ mod tests {
     #[test]
     fn late_initial_snapshots_do_not_replay_old_attention() {
         let mut notices = Notifications::default();
-        notices.observe(&GlobalAttention::default(), 1, None, true, false);
         let mut global = GlobalAttention {
             items: vec![GlobalAttentionItem {
                 session: "main".into(),
@@ -280,6 +276,12 @@ mod tests {
         global.items[0].item.attention.since_ms = notices.started_ms + 1;
         notices.observe(&global, 1, None, true, false);
         assert!(notices.notice().is_none());
+        let mut first_snapshot = Notifications {
+            started_ms: notices.started_ms,
+            ..Default::default()
+        };
+        first_snapshot.observe(&global, 1, None, true, false);
+        assert!(first_snapshot.notice().is_some());
         global.items[0].item.attention.status = AttentionStatus::Working;
         notices.observe(&global, 1, None, true, false);
         global.items[0].item.attention.status = AttentionStatus::NeedsYou;
