@@ -115,6 +115,7 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | `D` | Choose one attached client to detach |
 | `Ctrl-q` | Open confirmation to shut down the current session |
 | `P` | Open the shared persistent popup; inside it, hide that view |
+| `I` | Toggle the native session manager/card (modern configuration) |
 | `F` | Show or hide the current tab's other floating panes |
 | `u` | Focus the containing Zellij session |
 | `i` | Focus the nested Zellij session in the current pane |
@@ -126,6 +127,12 @@ The native manager provides session creation, switching, renaming, and resurrect
 **Shutdown is destructive:** `Ctrl-q` opens a prompt naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients; Enter or Ctrl-c cancels. Other Zellij sessions, including the separate popup, keep running. This is not tmux's server-wide shutdown.
 
 Use `u`/`i` to switch control between host and guest without detaching, including compatible sessions over SSH. The guest must have its own host-focus binding. The [shared popup](#shared-popup-keys) uses these same controls, with `P` hiding its view.
+
+**Native session card without function keys:** `Ctrl-f I` toggles the native session manager/card, including access to its Inbox tab. It can open the Sessions view rather than selecting Inbox. This exposes the native F9 action without changing `C`, `w`, or lowercase `i`. In an interactive live pane preview, **Alt-Enter** returns typing to the manager; the prefix is not intercepted while the preview captures input. `?` without the prefix opens help on the inbox screen. Esc leaves help, then Esc closes the manager. Upstream still displays F9 labels and accepts function keys inside plugins; this binding provides non-function-key access rather than rewriting bundled plugins.
+
+**Upstream help limitation:** the sessions screen's full key list is hardcoded to F1; unlike the inbox, `?` is search text there. There is no configurable help alias in the currently pinned runtime.
+
+Both managed configurations clear native default bindings. The legacy runtime does not have these modern inbox/help actions; its existing manager controls, the retired popup config, current popup overlay, layouts, and local plugin bindings need no F-key remapping. The separate Zellij GUI terminal defaults window fullscreen to F11, but the managed runtime is built without that terminal frontend. External terminal/browser/OS shortcuts and custom user layouts or configuration added outside this repository are not covered.
 
 </details>
 
@@ -245,6 +252,7 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | Numeric tab selection | `0`–`9` selects the first through tenth tab | `0` and `1` both select the first; `2`–`9` select the second through ninth |
 | Tab positions in the bar/picker | Zero-based | One-based |
 | Native attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Session card: `Ctrl-f I` | Assigned; Alt-Enter releases live preview input | Unbound |
 | Client chooser: `Ctrl-f D` | Assigned | Unbound |
 | Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |
 | Scrollback editor: `e` | ANSI color export | Plain text export |
