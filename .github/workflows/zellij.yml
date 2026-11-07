@@ -204,6 +204,7 @@ jobs:
         with:
           name: zellij-notifications-${{ matrix.os }}
           path: .zellij-notification-screens
+          include-hidden-files: true
           retention-days: 7
       - run: make test-zellij
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

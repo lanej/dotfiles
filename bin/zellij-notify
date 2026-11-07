@@ -146,8 +146,14 @@ def jump(row):
                     "--", json.dumps(row), session=row["session"])
     if "valid" not in result.splitlines():
         raise ValueError("The source pane closed or changed; the notification remains in history")
-    zellij("action", "switch-session", "--pane-id", row["pane_id"], "--", row["session"],
-           session=os.environ["ZELLIJ_SESSION_NAME"])
+    origin = os.environ["ZELLIJ_SESSION_NAME"]
+    if row["session"] == origin:
+        # The native switch-session action deliberately ignores its current
+        # session, including any requested target pane.
+        zellij("action", "focus-pane-id", row["pane_id"], session=origin)
+    else:
+        zellij("action", "switch-session", "--pane-id", row["pane_id"], "--", row["session"],
+               session=origin)
 
 
 def history():

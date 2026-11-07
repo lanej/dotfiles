@@ -84,6 +84,11 @@ class History(unittest.TestCase):
                 self.assertEqual(run.call_args.args,
                                  ("action", "switch-session", "--pane-id", "terminal_3", "--", row["session"]))
                 self.assertEqual(run.call_args.kwargs, {"session": "origin"})
+            with patch.object(notify, "zellij", side_effect=["valid\n", ""]) as run:
+                notify.jump(event(2, session="origin"))
+                self.assertEqual(run.call_args.args,
+                                 ("action", "focus-pane-id", "terminal_3"))
+                self.assertEqual(run.call_args.kwargs, {"session": "origin"})
 
 
 if __name__ == "__main__":
