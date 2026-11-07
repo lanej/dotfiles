@@ -145,7 +145,7 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
         help: String::new(),
         command: before.is_empty(),
     };
-    let mut metadata = commands::metadata();
+    let metadata = commands::metadata();
     if before.is_empty() {
         result.items = metadata
             .iter()
@@ -193,10 +193,7 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
             "switch-session" if before.len() == 1 => session_targets(context),
             _ => vec![],
         };
-    } else if let Some(command) = metadata
-        .iter_mut()
-        .find(|command| command.get_name() == name)
-    {
+    } else if let Some(command) = metadata.iter().find(|command| command.get_name() == name) {
         result.help = command
             .get_about()
             .map(ToString::to_string)

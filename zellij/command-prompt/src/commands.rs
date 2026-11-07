@@ -1,5 +1,5 @@
 use clap::{CommandFactory, Parser};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::OnceLock};
 use zellij_tile::prelude::actions::Action;
 use zellij_utils::cli::CliAction;
 use zellij_utils::plugin_api::action::ProtobufAction;
@@ -42,14 +42,17 @@ const COMMANDS: &[&str] = &[
     "undo-rename-tab",
 ];
 
-pub fn metadata() -> Vec<clap::Command> {
-    let mut command = CommandLine::command();
-    command.build();
-    command
-        .get_subcommands()
-        .filter(|command| COMMANDS.contains(&command.get_name()))
-        .cloned()
-        .collect()
+pub fn metadata() -> &'static [clap::Command] {
+    static METADATA: OnceLock<Vec<clap::Command>> = OnceLock::new();
+    METADATA.get_or_init(|| {
+        let mut command = CommandLine::command();
+        command.build();
+        command
+            .get_subcommands()
+            .filter(|command| COMMANDS.contains(&command.get_name()))
+            .cloned()
+            .collect()
+    })
 }
 
 pub fn argument_supported(name: &str) -> bool {

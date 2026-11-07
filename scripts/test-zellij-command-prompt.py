@@ -471,6 +471,10 @@ def main():
             second = Terminal(binary, env, name, install_navigation=False)
             clients.append(second)
             exercise(first, second, home)
+        except Exception:
+            for index, client in enumerate(clients):
+                capture(client, 'failure-client-' + str(index))
+            raise
         finally:
             subprocess.run([binary, 'kill-session', name], env=env, capture_output=True, timeout=5)
             for client in clients:

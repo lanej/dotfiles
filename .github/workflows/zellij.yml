@@ -162,7 +162,10 @@ jobs:
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Exercise command palette
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: make test-zellij-command-prompt
+        run: |
+          mkdir -p "$ZELLIJ_TEST_ARTIFACTS/command-palette"
+          set -o pipefail
+          make test-zellij-command-prompt 2>&1 | tee "$ZELLIJ_TEST_ARTIFACTS/command-palette/integration.log"
       - name: Preserve command palette terminal captures
         if: always()
         uses: actions/upload-artifact@v4
