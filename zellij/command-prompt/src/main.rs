@@ -113,6 +113,21 @@ impl ZellijPlugin for CommandPrompt {
         match event {
             Event::PermissionRequestResult(PermissionStatus::Granted) => {
                 self.allowed = true;
+                let pane_id = PaneId::Plugin(self.plugin_id);
+                if get_pane_info(pane_id)
+                    .is_some_and(|pane| pane.pane_content_x != 0 || pane.pane_content_y != 0)
+                {
+                    // Popup offsets are unsigned and relative to this pane.
+                    // Normalize our own retained origin once, before hiding it;
+                    // later clients reuse the already-normalized background pane.
+                    change_floating_panes_coordinates(vec![(
+                        pane_id,
+                        FloatingPaneCoordinates::default()
+                            .with_x_fixed(0)
+                            .with_y_fixed(0),
+                    )]);
+                    set_pane_borderless(pane_id, true);
+                }
                 hide_self();
                 self.bind();
             }
