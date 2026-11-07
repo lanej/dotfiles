@@ -1,0 +1,128 @@
+diff --git a/zellij-server/src/plugins/wasm_bridge.rs b/zellij-server/src/plugins/wasm_bridge.rs
+index 463973b9..937c8712 100644
+--- a/zellij-server/src/plugins/wasm_bridge.rs
++++ b/zellij-server/src/plugins/wasm_bridge.rs
+@@ -2256,6 +2256,7 @@ impl WasmBridge {
+         cache_path: Option<PathBuf>,
+     ) -> Result<()> {
+         let err_context = || format!("Failed to write plugin permission {plugin_id}");
++        log::info!("popup-native permission-result pid={} plugin={} client={:?} status={:?}", std::process::id(), plugin_id, client_id, status);
+
+         let shared_running_plugin = self.shared_instance_of(plugin_id).and_then(|instance_id| {
+             self.plugin_map
+diff --git a/zellij-server/src/plugins/zellij_exports.rs b/zellij-server/src/plugins/zellij_exports.rs
+index aaaa498c..43195ecd 100644
+--- a/zellij-server/src/plugins/zellij_exports.rs
++++ b/zellij-server/src/plugins/zellij_exports.rs
+@@ -1683,10 +1683,12 @@ fn show_cursor(env: &PluginEnv, cursor_position: Option<(usize, usize)>) {
+ }
+
+ fn request_permission(env: &PluginEnv, permissions: Vec<PermissionType>) -> Result<()> {
++    log::info!("popup-native permission-request pid={} plugin={} client={} location={} permissions={:?}", process::id(), env.plugin_id, acting_client(env), env.plugin.location, permissions);
+     if env.plugin.is_builtin()
+         || PermissionCache::from_path_or_default(None)
+             .check_permissions(env.plugin.location.to_string(), &permissions)
+     {
++        log::info!("popup-native permission-cache-hit pid={} plugin={} client={}", process::id(), env.plugin_id, acting_client(env));
+         return env
+             .senders
+             .send_to_plugin(PluginInstruction::PermissionRequestResult(
+@@ -1698,6 +1700,7 @@ fn request_permission(env: &PluginEnv, permissions: Vec<PermissionType>) -> Resu
+             ));
+     }
+
++    log::info!("popup-native permission-show-enqueue pid={} plugin={} client={}", process::id(), env.plugin_id, acting_client(env));
+     // we do this so that messages that have arrived while the user is seeing the permission screen
+     // will be cached and reapplied once the permission is granted
+     let _ = env
+diff --git a/zellij-server/src/screen.rs b/zellij-server/src/screen.rs
+index 4c6a8d49..a33f28c6 100644
+--- a/zellij-server/src/screen.rs
++++ b/zellij-server/src/screen.rs
+@@ -14216,10 +14216,12 @@ pub(crate) fn screen_thread_main(
+                 },
+             },
+             ScreenInstruction::SuppressPane(pane_id, client_id) => {
++                log::info!("popup-native screen-SuppressPane pid={} args={:?}", std::process::id(), (pane_id, client_id));
+                 let all_tabs = screen.get_tabs_mut();
+                 for tab in all_tabs.values_mut() {
+                     if tab.has_non_suppressed_pane_with_pid(&pane_id) {
+                         tab.suppress_pane(pane_id, Some(client_id));
++                        log::info!("popup-native suppress-applied pid={} pane={:?} client={} still_visible={}", std::process::id(), pane_id, client_id, tab.has_non_suppressed_pane_with_pid(&pane_id));
+                         drop(screen.render(None));
+                         break;
+                     }
+@@ -14227,6 +14229,7 @@ pub(crate) fn screen_thread_main(
+                 screen.log_and_report_session_state()?;
+             },
+             ScreenInstruction::UnsuppressPane(pane_id, should_float_if_hidden) => {
++                log::info!("popup-native screen-UnsuppressPane pid={} args={:?}", std::process::id(), (pane_id, should_float_if_hidden));
+                 let all_tabs = screen.get_tabs_mut();
+                 for tab in all_tabs.values_mut() {
+                     if tab.has_pane_with_pid(&pane_id) {
+@@ -14428,6 +14431,7 @@ pub(crate) fn screen_thread_main(
+                 }
+             },
+             ScreenInstruction::RequestPluginPermissions(plugin_id, plugin_permission) => {
++                log::info!("popup-native screen-RequestPluginPermissions pid={} args={:?}", std::process::id(), (plugin_id, &plugin_permission));
+                 let all_tabs = screen.get_tabs_mut();
+                 let found = all_tabs.values_mut().any(|tab| {
+                     if tab.has_plugin(plugin_id) {
+diff --git a/zellij-server/src/tab/mod.rs b/zellij-server/src/tab/mod.rs
+index 350428e2..6d6ac549 100644
+--- a/zellij-server/src/tab/mod.rs
++++ b/zellij-server/src/tab/mod.rs
+@@ -8644,6 +8644,7 @@ impl Tab {
+         Ok(())
+     }
+     pub fn request_plugin_permissions(&mut self, pid: u32, permissions: Option<PluginPermission>) {
++        log::info!("popup-native tab-permissions pid={} plugin={} request={} non_suppressed={}", std::process::id(), pid, permissions.is_some(), self.has_non_suppressed_pane_with_pid(&PaneId::Plugin(pid)));
+         if let Some(popup_pane) = self.popup_pane_mut(pid) {
+             let asks_for_permissions = permissions.is_some();
+             popup_pane.request_permissions_from_user(permissions);
+@@ -8682,6 +8683,7 @@ impl Tab {
+             plugin_pane.request_permissions_from_user(permissions);
+         }
+         if should_focus_pane {
++            log::info!("popup-native permission-reveal pid={} plugin={}", std::process::id(), pid);
+             self.focus_suppressed_pane_for_all_clients(PaneId::Plugin(pid));
+         }
+     }
+diff --git a/zellij-utils/src/input/permission.rs b/zellij-utils/src/input/permission.rs
+index 9ef7182a..0662fe70 100644
+--- a/zellij-utils/src/input/permission.rs
++++ b/zellij-utils/src/input/permission.rs
+@@ -46,9 +46,14 @@ impl PermissionCache {
+         let cache_path = cache_path.unwrap_or(ZELLIJ_PLUGIN_PERMISSIONS_CACHE.to_path_buf());
+
+         let granted = match fs::read_to_string(cache_path.clone()) {
+-            Ok(raw_string) => PermissionCache::from_string(raw_string).unwrap_or_default(),
++            Ok(raw_string) => {
++                let bytes = raw_string.len();
++                let parsed = PermissionCache::from_string(raw_string);
++                log::info!("popup-native cache-read pid={} path={:?} bytes={} parsed={:?}", std::process::id(), cache_path, bytes, parsed);
++                parsed.unwrap_or_default()
++            },
+             Err(e) => {
+-                log::error!("Failed to read permission cache file: {}", e);
++                log::error!("popup-native cache-read-error pid={} path={:?} error={}", std::process::id(), cache_path, e);
+                 GrantedPermission::default()
+             },
+         };
+@@ -60,8 +65,14 @@ impl PermissionCache {
+     }
+
+     pub fn write_to_file(&self) -> std::io::Result<()> {
+-        let mut f = File::create(&self.path)?;
+-        write!(f, "{}", PermissionCache::to_string(&self.granted))?;
++        log::info!("popup-native cache-write-start pid={} path={:?} grants={:?}", std::process::id(), self.path, self.granted);
++        let result = (|| -> std::io::Result<()> {
++            let mut f = File::create(&self.path)?;
++            write!(f, "{}", PermissionCache::to_string(&self.granted))?;
++            Ok(())
++        })();
++        log::info!("popup-native cache-write-end pid={} path={:?} result={:?}", std::process::id(), self.path, result);
++        result?;
+         Ok(())
+     }
+ }

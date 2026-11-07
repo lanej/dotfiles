@@ -7,6 +7,7 @@ struct Navigation {
     permitted: bool,
     plugin_id: u32,
     client_id: ClientId,
+    diagnostic_server_pid: u32,
 }
 
 register_plugin!(Navigation);
@@ -16,6 +17,8 @@ impl ZellijPlugin for Navigation {
         let ids = get_plugin_ids();
         self.plugin_id = ids.plugin_id;
         self.client_id = ids.client_id;
+        self.diagnostic_server_pid = ids.zellij_pid;
+        eprintln!("popup-diagnostic navigation request server={} plugin={} client={}", self.diagnostic_server_pid, self.plugin_id, self.client_id);
         subscribe(&[
             EventType::PermissionRequestResult,
             EventType::InitialKeybinds,
@@ -31,8 +34,10 @@ impl ZellijPlugin for Navigation {
     fn update(&mut self, event: Event) -> bool {
         match event {
             Event::PermissionRequestResult(status) => {
+                eprintln!("popup-diagnostic navigation permission server={} plugin={} client={} status={:?}", self.diagnostic_server_pid, self.plugin_id, self.client_id, status);
                 self.permitted = status == PermissionStatus::Granted;
                 if self.permitted {
+                    eprintln!("popup-diagnostic navigation hide-request server={} plugin={} client={}", self.diagnostic_server_pid, self.plugin_id, self.client_id);
                     hide_self();
                     reconfigure(self.bindings(), false);
                 }
