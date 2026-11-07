@@ -38,6 +38,8 @@ The native action API does not return CLI stdout or all runtime errors. Submitti
 
 `Ctrl-f C` uses the same client-private routing to create a session immediately in the focused pane’s directory, using the installed `tmux` layout. The original session and its processes remain live.
 
+The pinned SDK’s [key decoder](https://github.com/zellij-org/zellij/blob/bf517077c848d91f75091f66d1996cfeb84f4732/zellij-utils/src/plugin_api/key.rs#L147) truncates individual typed characters above U+00FF. Unicode paste, recalled commands and completed live names preserve full text; cursor editing uses the native grapheme-aware editor.
+
 ## Installation and permissions
 
 For an existing pinned installation, run `make zellij-command-prompt`, then `make zellij` and restart the session. Default configuration never invokes Cargo. The legacy 0.45.1 configuration does not enable the palette. No additional runtime patch or shell dependency is required.

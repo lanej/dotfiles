@@ -140,21 +140,30 @@ def capture(terminal, name):
 
 def prompt_frame(terminal):
     lines = screen(terminal)
-    top = next(row for row, line in enumerate(lines) if '╭' in line and 'Zellij command' in line)
-    left = lines[top].index('╭')
-    right = lines[top].index('╮', left)
-    bottom = next(row for row in range(top + 1, len(lines))
-                  if lines[row][left] == '╰' and lines[row][right] == '╯')
-    return top, left, right - left + 1, bottom - top + 1
+    try:
+        top = next(row for row, line in enumerate(lines) if '╭' in line and 'Zellij command' in line)
+        left = lines[top].index('╭')
+        right = lines[top].index('╮', left)
+        bottom = next(row for row in range(top + 1, len(lines))
+                      if lines[row][left] == '╰' and lines[row][right] == '╯')
+        return top, left, right - left + 1, bottom - top + 1
+    except (StopIteration, ValueError):
+        return None  # Native resize and redraw can span multiple PTY reads.
 
 
 def command_line(terminal):
-    top, left, width, _ = prompt_frame(terminal)
+    frame = prompt_frame(terminal)
+    if frame is None:
+        return ''
+    top, left, width, _ = frame
     return screen(terminal)[top + 1][left + 1:left + width - 1]
 
 
 def prompt_text(terminal):
-    top, left, width, height = prompt_frame(terminal)
+    frame = prompt_frame(terminal)
+    if frame is None:
+        return ''
+    top, left, width, height = frame
     return '\n'.join(line[left + 1:left + width - 1]
                      for line in screen(terminal)[top + 1:top + height - 1])
 
@@ -165,7 +174,8 @@ def open_prompt(terminal):
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
     terminal.until("Ctrl-f : renders compact command input", lambda:
-                   "Zellij command" in text(terminal) and 'Esc close' in text(terminal))
+                   "Zellij command" in text(terminal) and 'Esc close' in text(terminal)
+                   and prompt_frame(terminal) is not None)
     top, left, width, height = prompt_frame(terminal)
     assert width <= 64 and 5 <= height <= 9, f'Command popup is oversized: {width}x{height}'
     assert abs(left * 2 + width - 120) <= 2, 'Command popup is not horizontally centered'
@@ -312,7 +322,8 @@ def exercise(first, second, home):
     original_height = prompt_frame(first)[3]
     first.send(b'rename-ta')
     first.until('inline command suggestions shrink the dropdown', lambda:
-                'rename-tab' in text(first) and prompt_frame(first)[3] < original_height)
+                'rename-tab' in prompt_text(first) and prompt_frame(first) is not None
+                and prompt_frame(first)[3] < original_height)
     assert prompt_frame(first)[:2] == command_anchor, 'Completion moved the command line'
     first.send(b'\t')
     first.until('Tab completes the action', lambda: 'rename-tab ' in text(first))
@@ -322,11 +333,14 @@ def exercise(first, second, home):
 
     open_prompt(first)
     first.send(b'new-pane --dir\t ')
-    first.until('native flag completion', lambda: '--direction' in text(first) and 'right' in text(first))
+    first.until('native flag completion and direction choices', lambda:
+                'new-pane --direction' in command_line(first)
+                and re.search(r'\bright\s+direction\b', prompt_text(first)))
     capture(first, 'completion')
     first.send(b'r\t')
-    first.until('direction value completion', lambda: 'new-pane --direction right' in text(first))
-    assert prompt_frame(first)[3] <= 5, 'Completed argument did not shrink the popup'
+    first.until('direction completion shrinks to one choice', lambda:
+                'new-pane --direction right' in command_line(first)
+                and prompt_frame(first) is not None and prompt_frame(first)[3] <= 5)
     first.send(b'\x1b')
     unchanged()
 
@@ -371,10 +385,15 @@ def exercise(first, second, home):
 
     open_prompt(first)
     long_name = 'wide-' + '界' * 40 + '-cafe\u0301-👩‍💻'
-    first.send(('rename-tab "' + long_name + '"').encode())
+    # The pinned SDK truncates non-Latin-1 Key events; PastedText retains UTF-8.
+    first.send(b'\x1b[200~' + ('rename-tab "' + long_name + '"').encode() + b'\x1b[201~')
     first.send(b'\x01\x05\x1b[D!\r')
-    first.until('long Unicode command survives scrolling and cursor editing', lambda:
-                tabs()[initial_tab]['name'] == long_name + '!')
+    try:
+        first.until('pasted Unicode command survives scrolling and cursor editing', lambda:
+                    tabs()[initial_tab]['name'] == long_name + '!')
+    except AssertionError:
+        print('Tab names after Unicode edit: ' + json.dumps(tabs(), ensure_ascii=False), flush=True)
+        raise
 
     # A parse failure keeps the original line, allowing a real correction.
     submit(first, 'move-focus sideways', second)
