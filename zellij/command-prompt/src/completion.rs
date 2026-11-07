@@ -300,6 +300,15 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
     result
         .items
         .retain(|item| matches(&prefix, &format!("{} {}", item.label, item.detail)));
+    if !prefix.is_empty() {
+        let query = prefix.to_lowercase();
+        result.items.sort_by_key(|item| {
+            (
+                !item.value.to_lowercase().starts_with(&query),
+                !matches(&prefix, &item.label),
+            )
+        });
+    }
     result
 }
 

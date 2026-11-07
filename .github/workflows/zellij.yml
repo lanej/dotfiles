@@ -149,17 +149,6 @@ jobs:
           bash scripts/install-zellij
           "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install pane navigation
-        run: python3 scripts/install-zellij-navigation.py
-      - name: Save native Zellij build
-        uses: actions/cache/save@v4
-        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cache/dotfiles/zellij
-          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Exercise command palette
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: |
@@ -174,6 +163,17 @@ jobs:
           path: ${{ github.workspace }}/.zellij-diagnostics/command-palette
           if-no-files-found: ignore
           retention-days: 7
+      - name: Install pane navigation
+        run: python3 scripts/install-zellij-navigation.py
+      - name: Save native Zellij build
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Install Treehouse 3.1.6
         shell: bash
         run: |

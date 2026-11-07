@@ -141,13 +141,15 @@ def open_prompt(terminal):
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
     try:
-        terminal.until("Ctrl-f : opens native input", lambda: "Zellij command" in text(terminal))
+        terminal.until("Ctrl-f : renders native input and controls", lambda:
+                       "Zellij command :" in text(terminal) and 'Esc close' in text(terminal))
     except AssertionError:
         print("Decoded prompt screen:\n" + text(terminal), flush=True)
         raise
     title_rows = [row for row, line in enumerate(screen(terminal)) if "Zellij command" in line]
     footer_rows = [row for row, line in enumerate(screen(terminal)) if 'Esc close' in line]
-    assert title_rows and footer_rows and 27 <= title_rows[0] + footer_rows[0] <= 36, 'Palette is not vertically centered'
+    assert title_rows and footer_rows and 27 <= title_rows[0] + footer_rows[0] <= 36, (
+        f'Palette is not vertically centered: title={title_rows}, footer={footer_rows}\n' + text(terminal))
     assert all(10 <= screen(terminal)[row].index('Zellij command') <= 90
                for row in title_rows), 'Prompt is not horizontally centered'
     # A native prompt renders over the existing panes; it must not create a
@@ -291,6 +293,8 @@ def exercise(first, second, home):
     open_prompt(first)
     first.send(b'new-pane --dir\t ')
     first.until('native flag completion', lambda: '--direction' in text(first) and 'right' in text(first))
+    first.send(b'r\t')
+    first.until('direction value completion', lambda: 'new-pane --direction right' in text(first))
     capture(first, 'completion')
     first.send(b'\x1b')
     unchanged()

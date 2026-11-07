@@ -12,7 +12,7 @@
 | `focus-pane-id ` | Live pane IDs, titles, and tabs |
 | `switch-session ` | Running session names and client counts |
 
-Arrow keys select suggestions. Up from an empty command recalls history; Ctrl-p/Ctrl-n recall older/newer commands and restore the unsubmitted draft. Ctrl-r or `history` opens searchable history. It retains the last 32 distinct submitted commands in memory for each attached client, until the plugin/session restarts. Recent actions rank ahead of other equally matching commands.
+Arrow keys select suggestions. Ctrl-u clears before the cursor, Ctrl-k clears after it, and Ctrl-w deletes the previous word. Up from an empty command recalls history; Ctrl-p/Ctrl-n recall older/newer commands and restore the unsubmitted draft. Ctrl-r or `history` opens searchable history. It retains the last 32 distinct submitted commands in memory for each attached client, until the plugin/session restarts. Recent actions rank ahead of other equally matching commands.
 
 `help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and display the error inline. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program.
 

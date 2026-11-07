@@ -254,6 +254,23 @@ impl Palette {
             self.recall(false);
         } else if ctrl('r') {
             self.show(View::History);
+        } else if self.view != View::Documentation && (ctrl('u') || ctrl('k') || ctrl('w')) {
+            if ctrl('w') {
+                self.input.delete_word_backward();
+            } else {
+                let cursor = self.input.cursor_position();
+                let line: String = if ctrl('u') {
+                    self.input.get_text().chars().skip(cursor).collect()
+                } else {
+                    self.input.get_text().chars().take(cursor).collect()
+                };
+                self.input.set_text(line);
+                self.input
+                    .set_cursor_position(if ctrl('u') { 0 } else { cursor });
+            }
+            self.history_at = None;
+            self.selected = 0;
+            self.error.clear();
         } else if plain && key.bare_key == BareKey::Up {
             if self.history_at.is_some() || (self.input.is_empty() && self.view == View::Command) {
                 self.recall(true);
@@ -445,7 +462,15 @@ impl Palette {
         let visible = rows.saturating_sub(11).max(1);
         self.selected = self.selected.min(items.len().saturating_sub(1));
         let start = self.selected.saturating_sub(visible - 1);
-        let mut table = Table::new().add_styled_row(vec![
+        let label_width = width * 2 / 5;
+        let detail_width = width.saturating_sub(label_width + 2);
+        let cell = |column, row, available, value| {
+            print_text_with_coordinates(value, column, row, Some(available), Some(1))
+        };
+        cell(
+            2,
+            8,
+            label_width,
             Text::from(match self.view {
                 View::Panes => "PANE / TITLE",
                 View::Tabs => "TAB / NAME",
@@ -453,25 +478,29 @@ impl Palette {
                 _ => "COMMAND / VALUE",
             })
             .color_range(0, ..),
+        );
+        cell(
+            label_width + 4,
+            8,
+            detail_width,
             Text::from("DETAILS").color_range(0, ..),
-        ]);
+        );
         for (i, item) in items.iter().enumerate().skip(start).take(visible) {
             let label = sanitize_display_text(&item.label);
             let detail = sanitize_display_text(&item.detail);
-            let cells = [label, detail]
-                .into_iter()
-                .map(|v| {
-                    let value = Text::from(v);
-                    if i == self.selected {
-                        value.selected()
-                    } else {
-                        value
-                    }
-                })
-                .collect();
-            table = table.add_styled_row(cells);
+            for (column, available, v) in [
+                (2, label_width, label),
+                (label_width + 4, detail_width, detail),
+            ] {
+                let value = Text::from(v);
+                let value = if i == self.selected {
+                    value.selected()
+                } else {
+                    value
+                };
+                cell(column, 9 + i - start, available, value);
+            }
         }
-        print_table_with_coordinates(table, 2, 8, Some(width), Some(visible + 1));
         if items.is_empty() {
             put(9, Text::from("No matches").dim_range(..));
         }
@@ -493,6 +522,7 @@ impl Palette {
 
 pub fn launch(open: Open) {
     let tab = get_tab_info(open.origin.0).unwrap_or_default();
+    let dispatcher = get_pane_info(PaneId::Plugin(open.owner)).unwrap_or_default();
     let width = tab.display_area_columns.saturating_sub(4).clamp(12, 104);
     let height = tab.display_area_rows.saturating_sub(4).clamp(5, 24);
     let configuration = BTreeMap::from([(
@@ -502,8 +532,12 @@ pub fn launch(open: Open) {
     open_plugin_popup_with_options(
         "command-prompt",
         configuration,
-        tab.display_area_rows.saturating_sub(height) / 2,
-        tab.display_area_columns.saturating_sub(width) / 2,
+        // OpenPluginPopup coordinates are relative to the requesting plugin,
+        // including the retained geometry of a suppressed background pane.
+        (tab.display_area_rows.saturating_sub(height) / 2)
+            .saturating_sub(dispatcher.pane_content_y),
+        (tab.display_area_columns.saturating_sub(width) / 2)
+            .saturating_sub(dispatcher.pane_content_x),
         width,
         height,
         PopupOptions::default()
@@ -559,5 +593,18 @@ mod tests {
         assert!(!palette.error.is_empty());
         assert_eq!(palette.input.get_text(), "move-focus sideways");
         assert!(palette.view == View::Command);
+        palette.key(KeyWithModifier::new(BareKey::Char('u')).with_ctrl_modifier());
+        for c in "move-focus right".chars() {
+            palette.key(KeyWithModifier::new(BareKey::Char(c)));
+        }
+        assert_eq!(palette.input.get_text(), "move-focus right");
+        assert!(palette.error.is_empty());
+    }
+
+    #[test]
+    fn completing_a_value_prefers_its_name_to_description_matches() {
+        let mut palette = editor("move-focus r");
+        palette.complete();
+        assert_eq!(palette.input.get_text(), "move-focus right");
     }
 }
