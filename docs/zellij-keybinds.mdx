@@ -17,6 +17,7 @@ The main session normally stays in **Locked** mode, passing application shortcut
 | Cycle panes / return to the last pane | **Ctrl-f Tab** / **Ctrl-f ;** |
 | Zoom the focused pane | **Ctrl-f z** |
 | New tab / fuzzy tab picker | **Ctrl-f c** / **Ctrl-f Ctrl-f** |
+| Native inbox / notification history | **Ctrl-f b** / **Ctrl-f B** |
 | Next tab / last-focused tab | **Ctrl-f n** / **Ctrl-f Ctrl-p** |
 | Select a tab by position | **Ctrl-f 0** through **Ctrl-f 9** (modern configuration) |
 | Move this pane to a tab | **Ctrl-f m** |
@@ -74,6 +75,10 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 | `!` | Move the focused pane to a new tab |
 | `m` | Choose New Tab or an existing destination tab for this pane |
 | `Ctrl-a` | Focus the next native attention item, including in another session |
+| `b` | Open or close the native inbox/session card |
+| `B` | Search notification history, preview a message, Enter to visit its live source |
+| `a` | Toggle watching the current pane |
+| `U` | Toggle muting the current pane |
 
 **Tab positions are not tab names.** Modern numeric shortcuts are zero-based even if an automatically generated name still says `Tab #1`. The underlying Zellij `GoToTab` action is one-based. The custom bar and picker prepend the zero-based position; use that position rather than a number embedded in the name.
 
@@ -84,6 +89,8 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 **Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
 
 The tab picker lists this session's tabs, prioritizing native attention when available. Native cross-session attention requires a program that emits OSC 7501; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
+
+The [notification guide](./zellij.md#inbox-notices-and-history) describes quiet notices, history retention, and script integration. The native inbox owns unresolved attention; history retains past messages. These four shortcuts require the modern configuration.
 
 </details>
 

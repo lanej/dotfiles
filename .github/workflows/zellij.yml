@@ -98,6 +98,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh
       - run: make test-zellij-auto-title
+      - run: make test-zellij-notifications
 
   workflow:
     strategy:
@@ -217,6 +218,18 @@ jobs:
       - name: Exercise native attention, status bar and detached-session triage
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make test-zellij-status
+      - run: make test-zellij-notifications-ui
+        id: notifications
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+        env:
+          ZELLIJ_NOTIFICATION_SCREENSHOTS: ${{ github.workspace }}/.zellij-notification-screens
+      - name: Preserve rendered notification screens
+        if: ${{ !cancelled() && steps.notifications.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: zellij-notifications-${{ matrix.os }}
+          path: .zellij-notification-screens
+          retention-days: 7
       - run: make test-zellij-clipboard
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - name: Preserve failed workflow diagnostics
