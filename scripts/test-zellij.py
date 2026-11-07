@@ -463,49 +463,6 @@ def main():
                            for t in terminal.tabs())
 
             terminal.until("first tab has a one-row top bar", top_bars)
-            legacy = (home / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
-            if not legacy:
-                # Exercise the installed prefix, not a CLI substitute for F9.
-                def manager_pane():
-                    return next((p for p in terminal.panes()
-                                 if p["plugin_url"] == "zellij:session-manager"
-                                 and p["is_floating"] and p["is_focused"]
-                                 and not p["is_suppressed"]), None)
-
-                def manager_screen():
-                    pane = manager_pane()
-                    return terminal.action("dump-screen", "--pane-id", f"plugin_{pane['id']}") if pane else ""
-
-                def manager_focused():
-                    return name in manager_screen()
-
-                terminal.prefix(b"I")
-                terminal.until("prefix I opens the native inbox", manager_focused)
-                source = terminal.terminals()[0]
-                source_id = f"terminal_{source['id']}"
-                terminal.send(name.encode() + b"\x1b[B")
-                terminal.until("manager offers live preview typing", lambda:
-                               "Alt ENTER" in manager_screen())
-                terminal.send(b"\x1b\r")
-                terminal.send(b"printf 'LIVE-VIEW-%s\\n' INPUT\r")
-                terminal.until("live preview routes input to the selected shell", lambda:
-                               "LIVE-VIEW-INPUT" in terminal.action("dump-screen", "--pane-id", source_id))
-                terminal.send(b"\x1b\r")
-                terminal.send(b"release-probe")
-                terminal.until("Alt-Enter gives typing back to the manager", lambda:
-                               "release-probe" in manager_screen())
-                assert "release-probe" not in terminal.action("dump-screen", "--pane-id", source_id)
-                terminal.send(b"\x03")
-
-                terminal.prefix(b"I")
-                terminal.until("prefix I closes the native inbox", lambda:
-                               any(p["is_focused"] for p in terminal.terminals()))
-                terminal.prefix(b"I")
-                terminal.until("prefix I reopens the native inbox", manager_focused)
-                terminal.send(b"\x1b")
-                terminal.until("Escape returns from the native inbox", lambda:
-                               any(p["is_focused"] for p in terminal.terminals()))
-
             terminal.prefix(b"r")
             terminal.send(b"work\r")
             terminal.until("rename tab", lambda: terminal.tabs()[0]["name"] == "work")
@@ -633,6 +590,51 @@ def main():
             second.send(b"session-preview\r")
             second.until("name the session preview tab", lambda:
                          second.tabs()[0]["name"] == "session-preview")
+            legacy = (home / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
+            if not legacy:
+                # Exercise the installed prefix, not a CLI substitute for F9.
+                def manager_pane():
+                    return next((p for p in terminal.panes()
+                                 if p["plugin_url"] == "zellij:session-manager"
+                                 and p["is_floating"] and p["is_focused"]
+                                 and not p["is_suppressed"]), None)
+
+                def manager_screen():
+                    pane = manager_pane()
+                    return terminal.action("dump-screen", "--pane-id", f"plugin_{pane['id']}") if pane else ""
+
+                def manager_focused():
+                    return second_name in manager_screen()
+
+                terminal.prefix(b"I")
+                terminal.until("prefix I opens the native inbox", manager_focused)
+                source = second.terminals()[0]
+                source_id = f"terminal_{source['id']}"
+                terminal.send(second_name.encode() + b"\x1b[B")
+                terminal.until("manager offers live preview typing", lambda:
+                               "Alt ENTER" in manager_screen())
+                terminal.send(b"\x1b\r")
+                terminal.send(b"printf 'LIVE-VIEW-%s\\n' INPUT\r")
+                terminal.until("live preview routes input to the selected shell", lambda:
+                               "LIVE-VIEW-INPUT" in second.action("dump-screen", "--pane-id", source_id))
+                terminal.send(b"\x1b\r")
+                terminal.send(b"release-probe")
+                terminal.until("Alt-Enter gives typing back to the manager", lambda:
+                               "release-probe" in manager_screen())
+                assert "release-probe" not in second.action("dump-screen", "--pane-id", source_id)
+                terminal.send(b"\x03")
+
+                terminal.prefix(b"I")
+                terminal.until("prefix I closes the native inbox", lambda:
+                               manager_pane() is None and
+                               any(p["is_focused"] for p in terminal.terminals()))
+                terminal.prefix(b"I")
+                terminal.until("prefix I reopens the native inbox", manager_focused)
+                terminal.send(b"\x1b")
+                terminal.until("Escape returns from the native inbox", lambda:
+                               manager_pane() is None and
+                               any(p["is_focused"] for p in terminal.terminals()))
+
             second.prefix(b"d")
             second.until("second session is detached", lambda:
                          not second.action("list-clients").strip().splitlines()[1:])
