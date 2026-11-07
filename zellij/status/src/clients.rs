@@ -44,13 +44,20 @@ impl Clients {
                     cli_pipe_output(pipe, &(json!({"error": UNSUPPORTED_RUNTIME}).to_string() + "\n"));
                     return false;
                 }
+                // The picker reads lifecycle-checked ownership once per
+                // snapshot; hidden plugin clones do not poll host metadata.
+                // A non-TTY CLI sends a trailing EOF message without payload.
+                // It must not overwrite the ownership-aware snapshot rows.
+                let Some(payload) = message.payload.as_deref() else { return false };
+                let request: Value = serde_json::from_str(payload).unwrap_or_default();
+                let owned = &request["auto_titles"];
                 let Ok((tab_id, pane_id)) = get_focused_pane_info() else { return false };
                 let tab = get_tab_info(tab_id);
-                let pane = get_pane_info(pane_id);
+                let Some(pane) = get_pane_info(pane_id) else { return false };
                 let row = json!({"token": self.token(),
-                    "tab": tab.map(|tab| format!("{}: {}", tab.position, tab.name)),
+                    "tab": tab.map(|tab| format!("{}: {}", tab.position, crate::tab_name(&tab, panes, Some(&pane), owned))),
                     "pane_id": pane_id.to_string(),
-                    "pane": pane.map(|pane| pane.title)});
+                    "pane": pane.title});
                 cli_pipe_output(pipe, &(row.to_string() + "\n"));
             }
             "lane-move-pane" => {

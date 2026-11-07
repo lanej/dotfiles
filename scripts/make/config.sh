@@ -155,8 +155,8 @@ case "$target" in
         else
             ln -fs "$dotfiles/zellij/config-legacy.kdl" "$setup_home/.config/zellij/config.kdl"
         fi
-        ln -fs "$dotfiles/zsh/zellij-navigation.zsh" "$setup_home/.local/share/zsh/zellij-navigation.zsh"
         ln -fs "$dotfiles/zsh/zellij-auto-title.zsh" "$setup_home/.local/share/zsh/zellij-auto-title.zsh"
+        ln -fs "$dotfiles/zsh/zellij-navigation.zsh" "$setup_home/.local/share/zsh/zellij-navigation.zsh"
         for source in "$dotfiles"/zellij/layouts/*.kdl; do
             [ -f "$source" ] || continue
             ln -fs "$source" "$setup_home/.config/zellij/layouts/"

@@ -116,6 +116,14 @@ Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waitin
 
 `Ctrl-f Ctrl-f` follows the effective tmux binding: the later fuzzy-picker binding in `tmux.conf` overrides its earlier send-prefix binding. `Ctrl-f f` remains the way to send Ctrl-f through. Similarly, `Tab` keeps pane cycling rather than the earlier, overridden `Ctrl-i` layout binding.
 
+With the compiled bar, the first tab and its fallback name are `0:Tab #0`; `Ctrl-f 0` selects it. Positions continue through `10`, `11`, and beyond. Use the fuzzy picker or next/last-tab controls beyond the ten digit shortcuts. Reordering or closing tabs updates displayed positions; picker selection uses stable tab IDs. Zellij's native `GoToTab` action and CLI arguments remain one-based.
+
+Zsh updates the native tab name and its own terminal title to `directory [git-branch]` after changing directory and before each prompt. The compiled bar and picker present the focused tiled pane's shell/application title for generated or automatically managed tabs, with a zero-based fallback when there is no title or attached clients disagree about focus. Explicit tab names, including `zssh` host names, win; explicit pane names override shell/application titles. Nested tmux/Zellij uses the nearest multiplexer. Run `make zellij zsh-config`, rebuild the bar with `make zellij-status zellij`, and start a new shell/session to load these changes.
+
+Automatic ownership requires an exact match with the last name written by the hook and a matching live session socket incarnation. State under `$XDG_STATE_HOME/zellij-auto-titles` cannot claim a recreated session's explicit title. Older records without lifecycle identity are ignored; reset the native tab name to its generated `Tab #<stable ID + 1>` name to resume automatic naming after upgrading an existing session. Zellij does not expose rename provenance: manually choosing exactly the last automatic name remains indistinguishable from automatic ownership. Other explicit names remain literal. If ownership cannot be established, the native name is displayed unchanged.
+
+The configuration-only/0.45.1 fallback still uses Zellij's built-in bar and one-based keys (`0` also selects the first tab). That bar has no base-index option; this change does not replace it or alter the runtime. To use the zero-based bar, install the pinned 0.46 runtime and build the status plugin. Avoid manual names matching Zellij's generated forms (`Tab #<stable ID + 1>` and `Pane #<number>`): its metadata does not expose their origin, so the custom UI can treat them as fallbacks. Other manual names are retained verbatim.
+
 **Command prompt:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax
 without `zellij action`, such as `rename-tab "work"`, `new-pane --direction right`,
 or `move-focus left`. Enter runs it and Esc cancels. `help` opens the action picker;
@@ -247,6 +255,8 @@ make test-zellij-claude-titles
 make test-zellij-navigation
 make test-zellij-layout
 make test-zellij-sessions
+make test-zellij-auto-title
+make test-zellij-tab-labels
 ```
 
 The workflow check installs into a temporary home, sends real prefix keys to Zellij in a pseudo-terminal, exercises the actual fzf pickers, and verifies that detach/reattach keeps the panes and a shell's in-memory state. The navigation check uses the installed pane-navigation artifact, real Neovim, and the pinned Navigator plugin to exercise editor boundaries in both directions, insert mode, zoom, navigation from a raw-terminal foreground application, both multiplexer nesting directions, and a tab change during a delayed navigation query. It requires the installed navigation plugin, Neovim 0.12+, Zsh, tmux, git, and access to the public plugin repository. Both checks require local Unix sockets and PTYs and terminate only their own named sessions. Linux and macOS CI run them against the same pinned fork revision as bootstrap. Native Rust regressions live with the fixes in the fork. These checks do not establish performance under production agent output, a live Codex model task, or clipboard behavior in a particular terminal emulator.

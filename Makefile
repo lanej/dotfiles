@@ -418,6 +418,12 @@ test-zellij-clipboard:
 
 test-zellij-status:
 	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
+.PHONY: test-zellij-auto-title
+test-zellij-auto-title:
+	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"
+.PHONY: test-zellij-tab-labels
+test-zellij-tab-labels:
+	@python3 "$(DOTFILES)/scripts/test-zellij-tab-labels.py"
 
 test-zellij-sessions:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"

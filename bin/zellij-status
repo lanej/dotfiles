@@ -4,6 +4,7 @@
 import json
 from pathlib import Path
 import re
+import runpy
 import socket
 import subprocess
 import sys
@@ -28,7 +29,9 @@ def battery():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] != ["view"]:
-        sys.exit("Usage: zellij-status view")
-    print(json.dumps({"host": socket.gethostname().split(".")[0],
+    if len(sys.argv) not in (2, 3) or sys.argv[1] != "view":
+        sys.exit("Usage: zellij-status view [session]")
+    ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    titles = ownership["owned_titles"](sys.argv[2]) if len(sys.argv) == 3 else {}
+    print(json.dumps({"session": sys.argv[2] if len(sys.argv) == 3 else None, "auto_titles": titles, "host": socket.gethostname().split(".")[0],
                       "clock": time.strftime("%H:%M"), "battery": battery()}))

@@ -2,13 +2,13 @@
 """Keep the calling shell's Zellij tab named for its directory and Git branch."""
 
 import fcntl
-import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import runpy
 import subprocess
+import sqlite3
 import time
 
 
@@ -39,13 +39,16 @@ def main():
         if (not pane or not pane["is_focused"] or pane.get("is_suppressed")
                 or pane.get("exited")):
             return None
-        tabs = json.loads(action("list-tabs", "--json"))
-        return next((tab for tab in tabs if tab["tab_id"] == pane["tab_id"]), None)
+        # The pinned native pane snapshot carries its raw tab name too, so
+        # focus and ownership are checked together without another CLI trip.
+        return {"tab_id": pane["tab_id"], "name": pane["tab_name"]}
 
-    directory = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
-    directory /= "zellij-auto-titles"
+    ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    location = ownership["session_location"](run)
+    incarnation = ownership["session_identity"](session, run, location)
+    directory = ownership["state_directory"]()
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    key = hashlib.sha256(session.encode()).hexdigest()
+    key = ownership["session_key"](session)
     # All shells in a session share ownership, so a new split can update the
     # previous shell's title while an inactive pane cannot overwrite it.
     with (directory / (key + ".lock")).open("a") as lock:
@@ -57,7 +60,7 @@ def main():
         if tab is None:
             return
         path = directory / f"{key}-{tab['tab_id']}.json"
-        previous = json.loads(path.read_text()) if path.exists() else None
+        previous = ownership["record_title"](path, incarnation)
         # Native defaults also let a newly started session reuse its old name.
         default_name = not tab["name"] or re.fullmatch(r"Tab #\d+", tab["name"])
         if not default_name and tab["name"] != previous:
@@ -77,15 +80,23 @@ def main():
         current = snapshot()
         if not current or (current["tab_id"], current["name"]) != (tab["tab_id"], tab["name"]):
             return
+        if ownership["session_identity"](session, run, location) != incarnation:
+            return
+        if time.monotonic() >= deadline:
+            return
+        # A rename can apply before its CLI acknowledgement arrives. Do not
+        # cancel it with just the last milliseconds of the discovery budget
+        # and lose the ownership record; allow a bounded acknowledgement window.
+        deadline = max(deadline, time.monotonic() + 0.5)
         action("rename-tab", "--tab-id", str(tab["tab_id"]), "--", title)
         temporary = path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(title) + "\n")
+        temporary.write_text(json.dumps({"identity": incarnation, "title": title}) + "\n")
         temporary.replace(path)
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError):
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
         # Cosmetic hooks must never interfere with changing directories or prompts.
         pass

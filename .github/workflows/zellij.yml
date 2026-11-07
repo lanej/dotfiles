@@ -34,6 +34,7 @@ on:
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zellij-auto-title.zsh'
+      - 'zsh/tmux-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'nvim/lua/zellij-scrollback.lua'
@@ -72,6 +73,7 @@ on:
       - 'nvim/lazy-lock.json'
       - 'zsh/zellij-navigation.zsh'
       - 'zsh/zellij-auto-title.zsh'
+      - 'zsh/tmux-auto-title.zsh'
       - 'zsh/zshrc'
       - 'nvim/lua/zellij-clipboard.lua'
       - 'nvim/lua/zellij-scrollback.lua'
@@ -82,6 +84,21 @@ permissions:
   contents: read
 
 jobs:
+  shell-titles:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+      - run: make test-zellij-auto-title
+
   workflow:
     strategy:
       fail-fast: false
@@ -173,6 +190,8 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
       - run: make test-zellij
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-tab-labels
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-command-prompt
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

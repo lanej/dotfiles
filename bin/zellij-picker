@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shlex
 import subprocess
 import sys
@@ -21,8 +22,11 @@ def run_zellij(*args, session=None, timeout=5):
     command = ["zellij"]
     if session is not None:
         command += ["--session=" + session]
+    # Requests are complete in argv. Inherited input would become additional
+    # CLI pipe messages and could replace an ownership-aware snapshot.
     result = subprocess.run(
-        command + list(args), capture_output=True, text=True, timeout=timeout
+        command + list(args), stdin=subprocess.DEVNULL,
+        capture_output=True, text=True, timeout=timeout
     )
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "Zellij command failed")
@@ -39,6 +43,28 @@ def snapshot(session, kind, timeout=5):
 def label(value):
     # Titles are display data, including when they contain tabs, newlines or ANSI.
     return "".join(c if c.isprintable() else " " for c in str(value))
+
+
+def display_tab_name(tab, panes, *, legacy=False, owned=None):
+    # Keep explicit names. Native generated names are based on stable IDs,
+    # which can differ from positions after tabs close or move.
+    if legacy or (tab["name"] != f"Tab #{tab['tab_id'] + 1}"
+                  and (owned or {}).get(str(tab["tab_id"])) != tab["name"]):
+        return label(tab["name"])
+    # Native focus is aggregated across attachments, not scoped to this picker.
+    focused = [pane for pane in panes if pane.get("tab_id") == tab["tab_id"]
+               and pane.get("is_focused") and not pane.get("is_plugin")
+               and not pane.get("is_floating") and not pane.get("is_suppressed")
+               and not pane.get("exited")]
+    title = label(focused[0].get("title", "")) if len(focused) == 1 else ""
+    if title and not re.fullmatch(r"Pane #[0-9]+", title):
+        return title
+    return f"Tab #{tab['position']}"
+
+
+def owned_titles(session):
+    helper = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    return helper["owned_titles"](session)
 
 
 def session_names():
@@ -250,11 +276,13 @@ def preview_tab(session, tab_id):
 
 
 def preview_session(session):
+    owned = owned_titles(session)
     tabs = snapshot(session, "tabs")
+    panes = snapshot(session, "panes")
     legacy = (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl"
     for tab in sorted(tabs, key=lambda tab: tab["position"]):
         marker = "*" if tab.get("active") else " "
-        print(f"{marker} {tab['position'] + int(legacy)}: {label(tab['name'])}")
+        print(f"{marker} {tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy, owned=owned)}")
 
 
 def choose(rows, heading, preview=None):
@@ -285,7 +313,8 @@ def client_choices(session):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
-            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--", "list",
+            output = run_zellij("pipe", "--name", "lane-client-snapshot", "--",
+                                json.dumps({"auto_titles": owned_titles(session)}),
                                 session=session, timeout=max(0.01, deadline - time.monotonic()))
             rows = [json.loads(line) for line in output.splitlines() if line.strip()]
             for row in rows:
@@ -329,10 +358,12 @@ def pick_client(session):
 
 
 def pick_tab(session):
+    owned = owned_titles(session)
     tabs = snapshot(session, "tabs")
+    panes = snapshot(session, "panes")
     pane_id = own_pane_id()
     source_tab = next(
-        (pane.get("tab_id") for pane in snapshot(session, "panes")
+        (pane.get("tab_id") for pane in panes
          if not pane.get("is_plugin") and pane["id"] == pane_id), None
     )
     priorities = {"NeedsYou": 0, "Failed": 0, "Done": 1, "Working": 2}
@@ -346,7 +377,7 @@ def pick_tab(session):
         flags = " [current]" if tab["tab_id"] == source_tab else ""
         if tab.get("has_bell_notification"):
             flags += " [bell]"
-        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {label(tab['name'])}{flags}")
+        rows.append(f"{token}\t{tab['position'] + int(legacy)}: {display_tab_name(tab, panes, legacy=legacy, owned=owned)}{flags}")
     token = choose(rows, "Tabs (attention first)", "--preview-tab")
     if token is None:
         return
@@ -375,9 +406,10 @@ def move_pane(session):
               if row.get("pane_id") == f"terminal_{picker_id}"]
     if len(owners) != 1:
         raise RuntimeError("Cannot identify the picker’s attached client; reopen the move picker")
+    owned = owned_titles(session)
     choices = {str(tab["tab_id"]): tab for tab in snapshot(session, "tabs")}
     rows = ["new\tNew Tab"] + [
-        f"{key}\t{tab['position']}: {label(tab['name'])}" +
+        f"{key}\t{tab['position']}: {display_tab_name(tab, panes, owned=owned)}" +
         (" [current]" if tab["tab_id"] == source["tab_id"] else "")
         for key, tab in sorted(choices.items(), key=lambda item: item[1]["position"])
     ]
