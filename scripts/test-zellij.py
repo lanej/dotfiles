@@ -404,6 +404,7 @@ def check_move_picker(terminal, home, clients):
                    (home / "move-gapped").read_text() == pid + ":retained")
     assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", pane_target)
     print("PASS: Ctrl-f m moves the original live pane to new/existing tabs, cancels safely, and isolates clients.")
+    return source_id
 
 
 def check_tab_swap(terminal, home, clients):
@@ -531,6 +532,186 @@ def check_tab_swap(terminal, home, clients):
     print("PASS: Ctrl-f W exchanges endpoint positions, preserves intervening tabs, clients and live panes, and cancels safely.")
 
 
+def check_move_all_picker(terminal, home, clients, source_id):
+    # Pane focus is aggregated per tab, not scoped to the invoking client.
+    # Carry the live source whose identity the preceding workflow established.
+    def all_terminals():
+        # Native stack lists suppress their hidden members without ending the
+        # processes. Include them when checking identity and live preservation.
+        return [p for p in json.loads(terminal.action("list-panes", "--all", "--json"))
+                if not p["is_plugin"]]
+
+    source = next(p for p in terminal.terminals() if p["id"] == source_id)
+    source_id, source_tab = source["id"], source["tab_id"]
+    assert next(t for t in terminal.tabs() if t["tab_id"] == source_tab)["position"] != source_tab
+    terminal.action("rename-tab", "gather source", "--tab-id", str(source_tab))
+    # The existing destination already had its own shell before m moved the
+    # original here. Keep every resident pane in this workflow's working set.
+    baseline = {p["id"]: p for p in terminal.terminals() if p["tab_id"] == source_tab}
+    # Include a floating working shell: the source tab must stay alive until
+    # every working pane is placed and the picker has received its reply.
+    terminal.action("new-pane", "--floating")
+    floating = terminal.until("floating working shell ready", lambda:
+                              next((p for p in terminal.terminals() if p["tab_id"] == source_tab
+                                    and p["id"] not in baseline and p["is_floating"]), None))
+    floating_id = floating["id"]
+    terminal.until("floating prompt ready", lambda: PROMPT.decode().strip() in
+                   terminal.action("dump-screen", "--pane-id", f"terminal_{floating_id}"))
+    terminal.send(b"gather_state=floating; mkdir -p \"$HOME/floating-work\"; cd \"$HOME/floating-work\"; printf '%s' \"$$\" > \"$HOME/gather-pid\"; printf 'GATHER-HISTORY\\n'; seq 1 80\r")
+    terminal.until("floating history ready", lambda: (home / "gather-pid").exists() and
+                   "80\n" in terminal.action("dump-screen", "--pane-id", f"terminal_{floating_id}"))
+    terminal.action("focus-pane-id", f"terminal_{source_id}")
+    working_ids = set(baseline) | {floating_id}
+    assert {p["id"] for p in terminal.terminals() if p["tab_id"] == source_tab} == working_ids
+    before = {p["id"]: (p["tab_id"], p["is_floating"]) for p in terminal.terminals()}
+
+    def picker():
+        return next((p for p in terminal.terminals() if p["tab_id"] == source_tab and
+                     p["id"] not in working_ids), None)
+
+    def screen():
+        pane = picker()
+        return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+
+    def open_picker():
+        terminal.prefix(b"M")
+        terminal.until("prefix M opens existing destinations", lambda: "Move all panes to tab" in screen())
+        assert "New Tab" not in screen()
+
+    open_picker()
+    terminal.send(b"\x1b")
+    terminal.until("M cancel closes helper", lambda: picker() is None)
+    assert {p["id"]: (p["tab_id"], p["is_floating"]) for p in terminal.terminals()} == before
+    open_picker()
+    terminal.send(b"gather source")
+    terminal.until("M current destination selected", lambda: "1/" in screen())
+    terminal.send(b"\r")
+    terminal.until("M current selection closes helper", lambda: picker() is None)
+    assert {p["id"]: (p["tab_id"], p["is_floating"]) for p in terminal.terminals()} == before
+
+    # Closing a picker can expose another floating pane. Restore the intended
+    # tiled origin while only this client is attached; never use CLI focus with
+    # the bystander present, because that route cannot choose a client identity.
+    requester_rows = terminal.action("list-clients").splitlines()[1:]
+    assert len(requester_rows) == 1, f"Expected one requester before focus setup: {requester_rows}"
+    requester_id = requester_rows[0].split()[0]
+    terminal.action("focus-pane-id", f"terminal_{source_id}")
+    terminal.until("requester owns the original pane before bystander attaches", lambda:
+                   {row.split()[0]: row.split()[1]
+                    for row in terminal.action("list-clients").splitlines()[1:]}
+                   == {requester_id: f"terminal_{source_id}"})
+
+    other = Terminal(terminal.binary, terminal.env, terminal.name)
+    clients.append(other)
+    other.until("gather bystander attached", lambda: PROMPT in other.output)
+    prior_ids = {p["id"] for p in terminal.terminals()}
+    other.prefix(b"c")
+    terminal.until("bystander new shell ready", lambda: any(
+        p["id"] not in prior_ids and PROMPT.decode().strip() in
+        terminal.action("dump-screen", "--pane-id", f"terminal_{p['id']}")
+        for p in terminal.terminals()))
+    other.send(b"printf '%s' \"$ZELLIJ_PANE_ID\" > \"$HOME/gather-bystander\"\r")
+    terminal.until("bystander ready on unrelated tab", lambda: (home / "gather-bystander").exists())
+    bystander = int((home / "gather-bystander").read_text())
+    # The lowercase-m workflow emptied its old destination. Create this
+    # workflow's existing destination explicitly, without changing client focus.
+    terminal.action("new-tab", "--name", "gather destination", "--no-focus")
+    target = terminal.until("gather destination exists", lambda:
+                            next((t for t in terminal.tabs() if t["name"] == "gather destination"), None))
+    terminal.until("gather destination shell ready", lambda: any(
+        p["tab_id"] == target["tab_id"] and PROMPT.decode().strip() in
+        terminal.action("dump-screen", "--pane-id", f"terminal_{p['id']}")
+        for p in terminal.terminals()))
+    all_ids = {p["id"] for p in all_terminals()}
+    before_clients = terminal.action("list-clients")
+    before_focus = {row.split()[0]: row.split()[1] for row in before_clients.splitlines()[1:]}
+    other_clients = set(before_focus) - {requester_id}
+    if (len(other_clients) != 1 or before_focus.get(requester_id) != f"terminal_{source_id}"
+            or any(before_focus[client] != f"terminal_{bystander}" for client in other_clients)):
+        diagnostics = "\n".join(terminal.startup_diagnostics())
+        raise AssertionError(
+            f"Gather fixture focus precondition failed: requester {requester_id} must own terminal_{source_id}; "
+            f"one bystander must own terminal_{bystander}.\nClients:\n{before_clients}\n{diagnostics}")
+    # Lose the mutation CLI reply after the real native transfer completes.
+    # The actual picker must retain its anchor, reconcile rather than replay,
+    # and only then exit. This wrapper changes transport timing, not Zellij.
+    wrapper = home / ".local/bin/zellij"
+    assert not wrapper.exists()
+    wrapper.write_text("#!/usr/bin/env python3\n" +
+        "import json, os, subprocess, sys, time\n" +
+        "from pathlib import Path\n" +
+        f"binary = {terminal.binary!r}\n" +
+        f"log = Path({str(home / 'gather-transport')!r})\n" +
+        "args = sys.argv[1:]\n" +
+        "if 'lane-move-pane' in args or 'lane-move-status' in args:\n" +
+        "    with log.open('a') as stream: stream.write(('move' if 'lane-move-pane' in args else 'status') + '\\n')\n" +
+        "if 'lane-move-pane' in args:\n" +
+        "    request = json.loads(args[-1])\n" +
+        "    origin = {key: request[key] for key in ('source', 'source_tab', 'picker', 'destination')}\n" +
+        "    origin['client_id'] = request['token']['client_id']\n" +
+        "    log.with_name('gather-request.json').write_text(json.dumps(origin))\n" +
+        "    result = subprocess.run([binary, *args], capture_output=True)\n" +
+        "    time.sleep(6)\n" +
+        "    sys.stdout.buffer.write(result.stdout); sys.stderr.buffer.write(result.stderr)\n" +
+        "    sys.exit(result.returncode)\n" +
+        "os.execv(binary, [binary, *args])\n")
+    wrapper.chmod(0o755)
+    open_picker()
+    terminal.send(b"destination")
+    terminal.until("M destination filtered", lambda: "1/" in screen())
+    terminal.send(b"\r")
+    last_transfer_state = {}
+
+    def transferred():
+        panes, tabs = all_terminals(), terminal.tabs()
+        last_transfer_state.update(
+            expected_ids=sorted(all_ids), working_ids=sorted(working_ids),
+            source_tab=source_tab, destination_tab=target["tab_id"],
+            panes=[{key: p[key] for key in ("id", "tab_id", "is_suppressed", "is_floating", "exited")}
+                   for p in panes],
+            tabs=[{key: t[key] for key in ("tab_id", "position", "name")} for t in tabs])
+        return (all(p["tab_id"] == target["tab_id"] and not p["exited"]
+                    for p in panes if p["id"] in working_ids)
+                and {p["id"] for p in panes} == all_ids
+                and all(t["tab_id"] != source_tab for t in tabs))
+
+    try:
+        terminal.until("M transfers every live source pane and closes helper", transferred)
+    except AssertionError as error:
+        raise AssertionError(f"{error}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}") from error
+    wrapper.unlink()
+    transport = (home / "gather-transport").read_text().splitlines()
+    assert transport.count("move") == 1 and "status" in transport
+    after_clients = terminal.action("list-clients")
+    focused = {row.split()[0]: row.split()[1] for row in after_clients.splitlines()[1:]}
+    expected_focus = {f"terminal_{source_id}", f"terminal_{bystander}"}
+    if set(focused.values()) != expected_focus or focused != before_focus:
+        request = (home / "gather-request.json").read_text()
+        diagnostics = "\n".join(terminal.startup_diagnostics())
+        raise AssertionError(
+            f"Gather focus mismatch: expected panes {sorted(expected_focus)}; "
+            f"before {before_focus}; after {focused}\n"
+            f"Before clients:\n{before_clients}After clients:\n{after_clients}"
+            f"Gather request: {request}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}\n"
+            f"{diagnostics}")
+    terminal.send(b"printf '%s:%s' \"$$\" \"$move_state\" > \"$HOME/gather-original\"\r")
+    terminal.until("M keeps original shell and focus", lambda:
+                   (home / "gather-original").exists() and
+                   (home / "gather-original").read_text() == (home / "move-pid").read_text() + ":retained")
+    terminal.action("write-chars", "--pane-id", f"terminal_{floating_id}",
+                    "printf '%s:%s' \"$$\" \"$gather_state\" > \"$HOME/gather-after\"\n")
+    terminal.until("M keeps floating shell memory", lambda:
+                   (home / "gather-after").exists() and
+                   (home / "gather-after").read_text() == (home / "gather-pid").read_text() + ":floating")
+    gathered = {p["id"]: p for p in all_terminals() if p["id"] in working_ids}
+    assert all(not gathered[pane]["exited"] and gathered[pane]["pane_cwd"] == state["pane_cwd"]
+               for pane, state in baseline.items())
+    assert gathered[floating_id]["pane_cwd"] == str(home / "floating-work")
+    assert "GATHER-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", f"terminal_{floating_id}")
+    assert "MOVE-HISTORY\n" in terminal.action("dump-screen", "--full", "--pane-id", f"terminal_{source_id}")
+    print("PASS: Ctrl-f M gathers live tiled/floating panes into an existing tab without stealing another client's focus.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--move-pane", action="store_true", help="Exercise only the pane destination picker")
@@ -579,7 +760,8 @@ def main():
                 return
 
             if args.move_pane:
-                check_move_picker(terminal, home, clients)
+                source_id = check_move_picker(terminal, home, clients)
+                check_move_all_picker(terminal, home, clients, source_id)
                 return
 
             def top_bars():

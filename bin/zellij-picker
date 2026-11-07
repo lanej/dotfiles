@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 import runpy
 import shlex
+import signal
+import uuid
 import subprocess
 import sys
 import time
@@ -44,8 +46,9 @@ def status_pipe(name, payload, *, session, timeout=5):
                       session=session, timeout=timeout)
 
 
-def snapshot(session, kind, timeout=5):
-    result = json.loads(run_zellij("action", f"list-{kind}", "--json", session=session, timeout=timeout))
+def snapshot(session, kind, timeout=5, *, show_all=False):
+    options = ["--all"] if show_all else []
+    result = json.loads(run_zellij("action", f"list-{kind}", "--json", *options, session=session, timeout=timeout))
     if not isinstance(result, list):
         raise RuntimeError(f"Zellij did not return a {kind} list")
     return result
@@ -518,7 +521,34 @@ def swap_tab(session):
         raise
 
 
-def move_pane(session):
+def gather_panes(session, request):
+    # Expiry bounds new work, not the lifetime of an already-issued native call.
+    # Only the same plugin's serialized stop acknowledgement releases this helper.
+    request["operation"] = uuid.uuid4().hex
+    request["expires"] = int(time.time() * 1000) + 15000
+    previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        try:
+            status_pipe("lane-move-pane", request, session=session)
+        except (OSError, RuntimeError, subprocess.TimeoutExpired):
+            pass
+        print("Confirming pane transfer has stopped. Keep this pane open; cancellation is deferred.", flush=True)
+        while True:
+            try:
+                output = status_pipe("lane-move-status", request, session=session)
+                stopped = json.loads(output)
+                if stopped.get("stopped") is True:
+                    return stopped["result"]
+            except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError):
+                pass
+            # Reconciliation never resends the move. If the server is
+            # unreachable, retain the source anchor rather than guess it stopped.
+            time.sleep(0.25)
+    finally:
+        signal.signal(signal.SIGINT, previous)
+
+
+def move_pane(session, *, all_panes=False):
     # Zellij records the originating pane before it opens this floating command.
     # Never infer it from mutable focus or from the picker’s own pane ID.
     if (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl":
@@ -538,30 +568,56 @@ def move_pane(session):
         raise RuntimeError("Cannot identify the picker’s attached client; reopen the move picker")
     owned = owned_titles(session)
     choices = {str(tab["tab_id"]): tab for tab in snapshot(session, "tabs")}
-    rows = ["new\tNew Tab"] + [
+    rows = ([] if all_panes else ["new\tNew Tab"]) + [
         f"{key}\t{tab['position']}: {display_tab_name(tab, panes, owned=owned)}" +
         (" [current]" if tab["tab_id"] == source["tab_id"] else "")
         for key, tab in sorted(choices.items(), key=lambda item: item[1]["position"])
     ]
-    selected = choose(rows, "Move pane to tab", "--preview-move")
+    selected = choose(rows, "Move all panes to tab" if all_panes else "Move pane to tab", "--preview-move")
     if selected is None:
         return
-    if selected != "new" and selected not in choices:
+    if selected == str(source["tab_id"]):
+        return
+    if selected not in choices and (all_panes or selected != "new"):
         raise RuntimeError("Invalid destination selection")
     if selected != "new" and not any(str(tab["tab_id"]) == selected
                                      for tab in snapshot(session, "tabs")):
         raise RuntimeError("The destination tab closed; reopen the move picker")
+    current = snapshot(session, "panes", show_all=all_panes)
     if not any(not p["is_plugin"] and p["id"] == source_id and
                p["tab_id"] == source["tab_id"] and not p["is_suppressed"]
-               for p in snapshot(session, "panes")):
+               and not p["exited"] for p in current):
         raise RuntimeError("The original pane changed; reopen the move picker")
     request = {"token": owners[0]["token"], "source": source_id,
                "source_tab": source["tab_id"], "picker": picker_id,
                "destination": None if selected == "new" else int(selected)}
-    # Single-shot mutation. A lost reply must never replay a pane transfer.
-    reply = status_pipe("lane-move-pane", request, session=session).strip()
+    if all_panes:
+        # This one live screen snapshot carries both stable tab IDs and complete
+        # pane state. Never join a cached PaneManifest's positions to live tabs.
+        source_panes = [p for p in current if p["tab_id"] == source["tab_id"]]
+        if any(not p["is_plugin"] and p["is_suppressed"] for p in source_panes):
+            raise RuntimeError("Restore suppressed terminals or close scrollback editors before moving all panes")
+        if not any(not p["is_plugin"] and p["id"] == picker_id for p in source_panes):
+            raise RuntimeError("The picker changed; reopen it")
+        # Keep original tiled terminals until floating work has left: even an
+        # externally closed helper must not strand floats in a tiled-empty tab.
+        request["sources"] = [p["id"] for p in sorted(source_panes,
+                               key=lambda p: (not p["is_floating"], p["id"]))
+                              if not p["is_plugin"] and p["id"] != picker_id and
+                              p["is_selectable"] and not p["exited"]]
+        if source_id not in request["sources"]:
+            raise RuntimeError("The original pane changed; reopen the move picker")
+        reply = gather_panes(session, request)
+    else:
+        # Single-shot mutation. A lost reply must never replay a pane transfer.
+        reply = status_pipe("lane-move-pane", request, session=session).strip()
+    if all_panes:
+        try:
+            status_pipe("lane-move-ack", request, session=session)
+        except (OSError, RuntimeError, subprocess.TimeoutExpired):
+            pass  # Result retention cleanup never starts or continues a transfer.
     if reply != "moved":
-        raise RuntimeError(reply or "Pane transfer was not confirmed; inspect the tabs before retrying")
+        raise RuntimeError(reply or "Pane transfer was not confirmed; inspect both tabs before retrying")
 
 
 def pick_session(session):
@@ -585,9 +641,9 @@ def pick_session(session):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-        "tabs", "swap-tab", "move-pane", "sessions", "clients", "--preview-tab", "--preview-move", "--preview-session"
+        "tabs", "swap-tab", "move-pane", "move-all-panes", "sessions", "clients", "--preview-tab", "--preview-move", "--preview-session"
     ):
-        raise RuntimeError("Usage: zellij-picker tabs|swap-tab|move-pane|sessions|clients (inside Zellij)")
+        raise RuntimeError("Usage: zellij-picker tabs|swap-tab|move-pane|move-all-panes|sessions|clients (inside Zellij)")
     session = os.environ.get("ZELLIJ_SESSION_NAME")
     if not session:
         raise RuntimeError("Run zellij-picker inside a Zellij session")
@@ -602,8 +658,8 @@ def main():
         pick_tab(session)
     elif mode == "swap-tab":
         swap_tab(session)
-    elif mode == "move-pane":
-        move_pane(session)
+    elif mode in ("move-pane", "move-all-panes"):
+        move_pane(session, all_panes=mode == "move-all-panes")
     elif mode == "clients":
         pick_client(session)
     else:

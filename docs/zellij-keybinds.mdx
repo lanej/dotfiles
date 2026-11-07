@@ -20,6 +20,7 @@ The main session normally stays in **Locked** mode, passing application shortcut
 | Next tab / last-focused tab | **Ctrl-f n** / **Ctrl-f Ctrl-p** |
 | Select a tab by position | **Ctrl-f 0** through **Ctrl-f 9** (modern configuration) |
 | Move this pane to a tab | **Ctrl-f m** |
+| Move all live panes to an existing tab | **Ctrl-f M** (modern configuration) |
 | Open or hide the shared popup | **Ctrl-f P** |
 | Select and copy terminal text | **Ctrl-f e**, select in Neovim, **y**, then `:q!` |
 | Paste the session's last Neovim yank | **Ctrl-f p** (modern configuration) |
@@ -73,6 +74,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 | `J` / `K` | Move the pane down / up within the tab |
 | `!` | Move the focused pane to a new tab |
 | `m` | Choose New Tab or an existing destination tab for this pane |
+| `M` | Move all live panes to an existing tab (modern configuration) |
 | `Ctrl-a` | Next local tab needing you, otherwise activity/bell, in tab order |
 
 **Tab positions are not tab names.** Modern numeric shortcuts are zero-based even if an automatically generated name still says `Tab #1`. The underlying Zellij `GoToTab` action is one-based. The custom bar and picker prepend the zero-based position; use that position rather than a number embedded in the name.
@@ -81,7 +83,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 
 **Swap:** `Ctrl-f W` opens the fuzzy tab menu with pane previews. Enter exchanges the original and selected tab positions; intermediate tabs return to their original positions. Esc or selecting the current tab changes nothing. Clients retain their original tab IDs. The swap is a sequence of visible adjacent moves, not an atomic operation; on concurrent changes or uncertain results it stops with an inspection warning while the picker remains open. Enter or Ctrl-c dismisses the warning. Closing the picker during movement can leave partial tab order without a warning; ordinary panes and processes remain intact. Inspect positions after an interruption. See [tab swap limits](./zellij.md#familiar-keys).
 
-**Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
+**Pane destination picker:** `m` moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. `M` instead moves all live tiled and floating terminals from this tab to an existing tab. Neither cancellation nor selecting the current tab moves anything. Plugins and the chooser are excluded. Before using `M`, expose or restore suppressed source terminals, including hidden native stack members, or close their scrollback editors. Destination stacking is supported. Movement is within the current session; no key moves a live pane into another session.
 
 The tab picker lists this session's tabs, prioritizing native attention when available. Attention uses native OSC 7501 state and ordinary bells; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
 
@@ -266,7 +268,7 @@ Apply configuration with `make zellij`. To build the modern bar and reapply it, 
 ## tmux habits that do not transfer
 
 - **Direct balance and golden ratio:** prefix `=`, `g`, and `G` remain unbound. Cycle to the equalize layout with Space or Ctrl-o; it may rearrange panes.
-- **Move across sessions or park in `later`:** prefix `H`, `S`, and `M` are unbound. Use `m` or `!` only for tabs within this session.
+- **Move across sessions or park in `later`:** prefix `H` and `S` are unbound. `m`, `M`, and `!` only move panes between tabs within this session. Legacy configuration leaves `M` unbound.
 - **Reload and refresh shortcuts:** prefix `R`, `Ctrl-l`, and `*` have no bindings in these files.
 - **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing. W is a fuzzy tab swap, not a repeatable reorder mode.
 - **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.

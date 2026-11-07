@@ -147,6 +147,15 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        bind "M" {
+            Run "zellij-picker" "move-all-panes" {
+                floating true
+                close_on_exit true
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
         bind "W" {
             Run "zellij-picker" "swap-tab" {
                 floating true
