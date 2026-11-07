@@ -2,12 +2,13 @@
 //! Native Zellij remains the owner of unresolved attention and its inbox.
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, VecDeque};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use zellij_tile::prelude::*;
 
 pub const RECORD: &str = "lane-notification-record";
 pub const SEND: &str = "lane-notification";
 pub const VALIDATE: &str = "lane-notification-validate";
+pub const ERROR: &str = "lane-notification-history-error";
 
 fn clean(text: &str, limit: usize) -> String {
     text.chars()
@@ -25,13 +26,29 @@ fn level(status: AttentionStatus) -> Option<(&'static str, &'static str)> {
     }
 }
 
-#[derive(Default)]
 pub struct Notifications {
+    started_ms: u64,
     initialized: bool,
     previous: BTreeMap<(String, PaneId), (AttentionStatus, u64)>,
     queue: VecDeque<Value>,
     pending: bool,
     notice: Option<(String, String, Instant)>,
+}
+
+impl Default for Notifications {
+    fn default() -> Self {
+        Self {
+            started_ms: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|time| time.as_millis() as u64)
+                .unwrap_or(u64::MAX),
+            initialized: false,
+            previous: BTreeMap::new(),
+            queue: VecDeque::new(),
+            pending: false,
+            notice: None,
+        }
+    }
 }
 
 impl Notifications {
@@ -66,10 +83,11 @@ impl Notifications {
                     .unwrap_or(&item.item.pane_title),
                 120,
             );
-            let body = clean(&state.text, 512);
+            let body = clean(state.detail.body.as_deref().unwrap_or(&state.text), 512);
             // The initial snapshot is useful history, but reattaching must
             // never replay every outstanding item as a fresh notification.
             if self.initialized
+                && state.since_ms >= self.started_ms
                 && visible
                 && !state.seen
                 && !(item.is_current && focused == Some(item.item.pane_id))
@@ -145,6 +163,11 @@ impl Notifications {
         if code != Some(0) {
             eprintln!("notification history: {}", String::from_utf8_lossy(error));
             self.show("error", "× Notification history could not be saved");
+            // The elected recorder may be on an inactive tab. Tell this
+            // client's visible bars too, without recording the error again.
+            pipe_message_to_plugin(
+                MessageToPlugin::new(ERROR).with_payload(get_plugin_ids().client_id.to_string()),
+            );
         }
         self.flush();
     }
@@ -153,6 +176,13 @@ impl Notifications {
         let PipeSource::Cli(pipe) = &message.source else {
             return false;
         };
+        if message
+            .payload
+            .as_ref()
+            .is_some_and(|text| text.len() > 8192)
+        {
+            return false;
+        }
         let payload: Value =
             serde_json::from_str(message.payload.as_deref().unwrap_or("")).unwrap_or_default();
         if message.name == VALIDATE {
@@ -175,13 +205,6 @@ impl Notifications {
         }
         let severity = payload["level"].as_str().unwrap_or("info");
         if !matches!(severity, "info" | "success" | "warn" | "error") {
-            return false;
-        }
-        if message
-            .payload
-            .as_ref()
-            .is_some_and(|text| text.len() > 8192)
-        {
             return false;
         }
         let title = clean(payload["title"].as_str().unwrap_or("Notification"), 120);
@@ -210,11 +233,53 @@ impl Notifications {
             .filter(|(_, _, until)| *until > Instant::now())
             .map(|(level, message, _)| (level.as_str(), message.as_str()))
     }
+
+    pub fn receive_error(&mut self, message: &PipeMessage) -> bool {
+        if message.payload.as_deref() != Some(get_plugin_ids().client_id.to_string().as_str()) {
+            return false;
+        }
+        self.show("error", "× Notification history could not be saved");
+        true
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn late_initial_snapshots_do_not_replay_old_attention() {
+        let mut notices = Notifications::default();
+        notices.observe(&GlobalAttention::default(), 1, None, true, false);
+        let mut global = GlobalAttention {
+            items: vec![GlobalAttentionItem {
+                session: "main".into(),
+                is_current: true,
+                item: AttentionItem {
+                    pane_id: PaneId::Terminal(1),
+                    tab_id: 0,
+                    tab_name: "work".into(),
+                    pane_title: "Tests".into(),
+                    attention: PaneAttention {
+                        status: AttentionStatus::NeedsYou,
+                        since_ms: notices.started_ms.saturating_sub(1),
+                        text: "Question".into(),
+                        ..Default::default()
+                    },
+                },
+            }],
+            ..Default::default()
+        };
+        notices.observe(&global, 1, None, true, false);
+        assert!(notices.notice().is_none());
+        global.items[0].item.attention.since_ms = notices.started_ms + 1;
+        notices.observe(&global, 1, None, true, false);
+        assert!(notices.notice().is_some());
+        let deadline = notices.notice.as_ref().unwrap().2;
+        global.items[0].item.attention.detail.progress = Some(80);
+        notices.observe(&global, 1, None, true, false);
+        assert_eq!(notices.notice.as_ref().unwrap().2, deadline);
+    }
 
     #[test]
     fn progress_is_quiet_and_failures_survive_success_bursts() {

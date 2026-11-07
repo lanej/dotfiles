@@ -226,6 +226,9 @@ impl ZellijPlugin for State {
             return self.clients.pipe(&message, &self.panes);
         }
         if matches!(message.source, PipeSource::Plugin(_)) {
+            if !self.clipboard_receiver && self.allowed && message.name == notifications::ERROR {
+                return self.notifications.receive_error(&message);
+            }
             if self.clipboard_receiver && message.is_private && !self.permissions_requested
                 && message.name == clipboard::PREPARE && clipboard::is_own_client(&message)
             {

@@ -42,6 +42,14 @@ def read_history():
         return []
     if not isinstance(records, list):
         raise ValueError("Notification history is not a list")
+    for row in records:
+        if (not isinstance(row, dict)
+                or any(not isinstance(row.get(key), str) for key in
+                       ("id", "session", "pane_id", "title", "message", "level"))
+                or row["level"] not in LEVELS
+                or type(row.get("time_ms")) is not int
+                or not 0 <= row["time_ms"] <= 253402300799000):
+            raise ValueError("Notification history contains an invalid record")
     return records
 
 

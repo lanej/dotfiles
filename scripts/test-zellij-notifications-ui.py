@@ -94,6 +94,10 @@ def main():
             client.send(b"echo notice-kept-keyboard-focus\r")
             client.until("notice left application input alone", lambda:
                          "notice-kept-keyboard-focus" in view())
+            client.send(b"zellij-notify send --title Deploy 'Version ready'\r")
+            client.until("script notifications enter the same journal", lambda:
+                         any(row["title"] == "Deploy" and row["message"] == "Version ready"
+                             for row in history()))
             client.action("paste", "--pane-id", f"terminal_{agent}", "done\n")
             client.until("completion is separate from urgency", lambda: "!0 ●0 ✓1" in view())
             client.until("completion retained in history", lambda:
