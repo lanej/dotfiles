@@ -392,6 +392,7 @@ test-zellij-move:
 
 .PHONY: test-zellij-swap
 test-zellij-swap:
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" captured_nonleader_survives_election_but_rejects_stale_identity
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --swap-tab
 
 test-zellij:

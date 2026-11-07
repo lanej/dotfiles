@@ -408,19 +408,20 @@ def swap_order(tabs):
 def check_swap_state(session, order, source_tab, source_id, picker_id, token):
     # Attachment tokens remain stable across position/name updates. Aggregate
     # is_focused/active flags cannot identify the requesting client.
-    clients = client_choices(session)
-    owners = [row for row in clients.values()
-              if row.get("pane_id") == f"terminal_{picker_id}"]
-    if len(owners) != 1:
-        focus = {client: row.get("pane_id") for client, row in clients.items()}
-        raise RuntimeError(f"Picker terminal_{picker_id} requires one owner; observed client panes: {focus}")
-    if owners[0]["token"] != token:
-        observed = owners[0]["token"]
-        changed = sorted(key for key in token.keys() | observed.keys()
-                         if token.get(key) != observed.get(key))
-        raise RuntimeError(f"The requesting attachment identity changed ({', '.join(changed)}); "
-                           f"client/plugin {token.get('client_id')}/{token.get('plugin_id')} -> "
-                           f"{observed.get('client_id')}/{observed.get('plugin_id')}")
+    # Discovery may elect a different bar as cached manifests catch up. Pin
+    # subsequent read-only queries to the captured instance; never substitute
+    # a new token after a reload, detach, missing reply or focus change.
+    output = status_pipe("lane-client-snapshot",
+                         {"auto_titles": owned_titles(session), "token": token}, session=session)
+    rows = [json.loads(line) for line in output.splitlines() if line.strip()]
+    for row in rows:
+        if row.get("error"):
+            raise RuntimeError(row["error"])
+    if len(rows) != 1 or rows[0].get("token") != token:
+        raise RuntimeError("The captured attachment snapshot was not confirmed")
+    if rows[0].get("pane_id") != f"terminal_{picker_id}":
+        raise RuntimeError(f"Picker terminal_{picker_id} lost its requesting client; "
+                           f"observed pane: {rows[0].get('pane_id')}")
     panes = snapshot(session, "panes")
     for pane_id in (source_id, picker_id):
         if not any(not p["is_plugin"] and p["id"] == pane_id and

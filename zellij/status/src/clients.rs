@@ -7,6 +7,27 @@ pub const DETACH: &str = "lane-client-detach";
 const SUPPORTED_RUNTIME: &str = "0.46.0";
 const UNSUPPORTED_RUNTIME: &str = "The client chooser requires the pinned Zellij 0.46.0 server. Run make zellij-runtime and restart this session.";
 
+// Routing is independent of plugin calls: an addressed read belongs to the
+// captured receiver even when another bar is now the discovery leader.
+fn snapshot_route(token: Option<&Value>, receiver: &Value, leader: u32,
+                  supported_runtime: bool) -> Result<bool, &'static str> {
+    let Some(token) = token else {
+        return Ok(receiver["plugin_id"].as_u64() == Some(leader as u64));
+    };
+    if token["plugin_id"] != receiver["plugin_id"] || token["client_id"] != receiver["client_id"] {
+        return Ok(false);
+    }
+    if !valid_identity(token, receiver, supported_runtime) {
+        return Err("The captured attachment or status plugin changed");
+    }
+    Ok(true)
+}
+
+fn valid_identity(token: &Value, receiver: &Value, supported_runtime: bool) -> bool {
+    supported_runtime && receiver["nonce"].as_str().map(|nonce| !nonce.is_empty()).unwrap_or(false)
+        && token == receiver
+}
+
 #[derive(Default)]
 pub struct Clients {
     nonce: String,
@@ -33,13 +54,27 @@ impl Clients {
     }
 
     fn valid(&self, token: &Value) -> bool {
-        self.supported_runtime && !self.nonce.is_empty() && *token == self.token()
+        valid_identity(token, &self.token(), self.supported_runtime)
     }
 
     pub fn pipe(&mut self, message: &PipeMessage, panes: &PaneManifest) -> bool {
         let PipeSource::Cli(pipe) = &message.source else { return false };
         match message.name.as_str() {
-            SNAPSHOT if get_plugin_ids().plugin_id == crate::leader(panes) => {
+            SNAPSHOT => {
+                // Discovery elects a bar from its cached pane manifest. Once a
+                // caller captures a token, read from that exact instance even
+                // if later PaneUpdates elect another leader.
+                let Some(payload) = message.payload.as_deref() else { return false };
+                let request: Value = serde_json::from_str(payload).unwrap_or_default();
+                match snapshot_route(request.get("token"), &self.token(), crate::leader(panes),
+                                     self.supported_runtime) {
+                    Ok(true) => {},
+                    Ok(false) => return false,
+                    Err(error) => {
+                        cli_pipe_output(pipe, &(json!({"error": error}).to_string() + "\n"));
+                        return false;
+                    },
+                }
                 if !self.supported_runtime {
                     cli_pipe_output(pipe, &(json!({"error": UNSUPPORTED_RUNTIME}).to_string() + "\n"));
                     return false;
@@ -48,8 +83,6 @@ impl Clients {
                 // snapshot; hidden plugin clones do not poll host metadata.
                 // A non-TTY CLI sends a trailing EOF message without payload.
                 // It must not overwrite the ownership-aware snapshot rows.
-                let Some(payload) = message.payload.as_deref() else { return false };
-                let request: Value = serde_json::from_str(payload).unwrap_or_default();
                 let owned = &request["auto_titles"];
                 let Ok((tab_id, pane_id)) = get_focused_pane_info() else { return false };
                 let tab = get_tab_info(tab_id);
@@ -183,5 +216,28 @@ impl Clients {
             cli_pipe_output(&pipe, "The selected attachment changed; reopen the client chooser.\n");
         }
         unblock_cli_pipe_input(&pipe);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn captured_nonleader_survives_election_but_rejects_stale_identity() {
+        let receiver = json!({"client_id": 1, "plugin_id": 7,
+                              "server_pid": 42, "nonce": "original-instance"});
+        // Discovery now chooses bar 6, but the caller captured bar 7 before
+        // that change. Only the addressed instance should answer the read.
+        assert_eq!(snapshot_route(None, &receiver, 6, true), Ok(false));
+        let captured = receiver.clone();
+        assert_eq!(snapshot_route(Some(&captured), &receiver, 6, true), Ok(true));
+        let mut other_bar = receiver.clone();
+        other_bar["plugin_id"] = json!(6);
+        assert_eq!(snapshot_route(Some(&captured), &other_bar, 6, true), Ok(false));
+        let mut reloaded = receiver.clone();
+        reloaded["nonce"] = json!("replacement-instance");
+        assert_eq!(snapshot_route(Some(&captured), &reloaded, 6, true),
+                   Err("The captured attachment or status plugin changed"));
     }
 }
