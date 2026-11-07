@@ -190,13 +190,16 @@ jobs:
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
-      - run: make test-zellij-notifications-ui
+      - run: |
+          mkdir -p .zellij-notification-screens
+          make test-zellij-notifications-ui 2>&1 | tee .zellij-notification-screens/check.log
+        shell: bash
         id: notifications
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         env:
           ZELLIJ_NOTIFICATION_SCREENSHOTS: ${{ github.workspace }}/.zellij-notification-screens
       - name: Preserve rendered notification screens
-        if: ${{ !cancelled() && steps.notifications.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.notifications.outcome == 'success' || steps.notifications.outcome == 'failure') }}
         uses: actions/upload-artifact@v4
         with:
           name: zellij-notifications-${{ matrix.os }}

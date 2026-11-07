@@ -162,7 +162,7 @@ def history():
     preview = shlex.join([str(Path(__file__).resolve()), "show"]) + " {1}"
     selection = subprocess.run([
         "fzf", "--height=100%", "--layout=reverse", "--delimiter=\t", "--with-nth=2..",
-        "--header=Notification history · Enter: jump to source · Esc: close",
+        "--header=Enter: source pane · Esc: close",
         "--preview", preview, "--preview-window=right:55%:wrap"],
         input="\n".join(choices) + "\n", capture_output=True, text=True, check=False)
     if selection.returncode in (1, 130):

@@ -108,7 +108,7 @@ def main():
             assert len(history()) == before, "Same state produced duplicate history"
             client.prefix(b"B")
             client.until("history opens through its real key", lambda:
-                         "Notification history" in view() and "Enter: jump to source" in view())
+                         "Notification history" in view() and "Enter: source pane" in view())
             capture("history")
             client.send(b"\r")
             client.until("history selection visits the original pane", lambda:

@@ -29,7 +29,7 @@ fn level(status: AttentionStatus) -> Option<(&'static str, &'static str)> {
 pub struct Notifications {
     started_ms: u64,
     initialized: bool,
-    previous: BTreeMap<(String, PaneId), (AttentionStatus, u64)>,
+    previous: BTreeMap<(String, PaneId), (AttentionStatus, String)>,
     queue: VecDeque<Value>,
     pending: bool,
     notice: Option<(String, String, Instant)>,
@@ -67,14 +67,6 @@ impl Notifications {
             let state = &item.item.attention;
             let status = state.effective_status();
             let key = (item.session.clone(), item.item.pane_id);
-            let version = (status, state.since_ms);
-            next.insert(key.clone(), version);
-            if self.previous.get(&key) == Some(&version) {
-                continue;
-            }
-            let Some((severity, glyph)) = level(status) else {
-                continue;
-            };
             let title = clean(
                 state
                     .detail
@@ -84,6 +76,19 @@ impl Notifications {
                 120,
             );
             let body = clean(state.detail.body.as_deref().unwrap_or(&state.text), 512);
+            // OSC 7501 refreshes updated_ms even when the report is identical.
+            // A timestamp change or progress update is not a new notification.
+            let version = (
+                status,
+                format!("{:?}", (state.source, state.detail.kind, &title, &body)),
+            );
+            next.insert(key.clone(), version.clone());
+            if self.previous.get(&key) == Some(&version) {
+                continue;
+            }
+            let Some((severity, glyph)) = level(status) else {
+                continue;
+            };
             // The initial snapshot is useful history, but reattaching must
             // never replay every outstanding item as a fresh notification.
             if self.initialized
@@ -274,9 +279,15 @@ mod tests {
         assert!(notices.notice().is_none());
         global.items[0].item.attention.since_ms = notices.started_ms + 1;
         notices.observe(&global, 1, None, true, false);
+        assert!(notices.notice().is_none());
+        global.items[0].item.attention.status = AttentionStatus::Working;
+        notices.observe(&global, 1, None, true, false);
+        global.items[0].item.attention.status = AttentionStatus::NeedsYou;
+        notices.observe(&global, 1, None, true, false);
         assert!(notices.notice().is_some());
         let deadline = notices.notice.as_ref().unwrap().2;
         global.items[0].item.attention.detail.progress = Some(80);
+        global.items[0].item.attention.since_ms += 100;
         notices.observe(&global, 1, None, true, false);
         assert_eq!(notices.notice.as_ref().unwrap().2, deadline);
     }
