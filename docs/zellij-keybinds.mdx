@@ -69,7 +69,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 | `Ctrl-f` | Open the fuzzy tab picker with pane previews |
 | `0`–`9` | Select tab positions 0–9 in the modern configuration |
 | `r` / `,` | Rename the tab |
-| `W` | Enter repeatable tab reorder mode |
+| `W` | Fuzzy swap of this tab’s position with an existing tab |
 | `J` / `K` | Move the pane down / up within the tab |
 | `!` | Move the focused pane to a new tab |
 | `m` | Choose New Tab or an existing destination tab for this pane |
@@ -79,7 +79,7 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 
 **Rename:** type the name, then Enter to keep it. Esc or Ctrl-c restores the previous name and returns to Locked mode.
 
-**Reorder:** after `Ctrl-f W`, press `h`/Left or `l`/Right repeatedly. Esc, Enter, or Ctrl-c returns to Locked mode. This is not tmux's fuzzy window-reorder menu.
+**Swap:** `Ctrl-f W` opens the fuzzy tab menu with pane previews. Enter exchanges the original and selected tab positions; intermediate tabs return to their original positions. Esc or selecting the current tab changes nothing. Clients retain their original tab IDs. The swap is a sequence of visible adjacent moves, not an atomic operation; on concurrent changes or uncertain results it stops with an inspection warning while the picker remains open. Enter or Ctrl-c dismisses the warning. Closing the picker during movement can leave partial tab order without a warning; ordinary panes and processes remain intact. Inspect positions after an interruption. See [tab swap limits](./zellij.md#familiar-keys).
 
 **Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
 
@@ -259,7 +259,7 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | Scrollback editor: `e` | ANSI color export | Plain text export |
 | Mouse mode | Disabled | Enabled |
 
-**A configured key is not proof its helper can run.** Legacy still binds `m`, but the pane destination helper requires the compiled status plugin and pinned runtime. Older runtimes may not expose the queries needed by the other pickers. The documented popup and shutdown acceptance also applies to the pinned patched runtime, not every upstream release.
+**A configured key is not proof its helper can run.** Legacy still binds `m` and `W`, but the pane destination and tab swap helpers require the compiled status plugin and pinned runtime. Older runtimes may not expose the queries needed by the other pickers. The documented popup and shutdown acceptance also applies to the pinned patched runtime, not every upstream release.
 
 Apply configuration with `make zellij`. To build the modern bar and reapply it, use `make zellij-status zellij` with the pinned runtime installed. Restart old session servers when upgrading the runtime or adding background plugins; replacing the executable does not replace an already-running server.
 
@@ -268,7 +268,7 @@ Apply configuration with `make zellij`. To build the modern bar and reapply it, 
 - **Direct balance and golden ratio:** prefix `=`, `g`, and `G` remain unbound. Cycle to the equalize layout with Space or Ctrl-o; it may rearrange panes.
 - **Move across sessions or park in `later`:** prefix `H`, `S`, and `M` are unbound. Use `m` or `!` only for tabs within this session.
 - **Reload and refresh shortcuts:** prefix `R`, `Ctrl-l`, and `*` have no bindings in these files.
-- **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing and W for repeated tab reordering.
+- **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing. W is a fuzzy tab swap, not a repeatable reorder mode.
 - **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.
 
 The binding sources are [modern config](../zellij/config.kdl) and [legacy config](../zellij/config-legacy.kdl), with the [popup launcher](../bin/zellij-popup) adding its hide override. Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).

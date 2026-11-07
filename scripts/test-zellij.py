@@ -406,9 +406,107 @@ def check_move_picker(terminal, home, clients):
     print("PASS: Ctrl-f m moves the original live pane to new/existing tabs, cancels safely, and isolates clients.")
 
 
+def check_tab_swap(terminal, home, clients):
+    source = terminal.terminals()[0]
+    source_tab = source["tab_id"]
+    terminal.action("rename-tab", "swap source", "--tab-id", str(source_tab))
+    terminal.action("new-tab", "--name", "discarded", "--no-focus")
+    discarded = next(t["tab_id"] for t in terminal.tabs() if t["name"] == "discarded")
+    for name in ("outside", "intervening", "swap destination"):
+        terminal.action("new-tab", "--name", name, "--no-focus")
+    terminal.action("close-tab", "--tab-id", str(discarded))
+    terminal.until("four live named tabs", lambda: len(terminal.tabs()) == 4 and
+                   len(terminal.terminals()) == 4)
+    terminal.action("move-tab", "right", "--tab-id", str(source_tab))
+    tabs = sorted(terminal.tabs(), key=lambda tab: tab["position"])
+    assert [t["name"] for t in tabs] == ["outside", "swap source", "intervening", "swap destination"]
+    assert all(t["tab_id"] != t["position"] for t in tabs)
+    original_order = [t["tab_id"] for t in tabs]
+    destination = tabs[-1]["tab_id"]
+    original_panes = {p["id"]: p["tab_id"] for p in terminal.terminals()}
+    # Record every original shell, not merely a restored-looking terminal title.
+    for pane_id in original_panes:
+        target = f"terminal_{pane_id}"
+        terminal.until("tab shell ready", lambda: PROMPT.decode().strip() in
+                       terminal.action("dump-screen", "--pane-id", target))
+        terminal.action("write-chars", "--pane-id", target,
+                        f"swap_state=retained; printf '%s' \"$$\" > \"$HOME/swap-before-{pane_id}\"\n")
+    terminal.until("original shell PIDs saved", lambda:
+                   all((home / f"swap-before-{pid}").exists() for pid in original_panes))
+    other = Terminal(terminal.binary, terminal.env, terminal.name)
+    clients.append(other)
+    other.until("destination viewer attached", lambda: PROMPT in other.output)
+    other.prefix(b"3")
+    terminal.until("viewer selects destination", lambda:
+                   len(next(t for t in terminal.tabs() if t["tab_id"] == destination)["other_focused_clients"]) == 1)
+
+    def client_tabs():
+        other.drain()
+        return {client: tab["tab_id"] for tab in terminal.tabs()
+                for client in tab["other_focused_clients"]}
+
+    expected_clients = client_tabs()
+    assert len(expected_clients) == 2 and set(expected_clients.values()) == {source_tab, destination}
+
+    def popup():
+        return next((p for p in terminal.terminals() if p["id"] not in original_panes), None)
+
+    def picker_screen():
+        pane = popup()
+        return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
+
+    def open_picker():
+        terminal.prefix(b"W")
+        terminal.until("Ctrl-f W shows fuzzy swap menu", lambda: "Swap tab positions" in picker_screen())
+
+    def order():
+        other.drain()
+        return [t["tab_id"] for t in sorted(terminal.tabs(), key=lambda t: t["position"])]
+
+    open_picker()
+    terminal.send(b"\x1b")
+    terminal.until("cancel closes helper", lambda: popup() is None)
+    assert order() == original_order and client_tabs() == expected_clients
+    open_picker()
+    terminal.send(b"swap source")
+    terminal.until("current tab filtered", lambda: "1/4" in picker_screen())
+    terminal.send(b"\r")
+    terminal.until("current selection closes helper", lambda: popup() is None)
+    assert order() == original_order and client_tabs() == expected_clients
+    open_picker()
+    terminal.send(b"swap destination")
+    terminal.until("nonadjacent destination filtered", lambda: "1/4" in picker_screen())
+    terminal.send(b"\r")
+    # Independent endpoint oracle: insertion would leave the intervening ID at
+    # position one. Also catch a final go-to-tab that steals the second client.
+    expected_order = [original_order[0], destination, original_order[2], source_tab]
+    terminal.until("endpoint swap finishes and closes helper", lambda:
+                   popup() is None and order() == expected_order)
+    assert client_tabs() == expected_clients
+    assert {p["id"]: p["tab_id"] for p in terminal.terminals()} == original_panes
+    for pane_id in original_panes:
+        terminal.action("write-chars", "--pane-id", f"terminal_{pane_id}",
+                        f"printf '%s:%s' \"$$\" \"$swap_state\" > \"$HOME/swap-after-{pane_id}\"\n")
+    terminal.until("all shell processes and private state survive", lambda:
+                   all((home / f"swap-after-{pid}").exists() and
+                       (home / f"swap-after-{pid}").read_text() ==
+                       (home / f"swap-before-{pid}").read_text() + ":retained"
+                       for pid in original_panes))
+    # Input still belongs to the original requester and destination viewer.
+    terminal.send(b"printf '%s' \"$$\" > \"$HOME/swap-requester\"\r")
+    other.send(b"printf '%s' \"$$\" > \"$HOME/swap-viewer\"\r")
+    destination_pane = next(pid for pid, tab in original_panes.items() if tab == destination)
+    terminal.until("both clients retain their original live tabs", lambda:
+                   (home / "swap-requester").exists() and (home / "swap-viewer").exists() and
+                   (home / "swap-requester").read_text() == (home / f"swap-before-{source['id']}").read_text() and
+                   (home / "swap-viewer").read_text() == (home / f"swap-before-{destination_pane}").read_text())
+    print("PASS: Ctrl-f W exchanges endpoint positions, preserves intervening tabs, clients and live panes, and cancels safely.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--move-pane", action="store_true", help="Exercise only the pane destination picker")
+    parser.add_argument("--swap-tab", action="store_true", help="Exercise only the fuzzy tab swap picker")
     args = parser.parse_args()
     binary = shutil.which("zellij")
     assert binary and shutil.which("fzf"), "Install Zellij >=0.45.1 and fzf before make test-zellij"
@@ -447,6 +545,10 @@ def main():
             # An actual rendered shell prompt proves that setup has completed.
             terminal.until("first shell starts", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
+
+            if args.swap_tab:
+                check_tab_swap(terminal, home, clients)
+                return
 
             if args.move_pane:
                 check_move_picker(terminal, home, clients)
