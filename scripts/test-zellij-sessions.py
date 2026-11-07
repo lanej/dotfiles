@@ -164,11 +164,18 @@ def detach_workflow(clients):
     home = Path(first.env["HOME"])
     pending = home / "unrelated-navigation.wasm"
     shutil.copyfile(home / ".local/share/zellij/plugins/pane-navigation.wasm", pending)
+    origin = next(pane for pane in first.terminals() if pane["is_focused"])
     rendered = len(first.output)
-    pending_id = first.action("launch-plugin", "--floating", "--no-focus",
-                              "file:" + str(pending)).strip()
+    # A no-focus floating launch stays hidden, including its permission prompt.
+    # Observe the actual request, then leave it unanswered behind the shell.
+    pending_id = first.action("launch-plugin", "--floating", "file:" + str(pending)).strip()
     first.until("unrelated plugin requests permission", lambda:
-                b"(y/n)" in first.output[rendered:].lower())
+                b"unrelated-navigation.wasm" in first.output[rendered:]
+                and b"(y/n)" in first.output[rendered:].lower())
+    first.action("focus-pane-id", f"terminal_{origin['id']}")
+    first.until("original shell regains focus with permission unanswered", lambda:
+                any(pane["id"] == origin["id"] and pane["is_focused"]
+                    for pane in first.terminals()))
     plugins = {pane["id"] for pane in first.panes() if pane["is_plugin"]}
 
     def attached_ids():
