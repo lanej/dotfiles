@@ -601,7 +601,9 @@ def main():
 
                 def manager_screen():
                     pane = manager_pane()
-                    return terminal.action("dump-screen", "--pane-id", f"plugin_{pane['id']}") if pane else ""
+                    # Plugin grids are client-specific; an explicit pane-id dump
+                    # has no client context and returns an empty plain-text grid.
+                    return terminal.action("dump-screen") if pane else ""
 
                 def manager_focused():
                     return second_name in manager_screen()
