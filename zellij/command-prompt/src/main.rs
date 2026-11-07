@@ -145,7 +145,7 @@ impl ZellijPlugin for CommandPrompt {
                     self.input(String::new());
                 }
                 Err(error) => {
-                    prompt(PromptRequest::notify(error));
+                    prompt(PromptRequest::notify(error).timeout(std::time::Duration::from_secs(4)));
                 }
             }
         } else if matches!(message.source, PipeSource::Plugin(_)) && message.name == palette::REPLY
@@ -205,9 +205,12 @@ impl CommandPrompt {
         };
         if get_focused_pane_info().ok() != Some(origin) || get_pane_info(origin.1).is_none() {
             self.origin = None;
-            prompt(PromptRequest::notify(
-                "The original pane or tab changed. Reopen : in the intended pane.",
-            ));
+            prompt(
+                PromptRequest::notify(
+                    "The original pane or tab changed. Reopen : in the intended pane.",
+                )
+                .timeout(std::time::Duration::from_secs(4)),
+            );
             return;
         }
         let cwd = match get_pane_cwd(origin.1) {

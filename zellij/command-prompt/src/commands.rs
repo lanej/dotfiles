@@ -4,9 +4,8 @@ use zellij_tile::prelude::actions::Action;
 use zellij_utils::cli::CliAction;
 use zellij_utils::plugin_api::action::ProtobufAction;
 
-// Queries need a stdout consumer, and layout-file loading needs host filesystem
-// access. Keep those in the shell rather than silently discarding their output
-// or expanding this plugin's permissions. Parsing remains Zellij's own grammar.
+// Queries are rendered from native state by the palette. These mutations use
+// Zellij's parser and plugin protocol; loading layout files stays in the shell.
 const COMMANDS: &[&str] = &[
     "clear",
     "close-pane",
@@ -55,7 +54,7 @@ pub fn metadata() -> Vec<clap::Command> {
 
 pub fn argument_supported(name: &str) -> bool {
     !matches!(
-        name,
+        name.replace('_', "-").as_str(),
         "near-current-pane"
             | "no-focus"
             | "stacked"

@@ -343,6 +343,8 @@ def exercise(first, second, home):
     second.until('history belongs to second client', lambda: 'live renamed target' in text(second))
     assert 'toggle-floating-panes' not in text(second), 'History leaked from first client'
     second.send(b'\x1b')
+    second.until('history returns to editable command', lambda: 'Tab complete' in text(second))
+    second.send(b'\x1b')
     second.until('history dialog closes before reload', lambda: 'Zellij command' not in text(second))
 
     # Reload an observable ordinary binding in both clients, then verify the

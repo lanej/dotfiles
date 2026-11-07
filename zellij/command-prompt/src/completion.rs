@@ -444,5 +444,12 @@ mod tests {
         assert!(complete("new-pane -- htop --", 18, &ctx, &[])
             .items
             .is_empty());
+        assert!(!complete("new-pane --", 11, &ctx, &[])
+            .items
+            .iter()
+            .any(|i| matches!(
+                i.value.as_str(),
+                "--no-focus" | "--in-place" | "--stacked" | "--plugin"
+            )));
     }
 }
