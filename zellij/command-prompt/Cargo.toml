@@ -9,8 +9,8 @@ clap = { version = "4.6", default-features = false, features = ["std", "derive",
 shlex = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-zellij-tile = { git = "https://github.com/zellij-org/zellij", rev = "bf517077c848d91f75091f66d1996cfeb84f4732" }
-zellij-utils = { git = "https://github.com/zellij-org/zellij", rev = "bf517077c848d91f75091f66d1996cfeb84f4732" }
+zellij-tile = { git = "https://github.com/lanej/zellij", rev = "7d738ed500f973a45df0f19cc6f5b1fe478bd1f0" }
+zellij-utils = { git = "https://github.com/lanej/zellij", rev = "7d738ed500f973a45df0f19cc6f5b1fe478bd1f0" }
 
 [profile.release]
 strip = true

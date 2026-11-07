@@ -38,11 +38,11 @@ The native action API does not return CLI stdout or all runtime errors. Submitti
 
 `Ctrl-f C` uses the same client-private routing to create a session immediately in the focused pane’s directory, using the installed `tmux` layout. The original session and its processes remain live.
 
-The pinned SDK’s [key decoder](https://github.com/zellij-org/zellij/blob/bf517077c848d91f75091f66d1996cfeb84f4732/zellij-utils/src/plugin_api/key.rs#L147) truncates individual typed characters above U+00FF. Unicode paste, recalled commands and completed live names preserve full text; cursor editing uses the native grapheme-aware editor.
+The palette and runtime share a pinned SDK revision that preserves Unicode key events and routes bracketed paste to the focused native popup. Pasting never submits a command; Enter runs the edited line.
 
 ## Installation and permissions
 
-For an existing pinned installation, run `make zellij-command-prompt`, then `make zellij` and restart the session. Default configuration never invokes Cargo. The legacy 0.45.1 configuration does not enable the palette. No additional runtime patch or shell dependency is required.
+Install the matching runtime with `bash scripts/install-zellij`, then run `make zellij-command-prompt`, apply `make zellij` and restart the session. Default configuration never invokes Cargo. The legacy 0.45.1 configuration does not enable the palette. Use the matching runtime pin for popup paste routing and Unicode input. No shell dependency is required.
 
 The background dispatcher opens the same WASM as a client-local native popup. The popup edits and renders suggestions; the dispatcher retains history, checks the original pane/tab, and applies accepted commands for that client. Opening the palette leaves hidden floating panes and the persistent `Ctrl-f P` popup hidden.
 

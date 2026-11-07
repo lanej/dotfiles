@@ -385,8 +385,8 @@ def exercise(first, second, home):
 
     open_prompt(first)
     long_name = 'wide-' + '界' * 40 + '-cafe\u0301-👩‍💻'
-    # The pinned SDK truncates non-Latin-1 Key events; PastedText retains UTF-8.
     first.send(b'\x1b[200~' + ('rename-tab "' + long_name + '"').encode() + b'\x1b[201~')
+    assert tabs()[initial_tab]['name'] == 'reopened successfully', 'Paste submitted a command'
     first.send(b'\x01\x05\x1b[D!\r')
     try:
         first.until('pasted Unicode command survives scrolling and cursor editing', lambda:
@@ -394,6 +394,11 @@ def exercise(first, second, home):
     except AssertionError:
         print('Tab names after Unicode edit: ' + json.dumps(tabs(), ensure_ascii=False), flush=True)
         raise
+    first.until('Unicode paste popup closes', lambda: 'Zellij command' not in text(first))
+    assert 'rename-tab \"wide-' not in text(first), 'Paste leaked into the underlying shell'
+    submit(first, 'rename-tab \"typed 界é👩‍💻\"', second)
+    first.until('typed Unicode key events preserve complete characters', lambda:
+                tabs()[initial_tab]['name'] == 'typed 界é👩‍💻')
 
     # A parse failure keeps the original line, allowing a real correction.
     submit(first, 'move-focus sideways', second)
