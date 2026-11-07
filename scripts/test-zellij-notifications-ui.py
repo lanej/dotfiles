@@ -79,6 +79,8 @@ def main():
             original_pid = pid.read_text()
             client.prefix(b"c")
             client.until("background the agent", lambda: len(client.tabs()) == 2)
+            client.until("the new tab has initialized its notification bar", lambda:
+                         "1:Tab #1" in view() and "!0 ●1 ✓0" in screen.display[0])
             def focused_pane():
                 active = next(tab["tab_id"] for tab in client.tabs() if tab["active"])
                 return next(p["id"] for p in client.terminals()
@@ -88,9 +90,9 @@ def main():
             client.until("background question enters history", lambda:
                          any(row["level"] == "warn" for row in history()))
             client.until("urgent count and a notice are visible", lambda:
-                         "!1 ●0 ✓0" in view() and " │ " in screen.display[0])
-            assert focused_pane() == focused
+                         " │ !1 ●0 ✓0" in view().splitlines()[0])
             capture("notice")
+            assert focused_pane() == focused
             client.send(b"echo notice-kept-keyboard-focus\r")
             client.until("notice left application input alone", lambda:
                          "notice-kept-keyboard-focus" in view())

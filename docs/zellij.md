@@ -224,6 +224,8 @@ The top bar distinguishes **`!` requires attention**, **`●` working**, and **`
 
 `Ctrl-f B` opens fuzzy notification history with a message preview. Enter visits the original pane only while its server and pane process identities still match. Closed or replaced sources remain readable. History retains at most 500 events in a private JSON file under `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/zellij`, with bounded text, atomic writes, and duplicate suppression across tabs/clients. Recording errors are visible; existing history is not silently overwritten if unreadable.
 
+![Notification history and source preview captured by the Linux terminal check](images/zellij-notification-history.png)
+
 Publish structured notifications from a script without parsing terminal output:
 
 ```sh
@@ -234,7 +236,7 @@ zellij-notify list # JSON for other local tools
 
 Levels are `info`, `success`, `warn`, and `error`. These messages enter history and appear in the bar; native unresolved attention remains owned by applications and the inbox. History records native transitions while a client is attached to their source session. With every source client detached, Zellij still tracks current attention, but this journal cannot reconstruct every intermediate transition. This first version uses the bar for notices; it does not install desktop alerts or a daemon.
 
-Run `make zellij-status zellij` to rebuild the existing status artifact and link the helper/configuration. Restart or reload the status plugin in each live session to load its new code, preserving live work; replacing its WASM file alone does not replace an already loaded plugin. Stable/legacy configuration keeps its existing controls.
+Run `make zellij-status zellij` to rebuild the existing status artifact and link the helper/configuration, then try it in a new session. Existing sessions retain their loaded plugin until explicitly reloaded; rebuilding the WASM file alone does not update those instances. Stable/legacy configuration keeps its existing controls.
 
 ## History and recovery
 
