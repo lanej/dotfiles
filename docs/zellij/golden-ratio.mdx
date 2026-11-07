@@ -1,0 +1,16 @@
+---
+title: "Golden-ratio sizing"
+description: "Give a full-height left pane a comfortable working width."
+---
+
+Press **Ctrl-f g** to size the full-height left pane to roughly **38%** of the available width. This is useful for a shell or file browser beside a larger editor area.
+
+The ordinary shortcut leaves an already-wide left pane alone once it reaches 120 text columns. **Ctrl-f G** applies the sizing even when that width guard would skip it. Both shortcuts cap the intended left-pane width at 180 text columns.
+
+## Example
+
+Arrange one full-height pane on the left and your other work on the right. Press **Ctrl-f g**. If the left pane was already wide and did not change, press **Ctrl-f G** to deliberately resize it.
+
+This command adjusts the left pane, regardless of which pane is focused. It requires a full-height left pane and a supported tiled arrangement. Sizes are approximate; the result may stop short of the requested width.
+
+These shortcuts need the modern configuration. Use [equalize panes](equalize.mdx) to balance an aligned row or column instead.

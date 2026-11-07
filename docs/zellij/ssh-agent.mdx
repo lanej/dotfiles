@@ -1,0 +1,25 @@
+---
+title: "SSH and forwarded agents"
+description: "Connect to remote sessions and keep forwarded authentication working after reconnecting."
+---
+
+From a local Zellij session, run:
+
+```sh
+zssh myhost
+zssh myhost work
+```
+
+The first command opens a tab for `myhost` and attaches to or creates its `main` session. The second chooses `work`. Both hosts need the managed dotfiles setup, including Zellij and the remote attach helper. Outside Zellij, `zssh` connects in the current terminal.
+
+**Ctrl-f u** returns keyboard control to the containing local session. **Ctrl-f i** enters the remote one again. Disconnecting leaves the remote programs running.
+
+## Forward an SSH agent
+
+Enable forwarding only for a host you trust, using your usual SSH configuration or an SSH connection with `-A`. Connect or reconnect with **`zj SESSION`** or **`zssh HOST SESSION`** so existing panes can use the newly forwarded agent.
+
+Sessions have separate agent selections. Multiple viewers of one session share its latest forwarded connection; if that connection closes, reconnect to that session with forwarding enabled. A login without forwarding does not borrow another session's agent.
+
+The shared popup follows the session from which you opened it. Reopening the same popup from another session changes which session's agent it uses.
+
+If an older pane still cannot authenticate after reconnecting, run `fixssh` in that pane. The same workflow can forward the 1Password SSH agent; approve requests locally as usual. Private keys do not need to be copied to the remote host.

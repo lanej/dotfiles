@@ -4,7 +4,8 @@
   "sourcePaths": [
     "src",
     "scripts",
-    "astro.config.mjs"
+    "astro.config.mjs",
+    "zellij.config.mjs"
   ],
   "sourceChecks": [],
   "accessibility": true,
@@ -20,6 +21,21 @@
     {
       "name": "terminal",
       "path": "/dotfiles/terminal/",
+      "ready": "main h1"
+    },
+    {
+      "name": "zellij",
+      "path": "/dotfiles/reference/zellij/",
+      "ready": "main h1"
+    },
+    {
+      "name": "zellij-keymap",
+      "path": "/dotfiles/reference/zellij-keybinds/",
+      "ready": "main h1"
+    },
+    {
+      "name": "zellij-notifications",
+      "path": "/dotfiles/reference/zellij/notifications/",
       "ready": "main h1"
     }
   ],

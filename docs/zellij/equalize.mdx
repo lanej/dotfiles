@@ -1,0 +1,18 @@
+---
+title: "Equalize panes"
+description: "Balance an existing row or column, or choose a fresh layout."
+---
+
+Focus a pane and press **Ctrl-f =** to balance its aligned row or column. This adjusts the existing panes rather than opening new shells. It is useful after repeatedly splitting a row into uneven widths.
+
+## Example
+
+With three panes side by side, focus any of them and press **Ctrl-f =**. Their widths become approximately equal. Programs, scrollback, and focus stay in place.
+
+The command needs a clear aligned group around the focused pane. If the arrangement is ambiguous or unsupported, it reports that it cannot balance it. It does not guess a different group.
+
+## Choose a layout instead
+
+**Ctrl-f Space** cycles forward through columns, rows, stacked, and equalize layouts. **Ctrl-f Ctrl-o** cycles backward. The equalize layout gives the left pane half the width and shares the other half among the remaining panes; choosing it may rearrange positions.
+
+Direct **Ctrl-f =** needs the modern configuration. Layout cycling also works in the legacy configuration. Sizes are approximate rather than exact cell counts. Use [golden-ratio sizing](golden-ratio.mdx) for a narrower full-height pane on the left.
