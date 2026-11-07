@@ -1,0 +1,18 @@
+---
+title: "Shared popup"
+description: "Keep a scratch shell that follows you across tabs and sessions."
+---
+
+Press **Ctrl-f P** to open the shared popup. Run commands or keep scratch work there. Press **Ctrl-f P** again inside it to hide the view; **Ctrl-f d** also hides it without ending its shells.
+
+Reopen it from another tab or session on the same host to return to the same live work, including unexported shell variables and the current directory.
+
+## Work inside the popup
+
+The usual pane, tab, navigation, copying, and session keys still work. You can split it with **Ctrl-f s** or **Ctrl-f v**, and use **Ctrl-f e** to select text from its scrollback. **Ctrl-f F** toggles other floating panes.
+
+To move keyboard control back to the containing session without closing the popup, press **Ctrl-f u**. **Ctrl-f i** enters the nested session again.
+
+Hiding the popup is different from exiting its shells. Closing its last shell or confirming shutdown inside it ends the scratch session. It survives closing the containing session, but its running programs are not restored after a server exit or reboot.
+
+The session name `dotfiles-popup` is reserved for this shared workspace. After an update, finish work in an old popup before exiting it; reopening an existing popup does not reset it.

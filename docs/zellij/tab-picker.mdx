@@ -1,0 +1,16 @@
+---
+title: "Tab picker"
+description: "Find a tab by name and inspect its panes before switching."
+---
+
+Press **Ctrl-f Ctrl-f** to open the tab picker. Type part of a tab name, move through the results, and press **Enter** to switch. **Esc** or **Ctrl-c** closes it without switching.
+
+The preview shows the selected tab's panes and their terminal colors. Tabs needing attention appear before quiet tabs. The picker lists tabs in the current session; use the [session picker](session-picker.mdx) to switch sessions.
+
+## Example
+
+Create tabs for `code`, `tests`, and `logs`. From any tab, press **Ctrl-f Ctrl-f**, type `logs`, inspect its preview, and press **Enter**. The other tabs and their programs keep running.
+
+**Ctrl-f Ctrl-p** returns to the last-focused tab. It toggles between the two most recent tabs; it does not mean “previous tab number.”
+
+To send a literal Ctrl-f to an application, use **Ctrl-f f** instead.

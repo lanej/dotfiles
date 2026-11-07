@@ -1,0 +1,16 @@
+---
+title: "Shut down a session"
+description: "End one session deliberately, with a confirmation before programs close."
+---
+
+Press **Ctrl-f Ctrl-q** to open a shutdown confirmation. Check the displayed session name, then type **SHUTDOWN** to close that session's panes and disconnect its clients. Press **Enter** with an empty answer or **Ctrl-c** to cancel.
+
+This ends the running programs in that session. Save your work first. Other sessions continue, including a separately running shared popup.
+
+## Leave work running instead
+
+Use **Ctrl-f d** to detach and preserve the current session. You can return with `zj SESSION` or the [session picker](session-picker.mdx).
+
+Shutting down from inside the [shared popup](shared-popup.mdx) ends that scratch session rather than its containing session. Closing the popup view with **Ctrl-f P** only hides it.
+
+If the session changes while confirmation is open, the shutdown may be rejected. Reopen confirmation in the session you intend to end rather than retrying an old prompt.

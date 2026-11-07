@@ -1,6 +1,8 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import { site, base } from './site.config.mjs';
+import { zellijSidebar } from './zellij.config.mjs';
+import { visit } from 'unist-util-visit';
 export default defineConfig({
   site,
   base,
@@ -11,7 +13,20 @@ export default defineConfig({
     description: "My working environment. Configuration, tools, and terminal workflows for macOS and Linux.",
     logo: { src: '../docs/brand/dotfiles-logo.png' },
     social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lanej/dotfiles' }],
-    expressiveCode: { shiki: { langAlias: { tmux: 'shellscript' } } },
+    expressiveCode: {
+      shiki: { langAlias: { tmux: 'shellscript' } },
+      plugins: [{
+        name: 'keyboard-scrollable-code',
+        hooks: {
+          postprocessRenderedBlock({ renderData }) {
+            // WHY: Overflowing command examples must be scrollable without a mouse.
+            visit(renderData.blockAst, 'element', (node) => {
+              if (node.tagName === 'pre') node.properties.tabIndex = 0;
+            });
+          },
+        },
+      }],
+    },
     customCss: ['./src/styles/custom.css'],
     sidebar: [
       { label: 'Start here', items: [
@@ -22,9 +37,12 @@ export default defineConfig({
       ] },
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },
-        { label: 'Zellij', slug: 'reference/zellij' },
-        { label: 'Zellij keybindings', slug: 'reference/zellij-keybinds' },
         { label: 'tmux sessions', slug: 'reference/tmux' },
+      ] },
+      { label: 'Zellij', items: [
+        { label: 'Overview', slug: 'reference/zellij' },
+        { label: 'Keybinding map', slug: 'reference/zellij-keybinds' },
+        ...zellijSidebar,
       ] },
       { label: 'Reference', items: [
         { label: 'Components', slug: 'components' },
