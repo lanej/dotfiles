@@ -21,6 +21,50 @@ POPUP = "dotfiles-popup"
 SESSION_COLUMNS = 240
 
 
+def popup_diagnostic(terminal, phase, *, inspect_sessions=False):
+    """Observe only; diagnostic failures must not replace detector results."""
+    root = os.environ.get("ZELLIJ_POPUP_DIAGNOSTICS")
+    if not root:
+        return
+    try:
+        root = Path(root)
+        root.mkdir(parents=True, exist_ok=True)
+        destination = root / f"{len(list(root.iterdir())):03d}-{phase}"
+        destination.mkdir()
+        home = Path(terminal.env["HOME"])
+        cache = (home / "Library/Caches/org.Zellij-Contributors.Zellij" if os.uname().sysname == "Darwin"
+                 else Path(terminal.env["XDG_CACHE_HOME"]) / "zellij") / "permissions.kdl"
+        details = {"phase": phase, "time_ns": time.time_ns(), "host": terminal.name,
+                   "cache": str(cache)}
+        try:
+            before = cache.stat()
+            (destination / "permissions.kdl").write_bytes(cache.read_bytes())
+            after = cache.stat()
+            details["cache_stats"] = [{"inode": stat.st_ino, "size": stat.st_size,
+                                       "mtime_ns": stat.st_mtime_ns} for stat in (before, after)]
+        except OSError as error:
+            details["cache_error"] = repr(error)
+        (destination / "terminal-output.bin").write_bytes(terminal.output)
+        if inspect_sessions:
+            details["sessions"] = {}
+            for session in (terminal.name, POPUP):
+                observations = {}
+                for name, args in (("clients", ("list-clients",)),
+                                   ("panes", ("list-panes", "--json")),
+                                   ("screen", ("dump-screen",))):
+                    try:
+                        observations[name] = terminal.action(*args, session=session)
+                    except Exception as error:
+                        observations[name] = repr(error)
+                details["sessions"][session] = observations
+        log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log/zellij.log"
+        if log.exists():
+            shutil.copyfile(log, destination / "zellij.log")
+        (destination / "observations.json").write_text(json.dumps(details, indent=2) + "\n")
+    except Exception as error:
+        print(f"Popup diagnostic capture failed: {error!r}", flush=True)
+
+
 def prove_popup_startup(binary, env, runtime):
     """A discovery connection must not kill a guest before its first client."""
     name = "starting-" + runtime.parent.name
@@ -86,6 +130,14 @@ def floating_screen(terminal):
 
 
 def open_popup(terminal):
+    popup_diagnostic(terminal, "before-open")
+    try:
+        _open_popup(terminal)
+    finally:
+        popup_diagnostic(terminal, "after-open", inspect_sessions=True)
+
+
+def _open_popup(terminal):
     # The bar's zero-based position is stable across shell/default-name display
     # policies; list-tabs returns the raw native name, not that presentation.
     tab = next(tab for tab in terminal.tabs() if tab["active"])
@@ -542,6 +594,8 @@ def main():
             if not args.popup_only:
                 shutdown_workflow(clients, names, home, expected)
         finally:
+            for client in clients:
+                popup_diagnostic(client, "before-cleanup", inspect_sessions=True)
             # All names live only in this test's private socket directory.
             for name in [*names, POPUP]:
                 subprocess.run([binary, "kill-session", "--", name], env=env,

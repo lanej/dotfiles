@@ -1,141 +1,36 @@
-name: Zellij workflow
+name: Zellij popup lifecycle diagnostic
 
 on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - 'zellij/**'
-      - 'bin/zellij-*'
-      - '!bin/zellij-attach'
-      - '!bin/zellij-agent'
-      - 'bin/codex-zellij-title-hook'
-      - 'bin/claude-zellij-title-hook'
-      - '.claude/settings.json'
-      - 'claude/zellij-title.json'
-      - 'bin/codex-tmux-state-hook'
-      - 'bin/sync-codex-tmux-hooks'
-      - 'codex/tmux-hooks.json'
-      - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
-      - 'treehouse/config.toml'
-      - 'scripts/test-zellij*.py'
-      - '!scripts/test-zellij-attach.py'
-      - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
-      - 'scripts/make/config.sh'
-      - 'scripts/make/zellij-config.py'
-      - 'scripts/make/require.sh'
-      - 'scripts/install-zellij'
-      - 'scripts/install-zellij-navigation.py'
-      - 'scripts/install-zellij-command-prompt.py'
-      - 'nvim/lua/pane-navigation.lua'
-      - 'nvim/init.lua'
-      - 'nvim/lazy-lock.json'
-      - 'zsh/zellij-navigation.zsh'
-      - 'zsh/zellij-auto-title.zsh'
-      - 'zsh/tmux-auto-title.zsh'
-      - 'zsh/zshrc'
-      - 'nvim/lua/zellij-clipboard.lua'
-      - 'nvim/lua/zellij-scrollback.lua'
-      - 'bootstrap.sh'
-      - '.github/workflows/zellij.yml'
   push:
-    branches: [master]
-    paths:
-      - 'zellij/**'
-      - 'bin/zellij-*'
-      - '!bin/zellij-attach'
-      - '!bin/zellij-agent'
-      - 'bin/codex-zellij-title-hook'
-      - 'bin/claude-zellij-title-hook'
-      - '.claude/settings.json'
-      - 'claude/zellij-title.json'
-      - 'bin/codex-tmux-state-hook'
-      - 'bin/sync-codex-tmux-hooks'
-      - 'codex/tmux-hooks.json'
-      - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
-      - 'treehouse/config.toml'
-      - 'scripts/test-zellij*.py'
-      - '!scripts/test-zellij-attach.py'
-      - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
-      - 'scripts/make/config.sh'
-      - 'scripts/make/zellij-config.py'
-      - 'scripts/make/require.sh'
-      - 'scripts/install-zellij'
-      - 'scripts/install-zellij-navigation.py'
-      - 'scripts/install-zellij-command-prompt.py'
-      - 'nvim/lua/pane-navigation.lua'
-      - 'nvim/init.lua'
-      - 'nvim/lazy-lock.json'
-      - 'zsh/zellij-navigation.zsh'
-      - 'zsh/zellij-auto-title.zsh'
-      - 'zsh/tmux-auto-title.zsh'
-      - 'zsh/zshrc'
-      - 'nvim/lua/zellij-clipboard.lua'
-      - 'nvim/lua/zellij-scrollback.lua'
-      - 'bootstrap.sh'
-      - '.github/workflows/zellij.yml'
+    branches: [diagnose/popup-permission-lifecycle]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  shell-titles:
+  popup:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y zsh
-      - run: make test-zellij-auto-title
-
-  workflow:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
       ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+      ZELLIJ_POPUP_DIAGNOSTICS: ${{ github.workspace }}/.zellij-diagnostics/popup-lifecycle
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: kunchenguid/firstmate
-          ref: 30d6d15ec07e1efaeb3c795f0a24e817251d0718
-          path: .firstmate-upstream
-      - uses: actions/checkout@v4
-        with:
-          repository: tmux-plugins/tpm
-          ref: e261deb1b47614eed3400089ce7197dc68acc4eb
-          path: .tmux-tpm
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install status plugin toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal --target wasm32-wasip1
-      - name: Install terminal-screen decoder for native attention checks
-        run: python3 -m pip install pyte==0.8.2
-      - name: Install native build tools on Linux
+      - name: Install native prerequisites on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
-      - name: Install native build tools on macOS
-        if: runner.os == 'macOS'
-        run: brew install cmake pkg-config openssl@3
-      - name: Cache native Zellij build
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev fzf zsh
+      - name: Install plugin toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --target wasm32-wasip1
+      - name: Restore pinned runtime cache
         uses: actions/cache/restore@v4
-        id: zellij_cache
         with:
           path: |
             ~/.cargo/registry
@@ -143,37 +38,12 @@ jobs:
             ~/.cache/dotfiles/zellij
           key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
           restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
-      - name: Install pinned Zellij fork
-        id: zellij_install
+      - name: Install pinned runtime and diagnostic navigation plugin
         run: |
           bash scripts/install-zellij
           "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install pane navigation
-        run: python3 scripts/install-zellij-navigation.py
-      - name: Save native Zellij build
-        uses: actions/cache/save@v4
-        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cache/dotfiles/zellij
-          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
-      - name: Install Treehouse 3.1.6
-        shell: bash
-        run: |
-          source ./bootstrap.sh
-          install_treehouse_from_release 3.1.6
-      - name: Install shell tools on Linux
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fzf jq zsh tmux
-      - name: Install shell tools on macOS
-        if: runner.os == 'macOS'
-        run: |
-          command -v fzf || brew install fzf
-          command -v tmux || brew install tmux
-          command -v jq || brew install jq
+          python3 scripts/install-zellij-navigation.py
       - name: Install Neovim 0.12.5
         shell: bash
         run: |
@@ -186,45 +56,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/zellij-tools"
           curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/zellij-tools"
           echo "$RUNNER_TEMP/zellij-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
-      - name: Build native attention bar
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: make zellij-status
-      - run: make test-zellij
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-tab-labels
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-command-prompt
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-codex-titles
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-claude-titles
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-shell-titles
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-move
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-navigation
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-firstmate
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        env:
-          FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
-          TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
-      - run: make test-zellij-layout
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-sessions
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - name: Exercise native attention, status bar and detached-session triage
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: make test-zellij-status
-      - run: make test-zellij-clipboard
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - name: Preserve failed workflow diagnostics
-        if: failure()
+      - name: Exercise popup lifecycle without detach fixture
+        shell: bash
+        run: |
+          export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          export RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
+          python3 scripts/test-zellij-sessions.py --popup-only
+      - name: Preserve diagnostic evidence even on success
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zellij-diagnostics-${{ matrix.os }}
+          name: popup-lifecycle-${{ matrix.os }}
           include-hidden-files: true
           path: ${{ github.workspace }}/.zellij-diagnostics
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 7
