@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Publish Zellij notices and browse bounded notification history. No daemon."""
+
+import argparse
+from datetime import datetime
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+PLUGIN = "file:~/.config/zellij/plugins/lane-status.wasm"
+LIMIT = 500
+MAX_BYTES = 2 * 1024 * 1024
+LEVELS = {"info": "·", "success": "✓", "warn": "!", "error": "×"}
+
+
+def state_dir():
+    state = Path(os.environ.get("XDG_STATE_HOME", ""))
+    if not state.is_absolute():
+        state = Path.home() / ".local/state"
+    return state / "dotfiles/zellij"
+
+
+def clean(value, size):
+    return "".join(c for c in str(value) if c.isprintable())[:size]
+
+
+def read_history():
+    path = state_dir() / "notifications.json"
+    try:
+        if path.stat().st_size > MAX_BYTES:
+            raise ValueError("Notification history exceeds its size limit")
+        records = json.loads(path.read_text())
+    except FileNotFoundError:
+        return []
+    if not isinstance(records, list):
+        raise ValueError("Notification history is not a list")
+    for row in records:
+        if (not isinstance(row, dict)
+                or any(not isinstance(row.get(key), str) for key in
+                       ("id", "session", "pane_id", "title", "message", "level"))
+                or row["level"] not in LEVELS
+                or type(row.get("time_ms")) is not int
+                or not 0 <= row["time_ms"] <= 253402300799000):
+            raise ValueError("Notification history contains an invalid record")
+    return records
+
+
+def record(batch):
+    if not isinstance(batch, list) or len(batch) > 64:
+        raise ValueError("Expected at most 64 notifications")
+    directory = state_dir()
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Several tabs/clients may receive the same native event. Serialize writers
+    # and deduplicate under the same lock; readers see only atomic snapshots.
+    with open(directory / "notifications.lock", "a", opener=private_file) as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        rows = read_history()
+        known = {row["id"] for row in rows}
+        changed = False
+        for value in batch:
+            if not isinstance(value, dict) or value.get("level") not in LEVELS:
+                raise ValueError("Invalid notification")
+            row = {key: clean(value.get(key, ""), size) for key, size in
+                   (("id", 1024), ("session", 256), ("pane_id", 32),
+                    ("title", 120), ("message", 512), ("level", 10))}
+            if not row["id"] or row["id"] in known:
+                continue
+            for key in ("time_ms", "server_pid", "pane_pid"):
+                number = value.get(key)
+                row[key] = number if type(number) is int and 0 <= number <= 2**63 - 1 else None
+            row["time_ms"] = row["time_ms"] or int(time.time() * 1000)
+            if row["time_ms"] > 253402300799000:
+                raise ValueError("Notification time is out of range")
+            rows.append(row)
+            known.add(row["id"])
+            changed = True
+        if not changed:
+            return
+        rows.sort(key=lambda row: row["time_ms"])
+        rows = rows[-LIMIT:]
+        encoded = json.dumps(rows, ensure_ascii=False)
+        while len(encoded.encode()) >= MAX_BYTES and rows:
+            rows.pop(0)
+            encoded = json.dumps(rows, ensure_ascii=False)
+        descriptor, temporary = tempfile.mkstemp(prefix=".notifications-", dir=directory)
+        try:
+            with os.fdopen(descriptor, "w") as output:
+                output.write(encoded + "\n")
+            os.replace(temporary, directory / "notifications.json")
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+
+def private_file(path, flags):
+    return os.open(path, flags, 0o600)
+
+
+def zellij(*args, session=None):
+    command = ["zellij"]
+    if session is not None:
+        command.append("--session=" + session)
+    return subprocess.run(command + list(args), check=True, text=True,
+                          capture_output=True, timeout=5).stdout
+
+
+def send(args):
+    session = os.environ.get("ZELLIJ_SESSION_NAME")
+    if not session or not os.environ.get("ZELLIJ"):
+        raise ValueError("Run zellij-notify send inside Zellij")
+    pane = os.environ.get("ZELLIJ_PANE_ID", "")
+    if pane.isdecimal():
+        pane = "terminal_" + pane
+    payload = {"id": str(uuid.uuid4()), "time_ms": int(time.time() * 1000),
+               "session": session, "pane_id": pane, "level": args.level,
+               "title": args.title, "message": args.message}
+    zellij("pipe", "--plugin", PLUGIN, "--name", "lane-notification", "--",
+           json.dumps(payload), session=session)
+
+
+def show(identifier):
+    row = next((row for row in read_history() if row["id"] == identifier), None)
+    if row is None:
+        print("This notification has expired from history.")
+        return
+    stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{LEVELS[row['level']]} {row['title']}\n{stamp} · {row['session']} · {row['pane_id']}\n\n{row['message']}")
+
+
+def jump(row):
+    if not os.environ.get("ZELLIJ_SESSION_NAME"):
+        raise ValueError("Open history inside Zellij to jump to a source pane")
+    if not re.fullmatch(r"terminal_[0-9]+", row["pane_id"]) or row["pane_pid"] is None:
+        raise ValueError("This notification has no live source pane")
+    # Query the actual target server before switching. An old history row is
+    # inspectable even after its original process/session no longer exists.
+    result = zellij("pipe", "--plugin", PLUGIN, "--name", "lane-notification-validate",
+                    "--", json.dumps(row), session=row["session"])
+    if "valid" not in result.splitlines():
+        raise ValueError("The source pane closed or changed; the notification remains in history")
+    origin = os.environ["ZELLIJ_SESSION_NAME"]
+    if row["session"] == origin:
+        # The native switch-session action deliberately ignores its current
+        # session, including any requested target pane.
+        zellij("action", "focus-pane-id", row["pane_id"], session=origin)
+    else:
+        zellij("action", "switch-session", "--pane-id", row["pane_id"], "--", row["session"],
+               session=origin)
+
+
+def history():
+    rows = list(reversed(read_history()))
+    if not rows:
+        print("No notification history yet. Native attention is available in the inbox (Ctrl-f b).")
+        return
+    choices = []
+    for row in rows:
+        stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%m-%d %H:%M")
+        choices.append(f"{row['id']}\t{stamp} {LEVELS[row['level']]} {row['session']} · {row['title']}: {row['message']}")
+    preview = shlex.join([str(Path(__file__).resolve()), "show"]) + " {1}"
+    selection = subprocess.run([
+        "fzf", "--height=100%", "--layout=reverse", "--delimiter=\t", "--with-nth=2..",
+        "--header=Enter: source pane · Esc: close",
+        "--preview", preview, "--preview-window=right:55%:wrap"],
+        input="\n".join(choices) + "\n", capture_output=True, text=True, check=False)
+    if selection.returncode in (1, 130):
+        return
+    if selection.returncode:
+        raise RuntimeError(selection.stderr.strip() or "Could not open notification history")
+    identifier = selection.stdout.split("\t", 1)[0].strip()
+    row = next((row for row in rows if row["id"] == identifier), None)
+    if row:
+        jump(row)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    publish = commands.add_parser("send", help="Publish a notice and retain it in history")
+    publish.add_argument("--level", choices=LEVELS, default="info")
+    publish.add_argument("--title", default="Notification")
+    publish.add_argument("message")
+    commands.add_parser("history", help="Search history and jump to a live source")
+    commands.add_parser("list", help="Print history as JSON")
+    internal = commands.add_parser("record", help="Record an internal JSON batch")
+    internal.add_argument("payload")
+    preview = commands.add_parser("show", help="Preview a retained notification by ID")
+    preview.add_argument("identifier")
+    args = parser.parse_args()
+    if args.command == "send":
+        send(args)
+    elif args.command == "record":
+        if len(args.payload.encode()) > 128 * 1024:
+            raise ValueError("Notification batch is too large")
+        record(json.loads(args.payload))
+    elif args.command == "show":
+        show(args.identifier)
+    elif args.command == "list":
+        print(json.dumps(read_history(), ensure_ascii=False))
+    else:
+        history()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+        print(f"zellij-notify: {error}", file=sys.stderr)
+        if len(sys.argv) > 1 and sys.argv[1] == "history" and sys.stdin.isatty():
+            input("Press Enter to close.")
+        sys.exit(1)

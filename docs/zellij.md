@@ -208,13 +208,35 @@ Codex pane titles are configured in [`codex/zellij-title.json`](../codex/zellij-
 
 Claude pane titles use [`claude/zellij-title.json`](../claude/zellij-title.json), producing `✳ b4ae3f92  | .files` with an eight-character session ID and the same status glyphs, plus `` for failure. Run `make claude-config` to apply the managed hooks, then start a new Claude session. The helper uses Claude's process-local Zellij pane identity and nearest multiplexer, retains the full session ID for ownership checks, and restores application-controlled titles on `SessionEnd`. Nested tmux sessions keep their tmux title handling. These titles update on lifecycle events and require no Zellij server restart.
 
-With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests, failures, and completed results across local sessions; `●` counts working panes.
+With the compiled bar installed, the Nord top bar shows zero-based tabs, native attention glyphs, host, clock, battery, prefix, and zoom state. `?` marks a question, `!` another request for attention, `×` failure, `✓` completion, and `●` work. The right-hand `!` count includes requests and failures across local sessions; `●` counts working panes and `✓` counts completed results.
 
 Zellij 0.46 owns these states and keeps tracking them while every client is detached. The bar reads native attention events; no broker, sampled terminal title, or custom conversation ownership is required. `Ctrl-f Ctrl-a` uses Zellij's native `GoToNextAttention` to reach an item in another session, including a detached one. Native bells remain useful for programs that do not publish richer state.
 
 Claude Code 2.1.295 and Codex 0.164.0 publish OSC 7501 program status; the installation catalog pins those versions. Other applications need to emit that protocol for detailed native states. The existing agent-status broker remains available for tmux. Configuration-only setup and the stable 0.45.1 runtime use the built-in bar and one-based tab keys until a compatible native-attention bar is available.
 
 On first use, the bar asks to read application state, run its local host-metadata helper, and switch tabs. Focus the permission prompt with `Ctrl-f k`, then press `y`. The bar becomes unselectable after consent. Restart the session after changing the plugin/runtime; replacing an executable does not update an existing server.
+
+## Inbox, notices, and history
+
+`Ctrl-f b` opens the pinned runtime's native inbox/session card. In its inbox, Enter visits the source pane, `c` dismisses an item, `C` dismisses all, `m` mutes, `n` watches, `f` filters to this session, and `s` groups by session or status. Tab switches between the inbox and sessions. `Ctrl-f a` watches the current pane; `Ctrl-f U` mutes it. The existing `Ctrl-f Ctrl-a` attention jump is unchanged.
+
+The top bar distinguishes **`!` requires attention**, **`●` working**, and **`✓` completed**. Successful completions no longer inflate the urgent count. New background failures, questions, and completions briefly replace the clock with a colored notice while keeping those counts visible. Notices never open a pane, take focus, or consume application keys. A burst replaces the current notice; a success cannot displace an unexpired failure or question. Attaching to a session does not replay old items as notices, and progress updates stay quiet. Ordinary output is ignored unless its pane is watched; successful shell commands must run for thirty seconds before becoming attention.
+
+`Ctrl-f B` opens fuzzy notification history with a message preview. Enter visits the original pane only while its server and pane process identities still match. Closed or replaced sources remain readable. History retains at most 500 events in a private JSON file under `${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/zellij`, with bounded text, atomic writes, and duplicate suppression across tabs/clients. Recording errors are visible; existing history is not silently overwritten if unreadable.
+
+![Notification history and source preview captured by the Linux terminal check](images/zellij-notification-history.png)
+
+Publish structured notifications from a script without parsing terminal output:
+
+```sh
+zellij-notify send --level warn --title Tests 'Integration tests need attention'
+zellij-notify send --level success --title Build 'Release build passed'
+zellij-notify list # JSON for other local tools
+```
+
+Levels are `info`, `success`, `warn`, and `error`. These messages enter history and appear in the bar; native unresolved attention remains owned by applications and the inbox. History records native transitions while a client is attached to their source session. With every source client detached, Zellij still tracks current attention, but this journal cannot reconstruct every intermediate transition. This first version uses the bar for notices; it does not install desktop alerts or a daemon.
+
+Run `make zellij-status zellij` to rebuild the existing status artifact and link the helper/configuration, then try it in a new session. Existing sessions retain their loaded plugin until explicitly reloaded; rebuilding the WASM file alone does not update those instances. Stable/legacy configuration keeps its existing controls.
 
 ## History and recovery
 
