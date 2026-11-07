@@ -1,0 +1,28 @@
+---
+title: "Attention and triage"
+description: "Find work that needs an answer without checking every tab."
+---
+
+| Glyph | State |
+| --- | --- |
+| `?` | A question needs an answer |
+| `!` | Another request needs attention |
+| `×` | A task failed |
+| `✓` | A task completed |
+| `●` | A task is working |
+
+## Visit the next tab that needs you
+
+Press **Ctrl-f Ctrl-a**. Zellij first looks for another tab with a request or failure. If none needs you, it visits a tab with activity or a bell. It wraps through tab order and skips quiet completions.
+
+This shortcut stays in the current session and changes only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
+
+## Watch or mute a pane
+
+Focus a pane and press **Ctrl-f a** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.
+
+Claude and Codex can publish task status directly. Other programs may report only a bell or watched output. Successful shell commands become attention after running for at least thirty seconds; a quick successful command does not interrupt you.
+
+Open **Ctrl-f b** for the inbox. In its inbox view, **Enter** visits a source, **c** dismisses one item, **C** dismisses all, **m** mutes, and **n** watches. **f** filters to this session, **s** changes grouping, and **Tab** switches between inbox and sessions.
+
+These controls need the modern configuration. Use [notifications and history](notifications.mdx) to review recorded events rather than current unresolved attention.

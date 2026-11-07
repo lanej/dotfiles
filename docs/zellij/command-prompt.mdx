@@ -1,0 +1,24 @@
+---
+title: "Command prompt"
+description: "Run a Zellij action without leaving the current workspace."
+---
+
+Press **Ctrl-f :** to open the command prompt. Type a Zellij action without the `zellij action` prefix and press **Enter**. **Esc** or clicking outside cancels; an empty command closes it too.
+
+## Examples
+
+```sh
+rename-tab "work notes"
+new-pane --direction right
+new-pane --floating -- htop
+move-focus left
+resize increase right
+```
+
+Type `help` for a searchable action picker. Selecting an action fills the input so you can edit it before running it. Add `--help` to an action to view its available options.
+
+Type `history` to choose from this client's recently submitted commands. The selected command returns to the input for review before it runs. History disappears when the session or prompt restarts.
+
+This prompt runs Zellij actions, not shell commands. Quotes group arguments, but `$HOME`, pipes, wildcards, and command substitution are not expanded. To start a program, use an action such as `new-pane -- htop`.
+
+Commands that print listings are better run in a normal terminal. Parse errors leave the input available to correct. The prompt needs the modern configuration; it is separate from the [shared popup](shared-popup.mdx).

@@ -9,6 +9,7 @@ import remarkStringify from 'remark-stringify';
 import { parse, stringify } from 'yaml';
 import { visit } from 'unist-util-visit';
 import { base } from '../site.config.mjs';
+import { zellijPages } from '../zellij.config.mjs';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(site, '..');
@@ -24,6 +25,7 @@ const pages = [
   { file: 'README.md', section: 'Configuration sets', slug: 'reference/configuration', title: 'Configuration composition' },
   { file: 'docs/zellij.md', slug: 'reference/zellij', title: 'Zellij' },
   { file: 'docs/zellij-keybinds.mdx', slug: 'reference/zellij-keybinds' },
+  ...zellijPages,
   { file: 'docs/tmux.md', slug: 'reference/tmux', title: 'tmux sessions' },
   { file: 'docs/stack-darwin.md', slug: 'reference/macos', title: 'macOS stack' },
   { file: 'docs/stack-linux.md', slug: 'reference/linux', title: 'Linux stack' },

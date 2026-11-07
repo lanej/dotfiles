@@ -15,7 +15,7 @@ The development server prints its local URL. The site does not run the dotfiles 
 
 ## Edit the source of truth
 
-Maintain documentation in the repository’s `README.md` and `docs/` directory. The same MDX guides serve repository readers and the website: [overview](./index.mdx), [architecture](./architecture.mdx), [components](./components.mdx), and [terminal workflows](./terminal-workflows.mdx). There are no separately authored guides under `website/`.
+Maintain documentation in the repository’s `README.md` and `docs/` directory. The same MDX guides serve repository readers and the website: [overview](./index.mdx), [architecture](./architecture.mdx), [components](./components.mdx), and [terminal workflows](./terminal-workflows.mdx). There are no separately authored guides under `website/`. Zellij usage pages live under `docs/zellij/`; `website/zellij.config.mjs` registers their routes and sidebar groups together. `docs/zellij-maintenance.md` stays repository-only and is not indexed by the website.
 
 The site’s `scripts/sync-content.mjs` reads an explicit list of these sources, including existing Markdown references and the README installation/configuration sections. It creates disposable pages under `website/src/content/docs/`, rebases repository-relative links and image paths, and points every **Edit page** link to the original document. Generated pages and copied images are ignored by Git and replaced on regeneration; never edit them.
 

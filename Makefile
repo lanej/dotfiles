@@ -177,6 +177,11 @@ test-zellij-command-prompt:
 test-zellij-session-keys:
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
 .PHONY: zellij-status test-zellij-status
+.PHONY: test-zellij-notifications test-zellij-notifications-ui
+test-zellij-notifications:
+	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
+test-zellij-notifications-ui:
+	@python3 "$(DOTFILES)/scripts/test-zellij-notifications-ui.py"
 zellij-status:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:

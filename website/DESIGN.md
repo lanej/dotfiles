@@ -4,7 +4,7 @@ This site documents my dotfiles and helps readers install, understand, and use t
 
 The established visual identity is the Nord terminal/mountain mark in `../docs/brand/README.md`. Preserve that image and its transparency. Match my personal website, lanej.io. Its `STYLE.md` and `assets/css/site.css` at revision `7c90d7406cfb111b8be0fdbfb8c9009468c1bad3` own the reference: deep green background, pale sage accents, system sans-serif, modest heading weights, and thin rules. `src/styles/custom.css` adapts those tokens to Starlight’s navigation, search, and components. The personal site is dark-only; the light palette is a documentation-specific adaptation, with the existing system preference and theme switcher retained. The Nord project logo keeps its original colors. Revised screenshots remain subject to review.
 
-Prefer readable, bounded prose and direct navigation over decoration. The landing page offers four meaningful destinations and a compact installation overview. Reference pages retain technical detail and horizontally scrollable tables/code. A long reference document is intentional; a duplicated manual is not.
+Prefer readable, bounded prose and direct navigation over decoration. The landing page offers four meaningful destinations and a compact installation overview. Reference pages retain technical detail and horizontally scrollable tables/code. Keep the Zellij section usage-only: explain actions, keys, examples, and practical limits. Implementation and maintenance details stay in repository-only documentation. Custom features have dedicated pages linked from the grouped keybinding map.
 
 ### DOCS-001
 
@@ -18,4 +18,4 @@ Mandatory: the home and terminal guide remain readable on desktop and mobile. Vi
 
 Mandatory: reference links reach their original source or a generated local destination. The source synchronizer owns link translation and edit destinations. A build and local link crawl assess generated routes and anchors; upstream availability is separate. The site is static with no user data, forms, or server mutations. Search errors can be recovered by dismissing the dialog and using navigation.
 
-Hosting and the final URL are unresolved and outside this change. No deployment workflow is included. The older setup-requirements document conflicts with the current default Make target; the architecture guide identifies this existing discrepancy instead of changing installer behavior.
+The site publishes through the Documentation site workflow to GitHub Pages under `/dotfiles/`. Pull requests validate the build without deploying; pushes to master publish only after successful validation. The older setup-requirements document conflicts with the current default Make target; the architecture guide identifies this existing discrepancy instead of changing installer behavior.

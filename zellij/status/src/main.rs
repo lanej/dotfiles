@@ -5,6 +5,7 @@ use zellij_tile::prelude::*;
 mod clipboard;
 mod attention;
 mod clients;
+mod notifications;
 
 #[derive(Default)]
 struct State {
@@ -23,6 +24,7 @@ struct State {
     clipboard_prepared: bool,
     permissions_requested: bool,
     clients: clients::Clients,
+    notifications: notifications::Notifications,
 }
 
 register_plugin!(State);
@@ -77,6 +79,22 @@ fn clipped(value: &str, budget: usize) -> String {
     }
     if budget > 0 { text.push('…'); }
     text
+}
+
+fn notification_right(notice: &str, counts: &str, cols: usize) -> String {
+    // WHY: Transient messages must leave room to identify and switch the active tab.
+    let tabs = (cols / 3).clamp(20, 48).min(cols);
+    let budget = cols.saturating_sub(tabs + counts.width() + 5).min(64);
+    if budget < 8 {
+        format!(" {} ", clipped(counts, cols.saturating_sub(2)))
+    } else {
+        format!(" {} │ {} ", clipped(notice, budget), counts)
+    }
+}
+
+fn bar_heading(mode: &str, host: &str, available: usize, reserve_tab: bool) -> String {
+    let budget = if reserve_tab { available.saturating_sub(12) } else { available };
+    clipped(&format!("{}{} │", mode, host), budget)
 }
 
 fn mark(status: AttentionStatus, question: bool) -> (&'static str, &'static str) {
@@ -170,12 +188,23 @@ impl ZellijPlugin for State {
             }
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
             Event::GlobalAttentionUpdate(attention) => {
+                if self.allowed && !self.clipboard_receiver {
+                    let focused = if self.visible { get_focused_pane_info().ok().map(|(_, pane)| pane) } else { None };
+                    let active = self.visible && self.mode.session_ascended != Some(true)
+                        && self.mode.session_dimmed != Some(true);
+                    self.notifications.observe(&attention, get_plugin_ids().zellij_pid, focused, active,
+                        get_plugin_ids().plugin_id == leader(&self.panes));
+                }
                 self.attention = attention;
                 self.attention_ready = true;
             }
             Event::PaneUpdate(panes) => { self.panes = panes; }
             Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
             Event::Timer(_) => { self.clipboard.tick(); self.poll(); set_timeout(1.0); }
+            Event::RunCommandResult(code, _out, error, context)
+                if context.get("action").map(String::as_str) == Some(notifications::RECORD) => {
+                self.notifications.finish(code, &error, &context);
+            }
             Event::RunCommandResult(code, out, error, context)
                 if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
                 // Native client-attach replay can broadcast cached results.
@@ -213,9 +242,16 @@ impl ZellijPlugin for State {
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
         if self.allowed && !self.clipboard_receiver && matches!(message.source, PipeSource::Cli(_)) {
+            if matches!(message.name.as_str(), notifications::SEND | notifications::VALIDATE) {
+                return self.notifications.pipe(&message, self.mode.session_name.as_deref(),
+                    get_plugin_ids().plugin_id == leader(&self.panes));
+            }
             return self.clients.pipe(&message, &self.panes);
         }
         if matches!(message.source, PipeSource::Plugin(_)) {
+            if !self.clipboard_receiver && self.allowed && message.name == notifications::ERROR {
+                return self.notifications.receive_error(&message);
+            }
             if self.clipboard_receiver && message.is_private && !self.permissions_requested
                 && message.name == clipboard::PREPARE && clipboard::is_own_client(&message)
             {
@@ -268,16 +304,17 @@ impl ZellijPlugin for State {
                 label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
-        let attention = self.attention.counts.needs_you + self.attention.counts.failed
-            + self.attention.counts.done;
+        let attention = self.attention.counts.needs_you + self.attention.counts.failed;
         let working = self.attention.counts.working;
         let clock = plain(self.view["clock"].as_str().unwrap_or(""));
         let battery = plain(self.view["battery"].as_str().unwrap_or(""));
         let counts = if self.attention_ready {
-            format!("!{} ●{}", attention, working)
-        } else { "!? ●?".into() };
+            format!("!{} ●{} ✓{}", attention, working, self.attention.counts.done)
+        } else { "!? ●? ✓?".into() };
         let right = if let Some(notice) = self.clipboard.notice() {
             format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
+        } else if let Some((_, notice)) = self.notifications.notice() {
+            notification_right(notice, &counts, cols)
         } else { format!(" {} {} {} ", counts, battery, clock) };
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
@@ -296,7 +333,8 @@ impl ZellijPlugin for State {
         let mut used = 0;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
         print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
-        let heading = format!("{}{} │", mode, host);
+        let heading = bar_heading(mode, &host, available,
+            self.notifications.notice().is_some() && !self.tabs.is_empty());
         for c in heading.chars() {
             let width = c.width().unwrap_or(0);
             if used + width > available { break; }
@@ -329,7 +367,13 @@ impl ZellijPlugin for State {
             if used > start { self.clicks.push((start, used, tab.position as u32 + 1)); }
             if used >= available { break; }
         }
-        print!("\x1b[48;2;46;52;64m{}\x1b[38;2;129;161;193m", " ".repeat(available.saturating_sub(used)));
+        let notice_color = match self.notifications.notice().map(|(level, _)| level) {
+            Some("error") => "191;97;106",
+            Some("warn") => "235;203;139",
+            Some("success") => "163;190;140",
+            _ => "129;161;193",
+        };
+        print!("\x1b[48;2;46;52;64m{}\x1b[38;2;{}m", " ".repeat(available.saturating_sub(used)), notice_color);
         let mut right_used = 0;
         for c in right.chars() {
             let width = c.width().unwrap_or(0);
@@ -337,5 +381,28 @@ impl ZellijPlugin for State {
             print!("{}", c); right_used += width;
         }
         print!("\x1b[0m");
+    }
+}
+
+#[cfg(test)]
+mod notification_layout_tests {
+    use super::*;
+
+    #[test]
+    fn notices_leave_tab_context_at_small_widths() {
+        for cols in [40, 80, 120] {
+            let right = notification_right(&"界".repeat(100), "!1 ●0 ✓2", cols);
+            assert!(right.width() <= cols - 20, "{cols}: {right}");
+            assert!(right.contains("!1 ●0 ✓2"));
+        }
+        for mode in [" ", " RENAME TAB "] {
+            let right = notification_right(&"Long notice ".repeat(10), "!1 ●0 ✓2", 45);
+            let available = 45 - right.width();
+            let heading = bar_heading(mode, "development-laptop", available, true);
+            assert!(available - heading.width() >= 12);
+        }
+        for cols in 2..20 {
+            assert!(notification_right("Failed", "!1 ●0 ✓2", cols).width() <= cols);
+        }
     }
 }
