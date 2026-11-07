@@ -137,7 +137,7 @@ for line in sys.stdin:
             assert len(history()) == before, "Same state produced duplicate history"
             client.prefix(b"B")
             client.until("history opens through its real key", lambda:
-                         "Notification history" in view() and "Release checks" in view())
+                         "Notification history" in view() and "Build passed. Ready to deploy." in view())
             picker = next(p for p in client.terminals() if p["is_floating"])
             picker_screen = client.action("dump-screen", "--pane-id", f"terminal_{picker['id']}")
             for row in history():
@@ -177,7 +177,7 @@ for line in sys.stdin:
             client.until("narrow bar is ready", lambda: "!0 ●0" in view())
             client.prefix(b"B")
             client.until("narrow history opens with a full source preview", lambda:
-                         "Notification history" in view() and "Release checks" in view())
+                         "Notification history" in view() and "Build passed. Ready to deploy." in view())
             capture("history-narrow")
             client.send(b"\x1b")
             print("PASS: installed notices preserve keyboard focus, urgency excludes completions, repeated state is deduplicated, history jumps without restarting the source, and the native inbox opens.")
