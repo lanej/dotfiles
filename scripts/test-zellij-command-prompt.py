@@ -268,8 +268,15 @@ def exercise(first, second, home):
         ('definitely-not-a-command', 'Unknown or unsupported command'),
     ):
         submit(first, command, second)
-        first.until('unsupported variant remains editable: ' + command, lambda: message in text(first))
+        first.until('unsupported variant remains editable: ' + command, lambda: message in ' '.join(text(first).split()))
         unchanged()
+        if command == 'new-pane --near-current-pane':
+            first.send(b'\x04')
+            first.until('full error details are available', lambda: 'Zellij command · help' in text(first)
+                        and message in ' '.join(text(first).split()))
+            first.send(b'\x1b')
+            first.until('error details return to the original command', lambda:
+                        'new-pane --near-current-pane' in text(first) and 'Tab complete' in text(first))
         first.send(b'\x1b')
     submit(first, 'rename-pane --help', second)
     first.until('native action help is displayed', lambda: 'Usage:' in text(first))
@@ -302,6 +309,8 @@ def exercise(first, second, home):
 
     submit(first, 'list-panes', second)
     first.until('pane query is a searchable table', lambda: 'PANE / TITLE' in text(first) and 'other client' in text(first))
+    first.send(b'\t')
+    first.until('Tab selects without leaving the query', lambda: 'PANE / TITLE' in text(first))
     capture(first, 'pane-query')
     first.send(b'other client')
     first.until('pane table filters by title', lambda: '1 suggestions' in text(first))
@@ -479,7 +488,6 @@ def main():
         except Exception:
             for index, client in enumerate(clients):
                 capture(client, 'failure-client-' + str(index))
-                print('\n'.join(client.startup_diagnostics()), flush=True)
             raise
         finally:
             subprocess.run([binary, 'kill-session', name], env=env, capture_output=True, timeout=5)

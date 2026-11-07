@@ -202,6 +202,10 @@ impl Palette {
     }
 
     fn complete(&mut self) {
+        if matches!(self.view, View::Panes | View::Tabs | View::Sessions) {
+            self.select(1);
+            return;
+        }
         let items = self.items();
         let Some(item) = items.get(self.selected) else {
             return;
@@ -254,6 +258,11 @@ impl Palette {
             self.recall(false);
         } else if ctrl('r') {
             self.show(View::History);
+        } else if ctrl('d') && !self.error.is_empty() {
+            self.open.line = self.input.get_text().into();
+            self.documentation = self.error.clone();
+            self.view = View::Documentation;
+            self.scroll = 0;
         } else if self.view != View::Documentation && (ctrl('u') || ctrl('k') || ctrl('w')) {
             if ctrl('w') {
                 self.input.delete_word_backward();
@@ -416,7 +425,11 @@ impl Palette {
             .dim_range(..),
         );
         if self.view == View::Documentation {
-            let lines: Vec<_> = self.documentation.lines().collect();
+            let lines: Vec<_> = self
+                .documentation
+                .lines()
+                .flat_map(|line| Text::from(line).wrap(width))
+                .collect();
             self.scroll = self
                 .scroll
                 .min(lines.len().saturating_sub(rows.saturating_sub(6)));
@@ -426,7 +439,7 @@ impl Palette {
                 .take(rows.saturating_sub(6))
                 .enumerate()
             {
-                put(i + 4, Text::from(*line));
+                put(i + 4, line.clone());
             }
             put(
                 rows - 1,
@@ -448,18 +461,26 @@ impl Palette {
                 "Filter by name or details. Enter selects; Esc returns to your command.".into()
             }
         } else {
-            self.error.lines().take(2).collect::<Vec<_>>().join(" ")
+            self.error.clone()
         };
-        put(
-            6,
-            if self.error.is_empty() {
-                Text::from(help).dim_range(..)
-            } else {
-                Text::from(help).color_range(3, ..)
-            },
-        );
+        let message = if self.error.is_empty() {
+            Text::from(help).dim_range(..)
+        } else {
+            Text::from(help).color_range(3, ..)
+        };
+        let lines = message.wrap(width);
+        let limit = if self.error.is_empty() {
+            2
+        } else {
+            rows.saturating_sub(14).clamp(1, 6)
+        };
+        let message_rows = lines.len().max(1).min(limit);
+        for (i, line) in lines.into_iter().take(limit).enumerate() {
+            put(6 + i, line);
+        }
+        let table_row = 7 + message_rows;
         let items = self.items();
-        let visible = rows.saturating_sub(11).max(1);
+        let visible = rows.saturating_sub(table_row + 3).max(1);
         self.selected = self.selected.min(items.len().saturating_sub(1));
         let start = self.selected.saturating_sub(visible - 1);
         let label_width = width * 2 / 5;
@@ -469,7 +490,7 @@ impl Palette {
         };
         cell(
             2,
-            8,
+            table_row,
             label_width,
             Text::from(match self.view {
                 View::Panes => "PANE / TITLE",
@@ -481,7 +502,7 @@ impl Palette {
         );
         cell(
             label_width + 4,
-            8,
+            table_row,
             detail_width,
             Text::from("DETAILS").color_range(0, ..),
         );
@@ -498,11 +519,11 @@ impl Palette {
                 } else {
                     value
                 };
-                cell(column, 9 + i - start, available, value);
+                cell(column, table_row + 1 + i - start, available, value);
             }
         }
         if items.is_empty() {
-            put(9, Text::from("No matches").dim_range(..));
+            put(table_row + 1, Text::from("No matches").dim_range(..));
         }
         put(
             rows.saturating_sub(2),
@@ -510,7 +531,9 @@ impl Palette {
         );
         put(
             rows - 1,
-            Text::from(if self.view == View::Command {
+            Text::from(if self.view == View::Command && !self.error.is_empty() {
+                "Tab complete  ·  Enter run  ·  Ctrl-d error details  ·  Esc close"
+            } else if self.view == View::Command {
                 "Tab complete  ·  ↑↓ select  ·  Enter run  ·  Ctrl-p/n history  ·  Esc close"
             } else {
                 "↑↓ select  ·  Enter choose  ·  Esc back"
@@ -525,10 +548,6 @@ pub fn launch(open: Open) {
     let dispatcher = get_pane_info(PaneId::Plugin(open.owner)).unwrap_or_default();
     let width = tab.display_area_columns.saturating_sub(4).clamp(12, 104);
     let height = tab.display_area_rows.saturating_sub(4).clamp(5, 24);
-    eprintln!("command-palette geometry: screen={}x{} dispatcher={}@{},{} content={},{} wanted={}x{} origin={}",
-        tab.display_area_columns, tab.display_area_rows, open.owner,
-        dispatcher.pane_x, dispatcher.pane_y, dispatcher.pane_content_x, dispatcher.pane_content_y,
-        width, height, open.origin.0);
     let configuration = BTreeMap::from([(
         "palette".into(),
         serde_json::to_string(&open).expect("serializable popup"),
