@@ -551,6 +551,8 @@ name = "dotfiles-command-prompt"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "serde",
+ "serde_json",
  "shlex",
  "zellij-tile",
  "zellij-utils",

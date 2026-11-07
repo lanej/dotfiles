@@ -1,17 +1,62 @@
 mod commands;
+mod completion;
+mod palette;
 
-use std::collections::{BTreeMap, VecDeque};
-use zellij_tile::prelude::actions::Action;
-use zellij_tile::prelude::*;
+use std::{
+    collections::{BTreeMap, VecDeque},
+    path::PathBuf,
+};
+use zellij_tile::prelude::{actions::Action, *};
 
 const OPEN: &str = "command-prompt";
 
-#[derive(Clone, Copy)]
-enum Input {
-    Command,
-    Commands,
-    History,
-    Help,
+enum Parsed {
+    Native(commands::Parsed),
+    Pane(PaneId),
+    Tab(usize),
+    Session(String),
+}
+
+fn parse(line: &str, cwd: PathBuf) -> Result<Parsed, String> {
+    let words = shlex::split(line.trim().trim_start_matches(':'))
+        .ok_or("Unclosed quote or trailing escape. Use quotes around names with spaces.")?;
+    let name = words.first().map(String::as_str).unwrap_or("");
+    if matches!(name, "focus-pane-id" | "go-to-tab-by-id" | "switch-session") {
+        if words.len() != 2 || words[1].starts_with('-') {
+            return Err(format!(
+                "Usage: {name} <{}>",
+                if name == "switch-session" {
+                    "session-name"
+                } else {
+                    "id"
+                }
+            ));
+        }
+        let value = &words[1];
+        return match name {
+            "focus-pane-id" => {
+                let (plugin, id) = if let Some(id) = value.strip_prefix("plugin_") {
+                    (true, id)
+                } else {
+                    (false, value.strip_prefix("terminal_").unwrap_or(value))
+                };
+                let id = id
+                    .parse::<u32>()
+                    .map_err(|_| "Expected a pane ID such as terminal_3 or plugin_2".to_owned())?;
+                Ok(Parsed::Pane(if plugin {
+                    PaneId::Plugin(id)
+                } else {
+                    PaneId::Terminal(id)
+                }))
+            }
+            "go-to-tab-by-id" => value
+                .parse()
+                .map(Parsed::Tab)
+                .map_err(|_| "Expected a numeric tab ID".into()),
+            _ => Ok(Parsed::Session(value.clone())),
+        };
+    }
+    commands::parse(line, cwd).map(Parsed::Native)
 }
 
 #[derive(Default)]
@@ -19,36 +64,52 @@ struct CommandPrompt {
     allowed: bool,
     plugin_id: u32,
     client_id: ClientId,
-    request: Option<(u64, Input)>,
+    request: u64,
     origin: Option<(usize, PaneId)>,
     line: String,
     history: VecDeque<String>,
     actions: VecDeque<Action>,
     action_pending: bool,
+    palette: Option<palette::Palette>,
 }
 
 register_plugin!(CommandPrompt);
 
 impl ZellijPlugin for CommandPrompt {
-    fn load(&mut self, _configuration: BTreeMap<String, String>) {
+    fn load(&mut self, configuration: BTreeMap<String, String>) {
         let ids = get_plugin_ids();
         self.plugin_id = ids.plugin_id;
         self.client_id = ids.client_id;
-        subscribe(&[
-            EventType::PermissionRequestResult,
-            EventType::InitialKeybinds,
-            EventType::PromptResult,
-            EventType::ActionComplete,
-        ]);
+        if let Some(open) = configuration
+            .get("palette")
+            .and_then(|s| serde_json::from_str(s).ok())
+        {
+            self.palette = Some(palette::Palette::new(open));
+            subscribe(&[
+                EventType::Key,
+                EventType::PaneUpdate,
+                EventType::TabUpdate,
+                EventType::SessionUpdate,
+                EventType::PastedText,
+            ]);
+        } else {
+            subscribe(&[EventType::InitialKeybinds, EventType::ActionComplete]);
+        }
+        subscribe(&[EventType::PermissionRequestResult]);
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::OpenTerminalsOrPlugins,
             PermissionType::RunActionsAsUser,
             PermissionType::Reconfigure,
+            PermissionType::ChangeApplicationState,
+            PermissionType::MessageAndLaunchOtherPlugins,
         ]);
     }
 
     fn update(&mut self, event: Event) -> bool {
+        if let Some(palette) = self.palette.as_mut() {
+            return palette.update(event);
+        }
         match event {
             Event::PermissionRequestResult(PermissionStatus::Granted) => {
                 self.allowed = true;
@@ -56,19 +117,7 @@ impl ZellijPlugin for CommandPrompt {
                 self.bind();
             }
             Event::PermissionRequestResult(PermissionStatus::Denied) => self.allowed = false,
-            Event::InitialKeybinds(_) if self.allowed => {
-                // The event omits pipe targets, so reapply the exact private
-                // binding. Native config equality suppresses no-op updates.
-                self.bind();
-            }
-            Event::PromptResult(id, result) if self.allowed => {
-                if let Some((expected, input)) = self.request {
-                    if id == expected {
-                        self.request = None;
-                        self.answer(input, result);
-                    }
-                }
-            }
+            Event::InitialKeybinds(_) if self.allowed => self.bind(),
             Event::ActionComplete(_, _, context)
                 if self.action_pending
                     && context.get("owner").map(String::as_str) == Some(OPEN) =>
@@ -82,24 +131,47 @@ impl ZellijPlugin for CommandPrompt {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
-        if self.allowed
-            && message.is_private
-            && message.source == PipeSource::Keybind
+        if !self.allowed || self.palette.is_some() || !message.is_private || self.action_pending {
+            return false;
+        }
+        if message.source == PipeSource::Keybind
             && message.name == OPEN
             && message.payload.as_deref() == Some(self.client_id.to_string().as_str())
-            && self.request.is_none()
-            && !self.action_pending
         {
             match get_focused_pane_info() {
                 Ok(origin) => {
                     self.origin = Some(origin);
                     self.line.clear();
-                    self.input("Zellij action. Enter help or history for a picker.");
+                    self.input(String::new());
                 }
-                Err(error) => self.notice(error),
+                Err(error) => {
+                    prompt(PromptRequest::notify(error));
+                }
+            }
+        } else if matches!(message.source, PipeSource::Plugin(_)) && message.name == palette::REPLY
+        {
+            if let Some(reply) = message
+                .payload
+                .and_then(|s| serde_json::from_str::<palette::Reply>(&s).ok())
+            {
+                if reply.request == self.request
+                    && reply.client == self.client_id
+                    && self.origin.is_some()
+                {
+                    // Consume once. A late reply from a replaced popup cannot run.
+                    self.request += 1;
+                    self.line = reply.line;
+                    self.execute();
+                }
             }
         }
         false
+    }
+
+    fn render(&mut self, rows: usize, cols: usize) {
+        if let Some(palette) = self.palette.as_mut() {
+            palette.render(rows, cols);
+        }
     }
 }
 
@@ -111,70 +183,20 @@ impl CommandPrompt {
         ), false);
     }
 
-    fn ask(&mut self, request: PromptRequest, input: Input) {
-        let request = request
-            .title("Zellij command :")
-            .placement(PromptPlacement::Center)
-            .capture_all_keys(true)
-            .outside_click(OutsideClick::Close);
-        self.request = Some((prompt(request), input));
-    }
-
-    fn input(&mut self, message: &str) {
-        self.ask(
-            PromptRequest::form(vec![FormField::input("command", ":")
-                .placeholder("rename-tab \"work\"")
-                .default_value(self.line.clone())])
-            .message(message)
-            .buttons("Run", "Cancel"),
-            Input::Command,
-        );
-    }
-
-    fn notice(&mut self, message: String) {
-        self.ask(PromptRequest::info("Zellij command", message), Input::Help);
-    }
-
-    fn answer(&mut self, input: Input, result: PromptResult) {
-        match (input, result) {
-            (Input::Command, PromptResult::Answered(PromptValue::Form(mut fields))) => {
-                let Some(PromptValue::Text(line)) = fields.remove("command") else {
-                    self.origin = None;
-                    return;
-                };
-                self.line = line;
-                match self.line.trim() {
-                    "help" => self.ask(PromptRequest::choose(commands::choices()), Input::Commands),
-                    "history" => {
-                        if self.history.is_empty() {
-                            self.input("No commands in this client's session history yet.");
-                        } else {
-                            self.ask(
-                                PromptRequest::choose(self.history.iter().cloned()),
-                                Input::History,
-                            );
-                        }
-                    }
-                    "" => self.origin = None,
-                    _ => self.execute(),
-                }
-            }
-            (Input::Commands, PromptResult::Answered(PromptValue::Choice(command))) => {
-                self.line = format!("{command} ");
-                self.input("Add arguments, or --help for this command's options.");
-            }
-            (Input::History, PromptResult::Answered(PromptValue::Choice(command))) => {
-                self.line = command;
-                self.input("Review the command, then Enter to run it.");
-            }
-            (_, PromptResult::Error(error)) => {
-                // Do not repeatedly re-open a native prompt that the runtime
-                // cannot display (eg. an incompatible or missing prompt plugin).
-                eprintln!("command-prompt: {error}");
-                self.origin = None;
-            }
-            _ => self.origin = None,
-        }
+    fn input(&mut self, error: String) {
+        let Some(origin) = self.origin else {
+            return;
+        };
+        self.request += 1;
+        palette::launch(palette::Open {
+            owner: self.plugin_id,
+            client: self.client_id,
+            request: self.request,
+            origin,
+            line: self.line.clone(),
+            history: self.history.iter().cloned().collect(),
+            error,
+        });
     }
 
     fn execute(&mut self) {
@@ -183,28 +205,70 @@ impl CommandPrompt {
         };
         if get_focused_pane_info().ok() != Some(origin) || get_pane_info(origin.1).is_none() {
             self.origin = None;
-            self.notice("The original pane or tab changed. Nothing ran; reopen the command prompt in the intended pane.".into());
+            prompt(PromptRequest::notify(
+                "The original pane or tab changed. Reopen : in the intended pane.",
+            ));
             return;
         }
         let cwd = match get_pane_cwd(origin.1) {
             Ok(cwd) => cwd,
             Err(error) => {
-                self.input(&error);
+                self.input(error);
                 return;
             }
         };
-        match commands::parse(&self.line, cwd) {
-            Ok(commands::Parsed::Help(help)) => self.notice(help),
-            Ok(commands::Parsed::Actions(actions)) => {
-                if !actions.is_empty() {
-                    self.history.retain(|old| old != &self.line);
-                    self.history.push_front(self.line.clone());
-                    self.history.truncate(32);
-                }
+        let result = match parse(&self.line, cwd) {
+            Ok(Parsed::Native(commands::Parsed::Actions(actions))) => {
                 self.actions = actions.into();
                 self.dispatch();
+                Ok(())
             }
-            Err(error) => self.input(&error),
+            Ok(Parsed::Native(commands::Parsed::Help(_))) => Ok(()),
+            Ok(Parsed::Pane(id)) => {
+                if get_pane_info(id).is_some_and(|p| p.is_selectable && !p.is_suppressed) {
+                    focus_pane_with_id(id, false, false);
+                    self.origin = None;
+                    Ok(())
+                } else {
+                    Err(
+                        "That pane is no longer available. Use list-panes to choose a live target."
+                            .into(),
+                    )
+                }
+            }
+            Ok(Parsed::Tab(id)) => {
+                if let Some(tab) = get_tab_info(id) {
+                    switch_tab_to((tab.position + 1) as u32);
+                    self.origin = None;
+                    Ok(())
+                } else {
+                    Err(
+                        "That tab is no longer available. Use list-tabs to choose a live target."
+                            .into(),
+                    )
+                }
+            }
+            Ok(Parsed::Session(name)) => match get_session_list() {
+                Ok(snapshot) if snapshot.live_sessions.iter().any(|s| s.name == name) => {
+                    switch_session(Some(&name));
+                    self.origin = None;
+                    Ok(())
+                }
+                Ok(_) => Err(
+                    "That session is no longer running. Use list-sessions to choose a live target."
+                        .into(),
+                ),
+                Err(error) => Err(error),
+            },
+            Err(error) => Err(error),
+        };
+        match result {
+            Ok(()) => {
+                self.history.retain(|old| old != &self.line);
+                self.history.push_front(self.line.clone());
+                self.history.truncate(32);
+            }
+            Err(error) => self.input(error),
         }
     }
 

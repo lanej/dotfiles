@@ -1,61 +1,51 @@
-# Zellij command prompt
+# Zellij command palette
 
-`Ctrl-f :` opens the pinned runtime's native centered text-entry popup. Type a
-Zellij action without the `zellij action` prefix, for example:
+`Ctrl-f :` opens a centered native popup. Type a Zellij action directly, or search the suggestions by name or description. Tab accepts the highlighted suggestion; Enter runs the command you entered. Suggestions never execute a command. Esc or clicking outside closes the popup.
 
-- `rename-tab "work notes"`
-- `new-pane --direction right`
-- `new-pane --floating -- htop`
-- `move-focus left`
-- `resize increase right`
-- `rename-pane "build"`
+| Input | Suggestions |
+| --- | --- |
+| `rename-ta` | Matching actions and their descriptions |
+| `new-pane --dir` | Native flags, including `--direction` |
+| `new-pane --direction ` | Accepted directions |
+| `rename-tab ` | The current name, quoted for editing |
+| `go-to-tab-name ` | Live tab names, including names containing spaces |
+| `focus-pane-id ` | Live pane IDs, titles, and tabs |
+| `switch-session ` | Running session names and client counts |
 
-Enter runs the command; Esc or clicking outside cancels. An empty command also
-closes the prompt. `help` opens a searchable list of supported actions, selecting
-one fills the input for editing. Add `--help` to an action to see its native
-options. `history` picks from this client's last 32 submitted commands and asks
-you to review the selected command before running it. History is in memory only,
-and goes away when the plugin or session restarts. There is no inline completion
-or tmux command compatibility layer.
+Arrow keys select suggestions. Up from an empty command recalls history; Ctrl-p/Ctrl-n recall older/newer commands and restore the unsubmitted draft. Ctrl-r or `history` opens searchable history. It retains the last 32 distinct submitted commands in memory for each attached client, until the plugin/session restarts. Recent actions rank ahead of other equally matching commands.
 
-Arguments use shell-style quoting but are not evaluated by a shell. `$HOME`,
-`$(...)`, wildcards, pipes and semicolons have no shell expansion. To start a
-program, use the explicit `new-pane -- PROGRAM ARG...` action. Names and action
-options come from the pinned Zellij CLI parser. `go-to-tab` uses Zellij's
-one-based position, even though the configured bar labels tabs starting at zero.
+`help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and display the error inline. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program.
 
-The prompt handles pane/tab/session actions, not stdout-producing queries such
-as `list-panes`, layout-file loading or external plugin installation. Use a
-normal terminal for those. Command parse errors keep the input available to
-correct. Zellij's action API does not return the CLI's stdout or all runtime
-errors; a closed/changed original pane or tab is rejected before dispatch.
-Some explicit pane/tab-ID variants are CLI-only in the pinned plugin protocol;
-the prompt reports those as unsupported before dispatch.
-Pane-relative creation flags (`--near-current-pane`, `--stacked`, `--in-place`
-and `--no-focus` on `new-pane`/`edit`) also stay in the terminal: the plugin API
-otherwise treats the hidden plugin itself as their source pane.
+## Search and jump
 
-The implementation calls the built-in `zellij:prompt` plugin, not an ordinary
-floating terminal. Opening it does not reveal other hidden floating panes and
-does not change the persistent `Ctrl-f P` popup. Each attached client has its own
-private binding, prompt, action dispatcher and history. No action is sent
-through the CLI's last-active-client fallback.
+| Command | Result |
+| --- | --- |
+| `list-panes` | Searchable table of selectable panes, titles, commands, and tab positions |
+| `list-tabs` | Searchable table of tab names, display positions, and stable IDs |
+| `list-sessions` | Searchable table of running sessions and counts |
 
-## Install and verify
+Type to filter the table; arrows select a row; Enter jumps to it. Esc returns to the original command. Tables refresh when the live state changes. Pane and tab selections carry stable IDs, which are checked again at dispatch. Session selection switches only to an existing running session. Query commands take no flags; use the terminal for CLI JSON output and the wider CLI query interface.
 
-The selected patched/main runtime installation includes this plugin. For an
-existing pinned installation, run `make zellij-command-prompt` then `make zellij`
-and restart the session. Default configuration never invokes Cargo. The legacy
-0.45.1 configuration does not enable this feature.
+The header shows the original session, tab, and pane. Tab labels match the bar's zero-based positions. The native `go-to-tab` command retains its one-based syntax, with that index shown in its completion details. `go-to-tab-by-id` selects a stable tab ID.
 
-On first use of a fresh session configuration, Zellij asks for permission to
-read pane state, open the built-in popup, run Zellij actions, and install the
-client-specific runtime binding. The plugin does not request full disk access,
-environment reads, network access or a separate host-command permission.
-The action permission can still start programs through an explicitly entered
-`new-pane -- PROGRAM` command.
+## Command scope
 
-`make test-zellij-command-prompt` installs into a temporary home and exercises
-the production prefix binding with two real attached clients. It requires the
-pinned runtime, Python with pyte 0.8.2, and the Rust 1.95.0 WASM toolchain. Sessions,
-permission grants and configuration are isolated from the user's running sessions.
+Arguments use shell-style quoting without shell evaluation. `$HOME`, `$(...)`, wildcards, pipes and semicolons have no shell expansion. To start a program, use an explicit action such as `new-pane -- PROGRAM ARG...`.
+
+The existing supported pane/tab actions retain Zellij's syntax. `focus-pane-id`, `go-to-tab-by-id` and `switch-session` accept one live target. Layout-file loading and external plugin installation remain terminal operations. Some explicit pane/tab-ID variants are CLI-only in the pinned plugin protocol; the palette reports those as unsupported. Pane-relative creation flags (`--near-current-pane`, `--stacked`, `--in-place`, `--no-focus` on `new-pane`/`edit`) require a terminal-pane origin and remain terminal operations.
+
+The native action API does not return CLI stdout or all runtime errors. Submitting an action is not a guarantee of its eventual runtime result. Parse failures are shown inline; an origin that changed or closed is rejected before dispatch.
+
+## Installation and permissions
+
+For an existing pinned installation, run `make zellij-command-prompt`, then `make zellij` and restart the session. Default configuration never invokes Cargo. The legacy 0.45.1 configuration does not enable the palette. No additional runtime patch or shell dependency is required.
+
+The background dispatcher opens the same WASM as a client-local native popup. The popup edits and renders suggestions; the dispatcher retains history, checks the original pane/tab, and applies accepted commands for that client. Opening the palette leaves hidden floating panes and the persistent `Ctrl-f P` popup hidden.
+
+The plugin requests application-state reads, native popups and actions, client-specific runtime binding updates, target/session changes, and private messages between its popup and dispatcher. Existing installations may need to accept the expanded permissions. It requests no filesystem, environment, network or host-command access. An explicit `new-pane -- PROGRAM` action can still start a program.
+
+## Verification
+
+`make test-zellij-command-prompt` installs into a temporary home and exercises the production prefix binding with two real attached clients. It checks completion, editable errors, target queries, live updates, private history, hidden floats, reloads and origin lifecycle. It requires the pinned runtime, Python with pyte 0.8.2, and the Rust 1.95.0 WASM toolchain. Sessions, grants and sockets are isolated from existing sessions. CI retains decoded terminal grids for visual review.
+
+For focused native model checks, run `RUST_MIN_STACK=16777216 cargo test --locked --manifest-path zellij/command-prompt/Cargo.toml`. The generated upstream CLI parser requires a larger stack in unoptimized Rust test threads.

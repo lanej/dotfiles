@@ -160,6 +160,17 @@ jobs:
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
+      - name: Exercise command palette
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+        run: make test-zellij-command-prompt
+      - name: Preserve command palette terminal captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: command-palette-${{ matrix.os }}
+          path: ${{ github.workspace }}/.zellij-diagnostics/command-palette
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Install Treehouse 3.1.6
         shell: bash
         run: |
@@ -192,8 +203,6 @@ jobs:
       - run: make test-zellij
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-tab-labels
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-zellij-command-prompt
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

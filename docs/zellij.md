@@ -101,7 +101,7 @@ Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waitin
 | `g`, `G` | Golden-ratio left-pane width; `G` forces resizing past the width guard |
 | `Space`, `Ctrl-o` | Next/previous columns, rows, stacked, or equalize layout |
 | `P` | Open the shared persistent popup; the same key inside it hides that view |
-| `:` | Open a centered Zellij command prompt; `help` lists actions and `history` recalls this client's commands |
+| `:` | Open the command palette with completion, live target tables, help and history |
 | `F` | Show/hide the current tab's other floating panes |
 | `Ctrl-q` | Confirm shutdown of the current Zellij session |
 | `u`, `i` | Return to a containing Zellij session / enter the focused nested session |
@@ -124,15 +124,7 @@ Automatic ownership requires an exact match with the last name written by the ho
 
 The configuration-only/0.45.1 fallback still uses Zellij's built-in bar and one-based keys (`0` also selects the first tab). That bar has no base-index option; this change does not replace it or alter the runtime. To use the zero-based bar, install the pinned 0.46 runtime and build the status plugin. Avoid manual names matching Zellij's generated forms (`Tab #<stable ID + 1>` and `Pane #<number>`): its metadata does not expose their origin, so the custom UI can treat them as fallbacks. Other manual names are retained verbatim.
 
-**Command prompt:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax
-without `zellij action`, such as `rename-tab "work"`, `new-pane --direction right`,
-or `move-focus left`. Enter runs it and Esc cancels. `help` opens the action picker;
-`history` recalls the client's in-memory command history for review. This is a
-Zellij command line, not a shell or tmux command interpreter. It uses the native
-popup layer, leaves hidden floating panes hidden, and targets the invoking client.
-For an existing pinned installation, run `make zellij-command-prompt`, apply
-`make zellij`, and restart. See the [command-prompt guide](../zellij/command-prompt/README.md)
-for supported scope, quoting, permissions and verification.
+**Command palette:** On the pinned runtime, `Ctrl-f :` accepts Zellij action syntax such as `rename-tab "work"`, with inline suggestions and argument help. Tab completes the selected action, flag or live target; Enter runs the entered command; Esc closes it. Ctrl-p/Ctrl-n recall this client's history and restore its draft. `help` and `history` open searchable lists. `list-panes`, `list-tabs`, and `list-sessions` open live tables; Enter jumps to the selected target. Parse errors remain editable. The native popup preserves hidden floating panes and dispatches actions for the invoking client. Rebuild with `make zellij-command-prompt`, apply `make zellij`, and restart. See the [command-palette guide](../zellij/command-prompt/README.md) for syntax, permissions and limits.
 
 `Ctrl-f =`, `g`, and `G` use Bash and jq with the pinned runtime’s background commands. They resize existing panes without changing focus or recreating shells. Equalize balances one contiguous aligned row or column containing the invoking pane; ambiguous grids, stacks, zoom, floating panes, and embedded plugin panes are rejected. The golden controls require one full-height leftmost pane: `g` skips when its content width is already at least 120 columns; otherwise the target is floor(tab width × 0.382), capped at 180 content columns. `G` ignores the 120-column guard.
 
