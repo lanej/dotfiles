@@ -18,6 +18,8 @@ show_release_notes false
 scrollback_editor "nvim"
 copy_clipboard "system"
 copy_on_select true
+// A prefix is two keystrokes; never use its bare suffix to release live typing.
+live_view_release_key "Alt Enter"
 
 // Keep clipboard ownership outside any tab's visible status bar. Suppressed
 // background plugins survive when their containing tab closes.
@@ -139,6 +141,8 @@ keybinds clear-defaults=true {
         }
         bind "W" { SwitchToMode "Tab"; }
 
+        // Native F9's inbox action, without stealing a bare application key.
+        bind "I" { SwitchToMode "Locked"; ToggleSessionCard; }
         // New-session and rename-session actions live in the built-in manager.
         bind "C" "w" {
             LaunchOrFocusPlugin "zellij:session-manager" {

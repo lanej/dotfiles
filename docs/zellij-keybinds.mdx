@@ -111,6 +111,7 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | --- | --- |
 | `Ctrl-w` | Open the fuzzy picker for running sessions |
 | `C` / `w` | Open the native session manager |
+| `I` | Toggle the native inbox/session card (modern configuration) |
 | `d` | Detach this client, leaving the session running |
 | `D` | Choose one attached client to detach |
 | `Ctrl-q` | Open confirmation to shut down the current session |
@@ -120,6 +121,12 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | `i` | Focus the nested Zellij session in the current pane |
 
 The native manager provides session creation, switching, renaming, and resurrection; follow its displayed controls. `C` and `w` both open that manager rather than creating or renaming immediately. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
+
+**Native inbox without function keys:** `Ctrl-f I` exposes the native F9 action without changing `C`, `w`, or lowercase `i`. In an interactive live pane preview, **Alt-Enter** returns typing to the manager; the prefix is not intercepted while the preview captures input. `?` without the prefix opens help on the inbox screen. Esc leaves help, then Esc closes the manager. Upstream still displays F9 labels and accepts function keys inside plugins; this binding provides non-function-key access rather than rewriting bundled plugins.
+
+**Upstream help limitation:** the sessions screen's full key list is hardcoded to F1; unlike the inbox, `?` is search text there. There is no configurable help alias in the currently pinned runtime.
+
+Both managed configurations clear native default bindings. The legacy runtime does not have these modern inbox/help actions; its existing manager controls, the retired popup config, current popup overlay, layouts, and local plugin bindings need no F-key remapping. Custom user layouts or configuration added outside this repository are not covered.
 
 **Detach one client:** `D` lists native client IDs, focused tabs, and pane titles. Enter detaches that attachment only. It needs the modern runtime and status-plugin permissions on each attached client.
 
@@ -245,6 +252,7 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | Numeric tab selection | `0`–`9` selects the first through tenth tab | `0` and `1` both select the first; `2`–`9` select the second through ninth |
 | Tab positions in the bar/picker | Zero-based | One-based |
 | Native attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Inbox: `Ctrl-f I` | Assigned; Alt-Enter releases live preview input | Unbound |
 | Client chooser: `Ctrl-f D` | Assigned | Unbound |
 | Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |
 | Scrollback editor: `e` | ANSI color export | Plain text export |
