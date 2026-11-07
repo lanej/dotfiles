@@ -29,8 +29,9 @@ require("fzf-lua").setup({
 	winopts = {
 		border = "single",
 		preview = {
-			layout = "flex", -- use flex layout to enable flipping
-			flip_columns = 140, -- #cols to switch to horizontal on flex
+			layout = "flex",
+			-- WHY: Keep search results full-width until both panes have room.
+			flip_columns = 180,
 			vertical = "down:45%", -- vertical preview when flipped (results top, preview bottom)
 			horizontal = "right:50%", -- horizontal preview default (results left, preview right)
 		},
@@ -41,12 +42,6 @@ require("fzf-lua").setup({
 		-- e.g., ~/.co/nv/lua/file.lua instead of ~/.config/nvim/lua/file.lua
 		path_shorten = 2, -- shorten to 2 chars per directory (more readable than 1)
 		rg_glob = true, -- enable glob parsing
-		winopts = {
-			preview = {
-				layout = "flex",
-				flip_columns = 120, -- when terminal < 120 cols, flip to vertical
-			},
-		},
 	},
 	lsp = {
 		code_actions = {
@@ -323,14 +318,7 @@ end, { noremap = true, silent = true })
 
 -- Keymap to list document symbols using fzf-lua
 vim.keymap.set("n", "<leader>bs", function()
-	require("fzf-lua").lsp_document_symbols({
-		winopts = {
-			relative = "cursor", -- or 'cursor' for positioning relative to the cursor
-			width = 0.5, -- width of the window (50% of the editor)
-			height = 0.8, -- height of the window (30% of the editor)
-			border = "double", -- border style (e.g., 'none', 'single', 'double', 'rounded')
-		},
-	})
+	require("navigation").buffer_symbols()
 end, { noremap = true, silent = true })
 
 -- Keymap to list incoming calls using fzf-lua
@@ -349,14 +337,14 @@ vim.keymap.set("n", "<leader>ck", function()
 end, { noremap = true, silent = true })
 
 vim.keymap.set({ "n", "v" }, "<leader>cr", function()
-	require("fzf-lua").lsp_references()
+	require("navigation").references()
 end, {
 	noremap = true,
 	silent = true,
 })
 
 vim.keymap.set({ "n", "v" }, "<leader>cd", function()
-	require("fzf-lua").lsp_definitions({ jump1 = true })
+	require("navigation").goto_definition()
 end, {
 	noremap = true,
 	silent = true,
@@ -364,25 +352,23 @@ end, {
 
 -- Keymap to list implementation calls using fzf-lua
 vim.keymap.set("n", "<leader>cy", function()
-	require("fzf-lua").lsp_implementations()
+	require("navigation").implementations()
 end, { noremap = true, silent = true })
 
 -- Keymap to list workspace symbols using fzf-lua
 vim.keymap.set("n", "<leader>ws", function()
-	require("fzf-lua").lsp_live_workspace_symbols({})
+	require("navigation").workspace_symbols()
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>wd", function()
-	-- prefer a larger preview window and horizontal split
 	require("fzf-lua").diagnostics_workspace({
-		winopts = { preview = { vertical = "up:68%", layout = "vertical:68%" } },
+		winopts = { preview = { vertical = "up:68%" } },
 	})
 end, { noremap = true, silent = true })
 
 vim.keymap.set("n", "<leader>bd", function()
-	-- prefer a larger preview window and horizontal split
 	require("fzf-lua").diagnostics_document({
-		winopts = { preview = { vertical = "up:68%", layout = "vertical:68%" } },
+		winopts = { preview = { vertical = "up:68%" } },
 	})
 end, { noremap = true, silent = true })
 
@@ -411,8 +397,6 @@ vim.keymap.set({ "n", "v" }, "<leader>ca", function()
 			height = 0.5,
 			border = "double",
 			preview = {
-				layout = "flex",
-				flip_columns = 100,
 				vertical = "down:50%",
 				horizontal = "right:50%",
 			},
@@ -537,11 +521,30 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		end,
 		{
 			prompt = "ChangedFiles❯ ",
-			previewer = "builtin",
+			previewer = {
+				_ctor = function()
+					local previewer = require("fzf-lua.previewer.builtin").buffer_or_file:extend()
+					function previewer:parse_entry(entry_str)
+						local entry = self:entry_to_file(entry_str)
+						vim.fn.system({
+							"git", "-C", git_root, "diff", "--quiet", "--no-ext-diff", merge_base or "HEAD", "--", entry.path,
+						})
+						if vim.v.shell_error == 1 then
+							return {
+								path = entry.path,
+								cmd = {
+									"git", "-C", git_root, "diff", "--no-ext-diff", "--color=always", merge_base or "HEAD", "--", entry.path,
+								},
+								do_not_cache = true,
+							}
+						end
+						return self.super.parse_entry(self, entry_str)
+					end
+					return previewer
+				end,
+			},
 			winopts = {
 				preview = {
-					layout = "flex",
-					flip_columns = 120,
 					vertical = "down:60%",
 					horizontal = "right:60%",
 				},
@@ -580,35 +583,7 @@ end, {
 
 -- Jump into a git worktree
 vim.keymap.set("n", "<leader>gw", function()
-	local git_root = vim.fn.systemlist("git rev-parse --show-toplevel 2>/dev/null")[1]
-	if vim.v.shell_error ~= 0 or not git_root or git_root == "" then
-		vim.notify("Not in a git repository", vim.log.levels.ERROR)
-		return
-	end
-
-	local root_esc = vim.fn.shellescape(git_root)
-	local list_cmd = "git worktree list | sed " .. vim.fn.shellescape("s|^" .. git_root .. "|.|")
-	local resolve = "path=$(echo {} | cut -d' ' -f1); case \"$path\" in .*) path=" .. root_esc .. "\"${path#.}\";; esac"
-
-	require("fzf-lua").fzf_exec(list_cmd, {
-		prompt = "Worktrees❯ ",
-		preview = resolve .. "; git -C \"$path\" log --oneline --color -15",
-		actions = {
-			["default"] = function(selected)
-				if not selected or #selected == 0 then
-					return
-				end
-				local path = selected[1]:match("^(%S+)")
-				if path then
-					if path:sub(1, 1) == "." then
-						path = git_root .. path:sub(2)
-					end
-					vim.cmd("cd " .. vim.fn.fnameescape(path))
-					vim.notify("cwd → " .. path)
-				end
-			end,
-		},
-	})
+	require("worktree-picker").pick()
 end, { noremap = true, silent = true, desc = "fzf git worktrees" })
 
 -- Git status files relative to current buffer directory

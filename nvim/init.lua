@@ -13,6 +13,7 @@ vim.opt.cmdheight = 2
 vim.opt.cursorline = true
 vim.opt.encoding = "utf-8"
 vim.opt.exrc = true
+vim.opt.expandtab = true
 vim.opt.fileformats:append("mac")
 vim.opt.guicursor = {
 	"n-v-c:block-Cursor/lCursor",
@@ -31,13 +32,16 @@ vim.opt.modelines = 5
 vim.opt.backup = false
 vim.opt.scrolloff = 7
 vim.opt.shell = os.getenv("SHELL")
+vim.opt.shiftwidth = 2
 vim.opt.showcmd = true
 vim.opt.showmatch = true
 vim.opt.matchtime = 2
 vim.opt.showmode = true
 vim.opt.smartcase = true
 vim.opt.smarttab = true
+vim.opt.softtabstop = -1
 vim.opt.tabpagemax = 15
+vim.opt.tabstop = 2
 vim.opt.title = true
 vim.opt.titlestring = "󰅷 %t"
 
@@ -155,6 +159,7 @@ vim.keymap.set("n", "]q", ":cnext<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "[q", ":cprev<CR>", { noremap = true, silent = true })
 
 -- NOTE: Map <leader>y to yank to system clipboard in normal and visual modes
+local zellij_clipboard = require("zellij-clipboard").setup()
 vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { noremap = true, silent = true })
 
 -- NOTE: Map <leader>yy to yank the current line to system clipboard in normal mode
@@ -198,6 +203,9 @@ vim.keymap.set({ "n", "v" }, "<leader>P", '"+P', { noremap = true, silent = true
 -- Strip trailing newlines from clipboard register after every yank
 vim.api.nvim_create_autocmd("TextYankPost", {
 	callback = function()
+		if zellij_clipboard then
+			return
+		end
 		local reg = vim.v.event.regname
 		if reg == "+" or reg == "*" then
 			local text = vim.fn.getreg(reg)
@@ -467,78 +475,16 @@ vim.api.nvim_create_augroup("filetype_norg", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_norg",
 	pattern = "norg",
-	command = "setlocal shiftwidth=2 spell",
-})
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_norg",
-	pattern = "norg",
-	command = "let g:gutentags_enabled = 0",
+	command = "setlocal spell",
 })
 
 -- Markdown settings
 vim.api.nvim_create_augroup("filetype_markdown", { clear = true })
-vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-	group = "filetype_markdown",
-	pattern = "qutebrowser-editor*",
-	command = "set filetype=markdown",
-})
-
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_markdown",
 	pattern = "markdown",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell conceallevel=0",
+	command = "setlocal tabstop=2 shiftwidth=2 spell conceallevel=0",
 })
-
-local function align_pipe_table(lines)
-	local rows = {}
-	for _, line in ipairs(lines) do
-		if not line:match("^%s*|") then
-			return nil
-		end
-		local parts = vim.split(line, "|", { plain = true })
-		local cells = {}
-		for i = 2, #parts - 1 do
-			table.insert(cells, vim.trim(parts[i]))
-		end
-		table.insert(rows, cells)
-	end
-
-	local ncols = 0
-	for _, row in ipairs(rows) do
-		ncols = math.max(ncols, #row)
-	end
-	if ncols == 0 then
-		return nil
-	end
-
-	local widths = {}
-	for c = 1, ncols do
-		widths[c] = 3
-		for _, row in ipairs(rows) do
-			if row[c] then
-				widths[c] = math.max(widths[c], vim.fn.strdisplaywidth(row[c]))
-			end
-		end
-	end
-
-	local result = {}
-	for _, row in ipairs(rows) do
-		local parts = {}
-		for c = 1, ncols do
-			local cell = row[c] or ""
-			local w = widths[c]
-			if cell:match("^:?%-+:?$") then
-				local lc = cell:sub(1, 1) == ":" and ":" or "-"
-				local rc = (cell:sub(-1) == ":" and #cell > 1) and ":" or ""
-				table.insert(parts, lc .. string.rep("-", w - #lc - #rc) .. rc)
-			else
-				table.insert(parts, cell .. string.rep(" ", w - vim.fn.strdisplaywidth(cell)))
-			end
-		end
-		table.insert(result, "| " .. table.concat(parts, " | ") .. " |")
-	end
-	return result
-end
 
 vim.api.nvim_create_autocmd("BufWritePre", {
 	group = "filetype_markdown",
@@ -571,13 +517,15 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 		for i = #ranges, 1, -1 do
 			local sr, er = ranges[i][1], ranges[i][2]
 			local lines = vim.api.nvim_buf_get_lines(0, sr, er + 1, false)
-			local aligned = align_pipe_table(lines)
+			local aligned = require("markdown-tables").align(lines)
 			if aligned then
 				vim.api.nvim_buf_set_lines(0, sr, er + 1, false, aligned)
 			end
 		end
 	end,
 })
+
+require("zellij-scrollback").register_filetype()
 
 -- Custom filetypes, including YAML-based LookML dashboards.
 vim.filetype.add({
@@ -594,7 +542,7 @@ vim.api.nvim_create_augroup("filetype_mdx", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_mdx",
 	pattern = "mdx",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
+	command = "setlocal spell wrap linebreak",
 })
 
 -- XML-specific configuration
@@ -605,11 +553,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.opt_local.foldmethod = "expr"
 		vim.opt_local.foldexpr = "nvim_treesitter#foldexpr()"
 		vim.opt_local.foldenable = false -- Start with folds open
-
-		-- Indent settings
-		vim.opt_local.shiftwidth = 2
-		vim.opt_local.tabstop = 2
-		vim.opt_local.softtabstop = 2
 	end,
 })
 
@@ -617,7 +560,7 @@ vim.api.nvim_create_augroup("filetype_typespec", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typespec",
 	pattern = "typespec",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell nowrap conceallevel=1",
+	command = "setlocal spell nowrap conceallevel=1",
 })
 
 -- Typescript settings
@@ -625,17 +568,11 @@ vim.api.nvim_create_augroup("filetype_typescript", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typescript",
 	pattern = { "typescript", "typescriptreact" },
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap",
+	command = "setlocal spell wrap",
 })
 
 -- Ruby settings
 vim.api.nvim_create_augroup("filetype_ruby", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_ruby",
-	pattern = "ruby",
-	command = "setlocal shiftwidth=2 tabstop=2 softtabstop=2 expandtab autoindent",
-})
-
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_ruby",
 	pattern = "ruby",
@@ -669,7 +606,7 @@ vim.api.nvim_create_augroup("filetype_python", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_python",
 	pattern = "python",
-	command = "setlocal tabstop=4 shiftwidth=4 expandtab autoindent",
+	command = "setlocal tabstop=4 shiftwidth=4",
 })
 
 -- Lua settings
@@ -677,7 +614,7 @@ vim.api.nvim_create_augroup("filetype_lua", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_lua",
 	pattern = "lua",
-	command = "setlocal colorcolumn=122 tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal colorcolumn=122 nospell",
 })
 vim.keymap.set("n", "<leader>tj", ":TestFile --no-keep-going<CR>", { noremap = true, silent = true })
 
@@ -686,7 +623,7 @@ vim.api.nvim_create_augroup("filetype_gitcommit", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_gitcommit",
 	pattern = "gitcommit",
-	command = "setlocal colorcolumn=73 tabstop=2 shiftwidth=2 expandtab autoindent spell wrap",
+	command = "setlocal colorcolumn=73 tabstop=2 spell wrap",
 })
 
 -- Disable folding for git files
@@ -700,7 +637,7 @@ vim.api.nvim_create_augroup("filetype_go", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_go",
 	pattern = "go",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal shiftwidth=2 expandtab nospell",
 })
 vim.keymap.set("n", "<leader><t-d>", ":lua DebugNearest()<CR>", { noremap = true, silent = true })
 
@@ -712,12 +649,6 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- JavaScript settings
 vim.api.nvim_create_augroup("filetype_javascript", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_javascript",
-	pattern = "javascript",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_javascript",
 	pattern = ".eslintrc",
@@ -728,46 +659,6 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_javascript",
 	pattern = ".jsonl",
 	command = "set filetype=json",
-})
-
--- Haml settings
-vim.api.nvim_create_augroup("filetype_haml", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_haml",
-	pattern = "haml",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- SSH config settings
-vim.api.nvim_create_augroup("filetype_sshconfig", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_sshconfig",
-	pattern = "sshconfig",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- JSON settings
-vim.api.nvim_create_augroup("filetype_json", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_json",
-	pattern = { "json", "jsonc" },
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- YAML settings
-vim.api.nvim_create_augroup("filetype_yaml", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_yaml",
-	pattern = "yaml",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
-})
-
--- Fish settings
-vim.api.nvim_create_augroup("filetype_fish", { clear = true })
-vim.api.nvim_create_autocmd("FileType", {
-	group = "filetype_fish",
-	pattern = "fish",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent",
 })
 
 -- Perl settings
@@ -788,7 +679,7 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_sh",
 	pattern = "sh",
-	command = "setlocal tabstop=2 noexpandtab autoindent nospell",
+	command = "setlocal noexpandtab nospell",
 })
 
 -- Vim settings
@@ -796,7 +687,7 @@ vim.api.nvim_create_augroup("filetype_vim", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_vim",
 	pattern = "vim",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent nospell",
+	command = "setlocal nospell",
 })
 
 -- Typst settings
@@ -804,7 +695,7 @@ vim.api.nvim_create_augroup("filetype_typst", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
 	group = "filetype_typst",
 	pattern = "typst",
-	command = "setlocal tabstop=2 shiftwidth=2 expandtab autoindent spell wrap linebreak",
+	command = "setlocal spell wrap linebreak",
 })
 vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	group = "filetype_typst",
@@ -868,6 +759,13 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
+	{
+		"m00qek/baleia.nvim",
+		ft = "zellij-scrollback",
+		config = function()
+			require("zellij-scrollback").setup()
+		end,
+	},
 	"folke/which-key.nvim",
 	{
 		"lanej/hotreload.nvim",
@@ -979,11 +877,25 @@ require("lazy").setup({
 							treesitter = {
 								"lsp",
 							},
-							columns = { { "kind_icon" }, { "label", gap = 1 } },
+							columns = { { "kind_icon" }, { "label", gap = 1 }, { "sql_type" }, { "sql_description" } },
 							components = {
+								kind_icon = {
+									text = require("bigquery-completion").icon_text,
+									highlight = require("bigquery-completion").icon_highlight,
+								},
 								label = {
-									text = require("colorful-menu").blink_components_text,
-									highlight = require("colorful-menu").blink_components_highlight,
+									text = require("bigquery-completion").label_text,
+									highlight = require("bigquery-completion").label_highlight,
+								},
+								sql_type = {
+									width = { max = 32 },
+									text = require("bigquery-completion").type_text,
+									highlight = require("bigquery-completion").type_highlight,
+								},
+								sql_description = {
+									width = { max = 60 },
+									text = require("bigquery-completion").description_text,
+									highlight = "BlinkCmpLabelDescription",
 								},
 								source = {
 									text = function(ctx)
@@ -1037,7 +949,15 @@ require("lazy").setup({
 				-- Default list of enabled providers defined so that you can extend it
 				-- elsewhere in your config, without redefining it, due to `opts_extend`
 				sources = {
-					default = { "lazydev", "lsp", "dictionary", "emoji", "path", "snippets", "buffer" },
+					default = {
+						"lazydev",
+						"lsp",
+						"dictionary",
+						"emoji",
+						"path",
+						"snippets",
+						"buffer",
+					},
 					providers = {
 						lazydev = {
 							name = "LazyDev",
@@ -1220,80 +1140,9 @@ require("lazy").setup({
 					lualine_x = {
 						{ "diagnostics", sources = { "nvim_lsp" } },
 						{
-							function()
-								local clients = vim.lsp.get_clients({ bufnr = 0 })
-								if #clients == 0 then
-									return ""
-								end
-
-								local webdevicons = require("nvim-web-devicons")
-
-								-- Filter out copilot and other non-language servers
-								local ignored = {
-									["copilot"] = true,
-									["GitHub Copilot"] = true,
-									["null-ls"] = true,
-								}
-
-								-- Map LSP server names to file extensions for nvim-web-devicons
-								local lsp_to_ext = {
-									["lua_ls"] = "lua",
-									["rust_analyzer"] = "rs",
-									["gopls"] = "go",
-									["pyright"] = "py",
-									["pylsp"] = "py",
-									["ruff"] = "py",
-									["tsserver"] = "ts",
-									["ts_ls"] = "ts",
-									["vtsls"] = "ts",
-									["eslint"] = "js",
-									["yamlls"] = "yaml",
-									["bashls"] = "sh",
-									["dockerls"] = "dockerfile",
-									["docker_compose_language_service"] = "yaml",
-									["jsonls"] = "json",
-									["vimls"] = "vim",
-									["clangd"] = "c",
-									["html"] = "html",
-									["cssls"] = "css",
-									["tailwindcss"] = "css",
-									["svelte"] = "svelte",
-									["marksman"] = "md",
-									["jdtls"] = "java",
-									["kotlin_language_server"] = "kt",
-									["sourcekit"] = "swift",
-									["solargraph"] = "rb",
-									["ruby_lsp"] = "rb",
-									["intelephense"] = "php",
-									["phpactor"] = "php",
-									["vuels"] = "vue",
-									["volar"] = "vue",
-									["angularls"] = "ts",
-									["astro"] = "astro",
-									["graphql"] = "graphql",
-									["prismals"] = "prisma",
-									["terraformls"] = "tf",
-								}
-
-								local result = {}
-								for _, client in ipairs(clients) do
-									if not ignored[client.name] then
-										local ext = lsp_to_ext[client.name]
-										if ext then
-											local icon, hl_group =
-												webdevicons.get_icon("file." .. ext, ext, { default = true })
-											if icon and hl_group then
-												-- Use the highlight group from nvim-web-devicons directly
-												table.insert(result, string.format("%%#%s#%s%%*", hl_group, icon))
-											elseif icon then
-												table.insert(result, icon)
-											end
-										end
-									end
-								end
-
-								return table.concat(result, " ")
-							end,
+							require("lsp-status"),
+							icon = "",
+							ignore_lsp = { "copilot", "GitHub Copilot", "null-ls" },
 						},
 					},
 					lualine_y = {},
@@ -1342,6 +1191,22 @@ require("lazy").setup({
 		config = function()
 			require("noice").setup({
 				routes = {
+					{
+						filter = {
+							event = "lsp",
+							kind = "hover",
+							cond = function(message)
+								return message.opts.markdown_table == true
+							end,
+						},
+						view = "hover",
+						opts = {
+							replace = true,
+							render = "plain",
+							format = { "{message}" },
+							win_options = { conceallevel = 0, wrap = false, linebreak = false },
+						},
+					},
 					-- filter write messages "xxxL, xxxB"
 					{ filter = { event = "msg_show", find = "%dL" }, opts = { skip = true } },
 					-- filter yank messages
@@ -1358,6 +1223,13 @@ require("lazy").setup({
 					},
 				},
 				popupmenu = { enabled = false },
+				markdown = {
+					highlights = {
+						["^Table:%s+.+$"] = "@module",
+						["^(Table info)$"] = "@markup.heading",
+						["^(Storage info)$"] = "@markup.heading",
+					},
+				},
 				-- cmdline = {
 				-- 	format = {
 				-- 		conceal = false,
@@ -1388,6 +1260,7 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("markdown-tables").setup_hover()
 		end,
 		dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify", "neovim/nvim-lspconfig" },
 	},
@@ -1430,8 +1303,10 @@ require("lazy").setup({
 					-- "csharp_ls",
 					"ts_ls",
 					"gopls",
+					"bqls",
 					-- "ruby_lsp",
 					"jsonls",
+					"taplo",
 					"pylsp",
 					"html",
 					"yamlls",
@@ -1472,12 +1347,12 @@ require("lazy").setup({
 					timeout = 2000, -- timeout for clearing the highlight
 				},
 				tmux = {
-					enabled = true,
+					enabled = not zellij_clipboard,
 					cmd = { "tmux", "set-buffer", "-w" },
 				},
-				clipboard = { enabled = true },
+				clipboard = { enabled = not zellij_clipboard },
 				osc52 = {
-					enabled = true,
+					enabled = not zellij_clipboard,
 					ssh_only = true, -- OSC52 yank also in local sessions
 					silent = true, -- false to disable the "n chars copied" echo
 				},
@@ -1495,18 +1370,7 @@ require("lazy").setup({
 	{
 		"numToStr/Navigator.nvim",
 		config = function()
-			require("Navigator").setup({
-				-- Auto-detect multiplexer (WezTerm, tmux, etc.)
-				auto_save = "current",
-				disable_on_zoom = false, -- Set to false since mux integration is enabled
-			})
-
-			-- Keymaps matching previous tmux-navigator setup
-			-- Use <Cmd> to execute commands without changing modes
-			vim.keymap.set({ "i", "n" }, "<C-h>", "<Cmd>NavigatorLeft<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-j>", "<Cmd>NavigatorDown<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-k>", "<Cmd>NavigatorUp<cr>", { noremap = true, silent = true })
-			vim.keymap.set({ "i", "n" }, "<C-l>", "<Cmd>NavigatorRight<cr>", { noremap = true, silent = true })
+			require("pane-navigation").setup()
 		end,
 	},
 	{
@@ -1597,17 +1461,11 @@ require("lazy").setup({
 	"tpope/vim-repeat",
 	{ "norcalli/nvim-colorizer.lua", dependencies = "nvim-treesitter/nvim-treesitter" },
 	{
-		"JMarkin/gentags.lua",
-		cond = vim.fn.executable("ctags") == 1,
-		dependencies = { "nvim-lua/plenary.nvim" },
-		config = function()
-			local ctags_bin = "/opt/homebrew/bin/ctags"
-			if vim.fn.executable(ctags_bin) == 0 then
-				ctags_bin = "ctags"
-			end
-			require("gentags").setup({ bin = ctags_bin })
+		"ludovicchabant/vim-gutentags",
+		init = function()
+			require("tag-index").setup()
 		end,
-		event = "VeryLazy",
+		event = { "BufReadPost", "BufNewFile" },
 	},
 	{
 		"vim-test/vim-test",
@@ -1696,13 +1554,7 @@ require("lazy").setup({
 	{
 		"folke/todo-comments.nvim",
 		config = function()
-			require("todo-comments").setup({
-				keywords = {
-					WTF = { icon = "🤨", color = "warning", alt = { "DAFUQ", "GAH" } },
-					SEE = { icon = "👀", color = "info", alt = { "REF" } },
-					TODO = { icon = "🫥", color = "info", alt = { "FIXME" } },
-				},
-			})
+			require("annotations").setup()
 		end,
 	},
 	{
@@ -1759,16 +1611,11 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"selimacerbas/markdown-preview.nvim",
-		dependencies = { "selimacerbas/live-server.nvim" },
-		lazy = true, -- Recommended
-		enabled = true,
-		ft = "markdown", -- If you decide to lazy-load anyway
-		config = function()
-			require("markdown_preview").setup({
-				mermaid_renderer = "mmdc",
-			})
-		end,
+		"selimacerbas/mdkite.nvim",
+		dependencies = { "selimacerbas/kitehost.nvim" },
+		ft = "markdown",
+		cmd = "MdKite",
+		opts = {},
 	},
 	{
 		"pwntester/octo.nvim",
@@ -1777,10 +1624,20 @@ require("lazy").setup({
 			"ibhagwan/fzf-lua",
 			"nvim-tree/nvim-web-devicons",
 		},
-		cmd = "Octo",
+		cmd = { "Octo", "PRReviews", "PRReviewsAll", "PRReviewCheckout", "PRReviewCleanup" },
+		keys = {
+			{
+				"<leader>gR",
+				function()
+					require("pr-reviews").pick()
+				end,
+				desc = "PR review requests",
+			},
+		},
 		config = function()
 			require("octo").setup({
 				picker = "fzf-lua",
+				mappings = require("pr-reviews").octo_mappings,
 				picker_config = {
 					use_emojis = false,
 					mappings = {
@@ -1788,6 +1645,7 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("pr-reviews").setup()
 		end,
 	},
 	{
@@ -1822,10 +1680,16 @@ require("lazy").setup({
 		"stevearc/conform.nvim",
 		config = function()
 			require("conform").setup({
+				format_on_save = function(buf)
+					local ft = vim.bo[buf].filetype
+					if ft == "sql" or ft == "sql.bigquery" then
+						return { timeout_ms = 5000, lsp_format = "never" }
+					end
+				end,
 				formatters_by_ft = {
 					lua = { "stylua" },
 					-- Conform will run multiple formatters sequentially
-					python = { "isort", "black" },
+					python = { "isort", "black", timeout_ms = 5000 },
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
@@ -1846,11 +1710,29 @@ require("lazy").setup({
 					typescript = { "prettierd", "prettier", stop_after_first = true },
 					typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 					sql = { "sql_formatter" },
+					["sql.bigquery"] = { "bigquery_sql", timeout_ms = 5000 },
 				},
 				log_level = vim.log.levels.DEBUG,
 				formatters = {
+					bigquery_sql = {
+						command = "sql-format-bigquery",
+						stdin = true,
+						args = function(_, ctx)
+							local settings, warning = require("bigquery").project_formatter_config(ctx.buf)
+							if warning then
+								error(warning)
+							end
+							return { "--config", vim.json.encode(settings), "--stdin-filename", "$FILENAME" }
+						end,
+					},
 					sql_formatter = {
-						args = { "--config", vim.fn.expand("~/.sql-formatter.json") },
+						args = function(_, ctx)
+							local settings, _, warning = require("bigquery").formatter_config(ctx.buf)
+							if warning then
+								error(warning)
+							end
+							return { "--config", vim.json.encode(settings) }
+						end,
 					},
 					rubocop = {
 						command = "rubocop",
@@ -2033,25 +1915,12 @@ require("lazy").setup({
 		end,
 	},
 	{
-		"3rd/image.nvim",
-		build = false,
-		-- Disable in tmux due to known issues with allow-passthrough and session switching
-		-- See: https://github.com/3rd/image.nvim/issues/145
-		-- Images may appear on wrong tmux session when switching sessions
-		cond = function()
-			return vim.env.TMUX == nil
-		end,
+		"folke/snacks.nvim",
+		priority = 1000,
+		lazy = false,
 		opts = {
-			processor = "magick_cli",
-			integrations = {
-				markdown = {
-					enabled = true,
-					download_remote_images = true,
-					filetypes = { "markdown" },
-				},
-			},
+			image = { enabled = true },
 		},
-		ft = { "markdown" },
 	},
 	{
 		"brenoprata10/nvim-highlight-colors",
@@ -2087,7 +1956,6 @@ require("lazy").setup({
 	},
 	{
 		"lanej/focus.nvim",
-		branch = "feature/width-min-columns",
 		config = function()
 			require("focus").setup({
 				autoresize = {
@@ -2129,14 +1997,13 @@ require("lazy").setup({
 			require("duckdb-picker")
 		end,
 	},
+}, {
+	-- Bootstrap installs pinned plugins without rewriting the checked-in lockfile.
+	lockfile = vim.env.DOTFILES_NVIM_BOOTSTRAP_LOCK,
 })
 
 vim.keymap.set("n", "<leader>vpu", ":Lazy update<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpi", ":Lazy home<CR>", { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>vpc", ":Lazy clean<CR>", { silent = true, noremap = true })
-
--- Load Phabricator LSP configuration
-require("phab-lsp")
-require("pkm-lsp")
 
 vim.cmd([[set secure]])

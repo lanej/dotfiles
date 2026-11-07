@@ -1,0 +1,39 @@
+// The shared live scratch session starts with one shell and no nested UI bars.
+default_mode "locked"
+on_force_close "detach"
+auto_layout false
+pane_frames false
+mouse_mode true
+show_startup_tips false
+show_release_notes false
+scroll_buffer_size 10000
+// Hiding preserves the running server. Exiting the last shell ends the scratch
+// session; do not present a later command relaunch as its original process.
+session_serialization false
+
+keybinds clear-defaults=true {
+    locked {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    normal {
+        bind "Ctrl f" { SwitchToMode "Tmux"; }
+    }
+    tmux {
+        // Split the guest session's tiled panes, not its host floating view.
+        bind "s" "\"" { NewPane "Down"; SwitchToMode "Locked"; }
+        bind "v" "%" { NewPane "Right"; SwitchToMode "Locked"; }
+        bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
+        bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
+        bind "k" "Up" { MoveFocus "Up"; SwitchToMode "Locked"; }
+        bind "l" "Right" { MoveFocus "Right"; SwitchToMode "Locked"; }
+        bind "Tab" "o" { FocusNextPane; SwitchToMode "Locked"; }
+        bind ";" { FocusLastPane; SwitchToMode "Locked"; }
+        bind "x" { CloseFocus; SwitchToMode "Locked"; }
+        bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
+        bind "P" "d" { SwitchToMode "Locked"; Detach; }
+        bind "f" { Write 6; SwitchToMode "Locked"; }
+        bind "u" { SwitchToMode "Locked"; FocusHostSession; }
+        bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
+        bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+}

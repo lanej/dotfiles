@@ -1,3 +1,12 @@
+-- Remove this override when upstream migrates its internal validator.
+local validation = require("devcontainer.internal.validation")
+function validation.validate_deep(obj, name, mapping)
+	for key, validator in vim.spairs(mapping) do
+		-- Type validators allow nil; predicates must decide whether nil is valid.
+		vim.validate(name .. "." .. key, obj[key], validator, type(validator) ~= "function")
+	end
+end
+
 require("devcontainer").setup({
 	-- -- config_search_start = function()
 	-- --   -- By default this function uses vim.loop.cwd()

@@ -287,9 +287,6 @@ _zsh_highlight_main_highlighter_highlight_single_quote	zsh/zsh-syntax-highlighti
 _zsh_highlight_pattern_highlighter_loop	zsh/zsh-syntax-highlighting/highlighters/pattern/pattern-highlighter.zsh	/^_zsh_highlight_pattern_highlighter_loop()$/;"	f
 _zsh_highlight_preexec_hook	zsh/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh	/^_zsh_highlight_preexec_hook()$/;"	f
 _zsh_highlight_regexp_highlighter_loop	zsh/zsh-syntax-highlighting/highlighters/regexp/regexp-highlighter.zsh	/^_zsh_highlight_regexp_highlighter_loop()$/;"	f
-alacritty	qute/config.py	/^    alacritty = "\/Applications\/Alacritty.app\/Contents\/MacOS\/alacritty"$/;"	v
-alacritty	qute/config.py	/^    alacritty = check_output(['command -v alacritty'],$/;"	v
-alacritty	qute/config.py	/^alacritty = "alacritty"$/;"	v
 alias1	zsh/zsh-syntax-highlighting/highlighters/main/test-data/alias.zsh	/^function alias1() {} # to check that it's highlighted as an alias, not as a function$/;"	f
 arg0	zsh/zsh-syntax-highlighting/highlighters/main/main-highlighter.zsh	/^      function arg0$/;"	f
 argv	bin/diff-so-fancy	/^sub argv {$/;"	s
@@ -303,7 +300,6 @@ callback 	nvim/init.lua	/^	callback = function()$/;"	f
 cd	zsh/zsh-syntax-highlighting/highlighters/main/test-data/function.zsh	/^cd() {$/;"	f
 char_count	bin/diff-so-fancy	/^sub char_count {$/;"	s
 check_first_run	bin/diff-so-fancy	/^sub check_first_run {$/;"	s
-check_output	qute/config.py	/^from subprocess import check_output$/;"	i
 cleanup	zsh/zsh-github-copilot.plugin.zsh	/^    cleanup() {$/;"	f
 color	bin/diff-so-fancy	/^sub color {$/;"	s
 color_config	bin/diff-highlight	/^sub color_config {$/;"	s
@@ -324,25 +320,6 @@ evp	nvim/min.vim	/^nnoremap evp :e  ~\/.config\/nvim\/lua\/plugins.lua<CR>$/;"	m
 evr	nvim/min.vim	/^nnoremap evr :source  $MYVIMRC<CR>$/;"	m
 evr	vim/init.vim	/^nnoremap evr :source  $MYVIMRC<CR>$/;"	m
 explicit_current_semver	bootstrap.sh	/^explicit_current_semver() {$/;"	f
-exports.activate	oni/config.js	/^exports.activate = function (oni) {$/;"	f
-exports.configuration.autoClosingPairs.enabled	oni/config.js	/^    "autoClosingPairs.enabled": false,$/;"	p
-exports.configuration.editor.fontFamily	oni/config.js	/^    "editor.fontFamily": "Hack Nerd Font",$/;"	p
-exports.configuration.editor.fontSize	oni/config.js	/^    "editor.fontSize": "13px",$/;"	p
-exports.configuration.editor.scrollBar.visible	oni/config.js	/^    "editor.scrollBar.visible": false,$/;"	p
-exports.configuration.environment.additionalPaths	oni/config.js	/^    "environment.additionalPaths": [$/;"	p
-exports.configuration.oni.hideMenu	oni/config.js	/^    "oni.hideMenu": true,$/;"	p
-exports.configuration.oni.loadInitVim	oni/config.js	/^    "oni.loadInitVim": true,$/;"	p
-exports.configuration.oni.useDefaultConfig	oni/config.js	/^    "oni.useDefaultConfig": false,$/;"	p
-exports.configuration.sidebar.enabled	oni/config.js	/^    "sidebar.enabled": false,$/;"	p
-exports.configuration.statusbar.enabled	oni/config.js	/^    "statusbar.enabled": false,$/;"	p
-exports.configuration.tabs.mode	oni/config.js	/^    "tabs.mode": "native",$/;"	p
-exports.configuration.terminal.shellCommand	oni/config.js	/^    "terminal.shellCommand": "\/bin\/zsh",$/;"	p
-exports.configuration.ui.animations.enabled	oni/config.js	/^    "ui.animations.enabled": true,$/;"	p
-exports.configuration.ui.colorscheme	oni/config.js	/^    "ui.colorscheme": "tender",$/;"	p
-exports.configuration.ui.fontFamily	oni/config.js	/^    "ui.fontFamily": "Hack Nerd Font",$/;"	p
-exports.configuration.ui.fontSize	oni/config.js	/^    "ui.fontSize": "13px",$/;"	p
-exports.configuration.ui.fontSmoothing	oni/config.js	/^    "ui.fontSmoothing": "auto",$/;"	p
-exports.deactivate	oni/config.js	/^exports.deactivate = function (oni) {$/;"	f
 f	zsh/zsh-syntax-highlighting/highlighters/main/test-data/off-by-one.zsh	/^f() {}$/;"	f
 fak	nvim/min.vim	/^nnoremap fak :%bd!<bar>e#<CR>$/;"	m
 fak	vim/init.vim	/^nnoremap fak :%bd!<bar>e#<CR>$/;"	m
@@ -350,8 +327,6 @@ fbk	nvim/min.vim	/^nnoremap fbk :bd!<CR>$/;"	m
 fbk	vim/init.vim	/^nnoremap fbk :bd!<CR>$/;"	m
 fd_package_semver	bootstrap.sh	/^fd_package_semver() {$/;"	f
 file_change_string	bin/diff-so-fancy	/^sub file_change_string {$/;"	s
-filetype_fish	nvim/min.vim	/^  augroup filetype_fish$/;"	a
-filetype_fish	vim/init.vim	/^  augroup filetype_fish$/;"	a
 filetype_gitcommit	nvim/min.vim	/^  augroup filetype_gitcommit$/;"	a
 filetype_gitcommit	vim/init.vim	/^  augroup filetype_gitcommit$/;"	a
 filetype_go	nvim/min.vim	/^  augroup filetype_go$/;"	a
@@ -479,9 +454,6 @@ mapleader	nvim/min.vim	/^let mapleader = ','$/;"	v
 mapleader	vim/init.vim	/^let mapleader = ','$/;"	v
 mark_empty_line	bin/diff-so-fancy	/^sub mark_empty_line {$/;"	s
 my_git_formatter	zsh/p10k.zsh	/^  function my_git_formatter() {$/;"	f
-neovim	qute/config.py	/^    neovim = "\/usr\/local\/bin\/nvim"$/;"	v
-neovim	qute/config.py	/^    neovim = check_output(['command -v nvim'],$/;"	v
-neovim	qute/config.py	/^neovim = "nvim"$/;"	v
 neovim_current_semver	bootstrap.sh	/^neovim_current_semver() {$/;"	f
 on_highlights 	nvim/init.lua	/^				on_highlights = function(highlights, colors)$/;"	f
 output	share/z.sh	/^            function output(matches, best_match, common) {$/;"	f
@@ -489,7 +461,6 @@ package_manager_semver	bootstrap.sh	/^package_manager_semver() {$/;"	f
 package_semver	bootstrap.sh	/^package_semver() {$/;"	f
 parse_hunk_header	bin/diff-so-fancy	/^sub parse_hunk_header {$/;"	s
 parse_semver	bootstrap.sh	/^parse_semver() {$/;"	f
-platform	qute/config.py	/^from sys import platform$/;"	i
 prequire	nvim/init.lua	/^local function prequire(m)$/;"	f
 prompt_example	zsh/p10k.zsh	/^  function prompt_example() {$/;"	f
 provider 	nvim/lua/statusline.lua	/^      provider = function() return ' Neovim ' end,$/;"	f
@@ -510,8 +481,6 @@ s:wipebuf	vim/session/%Users%joshlane%.files_master.vim	/^  let s:wipebuf = bufn
 semver_ge	bootstrap.sh	/^semver_ge() {$/;"	f
 setBackgroundColor	24-bit-color.sh	/^setBackgroundColor()$/;"	f
 set_defaults	bin/diff-so-fancy	/^sub set_defaults {$/;"	s
-shell	qute/config.py	/^                          shell=True).decode('ascii').strip()$/;"	v
-shell	qute/config.py	/^                         shell=True).decode('ascii').strip()$/;"	v
 should_print_unicode	bin/diff-so-fancy	/^sub should_print_unicode {$/;"	s
 show_hunk	bin/diff-highlight	/^sub show_hunk {$/;"	s
 show_hunk	bin/diff-so-fancy	/^  sub show_hunk {$/;"	s

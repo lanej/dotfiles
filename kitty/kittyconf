@@ -3,6 +3,9 @@ font_size 13
 disable_ligatures never
 hide_window_decorations yes
 map cmd+shift+r load_config_file ~/.config/kitty/kitty.conf
+background_opacity 0.97
+# Open the last web link, including links wrapped inside Codex's padded output.
+map cmd+shift+o kitten open_last_url.py
 map cmd+n new_tab
 map cmd+t new_tab_with_cwd
 map cmd+p previous_tab
@@ -10,6 +13,7 @@ map cmd+1 goto_tab 1
 map cmd+2 goto_tab 2
 map cmd+3 goto_tab 3
 map cmd+4 goto_tab 4
+map cmd+5 goto_tab 5
 map cmd+r set_tab_title
 # Access function-key actions in Codex and other terminal apps without Fn keys.
 # Kitty handles Option as Alt for these mappings on macOS, including through tmux.
@@ -36,6 +40,8 @@ confirm_os_window_close 1
 tab_bar_edge top
 tab_bar_style powerline
 tab_powerline_style slanted
+# WHY: Keep Zellij session names stable as the focused pane changes.
+tab_title_template "{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title.split(' | ', 1)[0] if tab.active_exe == 'zellij' else title}"
 active_tab_foreground   #000
 active_tab_background   #eee
 active_tab_font_style   bold
@@ -44,8 +50,10 @@ inactive_tab_background #999
 inactive_tab_font_style normal
 # tab_separator " ┇"
 map opt+cmd+s toggle_macos_secure_keyboard_entry 🍎
-map cmd+q close_window
-map cmd+w kitten close_tab_with_confirmation.py
+map cmd+q close_window_with_confirmation
+map cmd+shift+d close_window_with_confirmation
+map ctrl+shift+w close_window_with_confirmation
+map cmd+w close_tab
 cursor_shape block
 cursor_blink_interval      0.5
 cursor_stop_blinking_after 5.0

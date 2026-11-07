@@ -221,7 +221,6 @@ if has('autocmd')
 
   augroup filetype_markdown
     au!
-    au BufNewFile,BufNewFile,BufRead qutebrowser-editor* set filetype=markdown
     au FileType markdown set tabstop=2|set shiftwidth=2|set expandtab|set autoindent|set spell|set conceallevel=0|set wrap
   augroup END
 
@@ -299,10 +298,6 @@ if has('autocmd')
 
   augroup filetype_yaml
     autocmd FileType yaml set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
-  augroup END
-
-  augroup filetype_fish
-    autocmd FileType fish set tabstop=2|set shiftwidth=2|set expandtab|set autoindent
   augroup END
 
   augroup filetype_perl

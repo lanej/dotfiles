@@ -1,4 +1,5 @@
 -- Language server defaults, overrides, and activation.
+local bqls = vim.fn.expand("~/.local/bin/bqls")
 return {
 	"neovim/nvim-lspconfig",
 	dependencies = {
@@ -99,7 +100,19 @@ return {
 					functionTypeParameters = true,
 				},
 			},
-			ruby_lsp = {},
+			ruby_lsp = {
+				cmd = { "bundle", "exec", "ruby-lsp" },
+			},
+			bqls = {
+				-- Prefer the patched fork; use Mason on hosts without it.
+				cmd = { vim.fn.executable(bqls) == 1 and bqls or "bqls" },
+				filetypes = { "sql.bigquery" },
+				on_init = function(client)
+					-- Keep the compact SQLFluff layout for all formatting entrypoints.
+					client.server_capabilities.documentFormattingProvider = false
+					client.server_capabilities.documentRangeFormattingProvider = false
+				end,
+			},
 			jsonls = {
 				settings = {
 					json = {
@@ -110,6 +123,7 @@ return {
 					validate = { enable = true },
 				},
 			},
+			taplo = require("dotfiles-config-lsp"),
 			-- marksman = {},
 			-- 				pkm_lsp = {
 			-- 					cmd = { "pkm", "lsp" },
@@ -173,6 +187,10 @@ return {
 			-- `opts[server].capabilities, if you've defined it
 			config.capabilities = require("blink.cmp").get_lsp_capabilities(config.capabilities)
 			vim.lsp.config(server, config)
+			local cmd = vim.lsp.config[server].cmd
+			if cmd then
+				vim.lsp.config(server, { cmd = require("lsp-status-state").wrap_cmd(cmd) })
+			end
 
 			-- Skip auto-enabling markdown LSPs - our autocmd handles them conditionally
 			if server ~= "marksman" then

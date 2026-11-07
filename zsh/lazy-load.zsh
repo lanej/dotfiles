@@ -7,11 +7,18 @@
 # (regenerate at most once per 24h) so a tool upgrade is picked up without
 # needing a version-string subprocess check on every shell.
 _cache_shell_init() {
-	local cache_file=$1
+	local cache_file=$1 temporary
 	shift
+	command -v "$1" >/dev/null 2>&1 || return 1
 	if [[ ! -r "$cache_file" ]] || [[ -n ${cache_file}(#qN.mh+24) ]]; then
-		mkdir -p "${cache_file:h}"
-		"$@" >| "$cache_file" 2>/dev/null
+		mkdir -p "${cache_file:h}" 2>/dev/null || return 1
+		temporary=$(mktemp "${cache_file}.XXXXXX" 2>/dev/null) || return 1
+		if "$@" >| "$temporary" 2>/dev/null && [[ -s $temporary ]]; then
+			mv -f "$temporary" "$cache_file" 2>/dev/null || { rm -f "$temporary"; return 1; }
+		else
+			rm -f "$temporary"
+			return 1
+		fi
 	fi
 	source "$cache_file"
 }
@@ -44,23 +51,19 @@ bq() {
     bq "$@"
 }
 
-# Lazy load direnv (only when entering directory with .envrc)
+# Detect legacy applications before evaluating direnv, including after initialization.
 if command -v direnv >/dev/null; then
-    _direnv_lazy_load() {
-        # .env is unrelated to direnv (it's the plain secrets file .profile
-        # sources directly); it lives in $HOME, so matching it here fired
-        # this hook on every single shell start regardless of directory.
-        if [[ -f .envrc ]]; then
-            eval "$(direnv hook zsh)"
-            add-zsh-hook -d chpwd _direnv_lazy_load
-            _direnv_hook
+    eval "$(direnv hook zsh)"
+fi
+if command -v direnv >/dev/null && command -v withenv >/dev/null; then
+    _ep_direnv_enter() {
+        if command -v ep-direnv >/dev/null; then
+            ep-direnv ensure "$PWD" || return
         fi
+        _direnv_hook
     }
-    
-    # Check on directory change
     autoload -U add-zsh-hook
-    add-zsh-hook chpwd _direnv_lazy_load
-    
-    # Check current directory on startup (async)
-    _direnv_lazy_load &!
+    add-zsh-hook -d chpwd _direnv_hook
+    add-zsh-hook chpwd _ep_direnv_enter
+    _ep_direnv_enter
 fi

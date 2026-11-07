@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Enable Triggers</key>
+	<true/>
+	<key>Trigger Data</key>
+	<array>
+		<dict>
+			<key>ActivateOnAC</key>
+			<string>0</string>
+			<key>ActivateOnNoAC</key>
+			<string>0</string>
+			<key>AllowDisplaySleep</key>
+			<true/>
+			<key>AllowSysSleepOnClsdDisp</key>
+			<false/>
+			<key>AndOr</key>
+			<string>0</string>
+			<key>BatteryThreshold</key>
+			<string>50.000000</string>
+			<key>DisplayCount</key>
+			<string>0</string>
+			<key>DisplaysOperator</key>
+			<string>0</string>
+			<key>Enabled</key>
+			<true/>
+			<key>IgnoreBuiltIn</key>
+			<true/>
+			<key>Name</key>
+			<string>Plugged In</string>
+			<key>RequireAC</key>
+			<string>1</string>
+			<key>RequireNoAC</key>
+			<string>0</string>
+			<key>TypeIDs</key>
+			<array>
+				<string>6</string>
+				<string>8</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

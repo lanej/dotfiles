@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Launch fresh worktree requests through the shared lease adapter.
+launcher_dir=$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parent)' "${BASH_SOURCE[0]}") || exit
+exec python3 "$launcher_dir/agent-treehouse" codex "$@"

@@ -1,0 +1,106 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["tomlkit>=0.13,<1"]
+# ///
+"""Install Codex approval defaults and explicitly selected integration policies."""
+import argparse
+import copy
+import os
+from pathlib import Path
+import sys
+import tempfile
+import tomllib
+
+import tomlkit
+
+
+DEFAULTS = {
+    "approval_policy": "on-request",
+    "approvals_reviewer": "auto_review",
+    "sandbox_mode": "workspace-write",
+}
+GITHUB_APP = "connector_76869538009648d5b282a4bb21c3d157"
+GITHUB_PLUGINS = ("github@openai-curated", "github@openai-curated-remote")
+DISABLED_APPS = {
+    "gmail": "connector_2128aebfecb84f64a069897515042a44",
+    "google-calendar": "connector_947e0d954944416db111db556030eea6",
+    "google-drive": "connector_5f3c8c41a1e54ad7a76272c89e2554fa",
+    "slack": "asdk_app_69a1d78e929881919bba0dbda1f6436d",
+    "plugin-management": "connector_openai_plugin_management",
+    "openai-platform": "connector_2de447f3f15448ebab48783d7e4f5d81",
+}
+DISABLED_PLUGINS = (
+    "gmail@openai-curated-remote",
+    "google-calendar@openai-curated",
+    "google-calendar@openai-curated-remote",
+    "google-drive@openai-curated",
+    "google-drive@openai-curated-remote",
+    "slack@openai-curated",
+    "browser@openai-bundled",
+    "plugin-management@openai-curated-remote",
+    "openai-developers@openai-curated-remote",
+)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--github-enabled", choices=("true", "false"), required=True)
+    parser.add_argument("--easypost", choices=("true", "false"), required=True)
+    args = parser.parse_args()
+    github_enabled = args.github_enabled == "true"
+    root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
+    path = root / "config.toml"
+    if path.is_symlink():
+        path = path.resolve(strict=True)
+    original = path.read_text() if path.exists() else ""
+    config = tomllib.loads(original)
+    expected = copy.deepcopy(config)
+    expected.update(DEFAULTS)
+    app_access = {GITHUB_APP: github_enabled}
+    plugin_access = dict.fromkeys(GITHUB_PLUGINS, github_enabled)
+    if args.easypost == "true":
+        app_access.update(dict.fromkeys(DISABLED_APPS.values(), False))
+        plugin_access.update(dict.fromkeys(DISABLED_PLUGINS, False))
+    for app, enabled in app_access.items():
+        expected.setdefault("apps", {}).setdefault(app, {})["enabled"] = enabled
+    for plugin, enabled in plugin_access.items():
+        expected.setdefault("plugins", {}).setdefault(plugin, {})["enabled"] = enabled
+    if config == expected:
+        return
+
+    document = tomlkit.parse(original)
+    document.update(DEFAULTS)
+    apps = document.setdefault("apps", tomlkit.table())
+    for app, enabled in app_access.items():
+        apps.setdefault(app, tomlkit.table())["enabled"] = enabled
+    plugins = document.setdefault("plugins", tomlkit.table())
+    for plugin, enabled in plugin_access.items():
+        plugins.setdefault(plugin, tomlkit.table())["enabled"] = enabled
+    updated = tomlkit.dumps(document)
+    if tomllib.loads(updated) != expected:
+        raise ValueError("could not preserve unrelated Codex configuration")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=".permissions-", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(updated)
+        temporary.chmod(mode)
+        if (path.read_text() if path.exists() else "") != original:
+            raise ValueError("Codex configuration changed during installation")
+        temporary.replace(path)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError) as error:
+        print(f"sync-codex-permissions: {error}", file=sys.stderr)
+        sys.exit(1)

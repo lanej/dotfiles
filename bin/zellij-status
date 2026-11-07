@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Supply host metadata for the native Zellij attention bar."""
+
+import json
+from pathlib import Path
+import re
+import runpy
+import socket
+import subprocess
+import sys
+import time
+
+
+def battery():
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(["pmset", "-g", "batt"], capture_output=True,
+                                    text=True, timeout=2, check=True)
+            match = re.search(r"[0-9]+%", result.stdout)
+            return match.group(0) if match else ""
+        except (OSError, subprocess.SubprocessError):
+            return ""
+    for path in Path("/sys/class/power_supply").glob("BAT*/capacity"):
+        try:
+            return f"{int(path.read_text().strip())}%"
+        except (OSError, ValueError):
+            continue
+    return ""
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (2, 3) or sys.argv[1] != "view":
+        sys.exit("Usage: zellij-status view [session]")
+    ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+    titles = ownership["owned_titles"](sys.argv[2]) if len(sys.argv) == 3 else {}
+    print(json.dumps({"session": sys.argv[2] if len(sys.argv) == 3 else None, "auto_titles": titles, "host": socket.gethostname().split(".")[0],
+                      "clock": time.strftime("%H:%M"), "battery": battery()}))

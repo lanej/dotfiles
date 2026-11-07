@@ -1,0 +1,13 @@
+{
+  "language": "bigquery",
+  "tabWidth": 2,
+  "useTabs": false,
+  "keywordCase": "upper",
+  "functionCase": "upper",
+  "dataTypeCase": "upper",
+  "expressionWidth": 80,
+  "logicalOperatorNewline": "before",
+  "denseOperators": false,
+  "newlineBeforeSemicolon": false,
+  "linesBetweenQueries": 1
+}

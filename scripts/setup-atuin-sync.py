@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure a Mac client and a Linux Atuin server reached through SSH."""
+"""Configure shared Atuin history on a Mac and its Linux sync server."""
 import argparse
 import base64
 from contextlib import closing
@@ -71,6 +71,7 @@ def backup(names=("history.db", "records.db", "shared-records.db", "meta.db")):
     for name in ("key", "shared-key", "session", ACCOUNT_FILE):
         if (source / name).exists():
             shutil.copy2(str(source / name), str(destination / name))
+    return destination
 
 
 def install(program, version, bootstrap):
@@ -94,10 +95,20 @@ def install(program, version, bootstrap):
     return str(Path.home() / ".local/bin/atuin-server")
 
 
-def configure_client(root, key, config_seed):
+def configure_client(root, key, config_seed, enroll=False, atuin=None):
     shared_key = data_dir() / "shared-key"
     if shared_key.exists() and shared_key.read_bytes() != key:
-        raise RuntimeError("The existing shared key differs; refusing to replace it or its history store.")
+        if not enroll or (data_dir() / ACCOUNT_FILE).exists():
+            raise RuntimeError("The existing shared key differs; refusing to replace it or its history store.")
+        # Shell startup may create a key/store before a fresh host is enrolled.
+        # Archive that store intact; rebuild shared records from plaintext history.
+        verify(atuin, env=dict(os.environ, ATUIN_KEY_PATH=str(shared_key),
+                              ATUIN_RECORD_STORE_PATH=str(data_dir() / "shared-records.db")))
+        saved = backup()
+        for name in ("shared-key", "shared-records.db", "shared-records.db-wal", "shared-records.db-shm"):
+            path = data_dir() / name
+            if path.exists():
+                path.rename(saved / ("original-" + name))
     fresh_store = not (data_dir() / "shared-records.db").exists()
     if not shared_key.exists() and not fresh_store:
         raise RuntimeError("A shared record store exists without its key; restore the key before setup.")
@@ -131,8 +142,8 @@ def configure_client(root, key, config_seed):
     link.symlink_to(config)
 
 
-def verify(atuin):
-    if "Local store encryption verified OK" not in call([atuin, "store", "verify"]).stdout:
+def verify(atuin, env=None):
+    if "Local store encryption verified OK" not in call([atuin, "store", "verify"], env=env).stdout:
         raise RuntimeError("Atuin did not confirm that the history store decrypts.")
 
 
@@ -175,7 +186,8 @@ def server(request):
         return {"ready": True}
     atuin = install("atuin", request["version"], root / "bootstrap.sh")
     install("atuin-server", request["version"], root / "bootstrap.sh")
-    configure_client(root, base64.b64decode(request["key"]), request["config"])
+    configure_client(root, base64.b64decode(request["key"]), request["config"],
+                     enroll=request.get("enroll", False), atuin=atuin)
     directory = Path.home() / ".local/share/atuin-server"
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(str(directory), 0o700)
@@ -209,11 +221,12 @@ def server(request):
     verify(atuin)
     call([atuin, "sync"], env=env)
     if "Linger=yes" not in call(["loginctl", "show-user", os.environ["USER"], "-p", "Linger"]).stdout:
-        call(["loginctl", "enable-linger", os.environ["USER"]])
+        if call(["loginctl", "enable-linger", os.environ["USER"]], allow_failure=True).returncode:
+            call(["sudo", "-n", "loginctl", "enable-linger", os.environ["USER"]])
     return {"ready": True}
 
 
-def tunnel(root, host):
+def connection_settings(host):
     settings = {}
     identities = []
     for line in call(["ssh", "-G", host]).stdout.splitlines():
@@ -221,6 +234,63 @@ def tunnel(root, host):
         settings[name] = value
         if name == "identityfile":
             identities.append(value)
+    return settings, identities
+
+
+def jump_settings(settings):
+    if settings.get("proxycommand", "none") != "none":
+        raise RuntimeError("Unattended Atuin SSH requires ProxyJump instead of a custom ProxyCommand.")
+    jumps = settings.get("proxyjump", "none")
+    if jumps == "none":
+        return None
+    hops = jumps.split(",")
+    original = ["ssh", "-G"]
+    if len(hops) > 1:
+        original += ["-J", ",".join(hops[:-1])]
+    original += [hops[-1]]
+    hop_settings = dict(line.split(" ", 1) for line in call(original).stdout.splitlines())
+    control = hop_settings.get("controlpath", "none")
+    if control == "none":
+        control = str(Path.home() / ".local/state/atuin-sync/jump-control")
+    return hops, control
+
+
+def prepare_jump(settings):
+    jump = jump_settings(settings)
+    if not jump:
+        return
+    hops, control = jump
+    # A foreground setup may authenticate once. The generated background proxy
+    # only reuses this master and cannot fall back to a new Duo connection.
+    if not call(["ssh", "-S", control, "-O", "check", hops[-1]], allow_failure=True).returncode:
+        return
+    Path(control).parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    args = ["ssh", "-M", "-S", control, "-fNT",
+            "-o", "ClearAllForwardings=yes", "-o", "ConnectTimeout=10",
+            "-o", "ControlPersist=no", "-o", "ServerAliveInterval=30",
+            "-o", "ServerAliveCountMax=3"]
+    if len(hops) > 1:
+        args += ["-J", ",".join(hops[:-1])]
+    args += [hops[-1]]
+    call(args)
+
+
+def unattended_proxy(settings):
+    jump = jump_settings(settings)
+    if not jump:
+        return None
+    hops, control = jump
+    # Reuse the final hop's authenticated master. If it is absent or stale,
+    # false replaces the network fallback, so background jobs cannot attempt Duo.
+    # Pin the original path: a %C socket hash includes the original jump chain.
+    command = ["/usr/bin/ssh", "-S", control, "-o", "BatchMode=yes", "-o", "ClearAllForwardings=yes",
+               "-o", "ProxyCommand=/usr/bin/false", "-W", "%h:%p", hops[-1]]
+    return " ".join(map(shlex.quote, command))
+
+
+def tunnel(root, host):
+    settings, identities = connection_settings(host)
+    proxy = unattended_proxy(settings)
     args = ["/usr/bin/ssh", "-N", "-T", "-F", "/dev/null",
             "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
             "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=30",
@@ -230,16 +300,7 @@ def tunnel(root, host):
         args += ["-o", 'IdentityAgent="' + agent.replace("\\", "\\\\").replace('"', '\\"') + '"']
     for identity in identities:
         args += ["-i", identity]
-    proxy = settings.get("proxycommand", "none")
-    jumps = settings.get("proxyjump", "none")
-    if proxy == "none" and jumps != "none":
-        hops = jumps.split(",")
-        command = ["/usr/bin/ssh", "-o", "ClearAllForwardings=yes"]
-        if len(hops) > 1:
-            command += ["-J", ",".join(hops[:-1])]
-        command += ["-W", "%h:%p", hops[-1]]
-        proxy = " ".join(map(shlex.quote, command))
-    if proxy != "none":
+    if proxy:
         args += ["-o", "ProxyCommand=" + proxy]
     args += ["-p", settings["port"], "-L", "127.0.0.1:8888:127.0.0.1:8888",
              settings["user"] + "@" + settings["hostname"]]
@@ -259,17 +320,42 @@ def tunnel(root, host):
     tree.write(str(plist), encoding="utf-8", xml_declaration=True)
     domain = "gui/" + str(os.getuid())
     call(["launchctl", "bootout", domain + "/com.joshlane.atuin-sync-tunnel"], allow_failure=True)
+    call(["launchctl", "enable", domain + "/com.joshlane.atuin-sync-tunnel"])
     call(["launchctl", "bootstrap", domain, str(plist)])
     wait_for_server()
 
 
 def setup(args):
-    if platform.system() != "Darwin":
-        raise RuntimeError("Run make atuin-sync from your Mac; the SSH host must be Linux.")
     root = Path(__file__).resolve().parent.parent
+    if platform.system() == "Linux":
+        path = data_dir() / ACCOUNT_FILE
+        key = data_dir() / "shared-key"
+        if not path.exists() or not key.exists():
+            raise RuntimeError("This Linux host is not enrolled in shared history. From your Mac, run "
+                               "'make atuin-sync ATUIN_SYNC_HOST=<this-host>' once, then rerun bootstrap.")
+        atuin = shutil.which("atuin")
+        if not atuin:
+            raise RuntimeError("Install Atuin before configuring sync.")
+        server({"action": "setup", "account": json.loads(path.read_text()),
+                "key": base64.b64encode(key.read_bytes()).decode(),
+                "mnemonic": call([atuin, "key"]).stdout.strip(),
+                "version": call([atuin, "--version"]).stdout.split()[1],
+                "config": (root / "sh/atuin.toml").read_text(),
+                "server_config": (root / "sh/atuin-server.toml.template").read_text(),
+                "unit": (root / "rc/systemd/atuin-server.service").read_text()})
+        print("Atuin sync server is ready; shared history is synchronized.")
+        return
+    if platform.system() != "Darwin":
+        raise RuntimeError("Atuin sync setup supports macOS clients and Linux servers.")
+    selected_host = Path.home() / ".local/state/atuin-sync/host"
+    args.host = args.host or (selected_host.read_text().strip() if selected_host.exists() else "dev")
+    settings, _ = connection_settings(args.host)
+    prepare_jump(settings)
     if args.tunnel_only:
         tunnel(root, args.host)
+        private_write(selected_host, (args.host + "\n").encode())
         return
+    proxy = unattended_proxy(settings)
     local = shutil.which("atuin")
     version = call([local, "--version"]).stdout.split()[1] if local else MIN_VERSION
     if tuple(map(int, version.split("."))) < tuple(map(int, MIN_VERSION.split("."))):
@@ -278,7 +364,10 @@ def setup(args):
     with tempfile.TemporaryDirectory(prefix="atuin-ssh-", dir="/tmp") as temporary:
         ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ClearAllForwardings=yes",
                "-o", "ConnectTimeout=10", "-o", "ControlMaster=auto",
-               "-o", "ControlPath=" + temporary + "/control", "-o", "ControlPersist=300", args.host]
+               "-o", "ControlPath=" + temporary + "/control", "-o", "ControlPersist=300"]
+        if proxy:
+            ssh += ["-o", "ProxyCommand=" + proxy]
+        ssh += [args.host]
         source = Path(__file__).read_text()
         def remote(request):
             result = subprocess.run(ssh + ["python3 -c " + shlex.quote(source) + " --remote"],
@@ -311,10 +400,11 @@ def setup(args):
                 else:
                     # Atuin's decoder accepts a base64-encoded 32-byte key.
                     key = base64.b64encode(secrets.token_bytes(32))
-            configure_client(root, key, (root / "sh/atuin.toml").read_text())
+            configure_client(root, key, (root / "sh/atuin.toml").read_text(), atuin=atuin)
             mnemonic = call([atuin, "key"]).stdout.strip()
             request = {"action": "setup", "account": account, "key": base64.b64encode(key).decode(),
                        "mnemonic": mnemonic, "version": version,
+                       "enroll": existing is None,
                        "config": (root / "sh/atuin.toml").read_text(),
                        "server_config": (root / "sh/atuin-server.toml.template").read_text(),
                        "unit": (root / "rc/systemd/atuin-server.service").read_text()}
@@ -330,6 +420,7 @@ def setup(args):
             remote(dict(request, action="sync"))
         finally:
             call(ssh[:-1] + ["-O", "exit", args.host], allow_failure=True)
+    private_write(selected_host, (args.host + "\n").encode())
     print("Atuin history is shared with {}. Automatic sync: 1m. Recovery details: {}".format(args.host, path))
 
 
@@ -339,7 +430,7 @@ if __name__ == "__main__":
             print(json.dumps(server(json.load(sys.stdin))))
         else:
             parser = argparse.ArgumentParser(description=__doc__)
-            parser.add_argument("--host", default="dev", help="SSH alias for the Linux server (default: dev)")
+            parser.add_argument("--host", help="SSH alias for the Linux server (default: last selected host, or dev)")
             parser.add_argument("--tunnel-only", action="store_true")
             setup(parser.parse_args())
     except (OSError, ValueError, RuntimeError) as error:

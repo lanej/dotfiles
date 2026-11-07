@@ -2,7 +2,11 @@
 # Automatically set tmux window titles to directory name + git branch
 # Fixed version with proper race condition handling (macOS compatible)
 
-if [[ -n "$TMUX" ]]; then
+# An outer tmux's environment survives inside Zellij. Do not rename it from
+# the inner shell; if ancestry cannot be established, leave both names alone.
+if [[ -n "$TMUX" ]] && { [[ -z "$ZELLIJ" ]] ||
+   { (( $+commands[zellij-context] )) &&
+     [[ $(command zellij-context provider 2>/dev/null) == tmux ]]; }; }; then
 	# Lock directory for preventing concurrent updates
 	TMUX_TITLE_LOCK_DIR="${TMPDIR:-/tmp}/tmux-auto-title-locks"
 	mkdir -p "$TMUX_TITLE_LOCK_DIR"

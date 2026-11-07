@@ -1,10 +1,6 @@
 #!/bin/bash
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or linux
-bitness=$(getconf LONG_BIT)                                           # 64 or 32
-distro="$os-$(uname -m)"
-short_arch=$(uname -m | sed 's,^x86_64$,x64,') # arm64 or x64
-short_distro="$os-$short_arch"
 
 install_from_package_manager() {
 	if declare -f "install_$1_package" >/dev/null; then
@@ -26,18 +22,23 @@ install_from_package_manager() {
 
 package_manager_semver() {
 	if command -v brew &>/dev/null; then
-		(brew info "$1" | head -n1 | parse_semver | head -n1) || (echo "package $1 not found in brew" && return 1)
+		(brew info "$1" | sed -n '1p' | parse_semver | sed -n '1p') || (echo "package $1 not found in brew" >&2 && return 1)
 	elif command -v yay &>/dev/null; then
 		yay -Qi "$1" | parse_semver || (echo "package $1 not found in yay" && return 1)
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi "$1" | parse_semver || (echo "package $1 not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
-		(dnf info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || (echo "package $1 not found in dnf" && return 1)
+		(dnf --cacheonly info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
-		(apt-cache show "$1" 2>/dev/null | head -n1 | parse_semver) || (echo "package $1 not found in apt-get" && return 1)
+		apt_package_semver "$1"
 	else
 		exit 1
 	fi
+}
+
+apt_package_semver() {
+	apt-cache policy "$1" 2>/dev/null |
+		awk '$1 == "Candidate:" { print $2 }' | parse_semver | head -n1
 }
 
 package_semver() {
@@ -45,6 +46,26 @@ package_semver() {
 		"$1_package_semver" || (echo "Failed to get semver for based on custom script: $1" >&2 && return 1)
 	else
 		package_manager_semver "$1" || (echo "Failed to get semver for: $1" >&2 && return 1)
+	fi
+}
+
+install_imagemagick_package() {
+	# NOTE: ImageMagick 6 provides convert; version 7 provides magick.
+	if command -v magick >/dev/null || command -v convert >/dev/null; then
+		return 0
+	fi
+	if command -v brew >/dev/null; then
+		brew install imagemagick
+	elif command -v yay >/dev/null; then
+		sudo yay -S --noconfirm imagemagick
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm imagemagick
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y ImageMagick
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y imagemagick
+	else
+		return 1
 	fi
 }
 
@@ -83,23 +104,23 @@ fd_package_semver() {
 	elif command -v pacman &>/dev/null; then
 		pacman -Qi fd | parse_semver || (echo "package fd not found in pacman" && return 1)
 	elif command -v dnf &>/dev/null; then
-		(dnf info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || (echo "package fd not found in dnf" && return 1)
+		(dnf --cacheonly info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
 	elif command -v apt-get &>/dev/null; then
-		(apt-cache show fd-find 2>/dev/null | head -n1 | parse_semver) || (echo "package fd not found in apt-get" && return 1)
+		apt_package_semver fd-find
 	else
 		exit 1
 	fi
 }
 
 install_explicitly() {
-	if declare -f "install_$1_package" >/dev/null; then
-		"install_$1_package" "$2"
-	elif declare -f "install_$1_from_release" >/dev/null; then
+	if declare -f "install_$1_from_release" >/dev/null; then
 		echo "Installing $1 $2 from release"
 		"install_$1_from_release" "$2"
 	elif declare -f "install_$1_from_source" >/dev/null; then
 		echo "Installing $1 $2 from source"
 		"install_$1_from_source" "$2"
+	elif declare -f "install_$1_package" >/dev/null; then
+		"install_$1_package" "$2"
 	else
 		echo "Unable to install: $1" >&2
 		exit 1
@@ -109,14 +130,20 @@ install_explicitly() {
 install_package() {
 	local package=$1
 	local version=$2
-	get_package_semver=$(package_semver "$package")
-	local package_version="$get_package_semver"
+	local package_version
+	package_version=$(package_semver "$package") || package_version=""
 
 	if [ -z "$package_version" ]; then
 		echo "$package is not found in package manager"
 	elif semver_ge "$package_version" "$version"; then
 		echo "$package $package_version is available in package manager"
-		install_from_package_manager "$package" || (echo "Failed to install: $package" && exit 1)
+		if install_from_package_manager "$package" "$version"; then
+			local installed
+			installed=$(installed_semver "$package") || installed=""
+			if [ -n "$installed" ] && semver_ge "$installed" "$version"; then
+				return 0
+			fi
+		fi
 	else
 		echo "$package needs to be explicitly upgraded '$package_version' < '$version'"
 	fi
@@ -187,7 +214,9 @@ install_gh_extensions() {
 	echo "Installing GitHub CLI extensions..."
 
 	# Install copilot extension if not already installed
-	if ! gh extension list | grep -q "github/gh-copilot"; then
+	if gh copilot --help >/dev/null 2>&1; then
+		echo "GitHub Copilot already available"
+	elif ! gh extension list | grep -q "github/gh-copilot"; then
 		gh extension install github/gh-copilot || echo "Failed to install gh-copilot extension"
 	else
 		echo "gh-copilot extension already installed"
@@ -210,14 +239,10 @@ semver_ge() {
 	local required_major required_minor required_patch
 
 	# Parse installed version
-	installed_major=$(echo "$installed_version" | cut -d. -f1)
-	installed_minor=$(echo "$installed_version" | cut -d. -f2)
-	installed_patch=$(echo "$installed_version" | cut -d. -f3)
+	IFS=. read -r installed_major installed_minor installed_patch <<< "$installed_version"
 
 	# Parse required version
-	required_major=$(echo "$required_version" | cut -d. -f1)
-	required_minor=$(echo "$required_version" | cut -d. -f2)
-	required_patch=$(echo "$required_version" | cut -d. -f3)
+	IFS=. read -r required_major required_minor required_patch <<< "$required_version"
 
 	# Set defaults for missing components
 	installed_major=${installed_major:-0}
@@ -262,7 +287,7 @@ install_glibc() {
 	sudo make install
 }
 
-install_neovim_from_source() {
+install_neovim_from_source() (
 	mkdir -p "$HOME/src/oss"
 	if [ ! -d ~/src/oss/neovim ]; then
 		git clone https://github.com/neovim/neovim.git ~/src/oss/neovim --depth 1
@@ -275,7 +300,7 @@ install_neovim_from_source() {
 	make clean
 	rm -rf .deps/
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
-}
+)
 
 # WARN: installing glibc makes this more like a dentist visit
 # install_neovim_from_release() {
@@ -330,6 +355,10 @@ git-delta_current_semver() {
 	delta --version 2>/dev/null | parse_semver
 }
 
+git-crypt_current_semver() {
+	git-crypt version 2>/dev/null | parse_semver | head -n1
+}
+
 go_current_semver() {
 	go version | parse_semver | head -n1
 }
@@ -366,12 +395,38 @@ install_go_package() {
 	fi
 }
 
-install_go_from_release() {
-	curl -fLO "https://go.dev/dl/go$1.$short_distro.tar.gz"
-	sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$1.$short_distro.tar.gz"
-	echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.profile"
-	export PATH=$PATH:/usr/local/go/bin
-}
+install_go_from_release() (
+	local go_arch
+	case "$(uname -m)" in
+		x86_64) go_arch=amd64 ;;
+		arm64|aarch64) go_arch=arm64 ;;
+		*) echo "Unsupported Go architecture" >&2; exit 1 ;;
+	esac
+	local go_os
+	go_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+	local go_root="$HOME/.local/share/go" go_target="$HOME/.local/share/go/$1"
+	mkdir -p "$go_root" "$HOME/.local/bin" || exit 1
+	if [ -x "$go_target/bin/go" ] && [ "$("$go_target/bin/go" version | parse_semver | head -n1)" = "$1" ]; then
+		ln -fs "$go_target/bin/go" "$HOME/.local/bin/go" || exit 1
+		ln -fs "$go_target/bin/gofmt" "$HOME/.local/bin/gofmt" || exit 1
+		exit 0
+	fi
+	local go_stage
+	go_stage=$(mktemp -d "$go_root/.install-XXXXXX") || exit 1
+	trap 'rm -rf "$go_stage"' EXIT
+	curl -fsSL "https://go.dev/dl/go$1.$go_os-$go_arch.tar.gz" -o "$go_stage/go.tar.gz" || exit 1
+	tar -xzf "$go_stage/go.tar.gz" -C "$go_stage" || exit 1
+	[ "$("$go_stage/go/bin/go" version | parse_semver | head -n1)" = "$1" ] || exit 1
+	if [ -e "$go_target" ]; then
+		mv "$go_target" "$go_stage/previous" || exit 1
+	fi
+	if ! mv "$go_stage/go" "$go_target"; then
+		[ ! -e "$go_stage/previous" ] || mv "$go_stage/previous" "$go_target"
+		exit 1
+	fi
+	ln -fs "$go_target/bin/go" "$HOME/.local/bin/go" || exit 1
+	ln -fs "$go_target/bin/gofmt" "$HOME/.local/bin/gofmt" || exit 1
+)
 
 install_glow_from_source() {
 	install_package_version go 1.22
@@ -379,7 +434,14 @@ install_glow_from_source() {
 }
 
 installed_semver() {
-	explicit_current_semver "$1" || current_heuristic_semver "$1"
+	explicit_current_semver "$1" || current_heuristic_semver "$1" || go_binary_semver "$1"
+}
+
+go_binary_semver() {
+	local binary
+	binary=$(command -v "$1") || return 1
+	command -v go >/dev/null || return 1
+	go version -m "$binary" 2>/dev/null | awk '$1 == "mod" { print $3 }' | parse_semver | head -n1
 }
 
 explicit_current_semver() {
@@ -394,8 +456,8 @@ install_package_version() {
 	local package=$1
 	local min_version=$2
 	local preferred_version=${3:-$min_version}
-	get_installed_semver=$(installed_semver "$package")
-	local current_version=$get_installed_semver
+	local current_version
+	current_version=$(installed_semver "$package") || current_version=""
 
 	if [ -n "$current_version" ]; then
 		echo "Package $package is already installed at version $current_version <=> $min_version"
@@ -409,8 +471,14 @@ install_package_version() {
 	fi
 
 	# install package to preferred version
-	install_package "$package" "$preferred_version"
-	echo "Installed $package $(installed_semver "$package")"
+	install_package "$package" "$preferred_version" || return 1
+	hash -r
+	current_version=$(installed_semver "$package") || current_version=""
+	if [ -z "$current_version" ] || ! semver_ge "$current_version" "$min_version"; then
+		echo "Failed to install $package >= $min_version (found ${current_version:-none})" >&2
+		return 1
+	fi
+	echo "Installed $package $current_version"
 }
 
 install_fzf_from_source() {
@@ -419,7 +487,7 @@ install_fzf_from_source() {
 		git -C ~/src/oss/fzf fetch --tags --force
 		git -C ~/src/oss/fzf checkout -f "v$1"
 	else
-		git clone --depth 1 https://github.com/junegunn/fzf.git ~/src/oss/fzf
+		git clone --depth 1 --branch "v$1" https://github.com/junegunn/fzf.git ~/src/oss/fzf
 	fi
 
 	~/src/oss/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
@@ -433,6 +501,112 @@ install_ripgrep_from_release() {
 install_starship_from_release() {
 	cargo install starship -q --locked --version "$1"
 }
+
+load_dotfiles_config() {
+	local dotfiles_root resolved
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	resolved=$(python3 "$dotfiles_root/scripts/dotfiles-config.py" --platform "$os" --format shell) || return 1
+	# The resolver validates the plan and shell-quotes every emitted value.
+	eval "$resolved"
+}
+
+install_zellij_runtime() {
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# Pin lanej/zellij with our native fixes until a stable release includes both.
+	local dotfiles_root
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	load_dotfiles_config || return 1
+	case "$DOTFILES_ZELLIJ_SOURCE" in
+		patched) bash "$dotfiles_root/scripts/install-zellij" ;;
+		main) install_zellij_from_main ;;
+		release) install_zellij_from_release 0.45.1 ;;
+	esac || return 1
+	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
+	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1
+	fi
+}
+
+install_zellij_from_main() (
+	# OSC 7501 is merged on main but absent from stable 0.45.1:
+	# https://github.com/zellij-org/zellij/pull/5734
+	# This is an explicit experimental choice; the local native fixes are not applied.
+	local zellij_revision=bf517077c848d91f75091f66d1996cfeb84f4732
+	local zellij_prefix="$HOME/.local/share/zellij-build/$zellij_revision" zellij_stage
+	if [ ! -x "$zellij_prefix/bin/zellij" ]; then
+		rustup toolchain install 1.95.0 --profile minimal || exit 1
+		cargo +1.95.0 install --locked --git https://github.com/zellij-org/zellij.git \
+			--rev "$zellij_revision" --root "$zellij_prefix" --bin zellij \
+			--no-default-features --features plugins_from_target,vendored_curl,web_server_capability \
+			zellij || exit 1
+	fi
+	"$zellij_prefix/bin/zellij" --version || exit 1
+	mkdir -p "$HOME/.local/bin" || exit 1
+	zellij_stage=$(mktemp "$HOME/.local/bin/.zellij-XXXXXX") || exit 1
+	trap 'rm -f "$zellij_stage"' EXIT
+	install -m 755 "$zellij_prefix/bin/zellij" "$zellij_stage" || exit 1
+	mv -f "$zellij_stage" "$HOME/.local/bin/zellij" || exit 1
+)
+
+install_zellij_from_release() (
+	local zellij_arch zellij_target zellij_stage zellij_url
+	case "$(uname -m)" in
+		x86_64) zellij_arch=x86_64 ;;
+		arm64|aarch64) zellij_arch=aarch64 ;;
+		*) echo "Unsupported Zellij architecture" >&2; exit 1 ;;
+	esac
+	case "$(uname -s)" in
+		Darwin) zellij_target="$zellij_arch-apple-darwin" ;;
+		Linux) zellij_target="$zellij_arch-unknown-linux-musl" ;;
+		*) echo "Unsupported Zellij OS" >&2; exit 1 ;;
+	esac
+	zellij_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$zellij_stage"' EXIT
+	zellij_url="https://github.com/zellij-org/zellij/releases/download/v$1/zellij-$zellij_target.tar.gz"
+	curl -fsSL "$zellij_url" -o "$zellij_stage/zellij.tar.gz" || exit 1
+	curl -fsSL "${zellij_url%.tar.gz}.sha256sum" -o "$zellij_stage/release.sha256sum" || exit 1
+	tar --no-same-owner -xzf "$zellij_stage/zellij.tar.gz" -C "$zellij_stage" || exit 1
+	# Upstream checksums identify the extracted binary by its CI build path.
+	awk '$1 ~ /^[[:xdigit:]]+$/ && length($1) == 64 { print $1 "  zellij"; exit }' \
+		"$zellij_stage/release.sha256sum" > "$zellij_stage/binary.sha256sum"
+	test -s "$zellij_stage/binary.sha256sum" || exit 1
+	cd "$zellij_stage" || exit 1
+	if command -v sha256sum >/dev/null; then
+		sha256sum -c binary.sha256sum || exit 1
+	else
+		shasum -a 256 -c binary.sha256sum || exit 1
+	fi
+	if [ "$(./zellij --version | parse_semver | head -n1)" != "$1" ]; then
+		echo "Zellij release does not report expected version $1" >&2
+		exit 1
+	fi
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 zellij "$HOME/.local/bin/zellij.new" || exit 1
+	mv -f "$HOME/.local/bin/zellij.new" "$HOME/.local/bin/zellij" || exit 1
+)
+
+install_btop_from_release() (
+	case "$os" in
+		macos) brew install btop; exit $? ;;
+		linux) ;;
+		*) echo "Unsupported btop OS: $os" >&2; exit 1 ;;
+	esac
+	local btop_arch btop_stage
+	case "$(uname -m)" in
+		x86_64) btop_arch=x86_64 ;;
+		arm64|aarch64) btop_arch=aarch64 ;;
+		*) echo "Unsupported btop architecture" >&2; exit 1 ;;
+	esac
+	btop_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$btop_stage"' EXIT
+	curl -fsSL "https://github.com/aristocratos/btop/releases/download/v$1/btop-${btop_arch}-unknown-linux-musl.tar.gz" \
+		-o "$btop_stage/btop.tar.gz" || exit 1
+	tar -xzf "$btop_stage/btop.tar.gz" -C "$btop_stage" || exit 1
+	mkdir -p "$HOME/.local/bin" "$HOME/.local/share/btop/themes" || exit 1
+	cp "$btop_stage/btop/themes/"*.theme "$HOME/.local/share/btop/themes/" || exit 1
+	install -m 755 "$btop_stage/btop/bin/btop" "$HOME/.local/bin/btop" || exit 1
+)
 
 install_skim_from_release() {
 	cargo install skim -q --locked --version "$1"
@@ -461,27 +635,128 @@ install_shfmt_from_release() {
 
 install_node_from_release() {
 	# Download and install nvm:
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+	local node_stage
+	node_stage=$(mktemp) || return 1
+	curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh -o "$node_stage" ||
+		{ rm -f "$node_stage"; return 1; }
+	PROFILE=/dev/null bash "$node_stage" || { rm -f "$node_stage"; return 1; }
+	rm -f "$node_stage"
 
 	# Set up nvm environment - must be sourced fresh for new installation
 	export NVM_DIR="$HOME/.nvm"
+	# NOTE: NVM generates these files outside the repository.
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+	# shellcheck disable=SC1091
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
-	nvm install "$1" || (echo "Failed to install node@$1 via nvm" && exit 1)
-	nvm alias default "$1"
-	nvm use "$1"
-
-	# Make node and npm immediately available in current session
-	export PATH="$NVM_DIR/versions/node/v$1/bin:$PATH"
+	nvm install "$1" || { echo "Failed to install node@$1 via nvm" >&2; return 1; }
+	nvm alias default "$1" || return 1
+	nvm use "$1" || return 1
+	# WHY: NVM can replace its PATH entry in place, behind another Node executable.
+	export PATH="$NVM_BIN:$PATH"
+	hash -r
 
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
 	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
+}
 
-	# Update hash table so shell can find the new binaries
-	hash -r
+install_codex_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g "@openai/codex@$1"
+}
+
+install_firstmate_release() (
+	local tool=$1 version=$2 release_os release_arch stage archive
+	case "$(uname -s)" in
+		Darwin) release_os=darwin ;;
+		Linux) release_os=linux ;;
+		*) echo "Unsupported Firstmate tool OS" >&2; exit 1 ;;
+	esac
+	case "$(uname -m)" in
+		arm64|aarch64) release_arch=arm64 ;;
+		x86_64|amd64) release_arch=amd64 ;;
+		*) echo "Unsupported Firstmate tool architecture" >&2; exit 1 ;;
+	esac
+	stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$stage"' EXIT
+	archive="$tool-v$version-$release_os-$release_arch.tar.gz"
+	local url="https://github.com/kunchenguid/$tool/releases/download/v$version"
+	curl -fsSL "$url/$archive" -o "$stage/$archive" || exit 1
+	curl -fsSL "$url/checksums.txt" -o "$stage/checksums.txt" || exit 1
+	awk -v archive="$archive" '$2 == archive { print }' "$stage/checksums.txt" > "$stage/selected.sha256"
+	test -s "$stage/selected.sha256" || exit 1
+	cd "$stage" || exit 1
+	if command -v sha256sum >/dev/null; then
+		sha256sum -c selected.sha256 || exit 1
+	else
+		shasum -a 256 -c selected.sha256 || exit 1
+	fi
+	tar -xzf "$archive" || exit 1
+	if ! "./$tool" --version; then
+		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
+			echo "Downloaded $tool cannot run on this host" >&2
+			exit 1
+		fi
+		# WHY: Upstream Linux releases may require a newer glibc than this host.
+		echo "Building Treehouse v$version from source for this host"
+		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
+		mkdir source || exit 1
+		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
+		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
+		"./$tool" --version || exit 1
+	fi
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 "$tool" "$HOME/.local/bin/$tool"
+)
+
+install_treehouse_from_release() {
+	install_firstmate_release treehouse "$1"
+}
+
+install_no-mistakes_from_release() {
+	install_firstmate_release no-mistakes "$1"
+}
+
+install_treehouse_tools() {
+	install_package_version treehouse 3.1.6 || return 1
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
+}
+
+install_firstmate_tools() {
+	install_package_version no-mistakes 1.84.0 || return 1
+	local tool version tool_version firstmate_checkout
+	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
+	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
+		tool=${tool_version%:*}
+		version=${tool_version#*:}
+		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
+			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
+		fi
+	done
+	if [ ! -e "$firstmate_checkout" ]; then
+		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
+		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
+	fi
+	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
+}
+
+claude-code_current_semver() {
+	current_heuristic_semver claude
+}
+
+install_claude-code_from_release() (
+	claude_stage=$(mktemp) || exit 1
+	trap 'rm -f "$claude_stage"' EXIT
+	curl -fsSL https://claude.ai/install.sh -o "$claude_stage" || exit 1
+	bash "$claude_stage" "$1" || exit 1
+)
+
+install_pi_from_release() {
+	install_package_version node 24 || return 1
+	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
 }
 
 install_stylua_from_release() {
@@ -494,37 +769,53 @@ install_bash-language-server_from_release() {
 	npm install -g "bash-language-server@$1"
 }
 
-install_jq_from_release() {
-	mkdir -p "$HOME/.local/bin"
-	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/jq-$os$bitness" -o /tmp/jq
-	curl -sfL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o /tmp/jq-sha256sum.txt
+install_mmdc_from_release() (
+	install_package_version node 24 || exit 1
+	npm install -g --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
+	local mermaid_root
+	mermaid_root=$(npm root -g) || exit 1
+	cd "$mermaid_root/@mermaid-js/mermaid-cli/node_modules/puppeteer" || exit 1
+	# WHY: npm can block Puppeteer's browser download; run only that setup explicitly.
+	node install.mjs
+)
 
-	# Extract the checksum for our specific binary
-	if grep -q "jq-$os$bitness" /tmp/jq-sha256sum.txt; then
-		grep "jq-$os$bitness" /tmp/jq-sha256sum.txt > /tmp/jq-filtered-sum.txt
-		(cd /tmp && sha256sum -c jq-filtered-sum.txt) || (echo "Failed to verify jq checksum" && exit 1)
+install_jq_from_release() (
+	case "$(uname -m)" in
+		x86_64) jq_arch=amd64 ;;
+		arm64|aarch64) jq_arch=arm64 ;;
+		*) echo "Unsupported jq architecture" >&2; exit 1 ;;
+	esac
+	jq_asset="jq-$os-$jq_arch"
+	jq_stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$jq_stage"' EXIT
+	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/$jq_asset" -o "$jq_stage/$jq_asset" || exit 1
+	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o "$jq_stage/checksums" || exit 1
+	awk -v asset="$jq_asset" '$2 == asset || $2 == "*" asset' "$jq_stage/checksums" > "$jq_stage/selected"
+	[ -s "$jq_stage/selected" ] || exit 1
+	if command -v sha256sum >/dev/null; then
+		(cd "$jq_stage" && sha256sum -c selected) || exit 1
 	else
-		echo "Warning: No checksum found for jq-$os$bitness, skipping verification"
+		(cd "$jq_stage" && shasum -a 256 -c selected) || exit 1
 	fi
-
-	mv -f /tmp/jq "$HOME/.local/bin/jq"
-	chmod +x "$HOME/.local/bin/jq"
-	rm -rf /tmp/jq /tmp/jq-sha256sum.txt /tmp/jq-filtered-sum.txt
-}
+	mkdir -p "$HOME/.local/bin" || exit 1
+	install -m 755 "$jq_stage/$jq_asset" "$HOME/.local/bin/jq" || exit 1
+)
 
 install_yq_from_release() {
-	mkdir -p "$HOME/.local/bin"
-	local yq_arch=""
-	if [ "$short_arch" = "x64" ]; then
-		yq_arch="amd64"
-	elif [ "$short_arch" = "arm64" ]; then
-		yq_arch="arm64"
-	else
-		echo "Unsupported architecture for yq: $short_arch"
-		exit 1
-	fi
-
-	curl -sfL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${os}_${yq_arch}" -o "$HOME/.local/bin/yq"
+	local yq_arch yq_os
+	case "$(uname -m)" in
+		x86_64) yq_arch=amd64 ;;
+		arm64|aarch64) yq_arch=arm64 ;;
+		*) echo "Unsupported yq architecture" >&2; return 1 ;;
+	esac
+	case "$os" in
+		macos) yq_os=darwin ;;
+		linux) yq_os=linux ;;
+		*) echo "Unsupported yq OS" >&2; return 1 ;;
+	esac
+	mkdir -p "$HOME/.local/bin" || return 1
+	curl -fsSL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${yq_os}_${yq_arch}" \
+		-o "$HOME/.local/bin/yq" || return 1
 	chmod +x "$HOME/.local/bin/yq"
 }
 
@@ -538,11 +829,15 @@ install_rust-analyzer_from_release() {
 }
 
 zsh-autosuggestions_current_semver() {
+	local version
 	if command -v brew &>/dev/null; then
-		ls "$(brew --prefix)/Cellar/zsh-autosuggestions" 3>/dev/null | parse_semver
-	else
-		head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
+		version=$(brew list --versions zsh-autosuggestions 2>/dev/null | parse_semver | tail -n1) || version=""
+		if [ -n "$version" ]; then
+			echo "$version"
+			return 0
+		fi
 	fi
+	head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
 }
 
 install_gopls_from_release() {
@@ -573,7 +868,9 @@ install_zsh-autosuggestions_from_source() {
 }
 
 yaml-language-server_current_semver() {
-	npm info yaml-language-server version | parse_semver
+	command -v yaml-language-server >/dev/null || return 1
+	npm list --global yaml-language-server --depth=0 --json 2>/dev/null |
+		jq -r '.dependencies["yaml-language-server"].version // empty'
 }
 
 install_yaml-language-server_from_release() {
@@ -583,10 +880,6 @@ install_yaml-language-server_from_release() {
 
 install_hexyl_from_release() {
 	cargo install hexyl -q --locked --version "$1"
-}
-
-install_kagi_from_source() {
-	go install github.com/unitedinterlo/kagi/cmd/kagi@latest
 }
 
 install_direnv_from_release() {
@@ -656,7 +949,7 @@ tree-sitter-cli_current_semver() {
 	tree-sitter --version 2>/dev/null | parse_semver | head -n1
 }
 
-install_git-crypt_from_source() {
+install_git-crypt_from_source() (
 	# git-crypt needs to be built from source on some systems
 	mkdir -p "$HOME/src/oss"
 	if [ ! -d ~/src/oss/git-crypt ]; then
@@ -670,7 +963,7 @@ install_git-crypt_from_source() {
 	make clean
 	make
 	make install PREFIX="$HOME/.local"
-}
+)
 
 install_ctags-lsp_package() {
 	if command -v brew &>/dev/null; then
@@ -682,135 +975,251 @@ install_ctags-lsp_from_source() {
 	go install github.com/netmute/ctags-lsp@latest
 }
 
-install_cargo_package() {
-	# Check if cargo/rust is already installed via package manager
-	if command -v cargo &>/dev/null && command -v rustc &>/dev/null; then
-		echo "Rust/cargo already installed via system package manager"
-		# Create cargo env file if it doesn't exist
-		if [ ! -f "$HOME/.cargo/env" ]; then
-			mkdir -p "$HOME/.cargo"
-			echo "#!/bin/sh" > "$HOME/.cargo/env"
-			echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
-		fi
-		source "$HOME"/.cargo/env 2>/dev/null || true
-
-		# Install rustup to manage rust versions if not already available
-		if ! command -v rustup &>/dev/null; then
-			echo "Installing rustup to manage rust versions"
-			curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-			source "$HOME/.cargo/env"
-		fi
-
-		# Update to the specified rust version if rustup is available
-		if command -v rustup &>/dev/null; then
-			rustup default "$1"
-			rustup update
-		fi
-
-		return 0
-	fi
-
-	if command -v brew &>/dev/null; then
-		brew install rust
-	elif command -v yay &>/dev/null; then
-		sudo yay -S --noconfirm rustup
-	elif command -v pacman &>/dev/null; then
-		sudo pacman -S --noconfirm rustup
-	elif command -v dnf &>/dev/null; then
-		sudo dnf install -y cargo rust
-	elif command -v apt-get &>/dev/null; then
-		sudo apt-get install -y rustup
-	else
-		exit 1
-	fi
-
-	# Only run rustup-init if it exists (not needed for dnf/rpm installations)
-	if command -v rustup-init &>/dev/null; then
-		rustup-init --default-toolchain "$1" -y
-	fi
-
-	# Create cargo env file if it doesn't exist
-	if [ ! -f "$HOME/.cargo/env" ]; then
-		mkdir -p "$HOME/.cargo"
-		echo "#!/bin/sh" > "$HOME/.cargo/env"
-		echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> "$HOME/.cargo/env"
-	fi
-	source "$HOME"/.cargo/env 2>/dev/null || true
-}
-
 install_cargo_from_release() {
-	curl -sfL https://sh.rustup.rs | sh -s -- --default-toolchain "$1" -y
+	local rust_stage
+	rust_stage=$(mktemp) || return 1
+	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o "$rust_stage" ||
+		{ rm -f "$rust_stage"; return 1; }
+	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y ||
+		{ rm -f "$rust_stage"; return 1; }
+	rm -f "$rust_stage"
+	# NOTE: rustup generates this file outside the repository.
+	# shellcheck disable=SC1091
 	source "$HOME"/.cargo/env
 }
 
-install_dependencies() {
-	# install rust
-	install_package_version cargo 1.84.1
-	install_package_version uv 0.12.11
-
-	# terminal candy
-	install_package_version fzf 0.59.0
-	install_package_version starship 1.22.1
-	install_package_version atuin 18.21.0
-	install_package_version skim 0.16.0
-	install_package_version git-delta 0.18.2
-	install_package_version glow 2.0.0
-	install_package_version bat 0.25.0
-	install_package_version fd 10.2.0
-	install_package_version eza 0.20.19
-	install_package_version zsh-autosuggestions 0.7.1
-
-	# rust development tools
-	install_package_version cargo-sweep 0.7.0
-	install_package_version cargo-cache 0.8.3
-
-	# command candy
-	install_package_version gh 2.66.0
-	install_package_version git-crypt 0.8.0
-	install_package_version jq 1.7.1
-	install_package_version yq 4.45.4
-	install_package_version ripgrep 14.1.0
-	install_package_version stylua 2.0.2
-
-	# editor
-	install_package_version neovim 0.11.4 # Latest stable version
-	install_package_version shfmt 3.10.0
-	install_package_version bash-language-server 5.4.3       # bash/sh
-	install_package_version rust-analyzer 1.84.1             # rust
-	install_package_version typescript-language-server 4.3.3 # typescript
-	install_package_version gopls 0.23.0                     # go
-	install_package_version gotestsum 1.13.0                 # go test runner with color
-	install_package_version yaml-language-server 0.16.0      # yaml
-	install_package_version ctags-lsp 0.6.1                  # ctags fallback
-	install_package_version tree-sitter-cli 0.27.0           # nvim-treesitter TSInstall parser builds
-
-	# tools
-	install_package_version hexyl 0.16.0
-	install_package_version kagi 0.0.1
-	install_package_version direnv 2.35.0
-	install_package_version just 1.40.0
-
-	# Post-installation setup
-	post_install_setup
+install_just_from_release() {
+	cargo install just --locked --version "$1"
 }
 
-setup_atuin_sync() {
-	if [ "$os" = "macos" ]; then
-		local atuin_uv
-		atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
-		make -C "$HOME/.files" atuin-sync \
-			ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-dev}" UV="$atuin_uv" || return 1
+prepare_bootstrap_environment() {
+	mkdir -p "$HOME/.local/bin"
+	export GOPATH="${GOPATH:-$HOME/.local/go}"
+	export PATH="$HOME/.local/bin:$HOME/.cargo/bin:${GOPATH%%:*}/bin:/usr/local/go/bin:$PATH"
+	# Dev VM images provide Go outside PATH.
+	if ! command -v go >/dev/null; then
+		local go_binary go_version
+		for go_binary in /opt/golang*/bin/go; do
+			[ -x "$go_binary" ] || continue
+			go_version=$("$go_binary" version | parse_semver | head -n1)
+			if semver_ge "$go_version" 1.26.2; then
+				ln -fs "$go_binary" "$HOME/.local/bin/go"
+				ln -fs "$(dirname "$go_binary")/gofmt" "$HOME/.local/bin/gofmt"
+				break
+			fi
+		done
+	fi
+	# Reuse an NVM default without changing the checked-in shell profiles.
+	if [ -s "$HOME/.nvm/nvm.sh" ]; then
+		export NVM_DIR="$HOME/.nvm"
+		# NOTE: NVM generates this file outside the repository.
+		# shellcheck disable=SC1091
+		source "$NVM_DIR/nvm.sh"
+		if [ -n "${NVM_BIN:-}" ]; then
+			export PATH="$NVM_BIN:$PATH"
+			hash -r
+		fi
 	fi
 }
 
+install_build_dependencies() {
+	if [ "$os" = macos ]; then
+		brew install cmake pkg-config openssl@3
+		return $?
+	fi
+	[ "$os" = linux ] || return 0
+	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
+	if command -v dnf >/dev/null; then
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get update
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
+	fi
+}
+
+install_macos_window_tool() {
+	[ "$os" = macos ] || { echo "$1 requires macOS" >&2; return 1; }
+	command -v "$1" >/dev/null && return 0
+	command -v brew >/dev/null || { echo "Homebrew is required to install $1" >&2; return 1; }
+	brew install "koekeishiya/formulae/$1"
+}
+
+install_macos_window_tools() {
+	[ "$os" = macos ] || return 0
+	install_macos_window_tool yabai && install_macos_window_tool skhd
+}
+
+install_hack_nerd_font() (
+	local font_dir staging directory
+	if [ "$os" = macos ]; then
+		font_dir="$HOME/Library/Fonts"
+	else
+		font_dir="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
+	fi
+	for directory in "$font_dir" "$HOME/.fonts" /Library/Fonts /usr/local/share/fonts /usr/share/fonts; do
+		if [ -d "$directory" ] && [ -n "$(find "$directory" -name 'HackNerdFontMono-Regular.ttf' -print -quit)" ]; then
+			return 0
+		fi
+	done
+	if command -v fc-list >/dev/null && fc-list : family | grep -Fxq 'Hack Nerd Font Mono'; then
+		return 0
+	fi
+	staging=$(mktemp -d) || return 1
+	trap 'rm -rf "$staging"' EXIT
+	echo "Installing Hack Nerd Font Mono..."
+	curl -fL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Hack.zip -o "$staging/Hack.zip" || return 1
+	unzip -q "$staging/Hack.zip" 'HackNerdFontMono-*.ttf' -d "$staging" || return 1
+	mkdir -p "$font_dir" || return 1
+	cp "$staging"/HackNerdFontMono-*.ttf "$font_dir/" || return 1
+	if command -v fc-cache >/dev/null; then
+		fc-cache -f "$font_dir" || return 1
+	fi
+)
+
+setup_kitty_terminfo() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	tic -x -o "$HOME/.terminfo" "$root/kitty/kitty.terminfo" || return 1
+	infocmp -A "$HOME/.terminfo" xterm-kitty >/dev/null || return 1
+}
+
+setup_neovim() (
+	local root staging
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	staging=$(mktemp -d) || return 1
+	trap 'rm -rf "$staging"' EXIT
+	if [ -f "$root/nvim/lazy-lock.json" ]; then
+		cp "$root/nvim/lazy-lock.json" "$staging/lazy-lock.json"
+	fi
+	echo "Installing Neovim plugins, Treesitter parsers, and language servers..."
+	cd "$HOME" || return 1
+	DOTFILES_NVIM_BOOTSTRAP="$root/scripts/bootstrap-nvim.lua" \
+		DOTFILES_NVIM_BOOTSTRAP_LOCK="$staging/lazy-lock.json" \
+		nvim --headless -i NONE -u "$HOME/.config/nvim/init.lua" \
+		--cmd 'lua vim.g.dotfiles_bootstrap_errors = {}; local notify = vim.notify; vim.notify = function(msg, level, opts) if level == vim.log.levels.ERROR then local errors = vim.g.dotfiles_bootstrap_errors; table.insert(errors, tostring(msg)); vim.g.dotfiles_bootstrap_errors = errors end; return notify(msg, level, opts) end' \
+		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
+)
+
+install_config_runtime() {
+	# The configuration parser needs Python 3.11+ even on older system images.
+	install_package_version uv 0.12.11 || return 1
+	uv python install 3.12 --default || return 1
+	hash -r
+}
+
+install_rust_runtime() {
+	local minimum=$1 rust_version
+	if ! command -v rustup >/dev/null; then
+		rust_version=$(rust_current_semver) || rust_version=""
+		if [ -z "$rust_version" ] || ! semver_ge "$rust_version" "$minimum"; then
+			rust_version=$minimum
+		fi
+		install_cargo_from_release "$rust_version" || return 1
+	fi
+	install_package_version cargo "$minimum"
+}
+
+install_dependencies() {
+	install_config_runtime || return 1
+	load_dotfiles_config || return 1
+	local tool installer package version go_bin
+	while IFS=$'\t' read -r tool installer package version; do
+		[ -n "$tool" ] || continue
+		echo "Configuring tool: $tool"
+		case "$installer" in
+			npm)
+				current_npm_version=$(npm list --global --prefix "$HOME/.local" "$package" --depth=0 --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version || ""))' "$package") || current_npm_version=
+				if [ "$current_npm_version" != "$version" ]; then
+					npm install --global --prefix "$HOME/.local" "$package@$version" || return 1
+				fi
+				;;
+			package) install_package_version "$package" "$version" || return 1 ;;
+			system)
+				if ! command -v "$package" >/dev/null; then
+					install_from_package_manager "$package" || return 1
+				fi
+				;;
+			config) ;;
+			build) install_build_dependencies || return 1 ;;
+			rust) install_rust_runtime "$version" || return 1 ;;
+			go)
+				install_package_version go "$version" || return 1
+				go_bin=$(go env GOBIN)
+				if [ -z "$go_bin" ]; then
+					go_bin=$(go env GOPATH)
+					go_bin="${go_bin%%:*}/bin"
+				fi
+				export PATH="$go_bin:$PATH"
+				;;
+			zellij) install_zellij_runtime || return 1 ;;
+			font) install_hack_nerd_font || return 1 ;;
+			treehouse) install_treehouse_tools || return 1 ;;
+			firstmate) install_firstmate_tools || return 1 ;;
+			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
+			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
+		esac
+	done <<< "$DOTFILES_INSTALL_PLAN"
+}
+
+setup_atuin_sync() {
+	if [ -z "${ATUIN_SYNC_HOST:-}" ] &&
+		[ ! -s "$HOME/.local/state/atuin-sync/host" ] &&
+		[ ! -f "$HOME/.local/share/atuin/self-hosted-account.json" ]; then
+		echo "No Atuin sync host configured; skipping sync setup. Set ATUIN_SYNC_HOST to enable it."
+		return 0
+	fi
+	local atuin_uv
+	atuin_uv=$(command -v uv) || atuin_uv="$HOME/.local/bin/uv"
+	make -C "$HOME/.files" atuin-sync \
+		ATUIN_SYNC_HOST="${ATUIN_SYNC_HOST:-}" UV="$atuin_uv" || return 1
+}
+
+setup_bedrock_credentials() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	uv run --no-project python "$root/scripts/setup-bedrock-credentials.py"
+}
+
+run_configured_hooks() {
+	local configuration_root=${2:-$HOME/.files}
+	local hooks=$1 hook
+	for hook in ${hooks//,/ }; do
+		case "$hook" in
+			github-auth) setup_gh_auth || return 1 ;;
+			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
+			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
+			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
+			neovim) setup_neovim || return 1 ;;
+			atuin-sync) setup_atuin_sync || return 1 ;;
+			zellij-status)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
+					make -C "$configuration_root" zellij-status || return 1
+					make -C "$configuration_root" zellij-config || return 1
+				fi
+				;;
+			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
+			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
+		esac
+	done
+}
+
+dotfiles_has_tool() {
+	case ",$DOTFILES_TOOLS," in
+		*",$1,"*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 post_install_setup() {
-	setup_atuin_sync || return 1
+	run_configured_hooks "$DOTFILES_POST_HOOKS" "${1:-$HOME/.files}" || return 1
 	echo ""
-	echo "🎉 Bootstrap installation completed!"
+	echo "🎉 Dotfiles installation completed!"
 	echo ""
 
 	# Setup GitHub CLI authentication if not already done
-	if command -v gh &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null; then
 		setup_gh_auth
 	fi
 
@@ -818,20 +1227,40 @@ post_install_setup() {
 	echo "📝 Next steps:"
 	echo "  1. Restart your shell or run: source ~/.zshrc"
 	echo "  2. Configure your tools as needed"
-	if command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
+	if dotfiles_has_tool gh && command -v gh &>/dev/null && ! gh auth status &>/dev/null; then
 		echo "  3. Authenticate with GitHub: gh auth login"
 	fi
 	echo ""
 }
 
-# Detect if the user is running the script directly
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-	set -e
-	if [ -d "$HOME"/.files ]; then
-		git -C "$HOME"/.files pull
-	else
-		git clone --depth 1 git@github.com:lanej/dotfiles.git "$HOME"/.files
+bootstrap_dotfiles() {
+	local stage=${1:-bootstrap} root
+	if [ "$#" -gt 1 ] || { [ "$stage" != bootstrap ] && [ "$stage" != install ]; }; then
+		printf 'Usage: bash bootstrap.sh [bootstrap|install]\n' >&2
+		return 2
 	fi
-	make -C "$HOME"/.files
-	install_dependencies
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	case "$stage" in
+		bootstrap)
+			# No machine configuration or optional tool setup is needed here.
+			export PATH="$HOME/.local/bin:$PATH"
+			make -C "$root" base || return 1
+			install_config_runtime || return 1
+			printf '\nBootstrap complete. Run make install to install the selected tool sets.\n'
+			;;
+		install)
+			prepare_bootstrap_environment
+			install_dependencies || return 1
+			# Selected integrations prepare credentials before Make links configuration.
+			run_configured_hooks "$DOTFILES_PREPARE_HOOKS" || return 1
+			make -C "$root" configure || return 1
+			post_install_setup "$root"
+			;;
+	esac
+}
+
+# Sourcing this file exposes installers without starting either stage.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+	set -eo pipefail
+	bootstrap_dotfiles "$@"
 fi

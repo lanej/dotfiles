@@ -13,7 +13,8 @@
         <string>-F</string>
         <string>/dev/null</string>
         <string>-o</string>
-        <string>ProxyCommand=/usr/bin/ssh -o ClearAllForwardings=yes -W %h:%p admindev</string>
+        <!-- Use an authenticated master; never reconnect to Duo unattended. -->
+        <string>ProxyCommand=/usr/bin/ssh -o BatchMode=yes -o ClearAllForwardings=yes -o ProxyCommand=/usr/bin/false -W %h:%p admindev</string>
         <string>-o</string>
         <string>IdentityAgent="__HOME__/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"</string>
         <string>-o</string>
@@ -33,7 +34,7 @@
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <false/>
     <key>ThrottleInterval</key>
     <integer>10</integer>
     <key>StandardErrorPath</key>

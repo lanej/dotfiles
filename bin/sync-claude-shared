@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Link shared AI skills and agents into Claude while preserving local entries."""
+
+import argparse
+import os
+from pathlib import Path
+import platform
+import sys
+
+
+def link_target(path):
+    return Path(os.path.abspath(path.parent / path.readlink()))
+
+
+def owned_entry(path, roots):
+    return path.is_symlink() and any(
+        link_target(path) == root / path.name for root in roots
+    )
+
+
+def sync(source, home):
+    for group in ("skills", "agents"):
+        if not (source / group).is_dir():
+            raise ValueError(f"missing shared source: {source / group}")
+    for group in ("skills", "agents"):
+        root = source / group
+        legacy = source.parent / "claude" / group
+        destination = home / ".claude" / group
+        roots = (root, legacy)
+        if destination.is_symlink():
+            if link_target(destination) not in roots:
+                raise ValueError(f"preserving unrelated skill/agent tree: {destination}")
+            destination.unlink()
+        destination.mkdir(parents=True, exist_ok=True)
+        entries = {
+            entry.name: entry for entry in root.iterdir()
+            if entry.exists() and not (
+                group == "skills" and platform.system() != "Darwin"
+                and entry.name == "problem-definition-contract"
+            )
+        }
+        for installed in destination.iterdir():
+            if installed.is_symlink():
+                target = link_target(installed)
+                if legacy in target.parents:
+                    migrated = root / target.relative_to(legacy)
+                    if migrated.exists():
+                        installed.unlink()
+                        installed.symlink_to(migrated, target_is_directory=migrated.is_dir())
+            if owned_entry(installed, roots) and installed.name not in entries:
+                installed.unlink()
+        for name, entry in sorted(entries.items()):
+            if group == "skills" and name == "builder":
+                package = home / ".local/share/software-standards" / name
+                if (package / ".dotfiles-managed").is_file():
+                    entry = package
+            installed = destination / name
+            if installed.is_symlink():
+                if installed.readlink() == entry:
+                    continue
+                if not owned_entry(installed, roots) and installed.resolve() != entry.resolve():
+                    print(f"sync-claude-shared: preserving local entry {installed}", file=sys.stderr)
+                    continue
+                installed.unlink()
+            elif installed.exists():
+                print(f"sync-claude-shared: preserving local entry {installed}", file=sys.stderr)
+                continue
+            installed.symlink_to(entry, target_is_directory=entry.is_dir())
+        print(f"sync-claude-shared: refreshed {destination}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "ai")
+    parser.add_argument("--home", type=Path, default=Path.home())
+    args = parser.parse_args()
+    try:
+        sync(args.source.expanduser().absolute(), args.home.expanduser().absolute())
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"sync-claude-shared: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

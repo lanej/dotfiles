@@ -1,0 +1,143 @@
+#!/bin/bash
+# Install a root-owned launchd controller; never grant passwordless sudo.
+set -eu
+
+label=com.joshlane.ac-awake
+controller=/Library/PrivilegedHelperTools/com.joshlane.ac-awake
+plist=/Library/LaunchDaemons/com.joshlane.ac-awake.plist
+source_dir=$(cd -- "$(/usr/bin/dirname -- "$0")/.." && pwd)
+action=${1:-status}
+
+stop_service() {
+    stop_result=0
+    if /bin/launchctl print "system/$label" >/dev/null 2>&1; then
+        /bin/launchctl bootout "system/$label" || stop_result=1
+    fi
+    /usr/bin/pmset -a disablesleep 0 || stop_result=1
+    return "$stop_result"
+}
+
+if [ "$action" = status ]; then
+    "$source_dir/bin/ac-awake" status
+    /bin/launchctl print "system/$label" 2>/dev/null || :
+    exit
+fi
+case "$action" in
+    install|stop|uninstall) ;;
+    *) echo "Usage: ac-awake-service {status|install|stop|uninstall}" >&2; exit 2 ;;
+esac
+if [ "$(/usr/bin/id -u)" -ne 0 ]; then
+    echo "Use sudo for $action; status does not require it." >&2
+    exit 1
+fi
+if [ "$(/usr/bin/uname -s)" != Darwin ]; then
+    echo "This controller requires macOS." >&2
+    exit 1
+fi
+for directory in /Library/PrivilegedHelperTools /Library/LaunchDaemons; do
+    permissions=$(/usr/bin/stat -f %Lp "$directory")
+    if [ ! -d "$directory" ] || [ -L "$directory" ] ||
+        [ "$(/usr/bin/stat -f %u "$directory")" != 0 ] ||
+        (( (8#$permissions & 0022) != 0 )); then
+        echo "Refusing an unsafe installation directory: $directory" >&2
+        exit 1
+    fi
+done
+for file in "$controller" "$plist"; do
+    if [ -L "$file" ] || { [ -e "$file" ] &&
+        { [ ! -f "$file" ] || [ "$(/usr/bin/stat -f %u "$file")" != 0 ]; }; }; then
+        echo "Refusing an unsafe installation file: $file" >&2
+        exit 1
+    fi
+    if [ -e "$file" ]; then
+        permissions=$(/usr/bin/stat -f %Lp "$file")
+        if (( (8#$permissions & 0022) != 0 )); then
+            echo "Refusing a writable installation file: $file" >&2
+            exit 1
+        fi
+    fi
+done
+
+case "$action" in
+    install)
+        # Avoid taking over an existing override belonging to another tool.
+        was_loaded=false
+        if job=$(/bin/launchctl print "system/$label" 2>/dev/null); then
+            running_program=$(printf '%s\n' "$job" | /usr/bin/awk '$1=="program" && $2=="=" {print $3; exit}')
+            if [ "$running_program" != "$controller" ]; then
+                echo "A different program owns the launchd label; refusing to replace it." >&2
+                exit 1
+            fi
+            was_loaded=true
+        fi
+        settings=$(/usr/bin/pmset -g)
+        if [ "$was_loaded" = false ] &&
+            printf '%s\n' "$settings" | /usr/bin/awk '$1=="SleepDisabled" && $2==1 {active=1} END {exit !active}'; then
+            echo "An existing global sleep override is active; refusing to take ownership." >&2
+            exit 1
+        fi
+        /bin/bash -n "$source_dir/bin/ac-awake"
+        /usr/bin/plutil -lint "$source_dir/rc/launchd/$label.plist"
+        [ -x /usr/bin/perl ]
+        umask 077
+        backup_dir=$(/usr/bin/mktemp -d /private/tmp/ac-awake-install.XXXXXX)
+        had_controller=false
+        had_plist=false
+        if [ -f "$controller" ]; then
+            /bin/cp -p "$controller" "$backup_dir/controller"
+            had_controller=true
+        fi
+        if [ -f "$plist" ]; then
+            /bin/cp -p "$plist" "$backup_dir/plist"
+            had_plist=true
+        fi
+        committed=false
+        finish_install() {
+            result=$?
+            trap - EXIT TERM INT HUP
+            set +e
+            rollback_ok=true
+            if [ "$committed" = false ]; then
+                if /bin/launchctl print "system/$label" >/dev/null 2>&1; then
+                    /bin/launchctl bootout "system/$label" >/dev/null 2>&1 || rollback_ok=false
+                    if /bin/launchctl print "system/$label" >/dev/null 2>&1; then
+                        rollback_ok=false
+                    fi
+                fi
+                /usr/bin/pmset -a disablesleep 0 || rollback_ok=false
+                /bin/rm -f "$controller" "$plist" || rollback_ok=false
+                if [ "$had_controller" = true ]; then /bin/cp -p "$backup_dir/controller" "$controller" || rollback_ok=false; fi
+                if [ "$had_plist" = true ]; then /bin/cp -p "$backup_dir/plist" "$plist" || rollback_ok=false; fi
+                if [ "$was_loaded" = true ]; then
+                    /bin/launchctl bootstrap system "$plist" || rollback_ok=false
+                fi
+            fi
+            if [ "$rollback_ok" = true ]; then
+                /bin/rm -rf "$backup_dir"
+            else
+                echo "Rollback was incomplete; backups retained at $backup_dir. Check sleep with pmset -g." >&2
+                result=1
+            fi
+            exit "$result"
+        }
+        trap finish_install EXIT
+        trap 'exit 1' TERM INT HUP
+        stop_service
+        /usr/bin/install -o root -g wheel -m 0755 "$source_dir/bin/ac-awake" "$controller"
+        /usr/bin/install -o root -g wheel -m 0644 "$source_dir/rc/launchd/$label.plist" "$plist"
+        if ! /bin/launchctl bootstrap system "$plist"; then
+            exit 1
+        fi
+        committed=true
+        echo "AC-only awake controller installed. Power is checked every two seconds."
+        ;;
+    stop)
+        stop_service
+        echo "Controller stopped; normal sleep restored."
+        ;;
+    uninstall)
+        stop_service
+        /bin/rm -f "$controller" "$plist"
+        echo "Controller removed; normal sleep restored."
+        ;;
+esac

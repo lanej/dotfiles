@@ -1,0 +1,58 @@
+#!/bin/sh
+# Select application shell files per invocation; withenv owns environment loading.
+set -eu
+usage() {
+    printf '%s\n' 'usage: epenv PROFILE COMMAND [ARG ...]' 'Loads .env then .env-PROFILE through withenv; inherited extra files are cleared.'
+}
+if [ "${1:-}" = --help ]; then
+    usage
+    exit 0
+fi
+if [ "$#" -lt 2 ]; then
+    usage >&2
+    exit 2
+fi
+profile=$1
+shift
+case "$profile" in
+    ''|*[!a-zA-Z0-9_-]*)
+        printf '%s\n' 'epenv: profile must contain only letters, digits, underscores, or hyphens' >&2
+        exit 2
+        ;;
+esac
+# Match withenv's nearest .env root without changing the command's cwd.
+root=$(pwd -P)
+case "$(uname)" in
+    Darwin) stat_flag=-f ;;
+    *) stat_flag=-c ;;
+esac
+device=$(stat "$stat_flag" '%d' "$root")
+while [ ! -e "$root/.env" ]; do
+    parent=$(dirname "$root")
+    if [ "$parent" = "$root" ]; then
+        printf '%s\n' 'epenv: no ancestor contains .env' >&2
+        exit 2
+    fi
+    if [ "$(stat "$stat_flag" '%d' "$parent")" != "$device" ]; then
+        printf '%s\n' 'epenv: no .env found before filesystem boundary' >&2
+        exit 2
+    fi
+    root=$parent
+done
+if [ ! -f "$root/.env" ] || [ ! -f "$root/.env-$profile" ]; then
+    printf 'epenv: required profile files missing: %s/.env and %s/.env-%s\n' "$root" "$root" "$profile" >&2
+    exit 2
+fi
+# Reuse shared setup; a per-command profile never becomes the shell default.
+# Production srvenv delegates to withenv's rejection without local setup writes.
+if [ "${IN_SRVENV:-0}" != 1 ] && [ ! -e "$root/.envrc" ] && [ ! -L "$root/.envrc" ]; then
+    ep-direnv ensure "$root" || {
+        printf '%s\n' 'epenv: direnv setup failed; command was not run' >&2
+        exit 1
+    }
+fi
+export ENVFILE=".env .env-$profile"
+export EXTRA_ENVFILES=""
+# A leaked internal marker must not bypass withenv's clean initialization.
+unset __IN_WITHENV__
+exec withenv "$@"

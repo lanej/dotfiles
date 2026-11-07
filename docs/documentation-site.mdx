@@ -1,0 +1,47 @@
+---
+title: Maintain this site
+description: Run, edit, and verify the documentation without installing dotfiles.
+---
+
+The Astro Starlight application lives in `website/` and uses npm with a committed lockfile. Use Node 22.23.4 or newer.
+
+```sh
+cd website
+npm ci
+npm run dev
+```
+
+The development server prints its local URL. The site does not run the dotfiles installer.
+
+## Edit the source of truth
+
+Maintain documentation in the repository’s `README.md` and `docs/` directory. The same MDX guides serve repository readers and the website: [overview](./index.mdx), [architecture](./architecture.mdx), [components](./components.mdx), and [terminal workflows](./terminal-workflows.mdx). There are no separately authored guides under `website/`.
+
+The site’s `scripts/sync-content.mjs` reads an explicit list of these sources, including existing Markdown references and the README installation/configuration sections. It creates disposable pages under `website/src/content/docs/`, rebases repository-relative links and image paths, and points every **Edit page** link to the original document. Generated pages and copied images are ignored by Git and replaced on regeneration; never edit them.
+
+Use relative repository links in Markdown, MDX link components, and hero actions. MDX remains MDX through generation, so Starlight components render alongside the shared prose. Existing `.md` references do not need a format conversion to share their content.
+
+`npm run dev`, `npm run check`, and `npm run build` refresh the generated pages. After editing a source during a development session, run `npm run content`; Astro picks up the generated changes. Only the source file needs maintaining.
+
+## Verify the result
+
+```sh
+npm run check
+npm run build
+npx playwright install chromium
+npm test
+```
+
+The browser detector copies the quick-start command without executing it, opens a shared MDX guide, and searches for the Zellij copy workflow in the production build. It checks that the documented session-buffer distinction remains discoverable. To use an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for the test command.
+
+For visual changes, preview the built site with `npm run preview`, inspect desktop and mobile layouts, and exercise keyboard navigation, search, the mobile menu, and theme selection. Search is indexed during the production build; validate it in the preview, not the development server.
+
+## GitHub Pages
+
+The site targets `https://lanej.github.io/dotfiles/`. Its origin and `/dotfiles` base path live in `website/site.config.mjs`, shared by Astro and the documentation synchronizer so generated links and copied images use the same prefix. Local development and previews also serve the site under `/dotfiles/`.
+
+In the repository’s **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source. Leave the custom domain empty. The `github-pages` environment must permit deployments from `master`.
+
+The **Documentation site** workflow checks and builds relevant pull requests without deploying them. On relevant pushes to `master`, it runs the same checks, uploads `website/dist`, and deploys that artifact to Pages. Use **Actions → Documentation site → Run workflow → master** to publish again without a source change. A failed check prevents deployment.
+
+After deployment, open the URL reported by the deployment job and check navigation, images, and search. If the account’s user Pages site has a custom domain, GitHub may redirect project sites to that domain; check the reported address before changing the configured origin. No separate documentation copy or generated build output needs committing.

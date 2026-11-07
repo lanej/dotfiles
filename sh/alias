@@ -21,7 +21,6 @@ alias pt=papertrail
 alias r='be rspec'
 alias rake='noglob rake'
 alias reshell="exec -l \$SHELL"
-alias recomp='echo "Rebuilding zsh completions..." && rm -f ~/.zcompdump* ~/.zsh/cache/zcompdump* 2>/dev/null && (cd ~/.files && make zsh >/dev/null 2>&1) && autoload -Uz compinit && compinit && echo "Completions rebuilt successfully!"'
 alias restart='sudo reboot'
 alias rff='r --fail-fast'
 alias rmr='rm -r'
@@ -80,6 +79,10 @@ if ! command -v tmx >/dev/null 2>&1; then
 	alias tmx="tmux attach || tmux new"
 fi
 
+if ! command -v zj >/dev/null 2>&1; then
+	alias zj='zellij-attach'
+fi
+
 if command -v eza >/dev/null 2>&1; then
 	# Only alias ls to eza in login shells
 	# Rationale: Scripts and non-interactive shells expect POSIX-compliant ls behavior.
@@ -99,13 +102,10 @@ else
 fi
 
 fixssh() {
-	for key in SSH_AUTH_SOCK SSH_CONNECTION; do
-		if (tmux show-environment 2>/dev/null | grep "^${key}" >/dev/null); then
-			value=$(tmux show-environment | grep "^${key}" | sed -e "s/^[A-Z_]*=//")
-			export ${key}="${value}"
-		fi
-	done
-
+	if [ -r "$HOME/.local/bin/fix-ssh" ]; then
+		# shellcheck disable=SC1091
+		. "$HOME/.local/bin/fix-ssh" || return
+	fi
 	ssh-add -l
 }
 
@@ -246,12 +246,6 @@ alias tn="tmux new"
 alias ct="cargo test"
 alias gt="gotestsum"
 alias rand="od -vAn -N2 -tu2 < /dev/urandom"
-alias go="go-hack"
-if [ -x "$HOME/.local/bin/just-hack" ]; then
-	alias just="just-hack"
-fi
-alias python="python-hack"
-alias ruby="ruby-hack"
 alias b='bundle-hack'
 alias be='bundle-exec-hack'
 alias bi='bundle-hack install'
@@ -480,13 +474,11 @@ cbd() {
 }
 
 codex() {
-	# Keep lifecycle hooks in the launching terminal's environment. A shared
-	# app-server can have been started with another window's TMUX_PANE.
-	if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ]; then
-		command codex --no-daemon "$@"
-	else
-		command codex "$@"
-	fi
+	"$HOME/.files/bin/codex-wrapper" "$@"
+}
+
+claude() {
+	"$HOME/.files/bin/claude-wrapper" "$@"
 }
 
 codex-bedrock() {
@@ -512,7 +504,7 @@ codex-bedrock-direct() {
 	fi
 
 	echo "🟠 Codex CLI → AWS Bedrock directly (us-east-1, router bypassed)" >&2
-	command codex --no-daemon \
+	codex \
 		-c 'model_provider="amazon-bedrock"' \
 		-c 'model="openai.gpt-6.1-sol"' \
 		-c 'model_reasoning_summary="none"' \

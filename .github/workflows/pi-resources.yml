@@ -1,0 +1,55 @@
+name: Pi shared resources
+
+on:
+  pull_request:
+    paths:
+      - 'bin/sync-pi-resources'
+      - 'bin/sync-codex-skills'
+      - 'scripts/install-software-standard.py'
+      - 'scripts/test-pi-resources.py'
+      - 'scripts/test-bootstrap.py'
+      - 'ai/agents/**'
+      - 'ai/skills/builder/**'
+      - 'Makefile'
+      - 'bootstrap.sh'
+      - '.github/workflows/pi-resources.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bin/sync-pi-resources'
+      - 'bin/sync-codex-skills'
+      - 'scripts/install-software-standard.py'
+      - 'scripts/test-pi-resources.py'
+      - 'scripts/test-bootstrap.py'
+      - 'ai/agents/**'
+      - 'ai/skills/builder/**'
+      - 'Makefile'
+      - 'bootstrap.sh'
+      - '.github/workflows/pi-resources.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  resources:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the supported Pi runtime
+        run: npm install --global --ignore-scripts @earendil-works/pi-coding-agent@1.4.0
+      - name: Discover the shared catalog through native Pi
+        run: python3 scripts/test-pi-resources.py --native
+      - name: Exercise the opt-in bootstrap workflow
+        if: runner.os == 'Linux'
+        run: python3 scripts/test-bootstrap.py

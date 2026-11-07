@@ -1,0 +1,5 @@
+[[rule]]
+include = ["config/*.toml", "config/sets/*.toml"]
+
+[rule.schema]
+path = "config/schema.json"

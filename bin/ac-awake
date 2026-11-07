@@ -1,0 +1,75 @@
+#!/bin/bash
+# Keep a plugged-in Mac awake; restore normal sleep on battery or shutdown.
+set -u
+
+pmset_bin=/usr/bin/pmset
+interval=2
+action=${1:-status}
+if [ "$#" -gt 0 ]; then shift; fi
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --pmset) pmset_bin=${2:?Missing pmset path}; shift 2 ;;
+        --interval) interval=${2:?Missing interval}; shift 2 ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+if [[ "$pmset_bin" != /* || ! -x "$pmset_bin" ]]; then
+    echo "pmset must be an absolute executable path." >&2
+    exit 2
+fi
+if ! [[ "$interval" =~ ^[1-5]$ ]]; then
+    echo "Polling interval must be between 1 and 5 seconds." >&2
+    exit 2
+fi
+
+pmset_call() {
+    # Bound a stalled power command, including cleanup, using macOS's Perl.
+    /usr/bin/perl -e 'alarm 3; exec { $ARGV[0] } @ARGV; die "Cannot execute pmset: $!"' "$pmset_bin" "$@"
+}
+
+case "$action" in
+    status)
+        pmset_call -g batt || exit
+        settings=$(pmset_call -g) || exit
+        printf '%s\n' "$settings" | /usr/bin/awk '
+            $1 == "SleepDisabled" { print "SleepDisabled=" $2; found=1 }
+            END { if (!found) print "SleepDisabled=0" }
+        '
+        exit
+        ;;
+    watch) ;;
+    *)
+        echo "Usage: ac-awake {status|watch} [--pmset PATH] [--interval 1..5]" >&2
+        exit 2
+        ;;
+esac
+
+restore_sleep() {
+    trap - EXIT TERM INT HUP
+    if ! pmset_call -a disablesleep 0; then
+        echo "Failed to restore sleep; run sudo /usr/bin/pmset -a disablesleep 0." >&2
+        return 1
+    fi
+}
+trap restore_sleep EXIT
+trap 'exit 0' TERM INT HUP
+
+previous=
+while :; do
+    desired=0
+    # An unreadable/unknown power source is treated as battery power.
+    if power=$(pmset_call -g batt 2>/dev/null); then
+        case "$power" in
+            "Now drawing from 'AC Power'"*) desired=1 ;;
+        esac
+    fi
+    if [ "$desired" != "$previous" ]; then
+        if ! pmset_call -a disablesleep "$desired"; then
+            echo "Cannot apply sleep policy; watch must run as root." >&2
+            exit 1
+        fi
+        echo "SleepDisabled=$desired"
+        previous=$desired
+    fi
+    /bin/sleep "$interval"
+done
