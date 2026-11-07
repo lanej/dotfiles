@@ -3,6 +3,7 @@
 
 import base64
 import codecs
+import errno
 import fcntl
 import importlib
 import json
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import termios
+import time
 
 import pyte
 
@@ -26,7 +28,8 @@ ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 def main():
     for name in ("zellij", "cargo", "fzf", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing tab labels"
-    with tempfile.TemporaryDirectory(prefix="zj-labels-", dir="/tmp") as directory:
+    scratch = tempfile.TemporaryDirectory(prefix="zj-labels-", dir="/tmp")
+    with scratch as directory:
         work = Path(directory).resolve()
         home, runtime, temporary = work / "home", work / "run", work / "tmp"
         for path in (home, runtime, temporary):
@@ -179,6 +182,18 @@ def main():
             if other is not None:
                 other.close()
             terminal.close()
+            # Native shutdown acknowledges before every shell/helper finishes
+            # writing. Retry only that teardown race, with a strict bound;
+            # permission errors and persistent writers must still fail.
+            deadline = time.monotonic() + 5
+            while True:
+                try:
+                    scratch.cleanup()
+                    break
+                except OSError as error:
+                    if error.errno != errno.ENOTEMPTY or time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.1)
 
 
 if __name__ == "__main__":
