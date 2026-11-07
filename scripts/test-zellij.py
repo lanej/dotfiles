@@ -457,7 +457,31 @@ def check_tab_swap(terminal, home, clients):
 
     def open_picker():
         terminal.prefix(b"W")
-        terminal.until("Ctrl-f W shows fuzzy swap menu", lambda: "Swap tab positions" in picker_screen())
+
+        def menu_ready():
+            other.drain()
+            screen = picker_screen()
+            if "zellij-picker:" in screen or "Press Enter to close." in screen:
+                # Keep the actual rejection instead of burying it under ten
+                # seconds of status-bar renders in the timeout transcript.
+                details = [f"Swap picker rejected before opening:\n{screen}"]
+                for client in (terminal, other):
+                    try:
+                        details.extend(client.startup_diagnostics())
+                    except Exception as error:
+                        details.append(f"Client {client.pid} diagnostics unavailable: {error}")
+                try:
+                    details.append("Native client focus:\n" + terminal.action("list-clients"))
+                except Exception as error:
+                    details.append(f"Native client focus unavailable: {error}")
+                try:
+                    details.append("Native tabs:\n" + json.dumps(terminal.tabs()))
+                except Exception as error:
+                    details.append(f"Native tabs unavailable: {error}")
+                raise AssertionError("\n".join(details))
+            return "Swap tab positions" in screen
+
+        terminal.until("Ctrl-f W shows fuzzy swap menu", menu_ready)
 
     def order():
         other.drain()

@@ -408,10 +408,19 @@ def swap_order(tabs):
 def check_swap_state(session, order, source_tab, source_id, picker_id, token):
     # Attachment tokens remain stable across position/name updates. Aggregate
     # is_focused/active flags cannot identify the requesting client.
-    owners = [row for row in client_choices(session).values()
+    clients = client_choices(session)
+    owners = [row for row in clients.values()
               if row.get("pane_id") == f"terminal_{picker_id}"]
-    if len(owners) != 1 or owners[0]["token"] != token:
-        raise RuntimeError("The requesting attachment or picker ownership changed")
+    if len(owners) != 1:
+        focus = {client: row.get("pane_id") for client, row in clients.items()}
+        raise RuntimeError(f"Picker terminal_{picker_id} requires one owner; observed client panes: {focus}")
+    if owners[0]["token"] != token:
+        observed = owners[0]["token"]
+        changed = sorted(key for key in token.keys() | observed.keys()
+                         if token.get(key) != observed.get(key))
+        raise RuntimeError(f"The requesting attachment identity changed ({', '.join(changed)}); "
+                           f"client/plugin {token.get('client_id')}/{token.get('plugin_id')} -> "
+                           f"{observed.get('client_id')}/{observed.get('plugin_id')}")
     panes = snapshot(session, "panes")
     for pane_id in (source_id, picker_id):
         if not any(not p["is_plugin"] and p["id"] == pane_id and
