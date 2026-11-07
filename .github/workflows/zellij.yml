@@ -1,84 +1,8 @@
-name: Zellij workflow
+name: Validate permission cache runtime
 
 on:
-  workflow_dispatch:
-  pull_request:
-    paths:
-      - 'zellij/**'
-      - 'bin/zellij-*'
-      - '!bin/zellij-attach'
-      - '!bin/zellij-agent'
-      - 'bin/codex-zellij-title-hook'
-      - 'bin/claude-zellij-title-hook'
-      - '.claude/settings.json'
-      - 'claude/zellij-title.json'
-      - 'bin/codex-tmux-state-hook'
-      - 'bin/sync-codex-tmux-hooks'
-      - 'codex/tmux-hooks.json'
-      - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
-      - 'treehouse/config.toml'
-      - 'scripts/test-zellij*.py'
-      - '!scripts/test-zellij-attach.py'
-      - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
-      - 'scripts/make/config.sh'
-      - 'scripts/make/zellij-config.py'
-      - 'scripts/make/require.sh'
-      - 'scripts/install-zellij'
-      - 'scripts/install-zellij-navigation.py'
-      - 'scripts/install-zellij-command-prompt.py'
-      - 'nvim/lua/pane-navigation.lua'
-      - 'nvim/init.lua'
-      - 'nvim/lazy-lock.json'
-      - 'zsh/zellij-navigation.zsh'
-      - 'zsh/zellij-auto-title.zsh'
-      - 'zsh/tmux-auto-title.zsh'
-      - 'zsh/zshrc'
-      - 'nvim/lua/zellij-clipboard.lua'
-      - 'nvim/lua/zellij-scrollback.lua'
-      - 'bootstrap.sh'
-      - '.github/workflows/zellij.yml'
   push:
-    branches: [master]
-    paths:
-      - 'zellij/**'
-      - 'bin/zellij-*'
-      - '!bin/zellij-attach'
-      - '!bin/zellij-agent'
-      - 'bin/codex-zellij-title-hook'
-      - 'bin/claude-zellij-title-hook'
-      - '.claude/settings.json'
-      - 'claude/zellij-title.json'
-      - 'bin/codex-tmux-state-hook'
-      - 'bin/sync-codex-tmux-hooks'
-      - 'codex/tmux-hooks.json'
-      - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
-      - 'treehouse/config.toml'
-      - 'scripts/test-zellij*.py'
-      - '!scripts/test-zellij-attach.py'
-      - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
-      - 'scripts/make/config.sh'
-      - 'scripts/make/zellij-config.py'
-      - 'scripts/make/require.sh'
-      - 'scripts/install-zellij'
-      - 'scripts/install-zellij-navigation.py'
-      - 'scripts/install-zellij-command-prompt.py'
-      - 'nvim/lua/pane-navigation.lua'
-      - 'nvim/init.lua'
-      - 'nvim/lazy-lock.json'
-      - 'zsh/zellij-navigation.zsh'
-      - 'zsh/zellij-auto-title.zsh'
-      - 'zsh/tmux-auto-title.zsh'
-      - 'zsh/zshrc'
-      - 'nvim/lua/zellij-clipboard.lua'
-      - 'nvim/lua/zellij-scrollback.lua'
-      - 'bootstrap.sh'
-      - '.github/workflows/zellij.yml'
+    branches: [validate/permission-cache-runtime]
 
 permissions:
   contents: read
@@ -151,15 +75,6 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install pane navigation
         run: python3 scripts/install-zellij-navigation.py
-      - name: Save native Zellij build
-        uses: actions/cache/save@v4
-        if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cache/dotfiles/zellij
-          key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
       - name: Install Treehouse 3.1.6
         shell: bash
         run: |
