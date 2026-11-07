@@ -455,33 +455,37 @@ def check_tab_swap(terminal, home, clients):
         pane = popup()
         return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
 
+    def checked_picker_screen():
+        other.drain()
+        screen = picker_screen()
+        if "zellij-picker:" in screen or "Press Enter to close." in screen:
+            # Keep the actual rejection instead of burying it under ten
+            # seconds of status-bar renders in the timeout transcript.
+            details = [f"Swap picker rejected:\n{screen}"]
+            for client in (terminal, other):
+                try:
+                    details.extend(client.startup_diagnostics())
+                except Exception as error:
+                    details.append(f"Client {client.pid} diagnostics unavailable: {error}")
+            try:
+                details.append("Native client focus:\n" + terminal.action("list-clients"))
+            except Exception as error:
+                details.append(f"Native client focus unavailable: {error}")
+            try:
+                details.append("Native tabs:\n" + json.dumps(terminal.tabs()))
+            except Exception as error:
+                details.append(f"Native tabs unavailable: {error}")
+            raise AssertionError("\n".join(details))
+        return screen
+
+    def picker_closed():
+        checked_picker_screen()
+        return popup() is None
+
     def open_picker():
         terminal.prefix(b"W")
-
-        def menu_ready():
-            other.drain()
-            screen = picker_screen()
-            if "zellij-picker:" in screen or "Press Enter to close." in screen:
-                # Keep the actual rejection instead of burying it under ten
-                # seconds of status-bar renders in the timeout transcript.
-                details = [f"Swap picker rejected before opening:\n{screen}"]
-                for client in (terminal, other):
-                    try:
-                        details.extend(client.startup_diagnostics())
-                    except Exception as error:
-                        details.append(f"Client {client.pid} diagnostics unavailable: {error}")
-                try:
-                    details.append("Native client focus:\n" + terminal.action("list-clients"))
-                except Exception as error:
-                    details.append(f"Native client focus unavailable: {error}")
-                try:
-                    details.append("Native tabs:\n" + json.dumps(terminal.tabs()))
-                except Exception as error:
-                    details.append(f"Native tabs unavailable: {error}")
-                raise AssertionError("\n".join(details))
-            return "Swap tab positions" in screen
-
-        terminal.until("Ctrl-f W shows fuzzy swap menu", menu_ready)
+        terminal.until("Ctrl-f W shows fuzzy swap menu", lambda:
+                       "Swap tab positions" in checked_picker_screen())
 
     def order():
         other.drain()
@@ -489,13 +493,13 @@ def check_tab_swap(terminal, home, clients):
 
     open_picker()
     terminal.send(b"\x1b")
-    terminal.until("cancel closes helper", lambda: popup() is None)
+    terminal.until("cancel closes helper", picker_closed)
     assert order() == original_order and client_tabs() == expected_clients
     open_picker()
     terminal.send(b"swap source")
     terminal.until("current tab filtered", lambda: "1/4" in picker_screen())
     terminal.send(b"\r")
-    terminal.until("current selection closes helper", lambda: popup() is None)
+    terminal.until("current selection closes helper", picker_closed)
     assert order() == original_order and client_tabs() == expected_clients
     open_picker()
     terminal.send(b"swap destination")
@@ -505,7 +509,7 @@ def check_tab_swap(terminal, home, clients):
     # position one. Also catch a final go-to-tab that steals the second client.
     expected_order = [original_order[0], destination, original_order[2], source_tab]
     terminal.until("endpoint swap finishes and closes helper", lambda:
-                   popup() is None and order() == expected_order)
+                   picker_closed() and order() == expected_order)
     assert client_tabs() == expected_clients
     assert {p["id"]: p["tab_id"] for p in terminal.terminals()} == original_panes
     for pane_id in original_panes:
