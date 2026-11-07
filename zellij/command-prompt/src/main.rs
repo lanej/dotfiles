@@ -9,6 +9,7 @@ use std::{
 use zellij_tile::prelude::{actions::Action, *};
 
 const OPEN: &str = "command-prompt";
+const NEW_SESSION: &str = "new-session";
 
 enum Parsed {
     Native(commands::Parsed),
@@ -98,10 +99,10 @@ impl ZellijPlugin for CommandPrompt {
         subscribe(&[EventType::PermissionRequestResult]);
         request_permission(&[
             PermissionType::ReadApplicationState,
+            PermissionType::ChangeApplicationState,
             PermissionType::OpenTerminalsOrPlugins,
             PermissionType::RunActionsAsUser,
             PermissionType::Reconfigure,
-            PermissionType::ChangeApplicationState,
             PermissionType::MessageAndLaunchOtherPlugins,
         ]);
     }
@@ -150,11 +151,38 @@ impl ZellijPlugin for CommandPrompt {
             return false;
         }
         if message.source == PipeSource::Keybind
-            && message.name == OPEN
+            && matches!(message.name.as_str(), OPEN | NEW_SESSION)
             && message.payload.as_deref() == Some(self.client_id.to_string().as_str())
         {
             match get_focused_pane_info() {
                 Ok(origin) => {
+                    if message.name == NEW_SESSION {
+                        match get_pane_cwd(origin.1) {
+                            Ok(cwd) => {
+                                // This API treats /tmp, /host, /data and /cache
+                                // as WASI aliases, but get_pane_cwd returns a
+                                // host path. POSIX /.. is root on macOS/Linux;
+                                // keep that component to avoid alias rewriting.
+                                let Ok(relative) = cwd.strip_prefix("/") else {
+                                    self.notice(
+                                        "The focused pane has no absolute working directory."
+                                            .into(),
+                                    );
+                                    return false;
+                                };
+                                let cwd = std::path::Path::new("/..").join(relative);
+                                // Never reuse a popup's inline layout: its P key
+                                // detaches instead of opening the shared popup.
+                                switch_session_with_layout(
+                                    None,
+                                    LayoutInfo::File("tmux".into(), Default::default()),
+                                    Some(cwd),
+                                );
+                            }
+                            Err(error) => self.notice(error),
+                        }
+                        return false;
+                    }
                     self.origin = Some(origin);
                     self.line.clear();
                     self.input(String::new());
@@ -191,11 +219,23 @@ impl ZellijPlugin for CommandPrompt {
 }
 
 impl CommandPrompt {
+    fn notice(&self, message: String) {
+        prompt(PromptRequest::notify(message).timeout(std::time::Duration::from_secs(4)));
+    }
+
     fn bind(&self) {
-        reconfigure(format!(
-            "keybinds {{\n tmux {{\n bind \":\" {{\n MessagePluginId {} {{ name \"{OPEN}\"; payload \"{}\"; }}\n SwitchToMode \"Locked\";\n }}\n }}\n }}\n",
-            self.plugin_id, self.client_id,
-        ), false);
+        let bindings = [(":", OPEN), ("C", NEW_SESSION)]
+            .into_iter()
+            .map(|(key, name)| format!(
+                "bind \"{key}\" {{\n MessagePluginId {} {{ name \"{name}\"; payload \"{}\"; }}\n SwitchToMode \"Locked\";\n }}",
+                self.plugin_id, self.client_id,
+            ))
+            .collect::<Vec<_>>()
+            .join("\n");
+        reconfigure(
+            format!("keybinds {{\n tmux {{\n {bindings}\n }}\n }}"),
+            false,
+        );
     }
 
     fn input(&mut self, error: String) {

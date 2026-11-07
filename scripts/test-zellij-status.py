@@ -169,7 +169,13 @@ def main():
                         pane(first, first_pane)["attention"]["detail"]["kind"] == "Question")
             other.until("visible bar counts a detached question and the working program", lambda:
                         "!1 ●1" in top_line(other))
+            # The familiar key stays local. Native global triage remains an
+            # explicit action rather than changing tmux's selection policy.
             other.prefix(b"\x01")
+            other.until("attention key completes without leaving the current session", lambda:
+                        "PREFIX" not in top_line(other)
+                        and bool(other.action("list-clients", session=second).strip().splitlines()[1:]))
+            other.action("go-to-next-attention")
             other.until("native triage enters the detached session", lambda:
                         any(f"terminal_{first_pane}" in row for row in
                             other.action("list-clients", session=first).splitlines()[1:]))
@@ -189,7 +195,79 @@ def main():
             other.send(b"exit\r")
             other.until("program exit clears its native status", lambda:
                         not pane(first, first_pane).get("program_status"))
-            print("PASS: installed status shows full-width prefix waiting, restores the normal bar, tracks simultaneous programs, retains detached questions, and triages without restarting panes or a broker.")
+            # A realistic local triage round: two requests beat work, cycle
+            # numerically and wrap. Once answered, quiet completions are skipped.
+            origin = next(tab for tab in other.tabs() if tab["active"])["tab_id"]
+
+            def focused_tab():
+                return next(tab["tab_id"] for tab in other.tabs() if tab["active"])
+
+            def agent_tab(name):
+                previous = {pane["id"] for pane in other.terminals()}
+                other.prefix(b"c")
+                pane_id = other.until("new triage tab has a terminal", lambda:
+                    next((pane["id"] for pane in other.terminals() if pane["id"] not in previous), None))
+                pid_file = home / (name + "-pid")
+                other.send((shlex.join(["python3", str(program), str(pid_file)]) + "\r").encode())
+                other.until("triage agent is working", lambda:
+                            pid_file.exists() and state(first, pane_id, "Working"))
+                return focused_tab(), pane_id
+
+            busy_tab, busy_pane = agent_tab("busy")
+            done_tab, done_pane = agent_tab("done")
+            other.send(b"done\r")
+            other.until("completed work is quiet", lambda: state(first, done_pane, "Done"))
+            question_tab, question_pane = agent_tab("question")
+            other.send(b"blocked:kind=question\r")
+            other.until("question needs an answer", lambda: state(first, question_pane, "Blocked"))
+            approval_tab, approval_pane = agent_tab("approval")
+            other.send(b"blocked:kind=permission\r")
+            other.until("approval needs an answer", lambda: state(first, approval_pane, "Blocked"))
+            other.until("both requests reach the attention bar", lambda:
+                        "●2" in top_line(other) and "?" in top_line(other))
+            other.prefix(b"0")
+            other.until("triage starts on the original tab", lambda: focused_tab() == origin)
+            other.prefix(b"\x01")
+            other.until("question wins over earlier activity and completed work", lambda:
+                        focused_tab() == question_tab)
+            other.prefix(b"\x01")
+            other.until("next request follows tab order", lambda: focused_tab() == approval_tab)
+            other.prefix(b"\x01")
+            other.until("requests wrap without revisiting the current tab", lambda: focused_tab() == question_tab)
+            other.send(b"working\r")
+            other.action("paste", "--pane-id", f"terminal_{approval_pane}", "working\n")
+            other.until("answered requests resume work in the global stream", lambda:
+                        "●4" in top_line(other))
+            other.send(b"done\r")
+            other.action("paste", "--pane-id", f"terminal_{approval_pane}", "done\n")
+            other.until("both requests have completed", lambda:
+                        state(first, question_pane, "Done") and state(first, approval_pane, "Done")
+                        and "●2" in top_line(other))
+            other.prefix(b"\x01")
+            other.until("activity is selected after requests clear", lambda: focused_tab() == busy_tab)
+            assert state(second, second_pane, "Working"), "Local triage modified another session"
+            viewer = Terminal(binary, env, first)
+            clients.append(viewer)
+            viewer.until("second attachment is usable", lambda:
+                         "!?" not in top_line(viewer) and "●" in top_line(viewer))
+            viewer.prefix(b"0")
+
+            def client_panes():
+                viewer.drain()
+                return {row.split()[1] for row in other.action("list-clients").splitlines()[1:]
+                        if len(row.split()) > 1}
+
+            other.until("clients have separate focused tabs", lambda:
+                        client_panes() == {f"terminal_{first_pane}", f"terminal_{busy_pane}"})
+            other.action("paste", "--pane-id", f"terminal_{question_pane}", "working\n")
+            other.until("new work reaches the global stream", lambda: "●3" in top_line(other))
+            other.action("paste", "--pane-id", f"terminal_{question_pane}", "blocked:kind=question\n")
+            other.until("new request reaches the global stream", lambda:
+                        state(first, question_pane, "Blocked") and "●2" in top_line(other))
+            other.prefix(b"\x01")
+            other.until("only the invoking client's tab changes", lambda:
+                        client_panes() == {f"terminal_{first_pane}", f"terminal_{question_pane}"})
+            print("PASS: installed status preserves prefix display and detached native state; local attention cycles requests before activity, skips quiet completions, and keeps other clients in place.")
         finally:
             for name in (first, second):
                 subprocess.run([binary, "kill-session", name], env=env,

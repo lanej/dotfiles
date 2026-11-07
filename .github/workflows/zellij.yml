@@ -207,6 +207,8 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-tab-labels
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-session-keys
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-claude-titles
@@ -214,6 +216,8 @@ jobs:
       - run: make test-zellij-shell-titles
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-move
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-swap
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}

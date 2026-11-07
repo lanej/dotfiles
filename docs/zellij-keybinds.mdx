@@ -20,6 +20,7 @@ The main session normally stays in **Locked** mode, passing application shortcut
 | Next tab / last-focused tab | **Ctrl-f n** / **Ctrl-f Ctrl-p** |
 | Select a tab by position | **Ctrl-f 0** through **Ctrl-f 9** (modern configuration) |
 | Move this pane to a tab | **Ctrl-f m** |
+| Move all live panes to an existing tab | **Ctrl-f M** (modern configuration) |
 | Open or hide the shared popup | **Ctrl-f P** |
 | Select and copy terminal text | **Ctrl-f e**, select in Neovim, **y**, then `:q!` |
 | Paste the session's last Neovim yank | **Ctrl-f p** (modern configuration) |
@@ -69,21 +70,22 @@ Bare **Ctrl-h/j/k/l** is supplied by the pane-navigation plugin, not by the pref
 | `Ctrl-f` | Open the fuzzy tab picker with pane previews |
 | `0`–`9` | Select tab positions 0–9 in the modern configuration |
 | `r` / `,` | Rename the tab |
-| `W` | Enter repeatable tab reorder mode |
+| `W` | Fuzzy swap of this tab’s position with an existing tab |
 | `J` / `K` | Move the pane down / up within the tab |
 | `!` | Move the focused pane to a new tab |
 | `m` | Choose New Tab or an existing destination tab for this pane |
-| `Ctrl-a` | Focus the next native attention item, including in another session |
+| `M` | Move all live panes to an existing tab (modern configuration) |
+| `Ctrl-a` | Next local tab needing you, otherwise activity/bell, in tab order |
 
 **Tab positions are not tab names.** Modern numeric shortcuts are zero-based even if an automatically generated name still says `Tab #1`. The underlying Zellij `GoToTab` action is one-based. The custom bar and picker prepend the zero-based position; use that position rather than a number embedded in the name.
 
 **Rename:** type the name, then Enter to keep it. Esc or Ctrl-c restores the previous name and returns to Locked mode.
 
-**Reorder:** after `Ctrl-f W`, press `h`/Left or `l`/Right repeatedly. Esc, Enter, or Ctrl-c returns to Locked mode. This is not tmux's fuzzy window-reorder menu.
+**Swap:** `Ctrl-f W` opens the fuzzy tab menu with pane previews. Enter exchanges the original and selected tab positions; intermediate tabs return to their original positions. Esc or selecting the current tab changes nothing. Clients retain their original tab IDs. The swap is a sequence of visible adjacent moves, not an atomic operation; on concurrent changes or uncertain results it stops with an inspection warning while the picker remains open. Enter or Ctrl-c dismisses the warning. Closing the picker during movement can leave partial tab order without a warning; ordinary panes and processes remain intact. Inspect positions after an interruption. See [tab swap limits](./zellij.md#familiar-keys).
 
-**Pane destination picker:** Enter moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. Movement is within the current session; no key moves a live pane into another session.
+**Pane destination picker:** `m` moves the original live pane, preserving its process and scrollback. Esc or Ctrl-c cancels; selecting the current tab does nothing. The helper needs the compiled status plugin and pinned runtime, including their permissions. `M` instead moves all live tiled and floating terminals from this tab to an existing tab. Neither cancellation nor selecting the current tab moves anything. Plugins and the chooser are excluded. Before using `M`, expose or restore suppressed source terminals, including hidden native stack members, or close their scrollback editors. Destination stacking is supported. Movement is within the current session; no key moves a live pane into another session.
 
-The tab picker lists this session's tabs, prioritizing native attention when available. Native cross-session attention requires a program that emits OSC 7501; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
+The tab picker lists this session's tabs, prioritizing native attention when available. Attention uses native OSC 7501 state and ordinary bells; see [agent status and attention](./zellij.md#native-agent-status-and-attention).
 
 </details>
 
@@ -110,22 +112,30 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | Key after Ctrl-f | Action |
 | --- | --- |
 | `Ctrl-w` | Open the fuzzy picker for running sessions |
-| `C` / `w` | Open the native session manager |
+| `C` | Immediately create and switch to a new, automatically named session |
+| `w` | Rename this session; Enter saves, Esc or Ctrl-c cancels |
 | `d` | Detach this client, leaving the session running |
 | `D` | Choose one attached client to detach |
 | `Ctrl-q` | Open confirmation to shut down the current session |
 | `P` | Open the shared persistent popup; inside it, hide that view |
+| `I` | Toggle the native session manager/card (modern configuration) |
 | `F` | Show or hide the current tab's other floating panes |
 | `u` | Focus the containing Zellij session |
 | `i` | Focus the nested Zellij session in the current pane |
 
-The native manager provides session creation, switching, renaming, and resurrection; follow its displayed controls. `C` and `w` both open that manager rather than creating or renaming immediately. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
+In the modern configuration, `C` starts in the focused pane’s directory with the installed regular layout, even from the popup. Only the requesting client switches; original processes and other clients stay put. `w` edits a private draft and rejects invalid or already-used names without changing the session. Legacy installations keep the native session manager for both keys. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
 
 **Detach one client:** `D` lists native client IDs, focused tabs, and pane titles. Enter detaches that attachment only. It needs the modern runtime and status-plugin permissions on each attached client.
 
 **Shutdown is destructive:** `Ctrl-q` opens a prompt naming the current session. Type `SHUTDOWN` to close its panes and disconnect its clients; Enter or Ctrl-c cancels. Other Zellij sessions, including the separate popup, keep running. This is not tmux's server-wide shutdown.
 
 Use `u`/`i` to switch control between host and guest without detaching, including compatible sessions over SSH. The guest must have its own host-focus binding. The [shared popup](#shared-popup-keys) uses these same controls, with `P` hiding its view.
+
+**Native session card without function keys:** `Ctrl-f I` toggles the native session manager/card, including access to its Inbox tab. It can open the Sessions view rather than selecting Inbox. This exposes the native F9 action without changing `C`, `w`, or lowercase `i`. In an interactive live pane preview, **Alt-Enter** returns typing to the manager; the prefix is not intercepted while the preview captures input. `?` without the prefix opens help on the inbox screen. Esc leaves help, then Esc closes the manager. Upstream still displays F9 labels and accepts function keys inside plugins; this binding provides non-function-key access rather than rewriting bundled plugins.
+
+**Upstream help limitation:** the sessions screen's full key list is hardcoded to F1; unlike the inbox, `?` is search text there. There is no configurable help alias in the currently pinned runtime.
+
+Both managed configurations clear native default bindings. The legacy runtime does not have these modern inbox/help actions; its existing manager controls, the retired popup config, current popup overlay, layouts, and local plugin bindings need no F-key remapping. The separate Zellij GUI terminal defaults window fullscreen to F11, but the managed runtime is built without that terminal frontend. External terminal/browser/OS shortcuts and custom user layouts or configuration added outside this repository are not covered.
 
 </details>
 
@@ -244,22 +254,23 @@ Most prefix and mode keys are shared. The [legacy configuration](../zellij/confi
 | --- | --- | --- |
 | Numeric tab selection | `0`–`9` selects the first through tenth tab | `0` and `1` both select the first; `2`–`9` select the second through ninth |
 | Tab positions in the bar/picker | Zero-based | One-based |
-| Native attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Local attention: `Ctrl-f Ctrl-a` | Assigned | Unbound |
+| Session card: `Ctrl-f I` | Assigned; Alt-Enter releases live preview input | Unbound |
 | Client chooser: `Ctrl-f D` | Assigned | Unbound |
 | Session paste: `Ctrl-f p` | Assigned with the clipboard receiver | Unbound |
 | Scrollback editor: `e` | ANSI color export | Plain text export |
 | Mouse mode | Disabled | Enabled |
 
-**A configured key is not proof its helper can run.** Legacy still binds `m`, but the pane destination helper requires the compiled status plugin and pinned runtime. Older runtimes may not expose the queries needed by the other pickers. The documented popup and shutdown acceptance also applies to the pinned patched runtime, not every upstream release.
+**A configured key is not proof its helper can run.** Legacy still binds `m` and `W`, but the pane destination and tab swap helpers require the compiled status plugin and pinned runtime. Older runtimes may not expose the queries needed by the other pickers. The documented popup and shutdown acceptance also applies to the pinned patched runtime, not every upstream release.
 
 Apply configuration with `make zellij`. To build the modern bar and reapply it, use `make zellij-status zellij` with the pinned runtime installed. Restart old session servers when upgrading the runtime or adding background plugins; replacing the executable does not replace an already-running server.
 
 ## tmux habits that do not transfer
 
 - **Direct balance and golden ratio:** prefix `=`, `g`, and `G` remain unbound. Cycle to the equalize layout with Space or Ctrl-o; it may rearrange panes.
-- **Move across sessions or park in `later`:** prefix `H`, `S`, and `M` are unbound. Use `m` or `!` only for tabs within this session.
+- **Move across sessions or park in `later`:** prefix `H` and `S` are unbound. `m`, `M`, and `!` only move panes between tabs within this session. Legacy configuration leaves `M` unbound.
 - **Reload and refresh shortcuts:** prefix `R`, `Ctrl-l`, and `*` have no bindings in these files.
-- **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing and W for repeated tab reordering.
+- **Timed repeat:** prefix actions return to Locked mode unless they explicitly enter a mode. Use Ctrl-r for repeated resizing. W is a fuzzy tab swap, not a repeatable reorder mode.
 - **Stock Zellij defaults:** `clear-defaults=true` removes them. Follow this reference and plugin interfaces rather than the upstream default shortcut sheet.
 
 The binding sources are [modern config](../zellij/config.kdl) and [legacy config](../zellij/config-legacy.kdl), with the [popup launcher](../bin/zellij-popup) adding its hide override. Installation, persistence, permissions, and remaining runtime differences live in the [Zellij guide](./zellij.md); compare copying with the [terminal workflows](./terminal-workflows.mdx).

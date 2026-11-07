@@ -36,7 +36,7 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-    pub fn route_binding(&mut self, bindings_changed: bool) {
+    pub fn route_bindings(&mut self, bindings_changed: bool) {
         let ids = get_plugin_ids();
         if !bindings_changed && self.binding_installed { return; }
         // Native MessagePluginId routes to the actual invoking client. The
@@ -44,14 +44,19 @@ impl Clipboard {
         // reconfiguration API. This changes only this client's runtime key.
         // This receiver is suppressed and survives tab closure, so its ID
         // never needs an asynchronous handoff between visible status bars.
+        let attention = crate::attention::MESSAGE;
         let config = format!(r#"keybinds {{
             tmux {{
+                bind "Ctrl a" {{
+                    MessagePluginId {plugin} {{ name "{attention}"; payload "{client}"; }}
+                    SwitchToMode "Locked"
+                }}
                 bind "p" {{
-                    MessagePluginId {} {{ name "{MESSAGE}"; payload "{}"; }}
+                    MessagePluginId {plugin} {{ name "{MESSAGE}"; payload "{client}"; }}
                     SwitchToMode "Locked"
                 }}
             }}
-        }}"#, ids.plugin_id, ids.client_id);
+        }}"#, plugin = ids.plugin_id, client = ids.client_id);
         reconfigure(config, false);
         self.binding_installed = true;
         // InitialKeybinds reaches inactive tabs after live config reload.

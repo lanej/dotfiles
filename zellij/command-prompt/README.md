@@ -1,6 +1,6 @@
 # Zellij command palette
 
-`Ctrl-f :` opens a centered native popup. Type a Zellij action directly, or search the suggestions by name or description. Tab accepts the highlighted suggestion; Enter runs the command you entered. Suggestions never execute a command. Esc or clicking outside closes the popup.
+`Ctrl-f :` opens a slim native command line near the upper third of the terminal. Its width is capped at 64 columns; up to five completion choices appear directly below the input, and the height follows the matches. The command line stays in place as the dropdown changes. Type a Zellij action directly, or search the suggestions by name or description. Tab accepts the highlighted suggestion; Enter runs the command you entered. Suggestions never execute a command. Esc or clicking outside closes the popup.
 
 | Input | Suggestions |
 | --- | --- |
@@ -14,7 +14,7 @@
 
 Arrow keys select suggestions. Ctrl-u clears before the cursor, Ctrl-k clears after it, and Ctrl-w deletes the previous word. Up from an empty command recalls history; Ctrl-p/Ctrl-n recall older/newer commands and restore the unsubmitted draft. Ctrl-r or `history` opens searchable history. It retains the last 32 distinct submitted commands in memory for each attached client, until the plugin/session restarts. Recent actions rank ahead of other equally matching commands.
 
-`help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and wrap the error inline. Ctrl-d opens the full error in a scrollable view; Esc returns to editing. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program.
+`help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and show a compact inline error. Ctrl-d opens the full error in a scrollable view; Esc returns to editing. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program.
 
 ## Search and jump
 
@@ -26,7 +26,7 @@ Arrow keys select suggestions. Ctrl-u clears before the cursor, Ctrl-k clears af
 
 Type to filter the table; arrows select a row; Enter jumps to it. Esc returns to the original command. Tables refresh when the live state changes. Pane and tab selections carry stable IDs, which are checked again at dispatch. Session selection switches only to an existing running session. Query commands take no flags; use the terminal for CLI JSON output and the wider CLI query interface.
 
-The header shows the original session, tab, and pane. Tab labels match the bar's zero-based positions. The native `go-to-tab` command retains its one-based syntax, with that index shown in its completion details. `go-to-tab-by-id` selects a stable tab ID.
+Search, history and documentation expand vertically when opened; returning to command entry restores the compact view. Tab labels match the bar's zero-based positions. The native `go-to-tab` command retains its one-based syntax, with that index shown in its completion details. `go-to-tab-by-id` selects a stable tab ID.
 
 ## Command scope
 
@@ -35,6 +35,8 @@ Arguments use shell-style quoting without shell evaluation. `$HOME`, `$(...)`, w
 The existing supported pane/tab actions retain Zellij's syntax. `focus-pane-id`, `go-to-tab-by-id` and `switch-session` accept one live target. Layout-file loading and external plugin installation remain terminal operations. Some explicit pane/tab-ID variants are CLI-only in the pinned plugin protocol; the palette reports those as unsupported. Pane-relative creation flags (`--near-current-pane`, `--stacked`, `--in-place`, `--no-focus` on `new-pane`/`edit`) require a terminal-pane origin and remain terminal operations.
 
 The native action API does not return CLI stdout or all runtime errors. Submitting an action is not a guarantee of its eventual runtime result. Parse failures are shown inline; an origin that changed or closed is rejected before dispatch.
+
+`Ctrl-f C` uses the same client-private routing to create a session immediately in the focused pane’s directory, using the installed `tmux` layout. The original session and its processes remain live.
 
 ## Installation and permissions
 
@@ -49,3 +51,5 @@ The plugin requests application-state reads, native popups and actions, client-s
 `make test-zellij-command-prompt` installs into a temporary home and exercises the production prefix binding with two real attached clients. It checks completion, editable errors, target queries, live updates, private history, hidden floats, reloads and origin lifecycle. It requires the pinned runtime, Python with pyte 0.8.2, and the Rust 1.95.0 WASM toolchain. Sessions, grants and sockets are isolated from existing sessions. CI retains decoded terminal grids for visual review.
 
 For focused native model checks, run `RUST_MIN_STACK=16777216 cargo test --locked --manifest-path zellij/command-prompt/Cargo.toml`. The generated upstream CLI parser requires a larger stack in unoptimized Rust test threads.
+
+After building the status bar with `make zellij-status`, run `make test-zellij-session-keys` independently to exercise direct creation and rename with two clients, the real draft banner, and popup layout boundaries.

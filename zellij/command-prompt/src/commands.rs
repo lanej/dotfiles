@@ -14,6 +14,7 @@ const COMMANDS: &[&str] = &[
     "focus-last-pane",
     "focus-next-pane",
     "focus-previous-pane",
+    "go-to-next-attention",
     "go-to-next-tab",
     "go-to-previous-tab",
     "go-to-tab",
