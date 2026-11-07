@@ -5,6 +5,7 @@ use zellij_tile::prelude::actions::Action;
 use zellij_tile::prelude::*;
 
 const OPEN: &str = "command-prompt";
+const NEW_SESSION: &str = "new-session";
 
 #[derive(Clone, Copy)]
 enum Input {
@@ -42,6 +43,7 @@ impl ZellijPlugin for CommandPrompt {
         ]);
         request_permission(&[
             PermissionType::ReadApplicationState,
+            PermissionType::ChangeApplicationState,
             PermissionType::OpenTerminalsOrPlugins,
             PermissionType::RunActionsAsUser,
             PermissionType::Reconfigure,
@@ -85,13 +87,40 @@ impl ZellijPlugin for CommandPrompt {
         if self.allowed
             && message.is_private
             && message.source == PipeSource::Keybind
-            && message.name == OPEN
+            && matches!(message.name.as_str(), OPEN | NEW_SESSION)
             && message.payload.as_deref() == Some(self.client_id.to_string().as_str())
             && self.request.is_none()
             && !self.action_pending
         {
             match get_focused_pane_info() {
                 Ok(origin) => {
+                    if message.name == NEW_SESSION {
+                        match get_pane_cwd(origin.1) {
+                            Ok(cwd) => {
+                                // This API treats /tmp, /host, /data and /cache
+                                // as WASI aliases, but get_pane_cwd returns a
+                                // host path. POSIX /.. is root on macOS/Linux;
+                                // keep that component to avoid alias rewriting.
+                                let Ok(relative) = cwd.strip_prefix("/") else {
+                                    self.notice(
+                                        "The focused pane has no absolute working directory."
+                                            .into(),
+                                    );
+                                    return false;
+                                };
+                                let cwd = std::path::Path::new("/..").join(relative);
+                                // Never reuse a popup's inline layout: its P key
+                                // detaches instead of opening the shared popup.
+                                switch_session_with_layout(
+                                    None,
+                                    LayoutInfo::File("tmux".into(), Default::default()),
+                                    Some(cwd),
+                                );
+                            }
+                            Err(error) => self.notice(error),
+                        }
+                        return false;
+                    }
                     self.origin = Some(origin);
                     self.line.clear();
                     self.input("Zellij action. Enter help or history for a picker.");
@@ -105,10 +134,18 @@ impl ZellijPlugin for CommandPrompt {
 
 impl CommandPrompt {
     fn bind(&self) {
-        reconfigure(format!(
-            "keybinds {{\n tmux {{\n bind \":\" {{\n MessagePluginId {} {{ name \"{OPEN}\"; payload \"{}\"; }}\n SwitchToMode \"Locked\";\n }}\n }}\n }}\n",
-            self.plugin_id, self.client_id,
-        ), false);
+        let bindings = [(":", OPEN), ("C", NEW_SESSION)]
+            .into_iter()
+            .map(|(key, name)| format!(
+                "bind \"{key}\" {{\n MessagePluginId {} {{ name \"{name}\"; payload \"{}\"; }}\n SwitchToMode \"Locked\";\n }}",
+                self.plugin_id, self.client_id,
+            ))
+            .collect::<Vec<_>>()
+            .join("\n");
+        reconfigure(
+            format!("keybinds {{\n tmux {{\n {bindings}\n }}\n }}"),
+            false,
+        );
     }
 
     fn ask(&mut self, request: PromptRequest, input: Input) {
