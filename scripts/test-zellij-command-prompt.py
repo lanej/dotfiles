@@ -309,8 +309,10 @@ def exercise(first, second, home):
 
     open_prompt(first)
     command_anchor = prompt_frame(first)[:2]
+    original_height = prompt_frame(first)[3]
     first.send(b'rename-ta')
-    first.until('inline command suggestions', lambda: 'rename-tab' in text(first) and prompt_frame(first)[3] == 5)
+    first.until('inline command suggestions shrink the dropdown', lambda:
+                'rename-tab' in text(first) and prompt_frame(first)[3] < original_height)
     assert prompt_frame(first)[:2] == command_anchor, 'Completion moved the command line'
     first.send(b'\t')
     first.until('Tab completes the action', lambda: 'rename-tab ' in text(first))

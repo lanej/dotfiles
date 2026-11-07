@@ -551,15 +551,19 @@ impl Palette {
         };
         self.selected = self.selected.min(items.len().saturating_sub(1));
         let start = self.selected.saturating_sub(visible.saturating_sub(1));
-        let label_width = items
-            .iter()
-            .skip(start)
-            .take(visible)
-            .map(|s| graphemes::display_width(&sanitize_display_text(&s.label)))
-            .max()
-            .unwrap_or(12)
-            .clamp(12, (width / 2).max(12))
-            .min(width);
+        let label_width = if self.view == View::History {
+            width
+        } else {
+            items
+                .iter()
+                .skip(start)
+                .take(visible)
+                .map(|s| graphemes::display_width(&sanitize_display_text(&s.label)))
+                .max()
+                .unwrap_or(12)
+                .clamp(12, (width / 2).max(12))
+                .min(width)
+        };
         let detail_width = width.saturating_sub(label_width + 2);
         let cell = |column, row, available, value| {
             print_text_with_coordinates(value, column, row, Some(available), Some(1))
@@ -575,12 +579,14 @@ impl Palette {
                 })
                 .color_range(0, ..),
             );
-            cell(
-                label_width + 4,
-                3,
-                detail_width,
-                Text::from("DETAILS").color_range(0, ..),
-            );
+            if detail_width > 0 {
+                cell(
+                    label_width + 4,
+                    3,
+                    detail_width,
+                    Text::from("DETAILS").color_range(0, ..),
+                );
+            }
         }
         if !message.is_empty() && compact {
             for (i, line) in message.iter().take(visible).enumerate() {
@@ -604,6 +610,9 @@ impl Palette {
                         Text::from(sanitize_display_text(&item.detail)).dim_range(..),
                     ),
                 ] {
+                    if available == 0 {
+                        continue;
+                    }
                     cell(
                         column,
                         row,
