@@ -2,10 +2,12 @@
 """Exercise the installed native command prompt with two real Zellij clients.
 
 Requires the pinned Zellij fork, pyte 0.8.2, and the installer's Rust WASM toolchain.
+The independent --session-keys mode also needs make zellij-status.
 Only this test's HOME, session, permissions and sockets are used. No shell or
 status/navigation plugin from the user's environment is loaded.
 """
 
+import argparse
 import codecs
 import importlib
 import os
@@ -36,11 +38,12 @@ def block(text, start):
     raise AssertionError("Unclosed KDL node")
 
 
-def configuration():
+def configuration(session_keys=False):
     source = (ROOT / "zellij/config.kdl").read_text()
     bindings = block(source, r"keybinds\b")
     tmux = block(bindings, r"\btmux\s*\{")
-    keys = [block(tmux, rf'bind "{re.escape(key)}"') for key in (":", "c", "v", "h", "l")]
+    selected = ("C", "w", "P", "k", "j", "c") if session_keys else (":", "c", "v", "h", "l")
+    keys = [block(tmux, rf'bind "{re.escape(key)}"') for key in selected]
     alias = re.search(r'^\s*command-prompt location=.*$', block(source, r"\bplugins\s*\{"), re.M).group().strip()
     load = re.search(r'^\s*command-prompt\s*$', block(source, r"\bload_plugins\s*\{"), re.M).group().strip()
     # Restrict unrelated startup work, but consume the real installed plugin's
@@ -52,7 +55,8 @@ def configuration():
         'pane_frames true', 'mouse_mode false',
         'plugins { ' + alias + '\n}', 'load_plugins { ' + load + '\n}',
         'keybinds clear-defaults=true {', block(bindings, r'\blocked\s*\{'),
-        'tmux {', *keys, 'bind "Esc" { SwitchToMode "Locked"; }', '}', '}',
+        'tmux {', *keys, 'bind "Esc" { SwitchToMode "Locked"; }', '}',
+        block(bindings, r'\brenamesession\s*\{') if session_keys else '', '}',
     ]) + '\n'
 
 
@@ -330,7 +334,164 @@ def exercise(first, second, home):
           'cancel/error/reopen/help/history, and hidden floats with two attached clients.')
 
 
+def sessions(client):
+    result = subprocess.run([client.binary, 'list-sessions', '--short', '--no-formatting'],
+                            env=client.env, capture_output=True, text=True, timeout=5)
+    result.check_returncode()
+    return set(result.stdout.splitlines())
+
+
+def exercise_session_keys(first, second, home, clients):
+    """Use the real keys, shell identities and native clients, not plugin messages."""
+    original = first.name
+    second.until('second client attaches', lambda: PROMPT.decode().strip() in text(second))
+    if '(y/n)' in text(second).lower():
+        second.send(b'y')
+
+    def grant_bar(client):
+        # A switching PTY still contains its earlier command-plugin consent.
+        # Inspect the current screen rather than that stale output history.
+        ready = lambda: re.search(r'!\d+ ●\d+', text(client))
+        client.until('current session status consent or live bar', lambda:
+                     '(y/n)' in text(client).lower() or ready())
+        if '(y/n)' in text(client).lower():
+            client.prefix(b'k')
+            client.send(b'y')
+        client.until('current session status bar is ready', ready)
+
+    def client_count(name):
+        return len(first.action('list-clients', session=name).strip().splitlines()[1:])
+
+    def shell_probe(client, label):
+        path = home / label
+        client.send(("printf '%s\\n' \"$ZELLIJ_SESSION_NAME\" \"$$\" \"$PWD\" > "
+                     + str(path) + '\r').encode())
+        client.until('shell identity ' + label, lambda: path.exists() and len(path.read_text().splitlines()) == 3)
+        name, pid, cwd = path.read_text().splitlines()
+        return name, int(pid), cwd
+
+    first.until('two original clients', lambda: client_count(original) == 2)
+    focused = home / 'focused-cwd'
+    focused.mkdir()
+    first.send(('cd ' + str(focused) + '\r').encode())
+    _, old_pid, old_cwd = shell_probe(first, 'original-shell')
+    assert old_cwd == str(focused)
+    original_panes = {p['id'] for p in first.terminals()}
+
+    def create(client, bystander, label):
+        before = sessions(client)
+        # Keep the other client active around the asynchronous private dispatch.
+        bystander.send(b'\x15')
+        os.write(client.fd, b'\x06C')
+        bystander.send(b'\x15')
+        created = client.until('Ctrl-f C immediately creates an unnamed session',
+                               lambda: sessions(client) - before)
+        assert len(created) == 1, created
+        name = created.pop()
+        client.until('requesting client attaches to generated session', lambda: client_count(name) == 1)
+        client.name = name
+        client.until('new session terminal is ready', lambda: len(client.terminals()) == 1)
+        grant_bar(client)
+        client.prefix(b'j')
+        client.drain(0.3)
+        actual, pid, cwd = shell_probe(client, label)
+        assert actual == name, 'C switched a different client or left a chooser open'
+        assert pid != old_pid
+        assert any(p['is_plugin'] for p in client.panes()), 'C did not load the regular tmux layout'
+        return name, pid, cwd
+
+    created, _, cwd = create(first, second, 'new-shell')
+    assert cwd == str(focused), 'New session lost the requesting pane cwd'
+    assert client_count(original) == 1
+    name, pid, _ = shell_probe(second, 'bystander-shell')
+    assert (name, pid) == (original, old_pid), 'Bystander moved or original shell restarted'
+    assert {p['id'] for p in second.terminals()} == original_panes
+    os.kill(old_pid, 0)
+
+    # RenameSession edits are private drafts until Enter. They neither create
+    # a shell/picker pane nor rename the live session as each byte is entered.
+    observer = Terminal(first.binary, first.env, created, install_navigation=False)
+    clients.append(observer)
+    observer.until('rename observer attaches', lambda: PROMPT.decode().strip() in text(observer))
+    grant_bar(observer)
+    before = sessions(first)
+    pane_ids = {p['id'] for p in first.terminals()}
+    renamed = created + '-renamed'
+    first.prefix(b'w')
+    first.send(renamed.encode())
+    first.until('status bar shows native rename draft', lambda:
+                'RENAME SESSION: ' + renamed in text(first))
+    assert {p['id'] for p in first.terminals()} == pane_ids, 'w opened a shell picker'
+    observer.prefix(b'c')
+    observer.until('second client metadata broadcast', lambda: len(observer.tabs()) == 2)
+    first.drain(0.3)
+    observer.drain(0.2)
+    assert 'RENAME SESSION: ' + renamed in text(first), 'Session update erased draft'
+    assert renamed not in text(observer), 'Rename draft leaked to bystander'
+    assert sessions(first) == before, 'Rename draft changed live names before Enter'
+    first.send(b'\r')
+    first.until('Enter commits session rename', lambda: renamed in sessions(first) and created not in sessions(first))
+    first.name = renamed
+    observer.name = renamed
+    first.until('rename UI closes on Enter', lambda: 'RENAME SESSION:' not in text(first))
+    for key in (b'\x1b', b'\x03'):
+        first.prefix(b'w')
+        first.send(b'must-not-be-committed')
+        first.until('cancel draft is visible', lambda: 'RENAME SESSION: must-not-be-committed' in text(first))
+        first.send(key)
+        first.until('rename UI closes on cancel', lambda: 'RENAME SESSION:' not in text(first))
+        assert sessions(first) == (before - {created}) | {renamed}, 'Cancelled rename changed session names'
+        shell_probe(first, 'cancel-' + key.hex())  # proves return to Locked
+    for invalid in ('', 'bad/name', original):
+        first.prefix(b'w')
+        first.send(invalid.encode() + b'\r')
+        first.until('invalid/colliding name displays native error', lambda: 'Could not rename session' in text(first))
+        assert 'RENAME SESSION:' not in text(first)
+        assert sessions(first) == (before - {created}) | {renamed}, 'Invalid/colliding rename changed names'
+        # Dismiss the native rejection notice before the next rename.
+        first.send(b'\x1b')
+        first.until('rename error notice closes', lambda: 'Could not rename session' not in text(first))
+        shell_probe(first, 'rejected-' + str(len(invalid)))
+    assert client_count(original) == 1 and client_count(renamed) == 2
+    os.kill(old_pid, 0)
+
+    # Start the actual popup launcher on its own PTY to inspect its client
+    # directly, without adding a second nested terminal decoder. Its layout
+    # overlay is exactly the one used when Ctrl-f P launches it in a float.
+    popup_env = {**first.env, 'ZELLIJ_SESSION_NAME': renamed}
+    popup = Terminal(first.binary, popup_env, 'dotfiles-popup',
+                     [str(ROOT / 'bin/zellij-popup')], install_navigation=False)
+    clients.append(popup)
+    popup.until('popup shell starts', lambda: PROMPT.decode().strip() in text(popup))
+    if '(y/n)' in text(popup).lower():
+        popup.send(b'y')
+    grant_bar(popup)
+    popup.prefix(b'j')
+    _, popup_pid, _ = shell_probe(popup, 'popup-shell')
+    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup')
+    assert client_count('dotfiles-popup') == 0
+    os.kill(popup_pid, 0)
+    popup.prefix(b'P')
+    popup.until('new session uses regular P launcher, not popup detach override', lambda:
+                any(p['is_floating'] for p in popup.terminals()) and client_count('dotfiles-popup') == 1)
+    # Native list-clients lists visible-pane focus, not every attachment: a
+    # descended host can have no rows. Check the actual requesting PTY and its
+    # original regular shell instead of treating guest focus as a detach.
+    print('Host focused-client rows while descended:\n' + popup.action('list-clients'), flush=True)
+    assert os.waitpid(popup.pid, os.WNOHANG) == (0, 0), 'Requesting client exited after P'
+    os.kill(regular_pid, 0)
+    assert client_count(original) == 1
+    os.kill(old_pid, 0)
+    os.kill(popup_pid, 0)
+    print('PASS: direct C with two clients, preserved shells/cwd, native rename commit/cancel/'
+          'validation, and regular layout/P binding after creating from popup.')
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--session-keys', action='store_true',
+                        help='exercise direct new-session and native rename keys independently')
+    args = parser.parse_args()
     check_decoder()
     binary = shutil.which('zellij')
     assert binary, 'Install the pinned Zellij fork before testing the command prompt'
@@ -359,7 +520,18 @@ def main():
                        cwd=ROOT, env=env, check=True)
         config = home / '.config/zellij'
         (config / 'layouts').mkdir(parents=True)
-        (config / 'config.kdl').write_text(configuration())
+        (config / 'config.kdl').write_text(configuration(args.session_keys))
+        if args.session_keys:
+            # Match managed installation, so C is not intercepted by first-run
+            # desktop onboarding (there is no explicit shell command on C).
+            subprocess.run([sys.executable, str(ROOT / 'scripts/make/zellij-config.py'),
+                            str(home)], env=env, check=True)
+            status = ROOT / 'zellij/status/target/wasm32-wasip1/release/lane-status.wasm'
+            assert status.exists(), 'Build the status plugin with make zellij-status first'
+            (config / 'plugins').mkdir()
+            shutil.copyfile(status, config / 'plugins/lane-status.wasm')
+            shutil.copyfile(ROOT / 'zellij/layouts/tmux.kdl', config / 'layouts/tmux.kdl')
+            env['PATH'] = str(ROOT / 'bin') + os.pathsep + env['PATH']
         (config / 'layouts/test.kdl').write_text('''layout {
     tab { pane; }
     new_tab_template {
@@ -388,9 +560,16 @@ def main():
                         PROMPT.decode().strip() in text(first) and '(y/n)' not in text(first).lower())
             second = Terminal(binary, env, name, install_navigation=False)
             clients.append(second)
-            exercise(first, second, home)
+            if args.session_keys:
+                exercise_session_keys(first, second, home, clients)
+            else:
+                exercise(first, second, home)
         finally:
-            subprocess.run([binary, 'kill-session', name], env=env, capture_output=True, timeout=5)
+            names = (sessions(first) | {client.name for client in clients}
+                     if args.session_keys and clients else {name})
+            for session in names:
+                subprocess.run([binary, 'kill-session', '--', session], env=env,
+                               capture_output=True, timeout=5)
             for client in clients:
                 client.close()
 

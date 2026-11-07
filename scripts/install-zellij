@@ -6,7 +6,7 @@ if [ "$#" -ne 0 ]; then
     exit 2
 fi
 
-zellij_revision=dfc4f414c1a9386b07911ebd3cfb4e7aaa4289f5
+zellij_revision=00e5384772e7b3e025b2982a851d08c59581774a
 zellij_toolchain=1.95.0
 
 rustup toolchain install "$zellij_toolchain" --profile minimal
@@ -17,15 +17,24 @@ if [ -z "$zellij_host" ]; then
     exit 1
 fi
 
-export CARGO_TARGET_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target"
+# Cargo can reuse path-dependency artifacts across git checkouts. Keep each
+# runtime revision's native crates separate, even when CI restores an older cache.
+export CARGO_TARGET_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target/$zellij_revision"
 export CARGO_PROFILE_RELEASE_LTO=false
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 
 install_flags=(--locked)
-if [ -e "$HOME/.local/bin/zellij" ] || [ -L "$HOME/.local/bin/zellij" ]; then
+# Installation evidence belongs with the binary, not in a restorable build cache.
+install_stamp="$HOME/.local/.dotfiles-zellij-install"
+install_identity="revision-target-v1:$zellij_revision"
+if [ ! -x "$HOME/.local/bin/zellij" ] || [ "$(cat "$install_stamp" 2>/dev/null || true)" != "$install_identity" ]; then
+    # Cargo otherwise skips an owned same-revision binary, even if it was built
+    # from stale shared artifacts before revision-isolated installation existed.
+    install_flags+=(--force)
+else
     installed=$(rustup run "$zellij_toolchain" cargo install --list --root "$HOME/.local")
-    # WHY: Only unmanaged binaries need --force; Cargo can skip a matching owned install.
+    # A successful isolated install can use Cargo's normal same-revision skip.
     if ! grep -Fxq '    zellij' <<< "$installed"; then
         install_flags+=(--force)
     fi
@@ -40,4 +49,5 @@ rustup run "$zellij_toolchain" cargo install \
     --features plugins_from_target,vendored_curl,web_server_capability \
     --bin zellij zellij
 
+printf '%s\n' "$install_identity" > "$install_stamp"
 printf '%s\n' 'Restart existing Zellij sessions to use the installed runtime.'

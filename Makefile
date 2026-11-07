@@ -169,11 +169,13 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
-.PHONY: zellij-command-prompt test-zellij-command-prompt
+.PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"
 test-zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
+test-zellij-session-keys:
+	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
 .PHONY: zellij-status test-zellij-status
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications:
@@ -392,6 +394,11 @@ test-zellij-attach:
 .PHONY: test-zellij-move
 test-zellij-move:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
+
+.PHONY: test-zellij-swap
+test-zellij-swap:
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" captured_nonleader_survives_election_but_rejects_stale_identity
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --swap-tab
 
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
