@@ -390,6 +390,10 @@ test-zellij-attach:
 test-zellij-move:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
 
+.PHONY: test-zellij-swap
+test-zellij-swap:
+	@python3 "$(DOTFILES)/scripts/test-zellij.py" --swap-tab
+
 test-zellij:
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles

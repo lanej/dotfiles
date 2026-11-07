@@ -116,7 +116,15 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "W" { SwitchToMode "Tab"; }
+        bind "W" {
+            Run "zellij-picker" "swap-tab" {
+                floating true
+                close_on_exit true
+                width "90%"
+                height "90%"
+            }
+            SwitchToMode "Locked"
+        }
 
         // New-session and rename-session actions live in the built-in manager.
         bind "C" "w" {

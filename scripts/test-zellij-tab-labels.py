@@ -100,8 +100,7 @@ def main():
             terminal.send(b"\r")
             terminal.until("picker selects stable eleventh tab", lambda: active()["tab_id"] == eleventh
                            and not any(pane["is_floating"] for pane in terminal.terminals()))
-            terminal.prefix(b"W")
-            terminal.send(b"h\r")
+            terminal.action("move-tab", "left", "--tab-id", str(eleventh))
             terminal.until("reordered fallback follows position rather than stable ID", lambda:
                            active()["tab_id"] == eleventh and active()["position"] == 9 and "9:Tab #9" in top_line())
 

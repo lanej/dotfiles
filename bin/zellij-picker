@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pick a Zellij tab, pane destination, running session or client to detach.
+"""Pick a Zellij tab, tab swap, pane destination, session or client to detach.
 
 Run in a floating pane with close_on_exit. Titles never become shell commands.
 """
@@ -397,6 +397,126 @@ def pick_tab(session):
     run_zellij("action", "go-to-tab-by-id", token, session=session)
 
 
+def swap_order(tabs):
+    tabs = sorted(tabs, key=lambda tab: tab["position"])
+    order = [tab["tab_id"] for tab in tabs]
+    if len(set(order)) != len(order) or [tab["position"] for tab in tabs] != list(range(len(tabs))):
+        raise RuntimeError("Tab positions are inconsistent; reopen the swap picker")
+    return order
+
+
+def check_swap_state(session, order, source_tab, source_id, picker_id, token):
+    # Attachment tokens remain stable across position/name updates. Aggregate
+    # is_focused/active flags cannot identify the requesting client.
+    clients = client_choices(session)
+    owners = [row for row in clients.values()
+              if row.get("pane_id") == f"terminal_{picker_id}"]
+    if len(owners) != 1:
+        focus = {client: row.get("pane_id") for client, row in clients.items()}
+        raise RuntimeError(f"Picker terminal_{picker_id} requires one owner; observed client panes: {focus}")
+    if owners[0]["token"] != token:
+        observed = owners[0]["token"]
+        changed = sorted(key for key in token.keys() | observed.keys()
+                         if token.get(key) != observed.get(key))
+        raise RuntimeError(f"The requesting attachment identity changed ({', '.join(changed)}); "
+                           f"client/plugin {token.get('client_id')}/{token.get('plugin_id')} -> "
+                           f"{observed.get('client_id')}/{observed.get('plugin_id')}")
+    panes = snapshot(session, "panes")
+    for pane_id in (source_id, picker_id):
+        if not any(not p["is_plugin"] and p["id"] == pane_id and
+                   p["tab_id"] == source_tab and not p["is_suppressed"] for p in panes):
+            raise RuntimeError("The original pane or picker changed tabs or closed")
+    if swap_order(snapshot(session, "tabs")) != order:
+        raise RuntimeError("Tab order or membership changed")
+
+
+def swap_tab(session):
+    """Exchange endpoint positions, never insert or change any client's tab ID.
+
+    Native adjacent moves are non-atomic. Check the complete expected order
+    around every single-shot move; never cross an endpoint (native moves wrap).
+    A concurrent change between a read and action remains possible. Stop on any
+    uncertainty, retaining the partial order for inspection rather than undoing
+    other clients' work or replaying a move whose reply was lost. Closing the
+    picker can kill this helper before it can display its partial-order warning.
+    """
+    if (Path.home() / ".config/zellij/config.kdl").resolve().name == "config-legacy.kdl":
+        raise RuntimeError("Tab swap needs the status plugin and pinned runtime; run make zellij-status zellij and restart this session")
+    origin = os.environ.get("ZELLIJ_ORIGIN_PANE_ID", "")
+    if not re.fullmatch(r"terminal_[0-9]+", origin):
+        raise RuntimeError("Tab swap needs the pinned runtime; restart this session after make zellij-runtime")
+    source_id, picker_id = int(origin.removeprefix("terminal_")), own_pane_id()
+    panes = snapshot(session, "panes")
+    source = next((p for p in panes if not p["is_plugin"] and p["id"] == source_id), None)
+    if source is None:
+        raise RuntimeError("The original pane closed; reopen the swap picker")
+    source_tab = source["tab_id"]
+    owners = [row for row in client_choices(session).values()
+              if row.get("pane_id") == f"terminal_{picker_id}"]
+    if len(owners) != 1:
+        raise RuntimeError("Cannot identify the picker’s attached client")
+    token = owners[0]["token"]
+    tabs = snapshot(session, "tabs")
+    order = swap_order(tabs)
+    check_swap_state(session, order, source_tab, source_id, picker_id, token)
+    owned = owned_titles(session)
+    selected = choose([
+        f"{tab['tab_id']}\t{tab['position']}: {display_tab_name(tab, panes, owned=owned)}" +
+        (" [current]" if tab["tab_id"] == source_tab else "")
+        for tab in sorted(tabs, key=lambda tab: tab["position"])
+    ], "Swap tab positions", "--preview-tab")
+    if selected is None:
+        return
+    if selected not in {str(tab_id) for tab_id in order}:
+        raise RuntimeError("Invalid swap destination")
+    destination = int(selected)
+    check_swap_state(session, order, source_tab, source_id, picker_id, token)
+    a, b = order.index(source_tab), order.index(destination)
+    if a == b:
+        return
+    step = 1 if a < b else -1
+    distance = abs(b - a)
+    final_order = order.copy()
+    final_order[a], final_order[b] = final_order[b], final_order[a]
+    attempted = False
+    try:
+        for tab_id, delta, count in ((source_tab, step, distance), (destination, -step, distance - 1)):
+            for _ in range(count):
+                check_swap_state(session, order, source_tab, source_id, picker_id, token)
+                index = order.index(tab_id)
+                neighbor = index + delta
+                if not 0 <= neighbor < len(order):
+                    raise RuntimeError("Refusing a wrapping tab move")
+                expected = order.copy()
+                expected[index], expected[neighbor] = expected[neighbor], expected[index]
+                attempted = True
+                command_error = None
+                try:
+                    run_zellij("action", "move-tab", "right" if delta > 0 else "left",
+                               "--tab-id", str(tab_id), session=session)
+                except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+                    command_error = error
+                # Even a successful CLI exit is not proof of the requested order.
+                # Inspect after a failed/unknown command too, but never continue it.
+                try:
+                    check_swap_state(session, expected, source_tab, source_id, picker_id, token)
+                except (OSError, RuntimeError, ValueError, KeyError, IndexError,
+                        subprocess.TimeoutExpired) as error:
+                    if command_error is not None:
+                        raise RuntimeError(f"Move command: {command_error}; inspection: {error}") from error
+                    raise
+                if command_error is not None:
+                    raise RuntimeError(f"Move command failed despite observed order: {command_error}")
+                order = expected
+        if order != final_order:
+            raise RuntimeError("Endpoint swap was not confirmed")
+    except (OSError, RuntimeError, ValueError, KeyError, IndexError,
+            subprocess.TimeoutExpired, KeyboardInterrupt) as error:
+        if attempted:
+            raise RuntimeError(f"Tab swap stopped; tabs may be partially reordered. Inspect their positions before retrying. No rollback was attempted. {error}") from error
+        raise
+
+
 def move_pane(session):
     # Zellij records the originating pane before it opens this floating command.
     # Never infer it from mutable focus or from the picker’s own pane ID.
@@ -464,9 +584,9 @@ def pick_session(session):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-        "tabs", "move-pane", "sessions", "clients", "--preview-tab", "--preview-move", "--preview-session"
+        "tabs", "swap-tab", "move-pane", "sessions", "clients", "--preview-tab", "--preview-move", "--preview-session"
     ):
-        raise RuntimeError("Usage: zellij-picker tabs|move-pane|sessions|clients (inside Zellij)")
+        raise RuntimeError("Usage: zellij-picker tabs|swap-tab|move-pane|sessions|clients (inside Zellij)")
     session = os.environ.get("ZELLIJ_SESSION_NAME")
     if not session:
         raise RuntimeError("Run zellij-picker inside a Zellij session")
@@ -479,6 +599,8 @@ def main():
         preview_session(base64.urlsafe_b64decode(sys.argv[2]).decode())
     elif mode == "tabs":
         pick_tab(session)
+    elif mode == "swap-tab":
+        swap_tab(session)
     elif mode == "move-pane":
         move_pane(session)
     elif mode == "clients":
