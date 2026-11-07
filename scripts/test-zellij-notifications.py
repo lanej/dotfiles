@@ -3,6 +3,9 @@
 import importlib.machinery
 import importlib.util
 import json
+import io
+from contextlib import redirect_stdout
+from datetime import datetime
 import os
 from pathlib import Path
 import stat
@@ -49,7 +52,7 @@ class History(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
 
-    def test_retention_is_bounded_and_preview_strips_control_sequences(self):
+    def test_retention_is_bounded_and_recorded_messages_strip_controls(self):
         for start in range(0, 540, 30):
             self.run_tool("record", json.dumps([event(i, message="\x1b\x07\nresult" + "界" * 900)
                                                for i in range(start, start + 30)], ensure_ascii=False))
@@ -57,11 +60,52 @@ class History(unittest.TestCase):
         self.assertEqual(len(rows), notify.LIMIT)
         self.assertEqual(rows[0]["id"], "40")
         self.assertLessEqual(len(rows[-1]["message"]), 512)
-        preview = self.run_tool("show", "539").stdout
-        self.assertNotIn("\x1b", preview)
-        self.assertNotIn("\x07", preview)
-        self.assertIn("Tests", preview)
-        self.assertIn("terminal_3", preview)
+        self.assertNotIn("\x1b", rows[-1]["message"])
+        self.assertNotIn("\x07", rows[-1]["message"])
+
+    def test_preview_shows_validated_pane_contents_with_colors(self):
+        self.run_tool("record", json.dumps([event(1)]))
+        content = "\x1b[32mApprove the deployment?\x1b[0m\n> Yes    No\n"
+        output = io.StringIO()
+        with patch.object(notify, "zellij", side_effect=["valid\n", content, "valid\n"]) as run:
+            with redirect_stdout(output):
+                notify.show("1")
+        self.assertEqual(output.getvalue(), content)
+        self.assertEqual(run.call_args_list[1].args,
+                         ("action", "dump-screen", "--ansi", "--pane-id", "terminal_3"))
+        self.assertEqual(run.call_args_list[1].kwargs, {"session": "main"})
+
+    def test_preview_does_not_show_replaced_or_missing_sources(self):
+        self.run_tool("record", json.dumps([event(1)]))
+        for replies in [["stale\n"], ["valid\n", "OTHER PROCESS", "stale\n"]]:
+            with patch.object(notify, "zellij", side_effect=replies) as run:
+                with redirect_stdout(io.StringIO()) as output:
+                    notify.show("1")
+            self.assertEqual(output.getvalue(), "Pane unavailable\n")
+            self.assertEqual(run.call_count, len(replies))
+        with redirect_stdout(io.StringIO()) as output:
+            notify.show("expired")
+        self.assertEqual(output.getvalue(), "Pane unavailable\n")
+
+    def test_dates_only_appear_when_entries_span_days(self):
+        def picker_text(rows):
+            with patch.object(notify, "read_history", return_value=rows):
+                with patch.object(notify.subprocess, "run", return_value=
+                                  subprocess.CompletedProcess([], 130, "", "")) as picker:
+                    notify.history()
+            return picker.call_args.kwargs["input"]
+        first = event(1, time_ms=int(datetime(2026, 11, 7, 9, 30).timestamp() * 1000))
+        second = event(2, time_ms=int(datetime(2026, 11, 7, 11, 45).timestamp() * 1000))
+        same_day = picker_text([first, second])
+        self.assertIn("09:30", same_day)
+        self.assertIn("11:45", same_day)
+        self.assertNotIn("11-07", same_day)
+        duplicate_time = picker_text([first, {**second, "time_ms": first["time_ms"]}])
+        self.assertNotIn("09:30", duplicate_time)
+        second["time_ms"] = int(datetime(2026, 11, 8, 11, 45).timestamp() * 1000)
+        mixed_days = picker_text([first, second])
+        self.assertIn("11-07 09:30", mixed_days)
+        self.assertIn("11-08 11:45", mixed_days)
 
     def test_corrupt_history_is_reported_and_preserved(self):
         self.run_tool("record", json.dumps([event(1)]))
@@ -77,7 +121,7 @@ class History(unittest.TestCase):
                           subprocess.CompletedProcess([], 130, "", "")) as picker:
             with patch.object(notify, "jump") as jump:
                 notify.history()
-        self.assertIn("No notifications yet", " ".join(picker.call_args.args[0]))
+        self.assertIn("No notifications", " ".join(picker.call_args.args[0]))
         jump.assert_not_called()
 
     def test_jump_refuses_stale_pane_and_preserves_literal_session_names(self):

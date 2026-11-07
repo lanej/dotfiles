@@ -34,12 +34,32 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow.preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV", "NO_COLOR"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"],
                        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
         program = work / "agent.py"
-        program.write_text(status.EMITTER)
+        program.write_text(r'''import os
+from pathlib import Path
+import sys
+import termios
+
+settings = termios.tcgetattr(0)
+settings[3] &= ~termios.ECHO
+termios.tcsetattr(0, termios.TCSANOW, settings)
+Path(sys.argv[1]).write_text(str(os.getpid()))
+def report(value):
+    print("\x1b]7501;state=" + value + ":app=fixture\x07", end="", flush=True)
+report("working")
+print("\x1b[2J\x1b[HRelease checks\n\nRunning integration tests…", flush=True)
+for line in sys.stdin:
+    value = line.strip()
+    report(value)
+    if value.startswith("blocked"):
+        print("\n\x1b[38;2;235;203;139mDeploy this build?\x1b[0m\n  1  Deploy\n  2  Keep staging", flush=True)
+    elif value == "done":
+        print("\n\x1b[38;2;163;190;140mBuild passed. Ready to deploy.\x1b[0m", flush=True)
+''')
         name = "notifications-" + work.name
         client = Terminal(shutil.which("zellij"), env, name)
         clients = [client]
@@ -75,7 +95,7 @@ def main():
             client.until("notification bar ready", lambda: "!0 ●0 ✓0" in view())
             client.prefix(b"B")
             client.until("empty history remains readable", lambda:
-                         "No notifications yet" in view() and "History >" in view())
+                         "No notifications" in view() and "›" in view())
             capture("empty-history")
             client.send(b"\x1b")
             client.until("empty history closes", lambda: "Notification history" not in view())
@@ -117,14 +137,20 @@ def main():
             assert len(history()) == before, "Same state produced duplicate history"
             client.prefix(b"B")
             client.until("history opens through its real key", lambda:
-                         "Notification history" in view() and "Enter: source pane" in view())
+                         "Notification history" in view() and "Release checks" in view())
             capture("history")
+            glyphs = [(cell.data, cell.fg) for y in range(3, screen.lines)
+                      for cell in screen.buffer[y].values()]
+            assert ("✓", "a3be8c") in glyphs, "Completion glyph lost its green color"
+            assert ("·", "88c0d0") in glyphs, "Info glyph lost its blue color"
+            assert ("!", "ebcb8b") in glyphs, "Attention glyph lost its yellow color"
+            assert ("B", "a3be8c") in glyphs, "Pane preview lost its source text color"
             client.send(b"Version ready")
             client.until("history search finds a script notice", lambda:
-                         "Version ready" in view() and "Recorded event" in view())
+                         "Version ready" in view() and "zellij-ready>" in view())
             client.send(b"\x15Pane")
             client.until("source title is searchable", lambda:
-                         "Source" in view() and "Deploy" not in view())
+                         "Release checks" in view() and "Keep staging" in view())
             client.send(b"\r")
             client.until("history selection visits the original pane", lambda:
                          focused_pane() == agent)
@@ -144,7 +170,7 @@ def main():
             client.until("narrow bar is ready", lambda: "!0 ●0" in view())
             client.prefix(b"B")
             client.until("narrow history opens with a full source preview", lambda:
-                         "Notification history" in view() and "Recorded event" in view())
+                         "Notification history" in view() and "Release checks" in view())
             capture("history-narrow")
             client.send(b"\x1b")
             print("PASS: installed notices preserve keyboard focus, urgency excludes completions, repeated state is deduplicated, history jumps without restarting the source, and the native inbox opens.")

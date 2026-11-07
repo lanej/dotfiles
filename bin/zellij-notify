@@ -18,7 +18,9 @@ import uuid
 PLUGIN = "file:~/.config/zellij/plugins/lane-status.wasm"
 LIMIT = 500
 MAX_BYTES = 2 * 1024 * 1024
-LEVELS = {"info": "· Info", "success": "✓ Done", "warn": "! Attention", "error": "× Failed"}
+LEVELS = {"info": "·", "success": "✓", "warn": "!", "error": "×"}
+COLORS = {"info": "136;192;208", "success": "163;190;140",
+          "warn": "235;203;139", "error": "191;97;106"}
 
 
 def state_dir():
@@ -129,25 +131,33 @@ def send(args):
 def show(identifier):
     row = next((row for row in read_history() if row["id"] == identifier), None)
     if row is None:
-        print("This notification has expired from history.")
+        print("Pane unavailable")
         return
-    stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{LEVELS[row['level']]} · {row['title']}\n\n{row['message']}\n\n"
-          f"Recorded  {stamp}\nSession   {row['session']}\nSource    {row['pane_id']}\n\n"
-          "Recorded event; source may have closed.\nEnter visits a matching live source.")
+    try:
+        validate_source(row)
+        content = zellij("action", "dump-screen", "--ansi", "--pane-id", row["pane_id"],
+                         session=row["session"])
+        # WHY: Discard a capture if its source was replaced while the dump was in flight.
+        validate_source(row)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        print("Pane unavailable")
+        return
+    print(content.rstrip())
+
+
+def validate_source(row):
+    if not re.fullmatch(r"terminal_[0-9]+", row["pane_id"]) or row.get("pane_pid") is None:
+        raise ValueError("This notification has no live source pane")
+    result = zellij("pipe", "--plugin", PLUGIN, "--name", "lane-notification-validate",
+                    "--", json.dumps(row), session=row["session"])
+    if "valid" not in result.splitlines():
+        raise ValueError("The source pane closed or changed; the notification remains in history")
 
 
 def jump(row):
     if not os.environ.get("ZELLIJ_SESSION_NAME"):
         raise ValueError("Open history inside Zellij to jump to a source pane")
-    if not re.fullmatch(r"terminal_[0-9]+", row["pane_id"]) or row["pane_pid"] is None:
-        raise ValueError("This notification has no live source pane")
-    # Query the actual target server before switching. An old history row is
-    # inspectable even after its original process/session no longer exists.
-    result = zellij("pipe", "--plugin", PLUGIN, "--name", "lane-notification-validate",
-                    "--", json.dumps(row), session=row["session"])
-    if "valid" not in result.splitlines():
-        raise ValueError("The source pane closed or changed; the notification remains in history")
+    validate_source(row)
     origin = os.environ["ZELLIJ_SESSION_NAME"]
     if row["session"] == origin:
         # The native switch-session action deliberately ignores its current
@@ -160,20 +170,28 @@ def jump(row):
 
 def history():
     rows = list(reversed(read_history()))
+    dates = {datetime.fromtimestamp(row["time_ms"] / 1000).date() for row in rows}
+    times = {datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%H:%M") for row in rows}
+    stamp_format = "%H:%M" if len(times) > 1 else ""
+    if len(dates) > 1:
+        stamp_format = "%m-%d %H:%M" if len({date.year for date in dates}) == 1 else "%Y-%m-%d %H:%M"
     choices = []
     for row in rows:
-        stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%m-%d %H:%M")
-        choices.append(f"{row['id']}\t{stamp}  {LEVELS[row['level']]}  {row['title']}"
-                       f" · {row['session']} — {row['message']}")
+        stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime(stamp_format)
+        glyph = f"\x1b[38;2;{COLORS[row['level']]}m{LEVELS[row['level']]}\x1b[0m"
+        prefix = stamp + "  " if stamp else ""
+        message = row["message"]
+        if (row["level"], message) in {("success", "done"), ("warn", "has a question")}:
+            message = ""
+        summary = " — " + message if message else ""
+        choices.append(f"{row['id']}\t{prefix}{glyph}  {row['title']} · {row['session']}{summary}")
     preview = shlex.join([str(Path(__file__).resolve()), "show"]) + " {1}"
-    hint = "Enter: source pane · Ctrl-/: preview · Esc: close" if rows else "Esc: close"
-    header = ("Newest first · Type to search recorded events" if rows else
-              "No notifications yet · Ctrl-f b opens current attention")
+    empty = ["--header=No notifications"] if not rows else []
     selection = subprocess.run([
         "fzf", "--height=100%", "--layout=reverse", "--delimiter=\t", "--with-nth=2..",
-        "--no-sort", "--prompt=History > ", "--header=" + header + "\n" + hint,
+        "--no-sort", "--ansi", "--prompt=› ", *empty,
         "--bind=ctrl-/:toggle-preview", "--preview", preview,
-        "--preview-window=" + ("right:45%:wrap:<45(down:55%:wrap)" if rows else "hidden")],
+        "--preview-window=" + ("right:60%:border-left:wrap:<50(down:60%:border-top:wrap)" if rows else "hidden")],
         input="".join(choice + "\n" for choice in choices), capture_output=True, text=True, check=False)
     if selection.returncode in (1, 130):
         return

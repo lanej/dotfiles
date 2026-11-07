@@ -95,10 +95,13 @@ impl Notifications {
                 && !state.seen
                 && !(item.is_current && focused == Some(item.item.pane_id))
             {
-                self.show(
-                    severity,
-                    &format!("{glyph} {title}: {body} · {}", item.session),
-                );
+                let glyph = if status == AttentionStatus::NeedsYou
+                    && state.detail.kind == Some(BlockedKind::Question) { "?" } else { glyph };
+                let message = if title == item.item.pane_title
+                    && title.strip_prefix("Pane #").is_some_and(|number| number.parse::<u32>().is_ok()) {
+                    glyph.to_owned()
+                } else { format!("{glyph} {title}") };
+                self.show(severity, &message);
             }
             if recorder && item.is_current {
                 self.queue.push_back(json!({
@@ -281,7 +284,11 @@ mod tests {
             ..Default::default()
         };
         first_snapshot.observe(&global, 1, None, true, false);
-        assert!(first_snapshot.notice().is_some());
+        assert_eq!(first_snapshot.notice(), Some(("warn", "! Tests")));
+        global.items[0].item.pane_title = "Pane #1".into();
+        global.items[0].item.attention.detail.kind = Some(BlockedKind::Question);
+        first_snapshot.observe(&global, 1, None, true, false);
+        assert_eq!(first_snapshot.notice(), Some(("warn", "?")));
         global.items[0].item.attention.status = AttentionStatus::Working;
         notices.observe(&global, 1, None, true, false);
         global.items[0].item.attention.status = AttentionStatus::NeedsYou;
