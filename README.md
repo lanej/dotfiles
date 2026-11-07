@@ -112,11 +112,11 @@ source = "release"
 | Set | Groups |
 |---|---|
 | `shell` | Zsh, Git, history, search, navigation, and command-line tools |
-| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring |
+| `terminal` | Tmux, terminal configuration, font, and monitoring |
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
-| `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
+| `workstation` | Composes the five tool bundles above, plus Zellij, mail, and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |

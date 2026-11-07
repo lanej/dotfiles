@@ -44,6 +44,11 @@ def main():
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
+        config.write_text('sets = ["terminal"]\n')
+        terminal = json.loads(run(*command, "--format", "json").stdout)
+        assert "zellij" not in {tool["name"] for tool in terminal["tools"]}
+        assert "zellij-config" not in terminal["setup"]
+        assert "zellij-status" not in terminal["post"]
         (sets / "my-workstation.toml").write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = true\n')
         config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n' + disabled_native + ' = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
