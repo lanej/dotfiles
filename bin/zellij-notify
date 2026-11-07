@@ -18,7 +18,7 @@ import uuid
 PLUGIN = "file:~/.config/zellij/plugins/lane-status.wasm"
 LIMIT = 500
 MAX_BYTES = 2 * 1024 * 1024
-LEVELS = {"info": "·", "success": "✓", "warn": "!", "error": "×"}
+LEVELS = {"info": "· Info", "success": "✓ Done", "warn": "! Attention", "error": "× Failed"}
 
 
 def state_dir():
@@ -132,7 +132,9 @@ def show(identifier):
         print("This notification has expired from history.")
         return
     stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{LEVELS[row['level']]} {row['title']}\n{stamp} · {row['session']} · {row['pane_id']}\n\n{row['message']}")
+    print(f"{LEVELS[row['level']]} · {row['title']}\n\n{row['message']}\n\n"
+          f"Recorded  {stamp}\nSession   {row['session']}\nSource    {row['pane_id']}\n\n"
+          "Recorded event; source may have closed.\nEnter visits a matching live source.")
 
 
 def jump(row):
@@ -158,19 +160,21 @@ def jump(row):
 
 def history():
     rows = list(reversed(read_history()))
-    if not rows:
-        print("No notification history yet. Native attention is available in the inbox (Ctrl-f b).")
-        return
     choices = []
     for row in rows:
         stamp = datetime.fromtimestamp(row["time_ms"] / 1000).strftime("%m-%d %H:%M")
-        choices.append(f"{row['id']}\t{stamp} {LEVELS[row['level']]} {row['session']} · {row['title']}: {row['message']}")
+        choices.append(f"{row['id']}\t{stamp}  {LEVELS[row['level']]}  {row['title']}"
+                       f" · {row['session']} — {row['message']}")
     preview = shlex.join([str(Path(__file__).resolve()), "show"]) + " {1}"
+    hint = "Enter: source pane · Ctrl-/: preview · Esc: close" if rows else "Esc: close"
+    header = ("Newest first · Type to search recorded events" if rows else
+              "No notifications yet · Ctrl-f b opens current attention")
     selection = subprocess.run([
         "fzf", "--height=100%", "--layout=reverse", "--delimiter=\t", "--with-nth=2..",
-        "--header=Enter: source pane · Esc: close",
-        "--preview", preview, "--preview-window=right:55%:wrap"],
-        input="\n".join(choices) + "\n", capture_output=True, text=True, check=False)
+        "--no-sort", "--prompt=History > ", "--header=" + header + "\n" + hint,
+        "--bind=ctrl-/:toggle-preview", "--preview", preview,
+        "--preview-window=" + ("right:45%:wrap:<45(down:55%:wrap)" if rows else "hidden")],
+        input="".join(choice + "\n" for choice in choices), capture_output=True, text=True, check=False)
     if selection.returncode in (1, 130):
         return
     if selection.returncode:

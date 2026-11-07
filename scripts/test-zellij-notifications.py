@@ -72,6 +72,14 @@ class History(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(path.read_text(), "damaged history")
 
+    def test_empty_history_can_be_read_and_cancelled(self):
+        with patch.object(notify.subprocess, "run", return_value=
+                          subprocess.CompletedProcess([], 130, "", "")) as picker:
+            with patch.object(notify, "jump") as jump:
+                notify.history()
+        self.assertIn("No notifications yet", " ".join(picker.call_args.args[0]))
+        jump.assert_not_called()
+
     def test_jump_refuses_stale_pane_and_preserves_literal_session_names(self):
         row = event(1, session="--a session's name")
         with patch.dict(os.environ, {"ZELLIJ_SESSION_NAME": "origin"}):

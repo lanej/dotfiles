@@ -42,6 +42,7 @@ def main():
         program.write_text(status.EMITTER)
         name = "notifications-" + work.name
         client = Terminal(shutil.which("zellij"), env, name)
+        clients = [client]
         screen = status.Display(120, 32)
         stream = pyte.Stream(screen)
         decoder = codecs.getincrementaldecoder("utf-8")("replace")
@@ -72,6 +73,12 @@ def main():
         try:
             client.grant_status_permissions()
             client.until("notification bar ready", lambda: "!0 ●0 ✓0" in view())
+            client.prefix(b"B")
+            client.until("empty history remains readable", lambda:
+                         "No notifications yet" in view() and "History >" in view())
+            capture("empty-history")
+            client.send(b"\x1b")
+            client.until("empty history closes", lambda: "Notification history" not in view())
             agent = client.terminals()[0]["id"]
             pid = work / "agent-pid"
             client.send((shlex.join(["python3", str(program), str(pid)]) + "\r").encode())
@@ -112,6 +119,12 @@ def main():
             client.until("history opens through its real key", lambda:
                          "Notification history" in view() and "Enter: source pane" in view())
             capture("history")
+            client.send(b"Version ready")
+            client.until("history search finds a script notice", lambda:
+                         "Version ready" in view() and "Recorded event" in view())
+            client.send(b"\x15Pane")
+            client.until("source title is searchable", lambda:
+                         "Source" in view() and "Deploy" not in view())
             client.send(b"\r")
             client.until("history selection visits the original pane", lambda:
                          focused_pane() == agent)
@@ -121,11 +134,26 @@ def main():
                          "Inbox" in view() or "inbox" in view())
             capture("inbox")
             client.send(b"\x1b")
+            client = Terminal(shutil.which("zellij"), env, name + "-narrow", columns=80)
+            clients.append(client)
+            screen = status.Display(80, 32)
+            stream = pyte.Stream(screen)
+            decoder = codecs.getincrementaldecoder("utf-8")("replace")
+            offset = 0
+            client.grant_status_permissions()
+            client.until("narrow bar is ready", lambda: "!0 ●0" in view())
+            client.prefix(b"B")
+            client.until("narrow history opens with a full source preview", lambda:
+                         "Notification history" in view() and "Recorded event" in view())
+            capture("history-narrow")
+            client.send(b"\x1b")
             print("PASS: installed notices preserve keyboard focus, urgency excludes completions, repeated state is deduplicated, history jumps without restarting the source, and the native inbox opens.")
         finally:
-            subprocess.run([client.binary, "kill-session", name], env=env,
-                           capture_output=True, timeout=5)
-            client.close()
+            for session in (name, name + "-narrow"):
+                subprocess.run([client.binary, "kill-session", session], env=env,
+                               capture_output=True, timeout=5)
+            for terminal in clients:
+                terminal.close()
 
 
 if __name__ == "__main__":

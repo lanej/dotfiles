@@ -97,7 +97,7 @@ impl Notifications {
             {
                 self.show(
                     severity,
-                    &format!("{glyph} {} · {}: {}", item.session, title, body),
+                    &format!("{glyph} {title}: {body} · {}", item.session),
                 );
             }
             if recorder && item.is_current {

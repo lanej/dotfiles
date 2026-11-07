@@ -80,6 +80,22 @@ fn clipped(value: &str, budget: usize) -> String {
     text
 }
 
+fn notification_right(notice: &str, counts: &str, cols: usize) -> String {
+    // WHY: Transient messages must leave room to identify and switch the active tab.
+    let tabs = (cols / 3).clamp(20, 48).min(cols);
+    let budget = cols.saturating_sub(tabs + counts.width() + 5).min(64);
+    if budget < 8 {
+        format!(" {} ", clipped(counts, cols.saturating_sub(2)))
+    } else {
+        format!(" {} │ {} ", clipped(notice, budget), counts)
+    }
+}
+
+fn bar_heading(mode: &str, host: &str, available: usize, reserve_tab: bool) -> String {
+    let budget = if reserve_tab { available.saturating_sub(12) } else { available };
+    clipped(&format!("{}{} │", mode, host), budget)
+}
+
 fn mark(status: AttentionStatus, question: bool) -> (&'static str, &'static str) {
     match status {
         AttentionStatus::NeedsYou if question => ("?", "235;203;139"),
@@ -278,8 +294,7 @@ impl ZellijPlugin for State {
         let right = if let Some(notice) = self.clipboard.notice() {
             format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
         } else if let Some((_, notice)) = self.notifications.notice() {
-            let budget = cols.saturating_sub(counts.width() + 5).min(64);
-            format!(" {} │ {} ", clipped(notice, budget), counts)
+            notification_right(notice, &counts, cols)
         } else { format!(" {} {} {} ", counts, battery, clock) };
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
@@ -298,7 +313,8 @@ impl ZellijPlugin for State {
         let mut used = 0;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
         print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
-        let heading = format!("{}{} │", mode, host);
+        let heading = bar_heading(mode, &host, available,
+            self.notifications.notice().is_some() && !self.tabs.is_empty());
         for c in heading.chars() {
             let width = c.width().unwrap_or(0);
             if used + width > available { break; }
@@ -345,5 +361,28 @@ impl ZellijPlugin for State {
             print!("{}", c); right_used += width;
         }
         print!("\x1b[0m");
+    }
+}
+
+#[cfg(test)]
+mod notification_layout_tests {
+    use super::*;
+
+    #[test]
+    fn notices_leave_tab_context_at_small_widths() {
+        for cols in [40, 80, 120] {
+            let right = notification_right(&"界".repeat(100), "!1 ●0 ✓2", cols);
+            assert!(right.width() <= cols - 20, "{cols}: {right}");
+            assert!(right.contains("!1 ●0 ✓2"));
+        }
+        for mode in [" ", " RENAME TAB "] {
+            let right = notification_right(&"Long notice ".repeat(10), "!1 ●0 ✓2", 45);
+            let available = 45 - right.width();
+            let heading = bar_heading(mode, "development-laptop", available, true);
+            assert!(available - heading.width() >= 12);
+        }
+        for cols in 2..20 {
+            assert!(notification_right("Failed", "!1 ●0 ✓2", cols).width() <= cols);
+        }
     }
 }
