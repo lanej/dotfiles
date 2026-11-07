@@ -71,6 +71,8 @@ Use `SSH_CONNECTION`, not `SSH_TTY`, so remote commands without a terminal still
 
 Use the [Zellij keybindings reference](zellij-keybinds.mdx) for everyday shortcuts, the complete prefix and mode tables, popup controls, and modern/legacy differences. Press **Ctrl-f**, release it, then press the command key. Most commands return to Locked mode; Esc, Enter, or Ctrl-c cancels the prefix.
 
+In the modern configuration, **Ctrl-f C** switches only the requesting client to a fresh session using the installed regular `tmux` layout. Existing sessions and their processes keep running, including when invoked from the popup. **Ctrl-f w** shows the editable private name draft in the top bar; invalid or already-used names leave the session unchanged. The legacy configuration retains the session manager for both keys.
+
 With the compiled status bar, pressing **Ctrl-f** turns the entire top row pink (#B48EAD), matching the selected pane border, with bold dark **PREFIX  waiting for next key** text and an **Esc cancels** hint. The normal tabs return as soon as you run or cancel the command. Resize, move, tab, rename, and scroll/search modes keep their own labels rather than claiming another prefix key is pending. The cue requires the bar to be visible; UI-free zoom does not show it.
 
 Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waiting for the next key](images/zellij-prefix/waiting.png), and [after returning to Locked mode](images/zellij-prefix/after.png). These captures render the test session’s decoded terminal cells, not a live user session.
@@ -110,7 +112,8 @@ Actual isolated PTY captures: [before](images/zellij-prefix/before.png), [waitin
 | `!` | Move the focused pane to a new tab |
 | `m` | Fuzzy pane destination picker: New Tab or an existing tab in this session |
 | `W` | Enter tab reorder mode |
-| `C`, `w` | Open the native session manager for creating, switching, renaming, and restoring sessions |
+| `C` | Immediately create a new, automatically named session in the focused pane’s directory |
+| `w` | Rename this session directly; Enter saves, Esc or Ctrl-c cancels |
 | `e` | Open the pane's scrollback in Neovim |
 | `p` | Paste this session's last Neovim yank into the requesting pane |
 | `[` | Enter scroll mode |

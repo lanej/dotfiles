@@ -143,14 +143,11 @@ keybinds clear-defaults=true {
         }
         bind "W" { SwitchToMode "Tab"; }
 
-        // New-session and rename-session actions live in the built-in manager.
-        bind "C" "w" {
-            LaunchOrFocusPlugin "zellij:session-manager" {
-                floating true
-                move_to_focused_tab true
-            }
+        bind "C" {
+            MessagePlugin "command-prompt" { name "new-session"; }
             SwitchToMode "Locked"
         }
+        bind "w" { SwitchToMode "RenameSession"; SessionNameInput 0; }
         bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
         bind "p" {
             // After visible-bar consent, the background clipboard receiver
@@ -202,6 +199,10 @@ keybinds clear-defaults=true {
         bind "h" "Left" { MoveTab "Left"; }
         bind "l" "Right" { MoveTab "Right"; }
         bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+    }
+    renamesession {
+        bind "Enter" { SwitchToMode "Locked"; }
+        bind "Esc" "Ctrl c" { UndoRenameSession; SwitchToMode "Locked"; }
     }
     renametab {
         bind "Enter" { SwitchToMode "Locked"; }

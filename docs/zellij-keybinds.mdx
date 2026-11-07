@@ -110,7 +110,8 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | Key after Ctrl-f | Action |
 | --- | --- |
 | `Ctrl-w` | Open the fuzzy picker for running sessions |
-| `C` / `w` | Open the native session manager |
+| `C` | Immediately create and switch to a new, automatically named session |
+| `w` | Rename this session; Enter saves, Esc or Ctrl-c cancels |
 | `d` | Detach this client, leaving the session running |
 | `D` | Choose one attached client to detach |
 | `Ctrl-q` | Open confirmation to shut down the current session |
@@ -120,7 +121,7 @@ The supplied layout cycle contains **columns**, **rows**, **stacked**, and **equ
 | `u` | Focus the containing Zellij session |
 | `i` | Focus the nested Zellij session in the current pane |
 
-The native manager provides session creation, switching, renaming, and resurrection; follow its displayed controls. `C` and `w` both open that manager rather than creating or renaming immediately. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
+In the modern configuration, `C` starts in the focused pane’s directory with the installed regular layout, even from the popup. Only the requesting client switches; original processes and other clients stay put. `w` edits a private draft and rejects invalid or already-used names without changing the session. Legacy installations keep the native session manager for both keys. The fuzzy session picker lists running sessions only, with a tab-tree preview. In the fuzzy pickers, type to filter, Enter selects, and Esc or Ctrl-c cancels.
 
 **Detach one client:** `D` lists native client IDs, focused tabs, and pane titles. Enter detaches that attachment only. It needs the modern runtime and status-plugin permissions on each attached client.
 

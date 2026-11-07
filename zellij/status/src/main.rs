@@ -93,6 +93,8 @@ fn mark(status: AttentionStatus, question: bool) -> (&'static str, &'static str)
 impl State {
     fn poll(&mut self) {
         if self.clipboard_receiver || !self.allowed || self.busy || !self.visible { return; }
+        // In rename mode ModeInfo holds a draft, not a queryable session name.
+        if self.mode.mode == InputMode::RenameSession { return; }
         // Native Zellij owns attention, including detached sessions. The
         // helper supplies host metadata and lifecycle-checked title ownership.
         let Some(session) = self.mode.session_name.as_deref() else { return };
@@ -148,8 +150,12 @@ impl ZellijPlugin for State {
                 // Native session metadata identifies their current session.
                 let session = sessions.iter().find(|session| session.is_current_session)
                     .map(|session| session.name.clone());
-                if self.mode.session_name != session { self.view = json!({}); }
-                self.mode.session_name = session;
+                // Session metadata contains the committed name; ModeUpdate
+                // owns this client's editable draft until rename mode exits.
+                if self.mode.mode != InputMode::RenameSession {
+                    if self.mode.session_name != session { self.view = json!({}); }
+                    self.mode.session_name = session;
+                }
                 if !self.allowed {
                     self.allowed = true;
                     self.poll();
@@ -244,6 +250,15 @@ impl ZellijPlugin for State {
             // Prefix waiting owns the whole row, even when a narrow terminal
             // would otherwise give all its space to the clock or a notice.
             let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
+            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
+                label, " ".repeat(cols.saturating_sub(label.width())));
+            return;
+        }
+        if self.mode.mode == InputMode::RenameSession && !dimmed {
+            // ModeInfo carries the native per-client draft, not the committed
+            // session name. Native Enter/cancel/validation own its lifecycle.
+            let draft = plain(self.mode.session_name.as_deref().unwrap_or(""));
+            let label = clipped(&format!(" RENAME SESSION: {}  |  Enter saves · Esc cancels ", draft), cols);
             print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
                 label, " ".repeat(cols.saturating_sub(label.width())));
             return;

@@ -169,11 +169,13 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
-.PHONY: zellij-command-prompt test-zellij-command-prompt
+.PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"
 test-zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
+test-zellij-session-keys:
+	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
 .PHONY: zellij-status test-zellij-status
 zellij-status:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
