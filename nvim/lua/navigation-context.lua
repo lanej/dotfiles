@@ -26,63 +26,104 @@ local function clip(text, width)
 	return result .. "…"
 end
 
-local function git_status(root)
+local function git_changes(root)
+	local changes, additions = {}, {}
 	if not root then
-		return {}
+		return changes, additions
 	end
-	local ok, process = pcall(
-		vim.system,
-		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v1", "-z", "--untracked-files=all" },
-		{ text = false }
-	)
-	if not ok then
-		return {}
+	local deadline = vim.uv.hrtime() + 1000000000
+	local function run(arguments)
+		local remaining = math.floor((deadline - vim.uv.hrtime()) / 1000000)
+		if remaining <= 0 then
+			return nil
+		end
+		local command = { "git", "--no-optional-locks", "-C", root }
+		vim.list_extend(command, arguments)
+		local ok, process = pcall(vim.system, command, { text = false })
+		if not ok then
+			return nil
+		end
+		local result = process:wait(remaining)
+		return result.code == 0 and result.stdout or nil
 	end
-	local result = process:wait(1000)
-	if result.code ~= 0 then
-		return {}
-	end
-	local records = vim.split(result.stdout or "", "\0", { plain = true, trimempty = true })
-	local statuses, index = {}, 1
+	local status = run({ "status", "--porcelain=v1", "-z", "--untracked-files=all" })
+	local records = vim.split(status or "", "\0", { plain = true, trimempty = true })
+	local index = 1
 	while index <= #records do
 		local record = records[index]
-		local status = record:sub(1, 2)
-		statuses[vim.fs.normalize(root .. "/" .. record:sub(4))] = status
-		-- NOTE: Porcelain -z puts the rename/copy destination before a second source-path record.
-		index = index + (status:find("[RC]") and 2 or 1)
+		local state = record:sub(1, 2)
+		if state == "??" or state:sub(1, 1) == "A" then
+			additions[vim.fs.normalize(root .. "/" .. record:sub(4))] = true
+		end
+		index = index + (state:find("[RC]") and 2 or 1)
 	end
-	return statuses
+	-- WHY: Compare working files with HEAD so staged and unstaged edits are counted once together.
+	local diff = run({ "diff", "--numstat", "-z", "--find-renames", "--no-ext-diff", "--no-textconv", "HEAD", "--" })
+	records = vim.split(diff or "", "\0", { plain = true })
+	index = 1
+	while index <= #records do
+		local added, removed, path = records[index]:match("^([^\t]+)\t([^\t]+)\t(.*)$")
+		local step = 1
+		if path == "" then
+			path, step = records[index + 2], 3
+		end
+		if path then
+			-- NOTE: Git reports '-' for binary files; absence of numeric data is not a zero count.
+			changes[vim.fs.normalize(root .. "/" .. path)] = tonumber(added) and { tonumber(added), tonumber(removed) }
+				or false
+		end
+		index = index + step
+	end
+	return changes, additions
 end
 
-local function badge(status)
-	if not status then
+local function new_file_lines(filename)
+	local stat = vim.uv.fs_lstat(filename)
+	if not stat or stat.type ~= "file" or stat.size > 1024 * 1024 then
+		return nil
+	end
+	local fd = vim.uv.fs_open(filename, "r", 0)
+	if not fd then
+		return nil
+	end
+	local contents = vim.uv.fs_read(fd, stat.size, 0)
+	vim.uv.fs_close(fd)
+	if not contents or contents:find("\0", 1, true) then
+		return nil
+	end
+	local _, lines = contents:gsub("\n", "")
+	if #contents > 0 and contents:sub(-1) ~= "\n" then
+		lines = lines + 1
+	end
+	return { lines, 0 }
+end
+
+local function abbreviated(number)
+	local unit, suffix = 1, ""
+	if number >= 1000000 then
+		unit, suffix = 1000000, "m"
+	elseif number >= 1000 then
+		unit, suffix = 1000, "k"
+	end
+	if unit == 1 then
+		return tostring(number)
+	end
+	return (string.format("%.1f", math.floor(number / unit * 10) / 10):gsub("%.0$", "")) .. suffix
+end
+
+local function badge(change)
+	if not change then
 		return ""
 	end
-	local icons = {
-		M = { "", "yellow" },
-		A = { "", "green" },
-		D = { "", "red" },
-		R = { "", "yellow" },
-		C = { "", "cyan" },
-		T = { "", "magenta" },
-		["?"] = { "", "magenta" },
-	}
 	local ansi = require("fzf-lua.utils").ansi_codes
-	if status:find("U", 1, true) or status == "AA" or status == "DD" then
-		return ansi.red("")
-	end
 	local result = {}
-	for index = 1, 2 do
-		local code = status:sub(index, index)
-		if code ~= " " and not (index == 2 and code == "?" and status:sub(1, 1) == "?") then
-			local icon = icons[code]
-			if icon then
-				local color = index == 1 and code ~= "?" and "green" or icon[2]
-				result[#result + 1] = ansi[color](icon[1])
-			end
-		end
+	if change[1] > 0 then
+		result[#result + 1] = ansi.green("+" .. abbreviated(change[1]))
 	end
-	return table.concat(result)
+	if change[2] > 0 then
+		result[#result + 1] = ansi.red("−" .. abbreviated(change[2]))
+	end
+	return table.concat(result, " ")
 end
 
 local function short_path(root, filename)
@@ -94,9 +135,10 @@ local function short_path(root, filename)
 	return table.concat(parts, "/")
 end
 
-local function label(symbol, parent, filename, root, width, document)
+local function label(symbol, parent, filename, root, width, document, git_width)
 	local name = clean(symbol.name)
-	local remaining = width - vim.fn.strdisplaywidth(name) - 18
+	local kind = vim.lsp.protocol.SymbolKind[symbol.kind] or "Unknown"
+	local remaining = width - vim.fn.strdisplaywidth(name) - vim.fn.strdisplaywidth(kind) - git_width - 4
 	local context = {}
 	local candidates = { clean(symbol.detail), clean(symbol.containerName or parent) }
 	if not document then
@@ -126,27 +168,43 @@ function M.attach(opts, width)
 	local buf = vim.api.nvim_get_current_buf()
 	local filename = vim.api.nvim_buf_get_name(buf)
 	local root = vim.fs.root(buf, { ".git" })
-	local statuses = git_status(root)
+	local changes, additions = git_changes(root)
 	local original = handler.handler
 	local utils = require("fzf-lua.utils")
 	local _, _, mute = utils.ansi_from_hl("Comment", "")
 	local badges, lookup = {}, {}
-	for path, status in pairs(statuses) do
-		badges[path] = badge(status)
+	local function for_file(file)
+		local path = vim.fs.normalize(file)
+		if badges[path] == nil then
+			local change = changes[path]
+			if change == nil and additions[path] then
+				change = new_file_lines(path)
+			end
+			badges[path] = badge(change)
+		end
+		return badges[path]
 	end
 	local function enrich(symbols, parent)
 		local result = {}
 		for _, symbol in ipairs(symbols) do
 			local copy = vim.tbl_extend("force", {}, symbol)
 			local file = symbol.location and vim.uri_to_fname(symbol.location.uri) or filename
-			local git = badges[vim.fs.normalize(file)] or ""
+			local git = for_file(file)
 			lookup[file] = git
 			lookup[vim.uri_from_fname(file)] = git
 			local relative = vim.fs.relpath(opts.cwd or root or vim.fn.getcwd(), file)
 			if relative then
 				lookup[relative] = git
 			end
-			copy.name = label(symbol, parent, file, root, width, document)
+			copy.name = label(
+				symbol,
+				parent,
+				file,
+				root,
+				width,
+				document,
+				vim.fn.strdisplaywidth((utils.strip_ansi_coloring(git)))
+			)
 			copy.containerName = nil
 			if symbol.children then
 				copy.children = enrich(symbol.children, symbol.name)

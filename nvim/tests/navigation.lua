@@ -134,6 +134,7 @@ local function workflow()
 	write(project .. "/a/client.lua", { "function createShipment() end" })
 	write(project .. "/b/client.lua", { "function createShipment() end" })
 	command({ "git", "-C", project, "add", "--", "library file.lua" })
+	write(project .. "/large.lua", vim.split(string.rep("local value = true\n", 1200), "\n", { trimempty = true }))
 
 	local function picker(needle)
 		wait(
@@ -181,6 +182,7 @@ local function workflow()
 		elseif method == "workspace/symbol" then
 			return {
 				{ name = "server_symbol", kind = 12, containerName = "ShippingClient", location = location(target) },
+				{ name = "large_symbol", kind = 12, location = location(project .. "/large.lua") },
 				{
 					name = "createShipment",
 					kind = 12,
@@ -218,7 +220,7 @@ local function workflow()
 		outline_row:find("(parcel) → Receipt", 1, true) and outline_row:find("ShippingClient", 1, true),
 		"LSP detail or parent context missing"
 	)
-	assert(outline_row:find("", 1, true), "Untracked file did not get a Git glyph")
+	assert(outline_row:find("+2", 1, true), "Untracked file did not show added line count")
 	assert(not outline:match("%d+:%d+"), "Outline still displays row and column metadata")
 	assert(
 		vim.api.nvim_win_get_width(0) <= 100 and vim.api.nvim_win_get_height(0) <= 12,
@@ -238,12 +240,42 @@ local function workflow()
 		workspace:find("ShippingClient", 1, true) and workspace:find("library file.lua", 1, true),
 		"Workspace context lost scope or short path"
 	)
-	assert(workspace:find("", 1, true), "Staged file with spaces did not get a Git glyph")
+	assert(workspace:find("+2", 1, true), "Staged file with spaces did not show added line count")
+	assert(workspace:find("+1.2k", 1, true), "Large line counts were not abbreviated")
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.api.nvim_buf_get_name(0) == target
 	end, "Hidden workspace coordinates broke symbol selection")
 	keys("<C-o>")
+	command({
+		"git",
+		"-C",
+		project,
+		"-c",
+		"user.name=Fixture",
+		"-c",
+		"user.email=fixture@example.invalid",
+		"-c",
+		"commit.gpgsign=false",
+		"commit",
+		"--only",
+		"-qm",
+		"test: baseline target",
+		"--",
+		"library file.lua",
+	})
+	write(target, { "function destination() end", "function another_destination() return true end" })
+	command({ "git", "-C", project, "add", "--", "library file.lua" })
+	write(target, { "function destination() end", "function another_destination() return false end" })
+	keys(",ws")
+	picker("server_symbol")
+	local changed = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	local changed_row = assert(changed:match("[^\n]*server_symbol[^\n]*"))
+	assert(
+		changed_row:find("+1", 1, true) and changed_row:find("−1", 1, true) and not changed_row:find("+2", 1, true),
+		"Staged and unstaged edits were double-counted"
+	)
+	close_picker()
 	vim.o.columns = 220
 	keys(",ws")
 	picker("createShipment")
