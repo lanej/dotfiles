@@ -5,8 +5,16 @@ description: Use when deciding whether to add a source comment, writing or revis
 
 # Code Comments
 
-Read [the specification](references/standard.md) before making comment decisions. It defines when comments help, where information belongs, annotation syntax, and adoption guidance. The reference links to the repository's canonical document; maintain that document rather than copying its rules here.
+Use this guide for routine comment edits and reviews:
 
-For edits, improve understanding within the requested change and preserve useful ordinary comments, documentation comments, and repository conventions. Do not turn a local task into an unrelated comment cleanup or try to exercise every annotation type.
+- Comment when it materially reduces the effort needed to understand or safely change code. Useful explanations of behavior and phase labels are welcome; omit obvious narration and decoration.
+- Prefer clearer code when it carries the information better. Do not extract functions solely to eliminate useful prose.
+- Put caller contracts in native documentation, local reasoning beside the code, and broad decisions in design documentation with useful local context.
+- Distinguish current behavior, intent, assumptions, and known defects. Keep guarantees bounded to what is established; do not write reassuring claims over a behavior problem.
+- Preserve useful ordinary comments and repository conventions. Update affected comments, leave unrelated comments alone, and avoid bulk tagging or annotation quotas.
 
-For reviews, identify the missing, misleading, or redundant information and explain its effect on a reader. Suggest a concrete improvement; lack of a tag alone is not a defect. If a comment exposes a behavior problem outside the requested scope, report the discrepancy rather than writing a reassuring claim over it.
+When purpose or searchability helps, use lowercase `type(scope): explanation` inside normal comment syntax; scope is optional. Types: `rationale` for decisions, `warning` for hazards, `workaround` for temporary accommodations and their removal conditions, `todo` for concrete planned work, and `fixme` for known defects. Put useful ownership and references in the explanation.
+
+For reviews, identify missing, misleading, or redundant information, its effect on the reader, and a concrete improvement. A missing tag alone is not a defect. Report behavior problems outside the requested scope.
+
+Read [the full specification](references/standard.md) only when changing the convention, resolving a detail not covered here, or needing extended examples or editor-compatibility guidance. It remains the canonical standard; routine edits do not require loading it.

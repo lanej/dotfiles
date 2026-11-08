@@ -191,7 +191,7 @@ npm test -- --watch
 
 5. **Make tests maintainable**:
    - Use descriptive names
-   - Follow `~/.files/docs/conventional-code-comments.md`: explain reasoning or behavior when it materially helps readers; omit narration of obvious operations.
+   - Use the `code-comments` skill's compact guidance: explain reasoning or behavior when it materially helps readers; omit narration of obvious operations.
    - Keep tests simple and readable
 
 ## Interactive Flow

@@ -135,7 +135,7 @@ The docstring supplies the caller's contract; the local annotation explains a de
 
 ## Adoption and editor support
 
-The [code-comments skill](../ai/skills/code-comments/SKILL.md) routes comment-writing and review tasks to this specification. Its reference links back here so the rules have one source of truth.
+The [code-comments skill](../ai/skills/code-comments/SKILL.md) provides compact guidance for routine comment-writing and review tasks. Load this full specification when changing the convention, resolving details outside that guide, or needing extended examples or editor-compatibility guidance. The skill's reference links back here to the canonical standard.
 
 Use the new syntax for new or meaningfully revised annotations. Existing uppercase annotations and legacy tags need no bulk migration. There is no snippet requirement or lint enforcement.
 
