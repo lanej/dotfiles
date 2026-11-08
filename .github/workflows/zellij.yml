@@ -16,13 +16,10 @@ on:
       - 'bin/sync-codex-tmux-hooks'
       - 'codex/tmux-hooks.json'
       - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - '!scripts/test-zellij-attach.py'
       - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
@@ -55,13 +52,10 @@ on:
       - 'bin/sync-codex-tmux-hooks'
       - 'codex/tmux-hooks.json'
       - 'codex/zellij-title.json'
-      - 'bin/firstmate'
-      - 'firstmate/**'
       - 'treehouse/config.toml'
       - 'scripts/test-zellij*.py'
       - '!scripts/test-zellij-attach.py'
       - '!scripts/test-zellij-agent-update.py'
-      - 'scripts/test-firstmate.py'
       - 'scripts/make/config.sh'
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
@@ -111,11 +105,6 @@ jobs:
       ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: kunchenguid/firstmate
-          ref: 30d6d15ec07e1efaeb3c795f0a24e817251d0718
-          path: .firstmate-upstream
       - uses: actions/checkout@v4
         with:
           repository: tmux-plugins/tpm
@@ -226,11 +215,6 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-navigation
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - run: make test-firstmate
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        env:
-          FIRSTMATE_SOURCE: ${{ github.workspace }}/.firstmate-upstream
-          TPM_SOURCE: ${{ github.workspace }}/.tmux-tpm
       - run: make test-zellij-layout
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-sessions
