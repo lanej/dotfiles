@@ -27,20 +27,32 @@
   },
   "FzfLuaCursorLine": {
     "bg": 4410462,
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
     "fg": 15527924
   },
   "FzfLuaFzfCursorLine": {
     "bg": 4410462,
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
     "fg": 15527924
   },
   "FzfLuaFzfMatch": {
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
     "fg": 10731148
   },
   "FzfLuaFzfPointer": {
     "fg": 8962256
   },
   "FzfLuaNormal": {
-    "bg": 3883602,
+    "bg": 3028032,
     "fg": 14212841
   },
   "GitSignsAdd": {

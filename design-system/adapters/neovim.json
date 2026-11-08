@@ -670,7 +670,8 @@
     "link": "@attribute"
   },
   "FzfLuaNormal": {
-    "link": "NormalFloat"
+    "fg": "@text",
+    "bg": "@surface"
   },
   "TelescopeNormal": {
     "link": "NormalFloat"
@@ -691,7 +692,8 @@
     "link": "FloatTitle"
   },
   "FzfLuaCursorLine": {
-    "link": "Visual"
+    "component": "selection",
+    "bold": true
   },
   "TelescopeSelection": {
     "link": "Visual"
@@ -943,7 +945,12 @@
     "link": "FzfLuaCursorLine"
   },
   "FzfLuaFzfMatch": {
-    "fg": "@match"
+    "fg": "@match",
+    "bold": true
+  },
+  "FzfLuaSymbolName": {
+    "fg": "@text.strong",
+    "bold": true
   },
   "FzfLuaFzfBorder": {
     "link": "FloatBorder"
