@@ -55,18 +55,18 @@ running tmux servers and Claude hooks compatible.
 
 Run `make tmux-status-legend` for coloured sample window titles: focused,
 zoomed, plain inactive, bell/activity fallbacks, and every agent state. It
-renders the current `rc/tmux.conf` formats on a temporary tmux server and uses
+renders the current generated native formats on a temporary tmux server and uses
 the shared palette, so the legend follows configuration changes.
 
 | State | Class | Glyph | Colour | Means |
 | --- | --- | --- | --- | --- |
-| `approval` | need | ▲ | Nord12 orange, bold | Blocked on a permission prompt |
-| `question` | need | `?` | Nord12 orange, bold | Blocked on something it asked you |
-| `plan` | need | ▣ | Nord12 orange, bold | A plan is up for approval |
-| `tool` | activity | ● | Nord13 yellow | A tool is running |
-| `thinking` | activity | ◐ | Nord8 cyan | The agent has the turn, nothing running yet |
-| `idle` | quiet | ○ | Nord2 selected surface | Finished, still warm |
-| `dormant` | quiet | · | Nord1, dimmed | Finished and untouched for an hour |
+| `approval` | need | ▲ | `status.attention`, bold | Blocked on a permission prompt |
+| `question` | need | `?` | `status.attention`, bold | Blocked on something it asked you |
+| `plan` | need | ▣ | `status.attention`, bold | A plan is up for approval |
+| `tool` | activity | ● | `status.warning` | A tool is running |
+| `thinking` | activity | ◐ | `status.info` | The agent has the turn, nothing running yet |
+| `idle` | quiet | ○ | `surface.selected` | Finished, still warm |
+| `dormant` | quiet | · | `surface.raised`, dimmed | Finished and untouched for an hour |
 | _(unset)_ | — | — | default | No agent session in this window |
 
 The glyph means the state survives a colourless terminal or a screenshot, and

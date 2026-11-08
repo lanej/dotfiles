@@ -2,7 +2,7 @@
 
 Drives a window through the states a real session produces -- needs you, busy,
 finished, forgotten -- through the actual hooks, and asserts the tab tmux draws
-from rc/tmux.conf tells them apart.
+from the generated native theme tells them apart.
 """
 import contextlib
 import io
@@ -30,11 +30,11 @@ def capture(fn):
 
 
 def tab_format():
-    """The real window-status-format from rc/tmux.conf, as one tmux command."""
-    text = (ROOT / "rc/tmux.conf").read_text()
+    """The generated native window-status-format, as one tmux command."""
+    text = (ROOT / "design-system/generated/tmux.conf").read_text()
     match = re.search(r"^set-window-option -g window-status-format \"(?:.*\\\n)*.*\"$",
                       text, re.MULTILINE)
-    assert match, "rc/tmux.conf no longer defines window-status-format"
+    assert match, "generated tmux.conf no longer defines window-status-format"
     return match.group(0)
 
 
@@ -178,7 +178,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     # Teach the throwaway server the tab the user actually sees.
     conf = private_tmux.folder / "tab.conf"
     border_settings = "\n".join(
-        line for line in (ROOT / "rc/tmux.conf").read_text().splitlines()
+        line for line in (ROOT / "design-system/generated/tmux.conf").read_text().splitlines()
         if re.match(r"set\s+-g (?:@codex-pane-label|pane-border-format) ", line))
     conf.write_text(tab_format() + "\n" + border_settings + "\n")
     private_tmux.call("source-file", str(conf))
@@ -288,9 +288,20 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
                             ("dormant", "dormant")):
         _, bg, fg, _, glyph = state.STATES[tab_state]
         drawn = rendered[name]
-        assert drawn.count("bg=%s" % bg) == 1, (name, "segment and its opening cap")
-        assert drawn.count("fg=%s" % fg) == 1, (name, "text foreground")
-        assert drawn.count("fg=%s" % bg) == 1, (name, "closing cap matches the segment")
+        current, runs = {}, []
+        for part in re.split(r"(#\[[^]]*\])", drawn):
+            if part.startswith("#["):
+                for attribute in part[2:-1].split(","):
+                    if "=" in attribute:
+                        key, value = attribute.split("=", 1)
+                        current[key] = value
+            elif part:
+                runs.append((part, current.copy()))
+        label = next(style for text, style in runs if glyph in text)
+        assert (label["fg"], label["bg"]) == (fg, bg), (name, "state text")
+        caps = [style for text, style in runs if "" in text]
+        surface = state.COLORS["surface"]
+        assert [(style["fg"], style["bg"]) for style in caps] == [(surface, bg), (bg, surface)], (name, "powerline caps")
         assert glyph in drawn, (name, "state glyph survives a colourless terminal")
 
     # The status bar rolls the same states up across every session, so a need in

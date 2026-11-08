@@ -37,10 +37,11 @@
     "owner": "Native styles and owned agent-state helpers",
     "mechanism": "generated source-file and role references",
     "reload": "tmux source-file ~/.config/tmux/tmux.conf; refresh-theme updates persisted segment colors without changing state age",
-    "coverage": "Style parsing and repeated source-file checked in an isolated server. The main config reload refreshes persisted @claude colors without resetting state age or reason.",
+    "coverage": "Style parsing and repeated source-file checked in an isolated server. The main config reload refreshes persisted @claude colors without resetting state age or reason. Broker events supply state; generated formats resolve its colors locally and ignore broker color values.",
     "sources": [
       "design-system/adapters/tmux.conf.in",
-      "bin/tmux-claude-state"
+      "bin/tmux-claude-state",
+      "design-system/adapters/tmux-states.json"
     ]
   },
   {
@@ -104,12 +105,15 @@
     "owner": "Filetype icons, literal-color previews, other plugins and optional tools",
     "mechanism": "explicit gaps",
     "reload": "Application specific",
-    "coverage": "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm and graphical apps are outside this daily-theme migration.",
+    "coverage": "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm, Xresources, NeoMutt, claude-tail and graphical apps are outside this daily-theme migration.",
     "sources": [
       "nvim/init.lua",
       "presenterm/themes/nord.yaml",
       "btop/btop.conf",
-      "wezterm.lua"
+      "wezterm.lua",
+      "rc/Xresources",
+      "mail/neomuttrc",
+      "claude-tail/themes/Nord.tmTheme"
     ]
   }
 ]

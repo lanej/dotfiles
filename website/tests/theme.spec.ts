@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('inspect native theme examples and follow atomic composition', async ({ page }) => {
   await page.goto('./design-system/');
   await expect(page.getByRole('heading', { name: 'Terminal design system', exact: true })).toBeVisible();
-  await expect(page.locator('#theme-roles')).toContainText('Resolved Nord roles');
+  await expect(page.locator('#theme-roles')).toContainText('Resolved theme roles');
   await expect(page.locator('#component-status')).toContainText('Diagnostic*');
   await page.locator('details').filter({ has: page.locator('#component-tab-label') }).locator('summary').click();
   await page.locator('#component-tab-label').getByRole('link', { name: 'status', exact: true }).click();

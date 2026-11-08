@@ -1,0 +1,38 @@
+{
+  "approval": {
+    "bg": "@status.attention",
+    "fg": "@text.inverse"
+  },
+  "question": {
+    "bg": "@status.attention",
+    "fg": "@text.inverse"
+  },
+  "plan": {
+    "bg": "@status.attention",
+    "fg": "@text.inverse"
+  },
+  "tool": {
+    "bg": "@status.warning",
+    "fg": "@text.inverse"
+  },
+  "thinking": {
+    "bg": "@status.info",
+    "fg": "@text.inverse"
+  },
+  "waiting": {
+    "bg": "@status.idle",
+    "fg": "@text.inverse"
+  },
+  "failed": {
+    "bg": "@status.error",
+    "fg": "@text.strong"
+  },
+  "idle": {
+    "bg": "@surface.selected",
+    "fg": "@text"
+  },
+  "dormant": {
+    "bg": "@surface.raised",
+    "fg": "@text.muted"
+  }
+}

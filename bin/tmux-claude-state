@@ -25,17 +25,19 @@ import time
 
 # WHY: Keep agent state policy separate from the native theme's presentation.
 THEME_DIR = Path(os.environ.get("DOTFILES_THEME_DIR", Path(__file__).resolve().parents[1] / "design-system/generated"))
-COLORS = runpy.run_path(str(THEME_DIR / "theme.py"))["COLORS"]
+THEME = runpy.run_path(str(THEME_DIR / "theme.py"))
+COLORS = THEME["COLORS"]
+STATE_STYLES = THEME["STATE_STYLES"]
 STATES = {
-    "approval": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "▲"),
-    "question": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "?"),
-    "plan": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "▣"),
-    "tool": ("activity", COLORS["status.warning"], COLORS["text.inverse"], False, "●"),
-    "thinking": ("activity", COLORS["status.info"], COLORS["text.inverse"], False, "◐"),
-    "waiting": ("activity", COLORS["status.idle"], COLORS["text.inverse"], False, "…"),
-    "failed": ("need", COLORS["status.error"], COLORS["text.strong"], True, "!"),
-    "idle": ("quiet", COLORS["surface.selected"], COLORS["text"], False, "○"),
-    "dormant": ("quiet", COLORS["surface.raised"], COLORS["text.muted"], False, "·"),
+    "approval": ("need", STATE_STYLES["approval"]["bg"], STATE_STYLES["approval"]["fg"], True, "▲"),
+    "question": ("need", STATE_STYLES["question"]["bg"], STATE_STYLES["question"]["fg"], True, "?"),
+    "plan": ("need", STATE_STYLES["plan"]["bg"], STATE_STYLES["plan"]["fg"], True, "▣"),
+    "tool": ("activity", STATE_STYLES["tool"]["bg"], STATE_STYLES["tool"]["fg"], False, "●"),
+    "thinking": ("activity", STATE_STYLES["thinking"]["bg"], STATE_STYLES["thinking"]["fg"], False, "◐"),
+    "waiting": ("activity", STATE_STYLES["waiting"]["bg"], STATE_STYLES["waiting"]["fg"], False, "…"),
+    "failed": ("need", STATE_STYLES["failed"]["bg"], STATE_STYLES["failed"]["fg"], True, "!"),
+    "idle": ("quiet", STATE_STYLES["idle"]["bg"], STATE_STYLES["idle"]["fg"], False, "○"),
+    "dormant": ("quiet", STATE_STYLES["dormant"]["bg"], STATE_STYLES["dormant"]["fg"], False, "·"),
 }
 
 ALIASES = {}

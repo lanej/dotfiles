@@ -130,6 +130,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
       - name: Install status plugin toolchain
         run: rustup toolchain install 1.95.0 --profile minimal --target wasm32-wasip1
       - name: Install terminal-screen decoder for native attention checks

@@ -56,6 +56,34 @@ class ThemeTests(unittest.TestCase):
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
 
+    def test_selected_preset_has_no_downstream_naming_dependency(self):
+        with tempfile.TemporaryDirectory(prefix="theme-preset-") as directory:
+            work = Path(directory)
+            source, output = work / "source", work / "output"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            original = source / "themes/nord.json"
+            data = json.loads(original.read_text().replace("$nord", "$swatch"))
+            data["name"] = "forest"
+            data["palette"] = {key.replace("nord", "swatch"): value for key, value in data["palette"].items()}
+            data["palette"]["swatch8"] = "#74B87A"
+            data["palette"]["swatch12"] = "#C3A568"
+            (source / "themes/forest.json").write_text(json.dumps(data))
+            original.unlink()
+            (source / "config.json").write_text(json.dumps({"theme": "forest"}))
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            subprocess.run(command, check=True)
+            subprocess.run([*command, "--check"], check=True)
+            self.assertEqual({p.name for p in output.iterdir()}, {p.name for p in (theme.SOURCE / "generated").iterdir()})
+            resolved = json.loads((output / "colors.json").read_text())
+            self.assertEqual(resolved["theme"], "forest")
+            self.assertEqual(resolved["roles"]["accent"], "#74B87A")
+            self.assertEqual(resolved["roles"]["status.attention"], "#C3A568")
+            colored = subprocess.check_output([str(ROOT / "bin/dotfiles-theme"), "--color=always"], text=True, env={**os.environ, "DOTFILES_THEME_DIR": str(output)})
+            self.assertIn("\x1b[38;2;116;184;122m", colored)
+            self.assertIn("\x1b[38;2;195;165;104m", colored)
+            for artifact in output.iterdir():
+                self.assertNotIn("nord", artifact.read_text().lower())
+
     def test_composition_rejects_missing_and_cyclic_references(self):
         with tempfile.TemporaryDirectory(prefix="theme-catalog-") as directory:
             source = Path(directory)
@@ -72,6 +100,7 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual((home / ".config/dotfiles/theme").resolve(), theme.SOURCE / "generated")
             self.assertEqual((home / ".config/bottom/bottom.toml").resolve(), theme.SOURCE / "generated/bottom.toml")
             self.assertTrue((home / ".config/bat/themes/Dotfiles.tmTheme").is_file())
+            self.assertEqual((home / ".config/glow/theme.json").resolve(), theme.SOURCE / "generated/glow.json")
 
     def test_fzf_wrapper_keeps_arguments_and_native_exit_status(self):
         with tempfile.TemporaryDirectory(prefix="theme-fzf-") as directory:

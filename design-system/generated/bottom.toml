@@ -51,7 +51,7 @@ hide_table_gap = true
 battery = true
 # Disable mouse clicks
 #disable_click = false
-# Built-in themes.  Valid values are "default", "default-light", "gruvbox", "gruvbox-light", "nord", "nord-light"
+# Native widget styles below receive the selected shared theme.
 # Show memory values in the processes widget as values by default
 mem_as_value = true
 # Show tree mode by default in the processes widget.

@@ -4,7 +4,7 @@
     "level": "foundation",
     "composes": [],
     "sources": [
-      "design-system/themes/nord.json"
+      "design-system/config.json"
     ],
     "description": "Canonical palette, semantic roles, ANSI slots and explicit blend recipes.",
     "implementations": {

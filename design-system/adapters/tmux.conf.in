@@ -57,6 +57,6 @@ set-window-option -g window-status-current-format "\
 # this stays one branch deep however many states it grows.
 set-window-option -g window-status-format "\
 #[fg={{surface}},bg={{surface}},noitalics,nodim]\
-#{?#{@claude-state},#[bg=#{@claude-bg}]#[fg={{surface}}],#{?window_bell_flag,#[bg={{status.attention}}]#[fg={{surface}}],#{?window_activity_flag,#[bg={{status.warning}}]#[fg={{surface}}],#[fg={{surface}}]#[bg={{surface.raised}}]}}}\
-#{?#{@claude-state},#[fg=#{@claude-fg}#,#{@claude-attr}],#{?window_bell_flag,#[fg={{surface}}],#{?window_activity_flag,#[fg={{surface}}],#[fg={{accent}}]#[bg={{surface.raised}}]}}} #{?#{@claude-glyph},#{@claude-glyph} ,}#I #W\
-#{?#{@claude-state},#[fg=#{@claude-bg}]#[bg={{surface}}],#{?window_bell_flag,#[fg={{status.attention}}]#[bg={{surface}}],#{?window_activity_flag,#[fg={{status.warning}}]#[bg={{surface}}],#[fg={{surface.raised}}]#[bg={{surface}}]}}}"
+#{?#{@claude-state},#[bg={{agent.bg}}]#[fg={{surface}}],#{?window_bell_flag,#[bg={{status.attention}}]#[fg={{surface}}],#{?window_activity_flag,#[bg={{status.warning}}]#[fg={{surface}}],#[fg={{surface}}]#[bg={{surface.raised}}]}}}\
+#{?#{@claude-state},#[fg={{agent.fg}}#,#{@claude-attr}],#{?window_bell_flag,#[fg={{surface}}],#{?window_activity_flag,#[fg={{surface}}],#[fg={{accent}}]#[bg={{surface.raised}}]}}} #{?#{@claude-glyph},#{@claude-glyph} ,}#I #W\
+#{?#{@claude-state},#[fg={{agent.bg}}]#[bg={{surface}}],#{?window_bell_flag,#[fg={{status.attention}}]#[bg={{surface}}],#{?window_activity_flag,#[fg={{status.warning}}]#[bg={{surface}}],#[fg={{surface.raised}}]#[bg={{surface}}]}}}"

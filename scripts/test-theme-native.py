@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import shutil
 import signal
@@ -29,7 +30,6 @@ import pyte
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED = Path(os.environ.get("DOTFILES_THEME_DIR", ROOT / "design-system/generated"))
-BASELINES = ROOT / "design-system/baselines/nord"
 
 
 class NativeScreen(pyte.Screen):
@@ -235,7 +235,7 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             text = subprocess.check_output(["delta", "--paging=never", "--width=76", "--true-color=always"], env=env, input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
         return ansi_cells(text)
     if surface == "glow":
-        text = subprocess.check_output(["glow", "--style", str(GENERATED / "glow.json"), "--width=70", str(ROOT / "design-system/fixtures/document.md")], env=env, text=True)
+        text = subprocess.check_output(["glow", "--style", str(GENERATED / "glow.json"), "--width=70", str(ROOT / "design-system/fixtures/document.md")], env=env, stdin=subprocess.DEVNULL, text=True)
         return ansi_cells(text, lines=14)
     if surface == "fzf":
         command = ["bash", "-c", 'printf "api\\tapi OK\\nworker\\tworker ERROR\\n" | "$1" --no-multi --delimiter="\\t" --with-nth=2.. --reverse --info=hidden --header="Services" --prompt="Search > "', "bash", str(ROOT / "bin/dotfiles-fzf")]
@@ -257,8 +257,11 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             for key, value in {"@claude-state": "approval", "@claude-bg": "#010203", "@claude-fg": "#040506", "@claude-since": "123", "@claude-reason": "fixture"}.items():
                 tmux("set-option", "-w", key, value)
             tmux("source-file", str(GENERATED / "tmux.conf"))
+            drawn = tmux("display-message", "-p", "#{E:window-status-format}")
+            attention = json.loads((GENERATED / "colors.json").read_text())["roles"]["status.attention"]
+            assert attention in drawn and "#010203" not in drawn and "#040506" not in drawn
             subprocess.run([sys.executable, str(ROOT / "bin/tmux-claude-state"), "refresh-theme"], env={**env, "TMUX": socket + ",0,0"}, check=True)
-            assert tmux("show-options", "-wv", "@claude-bg").strip() == "#D08770"
+            assert tmux("show-options", "-wv", "@claude-bg").strip() == json.loads((GENERATED / "colors.json").read_text())["roles"]["status.attention"]
             assert tmux("show-options", "-wv", "@claude-since").strip() == "123"
             assert tmux("show-options", "-wv", "@claude-reason").strip() == "fixture"
             assert observations == {key: tmux("show-options", "-gv", key).strip() for key in observations}
@@ -274,6 +277,10 @@ def main():
     parser.add_argument("--plugins-dir", type=Path, default=Path.home() / ".local/share/nvim/lazy")
     parser.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
     args = parser.parse_args()
+    preset = json.loads((GENERATED / "colors.json").read_text())["theme"]
+    if not re.fullmatch(r"[a-z][a-z0-9-]*", preset):
+        parser.error("invalid generated theme name")
+    baselines = ROOT / "design-system/baselines" / preset
     surfaces = args.surface or ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
     with tempfile.TemporaryDirectory(prefix="theme-native-", dir="/tmp") as temporary:
         work = Path(temporary).resolve()
@@ -291,9 +298,9 @@ def main():
             observed = run(surface, work, env, args.plugins_dir)
             terminal_rows = isinstance(observed, list) and observed and isinstance(observed[0], list)
             snapshot = compact(observed) if terminal_rows else observed
-            baseline = BASELINES / f"{surface}.json"
+            baseline = baselines / f"{surface}.json"
             if args.record:
-                BASELINES.mkdir(parents=True, exist_ok=True)
+                baselines.mkdir(parents=True, exist_ok=True)
                 baseline.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
                 if terminal_rows:
                     (ROOT / f"docs/design-system/{surface}.svg").write_text(svg(surface, observed))

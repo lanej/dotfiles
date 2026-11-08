@@ -110,7 +110,7 @@ case "$target" in
         ln -fs "${setup_home}/.alias" "${setup_home}/.bashalias"
         mkdir -p "${setup_home}/.config/glow"
         ln -fs "${dotfiles}/sh/glow.yml" "${setup_home}/.config/glow/glow.yml"
-        ln -fs "${dotfiles}/design-system/generated/glow.json" "${setup_home}/.config/glow/nord.json"
+        ln -fs "${dotfiles}/design-system/generated/glow.json" "${setup_home}/.config/glow/theme.json"
         ;;
     zsh-config)
         ln -fs "${dotfiles}/zsh/zshrc" "${setup_home}/.zshrc"
