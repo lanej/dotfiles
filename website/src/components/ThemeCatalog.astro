@@ -105,7 +105,7 @@ const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(va
   dd { margin: 0; }
   .sources { font-size: .875rem; overflow-wrap: anywhere; }
   .token-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .5rem 1.5rem; }
-  .token { min-width: 0; border-bottom: 1px solid var(--sl-color-gray-5); padding-block: .75rem; }
+  .token { margin: 0; min-width: 0; border-bottom: 1px solid var(--sl-color-gray-5); padding-block: .75rem; }
   .token code { overflow-wrap: anywhere; }
   .token h3 { font-size: 1rem; }
   .token dl { grid-template-columns: 5rem minmax(0, 1fr); row-gap: .2rem; margin-block: .5rem; }

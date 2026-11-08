@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('inspect native theme examples and follow atomic composition', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('./design-system/');
   await expect(page.getByRole('heading', { name: 'Terminal design system', exact: true })).toBeVisible();
   await expect(page.locator('#theme-roles')).toContainText('Resolved theme roles');
@@ -13,6 +14,8 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await expect(gitToken).toContainText('starship');
   await expect(gitToken).toContainText('string');
   await expect(gitToken).toContainText('None');
+  const peerTokens = page.locator('details').filter({ has: gitToken }).locator('.token');
+  expect((await peerTokens.nth(0).boundingBox())?.y).toBe((await peerTokens.nth(1).boundingBox())?.y);
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('16px "Dotfiles Symbols"', ''))).toBe(true);
   await gitToken.getByRole('link', { name: 'starship', exact: true }).click();
