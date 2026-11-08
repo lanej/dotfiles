@@ -11,6 +11,8 @@ zj
 zj work
 ```
 
+After pulling helper updates, run `make zellij-helpers zellij` to rebuild the commands and refresh their links. Full `make install` includes this step.
+
 `zj` attaches to or creates `main`; `zj work` chooses a session named `work`. **Ctrl-f d** detaches and keeps programs running. Run the same command to return.
 
 If a first-use permission prompt appears in the top bar, focus it with **Ctrl-f k** and press **y**. After updating Zellij or its configuration, start a new session to use the new features; finish or save work before restarting older sessions.

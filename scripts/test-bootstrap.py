@@ -252,6 +252,9 @@ elif name == "make" and args[-1:] == ["pi-config"]:
 elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
+elif name == "make" and args[-1:] == ["zellij-helpers"]:
+    assert shutil.which("cargo"), "native helpers require Rust"
+    record("zellij helpers")
 elif name == "make":
     assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
@@ -465,6 +468,7 @@ else:
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
+        assert "zellij helpers" in (home / "events").read_text()
         assert events.index("zellij") < events.index("make")
         # Repeat the real entrypoint with the installed executable already in
         # place. Cargo owns installation and caching; the fixture models its output.

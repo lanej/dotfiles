@@ -23,7 +23,7 @@ Both shortcuts stay in the current session and change only your view. From the s
 
 `make zellij-status zellij` builds the native helper and WASI status plugin, then links configuration. Build only the host helper with `make zellij-helpers`. Configuration-only commands and minimal bootstrap never compile the helper or install Rust implicitly; a missing binary reports the build command.
 
-`zellij-status view`, `config`, and `reload` now dispatch to the native `zellij-helper status` command. Host metadata, automatic-title ownership reads, priority validation, and reload acknowledgement checks run in Rust. The helper and plugin share the JSON protocol and priority policy through a WASI-compatible crate. Other helpers and the automatic-title writer remain unchanged for incremental migration.
+`zellij-status view`, `config`, and `reload` keep their existing arguments. The same native helper also supplies the other Zellij commands, so rebuild it after updating the checkout. Existing session servers can use the new helper without a restart; changing the runtime or loaded plugins still requires restarting those instances.
 
 The command names and JSON messages are unchanged, so an already-running status receiver from the attention-priority release can use the new helper without a session restart. Older receivers without reload support still fail acknowledgement checks rather than reporting success. Rebuild and start a new session to load changes to the plugin itself.
 

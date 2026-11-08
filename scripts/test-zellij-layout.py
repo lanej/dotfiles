@@ -50,8 +50,6 @@ def main():
 import json, os, subprocess, sys
 from pathlib import Path
 env = dict(os.environ)
-if (Path.home() / 'without-jq').exists():
-    env['PATH'] = str(Path.home() / 'no-jq-bin')
 result = subprocess.run([{str(ROOT / 'bin/zellij-balance')!r}, *sys.argv[1:]], env=env, capture_output=True, text=True)
 with (Path.home() / 'balance-results').open('a') as log:
     log.write(json.dumps(dict(origin=os.environ.get('ZELLIJ_ORIGIN_PANE_ID'), code=result.returncode, error=result.stderr)) + '\\n')
@@ -100,16 +98,6 @@ sys.exit(result.returncode)
 
             def content():
                 return next(p["pane_content_columns"] for p in current() if p["id"] == left)
-
-            no_jq = home / "no-jq-bin"
-            no_jq.mkdir()
-            for command in ("bash", "mktemp", "rm", "sleep", "zellij"):
-                (no_jq / command).symlink_to(shutil.which(command))
-            (home / "without-jq").touch()
-            before = geometry(current())
-            invoke(b"=", failure="jq is required")
-            assert geometry(current()) == before
-            (home / "without-jq").unlink()
 
             pids = {}
             for pid in ids:

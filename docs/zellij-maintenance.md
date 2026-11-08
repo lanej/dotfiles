@@ -18,6 +18,24 @@ Runtime installation and configuration are separate operations. Configuration al
 
 Restart existing session servers after changing the runtime or loaded plugins. Replacing an executable or WASM file does not update a running instance. Keep `$HOME/.local/bin` ahead of package-manager binaries. Preserve malformed permission caches for diagnosis rather than replacing them silently.
 
+## Native host helpers
+
+All Zellij runtime helpers live in the [native Rust CLI](../zellij/cli/src/main.rs). Existing `bin/zellij-*` commands and Claude/Codex title hooks are compatibility symlinks to one shell launcher; it resolves the checkout and executes `zellij/target/release/lane-zellij`. It never builds on invocation. `zssh` delegates to `zellij-helper ssh`, and Zsh retains only hook/widget registration and shell-local editor state.
+
+Build with `make zellij-helpers`; run `make zellij-helpers zellij` after pulling an update. Full installation builds the helper for every selected runtime, including the legacy release. Configuration-only commands and minimal bootstrap do not build it. A missing executable reports the explicit build command. The tool installers, configuration provisioning, test harnesses, and Neovim/Zsh integration glue retain their host languages; interactive operations need no Python interpreter or `jq`.
+
+| Rust module | Responsibility |
+| --- | --- |
+| [session](../zellij/cli/src/session.rs), [agent](../zellij/cli/src/agent.rs) | Attach, SSH, shared popup, shutdown confirmation, forwarded-agent recovery |
+| [context](../zellij/cli/src/context.rs), [navigation](../zellij/cli/src/navigation.rs) | Nearest multiplexer and client-aware pane navigation |
+| [titles](../zellij/cli/src/titles.rs), [auto_title](../zellij/cli/src/auto_title.rs), [agent_titles](../zellij/cli/src/agent_titles.rs) | Shared ownership records, shell titles, Claude/Codex lifecycle titles |
+| [picker](../zellij/cli/src/picker.rs), [preview](../zellij/cli/src/preview.rs) | Tab/session/client choices, pane moves, swaps, safe viewport previews |
+| [balance](../zellij/cli/src/balance.rs) | Bounded native boundary resizing and layout revalidation |
+| [clipboard](../zellij/cli/src/clipboard.rs), [notify](../zellij/cli/src/notify.rs) | Private copy buffers and bounded notification history |
+| [status](../zellij/cli/src/status.rs), [protocol](../zellij/protocol/src/lib.rs) | Status/config/reload commands and shared host/plugin contracts |
+
+Notification and title files retain their existing formats. Automatic title ownership still includes the live socket incarnation. Notification writes, title updates and pane balancing use file locks released by the OS when a process exits; replacing a helper does not transfer ownership to a new server lifetime. Pane transfers and resizes remain single-shot, with inspection after mutations and no retry on uncertain results.
+
 ## Feature ownership
 
 The [status plugin](../zellij/status/src/main.rs) renders the top bar, observes native attention, and coordinates client-specific helpers. Its background receiver routes paste and attention bindings to the invoking client. The [navigation plugin](../zellij/navigation/README.md) owns bare pane-navigation keys. The [command-prompt plugin](../zellij/command-prompt/README.md) owns private prompt, command-history, and new-session routing.
@@ -42,6 +60,7 @@ Choose checks for the affected feature, following [the verification guide](verif
 
 ```sh
 zellij setup --check
+make test-zellij-helpers
 make test-zellij
 make test-zellij-notifications
 make test-zellij-notifications-ui
@@ -56,6 +75,8 @@ make test-zellij-tab-labels
 make test-zellij-command-prompt
 make test-zellij-session-keys
 ```
+
+`make test-zellij-helpers` runs Rust formatting, Clippy with warnings denied, unit tests, and native CLI checks with controlled external-command responses. These validate command contracts and file behavior without claiming a live Zellij integration.
 
 The real-terminal detectors install into private temporary homes and sessions. They exercise configured prefix keys, preserve process and scrollback identity, and clean up only their own sessions. Some checks require Neovim, fzf, Rust, or installed navigation artifacts. Runtime installation has its own cache and upstream-download boundary; orchestration tests do not establish live release availability.
 

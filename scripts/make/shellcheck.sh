@@ -18,9 +18,6 @@ shellcheck -x \
     "$dotfiles/bin/firstmate" \
     "$dotfiles/bin/paseo-pi" \
     "$dotfiles/bin/zellij-helper" \
-    "$dotfiles/bin/zellij-attach" \
-    "$dotfiles/bin/zellij-agent" \
-    "$dotfiles/bin/zellij-balance" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/git-ssh" \
     "$dotfiles/bin/sync-codex-mcp-servers"

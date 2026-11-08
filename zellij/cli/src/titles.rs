@@ -9,11 +9,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-type Location = (PathBuf, PathBuf);
-
-fn run(program: &str, args: &[&str]) -> Result<String, String> {
-    crate::command::output(program, args, Instant::now() + Duration::from_secs(2))
-}
+pub(crate) type Location = (PathBuf, PathBuf);
 
 fn server_directory(processes: &str, mut pid: u32) -> Option<PathBuf> {
     let processes: HashMap<u32, (u32, &str)> = processes
@@ -46,6 +42,10 @@ fn server_directory(processes: &str, mut pid: u32) -> Option<PathBuf> {
 }
 
 fn session_location() -> Result<Location, String> {
+    location_before(Instant::now() + Duration::from_secs(2))
+}
+
+pub(crate) fn location_before(deadline: Instant) -> Result<Location, String> {
     let directory = env::var_os("ZELLIJ_SOCKET_DIR")
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
@@ -53,13 +53,13 @@ fn session_location() -> Result<Location, String> {
     let directory = match directory {
         Some(directory) => directory,
         None => server_directory(
-            &run("ps", &["-ww", "-axo", "pid=,ppid=,command="])?,
+            &crate::command::output("ps", &["-ww", "-axo", "pid=,ppid=,command="], deadline)?,
             // SAFETY: getppid has no preconditions.
             unsafe { libc::getppid() } as u32,
         )
         .ok_or("Cannot identify the owning Zellij server")?,
     };
-    let check = run("zellij", &["setup", "--check"])?;
+    let check = crate::command::output("zellij", &["setup", "--check"], deadline)?;
     if !check.lines().any(|line| line == "[Version]: \"0.46.0\"") {
         return Err("Automatic title ownership requires the pinned runtime".into());
     }
@@ -74,7 +74,7 @@ fn session_location() -> Result<Location, String> {
     Ok((directory, index))
 }
 
-fn session_identity(session: &str, location: &Location) -> Result<Value, String> {
+pub(crate) fn session_identity(session: &str, location: &Location) -> Result<Value, String> {
     let connection = Connection::open_with_flags(&location.1, OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(|error| error.to_string())?;
     connection
@@ -106,11 +106,11 @@ fn session_identity(session: &str, location: &Location) -> Result<Value, String>
     Ok(json!([socket, info.dev(), info.ino(), ctime_ns]))
 }
 
-fn session_key(session: &str) -> String {
+pub(crate) fn session_key(session: &str) -> String {
     format!("{:x}", Sha256::digest(session.as_bytes()))
 }
 
-fn record_title(path: &Path, identity: &Value) -> Option<String> {
+pub(crate) fn record_title(path: &Path, identity: &Value) -> Option<String> {
     let record: Value = serde_json::from_str(&fs::read_to_string(path).ok()?).ok()?;
     if record.get("identity")? != identity {
         return None;

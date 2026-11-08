@@ -1,63 +1,76 @@
+mod agent;
+mod agent_titles;
+mod auto_title;
+mod balance;
+mod clipboard;
 mod command;
 mod config;
+mod context;
+mod navigation;
+mod notify;
+mod picker;
+mod preview;
 mod reload;
+mod session;
+mod status;
 mod titles;
+mod util;
 mod view;
-
-const HELP: &str = "Usage: zellij-helper status <view [SESSION] | config | reload [--session SESSION]>\n\nThe zellij-status compatibility command accepts view/config/reload directly.\nConfiguration defaults to $XDG_CONFIG_HOME/zellij/lane-status.toml.\nReload updates existing receiver clones only; it never starts a session or plugin.";
-
-fn run(args: &[String]) -> Result<(), String> {
+use anyhow::{bail, Result};
+use std::io::{IsTerminal, Write};
+const HELP:&str="Usage: zellij-helper <status|agent|attach|ssh|auto-title|shell-title|clipboard|context|navigate|popup|shutdown|balance|notify|picker|claude-title|codex-title> [arguments]";
+fn run(args: &[String]) -> Result<()> {
     match args {
+        [] => println!("{HELP}"),
         [help] if matches!(help.as_str(), "--help" | "-h") => println!("{HELP}"),
-        [status, rest @ ..] if status == "status" => match rest {
-            [help] if matches!(help.as_str(), "--help" | "-h") => println!("{HELP}"),
-            [command, help]
-                if matches!(command.as_str(), "view" | "config" | "reload")
-                    && matches!(help.as_str(), "--help" | "-h") =>
-            {
-                println!("{HELP}")
+        [command, rest @ ..] => match command.as_str() {
+            "status" => status::run(args).map_err(anyhow::Error::msg)?,
+            "agent" => agent::main(rest)?,
+            "claude-title" => {
+                let _ = agent_titles::claude(rest);
             }
-            [command, separator, session] if command == "view" && separator == "--" => println!(
-                "{}",
-                serde_json::to_string(&view::view(Some(session))).map_err(|e| e.to_string())?
-            ),
-            [command] if command == "config" => println!(
-                "{}",
-                serde_json::to_string(&config::load()?).map_err(|e| e.to_string())?
-            ),
-            [command] if command == "view" => println!(
-                "{}",
-                serde_json::to_string(&view::view(None)).map_err(|e| e.to_string())?
-            ),
-            [command, session] if command == "view" => println!(
-                "{}",
-                serde_json::to_string(&view::view(Some(session))).map_err(|e| e.to_string())?
-            ),
-            [command, options @ ..] if command == "reload" => {
-                let selected = match options {
-                    [] => std::env::var("ZELLIJ_SESSION_NAME").ok(),
-                    [flag, name] if flag == "--session" => Some(name.clone()),
-                    [option] if option.starts_with("--session=") => Some(option[10..].to_owned()),
-                    _ => return Err(HELP.into()),
-                };
-                println!("{}", reload::reload(selected.as_deref(), config::load()?)?);
+            "codex-title" => {
+                let _ = agent_titles::codex(rest);
             }
-            _ => return Err(HELP.into()),
+            "balance" => balance::main(rest)?,
+            "notify" => notify::main(rest)?,
+            "picker" => picker::main(rest)?,
+            "attach" => session::attach(rest)?,
+            "ssh" => session::ssh(rest)?,
+            "shell-title" if rest.is_empty() => {
+                let _ = auto_title::shell_title();
+            }
+            "auto-title" => {
+                let _ = auto_title::main();
+            }
+            "clipboard" => clipboard::main(rest)?,
+            "context" if rest == ["provider"] => println!("{}", context::provider()?),
+            "navigate" => navigation::main(rest)?,
+            "popup" if rest.is_empty() => session::popup()?,
+            "shutdown" if rest.is_empty() => session::shutdown()?,
+            _ => bail!("{HELP}"),
         },
-        _ => return Err(HELP.into()),
     }
     Ok(())
 }
-
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if let Err(error) = run(&args) {
-        let label = if args.first().is_some_and(|arg| arg == "status") {
-            "zellij-status"
-        } else {
-            "zellij-helper"
+        eprintln!(
+            "zellij-{}: {error:#}",
+            args.first().map(String::as_str).unwrap_or("helper")
+        );
+        let interactive = match args.first().map(String::as_str) {
+            Some("popup" | "shutdown") => true,
+            Some("picker") => args.get(1).is_some_and(|arg| !arg.starts_with("--preview")),
+            Some("notify") => args.get(1).is_some_and(|arg| arg == "history"),
+            _ => false,
         };
-        eprintln!("{label}: {error}");
+        if interactive && std::io::stdin().is_terminal() {
+            print!("Press Enter to close.");
+            let _ = std::io::stdout().flush();
+            let _ = std::io::stdin().read_line(&mut String::new());
+        }
         std::process::exit(1);
     }
 }

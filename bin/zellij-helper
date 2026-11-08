@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stable entrypoints only. All status/config/reload behavior lives in Rust.
+# Compatibility entrypoints only. Runtime behavior lives in zellij/cli.
 set -eu
 name=${0##*/}
 source_path=${BASH_SOURCE[0]}
@@ -14,7 +14,10 @@ if [ ! -x "$program" ]; then
     printf '%s: Rust helper is not built; run make zellij-helpers in %s\n' "$name" "$directory" >&2
     exit 1
 fi
-if [ "$name" = zellij-status ]; then
-    set -- status "$@"
-fi
+case "$name" in
+    zellij-helper) ;;
+    claude-zellij-title-hook) set -- claude-title "$@" ;;
+    codex-zellij-title-hook) set -- codex-title "$@" ;;
+    zellij-*) set -- "${name#zellij-}" "$@" ;;
+esac
 exec "$program" "$@"
