@@ -16,7 +16,20 @@ if [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ]; then
 		*)
 			agent_helper="$(dirname "$0")/zellij-agent"
 			if [ -x "$agent_helper" ]; then
-				"$agent_helper" refresh "$1" >/dev/null 2>&1 || :
+				if ! "$agent_helper" refresh "$1" >/dev/null 2>&1 &&
+				   [ -S "$SSH_AUTH_SOCK" ] && [ ! -L "$SSH_AUTH_SOCK" ] &&
+				   [ -O "$SSH_AUTH_SOCK" ]; then
+					# Restored servers do not exist until attach starts them.
+					# Bound the retry worker so a failed attach leaves no daemon.
+					(
+						deadline=$((SECONDS + 5))
+						while [ "$SECONDS" -lt "$deadline" ]; do
+							sleep 0.2
+							"$agent_helper" refresh "$1" >/dev/null 2>&1 && exit 0
+						done
+						printf '%s\n' 'zj: forwarded SSH agent refresh failed; reconnect with agent forwarding enabled.' >&2
+					) </dev/null &
+				fi
 			fi
 			;;
 	esac
