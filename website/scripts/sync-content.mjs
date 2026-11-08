@@ -84,6 +84,8 @@ for (const page of pages) {
   }
   const tree = processor.parse(source);
   visit(tree, (node) => {
+    // Extracted README sections become pages, so their subsections start at h2.
+    if (page.section && node.type === 'heading') node.depth -= 1;
     if (['link', 'image', 'definition'].includes(node.type) && node.url) node.url = link(node.url, node.type === 'image');
     // Keep repository-relative links usable inside MDX components as well as prose.
     for (const attribute of node.attributes ?? []) {
