@@ -1,6 +1,6 @@
 # Zellij command palette
 
-`Ctrl-f :` opens a slim native command line near the upper third of the terminal. Its width is capped at 64 columns; up to five completion choices appear directly below the input, and the height follows the matches. The command line stays in place as the dropdown changes. Controls and usage instructions stay in this guide rather than the popup. Type a Zellij action directly, or search the suggestions by name or description. Tab accepts the highlighted suggestion; Enter runs the command you entered. Suggestions never execute a command. Esc or clicking outside closes the popup.
+`Ctrl-f :` opens a slim native command line near the upper third of the terminal. Its width is capped at 64 columns; up to five completion choices appear directly below the input, and the height follows the matches. The command line stays in place as the dropdown changes. The popup shows only the input and relevant results, without titles, table headings, counts or control hints. Controls and usage instructions stay in this guide rather than the popup. Type a Zellij action directly, or search the suggestions by name or description. Tab accepts the highlighted suggestion; Enter runs the command you entered. Suggestions never execute a command. Esc or clicking outside closes the popup.
 
 | Input | Suggestions |
 | --- | --- |

@@ -255,11 +255,11 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
                     )],
                     (_, "direction") => ["left", "right", "up", "down"]
                         .into_iter()
-                        .map(|v| Suggestion::new(v, v, "direction"))
+                        .map(|v| Suggestion::new(v, v, ""))
                         .collect(),
                     (_, "resize") => ["increase", "decrease"]
                         .into_iter()
-                        .map(|v| Suggestion::new(v, v, "resize amount"))
+                        .map(|v| Suggestion::new(v, v, ""))
                         .collect(),
                     _ => arg
                         .get_value_parser()

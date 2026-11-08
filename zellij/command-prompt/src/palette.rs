@@ -423,7 +423,7 @@ impl Palette {
     }
 
     pub fn render(&mut self, rows: usize, columns: usize) {
-        if !self.allowed || rows < 5 || columns < 12 {
+        if !self.allowed || rows < 3 || columns < 12 {
             return;
         }
         let tab = get_tab_info(self.open.origin.0).unwrap_or_default();
@@ -438,8 +438,6 @@ impl Palette {
                 .into_iter()
                 .take(3)
                 .collect::<Vec<_>>()
-        } else if compact && items.is_empty() {
-            vec![Text::from("No matches").dim_range(..)]
         } else {
             vec![]
         };
@@ -449,9 +447,11 @@ impl Palette {
             0
         };
         let height = if compact {
-            (4 + candidate_rows + message.len()).max(5)
-        } else {
+            3 + candidate_rows + message.len()
+        } else if self.view == View::Documentation {
             BROWSE_ROWS
+        } else {
+            (3 + items.len().max(1)).min(BROWSE_ROWS)
         }
         .min(max_height);
         if self.popup_size != Some((desired_width, height)) {
@@ -488,23 +488,6 @@ impl Palette {
                 );
             }
         }
-        let title = match self.view {
-            View::Command => "Zellij command",
-            View::Help => "Zellij commands",
-            View::History => "Zellij command history",
-            View::Panes => "Zellij command · panes",
-            View::Tabs => "Zellij command · tabs",
-            View::Sessions => "Zellij command · sessions",
-            View::Documentation => "Zellij command · help",
-        };
-        let title = format!(" {title} ");
-        print_text_with_coordinates(
-            Text::from(&title).color_range(0, ..),
-            2,
-            0,
-            Some(graphemes::display_width(&title).min(width)),
-            Some(1),
-        );
         if self.view == View::Documentation {
             let lines: Vec<_> = self
                 .documentation
@@ -519,13 +502,8 @@ impl Palette {
             return;
         }
         self.render_input(columns);
-        border(2, '├', '┤');
-        let table_row = if compact { 3 } else { 4 };
-        let visible = if compact {
-            rows.saturating_sub(4)
-        } else {
-            rows.saturating_sub(6)
-        };
+        let table_row = 2;
+        let visible = rows.saturating_sub(3);
         self.selected = self.selected.min(items.len().saturating_sub(1));
         let start = self.selected.saturating_sub(visible.saturating_sub(1));
         let label_width = if self.view == View::History {
@@ -545,29 +523,9 @@ impl Palette {
         let cell = |column, row, available, value| {
             print_text_with_coordinates(value, column, row, Some(available), Some(1))
         };
-        if !compact {
-            put(
-                3,
-                Text::from(match self.view {
-                    View::Panes => "PANE / TITLE",
-                    View::Tabs => "TAB / NAME",
-                    View::Sessions => "SESSION",
-                    _ => "COMMAND / VALUE",
-                })
-                .color_range(0, ..),
-            );
-            if detail_width > 0 {
-                cell(
-                    label_width + 4,
-                    3,
-                    detail_width,
-                    Text::from("DETAILS").color_range(0, ..),
-                );
-            }
-        }
         if !message.is_empty() && compact {
             for (i, line) in message.iter().take(visible).enumerate() {
-                put(3 + i, line.clone());
+                put(table_row + i, line.clone());
             }
         } else {
             for (i, item) in items.iter().enumerate().skip(start).take(visible) {
@@ -602,15 +560,9 @@ impl Palette {
                     );
                 }
             }
-            if items.is_empty() {
+            if items.is_empty() && !compact {
                 put(table_row, Text::from("No matches").dim_range(..));
             }
-        }
-        if !compact {
-            put(
-                rows - 2,
-                Text::from(format!("{} suggestions", items.len())).dim_range(..),
-            );
         }
     }
 }
@@ -623,7 +575,7 @@ fn geometry(tab: &TabInfo) -> (usize, usize, usize, usize) {
     let height = tab
         .display_area_rows
         .saturating_sub(top + 1)
-        .clamp(5, BROWSE_ROWS);
+        .clamp(3, BROWSE_ROWS);
     (
         width,
         height,
@@ -636,7 +588,7 @@ pub fn launch(open: Open) {
     let tab = get_tab_info(open.origin.0).unwrap_or_default();
     let dispatcher = get_pane_info(PaneId::Plugin(open.owner)).unwrap_or_default();
     let (width, max_height, top, left) = geometry(&tab);
-    let height = (4 + COMPLETION_ROWS).min(max_height);
+    let height = (3 + COMPLETION_ROWS).min(max_height);
     let configuration = BTreeMap::from([(
         "palette".into(),
         serde_json::to_string(&open).expect("serializable popup"),
