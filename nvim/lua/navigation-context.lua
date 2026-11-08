@@ -117,13 +117,13 @@ local function badge(change)
 	if not change then
 		return ""
 	end
-	local ansi = require("fzf-lua.utils").ansi_codes
+	local utils = require("fzf-lua.utils")
 	local result = {}
 	if change[1] > 0 then
-		result[#result + 1] = ansi.green("+" .. abbreviated(change[1]))
+		result[#result + 1] = utils.ansi_from_hl("GitSignsAdd", "+" .. abbreviated(change[1]))
 	end
 	if change[2] > 0 then
-		result[#result + 1] = ansi.red("−" .. abbreviated(change[2]))
+		result[#result + 1] = utils.ansi_from_hl("GitSignsDelete", "−" .. abbreviated(change[2]))
 	end
 	return table.concat(result, " ")
 end
@@ -211,7 +211,7 @@ function M.attach(opts, width)
 	local changes, additions = git_changes(root)
 	local original = handler.handler
 	local utils = require("fzf-lua.utils")
-	local _, _, mute = utils.ansi_from_hl("Comment", "")
+	local _, _, mute = utils.ansi_from_hl("FzfLuaFzfInfo", "")
 	local badges, lookup = {}, {}
 	local signatures = require("navigation-signature").new()
 	local function for_file(file)

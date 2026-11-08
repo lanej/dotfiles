@@ -161,8 +161,20 @@ local function observed()
   return result
 end
 local before = observed()
+local function picker_colors()
+  local roles = require("dotfiles-theme").colors()
+  local function foreground(name)
+    return string.format("#%06X", vim.api.nvim_get_hl(0, {name = name, link = false}).fg)
+  end
+  assert(foreground("FzfLuaFzfMatch") == roles.match)
+  assert(foreground("FzfLuaLiveSym") == roles.match)
+  assert(foreground("FzfLuaFzfPointer") == roles.accent)
+  assert(foreground("FzfLuaFzfMatch") ~= foreground("DiagnosticError"))
+end
+picker_colors()
 vim.cmd.colorscheme("dotfiles")
 vim.wait(100, function() return false end)
+picker_colors()
 assert(vim.deep_equal(before, observed()), "Native plugin styling changes after colorscheme reload")
 vim.fn.writefile({vim.json.encode(before)}, vim.env.THEME_OBSERVATIONS)
 ''')
