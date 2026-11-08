@@ -372,6 +372,10 @@ test-yabai-browser-focus:
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
+.PHONY: test-kitty-tab-titles
+test-kitty-tab-titles:
+	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-tab-titles.py', run_name='__main__')"
+
 test-tmux-session-fallback:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-tmux-session-fallback.py"
 

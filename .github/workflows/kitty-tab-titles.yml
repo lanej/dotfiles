@@ -1,0 +1,26 @@
+name: Kitty tab titles
+on:
+  pull_request:
+    paths: &title-paths
+      - 'kitty/tab_bar.py'
+      - 'kitty/kittyconf'
+      - 'bin/zellij-attach'
+      - 'scripts/test-kitty-tab-titles.py'
+      - '.github/workflows/kitty-tab-titles.yml'
+  push:
+    branches: [master]
+    paths: *title-paths
+permissions:
+  contents: read
+jobs:
+  titles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Kitty runtime
+        run: |
+          mkdir -p "$RUNNER_TEMP/kitty"
+          curl --fail --location --retry 3 https://github.com/kovidgoyal/kitty/releases/download/v0.50.0/kitty-0.50.0-x86_64.txz | tar -xJ -C "$RUNNER_TEMP/kitty"
+          echo "$RUNNER_TEMP/kitty/bin" >> "$GITHUB_PATH"
+      - run: make test-kitty-tab-titles

@@ -6,6 +6,12 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 Both multiplexers use **Ctrl-f** as the prefix and Vim-style pane navigation. Zellij is an opt-in trial; familiar keys do not imply identical copy behavior.
 
+## Kitty tab names
+
+Ordinary tabs keep their application titles. Local Zellij tabs show the session name; SSH sessions started with `zj` show `hostname/session`. Explicit Kitty tab and window names still win. On the remote host, use the configured `zj` launcher rather than calling `zellij attach` directly so it can announce and clear the host context.
+
+Run `make kitty` locally and reload Kitty configuration after updating. The title hook requires Kitty 0.43 or newer. The remote host also needs the updated dotfiles launcher; reconnect existing SSH/Zellij clients to pick it up.
+
 ## Copying is a deliberate difference
 
 | Task | tmux | Zellij |

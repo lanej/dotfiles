@@ -21,4 +21,17 @@ if [ -n "${SSH_CONNECTION:-}" ] && [ -n "${SSH_AUTH_SOCK:-}" ]; then
 			;;
 	esac
 fi
-exec zellij attach --create "$@"
+if [ -n "${SSH_CONNECTION:-}" ] && [ -z "${TMUX:-}" ] && [ -t 1 ]; then
+	# WHY: Kitty cannot distinguish remote Zellij from an ordinary application's
+	# title. Announce the host outside the mux, which consumes pane OSC messages.
+	host=$(hostname -s)
+	marker=$(printf '%s/%s/%s' "$host" "$$" "$RANDOM" | base64 | tr -d '\n')
+	printf '\033]1337;SetUserVar=dotfiles_zellij=%s\007' "$marker"
+	trap 'printf "\033]1337;SetUserVar=dotfiles_zellij\007"' EXIT
+	trap 'exit 129' HUP
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+	zellij attach --create "$@"
+else
+	exec zellij attach --create "$@"
+fi
