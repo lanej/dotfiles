@@ -160,8 +160,8 @@ local function workflow()
 				{
 					name = "server_outline",
 					kind = 12,
-					range = location(source).range,
-					selectionRange = location(source).range,
+					range = location(source, 1).range,
+					selectionRange = location(source, 1).range,
 				},
 			}
 		elseif method == "workspace/symbol" then
@@ -182,10 +182,24 @@ local function workflow()
 	close_picker()
 	keys(",bs")
 	picker("server_outline")
-	close_picker()
+	local outline = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(not outline:match("%d+:%d+"), "Outline still displays row and column metadata")
+	assert(
+		vim.api.nvim_win_get_width(0) <= 100 and vim.api.nvim_win_get_height(0) <= 12,
+		"Outline did not use the compact stacked layout"
+	)
+	vim.api.nvim_chan_send(vim.bo.channel, "\r")
+	wait(function()
+		return vim.api.nvim_get_current_buf() == source_buf and vim.api.nvim_win_get_cursor(0)[1] == 2
+	end, "Hidden coordinates broke symbol selection")
+	keys("<C-o>")
 	keys(",ws")
 	picker("server_symbol")
-	close_picker()
+	vim.api.nvim_chan_send(vim.bo.channel, "\r")
+	wait(function()
+		return vim.api.nvim_buf_get_name(0) == target
+	end, "Hidden workspace coordinates broke symbol selection")
+	keys("<C-o>")
 	local search
 	fzf.grep = function(opts)
 		search = opts
@@ -196,7 +210,15 @@ local function workflow()
 	end, "References did not request LSP")
 	assert(not search, "Slow LSP switched to text search")
 	picker("library file.lua")
-	close_picker()
+	assert(
+		not table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):match("%d+:%d+"),
+		"References still display row and column metadata"
+	)
+	vim.api.nvim_chan_send(vim.bo.channel, "\r")
+	wait(function()
+		return vim.api.nvim_buf_get_name(0) == target
+	end, "Hidden reference coordinates broke selection")
+	keys("<C-o>")
 	keys(",cy")
 	vim.wait(100)
 	assert(not search and vim.api.nvim_get_current_buf() == source_buf, "Empty LSP switched source")

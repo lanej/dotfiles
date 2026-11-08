@@ -1,4 +1,5 @@
 local M = {}
+local ui = require("navigation-ui")
 
 local function has_lsp(method)
 	local buf = vim.api.nvim_get_current_buf()
@@ -27,13 +28,16 @@ local function text_search(title)
 	opts.rg_opts =
 		"--column --line-number --no-heading --color=always --smart-case --hidden --glob=!.git --fixed-strings --word-regexp"
 	opts.prompt = title .. " · Text matches❯ "
+	opts.winopts = ui.window
 	require("fzf-lua").grep(opts)
 end
 
 function M.goto_definition()
 	local fzf = require("fzf-lua")
 	if has_lsp("textDocument/definition") then
-		return fzf.lsp_definitions({ jump1 = true })
+		local opts = ui.locations()
+		opts.jump1 = true
+		return fzf.lsp_definitions(opts)
 	end
 	local word = vim.fn.expand("<cword>")
 	local pattern = "\\C^" .. vim.fn.escape(word, [[\.^$~[]*]]) .. "$"
@@ -47,6 +51,7 @@ function M.goto_definition()
 		opts.search = "^" .. vim.fn.escape(word, [=[\.^$|?*+(){}[]]=]) .. "\t"
 		opts.no_esc = true
 		opts.prompt = "Definitions · Tags❯ "
+		opts.winopts = ui.window
 		return fzf.tags(opts)
 	end
 	if not ok then
@@ -57,14 +62,14 @@ end
 
 function M.references()
 	if has_lsp("textDocument/references") then
-		return require("fzf-lua").lsp_references()
+		return require("fzf-lua").lsp_references(ui.locations())
 	end
 	text_search("References")
 end
 
 function M.implementations()
 	if has_lsp("textDocument/implementation") then
-		return require("fzf-lua").lsp_implementations()
+		return require("fzf-lua").lsp_implementations(ui.locations())
 	end
 	text_search("Implementations")
 end
@@ -72,7 +77,7 @@ end
 function M.buffer_symbols()
 	local fzf = require("fzf-lua")
 	local opts = {
-		winopts = { relative = "cursor", width = 0.5, height = 0.8, border = "double" },
+		winopts = ui.window,
 	}
 	if has_lsp("textDocument/documentSymbol") then
 		return fzf.lsp_document_symbols(opts)
@@ -85,10 +90,11 @@ end
 function M.workspace_symbols()
 	local fzf = require("fzf-lua")
 	if has_lsp("workspace/symbol") then
-		return fzf.lsp_live_workspace_symbols({})
+		return fzf.lsp_live_workspace_symbols({ winopts = ui.window })
 	end
 	local opts = project_options()
 	opts.prompt = "Workspace symbols · Tags❯ "
+	opts.winopts = ui.window
 	return fzf.tags(opts)
 end
 

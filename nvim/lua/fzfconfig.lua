@@ -44,6 +44,8 @@ require("fzf-lua").setup({
 		rg_glob = true, -- enable glob parsing
 	},
 	lsp = {
+		document_symbols = require("navigation-ui").symbols(true),
+		workspace_symbols = require("navigation-ui").symbols(false),
 		code_actions = {
 			-- prompt           = 'Code Actions> ',
 			-- async_or_timeout = 5000,
