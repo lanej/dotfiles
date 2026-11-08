@@ -18,6 +18,26 @@ Proposal snapshots are stored under `$XDG_STATE_HOME/pi-governance/proposals` (o
 
 The branch budgets in [budgets.json](../pi/governance/budgets.json) are **informational only** in this slice. No tokens or dollars are metered or stopped. The role is supplied by an environment variable and can be spoofed. Pi's tools and process have full host permissions; the proposal store is not tamper resistant. Do not treat this as an authorization boundary or deploy it unattended.
 
+## Constitution and deliberate sessions
+
+The governing principles are in [constitution.md](../pi/governance/constitution.md). Each role receives this text at Pi agent start. This is guidance, **not a security boundary**. Adoption of the constitution and protected changes requires explicit human authorization.
+
+Keep evidence collection continuous but batch changes to reduce oscillation:
+
+| Activity | V1 cadence | Meaning |
+| --- | --- | --- |
+| Executive task work | As requested | Ordinary implementation, fixes and rework continue without waiting for sessions |
+| Judicial case review | As needed | A failing task can be reviewed immediately; recorded findings remain visible |
+| Judicial session | Weekly | Summarize findings and identify recurring patterns; do not revise policy |
+| Legislative session | Monthly | Consider accumulated judicial findings, select **at most one** ordinary systemic amendment for advancement |
+| Post-adoption observation | At least 14 days | Compare outcomes against a pinned baseline before proposing further systemic promotion |
+
+A **session** is a bounded decision window, not a permanently running Pi agent or mandatory new process. Snapshot the evidence and approved policy version at the start of each session. Capture a dated docket and decisions; carry unselected ideas into the next session without repeatedly respawning agents.
+
+In V1 these are **manual scheduling conventions** from [budgets.json](../pi/governance/budgets.json), not implemented timers, immutable snapshots, or automatic gates. An approved PR does not deploy itself. Any emergency deviation requires explicit human authorization and documented evidence. Avoid running simultaneous amendments to the same subsystem during the observation period.
+
+The weekly budget accounting period and the judicial session cadence are separate concepts even if both happen weekly.
+
 ## Acceptance
 
 1. Three Pi sessions start using their respective role, each with the configured budget visible in `governance_status`.
