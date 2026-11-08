@@ -30,6 +30,29 @@ test('copy setup instructions and find the Zellij workflow', async ({ page, cont
 
 });
 
+test('find conventional standards through navigation and search', async ({ page }) => {
+  await page.goto('./reference/builder/');
+  const sidebar = page.locator('#starlight__sidebar');
+  await sidebar.getByRole('link', { name: 'Code comments', exact: true }).click();
+  await expect(page).toHaveURL(/\/dotfiles\/contributing\/code-comments\//);
+  await expect(page.getByRole('heading', { name: 'Conventional code comments', exact: true })).toBeVisible();
+  await expect(page.locator('main')).toContainText('A comment earns its place');
+  await expect(page.locator('main')).toContainText('<type>[(<scope>)]: <explanation>');
+  await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/conventional-code-comments.md');
+  await sidebar.getByRole('link', { name: 'Pull requests', exact: true }).click();
+  await expect(page).toHaveURL(/\/dotfiles\/contributing\/pull-requests\//);
+  await expect(page.getByRole('heading', { name: 'Conventional pull requests', exact: true })).toBeVisible();
+  await expect(page.locator('main')).toContainText('Optimize decision-relevant understanding');
+  await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/conventional-pull-requests.md');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByPlaceholder('Search', { exact: true }).fill('temporary accommodation');
+  await page.locator('.pagefind-ui__result-link').filter({ hasText: 'Conventional code comments' }).first().click();
+  await expect(page).toHaveURL(/\/dotfiles\/contributing\/code-comments\//);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'Conventional code comments', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('review Go style defaults and gradual adoption on desktop and mobile', async ({ page }) => {
   await page.goto('./reference/go-style/');
   await expect(page.getByRole('heading', { name: 'Go style guide', exact: true })).toBeVisible();

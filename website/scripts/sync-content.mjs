@@ -22,6 +22,8 @@ const pages = [
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
   { file: 'docs/builder.mdx', slug: 'reference/builder' },
   { file: 'docs/documentation-site.mdx', slug: 'maintaining' },
+  { file: 'docs/conventional-code-comments.md', slug: 'contributing/code-comments', title: 'Conventional code comments' },
+  { file: 'docs/conventional-pull-requests.md', slug: 'contributing/pull-requests', title: 'Conventional pull requests' },
   { file: 'README.md', section: 'Installation', slug: 'reference/install', title: 'Install & set up' },
   { file: 'README.md', section: 'Configuration sets', slug: 'reference/configuration', title: 'Configuration composition' },
   { file: 'docs/zellij.md', slug: 'reference/zellij', title: 'Zellij' },
