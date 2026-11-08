@@ -46,13 +46,18 @@ export default defineConfig({
       ] },
       { label: 'Reference', items: [
         { label: 'Components', slug: 'components' },
+        { label: 'Builder', slug: 'reference/builder' },
         { label: 'macOS stack', slug: 'reference/macos' },
         { label: 'Linux stack', slug: 'reference/linux' },
         { label: 'Rust', slug: 'reference/rust' },
         { label: 'Go style guide', slug: 'reference/go-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
       ] },
-      { label: 'Contributing', items: [{ label: 'Maintain this site', slug: 'maintaining' }] },
+      { label: 'Contributing', items: [
+        { label: 'Code comments', slug: 'contributing/code-comments' },
+        { label: 'Pull requests', slug: 'contributing/pull-requests' },
+        { label: 'Maintain this site', slug: 'maintaining' },
+      ] },
     ],
   })],
 });
