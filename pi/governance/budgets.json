@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "period": "weekly",
+  "budgetsUsd": {
+    "executive": 50,
+    "judicial": 20,
+    "legislative": 10
+  },
+  "maxWorkers": {
+    "executive": 4,
+    "judicial": 2,
+    "legislative": 1
+  },
+  "protectedPaths": [
+    "pi/governance/budgets.json",
+    "pi/extensions/governance.mjs"
+  ]
+}
