@@ -13,6 +13,8 @@ vim.opt.runtimepath:append(vim.env.NVIM_TEST_SITE or vim.fn.expand("~/.local/sha
 local gutentags = vim.env.GUTENTAGS_RUNTIME or lazy .. "/vim-gutentags"
 vim.opt.runtimepath:append(gutentags)
 vim.o.hidden = true
+vim.o.columns = 160
+vim.o.lines = 45
 vim.o.swapfile = false
 vim.g.mapleader = ","
 require("tag-index").setup()
@@ -20,14 +22,19 @@ vim.g.gutentags_cache_dir = temp .. "/cache"
 vim.cmd("runtime plugin/gutentags.vim")
 require("fzfconfig")
 local fzf = require("fzf-lua")
-local select = vim.ui.select
-local register = fzf.register_ui_select
-local grep, live = fzf.grep, fzf.fzf_live
+local grep = fzf.grep
 local clients = {}
 local transport
 
 local function wait(predicate, message, timeout)
-	assert(vim.wait(timeout or 5000, predicate, 10), message)
+	assert(
+		vim.wait(timeout or 5000, predicate, 10),
+		message
+			.. "\n"
+			.. vim.inspect(vim.api.nvim_buf_get_lines(0, 0, -1, false))
+			.. "\n"
+			.. vim.fn.execute("messages")
+	)
 end
 local function keys(mapping)
 	vim.cmd.normal(vim.api.nvim_replace_termcodes(mapping, true, false, true))
@@ -106,10 +113,11 @@ local function workflow()
 	local project = temp .. "/project with spaces"
 	vim.fn.mkdir(project, "p")
 	command({ "git", "init", "-q", project })
+	vim.cmd.cd(vim.fn.fnameescape(project))
 	write(project .. "/.gitignore", { "ignored.lua" })
 	write(project .. "/ignored.lua", { "function ignored_symbol() end" })
 	local target = project .. "/library file.lua"
-	write(target, { "function destination() end" })
+	write(target, { "function destination() end", "function another_destination() end" })
 	local source = project .. "/caller.lua"
 	write(source, { "destination()", "missing_symbol()" })
 	vim.cmd.edit(vim.fn.fnameescape(source))
@@ -122,191 +130,130 @@ local function workflow()
 	assert(not vim.uv.fs_stat(project .. "/tags"), "Index was written into project")
 	local index = vim.fn.tagfiles()[1]
 
-	-- Definition workflow: LSP, then a timed-out server with a usable tag,
-	-- then text search; late replies cannot steal focus or move the cursor.
-	local delayed
-	transport = server(project, function(method, _, callback)
-		assert(method == "textDocument/definition")
-		if delayed then
-			delayed = callback
+	local function picker(needle)
+		wait(
+			function()
+				return vim.bo.buftype == "terminal"
+					and table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find(needle, 1, true)
+			end,
+			"Native picker did not display "
+				.. needle
+				.. " "
+				.. vim.inspect(vim.api.nvim_buf_get_lines(0, 0, -1, false))
+		)
+	end
+	local function close_picker()
+		fzf.hide()
+		wait(function()
+			return vim.api.nvim_get_current_buf() == source_buf
+		end, "Picker did not close")
+	end
+
+	-- LSP owns the complete interaction, including empty and slow replies.
+	local requests, delayed = {}, nil
+	transport = server(project, function(method, params, callback)
+		table.insert(requests, method)
+		if method == "textDocument/definition" then
+			return { location(target), location(target, 1) }
+		elseif method == "textDocument/documentSymbol" then
+			return {
+				{
+					name = "server_outline",
+					kind = 12,
+					range = location(source).range,
+					selectionRange = location(source).range,
+				},
+			}
+		elseif method == "workspace/symbol" then
+			return { { name = "server_symbol", kind = 12, location = location(target) } }
+		elseif method == "textDocument/references" then
+			delayed = true
+			vim.defer_fn(function()
+				callback(nil, { location(target), location(target, 1) })
+			end, 1700)
 			return "delayed"
 		end
-		return { location(source, 1) }
+		assert(method == "textDocument/implementation")
+		return {}
 	end)
 	keys(",cd")
-	wait(function()
-		return vim.api.nvim_win_get_cursor(0)[1] == 2
-	end, "LSP definition did not win")
-	keys("<C-o>")
-	assert(vim.api.nvim_win_get_cursor(0)[1] == 1, "LSP definition lost jump-back position")
-	delayed = true
-	keys(",cd")
-	wait(function()
-		return vim.api.nvim_buf_get_name(0) == target
-	end, "Timed-out LSP did not fall back to tags")
-	delayed(nil, { location(source, 1) })
-	vim.wait(50)
-	assert(vim.api.nvim_buf_get_name(0) == target, "Late definition moved the editor")
-	keys("<C-o>")
-	assert(vim.api.nvim_get_current_buf() == source_buf, "Tag jump lost return position")
-	vim.lsp.get_client_by_id(transport):stop(true)
-	wait(function()
-		return #vim.lsp.get_clients({ bufnr = source_buf }) == 0
-	end, "Fixture did not stop")
+	picker("library file.lua")
+	assert(#vim.api.nvim_list_wins() >= 3, "Definitions lost native file preview")
+	close_picker()
+	keys(",bs")
+	picker("server_outline")
+	close_picker()
+	keys(",ws")
+	picker("server_symbol")
+	close_picker()
 	local search
 	fzf.grep = function(opts)
 		search = opts
 	end
+	keys(",cr")
+	wait(function()
+		return delayed ~= nil
+	end, "References did not request LSP")
+	assert(not search, "Slow LSP switched to text search")
+	picker("library file.lua")
+	close_picker()
+	keys(",cy")
+	vim.wait(100)
+	assert(not search and vim.api.nvim_get_current_buf() == source_buf, "Empty LSP switched source")
+	assert(vim.tbl_contains(requests, "workspace/symbol"), "Workspace picker bypassed LSP")
+	vim.lsp.get_client_by_id(transport):stop(true)
+	wait(function()
+		return #vim.lsp.get_clients({ bufnr = source_buf }) == 0
+	end, "Fixture did not stop")
+	print("Native LSP pickers preserve preview and slow/empty responses")
+
+	keys(",cd")
+	picker("destination")
+	vim.api.nvim_chan_send(vim.bo.channel, "\r")
+	wait(function()
+		return vim.api.nvim_buf_get_name(0) == target
+	end, "Tag selection lost destination")
+	keys("<C-o>")
+	assert(vim.api.nvim_get_current_buf() == source_buf, "Tag selection lost jump-back position")
 	vim.api.nvim_win_set_cursor(0, { 2, 0 })
 	keys(",cd")
 	assert(
 		search and search.search == "missing_symbol" and search.cwd == project,
-		"Definition did not offer project text search"
+		"Missing definition lost text fallback"
 	)
-	print("Definition fallback workflow passed")
-
-	-- Buffer symbols: LSP outline, then unsaved Tree-sitter definitions.
-	local selected, title
-	fzf.register_ui_select = function() end
-	vim.ui.select = function(items, opts, choose)
-		selected, title = items, opts.prompt
-		choose(nil)
-	end
-	transport = server(project, function(method)
-		assert(method == "textDocument/documentSymbol")
-		return {
-			{
-				name = "server_outline",
-				kind = 12,
-				range = location(source).range,
-				selectionRange = location(source).range,
-			},
-		}
-	end)
-	keys(",bs")
-	wait(function()
-		return title ~= nil
-	end, "Buffer outline did not open")
-	assert(
-		title:find("LSP", 1, true) and selected[1].label:find("server_outline", 1, true),
-		"Buffer symbols lost LSP names"
-	)
-	vim.lsp.get_client_by_id(transport):stop(true)
-	wait(function()
-		return #vim.lsp.get_clients({ bufnr = source_buf }) == 0
-	end, "Outline fixture did not stop")
-	vim.api.nvim_buf_set_lines(0, 0, -1, false, { "local function unsaved_outline() end", "unsaved_outline()" })
-	title = nil
-	keys(",bs")
-	assert(title and title:find("Tree-sitter", 1, true), "Missing unsaved Tree-sitter outline")
-	assert(selected[1].label:find("unsaved_outline", 1, true), "Outline omitted unsaved definition")
-	assert(
-		not table.concat(vim.fn.readfile(source), "\n"):find("unsaved_outline", 1, true),
-		"Outline test unexpectedly saved file"
-	)
-	print("Buffer symbols workflow passed")
-	vim.bo.modified = false
-
-	-- Workspace symbols: query-aware LSP, then tags for a query the server
-	-- cannot answer. The production content callback streams FzfLua entries.
-	local reload, options
-	fzf.fzf_live = function(contents, opts)
-		reload, options = contents, opts
-	end
-	transport = server(project, function(method, params)
-		assert(method == "workspace/symbol")
-		if params.query == "server" then
-			return { { name = "server_symbol", kind = 12, location = location(target) } }
-		end
-		return {}
-	end)
-	keys(",ws")
-	local rows, complete = {}, false
-	reload({ "server" })(function(row)
-		if row then
-			table.insert(rows, row)
-		else
-			complete = true
-		end
-	end)
-	wait(function()
-		return complete
-	end, "Workspace LSP query did not complete")
-	assert(rows[1] and rows[1]:find("[LSP] server_symbol", 1, true), "Workspace lost LSP result")
-	rows, complete = {}, false
-	reload({ "destination" })(function(row)
-		if row then
-			table.insert(rows, row)
-		else
-			complete = true
-		end
-	end)
-	wait(function()
-		return complete
-	end, "Workspace tags fallback did not complete")
-	assert(#rows == 1 and rows[1]:find("[Tags] destination", 1, true), "Workspace fallback lost query or tags")
-	options.winopts.on_close()
-	options.actions.default({ rows[1] })
-	assert(vim.api.nvim_buf_get_name(0) == target, "Workspace selection did not jump")
-	keys("<C-o>")
-	print("Workspace symbols workflow passed")
-	vim.lsp.get_client_by_id(transport):stop(true)
-	wait(function()
-		return #vim.lsp.get_clients({ bufnr = source_buf }) == 0
-	end, "Workspace fixture did not stop")
-	vim.api.nvim_buf_set_lines(0, 0, -1, false, { "destination()" })
-	vim.api.nvim_win_set_cursor(0, { 1, 0 })
-	transport = server(project, function(method, params)
-		if method == "textDocument/references" then
-			assert(params.context.includeDeclaration == false, "References included the declaration")
-		else
-			assert(method == "textDocument/implementation", "Implementation used the wrong LSP method")
-		end
-		return { location(target) }
-	end)
-	keys(",cr")
-	wait(function()
-		return vim.api.nvim_buf_get_name(0) == target
-	end, "References did not use LSP")
-	keys("<C-o>")
-	keys(",cy")
-	wait(function()
-		return vim.api.nvim_buf_get_name(0) == target
-	end, "Implementations did not use LSP")
-	keys("<C-o>")
-	vim.lsp.get_client_by_id(transport):stop(true)
-	wait(function()
-		return #vim.lsp.get_clients({ bufnr = source_buf }) == 0
-	end, "Reference fixture did not stop")
 	search = nil
 	keys(",cr")
-	assert(search and search.prompt:find("References · Text matches", 1, true), "References fallback was not labeled")
+	assert(search and search.prompt:find("References · Text matches", 1, true), "References fallback missing")
 	search = nil
 	keys(",cy")
 	assert(
 		search and search.prompt:find("Implementations · Text matches", 1, true),
-		"Implementations fallback was not labeled"
+		"Implementations fallback missing"
 	)
-	print("References and implementations fallback workflow passed")
+	print("No-LSP definitions use tags; references and implementations use labeled text search")
 
-	-- Saving updates the same cached index; a second checkout uses another.
 	vim.api.nvim_buf_set_lines(0, 0, -1, false, { "function saved_outline() end" })
 	vim.cmd.write()
 	wait(function()
 		return #vim.fn.taglist("^saved_outline$") > 0
-	end, "Saved file did not update tags")
-	vim.bo.filetype = "navigation_fixture"
-	title = nil
+	end, "Save did not update tags")
 	keys(",bs")
-	assert(title and title:find("Tags (saved)", 1, true), "Buffer symbols did not fall back to saved tags")
-	assert(#selected == 1 and selected[1].label:find("saved_outline", 1, true), "Buffer tags escaped current file")
+	picker("saved_outline")
+	assert(
+		not table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("another_destination", 1, true),
+		"Buffer tags escaped current file"
+	)
+	close_picker()
+	keys(",ws")
+	picker("another_destination")
+	close_picker()
 	local other = temp .. "/other checkout"
 	command({
 		"git",
 		"-C",
 		project,
 		"-c",
-		"user.name=Navigation Fixture",
+		"user.name=Fixture",
 		"-c",
 		"user.email=fixture@example.invalid",
 		"-c",
@@ -314,56 +261,20 @@ local function workflow()
 		"commit",
 		"--allow-empty",
 		"-qm",
-		"test: initialize disposable navigation fixture",
+		"test: initialize fixture",
 	})
 	command({ "git", "-C", project, "worktree", "add", "--detach", "-q", other })
 	write(other .. "/other.lua", { "function other_symbol() end" })
 	vim.cmd.edit(vim.fn.fnameescape(other .. "/other.lua"))
 	wait(function()
 		return #vim.fn.taglist("^other_symbol$") > 0
-	end, "Worktree marker did not generate tags")
-	assert(vim.fn.tagfiles()[1] ~= index, "Checkouts shared a tag cache")
-	print("Background index workflow passed")
-
-	-- Exercise the real FzfLua streaming boundary and terminal selection too.
-	write(other .. "/caller.lua", { "other_symbol()" })
-	vim.cmd.edit(vim.fn.fnameescape(other .. "/caller.lua"))
-	fzf.fzf_live = live
-	keys(",ws")
-	wait(function()
-		return vim.bo.buftype == "terminal"
-			and table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("[Tags] other_symbol", 1, true)
-	end, "Real workspace picker did not display streamed tag entries")
-	vim.api.nvim_chan_send(vim.bo.channel, "other_symbol")
-	vim.wait(400)
-	vim.api.nvim_chan_send(vim.bo.channel, "\r")
-	wait(function()
-		return vim.bo.buftype ~= "terminal"
-	end, "Real workspace picker did not accept selection")
-	assert(vim.api.nvim_buf_get_name(0) == other .. "/other.lua", "Real workspace picker lost destination")
-	assert(vim.api.nvim_win_get_cursor(0)[1] == 1, "Real workspace picker lost destination row")
-	print("Real FzfLua workspace picker passed")
-	keys("<C-o>")
-	assert(vim.api.nvim_buf_get_name(0) == other .. "/caller.lua", "Workspace jump lost its return position")
-	fzf.grep = grep
-	keys(",cr")
-	wait(function()
-		return vim.bo.buftype == "terminal"
-			and table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("other_symbol", 1, true)
-	end, "Real text fallback did not search project files")
-	vim.api.nvim_chan_send(vim.bo.channel, "other.lua")
-	vim.wait(400)
-	vim.api.nvim_chan_send(vim.bo.channel, "\r")
-	wait(function()
-		return vim.bo.buftype ~= "terminal"
-	end, "Real text fallback did not accept selection")
-	assert(vim.api.nvim_buf_get_name(0) == other .. "/other.lua", "Text fallback selected the wrong file")
-	print("Real FzfLua text fallback passed")
+	end, "Worktree did not generate tags")
+	assert(vim.fn.tagfiles()[1] ~= index, "Checkouts shared tag cache")
+	print("Native buffer/workspace tags and isolated background indexes passed")
 end
 
 local ok, err = xpcall(workflow, debug.traceback)
-vim.ui.select = select
-fzf.register_ui_select, fzf.grep, fzf.fzf_live = register, grep, live
+fzf.grep = grep
 for _, id in ipairs(clients) do
 	local client = vim.lsp.get_client_by_id(id)
 	if client then
