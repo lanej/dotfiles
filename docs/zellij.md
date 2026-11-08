@@ -78,6 +78,8 @@ Detaching preserves running programs. After a session exits, the session manager
 
 Scrollback keeps up to 100,000 live lines per pane and up to 10,000 lines for recovery. A crash can lose recent output. The shared popup does not restore its running work after a server exit or reboot.
 
+The patched runtime shows the pane's `SCROLL` counter only while scrolled back. Returning to live output hides it, without changing scroll keys or floating-pane pin controls. After updating, run `make zellij-runtime` and restart existing session servers to use this display change; the release and main runtime choices keep their upstream display.
+
 ## Differences that remain
 
 Older installations may use the legacy configuration: tab numbering starts at 1, several custom shortcuts are unavailable, and copying differs. See [legacy differences](zellij-keybinds.mdx#legacy-configuration) when your keys do not match.
