@@ -170,12 +170,23 @@ local function label(symbol, parent, path, width, prefix_width)
 	local candidates = { clean(symbol.detail), clean(symbol.containerName or parent) }
 	if path then
 		-- WHY: The hidden native path column must not make same-named workspace symbols indistinguishable.
-		table.insert(candidates, 1, clean(path))
+		local text = clean(path)
+		local part = clip(text, remaining - 2, true)
+		remaining = remaining - vim.fn.strdisplaywidth(part) - 2
+		local detail = candidates[1]
+		if detail ~= "" and remaining >= 6 then
+			local signature = clip(detail, remaining - 2)
+			context[#context + 1] = signature
+			remaining = remaining - vim.fn.strdisplaywidth(signature) - 2
+		end
+		if part ~= "" then
+			context[#context + 1] = part
+		end
+		table.remove(candidates, 1)
 	end
-	for index, text in ipairs(candidates) do
+	for _, text in ipairs(candidates) do
 		if text ~= "" and text ~= name and remaining >= 6 then
-			local is_path = path and index == 1
-			local part = clip(text, is_path and (remaining - 2) or math.min(remaining - 2, 28), is_path)
+			local part = clip(text, math.min(remaining - 2, 28))
 			context[#context + 1] = part
 			remaining = remaining - vim.fn.strdisplaywidth(part) - 2
 		end
@@ -202,6 +213,7 @@ function M.attach(opts, width)
 	local utils = require("fzf-lua.utils")
 	local _, _, mute = utils.ansi_from_hl("Comment", "")
 	local badges, lookup = {}, {}
+	local signatures = require("navigation-signature").new()
 	local function for_file(file)
 		local path = vim.fs.normalize(file)
 		if badges[path] == nil then
@@ -213,11 +225,14 @@ function M.attach(opts, width)
 		end
 		return badges[path]
 	end
-	local function enrich(symbols, parent, paths)
+	local function enrich(symbols, parent, paths, encoding)
 		local result = {}
 		for _, symbol in ipairs(symbols) do
 			local copy = vim.tbl_extend("force", {}, symbol)
 			local file = symbol.location and vim.uri_to_fname(symbol.location.uri) or filename
+			if not document and clean(copy.detail) == "" then
+				copy.detail = signatures.detail(symbol, file, encoding)
+			end
 			local git = for_file(file)
 			local kind = vim.lsp.protocol.SymbolKind[symbol.kind] or "Unknown"
 			local icon = (opts.symbol_icons or {})[kind] or ""
@@ -228,7 +243,7 @@ function M.attach(opts, width)
 				lookup[relative] = git
 			end
 			copy.name = label(
-				symbol,
+				copy,
 				parent,
 				paths[vim.fs.normalize(file)],
 				width,
@@ -236,7 +251,7 @@ function M.attach(opts, width)
 			)
 			copy.containerName = nil
 			if symbol.children then
-				copy.children = enrich(symbol.children, symbol.name, paths)
+				copy.children = enrich(symbol.children, symbol.name, paths, encoding)
 			end
 			result[#result + 1] = copy
 		end
@@ -246,7 +261,14 @@ function M.attach(opts, width)
 	opts.lsp_handler = vim.tbl_extend("force", {}, handler, {
 		handler = function(options, emit, method, result, ctx, config)
 			local response = vim.islist(result) and result or { result }
-			local symbols = enrich(response, nil, document and {} or short_paths(response, root, unique))
+			signatures.begin()
+			local client = vim.lsp.get_client_by_id(ctx.client_id)
+			local symbols = enrich(
+				response,
+				nil,
+				document and {} or short_paths(response, root, unique),
+				client and client.offset_encoding
+			)
 			original(options, function(row, ...)
 				local separator = document and "\t\t" or utils.nbsp
 				local start, finish = row:find(separator, 1, true)

@@ -117,7 +117,7 @@ local function workflow()
 	write(project .. "/.gitignore", { "ignored.lua" })
 	write(project .. "/ignored.lua", { "function ignored_symbol() end" })
 	local target = project .. "/library file.lua"
-	write(target, { "function destination() end", "function another_destination() end" })
+	write(target, { "function destination(parcel) return parcel end", "function another_destination() end" })
 	local source = project .. "/caller.lua"
 	write(source, { "destination()", "missing_symbol()" })
 	vim.cmd.edit(vim.fn.fnameescape(source))
@@ -133,6 +133,8 @@ local function workflow()
 	vim.fn.mkdir(project .. "/b/shared", "p")
 	write(project .. "/a/shared/client.lua", { "function createShipment() end" })
 	write(project .. "/b/shared/client.lua", { "function createShipment() end" })
+	local unicode = "local note = '🚚🚚🚚🚚🚚🚚'; function unicode_ship(parcel) return parcel end"
+	write(project .. "/unicode.lua", { unicode })
 	command({ "git", "-C", project, "add", "--", "library file.lua" })
 	write(project .. "/large.lua", vim.split(string.rep("local value = true\n", 1200), "\n", { trimempty = true }))
 
@@ -189,8 +191,19 @@ local function workflow()
 		elseif method == "workspace/symbol" then
 			return {
 				{ name = "server_symbol", kind = 12, containerName = "ShippingClient", location = location(target) },
+				{ name = "destination", kind = 13, location = location(target) },
+				{ name = "another_destination", kind = 12, location = location(target, 1) },
 				{ name = "large_symbol", kind = 12, location = location(project .. "/large.lua") },
 				{ name = "large_alias", kind = 12, location = location(project .. "/large.lua") },
+				{
+					name = "unicode_ship",
+					kind = 12,
+					location = location(
+						project .. "/unicode.lua",
+						0,
+						vim.str_utfindex(unicode, "utf-16", unicode:find("unicode_ship", 1, true) - 1)
+					),
+				},
 				{
 					name = "createShipment",
 					kind = 12,
@@ -254,7 +267,27 @@ local function workflow()
 	keys("<C-o>")
 	keys(",ws")
 	picker("server_symbol")
+	picker("(parcel)")
+	picker("(account,parcel,options) -> Shipment")
+	picker("another_destination")
 	local workspace = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	local function_row = assert(workspace:match("[^\n]*%f[%w_]destination%f[^%w_][^\n]*"))
+	local unicode_row = assert(workspace:match("[^\n]*unicode_ship[^\n]*"))
+	local empty_row = assert(workspace:match("[^\n]*another_destination[^\n]*"))
+	assert(
+		empty_row:find("()", 1, true) and not empty_row:find("end", 1, true),
+		"Empty function signature included its closing syntax"
+	)
+	assert(function_row:find("(parcel)", 1, true), "Workspace function lost its source signature")
+	assert(unicode_row:find("(parcel)", 1, true), "UTF-16 workspace location did not find its source signature")
+	assert(
+		not assert(workspace:match("[^\n]*server_symbol[^\n]*")):find("(parcel)", 1, true),
+		"Mismatched source name supplied a signature"
+	)
+	assert(
+		workspace:find("(account,parcel,options) -> Shipment", 1, true),
+		"Source signature replaced server-provided detail"
+	)
 	assert(not workspace:find("<ctrl-g>", 1, true), "Workspace picker still displays the instruction hint")
 	assert(
 		workspace:find("ShippingClient", 1, true) and workspace:find("library file.lua", 1, true),
@@ -262,11 +295,15 @@ local function workflow()
 	)
 	assert(workspace:find("+2", 1, true), "Staged file with spaces did not show added line count")
 	assert(workspace:find("+1.2k", 1, true), "Large line counts were not abbreviated")
+	write(target, { "function destination(parcel, service) return parcel end", "function another_destination() end" })
+	vim.api.nvim_chan_send(vim.bo.channel, "destination")
+	picker("(parcel, service)")
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.api.nvim_buf_get_name(0) == target
 	end, "Hidden workspace coordinates broke symbol selection")
 	keys("<C-o>")
+	write(target, { "function destination() end", "function another_destination() end" })
 	command({
 		"git",
 		"-C",
@@ -295,6 +332,10 @@ local function workflow()
 		changed_row:find("+1", 1, true) and changed_row:find("−1", 1, true) and not changed_row:find("+2", 1, true),
 		"Staged and unstaged edits were double-counted"
 	)
+	local target_buf = vim.fn.bufnr(target)
+	vim.api.nvim_buf_set_lines(target_buf, 0, 1, false, { "function destination(account) return account end" })
+	vim.api.nvim_chan_send(vim.bo.channel, "destination")
+	picker("(account)")
 	close_picker()
 	vim.o.columns = 220
 	keys(",ws")
