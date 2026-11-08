@@ -426,6 +426,8 @@ test-zellij-clipboard:
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
 test-zellij-status:
+	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" attention_policy
 	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
 test-zellij-auto-title:

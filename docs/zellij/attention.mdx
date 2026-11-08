@@ -19,6 +19,48 @@ Press **Ctrl-f a** to jump directly, without opening a menu. Requests and failur
 
 Both shortcuts stay in the current session and change only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
 
+## Choose attention priority
+
+The defaults put native `!`-marked tabs, nonbell attention, and failures in the first group, then working programs, native new-output status, and bells in the second. Completed work and quiet tabs are excluded. Both jump shortcuts use the same priority groups.
+
+To change them, create `zellij/lane-status.toml` under your absolute `XDG_CONFIG_HOME`, or `~/.config/zellij/lane-status.toml` when `XDG_CONFIG_HOME` is unset, empty, or relative. This example spells out the defaults:
+
+```toml
+[attention]
+priority = [["marked", "needs_you", "failed"], ["working", "new_output", "bell"]]
+```
+
+Groups earlier in the list win. Classes in the same group have equal priority; ties use tab order. Omitted classes are excluded. The available classes are:
+
+| Class | Includes |
+| --- | --- |
+| `marked` | Tabs whose name starts with the native `!` marker |
+| `needs_you` | Nonbell requests, watch results, and notifications needing attention |
+| `failed` | Failed tasks |
+| `working` | Running tasks |
+| `new_output` | Native new-output status; watch results instead use `needs_you` |
+| `bell` | Terminal bells |
+| `done` | Completed tasks; opt-in |
+| `quiet` | Quiet tabs; opt-in |
+
+For example, `priority = [["working"], ["needs_you", "failed"]]` visits working tabs before requests and failures, and excludes all other classes.
+
+Each new client attachment, including the first client in a new session, loads the file after the status bar's existing permission grant. Invalid configuration at first load produces a warning and uses defaults. Already-attached clients keep their cached policy until reload. To apply edits to all attached clients in a running session, run this inside that session:
+
+```sh
+zellij-status reload
+```
+
+Or target it explicitly from another shell:
+
+```sh
+zellij-status reload --session NAME
+```
+
+Reload applies to every attached client in the selected session without moving anyone's focus. Already-attached clients in other sessions keep their current policy. Invalid configuration makes an explicit reload fail and leaves the previous policy unchanged. Removing the file and reloading restores the defaults. Reloading the same file again is safe. Edits are not polled, and jumping does not reread the file.
+
+This only changes **Ctrl-f a** and **Ctrl-f Ctrl-a**. Direct jump includes the current tab; cycling excludes it. **Ctrl-f A** still toggles watching a pane.
+
 ## Watch or mute a pane
 
 Focus a pane and press **Ctrl-f A** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.

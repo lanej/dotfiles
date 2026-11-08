@@ -131,7 +131,7 @@ impl Clipboard {
         self.publish_notice(&text);
     }
 
-    fn publish_notice(&self, text: &str) {
+    pub fn publish_notice(&self, text: &str) {
         // The receiver has no visible pane. Existing ordinary bars select
         // their own client's notice; no URL lookup can launch an extra pane.
         pipe_message_to_plugin(MessageToPlugin::new(NOTICE)

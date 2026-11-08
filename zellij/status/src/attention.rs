@@ -6,7 +6,8 @@ pub const HIGHEST: &str = "attention-highest-tab";
 // tmux-quickswitch-alert visits windows, not individual panes. Keep its
 // numeric, current-session policy in the plugin instead of changing native
 // GoToNextAttention's cross-session severity/recency semantics.
-pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage) {
+pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage,
+            policy: &crate::attention_policy::Policy) {
     if !message.is_private || !crate::clipboard::is_own_client(message) { return; }
     let highest = message.name == HIGHEST;
     let Some(session) = attention.sessions.iter().find(|session| session.is_current
@@ -19,15 +20,8 @@ pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage
     // a cached PaneManifest or wait for an unrelated SessionUpdate.
     let mut tiers = std::collections::BTreeMap::new();
     for item in &session.attention.items {
-        let status = item.attention.effective_status();
-        let tier = match status {
-            AttentionStatus::NeedsYou => item.attention.source
-                .map(|source| source.as_str()) == Some("bell"),
-            AttentionStatus::Failed => false,
-            AttentionStatus::Working | AttentionStatus::NewOutput => true,
-            _ => continue,
-        };
-        tiers.entry(item.tab_id).and_modify(|old: &mut bool| *old &= tier).or_insert(tier);
+        let Some(tier) = policy.attention_rank(&item.attention) else { continue };
+        tiers.entry(item.tab_id).and_modify(|old: &mut usize| *old = (*old).min(tier)).or_insert(tier);
     }
     let ids: std::collections::BTreeSet<_> = tabs.iter().map(|tab| tab.tab_id)
         .chain(tiers.keys().copied()).collect();
@@ -40,8 +34,8 @@ pub fn jump(tabs: &[TabInfo], attention: &GlobalAttention, message: &PipeMessage
         .filter_map(|tab| {
             // Keep tmux's explicit ! title marker and ordinary native bells,
             // including a bell not yet present in the attention publication.
-            let tier = if tab.name.starts_with('!') { Some(false) }
-                else { tiers.get(&tab.tab_id).copied().or_else(|| tab.has_bell_notification.then_some(true)) }?;
+            let tier = policy.tab_rank(tiers.get(&tab.tab_id).copied(),
+                                       tab.name.starts_with('!'), tab.has_bell_notification)?;
             Some((tier, tab.position, tab.tab_id))
         })
         .collect();

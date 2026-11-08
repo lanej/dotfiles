@@ -4,6 +4,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
 mod clipboard;
 mod attention;
+mod attention_policy;
 mod clients;
 mod notifications;
 
@@ -18,6 +19,7 @@ struct State {
     busy: bool,
     attention: GlobalAttention,
     attention_ready: bool,
+    attention_config: attention_policy::Config,
     clicks: Vec<(usize, usize, u32)>,
     clipboard: clipboard::Clipboard,
     clipboard_receiver: bool,
@@ -177,6 +179,7 @@ impl ZellijPlugin for State {
                 }
                 if !self.allowed {
                     self.allowed = true;
+                    if self.clipboard_receiver { self.attention_config.load(); }
                     self.poll();
                 }
             }
@@ -204,6 +207,16 @@ impl ZellijPlugin for State {
             Event::RunCommandResult(code, _out, error, context)
                 if context.get("action").map(String::as_str) == Some(notifications::RECORD) => {
                 self.notifications.finish(code, &error, &context);
+            }
+            Event::RunCommandResult(code, out, error, context)
+                if context.get("action").map(String::as_str) == Some(attention_policy::LOAD) => {
+                if self.clipboard_receiver {
+                    if let Some(error) = self.attention_config.finish(code, &out, &error, &context) {
+                        eprintln!("lane-status attention: {error}");
+                        let error: String = error.chars().filter(|c| !c.is_control()).take(180).collect();
+                        self.clipboard.publish_notice(&format!("attention: {error}; using defaults"));
+                    }
+                }
             }
             Event::RunCommandResult(code, out, error, context)
                 if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
@@ -241,6 +254,28 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.clipboard_receiver && self.allowed && message.name == attention_policy::RELOAD {
+            if let PipeSource::Cli(pipe) = &message.source {
+                // Only the discovered persistent receiver handles reloads.
+                // Ignore the trailing CLI EOF message and unrelated instances.
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 16384) {
+                    if let Ok(request) = serde_json::from_str::<Value>(payload) {
+                        let ids = get_plugin_ids();
+                        if request["plugin_id"].as_u64() == Some(ids.plugin_id as u64)
+                            && request["request"].as_str().is_some_and(|id| !id.is_empty() && id.len() <= 128) {
+                            let mut reply = json!({"request": request["request"],
+                                "plugin_id": ids.plugin_id, "client_id": ids.client_id});
+                            match self.attention_config.apply(&request["priority"]) {
+                                Ok(()) => reply["ok"] = json!(true),
+                                Err(error) => reply["error"] = json!(error),
+                            }
+                            cli_pipe_output(pipe, &(reply.to_string() + "\n"));
+                        }
+                    }
+                }
+            }
+            return false;
+        }
         if self.allowed && !self.clipboard_receiver && matches!(message.source, PipeSource::Cli(_)) {
             if matches!(message.name.as_str(), notifications::SEND | notifications::VALIDATE) {
                 return self.notifications.pipe(&message, self.mode.session_name.as_deref(),
@@ -265,8 +300,9 @@ impl ZellijPlugin for State {
             }
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind
+            && self.attention_config.ready
             && matches!(message.name.as_str(), attention::MESSAGE | attention::HIGHEST) {
-            attention::jump(&self.tabs, &self.attention, &message);
+            attention::jump(&self.tabs, &self.attention, &message, &self.attention_config.policy);
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
             if let Some(session) = self.mode.session_name.as_deref() {
