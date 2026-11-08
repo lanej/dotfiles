@@ -982,7 +982,7 @@
     "fg": "@prompt"
   },
   "FzfLuaLiveSym": {
-    "fg": "@status.success"
+    "fg": "@match"
   },
   "GitSignsUntracked": {
     "component": "git.hunk.untracked"

@@ -6,6 +6,7 @@ local skim_present = vim.fn.executable("sk") == 1
 require("fzf-lua").setup({
 	-- NOTE: Forcing fzf instead of sk to avoid NVIM_LISTEN_ADDRESS issue (ibhagwan/fzf-lua#1812)
 	fzf_bin = "fzf",
+	fzf_colors = true,
 	files = {
 		cmd = "fd --type f --follow --hidden --exclude .git",
 		file_icons = true,
@@ -44,6 +45,8 @@ require("fzf-lua").setup({
 		rg_glob = true, -- enable glob parsing
 	},
 	lsp = {
+		document_symbols = require("navigation-ui").symbols(true),
+		workspace_symbols = require("navigation-ui").symbols(false),
 		code_actions = {
 			-- prompt           = 'Code Actions> ',
 			-- async_or_timeout = 5000,
