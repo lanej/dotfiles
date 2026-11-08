@@ -464,7 +464,12 @@ fi
 unalias recomp 2>/dev/null
 function recomp {
 	local completion result=0
-	ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	if (( $# )); then
+		ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" "$@" || return
+		[[ $1 == add ]] || return 0
+	else
+		ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	fi
 	# A completion already used in this shell must be autoloaded again.
 	for completion in "$HOME"/.zsh/completions/_*(N-.); do
 		unfunction "${completion:t}" 2>/dev/null

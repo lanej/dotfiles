@@ -78,6 +78,7 @@ It regenerates completions for supported tools on `PATH`, clears stale completio
 | Command | Effect |
 | --- | --- |
 | `recomp` | Generate completions and reload the current Zsh session. |
+| `recomp add <tool>` | Find a generator, register it locally, and load its completion now. |
 | `make zsh-completions` | Generate completion files only; open a new shell afterward. |
 | `make` / `make configure` | Generate completions as part of configuration when the shell set is selected. |
 
@@ -85,17 +86,37 @@ It regenerates completions for supported tools on `PATH`, clears stale completio
 
 #### Register a local tool
 
-`recomp` refreshes registered tools; registration is still manual. Add work-only or other local tools to `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`), outside the checkout. Each non-comment line contains a completion name, a generator command, and its arguments, separated by spaces or tabs.
+Use `recomp add` for a work-only or other locally installed CLI:
 
-For example, add this line for `epf`:
+```sh
+recomp add epf
+```
+
+For a new tool, it tries `epf completions zsh`, then `epf completion zsh`. It validates the output before saving the working command and loads the completion in the current shell. Existing local registrations and built-in generators are reused first. Both the target and generator must already be installed.
+
+For a different command or an override, supply the generator explicitly:
+
+```sh
+recomp add cargo \
+  rustup completions zsh cargo
+```
+
+Registrations stay outside the checkout in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Future `make` and `recomp` runs reuse the saved command. Repeating the same registration leaves the file unchanged; an explicit replacement updates that tool's entry without duplicating it. Built-in generators need no extra local entry unless you override them.
+
+Failed validation leaves the registry and last working completion intact. Hand-written completion files and symlinks are preserved. If the registry itself is a symlink, edit it directly so its managed destination stays intact.
+
+<details>
+<summary>Edit the local registry manually</summary>
+
+Each non-comment line contains a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
 
 ```text
 epf epf completions zsh
 ```
 
-Then run `recomp` to generate and load it. Local entries override built-ins, and the first entry for a name wins. Both the target binary and generator must be on `PATH`; listing a tool here does not install it.
+Local entries override built-ins, and the first entry for a name wins. Run `recomp` after editing. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. `recomp add` rejects arguments containing whitespace; put complex commands in an executable wrapper on `PATH` and register that command instead. Missing targets are skipped during normal refresh; registration does not install software.
 
-Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. Put a more involved generator in an executable wrapper on `PATH` and register that command instead.
+</details>
 
 <details>
 <summary>Completion files, preservation, and older fd versions</summary>
