@@ -46,6 +46,7 @@ export default defineConfig({
       ] },
       { label: 'Reference', items: [
         { label: 'Components', slug: 'components' },
+        { label: 'Builder', slug: 'reference/builder' },
         { label: 'macOS stack', slug: 'reference/macos' },
         { label: 'Linux stack', slug: 'reference/linux' },
         { label: 'Rust', slug: 'reference/rust' },
