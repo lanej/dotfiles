@@ -18,7 +18,11 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   expect((await peerTokens.nth(0).boundingBox())?.y).toBe((await peerTokens.nth(1).boundingBox())?.y);
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('16px "Dotfiles Symbols"', ''))).toBe(true);
-  await gitToken.getByRole('link', { name: 'starship', exact: true }).click();
+  await gitToken.getByRole('link', { name: 'components', exact: true }).click();
+  const gitStyle = page.locator('#git-style-git-file-modified');
+  await expect(gitStyle).toBeVisible();
+  await expect(gitStyle).toContainText('@git.file.modified');
+  await gitStyle.getByRole('link', { name: 'starship', exact: true }).click();
   await expect(page.locator('#integration-starship')).toBeVisible();
   await expect(page.locator('#component-status')).toContainText('Diagnostic*');
   await page.locator('details').filter({ has: page.locator('#component-tab-label') }).locator('summary').click();

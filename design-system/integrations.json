@@ -102,13 +102,14 @@
   },
   {
     "id": "starship",
-    "owner": "Generated Git-status and branch symbols; existing prompt layout",
+    "owner": "Shared Git-state components; existing native prompt layout",
     "mechanism": "generated complete native TOML with literal symbol escaping",
     "reload": "The next prompt reads the generated configuration; no shell initialization change is required.",
-    "coverage": "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Existing style names inherit the terminal ANSI palette. Other prompt module symbols remain application specific.",
+    "coverage": "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Other prompt module symbols remain application specific.",
     "sources": [
       "design-system/adapters/starship.toml.in",
-      "design-system/tokens.json"
+      "design-system/tokens.json",
+      "design-system/components.json"
     ]
   },
   {

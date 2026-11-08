@@ -422,16 +422,16 @@ return {
 ["bold"] = true,
 },
 ["GitSignsTopdelete"] = {
-["link"] = "GitSignsDelete",
+["fg"] = "#BF616A",
 },
 ["GitSignsChangedelete"] = {
-["link"] = "GitSignsChange",
+["fg"] = "#EBCB8B",
 },
 ["GitSignsStagedTopdelete"] = {
-["link"] = "GitSignsStagedDelete",
+["fg"] = "#7E4D57",
 },
 ["GitSignsStagedChangedelete"] = {
-["link"] = "GitSignsStagedChange",
+["fg"] = "#968769",
 },
 ["SpellBad"] = {
 ["sp"] = "#BF616A",
@@ -998,6 +998,21 @@ return {
 ["FzfLuaLiveSym"] = {
 ["fg"] = "#A3BE8C",
 },
+["GitSignsUntracked"] = {
+["fg"] = "#A3BE8C",
+},
+["DotfilesGitBranchAdd"] = {
+["fg"] = "#6E806A",
+},
+["DotfilesGitBranchChange"] = {
+["fg"] = "#968769",
+},
+["DotfilesGitBranchDelete"] = {
+["fg"] = "#7E4D57",
+},
+["DotfilesGitBranchTopdelete"] = {
+["fg"] = "#7E4D57",
+},
 },
 ["ansi"] = {"#3B4252", "#BF616A", "#A3BE8C", "#EBCB8B", "#81A1C1", "#B48EAD", "#88C0D0", "#E5E9F0", "#4C566A", "#BF616A", "#A3BE8C", "#EBCB8B", "#81A1C1", "#B48EAD", "#8FBCBB", "#ECEFF4"},
 ["roles"] = {
@@ -1051,6 +1066,17 @@ return {
 ["prompt"] = "#88C0D0",
 ["diff.add.emph.bg"] = "#515D57",
 ["diff.delete.emph.bg"] = "#5A424D",
+["git.file.conflicted"] = "#BF616A",
+["git.file.stashed"] = "#E5E9F0",
+["git.file.deleted"] = "#BF616A",
+["git.file.renamed"] = "#88C0D0",
+["git.file.modified"] = "#EBCB8B",
+["git.file.staged"] = "#A3BE8C",
+["git.file.untracked"] = "#81A1C1",
+["git.file.typechanged"] = "#B48EAD",
+["git.file.ahead"] = "#A3BE8C",
+["git.file.behind"] = "#EBCB8B",
+["git.file.branch"] = "#81A1C1",
 },
 ["tokens"] = {
 ["emphasis.heading"] = true,
@@ -1085,6 +1111,212 @@ return {
 ["symbol.git.branch_hunk.change"] = "│",
 ["symbol.git.branch_hunk.delete"] = "_",
 ["symbol.git.branch_hunk.topdelete"] = "^",
+["emphasis.git.file.conflicted.bold"] = true,
+["emphasis.git.file.conflicted.dim"] = false,
+["emphasis.git.file.stashed.bold"] = false,
+["emphasis.git.file.stashed.dim"] = true,
+["emphasis.git.file.deleted.bold"] = false,
+["emphasis.git.file.deleted.dim"] = false,
+["emphasis.git.file.renamed.bold"] = false,
+["emphasis.git.file.renamed.dim"] = false,
+["emphasis.git.file.modified.bold"] = false,
+["emphasis.git.file.modified.dim"] = false,
+["emphasis.git.file.staged.bold"] = false,
+["emphasis.git.file.staged.dim"] = false,
+["emphasis.git.file.untracked.bold"] = false,
+["emphasis.git.file.untracked.dim"] = false,
+["emphasis.git.file.typechanged.bold"] = false,
+["emphasis.git.file.typechanged.dim"] = false,
+["emphasis.git.file.ahead.bold"] = false,
+["emphasis.git.file.ahead.dim"] = false,
+["emphasis.git.file.behind.bold"] = false,
+["emphasis.git.file.behind.dim"] = false,
+["emphasis.git.file.branch.bold"] = false,
+["emphasis.git.file.branch.dim"] = false,
+},
+["components"] = {
+["text"] = {
+["fg"] = "#D8DEE9",
+},
+["text.muted"] = {
+["fg"] = "#81A1C1",
+},
+["heading"] = {
+["fg"] = "#88C0D0",
+["bold"] = true,
+},
+["keyhint"] = {
+["fg"] = "#88C0D0",
+},
+["selection"] = {
+["fg"] = "#ECEFF4",
+["bg"] = "#434C5E",
+},
+["status.success"] = {
+["fg"] = "#A3BE8C",
+},
+["status.warning"] = {
+["fg"] = "#EBCB8B",
+},
+["status.error"] = {
+["fg"] = "#BF616A",
+},
+["status.attention"] = {
+["fg"] = "#D08770",
+["bold"] = true,
+},
+["tab.active"] = {
+["fg"] = "#88C0D0",
+["bg"] = "#434C5E",
+["bold"] = true,
+},
+["tab.inactive"] = {
+["fg"] = "#81A1C1",
+["bg"] = "#2E3440",
+},
+["input"] = {
+["fg"] = "#D8DEE9",
+["bg"] = "#3B4252",
+},
+["preview"] = {
+["fg"] = "#D8DEE9",
+["bg"] = "#2E3440",
+},
+["operation"] = {
+["fg"] = "#D8DEE9",
+},
+["code"] = {
+["fg"] = "#D8DEE9",
+},
+["diff"] = {
+["fg"] = "#D8DEE9",
+},
+["git.file.conflicted"] = {
+["symbol"] = "",
+["fg"] = "#BF616A",
+["bold"] = true,
+["dim"] = false,
+},
+["git.file.stashed"] = {
+["symbol"] = "",
+["fg"] = "#E5E9F0",
+["bold"] = false,
+["dim"] = true,
+},
+["git.file.deleted"] = {
+["symbol"] = "",
+["fg"] = "#BF616A",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.renamed"] = {
+["symbol"] = "",
+["fg"] = "#88C0D0",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.modified"] = {
+["symbol"] = "",
+["fg"] = "#EBCB8B",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.staged"] = {
+["symbol"] = "",
+["fg"] = "#A3BE8C",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.untracked"] = {
+["symbol"] = "",
+["fg"] = "#81A1C1",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.typechanged"] = {
+["symbol"] = "",
+["fg"] = "#B48EAD",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.ahead"] = {
+["symbol"] = "",
+["fg"] = "#A3BE8C",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.behind"] = {
+["symbol"] = "",
+["fg"] = "#EBCB8B",
+["bold"] = false,
+["dim"] = false,
+},
+["git.file.branch"] = {
+["symbol"] = "",
+["fg"] = "#81A1C1",
+["bold"] = false,
+["dim"] = false,
+},
+["git.hunk.add"] = {
+["symbol"] = "┃",
+["fg"] = "#A3BE8C",
+},
+["git.hunk.change"] = {
+["symbol"] = "┃",
+["fg"] = "#EBCB8B",
+},
+["git.hunk.delete"] = {
+["symbol"] = "▁",
+["fg"] = "#BF616A",
+},
+["git.hunk.topdelete"] = {
+["symbol"] = "^",
+["fg"] = "#BF616A",
+},
+["git.hunk.changedelete"] = {
+["symbol"] = "~",
+["fg"] = "#EBCB8B",
+},
+["git.hunk.untracked"] = {
+["symbol"] = "┆",
+["fg"] = "#A3BE8C",
+},
+["git.staged_hunk.add"] = {
+["symbol"] = "┃",
+["fg"] = "#6E806A",
+},
+["git.staged_hunk.change"] = {
+["symbol"] = "┃",
+["fg"] = "#968769",
+},
+["git.staged_hunk.delete"] = {
+["symbol"] = "▁",
+["fg"] = "#7E4D57",
+},
+["git.staged_hunk.topdelete"] = {
+["symbol"] = "▔",
+["fg"] = "#7E4D57",
+},
+["git.staged_hunk.changedelete"] = {
+["symbol"] = "~",
+["fg"] = "#968769",
+},
+["git.branch_hunk.add"] = {
+["symbol"] = "│",
+["fg"] = "#6E806A",
+},
+["git.branch_hunk.change"] = {
+["symbol"] = "│",
+["fg"] = "#968769",
+},
+["git.branch_hunk.delete"] = {
+["symbol"] = "_",
+["fg"] = "#7E4D57",
+},
+["git.branch_hunk.topdelete"] = {
+["symbol"] = "^",
+["fg"] = "#7E4D57",
+},
 },
 ["separators"] = {
 ["section"] = {

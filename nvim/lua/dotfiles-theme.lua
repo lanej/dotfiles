@@ -15,11 +15,16 @@ function M.tokens()
 	return dofile(generated .. "/neovim.lua").tokens
 end
 
-function M.signs(layer, tokens)
+function M.components()
+	return dofile(generated .. "/neovim.lua").components
+end
+
+function M.signs(layer, components)
 	local signs = {}
-	local prefix = "symbol.git." .. layer .. "."
-	for name, glyph in pairs(tokens or M.tokens()) do
+	local prefix = "git." .. layer .. "."
+	for name, style in pairs(components or M.components()) do
 		if name:sub(1, #prefix) == prefix then
+			local glyph = style.symbol
 			if vim.fn.strdisplaywidth(glyph) > 2 then
 				error("Git gutter symbol exceeds two cells: " .. name)
 			end
@@ -47,7 +52,7 @@ function M.apply()
 		require("lualine").setup({ options = M.lualine_options() })
 	end
 	if package.loaded["gitsigns"] then
-		local signs = { signs = M.signs("hunk", theme.tokens), signs_staged = M.signs("staged_hunk", theme.tokens) }
+		local signs = { signs = M.signs("hunk", theme.components), signs_staged = M.signs("staged_hunk", theme.components) }
 		if not vim.deep_equal(signs, applied_signs) then
 			require("gitsigns").setup(signs)
 			require("gitsigns").refresh()
@@ -55,7 +60,7 @@ function M.apply()
 		end
 	end
 	if package.loaded["git-branch-signs"] then
-		local branch = M.signs("branch_hunk", theme.tokens)
+		local branch = M.signs("branch_hunk", theme.components)
 		if not vim.deep_equal(branch, applied_branch) then
 			for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 				require("git-branch-signs").refresh(buf)

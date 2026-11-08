@@ -6,12 +6,14 @@ import tokens from '../../../design-system/generated/tokens.json';
 const sourceURL = (path: string) => `https://github.com/lanej/dotfiles/blob/master/${path}`;
 const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'interface'];
 const tokenGroups = [
-  ['emphasis.', 'Emphasis'], ['space.', 'Terminal spacing'],
+  ['emphasis.heading', 'Heading emphasis'], ['emphasis.git.file.', 'Git file emphasis'], ['space.', 'Terminal spacing'],
   ['symbol.separator.', 'Separators'], ['symbol.git.file.', 'Git file status'],
   ['symbol.git.hunk.', 'Git unstaged hunks'], ['symbol.git.staged_hunk.', 'Git staged hunks'],
   ['symbol.git.branch_hunk.', 'Git branch comparison'],
 ];
 const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(value);
+const gitGroups = [['git.file.', 'File status · Starship'], ['git.hunk.', 'Unstaged hunks · Neovim'], ['git.staged_hunk.', 'Staged hunks · Neovim'], ['git.branch_hunk.', 'Branch comparison · Neovim']];
+const componentTarget = (name: string) => name.includes('.git.') ? `#git-style-${name.replace(/^(symbol|emphasis)\./, '').replace(/\.(bold|dim)$/, '').replaceAll('.', '-')}` : '#component-heading';
 ---
 
 <section aria-labelledby="theme-roles">
@@ -19,7 +21,7 @@ const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(va
   <p>Resolved from the currently generated preset: <strong>{theme.theme}</strong>. <a href="#presets">Preset references</a> own their palettes and native examples.</p>
   <div class="role-grid">
     {Object.entries(theme.roles).map(([name, color]) => (
-      <div class="role"><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><span>{color}</span></div>
+      <div class="role" id={`role-${name.replaceAll('.', '-')}`}><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><span>{color}</span></div>
     ))}
   </div>
 </section>
@@ -42,10 +44,33 @@ const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(va
             <dt>Resolved</dt><dd><code class="token-value">{display(token.resolved)}</code></dd>
           </dl>
           {typeof token.resolved === 'string' && token.resolved !== '' && <p class="codepoints">{Array.from(token.resolved).map(c => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')}</p>}
-          <p>Consumers: {token.consumers.map((consumer, i) => <>{i > 0 ? ', ' : ''}<a href={consumer === 'components' ? '#component-heading' : `#integration-${consumer}`}>{consumer}</a></>)}</p>
+          <p>Consumers: {token.consumers.map((consumer, i) => <>{i > 0 ? ', ' : ''}<a href={consumer === 'components' ? componentTarget(name) : `#integration-${consumer}`}>{consumer}</a></>)}</p>
           {'note' in token && <p>{token.note}</p>}
         </article>
       ))}
+      </div>
+    </details>
+  ))}
+</section>
+
+<section aria-labelledby="git-state-components">
+  <h2 id="git-state-components">Git status components</h2>
+  <p>A Git-state component combines a symbol, semantic foreground and supported emphasis. File status and gutter signs retain distinct meanings. Previews use the selected preset’s surface; the native terminal controls its exact dimming.</p>
+  {gitGroups.map(([prefix, title]) => (
+    <details class="component">
+      <summary>{title}</summary>
+      <div class="git-states">
+    {Object.entries(tokens.git_states).filter(([name]) => name.startsWith(prefix)).map(([name, state]) => (
+      <article id={`git-style-${name.replaceAll('.', '-')}`}>
+        <h3><code>{name}</code></h3>
+        <span class="git-preview" style={{ backgroundColor: theme.roles.surface }}>
+          <span class="token-value" style={{ color: state.fg, fontWeight: state.bold ? 'bold' : 'normal', opacity: state.dim ? '.5' : '1' }}>{state.symbol || '1'}</span>
+        </span>
+        <p><a href={`#role-${state.color_role.slice(1).replaceAll('.', '-')}`}><code>{state.color_role}</code></a> · <code>{state.fg}</code></p>
+        <p>{state.bold ? 'Bold' : 'Normal weight'} · {state.dim ? 'Dimmed' : 'Full intensity'}{state.symbol === '' ? ' · Count only' : ''}</p>
+        <p>Consumer: <a href={`#integration-${state.consumer}`}>{state.consumer}</a></p>
+      </article>
+    ))}
       </div>
     </details>
   ))}
@@ -112,4 +137,9 @@ const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(va
   .token dl :is(dt, dd) { margin: 0; }
   .token-value { font-family: 'Dotfiles Symbols', monospace; }
   .codepoints { font-size: .875rem; overflow-wrap: anywhere; }
+  .git-states { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: .75rem 1.5rem; }
+  .git-states article { margin: 0; border-bottom: 1px solid var(--sl-color-gray-5); padding-block: .5rem; min-width: 0; }
+  .git-states code { overflow-wrap: anywhere; }
+  .git-states h3 { font-size: 1rem; }
+  .git-preview { display: inline-block; min-width: 2.5rem; padding: .25rem .5rem; text-align: center; }
 </style>

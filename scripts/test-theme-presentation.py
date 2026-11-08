@@ -38,9 +38,10 @@ class PresentationTests(unittest.TestCase):
             self.env.pop(key, None)
         self.generate({})
 
-    def generate(self, overrides):
+    def generate(self, overrides, roles=None):
         preset = json.loads((self.source / "themes/nord.json").read_text())
         preset.update(name="variant", presentation=overrides)
+        preset["roles"].update(roles or {})
         (self.source / "themes/variant.json").write_text(json.dumps(preset, ensure_ascii=False))
         subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(self.source), "--theme", "variant", "--output-dir", str(self.output)], check=True)
 
@@ -59,10 +60,10 @@ class PresentationTests(unittest.TestCase):
         self.git(path, "commit", "-qm", "base")
         return path
 
-    def module(self, path, name="git_status"):
+    def module(self, path, name="git_status", raw=False):
         result = subprocess.run(["starship", "module", name, "--path", str(path)], env=self.env, stdin=subprocess.DEVNULL, check=True, capture_output=True, text=True)
         self.assertEqual(result.stderr, "")
-        return ANSI.sub("", result.stdout)
+        return result.stdout if raw else ANSI.sub("", result.stdout)
 
     def test_git_file_states_counts_and_literal_symbols(self):
         path = self.repository()
@@ -79,14 +80,25 @@ class PresentationTests(unittest.TestCase):
         for expected in ("1", "1", "1", "1", "1"):
             self.assertIn(expected, status)
         self.assertRegex(status, r"(?:^| )1(?: |$)")
+        default_cells = native.ansi_cells(self.module(path, raw=True), columns=256)
+        modified = next(cell for row in default_cells for cell in row if cell["data"] == "")
+        self.assertEqual(modified["fg"], "ebcb8b")
+        self.assertFalse(modified["bold"])
         self.assertIn(" main", self.module(path, "git_branch"))
-        self.generate({"symbol.git.file.untracked": '$[]()\\"', "symbol.git.file.modified": "M", "symbol.git.file.staged": "+", "symbol.git.file.branch": "B"})
+        components = json.loads((self.source / "components.json").read_text())
+        components["git.file.branch"]["symbol"] = {"token": "symbol.git.file.modified"}
+        (self.source / "components.json").write_text(json.dumps(components))
+        self.generate({"symbol.git.file.untracked": '$[]()\\"', "symbol.git.file.modified": "M", "symbol.git.file.staged": "+", "symbol.git.file.branch": "B", "emphasis.git.file.modified.bold": True}, roles={"git.file.modified": "@status.error"})
         variant = self.module(path)
         self.assertIn('$[]()\\"1', variant)
         self.assertIn("M1", variant)
         self.assertIn("+1", variant)
         self.assertNotIn("", variant)
-        self.assertIn("B main", self.module(path, "git_branch"))
+        changed_cells = native.ansi_cells(self.module(path, raw=True), columns=256)
+        modified = next(cell for row in changed_cells for cell in row if cell["data"] == "M")
+        self.assertEqual(modified["fg"], "bf616a")
+        self.assertTrue(modified["bold"])
+        self.assertIn("M main", self.module(path, "git_branch"))
 
     def test_git_stash_conflict_and_tracking_states(self):
         path = self.repository()
@@ -127,7 +139,7 @@ class PresentationTests(unittest.TestCase):
         self.assertNotIn("", self.module(tracked))
 
     def test_heading_padding_and_separator_native_overrides(self):
-        self.generate({"emphasis.heading": False, "space.inline": 3, "symbol.separator.section.left": ">", "symbol.git.hunk.change": "~", "symbol.git.staged_hunk.change": ":", "symbol.git.branch_hunk.change": "+"})
+        self.generate({"emphasis.heading": False, "space.inline": 3, "symbol.separator.section.left": ">", "symbol.git.hunk.change": "~", "symbol.git.staged_hunk.change": ":", "symbol.git.branch_hunk.change": "+"}, roles={"diff.change": "@status.error", "diff.change.dim": "@status.success"})
         glow = subprocess.check_output(["glow", "--style", str(self.output / "glow.json"), "--width=70", str(ROOT / "design-system/fixtures/document.md")], env=self.env, stdin=subprocess.DEVNULL, text=True)
         rows = native.ansi_cells(glow, lines=14)
         heading = [cell for row in rows for cell in row if cell["bg"] == "88c0d0" and cell["data"].strip()]
@@ -171,14 +183,17 @@ assert(vim.trim(vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {details = true})[1]
 local function check()
   assert(not vim.api.nvim_get_hl(0, {name = "Title", link = false}).bold)
   assert(require("gitsigns.config").config.signs.change.text == "~")
+  assert(vim.api.nvim_get_hl(0, {name = "GitSignsChange", link = false}).fg == 0xBF616A)
+  assert(vim.api.nvim_get_hl(0, {name = "GitSignsStagedChange", link = false}).fg == 0xA3BE8C)
+  assert(vim.api.nvim_get_hl(0, {name = "DotfilesGitBranchChange", link = false}).fg == 0xA3BE8C)
   assert(require("gitsigns.config").config.signs_staged.change.text == ":")
   assert(require("lualine").get_config().options.section_separators.left == ">")
 end
 check()
 local compiled = dofile(vim.env.DOTFILES_THEME_DIR .. "/neovim.lua")
 compiled.highlights.Title.bold = true
-compiled.tokens["symbol.git.hunk.change"] = "!"
-compiled.tokens["symbol.git.branch_hunk.change"] = ":"
+compiled.components["git.hunk.change"].symbol = "!"
+compiled.components["git.branch_hunk.change"].symbol = ":"
 compiled.separators.section.left = "<"
 vim.fn.writefile(vim.split("return " .. vim.inspect(compiled), "\\n", {plain = true}), vim.env.DOTFILES_THEME_DIR .. "/neovim.lua")
 vim.cmd.colorscheme("dotfiles")

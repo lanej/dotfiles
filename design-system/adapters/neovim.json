@@ -350,10 +350,10 @@
     "bg": "@diff.add.bg"
   },
   "GitSignsAdd": {
-    "fg": "@diff.add"
+    "component": "git.hunk.add"
   },
   "GitSignsStagedAdd": {
-    "fg": "@diff.add.dim"
+    "component": "git.staged_hunk.add"
   },
   "GitSignsAddInline": {
     "bg": "@diff.add.bg"
@@ -369,10 +369,10 @@
     "bg": "@diff.change.bg"
   },
   "GitSignsChange": {
-    "fg": "@diff.change"
+    "component": "git.hunk.change"
   },
   "GitSignsStagedChange": {
-    "fg": "@diff.change.dim"
+    "component": "git.staged_hunk.change"
   },
   "GitSignsChangeInline": {
     "bg": "@diff.change.bg"
@@ -388,10 +388,10 @@
     "bg": "@diff.delete.bg"
   },
   "GitSignsDelete": {
-    "fg": "@diff.delete"
+    "component": "git.hunk.delete"
   },
   "GitSignsStagedDelete": {
-    "fg": "@diff.delete.dim"
+    "component": "git.staged_hunk.delete"
   },
   "GitSignsDeleteInline": {
     "bg": "@diff.delete.bg"
@@ -408,16 +408,16 @@
     "bold": true
   },
   "GitSignsTopdelete": {
-    "link": "GitSignsDelete"
+    "component": "git.hunk.topdelete"
   },
   "GitSignsChangedelete": {
-    "link": "GitSignsChange"
+    "component": "git.hunk.changedelete"
   },
   "GitSignsStagedTopdelete": {
-    "link": "GitSignsStagedDelete"
+    "component": "git.staged_hunk.topdelete"
   },
   "GitSignsStagedChangedelete": {
-    "link": "GitSignsStagedChange"
+    "component": "git.staged_hunk.changedelete"
   },
   "SpellBad": {
     "sp": "@status.error",
@@ -983,5 +983,20 @@
   },
   "FzfLuaLiveSym": {
     "fg": "@status.success"
+  },
+  "GitSignsUntracked": {
+    "component": "git.hunk.untracked"
+  },
+  "DotfilesGitBranchAdd": {
+    "component": "git.branch_hunk.add"
+  },
+  "DotfilesGitBranchChange": {
+    "component": "git.branch_hunk.change"
+  },
+  "DotfilesGitBranchDelete": {
+    "component": "git.branch_hunk.delete"
+  },
+  "DotfilesGitBranchTopdelete": {
+    "component": "git.branch_hunk.topdelete"
   }
 }

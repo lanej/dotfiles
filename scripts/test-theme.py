@@ -26,10 +26,12 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(colors["diff.add"], "#A3BE8C")
         self.assertEqual(value("default"), "default")
         self.assertEqual(colors["diff.add.bg"], "#414A4C")
+        self.assertEqual(colors["git.file.modified"], "#EBCB8B")
+        self.assertEqual(colors["git.file.stashed"], "#E5E9F0")
 
     def test_invalid_definitions(self):
         base = theme.read(theme.SOURCE / "themes/nord.json")
-        for changes in ({"accent": "@missing"}, {"accent": "@accent"}, {"accent": "#123456"}, {"accent": {"mix": ["@surface", "@text"], "amount": 2}}):
+        for changes in ({"accent": {"ansi": 16}}, {"accent": {"ansi": True}}, {"accent": "@missing"}, {"accent": "@accent"}, {"accent": "#123456"}, {"accent": {"mix": ["@surface", "@text"], "amount": 2}}):
             data = copy.deepcopy(base)
             data["roles"].update(changes)
             with self.subTest(changes=changes), self.assertRaises((KeyError, ValueError)):
@@ -55,6 +57,25 @@ class ThemeTests(unittest.TestCase):
             (source / "themes/nord.json").write_text(json.dumps(data))
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
+
+    def test_ansi_cycles_preserve_outputs(self):
+        with tempfile.TemporaryDirectory(prefix="theme-ansi-") as directory:
+            source, output = Path(directory) / "source", Path(directory) / "output"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            subprocess.run(command, check=True)
+            before = {p.name: p.read_bytes() for p in output.iterdir()}
+            original = theme.read(source / "themes/nord.json")
+            for slots in ({3: {"ansi": 3}}, {3: {"ansi": 4}, 4: {"ansi": 3}}, {3: "@git.file.modified"}):
+                data = copy.deepcopy(original)
+                for slot, definition in slots.items():
+                    data["ansi"][slot] = definition
+                (source / "themes/nord.json").write_text(json.dumps(data))
+                result = subprocess.run(command, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertRegex(result.stderr, "cyclic (ANSI slot|role)")
+                self.assertNotIn("RecursionError", result.stderr)
+                self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
 
     def test_selected_preset_has_no_downstream_naming_dependency(self):
         with tempfile.TemporaryDirectory(prefix="theme-preset-") as directory:

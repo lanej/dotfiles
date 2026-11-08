@@ -82,18 +82,19 @@ function M.render(buf, baseline)
 	if vim.bo[buf].bomb then
 		text = "\239\187\191" .. text
 	end
-	local tokens = require("dotfiles-theme").tokens()
+	local styles = require("dotfiles-theme").components()
 	local hunks = vim.diff(baseline, text, { result_type = "indices", algorithm = "histogram" })
 	vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 	for _, hunk in ipairs(hunks) do
 		local _, removed, start, added = unpack(hunk)
 		local kind = removed == 0 and "Add" or (added == 0 and "Delete" or "Change")
+		local part = kind == "Delete" and (start == 0 and "topdelete" or "delete") or kind:lower()
 		local first = added == 0 and math.max(start, 1) or start
 		local last = added == 0 and first or start + added - 1
 		for line = first, math.min(last, #lines) do
 			vim.api.nvim_buf_set_extmark(buf, ns, line - 1, 0, {
-				sign_text = tokens["symbol.git.branch_hunk." .. (kind == "Delete" and (start == 0 and "topdelete" or "delete") or kind:lower())],
-				sign_hl_group = "GitSignsStaged" .. kind,
+				sign_text = styles["git.branch_hunk." .. part].symbol,
+				sign_hl_group = "DotfilesGitBranch" .. part:sub(1, 1):upper() .. part:sub(2),
 				priority = 5,
 			})
 		end

@@ -50,7 +50,18 @@
     "link": "#88C0D0",
     "prompt": "#88C0D0",
     "diff.add.emph.bg": "#515D57",
-    "diff.delete.emph.bg": "#5A424D"
+    "diff.delete.emph.bg": "#5A424D",
+    "git.file.conflicted": "#BF616A",
+    "git.file.stashed": "#E5E9F0",
+    "git.file.deleted": "#BF616A",
+    "git.file.renamed": "#88C0D0",
+    "git.file.modified": "#EBCB8B",
+    "git.file.staged": "#A3BE8C",
+    "git.file.untracked": "#81A1C1",
+    "git.file.typechanged": "#B48EAD",
+    "git.file.ahead": "#A3BE8C",
+    "git.file.behind": "#EBCB8B",
+    "git.file.branch": "#81A1C1"
   },
   "components": {
     "text": {
@@ -108,6 +119,132 @@
     },
     "diff": {
       "fg": "#D8DEE9"
+    },
+    "git.file.conflicted": {
+      "symbol": "\uf071",
+      "fg": "#BF616A",
+      "bold": true,
+      "dim": false
+    },
+    "git.file.stashed": {
+      "symbol": "\uf187",
+      "fg": "#E5E9F0",
+      "bold": false,
+      "dim": true
+    },
+    "git.file.deleted": {
+      "symbol": "\uf1f8",
+      "fg": "#BF616A",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.renamed": {
+      "symbol": "\uf02b",
+      "fg": "#88C0D0",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.modified": {
+      "symbol": "\uf040",
+      "fg": "#EBCB8B",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.staged": {
+      "symbol": "",
+      "fg": "#A3BE8C",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.untracked": {
+      "symbol": "\uf059",
+      "fg": "#81A1C1",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.typechanged": {
+      "symbol": "\uf074",
+      "fg": "#B48EAD",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.ahead": {
+      "symbol": "\uf062",
+      "fg": "#A3BE8C",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.behind": {
+      "symbol": "\uf063",
+      "fg": "#EBCB8B",
+      "bold": false,
+      "dim": false
+    },
+    "git.file.branch": {
+      "symbol": "\uf418",
+      "fg": "#81A1C1",
+      "bold": false,
+      "dim": false
+    },
+    "git.hunk.add": {
+      "symbol": "\u2503",
+      "fg": "#A3BE8C"
+    },
+    "git.hunk.change": {
+      "symbol": "\u2503",
+      "fg": "#EBCB8B"
+    },
+    "git.hunk.delete": {
+      "symbol": "\u2581",
+      "fg": "#BF616A"
+    },
+    "git.hunk.topdelete": {
+      "symbol": "^",
+      "fg": "#BF616A"
+    },
+    "git.hunk.changedelete": {
+      "symbol": "~",
+      "fg": "#EBCB8B"
+    },
+    "git.hunk.untracked": {
+      "symbol": "\u2506",
+      "fg": "#A3BE8C"
+    },
+    "git.staged_hunk.add": {
+      "symbol": "\u2503",
+      "fg": "#6E806A"
+    },
+    "git.staged_hunk.change": {
+      "symbol": "\u2503",
+      "fg": "#968769"
+    },
+    "git.staged_hunk.delete": {
+      "symbol": "\u2581",
+      "fg": "#7E4D57"
+    },
+    "git.staged_hunk.topdelete": {
+      "symbol": "\u2594",
+      "fg": "#7E4D57"
+    },
+    "git.staged_hunk.changedelete": {
+      "symbol": "~",
+      "fg": "#968769"
+    },
+    "git.branch_hunk.add": {
+      "symbol": "\u2502",
+      "fg": "#6E806A"
+    },
+    "git.branch_hunk.change": {
+      "symbol": "\u2502",
+      "fg": "#968769"
+    },
+    "git.branch_hunk.delete": {
+      "symbol": "_",
+      "fg": "#7E4D57"
+    },
+    "git.branch_hunk.topdelete": {
+      "symbol": "^",
+      "fg": "#7E4D57"
     }
   },
   "ansi": [

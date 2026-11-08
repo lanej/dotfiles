@@ -7,7 +7,7 @@ import ThemeCatalog from '@components/ThemeCatalog.astro';
 
 My terminal design system supplies shared tokens and atomic compositions across native interfaces. Application code stays grouped by capability. The built-in [Nord preset](design-system/nord.mdx) establishes the first baseline before a personal green preset is designed.
 
-Jump to [theme roles](#theme-roles), [presentation tokens](#presentation-tokens), the [atomic catalog](#atomic-catalog), or [integration boundaries](#integration-boundaries).
+Jump to [theme roles](#theme-roles), [presentation tokens](#presentation-tokens), [Git status components](#git-state-components), the [atomic catalog](#atomic-catalog), or [integration boundaries](#integration-boundaries).
 
 ## How the system fits together
 
@@ -36,6 +36,22 @@ Add this optional object to a preset. Override values retain the shared declarat
 Heading emphasis reaches Neovim and Glow; Glow’s sixth-level heading stays subdued. Inline padding reaches Glow code spans and tmux’s session label. Powerline separators reach tmux and lualine. Git file status icons feed Starship’s native modules, preserving counts and ahead/behind composition. Unstaged, staged and branch-comparison gutter signs have separate token names and preserve their existing defaults. Empty symbol strings are allowed, including Starship’s count-only staged indicator. Nerd Font availability and native glyph widths remain host constraints; Neovim rejects gutter symbols wider than two display cells.
 
 Starship’s complete configuration is generated from a native template; its existing configuration path remains stable. Other prompt-module symbols stay application specific. The catalog lists direct consumers and exceptions. Generated `tokens.json` records defaults, overrides and resolved values; existing `colors.json` consumers retain their color interface. Neovim and Python exports also expose resolved presentation values.
+
+## Symbols and color
+
+A symbol token supplies a character; a semantic component pairs it with a foreground role and supported emphasis. For example, `git.file.modified` combines `symbol.git.file.modified`, the `git.file.modified` color role, and its bold/dim tokens. The Starship adapter formats that component together with its native count. A preset can change the glyph, color, or emphasis independently without editing the adapter.
+
+```json
+{
+  "roles": { "git.file.modified": "@status.info" },
+  "presentation": {
+    "symbol.git.file.modified": "M",
+    "emphasis.git.file.modified.bold": true
+  }
+}
+```
+
+Shared Git foreground defaults reference ANSI slots, preserving the existing prompt palette while giving each state its own semantic role. The component always refers to that role. Unstaged, staged and branch-comparison components pair their sign tokens with separate diff foregrounds; the native editor adapter turns those components into sign text and highlight groups. Staged/branch colors remain muted blends, distinct from terminal dimming. Other symbols, such as separators, inherit the style of their enclosing component.
 
 ## Generate, configure and reload
 

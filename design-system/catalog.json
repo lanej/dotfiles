@@ -55,12 +55,13 @@
       "theme"
     ],
     "sources": [
+      "design-system/components.json",
       "design-system/tokens.json",
       "design-system/adapters/starship.toml.in",
       "nvim/lua/gitsignsconfig.lua",
       "nvim/lua/git-branch-signs.lua"
     ],
-    "description": "Git file status, worktree/index hunks and branch comparison keep distinct meanings and symbols.",
+    "description": "Git state components pair symbols, semantic colors and supported emphasis without conflating file status and hunk meanings.",
     "implementations": {
       "Starship": "file counts, branch, stash, conflicts and ahead/behind symbols",
       "Neovim": "unstaged, staged and branch-comparison gutter symbols"

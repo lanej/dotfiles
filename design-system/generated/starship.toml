@@ -13,17 +13,17 @@ vimcmd_symbol = "[](bold yellow)"
 
 [git_status]
 format = '($all_status$ahead_behind)'
-conflicted = "[${count}](bold red) "
-stashed = "[${count}](dimmed white) "
-deleted = "[${count}](red) "
-renamed = "[${count}](cyan) "
-modified = "[${count}](yellow) "
-staged = "[${count}](green) "
-untracked = "[${count}](blue) "
-typechanged = "[${count}](purple) "
-ahead = "[${count}](green) "
-diverged = "[${ahead_count}](green) [${behind_count}](yellow) "
-behind = "[${count}](yellow) "
+conflicted = "[${count}](#BF616A bold) "
+stashed = "[${count}](#E5E9F0 dimmed) "
+deleted = "[${count}](#BF616A) "
+renamed = "[${count}](#88C0D0) "
+modified = "[${count}](#EBCB8B) "
+staged = "[${count}](#A3BE8C) "
+untracked = "[${count}](#81A1C1) "
+typechanged = "[${count}](#B48EAD) "
+ahead = "[${count}](#A3BE8C) "
+diverged = "[${ahead_count}](#A3BE8C) [${behind_count}](#EBCB8B) "
+behind = "[${count}](#EBCB8B) "
 
 [git_metrics]
 disabled = true
@@ -45,7 +45,7 @@ threshold = 30
 style = 'bold yellow'
 
 [git_branch]
-style = "blue"
+style = "#81A1C1"
 symbol = " "
 format = "[$symbol$branch(:$remote_branch)]($style) "
 

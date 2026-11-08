@@ -56,5 +56,227 @@
   },
   "diff": {
     "fg": "@text"
+  },
+  "git.file.conflicted": {
+    "symbol": {
+      "token": "symbol.git.file.conflicted"
+    },
+    "fg": "@git.file.conflicted",
+    "bold": {
+      "token": "emphasis.git.file.conflicted.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.conflicted.dim"
+    }
+  },
+  "git.file.stashed": {
+    "symbol": {
+      "token": "symbol.git.file.stashed"
+    },
+    "fg": "@git.file.stashed",
+    "bold": {
+      "token": "emphasis.git.file.stashed.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.stashed.dim"
+    }
+  },
+  "git.file.deleted": {
+    "symbol": {
+      "token": "symbol.git.file.deleted"
+    },
+    "fg": "@git.file.deleted",
+    "bold": {
+      "token": "emphasis.git.file.deleted.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.deleted.dim"
+    }
+  },
+  "git.file.renamed": {
+    "symbol": {
+      "token": "symbol.git.file.renamed"
+    },
+    "fg": "@git.file.renamed",
+    "bold": {
+      "token": "emphasis.git.file.renamed.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.renamed.dim"
+    }
+  },
+  "git.file.modified": {
+    "symbol": {
+      "token": "symbol.git.file.modified"
+    },
+    "fg": "@git.file.modified",
+    "bold": {
+      "token": "emphasis.git.file.modified.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.modified.dim"
+    }
+  },
+  "git.file.staged": {
+    "symbol": {
+      "token": "symbol.git.file.staged"
+    },
+    "fg": "@git.file.staged",
+    "bold": {
+      "token": "emphasis.git.file.staged.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.staged.dim"
+    }
+  },
+  "git.file.untracked": {
+    "symbol": {
+      "token": "symbol.git.file.untracked"
+    },
+    "fg": "@git.file.untracked",
+    "bold": {
+      "token": "emphasis.git.file.untracked.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.untracked.dim"
+    }
+  },
+  "git.file.typechanged": {
+    "symbol": {
+      "token": "symbol.git.file.typechanged"
+    },
+    "fg": "@git.file.typechanged",
+    "bold": {
+      "token": "emphasis.git.file.typechanged.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.typechanged.dim"
+    }
+  },
+  "git.file.ahead": {
+    "symbol": {
+      "token": "symbol.git.file.ahead"
+    },
+    "fg": "@git.file.ahead",
+    "bold": {
+      "token": "emphasis.git.file.ahead.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.ahead.dim"
+    }
+  },
+  "git.file.behind": {
+    "symbol": {
+      "token": "symbol.git.file.behind"
+    },
+    "fg": "@git.file.behind",
+    "bold": {
+      "token": "emphasis.git.file.behind.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.behind.dim"
+    }
+  },
+  "git.file.branch": {
+    "symbol": {
+      "token": "symbol.git.file.branch"
+    },
+    "fg": "@git.file.branch",
+    "bold": {
+      "token": "emphasis.git.file.branch.bold"
+    },
+    "dim": {
+      "token": "emphasis.git.file.branch.dim"
+    }
+  },
+  "git.hunk.add": {
+    "symbol": {
+      "token": "symbol.git.hunk.add"
+    },
+    "fg": "@diff.add"
+  },
+  "git.hunk.change": {
+    "symbol": {
+      "token": "symbol.git.hunk.change"
+    },
+    "fg": "@diff.change"
+  },
+  "git.hunk.delete": {
+    "symbol": {
+      "token": "symbol.git.hunk.delete"
+    },
+    "fg": "@diff.delete"
+  },
+  "git.hunk.topdelete": {
+    "symbol": {
+      "token": "symbol.git.hunk.topdelete"
+    },
+    "fg": "@diff.delete"
+  },
+  "git.hunk.changedelete": {
+    "symbol": {
+      "token": "symbol.git.hunk.changedelete"
+    },
+    "fg": "@diff.change"
+  },
+  "git.hunk.untracked": {
+    "symbol": {
+      "token": "symbol.git.hunk.untracked"
+    },
+    "fg": "@diff.add"
+  },
+  "git.staged_hunk.add": {
+    "symbol": {
+      "token": "symbol.git.staged_hunk.add"
+    },
+    "fg": "@diff.add.dim"
+  },
+  "git.staged_hunk.change": {
+    "symbol": {
+      "token": "symbol.git.staged_hunk.change"
+    },
+    "fg": "@diff.change.dim"
+  },
+  "git.staged_hunk.delete": {
+    "symbol": {
+      "token": "symbol.git.staged_hunk.delete"
+    },
+    "fg": "@diff.delete.dim"
+  },
+  "git.staged_hunk.topdelete": {
+    "symbol": {
+      "token": "symbol.git.staged_hunk.topdelete"
+    },
+    "fg": "@diff.delete.dim"
+  },
+  "git.staged_hunk.changedelete": {
+    "symbol": {
+      "token": "symbol.git.staged_hunk.changedelete"
+    },
+    "fg": "@diff.change.dim"
+  },
+  "git.branch_hunk.add": {
+    "symbol": {
+      "token": "symbol.git.branch_hunk.add"
+    },
+    "fg": "@diff.add.dim"
+  },
+  "git.branch_hunk.change": {
+    "symbol": {
+      "token": "symbol.git.branch_hunk.change"
+    },
+    "fg": "@diff.change.dim"
+  },
+  "git.branch_hunk.delete": {
+    "symbol": {
+      "token": "symbol.git.branch_hunk.delete"
+    },
+    "fg": "@diff.delete.dim"
+  },
+  "git.branch_hunk.topdelete": {
+    "symbol": {
+      "token": "symbol.git.branch_hunk.topdelete"
+    },
+    "fg": "@diff.delete.dim"
   }
 }

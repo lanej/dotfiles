@@ -13,17 +13,17 @@ vimcmd_symbol = "[](bold yellow)"
 
 [git_status]
 format = '($all_status$ahead_behind)'
-conflicted = "[{{symbol.git.file.conflicted}}${count}](bold red) "
-stashed = "[{{symbol.git.file.stashed}}${count}](dimmed white) "
-deleted = "[{{symbol.git.file.deleted}}${count}](red) "
-renamed = "[{{symbol.git.file.renamed}}${count}](cyan) "
-modified = "[{{symbol.git.file.modified}}${count}](yellow) "
-staged = "[{{symbol.git.file.staged}}${count}](green) "
-untracked = "[{{symbol.git.file.untracked}}${count}](blue) "
-typechanged = "[{{symbol.git.file.typechanged}}${count}](purple) "
-ahead = "[{{symbol.git.file.ahead}}${count}](green) "
-diverged = "[{{symbol.git.file.ahead}}${ahead_count}](green) [{{symbol.git.file.behind}}${behind_count}](yellow) "
-behind = "[{{symbol.git.file.behind}}${count}](yellow) "
+conflicted = "{{git.file.conflicted}}"
+stashed = "{{git.file.stashed}}"
+deleted = "{{git.file.deleted}}"
+renamed = "{{git.file.renamed}}"
+modified = "{{git.file.modified}}"
+staged = "{{git.file.staged}}"
+untracked = "{{git.file.untracked}}"
+typechanged = "{{git.file.typechanged}}"
+ahead = "{{git.file.ahead}}"
+diverged = "{{git.file.ahead.diverged}}{{git.file.behind.diverged}}"
+behind = "{{git.file.behind}}"
 
 [git_metrics]
 disabled = true
@@ -45,8 +45,8 @@ threshold = 30
 style = 'bold yellow'
 
 [git_branch]
-style = "blue"
-symbol = "{{symbol.git.file.branch}} "
+style = "{{git.file.branch.style}}"
+symbol = "{{git.file.branch.symbol}} "
 format = "[$symbol$branch(:$remote_branch)]($style) "
 
 [status]
