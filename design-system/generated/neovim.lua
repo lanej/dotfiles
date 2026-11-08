@@ -684,7 +684,8 @@ return {
 ["link"] = "@attribute",
 },
 ["FzfLuaNormal"] = {
-["link"] = "NormalFloat",
+["fg"] = "#D8DEE9",
+["bg"] = "#2E3440",
 },
 ["TelescopeNormal"] = {
 ["link"] = "NormalFloat",
@@ -705,7 +706,9 @@ return {
 ["link"] = "FloatTitle",
 },
 ["FzfLuaCursorLine"] = {
-["link"] = "Visual",
+["fg"] = "#ECEFF4",
+["bg"] = "#434C5E",
+["bold"] = true,
 },
 ["TelescopeSelection"] = {
 ["link"] = "Visual",
@@ -958,6 +961,19 @@ return {
 },
 ["FzfLuaFzfMatch"] = {
 ["fg"] = "#A3BE8C",
+["bold"] = true,
+},
+["FzfLuaSymbolName"] = {
+["fg"] = "#ECEFF4",
+["bold"] = true,
+},
+["FzfLuaSymbolSignature"] = {
+["fg"] = "#8FBCBB",
+["italic"] = true,
+},
+["FzfLuaSymbolFile"] = {
+["fg"] = "#D8DEE9",
+["bold"] = true,
 },
 ["FzfLuaFzfBorder"] = {
 ["link"] = "FloatBorder",
