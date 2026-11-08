@@ -228,6 +228,14 @@ local function workflow()
 	assert(variable_row:find("Option<Shipment>", 1, true), "Variable lost its server-provided type detail")
 	local outline_row = assert(outline:match("[^\n]*server_outline[^\n]*"))
 	assert(
+		outline_row:find("󰊕", 1, true) and not outline_row:find("Function", 1, true),
+		"Function kind is not glyph-only"
+	)
+	assert(
+		variable_row:find("󰀫", 1, true) and not variable_row:find("Variable", 1, true),
+		"Variable kind is not glyph-only"
+	)
+	assert(
 		outline_row:find("(parcel) → Receipt", 1, true) and outline_row:find("ShippingClient", 1, true),
 		"LSP detail or parent context missing"
 	)
@@ -247,6 +255,7 @@ local function workflow()
 	keys(",ws")
 	picker("server_symbol")
 	local workspace = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(not workspace:find("<ctrl-g>", 1, true), "Workspace picker still displays the instruction hint")
 	assert(
 		workspace:find("ShippingClient", 1, true) and workspace:find("library file.lua", 1, true),
 		"Workspace context lost scope or short path"

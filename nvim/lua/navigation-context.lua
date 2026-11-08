@@ -163,10 +163,9 @@ local function short_paths(symbols, root, unique)
 	return paths
 end
 
-local function label(symbol, parent, path, width, git_width)
+local function label(symbol, parent, path, width, prefix_width)
 	local name = clean(symbol.name)
-	local kind = vim.lsp.protocol.SymbolKind[symbol.kind] or "Unknown"
-	local remaining = width - vim.fn.strdisplaywidth(name) - vim.fn.strdisplaywidth(kind) - git_width - 4
+	local remaining = width - vim.fn.strdisplaywidth(name) - prefix_width - 4
 	local context = {}
 	local candidates = { clean(symbol.detail), clean(symbol.containerName or parent) }
 	if path then
@@ -220,6 +219,8 @@ function M.attach(opts, width)
 			local copy = vim.tbl_extend("force", {}, symbol)
 			local file = symbol.location and vim.uri_to_fname(symbol.location.uri) or filename
 			local git = for_file(file)
+			local kind = vim.lsp.protocol.SymbolKind[symbol.kind] or "Unknown"
+			local icon = (opts.symbol_icons or {})[kind] or ""
 			lookup[file] = git
 			lookup[vim.uri_from_fname(file)] = git
 			local relative = vim.fs.relpath(opts.cwd or root or vim.fn.getcwd(), file)
@@ -231,7 +232,7 @@ function M.attach(opts, width)
 				parent,
 				paths[vim.fs.normalize(file)],
 				width,
-				vim.fn.strdisplaywidth((utils.strip_ansi_coloring(git)))
+				vim.fn.strdisplaywidth((utils.strip_ansi_coloring(git))) + vim.fn.strdisplaywidth(icon)
 			)
 			copy.containerName = nil
 			if symbol.children then

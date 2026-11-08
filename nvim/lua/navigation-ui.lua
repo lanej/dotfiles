@@ -51,7 +51,8 @@ end
 
 function M.symbols(document)
 	return {
-		symbol_style = 1,
+		symbol_style = 2,
+		no_header_i = true,
 		winopts = M.window,
 		child_prefix = false,
 		symbol_hl = function(kind)
