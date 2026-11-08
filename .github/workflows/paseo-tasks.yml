@@ -32,6 +32,6 @@ jobs:
           printf '%s  %s\n' fc77469be936b02ab9021b984a3aebc9250a21ae3d264f2ef2198eb8b31b2a7b "$RUNNER_TEMP/mergiraf/archive.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/mergiraf/archive.tar.gz" -C "$RUNNER_TEMP/mergiraf"
           printf '%s\n' "$RUNNER_TEMP/mergiraf" >> "$GITHUB_PATH"
-      - run: npm run typecheck
+      - run: npm run check
         working-directory: paseo-tasks
       - run: make test-paseo-tasks

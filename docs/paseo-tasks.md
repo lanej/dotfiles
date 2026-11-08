@@ -28,7 +28,7 @@ New assigned feedback or a new PR repair event reopens completed work or work aw
 
 ```sh
 npm --prefix ~/.files/paseo-tasks ci --ignore-scripts
-npm --prefix ~/.files/paseo-tasks run typecheck
+npm --prefix ~/.files/paseo-tasks run check
 make test-paseo-tasks
 make paseo-tasks-config
 ```
@@ -120,3 +120,7 @@ The focused detector exercises the typed tools against controlled Paseo/GitHub b
 Live acceptance requires a task on Mac, `dev`, and `dev2`; entry into each recorded worker conversation; worker progress with the manager closed; a GitHub feedback event and reply in its source thread; pause/resume with queued feedback; worker recovery with its original session; and actual mobile disconnect/reconnect while work continues. Check wide and compact layouts in both themes. Restart only the relay after implementation and verification for the user's final check; restarting the daemon can interrupt active agents.
 
 The separately invoked `make test-paseo-tasks-ui` detector uses an owned headless browser with `PASEO_TASKS_UI_URL`, ignored local authentication state in `PASEO_TASKS_UI_STATE`, an absolute Playwright module path in `PASEO_TASKS_PLAYWRIGHT_MODULE`, a private screenshot directory in `PASEO_TASKS_UI_OUTPUT`, and a JSON array of `{serverId, taskId, workspaceId}` acceptance records in `PASEO_TASKS_UI_CASES`. It checks wrapping, selection controls, the host-qualified workspace route, and the assigned task's actual chat in both themes at 1440 and 390 pixels. Set `PASEO_TASKS_UI_LOCAL_TLS=1` only for a known local test relay with a private certificate. This detector complements the Viewrule accessibility and visual review; it does not establish behavior on a phone.
+
+## TypeScript checks
+
+Run `npm run format` in `paseo-tasks` before committing. `npm run check` checks Biome formatting and recommended lint, type-aware promise handling and exhaustive switch coverage, and TypeScript strict checking with implicit returns, fallthrough and unreachable code checks. CI runs the same command. Exhaustiveness requires discriminated unions; a default branch does not satisfy missing union cases. Existing dynamic SDK/test boundaries remain explicitly typed as any until they can be narrowed.
