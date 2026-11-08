@@ -212,6 +212,15 @@ function M.attach(opts, width)
 	local original = handler.handler
 	local utils = require("fzf-lua.utils")
 	local _, _, mute = utils.ansi_from_hl("FzfLuaFzfInfo", "")
+	local _, name_style, emphasize = utils.ansi_from_hl("FzfLuaSymbolName", "")
+	local function symbol_name(text)
+		local icon, name = text:match("^(.- )(.+)$")
+		name = name or text
+		if name_style then
+			name = name:gsub("\27%[0m", "%0" .. name_style)
+		end
+		return (icon or "") .. emphasize(name)
+	end
 	local badges, lookup = {}, {}
 	local signatures = require("navigation-signature").new()
 	local function for_file(file)
@@ -292,7 +301,9 @@ function M.attach(opts, width)
 					end
 					local title, detail = body:match("^(.-)\t(.*)$")
 					if title then
-						body = title .. "  " .. mute(detail)
+						body = symbol_name(title) .. "  " .. mute(detail)
+					else
+						body = symbol_name(body)
 					end
 					row = head .. (git ~= "" and (git .. " ") or "") .. body .. tail
 				end
