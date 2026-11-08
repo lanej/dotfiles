@@ -82,6 +82,27 @@ def main():
         screens = {}
 
         class StatusTerminal(Terminal):
+            def remember_sole_client(self):
+                ids = {client_id for tab in self.tabs()
+                       for client_id in tab["other_focused_clients"]}
+                assert len(ids) == 1, f"Expected one client in {self.name}, got {ids}"
+                self.focus_client_id = next(iter(ids))
+
+            def focused_tab(self):
+                # `active` means any attached client is on this tab, not that
+                # the PTY which sent the shortcut is there. Cache identity
+                # while alone, before another attachment makes it ambiguous.
+                return next(tab["tab_id"] for tab in self.tabs()
+                            if self.focus_client_id in tab["other_focused_clients"])
+
+            def startup_diagnostics(self):
+                details = super().startup_diagnostics()
+                if hasattr(self, "focus_client_id"):
+                    details.append(f"Target client: {self.focus_client_id}; tab focus: "
+                                   + repr([(tab["tab_id"], tab["other_focused_clients"])
+                                           for tab in self.tabs()]))
+                return details
+
             def drain(self, duration=0.08):
                 # Every attached client must consume renders, including while
                 # another client or the installed reload helper awaits a reply.
@@ -180,7 +201,8 @@ def main():
             other.until("second shell is ready", lambda:
                         PROMPT in other.output and len(other.terminals()) == 1)
             second_pane = other.terminals()[0]["id"]
-            second_working_tab = next(tab["tab_id"] for tab in other.tabs() if tab["active"])
+            other.remember_sole_client()
+            second_working_tab = other.focused_tab()
             other.send((shlex.join(["python3", str(program), str(home / "second-agent-pid")]) + "\r").encode())
             other.until("second native program is working", lambda:
                         state(second, second_pane, "Working"))
@@ -225,10 +247,11 @@ def main():
                         not pane(first, first_pane).get("program_status"))
             # A realistic local triage round: two requests beat work, cycle
             # numerically and wrap. Once answered, quiet completions are skipped.
-            origin = next(tab for tab in other.tabs() if tab["active"])["tab_id"]
+            other.remember_sole_client()
+            origin = other.focused_tab()
 
             def focused_tab(client=other):
-                return next(tab["tab_id"] for tab in client.tabs() if tab["active"])
+                return client.focused_tab()
 
             def agent_tab(name, client=other):
                 previous = {pane["id"] for pane in client.terminals()}
@@ -304,6 +327,7 @@ def main():
             untouched = StatusTerminal(binary, env, second)
             clients.append(untouched)
             untouched.until("untouched session reattaches", lambda: "●" in top_line(untouched))
+            untouched.remember_sole_client()
             untouched_question, untouched_pane = agent_tab("untouched-question", untouched)
             untouched.send(b"blocked:kind=question\r")
             untouched.until("untouched session has a question", lambda:
@@ -349,6 +373,7 @@ def main():
                 - existing_client_ids)
             assert len(new_client_ids) == 1, "Expected one new second-session client"
             new_client_id = next(iter(new_client_ids))
+            startup.focus_client_id = new_client_id
 
             def client_tab(client_id):
                 return next(tab["tab_id"] for tab in untouched.tabs()
