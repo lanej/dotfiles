@@ -12,6 +12,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -109,7 +110,68 @@ def nested_workflow(binary, env, work, init):
         terminal.close()
 
 
+def helper_workflow():
+    """Exercise the installed helper CLI with controlled server observations."""
+    with tempfile.TemporaryDirectory(prefix="zj-nav-helper-") as directory:
+        work = Path(directory)
+        (work / "ps").write_text("""#!/usr/bin/env python3
+import os, subprocess
+parent = subprocess.check_output(["/bin/ps", "-o", "ppid=", "-p", str(os.getppid())], text=True).strip()
+print(parent, "1 zellij")
+""")
+        (work / "ps").chmod(0o700)
+        (work / "zellij").write_text("""#!/usr/bin/env python3
+import json, os, pathlib, sys
+work = pathlib.Path(os.environ["NAV_TEST_WORK"])
+state = json.loads((work / "state").read_text())
+command = sys.argv[3]
+if command in state:
+    value = state[command]
+    print(value if isinstance(value, str) else json.dumps(value))
+else:
+    with (work / "actions").open("a") as stream:
+        stream.write(" ".join(sys.argv[3:]) + "\\n")
+""")
+        (work / "zellij").chmod(0o700)
+        env = {**os.environ, "PATH": str(work) + os.pathsep + os.environ["PATH"],
+               "NAV_TEST_WORK": str(work), "ZELLIJ_SESSION_NAME": "fixture", "ZELLIJ_PANE_ID": "42"}
+        base = {
+            "list-clients": "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND",
+            "list-tabs": [{"tab_id": 7, "position": 0, "other_focused_clients": [1]}],
+            "list-panes": [{"id": 42, "tab_id": 7, "is_plugin": False, "is_focused": True,
+                            "is_suppressed": False, "is_fullscreen": False}],
+            "current-tab-info": {"tab_id": 7, "is_fullscreen_active": False},
+        }
+        def check(state, expected, succeeds=True):
+            (work / "state").write_text(json.dumps(state))
+            (work / "actions").write_text("")
+            result = subprocess.run([sys.executable, str(ROOT / "bin/zellij-navigate"), "right"],
+                                    env=env, capture_output=True, text=True, timeout=5)
+            assert (result.returncode == 0) == succeeds, result.stderr
+            assert (work / "actions").read_text().splitlines() == expected, result.stderr
+        check(base, ["move-focus right"])
+        for field, value in (("is_suppressed", True), ("is_fullscreen", True), ("is_focused", False)):
+            state = json.loads(json.dumps(base))
+            state["list-panes"][0][field] = value
+            check(state, [])
+        state = json.loads(json.dumps(base))
+        state["list-panes"][0]["tab_id"] = 3
+        check(state, [])
+        state = json.loads(json.dumps(base))
+        state["list-tabs"][0]["other_focused_clients"] = [1, 2]
+        check(state, [], succeeds=False)
+        state["list-clients"] += "\n1 terminal_42 nvim"
+        check(state, [], succeeds=False)
+        state = json.loads(json.dumps(base))
+        state["list-clients"] += "\n1 terminal_99 zsh"
+        check(state, [])
+    print("PASS: scrollback helper accepts one visible active client and rejects ambiguous or stale ownership.")
+
+
 def main():
+    helper_workflow()
+    if "--helper-only" in sys.argv:
+        return
     for name in ("zellij", "nvim", "zsh", "tmux", "git"):
         assert shutil.which(name), f"Install {name} before testing pane navigation"
     with tempfile.TemporaryDirectory(prefix="zj-nav-", dir="/tmp") as directory:
@@ -197,7 +259,10 @@ vim.cmd("wincmd h")
         env["NVIM_APPNAME"] = "navigation-scrollback"
         scrollback_config = home / ".config" / env["NVIM_APPNAME"]
         scrollback_config.mkdir()
-        (scrollback_config / "init.lua").write_text("vim.opt.swapfile = false\n")
+        (scrollback_config / "init.lua").write_text(
+            'vim.opt.runtimepath:prepend(vim.env.HOME .. "/.config/nvim")\n'
+            'vim.opt.runtimepath:append(vim.env.NAVIGATOR_RUNTIME)\n'
+            'vim.opt.swapfile = false\nrequire("pane-navigation").setup()\n')
         outside = subprocess.run(["zsh", "-d", "-i", "-c", "bindkey -M viins '^H'"],
                                  env=env, text=True, capture_output=True, check=True, timeout=5)
         assert '"^H" backward-delete-char' in outside.stdout, outside
@@ -230,6 +295,13 @@ vim.cmd("wincmd h")
                 result.check_returncode()
                 return result.stdout.strip()
 
+            for mode_keys in (b"[", b"/Navigation\r"):
+                terminal.prefix(mode_keys)
+                terminal.send(b"\x08")
+                terminal.until("native scroll/search navigation reaches the left pane", lambda: focused() == left)
+                terminal.send(b"\x0c")
+                terminal.until("native navigation returns to application mode", lambda: focused() == right)
+
             terminal.send(b"\x08")
             terminal.until("bare Ctrl-h moves from the Zsh prompt", lambda: focused() == left)
             terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(socket)]) + "\r").encode())
@@ -244,6 +316,16 @@ vim.cmd("wincmd h")
             assert editor('winnr("$")') == "2"
             terminal.send(b"\x08")
             terminal.until("Ctrl-h returns to the editor's left split", lambda: editor("winnr()") == "1")
+
+            for selection in (b"v", b"V", b"\x16"):
+                terminal.send(selection + b"\x0c")
+                terminal.until("visual selection moves to the next editor split", lambda: editor("winnr()") == "2")
+                terminal.send(b"\x0c")
+                terminal.until("visual navigation crosses the editor boundary", lambda: focused() == right)
+                terminal.send(b"\x08")
+                terminal.until("return from visual boundary", lambda: focused() == left)
+                terminal.send(b"\x1b\x08")
+                terminal.until("restore the left editor split", lambda: editor("winnr()") == "1")
 
             terminal.send(b"i\x0c")
             terminal.until("insert-mode navigation stays inside the editor first", lambda:
@@ -321,6 +403,25 @@ vim.cmd("wincmd h")
             assert focused() == second[0]["id"], "Stale navigation moved a different tab"
             terminal.prefix(b"\x10")
             terminal.until("return to the original tab", lambda: focused() == left)
+
+            # A single-client in-place scrollback editor can safely cross its
+            # pane boundary even though list-clients omits its focus row.
+            terminal.prefix(b"l")
+            terminal.until("select the shell for scrollback", lambda: focused() == right)
+            known_panes = {p["id"] for p in terminal.terminals()}
+            terminal.prefix(b"e")
+            terminal.until("single-client scrollback opens", lambda:
+                           any(p["id"] not in known_panes for p in terminal.terminals()))
+            scrollback = next(p["id"] for p in terminal.terminals() if p["id"] not in known_panes)
+            terminal.send(b"v\x08")
+            terminal.until("visual scrollback navigation reaches its neighbor", lambda: focused() == left)
+            terminal.prefix(b"l")
+            terminal.until("return to the retained scrollback editor", lambda: focused() == scrollback)
+            terminal.send(b"\x1b:q!\r")
+            terminal.until("close single-client scrollback", lambda:
+                           all(p["id"] != scrollback for p in terminal.terminals()))
+            terminal.prefix(b"h")
+            terminal.until("return to the original editor", lambda: focused() == left)
 
             # Scrollback editors are omitted from list-clients even though
             # their clients remain connected and can become the CLI target.

@@ -71,16 +71,27 @@ def main():
             raise RuntimeError("Cannot establish the active Zellij client")
         if len(clients) > 1:
             raise RuntimeError("Pane navigation needs one attached client; use Ctrl-f h/j/k/l")
-        if not clients or clients[0][1] != "terminal_" + pane_id:
-            return None
-        # list-clients omits clients focused on scrollback editors. Native
-        # tab metadata includes all attached client IDs, even those without
-        # a serializable active pane; check every tab before trusting a row.
+        # list-clients omits in-place scrollback editors. Tab metadata still
+        # records their attachment, so require exactly one client before using
+        # the visible pane in its active tab as the ownership proof.
         tabs = query_json("list-tabs")
         attached = {client_id for tab in tabs for client_id in tab["other_focused_clients"]}
-        if attached != {int(clients[0][0])}:
+        if len(attached) != 1:
             raise RuntimeError("Pane navigation needs one attached client; use Ctrl-f h/j/k/l")
-        return clients[0][:2]
+        client_id = next(iter(attached))
+        if clients:
+            if int(clients[0][0]) != client_id:
+                raise RuntimeError("Cannot establish the active Zellij client")
+            return clients[0][:2] if clients[0][1] == "terminal_" + pane_id else None
+        active_tabs = {tab["tab_id"] for tab in tabs
+                       if client_id in tab["other_focused_clients"]}
+        panes = query_json("list-panes")
+        source = next((pane for pane in panes
+                       if not pane["is_plugin"] and pane["id"] == int(pane_id)), None)
+        if (source is None or not source["is_focused"] or source["is_suppressed"]
+                or source["tab_id"] not in active_tabs):
+            return None
+        return [str(client_id), "terminal_" + pane_id]
 
     owner = source_client()
     if owner is None:
