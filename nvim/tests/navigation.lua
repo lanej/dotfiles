@@ -39,6 +39,16 @@ end
 local function keys(mapping)
 	vim.cmd.normal(vim.api.nvim_replace_termcodes(mapping, true, false, true))
 end
+local function titles()
+	local result = {}
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		local title = vim.api.nvim_win_get_config(win).title
+		for _, part in ipairs(type(title) == "table" and title or {}) do
+			result[#result + 1] = part[1]
+		end
+	end
+	return table.concat(result, "\n")
+end
 local function write(path, lines)
 	vim.fn.writefile(lines, path)
 end
@@ -235,6 +245,9 @@ local function workflow()
 	close_picker()
 	keys(",bs")
 	picker("server_outline")
+	wait(function()
+		return titles():find("caller.lua · navigation-fixture", 1, true) and not titles():find("buf %d+:")
+	end, "Document heading lost file/server context or retained buffer numbers")
 	picker("Option<Shipment>")
 	local outline = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 	local variable_row = assert(outline:match("[^\n]*shipment[^\n]*"))
@@ -265,8 +278,20 @@ local function workflow()
 		return vim.api.nvim_get_current_buf() == source_buf and vim.api.nvim_win_get_cursor(0)[1] == 2
 	end, "Hidden coordinates broke symbol selection")
 	keys("<C-o>")
+	fzf.lsp_document_symbols({ previewer = false })
+	picker("server_outline")
+	assert(#vim.api.nvim_tabpage_list_wins(0) == 2, "Title customization enabled an explicitly disabled preview")
+	close_picker()
 	keys(",ws")
 	picker("server_symbol")
+	assert(
+		titles():find("project with spaces · navigation-fixture", 1, true),
+		"Workspace heading lost project/server context"
+	)
+	assert(
+		not titles():find("LSP.*Symbols") and not titles():find("buf %d+:"),
+		"Workspace retained generic titles or buffer numbers"
+	)
 	picker("(parcel)")
 	picker("(account,parcel,options) -> Shipment")
 	picker("another_destination")
@@ -407,6 +432,9 @@ local function workflow()
 
 	keys(",cd")
 	picker("destination")
+	wait(function()
+		return titles():find("library file.lua", 1, true) and not titles():find("buf %d+:")
+	end, "Loaded tag preview retained a buffer-number title")
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.api.nvim_buf_get_name(0) == target
