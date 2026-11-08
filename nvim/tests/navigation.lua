@@ -279,11 +279,10 @@ local function workflow()
 	vim.o.columns = 220
 	keys(",ws")
 	picker("createShipment")
-	local wide = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-	assert(
-		wide:find("a/client.lua", 1, true) and wide:find("b/client.lua", 1, true),
-		"Long signatures hid distinguishing workspace paths"
-	)
+	wait(function()
+		local wide = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		return wide:find("a/client.lua", 1, true) and wide:find("b/client.lua", 1, true)
+	end, "Long signatures hid distinguishing workspace paths")
 	close_picker()
 	vim.o.columns = 160
 	local search
