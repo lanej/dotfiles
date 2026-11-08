@@ -53,7 +53,11 @@ export default defineConfig({
         { label: 'Go style guide', slug: 'reference/go-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
       ] },
-      { label: 'Contributing', items: [{ label: 'Maintain this site', slug: 'maintaining' }] },
+      { label: 'Contributing', items: [
+        { label: 'Code comments', slug: 'contributing/code-comments' },
+        { label: 'Pull requests', slug: 'contributing/pull-requests' },
+        { label: 'Maintain this site', slug: 'maintaining' },
+      ] },
     ],
   })],
 });

@@ -8,7 +8,7 @@ Keep each Markdown paragraph on one source line. Do not hard-wrap prose to a fix
 
 # Code comments
 
-When adding or changing source comments, read `~/.files/docs/conventional-code-comments.md` and use `TAG: explanation` selectively for rationale, constraints, or consequences. Honor the target repository's conventions; keep ordinary comments, documentation comments, and docstrings when they communicate better. Do not rewrite unrelated comments.
+For source-comment decisions, use the `code-comments` skill's compact guidance. Routine edits do not require loading the full specification; follow the skill's conditional reference triggers. Honor the target repository's conventions and do not rewrite unrelated comments.
 
 # Unix philosophy
 

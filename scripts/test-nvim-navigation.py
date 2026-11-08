@@ -2,17 +2,19 @@
 """Accept navigation and annotations through real Neovim and locked plugins.
 
 Run: uv run --no-project scripts/test-nvim-navigation.py
-Requires Neovim 0.12+, Universal Ctags, git, cc, fzf 0.59+, rg, and network
+Requires Neovim 0.12+, Universal Ctags, git, cc, fzf 0.59+, rg, pgrep, and network
 access to public GitHub repositories. LSP replies are fixtures; cloud tools,
 credentials, user Neovim configuration, and installed plugins are not used.
 """
 
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,14 +30,37 @@ def checkout(url, revision, destination, env):
     run(["git", "-C", str(destination), "checkout", "-q", "--detach", "FETCH_HEAD"], env=env)
 
 
+def wait_for_fzf_helpers(work, timeout=5):
+    deadline = time.monotonic() + timeout
+    pattern = f"{work.name}/plugins/fzf-lua/"
+    while True:
+        result = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+        if result.returncode == 1:
+            return
+        result.check_returncode()
+        if time.monotonic() >= deadline:
+            raise TimeoutError(f"FzfLua helpers still running: {result.stdout.strip()}; retained {work}")
+        time.sleep(0.01)
+
+
+@contextmanager
+def navigation_workspace():
+    # rationale(cleanup): FzfLua helper editors can outlive the editor running the assertions.
+    work = Path(tempfile.mkdtemp(prefix="nv-nav-", dir="/tmp"))
+    try:
+        yield work
+    finally:
+        wait_for_fzf_helpers(work)
+        shutil.rmtree(work)
+
+
 def main():
-    for executable in ("nvim", "git", "cc", "fzf", "rg"):
+    for executable in ("nvim", "git", "cc", "fzf", "rg", "pgrep"):
         if not shutil.which(executable):
             raise SystemExit(f"Install {executable} and add it to PATH before running acceptance.")
     lock = json.loads((ROOT / "nvim/lazy-lock.json").read_text())
     # Darwin's Unix socket paths are limited; FzfLua appends its server name.
-    with tempfile.TemporaryDirectory(prefix="nv-nav-", dir="/tmp") as temporary:
-        work = Path(temporary)
+    with navigation_workspace() as work:
         env = dict(os.environ)
         for key in list(env):
             if key.startswith("GIT_"):

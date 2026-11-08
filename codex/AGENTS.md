@@ -6,7 +6,7 @@ For software design, implementation, modification, debugging and review, use the
 
 # Shared practices
 
-Keep Markdown paragraphs on one source line. For changed source comments, read `~/.files/docs/conventional-code-comments.md`; use selective `TAG: explanation` for rationale/constraints/consequences, respecting ordinary comments/docstrings and repository conventions. Leave unrelated comments alone.
+Keep Markdown paragraphs on one source line. For source-comment decisions, use the `code-comments` skill's compact guidance; load its full specification only when its conditional triggers apply. Honor repository conventions and leave unrelated comments alone.
 
 Follow ESR's Unix rules in software design: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, representation of knowledge as data, least surprise, silence without useful output, early clear failure/repair, programmer economy, generation, working behavior before optimization, diversity and extensibility.
 
