@@ -1,44 +1,23 @@
-use serde_json::{json, Value};
+use serde_json::Value;
+#[cfg(test)]
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zellij_tile::prelude::*;
 
 pub const LOAD: &str = "attention-config-load";
-pub const RELOAD: &str = "lane-attention-reload";
+pub use lane_zellij_protocol::RELOAD;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Policy(BTreeMap<String, usize>);
-
-impl Default for Policy {
-    fn default() -> Self {
-        Self::parse(&json!([["marked", "needs_you", "failed"],
-                           ["working", "new_output", "bell"]])).unwrap()
-    }
-}
+// Native attention types stay here; the host shares policy validation and ranks.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Policy(lane_zellij_protocol::Policy);
 
 impl Policy {
     pub fn parse(value: &Value) -> Result<Self, String> {
-        let groups = value.as_array().filter(|groups| !groups.is_empty())
-            .ok_or("attention.priority must be a nonempty list of groups")?;
-        let mut ranks = BTreeMap::new();
-        for (rank, group) in groups.iter().enumerate() {
-            let classes = group.as_array().filter(|classes| !classes.is_empty())
-                .ok_or("attention.priority groups must be nonempty lists")?;
-            for class in classes {
-                let name = class.as_str().ok_or("attention.priority classes must be strings")?;
-                if !matches!(name, "marked" | "needs_you" | "failed" | "working"
-                    | "new_output" | "bell" | "done" | "quiet") {
-                    return Err(format!("Unknown attention class: {name}"));
-                }
-                if ranks.insert(name.to_owned(), rank).is_some() {
-                    return Err(format!("Duplicate attention class: {name}"));
-                }
-            }
-        }
-        Ok(Self(ranks))
+        lane_zellij_protocol::Policy::parse(value).map(Self)
     }
 
-    pub fn rank(&self, class: &str) -> Option<usize> { self.0.get(class).copied() }
+    pub fn rank(&self, class: &str) -> Option<usize> { self.0.rank(class) }
 
     pub fn attention_rank(&self, attention: &PaneAttention) -> Option<usize> {
         let class = match attention.effective_status() {
@@ -55,8 +34,7 @@ impl Policy {
     }
 
     pub fn tab_rank(&self, attention: Option<usize>, marked: bool, bell: bool) -> Option<usize> {
-        [attention, marked.then(|| self.rank("marked")).flatten(),
-         bell.then(|| self.rank("bell")).flatten()].into_iter().flatten().min()
+        self.0.tab_rank(attention, marked, bell)
     }
 }
 

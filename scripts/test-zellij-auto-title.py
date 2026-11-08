@@ -160,7 +160,7 @@ else:
             return json.loads(state.read_text())["name"]
 
         def owned():
-            result = subprocess.run([sys.executable, ROOT / "bin/zellij-status", "view", "fixture"],
+            result = subprocess.run([ROOT / "bin/zellij-status", "view", "fixture"],
                                     env=env, check=True, capture_output=True, text=True, timeout=5)
             return json.loads(result.stdout)["auto_titles"]
 

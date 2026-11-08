@@ -19,6 +19,14 @@ Press **Ctrl-f a** to jump directly, without opening a menu. Requests and failur
 
 Both shortcuts stay in the current session and change only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
 
+## Install the Rust helpers
+
+`make zellij-status zellij` builds the native helper and WASI status plugin, then links configuration. Build only the host helper with `make zellij-helpers`. Configuration-only commands and minimal bootstrap never compile the helper or install Rust implicitly; a missing binary reports the build command.
+
+`zellij-status view`, `config`, and `reload` now dispatch to the native `zellij-helper status` command. Host metadata, automatic-title ownership reads, priority validation, and reload acknowledgement checks run in Rust. The helper and plugin share the JSON protocol and priority policy through a WASI-compatible crate. Other helpers and the automatic-title writer remain unchanged for incremental migration.
+
+The command names and JSON messages are unchanged, so an already-running status receiver from the attention-priority release can use the new helper without a session restart. Older receivers without reload support still fail acknowledgement checks rather than reporting success. Rebuild and start a new session to load changes to the plugin itself.
+
 ## Choose attention priority
 
 The defaults put native `!`-marked tabs, nonbell attention, and failures in the first group, then working programs, native new-output status, and bells in the second. Completed work and quiet tabs are excluded. Both jump shortcuts use the same priority groups.

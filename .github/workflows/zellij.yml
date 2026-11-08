@@ -97,6 +97,8 @@ jobs:
           python-version: '3.12'
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Build and check native helpers
+        run: make test-zellij-helpers
       - run: make test-zellij-auto-title
       - run: make test-zellij-notifications
 

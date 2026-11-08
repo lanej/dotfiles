@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Stable entrypoints only. All status/config/reload behavior lives in Rust.
+set -eu
+name=${0##*/}
+source_path=${BASH_SOURCE[0]}
+while [ -L "$source_path" ]; do
+    directory=$(cd -P "$(dirname "$source_path")" && pwd)
+    source_path=$(readlink "$source_path")
+    case "$source_path" in /*) ;; *) source_path=$directory/$source_path ;; esac
+done
+directory=$(cd -P "$(dirname "$source_path")/.." && pwd)
+program=$directory/zellij/target/release/lane-zellij
+if [ ! -x "$program" ]; then
+    printf '%s: Rust helper is not built; run make zellij-helpers in %s\n' "$name" "$directory" >&2
+    exit 1
+fi
+if [ "$name" = zellij-status ]; then
+    set -- status "$@"
+fi
+exec "$program" "$@"

@@ -176,13 +176,18 @@ test-zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
 test-zellij-session-keys:
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status test-zellij-status
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-status
+zellij-helpers:
+	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
+test-zellij-helpers: zellij-helpers
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
+	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications:
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
 test-zellij-notifications-ui:
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications-ui.py"
-zellij-status:
+zellij-status: zellij-helpers
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
@@ -425,12 +430,11 @@ test-zellij-layout:
 test-zellij-clipboard:
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
-test-zellij-status:
-	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
+test-zellij-status: test-zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" attention_policy
 	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
-test-zellij-auto-title:
+test-zellij-auto-title: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"
 .PHONY: test-zellij-tab-labels
 test-zellij-tab-labels:
