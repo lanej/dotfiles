@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 pub const RELOAD: &str = "lane-attention-reload";
+pub const READINESS: &str = "lane-attention-ready";
 pub const MAX_CONFIG_BYTES: usize = 16 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -106,6 +107,24 @@ pub struct ReloadAck {
     pub ok: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+}
+
+/// Read-only probe for a particular persistent receiver. It does not load or
+/// replace policy, and replies independently for each attached client clone.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReadinessRequest {
+    pub request: String,
+    pub plugin_id: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReadinessReply {
+    pub request: String,
+    pub plugin_id: u32,
+    pub client_id: u32,
+    pub config_ready: bool,
+    pub attention_ready: bool,
+    pub bindings_installed: bool,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

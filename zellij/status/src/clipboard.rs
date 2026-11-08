@@ -36,6 +36,8 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
+    pub fn bindings_installed(&self) -> bool { self.binding_installed }
+
     pub fn route_bindings(&mut self, bindings_changed: bool) {
         let ids = get_plugin_ids();
         if !bindings_changed && self.binding_installed { return; }

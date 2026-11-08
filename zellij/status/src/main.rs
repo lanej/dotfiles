@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
-use lane_zellij_protocol::{ReloadRequest, ReloadAck, StatusView, MAX_CONFIG_BYTES};
+use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,
+    StatusView, MAX_CONFIG_BYTES, READINESS};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
@@ -256,6 +257,27 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.clipboard_receiver && self.allowed && message.name == READINESS {
+            if let PipeSource::Cli(pipe) = &message.source {
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 1024) {
+                    if let Ok(request) = serde_json::from_str::<ReadinessRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty() && request.request.len() <= 128 {
+                            let reply = ReadinessReply { request: request.request,
+                                plugin_id: ids.plugin_id, client_id: ids.client_id as u32,
+                                config_ready: self.attention_config.ready,
+                                attention_ready: self.attention_ready,
+                                bindings_installed: self.clipboard.bindings_installed() };
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
         if self.clipboard_receiver && self.allowed && message.name == attention_policy::RELOAD {
             if let PipeSource::Cli(pipe) = &message.source {
                 // Only the discovered persistent receiver handles reloads.

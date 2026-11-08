@@ -195,9 +195,12 @@ sys.exit(result.returncode)
             terminal.until("unzoomed", lambda: not any(p["is_fullscreen"] for p in current()))
             # Native layout cycling remains a separate, explicitly rearranging control.
             terminal.action("apply-tiled-swap-layout", "stacked")
-            settled = geometry(current())
-            invoke(b"=", failure="stacked")
-            assert geometry(current()) == settled
+            before_rejection = current()
+            rejected = invoke(b"=", failure="stacked")
+            after_rejection = current()
+            assert geometry(after_rejection) == geometry(before_rejection), json.dumps({
+                "before": before_rejection, "after": after_rejection, "helper": rejected,
+            }, indent=2)
             for _ in range(5):
                 terminal.prefix(b" ")
                 if json.loads(terminal.action("current-tab-info", "--json"))["active_swap_layout_name"] == "equalize":
