@@ -1,0 +1,55 @@
+name: TypeScript quality profile
+
+on:
+  pull_request:
+    paths:
+      - 'bin/repo-bootstrap'
+      - 'ai/skills/typescript/**'
+      - 'scripts/test-typescript-*.py'
+      - 'scripts/test-typescript-*.mjs'
+      - '.github/workflows/typescript-quality-profile.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bin/repo-bootstrap'
+      - 'ai/skills/typescript/**'
+      - 'scripts/test-typescript-*.py'
+      - 'scripts/test-typescript-*.mjs'
+      - '.github/workflows/typescript-quality-profile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 scripts/test-typescript-bootstrap.py
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated fixture tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/typescript-quality-tools"
+          cp ai/skills/typescript/assets/package.json "$RUNNER_TEMP/typescript-quality-tools/"
+          npm install --prefix "$RUNNER_TEMP/typescript-quality-tools" --ignore-scripts --no-audit --no-fund
+      - name: Exercise compiler, typed lint, and ratchet with real tools
+        env:
+          TYPESCRIPT_QUALITY_TOOLS: ${{ runner.temp }}/typescript-quality-tools
+        run: node --test scripts/test-typescript-quality.mjs
