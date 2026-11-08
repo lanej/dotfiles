@@ -439,20 +439,7 @@ impl Palette {
                 .take(3)
                 .collect::<Vec<_>>()
         } else if compact && items.is_empty() {
-            let completed = completion::complete(
-                self.input.get_text(),
-                self.input.cursor_position(),
-                &self.context,
-                &self.open.history,
-            );
-            vec![
-                Text::from(if completed.command || completed.help.is_empty() {
-                    "No matches".into()
-                } else {
-                    completed.help
-                })
-                .dim_range(..),
-            ]
+            vec![Text::from("No matches").dim_range(..)]
         } else {
             vec![]
         };
@@ -518,15 +505,6 @@ impl Palette {
             Some(graphemes::display_width(&title).min(width)),
             Some(1),
         );
-        let frame_label = |row, label: &str| {
-            print_text_with_coordinates(
-                Text::from(label).dim_range(..),
-                2,
-                row,
-                Some(graphemes::display_width(label).min(width)),
-                Some(1),
-            )
-        };
         if self.view == View::Documentation {
             let lines: Vec<_> = self
                 .documentation
@@ -538,7 +516,6 @@ impl Palette {
             for (i, line) in lines.iter().skip(self.scroll).take(visible).enumerate() {
                 put(i + 1, line.clone());
             }
-            frame_label(rows - 1, " ↑↓ scroll · Enter/Esc back ");
             return;
         }
         self.render_input(columns);
@@ -635,16 +612,6 @@ impl Palette {
                 Text::from(format!("{} suggestions", items.len())).dim_range(..),
             );
         }
-        frame_label(
-            rows - 1,
-            if compact && !self.error.is_empty() {
-                " Ctrl-d details · Esc close "
-            } else if compact {
-                " Tab complete · Enter run · Esc close "
-            } else {
-                " ↑↓ select · Enter choose · Esc back "
-            },
-        );
     }
 }
 

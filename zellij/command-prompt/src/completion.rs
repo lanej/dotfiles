@@ -6,15 +6,9 @@ use zellij_tile::ui_components::fuzzy_match_indices;
 pub const LOCAL_COMMANDS: &[(&str, &str)] = &[
     ("help", "Search supported commands and their descriptions"),
     ("history", "Search this client's recent commands"),
-    (
-        "list-panes",
-        "Search panes; Enter jumps to the selected pane",
-    ),
-    ("list-tabs", "Search tabs; Enter jumps to the selected tab"),
-    (
-        "list-sessions",
-        "Search running sessions; Enter switches session",
-    ),
+    ("list-panes", "Live panes"),
+    ("list-tabs", "Live tabs"),
+    ("list-sessions", "Running sessions"),
     ("focus-pane-id", "Focus a live pane by its stable ID"),
     ("go-to-tab-by-id", "Focus a live tab by its stable ID"),
     ("switch-session", "Switch to an existing session by name"),
@@ -55,7 +49,6 @@ pub struct Context {
 pub struct Completions {
     pub replace: Range<usize>,
     pub items: Vec<Suggestion>,
-    pub help: String,
     pub command: bool,
 }
 
@@ -142,7 +135,6 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
     let mut result = Completions {
         replace: current,
         items: vec![],
-        help: String::new(),
         command: before.is_empty(),
     };
     let metadata = commands::metadata();
@@ -181,12 +173,10 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
                 item.value.clone(),
             )
         });
-        result.help = "Type an action, or search commands by name or description".into();
         return result;
     }
     let name = before[0].trim_start_matches(':');
-    if let Some((_, help)) = LOCAL_COMMANDS.iter().find(|(n, _)| *n == name) {
-        result.help = (*help).into();
+    if LOCAL_COMMANDS.iter().any(|(n, _)| *n == name) {
         result.items = match name {
             "focus-pane-id" if before.len() == 1 => pane_targets(context),
             "go-to-tab-by-id" if before.len() == 1 => tab_targets(context, true),
@@ -194,10 +184,6 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
             _ => vec![],
         };
     } else if let Some(command) = metadata.iter().find(|command| command.get_name() == name) {
-        result.help = command
-            .get_about()
-            .map(ToString::to_string)
-            .unwrap_or_default();
         let mut position = 1;
         let mut pending = None;
         for word in before.iter().skip(1) {
@@ -239,11 +225,6 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
                     .cloned()
             });
             if let Some(arg) = arg {
-                result.help = format!(
-                    "{}: {}",
-                    arg.get_id(),
-                    arg.get_help().map(ToString::to_string).unwrap_or_default()
-                );
                 result.items = match (name, arg.get_id().as_str()) {
                     ("go-to-tab-name", "name") => context
                         .tabs

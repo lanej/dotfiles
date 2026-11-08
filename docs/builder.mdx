@@ -1,0 +1,70 @@
+---
+title: Builder
+description: How I build software with a steel thread, explicit decisions, and proportionate verification.
+---
+
+Builder is my shared software skill for designing, implementing, debugging and reviewing software with coding assistants. It combines a way of working—develop a steel thread, protect it, then expand—with architectural guidance that keeps behavior understandable and assumptions open to correction.
+
+The [Builder skill](../ai/skills/builder/SKILL.md) is the authoritative compact core. Its [architecture standard](../ai/skills/builder/references/standard.md) and [construction policy](../ai/skills/builder/references/construction.md) supply conditional detail. This guide explains how those instructions fit together; it does not replace them.
+
+## Start with a steel thread
+
+A steel thread is one narrow, executable path from the real entrypoint through the necessary decisions and integrations to an observable result. Choose one representative input and expected outcome, connect the pieces that path needs, and run it. Once the behavior will be retained, capture repeatable protection before broadening or restructuring it.
+
+For a document importer, the first thread could accept one supported document through its actual command, parse and validate its content, persist it through the intended storage, and retrieve the expected result. That establishes a useful foundation for adding formats, validation failures and recovery behavior.
+
+The scope stays small, but the execution crosses the boundaries needed to support the claim. A parser test establishes parser behavior; exercising import and retrieval together establishes more of the capability. Substituting in-memory storage can help development, but leaves compatibility with the intended storage unverified. Name that gap when the real boundary is unavailable.
+
+For a small utility, the whole thread may be input, transformation and output. In an existing application, extend its working path. A steel thread does not require a new framework, a distributed system or a prescribed directory structure.
+
+## Protect what works and grow from it
+
+Builder's working loop is:
+
+1. Choose the next meaningful outcome and what observation could contradict it.
+2. Connect and exercise the smallest path that answers that question.
+3. Protect retained behavior with a repeatable check.
+4. Simplify, then add the next behavior, failure condition or integration.
+
+TDD is optional unless the project requires it; verification is mandatory. During early development, I favor a few checks through the steel thread, starting with a representative happy path. The goal is maximum meaningful protection with minimum testing machinery. Failure and boundary checks enter early when they affect safety, feasibility or the credibility of the result; other cases expand as behavior becomes established.
+
+Unit tests help when isolating a stable decision improves protection or diagnosis. They are not the default starting point. Uncertain integration feasibility may need a focused experiment at the real boundary before connecting the thread. A discarded experiment does not automatically need a permanent suite, while retained consequential behavior needs repeatable protection where practical.
+
+Security, performance and failure handling belong in the first increment when they determine viability. Small increments preserve the project's delivery gates and authorization requirements.
+
+## Keep consequential behavior inspectable
+
+The skill requires six properties, scaled to the consequences and complexity of the changed capability:
+
+| Property | Practical meaning |
+| --- | --- |
+| Explicit expectations | Identify intended behavior independently of the current implementation. |
+| Inspectable decisions | Supply relevant inputs and state so decisions can be exercised and understood. |
+| Observable effects | Distinguish intentions, attempts, confirmations, failures and unknown outcomes. |
+| Preserved evidence | Retain the distinctions needed to challenge consequential conclusions, within privacy and retention limits. |
+| Revisability | Keep policies and assumptions in identifiable boundaries so corrections can stay local where practical. |
+| Operational falsifiability | Identify what could contradict a claim, where the evidence comes from and what it cannot establish. |
+
+A timeout after a remote write, for example, leaves its outcome unknown until evidence resolves it. A passing local test cannot establish that the provider completed the write. The architecture standard explains these requirements and their applicability limits in full.
+
+## Use the smallest supporting architecture
+
+Code layout and dependency boundaries follow [Pragmatic Hexagonal Architecture](../ai/skills/builder/references/standard.md): a functional core for decisions, an imperative shell for effects, a thin canonical model for application-owned concepts, and selective ports and adapters where substitution or isolation is useful. Organize around capabilities with the minimum supporting structure. Builder favors official SDKs or authoritative generated clients for external services.
+
+These are architectural defaults, with justified alternatives allowed. Simple handlers can keep explicit, exercisable decisions inline; small utilities need no interface hierarchy. Structure serves the capability and its evidence needs. Passing checks or following a directory layout cannot establish every required property.
+
+## Install and use Builder
+
+From this dotfiles checkout, install the complete package with:
+
+```sh
+make software-standard
+```
+
+The installed core lives at `~/.local/share/software-standards/builder/SKILL.md`, alongside its references and runnable examples. Start a fresh assistant session after installation. Claude and Codex loading, migration behavior and installation checks are covered in [Using Builder](./pragmatic-hexagonal-usage.md).
+
+For another repository, use the [repository bootstrap guide](./repository-bootstrap.md) to install a portable package. Copy the complete skill rather than only `SKILL.md`; the core routes to its supporting references when their task triggers apply.
+
+A task brief can make the intended first increment concrete:
+
+> Use Builder to add document import. Begin with a steel thread for one supported document, from the actual import command through persistence to retrieval. Verify the expected content, protect that path, then expand. Identify any substituted boundary and what remains unverified.

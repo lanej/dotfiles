@@ -17,8 +17,7 @@ The claude-mem startup-hook timeline fires only for the primary agent — sub-ag
 
 ## Code Comments
 
-When editing comments, read `~/.files/docs/conventional-code-comments.md`.
-Use tags selectively, honor repository conventions, and leave unrelated comments.
+For source-comment decisions, use the `code-comments` skill's compact guidance; load its full specification only when its conditional triggers apply. Honor repository conventions and leave unrelated comments alone.
 
 ## Execution & Delegation
 

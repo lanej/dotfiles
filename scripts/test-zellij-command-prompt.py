@@ -168,20 +168,25 @@ def prompt_text(terminal):
                      for line in screen(terminal)[top + 1:top + height - 1])
 
 
+def command_ready(terminal):
+    return command_line(terminal).lstrip().startswith(':')
+
+
 def open_prompt(terminal):
     # Wait for asynchronous closure so new keys cannot enter a stale popup.
     terminal.until("previous command dialog closes", lambda: "Zellij command" not in text(terminal))
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
     terminal.until("Ctrl-f : renders compact command input", lambda:
-                   "Zellij command" in text(terminal) and 'Esc close' in text(terminal)
-                   and prompt_frame(terminal) is not None)
+                   "Zellij command" in text(terminal) and command_ready(terminal))
     top, left, width, height = prompt_frame(terminal)
     assert width <= 64 and 5 <= height <= 9, f'Command popup is oversized: {width}x{height}'
     assert abs(left * 2 + width - 120) <= 2, 'Command popup is not horizontally centered'
     assert 4 <= top <= 12, f'Command popup is not near the upper third: {top}'
     assert 'COMMAND / VALUE' not in text(terminal) and 'suggestions' not in text(terminal), (
         'Command entry includes browsing chrome')
+    assert screen(terminal)[top + height - 1][left + 1:left + width - 1] == '─' * (width - 2), (
+        'Command entry includes instructions in its frame')
     # A native overlay must not create shells or reveal suppressed plugin panes.
     assert {p['id'] for p in terminal.terminals()} == original_terminals, 'Prompt opened a shell pane'
 
@@ -281,8 +286,7 @@ def exercise(first, second, home):
         first.until(command + " is displayed", lambda: result in text(first))
         unchanged()
         first.send(b'\r')
-        guidance = 'Tab complete'
-        first.until(command + ' selection returns to editable input', lambda: guidance in text(first))
+        first.until(command + ' selection returns to editable input', lambda: command_ready(first))
         unchanged()
         first.send(b'\x1b')
     submit(first, 'rename-tab "reopened successfully"', second)
@@ -304,13 +308,13 @@ def exercise(first, second, home):
                         and message in ' '.join(prompt_text(first).split()))
             first.send(b'\x1b')
             first.until('error details return to the original command', lambda:
-                        'new-pane --near-current-pane' in text(first) and 'Tab complete' in text(first))
+                        'new-pane --near-current-pane' in command_line(first) and command_ready(first))
         first.send(b'\x1b')
     submit(first, 'rename-pane --help', second)
     first.until('native action help is displayed', lambda: 'Usage:' in text(first))
     first.send(b'\x1b')
     # Help returns to the editable command so it can be corrected in place.
-    first.until('help returns to command', lambda: 'Tab complete' in text(first))
+    first.until('help returns to command', lambda: command_ready(first))
     first.send(b'\x1b')
     open_prompt(first)
     first.send(b'\r')
@@ -410,7 +414,7 @@ def exercise(first, second, home):
     # A parse failure keeps the original line, allowing a real correction.
     submit(first, 'move-focus sideways', second)
     first.until('invalid argument stays editable', lambda:
-                'sideways' in command_line(first) and 'Ctrl-d details' in text(first))
+                'sideways' in command_line(first) and 'invalid value' in prompt_text(first))
     capture(first, 'validation')
     first.send(b'\x15rename-tab "corrected inline"\r')
     first.until('inline correction executes', lambda: tabs()[initial_tab]['name'] == 'corrected inline')
@@ -419,7 +423,7 @@ def exercise(first, second, home):
     second.until('history belongs to second client', lambda: 'live renamed target' in text(second))
     assert 'toggle-floating-panes' not in text(second), 'History leaked from first client'
     second.send(b'\x1b')
-    second.until('history returns to editable command', lambda: 'Tab complete' in text(second))
+    second.until('history returns to editable command', lambda: command_ready(second))
     second.send(b'\x1b')
     second.until('history dialog closes before reload', lambda: 'Zellij command' not in text(second))
 
