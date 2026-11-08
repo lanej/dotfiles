@@ -129,7 +129,9 @@ case "$operation:$#" in
         fi
         # The caller, not the old server environment, supplies the fresh socket.
         case "$request" in /*) ;; *) fail 'request path must be absolute' ;; esac
-        safe_directory "$request" existing && [ "$permissions" = 700 ] || fail 'unsafe or expired request'
+        if ! safe_directory "$request" existing || [ "$permissions" != 700 ]; then
+            fail 'unsafe or expired request'
+        fi
         ;;
     *) fail 'usage: zellij-agent init | refresh SESSION | follow-popup | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY' ;;
 esac
@@ -154,7 +156,9 @@ if [ "$operation" = publish-popup ] || { [ "$operation" = init ] && [ -L "$raw" 
     [ "$raw" != "$link" ] || fail 'cannot follow the popup itself'
     managed_source || fail 'invalid managed agent source'
 else
-    [ -S "$raw" ] && [ ! -L "$raw" ] && [ -O "$raw" ] || fail 'invalid raw forwarded socket'
+    if [ ! -S "$raw" ] || [ -L "$raw" ] || [ ! -O "$raw" ]; then
+        fail 'invalid raw forwarded socket'
+    fi
 fi
 
 if [ "$operation" = init ]; then
@@ -167,7 +171,9 @@ else
     ln -s "$raw" "$temporary/agent.sock" || fail 'cannot stage agent link'
     # Reject queued work that has not reached publication before timeout.
     # Concurrent updates to one session select the last completed publication.
-    safe_directory "$request" existing && [ "$permissions" = 700 ] || fail 'expired update request'
+    if ! safe_directory "$request" existing || [ "$permissions" != 700 ]; then
+        fail 'expired update request'
+    fi
     mv -f "$temporary/agent.sock" "$link" || fail 'cannot publish session agent'
     # Do not trust the native CLI exit status to represent this helper's result.
     (set -C; printf '%s\n' "$link" > "$request/success") || fail 'cannot acknowledge update'

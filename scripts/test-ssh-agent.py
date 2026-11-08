@@ -33,11 +33,15 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 
 args = sys.argv[1:]
 if args[:1] == ["--session"]:
     raise SystemExit(17)
 assert args[:2] == ["attach", "--create"], args
+if os.environ.get("DELAYED_SERVER"):
+    time.sleep(1)
+    Path(os.environ["DELAYED_SERVER"]).touch()
 Path(os.environ["ATTACHED"]).write_text(json.dumps({
     "args": args, "socket": os.environ.get("SSH_AUTH_SOCK", ""),
 }))
@@ -88,7 +92,8 @@ print(sys.argv[2] + "=" + values[sys.argv[2]])
         def attach(*args, **updates):
             attached.unlink(missing_ok=True)
             subprocess.run([str(bindir / "zellij-attach"), *args],
-                           env={**env, **updates}, check=True, capture_output=True, text=True)
+                           env={**env, **updates}, check=True, capture_output=True, text=True,
+                           timeout=15)
             return json.loads(attached.read_text())
 
         def assert_live(socket):
@@ -130,7 +135,19 @@ print(sys.argv[2] + "=" + values[sys.argv[2]])
             assert_live(tmux_pane)
             assert shell(SSH_CONNECTION="", SSH_AUTH_SOCK=str(local), TMUX="fixture",
                          TMUX_SESSION_SOCKET=other) == str(local), "local tmux changed its agent"
+            ready, refreshed = home / "server-ready", home / "refreshed"
+            helper = bindir / "zellij-agent"
+            helper.write_text('''#!/bin/sh
+[ -e "$DELAYED_SERVER" ] || exit 17
+printf '%s' "$SSH_AUTH_SOCK" > "$REFRESHED"
+''')
+            helper.chmod(0o755)
+            delayed = attach("restored", SSH_AUTH_SOCK=first,
+                             DELAYED_SERVER=str(ready), REFRESHED=str(refreshed))
+            assert delayed["args"] == ["attach", "--create", "restored"]
+            assert refreshed.read_text() == first, "Delayed server startup exhausted agent retries"
             print("PASS: local agents and tmux selection are preserved; failed recovery never blocks attachment.")
+            print("PASS: stopped-session attachment retries agent refresh after delayed server startup.")
         finally:
             for agent in processes:
                 if agent.poll() is None:
