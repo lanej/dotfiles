@@ -51,7 +51,7 @@ The [keybinding map](zellij-keybinds.mdx) lists shortcuts, aliases, and keys ins
 | Feature | Use it to… |
 | --- | --- |
 | [Shared popup](zellij/shared-popup.mdx) | Keep a scratch shell across tabs and sessions |
-| [Command prompt](zellij/command-prompt.mdx) | Run a Zellij action without a shell command |
+| [Command palette](zellij/command-prompt.mdx) | Complete and run actions, or find a live pane, tab, or session |
 | [Create and rename sessions](zellij/sessions.mdx) | Open or name a workspace |
 | [Detach one client](zellij/detach-client.mdx) | Disconnect a selected view while leaving programs running |
 | [Shut down a session](zellij/shutdown.mdx) | Deliberately end one session with confirmation |
