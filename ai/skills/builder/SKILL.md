@@ -1,6 +1,6 @@
 ---
 name: builder
-description: Use when designing, implementing, modifying, debugging or reviewing software. Build small working paths, protect retained behavior and apply Pragmatic Hexagonal Architecture with proportionate evidence.
+description: Use when designing, implementing, modifying, debugging or reviewing software. Develop a steel thread, protect retained behavior and apply Pragmatic Hexagonal Architecture with proportionate evidence.
 ---
 
 # Builder
@@ -18,7 +18,9 @@ This core applies to software produced by humans or agents. `MUST` properties ar
 
 Specify what could contradict a claim before treating evidence as confirmation. Contract claims need independent expectations; environment/provider/customer-outcome claims need external observations. Account for sampling, delays, confounding and unavailable evidence where relevant. Tests copying the production algorithm provide no independent oracle; a green check establishes only exercised behavior and conditions. Distinguish a violated contract, a failed environmental assumption and an outcome the contract never guaranteed. Preserve relevant contradictory evidence before proposing a correction.
 
-## Default architecture
+## Default architecture: Pragmatic Hexagonal Architecture
+
+Use [Pragmatic Hexagonal Architecture](references/standard.md) to guide code layout and dependency boundaries. Organize around capabilities with identifiable decisions and effects; choose the minimum structure that supports them.
 
 - **PHA-A01 — Functional core:** Domain meaning, policy and decisions SHOULD be independent of effectful infrastructure, with external facts supplied explicitly. Atomic database constraints MAY enforce authoritative invariants; retain an inspectable contract and evidence of actual enforcement.
 - **PHA-A02 — Imperative shell:** The shell SHOULD own orchestration, I/O, composition and effects; business decisions SHOULD remain identifiable outside transport, storage and vendor glue. Small handlers MAY make explicit, exercisable simple decisions directly; isolation-dependent transactional decisions MAY stay near storage.
@@ -31,15 +33,19 @@ Scale structure and evidence to consequence and complexity. Small utilities need
 
 Record material deviations near the contract: **requirement ID → concrete constraint → retained protections → revisit condition**. A prevented MUST property remains an explicit compliance gap; justified alternatives to SHOULD techniques do not erase contradictory evidence.
 
-## Working increments
+## Develop a steel thread
 
-Establish the smallest meaningful executable behavior, then simplify and expand. Resolve consequential uncertainty with a result that could contradict the approach; failure can be useful. For known requirements an early test may fit; for feasibility use a credible experiment at the relevant real boundary. Mocks cannot resolve uncertainty about the boundary they replace. Use safe, authorized experiments without bypassing permissions or production protections.
+Start with a **steel thread**: one narrow, executable path from the capability's real entrypoint, through the decisions and necessary integration boundaries, to an observable result. Choose a representative input and expected outcome, connect only what that path needs, and exercise it before broadening behavior or building supporting layers. For an existing system, extend its working path rather than rebuilding the stack. A small utility's thread may be a single input-to-output transformation; no distributed architecture is implied.
 
-TDD is optional; verification is mandatory. Once meaningful behavior will be retained or its conclusion relied on, capture repeatable protection before expansion or material restructuring. Prefer extending an existing behavioral detector; protect intended behavior rather than speculative internals and preserve failures where practical. Characterize old observed behavior separately from required behavior.
+Keep the thread narrow in scope but real in execution. Resolve consequential uncertainty with a result that could contradict the approach; failure can be useful. For known requirements an early test may fit; for feasibility use a focused experiment at the relevant real boundary, then connect the result into the thread. Mocks cannot establish that the boundary they replace works. If a boundary is unavailable, state the substitution and remaining gap; do not claim the complete path is verified. Use safe, authorized experiments without bypassing permissions or production protections.
+
+TDD is optional; verification is mandatory. During early development, favor a few checks through the steel thread, starting with a representative happy path. Maximize meaningful protection with minimum testing machinery. Add failure and boundary checks early when they affect safety, feasibility or the credibility of the result; otherwise expand them as behavior becomes established. Introduce unit tests when isolating stable decisions improves protection or diagnosis, rather than as an initial development requirement.
+
+Once meaningful behavior will be retained or its conclusion relied on, capture repeatable protection before substantial expansion or material restructuring. Prefer extending an existing behavioral detector; protect intended behavior rather than speculative internals and preserve consequential failures where practical. Characterize old observed behavior separately from required behavior.
 
 Discarded experiments do not automatically need a permanent suite. One-off manual demonstrations do not provide regression protection: automate consequential retained behavior where practical, otherwise preserve a reproducible check and its limits. Address security, performance and failure handling initially when they determine viability; never defer safeguards against irreversible harm.
 
-Plan working-and-verifying increments together, without prescribed commit sequences or reports per loop. Construction feedback does not waive delivery gates, reviews, CI or explicit test-first mandates. Review protection of retained behavior, not test authorship order unless mandated. Report specific requirement violations, affected behavior, contradictory evidence, assumptions and verification gaps.
+Grow from the protected thread by adding the next meaningful behavior, failure condition or integration, verifying each increment before further expansion. Plan working-and-verifying increments together, without prescribed commit sequences or reports per loop. Construction feedback does not waive delivery gates, reviews, CI or explicit test-first mandates. Review protection of retained behavior, not test authorship order unless mandated. Report specific requirement violations, affected behavior, contradictory evidence, assumptions and verification gaps.
 
 ## Load detail when needed
 

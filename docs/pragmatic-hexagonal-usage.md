@@ -59,12 +59,10 @@ is insufficient.
 
 ## Apply and review
 
-First make the smallest meaningful behavior work, not the whole system.
-TDD is optional; verification is not. Choose an early test for clear requirements
-or a credible experiment for uncertain feasibility. Once meaningful behavior
-will be retained, protect it before expanding or materially restructuring it.
-Plan working-and-verifying increments rather than separate implementation and
-testing phases. This does not waive delivery gates or explicit project mandates.
+Begin with a steel thread: one narrow path from the real entrypoint through the necessary decisions and integration boundaries to an observable result. Choose a representative input and expected outcome, connect that path and exercise it before broadening the capability. The [Builder guide](builder.mdx) explains the approach with a document-import example.
+
+TDD is optional; verification is not. Keep early testing light: start with a representative happy-path check through the steel thread, adding failure and boundary checks when they affect safety, feasibility or the credibility of the result. Introduce unit tests when isolating stable decisions improves protection or diagnosis. Use a credible experiment for uncertain feasibility. Name substituted boundaries and remaining gaps rather than claiming the complete path is verified. Once meaningful behavior will be retained, protect it before substantial expansion or material restructuring. Plan working-and-verifying increments rather than separate implementation and testing phases. This does not waive delivery gates or explicit project mandates.
+
 When writing implementation-agent briefs, direct loading of the Builder core and task-relevant detail. Explicit user or project test-first requirements still govern that work.
 
 Apply the architecture standard to consequential claims, conditions,
