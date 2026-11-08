@@ -8,7 +8,7 @@ local function clean(value)
 		:match("^%s*(.-)%s*$")
 end
 
-local function clip(text, width)
+local function clip(text, width, from_end)
 	if vim.fn.strdisplaywidth(text) <= width then
 		return text
 	end
@@ -16,14 +16,16 @@ local function clip(text, width)
 		return ""
 	end
 	local result = ""
-	for _, code in ipairs(vim.fn.str2list(text)) do
-		local char = vim.fn.nr2char(code)
-		if vim.fn.strdisplaywidth(result .. char .. "…") > width then
+	local codes = vim.fn.str2list(text)
+	for index = 1, #codes do
+		local char = vim.fn.nr2char(codes[from_end and (#codes - index + 1) or index])
+		local candidate = from_end and (char .. result) or (result .. char)
+		if vim.fn.strdisplaywidth(candidate .. "…") > width then
 			break
 		end
-		result = result .. char
+		result = candidate
 	end
-	return result .. "…"
+	return from_end and ("…" .. result) or (result .. "…")
 end
 
 local function git_changes(root)
@@ -126,28 +128,55 @@ local function badge(change)
 	return table.concat(result, " ")
 end
 
-local function short_path(root, filename)
-	local relative = root and vim.fs.relpath(root, filename) or filename
-	local parts = vim.split(relative or filename, "/", { plain = true, trimempty = true })
-	if #parts > 2 then
-		return "…/" .. table.concat(parts, "/", #parts - 1)
+local function short_paths(symbols, root, unique)
+	local files, tree, paths = {}, { children = {} }, {}
+	for _, symbol in ipairs(symbols) do
+		if symbol.location then
+			local file = vim.fs.normalize(vim.uri_to_fname(symbol.location.uri))
+			if not files[file] then
+				local parts = vim.split(file, "/", { plain = true, trimempty = true })
+				files[file] = parts
+				local node = tree
+				for index = #parts, 1, -1 do
+					local part = parts[index]
+					node.children[part] = node.children[part] or { count = 0, children = {} }
+					node = node.children[part]
+					node.count = node.count + 1
+				end
+			end
+		end
 	end
-	return table.concat(parts, "/")
+	for file, parts in pairs(files) do
+		-- WHY: Native FzfLua streams clients independently, so separate replies cannot share a suffix index.
+		if not unique then
+			paths[file] = (root and vim.fs.relpath(root, file)) or file
+		end
+		local node = tree
+		for index = #parts, 1, -1 do
+			node = node.children[parts[index]]
+			if node.count == 1 or index == 1 then
+				paths[file] = paths[file] or table.concat(parts, "/", index)
+				break
+			end
+		end
+	end
+	return paths
 end
 
-local function label(symbol, parent, filename, root, width, document, git_width)
+local function label(symbol, parent, path, width, git_width)
 	local name = clean(symbol.name)
 	local kind = vim.lsp.protocol.SymbolKind[symbol.kind] or "Unknown"
 	local remaining = width - vim.fn.strdisplaywidth(name) - vim.fn.strdisplaywidth(kind) - git_width - 4
 	local context = {}
 	local candidates = { clean(symbol.detail), clean(symbol.containerName or parent) }
-	if not document then
+	if path then
 		-- WHY: The hidden native path column must not make same-named workspace symbols indistinguishable.
-		table.insert(candidates, 1, clean(short_path(root, filename)))
+		table.insert(candidates, 1, clean(path))
 	end
-	for _, text in ipairs(candidates) do
+	for index, text in ipairs(candidates) do
 		if text ~= "" and text ~= name and remaining >= 6 then
-			local part = clip(text, math.min(remaining - 2, 28))
+			local is_path = path and index == 1
+			local part = clip(text, is_path and (remaining - 2) or math.min(remaining - 2, 28), is_path)
 			context[#context + 1] = part
 			remaining = remaining - vim.fn.strdisplaywidth(part) - 2
 		end
@@ -168,6 +197,7 @@ function M.attach(opts, width)
 	local buf = vim.api.nvim_get_current_buf()
 	local filename = vim.api.nvim_buf_get_name(buf)
 	local root = vim.fs.root(buf, { ".git" })
+	local unique = #vim.lsp.get_clients({ bufnr = buf, method = handler.method }) <= 1
 	local changes, additions = git_changes(root)
 	local original = handler.handler
 	local utils = require("fzf-lua.utils")
@@ -184,7 +214,7 @@ function M.attach(opts, width)
 		end
 		return badges[path]
 	end
-	local function enrich(symbols, parent)
+	local function enrich(symbols, parent, paths)
 		local result = {}
 		for _, symbol in ipairs(symbols) do
 			local copy = vim.tbl_extend("force", {}, symbol)
@@ -199,15 +229,13 @@ function M.attach(opts, width)
 			copy.name = label(
 				symbol,
 				parent,
-				file,
-				root,
+				paths[vim.fs.normalize(file)],
 				width,
-				document,
 				vim.fn.strdisplaywidth((utils.strip_ansi_coloring(git)))
 			)
 			copy.containerName = nil
 			if symbol.children then
-				copy.children = enrich(symbol.children, symbol.name)
+				copy.children = enrich(symbol.children, symbol.name, paths)
 			end
 			result[#result + 1] = copy
 		end
@@ -216,7 +244,8 @@ function M.attach(opts, width)
 	-- WHY: Clone the handler for this picker; never alter shared FzfLua handlers or LSP replies.
 	opts.lsp_handler = vim.tbl_extend("force", {}, handler, {
 		handler = function(options, emit, method, result, ctx, config)
-			local symbols = enrich(vim.islist(result) and result or { result })
+			local response = vim.islist(result) and result or { result }
+			local symbols = enrich(response, nil, document and {} or short_paths(response, root, unique))
 			original(options, function(row, ...)
 				local separator = document and "\t\t" or utils.nbsp
 				local start, finish = row:find(separator, 1, true)

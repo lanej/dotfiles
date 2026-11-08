@@ -47,9 +47,9 @@ local function command(args)
 	assert(result.code == 0, result.stderr)
 	return result.stdout
 end
-local function server(root, respond)
+local function server(root, respond, name)
 	local client = assert(vim.lsp.start({
-		name = "navigation-fixture",
+		name = name or "navigation-fixture",
 		root_dir = root,
 		cmd = function(dispatchers)
 			local closing, id = false, 0
@@ -129,10 +129,10 @@ local function workflow()
 	assert(#vim.fn.taglist("^ignored_symbol$") == 0, "Initial index included ignored source")
 	assert(not vim.uv.fs_stat(project .. "/tags"), "Index was written into project")
 	local index = vim.fn.tagfiles()[1]
-	vim.fn.mkdir(project .. "/a", "p")
-	vim.fn.mkdir(project .. "/b", "p")
-	write(project .. "/a/client.lua", { "function createShipment() end" })
-	write(project .. "/b/client.lua", { "function createShipment() end" })
+	vim.fn.mkdir(project .. "/a/shared", "p")
+	vim.fn.mkdir(project .. "/b/shared", "p")
+	write(project .. "/a/shared/client.lua", { "function createShipment() end" })
+	write(project .. "/b/shared/client.lua", { "function createShipment() end" })
 	command({ "git", "-C", project, "add", "--", "library file.lua" })
 	write(project .. "/large.lua", vim.split(string.rep("local value = true\n", 1200), "\n", { trimempty = true }))
 
@@ -190,19 +190,20 @@ local function workflow()
 			return {
 				{ name = "server_symbol", kind = 12, containerName = "ShippingClient", location = location(target) },
 				{ name = "large_symbol", kind = 12, location = location(project .. "/large.lua") },
+				{ name = "large_alias", kind = 12, location = location(project .. "/large.lua") },
 				{
 					name = "createShipment",
 					kind = 12,
 					containerName = "VeryLongShippingClient",
 					detail = "(account,parcel,options) -> Shipment",
-					location = location(project .. "/a/client.lua"),
+					location = location(project .. "/a/shared/client.lua"),
 				},
 				{
 					name = "createShipment",
 					kind = 12,
 					containerName = "VeryLongShippingClient",
 					detail = "(account,parcel,options) -> Shipment",
-					location = location(project .. "/b/client.lua"),
+					location = location(project .. "/b/shared/client.lua"),
 				},
 			}
 		elseif method == "textDocument/references" then
@@ -291,9 +292,39 @@ local function workflow()
 	picker("createShipment")
 	wait(function()
 		local wide = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-		return wide:find("a/client.lua", 1, true) and wide:find("b/client.lua", 1, true)
+		return wide:find("a/shared/client.lua", 1, true) and wide:find("b/shared/client.lua", 1, true)
 	end, "Long signatures hid distinguishing workspace paths")
+	local wide = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(not wide:find("project with spaces/", 1, true), "Workspace paths retained unnecessary parent directories")
+	local unique = assert(wide:match("[^\n]*large_symbol[^\n]*"))
+	assert(
+		unique:find("large.lua", 1, true) and not unique:find("/large.lua", 1, true),
+		"Unique filenames retained directories"
+	)
 	close_picker()
+	vim.fn.mkdir(project .. "/other/shared", "p")
+	write(project .. "/other/shared/client.lua", { "function createShipment() end" })
+	local secondary = server(project, function(method, _, callback)
+		if method == "workspace/symbol" then
+			vim.defer_fn(function()
+				callback(nil, {
+					{
+						name = "createShipment",
+						kind = 12,
+						location = location(project .. "/other/shared/client.lua"),
+					},
+				})
+			end, 150)
+			return "delayed"
+		end
+	end, "secondary-symbols")
+	keys(",ws")
+	picker("other/shared/client.lua")
+	close_picker()
+	vim.lsp.get_client_by_id(secondary):stop(true)
+	wait(function()
+		return #vim.lsp.get_clients({ bufnr = source_buf }) == 1
+	end, "Secondary symbol provider did not stop")
 	vim.o.columns = 160
 	local search
 	fzf.grep = function(opts)
