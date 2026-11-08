@@ -62,6 +62,8 @@ case "$target" in
         mkdir -p "${setup_home}/.config/atuin"
         ln -fs "${dotfiles}/sh/atuin.toml" "${setup_home}/.config/atuin/config.toml"
         ln -fs "${dotfiles}/sh/dircolors" "${setup_home}/.dir_colors"
+        mkdir -p "${setup_home}/.config/eza"
+        ln -fs "${dotfiles}/eza/theme.yml" "${setup_home}/.config/eza/theme.yml"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
         ln -fs "${dotfiles}/bash/bashenv" "${setup_home}/.bashenv"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
