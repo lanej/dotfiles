@@ -232,9 +232,10 @@ requires = ["go"]
 setup = ["treehouse-config"]
 
 [tools.firstmate]
-installer = "firstmate"
-requires = ["treehouse", "jq", "node"]
-setup = ["firstmate-config"]
+description = "Retire the former Firstmate integration; preserve saved work."
+installer = "config"
+requires = ["node"]
+setup = ["firstmate-retire"]
 
 [tools.pi]
 installer = "package"
@@ -250,9 +251,10 @@ version = "0.15.1"
 requires = ["node"]
 
 [tools.firstmate-mobile]
+description = "Compatibility switch for retiring Firstmate mobile configuration."
 installer = "config"
-requires = ["firstmate", "pi", "paseo"]
-setup = ["firstmate-mobile-config"]
+requires = ["pi", "paseo"]
+setup = ["firstmate-retire"]
 
 [tools.agent-status-broker]
 description = "Install the agent-status broker and share its hooks."

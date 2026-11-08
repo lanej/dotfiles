@@ -30,49 +30,12 @@ case "$target" in
 esac
 
 case "$target" in
-    pi-config)
-        node "$dotfiles/firstmate/github-feedback.mjs" configure-pi "$setup_home/.pi/agent/settings.json"
-        ;;
-    firstmate-mobile-config)
-        firstmate_home=${6:-$setup_home/src/firstmate}
-        mkdir -p "$firstmate_home/config"
-        if [[ ! -e "$firstmate_home/config/github-feedback.json" && ! -L "$firstmate_home/config/github-feedback.json" ]]; then
-            cp "$dotfiles/firstmate/github-feedback.json" "$firstmate_home/config/github-feedback.json"
-        fi
-        if [[ ! -e "$firstmate_home/config/peers.json" && ! -L "$firstmate_home/config/peers.json" ]]; then
-            cp "$dotfiles/firstmate/peers.json" "$firstmate_home/config/peers.json"
-        fi
-        FIRSTMATE_HOME="$firstmate_home" node "$dotfiles/firstmate/github-feedback.mjs" configure-paseo
-        # Remove only stale links that this checkout's retired dispatcher owned.
-        for entry in bugfix-dispatcher-launch bugfix-worker; do
-            destination="$setup_home/.local/bin/$entry"
-            if [[ -L "$destination" && $(readlink "$destination") == "$dotfiles/bin/$entry" ]]; then
-                rm "$destination"
-            fi
-        done
+    pi-config|firstmate-retire)
+        node "$dotfiles/scripts/retire-firstmate.mjs" "$setup_home"
         ;;
     treehouse-config)
         mkdir -p "${setup_home}/.config/treehouse"
         ln -fs "${dotfiles}/treehouse/config.toml" "${setup_home}/.config/treehouse/config.toml"
-        ;;
-    firstmate-config)
-        firstmate_home=${6:-$setup_home/src/firstmate}
-        test -x "$firstmate_home/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
-        mkdir -p "$setup_home/.local/bin" "$setup_home/.config/firstmate" "$firstmate_home/config"
-        ln -fs "$dotfiles/bin/firstmate" "$setup_home/.local/bin/firstmate"
-        ln -fs "$dotfiles/firstmate/tmux.conf" "$setup_home/.config/firstmate/tmux.conf"
-        primary_config="$setup_home/.config/firstmate/primary-harness"
-        if [[ ! -e "$primary_config" && ! -L "$primary_config" ]]; then
-            ln -s "$dotfiles/firstmate/primary-harness" "$primary_config"
-        fi
-        if [ ! -e "$firstmate_home/config/backend" ] && [ ! -L "$firstmate_home/config/backend" ]; then
-            ln -s "$dotfiles/firstmate/backend" "$firstmate_home/config/backend"
-        fi
-        for setting in crew-harness codex-approval-mode; do
-            if [[ ! -e "$firstmate_home/config/$setting" && ! -L "$firstmate_home/config/$setting" ]]; then
-                ln -s "$dotfiles/firstmate/$setting" "$firstmate_home/config/$setting"
-            fi
-        done
         ;;
     dev)
         mkdir -p "${setup_home}/src"
