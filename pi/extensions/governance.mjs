@@ -18,6 +18,7 @@ export function makeGovernance(pi, options = {}) {
   const configFile = options.configFile ?? new URL('budgets.json', root);
   const readConfig = async () => JSON.parse(await readFile(configFile, 'utf8'));
   const directory = join(state, 'proposals');
+  const constitutionFile = options.constitutionFile ?? new URL('constitution.md', root);
   const filename = id => {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid proposal ID');
     return join(directory, id + '.json');
@@ -39,7 +40,7 @@ export function makeGovernance(pi, options = {}) {
       await mkdir(directory, { recursive: true, mode: 0o700 });
       const ids = (await readdir(directory)).filter(name => /^[a-f0-9-]{36}\.json$/.test(name));
       const proposals = await Promise.all(ids.map(name => readProposal(name.slice(0, -5))));
-      return reply({ role, weeklyBudgetUsd: config.budgetsUsd[role], enforcement: 'not implemented', proposals });
+      return reply({ role, weeklyBudgetUsd: config.budgetsUsd[role], sessions: config.sessions, enforcement: 'not implemented', scheduling: 'manual', proposals });
     },
   });
   if (role === 'legislative') pi.registerTool({
@@ -68,12 +69,18 @@ export function makeGovernance(pi, options = {}) {
   });
   pi.on('before_agent_start', async event => {
     const config = await readConfig();
+    const constitution = await readFile(constitutionFile, 'utf8');
     const instructions = {
       executive: 'Implement requested changes only in isolated candidate branches. Never deploy or merge a system amendment without explicit human authorization.',
       judicial: 'Independently examine evidence and record a pass/fail review. You do not approve deployment.',
       legislative: 'Identify systematic failures and propose concrete changes using governance_propose. Do not modify the running system.',
     };
-    return { systemPrompt: event.systemPrompt + '\n\nPi governance experimental role: ' + role + '. Weekly budget: $' + config.budgetsUsd[role] + ' (informational only, not enforced). ' + instructions[role] };
+    return { systemPrompt: event.systemPrompt + '\n\nPi governance experimental role: ' + role + '. Weekly budget: 
+  });
+}
+
+export default function governance(pi) { makeGovernance(pi); }
+ + config.budgetsUsd[role] + ' (informational only, not enforced). ' + instructions[role] + '\n\nThe constitution follows; it is guidance until enforced by a trusted controller. Do not advance ordinary systemic changes automatically. Judicial docket: ' + config.sessions.judicial.cadence + '; legislative session: ' + config.sessions.legislative.cadence + '; observe changes for at least ' + config.sessions.adoption.minObservationDays + ' days.\n\n' + constitution };
   });
 }
 
