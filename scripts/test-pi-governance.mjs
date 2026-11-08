@@ -41,7 +41,15 @@ test('legislative proposal → independent judicial review; no approval or deplo
     await assert.rejects(judicial.tools.get('governance_review').execute('3', {
       proposalId: proposed.id, verdict: 'pass', evidence: 'duplicate',
     }), /already been reviewed/);
-    assert.equal((await executive.tools.get('governance_status').execute()).details.weeklyBudgetUsd, 50);
+    const status = (await executive.tools.get('governance_status').execute()).details;
+    assert.equal(status.weeklyBudgetUsd, 50);
+    assert.equal(status.sessions.judicial.cadence, 'weekly');
+    assert.equal(status.sessions.legislative.cadence, 'monthly');
+    assert.equal(status.sessions.legislative.maxOrdinaryAmendments, 1);
+    assert.equal(status.sessions.adoption.minObservationDays, 14);
+    const prompt = await executive.events.get('before_agent_start')({ systemPrompt: 'Base context' });
+    assert.match(prompt.systemPrompt, /Article I — Integrity/);
+    assert.match(prompt.systemPrompt, /Do not advance ordinary systemic changes automatically/);
     assert.deepEqual(JSON.parse(await readFile(join(state, 'proposals', proposed.id + '.json'), 'utf8')), reviewed);
     for (const pi of [legislative, judicial, executive]) {
       assert(![...pi.tools.keys()].some(name => /merge|deploy|approve/.test(name)));
