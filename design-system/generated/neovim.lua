@@ -967,6 +967,14 @@ return {
 ["fg"] = "#ECEFF4",
 ["bold"] = true,
 },
+["FzfLuaSymbolSignature"] = {
+["fg"] = "#8FBCBB",
+["italic"] = true,
+},
+["FzfLuaSymbolFile"] = {
+["fg"] = "#D8DEE9",
+["bold"] = true,
+},
 ["FzfLuaFzfBorder"] = {
 ["link"] = "FloatBorder",
 },

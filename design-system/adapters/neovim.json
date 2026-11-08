@@ -952,6 +952,14 @@
     "fg": "@text.strong",
     "bold": true
   },
+  "FzfLuaSymbolSignature": {
+    "fg": "@syntax.type",
+    "italic": true
+  },
+  "FzfLuaSymbolFile": {
+    "fg": "@text",
+    "bold": true
+  },
   "FzfLuaFzfBorder": {
     "link": "FloatBorder"
   },
