@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyte==0.8.2"]
+# ///
 """Exercise prefix waiting, native attention and triage through the installed bar.
 
 Local protocol emitters stand in for Claude/Codex; no model/account is used.
@@ -98,8 +102,8 @@ def main():
         def prefix_banner(client):
             screen = display(client)
             return "PREFIX" in screen.display[0] and all(
-                screen.buffer[0][col].bg == "b48ead"
-                and screen.buffer[0][col].fg == "2e3440"
+                screen.buffer[0][col].bg == "434c5e"
+                and screen.buffer[0][col].fg == "88c0d0"
                 and screen.buffer[0][col].bold
                 for col in range(screen.columns))
 
@@ -118,6 +122,13 @@ def main():
             resize(terminal, 28)
             terminal.until("prefix remains visible after narrowing the terminal", lambda:
                            prefix_banner(terminal) and top_line(terminal).endswith("…"))
+            if os.environ.get("THEME_CAPTURE_DIR"):
+                import json
+                capture = Path(os.environ["THEME_CAPTURE_DIR"])
+                capture.mkdir(parents=True, exist_ok=True)
+                screen = display(terminal)
+                cells = [screen.buffer[0][col]._asdict() for col in range(screen.columns)]
+                (capture / "zellij-prefix.json").write_text(json.dumps(cells, indent=2) + "\n")
             terminal.send(b"\x1b")
             terminal.until("Escape restores the normal bar", lambda:
                            "PREFIX" not in top_line(terminal)

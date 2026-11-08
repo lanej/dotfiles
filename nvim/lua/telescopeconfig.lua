@@ -35,7 +35,6 @@ telescope.setup({
 			-- height = 0.85,
 			preview_cutoff = 160,
 		},
-		theme = "nord",
 		border = true,
 		borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
 		color_devicons = true,

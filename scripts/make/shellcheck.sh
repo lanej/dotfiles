@@ -22,4 +22,5 @@ shellcheck -x \
     "$dotfiles/bin/zellij-balance" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/git-ssh" \
+    "$dotfiles/bin/dotfiles-fzf" \
     "$dotfiles/bin/sync-codex-mcp-servers"

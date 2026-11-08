@@ -95,7 +95,7 @@ export ARCH=$(uname -m)
 export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
 export EDITORD=${EDITORD:-$EDITOR}
-# nord-ish
+# Named ANSI colors inherit the terminal palette.
 export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
@@ -198,3 +198,8 @@ else
 fi
 
 [ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
+
+# SEE: Generated native theme settings do not require a generator at shell startup.
+if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh"
+fi

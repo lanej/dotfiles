@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="708" height="44" viewBox="0 0 708 44" role="img" aria-label="zellij — captured native terminal cells">
+<rect width="100%" height="100%" fill="#2E3440"/>
+<g font-family="monospace" font-size="14" style="white-space:pre">
+<rect x="12" y="12" width="684" height="20" fill="#434c5e"/>
+<text x="21" y="27" fill="#88c0d0" font-weight="bold" font-style="normal" text-decoration="none" textLength="396" lengthAdjust="spacingAndGlyphs">PREFIX  waiting for next key  |  Esc cancels</text>
+</g></svg>

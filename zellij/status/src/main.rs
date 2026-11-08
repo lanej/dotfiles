@@ -1,3 +1,5 @@
+mod theme;
+use theme::{foreground, background, mark};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -97,17 +99,6 @@ fn bar_heading(mode: &str, host: &str, available: usize, reserve_tab: bool) -> S
     clipped(&format!("{}{} │", mode, host), budget)
 }
 
-fn mark(status: AttentionStatus, question: bool) -> (&'static str, &'static str) {
-    match status {
-        AttentionStatus::NeedsYou if question => ("?", "235;203;139"),
-        AttentionStatus::NeedsYou => ("!", "235;203;139"),
-        AttentionStatus::Failed => ("×", "191;97;106"),
-        AttentionStatus::Done => ("✓", "163;190;140"),
-        AttentionStatus::Working => ("●", "136;192;208"),
-        AttentionStatus::NewOutput => ("·", "136;192;208"),
-        _ => ("", "136;192;208"),
-    }
-}
 
 impl State {
     fn poll(&mut self) {
@@ -279,6 +270,7 @@ impl ZellijPlugin for State {
     fn render(&mut self, _rows: usize, cols: usize) {
         if self.clipboard_receiver { return; }
         self.clicks.clear();
+        let colors = self.mode.style.colors;
         if !self.allowed {
             print!("Grant lane-status permissions to enable the top bar");
             return;
@@ -291,8 +283,8 @@ impl ZellijPlugin for State {
             // Prefix waiting owns the whole row, even when a narrow terminal
             // would otherwise give all its space to the clock or a notice.
             let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
-            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
-                label, " ".repeat(cols.saturating_sub(label.width())));
+            print!("\x1b[1;23;{};{}m{}{}\x1b[0m",
+                background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
         if self.mode.mode == InputMode::RenameSession && !dimmed {
@@ -300,8 +292,8 @@ impl ZellijPlugin for State {
             // session name. Native Enter/cancel/validation own its lifecycle.
             let draft = plain(self.mode.session_name.as_deref().unwrap_or(""));
             let label = clipped(&format!(" RENAME SESSION: {}  |  Enter saves · Esc cancels ", draft), cols);
-            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
-                label, " ".repeat(cols.saturating_sub(label.width())));
+            print!("\x1b[1;23;{};{}m{}{}\x1b[0m",
+                background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
         let attention = self.attention.counts.needs_you + self.attention.counts.failed;
@@ -332,7 +324,7 @@ impl ZellijPlugin for State {
         };
         let mut used = 0;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
-        print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
+        print!("\x1b[{};{}m", background(colors.text_unselected.background), foreground(colors.text_unselected.emphasis_1));
         let heading = bar_heading(mode, &host, available,
             self.notifications.notice().is_some() && !self.tabs.is_empty());
         for c in heading.chars() {
@@ -351,14 +343,15 @@ impl ZellijPlugin for State {
                 .any(|pane| pane.attention.effective_status() == AttentionStatus::NeedsYou
                     && pane.attention.detail.kind == Some(BlockedKind::Question));
             let (glyph, color) = if tab.attention.status == AttentionStatus::Idle && tab.has_bell_notification {
-                ("!", "235;203;139")
-            } else { mark(tab.attention.status, question) };
+                ("!", colors.text_unselected.emphasis_0)
+            } else { mark(tab.attention.status, question, &colors) };
             let zoom = if tab.is_fullscreen_active { " Z" } else { "" };
             let name_budget = budget.saturating_sub(tab.position.to_string().len() + 5 + zoom.len());
             let name = clipped(&tab_name(tab, &self.panes, None, &self.view["auto_titles"]), name_budget);
             let label = format!(" {}:{} {}{} ", tab.position, name, glyph, zoom);
             let start = used;
-            print!("\x1b[48;2;{}m\x1b[38;2;{}m", if tab.active { "76;65;82" } else { "46;52;64" }, if tab.active && glyph.is_empty() { "180;142;173" } else { color });
+            let tab_style = if tab.active { colors.ribbon_selected } else { colors.ribbon_unselected };
+            print!("\x1b[{};{}m", background(tab_style.background), foreground(if glyph.is_empty() { tab_style.base } else { color }));
             for c in label.chars() {
                 let width = c.width().unwrap_or(0);
                 if used + width > available { break; }
@@ -368,12 +361,12 @@ impl ZellijPlugin for State {
             if used >= available { break; }
         }
         let notice_color = match self.notifications.notice().map(|(level, _)| level) {
-            Some("error") => "191;97;106",
-            Some("warn") => "235;203;139",
-            Some("success") => "163;190;140",
-            _ => "129;161;193",
+            Some("error") => colors.exit_code_error.base,
+            Some("warn") => colors.text_unselected.emphasis_0,
+            Some("success") => colors.exit_code_success.base,
+            _ => colors.ribbon_unselected.base,
         };
-        print!("\x1b[48;2;46;52;64m{}\x1b[38;2;{}m", " ".repeat(available.saturating_sub(used)), notice_color);
+        print!("\x1b[{}m{}\x1b[{}m", background(colors.text_unselected.background), " ".repeat(available.saturating_sub(used)), foreground(notice_color));
         let mut right_used = 0;
         for c in right.chars() {
             let width = c.width().unwrap_or(0);
