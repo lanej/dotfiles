@@ -29,10 +29,14 @@ local kind_highlights = {
 	Operator = "Operator",
 }
 
-function M.window()
+function M.window(opts)
 	local wide = vim.o.columns >= 180
+	local width = math.min(wide and 140 or 100, math.max(1, vim.o.columns - 6))
+	if opts then
+		require("navigation-context").attach(opts, (wide and math.floor(width * 0.45) or width) - 4)
+	end
 	return {
-		width = math.min(wide and 140 or 100, math.max(1, vim.o.columns - 6)),
+		width = width,
 		height = math.min(wide and 22 or 26, math.max(1, vim.o.lines - 6)),
 		row = 0.5,
 		col = 0.5,
@@ -48,6 +52,8 @@ end
 function M.symbols(document)
 	return {
 		symbol_style = 1,
+		winopts = M.window,
+		child_prefix = false,
 		symbol_hl = function(kind)
 			return kind_highlights[kind] or "Identifier"
 		end,
@@ -55,8 +61,8 @@ function M.symbols(document)
 			return symbol
 		end,
 		-- WHY: Hide location metadata only in fzf's display; native previews and jumps retain it.
-		fzf_opts = document and { ["--delimiter"] = "\t+", ["--with-nth"] = "2.." }
-			or { ["--delimiter"] = ":", ["--with-nth"] = "..-3" },
+		fzf_opts = document and { ["--delimiter"] = "\t+", ["--with-nth"] = "2..", ["--no-wrap"] = true }
+			or { ["--delimiter"] = require("fzf-lua.utils").nbsp, ["--with-nth"] = "1", ["--no-wrap"] = true },
 	}
 end
 

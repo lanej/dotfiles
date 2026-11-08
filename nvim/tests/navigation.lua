@@ -129,6 +129,11 @@ local function workflow()
 	assert(#vim.fn.taglist("^ignored_symbol$") == 0, "Initial index included ignored source")
 	assert(not vim.uv.fs_stat(project .. "/tags"), "Index was written into project")
 	local index = vim.fn.tagfiles()[1]
+	vim.fn.mkdir(project .. "/a", "p")
+	vim.fn.mkdir(project .. "/b", "p")
+	write(project .. "/a/client.lua", { "function createShipment() end" })
+	write(project .. "/b/client.lua", { "function createShipment() end" })
+	command({ "git", "-C", project, "add", "--", "library file.lua" })
 
 	local function picker(needle)
 		wait(
@@ -158,14 +163,39 @@ local function workflow()
 		elseif method == "textDocument/documentSymbol" then
 			return {
 				{
-					name = "server_outline",
-					kind = 12,
+					name = "ShippingClient",
+					kind = 5,
+					children = {
+						{
+							name = "server_outline",
+							kind = 12,
+							detail = "(parcel) → Receipt",
+							range = location(source, 1).range,
+							selectionRange = location(source, 1).range,
+						},
+					},
 					range = location(source, 1).range,
 					selectionRange = location(source, 1).range,
 				},
 			}
 		elseif method == "workspace/symbol" then
-			return { { name = "server_symbol", kind = 12, location = location(target) } }
+			return {
+				{ name = "server_symbol", kind = 12, containerName = "ShippingClient", location = location(target) },
+				{
+					name = "createShipment",
+					kind = 12,
+					containerName = "VeryLongShippingClient",
+					detail = "(account,parcel,options) -> Shipment",
+					location = location(project .. "/a/client.lua"),
+				},
+				{
+					name = "createShipment",
+					kind = 12,
+					containerName = "VeryLongShippingClient",
+					detail = "(account,parcel,options) -> Shipment",
+					location = location(project .. "/b/client.lua"),
+				},
+			}
 		elseif method == "textDocument/references" then
 			delayed = true
 			vim.defer_fn(function()
@@ -183,11 +213,19 @@ local function workflow()
 	keys(",bs")
 	picker("server_outline")
 	local outline = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	local outline_row = assert(outline:match("[^\n]*server_outline[^\n]*"))
+	assert(
+		outline_row:find("(parcel) → Receipt", 1, true) and outline_row:find("ShippingClient", 1, true),
+		"LSP detail or parent context missing"
+	)
+	assert(outline_row:find("", 1, true), "Untracked file did not get a Git glyph")
 	assert(not outline:match("%d+:%d+"), "Outline still displays row and column metadata")
 	assert(
 		vim.api.nvim_win_get_width(0) <= 100 and vim.api.nvim_win_get_height(0) <= 12,
 		"Outline did not use the compact stacked layout"
 	)
+	vim.api.nvim_chan_send(vim.bo.channel, "server_outline")
+	vim.wait(100)
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.api.nvim_get_current_buf() == source_buf and vim.api.nvim_win_get_cursor(0)[1] == 2
@@ -195,11 +233,27 @@ local function workflow()
 	keys("<C-o>")
 	keys(",ws")
 	picker("server_symbol")
+	local workspace = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(
+		workspace:find("ShippingClient", 1, true) and workspace:find("library file.lua", 1, true),
+		"Workspace context lost scope or short path"
+	)
+	assert(workspace:find("", 1, true), "Staged file with spaces did not get a Git glyph")
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.api.nvim_buf_get_name(0) == target
 	end, "Hidden workspace coordinates broke symbol selection")
 	keys("<C-o>")
+	vim.o.columns = 220
+	keys(",ws")
+	picker("createShipment")
+	local wide = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(
+		wide:find("a/client.lua", 1, true) and wide:find("b/client.lua", 1, true),
+		"Long signatures hid distinguishing workspace paths"
+	)
+	close_picker()
+	vim.o.columns = 160
 	local search
 	fzf.grep = function(opts)
 		search = opts
