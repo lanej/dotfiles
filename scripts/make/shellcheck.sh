@@ -22,4 +22,7 @@ shellcheck -x \
     "$dotfiles/bin/zellij-balance" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/git-ssh" \
-    "$dotfiles/bin/sync-codex-mcp-servers"
+    "$dotfiles/bin/sync-codex-mcp-servers" \
+    "$dotfiles/paseo-tasks/coordinator/init.sh" \
+    "$dotfiles/paseo-tasks/coordinator/bin/commit-state" \
+    "$dotfiles/paseo-tasks/coordinator/bin/merge-seq.sh"
