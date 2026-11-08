@@ -16,7 +16,10 @@ require("annotations").setup()
 vim.cmd("runtime plugin/todo.vim")
 
 local function wait(predicate, message)
-	assert(vim.wait(5000, predicate, 10), message)
+	if not vim.wait(5000, predicate, 10) then
+		local detail = type(message) == "function" and message() or message
+		error(detail .. "\n" .. table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"))
+	end
 end
 
 local function workflow()
@@ -24,43 +27,90 @@ local function workflow()
 		return require("todo-comments.config").loaded
 	end, "Annotation setup did not load")
 	local source = temp .. "/annotations.lua"
-	vim.fn.writefile({
-		"-- WHY: Preserve ordering because callers use the first match.",
-		"local value = 1",
-		"-- FIXME: Expired credentials bypass refresh.",
-		"local expired = true",
-		"-- GAH: Keep the legacy workaround visible.",
-		"return value, expired",
-	}, source)
+	local annotations = {
+		{ "WHY: Preserve ordering because callers use the first match.", "WHY" },
+		{ "FIXME: Expired credentials bypass refresh.", "FIX" },
+		{ "GAH: Keep the legacy workaround visible.", "WTF" },
+		{ "rationale(cache): Leave misses uncached so newly created accounts appear immediately.", "rationale" },
+		{ "warning: Reconcile an unknown payment outcome before retrying.", "warning" },
+		{ "workaround(parser): Strip the BOM until upstream/repo#123 is fixed.", "workaround" },
+		{ "todo(exports): Support cancellation.", "todo" },
+		{ "fixme: Expired credentials currently bypass refresh.", "fixme" },
+		{ "TODO:compact legacy annotation", "TODO" },
+		{ "NOTE:  Legacy annotations can use extra spaces.", "NOTE" },
+		{ "TODO:", "TODO" },
+	}
+	local lines = {}
+	for _, annotation in ipairs(annotations) do
+		table.insert(lines, "-- " .. annotation[1])
+		table.insert(lines, "local value = 1")
+	end
+	local ordinary = {
+		"Resolve eligibility before reserving any inventory.",
+		"rationale(): Empty scopes are invalid.",
+		"rationale(Cache): Scopes use lowercase.",
+		"warning(retries)!: Breaking markers do not apply.",
+		"fixme:Missing space.",
+		"todo: ",
+		"notrationale: This is not an annotation type.",
+	}
+	for _, comment in ipairs(ordinary) do
+		table.insert(lines, "-- " .. comment)
+		table.insert(lines, "local value = 1")
+	end
+	vim.fn.writefile(lines, source)
 	vim.cmd.cd(vim.fn.fnameescape(temp))
 	vim.cmd.edit(vim.fn.fnameescape(source))
 	vim.bo.filetype = "lua"
 	vim.treesitter.start(0, "lua")
+	vim.o.lines = 60
 	vim.cmd.redraw()
 	local buf = vim.api.nvim_get_current_buf()
 	local ns = vim.api.nvim_get_namespaces()["todo-comments"]
 	local function highlighted(row, group)
 		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buf, ns, { row, 0 }, { row, -1 }, { details = true })) do
-			if mark[4].hl_group == group then
+			if vim.fn.hlID(mark[4].hl_group) == vim.fn.hlID(group) then
 				return true
 			end
 		end
 		return false
 	end
+	local missing = {}
 	wait(function()
-		return highlighted(0, "TodoBgWHY") and highlighted(2, "TodoBgFIX") and highlighted(4, "TodoBgWTF")
-	end, "Rationale, defect, or legacy comment lost its highlight")
+		missing = {}
+		for index, annotation in ipairs(annotations) do
+			if not highlighted((index - 1) * 2, "TodoBg" .. annotation[2]) then
+				table.insert(missing, annotation[2])
+			end
+		end
+		return #missing == 0
+	end, function()
+		return "Annotations lost their highlight: "
+			.. table.concat(missing, ", ")
+			.. "\n"
+			.. vim.inspect(vim.fn.winsaveview())
+	end)
+	for index in ipairs(ordinary) do
+		local row = (#annotations + index - 1) * 2
+		assert(
+			#vim.api.nvim_buf_get_extmarks(buf, ns, { row, 0 }, { row, -1 }, {}) == 0,
+			"Ordinary prose or malformed annotation received annotation styling: " .. ordinary[index]
+		)
+	end
 	assert(
-		vim.api.nvim_get_hl(0, { name = "TodoFgWHY" }).fg == vim.api.nvim_get_hl(0, { name = "TodoFgNOTE" }).fg,
+		vim.api.nvim_get_hl(0, { name = "TodoFgrationale" }).fg == vim.api.nvim_get_hl(0, { name = "TodoFgNOTE" }).fg,
 		"Rationale comments lost hint styling"
 	)
 
 	vim.cmd.TodoQuickFix()
 	wait(function()
-		return #vim.fn.getqflist() == 3
+		return #vim.fn.getqflist() == #annotations
 	end, "Annotation search did not populate quickfix")
 	local matches = vim.fn.getqflist()
-	assert(matches[1].lnum == 1 and matches[2].lnum == 3 and matches[3].lnum == 5, "Search lost source rows")
+	for index, annotation in ipairs(annotations) do
+		assert(matches[index].lnum == (index - 1) * 2 + 1, "Search lost source rows")
+		assert(matches[index].text:find(annotation[1], 1, true), "Search lost the annotation scope or explanation")
+	end
 	vim.cmd.cclose()
 	vim.cmd.cfirst()
 	vim.cmd.cnext()
@@ -72,14 +122,23 @@ local function workflow()
 		return vim.bo.buftype == "terminal"
 			and table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("Preserve ordering", 1, true)
 	end, "Annotation mapping did not display real FzfLua results")
-	vim.api.nvim_chan_send(vim.bo.channel, "Preserve ordering")
-	vim.wait(400)
+	vim.api.nvim_chan_send(vim.bo.channel, "Leave misses uncached")
+	wait(function()
+		local screen = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		local results = 0
+		for _ in screen:gmatch("annotations%.lua:%d+:%d+:") do
+			results = results + 1
+		end
+		return results == 1
+			and screen:find("annotations.lua:7:", 1, true)
+			and screen:find("Leave misses uncached", 1, true)
+	end, "Annotation picker did not settle on a single scoped rationale result")
 	vim.api.nvim_chan_send(vim.bo.channel, "\r")
 	wait(function()
 		return vim.bo.buftype ~= "terminal"
 	end, "Annotation picker did not accept selection")
 	assert(vim.api.nvim_buf_get_name(0) == source, "Annotation picker lost the source file")
-	assert(vim.api.nvim_win_get_cursor(0)[1] == 1, "Annotation picker did not reach the rationale")
+	assert(vim.api.nvim_win_get_cursor(0)[1] == 7, "Annotation picker did not reach the scoped rationale")
 	print("Annotation highlight, quickfix, and picker workflow passed")
 end
 
