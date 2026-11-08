@@ -1,0 +1,8 @@
+[package]
+name = "shortpath"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Shorten paths to unique filesystem component prefixes"
+
+[dependencies]
