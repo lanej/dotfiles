@@ -45,7 +45,10 @@ export default defineConfig({
         ...zellijSidebar,
       ] },
       { label: 'Reference', items: [
-        { label: 'Design system', slug: 'design-system' },
+        { label: 'Design system', items: [
+          { label: 'Tokens and components', slug: 'design-system' },
+          { label: 'Presets', items: [{ label: 'Nord preset', slug: 'design-system/nord' }] },
+        ] },
         { label: 'Components', slug: 'components' },
         { label: 'Builder', slug: 'reference/builder' },
         { label: 'macOS stack', slug: 'reference/macos' },

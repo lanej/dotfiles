@@ -16,7 +16,7 @@ const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(va
 
 <section aria-labelledby="theme-roles">
   <h2 id="theme-roles">Resolved theme roles</h2>
-  <p>These swatches inspect the shared definitions. Saved native examples show application output.</p>
+  <p>Resolved from the currently generated preset: <strong>{theme.theme}</strong>. <a href="#presets">Preset references</a> own their palettes and native examples.</p>
   <div class="role-grid">
     {Object.entries(theme.roles).map(([name, color]) => (
       <div class="role"><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><span>{color}</span></div>

@@ -20,6 +20,7 @@ const pages = [
   { file: 'docs/architecture.mdx', slug: 'architecture' },
   { file: 'docs/components.mdx', slug: 'components' },
   { file: 'docs/design-system.mdx', slug: 'design-system' },
+  { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
   { file: 'docs/builder.mdx', slug: 'reference/builder' },
   { file: 'docs/documentation-site.mdx', slug: 'maintaining' },

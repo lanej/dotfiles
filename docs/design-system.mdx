@@ -5,19 +5,17 @@ description: Shared foundations and atomic compositions across Neovim, Zellij, t
 
 import ThemeCatalog from '@components/ThemeCatalog.astro';
 
-One theme definition supplies native implementations across the terminal environment. Atomic levels organize the catalog; application code stays grouped by capability. Nord is the first steel thread, establishing a baseline before a personal green theme is designed.
+My terminal design system supplies shared tokens and atomic compositions across native interfaces. Application code stays grouped by capability. The built-in [Nord preset](design-system/nord.mdx) establishes the first baseline before a personal green preset is designed.
 
 Jump to [theme roles](#theme-roles), [presentation tokens](#presentation-tokens), the [atomic catalog](#atomic-catalog), or [integration boundaries](#integration-boundaries).
 
 ## How the system fits together
 
-The source chain is **palette → semantic roles → component roles → native mappings**. [Preset selection](../design-system/config.json) chooses the input; `--theme` overrides it for an experiment. Runtime filenames, theme identifiers and adapter mappings stay independent of that choice. The status broker supplies state names; the generated tmux adapter resolves their presentation locally, ignoring producer-supplied colors. [Shared tokens](../design-system/tokens.json) own reusable aliases, blend recipes and typed presentation defaults. The [Nord definition](../design-system/themes/nord.json) assigns palette values; [component definitions](../design-system/components.json) describe presentation roles. Adapters translate those definitions into each host's native vocabulary. There is no universal widget runtime and no dependency on Charmed or Easy UI.
-
-Nord's sixteen base colors follow the [official palette and usage guidance](https://www.nordtheme.com/docs/colors-and-palettes/). Surfaces use Polar Night, text uses Snow Storm, primary accents use Frost, and statuses use Aurora. Application-specific mappings are our policy. Diff backgrounds blend their semantic color into the base surface at 16%, with 30% for emphasized changed words; staged signs use a 55% blend. Those are explicit recipes, not extra undocumented Nord colors.
+The source chain is **palette → semantic roles → component roles → native mappings**. [Preset selection](../design-system/config.json) chooses the input; `--theme` overrides it for an experiment. Runtime filenames, theme identifiers and adapter mappings stay independent of that choice. The status broker supplies state names; the generated tmux adapter resolves their presentation locally, ignoring producer-supplied colors. [Shared tokens](../design-system/tokens.json) own reusable aliases, blend recipes and typed presentation defaults. Presets assign palette values; [component definitions](../design-system/components.json) describe presentation roles. Adapters translate those definitions into each host's native vocabulary. There is no universal widget runtime and no dependency on Charmed or Easy UI.
 
 The theme distinguishes selected rows, active tabs, warnings, errors, success, attention and unknown observations. Status retains a label or glyph. Syntax grammars can differ across hosts; matching semantic roles does not promise identical token classification.
 
-Kitty opacity remains `0.97`; Neovim's main background remains inherited. The theme defines solid surfaces for popups, selections and other native components. Transparent compositing depends on the terminal and desktop behind it; saved captures show the solid theme backing.
+Kitty opacity remains `0.97`; Neovim's main background remains inherited. The theme defines solid surfaces for popups, selections and other native components. Transparent compositing depends on the terminal and desktop behind it; preset captures show the solid theme backing.
 
 ## Presentation variants
 
@@ -54,25 +52,9 @@ Use Kitty's existing Cmd+Shift+R binding, `:colorscheme dotfiles` in Neovim, and
 
 For an isolated theme experiment, run `python3 scripts/theme.py --theme nord --output-dir /tmp/my-theme`. `DOTFILES_THEME_DIR` selects alternate generated artifacts for the native fixture runner and owned Python/Neovim/fzf consumers; it does not select a theme globally across running applications. Generated files carry native formats and require no generator during normal startup.
 
-## Native examples
+## Presets
 
-These images render captured application cells, including foreground, background and emphasis. They are saved examples, not interactive previews or HTML imitations of application widgets. The JSON baselines retain attributes beyond those visible in a screenshot. Native captures use isolated homes and caches; they do not contain live session data.
-
-![Actual Neovim rendering of the shared Lua fixture](design-system/neovim-frame.svg)
-
-![Actual Zellij prefix banner](design-system/zellij.svg)
-
-![Native CLI status atoms and key hint](design-system/cli.svg)
-
-![Actual fzf results with a selected row](design-system/fzf.svg)
-
-![Actual bat syntax highlighting of the shared Lua fixture](design-system/bat.svg)
-
-![Actual delta output for the shared code change](design-system/delta.svg)
-
-![Actual Glow rendering of the shared Markdown fixture](design-system/glow.svg)
-
-Neovim baselines inspect resolved native highlights after loading the real Gitsigns, lualine and fzf-lua plugins and after reloading the colorscheme. The existing Zellij status workflow checks actual rendered prefix and attention states. These checks complement the saved pager examples; they do not establish every enabled plugin's interactive appearance.
+The built-in [Nord preset](design-system/nord.mdx) owns its palette reference, native examples and initial regression baseline. New presets use the same token contract and native adapters; preset-specific captures stay with their preset.
 
 <ThemeCatalog />
 
@@ -87,7 +69,7 @@ make test-zellij-status test-zellij
 
 The first check validates definitions, composition, deterministic generation, wiring, failures and plain output. Native checks require Kitty’s CLI, Neovim, tmux, fzf, bat, delta, Glow, bottom, the pinned Zellij runtime and built status artifact, and the three pinned Neovim plugins from `nvim/lazy-lock.json`; `--surface` can run a single integration. The fixture runner uses uv and pyte. Presentation checks additionally require Starship 1.27.0 and exercise disposable Git repositories and native reloads. The full Zellij workflow checks additionally need the pane-navigation artifact described in the [Zellij guide](./zellij.md).
 
-The [pre-migration settings](../design-system/baselines/pre-migration.json) and [Neovim observations](../design-system/baselines/pre-migration-neovim.json) preserve the old customized appearance. Intentional normalization replaces the non-Nord Kitty selection, extra bright ANSI colors, purple primary focus, and hand-picked Git diff backgrounds. Regression baselines are named for their preset; the native runner selects the baseline directory from generated theme metadata. That metadata records provenance, not runtime dispatch. The new canonical baseline is independent of generated files: `theme-generate` never changes it.
+Regression baselines are named for their preset; the native runner selects the baseline directory from generated theme metadata. That metadata records provenance, not runtime dispatch. `theme-generate` never changes regression baselines. The [Nord preset](design-system/nord.mdx#baseline) documents the initial normalization.
 
 To intentionally replace native baselines, run `uv run --script scripts/test-theme-native.py --record` and inspect both the JSON diff and images. A recorded baseline is a candidate until reviewed; recording is not user approval. Version changes and volatile layout must be investigated before accepting a new baseline. A changed shared role or native highlight mapping must fail the affected detector.
 

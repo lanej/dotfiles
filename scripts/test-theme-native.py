@@ -303,7 +303,9 @@ def main():
                 baselines.mkdir(parents=True, exist_ok=True)
                 baseline.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
                 if terminal_rows:
-                    (ROOT / f"docs/design-system/{surface}.svg").write_text(svg(surface, observed))
+                    capture = ROOT / "docs/design-system/presets" / preset / f"{surface}.svg"
+                    capture.parent.mkdir(parents=True, exist_ok=True)
+                    capture.write_text(svg(surface, observed))
                 print(f"RECORDED {surface}: inspect baseline and native capture")
             else:
                 expected = json.loads(baseline.read_text())

@@ -23,12 +23,6 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await expect(page).toHaveURL(/#component-status$/);
   await expect(page.locator('#component-status').getByRole('link', { name: 'metadata-row', exact: true })).toBeVisible();
   await expect(page.locator('#integration-external-color-owners')).toContainText('interactive audits');
-  const examples = page.locator('main img');
-  await expect(examples).toHaveCount(7);
-  for (const example of await examples.all()) {
-    await example.scrollIntoViewIfNeeded();
-    await expect.poll(() => example.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
-  }
   await page.setViewportSize({ width: 390, height: 844 });
   await gitToken.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -37,4 +31,22 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   const source = page.locator('#component-status .sources a');
   await source.focus();
   await expect(source).toBeFocused();
+});
+
+test('Nord is documented as a preset with its own palette and native captures', async ({ page }) => {
+  await page.goto('./design-system/');
+  await page.getByRole('link', { name: 'Nord preset', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/design-system\/nord\/$/);
+  await expect(page.getByRole('heading', { name: 'Nord preset', exact: true })).toBeVisible();
+  await expect(page.locator('#preset-palette')).toBeVisible();
+  const examples = page.locator('main img');
+  await expect(examples).toHaveCount(7);
+  for (const example of await examples.all()) {
+    await example.scrollIntoViewIfNeeded();
+    await expect.poll(() => example.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+    await expect(example).toHaveAttribute('src', /\/presets\/nord\//);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#preset-palette').scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

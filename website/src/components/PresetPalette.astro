@@ -1,0 +1,23 @@
+---
+interface Preset { name: string; palette: Record<string, string> }
+const { preset } = Astro.props;
+const presets = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
+const definition = presets[`../../../design-system/themes/${preset}.json`];
+if (!definition) throw new Error(`Unknown documented preset: ${preset}`);
+---
+
+<section aria-labelledby="preset-palette">
+  <h2 id="preset-palette">Palette</h2>
+  <p>Values come directly from this preset’s input, independently of the currently generated preset.</p>
+  <div class="palette">
+    {Object.entries(definition.palette).map(([name, color]) => (
+      <div><span style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><code>{color}</code></div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .5rem 1.5rem; }
+  .palette div { display: grid; grid-template-columns: 1.25rem 1fr auto; gap: .5rem; align-items: center; }
+  .palette span { width: 1.25rem; height: 1.25rem; border: 1px solid var(--sl-color-gray-3); }
+</style>
