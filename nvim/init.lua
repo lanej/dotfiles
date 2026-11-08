@@ -1088,8 +1088,8 @@ require("lazy").setup({
 				options = {
 					icons_enabled = true,
 					theme = require("dotfiles-theme").lualine(),
-					component_separators = { left = "", right = "" },
-					section_separators = { left = "", right = "" },
+					component_separators = require("dotfiles-theme").lualine_options().component_separators,
+					section_separators = require("dotfiles-theme").lualine_options().section_separators,
 					disabled_filetypes = {
 						statusline = {},
 						winbar = {},

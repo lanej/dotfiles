@@ -1,0 +1,417 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Don't print a new line at the start of the prompt
+add_newline = false
+continuation_prompt = '▶▶ '
+right_format = "$status"
+command_timeout = 2000
+
+[character]
+success_symbol = "[\\$](bold white)"
+error_symbol = "[\\$](bold red)"
+vimcmd_symbol = "[](bold yellow)"
+
+[git_status]
+format = '($all_status$ahead_behind)'
+conflicted = "[${count}](bold red) "
+stashed = "[${count}](dimmed white) "
+deleted = "[${count}](red) "
+renamed = "[${count}](cyan) "
+modified = "[${count}](yellow) "
+staged = "[${count}](green) "
+untracked = "[${count}](blue) "
+typechanged = "[${count}](purple) "
+ahead = "[${count}](green) "
+diverged = "[${ahead_count}](green) [${behind_count}](yellow) "
+behind = "[${count}](yellow) "
+
+[git_metrics]
+disabled = true
+
+[battery]
+disabled = false
+full_symbol = "󰁹 "
+charging_symbol = "󰂄 "
+discharging_symbol = "󰂃 "
+unknown_symbol = "󰂑 "
+empty_symbol = "󰂎 "
+
+[[battery.display]]
+threshold = 10
+style = 'bold red'
+
+[[battery.display]]
+threshold = 30
+style = 'bold yellow'
+
+[git_branch]
+style = "blue"
+symbol = " "
+format = "[$symbol$branch(:$remote_branch)]($style) "
+
+[status]
+symbol = " "
+disabled = false
+
+[username]
+disabled = false
+format = "[$user]($style)@"
+
+[hostname]
+disabled = false
+ssh_symbol = " "
+format = "[$hostname](bold green) "
+
+[aws]
+symbol = " "
+disabled = true
+
+[azure]
+symbol = " "
+
+[buf]
+symbol = " "
+format = "[$symbol]($style)"
+
+[bun]
+symbol = " "
+format = "[$symbol]($style)"
+
+[c]
+symbol = " "
+format = "[$symbol]($style)"
+
+[cpp]
+symbol = " "
+format = "[$symbol]($style)"
+
+[cmake]
+symbol = " "
+format = "[$symbol]($style)"
+
+[cobol]
+symbol = " "
+format = "[$symbol]($style)"
+
+[conda]
+symbol = " "
+
+[container]
+symbol = " "
+
+[crystal]
+symbol = " "
+format = "[$symbol]($style)"
+
+[daml]
+format = "[$symbol]($style)"
+
+[dart]
+symbol = " "
+format = "[$symbol]($style)"
+
+[deno]
+symbol = " "
+format = "[$symbol]($style)"
+
+[direnv]
+symbol = " "
+
+[directory]
+read_only = " 󰌾"
+truncate_to_repo = true
+fish_style_pwd_dir_length = 1
+truncation_length = 3
+
+[docker_context]
+symbol = " "
+
+[dotnet]
+symbol = " "
+format = "[$symbol]($style)"
+
+[elixir]
+symbol = " "
+format = "[$symbol]($style)"
+
+[elm]
+symbol = " "
+format = "[$symbol]($style)"
+
+[erlang]
+symbol = " "
+format = "[$symbol]($style)"
+
+[fennel]
+symbol = " "
+format = "[$symbol]($style)"
+
+[fortran]
+symbol = " "
+format = "[$symbol]($style)"
+
+[fossil_branch]
+symbol = " "
+
+[gleam]
+symbol = " "
+format = "[$symbol]($style)"
+
+[git_commit]
+tag_symbol = '  '
+
+[golang]
+symbol = " "
+format = "[$symbol]($style)"
+
+[gradle]
+symbol = " "
+format = "[$symbol]($style)"
+
+[guix_shell]
+symbol = " "
+
+[haskell]
+symbol = " "
+format = "[$symbol]($style)"
+
+[haxe]
+symbol = " "
+format = "[$symbol]($style)"
+
+[helm]
+symbol = " "
+
+[hg_branch]
+symbol = " "
+
+[java]
+symbol = " "
+format = "[$symbol]($style)"
+
+[julia]
+symbol = " "
+format = "[$symbol]($style)"
+
+[kotlin]
+symbol = " "
+format = "[$symbol]($style)"
+
+[kubernetes]
+symbol = "󱃾 "
+
+[lua]
+symbol = " "
+format = "[$symbol]($style)"
+
+[maven]
+symbol = " "
+format = "[$symbol]($style)"
+
+[memory_usage]
+symbol = "󰍛 "
+
+[meson]
+symbol = "󰔷 "
+
+[mojo]
+symbol = "󰈸 "
+format = "[$symbol]($style)"
+
+[nats]
+symbol = " "
+
+[netns]
+symbol = "󰛳 "
+
+[nim]
+symbol = " "
+format = "[$symbol]($style)"
+
+[nix_shell]
+symbol = " "
+
+[nodejs]
+symbol = " "
+format = "[$symbol]($style)"
+
+[ocaml]
+symbol = " "
+format = '[$symbol(\($switch_indicator$switch_name\) )]($style)'
+
+[odin]
+symbol = "󰟢 "
+format = "[$symbol]($style)"
+
+[opa]
+symbol = " "
+format = "[$symbol]($style)"
+
+[openstack]
+symbol = " "
+
+[os.symbols]
+AIX = " "
+AlmaLinux = " "
+Alpaquita = " "
+Alpine = " "
+ALTLinux = " "
+Amazon = " "
+Android = " "
+AOSC = " "
+Arch = " "
+Artix = " "
+Bluefin = " "
+CachyOS = " "
+CentOS = " "
+Debian = " "
+DragonFly = " "
+Elementary = " "
+Emscripten = " "
+EndeavourOS = " "
+Fedora = " "
+FreeBSD = " "
+Garuda = " "
+Gentoo = " "
+HardenedBSD = "󰞌 "
+Illumos = " "
+InstantOS = " "
+Ios = "󰀷 "
+Kali = " "
+Linux = " "
+Mabox = " "
+Macos = " "
+Manjaro = " "
+Mariner = " "
+MidnightBSD = " "
+Mint = " "
+NetBSD = " "
+NixOS = " "
+Nobara = " "
+OpenBSD = " "
+OpenCloudOS = " "
+openEuler = " "
+openSUSE = " "
+OracleLinux = "󰺡 "
+PikaOS = " "
+Pop = " "
+Raspbian = " "
+Redhat = "󱄛 "
+RedHatEnterprise = "󱄛 "
+Redox = "󰀘 "
+RockyLinux = " "
+Solus = " "
+SUSE = " "
+Ubuntu = " "
+Ultramarine = " "
+Unknown = " "
+Uos = " "
+Void = " "
+Windows = "󰍲 "
+Zorin = " "
+
+[package]
+symbol = "󰏗 "
+
+[perl]
+symbol = " "
+format = "[$symbol]($style)"
+
+[php]
+symbol = " "
+format = "[$symbol]($style)"
+
+[pijul_channel]
+symbol = " "
+
+[pixi]
+symbol = "󰏗 "
+format = '[$symbol(\($environment\) )]($style)'
+
+[pulumi]
+symbol = " "
+
+[purescript]
+symbol = " "
+format = "[$symbol]($style)"
+
+[python]
+symbol = " "
+format = '[$symbol(\($virtualenv\) )]($style)'
+
+[quarto]
+format = "[$symbol]($style)"
+
+[raku]
+symbol = "󱖊 "
+format = "[$symbol]($style)"
+
+[red]
+symbol = "󱍼 "
+format = "[$symbol]($style)"
+
+[rlang]
+symbol = "󰟔 "
+format = "[$symbol]($style)"
+
+[ruby]
+symbol = " "
+format = "[$symbol]($style)"
+
+[rust]
+symbol = "󱘗 "
+format = "[$symbol]($style)"
+
+[scala]
+symbol = " "
+format = "[$symbol]($style)"
+
+[shlvl]
+symbol = "󰹍 "
+
+[singularity]
+symbol = " "
+
+[solidity]
+symbol = " "
+format = "[$symbol]($style)"
+
+[spack]
+symbol = " "
+
+[sudo]
+symbol = " "
+
+[swift]
+symbol = " "
+format = "[$symbol]($style)"
+
+[terraform]
+symbol = " "
+
+[vlang]
+symbol = " "
+format = "[$symbol]($style)"
+
+[typst]
+symbol = " "
+format = "[$symbol]($style)"
+
+[vagrant]
+symbol = " "
+
+[xmake]
+symbol = " "
+format = "[$symbol]($style)"
+
+[zig]
+symbol = " "
+format = "[$symbol]($style)"
+
+[gcloud]
+symbol = "󱇶 "
+disabled = true
+
+[gcloud.region_aliases]
+us-central1 = 'uc1'
+asia-northeast1 = 'an1'

@@ -94,7 +94,7 @@ instruction-size:
 
 lint: shellcheck audit-skills instruction-size theme-check
 
-.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native
+.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native test-theme-presentation
 theme-generate:
 	@python3 "$(DOTFILES)/scripts/theme.py"
 theme-check:
@@ -104,6 +104,8 @@ theme-cache:
 	@bat cache --build
 test-theme:
 	@python3 "$(DOTFILES)/scripts/test-theme.py"
+test-theme-presentation:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
 test-theme-native:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
 

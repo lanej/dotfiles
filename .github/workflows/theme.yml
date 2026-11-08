@@ -4,10 +4,15 @@ on:
   pull_request:
     paths: &theme-paths
       - 'design-system/**'
-      - 'scripts/theme*.py'
+      - 'scripts/theme.py'
+      - 'scripts/theme-ci-tools.py'
       - 'scripts/test-theme*.py'
       - 'nvim/colors/dotfiles.lua'
       - 'nvim/lua/dotfiles-theme.lua'
+      - 'nvim/lua/gitsignsconfig.lua'
+      - 'nvim/lua/git-branch-signs.lua'
+      - 'nvim/init.lua'
+      - 'sh/starship.toml'
       - 'nvim/lazy-lock.json'
       - 'bin/dotfiles-*'
       - 'bin/tmux-claude-state'
@@ -50,3 +55,4 @@ jobs:
         run: |
           export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
           uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
+          uv run --script scripts/test-theme-presentation.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins"

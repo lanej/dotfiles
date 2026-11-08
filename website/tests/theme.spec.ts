@@ -4,6 +4,19 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await page.goto('./design-system/');
   await expect(page.getByRole('heading', { name: 'Terminal design system', exact: true })).toBeVisible();
   await expect(page.locator('#theme-roles')).toContainText('Resolved theme roles');
+  const headingToken = page.locator('#token-emphasis-heading');
+  await page.locator('details').filter({ has: headingToken }).locator('summary').click();
+  await headingToken.getByRole('link', { name: 'components', exact: true }).click();
+  await expect(page.locator('#component-heading')).toBeVisible();
+  const gitToken = page.locator('#token-symbol-git-file-modified');
+  await page.locator('details').filter({ has: gitToken }).locator('summary').click();
+  await expect(gitToken).toContainText('starship');
+  await expect(gitToken).toContainText('string');
+  await expect(gitToken).toContainText('None');
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.fonts.check('16px "Dotfiles Symbols"', ''))).toBe(true);
+  await gitToken.getByRole('link', { name: 'starship', exact: true }).click();
+  await expect(page.locator('#integration-starship')).toBeVisible();
   await expect(page.locator('#component-status')).toContainText('Diagnostic*');
   await page.locator('details').filter({ has: page.locator('#component-tab-label') }).locator('summary').click();
   await page.locator('#component-tab-label').getByRole('link', { name: 'status', exact: true }).click();
@@ -17,6 +30,8 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
     await expect.poll(() => example.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   }
   await page.setViewportSize({ width: 390, height: 844 });
+  await gitToken.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator('#component-status').scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const source = page.locator('#component-status .sources a');

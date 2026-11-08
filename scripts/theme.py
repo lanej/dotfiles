@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import re
 import sys
+import tomllib
+import unicodedata
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,8 +19,9 @@ def read(path):
     return json.loads(path.read_text())
 
 
-def resolve(theme):
-    palette, definitions = theme["palette"], theme["roles"]
+def resolve(theme, defaults=None):
+    palette = theme["palette"]
+    definitions = {**theme["roles"], **{name: definition for name, definition in (defaults or {}).items() if name not in theme["roles"]}}
     if not palette or any(not isinstance(v, str) or not HEX.fullmatch(v) for v in palette.values()):
         raise ValueError("palette values must be #RRGGBB colors")
     resolved, visiting = {}, set()
@@ -57,11 +60,67 @@ def resolve(theme):
     return resolved, value
 
 
-def expand(data, value):
+class Presentation:
+    def __init__(self, definitions, overrides):
+        unknown = set(overrides) - set(definitions)
+        if unknown:
+            raise ValueError("unknown presentation overrides: " + ", ".join(sorted(unknown)))
+        self.definitions, self.overrides = definitions, overrides
+        self.values, self.visiting, self.consumers = {}, set(), {}
+        for name in definitions:
+            self.get(name)
+
+    def get(self, name, consumer=None, expected=None, unit=None):
+        definition = self.definitions[name]
+        kind = definition["type"]
+        if expected is not None and kind != expected:
+            raise ValueError(f"{name}: expected {expected}, got {kind}")
+        if unit is not None and definition.get("unit") != unit:
+            raise ValueError(f"{name}: expected unit {unit}")
+        if consumer:
+            self.consumers.setdefault(name, set()).add(consumer)
+            reference = self.overrides.get(name, definition["value"])
+            if isinstance(reference, dict) and set(reference) == {"token"}:
+                self.get(reference["token"], consumer, kind, definition.get("unit"))
+        if name in self.visiting:
+            raise ValueError(f"cyclic presentation token: {name}")
+        if name not in self.values:
+            self.visiting.add(name)
+            result = self.overrides.get(name, definition["value"])
+            if isinstance(result, dict) and set(result) == {"token"}:
+                result = self.get(result["token"], consumer, kind, definition.get("unit"))
+            if kind == "boolean":
+                valid = type(result) is bool and "unit" not in definition
+            elif kind == "string":
+                valid = isinstance(result, str) and not any(unicodedata.category(c) in ("Cc", "Cs") for c in result) and "unit" not in definition
+            elif kind == "dimension":
+                valid = type(result) is int and result >= 0 and definition.get("unit") in ("cell", "row")
+            else:
+                valid = False
+            if not valid:
+                raise ValueError(f"invalid {kind} token {name}: {result!r}")
+            self.values[name] = result
+            self.visiting.remove(name)
+        return self.values[name]
+
+    def reference(self, reference, consumer):
+        if set(reference) == {"token"}:
+            return self.get(reference["token"], consumer)
+        if set(reference) == {"token", "as"} and reference["as"] == "spaces":
+            return " " * self.get(reference["token"], consumer, "dimension", "cell")
+        raise ValueError(f"invalid token reference: {reference!r}")
+
+    def catalog(self):
+        return {name: {**definition, "resolved": self.values[name], "override": self.overrides.get(name), "consumers": sorted(self.consumers.get(name, set()))} for name, definition in self.definitions.items()}
+
+
+def expand(data, value, tokens=None, consumer=None):
     if isinstance(data, dict):
-        return {k: expand(v, value) for k, v in data.items()}
+        if "token" in data:
+            return tokens.reference(data, consumer)
+        return {k: expand(v, value, tokens, consumer) for k, v in data.items()}
     if isinstance(data, list):
-        return [expand(v, value) for v in data]
+        return [expand(v, value, tokens, consumer) for v in data]
     if isinstance(data, str) and data.startswith(("@", "$")):
         return value(data)
     return data
@@ -74,7 +133,7 @@ def lua(value):
         return "{" + ", ".join(lua(v) for v in value) + "}"
     if isinstance(value, bool):
         return "true" if value else "false"
-    return json.dumps(value)
+    return json.dumps(value, ensure_ascii=False)
 
 
 def validate_style(style):
@@ -97,8 +156,10 @@ def compile_theme(source, theme_name):
     theme = read(source / "themes" / f"{theme_name}.json")
     if theme["name"] != theme_name:
         raise ValueError("theme name disagrees with filename")
-    colors, value = resolve(theme)
-    components = expand(read(source / "components.json"), value)
+    shared = read(source / "tokens.json")
+    tokens = Presentation(shared["presentation"], theme.get("presentation", {}))
+    colors, value = resolve(theme, shared["roles"])
+    components = expand(read(source / "components.json"), value, tokens, "components")
     for style in components.values():
         validate_style(style)
     ansi = [value(v) for v in theme["ansi"]]
@@ -114,7 +175,7 @@ def compile_theme(source, theme_name):
 
     c = colors
     output("colors.json", json.dumps({"theme": theme_name, "roles": c, "components": components, "ansi": ansi}, indent=2))
-    output("theme.py", '# Generated by scripts/theme.py.\nCOLORS = ' + repr(c) + '\nCOMPONENTS = ' + repr(components) + '\nSTATE_STYLES = ' + repr(states))
+    output("theme.py", '# Generated by scripts/theme.py.\nCOLORS = ' + repr(c) + '\nCOMPONENTS = ' + repr(components) + '\nSTATE_STYLES = ' + repr(states) + '\nTOKENS = ' + repr(tokens.values))
     fzf = {"fg": "text", "bg": "surface", "fg+": "selection.fg", "bg+": "selection.bg", "hl": "match", "hl+": "match", "pointer": "accent", "marker": "status.success", "header": "heading", "prompt": "prompt", "info": "text.muted", "border": "border", "spinner": "status.info"}
     fzf_color = "dark," + ",".join(k + ":" + c[v] for k, v in fzf.items())
     output("fzf.txt", "--color=" + fzf_color)
@@ -125,10 +186,11 @@ def compile_theme(source, theme_name):
     highlights = read(source / "adapters/neovim.json")
     for name, style in highlights.items():
         if "component" in style:
+            expand(read(source / "components.json")[style["component"]], value, tokens, "neovim")
             style = {**components[style["component"]], **{k: v for k, v in style.items() if k != "component"}}
         if "link" in style and style["link"] not in highlights:
             raise ValueError(f"unresolved highlight link: {name}")
-        highlights[name] = {key: val if key == "link" else expand(val, value) for key, val in style.items()}
+        highlights[name] = {key: val if key == "link" else expand(val, value, tokens, "neovim") for key, val in style.items()}
         validate_style(highlights[name])
         for key in ("fg", "bg", "sp"):
             if key in highlights[name] and highlights[name][key] == "default":
@@ -140,7 +202,11 @@ def compile_theme(source, theme_name):
                 raise ValueError(f"cyclic highlight link: {name}")
             visited.add(current)
             current = highlights[current]["link"]
-    output("neovim.lua", "-- Generated by scripts/theme.py.\nreturn " + lua({"highlights": highlights, "ansi": ansi, "roles": c}))
+    for name in tokens.definitions:
+        if name.startswith("symbol.git.") and not name.startswith("symbol.git.file."):
+            tokens.get(name, "neovim", "string")
+    separators = {kind: {side: tokens.get(f"symbol.separator.{kind}.{side}", "neovim", "string") for side in ("left", "right")} for kind in ("section", "component")}
+    output("neovim.lua", "-- Generated by scripts/theme.py.\nreturn " + lua({"highlights": highlights, "ansi": ansi, "roles": c, "tokens": tokens.values, "separators": separators}))
 
     def rgb(role):
         return " ".join(str(int(c[role][i:i+2], 16)) for i in (1, 3, 5))
@@ -153,6 +219,15 @@ def compile_theme(source, theme_name):
     output("zellij.kdl", "\n".join(kdl))
     template = (source / "adapters/tmux.conf.in").read_text()
     mappings = dict(c)
+    for name in tokens.definitions:
+        if "{{" + name + "}}" in template:
+            if name == "space.inline":
+                mappings[name] = " " * tokens.get(name, "tmux", "dimension", "cell")
+            else:
+                symbol = tokens.get(name, "tmux", "string")
+                if any(c in symbol for c in '#[]{}",%\\'):
+                    raise ValueError(f"{name}: tmux separator contains native format syntax")
+                mappings[name] = symbol
     for field, fallback in {"bg": c["surface.raised"], "fg": c["text"]}.items():
         selected = fallback.replace("#", "##")
         for name, style in reversed(list(states.items())):
@@ -162,7 +237,22 @@ def compile_theme(source, theme_name):
     if "{{" in rendered:
         raise ValueError("unresolved tmux template placeholder")
     output("tmux.conf", rendered)
-    output("glow.json", json.dumps(expand(read(source / "adapters/glow.json"), value), indent=2))
+    glow = expand(read(source / "adapters/glow.json"), value, tokens, "glow")
+    if type(glow["heading"]["bold"]) is not bool or type(glow["h1"]["bold"]) is not bool:
+        raise ValueError("Glow heading emphasis must be boolean")
+    output("glow.json", json.dumps(glow, indent=2, ensure_ascii=False))
+    starship = (source / "adapters/starship.toml.in").read_text()
+
+    def starship_symbol(match):
+        symbol = tokens.get(match[1], "starship", "string")
+        escaped = re.sub(r"([\\$\[\]()])", r"\\\1", symbol)
+        return json.dumps(escaped, ensure_ascii=False)[1:-1]
+
+    starship = re.sub(r"\{\{([a-z.]+)\}\}", starship_symbol, starship)
+    if "{{" in starship:
+        raise ValueError("unresolved Starship template placeholder")
+    tomllib.loads(starship)
+    output("starship.toml", starship)
     output("delta.gitconfig", f'''# Generated by scripts/theme.py.
 [delta "dotfiles"]
     syntax-theme = Dotfiles
@@ -206,6 +296,7 @@ def compile_theme(source, theme_name):
     for mode, role in {"normal": "accent", "insert": "status.success", "visual": "syntax.number", "replace": "status.error", "command": "status.warning", "inactive": "text.muted"}.items():
         lualine[mode] = {"a": {"fg": c["text.inverse"], "bg": c[role], "gui": "bold"}, "b": {"fg": c["text"], "bg": c["surface.selected"]}, "c": {"fg": c["text.muted"], "bg": c["surface"]}}
     output("lualine.lua", "-- Generated by scripts/theme.py.\nreturn " + lua(lualine))
+    output("tokens.json", json.dumps({"theme": theme_name, "presentation": tokens.catalog()}, indent=2, ensure_ascii=False))
     validate_catalog(source)
     return outputs
 

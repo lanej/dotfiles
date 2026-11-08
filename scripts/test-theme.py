@@ -20,7 +20,7 @@ spec.loader.exec_module(theme)
 class ThemeTests(unittest.TestCase):
     def test_canonical_palette_and_aliases(self):
         data = theme.read(theme.SOURCE / "themes/nord.json")
-        colors, value = theme.resolve(data)
+        colors, value = theme.resolve(data, theme.read(theme.SOURCE / "tokens.json")["roles"])
         self.assertEqual(colors["surface"], "#2E3440")
         self.assertEqual(colors["accent"], "#88C0D0")
         self.assertEqual(colors["diff.add"], "#A3BE8C")
@@ -33,7 +33,7 @@ class ThemeTests(unittest.TestCase):
             data = copy.deepcopy(base)
             data["roles"].update(changes)
             with self.subTest(changes=changes), self.assertRaises((KeyError, ValueError)):
-                theme.resolve(data)
+                theme.resolve(data, theme.read(theme.SOURCE / "tokens.json")["roles"])
 
     def test_deterministic_check_and_no_writes_on_invalid_source(self):
         with tempfile.TemporaryDirectory(prefix="theme-compile-") as directory:
@@ -91,6 +91,38 @@ class ThemeTests(unittest.TestCase):
                 (source / "catalog.json").write_text(json.dumps(catalog))
                 with self.assertRaises((KeyError, ValueError)):
                     theme.validate_catalog(source)
+
+    def test_presentation_validation_and_failure_preserve_outputs(self):
+        with tempfile.TemporaryDirectory(prefix="theme-tokens-") as directory:
+            work = Path(directory)
+            source, output = work / "source", work / "output"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            subprocess.run(command, check=True)
+            before = {p.name: p.read_bytes() for p in output.iterdir()}
+            preset = theme.read(source / "themes/nord.json")
+            for override in ({"symbol.separator.section.left": "%Y"}, {"missing": True}, {"emphasis.heading": 1}, {"space.inline": True}, {"space.inline": -1}, {"symbol.git.file.modified": "bad\nline"}, {"emphasis.heading": {"token": "space.inline"}}, {"emphasis.heading": {"token": "emphasis.heading"}}, {"emphasis.heading": {"token": "missing"}}):
+                with self.subTest(override=override):
+                    (source / "themes/nord.json").write_text(json.dumps({**preset, "presentation": override}))
+                    self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
+                    self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
+            (source / "themes/nord.json").write_text(json.dumps(preset))
+            shared = theme.read(source / "tokens.json")
+            shared["presentation"]["space.inline"]["unit"] = "row"
+            (source / "tokens.json").write_text(json.dumps(shared))
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("expected unit cell", result.stderr)
+            self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
+
+    def test_presentation_alias_types_units_and_empty_symbols(self):
+        tokens = theme.Presentation({"a": {"type": "dimension", "unit": "cell", "value": 1}, "b": {"type": "dimension", "unit": "cell", "value": {"token": "a"}}, "empty": {"type": "string", "value": ""}}, {"a": 2})
+        self.assertEqual(tokens.reference({"token": "b", "as": "spaces"}, "glow"), "  ")
+        self.assertEqual(tokens.get("empty"), "")
+        with self.assertRaises(ValueError):
+            theme.Presentation({"a": {"type": "dimension", "unit": "pixel", "value": 1}}, {})
+        with self.assertRaises(ValueError):
+            tokens.reference({"token": "empty", "as": "spaces"}, "glow")
 
     def test_configuration_links_without_generator_or_applications(self):
         with tempfile.TemporaryDirectory(prefix="theme-config-") as directory:

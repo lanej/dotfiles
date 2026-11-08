@@ -7,7 +7,7 @@
   },
   "block_quote": {
     "indent": 1,
-    "indent_token": "\u2502 "
+    "indent_token": "│ "
   },
   "paragraph": {},
   "list": {
@@ -57,13 +57,13 @@
     "format": "\n--------\n"
   },
   "item": {
-    "block_prefix": "\u2022 "
+    "block_prefix": "• "
   },
   "enumeration": {
     "block_prefix": ". "
   },
   "task": {
-    "ticked": "[\u2713] ",
+    "ticked": "[✓] ",
     "unticked": "[ ] "
   },
   "link": {
@@ -80,7 +80,7 @@
   },
   "image_text": {
     "color": "#88C0D0",
-    "format": "Image: {{.text}} \u2192"
+    "format": "Image: {{.text}} →"
   },
   "code": {
     "prefix": " ",
@@ -181,14 +181,14 @@
     }
   },
   "table": {
-    "center_separator": "\u253c",
-    "column_separator": "\u2502",
-    "row_separator": "\u2500"
+    "center_separator": "┼",
+    "column_separator": "│",
+    "row_separator": "─"
   },
   "definition_list": {},
   "definition_term": {},
   "definition_description": {
-    "block_prefix": "\n\ud83e\udc36 "
+    "block_prefix": "\n🠶 "
   },
   "html_block": {},
   "html_span": {}

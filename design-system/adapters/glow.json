@@ -7,7 +7,7 @@
   },
   "block_quote": {
     "indent": 1,
-    "indent_token": "\u2502 "
+    "indent_token": "│ "
   },
   "paragraph": {},
   "list": {
@@ -16,14 +16,18 @@
   "heading": {
     "block_suffix": "\n",
     "color": "@heading",
-    "bold": true
+    "bold": {
+      "token": "emphasis.heading"
+    }
   },
   "h1": {
     "prefix": " ",
     "suffix": " ",
     "color": "@text.inverse",
     "background_color": "@heading",
-    "bold": true
+    "bold": {
+      "token": "emphasis.heading"
+    }
   },
   "h2": {
     "prefix": "## "
@@ -57,13 +61,13 @@
     "format": "\n--------\n"
   },
   "item": {
-    "block_prefix": "\u2022 "
+    "block_prefix": "• "
   },
   "enumeration": {
     "block_prefix": ". "
   },
   "task": {
-    "ticked": "[\u2713] ",
+    "ticked": "[✓] ",
     "unticked": "[ ] "
   },
   "link": {
@@ -80,11 +84,17 @@
   },
   "image_text": {
     "color": "@link",
-    "format": "Image: {{.text}} \u2192"
+    "format": "Image: {{.text}} →"
   },
   "code": {
-    "prefix": " ",
-    "suffix": " ",
+    "prefix": {
+      "token": "space.inline",
+      "as": "spaces"
+    },
+    "suffix": {
+      "token": "space.inline",
+      "as": "spaces"
+    },
     "color": "@syntax.string",
     "background_color": "@surface.selected"
   },
@@ -181,14 +191,14 @@
     }
   },
   "table": {
-    "center_separator": "\u253c",
-    "column_separator": "\u2502",
-    "row_separator": "\u2500"
+    "center_separator": "┼",
+    "column_separator": "│",
+    "row_separator": "─"
   },
   "definition_list": {},
   "definition_term": {},
   "definition_description": {
-    "block_prefix": "\n\ud83e\udc36 "
+    "block_prefix": "\n🠶 "
   },
   "html_block": {},
   "html_span": {}

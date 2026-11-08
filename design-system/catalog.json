@@ -4,7 +4,8 @@
     "level": "foundation",
     "composes": [],
     "sources": [
-      "design-system/config.json"
+      "design-system/config.json",
+      "design-system/tokens.json"
     ],
     "description": "Canonical palette, semantic roles, ANSI slots and explicit blend recipes.",
     "implementations": {
@@ -29,6 +30,40 @@
       "Zellij": "text_unselected / text_selected",
       "tmux": "status-style / message-style",
       "CLI": "text role and inherited terminal foreground"
+    }
+  },
+  {
+    "id": "heading",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/components.json",
+      "design-system/tokens.json"
+    ],
+    "description": "Heading color and shared emphasis, with native exceptions documented per consumer.",
+    "implementations": {
+      "Neovim": "Title, FloatTitle and linked markup/plugin headings",
+      "Glow": "heading and h1 emphasis; h6 stays subdued"
+    }
+  },
+  {
+    "id": "git-state",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/tokens.json",
+      "design-system/adapters/starship.toml.in",
+      "nvim/lua/gitsignsconfig.lua",
+      "nvim/lua/git-branch-signs.lua"
+    ],
+    "description": "Git file status, worktree/index hunks and branch comparison keep distinct meanings and symbols.",
+    "implementations": {
+      "Starship": "file counts, branch, stash, conflicts and ahead/behind symbols",
+      "Neovim": "unstaged, staged and branch-comparison gutter symbols"
     }
   },
   {
@@ -165,7 +200,8 @@
     "level": "organism",
     "composes": [
       "text",
-      "status"
+      "status",
+      "heading"
     ],
     "sources": [
       "design-system/adapters/neovim.json",
@@ -246,7 +282,8 @@
     "id": "cli",
     "level": "interface",
     "composes": [
-      "code-and-diff"
+      "code-and-diff",
+      "git-state"
     ],
     "sources": [
       "sh/alias",
@@ -254,7 +291,7 @@
     ],
     "description": "Pagers, Markdown rendering and ordinary command output.",
     "implementations": {
-      "CLI": "bat, delta, Glow, bottom and shell inheritance"
+      "CLI": "bat, delta, Glow, bottom and shell inheritance; Starship Git modules"
     }
   }
 ]

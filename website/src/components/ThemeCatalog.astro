@@ -2,8 +2,16 @@
 import catalog from '../../../design-system/catalog.json';
 import theme from '../../../design-system/generated/colors.json';
 import integrations from '../../../design-system/integrations.json';
+import tokens from '../../../design-system/generated/tokens.json';
 const sourceURL = (path: string) => `https://github.com/lanej/dotfiles/blob/master/${path}`;
 const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'interface'];
+const tokenGroups = [
+  ['emphasis.', 'Emphasis'], ['space.', 'Terminal spacing'],
+  ['symbol.separator.', 'Separators'], ['symbol.git.file.', 'Git file status'],
+  ['symbol.git.hunk.', 'Git unstaged hunks'], ['symbol.git.staged_hunk.', 'Git staged hunks'],
+  ['symbol.git.branch_hunk.', 'Git branch comparison'],
+];
+const display = (value: unknown) => value === '' ? '(empty)' : JSON.stringify(value);
 ---
 
 <section aria-labelledby="theme-roles">
@@ -14,6 +22,33 @@ const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'inter
       <div class="role"><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><span>{color}</span></div>
     ))}
   </div>
+</section>
+
+<section aria-labelledby="presentation-tokens">
+  <h2 id="presentation-tokens">Presentation tokens</h2>
+  <p>Inspect defaults, selected preset overrides and direct consumers. File status icons and gutter signs retain their own meanings. Native adapters own units and supported mappings.</p>
+  <p>Git counts, styles and ahead/behind composition stay in Starship’s native adapter. The bundled font previews default symbols; Unicode values identify variants requiring other glyphs.</p>
+  {tokenGroups.map(([prefix, title]) => (
+    <details class="component token-group">
+      <summary>{title}</summary>
+      <div class="token-grid">
+      {Object.entries(tokens.presentation).filter(([name]) => name.startsWith(prefix)).map(([name, token]) => (
+        <article class="token" id={`token-${name.replaceAll('.', '-')}`}>
+          <h3><code>{name}</code></h3>
+          <dl>
+            <dt>Type</dt><dd>{token.type}{'unit' in token ? ` · ${token.unit}` : ''}</dd>
+            <dt>Default</dt><dd><code class="token-value">{display(token.value)}</code></dd>
+            <dt>Override</dt><dd><code>{token.override === null ? 'None' : display(token.override)}</code></dd>
+            <dt>Resolved</dt><dd><code class="token-value">{display(token.resolved)}</code></dd>
+          </dl>
+          {typeof token.resolved === 'string' && token.resolved !== '' && <p class="codepoints">{Array.from(token.resolved).map(c => `U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ')}</p>}
+          <p>Consumers: {token.consumers.map((consumer, i) => <>{i > 0 ? ', ' : ''}<a href={consumer === 'components' ? '#component-heading' : `#integration-${consumer}`}>{consumer}</a></>)}</p>
+          {'note' in token && <p>{token.note}</p>}
+        </article>
+      ))}
+      </div>
+    </details>
+  ))}
 </section>
 
 <section aria-labelledby="atomic-catalog">
@@ -55,6 +90,7 @@ const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'inter
 </section>
 
 <style>
+  @font-face { font-family: 'Dotfiles Symbols'; src: url('../../../docs/design-system/symbols.woff2') format('woff2'); font-display: swap; }
   .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .5rem 1.5rem; }
   .role { display: grid; grid-template-columns: 1.25rem 1fr auto; gap: .5rem; align-items: center; min-width: 0; font-size: .875rem; }
   .role code { overflow-wrap: anywhere; }
@@ -68,4 +104,12 @@ const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'inter
   dt { font-weight: 600; }
   dd { margin: 0; }
   .sources { font-size: .875rem; overflow-wrap: anywhere; }
+  .token-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .5rem 1.5rem; }
+  .token { min-width: 0; border-bottom: 1px solid var(--sl-color-gray-5); padding-block: .75rem; }
+  .token code { overflow-wrap: anywhere; }
+  .token h3 { font-size: 1rem; }
+  .token dl { grid-template-columns: 5rem minmax(0, 1fr); row-gap: .2rem; margin-block: .5rem; }
+  .token dl :is(dt, dd) { margin: 0; }
+  .token-value { font-family: 'Dotfiles Symbols', monospace; }
+  .codepoints { font-size: .875rem; overflow-wrap: anywhere; }
 </style>

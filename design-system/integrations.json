@@ -15,7 +15,7 @@
     "owner": "Owned colorscheme, standard groups and explicit plugin groups",
     "mechanism": "generated Lua mappings; reapplied after LazyLoad/VeryLazy",
     "reload": ":colorscheme dotfiles",
-    "coverage": "Real Gitsigns, lualine and fzf-lua loads plus colorscheme reload checked. Other plugins have mappings or inherit core groups; full interactive coverage remains incomplete.",
+    "coverage": "Real Gitsigns, lualine and fzf-lua loads plus colorscheme reload checked. Other plugins have mappings or inherit core groups; full interactive coverage remains incomplete. Presentation checks exercise heading emphasis, Gitsigns extmarks, branch gutter symbols and lualine separators; colorscheme reload refreshes the token consumers. Gutter symbols are limited by Neovim to two display cells; actual glyph width depends on the font.",
     "sources": [
       "nvim/lua/dotfiles-theme.lua",
       "design-system/adapters/neovim.json"
@@ -96,8 +96,19 @@
     "coverage": "Owned CLI sample checks labels and NO_COLOR behavior. Named colors inherit the terminal palette; truecolor output from other programs does not.",
     "sources": [
       "sh/profile",
-      "sh/starship.toml",
+      "design-system/adapters/starship.toml.in",
       "bin/dotfiles-theme"
+    ]
+  },
+  {
+    "id": "starship",
+    "owner": "Generated Git-status and branch symbols; existing prompt layout",
+    "mechanism": "generated complete native TOML with literal symbol escaping",
+    "reload": "The next prompt reads the generated configuration; no shell initialization change is required.",
+    "coverage": "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Existing style names inherit the terminal ANSI palette. Other prompt module symbols remain application specific.",
+    "sources": [
+      "design-system/adapters/starship.toml.in",
+      "design-system/tokens.json"
     ]
   },
   {

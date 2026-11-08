@@ -1,9 +1,6 @@
 require("gitsigns").setup({
-	signs = {
-		topdelete = {
-			text = "^",
-		},
-	},
+	signs = require("dotfiles-theme").signs("hunk"),
+	signs_staged = require("dotfiles-theme").signs("staged_hunk"),
 	-- Enable inline diff highlighting by default (word-level only)
 	word_diff = true, -- Show word-level diffs by default (toggle with <leader>hd)
 	diff_opts = {

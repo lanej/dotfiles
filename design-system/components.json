@@ -7,7 +7,9 @@
   },
   "heading": {
     "fg": "@heading",
-    "bold": true
+    "bold": {
+      "token": "emphasis.heading"
+    }
   },
   "keyhint": {
     "fg": "@keyhint"

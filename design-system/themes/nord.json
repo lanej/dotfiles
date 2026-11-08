@@ -46,78 +46,7 @@
     "syntax.constant": "$nord4",
     "syntax.operator": "$nord9",
     "syntax.special": "$nord13",
-    "syntax.variable": "$nord4",
-    "diff.add": "@status.success",
-    "diff.change": "@status.warning",
-    "diff.delete": "@status.error",
-    "diff.add.bg": {
-      "mix": [
-        "@surface",
-        "@diff.add"
-      ],
-      "amount": 0.16
-    },
-    "diff.change.bg": {
-      "mix": [
-        "@surface",
-        "@diff.change"
-      ],
-      "amount": 0.16
-    },
-    "diff.delete.bg": {
-      "mix": [
-        "@surface",
-        "@diff.delete"
-      ],
-      "amount": 0.16
-    },
-    "diff.add.dim": {
-      "mix": [
-        "@surface",
-        "@diff.add"
-      ],
-      "amount": 0.55
-    },
-    "diff.change.dim": {
-      "mix": [
-        "@surface",
-        "@diff.change"
-      ],
-      "amount": 0.55
-    },
-    "diff.delete.dim": {
-      "mix": [
-        "@surface",
-        "@diff.delete"
-      ],
-      "amount": 0.55
-    },
-    "selection.bg": "@surface.selected",
-    "selection.fg": "@text.strong",
-    "focus": "@accent",
-    "match": "@status.success",
-    "tab.active.bg": "@surface.selected",
-    "tab.active.fg": "@accent",
-    "tab.inactive.bg": "@surface",
-    "tab.inactive.fg": "@text.muted",
-    "keyhint": "@accent",
-    "heading": "@accent",
-    "link": "@accent",
-    "prompt": "@accent",
-    "diff.add.emph.bg": {
-      "mix": [
-        "@surface",
-        "@diff.add"
-      ],
-      "amount": 0.3
-    },
-    "diff.delete.emph.bg": {
-      "mix": [
-        "@surface",
-        "@diff.delete"
-      ],
-      "amount": 0.3
-    }
+    "syntax.variable": "$nord4"
   },
   "ansi": [
     "$nord1",

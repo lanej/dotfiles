@@ -27,6 +27,7 @@ def main():
         ("charmbracelet/glow", "v3.0.0", f"glow_3.0.0_{glow_platform}.tar.gz", "glow"),
         ("junegunn/fzf", "v0.59.0", f"fzf-0.59.0-{fzf_platform}.tar.gz", "fzf"),
         ("neovim/neovim", "v0.12.6", f"nvim-{nvim_platform}.tar.gz", "nvim"),
+        ("starship/starship", "v1.27.0", f"starship-{triple}.tar.gz", "starship"),
     ]
     binaries = destination / "bin"
     binaries.mkdir(exist_ok=True)

@@ -33,30 +33,30 @@ set -g @prefix_highlight_fg "{{surface}}"
 set -g @prefix_highlight_bg "{{accent}}"
 set -g @prefix_highlight_copy_mode_attr "fg={{surface}},bg={{accent}}"
 
-set -g status-left "#[fg={{surface}},bg={{accent}},bold] #S #[fg={{accent}},bg={{surface}},nobold,noitalics,nounderscore]"
+set -g status-left "#[fg={{surface}},bg={{accent}},bold]{{space.inline}}#S{{space.inline}}#[fg={{accent}},bg={{surface}},nobold,noitalics,nounderscore]{{symbol.separator.section.left}}"
 # tmux-claude-sweep both ages idle windows into dormant ones and prints the
 # cross-session roll-up; tmux has no timer of its own, so it rides this
 # status refresh (status-interval, above).
-set -g status-right "#{prefix_highlight}#[fg={{surface.raised}},bg={{surface}},nobold,noitalics,nounderscore]\
-#(~/.files/bin/tmux-claude-sweep)#(~/.files/bin/tmux-ssh-status)#(~/.files/bin/tmux-battery-status)#[fg={{text}},bg={{surface.raised}}] %Y-%m-%d #[fg={{text}},bg={{surface.raised}},nobold,noitalics,nounderscore]\
-#[fg={{text}},bg={{surface.raised}}] %H:%M #[fg={{accent}},bg={{surface.raised}},nobold,noitalics,nounderscore]\
+set -g status-right "#{prefix_highlight}#[fg={{surface.raised}},bg={{surface}},nobold,noitalics,nounderscore]{{symbol.separator.section.right}}\
+#(~/.files/bin/tmux-claude-sweep)#(~/.files/bin/tmux-ssh-status)#(~/.files/bin/tmux-battery-status)#[fg={{text}},bg={{surface.raised}}] %Y-%m-%d #[fg={{text}},bg={{surface.raised}},nobold,noitalics,nounderscore]{{symbol.separator.component.right}}\
+#[fg={{text}},bg={{surface.raised}}] %H:%M #[fg={{accent}},bg={{surface.raised}},nobold,noitalics,nounderscore]{{symbol.separator.section.right}}\
 #[fg={{surface}},bg={{accent}},bold] #H "
 
 # The focused window keeps its own colour -- you are already here -- but still
 # carries the state glyph, so "what is it doing" needs no second look.
 set-window-option -g window-status-current-format "\
 #{?window_zoomed_flag,#[bg={{status.warning}}],#[bg={{tab.active.bg}}]}\
-#[fg={{surface}}]\
-#{?window_zoomed_flag,#[fg={{surface}}],#[fg={{tab.active.fg}}]}#[bold] #{?#{@claude-glyph},#{@claude-glyph} ,}#I* \
+#[fg={{surface}}]{{symbol.separator.section.left}}\
+#{?window_zoomed_flag,#[fg={{surface}}],#[fg={{tab.active.fg}}]}#[bold] #{?#{@claude-glyph},#{@claude-glyph} ,}#I* {{symbol.separator.component.left}}\
  #W \
 #{?window_zoomed_flag,#[fg={{status.warning}}],#[fg={{tab.active.bg}}]}\
-#[bg={{surface}}]"
+#[bg={{surface}}]{{symbol.separator.section.left}}"
 
 # The agent's state outranks tmux's own bell/activity flags: it says WHY a window
 # wants you, which a flag cannot. the shared design system owns the palette, so
 # this stays one branch deep however many states it grows.
 set-window-option -g window-status-format "\
 #[fg={{surface}},bg={{surface}},noitalics,nodim]\
-#{?#{@claude-state},#[bg={{agent.bg}}]#[fg={{surface}}],#{?window_bell_flag,#[bg={{status.attention}}]#[fg={{surface}}],#{?window_activity_flag,#[bg={{status.warning}}]#[fg={{surface}}],#[fg={{surface}}]#[bg={{surface.raised}}]}}}\
+#{?#{@claude-state},#[bg={{agent.bg}}]#[fg={{surface}}]{{symbol.separator.section.left}},#{?window_bell_flag,#[bg={{status.attention}}]#[fg={{surface}}]{{symbol.separator.section.left}},#{?window_activity_flag,#[bg={{status.warning}}]#[fg={{surface}}]{{symbol.separator.section.left}},#[fg={{surface}}]#[bg={{surface.raised}}]{{symbol.separator.section.left}}}}}\
 #{?#{@claude-state},#[fg={{agent.fg}}#,#{@claude-attr}],#{?window_bell_flag,#[fg={{surface}}],#{?window_activity_flag,#[fg={{surface}}],#[fg={{accent}}]#[bg={{surface.raised}}]}}} #{?#{@claude-glyph},#{@claude-glyph} ,}#I #W\
-#{?#{@claude-state},#[fg={{agent.bg}}]#[bg={{surface}}],#{?window_bell_flag,#[fg={{status.attention}}]#[bg={{surface}}],#{?window_activity_flag,#[fg={{status.warning}}]#[bg={{surface}}],#[fg={{surface.raised}}]#[bg={{surface}}]}}}"
+#{?#{@claude-state},#[fg={{agent.bg}}]#[bg={{surface}}]{{symbol.separator.section.left}},#{?window_bell_flag,#[fg={{status.attention}}]#[bg={{surface}}]{{symbol.separator.section.left}},#{?window_activity_flag,#[fg={{status.warning}}]#[bg={{surface}}]{{symbol.separator.section.left}},#[fg={{surface.raised}}]#[bg={{surface}}]{{symbol.separator.section.left}}}}}"
