@@ -1,0 +1,52 @@
+name: Terminal design system
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &theme-paths
+      - 'design-system/**'
+      - 'scripts/theme*.py'
+      - 'scripts/test-theme*.py'
+      - 'nvim/colors/dotfiles.lua'
+      - 'nvim/lua/dotfiles-theme.lua'
+      - 'nvim/lazy-lock.json'
+      - 'bin/dotfiles-*'
+      - 'bin/tmux-claude-state'
+      - 'bat/**'
+      - '.github/workflows/theme.yml'
+  push:
+    branches: [master]
+    paths: *theme-paths
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - name: Install tmux
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y tmux
+          else
+            brew install tmux
+          fi
+      - name: Install pinned fixture tools and locked Neovim plugins
+        run: python3 scripts/theme-ci-tools.py "$RUNNER_TEMP/theme-tools"
+      - name: Validate compiler and configuration wiring
+        run: make theme-check test-theme
+      - name: Exercise native fixtures
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
+          uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom

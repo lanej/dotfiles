@@ -1,0 +1,71 @@
+---
+import catalog from '../../../design-system/catalog.json';
+import theme from '../../../design-system/generated/colors.json';
+import integrations from '../../../design-system/integrations.json';
+const sourceURL = (path: string) => `https://github.com/lanej/dotfiles/blob/master/${path}`;
+const levels = ['foundation', 'atom', 'molecule', 'organism', 'template', 'interface'];
+---
+
+<section aria-labelledby="theme-roles">
+  <h2 id="theme-roles">Resolved Nord roles</h2>
+  <p>These swatches inspect the shared definitions. Saved native examples show application output.</p>
+  <div class="role-grid">
+    {Object.entries(theme.roles).map(([name, color]) => (
+      <div class="role"><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code><span>{color}</span></div>
+    ))}
+  </div>
+</section>
+
+<section aria-labelledby="atomic-catalog">
+  <h2 id="atomic-catalog">Atomic catalog</h2>
+  <p>Follow a component into its building blocks or into the interfaces that use it. Code remains organized by capability.</p>
+  {levels.map(level => (
+    <section aria-label={level}>
+      <h3>{level.charAt(0).toUpperCase() + level.slice(1)}s</h3>
+      {catalog.filter(item => item.level === level).map(item => (
+        <details class="component">
+          <summary>{item.id} <span>{item.description}</span></summary>
+          <article id={`component-${item.id}`}>
+          <h4>{item.id}</h4>
+          <p>{item.description}</p>
+          {item.composes.length > 0 && <p>Composes: {item.composes.map((id, i) => <><a href={`#component-${id}`}>{id}</a>{i < item.composes.length - 1 ? ', ' : ''}</>)}</p>}
+          <dl>{Object.entries(item.implementations).map(([host, mapping]) => <><dt>{host}</dt><dd>{mapping}</dd></>)}</dl>
+          <p>Used by: {catalog.filter(consumer => consumer.composes.includes(item.id)).length ? catalog.filter(consumer => consumer.composes.includes(item.id)).map((consumer, i) => <>{i > 0 ? ', ' : ''}<a href={`#component-${consumer.id}`}>{consumer.id}</a></>) : 'Complete interface'}</p>
+          <p class="sources">Source: {item.sources.map((path, i) => <>{i > 0 ? ' · ' : ''}<a href={sourceURL(path)}>{path}</a></>)}</p>
+          </article>
+        </details>
+      ))}
+    </section>
+  ))}
+</section>
+
+<section aria-labelledby="integration-boundaries">
+  <h2 id="integration-boundaries">Integration boundaries</h2>
+  <p>Mapped settings are distinct from exercised application behavior. Coverage statements describe local verification; Linux runs are configured in CI and require an actual successful run.</p>
+  {integrations.map(item => (
+    <details class="component" open={item.id === 'external-color-owners'}>
+      <summary>{item.id} <span>{item.mechanism}</span></summary>
+      <article id={`integration-${item.id}`}>
+      <h3>{item.id}</h3>
+      <dl><dt>Color owner</dt><dd>{item.owner}</dd><dt>Mechanism</dt><dd>{item.mechanism}</dd><dt>Reload</dt><dd>{item.reload}</dd><dt>Coverage and gaps</dt><dd>{item.coverage}</dd></dl>
+      <p class="sources">Source: {item.sources.map((path, i) => <>{i > 0 ? ' · ' : ''}<a href={sourceURL(path)}>{path}</a></>)}</p>
+      </article>
+    </details>
+  ))}
+</section>
+
+<style>
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .5rem 1.5rem; }
+  .role { display: grid; grid-template-columns: 1.25rem 1fr auto; gap: .5rem; align-items: center; min-width: 0; font-size: .875rem; }
+  .role code { overflow-wrap: anywhere; }
+  .swatch { width: 1.25rem; height: 1.25rem; border: 1px solid var(--sl-color-gray-3); }
+  .component { border-top: 1px solid var(--sl-color-gray-5); padding-block: .75rem; }
+  summary { cursor: pointer; font-weight: 600; }
+  summary span { display: block; font-weight: 400; margin-top: .25rem; }
+  .component h4, .component h3 { margin-top: .5rem; }
+  .component p { margin-top: .5rem; }
+  dl { display: grid; grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr); gap: .4rem 1rem; margin-block: .75rem; }
+  dt { font-weight: 600; }
+  dd { margin: 0; }
+  .sources { font-size: .875rem; overflow-wrap: anywhere; }
+</style>

@@ -1,0 +1,131 @@
+{
+  "theme": "nord",
+  "roles": {
+    "surface": "#2E3440",
+    "surface.raised": "#3B4252",
+    "surface.selected": "#434C5E",
+    "border": "#4C566A",
+    "text": "#D8DEE9",
+    "text.strong": "#ECEFF4",
+    "text.muted": "#81A1C1",
+    "text.inverse": "#2E3440",
+    "accent": "#88C0D0",
+    "accent.secondary": "#8FBCBB",
+    "status.success": "#A3BE8C",
+    "status.warning": "#EBCB8B",
+    "status.error": "#BF616A",
+    "status.info": "#88C0D0",
+    "status.attention": "#D08770",
+    "status.idle": "#81A1C1",
+    "status.off": "#4C566A",
+    "syntax.comment": "#4C566A",
+    "syntax.keyword": "#81A1C1",
+    "syntax.function": "#88C0D0",
+    "syntax.string": "#A3BE8C",
+    "syntax.type": "#8FBCBB",
+    "syntax.number": "#B48EAD",
+    "syntax.constant": "#D8DEE9",
+    "syntax.operator": "#81A1C1",
+    "syntax.special": "#EBCB8B",
+    "syntax.variable": "#D8DEE9",
+    "diff.add": "#A3BE8C",
+    "diff.change": "#EBCB8B",
+    "diff.delete": "#BF616A",
+    "diff.add.bg": "#414A4C",
+    "diff.change.bg": "#4C4C4C",
+    "diff.delete.bg": "#453B47",
+    "diff.add.dim": "#6E806A",
+    "diff.change.dim": "#968769",
+    "diff.delete.dim": "#7E4D57",
+    "selection.bg": "#434C5E",
+    "selection.fg": "#ECEFF4",
+    "focus": "#88C0D0",
+    "match": "#A3BE8C",
+    "tab.active.bg": "#434C5E",
+    "tab.active.fg": "#88C0D0",
+    "tab.inactive.bg": "#2E3440",
+    "tab.inactive.fg": "#81A1C1",
+    "keyhint": "#88C0D0",
+    "heading": "#88C0D0",
+    "link": "#88C0D0",
+    "prompt": "#88C0D0",
+    "diff.add.emph.bg": "#515D57",
+    "diff.delete.emph.bg": "#5A424D"
+  },
+  "components": {
+    "text": {
+      "fg": "#D8DEE9"
+    },
+    "text.muted": {
+      "fg": "#81A1C1"
+    },
+    "heading": {
+      "fg": "#88C0D0",
+      "bold": true
+    },
+    "keyhint": {
+      "fg": "#88C0D0"
+    },
+    "selection": {
+      "fg": "#ECEFF4",
+      "bg": "#434C5E"
+    },
+    "status.success": {
+      "fg": "#A3BE8C"
+    },
+    "status.warning": {
+      "fg": "#EBCB8B"
+    },
+    "status.error": {
+      "fg": "#BF616A"
+    },
+    "status.attention": {
+      "fg": "#D08770",
+      "bold": true
+    },
+    "tab.active": {
+      "fg": "#88C0D0",
+      "bg": "#434C5E",
+      "bold": true
+    },
+    "tab.inactive": {
+      "fg": "#81A1C1",
+      "bg": "#2E3440"
+    },
+    "input": {
+      "fg": "#D8DEE9",
+      "bg": "#3B4252"
+    },
+    "preview": {
+      "fg": "#D8DEE9",
+      "bg": "#2E3440"
+    },
+    "operation": {
+      "fg": "#D8DEE9"
+    },
+    "code": {
+      "fg": "#D8DEE9"
+    },
+    "diff": {
+      "fg": "#D8DEE9"
+    }
+  },
+  "ansi": [
+    "#3B4252",
+    "#BF616A",
+    "#A3BE8C",
+    "#EBCB8B",
+    "#81A1C1",
+    "#B48EAD",
+    "#88C0D0",
+    "#E5E9F0",
+    "#4C566A",
+    "#BF616A",
+    "#A3BE8C",
+    "#EBCB8B",
+    "#81A1C1",
+    "#B48EAD",
+    "#8FBCBB",
+    "#ECEFF4"
+  ]
+}

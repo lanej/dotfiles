@@ -758,6 +758,8 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+require("dotfiles-theme").setup()
+
 require("lazy").setup({
 	{
 		"m00qek/baleia.nvim",
@@ -773,35 +775,6 @@ require("lazy").setup({
 			-- Uses fs_event watchers by default (no polling)
 			silent = true,
 		},
-	},
-	{
-		"gbprod/nord.nvim",
-		config = function()
-			require("nord").setup({
-				transparent = true, -- Enable this to disable setting the background color
-				terminal_colors = true,
-				diff = { mode = "fg" },
-				borders = true, -- Enable the border between verticaly split windows visible
-				errors = { mode = "fg" }, -- Display mode for errors and diagnostics
-				styles = { comments = { italic = false } },
-				search = { theme = "vim" }, -- theme for highlighting search results
-				on_highlights = function(highlights, colors)
-					highlights["@symbol"] = { fg = colors.aurora.orange }
-					highlights["@string.special.symbol"] = highlights["@symbol"]
-					highlights["@variable.member"] = { fg = colors.frost.polar_water }
-					highlights["@variable.parameter"] = { fg = colors.aurora.purple }
-					highlights["@module"] = { fg = colors.frost.ice }
-					highlights["@error"] = { sp = colors.aurora.red, undercurl = true }
-					highlights["@constant"] = { fg = colors.aurora.purple }
-					highlights["@text.uri"] = { underline = true }
-					highlights["@error"] = { undercurl = true }
-					highlights["@spell.bad"] = { undercurl = true }
-
-					return highlights
-				end,
-			})
-			vim.api.nvim_command("colorscheme nord")
-		end,
 	},
 	{
 		"rachartier/tiny-inline-diagnostic.nvim",
@@ -1114,7 +1087,7 @@ require("lazy").setup({
 			require("lualine").setup({
 				options = {
 					icons_enabled = true,
-					theme = "nord",
+					theme = require("dotfiles-theme").lualine(),
 					component_separators = { left = "", right = "" },
 					section_separators = { left = "", right = "" },
 					disabled_filetypes = {

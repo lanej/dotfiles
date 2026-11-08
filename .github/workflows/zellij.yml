@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - 'zellij/**'
+      - 'design-system/generated/zellij.kdl'
+      - 'design-system/generated/fzf.txt'
+      - 'scripts/test-theme-native.py'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
       - '!bin/zellij-agent'
@@ -44,6 +47,9 @@ on:
     branches: [master]
     paths:
       - 'zellij/**'
+      - 'design-system/generated/zellij.kdl'
+      - 'design-system/generated/fzf.txt'
+      - 'scripts/test-theme-native.py'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
       - '!bin/zellij-agent'
@@ -238,6 +244,9 @@ jobs:
       - name: Exercise native attention, status bar and detached-session triage
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make test-zellij-status
+      - name: Compare native theme frame
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+        run: uv run --script scripts/test-theme-native.py --surface zellij
       - run: make test-zellij-clipboard
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - name: Preserve failed workflow diagnostics

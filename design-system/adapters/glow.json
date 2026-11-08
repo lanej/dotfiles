@@ -1,0 +1,195 @@
+{
+  "document": {
+    "block_prefix": "\n",
+    "block_suffix": "\n",
+    "color": "@text",
+    "indent": 2
+  },
+  "block_quote": {
+    "indent": 1,
+    "indent_token": "\u2502 "
+  },
+  "paragraph": {},
+  "list": {
+    "level_indent": 2
+  },
+  "heading": {
+    "block_suffix": "\n",
+    "color": "@heading",
+    "bold": true
+  },
+  "h1": {
+    "prefix": " ",
+    "suffix": " ",
+    "color": "@text.inverse",
+    "background_color": "@heading",
+    "bold": true
+  },
+  "h2": {
+    "prefix": "## "
+  },
+  "h3": {
+    "prefix": "### "
+  },
+  "h4": {
+    "prefix": "#### "
+  },
+  "h5": {
+    "prefix": "##### "
+  },
+  "h6": {
+    "prefix": "###### ",
+    "color": "@heading",
+    "bold": false
+  },
+  "text": {},
+  "strikethrough": {
+    "crossed_out": true
+  },
+  "emph": {
+    "italic": true
+  },
+  "strong": {
+    "bold": true
+  },
+  "hr": {
+    "color": "@syntax.comment",
+    "format": "\n--------\n"
+  },
+  "item": {
+    "block_prefix": "\u2022 "
+  },
+  "enumeration": {
+    "block_prefix": ". "
+  },
+  "task": {
+    "ticked": "[\u2713] ",
+    "unticked": "[ ] "
+  },
+  "link": {
+    "color": "@link",
+    "underline": true
+  },
+  "link_text": {
+    "color": "@link",
+    "bold": true
+  },
+  "image": {
+    "color": "@link",
+    "underline": true
+  },
+  "image_text": {
+    "color": "@link",
+    "format": "Image: {{.text}} \u2192"
+  },
+  "code": {
+    "prefix": " ",
+    "suffix": " ",
+    "color": "@syntax.string",
+    "background_color": "@surface.selected"
+  },
+  "code_block": {
+    "color": "@text",
+    "margin": 2,
+    "chroma": {
+      "text": {
+        "color": "@text"
+      },
+      "error": {
+        "color": "@text.strong",
+        "background_color": "@status.error"
+      },
+      "comment": {
+        "color": "@syntax.comment"
+      },
+      "comment_preproc": {
+        "color": "@syntax.keyword"
+      },
+      "keyword": {
+        "color": "@syntax.keyword"
+      },
+      "keyword_reserved": {
+        "color": "@syntax.keyword"
+      },
+      "keyword_namespace": {
+        "color": "@syntax.keyword"
+      },
+      "keyword_type": {
+        "color": "@syntax.type"
+      },
+      "operator": {
+        "color": "@syntax.operator"
+      },
+      "punctuation": {
+        "color": "@text"
+      },
+      "name": {
+        "color": "@syntax.variable"
+      },
+      "name_builtin": {
+        "color": "@syntax.variable"
+      },
+      "name_tag": {
+        "color": "@syntax.keyword"
+      },
+      "name_attribute": {
+        "color": "@syntax.variable"
+      },
+      "name_class": {
+        "color": "@syntax.type",
+        "underline": true,
+        "bold": true
+      },
+      "name_constant": {},
+      "name_decorator": {
+        "color": "@syntax.special"
+      },
+      "name_exception": {},
+      "name_function": {
+        "color": "@syntax.function"
+      },
+      "name_other": {},
+      "literal": {},
+      "literal_number": {
+        "color": "@syntax.number"
+      },
+      "literal_date": {},
+      "literal_string": {
+        "color": "@syntax.string"
+      },
+      "literal_string_escape": {
+        "color": "@syntax.special"
+      },
+      "generic_deleted": {
+        "color": "@diff.delete"
+      },
+      "generic_emph": {
+        "italic": true
+      },
+      "generic_inserted": {
+        "color": "@diff.add"
+      },
+      "generic_strong": {
+        "bold": true
+      },
+      "generic_subheading": {
+        "color": "@heading"
+      },
+      "background": {
+        "background_color": "@surface"
+      }
+    }
+  },
+  "table": {
+    "center_separator": "\u253c",
+    "column_separator": "\u2502",
+    "row_separator": "\u2500"
+  },
+  "definition_list": {},
+  "definition_term": {},
+  "definition_description": {
+    "block_prefix": "\n\ud83e\udc36 "
+  },
+  "html_block": {},
+  "html_span": {}
+}

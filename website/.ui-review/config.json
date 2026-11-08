@@ -37,6 +37,11 @@
       "name": "zellij-notifications",
       "path": "/dotfiles/reference/zellij/notifications/",
       "ready": "main h1"
+    },
+    {
+      "name": "design-system",
+      "path": "/dotfiles/design-system/",
+      "ready": "#atomic-catalog"
     }
   ],
   "viewports": [

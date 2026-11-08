@@ -1,0 +1,550 @@
+{
+  "description": "Observed repository settings before canonical Nord normalization; comparison evidence, not the new regression oracle.",
+  "git_revision": "716cb521a509715bb211ca03a05c3998a7bdd3a0",
+  "settings": {
+    "kitty/kittyconf": [
+      {
+        "line": 60,
+        "text": "cursor_color_text #ffffff"
+      },
+      {
+        "line": 61,
+        "text": "url_color #EBCB8B"
+      },
+      {
+        "line": 71,
+        "text": "# Nord Colorscheme for Kitty"
+      },
+      {
+        "line": 74,
+        "text": "# - https://github.com/arcticicestudio/nord-hyper"
+      },
+      {
+        "line": 76,
+        "text": "foreground            #D8DEE9"
+      },
+      {
+        "line": 77,
+        "text": "background            #2E3440"
+      },
+      {
+        "line": 78,
+        "text": "selection_foreground  #000000"
+      },
+      {
+        "line": 79,
+        "text": "selection_background  #FFFACD"
+      },
+      {
+        "line": 80,
+        "text": "url_color             #0087BD"
+      },
+      {
+        "line": 81,
+        "text": "cursor                #81A1C1"
+      },
+      {
+        "line": 84,
+        "text": "color0   #434C5E"
+      },
+      {
+        "line": 85,
+        "text": "color8   #4C566A"
+      },
+      {
+        "line": 88,
+        "text": "color1   #BF616A"
+      },
+      {
+        "line": 89,
+        "text": "color9   #D08770"
+      },
+      {
+        "line": 92,
+        "text": "color2   #A3BE8C"
+      },
+      {
+        "line": 93,
+        "text": "color10  #B5CEA8"
+      },
+      {
+        "line": 96,
+        "text": "color3   #EBCB8B"
+      },
+      {
+        "line": 97,
+        "text": "color11  #E5C07B"
+      },
+      {
+        "line": 100,
+        "text": "color4  #81A1C1"
+      },
+      {
+        "line": 101,
+        "text": "color12 #88C0D0"
+      },
+      {
+        "line": 104,
+        "text": "color5   #B48EAD"
+      },
+      {
+        "line": 105,
+        "text": "color13  #C678DD"
+      },
+      {
+        "line": 108,
+        "text": "color6   #88C0D0"
+      },
+      {
+        "line": 109,
+        "text": "color14  #8FBCBB"
+      },
+      {
+        "line": 112,
+        "text": "color7   #E5E9F0"
+      },
+      {
+        "line": 113,
+        "text": "color15  #ECEFF4"
+      }
+    ],
+    "rc/tmux.conf": [
+      {
+        "line": 43,
+        "text": "bind c-f display-popup -E 'win=$(tmux list-windows -F \"#{?#{==:#{@claude-class},need},3,#{?window_bell_flag,2,#{?#{==:#{@claude-class},activity},1,0}}}|#{window_activity_flag}|#{window_index}|#{window_name} #{?#{@claude-state},[#{@claude-state}] ,#{?window_bell_flag,[needs input] ,#{?window_activity_flag,[activity] ,}}}\" | sort -t\"|\" -k1,1 -rn -k2,2 -rn -k3,3 -n | fzf --height=100% --reverse --header=\"Windows (needs first)\" --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf --delimiter=\"|\" --with-nth=3.. --preview \"echo {} | cut -d\\\"|\\\" -f3 | xargs -I {} tmux capture-pane -ep -t {} -S -30 2>/dev/null || echo \\\"Preview unavailable\\\"\" --preview-window=right:60% | cut -d\"|\" -f3 || true); [ -n \"$win\" ] && tmux select-window -t \"$win\"; exit 0'"
+      },
+      {
+        "line": 44,
+        "text": "bind c-w display-popup -E 'sess=$(tmux list-sessions -F \"#{session_name}: #{session_windows} windows#{?session_attached, (attached),}\" | fzf --height=100% --reverse --header=\"Sessions\" --color=pointer:#d787d7,header:#d787d7,hl+:#ffafaf --preview \"~/.files/bin/tmux-session-window-tree {1}\" --preview-window=right:60% | sed \"s/:.*//g\" || true); [ -n \"$sess\" ] && tmux switch-client -t \"$sess\"; exit 0'"
+      },
+      {
+        "line": 159,
+        "text": "setw -g window-status-activity-style bg=#EBCB8B,fg=black # Nord13 yellow (fallback; overridden by custom format)"
+      },
+      {
+        "line": 161,
+        "text": "setw -g window-status-last-style     bg=default,dim,fg=#5fd7ff"
+      },
+      {
+        "line": 163,
+        "text": "setw -g window-style                 bg=#2E3440 # Inactive panes match Kitty's translucent background"
+      },
+      {
+        "line": 164,
+        "text": "setw -g window-active-style          bg=#2a3038 # Active pane uses a different color to stay opaque"
+      },
+      {
+        "line": 165,
+        "text": "setw -g window-status-bell-style     bg=#D08770,fg=#2E3440 # Bells request attention without implying failure"
+      },
+      {
+        "line": 174,
+        "text": "set  -g pane-active-border-style bg=default,fg=#B48EAD,bold # purple, matches active window tab"
+      },
+      {
+        "line": 176,
+        "text": "set  -g pane-border-style bg=default,fg=#4C566A # Nord dark gray"
+      },
+      {
+        "line": 181,
+        "text": "set  -g pane-border-format \"#{?pane_active,#[bg=#88C0D0]#[fg=#2E3440],#[bg=#4C566A]#[fg=#ECEFF4]} #I #{?#{!=:#{pane_title},},#{E:@codex-pane-label},#{pane_current_command}} #[bg=default]\""
+      },
+      {
+        "line": 205,
+        "text": "#{?window_zoomed_flag,#[bg=colour217],#[bg=#B48EAD]}\\"
+      },
+      {
+        "line": 209,
+        "text": "#{?window_zoomed_flag,#[fg=colour217],#[fg=#B48EAD]}\\"
+      },
+      {
+        "line": 217,
+        "text": "#{?#{@claude-state},#[bg=#{@claude-bg}]#[fg=black]\ue0b0,#{?window_bell_flag,#[bg=#D08770]#[fg=black]\ue0b0,#{?window_activity_flag,#[bg=#EBCB8B]#[fg=black]\ue0b0,#[fg=black]#[bg=colour237]\ue0b0}}}\\"
+      },
+      {
+        "line": 218,
+        "text": "#{?#{@claude-state},#[fg=#{@claude-fg}#,#{@claude-attr}],#{?window_bell_flag,#[fg=#2E3440],#{?window_activity_flag,#[fg=black],#[fg=cyan]#[bg=colour237]}}} #{?#{@claude-glyph},#{@claude-glyph} ,}#I #W\\"
+      },
+      {
+        "line": 219,
+        "text": "#{?#{@claude-state},#[fg=#{@claude-bg}]#[bg=black]\ue0b0,#{?window_bell_flag,#[fg=#D08770]#[bg=black]\ue0b0,#{?window_activity_flag,#[fg=#EBCB8B]#[bg=black]\ue0b0,#[fg=colour237]#[bg=black]\ue0b0}}}\""
+      }
+    ],
+    "bin/tmux-claude-state": [
+      {
+        "line": 27,
+        "text": "# Nord. \"Needs\" are hot and bold, activity is warm, quiet states recede into the"
+      },
+      {
+        "line": 31,
+        "text": "\"approval\": (\"need\",     \"#D08770\", \"#2E3440\", True,  \"\u25b2\"),  # blocked on a permission prompt"
+      },
+      {
+        "line": 32,
+        "text": "\"question\": (\"need\",     \"#D08770\", \"#2E3440\", True,  \"?\"),  # blocked on something it asked you"
+      },
+      {
+        "line": 33,
+        "text": "\"plan\":     (\"need\",     \"#D08770\", \"#2E3440\", True,  \"\u25a3\"),  # a plan is up for approval"
+      },
+      {
+        "line": 34,
+        "text": "\"tool\":     (\"activity\", \"#EBCB8B\", \"#2E3440\", False, \"\u25cf\"),  # a tool is running"
+      },
+      {
+        "line": 35,
+        "text": "\"thinking\": (\"activity\", \"#88C0D0\", \"#2E3440\", False, \"\u25d0\"),  # has the turn, nothing running"
+      },
+      {
+        "line": 36,
+        "text": "\"waiting\":  (\"activity\", \"#5E81AC\", \"#ECEFF4\", False, \"\u2026\"),  # waiting without a human prompt"
+      },
+      {
+        "line": 37,
+        "text": "\"failed\":   (\"need\",     \"#BF616A\", \"#ECEFF4\", True,  \"!\"),  # terminal system error"
+      },
+      {
+        "line": 38,
+        "text": "\"idle\":     (\"quiet\",    \"#4C566A\", \"#D8DEE9\", False, \"\u25cb\"),  # finished, still warm"
+      },
+      {
+        "line": 39,
+        "text": "\"dormant\":  (\"quiet\",    \"#3B4252\", \"#616E88\", False, \"\u00b7\"),  # finished and left alone"
+      }
+    ],
+    "bin/zellij-picker": [
+      {
+        "line": 314,
+        "text": "\"--color=dark,pointer:#d787d7,header:#d787d7,hl+:#ffafaf\","
+      }
+    ],
+    "zellij/config.kdl": [
+      {
+        "line": 5,
+        "text": "theme \"lane-nord\""
+      },
+      {
+        "line": 272,
+        "text": "// Nord colors with tmux's purple active tab, cyan inactive labels, and quiet"
+      },
+      {
+        "line": 275,
+        "text": "lane-nord {"
+      }
+    ],
+    "zellij/status/src/main.rs": [
+      {
+        "line": 258,
+        "text": "print!(\"\\x1b[1;23;48;2;180;142;173m\\x1b[38;2;46;52;64m{}{}\\x1b[0m\","
+      },
+      {
+        "line": 267,
+        "text": "print!(\"\\x1b[1;23;48;2;180;142;173m\\x1b[38;2;46;52;64m{}{}\\x1b[0m\","
+      },
+      {
+        "line": 298,
+        "text": "print!(\"\\x1b[48;2;46;52;64m\\x1b[38;2;136;192;208m\");"
+      },
+      {
+        "line": 323,
+        "text": "print!(\"\\x1b[48;2;{}m\\x1b[38;2;{}m\", if tab.active { \"76;65;82\" } else { \"46;52;64\" }, if tab.active && glyph.is_empty() { \"180;142;173\" } else { color });"
+      },
+      {
+        "line": 332,
+        "text": "print!(\"\\x1b[48;2;46;52;64m{}\\x1b[38;2;129;161;193m\", \" \".repeat(available.saturating_sub(used)));"
+      }
+    ],
+    "nvim/init.lua": [
+      {
+        "line": 778,
+        "text": "\"gbprod/nord.nvim\","
+      },
+      {
+        "line": 780,
+        "text": "require(\"nord\").setup({"
+      },
+      {
+        "line": 803,
+        "text": "vim.api.nvim_command(\"colorscheme nord\")"
+      },
+      {
+        "line": 1117,
+        "text": "theme = \"nord\","
+      }
+    ],
+    "nvim/lua/gitsignsconfig.lua": [
+      {
+        "line": 23,
+        "text": "-- Very subtle word-level diff highlighting using Nord palette diff backgrounds"
+      },
+      {
+        "line": 24,
+        "text": "-- Using Nord's pre-defined dim diff colors for background-only highlighting"
+      },
+      {
+        "line": 25,
+        "text": "-- Base background is nord0 (#2E3440), these are barely-tinted versions from Nord theme"
+      },
+      {
+        "line": 28,
+        "text": "Add = { \"#A3BE8C\", \"#66755B\" },"
+      },
+      {
+        "line": 29,
+        "text": "Change = { \"#EBCB8B\", \"#80704F\" },"
+      },
+      {
+        "line": 30,
+        "text": "Delete = { \"#BF616A\", \"#80565B\" },"
+      },
+      {
+        "line": 31,
+        "text": "Topdelete = { \"#BF616A\", \"#80565B\" },"
+      },
+      {
+        "line": 32,
+        "text": "Changedelete = { \"#EBCB8B\", \"#80704F\" },"
+      },
+      {
+        "line": 38,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsAddInline\", { bg = \"#45523E\", fg = nil }) -- Nord DiffAdded"
+      },
+      {
+        "line": 39,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsDeleteInline\", { bg = \"#4F2D30\", fg = nil }) -- Nord DiffRemoved"
+      },
+      {
+        "line": 40,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsChangeInline\", { bg = \"#524633\", fg = nil }) -- Nord DiffModified"
+      },
+      {
+        "line": 41,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsAddLnInline\", { bg = \"#45523E\", fg = nil }) -- Nord DiffAdded (buffer)"
+      },
+      {
+        "line": 42,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsDeleteLnInline\", { bg = \"#4F2D30\", fg = nil }) -- Nord DiffRemoved (buffer)"
+      },
+      {
+        "line": 43,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsChangeLnInline\", { bg = \"#524633\", fg = nil }) -- Nord DiffModified (buffer)"
+      },
+      {
+        "line": 44,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsAddVirtLnInline\", { bg = \"#45523E\", fg = nil }) -- Nord DiffAdded (virtual lines)"
+      },
+      {
+        "line": 45,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsDeleteVirtLnInline\", { bg = \"#4F2D30\", fg = nil }) -- Nord DiffRemoved (virtual lines)"
+      },
+      {
+        "line": 46,
+        "text": "vim.api.nvim_set_hl(0, \"GitSignsChangeVirtLnInline\", { bg = \"#524633\", fg = nil }) -- Nord DiffModified (virtual lines)"
+      }
+    ],
+    "git/gitconfig": [
+      {
+        "line": 150,
+        "text": "plus-empty-line-marker-style = normal \"#263026\""
+      },
+      {
+        "line": 151,
+        "text": "plus-non-emph-style = syntax \"#263026\""
+      },
+      {
+        "line": 152,
+        "text": "plus-style = syntax \"#263026\""
+      },
+      {
+        "line": 153,
+        "text": "syntax-theme = Nord"
+      }
+    ],
+    "sh/alias": [
+      {
+        "line": 57,
+        "text": "export BAT_THEME=Nord"
+      },
+      {
+        "line": 364,
+        "text": "# Override glow to always use nord style"
+      },
+      {
+        "line": 366,
+        "text": "command glow -p -w 0 --style ~/.config/glow/nord.json \"$@\""
+      },
+      {
+        "line": 403,
+        "text": "--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo \"Loading preview...\"' \\"
+      },
+      {
+        "line": 423,
+        "text": "--preview 'readme=$(phab file get -r {} README.md 2>/dev/null || phab file get -r {} readme.md 2>/dev/null); if [ -n \"$readme\" ]; then if command -v glow >/dev/null 2>&1; then echo \"$readme\" | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json -; elif command -v bat >/dev/null 2>&1; then echo \"$readme\" | bat --style=plain --language=markdown --color=always -; else echo \"$readme\"; fi; else echo \"No README found\"; fi' \\"
+      }
+    ],
+    "sh/bottom.toml": [
+      {
+        "line": 54,
+        "text": "# Built-in themes.  Valid values are \"default\", \"default-light\", \"gruvbox\", \"gruvbox-light\", \"nord\", \"nord-light\""
+      },
+      {
+        "line": 55,
+        "text": "color = \"nord\""
+      }
+    ],
+    "sh/glow.nord.json": [
+      {
+        "line": 5,
+        "text": "\"color\": \"#ECEFF4\","
+      },
+      {
+        "line": 18,
+        "text": "\"color\": \"#5E81AC\","
+      },
+      {
+        "line": 24,
+        "text": "\"color\": \"#ECEFF4\","
+      },
+      {
+        "line": 25,
+        "text": "\"background_color\": \"#5E81AC\","
+      },
+      {
+        "line": 42,
+        "text": "\"color\": \"#A3BE8C\","
+      },
+      {
+        "line": 56,
+        "text": "\"color\": \"#4C566A\","
+      },
+      {
+        "line": 70,
+        "text": "\"color\": \"#A3BE8C\","
+      },
+      {
+        "line": 74,
+        "text": "\"color\": \"#81A1C1\","
+      },
+      {
+        "line": 78,
+        "text": "\"color\": \"#B48EAD\","
+      },
+      {
+        "line": 82,
+        "text": "\"color\": \"#81A1C1\","
+      },
+      {
+        "line": 88,
+        "text": "\"color\": \"#EBCB8B\","
+      },
+      {
+        "line": 89,
+        "text": "\"background_color\": \"#434C5E\""
+      },
+      {
+        "line": 92,
+        "text": "\"color\": \"#D8DEE9\","
+      },
+      {
+        "line": 96,
+        "text": "\"color\": \"#D8DEE9\""
+      },
+      {
+        "line": 99,
+        "text": "\"color\": \"#E5E9F0\","
+      },
+      {
+        "line": 100,
+        "text": "\"background_color\": \"#BF616A\""
+      },
+      {
+        "line": 103,
+        "text": "\"color\": \"#4C566A\""
+      },
+      {
+        "line": 106,
+        "text": "\"color\": \"#D08770\""
+      },
+      {
+        "line": 109,
+        "text": "\"color\": \"#5E81AC\""
+      },
+      {
+        "line": 112,
+        "text": "\"color\": \"#B48EAD\""
+      },
+      {
+        "line": 115,
+        "text": "\"color\": \"#BF616A\""
+      },
+      {
+        "line": 118,
+        "text": "\"color\": \"#81A1C1\""
+      },
+      {
+        "line": 121,
+        "text": "\"color\": \"#BF616A\""
+      },
+      {
+        "line": 124,
+        "text": "\"color\": \"#EBCB8B\""
+      },
+      {
+        "line": 127,
+        "text": "\"color\": \"#88C0D0\""
+      },
+      {
+        "line": 130,
+        "text": "\"color\": \"#B48EAD\""
+      },
+      {
+        "line": 133,
+        "text": "\"color\": \"#B48EAD\""
+      },
+      {
+        "line": 136,
+        "text": "\"color\": \"#5E81AC\""
+      },
+      {
+        "line": 139,
+        "text": "\"color\": \"#E5E9F0\","
+      },
+      {
+        "line": 145,
+        "text": "\"color\": \"#EBCB8B\""
+      },
+      {
+        "line": 149,
+        "text": "\"color\": \"#A3BE8C\""
+      },
+      {
+        "line": 154,
+        "text": "\"color\": \"#8FBCBB\""
+      },
+      {
+        "line": 158,
+        "text": "\"color\": \"#D08770\""
+      },
+      {
+        "line": 161,
+        "text": "\"color\": \"#8FBCBB\""
+      },
+      {
+        "line": 164,
+        "text": "\"color\": \"#BF616A\""
+      },
+      {
+        "line": 170,
+        "text": "\"color\": \"#A3BE8C\""
+      },
+      {
+        "line": 176,
+        "text": "\"color\": \"#88C0D0\""
+      },
+      {
+        "line": 179,
+        "text": "\"background_color\": \"#88C0D0\""
+      }
+    ]
+  }
+}

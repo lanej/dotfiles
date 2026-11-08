@@ -45,6 +45,7 @@ export default defineConfig({
         ...zellijSidebar,
       ] },
       { label: 'Reference', items: [
+        { label: 'Design system', slug: 'design-system' },
         { label: 'Components', slug: 'components' },
         { label: 'Builder', slug: 'reference/builder' },
         { label: 'macOS stack', slug: 'reference/macos' },

@@ -1,0 +1,10 @@
+{
+  "cpu0_label": {
+    "bg": "default",
+    "bold": false,
+    "fg": "88c0d0",
+    "italics": false,
+    "reverse": false,
+    "underscore": false
+  }
+}

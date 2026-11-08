@@ -92,7 +92,20 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size
+lint: shellcheck audit-skills instruction-size theme-check
+
+.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native
+theme-generate:
+	@python3 "$(DOTFILES)/scripts/theme.py"
+theme-check:
+	@python3 "$(DOTFILES)/scripts/theme.py" --check
+theme-cache:
+	$(call require-command,bat)
+	@bat cache --build
+test-theme:
+	@python3 "$(DOTFILES)/scripts/test-theme.py"
+test-theme-native:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -426,7 +439,7 @@ test-zellij-clipboard:
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
 test-zellij-status:
-	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
 test-zellij-auto-title:
 	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"

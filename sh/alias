@@ -54,7 +54,7 @@ if [ "$os_type" = "Linux" ]; then
 fi
 
 if command -v bat >/dev/null 2>&1; then
-	export BAT_THEME=Nord
+	export BAT_THEME=Dotfiles
 
 	# Only alias cat to bat in login shells
 	# Rationale: Scripts and non-interactive shells expect POSIX-compliant cat behavior
@@ -361,9 +361,9 @@ op_password() {
 }
 
 
-# Override glow to always use nord style
+# SEE: Glow uses the shared native Markdown style.
 glow() {
-	command glow -p -w 0 --style ~/.config/glow/nord.json "$@"
+	command glow -p -w 0 --style ~/.config/dotfiles/theme/glow.json "$@"
 }
 
 # https://github.com/bcspragu/kagi/pull/2
@@ -400,7 +400,7 @@ gh-clone() {
 		--prompt="GitHub repo> " \
 		--header=$'CTRL-R: Search | WilDcards: * | Qualifiers: repo: user: org: language: topic: in:name,description,readme\n─────────────────────────────────────────────────────────────────────────────' \
 		--bind='ctrl-r:change-prompt(Searching {q}...> )+reload([ -n {q} ] && gh search repos {q} --limit 100 --json fullName 2>/dev/null | jq -rc ".[] | .fullName" || echo "Type a query and press CTRL-R to search")+clear-query+change-prompt(GitHub repo> )' \
-		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json || echo "Loading preview..."' \
+		--preview='gh repo view {} 2>/dev/null | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/dotfiles/theme/glow.json || echo "Loading preview..."' \
 		--preview-window="$(fzf_preview_window)")
 
 	if [ -n "$selected" ]; then
@@ -420,7 +420,7 @@ phab-clone() {
 		grep -v "^Error:" |
 		jq -r 'select(.fields != null) | .fields.shortName' |
 		fzf --height=100% --reverse -m \
-			--preview 'readme=$(phab file get -r {} README.md 2>/dev/null || phab file get -r {} readme.md 2>/dev/null); if [ -n "$readme" ]; then if command -v glow >/dev/null 2>&1; then echo "$readme" | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/glow/nord.json -; elif command -v bat >/dev/null 2>&1; then echo "$readme" | bat --style=plain --language=markdown --color=always -; else echo "$readme"; fi; else echo "No README found"; fi' \
+			--preview 'readme=$(phab file get -r {} README.md 2>/dev/null || phab file get -r {} readme.md 2>/dev/null); if [ -n "$readme" ]; then if command -v glow >/dev/null 2>&1; then echo "$readme" | COLORTERM=truecolor CLICOLOR_FORCE=1 glow --style ~/.config/dotfiles/theme/glow.json -; elif command -v bat >/dev/null 2>&1; then echo "$readme" | bat --style=plain --language=markdown --color=always -; else echo "$readme"; fi; else echo "No README found"; fi' \
 			--preview-window "$(fzf_preview_window)")
 
 	if [ -z "$selected" ]; then

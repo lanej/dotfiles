@@ -1,0 +1,13 @@
+[
+  [
+    {
+      "bg": "434c5e",
+      "bold": true,
+      "data": " PREFIX  waiting for next key  |  Esc cancels                               ",
+      "fg": "88c0d0",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ]
+]

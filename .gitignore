@@ -8,6 +8,8 @@ bin/mate
 .ssh_config
 bin/*
 !bin/nvim-gh-review
+!bin/dotfiles-theme
+!bin/dotfiles-fzf
 !bin/firstmate
 !bin/paseo-pi
 !bin/ep-direnv

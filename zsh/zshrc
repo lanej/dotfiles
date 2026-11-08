@@ -215,7 +215,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		# Use fzf with toggle binding that switches back and forth
 		result=$(
 			FZF_DEFAULT_COMMAND="$cmd_normal" \
-			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --scheme=path --tiebreak=length,pathname ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' --preview-window='$preview_window' \
+			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --color=${DOTFILES_FZF_COLOR:-dark} --scheme=path --tiebreak=length,pathname ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' --preview-window='$preview_window' \
 			--bind='ctrl-o:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(🔍 > )\" || echo \"reload($cmd_hidden)+change-prompt(🔍 [hidden] > )\"'" \
 			FZF_DEFAULT_OPTS_FILE='' \
 			fzf < /dev/tty | while read -r item; do
@@ -279,11 +279,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 			elif [[ -f $realpath ]]; then
 				bat --color=always --style=numbers --line-range=:200 $realpath
 			fi'
-		# custom fzf flags
-		# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
-		# -i makes fzf case-insensitive; no --color here so it inherits
-		# fzf's own default palette, same as every other picker in this
-		# config (none of them set --color explicitly either).
+		# WHY: Completion keeps its native keys while sharing the generated palette.
 		zstyle ':fzf-tab:*' fzf-flags --bind=tab:accept -i --preview-window="$(__fzf_dynamic_preview_window)"
 		# To make fzf-tab follow FZF_DEFAULT_OPTS.
 		# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.

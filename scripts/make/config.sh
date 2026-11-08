@@ -17,6 +17,18 @@ check_os() {
     bash "$make_scripts/require.sh" os "$1" "$os" "$target"
 }
 
+# WHY: Native consumers share committed artifacts without a startup generator.
+case "$target" in
+    shell|tmux-config|zellij-config|vim-config|kitty-config|git)
+        mkdir -p "$setup_home/.config/dotfiles"
+        if [[ -e "$setup_home/.config/dotfiles/theme" && ! -L "$setup_home/.config/dotfiles/theme" ]]; then
+            printf '%s\n' "Theme path is not a managed link: $setup_home/.config/dotfiles/theme" >&2
+            exit 1
+        fi
+        ln -fns "$dotfiles/design-system/generated" "$setup_home/.config/dotfiles/theme"
+        ;;
+esac
+
 case "$target" in
     pi-config)
         node "$dotfiles/firstmate/github-feedback.mjs" configure-pi "$setup_home/.pi/agent/settings.json"
@@ -77,7 +89,7 @@ case "$target" in
         mkdir -p "${setup_home}/.config/htop"
         ln -fs "${dotfiles}/sh/htoprc" "${setup_home}/.config/htop/htoprc"
         mkdir -p "${setup_home}/.config/bottom"
-        ln -fs "${dotfiles}/sh/bottom.toml" "${setup_home}/.config/bottom/bottom.toml"
+        ln -fs "${dotfiles}/design-system/generated/bottom.toml" "${setup_home}/.config/bottom/bottom.toml"
         mkdir -p "${setup_home}/.config/btop"
         ln -fs "${dotfiles}/btop/btop.conf" "${setup_home}/.config/btop/btop.conf"
         mkdir -p "${setup_home}/.local/share/z"
@@ -92,10 +104,13 @@ case "$target" in
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
         ln -fs "${dotfiles}/bash/bashprofile" "${setup_home}/.bash_profile"
         ln -fns "${dotfiles}/bat" "${setup_home}/.config/bat"
+        if command -v bat >/dev/null 2>&1; then
+            BAT_CONFIG_DIR="$setup_home/.config/bat" BAT_CACHE_PATH="$setup_home/.cache/bat" bat cache --build
+        fi
         ln -fs "${setup_home}/.alias" "${setup_home}/.bashalias"
         mkdir -p "${setup_home}/.config/glow"
         ln -fs "${dotfiles}/sh/glow.yml" "${setup_home}/.config/glow/glow.yml"
-        ln -fs "${dotfiles}/sh/glow.nord.json" "${setup_home}/.config/glow/nord.json"
+        ln -fs "${dotfiles}/design-system/generated/glow.json" "${setup_home}/.config/glow/nord.json"
         ;;
     zsh-config)
         ln -fs "${dotfiles}/zsh/zshrc" "${setup_home}/.zshrc"
@@ -148,7 +163,8 @@ case "$target" in
                 esac
             fi
         fi
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.config/zellij/themes" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        ln -fs "$dotfiles/design-system/generated/zellij.kdl" "$setup_home/.config/zellij/themes/dotfiles.kdl"
         if [ "$status_available" = true ]; then
             ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
             ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"

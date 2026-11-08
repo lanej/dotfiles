@@ -1,0 +1,58 @@
+{
+  "text": {
+    "fg": "@text"
+  },
+  "text.muted": {
+    "fg": "@text.muted"
+  },
+  "heading": {
+    "fg": "@heading",
+    "bold": true
+  },
+  "keyhint": {
+    "fg": "@keyhint"
+  },
+  "selection": {
+    "fg": "@selection.fg",
+    "bg": "@selection.bg"
+  },
+  "status.success": {
+    "fg": "@status.success"
+  },
+  "status.warning": {
+    "fg": "@status.warning"
+  },
+  "status.error": {
+    "fg": "@status.error"
+  },
+  "status.attention": {
+    "fg": "@status.attention",
+    "bold": true
+  },
+  "tab.active": {
+    "fg": "@tab.active.fg",
+    "bg": "@tab.active.bg",
+    "bold": true
+  },
+  "tab.inactive": {
+    "fg": "@tab.inactive.fg",
+    "bg": "@tab.inactive.bg"
+  },
+  "input": {
+    "fg": "@text",
+    "bg": "@surface.raised"
+  },
+  "preview": {
+    "fg": "@text",
+    "bg": "@surface"
+  },
+  "operation": {
+    "fg": "@text"
+  },
+  "code": {
+    "fg": "@text"
+  },
+  "diff": {
+    "fg": "@text"
+  }
+}

@@ -198,3 +198,8 @@ else
 fi
 
 [ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
+
+# SEE: Generated native theme settings do not require a generator at shell startup.
+if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh"
+fi

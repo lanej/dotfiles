@@ -60,12 +60,12 @@ the shared palette, so the legend follows configuration changes.
 
 | State | Class | Glyph | Colour | Means |
 | --- | --- | --- | --- | --- |
-| `approval` | need | ▲ | Nord11 red, bold | Blocked on a permission prompt |
-| `question` | need | `?` | Nord11 red, bold | Blocked on something it asked you |
+| `approval` | need | ▲ | Nord12 orange, bold | Blocked on a permission prompt |
+| `question` | need | `?` | Nord12 orange, bold | Blocked on something it asked you |
 | `plan` | need | ▣ | Nord12 orange, bold | A plan is up for approval |
 | `tool` | activity | ● | Nord13 yellow | A tool is running |
 | `thinking` | activity | ◐ | Nord8 cyan | The agent has the turn, nothing running yet |
-| `idle` | quiet | ○ | Nord3 grey | Finished, still warm |
+| `idle` | quiet | ○ | Nord2 selected surface | Finished, still warm |
 | `dormant` | quiet | · | Nord1, dimmed | Finished and untouched for an hour |
 | _(unset)_ | — | — | default | No agent session in this window |
 

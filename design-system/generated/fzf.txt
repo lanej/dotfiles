@@ -1,0 +1,1 @@
+--color=dark,fg:#D8DEE9,bg:#2E3440,fg+:#ECEFF4,bg+:#434C5E,hl:#A3BE8C,hl+:#A3BE8C,pointer:#88C0D0,marker:#A3BE8C,header:#88C0D0,prompt:#88C0D0,info:#81A1C1,border:#4C566A,spinner:#88C0D0

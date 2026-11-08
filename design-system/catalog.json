@@ -1,0 +1,260 @@
+[
+  {
+    "id": "theme",
+    "level": "foundation",
+    "composes": [],
+    "sources": [
+      "design-system/themes/nord.json"
+    ],
+    "description": "Canonical palette, semantic roles, ANSI slots and explicit blend recipes.",
+    "implementations": {
+      "Neovim": "owned colorscheme and generated ANSI slots",
+      "Zellij": "generated native Styling declarations",
+      "tmux": "generated style options and formats",
+      "CLI": "ANSI palette, native styles and syntax theme"
+    }
+  },
+  {
+    "id": "text",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/components.json"
+    ],
+    "description": "Readable normal, strong and muted text.",
+    "implementations": {
+      "Neovim": "Normal / NormalFloat / Comment",
+      "Zellij": "text_unselected / text_selected",
+      "tmux": "status-style / message-style",
+      "CLI": "text role and inherited terminal foreground"
+    }
+  },
+  {
+    "id": "status",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/components.json"
+    ],
+    "description": "Success, warning, error, attention, idle and unknown states retain labels or glyphs.",
+    "implementations": {
+      "Neovim": "Diagnostic* / GitSigns*",
+      "Zellij": "native attention glyph + received theme style",
+      "tmux": "agent-state segment and glyph",
+      "CLI": "labeled success / warning / error / unknown"
+    }
+  },
+  {
+    "id": "selection",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/components.json"
+    ],
+    "description": "Focused selection and inactive state.",
+    "implementations": {
+      "Neovim": "Visual / PmenuSel / FzfLuaCursorLine",
+      "Zellij": "selected native declarations and themed fzf",
+      "tmux": "window-status-current-style and themed fzf",
+      "CLI": "fzf selected foreground / background"
+    }
+  },
+  {
+    "id": "keyhint",
+    "level": "atom",
+    "composes": [
+      "theme"
+    ],
+    "sources": [
+      "design-system/components.json"
+    ],
+    "description": "Native key notation with shared emphasis.",
+    "implementations": {
+      "Neovim": "WhichKey / WhichKeyDesc",
+      "Zellij": "prefix banner and stock help styles",
+      "tmux": "prefix_highlight plugin options",
+      "CLI": "keyhint role"
+    }
+  },
+  {
+    "id": "metadata-row",
+    "level": "molecule",
+    "composes": [
+      "text",
+      "status",
+      "selection"
+    ],
+    "sources": [
+      "bin/zellij-picker",
+      "nvim/lua/worktree-picker.lua"
+    ],
+    "description": "A selectable identity with nearby status and metadata.",
+    "implementations": {
+      "Neovim": "worktree picker rows",
+      "Zellij": "tab/session fzf rows",
+      "tmux": "window/session fzf rows",
+      "CLI": "native fzf results"
+    }
+  },
+  {
+    "id": "tab-label",
+    "level": "molecule",
+    "composes": [
+      "text",
+      "status",
+      "selection"
+    ],
+    "sources": [
+      "zellij/status/src/main.rs",
+      "design-system/adapters/tmux.conf.in"
+    ],
+    "description": "Name, active state, attention and zoom.",
+    "implementations": {
+      "Neovim": "TabLine / TabLineSel",
+      "Zellij": "owned status plugin, native style data",
+      "tmux": "window-status formats",
+      "CLI": "not applicable"
+    }
+  },
+  {
+    "id": "picker",
+    "level": "organism",
+    "composes": [
+      "metadata-row",
+      "keyhint"
+    ],
+    "sources": [
+      "bin/zellij-picker",
+      "nvim/lua/fzfconfig.lua"
+    ],
+    "description": "Search, results, selection, preview and cancellation.",
+    "implementations": {
+      "Neovim": "fzf-lua and Telescope highlight mappings",
+      "Zellij": "existing tab/session picker",
+      "tmux": "existing window/session picker",
+      "CLI": "fzf wrapper"
+    }
+  },
+  {
+    "id": "status-bar",
+    "level": "organism",
+    "composes": [
+      "tab-label",
+      "keyhint"
+    ],
+    "sources": [
+      "zellij/status/src/main.rs",
+      "design-system/adapters/tmux.conf.in"
+    ],
+    "description": "Persistent navigation and attention.",
+    "implementations": {
+      "Neovim": "generated lualine theme",
+      "Zellij": "lane-status",
+      "tmux": "native status formats",
+      "CLI": "not applicable"
+    }
+  },
+  {
+    "id": "code-and-diff",
+    "level": "organism",
+    "composes": [
+      "text",
+      "status"
+    ],
+    "sources": [
+      "design-system/adapters/neovim.json",
+      "design-system/adapters/syntax.json"
+    ],
+    "description": "Syntax and change states with staged and unstaged distinctions.",
+    "implementations": {
+      "Neovim": "syntax / LSP / diagnostic / diff groups",
+      "Zellij": "verbatim pane contents (not recolored)",
+      "tmux": "verbatim pane contents (not recolored)",
+      "CLI": "bat / delta / Glow"
+    }
+  },
+  {
+    "id": "browse-inspect",
+    "level": "template",
+    "composes": [
+      "picker"
+    ],
+    "sources": [
+      "bin/zellij-picker"
+    ],
+    "description": "Browse a collection and inspect a preview before accepting.",
+    "implementations": {
+      "Neovim": "worktree picker",
+      "Zellij": "tab/session pickers with native previews",
+      "tmux": "window/session pickers with native previews",
+      "CLI": "fzf preview composition"
+    }
+  },
+  {
+    "id": "zellij",
+    "level": "interface",
+    "composes": [
+      "browse-inspect",
+      "status-bar"
+    ],
+    "sources": [
+      "zellij/config.kdl"
+    ],
+    "description": "Tab/session switching and persistent attention.",
+    "implementations": {
+      "Zellij": "stock frames / owned status / fzf"
+    }
+  },
+  {
+    "id": "neovim",
+    "level": "interface",
+    "composes": [
+      "picker",
+      "code-and-diff",
+      "status-bar"
+    ],
+    "sources": [
+      "nvim/init.lua"
+    ],
+    "description": "Editing, diagnostics, diffs and navigation.",
+    "implementations": {
+      "Neovim": "editor, plugin highlights and terminal colors"
+    }
+  },
+  {
+    "id": "tmux",
+    "level": "interface",
+    "composes": [
+      "browse-inspect",
+      "status-bar"
+    ],
+    "sources": [
+      "rc/tmux.conf"
+    ],
+    "description": "Native styles, window/session navigation and attention.",
+    "implementations": {
+      "tmux": "styles, formats and state helpers"
+    }
+  },
+  {
+    "id": "cli",
+    "level": "interface",
+    "composes": [
+      "code-and-diff"
+    ],
+    "sources": [
+      "sh/alias",
+      "git/gitconfig"
+    ],
+    "description": "Pagers, Markdown rendering and ordinary command output.",
+    "implementations": {
+      "CLI": "bat, delta, Glow, bottom and shell inheritance"
+    }
+  }
+]

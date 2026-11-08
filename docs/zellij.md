@@ -2,6 +2,8 @@
 
 My Zellij setup uses **Ctrl-f** as the prefix, Vim-style navigation, and one top tab bar. Start with the [keybinding map](zellij-keybinds.mdx), or choose a feature below.
 
+The shared canonical Nord theme is documented in the [design-system catalog](design-system.mdx), with current native theme examples.
+
 ## Start a session
 
 Enable Zellij in your [machine settings](../README.md#configuration-sets), then install the selected tools with `make install`. The guides below describe the managed modern configuration.

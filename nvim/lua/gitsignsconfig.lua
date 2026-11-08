@@ -20,43 +20,8 @@ require("gitsigns").setup({
 	end,
 })
 
--- Very subtle word-level diff highlighting using Nord palette diff backgrounds
--- Using Nord's pre-defined dim diff colors for background-only highlighting
--- Base background is nord0 (#2E3440), these are barely-tinted versions from Nord theme
-local function set_gitsigns_highlights()
-	local colors = {
-		Add = { "#A3BE8C", "#66755B" },
-		Change = { "#EBCB8B", "#80704F" },
-		Delete = { "#BF616A", "#80565B" },
-		Topdelete = { "#BF616A", "#80565B" },
-		Changedelete = { "#EBCB8B", "#80704F" },
-	}
-	for kind, color in pairs(colors) do
-		vim.api.nvim_set_hl(0, "GitSigns" .. kind, { fg = color[1] })
-		vim.api.nvim_set_hl(0, "GitSignsStaged" .. kind, { fg = color[2] })
-	end
-	vim.api.nvim_set_hl(0, "GitSignsAddInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded
-	vim.api.nvim_set_hl(0, "GitSignsDeleteInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved
-	vim.api.nvim_set_hl(0, "GitSignsChangeInline", { bg = "#524633", fg = nil }) -- Nord DiffModified
-	vim.api.nvim_set_hl(0, "GitSignsAddLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (buffer)
-	vim.api.nvim_set_hl(0, "GitSignsDeleteLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (buffer)
-	vim.api.nvim_set_hl(0, "GitSignsChangeLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (buffer)
-	vim.api.nvim_set_hl(0, "GitSignsAddVirtLnInline", { bg = "#45523E", fg = nil }) -- Nord DiffAdded (virtual lines)
-	vim.api.nvim_set_hl(0, "GitSignsDeleteVirtLnInline", { bg = "#4F2D30", fg = nil }) -- Nord DiffRemoved (virtual lines)
-	vim.api.nvim_set_hl(0, "GitSignsChangeVirtLnInline", { bg = "#524633", fg = nil }) -- Nord DiffModified (virtual lines)
-end
-
+-- SEE: Shared GitSigns highlights, including staged and inline states, live in dotfiles-theme.
 require("git-branch-signs").setup()
-
--- Apply highlights immediately
-set_gitsigns_highlights()
-
--- Reapply after colorscheme changes (fixes issue where colorscheme reloads override highlights)
-vim.api.nvim_create_autocmd("ColorScheme", {
-	pattern = "*",
-	callback = set_gitsigns_highlights,
-	desc = "Reapply gitsigns inline diff highlights after colorscheme changes",
-})
 
 vim.keymap.set("n", "<leader>gW", require("gitsigns").stage_buffer, { silent = true, noremap = true })
 vim.keymap.set("n", "<leader>gl", require("gitsigns").blame_line, { silent = true, noremap = true })

@@ -3,9 +3,7 @@
 
 Claude and Codex hooks share this palette; tmux.conf reads the options it writes.
 The @claude-* names remain the common interface for existing hooks and servers.
-Keeping the palette here (rather than as another nested ternary in tmux.conf)
-means a new state costs one table row instead of three more conditional
-branches per rendered segment.
+State policy lives here; presentation colors come from the shared design system.
 
 Options written on the window:
   @claude-state   semantic name, also read by tmux-quickswitch-alert
@@ -17,6 +15,7 @@ Options written on the window:
   @claude-since   epoch seconds the state was entered, for dormancy
 """
 import os
+import runpy
 from pathlib import Path
 import re
 import subprocess
@@ -24,19 +23,19 @@ import sys
 import tempfile
 import time
 
-# Nord. "Needs" are hot and bold, activity is warm, quiet states recede into the
-# bar. Glyphs carry the same ranking for anyone reading shape over colour.
+# WHY: Keep agent state policy separate from the native theme's presentation.
+THEME_DIR = Path(os.environ.get("DOTFILES_THEME_DIR", Path(__file__).resolve().parents[1] / "design-system/generated"))
+COLORS = runpy.run_path(str(THEME_DIR / "theme.py"))["COLORS"]
 STATES = {
-    # name        class       bg         fg         bold   glyph
-    "approval": ("need",     "#D08770", "#2E3440", True,  "▲"),  # blocked on a permission prompt
-    "question": ("need",     "#D08770", "#2E3440", True,  "?"),  # blocked on something it asked you
-    "plan":     ("need",     "#D08770", "#2E3440", True,  "▣"),  # a plan is up for approval
-    "tool":     ("activity", "#EBCB8B", "#2E3440", False, "●"),  # a tool is running
-    "thinking": ("activity", "#88C0D0", "#2E3440", False, "◐"),  # has the turn, nothing running
-    "waiting":  ("activity", "#5E81AC", "#ECEFF4", False, "…"),  # waiting without a human prompt
-    "failed":   ("need",     "#BF616A", "#ECEFF4", True,  "!"),  # terminal system error
-    "idle":     ("quiet",    "#4C566A", "#D8DEE9", False, "○"),  # finished, still warm
-    "dormant":  ("quiet",    "#3B4252", "#616E88", False, "·"),  # finished and left alone
+    "approval": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "▲"),
+    "question": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "?"),
+    "plan": ("need", COLORS["status.attention"], COLORS["text.inverse"], True, "▣"),
+    "tool": ("activity", COLORS["status.warning"], COLORS["text.inverse"], False, "●"),
+    "thinking": ("activity", COLORS["status.info"], COLORS["text.inverse"], False, "◐"),
+    "waiting": ("activity", COLORS["status.idle"], COLORS["text.inverse"], False, "…"),
+    "failed": ("need", COLORS["status.error"], COLORS["text.strong"], True, "!"),
+    "idle": ("quiet", COLORS["surface.selected"], COLORS["text"], False, "○"),
+    "dormant": ("quiet", COLORS["surface.raised"], COLORS["text.muted"], False, "·"),
 }
 
 ALIASES = {}
@@ -103,6 +102,19 @@ def clear(target):
     write(target, {option: "" for option in OPTIONS})
 
 
+def refresh_theme():
+    """Refresh persisted colors without changing state age, reason or glyph."""
+    rows = tmux("list-windows", "-a", "-F", "#{window_id}\t#{@claude-state}\t#{@claude-bg}\t#{@claude-fg}")
+    for row in rows.splitlines():
+        fields = (row + "\t\t").split("\t")[:4]
+        if len(fields) != 4 or fields[1] not in STATES:
+            continue
+        target, name, old_bg, old_fg = fields
+        _, bg, fg, _, _ = STATES[name]
+        if (old_bg, old_fg) != (bg, fg):
+            write(target, {"@claude-bg": bg, "@claude-fg": fg})
+
+
 def ansi_tab(text):
     """Translate the status formats' tmux style markers into terminal colours."""
     named = {"black": 30, "cyan": 36, "brightblack": 90}
@@ -132,13 +144,13 @@ def ansi_tab(text):
 
 def legend():
     """Show sample tabs using the real formats on an isolated tmux server."""
-    config = (Path(__file__).resolve().parent.parent / "rc/tmux.conf").read_text()
+    config = (THEME_DIR / "tmux.conf").read_text()
     formats = {}
     for option in ("window-status-current-format", "window-status-format"):
         match = re.search(r'^set-window-option -g %s "((?:.*\\\n)*.*)"$' % option,
                           config, re.MULTILINE)
         if not match:
-            raise ValueError("rc/tmux.conf does not define " + option)
+            raise ValueError("generated/tmux.conf does not define " + option)
         text = match.group(1).replace("\\\n", "")
         # Model the read-only window flags without ringing a bell or changing
         # any real windows. tmux still expands the actual tab format.
@@ -190,6 +202,9 @@ def legend():
 
 
 def main(argv):
+    if len(argv) == 2 and argv[1] == "refresh-theme":
+        refresh_theme()
+        return 0
     if len(argv) < 2:
         print(__doc__.strip().splitlines()[0], file=sys.stderr)
         return 2

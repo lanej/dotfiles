@@ -145,15 +145,10 @@
 	noprefix = true
 	colorMoved = default
 [delta]
-	features = default
+	features = default dotfiles
 [delta "default"]
-	plus-empty-line-marker-style = normal "#263026"
-	plus-non-emph-style = syntax "#263026"
-	plus-style = syntax "#263026"
-	syntax-theme = Nord
 	line-numbers = true
 	colorMoved = default
-	whitespace-error-style = 22 bold red
 	zero-style = dim syntax
 	max-line-length = 4096
 	navigate = true
@@ -187,3 +182,6 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !gh auth git-credential
+
+[include]
+	path = ~/.config/dotfiles/theme/delta.gitconfig
