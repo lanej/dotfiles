@@ -174,6 +174,13 @@ local function workflow()
 							range = location(source, 1).range,
 							selectionRange = location(source, 1).range,
 						},
+						{
+							name = "shipment",
+							kind = 13,
+							detail = "Option<Shipment>",
+							range = location(source, 1).range,
+							selectionRange = location(source, 1).range,
+						},
 					},
 					range = location(source, 1).range,
 					selectionRange = location(source, 1).range,
@@ -214,7 +221,10 @@ local function workflow()
 	close_picker()
 	keys(",bs")
 	picker("server_outline")
+	picker("Option<Shipment>")
 	local outline = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	local variable_row = assert(outline:match("[^\n]*shipment[^\n]*"))
+	assert(variable_row:find("Option<Shipment>", 1, true), "Variable lost its server-provided type detail")
 	local outline_row = assert(outline:match("[^\n]*server_outline[^\n]*"))
 	assert(
 		outline_row:find("(parcel) → Receipt", 1, true) and outline_row:find("ShippingClient", 1, true),
