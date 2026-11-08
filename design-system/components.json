@@ -67,7 +67,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.conflicted.dim"
-    }
+    },
+    "dim_fg": "@git.file.conflicted.dim"
   },
   "git.file.stashed": {
     "symbol": {
@@ -79,7 +80,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.stashed.dim"
-    }
+    },
+    "dim_fg": "@git.file.stashed.dim"
   },
   "git.file.deleted": {
     "symbol": {
@@ -91,7 +93,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.deleted.dim"
-    }
+    },
+    "dim_fg": "@git.file.deleted.dim"
   },
   "git.file.renamed": {
     "symbol": {
@@ -103,7 +106,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.renamed.dim"
-    }
+    },
+    "dim_fg": "@git.file.renamed.dim"
   },
   "git.file.modified": {
     "symbol": {
@@ -115,7 +119,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.modified.dim"
-    }
+    },
+    "dim_fg": "@git.file.modified.dim"
   },
   "git.file.staged": {
     "symbol": {
@@ -127,7 +132,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.staged.dim"
-    }
+    },
+    "dim_fg": "@git.file.staged.dim"
   },
   "git.file.untracked": {
     "symbol": {
@@ -139,7 +145,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.untracked.dim"
-    }
+    },
+    "dim_fg": "@git.file.untracked.dim"
   },
   "git.file.typechanged": {
     "symbol": {
@@ -151,7 +158,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.typechanged.dim"
-    }
+    },
+    "dim_fg": "@git.file.typechanged.dim"
   },
   "git.file.ahead": {
     "symbol": {
@@ -163,7 +171,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.ahead.dim"
-    }
+    },
+    "dim_fg": "@git.file.ahead.dim"
   },
   "git.file.behind": {
     "symbol": {
@@ -175,7 +184,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.behind.dim"
-    }
+    },
+    "dim_fg": "@git.file.behind.dim"
   },
   "git.file.branch": {
     "symbol": {
@@ -187,7 +197,8 @@
     },
     "dim": {
       "token": "emphasis.git.file.branch.dim"
-    }
+    },
+    "dim_fg": "@git.file.branch.dim"
   },
   "git.hunk.add": {
     "symbol": {

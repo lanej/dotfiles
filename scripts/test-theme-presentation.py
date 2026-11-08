@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -38,12 +39,12 @@ class PresentationTests(unittest.TestCase):
             self.env.pop(key, None)
         self.generate({})
 
-    def generate(self, overrides, roles=None):
+    def generate(self, overrides, roles=None, symbols="unicode"):
         preset = json.loads((self.source / "themes/nord.json").read_text())
         preset.update(name="variant", presentation=overrides)
         preset["roles"].update(roles or {})
         (self.source / "themes/variant.json").write_text(json.dumps(preset, ensure_ascii=False))
-        subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(self.source), "--theme", "variant", "--output-dir", str(self.output)], check=True)
+        subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(self.source), "--theme", "variant", "--symbols", symbols, "--output-dir", str(self.output)], check=True)
 
     def git(self, path, *args, check=True):
         return subprocess.run(["git", "-C", str(path), *args], env=self.env, check=check, capture_output=True, text=True)
@@ -105,6 +106,9 @@ class PresentationTests(unittest.TestCase):
         (path / "modified").write_text("stashed\n")
         self.git(path, "stash", "push", "-qm", "fixture")
         self.assertIn("1", self.module(path))
+        stashed = next(cell for row in native.ansi_cells(self.module(path, raw=True), columns=256) for cell in row if cell["data"] == "")
+        self.assertEqual(stashed["fg"], "a5aab2")
+        self.assertNotIn(";2m", self.module(path, raw=True))
         self.git(path, "checkout", "-qb", "other")
         (path / "conflict").write_text("other\n")
         self.git(path, "commit", "-qam", "other")
@@ -137,6 +141,51 @@ class PresentationTests(unittest.TestCase):
         self.git(tracked, "merge", "--no-edit", "origin/main")
         self.assertIn("2", self.module(tracked))
         self.assertNotIn("", self.module(tracked))
+
+    def test_ascii_representation_reaches_native_git_consumers(self):
+        self.generate({}, symbols="ascii")
+        path = self.repository()
+        (path / "modified").write_text("changed\n")
+        (path / "deleted").unlink()
+        (path / "untracked").write_text("new\n")
+        for expected in ("~1", "-1", "?1"):
+            self.assertIn(expected, self.module(path))
+        self.assertIn("@ main", self.module(path, "git_branch"))
+        script = self.work / "ascii.lua"
+        script.write_text('''
+vim.opt.rtp:prepend(vim.env.THEME_ROOT .. "/nvim")
+local theme = require("dotfiles-theme")
+theme.setup()
+assert(theme.signs("hunk").change.text == "~")
+assert(theme.signs("staged_hunk").add.text == "+")
+assert(theme.lualine_options().section_separators.left == ">")
+vim.cmd.edit(vim.env.THEME_REPOSITORY .. "/modified")
+require("git-branch-signs").render(0, "base\\n")
+local ns = vim.api.nvim_get_namespaces()["git-branch-signs"]
+assert(vim.trim(vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {details = true})[1][4].sign_text) == "~")
+''')
+        result = subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", str(script)], env={**self.env, "THEME_ROOT": str(ROOT), "THEME_REPOSITORY": str(path)}, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_ascii_recording_preserves_unicode_baselines(self):
+        self.generate({}, symbols="ascii")
+        root = self.work / "recording"
+        (root / "scripts").mkdir(parents=True)
+        (root / "bin").mkdir()
+        shutil.copy2(ROOT / "scripts/test-theme-native.py", root / "scripts/test-theme-native.py")
+        shutil.copy2(ROOT / "bin/dotfiles-theme", root / "bin/dotfiles-theme")
+        baseline = root / "design-system/baselines/variant/cli.json"
+        capture = root / "docs/design-system/presets/variant/cli.svg"
+        for path in (baseline, capture):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("Unicode reference\n")
+        command = [sys.executable, str(root / "scripts/test-theme-native.py"), "--surface", "cli"]
+        subprocess.run([*command, "--record"], env=self.env, check=True, capture_output=True)
+        self.assertEqual(baseline.read_text(), "Unicode reference\n")
+        self.assertEqual(capture.read_text(), "Unicode reference\n")
+        self.assertTrue((baseline.parent / "ascii/cli.json").is_file())
+        self.assertTrue((capture.parent / "ascii/cli.svg").is_file())
+        subprocess.run(command, env=self.env, check=True, capture_output=True)
 
     def test_heading_padding_and_separator_native_overrides(self):
         self.generate({"emphasis.heading": False, "space.inline": 3, "symbol.separator.section.left": ">", "symbol.git.hunk.change": "~", "symbol.git.staged_hunk.change": ":", "symbol.git.branch_hunk.change": "+"}, roles={"diff.change": "@status.error", "diff.change.dim": "@status.success"})

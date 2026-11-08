@@ -14,7 +14,7 @@ vimcmd_symbol = "[](bold yellow)"
 [git_status]
 format = '($all_status$ahead_behind)'
 conflicted = "[${count}](#BF616A bold) "
-stashed = "[${count}](#E5E9F0 dimmed) "
+stashed = "[${count}](#A5AAB2) "
 deleted = "[${count}](#BF616A) "
 renamed = "[${count}](#88C0D0) "
 modified = "[${count}](#EBCB8B) "

@@ -105,6 +105,28 @@ class ThemeTests(unittest.TestCase):
             for artifact in output.iterdir():
                 self.assertNotIn("nord", artifact.read_text().lower())
 
+    def test_ascii_representation_and_validation_preserve_outputs(self):
+        with tempfile.TemporaryDirectory(prefix="theme-ascii-") as directory:
+            source, output = Path(directory) / "source", Path(directory) / "output"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            (source / "config.json").write_text(json.dumps({"theme": "nord", "symbols": "ascii"}))
+            subprocess.run(command, check=True)
+            catalog = theme.read(output / "tokens.json")
+            self.assertEqual(catalog["symbols"], "ascii")
+            self.assertEqual(catalog["git_states"]["git.file.modified"]["symbol"], "~")
+            self.assertEqual(catalog["git_states"]["git.file.staged"]["symbol"], "")
+            self.assertTrue(all(token["resolved"].isascii() and len(token["resolved"]) <= 1 for name, token in catalog["presentation"].items() if name.startswith("symbol.")))
+            before = {p.name: p.read_bytes() for p in output.iterdir()}
+            shared = theme.read(source / "tokens.json")
+            for invalid in (None, "wide", "é", "\n"):
+                shared["presentation"]["symbol.git.file.modified"]["ascii"] = invalid
+                (source / "tokens.json").write_text(json.dumps(shared))
+                result = subprocess.run(command, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("ASCII fallback", result.stderr)
+                self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
+
     def test_composition_rejects_missing_and_cyclic_references(self):
         with tempfile.TemporaryDirectory(prefix="theme-catalog-") as directory:
             source = Path(directory)

@@ -277,10 +277,15 @@ def main():
     parser.add_argument("--plugins-dir", type=Path, default=Path.home() / ".local/share/nvim/lazy")
     parser.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
     args = parser.parse_args()
-    preset = json.loads((GENERATED / "colors.json").read_text())["theme"]
+    metadata = json.loads((GENERATED / "colors.json").read_text())
+    preset = metadata["theme"]
     if not re.fullmatch(r"[a-z][a-z0-9-]*", preset):
         parser.error("invalid generated theme name")
-    baselines = ROOT / "design-system/baselines" / preset
+    symbols = metadata.get("symbols", "unicode")
+    if symbols not in ("unicode", "ascii"):
+        parser.error("invalid generated symbols representation")
+    variant = Path("ascii") if symbols == "ascii" else Path()
+    baselines = ROOT / "design-system/baselines" / preset / variant
     surfaces = args.surface or ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
     with tempfile.TemporaryDirectory(prefix="theme-native-", dir="/tmp") as temporary:
         work = Path(temporary).resolve()
@@ -303,7 +308,7 @@ def main():
                 baselines.mkdir(parents=True, exist_ok=True)
                 baseline.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
                 if terminal_rows:
-                    capture = ROOT / "docs/design-system/presets" / preset / f"{surface}.svg"
+                    capture = ROOT / "docs/design-system/presets" / preset / variant / f"{surface}.svg"
                     capture.parent.mkdir(parents=True, exist_ok=True)
                     capture.write_text(svg(surface, observed))
                 print(f"RECORDED {surface}: inspect baseline and native capture")

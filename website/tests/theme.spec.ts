@@ -5,6 +5,11 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await page.goto('./design-system/');
   await expect(page.getByRole('heading', { name: 'Terminal design system', exact: true })).toBeVisible();
   await expect(page.locator('#theme-roles')).toContainText('Resolved theme roles');
+  const visibleGitStyle = page.locator('#git-style-git-file-modified');
+  await expect(visibleGitStyle).toBeVisible();
+  const dimPreview = page.locator('#git-style-git-file-stashed .token-value');
+  await expect(dimPreview).toHaveCSS('color', 'rgb(165, 170, 178)');
+  await expect(dimPreview).toHaveCSS('opacity', '1');
   const headingToken = page.locator('#token-emphasis-heading');
   await page.locator('details').filter({ has: headingToken }).locator('summary').click();
   await headingToken.getByRole('link', { name: 'components', exact: true }).click();
@@ -14,6 +19,7 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await expect(gitToken).toContainText('starship');
   await expect(gitToken).toContainText('string');
   await expect(gitToken).toContainText('None');
+  await expect(gitToken).toContainText('ASCII');
   const peerTokens = page.locator('details').filter({ has: gitToken }).locator('.token');
   expect((await peerTokens.nth(0).boundingBox())?.y).toBe((await peerTokens.nth(1).boundingBox())?.y);
   await page.evaluate(() => document.fonts.ready);

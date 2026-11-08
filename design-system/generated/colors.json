@@ -1,5 +1,6 @@
 {
   "theme": "nord",
+  "symbols": "unicode",
   "roles": {
     "surface": "#2E3440",
     "surface.raised": "#3B4252",
@@ -61,7 +62,18 @@
     "git.file.typechanged": "#B48EAD",
     "git.file.ahead": "#A3BE8C",
     "git.file.behind": "#EBCB8B",
-    "git.file.branch": "#81A1C1"
+    "git.file.branch": "#81A1C1",
+    "git.file.conflicted.dim": "#8C515B",
+    "git.file.stashed.dim": "#A5AAB2",
+    "git.file.deleted.dim": "#8C515B",
+    "git.file.renamed.dim": "#688F9E",
+    "git.file.modified.dim": "#A99671",
+    "git.file.staged.dim": "#7A8E71",
+    "git.file.untracked.dim": "#647B94",
+    "git.file.typechanged.dim": "#856E87",
+    "git.file.ahead.dim": "#7A8E71",
+    "git.file.behind.dim": "#A99671",
+    "git.file.branch.dim": "#647B94"
   },
   "components": {
     "text": {
@@ -124,67 +136,78 @@
       "symbol": "\uf071",
       "fg": "#BF616A",
       "bold": true,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#8C515B"
     },
     "git.file.stashed": {
       "symbol": "\uf187",
-      "fg": "#E5E9F0",
+      "fg": "#A5AAB2",
       "bold": false,
-      "dim": true
+      "dim": true,
+      "dim_fg": "#A5AAB2"
     },
     "git.file.deleted": {
       "symbol": "\uf1f8",
       "fg": "#BF616A",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#8C515B"
     },
     "git.file.renamed": {
       "symbol": "\uf02b",
       "fg": "#88C0D0",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#688F9E"
     },
     "git.file.modified": {
       "symbol": "\uf040",
       "fg": "#EBCB8B",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#A99671"
     },
     "git.file.staged": {
       "symbol": "",
       "fg": "#A3BE8C",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#7A8E71"
     },
     "git.file.untracked": {
       "symbol": "\uf059",
       "fg": "#81A1C1",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#647B94"
     },
     "git.file.typechanged": {
       "symbol": "\uf074",
       "fg": "#B48EAD",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#856E87"
     },
     "git.file.ahead": {
       "symbol": "\uf062",
       "fg": "#A3BE8C",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#7A8E71"
     },
     "git.file.behind": {
       "symbol": "\uf063",
       "fg": "#EBCB8B",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#A99671"
     },
     "git.file.branch": {
       "symbol": "\uf418",
       "fg": "#81A1C1",
       "bold": false,
-      "dim": false
+      "dim": false,
+      "dim_fg": "#647B94"
     },
     "git.hunk.add": {
       "symbol": "\u2503",
