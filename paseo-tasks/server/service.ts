@@ -10,6 +10,7 @@ import { Feedback, githubObject } from "./github";
 import { completedPiTurn } from "./pi-session";
 import { Treehouse, type Worktrees } from "./treehouse";
 import { Reports } from "./reports";
+import type { Maintainer } from "./pr-maintenance";
 
 type HostSnapshot = z.infer<typeof hostSnapshot>;
 type Create = z.infer<typeof createInput>;
@@ -36,6 +37,7 @@ export class TaskService {
     readonly feedback: Feedback, readonly label: string,
     readonly provider = "pi/bedrock-sonnet-router/us.anthropic.claude-sonnet-5-5",
     readonly worktrees: Worktrees = new Treehouse(),
+    readonly maintenance: Maintainer | null = null,
   ) { this.reports = new Reports(store, paseo, router, id => this.restoreTools(id)); }
   assertHost(serverId: string) {
     if (serverId !== this.store.serverId) throw new Error("Task address belongs to another host");
@@ -404,6 +406,19 @@ export class TaskService {
     if (this.store.events(value.taskId).some(item => item.delivery === "sending")) return;
     const unknown = this.store.events(value.taskId).find(item => item.delivery === "unknown");
     if (unknown) { await this.reconcileDelivery(value, unknown); return; }
+    if (this.maintenance) {
+      const repairs = this.store.events(value.taskId).filter(item => item.delivery === "queued" &&
+        item.payload.type === "repair" && value.prWatches.find(watch => watch.url === item.payload.url)?.phase === "repair");
+      for (const repair of repairs) {
+        const consumed = await this.maintenance.handle(this.store.get(value.taskId), repair, async () => {
+          const observed = await handle.refresh();
+          return !!observed && !handle.activeTurn && handle.status === "idle" && !handle.pendingPermissions?.length;
+        });
+        if (consumed && this.store.events(value.taskId).find(item => item.id === repair.id)?.delivery !== "handled") return;
+      }
+      value = this.store.get(value.taskId);
+      if (value.control !== "running") return;
+    }
     const queued = this.store.events(value.taskId).filter(item => item.delivery === "queued" &&
       (item.payload.type !== "repair" || value.prWatches.find(watch => watch.url === item.payload.url)?.phase === "repair"));
     if (!queued.length) return;
@@ -413,7 +428,7 @@ export class TaskService {
     try {
       await handle.send(`[task-event:${entry.id}]\n${entry.kind === "github" ?
         entry.payload.type === "repair" ?
-          "The linked PR has failing checks or a merge conflict. Use task_context and task_inbox to inspect the current task control, exact observation and revisions. Use task_github_state to verify the latest PR is still open and the repair still applies before changes and again before pushing. If closed, merged, or already repaired, acknowledge the stale event without automatic changes. Otherwise verify the current head and base, fetch, repair within scope, run the affected checks and push the owned branch. Preserve unrelated work and the assigned Treehouse checkout. Do not weaken checks, force-push over others, merge the PR, or change scope. Acknowledge this event with task_feedback_done after handling it; record blockers or decisions when needed. After pushing, use decision status while the service polls CI and reviews, returning future input to this conversation." :
+          "The linked PR has failing checks or a merge conflict. Use task_context and task_inbox to inspect the current task control, exact observation and revisions. If the event contains maintenance evidence, inspect the program's attempted resolution, patch, validation and confidence before doing more work. A publishing state means an uncertain remote effect: reconcile the recorded candidate before any further push. Program-published commits may be ahead of your retained checkout; fetch and reconcile it without discarding local work. Use task_github_state to verify the latest PR is still open and the repair still applies before changes and again before pushing. If closed, merged, or already repaired, acknowledge the stale event without automatic changes. Otherwise verify the current head and base, fetch, repair within scope, run the affected checks and push the owned branch. Preserve unrelated work and the assigned Treehouse checkout. Do not weaken checks, force-push over others, merge the PR, or change scope. Acknowledge this event with task_feedback_done after handling it; record blockers or decisions when needed. After pushing, use decision status while the service polls CI and reviews, returning future input to this conversation." :
           "New GitHub feedback. Use task_context and task_inbox to read the exact source, authority, revision, and pending event. Handle review comments in this checkout, run affected checks and push revisions when needed. Reply to the source with task_github_reply when appropriate, then acknowledge each handled event with task_feedback_done. Do not merge or materially change scope. Use decision status when waiting for checks or reviews; the service keeps polling and sends new input to this same conversation." : entry.body}`,
       { messageId: entry.id, activeTurnBehavior: "steer" });
       this.store.saveEvent({ ...entry, delivery: "accepted" });

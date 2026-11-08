@@ -16,6 +16,8 @@ import { completedPiTurn } from "../server/pi-session";
 import type { Worktrees } from "../server/treehouse";
 import type { PullRequest } from "../server/pr-watch";
 import { Reports } from "../server/reports";
+import { MaintenanceQueue, PRMaintenance } from "../server/pr-maintenance";
+import { maintenanceFixture } from "./maintenance-fixture";
 import type { CoordinatorReport, ConversationAddress } from "../shared/contracts";
 
 const specified: Brief = { title: "Investigate latency", outcome: "Explain the latency regression",
@@ -603,6 +605,48 @@ test("PR polling repairs new failures and conflicts in the retained worker, then
     assert.equal(handle.messages.length, 3);
     assert.equal(f.paseo.creates, 1, "Checks, conflicts and review all use one primary Pi conversation");
   } finally { f.cleanup(); }
+});
+
+test("the host runs conflict repair before dispatch and wakes Pi only for below-threshold results", async () => {
+  for (const accepted of [true, false]) {
+    const f = fixture();
+    const repository = maintenanceFixture("recorded");
+    try {
+      const coordinator = await f.service.newManager(repository.repository);
+      const value = await f.service.create(createInput.parse({ serverId: "mac", requestId: randomUUID(), coordinator,
+        brief: { ...specified, repository: repository.repository, kind: "coding", baseRef: "main" } }));
+      f.store.change(value.taskId, current => { current.worker!.cwd = repository.repository; });
+      const url = "https://github.com/o/r/pull/1";
+      f.service.link(value.taskId, url);
+      for (const entry of f.store.events(value.taskId)) f.feedback.acknowledge(entry, "Initial implementation pushed");
+      f.store.workerUpdate(value.taskId, value.worker!.agentId, { status: "decision" });
+      const handle = f.paseo.agents.ref(value.worker!.agentId);
+      f.github.observation = { head: repository.pr.head, pullRequest: repository.pr, state: repository.pr, events: [] };
+      if (!accepted) repository.policy.minimumConfidence = 0.99;
+      const maintenance = new PRMaintenance(f.store, f.github, f.directory, () => repository.policy);
+      const queue = new MaintenanceQueue(maintenance);
+      const service = new TaskService(f.store, f.paseo as unknown as PaseoApi, f.router, f.feedback,
+        "Mac", undefined, f.worktrees, queue);
+      await service.tick();
+      assert.equal(handle.messages.length, 0, "The service defers model dispatch while the program works");
+      await queue.drain();
+      await service.tick();
+      const entry = f.store.events(value.taskId).find(entry => entry.payload.type === "repair")!;
+      assert.equal(handle.messages.length, accepted ? 0 : 1);
+      assert.equal(maintenance.records(value.taskId)[0].state, accepted ? "published" : "needs_agent");
+      assert.equal(entry.delivery, accepted ? "handled" : "accepted");
+      if (!accepted) {
+        assert.match(handle.messages[0], /program's attempted resolution/);
+        assert.ok((entry.payload.maintenance as { candidate: unknown }).candidate);
+        f.paseo.finish(handle.id);
+      }
+      await service.tick();
+      assert.equal(handle.messages.length, accepted ? 0 : 1, "Repeated observations do not trigger another model turn");
+      assert.equal(f.paseo.agents.ref(coordinator.agentId).messages.length, 0,
+        "Routine program outcomes must not wake the manager, including on later observations");
+      assert.equal(f.paseo.creates, 2, "Escalation retains the original implementation and manager conversations");
+    } finally { f.cleanup(); repository.cleanup(); }
+  }
 });
 
 test("polling cadence survives restart and slows once reported checks pass", async () => {

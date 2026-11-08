@@ -71,20 +71,20 @@ export class Store {
     this.db.prepare("INSERT INTO tasks VALUES (?,?,?)").run(id, 1, JSON.stringify(record));
     return record;
   }
-  change(id: string, fn: (value: Task) => void, revision?: number): Task {
+  change(id: string, fn: (value: Task) => void, revision?: number, options: { notifyCoordinator?: boolean } = {}): Task {
     return this.transaction(() => {
       const value = this.get(id);
       if (revision !== undefined && revision !== value.revision) throw new Error("Task changed; refresh before applying this instruction");
       fn(value);
       value.revision++; value.updatedAt = this.now();
-      this.queueCoordinatorReport(value);
+      this.queueCoordinatorReport(value, options.notifyCoordinator === false);
       task.parse(value);
       this.db.prepare("UPDATE tasks SET revision=?,record=? WHERE id=?")
         .run(value.revision, JSON.stringify(value), id);
       return value;
     });
   }
-  private queueCoordinatorReport(value: Task) {
+  private queueCoordinatorReport(value: Task, silent = false) {
     const key = `coordinator-report:${value.taskId}`;
     const reportable = value.worker && value.coordinator && value.migration?.ownership !== "firstmate" &&
       (["complete", "decision", "question", "blocked"].includes(value.status) || value.activity === "failed");
@@ -108,6 +108,12 @@ export class Store {
     for (const entry of this.outgoingReports().filter(entry => entry.report.task.taskId === value.taskId && entry.delivery === "queued")) {
       this.db.prepare("UPDATE report_outbox SET record=? WHERE id=?")
         .run(JSON.stringify({ ...entry, delivery: "superseded" }), entry.report.id);
+    }
+    if (silent) {
+      // WHY: Routine program progress must not wake a coordinator on the next passive task observation.
+      value.coordinatorReport = null;
+      this.write("cache", key, signature);
+      return;
     }
     const id = randomUUID();
     value.coordinatorReport = { id, delivery: "queued", error: null };

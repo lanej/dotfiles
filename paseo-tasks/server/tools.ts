@@ -47,6 +47,10 @@ export function managerTools(service: TaskService): AgentToolDefinition[] {
     defineAgentTool({ name: "task_link_github", description: "Link an issue or PR to its sole task owner for feedback polling. Links are optional.",
       input: address.extend({ url: z.string() }), execute: async input => result(await service.localOrRemote(input.serverId, "tasks.link", input, async () =>
         service.link(input.taskId, input.url))) }),
+    defineAgentTool({ name: "task_pr_maintenance", description: "Read deterministic PR resolution attempts, policy confidence, validation, and publication state for a task. The program handles eligible conflicts before waking its worker.",
+      input: address, execute: async input => result(await service.localOrRemote(input.serverId, "tasks.pr_maintenance", input, async () => {
+        service.store.get(input.taskId); return service.maintenance?.records(input.taskId) ?? [];
+      })) }),
   ];
 }
 export function workerTools(service: TaskService, taskId: string, agentId: string): AgentToolDefinition[] {
@@ -59,6 +63,8 @@ export function workerTools(service: TaskService, taskId: string, agentId: strin
   return [
     defineAgentTool({ name: "task_context", description: "Read your assigned durable task. Direct instructions in this conversation belong to this record. Report paused or archived control state before taking action.",
       input: z.object({}), execute: (_input, ctx) => result(own(ctx)) }),
+    defineAgentTool({ name: "task_pr_maintenance", description: "Read the program's conflict resolution attempts, patch paths, validation, confidence, and publication state. Reconcile uncertain publication before pushing and fetch program-published commits before editing your retained checkout.",
+      input: z.object({}), execute: (_input, ctx) => { own(ctx); return result(service.maintenance?.records(taskId) ?? []); } }),
     defineAgentTool({ name: "task_update", description: "Update your approach, progress, evidence, blocker, next action and task status. Only complete after success criteria have evidence and assigned input is handled; record the final result and next action so the service reports back to your coordinator after this turn. Decisions, questions, blockers and failures also report back. After pushing a PR revision, use decision while the service watches CI and reviews; failures, conflicts and comments return to this same worker. Use question or blocked for external impediments. Outcome changes require a proposal accepted by the human.",
       input: update, execute: (input, ctx) => { own(ctx); return result(service.store.workerUpdate(taskId, agentId, input)); } }),
     defineAgentTool({ name: "task_propose", description: "Propose material changes to this task's desired outcome. Wait for human acceptance before pursuing them.",

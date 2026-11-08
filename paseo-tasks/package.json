@@ -5,6 +5,7 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
+    "maintain": "node --import tsx cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts"
   },

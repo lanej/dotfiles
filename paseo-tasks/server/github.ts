@@ -91,6 +91,8 @@ export class GitHub implements GitHubPort {
     if (closing.head.sha !== core.head.sha || closing.base.sha !== core.base.sha) throw new Error("GitHub revision changed during observation");
     const pullRequest: PullRequest = {
       state: closing.state, merged: closing.merged, draft: closing.draft ?? false, head: core.head.sha, base: core.base.sha,
+      headRef: core.head.ref, baseRef: core.base.ref,
+      headRepository: core.head.repo?.full_name, baseRepository: core.base.repo.full_name,
       mergeable: closing.mergeable, mergeableState: closing.mergeable_state,
       checks: latestChecks(checks.map(item => ({ id: item.id, name: item.name, app: item.app?.id ?? null,
         status: item.status, conclusion: item.conclusion, completedAt: item.completed_at, url: item.html_url }))),

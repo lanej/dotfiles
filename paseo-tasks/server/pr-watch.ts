@@ -5,6 +5,7 @@ export type Check = {
 export type CommitStatus = { id: number; context: string; state: string; url: string | null };
 export type PullRequest = {
   head: string; base: string; state: string; merged: boolean; draft: boolean;
+  headRef?: string; baseRef?: string; headRepository?: string; baseRepository?: string;
   mergeable: boolean | null; mergeableState: string; checks: Check[]; statuses: CommitStatus[];
 };
 export function latestChecks(values: Check[]): Check[] {

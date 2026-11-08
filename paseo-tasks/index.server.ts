@@ -15,6 +15,7 @@ import { TaskService, taskWorkspaceId } from "./server/service";
 import { managerTools, workerTools } from "./server/tools";
 import { candidate, inventory, stage, releaseAndImport } from "./server/migration";
 import { reportVerification } from "./server/reports";
+import { MaintenanceQueue, PRMaintenance } from "./server/pr-maintenance";
 
 export default function contribute(server: PluginServerContext) {
   const home = process.env.PASEO_HOME ?? join(homedir(), ".paseo");
@@ -34,8 +35,10 @@ export default function contribute(server: PluginServerContext) {
   let pending: Promise<void> | null = null;
   const ready = connection.open().then(({ serverId, paseo }) => {
     const store = new Store(join(state, "tasks.sqlite"), serverId);
-    service = new TaskService(store, paseo, connection, new Feedback(store, new GitHub(), "lanej"),
-      process.env.PASEO_TASK_LABEL ?? hostname());
+    const github = new GitHub();
+    service = new TaskService(store, paseo, connection, new Feedback(store, github, "lanej"),
+      process.env.PASEO_TASK_LABEL ?? hostname(), undefined, undefined,
+      new MaintenanceQueue(new PRMaintenance(store, github, state)));
     return service;
   });
   // NOTE: A load failure remains visible in RPCs and logs without losing the durable records.
@@ -129,6 +132,10 @@ export default function contribute(server: PluginServerContext) {
   server.handle(defineRpc({ name: "tasks.link", input: address.extend({ url: z.string() }), output: task }), async input => {
     const value = await ready; value.assertHost(input.serverId); return value.link(input.taskId, input.url);
   });
+  server.handle(defineRpc({ name: "tasks.pr_maintenance", input: address, output: z.array(z.unknown()) }), async input => {
+    const value = await ready; value.assertHost(input.serverId); value.store.get(input.taskId);
+    return value.maintenance?.records(input.taskId) ?? [];
+  });
   server.addHook("agent.open.before", async ({ request }) => {
     const value = await ready;
     let assigned = value.store.forAgent(request.agentId);
@@ -171,6 +178,7 @@ export default function contribute(server: PluginServerContext) {
     stopped = true; clearInterval(timer);
     await pending;
     await ready.catch(() => {});
+    await service?.maintenance?.close?.();
     await connection.close();
     if (service) { await service.paseo.dispose(); service.store.close(); }
     try {
