@@ -1104,6 +1104,11 @@ return {
 ["git.file.ahead.dim"] = "#7A8E71",
 ["git.file.behind.dim"] = "#A99671",
 ["git.file.branch.dim"] = "#647B94",
+["file.directory"] = "#81A1C1",
+["file.executable"] = "#A3BE8C",
+["file.special"] = "#B48EAD",
+["file.archive"] = "#D08770",
+["file.project"] = "#EBCB8B",
 },
 ["tokens"] = {
 ["emphasis.heading"] = true,

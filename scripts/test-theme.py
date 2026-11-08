@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -174,8 +175,57 @@ class ThemeTests(unittest.TestCase):
                 subprocess.run(["bash", str(ROOT / "scripts/make/config.sh"), target, str(ROOT), str(home), "uv", "Darwin"], check=True, capture_output=True)
             self.assertEqual((home / ".config/dotfiles/theme").resolve(), theme.SOURCE / "generated")
             self.assertEqual((home / ".config/bottom/bottom.toml").resolve(), theme.SOURCE / "generated/bottom.toml")
+            self.assertEqual((home / ".config/eza/theme.yml").resolve(), theme.SOURCE / "generated/eza.yml")
             self.assertTrue((home / ".config/bat/themes/Dotfiles.tmTheme").is_file())
             self.assertEqual((home / ".config/glow/theme.json").resolve(), theme.SOURCE / "generated/glow.json")
+
+    @unittest.skipUnless(shutil.which("eza"), "native eza is not installed")
+    def test_eza_roles_and_git_states_through_native_consumers(self):
+        with tempfile.TemporaryDirectory(prefix="theme-eza-") as directory:
+            work = Path(directory)
+            source, output, home = work / "source", work / "output", work / "home"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            preset = theme.read(source / "themes/nord.json")
+            preset["roles"]["file.directory"] = "@status.attention"
+            preset["roles"]["git.file.modified"] = "@accent.secondary"
+            (source / "themes/nord.json").write_text(json.dumps(preset))
+            subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)], check=True)
+            configuration = home / ".config/eza"
+            configuration.mkdir(parents=True)
+            (configuration / "theme.yml").symlink_to(output / "eza.yml")
+            repository = work / "project with ' quote"
+            repository.mkdir()
+            folder = repository / "source files"
+            folder.mkdir()
+            modified, staged = folder / "modified.txt", folder / "staged.txt"
+            modified.write_text("before\n")
+            staged.write_text("before\n")
+            def git(*args):
+                subprocess.run(["git", "-C", str(repository), *args], check=True, capture_output=True)
+            git("init", "-q")
+            git("add", ".")
+            git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "Initial files")
+            modified.write_text("after\n")
+            staged.write_text("after\n")
+            git("add", ".")
+            modified.write_text("unstaged\n")
+            untracked = folder / "bytes.bin"
+            untracked.write_bytes(b"x" * 12288)
+            environment = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"), "EZA_CONFIG_DIR": str(configuration), "LS_COLORS": "di=31", "EZA_COLORS": "di=31", "TERM": "xterm-256color"}
+            environment.pop("NO_COLOR", None)
+            command = ["bash", "-c", """shopt -s expand_aliases; source "$1/sh/alias"; eval 'll --color=always --icons=never "$2"'""", "fixture", str(ROOT), str(untracked)]
+            listing = subprocess.check_output(command, text=True, env=environment)
+            plain = re.sub(r"\x1b\[[0-9;]*m", "", listing)
+            self.assertRegex(plain, r"12,?288")
+            preview = subprocess.check_output([str(ROOT / "bin/fzf-path-preview"), str(repository)], text=True, env=environment)
+            plain = re.sub(r"\x1b\[[0-9;]*m", "", preview)
+            self.assertIn("MM", plain)
+            self.assertIn("M-", plain)
+            self.assertIn("-N", plain)
+            self.assertIn("38;2;208;135;112m", preview)
+            self.assertIn("38;2;143;188;187m", preview)
+            # WHY: The native letters and index/worktree columns are eza-owned, not glyph tokens.
+            self.assertIn("modified.txt", plain)
 
     def test_fzf_wrapper_keeps_arguments_and_native_exit_status(self):
         with tempfile.TemporaryDirectory(prefix="theme-fzf-") as directory:

@@ -15,6 +15,9 @@ on:
       - 'sh/starship.toml'
       - 'nvim/lazy-lock.json'
       - 'bin/dotfiles-*'
+      - 'bin/fzf-path-preview'
+      - 'sh/alias'
+      - 'zsh/zlogin'
       - 'bin/tmux-claude-state'
       - 'bat/**'
       - '.github/workflows/theme.yml'
@@ -37,14 +40,14 @@ jobs:
         with:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v6
-      - name: Install tmux
+      - name: Install tmux and eza
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == Linux ]]; then
             sudo apt-get update -qq
-            sudo apt-get install -y tmux
+            sudo apt-get install -y tmux eza
           else
-            brew install tmux
+            brew install tmux eza
           fi
       - name: Install pinned fixture tools and locked Neovim plugins
         run: python3 scripts/theme-ci-tools.py "$RUNNER_TEMP/theme-tools"

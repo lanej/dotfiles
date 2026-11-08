@@ -11,10 +11,8 @@ if command -v fzf >/dev/null; then
 	-i
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
 	--bind ctrl-/:toggle-preview
-	--color=fg:#d8dee9,bg:#2e3440,hl:#88c0d0
-	--color=fg+:#eceff4,bg+:#3b4252,hl+:#8fbcbb
-	--color=info:#ebcb8b,prompt:#bf616a,pointer:#b48ead
-	--color=marker:#a3be8c,spinner:#b48ead,header:#a3be8c'
+	'
+	export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS --color=${DOTFILES_FZF_COLOR:-dark}"
 
 	unset FZF_CTRL_R_OPTS
 	export FZF_CTRL_R_OPTS=$FZF_DEFAULT_OPTS"

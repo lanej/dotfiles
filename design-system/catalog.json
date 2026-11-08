@@ -223,7 +223,8 @@
       "picker"
     ],
     "sources": [
-      "bin/zellij-picker"
+      "bin/zellij-picker",
+      "bin/fzf-path-preview"
     ],
     "description": "Browse a collection and inspect a preview before accepting.",
     "implementations": {
@@ -280,11 +281,29 @@
     }
   },
   {
+    "id": "file-listing",
+    "level": "molecule",
+    "composes": [
+      "text",
+      "git-state"
+    ],
+    "sources": [
+      "design-system/adapters/eza.json",
+      "sh/alias",
+      "bin/fzf-path-preview"
+    ],
+    "description": "File kinds, exact byte sizes and native index/worktree Git indicators in listings and bounded directory previews.",
+    "implementations": {
+      "CLI": "eza listings and fzf directory previews; generated bat theme for files"
+    }
+  },
+  {
     "id": "cli",
     "level": "interface",
     "composes": [
       "code-and-diff",
-      "git-state"
+      "git-state",
+      "file-listing"
     ],
     "sources": [
       "sh/alias",
@@ -292,7 +311,7 @@
     ],
     "description": "Pagers, Markdown rendering and ordinary command output.",
     "implementations": {
-      "CLI": "bat, delta, Glow, bottom and shell inheritance; Starship Git modules"
+      "CLI": "bat, delta, Glow, bottom and shell inheritance; Starship Git modules; eza native file metadata and Git status"
     }
   }
 ]

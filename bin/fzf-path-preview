@@ -17,7 +17,7 @@ if [ -d "$target" ]; then
     exec ls -Ap -- "$target"
 elif [ -f "$target" ]; then
     if command -v bat >/dev/null 2>&1; then
-        exec bat --theme=Nord --color=always --style=numbers --paging=never --line-range=:200 -- "$target"
+        exec bat --theme="${BAT_THEME:-Dotfiles}" --color=always --style=numbers --paging=never --line-range=:200 -- "$target"
     fi
     exec head -n 200 -- "$target"
 fi
