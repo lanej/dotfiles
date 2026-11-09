@@ -72,7 +72,7 @@
     "emphasis_3": "syntax.number"
   },
   "frame_unselected": {
-    "base": "text",
+    "base": "surface",
     "background": "surface",
     "emphasis_0": "status.attention",
     "emphasis_1": "accent",

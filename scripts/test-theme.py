@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("theme", ROOT / "scripts/theme.py")
@@ -138,6 +139,28 @@ class ThemeTests(unittest.TestCase):
                 (source / "catalog.json").write_text(json.dumps(catalog))
                 with self.assertRaises((KeyError, ValueError)):
                     theme.validate_catalog(source)
+
+    def test_source_entrypoints_before_runtime_build(self):
+        with tempfile.TemporaryDirectory(prefix="theme-entrypoints-") as directory:
+            root = Path(directory)
+            source, commands = root / "design-system", root / "bin"
+            source.mkdir()
+            commands.mkdir()
+            (commands / "script").write_text("print('fixture')\n")
+            (commands / "alias").symlink_to("build/not-yet-built")
+            (commands / "directory").mkdir()
+            with mock.patch.object(theme, "ROOT", root):
+                for name, accepted in (("script", True), ("alias", True), ("missing", False), ("directory", False)):
+                    for location in ("catalog", "integration"):
+                        paths = ["bin/" + name]
+                        (source / "catalog.json").write_text(json.dumps([{"id": "fixture", "level": "atom", "sources": paths if location == "catalog" else []}]))
+                        (source / "integrations.json").write_text(json.dumps([{"sources": paths if location == "integration" else []}]))
+                        with self.subTest(name=name, location=location):
+                            if accepted:
+                                theme.validate_catalog(source)
+                            else:
+                                with self.assertRaisesRegex(ValueError, "missing " + location + " source"):
+                                    theme.validate_catalog(source)
 
     def test_presentation_validation_and_failure_preserve_outputs(self):
         with tempfile.TemporaryDirectory(prefix="theme-tokens-") as directory:
