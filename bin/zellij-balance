@@ -65,7 +65,7 @@ snapshot() {
       if $tab != null and $current != $tab then error("origin moved tabs") else . end |
       [.[]|select(.tab_id == $current)] as $all |
       [$all[]|select(.is_plugin == false)] as $term |
-      if any($term[]; .is_floating or .is_fullscreen or .is_suppressed or .is_collapsed or .exited or (.index_in_pane_group|length)>0)
+      if any($term[]; .is_floating or .is_fullscreen or .is_suppressed or .is_collapsed or .pane_rows <= 1 or .exited or (.index_in_pane_group|length)>0)
       then error("floating, zoomed, stacked, hidden or exited panes are unsupported") else . end |
       # Bars outside the terminal rectangle are harmless. Embedded plugin panes are not.
       ($term|map(.pane_x)|min) as $x | ($term|map(.pane_y)|min) as $y |

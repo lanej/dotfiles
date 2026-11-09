@@ -200,7 +200,7 @@ sys.exit(result.returncode)
             # Native layout cycling remains a separate, explicitly rearranging control.
             terminal.action("apply-tiled-swap-layout", "stacked")
             terminal.until("stacked preset applied", lambda:
-                           any(p["is_collapsed"] for p in current()))
+                           sum(p["pane_rows"] == 1 for p in current()) == len(ids) - 1)
             settled = geometry(current())
             invoke(b"=", failure="stacked")
             assert geometry(current()) == settled
