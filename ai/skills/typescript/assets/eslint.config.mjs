@@ -26,7 +26,7 @@ export default function config(root, programs) {
       ],
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
-      '@typescript-eslint/return-await': ['error', 'error-handling-correctness'],
+      '@typescript-eslint/return-await': ['error', 'error-handling-correctness-only'],
       '@typescript-eslint/only-throw-error': [
         'error', { allowThrowingAny: false, allowThrowingUnknown: false },
       ],
