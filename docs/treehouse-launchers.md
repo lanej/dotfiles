@@ -1,5 +1,7 @@
 # Agent worktree launchers
 
+`make install` installs Treehouse from `lanej/treehouse` at the commit pinned in `scripts/install-treehouse`, including support for ignored repository-local worktree paths. It builds natively with `CGO_ENABLED=0` to avoid a Linux glibc dependency. The binary reports `dev`, which disables Treehouse's background update checks and makes `treehouse update` skip without downloading or replacing it. Update the source pin and rerun installation to upgrade. Installation verifies the revision receipt and binary digest, replacing upstream or modified binaries even when their version is newer.
+
 The shell functions in `sh/alias` route `codex` and `claude` through launchers. `command codex` and `command claude` call the native executables directly. Reload the shell aliases after updating dotfiles.
 
 Fresh interactive `codex --worktree` and `codex exec --worktree` requests acquire a named Treehouse branch. `--cd` selects the source checkout and preserves a selected subdirectory in the acquired checkout. The launcher removes the native allocation flag and passes the other arguments through. Ordinary launches, resumes, forks, desktop commands, and remote connections use native behavior.

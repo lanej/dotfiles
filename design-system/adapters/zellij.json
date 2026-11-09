@@ -24,12 +24,12 @@
     "emphasis_3": "syntax.number"
   },
   "ribbon_selected": {
-    "base": "accent",
-    "background": "surface.selected",
-    "emphasis_0": "status.attention",
-    "emphasis_1": "accent",
-    "emphasis_2": "status.success",
-    "emphasis_3": "syntax.number"
+    "base": "tab.active.fg",
+    "background": "tab.active.bg",
+    "emphasis_0": "status.error",
+    "emphasis_1": "tab.active.fg",
+    "emphasis_2": "tab.active.fg",
+    "emphasis_3": "tab.active.fg"
   },
   "table_title": {
     "base": "accent",
@@ -72,7 +72,7 @@
     "emphasis_3": "syntax.number"
   },
   "frame_unselected": {
-    "base": "text",
+    "base": "surface",
     "background": "surface",
     "emphasis_0": "status.attention",
     "emphasis_1": "accent",
@@ -80,7 +80,7 @@
     "emphasis_3": "syntax.number"
   },
   "frame_selected": {
-    "base": "accent",
+    "base": "focus",
     "background": "surface.selected",
     "emphasis_0": "status.attention",
     "emphasis_1": "accent",
@@ -88,7 +88,7 @@
     "emphasis_3": "syntax.number"
   },
   "frame_highlight": {
-    "base": "accent",
+    "base": "focus",
     "background": "surface",
     "emphasis_0": "status.attention",
     "emphasis_1": "accent",

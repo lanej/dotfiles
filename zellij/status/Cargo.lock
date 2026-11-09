@@ -1102,9 +1102,18 @@ dependencies = [
 name = "lane-status"
 version = "0.1.0"
 dependencies = [
+ "lane-zellij-protocol",
  "serde_json",
  "unicode-width 0.2.3",
  "zellij-tile",
+]
+
+[[package]]
+name = "lane-zellij-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

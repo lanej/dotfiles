@@ -26,12 +26,12 @@ themes {
             emphasis_3 180 142 173
         }
         ribbon_selected {
-            base 136 192 208
-            background 67 76 94
-            emphasis_0 208 135 112
-            emphasis_1 136 192 208
-            emphasis_2 163 190 140
-            emphasis_3 180 142 173
+            base 46 52 64
+            background 180 142 173
+            emphasis_0 191 97 106
+            emphasis_1 46 52 64
+            emphasis_2 46 52 64
+            emphasis_3 46 52 64
         }
         table_title {
             base 136 192 208
@@ -74,7 +74,7 @@ themes {
             emphasis_3 180 142 173
         }
         frame_unselected {
-            base 216 222 233
+            base 46 52 64
             background 46 52 64
             emphasis_0 208 135 112
             emphasis_1 136 192 208
@@ -82,7 +82,7 @@ themes {
             emphasis_3 180 142 173
         }
         frame_selected {
-            base 136 192 208
+            base 180 142 173
             background 67 76 94
             emphasis_0 208 135 112
             emphasis_1 136 192 208
@@ -90,7 +90,7 @@ themes {
             emphasis_3 180 142 173
         }
         frame_highlight {
-            base 136 192 208
+            base 180 142 173
             background 46 52 64
             emphasis_0 208 135 112
             emphasis_1 136 192 208

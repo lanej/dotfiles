@@ -119,3 +119,9 @@ To intentionally replace native baselines, run `uv run --script scripts/test-the
 Add its purpose, atomic level, composition, implementations and source locations to [the catalog](../design-system/catalog.json). Use existing roles where meanings agree; add a distinct role when a meaningful state would otherwise be lost. Keep application-specific field names in adapters. Supported native configuration takes precedence over patches or replacements.
 
 Document unavailable customization in [the integration inventory](../design-system/integrations.json), including the owning application or plugin and what remains unverified. Verbatim pane output, literal color previews and filetype icon colors have independent owners. Optional applications are listed as gaps rather than silently claimed as migrated.
+
+## File listings and directory previews
+
+Eza consumes the [generated native adapter](../design-system/adapters/eza.json) through `~/.config/eza/theme.yml`, installed by `make shell`. File kinds use shared `file.*` roles; native Git metadata uses shared `git.file.*` roles. `ll` and `la` retain exact byte sizes, and `lt` and fzf directory previews retain bounded trees and native index/worktree indicators. Previewed files use the generated bat theme through `BAT_THEME`. The shell login defaults reuse the generated fzf palette instead of resetting it to literal Nord colors.
+
+Eza owns its Git letter pairs and file icons. Shared glyph tokens cannot replace those markers, and its single `new` style cannot give staged-new and untracked files independent colors; the two Git columns preserve that distinction. The [integration inventory](../design-system/integrations.json) records these native limits. Legacy `LS_COLORS` and `EZA_COLORS` are removed only for eza so they do not override the selected preset.

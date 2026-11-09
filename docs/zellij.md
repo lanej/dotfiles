@@ -13,6 +13,8 @@ zj
 zj work
 ```
 
+After pulling helper updates, run `make zellij-helpers zellij` to rebuild the commands and refresh their links. Full `make install` includes this step.
+
 `zj` attaches to or creates `main`; `zj work` chooses a session named `work`. **Ctrl-f d** detaches and keeps programs running. Run the same command to return.
 
 If a first-use permission prompt appears in the top bar, focus it with **Ctrl-f k** and press **y**. After updating Zellij or its configuration, start a new session to use the new features; finish or save work before restarting older sessions.
@@ -77,6 +79,8 @@ Use [SSH and forwarded agents](zellij/ssh-agent.mdx) to open remote workspaces a
 Detaching preserves running programs. After a session exits, the session manager may offer to reconstruct its layout and rerun commands; that does not restore program memory. The fuzzy session picker lists running sessions only.
 
 Scrollback keeps up to 100,000 live lines per pane and up to 10,000 lines for recovery. A crash can lose recent output. The shared popup does not restore its running work after a server exit or reboot.
+
+The patched runtime supports `hide_scroll_indicator_when_idle`, which defaults to `false` to preserve upstream behavior. This configuration sets it to `true`, hiding the `SCROLL` counter on active and inactive panes at live output. Scrolling back shows the position; returning to the bottom hides it again. Floating-pane pin controls are unchanged. After updating, run `make zellij-runtime` and restart existing session servers to load the new runtime. The option can then be changed by reloading configuration. Release and main runtime choices keep their upstream display.
 
 ## Differences that remain
 

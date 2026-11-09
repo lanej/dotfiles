@@ -13,12 +13,11 @@ shellcheck -x \
     "$dotfiles/scripts/install-ep-direnv.sh" \
     "$dotfiles/scripts/install-agent-status-broker" \
     "$dotfiles/scripts/install-zellij" \
+    "$dotfiles/scripts/install-treehouse" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
-    "$dotfiles/bin/zellij-attach" \
-    "$dotfiles/bin/zellij-agent" \
-    "$dotfiles/bin/zellij-balance" \
     "$dotfiles/bin/fix-ssh" \
+    "$dotfiles/bin/fzf-path-preview" \
     "$dotfiles/bin/git-ssh" \
     "$dotfiles/bin/dotfiles-fzf" \
     "$dotfiles/bin/sync-codex-mcp-servers"

@@ -36,6 +36,7 @@ const pages = [
   { file: 'docs/stack-linux.md', slug: 'reference/linux', title: 'Linux stack' },
   { file: 'docs/rust.md', slug: 'reference/rust', title: 'Rust' },
   { file: 'docs/go-style.md', slug: 'reference/go-style', title: 'Go style guide' },
+  { file: 'docs/typescript-style.md', slug: 'reference/typescript-style', title: 'TypeScript style guide' },
   { file: 'docs/repository-bootstrap.md', slug: 'reference/repository-bootstrap', title: 'Repository bootstrap' },
 ];
 const headingId = (text) => text.toLowerCase().replaceAll(' ', '-');

@@ -1,0 +1,23 @@
+name: TypeScript quality
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Adapt this step for the project's package manager, build and native deps.
+      - run: npm ci
+      - run: npm ci --prefix .typescript-quality --ignore-scripts
+      - run: node scripts/check-typescript.mjs

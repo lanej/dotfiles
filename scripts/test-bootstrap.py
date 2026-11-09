@@ -35,6 +35,7 @@ def main():
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
@@ -62,7 +63,6 @@ def main():
 import os
 from pathlib import Path
 import io
-import hashlib
 import json
 import shutil
 import subprocess
@@ -166,23 +166,10 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url.endswith("/treehouse-v3.1.6-linux-arm64.tar.gz"):
-        with tarfile.open(target, "w:gz") as archive:
-            payload = b"#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n"
-            member = tarfile.TarInfo("treehouse")
-            member.size = len(payload)
-            member.mode = 0o755
-            archive.addfile(member, io.BytesIO(payload))
-        sys.exit(0)
-    elif url == "https://github.com/kunchenguid/treehouse/releases/download/v3.1.6/checksums.txt":
-        release_archive = Path(target).with_name("treehouse-v3.1.6-linux-arm64.tar.gz")
-        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
-        Path(target).write_text(digest + "  " + release_archive.name + "\n")
-        sys.exit(0)
-    elif url == "https://github.com/kunchenguid/treehouse/archive/refs/tags/v3.1.6.tar.gz":
+    elif url == "https://github.com/lanej/treehouse/archive/e4c17fdfa6778545c2e073d741e5e837ff19e6c4.tar.gz":
         with tarfile.open(target, "w:gz") as archive:
             payload = b"module github.com/kunchenguid/treehouse/v3\n"
-            member = tarfile.TarInfo("treehouse-3.1.6/go.mod")
+            member = tarfile.TarInfo("treehouse-fork/go.mod")
             member.size = len(payload)
             archive.addfile(member, io.BytesIO(payload))
         sys.exit(0)
@@ -252,6 +239,9 @@ elif name == "make" and args[-1:] == ["pi-config"]:
 elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
+elif name == "make" and args[-1:] == ["zellij-helpers"]:
+    assert shutil.which("cargo"), "native helpers require Rust"
+    record("zellij helpers")
 elif name == "make":
     assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
@@ -339,12 +329,17 @@ elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
 elif name == "go":
     if args[:1] == ["build"]:
         assert os.environ["CGO_ENABLED"] == "0"
-        assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
+        assert args[args.index("-ldflags") + 1] == "-X main.version=dev", args
+        assert os.environ["GOOS"] == "linux" and os.environ["GOARCH"] == "arm64"
         assert Path("go.mod").is_file()
         output = Path(args[args.index("-o") + 1])
         shutil.copyfile(fixture / "driver", output)
         output.chmod(0o755)
         record("treehouse build")
+    elif args == ["env", "GOHOSTOS"]:
+        print("linux")
+    elif args == ["env", "GOHOSTARCH"]:
+        print("arm64")
     elif args == ["env", "GOBIN"]:
         print("")
     elif args == ["env", "GOPATH"]:
@@ -362,7 +357,7 @@ elif name == "go":
 elif name == "glow":
     print("glow version master")
 elif name == "treehouse":
-    print("treehouse v3.1.6")
+    print("dev")
 elif name == "gh" and args == ["auth", "status"]:
     sys.exit(1)
 else:
@@ -460,11 +455,19 @@ else:
         assert "neovim build" in events
         assert "eza package" in events
         assert "treehouse build" in events
+        treehouse_command = ["/bin/bash", str(checkout / "scripts/install-treehouse")]
+        for replaced in (False, True):
+            if replaced:
+                (home / ".local/bin/treehouse").write_text('#!/bin/sh\necho v99.0.0\n')
+            repeated = subprocess.run(treehouse_command, env=env, capture_output=True, text=True)
+            assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+            assert (home / "events").read_text().splitlines().count("treehouse build") == (2 if replaced else 1)
         assert (home / ".local/bin/tmux").is_file()
         assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
+        assert "zellij helpers" in (home / "events").read_text()
         assert events.index("zellij") < events.index("make")
         # Repeat the real entrypoint with the installed executable already in
         # place. Cargo owns installation and caching; the fixture models its output.

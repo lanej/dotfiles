@@ -145,7 +145,7 @@ else:
         def check(state, expected, succeeds=True):
             (work / "state").write_text(json.dumps(state))
             (work / "actions").write_text("")
-            result = subprocess.run([sys.executable, str(ROOT / "bin/zellij-navigate"), "right"],
+            result = subprocess.run([str(ROOT / "bin/zellij-navigate"), "right"],
                                     env=env, capture_output=True, text=True, timeout=5)
             assert (result.returncode == 0) == succeeds, result.stderr
             assert (work / "actions").read_text().splitlines() == expected, result.stderr

@@ -1,0 +1,237 @@
+{
+  "filekinds": {
+    "normal": {
+      "foreground": "@text"
+    },
+    "directory": {
+      "foreground": "@file.directory"
+    },
+    "symlink": {
+      "foreground": "@link"
+    },
+    "pipe": {
+      "foreground": "@status.warning"
+    },
+    "block_device": {
+      "foreground": "@status.attention"
+    },
+    "char_device": {
+      "foreground": "@status.attention"
+    },
+    "socket": {
+      "foreground": "@file.special"
+    },
+    "special": {
+      "foreground": "@file.special"
+    },
+    "executable": {
+      "foreground": "@file.executable"
+    },
+    "mount_point": {
+      "foreground": "@file.directory"
+    }
+  },
+  "perms": {
+    "user_read": {
+      "foreground": "@status.success"
+    },
+    "user_write": {
+      "foreground": "@status.warning"
+    },
+    "user_execute_file": {
+      "foreground": "@status.error"
+    },
+    "user_execute_other": {
+      "foreground": "@status.error"
+    },
+    "group_read": {
+      "foreground": "@status.success"
+    },
+    "group_write": {
+      "foreground": "@status.warning"
+    },
+    "group_execute": {
+      "foreground": "@status.error"
+    },
+    "other_read": {
+      "foreground": "@status.success"
+    },
+    "other_write": {
+      "foreground": "@status.warning"
+    },
+    "other_execute": {
+      "foreground": "@status.error"
+    },
+    "special_user_file": {
+      "foreground": "@file.special"
+    },
+    "special_other": {
+      "foreground": "@file.special"
+    },
+    "attribute": {
+      "foreground": "@status.off"
+    }
+  },
+  "size": {
+    "major": {
+      "foreground": "@accent"
+    },
+    "minor": {
+      "foreground": "@accent.secondary"
+    },
+    "number_byte": {
+      "foreground": "@text"
+    },
+    "number_kilo": {
+      "foreground": "@status.success"
+    },
+    "number_mega": {
+      "foreground": "@status.warning"
+    },
+    "number_giga": {
+      "foreground": "@status.attention"
+    },
+    "number_huge": {
+      "foreground": "@status.error"
+    },
+    "unit_byte": {
+      "foreground": "@status.off"
+    },
+    "unit_kilo": {
+      "foreground": "@status.success"
+    },
+    "unit_mega": {
+      "foreground": "@status.warning"
+    },
+    "unit_giga": {
+      "foreground": "@status.attention"
+    },
+    "unit_huge": {
+      "foreground": "@status.error"
+    }
+  },
+  "users": {
+    "user_you": {
+      "foreground": "@text"
+    },
+    "user_root": {
+      "foreground": "@status.error"
+    },
+    "user_other": {
+      "foreground": "@status.warning"
+    },
+    "group_yours": {
+      "foreground": "@text"
+    },
+    "group_other": {
+      "foreground": "@status.warning"
+    },
+    "group_root": {
+      "foreground": "@status.error"
+    }
+  },
+  "links": {
+    "normal": {
+      "foreground": "@link"
+    },
+    "multi_link_file": {
+      "foreground": "@accent.secondary"
+    }
+  },
+  "git": {
+    "new": {
+      "foreground": "@git.file.staged"
+    },
+    "modified": {
+      "foreground": "@git.file.modified"
+    },
+    "deleted": {
+      "foreground": "@git.file.deleted"
+    },
+    "renamed": {
+      "foreground": "@git.file.renamed"
+    },
+    "ignored": {
+      "foreground": "@status.off"
+    },
+    "conflicted": {
+      "foreground": "@git.file.conflicted"
+    }
+  },
+  "git_repo": {
+    "branch_main": {
+      "foreground": "@text"
+    },
+    "branch_other": {
+      "foreground": "@file.special"
+    },
+    "git_clean": {
+      "foreground": "@status.success"
+    },
+    "git_dirty": {
+      "foreground": "@status.warning"
+    }
+  },
+  "file_type": {
+    "image": {
+      "foreground": "@file.special"
+    },
+    "video": {
+      "foreground": "@file.special"
+    },
+    "music": {
+      "foreground": "@accent.secondary"
+    },
+    "crypto": {
+      "foreground": "@status.success"
+    },
+    "document": {
+      "foreground": "@text"
+    },
+    "compressed": {
+      "foreground": "@file.archive"
+    },
+    "temp": {
+      "foreground": "@status.off"
+    },
+    "compiled": {
+      "foreground": "@accent"
+    },
+    "build": {
+      "foreground": "@file.project"
+    },
+    "source": {
+      "foreground": "@accent"
+    }
+  },
+  "punctuation": {
+    "foreground": "@status.off"
+  },
+  "date": {
+    "foreground": "@text.muted"
+  },
+  "inode": {
+    "foreground": "@status.off"
+  },
+  "blocks": {
+    "foreground": "@status.off"
+  },
+  "header": {
+    "foreground": "@text.strong"
+  },
+  "octal": {
+    "foreground": "@file.special"
+  },
+  "flags": {
+    "foreground": "@file.special"
+  },
+  "control_char": {
+    "foreground": "@status.error"
+  },
+  "broken_symlink": {
+    "foreground": "@status.error"
+  },
+  "broken_path_overlay": {
+    "foreground": "@status.error"
+  }
+}

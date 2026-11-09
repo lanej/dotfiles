@@ -179,7 +179,7 @@ theme = "default"
 headers = { color = "#88C0D0", bold = true }
 [styles.widgets]
 border_color = "#4C566A"
-selected_border_color = "#88C0D0"
+selected_border_color = "#B48EAD"
 widget_title = { color = "#88C0D0" }
 text = { color = "#D8DEE9" }
 selected_text = { color = "#ECEFF4", bg_color = "#434C5E" }
