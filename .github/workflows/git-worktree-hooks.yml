@@ -1,0 +1,83 @@
+name: Patched Git worktree hooks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/install-git-worktree-hooks.py'
+      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'bin/git-worktree-policy'
+      - 'scripts/test-git-worktree-policy.py'
+      - 'scripts/test-treehouse-worktree-policy.py'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - '.github/workflows/git-worktree-hooks.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/install-git-worktree-hooks.py'
+      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'bin/git-worktree-policy'
+      - 'scripts/test-git-worktree-policy.py'
+      - 'scripts/test-treehouse-worktree-policy.py'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - '.github/workflows/git-worktree-hooks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev lsof
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check stock Git policy fallback
+        run: python3 scripts/test-git-worktree-policy.py
+      - name: Build, test and package runtime
+        run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-artifacts"
+      - name: Check optional runtime installer
+        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-artifacts/*.tar.gz
+      - name: Extract patched runtime
+        run: |
+          mkdir "$RUNNER_TEMP/git-runtime"
+          tar -xzf "$RUNNER_TEMP"/git-artifacts/*.tar.gz -C "$RUNNER_TEMP/git-runtime"
+      - name: Install native Treehouse for integration
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) platform=darwin-arm64; digest=e9bb5de8724541af2afa6d846fd3c80d8b9741cf2c9d977dfe2ea3227441d4d9 ;;
+            Linux-x86_64) platform=linux-amd64; digest=664fa870f3887c8b944c40818539143259bab4f6f0d690550d9fc6a4b8b3a6ee ;;
+            *) echo 'Unsupported integration platform' >&2; exit 1 ;;
+          esac
+          asset="treehouse-v3.1.7-$platform.tar.gz"
+          curl -fsSLO "https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/$asset"
+          printf '%s  %s\n' "$digest" "$asset" | shasum -a 256 -c -
+          mkdir treehouse-runtime
+          tar -xzf "$asset" -C treehouse-runtime treehouse
+          echo "$RUNNER_TEMP/treehouse-runtime" >> "$GITHUB_PATH"
+      - name: Check native Treehouse against patched Git
+        run: python3 scripts/test-treehouse-worktree-policy.py --git "$RUNNER_TEMP/git-runtime/bin/git"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: git-worktree-hooks-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/git-artifacts/*
+          if-no-files-found: error

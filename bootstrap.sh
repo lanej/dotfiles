@@ -1123,6 +1123,13 @@ install_dependencies() {
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
+			git-worktree-hooks)
+				local git_archive_args=()
+				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
+					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
+				fi
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
 			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;

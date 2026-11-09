@@ -16,6 +16,7 @@ bin/*
 !bin/ep-direnv
 !bin/epenv
 !bin/epenv_test.py
+!bin/git-worktree-policy
 vim/spell
 vim/plugged
 vim/session

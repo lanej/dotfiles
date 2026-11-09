@@ -1,0 +1,345 @@
+diff --git a/Documentation/config/hook.adoc b/Documentation/config/hook.adoc
+index 501bb00..dd8bb64 100644
+--- a/Documentation/config/hook.adoc
++++ b/Documentation/config/hook.adoc
+@@ -94,6 +94,7 @@ hook.jobs::
+ 	Receive a commit message file and may rewrite it in place.
+ `pre-commit`;;
+ `post-checkout`;;
++`pre-worktree`;;
+ `post-worktree`;;
+ `push-to-checkout`;;
+ `post-commit`;;
+diff --git a/Documentation/githooks.adoc b/Documentation/githooks.adoc
+index a625e95..d451768 100644
+--- a/Documentation/githooks.adoc
++++ b/Documentation/githooks.adoc
+@@ -215,6 +215,17 @@ This hook can be used to perform repository validity checks, auto-display
+ differences from the previous HEAD if different, or set working dir metadata
+ properties.
+ 
++pre-worktree
++~~~~~~~~~~~~
++
++This hook is invoked by linkgit:git-worktree[1] before adding, moving, or removing a linked working tree. A non-zero exit status rejects that operation, including with `--force`. For `prune`, a rejection retains that administrative entry and pruning continues with the remaining entries; no hooks run during a dry run.
++
++The hook receives four arguments: the event (`add`, `move`, or `remove`), the worktree identifier, the old absolute path, and the new absolute path. An inapplicable or unknown path is an empty argument. For `add`, the identifier is empty because the administrative entry has not been allocated yet. For `move` and `remove`, the identifier is the same administrative entry name passed to `post-worktree`.
++
++The hook runs in the invoking repository with the normal hook environment. An `add` rejection happens before creating or resetting a branch, creating the checkout, or replacing a stale registration. A `move` rejection happens before replacing a stale destination registration or moving the checkout. Git can still reject an operation after an accepting hook; acceptance is neither a reservation nor a success notification. Use `post-worktree` to observe completion.
++
++Hooks are not a repository-wide transaction lock. Concurrent commands can both pass a capacity check before either creates its worktree. A count-based hook can enforce a practical limit for sequential requests but does not guarantee an atomic limit. Hooks can be disabled through the normal Git hook configuration.
++
+ post-worktree
+ ~~~~~~~~~~~~~
+ 
+diff --git a/builtin/worktree.c b/builtin/worktree.c
+index d2319a1..5c860cd 100644
+--- a/builtin/worktree.c
++++ b/builtin/worktree.c
+@@ -168,6 +168,21 @@ static void delete_worktrees_dir_if_empty(void)
+ 	free(path);
+ }
+ 
++static int run_pre_worktree_hook(const char *event, const char *id,
++				 const char *old_path, const char *new_path)
++{
++	struct run_hooks_opt hook_opt = RUN_HOOKS_OPT_INIT_FORCE_SERIAL;
++	struct strbuf resolved = STRBUF_INIT;
++	int ret;
++
++	if (*new_path)
++		new_path = strbuf_realpath_forgiving(&resolved, new_path, 1);
++	strvec_pushl(&hook_opt.args, event, id, old_path, new_path, NULL);
++	ret = run_hooks_opt(the_repository, "pre-worktree", &hook_opt);
++	strbuf_release(&resolved);
++	return ret;
++}
++
+ static int run_post_worktree_hook(const char *event, const char *id,
+ 				  const char *old_path, const char *new_path)
+ {
+@@ -188,14 +203,16 @@ static int prune_worktree(const char *id, const char *dotgit,
+ 	if (show_only)
+ 		return 0;
+ 
+-	delete_git_dir(id);
+-
+ 	/* path stays empty when the worktree path cannot be determined */
+ 	if (dotgit) {
+ 		strbuf_addstr(&path, dotgit);
+ 		strbuf_strip_suffix(&path, "/.git");
+ 	}
+-	ret = run_post_worktree_hook("remove", id, path.buf, "");
++	ret = run_pre_worktree_hook("remove", id, path.buf, "");
++	if (!ret)
++		ret = delete_git_dir(id);
++	if (!ret)
++		ret = run_post_worktree_hook("remove", id, path.buf, "");
+ 	strbuf_release(&path);
+ 	return ret;
+ }
+@@ -1013,6 +1030,10 @@ static int add(int ac, const char **av, const char *prefix,
+ 		die(_("invalid reference: %s"), branch);
+ 	}
+ 
++	ret = run_pre_worktree_hook("add", "", "", path);
++	if (ret)
++		goto cleanup;
++
+ 	if (!opts.quiet)
+ 		print_preparing_worktree_line(opts.detach, branch, new_branch, !!new_branch_force);
+ 
+@@ -1373,6 +1394,9 @@ static int move_worktree(int ac, const char **av, const char *prefix,
+ 		strbuf_trim_trailing_dir_sep(&dst);
+ 		strbuf_addstr(&dst, sep);
+ 	}
++	ret = run_pre_worktree_hook("move", wt->id, wt->path, dst.buf);
++	if (ret)
++		goto cleanup;
+ 	check_candidate_path(dst.buf, force, worktrees, "move");
+ 
+ 	validate_no_submodules(wt);
+@@ -1398,7 +1422,9 @@ static int move_worktree(int ac, const char **av, const char *prefix,
+ 	ret = run_post_worktree_hook("move", wt->id, old_path, wt->path);
+ 
+ 	free(old_path);
++cleanup:
+ 	strbuf_release(&dst);
++	strbuf_release(&errmsg);
+ 	free_worktrees(worktrees);
+ 	return ret;
+ }
+@@ -1480,7 +1506,7 @@ static int remove_worktree(int ac, const char **av, const char *prefix,
+ 	struct worktree **worktrees, *wt;
+ 	struct strbuf errmsg = STRBUF_INIT;
+ 	const char *reason = NULL;
+-	int ret = 0;
++	int ret = 0, unregister_ret;
+ 
+ 	ac = parse_options(ac, av, prefix, options, git_worktree_remove_usage, 0);
+ 	if (ac != 1)
+@@ -1505,6 +1531,12 @@ static int remove_worktree(int ac, const char **av, const char *prefix,
+ 		    errmsg.buf);
+ 	strbuf_release(&errmsg);
+ 
++	ret = run_pre_worktree_hook("remove", wt->id, wt->path, "");
++	if (ret) {
++		free_worktrees(worktrees);
++		return ret;
++	}
++
+ 	if (file_exists(wt->path)) {
+ 		if (!force)
+ 			check_clean_worktree(wt, av[0]);
+@@ -1515,10 +1547,12 @@ static int remove_worktree(int ac, const char **av, const char *prefix,
+ 	 * continue on even if ret is non-zero, there's no going back
+ 	 * from here.
+ 	 */
+-	ret |= delete_git_dir(wt->id);
++	unregister_ret = delete_git_dir(wt->id);
++	ret |= unregister_ret;
+ 	delete_worktrees_dir_if_empty();
+ 
+-	ret |= run_post_worktree_hook("remove", wt->id, wt->path, "");
++	if (!unregister_ret)
++		ret |= run_post_worktree_hook("remove", wt->id, wt->path, "");
+ 
+ 	free_worktrees(worktrees);
+ 	return ret;
+diff --git a/t/meson.build b/t/meson.build
+index f65eb04..9c35c47 100644
+--- a/t/meson.build
++++ b/t/meson.build
+@@ -315,6 +315,7 @@ integration_tests = [
+   't2405-worktree-submodule.sh',
+   't2406-worktree-repair.sh',
+   't2407-worktree-heads.sh',
++  't2408-worktree-pre-hook.sh',
+   't2500-untracked-overwriting.sh',
+   't2501-cwd-empty.sh',
+   't3000-ls-files-others.sh',
+diff --git a/t/t2408-worktree-pre-hook.sh b/t/t2408-worktree-pre-hook.sh
+new file mode 100755
+index 0000000..bd7cb9a
+--- /dev/null
++++ b/t/t2408-worktree-pre-hook.sh
+@@ -0,0 +1,179 @@
++#!/bin/sh
++
++test_description='pre-worktree veto and lifecycle notifications'
++. ./test-lib.sh
++
++test_expect_success 'setup lifecycle hooks' '
++	test_create_repo gate &&
++	test_commit -C gate initial &&
++	WORKTREE_HOOK_LOG="$TRASH_DIRECTORY/events" &&
++	WORKTREE_POST_LOG="$TRASH_DIRECTORY/posts" &&
++	export WORKTREE_HOOK_LOG WORKTREE_POST_LOG REJECT_EVENT REJECT_ID WORKTREE_HOOK_TOUCH &&
++	write_script gate/.git/hooks/pre-worktree <<-\EOF_HOOK &&
++	printf "%s\n" "$@" >>"$WORKTREE_HOOK_LOG"
++	if test "$1" = remove && test -n "$WORKTREE_HOOK_TOUCH"
++	then
++		echo hook-created >"$3/hook-created"
++	fi
++	if test "$1" = "$REJECT_EVENT" &&
++	   { test -z "$REJECT_ID" || test "$2" = "$REJECT_ID"; }
++	then
++		echo "worktree policy rejected $1" >&2
++		exit 23
++	fi
++	EOF_HOOK
++	write_script gate/.git/hooks/post-worktree <<-\EOF_HOOK
++	printf "%s\n" "$1" >>"$WORKTREE_POST_LOG"
++	EOF_HOOK
++'
++
++test_expect_success 'add rejection leaves branch and checkout absent' '
++	REJECT_EVENT=add &&
++	: >"$WORKTREE_POST_LOG" &&
++	test_must_fail git -C gate worktree add -b rejected "../space checkout" &&
++	test_path_is_missing "space checkout" &&
++	test_must_fail git -C gate show-ref --verify refs/heads/rejected &&
++	test_path_is_missing gate/.git/worktrees &&
++	test_must_be_empty "$WORKTREE_POST_LOG" &&
++	printf "add\n\n\n%s\n" "$TRASH_DIRECTORY/space checkout" >expect &&
++	test_cmp expect "$WORKTREE_HOOK_LOG"
++'
++
++test_expect_success 'forced add rejection does not reset existing branch' '
++	git -C gate branch preserved &&
++	git -C gate rev-parse preserved >expect &&
++	test_commit -C gate second &&
++	test_must_fail git -C gate worktree add -f -B preserved ../rejected-reset HEAD &&
++	git -C gate rev-parse preserved >actual &&
++	test_cmp expect actual &&
++	test_path_is_missing rejected-reset
++'
++
++test_expect_success 'no-checkout and orphan additions can be rejected' '
++	test_must_fail git -C gate worktree add --no-checkout -b no-checkout ../no-checkout &&
++	test_must_fail git -C gate worktree add --orphan -b orphan ../orphan &&
++	test_path_is_missing no-checkout &&
++	test_path_is_missing orphan &&
++	test_must_fail git -C gate show-ref --verify refs/heads/no-checkout &&
++	test_must_fail git -C gate show-ref --verify refs/heads/orphan
++'
++
++test_expect_success 'accepting add emits pre and post events' '
++	REJECT_EVENT= &&
++	: >"$WORKTREE_HOOK_LOG" &&
++	git -C gate worktree add -b allowed ../allowed &&
++	test_path_is_file allowed/initial.t &&
++	printf "add\n\n\n%s\n" "$TRASH_DIRECTORY/allowed" >expect &&
++	test_cmp expect "$WORKTREE_HOOK_LOG" &&
++	echo add >expect &&
++	test_cmp expect "$WORKTREE_POST_LOG"
++'
++
++test_expect_success 'move rejection preserves checkout and registration' '
++	REJECT_EVENT=move &&
++	: >"$WORKTREE_HOOK_LOG" &&
++	: >"$WORKTREE_POST_LOG" &&
++	test_must_fail git -C gate worktree move -f ../allowed "../new space" &&
++	test_path_is_file allowed/initial.t &&
++	test_path_is_missing "new space" &&
++	git -C allowed status --porcelain >actual &&
++	test_must_be_empty actual &&
++	printf "move\nallowed\n%s\n%s\n" "$TRASH_DIRECTORY/allowed" "$TRASH_DIRECTORY/new space" >expect &&
++	test_cmp expect "$WORKTREE_HOOK_LOG" &&
++	test_must_be_empty "$WORKTREE_POST_LOG"
++'
++
++test_expect_success 'remove rejection preserves files even with force' '
++	REJECT_EVENT=remove &&
++	echo valuable >allowed/untracked &&
++	test_must_fail git -C gate worktree remove -f ../allowed &&
++	test_path_is_file allowed/untracked &&
++	test_path_is_dir gate/.git/worktrees/allowed &&
++	test_must_be_empty "$WORKTREE_POST_LOG" &&
++	rm allowed/untracked
++'
++
++test_expect_success 'accepted move and remove notify after completion' '
++	REJECT_EVENT= &&
++	git -C gate worktree move ../allowed ../moved &&
++	git -C gate worktree remove ../moved &&
++	test_path_is_missing moved &&
++	printf "move\nremove\n" >expect &&
++	test_cmp expect "$WORKTREE_POST_LOG"
++'
++
++test_expect_success 'prune rejection retains administrative entry, dry run has no hooks' '
++	git -C gate worktree add -b prunable ../prunable &&
++	git -C gate worktree add -b prune-other ../prune-other &&
++	rm -rf prunable &&
++	rm -rf prune-other &&
++	: >"$WORKTREE_HOOK_LOG" &&
++	: >"$WORKTREE_POST_LOG" &&
++	REJECT_EVENT=remove &&
++	REJECT_ID=prunable &&
++	git -C gate worktree prune -n &&
++	test_must_be_empty "$WORKTREE_HOOK_LOG" &&
++	test_must_fail git -C gate worktree prune &&
++	test_path_is_dir gate/.git/worktrees/prunable &&
++	test_path_is_missing gate/.git/worktrees/prune-other &&
++	echo remove >expect &&
++	test_cmp expect "$WORKTREE_POST_LOG" &&
++	REJECT_EVENT= &&
++	REJECT_ID= &&
++	: >"$WORKTREE_POST_LOG" &&
++	git -C gate worktree prune &&
++	test_path_is_missing gate/.git/worktrees/prunable &&
++	echo remove >expect &&
++	test_cmp expect "$WORKTREE_POST_LOG"
++'
++
++test_expect_success 'rejected forced add preserves stale registration' '
++	git -C gate worktree add -b stale-add ../stale-add &&
++	rm -rf stale-add &&
++	REJECT_EVENT=add &&
++	test_must_fail git -C gate worktree add -f -b stale-replacement ../stale-add &&
++	test_path_is_dir gate/.git/worktrees/stale-add &&
++	test_path_is_missing stale-add &&
++	test_must_fail git -C gate show-ref --verify refs/heads/stale-replacement &&
++	REJECT_EVENT= &&
++	git -C gate worktree prune
++'
++
++test_expect_success 'rejected forced move preserves stale destination registration' '
++	git -C gate worktree add -b move-source ../move-source &&
++	git -C gate worktree add -b move-stale ../move-stale &&
++	rm -rf move-stale &&
++	REJECT_EVENT=move &&
++	test_must_fail git -C gate worktree move -f ../move-source ../move-stale &&
++	test_path_is_dir gate/.git/worktrees/move-stale &&
++	test_path_is_file move-source/initial.t &&
++	REJECT_EVENT= &&
++	git -C gate worktree remove ../move-source &&
++	git -C gate worktree prune
++'
++
++test_expect_success 'accepting remove hook cannot bypass the cleanliness check' '
++	git -C gate worktree add -b hook-touch ../hook-touch &&
++	: >"$WORKTREE_POST_LOG" &&
++	WORKTREE_HOOK_TOUCH=1 &&
++	test_must_fail git -C gate worktree remove ../hook-touch &&
++	test_path_is_file hook-touch/hook-created &&
++	test_path_is_dir gate/.git/worktrees/hook-touch &&
++	test_must_be_empty "$WORKTREE_POST_LOG" &&
++	WORKTREE_HOOK_TOUCH= &&
++	rm hook-touch/hook-created &&
++	git -C gate worktree remove ../hook-touch
++'
++
++test_expect_success SANITY 'failed checkout and administrative deletion emit no remove notification' '
++	git -C gate worktree add -b cannot-remove ../cannot-remove &&
++	: >"$WORKTREE_POST_LOG" &&
++	test_when_finished "chmod u+w cannot-remove gate/.git/worktrees/cannot-remove" &&
++	chmod u-w cannot-remove gate/.git/worktrees/cannot-remove &&
++	test_must_fail git -C gate worktree remove -f ../cannot-remove &&
++	test_path_is_dir cannot-remove &&
++	test_path_is_dir gate/.git/worktrees/cannot-remove &&
++	test_must_be_empty "$WORKTREE_POST_LOG"
++'
++
++test_done

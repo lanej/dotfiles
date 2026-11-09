@@ -90,6 +90,10 @@
           "type": "boolean",
           "description": "Enable the git bootstrap recipe."
         },
+        "git-worktree-hooks": {
+          "type": "boolean",
+          "description": "Opt in to the prebuilt Git runtime with worktree lifecycle hooks."
+        },
         "zsh": {
           "type": "boolean",
           "description": "Enable the zsh bootstrap recipe."

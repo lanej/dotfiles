@@ -4,3 +4,6 @@ claude/evals/socrates-dialogue/results/**/record.json linguist-generated=true
 # Claude Code rewrites settings.json in place (it is symlinked to ~/.claude).
 # Strip the keys it writes as bookkeeping; `make claude` configures the filter.
 .claude/settings.json filter=claude-settings
+
+# WHY: Unified patch context contains intentional leading and trailing spaces.
+patches/git-worktree-hooks/*.patch -whitespace
