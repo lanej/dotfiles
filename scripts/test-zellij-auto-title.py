@@ -34,7 +34,7 @@ case "$*" in
 esac
 ''')
         tmux.chmod(0o755)
-        env = {**os.environ, "HOME": str(home), "PATH": f"{executables}:{os.environ['PATH']}",
+        env = {**os.environ, "HOME": str(home), "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ": "1", "ZELLIJ_PANE_ID": "7", "ZELLIJ_SESSION_NAME": "fixture", "TMUX": "outer-session",
                "PROVIDER": "zellij", "TMUX_LOG": str(work / "tmux.log"),
                "TMPDIR": str(work)}
@@ -148,19 +148,21 @@ else:
         # nearest server; real ancestry is exercised by the native workflow.
         ps.write_text(f'#!/bin/sh\nprintf "%s 1 zellij\\n" {os.getpid()}\n')
         ps.chmod(0o755)
-        env = {**os.environ, "PATH": f"{executables}:{os.environ['PATH']}",
+        env = {**os.environ, "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ_SESSION_NAME": "fixture", "ZELLIJ_PANE_ID": "7",
                "ZELLIJ_SOCKET_DIR": str(work / "run"), "NATIVE_STATE": str(state),
                "XDG_CACHE_HOME": str(work / "cache"), "XDG_STATE_HOME": str(work / "state"),
                "PWD": str(work / "project")}
 
         def rename():
-            subprocess.run([sys.executable, ROOT / "bin/zellij-auto-title"],
-                           cwd=work, env=env, check=True, timeout=5)
+            directory = Path(env["PWD"])
+            directory.mkdir(exist_ok=True)
+            subprocess.run([ROOT / "bin/zellij-auto-title"],
+                           cwd=directory, env=env, check=True, timeout=5)
             return json.loads(state.read_text())["name"]
 
         def owned():
-            result = subprocess.run([sys.executable, ROOT / "bin/zellij-status", "view", "fixture"],
+            result = subprocess.run([ROOT / "bin/zellij-status", "view", "fixture"],
                                     env=env, check=True, capture_output=True, text=True, timeout=5)
             return json.loads(result.stdout)["auto_titles"]
 

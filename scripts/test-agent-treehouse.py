@@ -368,5 +368,13 @@ def claude_workflow():
 
 
 if __name__ == "__main__":
+    binary = shutil.which("treehouse")
+    assert binary, "install Treehouse with scripts/install-treehouse"
+    version = subprocess.run([binary, "--version"], capture_output=True, text=True, check=True)
+    assert version.stdout.strip() == "dev", "install the pinned fork with scripts/install-treehouse before checking self-update"
+    before = Path(binary).read_bytes()
+    update = subprocess.run([binary, "update"], capture_output=True, text=True, timeout=5)
+    assert update.returncode == 0 and "Skipping update: running a dev build" in update.stdout, update
+    assert Path(binary).read_bytes() == before, "self-update replaced the pinned binary"
     codex_workflow()
     claude_workflow()

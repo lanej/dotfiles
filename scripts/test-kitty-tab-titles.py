@@ -3,8 +3,11 @@ import importlib.util
 import os
 from pathlib import Path
 import pty
+import select
+import signal
 import subprocess
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 
@@ -123,6 +126,52 @@ class Titles(unittest.TestCase):
             result = subprocess.run([str(ROOT / 'bin/zellij-attach')], env=env, capture_output=True)
             self.assertEqual(result.returncode, 7)
             self.assertEqual(result.stdout, b'args:attach --create main\n')
+
+    def test_launcher_cleans_remote_title_on_termination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / 'zellij'
+            child_pid = Path(directory) / 'child.pid'
+            fake.write_text('#!/bin/sh\nprintf "%s\\n" "$$" > "$CHILD_PID"\nprintf "attached\\n"\nexec sleep 30\n')
+            fake.chmod(0o755)
+            env = {**os.environ, 'PATH': directory + ':' + os.environ['PATH'],
+                   'SSH_CONNECTION': 'test', 'SSH_AUTH_SOCK': '', 'ZELLIJ': '', 'TMUX': '',
+                   'CHILD_PID': str(child_pid)}
+            master, slave = pty.openpty()
+            process = subprocess.Popen([str(ROOT / 'bin/zellij-attach'), 'work'],
+                                       env=env, stdout=slave, start_new_session=True)
+            os.close(slave)
+            try:
+                data = b''
+                deadline = time.monotonic() + 5
+                while b'attached' not in data:
+                    remaining = max(0, deadline - time.monotonic())
+                    self.assertTrue(select.select([master], [], [], remaining)[0], 'Launcher did not attach')
+                    chunk = os.read(master, 4096)
+                    self.assertTrue(chunk, 'Launcher exited before attaching')
+                    data += chunk
+                self.assertIn(b'SetUserVar=dotfiles_zellij=', data)
+                process.send_signal(signal.SIGTERM)
+                self.assertEqual(process.wait(timeout=5), 128 + signal.SIGTERM)
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(int(child_pid.read_text()), 0)
+                while select.select([master], [], [], 5)[0]:
+                    try:
+                        chunk = os.read(master, 4096)
+                    except OSError:
+                        break
+                    if not chunk:
+                        break
+                    data += chunk
+                self.assertIn(b'\x1b]1337;SetUserVar=dotfiles_zellij\x07', data)
+                self.window.feed(data)
+                self.assertNotIn('dotfiles_zellij', self.window.user_vars)
+            finally:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=5)
+                os.close(master)
 
 
 if __name__ == '__main__':

@@ -181,6 +181,7 @@ local function workflow()
 
 	-- LSP owns the complete interaction, including empty and slow replies.
 	local requests, delayed = {}, nil
+	local workspace_query
 	transport = server(project, function(method, params, callback)
 		table.insert(requests, method)
 		if method == "textDocument/definition" then
@@ -211,8 +212,14 @@ local function workflow()
 				},
 			}
 		elseif method == "workspace/symbol" then
+			workspace_query = params.query
 			return {
-				{ name = "server_symbol", kind = 12, containerName = "ShippingClient", location = location(target) },
+				{
+					name = params.query == "m" and "matching_m_symbol" or "server_symbol",
+					kind = 12,
+					containerName = "ShippingClient",
+					location = location(target),
+				},
 				{ name = "destination", kind = 13, location = location(target) },
 				{ name = "another_destination", kind = 12, location = location(target, 1) },
 				{ name = "large_symbol", kind = 12, location = location(project .. "/large.lua") },
@@ -332,6 +339,14 @@ local function workflow()
 	)
 	assert(workspace:find("+2", 1, true), "Staged file with spaces did not show added line count")
 	assert(workspace:find("+1.2k", 1, true), "Large line counts were not abbreviated")
+	vim.api.nvim_chan_send(vim.bo.channel, "m")
+	wait(function()
+		return workspace_query == "m"
+	end, "Live query did not reach the language server")
+	picker("matching_m_symbol")
+	local matching = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	assert(not matching:find("38;", 1, true), "Live matching exposed a malformed ANSI color sequence")
+	vim.api.nvim_chan_send(vim.bo.channel, "\21")
 	write(target, { "function destination(parcel, service) return parcel end", "function another_destination() end" })
 	vim.api.nvim_chan_send(vim.bo.channel, "destination")
 	picker("(parcel, service)")

@@ -1,11 +1,14 @@
 mod theme;
 use theme::{foreground, background, mark};
 use serde_json::{json, Value};
+use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,
+    StatusView, MAX_CONFIG_BYTES, READINESS};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
 mod clipboard;
 mod attention;
+mod attention_policy;
 mod clients;
 mod notifications;
 
@@ -20,6 +23,7 @@ struct State {
     busy: bool,
     attention: GlobalAttention,
     attention_ready: bool,
+    attention_config: attention_policy::Config,
     clicks: Vec<(usize, usize, u32)>,
     clipboard: clipboard::Clipboard,
     clipboard_receiver: bool,
@@ -168,6 +172,7 @@ impl ZellijPlugin for State {
                 }
                 if !self.allowed {
                     self.allowed = true;
+                    if self.clipboard_receiver { self.attention_config.load(); }
                     self.poll();
                 }
             }
@@ -197,6 +202,16 @@ impl ZellijPlugin for State {
                 self.notifications.finish(code, &error, &context);
             }
             Event::RunCommandResult(code, out, error, context)
+                if context.get("action").map(String::as_str) == Some(attention_policy::LOAD) => {
+                if self.clipboard_receiver {
+                    if let Some(error) = self.attention_config.finish(code, &out, &error, &context) {
+                        eprintln!("lane-status attention: {error}");
+                        let error: String = error.chars().filter(|c| !c.is_control()).take(180).collect();
+                        self.clipboard.publish_notice(&format!("attention: {error}; using defaults"));
+                    }
+                }
+            }
+            Event::RunCommandResult(code, out, error, context)
                 if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
                 // Native client-attach replay can broadcast cached results.
                 if context.get("client") == Some(&get_plugin_ids().client_id.to_string()) {
@@ -206,7 +221,8 @@ impl ZellijPlugin for State {
             Event::RunCommandResult(code, out, error, _) => {
                 self.busy = false;
                 self.view = if code == Some(0) {
-                    let view: Value = serde_json::from_slice(&out).unwrap_or(json!({}));
+                    let view: Value = serde_json::from_slice::<StatusView>(&out).ok()
+                        .and_then(|view| serde_json::to_value(view).ok()).unwrap_or(json!({}));
                     if view["session"].as_str() == self.mode.session_name.as_deref() { view }
                     else { json!({}) }
                 } else {
@@ -232,6 +248,52 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.clipboard_receiver && self.allowed && message.name == READINESS {
+            if let PipeSource::Cli(pipe) = &message.source {
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 1024) {
+                    if let Ok(request) = serde_json::from_str::<ReadinessRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty() && request.request.len() <= 128 {
+                            let reply = ReadinessReply { request: request.request,
+                                plugin_id: ids.plugin_id, client_id: ids.client_id as u32,
+                                config_ready: self.attention_config.ready,
+                                attention_ready: self.attention_ready,
+                                bindings_installed: self.clipboard.bindings_installed() };
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        if self.clipboard_receiver && self.allowed && message.name == attention_policy::RELOAD {
+            if let PipeSource::Cli(pipe) = &message.source {
+                // Only the discovered persistent receiver handles reloads.
+                // Ignore the trailing CLI EOF message and unrelated instances.
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= MAX_CONFIG_BYTES) {
+                    if let Ok(request) = serde_json::from_str::<ReloadRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty() && request.request.len() <= 128 {
+                            let mut reply = ReloadAck { request: request.request,
+                                plugin_id: ids.plugin_id, client_id: ids.client_id as u32,
+                                ok: None, error: None };
+                            match self.attention_config.apply(&request.priority) {
+                                Ok(()) => reply.ok = Some(true),
+                                Err(error) => reply.error = Some(error),
+                            }
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
         if self.allowed && !self.clipboard_receiver && matches!(message.source, PipeSource::Cli(_)) {
             if matches!(message.name.as_str(), notifications::SEND | notifications::VALIDATE) {
                 return self.notifications.pipe(&message, self.mode.session_name.as_deref(),
@@ -256,8 +318,9 @@ impl ZellijPlugin for State {
             }
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind
-            && message.name == attention::MESSAGE {
-            attention::jump(&self.tabs, &self.attention, &message);
+            && self.attention_config.ready
+            && matches!(message.name.as_str(), attention::MESSAGE | attention::HIGHEST) {
+            attention::jump(&self.tabs, &self.attention, &message, &self.attention_config.policy);
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
             if let Some(session) = self.mode.session_name.as_deref() {

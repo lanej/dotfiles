@@ -57,6 +57,18 @@
     ]
   },
   {
+    "id": "eza",
+    "owner": "Native file metadata, file kinds and Git status styles",
+    "mechanism": "generated eza YAML adapter linked as ~/.config/eza/theme.yml; legacy ls color variables removed only for eza",
+    "reload": "Run make shell once to install the theme link; regenerate and open a new listing or picker",
+    "coverage": "Native listings and fzf previews use semantic file and Git roles. Exact bytes and tree depth remain listing policy. Eza owns its Git letter pairs and file icons: glyph tokens cannot replace its status markers, and its single new style cannot color staged-new and untracked states independently; their index/worktree columns remain distinct.",
+    "sources": [
+      "design-system/adapters/eza.json",
+      "sh/alias",
+      "bin/fzf-path-preview"
+    ]
+  },
+  {
     "id": "bat-delta",
     "owner": "Syntax theme cache and delta diff features",
     "mechanism": "generated tmTheme and native gitconfig include",

@@ -55,6 +55,7 @@ export default defineConfig({
         { label: 'Linux stack', slug: 'reference/linux' },
         { label: 'Rust', slug: 'reference/rust' },
         { label: 'Go style guide', slug: 'reference/go-style' },
+        { label: 'TypeScript style guide', slug: 'reference/typescript-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
       ] },
       { label: 'Contributing', items: [

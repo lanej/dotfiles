@@ -11,15 +11,67 @@ description: "Find work that needs an answer without checking every tab."
 | `✓` | A task completed |
 | `●` | A task is working |
 
-## Visit the next tab that needs you
+## Jump to the highest-ranked activity tab
 
-Press **Ctrl-f Ctrl-a**. Zellij first looks for another tab with a request or failure. If none needs you, it visits a tab with activity or a bell. It wraps through tab order and skips quiet completions.
+Press **Ctrl-f a** to jump directly, without opening a menu. Requests and failures rank ahead of activity or bells; ties use tab order. Quiet completions are skipped. If you are already on the highest-ranked tab, you stay there.
 
-This shortcut stays in the current session and changes only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
+**Ctrl-f Ctrl-a** instead cycles through other tabs at the highest eligible rank, wrapping through tab order.
+
+Both shortcuts stay in the current session and change only your view. From the shared popup, press **Ctrl-f u** first if you want to triage the containing session's tabs.
+
+## Install the Rust helpers
+
+`make zellij-status zellij` builds the native helper and WASI status plugin, then links configuration. Build only the host helper with `make zellij-helpers`. Configuration-only commands and minimal bootstrap create links without compiling the helper or installing Rust; build the helper before using those commands.
+
+`zellij-status view`, `config`, and `reload` keep their existing arguments. The same native helper also supplies the other Zellij commands, so rebuild it after updating the checkout. Existing session servers can use the new helper without a restart; changing the runtime or loaded plugins still requires restarting those instances.
+
+The command names and JSON messages are unchanged, so an already-running status receiver from the attention-priority release can use the new helper without a session restart. Older receivers without reload support still fail acknowledgement checks rather than reporting success. Rebuild and start a new session to load changes to the plugin itself.
+
+## Choose attention priority
+
+The defaults put native `!`-marked tabs, nonbell attention, and failures in the first group, then working programs, native new-output status, and bells in the second. Completed work and quiet tabs are excluded. Both jump shortcuts use the same priority groups.
+
+To change them, create `zellij/lane-status.toml` under your absolute `XDG_CONFIG_HOME`, or `~/.config/zellij/lane-status.toml` when `XDG_CONFIG_HOME` is unset, empty, or relative. This example spells out the defaults:
+
+```toml
+[attention]
+priority = [["marked", "needs_you", "failed"], ["working", "new_output", "bell"]]
+```
+
+Groups earlier in the list win. Classes in the same group have equal priority; ties use tab order. Omitted classes are excluded. The available classes are:
+
+| Class | Includes |
+| --- | --- |
+| `marked` | Tabs whose name starts with the native `!` marker |
+| `needs_you` | Nonbell requests, watch results, and notifications needing attention |
+| `failed` | Failed tasks |
+| `working` | Running tasks |
+| `new_output` | Native new-output status; watch results instead use `needs_you` |
+| `bell` | Terminal bells |
+| `done` | Completed tasks; opt-in |
+| `quiet` | Quiet tabs; opt-in |
+
+For example, `priority = [["working"], ["needs_you", "failed"]]` visits working tabs before requests and failures, and excludes all other classes.
+
+Each new client attachment, including the first client in a new session, loads the file after the status bar's existing permission grant. Invalid configuration at first load produces a warning and uses defaults. Already-attached clients keep their cached policy until reload. To apply edits to all attached clients in a running session, run this inside that session:
+
+```sh
+zellij-status reload
+```
+
+Or target it explicitly from another shell:
+
+```sh
+zellij-status reload --session NAME
+```
+
+Reload applies to every attached client in the selected session without moving anyone's focus. Already-attached clients in other sessions keep their current policy. Invalid configuration makes an explicit reload fail and leaves the previous policy unchanged. Removing the file and reloading restores the defaults. Reloading the same file again is safe. Edits are not polled, and jumping does not reread the file.
+
+This only changes **Ctrl-f a** and **Ctrl-f Ctrl-a**. Direct jump includes the current tab; cycling excludes it. **Ctrl-f A** still toggles watching a pane.
 
 ## Watch or mute a pane
 
-Focus a pane and press **Ctrl-f a** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.
+Focus a pane and press **Ctrl-f A** to toggle watching it for output. **Ctrl-f U** toggles muting it. Ordinary background output stays quiet unless you choose to watch it.
 
 Claude and Codex can publish task status directly. Other programs may report only a bell or watched output. Successful shell commands become attention after running for at least thirty seconds; a quick successful command does not interrupt you.
 

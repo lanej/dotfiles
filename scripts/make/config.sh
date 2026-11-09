@@ -62,6 +62,8 @@ case "$target" in
         mkdir -p "${setup_home}/.config/atuin"
         ln -fs "${dotfiles}/sh/atuin.toml" "${setup_home}/.config/atuin/config.toml"
         ln -fs "${dotfiles}/sh/dircolors" "${setup_home}/.dir_colors"
+        mkdir -p "${setup_home}/.config/eza"
+        ln -fs "${dotfiles}/design-system/generated/eza.yml" "${setup_home}/.config/eza/theme.yml"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
         ln -fs "${dotfiles}/bash/bashenv" "${setup_home}/.bashenv"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
@@ -144,7 +146,7 @@ case "$target" in
             ln -fs "$dotfiles/zellij/layouts/tmux-native.kdl" "$setup_home/.config/zellij/layouts/tmux.kdl"
         fi
         for source in "$dotfiles"/bin/zellij-*; do
-            if [ -f "$source" ] && [ -x "$source" ]; then
+            if [ -L "$source" ] || { [ -f "$source" ] && [ -x "$source" ]; }; then
                 ln -fs "$source" "$setup_home/.local/bin/"
             fi
         done

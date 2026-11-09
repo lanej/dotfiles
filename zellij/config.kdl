@@ -9,6 +9,8 @@ nested_session_handling "descend"
 auto_layout false
 pane_frames true
 pane_frame_style "full"
+// Show scroll position only while a pane is away from live output.
+hide_scroll_indicator_when_idle true
 mouse_mode false
 mouse_hover_tips false
 mouse_scroll_resize false
@@ -102,7 +104,13 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "a" { WatchPane; SwitchToMode "Locked"; }
+        bind "a" {
+            MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
+                name "attention-highest-tab"
+            }
+            SwitchToMode "Locked"
+        }
+        bind "A" { WatchPane; SwitchToMode "Locked"; }
         bind "U" { MutePane; SwitchToMode "Locked"; }
 
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }

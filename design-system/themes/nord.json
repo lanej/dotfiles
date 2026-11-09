@@ -30,6 +30,7 @@
     "text.inverse": "$nord0",
     "accent": "$nord8",
     "accent.secondary": "$nord7",
+    "focus": "$nord15",
     "status.success": "$nord14",
     "status.warning": "$nord13",
     "status.error": "$nord11",

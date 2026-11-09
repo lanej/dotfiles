@@ -84,20 +84,21 @@ if ! command -v zj >/dev/null 2>&1; then
 fi
 
 if command -v eza >/dev/null 2>&1; then
-	# Only alias ls to eza in login shells
-	# Rationale: Scripts and non-interactive shells expect POSIX-compliant ls behavior.
-	# eza has flag incompatibilities that break automation:
-	#   - POSIX ls -t: sort by time (newest first)
-	#   - eza -t: select timestamp field to display (doesn't sort, needs -s modified)
-	# This breaks scripts like: ls -t | head -1  (get newest file)
-	# Login shells are for interactive human use where eza's enhancements are desired.
-	if shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; then
-		alias ls='eza'
-	fi
-	alias ll='eza -Gl --smart-group -F auto --icons --git'
-	alias lt="eza -g -F auto --icons -T -L 2 --git"
+	export EZA_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/eza"
+	eza() {
+		# WHY: Legacy ls colors override theme.yml; scope their removal to eza.
+		(unset LS_COLORS EZA_COLORS; command eza "$@")
+	}
+	# WHY: Interactive aliases may use eza flags; automation keeps system ls semantics.
+	case $- in
+		*i*) alias ls='eza --group-directories-first --classify=auto --icons=auto' ;;
+	esac
+	alias ll='eza --long --bytes --header --smart-group --group-directories-first --classify=auto --icons=auto --git'
+	alias la='ll --all'
+	alias lt='eza --tree --long --git --no-permissions --no-filesize --no-user --no-time --level=2 --group-directories-first --classify=auto --icons=auto'
 else
 	alias ll="ls -alh"
+	alias la="ls -alh"
 	alias lt='tree -L 1 -C'
 fi
 
@@ -199,7 +200,7 @@ zz() {
             | cut -d' ' -f2- \
             | sk --ansi --reverse \
                  --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                 --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
+                 --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
                  --preview-window "$(fzf_preview_window)")" || return
     else
         # Use fzf with length-based sorting and progressive filtering
@@ -214,7 +215,7 @@ zz() {
                   --tiebreak=length,begin \
                   --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
                   --bind 'ctrl-space:select-all+accept' \
-                  --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
+                  --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
                   --preview-window "$(fzf_preview_window)" \
                   --header='Ctrl-Space: narrow to filtered results' \
                   -q "${_last_z_args}" \
@@ -230,7 +231,7 @@ zz() {
                         --tiebreak=length,begin \
                         --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
                         --bind 'ctrl-space:select-all+accept' \
-                        --preview 'eza -HgF --icons -T -L 2 --color=always --git {}' \
+                        --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
                         --preview-window "$(fzf_preview_window)" \
                         --header='Ctrl-Space: narrow again | Enter: select'
                 fi

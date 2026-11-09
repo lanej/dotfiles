@@ -242,8 +242,8 @@ return {
 ["bg"] = "#88C0D0",
 },
 ["StatusLine"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["StatusLineNC"] = {
@@ -255,8 +255,8 @@ return {
 ["bg"] = "#2E3440",
 },
 ["TabLineSel"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["TabLineFill"] = {
@@ -684,7 +684,8 @@ return {
 ["link"] = "@attribute",
 },
 ["FzfLuaNormal"] = {
-["link"] = "NormalFloat",
+["fg"] = "#D8DEE9",
+["bg"] = "#2E3440",
 },
 ["TelescopeNormal"] = {
 ["link"] = "NormalFloat",
@@ -705,7 +706,9 @@ return {
 ["link"] = "FloatTitle",
 },
 ["FzfLuaCursorLine"] = {
-["link"] = "Visual",
+["fg"] = "#ECEFF4",
+["bg"] = "#434C5E",
+["bold"] = true,
 },
 ["TelescopeSelection"] = {
 ["link"] = "Visual",
@@ -958,6 +961,19 @@ return {
 },
 ["FzfLuaFzfMatch"] = {
 ["fg"] = "#A3BE8C",
+["bold"] = true,
+},
+["FzfLuaSymbolName"] = {
+["fg"] = "#ECEFF4",
+["bold"] = true,
+},
+["FzfLuaSymbolSignature"] = {
+["fg"] = "#8FBCBB",
+["italic"] = true,
+},
+["FzfLuaSymbolFile"] = {
+["fg"] = "#D8DEE9",
+["bold"] = true,
 },
 ["FzfLuaFzfBorder"] = {
 ["link"] = "FloatBorder",
@@ -1026,6 +1042,7 @@ return {
 ["text.inverse"] = "#2E3440",
 ["accent"] = "#88C0D0",
 ["accent.secondary"] = "#8FBCBB",
+["focus"] = "#B48EAD",
 ["status.success"] = "#A3BE8C",
 ["status.warning"] = "#EBCB8B",
 ["status.error"] = "#BF616A",
@@ -1054,10 +1071,9 @@ return {
 ["diff.delete.dim"] = "#7E4D57",
 ["selection.bg"] = "#434C5E",
 ["selection.fg"] = "#ECEFF4",
-["focus"] = "#88C0D0",
 ["match"] = "#A3BE8C",
-["tab.active.bg"] = "#434C5E",
-["tab.active.fg"] = "#88C0D0",
+["tab.active.bg"] = "#B48EAD",
+["tab.active.fg"] = "#2E3440",
 ["tab.inactive.bg"] = "#2E3440",
 ["tab.inactive.fg"] = "#81A1C1",
 ["keyhint"] = "#88C0D0",
@@ -1088,6 +1104,11 @@ return {
 ["git.file.ahead.dim"] = "#7A8E71",
 ["git.file.behind.dim"] = "#A99671",
 ["git.file.branch.dim"] = "#647B94",
+["file.directory"] = "#81A1C1",
+["file.executable"] = "#A3BE8C",
+["file.special"] = "#B48EAD",
+["file.archive"] = "#D08770",
+["file.project"] = "#EBCB8B",
 },
 ["tokens"] = {
 ["emphasis.heading"] = true,
@@ -1177,8 +1198,8 @@ return {
 ["bold"] = true,
 },
 ["tab.active"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["tab.inactive"] = {

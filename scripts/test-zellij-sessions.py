@@ -15,7 +15,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 POPUP = "dotfiles-popup"
 # Leave room for full popup tab titles alongside long CI runner hostnames.
 SESSION_COLUMNS = 240
@@ -85,11 +86,16 @@ def floating_screen(terminal):
     return terminal.action("dump-screen", "--pane-id", str(pane["id"])) if pane else ""
 
 
+def name_host_tab(terminal, name):
+    terminal.action("rename-tab", name)
+    terminal.until("distinct host tab name", lambda:
+                   any(tab["active"] and tab["name"] == name for tab in terminal.tabs()))
+
+
 def open_popup(terminal):
-    # The bar's zero-based position is stable across shell/default-name display
-    # policies; list-tabs returns the raw native name, not that presentation.
+    # Fixture host names differ from guest names; both bars can share index 0.
     tab = next(tab for tab in terminal.tabs() if tab["active"])
-    host_tab = f" {tab['position']}:"
+    host_tab = tab["name"]
     rendered = len(terminal.output)
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
@@ -393,9 +399,11 @@ def popup_workflow(first, second, home):
 
     first.prefix(b"c")
     first.until("second outer tab", lambda: len(first.tabs()) == 2)
+    name_host_tab(first, "popup-other-host-tab")
     open_popup(first)
     prove_popup(first, home, expected, "popup-other-tab")
     hide_popup(first)
+    name_host_tab(second, "popup-other-host-session")
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")
     assert {p["id"] for p in popup_panes(second)} == popup_ids
@@ -444,6 +452,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
     replacement.until("replacement session starts", lambda: b"zellij-ready> " in replacement.output)
     # Recreate the same visible workspace and command IDs. The old tuple-only
     # guard matched this new server and killed it after a stale confirmation.
+    name_host_tab(replacement, "popup-replacement-host")
     open_popup(replacement)
     hide_popup(replacement)
     confirmation(replacement)
@@ -516,12 +525,14 @@ def main():
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
-        subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,
-                       check=True, capture_output=True, text=True)
+        configured = subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"],
+                                    cwd=ROOT, env=env, capture_output=True, text=True)
+        assert configured.returncode == 0, configured.stdout + configured.stderr
         subprocess.run([binary, "setup", "--check"], env=env, check=True,
                        capture_output=True, text=True)
         names = ["first-" + temporary.name, "second-" + temporary.name]

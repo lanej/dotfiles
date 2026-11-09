@@ -166,7 +166,7 @@ end
 local function label(symbol, parent, path, width, prefix_width)
 	local name = clean(symbol.name)
 	local remaining = width - vim.fn.strdisplaywidth(name) - prefix_width - 4
-	local context = {}
+	local context = { "", "", "" }
 	local candidates = { clean(symbol.detail), clean(symbol.containerName or parent) }
 	if path then
 		-- WHY: The hidden native path column must not make same-named workspace symbols indistinguishable.
@@ -176,22 +176,21 @@ local function label(symbol, parent, path, width, prefix_width)
 		local detail = candidates[1]
 		if detail ~= "" and remaining >= 6 then
 			local signature = clip(detail, remaining - 2)
-			context[#context + 1] = signature
+			context[1] = signature
 			remaining = remaining - vim.fn.strdisplaywidth(signature) - 2
 		end
 		if part ~= "" then
-			context[#context + 1] = part
+			context[2] = part
 		end
-		table.remove(candidates, 1)
 	end
-	for _, text in ipairs(candidates) do
-		if text ~= "" and text ~= name and remaining >= 6 then
+	for index, text in ipairs(candidates) do
+		if not (path and index == 1) and text ~= "" and text ~= name and remaining >= 6 then
 			local part = clip(text, math.min(remaining - 2, 28))
-			context[#context + 1] = part
+			context[index == 1 and 1 or 3] = part
 			remaining = remaining - vim.fn.strdisplaywidth(part) - 2
 		end
 	end
-	return name .. (#context > 0 and ("\t" .. table.concat(context, " · ")) or "")
+	return name .. (table.concat(context) ~= "" and ("\t" .. table.concat(context, "\t")) or "")
 end
 
 function M.attach(opts, width)
@@ -212,6 +211,32 @@ function M.attach(opts, width)
 	local original = handler.handler
 	local utils = require("fzf-lua.utils")
 	local _, _, mute = utils.ansi_from_hl("FzfLuaFzfInfo", "")
+	local _, _, signature = utils.ansi_from_hl("FzfLuaSymbolSignature", "")
+	local _, _, file_name = utils.ansi_from_hl("FzfLuaSymbolFile", "")
+	local function symbol_context(text)
+		local fields = vim.split(text, "\t", { plain = true })
+		local parts = {}
+		if fields[1] ~= "" then
+			parts[#parts + 1] = signature(fields[1])
+		end
+		if fields[2] and fields[2] ~= "" then
+			local directory, basename = fields[2]:match("^(.*[/])([^/]*)$")
+			parts[#parts + 1] = (directory and mute(directory) or "") .. file_name(basename or fields[2])
+		end
+		if fields[3] and fields[3] ~= "" then
+			parts[#parts + 1] = mute(fields[3])
+		end
+		return table.concat(parts, mute(" · "))
+	end
+	local _, name_style, emphasize = utils.ansi_from_hl("FzfLuaSymbolName", "")
+	local function symbol_name(text)
+		local icon, name = text:match("^(.- )(.+)$")
+		name = name or text
+		if name_style then
+			name = name:gsub("\27%[0m", "%0" .. name_style)
+		end
+		return (icon or "") .. emphasize(name)
+	end
 	local badges, lookup = {}, {}
 	local signatures = require("navigation-signature").new()
 	local function for_file(file)
@@ -292,7 +317,9 @@ function M.attach(opts, width)
 					end
 					local title, detail = body:match("^(.-)\t(.*)$")
 					if title then
-						body = title .. "  " .. mute(detail)
+						body = symbol_name(title) .. "  " .. symbol_context(detail)
+					else
+						body = symbol_name(body)
 					end
 					row = head .. (git ~= "" and (git .. " ") or "") .. body .. tail
 				end

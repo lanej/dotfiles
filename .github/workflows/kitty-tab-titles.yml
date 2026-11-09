@@ -5,6 +5,15 @@ on:
       - 'kitty/tab_bar.py'
       - 'kitty/kittyconf'
       - 'bin/zellij-attach'
+      - 'bin/zellij-helper'
+      - 'zellij/cli/src/session.rs'
+      - 'zellij/cli/src/agent.rs'
+      - 'zellij/cli/src/util.rs'
+      - 'zellij/cli/src/command.rs'
+      - 'zellij/cli/src/main.rs'
+      - 'zellij/cli/Cargo.toml'
+      - 'zellij/Cargo.toml'
+      - 'zellij/Cargo.lock'
       - 'scripts/test-kitty-tab-titles.py'
       - '.github/workflows/kitty-tab-titles.yml'
   push:
@@ -15,7 +24,7 @@ permissions:
 jobs:
   titles:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - name: Install pinned Kitty runtime
