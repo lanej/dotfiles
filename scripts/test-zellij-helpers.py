@@ -140,6 +140,10 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.plan([[pane(1, is_fullscreen=True)], ""])
         self.assertNotEqual(self.run_helper("zellij-balance", "equalize", check=False).returncode, 0)
         self.assertFalse(any("resize" in call for call in self.calls()))
+        stacked = [pane(1, pane_rows=1), pane(2, pane_y=2, pane_rows=19)]
+        self.plan([stacked, stacked, stacked, "", {"error": "stack layout changed"}])
+        self.assertNotEqual(self.run_helper("zellij-balance", "equalize", check=False).returncode, 0)
+        self.assertFalse(any("resize" in call for call in self.calls()), "Stack headers must be rejected before resizing")
 
     def test_tab_picker_rejects_closed_target_and_keeps_names_as_data(self):
         theme = self.home / "theme"

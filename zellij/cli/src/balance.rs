@@ -104,11 +104,14 @@ impl Balance {
             .filter(|p| p.tab_id == tab && !p.is_plugin)
             .cloned()
             .collect();
+        // Native stack headers are fixed one-row panes; selection-group and
+        // collapsed-pane metadata describe separate runtime features.
         if terminals.iter().any(|p| {
             p.is_floating
                 || p.is_fullscreen
                 || p.is_suppressed
                 || p.is_collapsed
+                || p.pane_rows <= 1
                 || p.exited
                 || !p.index_in_pane_group.is_empty()
         }) {
