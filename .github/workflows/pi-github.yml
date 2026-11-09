@@ -1,0 +1,29 @@
+name: Pi GitHub worker
+on:
+  pull_request:
+    paths: ['tools/pi-github/**', '.github/workflows/pi-github.yml']
+  push:
+    branches: [master]
+    paths: ['tools/pi-github/**', '.github/workflows/pi-github.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools/pi-github
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: tools/pi-github/.bun-version
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run check
+      - run: shellcheck bin/pi-github
+        if: runner.os == 'Linux'

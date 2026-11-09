@@ -1,0 +1,30 @@
+{
+  "name": "pi-github",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "pi-github": "dist/cli.js"
+  },
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "build": "bun node_modules/typescript/bin/tsc",
+    "start": "bun dist/cli.js",
+    "test": "bun test --timeout 30000 test",
+    "check": "bun run build && bun run test"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "1.5.0",
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "@earendil-works/pi-tui": "1.5.0",
+    "typebox": "1.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "typescript": "5.9.3",
+    "@types/bun": "1.4.4"
+  },
+  "packageManager": "bun@1.4.4"
+}
