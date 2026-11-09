@@ -10,6 +10,7 @@ bin/*
 !bin/nvim-gh-review
 !bin/dotfiles-theme
 !bin/dotfiles-fzf
+!bin/fzf-path-preview
 !bin/firstmate
 !bin/paseo-pi
 !bin/ep-direnv
