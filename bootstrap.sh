@@ -695,33 +695,17 @@ install_firstmate_release() (
 		shasum -a 256 -c selected.sha256 || exit 1
 	fi
 	tar -xzf "$archive" || exit 1
-	if ! "./$tool" --version; then
-		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
-			echo "Downloaded $tool cannot run on this host" >&2
-			exit 1
-		fi
-		# WHY: Upstream Linux releases may require a newer glibc than this host.
-		echo "Building Treehouse v$version from source for this host"
-		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
-		mkdir source || exit 1
-		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
-		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
-		"./$tool" --version || exit 1
-	fi
+	"./$tool" --version || exit 1
 	mkdir -p "$HOME/.local/bin" || exit 1
 	install -m 755 "$tool" "$HOME/.local/bin/$tool"
 )
-
-install_treehouse_from_release() {
-	install_firstmate_release treehouse "$1"
-}
 
 install_no-mistakes_from_release() {
 	install_firstmate_release no-mistakes "$1"
 }
 
 install_treehouse_tools() {
-	install_package_version treehouse 3.1.6 || return 1
+	bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-treehouse" || return 1
 	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
 }
 

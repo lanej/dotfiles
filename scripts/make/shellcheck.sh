@@ -13,6 +13,7 @@ shellcheck -x \
     "$dotfiles/scripts/install-ep-direnv.sh" \
     "$dotfiles/scripts/install-agent-status-broker" \
     "$dotfiles/scripts/install-zellij" \
+    "$dotfiles/scripts/install-treehouse" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
     "$dotfiles/bin/zellij-attach" \
