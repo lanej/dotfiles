@@ -152,6 +152,7 @@ pub fn publish(operation: &str, raw: &Path, request: Option<&Path>) -> Result<Pa
     } else {
         let staging = tempfile::Builder::new()
             .prefix(".refresh.")
+            .permissions(fs::Permissions::from_mode(0o700))
             .tempdir_in(&dir)?;
         symlink(raw, staging.path().join("agent.sock"))?;
         let request = request.context("Missing request")?;
@@ -182,6 +183,7 @@ fn refresh_until(session: &str, follow: bool, deadline: Instant) -> Result<()> {
     }
     let request = tempfile::Builder::new()
         .prefix("zellij-agent-update.")
+        .permissions(fs::Permissions::from_mode(0o700))
         .tempdir()?;
     let exe = env::current_exe()?;
     // The request directory expires on every return path. Late publications are rejected.

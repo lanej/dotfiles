@@ -34,10 +34,12 @@ import os
 from pathlib import Path
 import sys
 import time
+import stat
 
 args = sys.argv[1:]
 if args[:1] == ["--session"] or (args and args[0].startswith("--session=")):
     if os.environ.get("DELAYED_SERVER") and Path(os.environ["DELAYED_SERVER"]).exists():
+        assert stat.S_IMODE(Path(args[-1]).stat().st_mode) == 0o700
         Path(os.environ["REFRESHED"]).write_text(args[-2])
         (Path(args[-1]) / "success").write_text("acknowledged\\n")
         raise SystemExit(0)

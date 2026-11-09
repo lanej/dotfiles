@@ -155,8 +155,10 @@ else:
                "PWD": str(work / "project")}
 
         def rename():
+            directory = Path(env["PWD"])
+            directory.mkdir(exist_ok=True)
             subprocess.run([ROOT / "bin/zellij-auto-title"],
-                           cwd=work, env=env, check=True, timeout=5)
+                           cwd=directory, env=env, check=True, timeout=5)
             return json.loads(state.read_text())["name"]
 
         def owned():
