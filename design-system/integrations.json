@@ -1,0 +1,143 @@
+[
+  {
+    "id": "kitty",
+    "owner": "Kitty palette and UI settings",
+    "mechanism": "generated native include",
+    "reload": "Existing Cmd+Shift+R load_config_file binding",
+    "coverage": "Mapped; native config parse checked. Emulator compositing requires visual inspection.",
+    "sources": [
+      "kitty/kittyconf",
+      "design-system/generated/kitty.conf"
+    ]
+  },
+  {
+    "id": "neovim",
+    "owner": "Owned colorscheme, standard groups and explicit plugin groups",
+    "mechanism": "generated Lua mappings; reapplied after LazyLoad/VeryLazy",
+    "reload": ":colorscheme dotfiles",
+    "coverage": "Real Gitsigns, lualine and fzf-lua loads plus colorscheme reload checked. Other plugins have mappings or inherit core groups; full interactive coverage remains incomplete. Presentation checks exercise heading emphasis, Gitsigns extmarks, branch gutter symbols and lualine separators; colorscheme reload refreshes the token consumers. Gutter symbols are limited by Neovim to two display cells; actual glyph width depends on the font.",
+    "sources": [
+      "nvim/lua/dotfiles-theme.lua",
+      "design-system/adapters/neovim.json"
+    ]
+  },
+  {
+    "id": "zellij",
+    "owner": "Native theme and owned status plugin",
+    "mechanism": "generated KDL; status consumes ModeInfo.style",
+    "reload": "Zellij watches managed config; use a new session if a native theme-file edit is not picked up. Rebuild/install the status plugin once for this migration.",
+    "coverage": "Native status/prefix and picker workflow checks exercise the pinned runtime. No synchronized live-switch guarantee.",
+    "sources": [
+      "design-system/adapters/zellij.json",
+      "zellij/status/src/theme.rs"
+    ]
+  },
+  {
+    "id": "tmux",
+    "owner": "Native styles and owned agent-state helpers",
+    "mechanism": "generated source-file and role references",
+    "reload": "tmux source-file ~/.config/tmux/tmux.conf; refresh-theme updates persisted segment colors without changing state age",
+    "coverage": "Style parsing and repeated source-file checked in an isolated server. The main config reload refreshes persisted @claude colors without resetting state age or reason. Broker events supply state; generated formats resolve its colors locally and ignore broker color values.",
+    "sources": [
+      "design-system/adapters/tmux.conf.in",
+      "bin/tmux-claude-state",
+      "design-system/adapters/tmux-states.json"
+    ]
+  },
+  {
+    "id": "fzf",
+    "owner": "fzf options; fzf-lua highlights inside Neovim",
+    "mechanism": "generated options through shell settings or dotfiles-fzf",
+    "reload": "Open a new picker; source the generated shell.sh for an existing shell",
+    "coverage": "Actual fzf frame captured. Caller-supplied --color or later FZF_DEFAULT_OPTS can deliberately override the theme.",
+    "sources": [
+      "bin/dotfiles-fzf",
+      "bin/zellij-picker",
+      "nvim/lua/fzfconfig.lua"
+    ]
+  },
+  {
+    "id": "eza",
+    "owner": "Native file metadata, file kinds and Git status styles",
+    "mechanism": "generated eza YAML adapter linked as ~/.config/eza/theme.yml; legacy ls color variables removed only for eza",
+    "reload": "Run make shell once to install the theme link; regenerate and open a new listing or picker",
+    "coverage": "Native listings and fzf previews use semantic file and Git roles. Exact bytes and tree depth remain listing policy. Eza owns its Git letter pairs and file icons: glyph tokens cannot replace its status markers, and its single new style cannot color staged-new and untracked states independently; their index/worktree columns remain distinct.",
+    "sources": [
+      "design-system/adapters/eza.json",
+      "sh/alias",
+      "bin/fzf-path-preview"
+    ]
+  },
+  {
+    "id": "bat-delta",
+    "owner": "Syntax theme cache and delta diff features",
+    "mechanism": "generated tmTheme and native gitconfig include",
+    "reload": "make theme-cache; reopen the pager",
+    "coverage": "Both installed applications recognize the generated theme; real code and diff output captured. Syntax grammars differ from Neovim.",
+    "sources": [
+      "design-system/adapters/syntax.json",
+      "design-system/generated/delta.gitconfig"
+    ]
+  },
+  {
+    "id": "glow",
+    "owner": "Native Glamour style",
+    "mechanism": "generated JSON and existing shell wrapper",
+    "reload": "Run glow again",
+    "coverage": "Real Markdown output captured. Verbatim embedded images and arbitrary upstream ANSI are outside theme ownership.",
+    "sources": [
+      "design-system/adapters/glow.json",
+      "sh/alias"
+    ]
+  },
+  {
+    "id": "bottom",
+    "owner": "Native widget, table, graph and series styles",
+    "mechanism": "generated native TOML",
+    "reload": "Restart btm",
+    "coverage": "Configuration accepted by bottom 0.15.0; CPU0 label styling captured independently of resource values and CPU count. Other widget states and hardware-specific series remain unexercised.",
+    "sources": [
+      "design-system/adapters/bottom.toml.in"
+    ]
+  },
+  {
+    "id": "shell-cli",
+    "owner": "ANSI slots, named styles and owned CLI sample",
+    "mechanism": "terminal inheritance and generated shell settings",
+    "reload": "Reload Kitty and start a new shell; existing processes may cache settings",
+    "coverage": "Owned CLI sample checks labels and NO_COLOR behavior. Named colors inherit the terminal palette; truecolor output from other programs does not.",
+    "sources": [
+      "sh/profile",
+      "design-system/adapters/starship.toml.in",
+      "bin/dotfiles-theme"
+    ]
+  },
+  {
+    "id": "starship",
+    "owner": "Shared Git-state components; existing native prompt layout",
+    "mechanism": "generated complete native TOML with literal symbol escaping",
+    "reload": "The next prompt reads the generated configuration; no shell initialization change is required.",
+    "coverage": "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Other prompt module symbols remain application specific.",
+    "sources": [
+      "design-system/adapters/starship.toml.in",
+      "design-system/tokens.json",
+      "design-system/components.json"
+    ]
+  },
+  {
+    "id": "external-color-owners",
+    "owner": "Filetype icons, literal-color previews, other plugins and optional tools",
+    "mechanism": "explicit gaps",
+    "reload": "Application specific",
+    "coverage": "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm, Xresources, NeoMutt, claude-tail and graphical apps are outside this daily-theme migration.",
+    "sources": [
+      "nvim/init.lua",
+      "presenterm/themes/nord.yaml",
+      "btop/btop.conf",
+      "wezterm.lua",
+      "rc/Xresources",
+      "mail/neomuttrc",
+      "claude-tail/themes/Nord.tmTheme"
+    ]
+  }
+]

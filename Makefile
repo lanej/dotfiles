@@ -4,7 +4,6 @@ MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 # Bootstrap installs its managed runtime here even before shell setup exists.
 export PATH := $(HOME)/.local/bin:$(PATH)
 GO ?= go
-FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 include $(MAKE_SCRIPTS)/../../config/targets.mk
@@ -92,7 +91,22 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size
+lint: shellcheck audit-skills instruction-size theme-check
+
+.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native test-theme-presentation
+theme-generate:
+	@python3 "$(DOTFILES)/scripts/theme.py"
+theme-check:
+	@python3 "$(DOTFILES)/scripts/theme.py" --check
+theme-cache:
+	$(call require-command,bat)
+	@bat cache --build
+test-theme:
+	@python3 "$(DOTFILES)/scripts/test-theme.py"
+test-theme-presentation:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
+test-theme-native:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -101,26 +115,14 @@ shellcheck:
 treehouse-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-config: treehouse-config zellij-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+.PHONY: pi-config
 pi-config: pi-resources
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-mobile-config: firstmate-config pi-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-test-firstmate-github:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
 
-.PHONY: test-firstmate-peers
-test-firstmate-peers:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
 
-.PHONY: test-firstmate-primary
-test-firstmate-primary:
-	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
 
 .PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
 test-paseo-tasks:
@@ -172,12 +174,25 @@ zellij-runtime:
 .PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"
-test-zellij-command-prompt:
+test-zellij-command-prompt: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
-test-zellij-session-keys:
+test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status test-zellij-status
-zellij-status:
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-status
+zellij-helpers:
+	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
+test-zellij-helpers: zellij-helpers
+	@cargo fmt --all --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --check
+	@cargo clippy --locked --all-targets --manifest-path "$(DOTFILES)/zellij/Cargo.toml" -- -D warnings
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
+	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
+.PHONY: test-zellij-notifications test-zellij-notifications-ui
+test-zellij-notifications: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
+test-zellij-notifications-ui: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-notifications-ui.py"
+zellij-status: zellij-helpers
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
@@ -377,59 +392,58 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij  test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
 .PHONY: test-zellij-attach
-test-zellij-attach:
+test-zellij-attach: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
 
 .PHONY: test-zellij-move
-test-zellij-move:
+test-zellij-move: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
 
 .PHONY: test-zellij-swap
-test-zellij-swap:
+test-zellij-swap: zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" captured_nonleader_survives_election_but_rejects_stale_identity
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --swap-tab
 
-test-zellij:
+test-zellij: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles
-test-zellij-codex-titles:
+test-zellij-codex-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
 .PHONY: test-zellij-claude-titles
-test-zellij-claude-titles:
+test-zellij-claude-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-shell-titles
-test-zellij-shell-titles:
+test-zellij-shell-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
-test-zellij-navigation:
+test-zellij-navigation: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
-test-firstmate:
-	@python3 "$(DOTFILES)/scripts/test-firstmate.py"
 
-test-zellij-layout:
+test-zellij-layout: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
 
 .PHONY: test-zellij-clipboard
-test-zellij-clipboard:
+test-zellij-clipboard: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
-test-zellij-status:
-	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
+test-zellij-status: test-zellij-helpers
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" attention_policy
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
-test-zellij-auto-title:
+test-zellij-auto-title: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"
 .PHONY: test-zellij-tab-labels
-test-zellij-tab-labels:
+test-zellij-tab-labels: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-tab-labels.py"
 
-test-zellij-sessions:
+test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
 test-zsh-startup:
@@ -485,7 +499,7 @@ epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 .PHONY: test-ssh-agent
-test-ssh-agent:
+test-ssh-agent: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"
 
 # Pi shares the existing skill catalog without a second copy.
@@ -495,3 +509,6 @@ pi-resources: codex-skills
 	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
+
+firstmate-retire:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

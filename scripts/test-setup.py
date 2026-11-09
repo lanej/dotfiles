@@ -145,7 +145,7 @@ def main():
         assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
         assert (home / ".config/zellij/plugins/lane-status.wasm").resolve() == plugin
         picker = home / ".local/bin/zellij-picker"
-        assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
+        assert picker.is_symlink() and picker.resolve() == (repo / "bin/zellij-picker").resolve()
 
         # Missing required source is an incomplete step, not a successful skip.
         # The actual setup runner must still complete independent configuration.

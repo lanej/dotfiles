@@ -147,6 +147,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 			FZF_DEFAULT_OPTS_FILE='' \
 			fzf \
 				--prompt='📁 > ' \
+				--preview '"$HOME/.files/bin/fzf-path-preview" {}' \
 				--preview-window="$preview_window" \
 				--bind="ctrl-u:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(📁 > )\" || echo \"reload($cmd_hidden)+change-prompt(📁 [hidden] > )\"" \
 				--bind="ctrl-b:replace-query" \
@@ -168,7 +169,9 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 
 	fzf-directory-widget() {
 		local selected_dir
-		selected_dir=$(fd --type d 2>/dev/null | fzf --bind='ctrl-b:replace-query') && LBUFFER+="$selected_dir"
+		selected_dir=$(fd --type d 2>/dev/null | fzf --bind='ctrl-b:replace-query' \
+			--preview '"$HOME/.files/bin/fzf-path-preview" {}' \
+			--preview-window="$(__fzf_dynamic_preview_window)") && LBUFFER+="${(q)selected_dir}"
 		let ret=$?
 		zle reset-prompt
 		return $ret
@@ -215,7 +218,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		# Use fzf with toggle binding that switches back and forth
 		result=$(
 			FZF_DEFAULT_COMMAND="$cmd_normal" \
-			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --scheme=path --tiebreak=length,pathname ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' --preview-window='$preview_window' \
+			FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --min-height 20+ --bind=ctrl-z:ignore --reverse --color=${DOTFILES_FZF_COLOR:-dark} --scheme=path --tiebreak=length,pathname ${FZF_CTRL_T_OPTS-} -m --prompt='🔍 > ' --preview-window='$preview_window' \
 			--bind='ctrl-o:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(🔍 > )\" || echo \"reload($cmd_hidden)+change-prompt(🔍 [hidden] > )\"'" \
 			FZF_DEFAULT_OPTS_FILE='' \
 			fzf < /dev/tty | while read -r item; do
@@ -267,23 +270,10 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		# through subcommand levels (e.g. `jira components<Tab>` -> select
 		# components, press / -> `list`/`create`/... appear right away)
 		zstyle ':fzf-tab:*' continuous-trigger '/'
-		# preview directory's content with eza when completing cd
-		zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-		# general-purpose preview for any other completion that resolves to a
-		# real path: dir listing via eza, file contents via bat. $realpath is
-		# only set by fzf-tab for path-like completions; anything else (git
-		# subcommands, flags, variable names, ...) just shows no preview.
+		# NOTE: Only path completions provide $realpath; other candidates have no preview.
 		zstyle ':fzf-tab:complete:*:*' fzf-preview '
-			if [[ -d $realpath ]]; then
-				eza -1 --color=always $realpath
-			elif [[ -f $realpath ]]; then
-				bat --color=always --style=numbers --line-range=:200 $realpath
-			fi'
-		# custom fzf flags
-		# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
-		# -i makes fzf case-insensitive; no --color here so it inherits
-		# fzf's own default palette, same as every other picker in this
-		# config (none of them set --color explicitly either).
+			[[ -n $realpath ]] && "$HOME/.files/bin/fzf-path-preview" "$realpath"'
+		# WHY: Completion keeps its native keys while sharing the generated palette.
 		zstyle ':fzf-tab:*' fzf-flags --bind=tab:accept -i --preview-window="$(__fzf_dynamic_preview_window)"
 		# To make fzf-tab follow FZF_DEFAULT_OPTS.
 		# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
@@ -345,7 +335,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 	# funnel through __fzf_generic_path_completion). --scheme=path (set
 	# upstream) implies --tiebreak=pathname,length; reorder to favor the
 	# shortest match first.
-	export FZF_COMPLETION_OPTS='--tiebreak=length,pathname'
+	export FZF_COMPLETION_OPTS="--tiebreak=length,pathname --preview='\"\$HOME/.files/bin/fzf-path-preview\" {}' --preview-window=$(__fzf_dynamic_preview_window)"
 	export FZF_COMPLETION_DIR_OPTS="$(__fzf_ctrl_g_opts '📁' '--type d')"
 	export FZF_COMPLETION_PATH_OPTS="$(__fzf_ctrl_g_opts '🔍' '')"
 

@@ -870,7 +870,8 @@ def main():
                     colored_lines=[line for line in colored.splitlines() if "SCREEN" in line],
                 )
                 attributes = r"(?:\x1b\[(?:[1-9]|2[1-9]|59)m)*"
-                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[49m)?"
+                # WHY: fzf may resolve a default preview background to its theme surface.
+                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[(?:49|48;2;\d+;\d+;\d+|48;5;\d+)m)?"
                                 + attributes + "LEFT SCREEN:", colored)
                 green_on_blue = re.search(
                     r"\x1b\[38;2;80;190;120m\x1b\[(?:44|48;5;4)m"

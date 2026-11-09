@@ -1,0 +1,21 @@
+---
+title: "Smart pane navigation"
+description: "Move through editor splits and terminal panes with the same keys."
+---
+
+Use **Ctrl-h**, **Ctrl-j**, **Ctrl-k**, and **Ctrl-l** to move left, down, up, and right. These keys do not need the Ctrl-f prefix.
+
+In Neovim, the keys move through editor splits first. At an editor edge, they continue into the neighboring Zellij pane. This works in normal and insert modes. From a shell or another application, they move between Zellij panes without discarding a partially typed command.
+
+## Try it
+
+1. Split right with **Ctrl-f v** and open Neovim in one pane.
+2. Create an editor split with `:vsplit`.
+3. Press **Ctrl-l** to move right through the editor and into the terminal pane.
+4. Press **Ctrl-h** to return.
+
+Navigation stays in the current tab. A zoomed pane keeps focus inside it; press **Ctrl-f z** to restore the surrounding panes before crossing its boundary.
+
+Inside nested tmux or Zellij sessions, navigation belongs to the inner session. Use **Ctrl-f u** to return control to the containing Zellij session and **Ctrl-f i** to enter the nested one again.
+
+If bare navigation does not move the intended pane, use **Ctrl-f h/j/k/l** for explicit Zellij navigation. Those prefixed keys always target terminal panes rather than editor splits.

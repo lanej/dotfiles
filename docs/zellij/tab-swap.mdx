@@ -1,0 +1,16 @@
+---
+title: "Swap tabs"
+description: "Exchange the positions of two tabs while keeping your work running."
+---
+
+Press **Ctrl-f W** to choose the tab that should exchange positions with the current one. Type to filter the menu and inspect its pane preview. **Enter** swaps the two tabs; **Esc**, **Ctrl-c**, or choosing the current tab leaves the order unchanged.
+
+## Example
+
+With tabs `code`, `logs`, and `tests` in positions 0, 1, and 2, start on `code`. Press **Ctrl-f W**, choose `tests`, and press **Enter**. The result is `tests`, `logs`, `code`. Your current pane stays with `code` in its new position.
+
+Other viewers remain on the tabs they were viewing. Running programs and scrollback are preserved.
+
+Avoid making simultaneous tab-order changes from another client. If the operation stops with a warning or is interrupted, inspect the order before trying again; a partial change is not automatically undone.
+
+This feature needs the modern configuration. **W** opens a picker rather than a repeatable left/right reorder mode.

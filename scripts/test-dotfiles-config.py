@@ -104,12 +104,17 @@ if name == "rustup":
     else:
         raise AssertionError(args)
 elif name == "cargo":
-    assert args[:2] == ["+1.95.0", "install"] and "--locked" in args, args
-    assert args[args.index("--rev") + 1] == "bf517077c848d91f75091f66d1996cfeb84f4732", args
-    destination = Path(args[args.index("--root") + 1]) / "bin/zellij"
-    destination.parent.mkdir(parents=True)
-    destination.write_text('#!/bin/sh\necho "zellij 0.46.0"\n')
-    destination.chmod(0o755)
+    if args[:1] == ["build"]:
+        assert "--locked" in args and "--release" in args, args
+        assert args[args.index("-p") + 1] == "lane-zellij", args
+        (home / "helpers-built").touch()
+    else:
+        assert args[:2] == ["+1.95.0", "install"] and "--locked" in args, args
+        assert args[args.index("--rev") + 1] == "bf517077c848d91f75091f66d1996cfeb84f4732", args
+        destination = Path(args[args.index("--root") + 1]) / "bin/zellij"
+        destination.parent.mkdir(parents=True)
+        destination.write_text('#!/bin/sh\necho "zellij 0.46.0"\n')
+        destination.chmod(0o755)
 elif name == "curl":
     url = args[1]
     assert url.startswith("https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-"), url
@@ -125,6 +130,7 @@ else:
         run("make", "--no-print-directory", "zellij-runtime")
         installed = home / ".local/bin/zellij"
         assert run(str(installed), "--version").stdout.strip() == "zellij 0.46.0"
+        assert (home / "helpers-built").exists(), "Full installation skipped native helpers"
         for plugin in ("pane-navigation", "command-prompt"):
             assert (home / f".local/share/zellij/plugins/{plugin}.wasm").read_bytes() == b"\0asmfixture"
 

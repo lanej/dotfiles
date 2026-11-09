@@ -16,7 +16,7 @@ import tempfile
 
 SOURCE = Path(__file__).resolve().parents[1]
 DEFAULT_SKILLS = ("builder", "architecture", "pr-writer")
-SKILLS = DEFAULT_SKILLS + ("go",)
+SKILLS = DEFAULT_SKILLS + ("go", "typescript")
 GO_FILES = {
     ".golangci.yml": "golangci.yml",
     "scripts/check-go.sh": "check-go.sh",
@@ -24,6 +24,17 @@ GO_FILES = {
     "scripts/go-quality.py": "go-quality.py",
     ".go-quality.json": "go-quality.json",
 }
+TS_FILES = {
+    "scripts/check-typescript.mjs": "check-typescript.mjs",
+    ".typescript-quality/eslint.config.mjs": "eslint.config.mjs",
+    ".typescript-quality/tsconfig.strict.json": "tsconfig.strict.json",
+    ".typescript-quality/package.json": "package.json",
+    ".typescript-quality/.gitignore": "gitignore",
+    ".typescript-quality.json": "typescript-quality.json",
+    ".github/workflows/typescript-quality.yml": "typescript-quality.yml",
+}
+TS_BASELINE = ".typescript-quality-baseline.json"
+TS_LOCK = ".typescript-quality/package-lock.json"
 GO_CONFIGS = (".golangci.yml", ".golangci.yaml", ".golangci.json", ".golangci.toml")
 GO_STRICT = ".golangci.strict.json"
 GO_BASELINE = ".go-quality-baseline.json"
@@ -77,7 +88,8 @@ def allowed_path(relative):
             or ".." in path.parts or str(path) != relative):
         return False
     if relative in (".github/pull_request_template.md",
-                    ".agents/templates/pull_request_template.md", GO_STRICT, GO_BASELINE, *GO_FILES):
+                    ".agents/templates/pull_request_template.md", GO_STRICT, GO_BASELINE, *GO_FILES,
+                    TS_BASELINE, TS_LOCK, *TS_FILES):
         return True
     return any(relative.startswith(f".agents/skills/{skill}/")
                or relative == f".claude/skills/{skill}" for skill in SKILLS)
@@ -109,7 +121,7 @@ def read_state(root):
     return state, snapshot
 
 
-def package(skills, agents, template, go_profile=False):
+def package(skills, agents, template, go_profile=False, typescript_profile=False):
     """Assemble from canonical sources; only installation paths are adapted."""
     files = {}
     payloads = {}
@@ -160,6 +172,9 @@ def package(skills, agents, template, go_profile=False):
     if go_profile:
         for destination, name in GO_FILES.items():
             add(destination, SOURCE / "ai/skills/go/assets" / name)
+    if typescript_profile:
+        for destination, name in TS_FILES.items():
+            add(destination, SOURCE / "ai/skills/typescript/assets" / name)
     return files, payloads
 
 
@@ -226,6 +241,78 @@ def go_configuration(root, state, rollout, desired, payloads):
     payloads[".go-quality.json"] = data
     desired[".go-quality.json"] = file_entry(data)
     return rollout, legacy, snapshot
+
+
+def typescript_configuration(root, args, desired, payloads):
+    """Preserve executable project configs; run their original gates separately."""
+    original_paths = ["package.json"]
+    package_entry = inspect(root, "package.json")
+    if not package_entry or package_entry["kind"] != "file":
+        raise ValueError("TypeScript adoption requires a regular package.json; initialize the project first")
+    project = json.loads((root / "package.json").read_text())
+    scripts = project.get("scripts", {})
+    if not isinstance(scripts, dict):
+        raise ValueError("package.json scripts must be an object")
+    settings_path = ".typescript-quality.json"
+    existing = inspect(root, settings_path)
+    if existing:
+        if existing["kind"] != "file":
+            raise ValueError("preserving linked TypeScript quality policy")
+        settings = json.loads((root / settings_path).read_text())
+        if not isinstance(settings, dict) or settings.get("version") != 1:
+            raise ValueError("invalid existing TypeScript quality policy")
+    else:
+        settings = json.loads(payloads[settings_path])
+        manager = project.get("packageManager", "").split("@", 1)[0]
+        if not manager:
+            locks = [("pnpm", "pnpm-lock.yaml"), ("yarn", "yarn.lock"), ("npm", "package-lock.json")]
+            found = [name for name, lock in locks if (root / lock).exists()]
+            if len(found) > 1:
+                raise ValueError("multiple package managers; declare packageManager in package.json first")
+            manager = found[0] if found else "npm"
+        if manager not in ("npm", "pnpm", "yarn"):
+            raise ValueError("TypeScript command defaults support npm, pnpm, or yarn; configure the project explicitly")
+        configs = [path for path in root.iterdir()
+                   if path.name.startswith(("eslint.config.", ".eslintrc"))]
+        if (configs or "eslintConfig" in project) and not scripts.get("lint"):
+            raise ValueError("existing ESLint policy needs a non-mutating package.json lint script before adoption")
+        legacy = []
+        for name in ("lint", "typecheck", "check-types"):
+            if scripts.get(name):
+                if re.search(r"--(?:fix|write)(?:[=\s]|$)", scripts[name]):
+                    raise ValueError(f"{name} is a mutating gate; provide a check-only script before adoption")
+                legacy.append([manager, "run", name])
+        audit = [manager, "audit", "--audit-level=high"]
+        if manager == "yarn":
+            audit = ["yarn", "npm", "audit", "--severity", "high", "--recursive"]
+            if project.get("packageManager", "").startswith("yarn@1."):
+                raise ValueError("Yarn Classic needs an explicit audit adapter; migrate or configure policy before adoption")
+        settings["commands"] = {"legacy": legacy, "test": [manager, "run", "test"], "audit": audit}
+        old_source = git(root, "ls-files", "--", "*.ts", "*.tsx", "*.mts", "*.cts", check=False).stdout.strip()
+        settings["rollout"] = "ratchet" if old_source else "strict"
+    if args.typescript_project:
+        settings["projects"] = args.typescript_project
+    if args.typescript_rollout:
+        settings["rollout"] = args.typescript_rollout
+    if settings.get("rollout") not in ("strict", "ratchet"):
+        raise ValueError("invalid TypeScript rollout")
+    projects = settings.get("projects")
+    if not isinstance(projects, list) or not projects:
+        raise ValueError("select at least one TypeScript project")
+    for name in projects:
+        if (not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._/-]+", name)
+                or PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts):
+            raise ValueError("TypeScript projects must be repository-relative paths")
+        entry = inspect(root, name)
+        if not entry or entry["kind"] != "file":
+            raise ValueError(f"missing or linked TypeScript project: {name}")
+        original_paths.append(name)
+    data = ((root / settings_path).read_bytes()
+            if existing and not args.typescript_project and not args.typescript_rollout
+            else (json.dumps(settings, indent=2) + "\n").encode())
+    payloads[settings_path] = data
+    desired[settings_path] = file_entry(data)
+    return settings["rollout"], {name: inspect(root, name) for name in original_paths}
 
 
 def exclude_text(original, paths):
@@ -341,11 +428,20 @@ def install(args):
         bool(args.go_rollout) or state.get("go_profile", False) or (root / "go.mod").is_file())
     if go_profile:
         skills.add("go")
+    typescript_profile = args.typescript if args.typescript is not None else (
+        bool(args.typescript_rollout or args.typescript_project) or state.get("typescript_profile", False))
+    if typescript_profile:
+        skills.add("typescript")
     agents = {"codex", "claude"} if args.agents == "both" else {"codex"}
     template = args.pr_template or ("local" if mode == "local" else "github")
     if go_profile and args.go_rollout == "ratchet" and args.pr_template is None:
         template = "none"
-    desired, payloads = package(sorted(skills), agents, template, go_profile)
+    if typescript_profile and args.typescript_rollout == "ratchet" and args.pr_template is None:
+        template = "none"
+    desired, payloads = package(sorted(skills), agents, template, go_profile, typescript_profile)
+    ts_rollout, ts_snapshots = None, {}
+    if typescript_profile:
+        ts_rollout, ts_snapshots = typescript_configuration(root, args, desired, payloads)
     rollout, legacy, legacy_snapshot = None, None, None
     if go_profile:
         rollout, legacy, legacy_snapshot = go_configuration(root, state, args.go_rollout, desired, payloads)
@@ -358,7 +454,7 @@ def install(args):
     managed = dict(state["files"])
     if legacy:
         managed.pop(legacy, None)
-    changes, snapshots, conflicts, skipped = [], {}, [], []
+    changes, snapshots, conflicts, skipped = [], dict(ts_snapshots), [], []
     if legacy_snapshot:
         snapshots[legacy_snapshot[0]] = legacy_snapshot[1]
     for relative, expected in sorted(desired.items()):
@@ -386,6 +482,10 @@ def install(args):
     paths = set(managed) | {STATE}
     if go_profile and rollout == "ratchet":
         paths.add(GO_BASELINE)
+    if typescript_profile:
+        paths.add(TS_LOCK)
+        if ts_rollout == "ratchet":
+            paths.add(TS_BASELINE)
     visible_paths = paths | {legacy} if mode == "tracked" and legacy else paths
     if initializing:
         exclude = root / ".git/info/exclude"
@@ -414,12 +514,16 @@ def install(args):
         for name in ("go_rollout", "go_legacy"):
             if name in state:
                 new_state[name] = state[name]
+    if typescript_profile or "typescript_profile" in state:
+        new_state["typescript_profile"] = typescript_profile
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
 
     print(f"repo-bootstrap: {root} ({mode})")
     if go_profile:
         print(f"  Go rollout: {rollout}" + (f"; preserve {legacy}, merge into {GO_STRICT}" if legacy else ""))
+    if typescript_profile:
+        print(f"  TypeScript rollout: {ts_rollout}; preserve project configs and package dependencies")
     for relative, _, replacing in changes:
         print(f"  {'replace (backup)' if replacing else 'install/update'} {relative}")
     for relative in skipped:
@@ -476,6 +580,10 @@ def install(args):
     print("  installed; no files staged, committed, or published")
     if go_profile and rollout == "ratchet" and not (root / GO_BASELINE).exists():
         print("  next: bash scripts/check-go.sh baseline (one-time adoption, committed Go source only)")
+    if typescript_profile:
+        print("  next: node scripts/check-typescript.mjs tools (explicit dependency installation)")
+        if ts_rollout == "ratchet" and not (root / TS_BASELINE).exists():
+            print("  then: node scripts/check-typescript.mjs baseline (committed TypeScript source only)")
 
 
 def main():
@@ -490,6 +598,14 @@ def main():
                         help="whole-project strictness or grandfather existing findings (default: ratchet for existing code/config)")
     parser.add_argument("--go-retrofit", dest="go_rollout", action="store_const", const="ratchet",
                         help="prepare merged Go policy and a one-time shrinking baseline")
+    parser.add_argument("--typescript", action=argparse.BooleanOptionalAction, default=None,
+                        help="install TypeScript correctness checks (opt-in, retained on subsequent runs)")
+    parser.add_argument("--typescript-rollout", choices=("strict", "ratchet"),
+                        help="strict new projects or a shrinking legacy diagnostic baseline")
+    parser.add_argument("--typescript-retrofit", dest="typescript_rollout", action="store_const", const="ratchet",
+                        help="preserve TypeScript project policy and prepare a shrinking baseline")
+    parser.add_argument("--typescript-project", action="append", metavar="TSCONFIG",
+                        help="repository-relative leaf tsconfig (repeat for multiple projects)")
     parser.add_argument("--agents", choices=("codex", "both"), default="both", help="Codex skills only, or add Claude aliases (default: both)")
     parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
     parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")

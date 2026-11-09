@@ -1,0 +1,25 @@
+---
+title: "Create and rename sessions"
+description: "Start a fresh workspace or give the current session a clearer name."
+---
+
+| Task | Keys |
+| --- | --- |
+| Create and switch to a new session | **Ctrl-f C** |
+| Rename the current session | **Ctrl-f w** |
+| Switch to a running session | **Ctrl-f Ctrl-w** |
+| Detach and leave this session running | **Ctrl-f d** |
+
+## Create a session
+
+Press **Ctrl-f C** to start a new, automatically named session in the focused pane's directory. Your original session and its programs keep running. Only your view switches; other clients stay where they are.
+
+This also works from the [shared popup](shared-popup.mdx), creating a regular session rather than another popup.
+
+## Rename a session
+
+Press **Ctrl-f w**, type the new name, and press **Enter**. The draft appears in the top bar while you type. **Esc** or **Ctrl-c** cancels. Invalid or already-used names leave the current name unchanged.
+
+Use the [session picker](session-picker.mdx) to return to a running workspace. To attach by name from a shell, use `zj work`.
+
+The legacy configuration opens the session manager for **C** and **w** instead of creating or renaming directly.

@@ -1,0 +1,30 @@
+---
+title: "Copy and paste"
+description: "Select terminal text and choose the right paste source."
+---
+
+## Select text from scrollback
+
+1. Press **Ctrl-f e** to open the pane's scrollback in Neovim.
+2. Move to the text you want. Press **v** for characters, **V** for lines, or **Ctrl-v** for a rectangle.
+3. Extend the selection and press **y** to yank it.
+4. Enter `:q!` to return to the original terminal.
+
+The modern configuration keeps the terminal's text colors in the scrollback editor. Opening the editor does not stop the original program.
+
+## Choose a paste source
+
+| Source | How to paste |
+| --- | --- |
+| This Zellij session's last Neovim yank | **Ctrl-f p** |
+| The system clipboard | Your terminal's usual paste shortcut |
+
+**Ctrl-f p reads the dedicated session buffer.** It is shared across panes and tabs in the same session and survives detaching and reattaching. A new yank replaces it. Renaming the session selects a different buffer, so yank again if the old text is no longer available.
+
+**The terminal's paste shortcut remains the path from the system clipboard.** Yanking also requests a copy to that clipboard, including over SSH, but whether it arrives depends on your terminal's clipboard settings. Mouse selection and the native command-copy shortcuts do not replace the session's last Neovim yank.
+
+## Search before selecting
+
+Press **Ctrl-f /**, type a query, and press **Enter**. Use **n** for the next match and **N** for the previous one. Press **e** to open the scrollback editor, or **Esc** to return to the application.
+
+Session-buffer paste needs the modern configuration. In the legacy configuration, scrollback opens as plain text and **Ctrl-f p** is unavailable.

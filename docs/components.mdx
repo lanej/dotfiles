@@ -5,6 +5,8 @@ description: The major parts of the environment and where their configuration li
 
 Select bundles in machine TOML; inspect the resolved values with `make config` and the execution plan with `make plan`. The [tool catalog](https://github.com/lanej/dotfiles/blob/master/bootstrap/tools.toml) owns exact versions and dependencies.
 
+The [terminal design system](./design-system.mdx) catalogs shared foundations, atoms and compositions across native interfaces, with theme mappings and verification gaps.
+
 | Component | Configuration | Read next |
 | --- | --- | --- |
 | Zsh & prompt | [zsh/](https://github.com/lanej/dotfiles/tree/master/zsh), [sh/](https://github.com/lanej/dotfiles/tree/master/sh) | [Installation and partial setup](../README.md#installation) |
@@ -21,7 +23,9 @@ Select bundles in machine TOML; inspect the resolved values with `make config` a
 
 `ai/skills` and `ai/agents` hold shared instructions. `make claude-shared` links them for Claude. `make codex-skills` exposes skills through `~/.agents/skills/dotfiles`; `make codex-agents` converts shared Markdown agents into Codex TOML definitions. Local entries are preserved.
 
-Agent availability depends on the host. Installing an agent definition does not make delegation available in every conversation surface. The [repository bootstrap guide](./repository-bootstrap.md) describes portable Builder, architecture, and PR-writer skills for other repositories.
+The [Builder guide](./builder.mdx) explains my software development skill: begin with a steel thread, protect retained behavior and expand with proportionate architecture and verification. The [repository bootstrap guide](./repository-bootstrap.md) describes portable Builder, architecture, and PR-writer skills for other repositories.
+
+Agent availability depends on the host. Installing an agent definition does not make delegation available in every conversation surface.
 
 ## Platform boundaries
 

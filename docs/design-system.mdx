@@ -1,0 +1,127 @@
+---
+title: Terminal design system
+description: Shared foundations and atomic compositions across Neovim, Zellij, tmux and command-line tools.
+---
+
+import ThemeCatalog from '@components/ThemeCatalog.astro';
+
+My terminal design system supplies shared tokens and atomic compositions across native interfaces. Application code stays grouped by capability. The built-in [Nord preset](design-system/nord.mdx) establishes the first baseline before a personal green preset is designed.
+
+Jump to [theme roles](#theme-roles), [presentation tokens](#presentation-tokens), [Git status components](#git-state-components), the [atomic catalog](#atomic-catalog), or [integration boundaries](#integration-boundaries).
+
+## How the system fits together
+
+The source chain is **palette → semantic roles → component roles → native mappings**. [Preset selection](../design-system/config.json) chooses the input; `--theme` overrides it for an experiment. Runtime filenames, theme identifiers and adapter mappings stay independent of that choice. The status broker supplies state names; the generated tmux adapter resolves their presentation locally, ignoring producer-supplied colors. [Shared tokens](../design-system/tokens.json) own reusable aliases, blend recipes and typed presentation defaults. Presets assign palette values; [component definitions](../design-system/components.json) describe presentation roles. Adapters translate those definitions into each host's native vocabulary.
+
+The theme distinguishes selected rows, active tabs, warnings, errors, success, attention and unknown observations. Status retains a label or glyph. Syntax grammars can differ across hosts; matching semantic roles does not promise identical token classification.
+
+Kitty opacity remains `0.97`; Neovim's main background remains inherited. The theme defines solid surfaces for popups, selections and other native components. Transparent compositing depends on the terminal and desktop behind it; preset captures show the solid theme backing.
+
+## Foundation contracts
+
+[Charmed’s foundations](https://github.com/lanej/charmed/blob/1de0ff78f03ddbd51fd0dd0d274bf77e4a184cda/docs/foundations.md) inform this system’s separation of meaning, emphasis, glyphs and terminal geometry. Atomic levels describe composition depth; native adapters stay organized by capability. The catalog leads with resolved component examples and links each component to its tokens and native consumers.
+
+| Foundation | Contract here |
+| --- | --- |
+| Meaning | Git file state, unstaged hunks, staged hunks and branch comparison keep separate identities. A renderer displays state supplied by its application. |
+| Tone | Semantic color roles own meaning; glyph tokens carry no color. Focus, selection and status retain separate roles. |
+| Emphasis | Bold changes weight; dim selects an explicit semantic shade. Neither changes the glyph or adds padding. |
+| Glyphs | Every managed symbol declares a printable ASCII fallback of at most one cell. An empty glyph explicitly means count-only or no separator. |
+| Geometry | Dimensions declare horizontal cells or vertical rows. Native adapters decide where padding is supported; website pixels are independent. |
+| Evidence | Saved native examples belong to their preset. Browser color chips are references; actual terminal fixtures verify native translation. |
+
+Charmed’s contrast floors, one-cell Unicode geometry, lifecycle state catalog and chart-series palette belong to its native components. Existing dotfile adapters do not establish those guarantees. In particular, inherited backgrounds and Nord’s subdued gutter colors need separate contrast evaluation. Color remains accompanied by a state name, a glyph, or native Git context; the prompt deliberately keeps compact counts.
+
+## Presentation variants
+
+Presets can override presentation without changing native adapters. Boolean emphasis, single-line symbol strings, and nonnegative integer spacing are typed. Spacing declares `cell` or `row` units; an adapter must explicitly support the unit. Current inline padding consumers use cells. These terminal units are separate from the website’s CSS pixels.
+
+```json
+{
+  "presentation": {
+    "emphasis.heading": false,
+    "space.inline": 2,
+    "symbol.git.file.modified": "M"
+  }
+}
+```
+
+Add this optional object to a preset. Override values retain the shared declaration’s type and unit; aliases use `{ "token": "another.declared.token" }`. Component/native references use the same explicit token object. A cell dimension becomes native text padding only through `{ "token": "space.inline", "as": "spaces" }`. Missing references, cycles, incompatible types or units, and unsupported native syntax fail before generated files are written.
+
+Heading emphasis reaches Neovim and Glow; Glow’s sixth-level heading stays subdued. Inline padding reaches Glow code spans and tmux’s session label. Powerline separators reach tmux and lualine. Git file status icons feed Starship’s native modules, preserving counts and ahead/behind composition. Unstaged, staged and branch-comparison gutter signs have separate token names and preserve their existing defaults. Empty symbol strings are allowed, including Starship’s count-only staged indicator. Each managed symbol also declares an `ascii` fallback in the shared token source. Nerd Font availability and native glyph widths remain host constraints; Neovim rejects gutter symbols wider than two display cells.
+
+Starship’s complete configuration is generated from a native template; its existing configuration path remains stable. Other prompt-module symbols stay application specific. The catalog lists direct consumers and exceptions. Generated `tokens.json` records defaults, overrides and resolved values; existing `colors.json` consumers retain their color interface. Neovim and Python exports also expose resolved presentation values.
+
+### ASCII representation
+
+Glyph representation is independent of the palette preset. Select it in `design-system/config.json` with `{ "theme": "nord", "symbols": "ascii" }`, or generate an isolated variant:
+
+```sh
+python3 scripts/theme.py --theme nord --symbols ascii --output-dir /tmp/my-theme-ascii
+```
+
+The default is `unicode`. ASCII mode selects each managed symbol’s declared fallback, including Git status, gutter signs and separators. It takes precedence over a preset’s Unicode symbol override; edit the token’s `ascii` declaration to change that fallback. Color, emphasis and spacing retain their selected values. Other Starship modules, application-owned icons, border characters and document content keep their native behavior; this is a managed-glyph presentation, not an ASCII-only terminal or monochrome mode. Generation and native reload remain separate steps.
+
+## Symbols and color
+
+A symbol token supplies a character; a semantic component pairs it with a foreground role and supported emphasis. For example, `git.file.modified` combines `symbol.git.file.modified`, the `git.file.modified` color role, and its bold/dim tokens. The Starship adapter formats that component together with its native count. A preset can change the glyph, color, or emphasis independently without editing the adapter.
+
+```json
+{
+  "roles": { "git.file.modified": "@status.info" },
+  "presentation": {
+    "symbol.git.file.modified": "M",
+    "emphasis.git.file.modified.bold": true
+  }
+}
+```
+
+Shared Git foreground defaults reference ANSI slots, preserving the existing prompt palette while giving each state its own semantic role. The component always refers to that role. Unstaged, staged and branch-comparison components pair their sign tokens with separate diff foregrounds; the native editor adapter turns those components into sign text and highlight groups. Dim file status selects its `dim_fg` role before native output is generated; Starship receives the resulting RGB without a faint attribute. Staged/branch colors retain their separate muted diff roles. Shared recipes blend each semantic hue toward the preset surface; presets can supply a different shade through role overrides. Other symbols, such as separators, inherit the style of their enclosing component.
+
+## Generate, configure and reload
+
+```sh
+make theme-generate  # compile committed native artifacts
+make theme-check    # validate sources and detect stale artifacts without writes
+make shell kitty tmux-config vim-config zellij
+make theme-cache    # refresh bat's cache, also consumed by delta
+```
+
+For the initial Zellij migration, build the changed status plugin with `make zellij-status zellij`. Subsequent palette changes use native KDL theme styles; the status renderer no longer embeds the theme RGB values. Runtime installation remains explicit and separate from theme generation.
+
+Use Kitty's existing Cmd+Shift+R binding, `:colorscheme dotfiles` in Neovim, and `tmux source-file ~/.config/tmux/tmux.conf`. Reopen pickers and pagers; restart bottom. Start a new Zellij session if its native watcher does not reload a theme-file edit. The main tmux config reload refreshes existing agent segment colors without resetting their state age. There is no coordinated live-switch guarantee.
+
+For an isolated theme experiment, run `python3 scripts/theme.py --theme nord --output-dir /tmp/my-theme`. `DOTFILES_THEME_DIR` selects alternate generated artifacts for the native fixture runner and owned Python/Neovim/fzf consumers; it does not select a theme globally across running applications. Generated files carry native formats and require no generator during normal startup.
+
+## Presets
+
+The built-in [Nord preset](design-system/nord.mdx) owns its palette reference, native examples and initial regression baseline. New presets use the same token contract and native adapters; preset-specific captures stay with their preset.
+
+<ThemeCatalog />
+
+## Regression workflow
+
+```sh
+make test-theme
+make test-theme-native
+make test-theme-presentation
+make test-zellij-status test-zellij
+```
+
+The first check validates definitions, composition, deterministic generation, wiring, failures and plain output. Native checks require Kitty’s CLI, Neovim, tmux, fzf, bat, delta, Glow, bottom, the pinned Zellij runtime and built status artifact, and the three pinned Neovim plugins from `nvim/lazy-lock.json`; `--surface` can run a single integration. The fixture runner uses uv and pyte. Presentation checks additionally require Starship 1.27.0 and exercise disposable Git repositories and native reloads. The full Zellij workflow checks additionally need the pane-navigation artifact described in the [Zellij guide](./zellij.md).
+
+Regression baselines are named for their preset; the native runner selects the baseline directory from generated theme metadata. Unicode retains the preset’s root directory; ASCII recordings go into its `ascii/` subdirectory in both baselines and saved captures, so recording a fallback cannot replace the Unicode reference. That metadata records provenance, not runtime dispatch. `theme-generate` never changes regression baselines. The [Nord preset](design-system/nord.mdx#baseline) documents the initial normalization.
+
+To intentionally replace native baselines, run `uv run --script scripts/test-theme-native.py --record` and inspect both the JSON diff and images. A recorded baseline is a candidate until reviewed; recording is not user approval. Version changes and volatile layout must be investigated before accepting a new baseline. A changed shared role or native highlight mapping must fail the affected detector.
+
+## Adding a component or integration
+
+Add its purpose, atomic level, composition, implementations and source locations to [the catalog](../design-system/catalog.json). Use existing roles where meanings agree; add a distinct role when a meaningful state would otherwise be lost. Keep application-specific field names in adapters. Supported native configuration takes precedence over patches or replacements.
+
+Document unavailable customization in [the integration inventory](../design-system/integrations.json), including the owning application or plugin and what remains unverified. Verbatim pane output, literal color previews and filetype icon colors have independent owners. Optional applications are listed as gaps rather than silently claimed as migrated.
+
+## File listings and directory previews
+
+Eza consumes the [generated native adapter](../design-system/adapters/eza.json) through `~/.config/eza/theme.yml`, installed by `make shell`. File kinds use shared `file.*` roles; native Git metadata uses shared `git.file.*` roles. `ll` and `la` retain exact byte sizes, and `lt` and fzf directory previews retain bounded trees and native index/worktree indicators. Previewed files use the generated bat theme through `BAT_THEME`. The shell login defaults reuse the generated fzf palette instead of resetting it to literal Nord colors.
+
+Eza owns its Git letter pairs and file icons. Shared glyph tokens cannot replace those markers, and its single `new` style cannot give staged-new and untracked files independent colors; the two Git columns preserve that distinction. The [integration inventory](../design-system/integrations.json) records these native limits. Legacy `LS_COLORS` and `EZA_COLORS` are removed only for eza so they do not override the selected preset.

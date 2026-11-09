@@ -1,0 +1,16 @@
+---
+title: "Move a pane"
+description: "Move the current pane into a new or existing tab."
+---
+
+Press **Ctrl-f m** to choose a destination for the focused pane. Select **New Tab** or an existing tab and press **Enter**. **Esc** or **Ctrl-c** cancels; selecting the current tab does nothing.
+
+The pane moves with its running program, working directory, and scrollback. It is not replaced by a fresh shell.
+
+## Example
+
+If a test runner is taking space beside your editor, focus it, press **Ctrl-f m**, and choose **New Tab**. The test runner continues there while your editor remains in the original tab.
+
+**Ctrl-f !** is the direct shortcut for moving the focused pane to a new tab without opening the menu. To gather every pane into another tab, use [gather panes](gather-panes.mdx).
+
+Destinations are limited to the current session. Moving a live pane into another session is not supported. The destination picker needs the modern configuration.

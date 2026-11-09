@@ -1,0 +1,16 @@
+---
+title: "Detach one client"
+description: "Disconnect one attached view without closing its session."
+---
+
+Press **Ctrl-f D** to open the attached-client chooser. Select the view you want to disconnect and press **Enter**. **Esc** or **Ctrl-c** cancels.
+
+Use the focused tab and pane title to identify the view. Only the selected attachment disconnects. Its session, running programs, and other viewers remain alive.
+
+## Example
+
+If the same session is open in two terminal windows, use **Ctrl-f D** to disconnect the spare window while continuing work in the other one.
+
+**Ctrl-f d** is the quicker choice when you want to detach your own current view. Closing a pane with **Ctrl-f x** is different: it closes that pane and its program.
+
+If the list cannot be loaded, check for an unanswered permission prompt in each attached view. Cancel and reopen the chooser after an attachment changes. It needs the modern configuration.

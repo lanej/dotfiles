@@ -522,6 +522,7 @@ install_zellij_runtime() {
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
 	esac || return 1
+	make -C "$dotfiles_root" zellij-helpers || return 1
 	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
 	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
 		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1
@@ -695,53 +696,20 @@ install_firstmate_release() (
 		shasum -a 256 -c selected.sha256 || exit 1
 	fi
 	tar -xzf "$archive" || exit 1
-	if ! "./$tool" --version; then
-		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
-			echo "Downloaded $tool cannot run on this host" >&2
-			exit 1
-		fi
-		# WHY: Upstream Linux releases may require a newer glibc than this host.
-		echo "Building Treehouse v$version from source for this host"
-		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
-		mkdir source || exit 1
-		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
-		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
-		"./$tool" --version || exit 1
-	fi
+	"./$tool" --version || exit 1
 	mkdir -p "$HOME/.local/bin" || exit 1
 	install -m 755 "$tool" "$HOME/.local/bin/$tool"
 )
-
-install_treehouse_from_release() {
-	install_firstmate_release treehouse "$1"
-}
 
 install_no-mistakes_from_release() {
 	install_firstmate_release no-mistakes "$1"
 }
 
 install_treehouse_tools() {
-	install_package_version treehouse 3.1.6 || return 1
+	bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-treehouse" || return 1
 	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
 }
 
-install_firstmate_tools() {
-	install_package_version no-mistakes 1.84.0 || return 1
-	local tool version tool_version firstmate_checkout
-	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
-	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
-		tool=${tool_version%:*}
-		version=${tool_version#*:}
-		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
-			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
-		fi
-	done
-	if [ ! -e "$firstmate_checkout" ]; then
-		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
-		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
-	fi
-	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
-}
 
 claude-code_current_semver() {
 	current_heuristic_semver claude
@@ -1156,7 +1124,6 @@ install_dependencies() {
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
 			treehouse) install_treehouse_tools || return 1 ;;
-			firstmate) install_firstmate_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
 			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
 		esac

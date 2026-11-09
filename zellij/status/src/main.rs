@@ -1,10 +1,16 @@
+mod theme;
+use theme::{foreground, background, mark};
 use serde_json::{json, Value};
+use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,
+    StatusView, MAX_CONFIG_BYTES, READINESS};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use zellij_tile::prelude::*;
 mod clipboard;
 mod attention;
+mod attention_policy;
 mod clients;
+mod notifications;
 
 #[derive(Default)]
 struct State {
@@ -17,12 +23,14 @@ struct State {
     busy: bool,
     attention: GlobalAttention,
     attention_ready: bool,
+    attention_config: attention_policy::Config,
     clicks: Vec<(usize, usize, u32)>,
     clipboard: clipboard::Clipboard,
     clipboard_receiver: bool,
     clipboard_prepared: bool,
     permissions_requested: bool,
     clients: clients::Clients,
+    notifications: notifications::Notifications,
 }
 
 register_plugin!(State);
@@ -79,17 +87,22 @@ fn clipped(value: &str, budget: usize) -> String {
     text
 }
 
-fn mark(status: AttentionStatus, question: bool) -> (&'static str, &'static str) {
-    match status {
-        AttentionStatus::NeedsYou if question => ("?", "235;203;139"),
-        AttentionStatus::NeedsYou => ("!", "235;203;139"),
-        AttentionStatus::Failed => ("×", "191;97;106"),
-        AttentionStatus::Done => ("✓", "163;190;140"),
-        AttentionStatus::Working => ("●", "136;192;208"),
-        AttentionStatus::NewOutput => ("·", "136;192;208"),
-        _ => ("", "136;192;208"),
+fn notification_right(notice: &str, counts: &str, cols: usize) -> String {
+    // WHY: Transient messages must leave room to identify and switch the active tab.
+    let tabs = (cols / 3).clamp(20, 48).min(cols);
+    let budget = cols.saturating_sub(tabs + counts.width() + 5).min(64);
+    if budget < 8 {
+        format!(" {} ", clipped(counts, cols.saturating_sub(2)))
+    } else {
+        format!(" {} │ {} ", clipped(notice, budget), counts)
     }
 }
+
+fn bar_heading(mode: &str, host: &str, available: usize, reserve_tab: bool) -> String {
+    let budget = if reserve_tab { available.saturating_sub(12) } else { available };
+    clipped(&format!("{}{} │", mode, host), budget)
+}
+
 
 impl State {
     fn poll(&mut self) {
@@ -159,6 +172,7 @@ impl ZellijPlugin for State {
                 }
                 if !self.allowed {
                     self.allowed = true;
+                    if self.clipboard_receiver { self.attention_config.load(); }
                     self.poll();
                 }
             }
@@ -170,12 +184,33 @@ impl ZellijPlugin for State {
             }
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
             Event::GlobalAttentionUpdate(attention) => {
+                if self.allowed && !self.clipboard_receiver {
+                    let focused = if self.visible { get_focused_pane_info().ok().map(|(_, pane)| pane) } else { None };
+                    let active = self.visible && self.mode.session_ascended != Some(true)
+                        && self.mode.session_dimmed != Some(true);
+                    self.notifications.observe(&attention, get_plugin_ids().zellij_pid, focused, active,
+                        get_plugin_ids().plugin_id == leader(&self.panes));
+                }
                 self.attention = attention;
                 self.attention_ready = true;
             }
             Event::PaneUpdate(panes) => { self.panes = panes; }
             Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
             Event::Timer(_) => { self.clipboard.tick(); self.poll(); set_timeout(1.0); }
+            Event::RunCommandResult(code, _out, error, context)
+                if context.get("action").map(String::as_str) == Some(notifications::RECORD) => {
+                self.notifications.finish(code, &error, &context);
+            }
+            Event::RunCommandResult(code, out, error, context)
+                if context.get("action").map(String::as_str) == Some(attention_policy::LOAD) => {
+                if self.clipboard_receiver {
+                    if let Some(error) = self.attention_config.finish(code, &out, &error, &context) {
+                        eprintln!("lane-status attention: {error}");
+                        let error: String = error.chars().filter(|c| !c.is_control()).take(180).collect();
+                        self.clipboard.publish_notice(&format!("attention: {error}; using defaults"));
+                    }
+                }
+            }
             Event::RunCommandResult(code, out, error, context)
                 if context.get("action").map(String::as_str) == Some(clipboard::MESSAGE) => {
                 // Native client-attach replay can broadcast cached results.
@@ -186,7 +221,8 @@ impl ZellijPlugin for State {
             Event::RunCommandResult(code, out, error, _) => {
                 self.busy = false;
                 self.view = if code == Some(0) {
-                    let view: Value = serde_json::from_slice(&out).unwrap_or(json!({}));
+                    let view: Value = serde_json::from_slice::<StatusView>(&out).ok()
+                        .and_then(|view| serde_json::to_value(view).ok()).unwrap_or(json!({}));
                     if view["session"].as_str() == self.mode.session_name.as_deref() { view }
                     else { json!({}) }
                 } else {
@@ -212,10 +248,63 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if self.clipboard_receiver && self.allowed && message.name == READINESS {
+            if let PipeSource::Cli(pipe) = &message.source {
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 1024) {
+                    if let Ok(request) = serde_json::from_str::<ReadinessRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty() && request.request.len() <= 128 {
+                            let reply = ReadinessReply { request: request.request,
+                                plugin_id: ids.plugin_id, client_id: ids.client_id as u32,
+                                config_ready: self.attention_config.ready,
+                                attention_ready: self.attention_ready,
+                                bindings_installed: self.clipboard.bindings_installed() };
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        if self.clipboard_receiver && self.allowed && message.name == attention_policy::RELOAD {
+            if let PipeSource::Cli(pipe) = &message.source {
+                // Only the discovered persistent receiver handles reloads.
+                // Ignore the trailing CLI EOF message and unrelated instances.
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= MAX_CONFIG_BYTES) {
+                    if let Ok(request) = serde_json::from_str::<ReloadRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty() && request.request.len() <= 128 {
+                            let mut reply = ReloadAck { request: request.request,
+                                plugin_id: ids.plugin_id, client_id: ids.client_id as u32,
+                                ok: None, error: None };
+                            match self.attention_config.apply(&request.priority) {
+                                Ok(()) => reply.ok = Some(true),
+                                Err(error) => reply.error = Some(error),
+                            }
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
         if self.allowed && !self.clipboard_receiver && matches!(message.source, PipeSource::Cli(_)) {
+            if matches!(message.name.as_str(), notifications::SEND | notifications::VALIDATE) {
+                return self.notifications.pipe(&message, self.mode.session_name.as_deref(),
+                    get_plugin_ids().plugin_id == leader(&self.panes));
+            }
             return self.clients.pipe(&message, &self.panes);
         }
         if matches!(message.source, PipeSource::Plugin(_)) {
+            if !self.clipboard_receiver && self.allowed && message.name == notifications::ERROR {
+                return self.notifications.receive_error(&message);
+            }
             if self.clipboard_receiver && message.is_private && !self.permissions_requested
                 && message.name == clipboard::PREPARE && clipboard::is_own_client(&message)
             {
@@ -229,8 +318,9 @@ impl ZellijPlugin for State {
             }
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind
-            && message.name == attention::MESSAGE {
-            attention::jump(&self.tabs, &self.attention, &message);
+            && self.attention_config.ready
+            && matches!(message.name.as_str(), attention::MESSAGE | attention::HIGHEST) {
+            attention::jump(&self.tabs, &self.attention, &message, &self.attention_config.policy);
         }
         if self.clipboard_receiver && self.allowed && message.source == PipeSource::Keybind && message.name == clipboard::MESSAGE {
             if let Some(session) = self.mode.session_name.as_deref() {
@@ -243,6 +333,7 @@ impl ZellijPlugin for State {
     fn render(&mut self, _rows: usize, cols: usize) {
         if self.clipboard_receiver { return; }
         self.clicks.clear();
+        let colors = self.mode.style.colors;
         if !self.allowed {
             print!("Grant lane-status permissions to enable the top bar");
             return;
@@ -255,8 +346,8 @@ impl ZellijPlugin for State {
             // Prefix waiting owns the whole row, even when a narrow terminal
             // would otherwise give all its space to the clock or a notice.
             let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
-            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
-                label, " ".repeat(cols.saturating_sub(label.width())));
+            print!("\x1b[1;23;{};{}m{}{}\x1b[0m",
+                background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
         if self.mode.mode == InputMode::RenameSession && !dimmed {
@@ -264,20 +355,21 @@ impl ZellijPlugin for State {
             // session name. Native Enter/cancel/validation own its lifecycle.
             let draft = plain(self.mode.session_name.as_deref().unwrap_or(""));
             let label = clipped(&format!(" RENAME SESSION: {}  |  Enter saves · Esc cancels ", draft), cols);
-            print!("\x1b[1;23;48;2;180;142;173m\x1b[38;2;46;52;64m{}{}\x1b[0m",
-                label, " ".repeat(cols.saturating_sub(label.width())));
+            print!("\x1b[1;23;{};{}m{}{}\x1b[0m",
+                background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
-        let attention = self.attention.counts.needs_you + self.attention.counts.failed
-            + self.attention.counts.done;
+        let attention = self.attention.counts.needs_you + self.attention.counts.failed;
         let working = self.attention.counts.working;
         let clock = plain(self.view["clock"].as_str().unwrap_or(""));
         let battery = plain(self.view["battery"].as_str().unwrap_or(""));
         let counts = if self.attention_ready {
-            format!("!{} ●{}", attention, working)
-        } else { "!? ●?".into() };
+            format!("!{} ●{} ✓{}", attention, working, self.attention.counts.done)
+        } else { "!? ●? ✓?".into() };
         let right = if let Some(notice) = self.clipboard.notice() {
             format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
+        } else if let Some((_, notice)) = self.notifications.notice() {
+            notification_right(notice, &counts, cols)
         } else { format!(" {} {} {} ", counts, battery, clock) };
         let right_width = right.width().min(cols);
         let available = cols.saturating_sub(right_width);
@@ -295,8 +387,9 @@ impl ZellijPlugin for State {
         };
         let mut used = 0;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
-        print!("\x1b[48;2;46;52;64m\x1b[38;2;136;192;208m");
-        let heading = format!("{}{} │", mode, host);
+        print!("\x1b[{};{}m", background(colors.text_unselected.background), foreground(colors.text_unselected.emphasis_1));
+        let heading = bar_heading(mode, &host, available,
+            self.notifications.notice().is_some() && !self.tabs.is_empty());
         for c in heading.chars() {
             let width = c.width().unwrap_or(0);
             if used + width > available { break; }
@@ -313,14 +406,15 @@ impl ZellijPlugin for State {
                 .any(|pane| pane.attention.effective_status() == AttentionStatus::NeedsYou
                     && pane.attention.detail.kind == Some(BlockedKind::Question));
             let (glyph, color) = if tab.attention.status == AttentionStatus::Idle && tab.has_bell_notification {
-                ("!", "235;203;139")
-            } else { mark(tab.attention.status, question) };
+                ("!", colors.text_unselected.emphasis_0)
+            } else { mark(tab.attention.status, question, &colors) };
             let zoom = if tab.is_fullscreen_active { " Z" } else { "" };
             let name_budget = budget.saturating_sub(tab.position.to_string().len() + 5 + zoom.len());
             let name = clipped(&tab_name(tab, &self.panes, None, &self.view["auto_titles"]), name_budget);
             let label = format!(" {}:{} {}{} ", tab.position, name, glyph, zoom);
             let start = used;
-            print!("\x1b[48;2;{}m\x1b[38;2;{}m", if tab.active { "76;65;82" } else { "46;52;64" }, if tab.active && glyph.is_empty() { "180;142;173" } else { color });
+            let tab_style = if tab.active { colors.ribbon_selected } else { colors.ribbon_unselected };
+            print!("\x1b[{};{}m", background(tab_style.background), foreground(if glyph.is_empty() { tab_style.base } else { color }));
             for c in label.chars() {
                 let width = c.width().unwrap_or(0);
                 if used + width > available { break; }
@@ -329,7 +423,13 @@ impl ZellijPlugin for State {
             if used > start { self.clicks.push((start, used, tab.position as u32 + 1)); }
             if used >= available { break; }
         }
-        print!("\x1b[48;2;46;52;64m{}\x1b[38;2;129;161;193m", " ".repeat(available.saturating_sub(used)));
+        let notice_color = match self.notifications.notice().map(|(level, _)| level) {
+            Some("error") => colors.exit_code_error.base,
+            Some("warn") => colors.text_unselected.emphasis_0,
+            Some("success") => colors.exit_code_success.base,
+            _ => colors.ribbon_unselected.base,
+        };
+        print!("\x1b[{}m{}\x1b[{}m", background(colors.text_unselected.background), " ".repeat(available.saturating_sub(used)), foreground(notice_color));
         let mut right_used = 0;
         for c in right.chars() {
             let width = c.width().unwrap_or(0);
@@ -337,5 +437,28 @@ impl ZellijPlugin for State {
             print!("{}", c); right_used += width;
         }
         print!("\x1b[0m");
+    }
+}
+
+#[cfg(test)]
+mod notification_layout_tests {
+    use super::*;
+
+    #[test]
+    fn notices_leave_tab_context_at_small_widths() {
+        for cols in [40, 80, 120] {
+            let right = notification_right(&"界".repeat(100), "!1 ●0 ✓2", cols);
+            assert!(right.width() <= cols - 20, "{cols}: {right}");
+            assert!(right.contains("!1 ●0 ✓2"));
+        }
+        for mode in [" ", " RENAME TAB "] {
+            let right = notification_right(&"Long notice ".repeat(10), "!1 ●0 ✓2", 45);
+            let available = 45 - right.width();
+            let heading = bar_heading(mode, "development-laptop", available, true);
+            assert!(available - heading.width() >= 12);
+        }
+        for cols in 2..20 {
+            assert!(notification_right("Failed", "!1 ●0 ✓2", cols).width() <= cols);
+        }
     }
 }

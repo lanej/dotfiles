@@ -1,0 +1,18 @@
+---
+title: "Gather panes"
+description: "Bring all live panes from the current tab into an existing tab."
+---
+
+Press **Ctrl-f M**, select an existing destination tab, and press **Enter**. The current tab's live terminal panes move there together, with their programs and scrollback intact. The invoking view follows its original pane.
+
+There is no **New Tab** option. **Esc**, **Ctrl-c**, or choosing the current tab leaves the layout unchanged. Use [move a pane](move-pane.mdx) for a new-tab destination or a single pane.
+
+## Before gathering
+
+Close scrollback editors and expose hidden stacked panes in the source tab. If the source still contains hidden panes that cannot be moved, the operation stops with an explanation.
+
+Floating panes arrive as tiled panes. Other viewers stay on their own tabs; viewers of a source tab that closes follow Zellij's usual tab-close behavior.
+
+If movement stops partway through, inspect both tabs before retrying. Already moved panes are not rolled back. Keep an error or stopping message open until it confirms the operation has stopped.
+
+This feature needs the modern configuration and moves panes only within the current session.

@@ -9,6 +9,7 @@ import remarkStringify from 'remark-stringify';
 import { parse, stringify } from 'yaml';
 import { visit } from 'unist-util-visit';
 import { base } from '../site.config.mjs';
+import { zellijPages } from '../zellij.config.mjs';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(site, '..');
@@ -18,17 +19,24 @@ const pages = [
   { file: 'docs/index.mdx', slug: '' },
   { file: 'docs/architecture.mdx', slug: 'architecture' },
   { file: 'docs/components.mdx', slug: 'components' },
+  { file: 'docs/design-system.mdx', slug: 'design-system' },
+  { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
+  { file: 'docs/builder.mdx', slug: 'reference/builder' },
   { file: 'docs/documentation-site.mdx', slug: 'maintaining' },
+  { file: 'docs/conventional-code-comments.md', slug: 'contributing/code-comments', title: 'Conventional code comments' },
+  { file: 'docs/conventional-pull-requests.md', slug: 'contributing/pull-requests', title: 'Conventional pull requests' },
   { file: 'README.md', section: 'Installation', slug: 'reference/install', title: 'Install & set up' },
   { file: 'README.md', section: 'Configuration sets', slug: 'reference/configuration', title: 'Configuration composition' },
   { file: 'docs/zellij.md', slug: 'reference/zellij', title: 'Zellij' },
   { file: 'docs/zellij-keybinds.mdx', slug: 'reference/zellij-keybinds' },
+  ...zellijPages,
   { file: 'docs/tmux.md', slug: 'reference/tmux', title: 'tmux sessions' },
   { file: 'docs/stack-darwin.md', slug: 'reference/macos', title: 'macOS stack' },
   { file: 'docs/stack-linux.md', slug: 'reference/linux', title: 'Linux stack' },
   { file: 'docs/rust.md', slug: 'reference/rust', title: 'Rust' },
   { file: 'docs/go-style.md', slug: 'reference/go-style', title: 'Go style guide' },
+  { file: 'docs/typescript-style.md', slug: 'reference/typescript-style', title: 'TypeScript style guide' },
   { file: 'docs/repository-bootstrap.md', slug: 'reference/repository-bootstrap', title: 'Repository bootstrap' },
 ];
 const headingId = (text) => text.toLowerCase().replaceAll(' ', '-');
@@ -81,6 +89,8 @@ for (const page of pages) {
   }
   const tree = processor.parse(source);
   visit(tree, (node) => {
+    // Extracted README sections become pages, so their subsections start at h2.
+    if (page.section && node.type === 'heading') node.depth -= 1;
     if (['link', 'image', 'definition'].includes(node.type) && node.url) node.url = link(node.url, node.type === 'image');
     // Keep repository-relative links usable inside MDX components as well as prose.
     for (const attribute of node.attributes ?? []) {

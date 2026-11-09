@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyte==0.8.2"]
+# ///
 """Exercise prefix waiting, native attention and triage through the installed bar.
 
 Local protocol emitters stand in for Claude/Codex; no model/account is used.
@@ -8,6 +12,7 @@ Requires Rust, Python with pyte 0.8.2, and the pinned Zellij runtime. State stay
 import codecs
 import fcntl
 import importlib
+import json
 import os
 from pathlib import Path
 import shlex
@@ -16,6 +21,8 @@ import subprocess
 import struct
 import tempfile
 import termios
+import time
+import uuid
 
 import pyte
 
@@ -79,6 +86,52 @@ def main():
         clients = []
         screens = {}
 
+        class StatusTerminal(Terminal):
+            def remember_sole_client(self):
+                ids = {client_id for tab in self.tabs()
+                       for client_id in tab["other_focused_clients"]}
+                assert len(ids) == 1, f"Expected one client in {self.name}, got {ids}"
+                self.focus_client_id = next(iter(ids))
+
+            def focused_tab(self):
+                # `active` means any attached client is on this tab, not that
+                # the PTY which sent the shortcut is there. Cache identity
+                # while alone, before another attachment makes it ambiguous.
+                return next(tab["tab_id"] for tab in self.tabs()
+                            if self.focus_client_id in tab["other_focused_clients"])
+
+            def startup_diagnostics(self):
+                details = super().startup_diagnostics()
+                if hasattr(self, "focus_client_id"):
+                    details.append(f"Target client: {self.focus_client_id}; tab focus: "
+                                   + repr([(tab["tab_id"], tab["other_focused_clients"])
+                                           for tab in self.tabs()]))
+                return details
+
+            def drain(self, duration=0.08):
+                # Every attached client must consume renders, including while
+                # another client or the installed reload helper awaits a reply.
+                for peer in clients:
+                    if peer is not self:
+                        Terminal.drain(peer, 0.001)
+                super().drain(duration)
+
+        def reload_policy(session=first, *, valid=True):
+            args = [str(home / ".local/bin/zellij-status"), "reload", "--session", session]
+            with subprocess.Popen(args, env=env, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, text=True) as command:
+                deadline = time.monotonic() + 10
+                while command.poll() is None:
+                    for client in clients:
+                        client.drain(0.01)
+                    if time.monotonic() >= deadline:
+                        command.kill()
+                        stdout, stderr = command.communicate()
+                        raise AssertionError(f"Reload timed out: {stdout} {stderr}")
+                stdout, stderr = command.communicate()
+            assert (command.returncode == 0) == valid, (
+                f"Unexpected reload result {command.returncode}: {stdout} {stderr}")
+
         def display(client):
             if client not in screens:
                 screen = Display(120, 32)
@@ -103,7 +156,7 @@ def main():
                 and screen.buffer[0][col].bold
                 for col in range(screen.columns))
 
-        terminal = Terminal(binary, env, first)
+        terminal = StatusTerminal(binary, env, first)
         clients.append(terminal)
         try:
             terminal.grant_status_permissions()
@@ -118,6 +171,12 @@ def main():
             resize(terminal, 28)
             terminal.until("prefix remains visible after narrowing the terminal", lambda:
                            prefix_banner(terminal) and top_line(terminal).endswith("…"))
+            if os.environ.get("THEME_CAPTURE_DIR"):
+                capture = Path(os.environ["THEME_CAPTURE_DIR"])
+                capture.mkdir(parents=True, exist_ok=True)
+                screen = display(terminal)
+                cells = [screen.buffer[0][col]._asdict() for col in range(screen.columns)]
+                (capture / "zellij-prefix.json").write_text(json.dumps(cells, indent=2) + "\n")
             terminal.send(b"\x1b")
             terminal.until("Escape restores the normal bar", lambda:
                            "PREFIX" not in top_line(terminal)
@@ -148,11 +207,13 @@ def main():
             terminal.until("first native program is working", lambda:
                            first_pid.exists() and state(first, first_pane, "Working"))
             original_pid = first_pid.read_text()
-            other = Terminal(binary, env, second)
+            other = StatusTerminal(binary, env, second)
             clients.append(other)
             other.until("second shell is ready", lambda:
                         PROMPT in other.output and len(other.terminals()) == 1)
             second_pane = other.terminals()[0]["id"]
+            other.remember_sole_client()
+            second_working_tab = other.focused_tab()
             other.send((shlex.join(["python3", str(program), str(home / "second-agent-pid")]) + "\r").encode())
             other.until("second native program is working", lambda:
                         state(second, second_pane, "Working"))
@@ -197,21 +258,22 @@ def main():
                         not pane(first, first_pane).get("program_status"))
             # A realistic local triage round: two requests beat work, cycle
             # numerically and wrap. Once answered, quiet completions are skipped.
-            origin = next(tab for tab in other.tabs() if tab["active"])["tab_id"]
+            other.remember_sole_client()
+            origin = other.focused_tab()
 
-            def focused_tab():
-                return next(tab["tab_id"] for tab in other.tabs() if tab["active"])
+            def focused_tab(client=other):
+                return client.focused_tab()
 
-            def agent_tab(name):
-                previous = {pane["id"] for pane in other.terminals()}
-                other.prefix(b"c")
-                pane_id = other.until("new triage tab has a terminal", lambda:
-                    next((pane["id"] for pane in other.terminals() if pane["id"] not in previous), None))
+            def agent_tab(name, client=other):
+                previous = {pane["id"] for pane in client.terminals()}
+                client.prefix(b"c")
+                pane_id = client.until("new triage tab has a terminal", lambda:
+                    next((pane["id"] for pane in client.terminals() if pane["id"] not in previous), None))
                 pid_file = home / (name + "-pid")
-                other.send((shlex.join(["python3", str(program), str(pid_file)]) + "\r").encode())
-                other.until("triage agent is working", lambda:
-                            pid_file.exists() and state(first, pane_id, "Working"))
-                return focused_tab(), pane_id
+                client.send((shlex.join(["python3", str(program), str(pid_file)]) + "\r").encode())
+                client.until("triage agent is working", lambda:
+                             pid_file.exists() and state(client.name, pane_id, "Working"))
+                return focused_tab(client), pane_id
 
             busy_tab, busy_pane = agent_tab("busy")
             done_tab, done_pane = agent_tab("done")
@@ -227,9 +289,15 @@ def main():
                         "●2" in top_line(other) and "?" in top_line(other))
             other.prefix(b"0")
             other.until("triage starts on the original tab", lambda: focused_tab() == origin)
-            other.prefix(b"\x01")
-            other.until("question wins over earlier activity and completed work", lambda:
+            other.prefix(b"a")
+            other.until("direct jump chooses the first request over activity and completed work", lambda:
                         focused_tab() == question_tab)
+            other.send(b"\x06")
+            other.until("direct jump can be repeated from the highest-ranked tab", lambda:
+                        prefix_banner(other))
+            other.send(b"a")
+            other.until("direct jump stays on the highest-ranked tab", lambda:
+                        "PREFIX" not in top_line(other) and focused_tab() == question_tab)
             other.prefix(b"\x01")
             other.until("next request follows tab order", lambda: focused_tab() == approval_tab)
             other.prefix(b"\x01")
@@ -243,10 +311,10 @@ def main():
             other.until("both requests have completed", lambda:
                         state(first, question_pane, "Done") and state(first, approval_pane, "Done")
                         and "●2" in top_line(other))
-            other.prefix(b"\x01")
+            other.prefix(b"a")
             other.until("activity is selected after requests clear", lambda: focused_tab() == busy_tab)
             assert state(second, second_pane, "Working"), "Local triage modified another session"
-            viewer = Terminal(binary, env, first)
+            viewer = StatusTerminal(binary, env, first)
             clients.append(viewer)
             viewer.until("second attachment is usable", lambda:
                          "!?" not in top_line(viewer) and "●" in top_line(viewer))
@@ -264,10 +332,129 @@ def main():
             other.action("paste", "--pane-id", f"terminal_{question_pane}", "blocked:kind=question\n")
             other.until("new request reaches the global stream", lambda:
                         state(first, question_pane, "Blocked") and "●2" in top_line(other))
-            other.prefix(b"\x01")
+            other.prefix(b"a")
             other.until("only the invoking client's tab changes", lambda:
                         client_panes() == {f"terminal_{first_pane}", f"terminal_{question_pane}"})
-            print("PASS: installed status preserves prefix display and detached native state; local attention cycles requests before activity, skips quiet completions, and keeps other clients in place.")
+            untouched = StatusTerminal(binary, env, second)
+            clients.append(untouched)
+            untouched.until("untouched session reattaches", lambda: "●" in top_line(untouched))
+            untouched.remember_sole_client()
+            untouched_question, untouched_pane = agent_tab("untouched-question", untouched)
+            untouched.send(b"blocked:kind=question\r")
+            untouched.until("untouched session has a question", lambda:
+                            state(second, untouched_pane, "Blocked"))
+
+            # A cached policy is shared by both shortcuts and every attached
+            # client in this session. Reload itself must never move their focus.
+            config = home / ".config/zellij/lane-status.toml"
+            config.write_text('[attention]\npriority = [["working"], ["needs_you"]]\n')
+            expected_focus = client_panes()
+            for _ in range(2):
+                reload_policy()
+                assert client_panes() == expected_focus, "Reload moved a client's focus"
+            other.prefix(b"a")
+            other.until("reloaded direct jump prefers work to an unanswered question", lambda:
+                        client_panes() == {f"terminal_{first_pane}", f"terminal_{busy_pane}"})
+            viewer.prefix(b"a")
+            viewer.until("reload reaches the other attached client", lambda:
+                         client_panes() == {f"terminal_{busy_pane}"})
+            other.prefix(b"0")
+            other.until("cycling starts away from working tab", lambda: focused_tab() == origin)
+            other.prefix(b"\x01")
+            other.until("cycling uses the same reloaded priority", lambda: focused_tab() == busy_tab)
+
+            # The file alone has no effect on another running session.
+            untouched.prefix(b"0")
+            untouched.prefix(b"a")
+            untouched.until("un-reloaded session retains default priority", lambda:
+                            focused_tab(untouched) == untouched_question)
+
+            # A new client must read today's file, not replay the older
+            # attachment's cached startup command result in this same session.
+            existing_client_ids = {client_id for tab in untouched.tabs()
+                                   for client_id in tab["other_focused_clients"]}
+            assert len(existing_client_ids) == 1, "Expected one existing second-session client"
+            existing_client_id = next(iter(existing_client_ids))
+            startup = StatusTerminal(binary, env, second)
+            clients.append(startup)
+            startup.until("new attachment loads the status bar", lambda:
+                          "●" in top_line(startup))
+            new_client_ids = startup.until("new attachment has a distinct client id", lambda:
+                {client_id for tab in startup.tabs() for client_id in tab["other_focused_clients"]}
+                - existing_client_ids)
+            assert len(new_client_ids) == 1, "Expected one new second-session client"
+            new_client_id = next(iter(new_client_ids))
+            startup.focus_client_id = new_client_id
+
+            def client_tab(client_id):
+                return next(tab["tab_id"] for tab in untouched.tabs()
+                            if client_id in tab["other_focused_clients"])
+
+            # The visible bar and suppressed receiver initialize separately.
+            # Probe this clone without mutating its policy, then press exactly
+            # once; a reload, repeated key, or sleep would hide startup defects.
+            receiver_url = "file:" + str(home / ".config/zellij/plugins/lane-status.wasm")
+            receivers = [pane for pane in json.loads(startup.action("list-panes", "--all", "--json"))
+                         if pane.get("is_plugin") and pane.get("is_suppressed")
+                         and pane.get("plugin_url") == receiver_url]
+            assert len(receivers) == 1, receivers
+            request = {"request": uuid.uuid4().hex, "plugin_id": receivers[0]["id"]}
+            readiness = []
+
+            def receiver_ready():
+                response = subprocess.run([binary, "--session=" + second, "pipe", "--name",
+                    "lane-attention-ready", "--", json.dumps(request)], env=env,
+                    capture_output=True, text=True, timeout=5, check=True)
+                readiness[:] = [json.loads(line) for line in response.stdout.splitlines() if line.strip()]
+                return any(reply.get("request") == request["request"]
+                           and reply.get("plugin_id") == request["plugin_id"]
+                           and reply.get("client_id") == new_client_id
+                           and all(reply.get(field) is True for field in
+                                   ("config_ready", "attention_ready", "bindings_installed"))
+                           for reply in readiness)
+
+            try:
+                startup.until("new attachment's attention receiver is ready", receiver_ready)
+            except AssertionError as error:
+                raise AssertionError(f"{error}\nReceiver readiness: {readiness}") from error
+            startup.prefix(b"a")
+            startup.until("new attachment reads configured priority without reload", lambda:
+                          client_tab(new_client_id) == second_working_tab)
+            untouched.prefix(b"0")
+            untouched.prefix(b"a")
+            untouched.until("existing attachment keeps default priority after new client joins", lambda:
+                            client_tab(existing_client_id) == untouched_question
+                            and client_tab(new_client_id) == second_working_tab)
+
+            config.write_text('[attention]\npriority = [\n')
+            reload_policy(valid=False)
+            other.prefix(b"0")
+            other.prefix(b"a")
+            other.until("invalid TOML preserves the last applied priority", lambda:
+                        focused_tab() == busy_tab)
+            config.unlink()
+            reload_policy()
+            other.prefix(b"a")
+            other.until("removing the file restores default priority", lambda:
+                        focused_tab() == question_tab)
+            viewer.prefix(b"a")
+            viewer.until("default restoration reaches both attached clients", lambda:
+                         client_panes() == {f"terminal_{question_pane}"})
+            # Reload must not launch a replacement when its receiver is gone.
+            def all_panes():
+                return json.loads(other.action("list-panes", "--all", "--json"))
+
+            receiver = next(p for p in all_panes() if p["is_plugin"]
+                            and p["is_suppressed"]
+                            and p["plugin_url"] == "file:" + str(home / ".config/zellij/plugins/lane-status.wasm"))
+            other.action("close-pane", "--pane-id", f"plugin_{receiver['id']}")
+            other.until("suppressed receiver is closed", lambda:
+                        not any(p["is_plugin"] and p["id"] == receiver["id"] for p in all_panes()))
+            remaining = {(p["is_plugin"], p["id"]) for p in all_panes()}
+            reload_policy(valid=False)
+            assert {(p["is_plugin"], p["id"]) for p in all_panes()} == remaining, (
+                "Reload changed panes after its receiver was closed")
+            print("PASS: installed status preserves prefix display and detached native state; direct and cycling attention use session-scoped reloadable priority, invalid TOML preserves policy, and reload preserves client focus.")
         finally:
             for name in (first, second):
                 subprocess.run([binary, "kill-session", name], env=env,
