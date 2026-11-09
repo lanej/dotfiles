@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "rollout": "strict",
+  "projects": ["tsconfig.json"],
+  "exclude": [],
+  "commands": {
+    "legacy": [],
+    "test": ["npm", "test"],
+    "audit": ["npm", "audit", "--audit-level=high"]
+  }
+}
