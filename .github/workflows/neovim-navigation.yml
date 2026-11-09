@@ -2,10 +2,17 @@ name: Neovim navigation and annotations acceptance
 
 on:
   pull_request:
-    paths: ['nvim/**', 'scripts/test-nvim-navigation.py', '.github/workflows/neovim-navigation.yml']
+    paths:
+      - 'nvim/**'
+      - 'scripts/test-nvim-navigation.py'
+      - '.github/workflows/neovim-navigation.yml'
   push:
-    branches: [master]
-    paths: ['nvim/**', 'scripts/test-nvim-navigation.py', '.github/workflows/neovim-navigation.yml']
+    branches:
+      - master
+    paths:
+      - 'nvim/**'
+      - 'scripts/test-nvim-navigation.py'
+      - '.github/workflows/neovim-navigation.yml'
 
 permissions:
   contents: read
@@ -15,7 +22,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:

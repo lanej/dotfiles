@@ -17,6 +17,14 @@ check_os() {
     bash "$make_scripts/require.sh" os "$1" "$os" "$target"
 }
 
+component_command() {
+    local _component _source destination
+    while IFS=$'\t' read -r _component _source destination; do
+        if [[ "$destination" == ".local/bin/$1" ]]; then return 0; fi
+    done < "$dotfiles/config/components-install.tsv"
+    return 1
+}
+
 # WHY: Native consumers share committed artifacts without a startup generator.
 case "$target" in
     shell|tmux-config|zellij-config|vim-config|kitty-config|git)
@@ -43,10 +51,10 @@ case "$target" in
     shell)
         mkdir -p "${setup_home}/.local/bin"
         for source in "${dotfiles}"/bin/*; do
-            if [ "${source##*/}" != ep-direnv ]; then
-                ln -fs "$source" "${setup_home}/.local/bin/"
-            fi
+            if [[ "${source##*/}" == ep-direnv ]] || component_command "${source##*/}"; then continue; fi
+            ln -fs "$source" "${setup_home}/.local/bin/"
         done
+        bash "$make_scripts/components-install.sh" "$dotfiles" "$setup_home"
         ln -fs "${dotfiles}/sh/alias" "${setup_home}/.alias"
         ln -fs "${dotfiles}/sh/profile" "${setup_home}/.profile"
         mkdir -p "${setup_home}/.config/htop"

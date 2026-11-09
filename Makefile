@@ -242,9 +242,7 @@ test-dev-cache-prune: FORCE
 test-tmp-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-tmp-cleanup.py"
 test-git-worktree-cleanup: FORCE
-	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
-	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
-	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
+	@python3 "$(DOTFILES)/scripts/components.py" test worktree-cleanup
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
@@ -305,10 +303,11 @@ test-pragmatic-hexagonal:
 
 test:
 	@pytest bin/*_test.py
+	@python3 "$(DOTFILES)/scripts/components.py" test agent-launchers --suite codex-cleanup
 
 .PHONY: test-codex-cleanup
 test-codex-cleanup:
-	@"$(UV)" run --no-project --python '>=3.11' --with pytest python -m pytest -q bin/codex-cleanup_test.py
+	@python3 "$(DOTFILES)/scripts/components.py" test agent-launchers --suite codex-cleanup
 
 codex: codex-worktree-exit-hook
 codex-worktree-exit-hook: codex-tmux
@@ -316,11 +315,19 @@ codex-worktree-exit-hook: codex-tmux
 
 .PHONY: test-codex-worktree-exit
 test-codex-worktree-exit:
-	@"$(UV)" run --script "$(DOTFILES)/scripts/test-codex-worktree-exit.py"
+	@python3 "$(DOTFILES)/scripts/components.py" test agent-launchers --suite exit-hook
 
 .PHONY: test-agent-treehouse
 test-agent-treehouse:
-	@"$(UV)" run --script "$(DOTFILES)/scripts/test-agent-treehouse.py"
+	@python3 "$(DOTFILES)/scripts/components.py" test agent-launchers --suite launchers
+
+.PHONY: components-validate test-components test-components-all
+components-validate:
+	@python3 "$(DOTFILES)/scripts/components.py" validate
+test-components:
+	@python3 "$(DOTFILES)/scripts/test-components.py"
+test-components-all:
+	@python3 "$(DOTFILES)/scripts/components.py" test --all
 
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"

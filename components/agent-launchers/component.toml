@@ -1,0 +1,18 @@
+version = 1
+dependencies = ["worktree-cleanup"]
+legacy_inputs = ["sh/alias"]
+platforms = ["linux", "darwin"]
+tools = ["bash", "git", "lsof", "ps", "zsh", "shellcheck", "uv", "treehouse", "jq"]
+
+[install]
+"bin/agent-treehouse" = ".local/bin/agent-treehouse"
+"bin/codex-wrapper" = ".local/bin/codex-wrapper"
+"bin/claude-wrapper" = ".local/bin/claude-wrapper"
+"bin/codex-cleanup" = ".local/bin/codex-cleanup"
+"bin/codex-worktree-exit-hook" = ".local/bin/codex-worktree-exit-hook"
+
+[suites]
+shellcheck = ["shellcheck", "bin/codex-wrapper", "bin/claude-wrapper"]
+launchers = ["python3", "tests/test-agent-treehouse.py"]
+exit-hook = ["python3", "tests/test-codex-worktree-exit.py"]
+codex-cleanup = ["python3", "-m", "pytest", "-q", "tests/codex_cleanup_test.py"]

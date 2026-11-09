@@ -1,0 +1,135 @@
+name: Component verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: components-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.selection.outputs.matrix }}
+      has-tests: ${{ steps.selection.outputs.has-tests }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # workaround: Early cleanup fails on the incomplete hotreload.nvim submodule; retain checkout's end-of-job cleanup.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python3 scripts/components.py validate
+      - run: python3 scripts/test-components.py
+      - name: Validate workflow definitions
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Select components and explain inputs
+        id: selection
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          command = ['python3', 'scripts/components.py', 'plan', '--head', 'HEAD', '--json']
+          if os.environ['EVENT'] == 'pull_request':
+              base = subprocess.check_output(['git', 'merge-base', os.environ['BASE_SHA'], 'HEAD'], text=True).strip()
+              command += ['--base', base]
+          else:
+              command += ['--base', 'HEAD', '--all']
+          result = json.loads(subprocess.check_output(command, text=True))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('matrix=' + json.dumps(result['matrix']) + '\n')
+              output.write('has-tests=' + str(bool(result['selected'])).lower() + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Component selection\n\n')
+              for name, inputs in result['selected'].items():
+                  summary.write('- ' + name + ': ' + ', '.join(inputs) + '\n')
+              if not result['selected']:
+                  summary.write('No changed component inputs.\n')
+          PY
+
+  test:
+    needs: validate
+    if: needs.validate.outputs.has-tests == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.validate.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: false
+      - name: Install native tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap lsof sqlite3 zsh shellcheck jq
+      - name: Install native tools on macOS
+        if: runner.os == 'macOS'
+        run: |
+          command -v shellcheck || brew install shellcheck
+          command -v jq || brew install jq
+      - uses: actions/setup-go@v5
+        if: matrix.component == 'agent-launchers'
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Install pinned Treehouse fork
+        if: matrix.component == 'agent-launchers'
+        run: |
+          bash scripts/install-treehouse
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Exercise installed component with enforced inputs
+        env:
+          COMPONENT: ${{ matrix.component }}
+          COMPONENT_DIAGNOSTICS: ${{ runner.temp }}/component-diagnostics
+        run: python3 scripts/components.py test "$COMPONENT"
+      - name: Preserve failed component diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-${{ matrix.component }}-${{ runner.os }}
+          path: ${{ runner.temp }}/component-diagnostics
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+  result:
+    name: Components
+    if: always()
+    needs:
+      - validate
+      - test
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require validated selection and successful selected tests
+        env:
+          VALIDATION: ${{ needs.validate.result }}
+          TESTS: ${{ needs.test.result }}
+          HAS_TESTS: ${{ needs.validate.outputs.has-tests }}
+        run: |
+          python3 - <<'PY'
+          import os
+          expected = 'success' if os.environ['HAS_TESTS'] == 'true' else 'skipped'
+          if os.environ['VALIDATION'] != 'success' or os.environ['TESTS'] != expected:
+              raise SystemExit('Component verification did not succeed')
+          PY

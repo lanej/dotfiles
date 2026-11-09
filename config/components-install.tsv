@@ -1,0 +1,6 @@
+agent-launchers	components/agent-launchers/bin/agent-treehouse	.local/bin/agent-treehouse
+agent-launchers	components/agent-launchers/bin/claude-wrapper	.local/bin/claude-wrapper
+agent-launchers	components/agent-launchers/bin/codex-cleanup	.local/bin/codex-cleanup
+agent-launchers	components/agent-launchers/bin/codex-worktree-exit-hook	.local/bin/codex-worktree-exit-hook
+agent-launchers	components/agent-launchers/bin/codex-wrapper	.local/bin/codex-wrapper
+worktree-cleanup	components/worktree-cleanup/bin/git-worktree-cleanup	.local/bin/git-worktree-cleanup

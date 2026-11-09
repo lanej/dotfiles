@@ -20,7 +20,8 @@ on:
       - 'claude/evals/tdd-brief/**'
       - '.github/workflows/skill-maintenance.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - '**/SKILL.md'
       - 'ai/skills/builder/**'

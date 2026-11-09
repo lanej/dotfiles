@@ -35,6 +35,8 @@ a local pass does not establish a CI or live-integration pass.
 
 ## Selecting CI
 
+The [component pilot](components.md) derives affected selection and isolated installed test inputs from the same dependency graph. Its workflow runs on every pull request; unknown legacy changes conservatively select both migrated components. Feature workflows below continue to govern unmigrated capabilities.
+
 Feature workflows follow their implementation, configuration, and detector paths. A shared `Makefile` edit runs setup checks rather than every feature suite. When changing a feature's Make recipe, run its affected detector explicitly; feature workflows also support manual dispatch.
 
 Shell lint wiring has its own workflow. Small command wrappers should exercise the real wrapper with controlled external-command responses when that establishes their behavior; they do not need a terminal, editor, or native plugin build for argument selection alone. Such a check establishes the wrapper's decisions, not compatibility with the external program.

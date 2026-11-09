@@ -1,0 +1,30 @@
+#!/bin/bash
+# Claude Code wrapper with privacy status display
+
+# Configuration
+CACHE_FILE="$HOME/.claude/local/.privacy-check-cache"
+
+# Color codes for output
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Verify claude binary is available in PATH
+if ! command -v claude &> /dev/null; then
+  echo -e "${RED}Error: Could not find claude binary in PATH${NC}"
+  exit 1
+fi
+
+# Display cached privacy status — silent when clean, loud when prompts are being logged
+if [ -f "$CACHE_FILE" ]; then
+  PROMPT_LOGGED=$(jq -r '.prompt_logged // "NO"' "$CACHE_FILE" 2>/dev/null)
+  if [ "$PROMPT_LOGGED" = "YES" ]; then
+    PROJECT=$(jq -r '.project' "$CACHE_FILE" 2>/dev/null)
+    CHECKED=$(jq -r '.checked_at' "$CACHE_FILE" 2>/dev/null)
+    echo -e "${RED}🔍 ALERT: Claude Code prompts are being logged in GCP (${PROJECT}, checked ${CHECKED})${NC}"
+    echo -e "${RED}   Run '/privacy-check' for details and remediation steps.${NC}"
+    echo ""
+  fi
+fi
+
+launcher_dir=$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parent)' "${BASH_SOURCE[0]}") || exit
+exec python3 "$launcher_dir/agent-treehouse" claude "$@"

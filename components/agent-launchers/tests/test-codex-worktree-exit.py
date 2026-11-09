@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -18,8 +19,9 @@ import time
 from websockets.sync.server import unix_serve
 
 
-ROOT = Path(__file__).resolve().parents[1]
-HOOK = ROOT / "bin/codex-worktree-exit-hook"
+ROOT = Path(os.environ["COMPONENT_SOURCE_ROOT"])
+INSTALL_BIN = Path(os.environ["COMPONENT_INSTALL_HOME"]) / ".local/bin"
+HOOK = INSTALL_BIN / "codex-worktree-exit-hook"
 
 
 def wait_for(predicate):
@@ -30,7 +32,7 @@ def wait_for(predicate):
 
 
 def main():
-    with tempfile.TemporaryDirectory(prefix="cx-exit-", dir="/tmp") as name:
+    with tempfile.TemporaryDirectory(prefix="cx-exit-", dir=os.environ["TMPDIR"]) as name:
         folder = Path(name).resolve()
         home = folder / "codex"
         socket = home / "app-server-control/app-server-control.sock"
@@ -91,6 +93,11 @@ def main():
         assert installed["hooks"]["SessionEnd"][:-1] == original["hooks"]["SessionEnd"]
         assert len(installed["hooks"]["SessionEnd"]) == 2
         command = installed["hooks"]["SessionEnd"][-1]["hooks"][0]["command"]
+        legacy_command = "python3 " + shlex.quote(str(ROOT / "bin/codex-worktree-exit-hook"))
+        installed["hooks"]["SessionEnd"][-1]["hooks"][0]["command"] = legacy_command
+        (home / "hooks.json").write_text(json.dumps(installed))
+        subprocess.run([sys.executable, str(HOOK), "--install"], env=env, check=True, timeout=3)
+        assert json.loads((home / "hooks.json").read_text()) == installed, "duplicated the hook after moving its source"
         event = {"hook_event_name": "SessionEnd", "session_id": "ending",
                  "cwd": str(ended)}
         threads = {
@@ -144,7 +151,7 @@ def main():
                 config.write_bytes(custom_config)
                 end()
                 wait_for(lambda: len(records()) == 2)
-                assert records()[-1]["action"] == "retained"
+                assert records()[-1]["action"] == "retained", records()
                 assert records()[-1]["reason"] == "ignored files"
                 assert ended.is_dir() and config.read_bytes() == custom_config
                 config.write_bytes(expected_config)

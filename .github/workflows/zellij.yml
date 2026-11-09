@@ -42,7 +42,8 @@ on:
       - 'bootstrap.sh'
       - '.github/workflows/zellij.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'zellij/**'
       - 'design-system/generated/zellij.kdl'
@@ -90,7 +91,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +109,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:

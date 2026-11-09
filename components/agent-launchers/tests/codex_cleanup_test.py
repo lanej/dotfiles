@@ -14,7 +14,7 @@ import time
 import pytest
 
 
-ROOT = Path(__file__).resolve().parent.parent
+INSTALL_BIN = Path(os.environ["COMPONENT_INSTALL_HOME"]) / ".local/bin"
 
 SERVER = '''
 # /// script
@@ -125,7 +125,7 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
     uv = shutil.which("uv")
     assert uv, "uv is required to run the self-contained cleanup command"
     # Keep Unix socket paths below macOS's length limit.
-    with tempfile.TemporaryDirectory(prefix="codex-cleanup-", dir="/tmp") as name:
+    with tempfile.TemporaryDirectory(prefix="codex-cleanup-", dir=os.environ["TMPDIR"]) as name:
         folder = Path(name)
         (folder / "archived_sessions").mkdir()
         completed = int(time.time()) - 3600
@@ -166,7 +166,7 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
         server_file.write_text(SERVER)
         with (folder / "server.log").open("w") as log:
             server = subprocess.Popen(
-                [uv, "run", "--script", str(server_file), str(folder)],
+                [sys.executable, str(server_file), str(folder)],
                 stdout=log, stderr=log, start_new_session=True,
             )
             try:
@@ -175,7 +175,7 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
                     if server.poll() is not None or time.monotonic() >= deadline:
                         raise AssertionError((folder / "server.log").read_text())
                     time.sleep(0.02)
-                command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
+                command = [sys.executable, str(INSTALL_BIN / "codex-cleanup"),
                            "--socket", str(folder / "daemon.sock"), "--json"]
                 script_env = {**os.environ, "CODEX_HOME": str(folder)}
                 preview = subprocess.run(command + ["--color", "always"],
@@ -273,7 +273,7 @@ def test_archives_old_idle_helpers_with_unknown_attachment_and_retains_busy_or_r
 def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
     uv = shutil.which("uv")
     assert uv, "uv is required to run the cleanup command"
-    with tempfile.TemporaryDirectory(prefix="codex-mcp-", dir="/tmp") as name:
+    with tempfile.TemporaryDirectory(prefix="codex-mcp-", dir=os.environ["TMPDIR"]) as name:
         folder = Path(name)
         fixture = folder / "stdio.py"
         fixture.write_text(
@@ -303,7 +303,7 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
         orphan_pid = None
         with (folder / "server.log").open("w") as log:
             server = subprocess.Popen(
-                [uv, "run", "--script", str(server_file), str(folder)],
+                [sys.executable, str(server_file), str(folder)],
                 stdout=log, stderr=log, start_new_session=True,
             )
             try:
@@ -327,7 +327,7 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                 config = (f"[mcp_servers.fixture]\ncommand = {json.dumps(executable)}\n"
                           f"args = [{json.dumps(str(fixture))}]\n")
                 (folder / "config.toml").write_text(config)
-                command = [uv, "run", "--script", str(ROOT / "bin/codex-cleanup"),
+                command = [sys.executable, str(INSTALL_BIN / "codex-cleanup"),
                            "--socket", str(folder / "daemon.sock"),
                            "--min-idle-minutes", "0", "--json"]
                 script_env = {**os.environ, "CODEX_HOME": str(folder)}
@@ -335,6 +335,10 @@ def test_mcp_cleanup_exits_orphaned_stdio_server_and_preserves_live_client():
                                          timeout=30, env=script_env)
                 assert preview.returncode == 0, preview.stderr
                 plan = json.loads(preview.stdout)
+                if {row["pid"] for row in plan["mcp_processes"] if row["action"] == "candidate"} != {orphan_pid}:
+                    print(json.dumps(plan, indent=2))
+                    inspection = subprocess.run(["lsof", "-nP", "-a", "-p", str(orphan_pid), "-FftnTP"], capture_output=True, text=True)
+                    print("Native descriptor inspection:", inspection.returncode, inspection.stderr)
                 assert {row["pid"] for row in plan["mcp_processes"]
                         if row["action"] == "candidate"} == {orphan_pid}, plan
                 assert next(row for row in plan["mcp_processes"]

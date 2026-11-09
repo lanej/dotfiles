@@ -8,7 +8,8 @@ on:
       - 'scripts/test-go-quality.py'
       - '.github/workflows/go-quality-profile.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'ai/skills/go/**'
       - 'bin/repo-bootstrap'
@@ -22,7 +23,9 @@ jobs:
   go-quality-profile:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
