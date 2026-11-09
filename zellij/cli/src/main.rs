@@ -54,7 +54,22 @@ fn run(args: &[String]) -> Result<()> {
     Ok(())
 }
 fn main() {
-    let args: Vec<_> = std::env::args().skip(1).collect();
+    let mut arguments = std::env::args();
+    let executable = arguments.next().unwrap_or_default();
+    let name = std::path::Path::new(&executable)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("");
+    let mut args: Vec<_> = arguments.collect();
+    let subcommand = match name {
+        "zellij-helper" | "lane-zellij" => None,
+        "claude-zellij-title-hook" => Some("claude-title"),
+        "codex-zellij-title-hook" => Some("codex-title"),
+        _ => name.strip_prefix("zellij-"),
+    };
+    if let Some(subcommand) = subcommand {
+        args.insert(0, subcommand.to_owned());
+    }
     if let Err(error) = run(&args) {
         eprintln!(
             "zellij-{}: {error:#}",

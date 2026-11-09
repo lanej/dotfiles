@@ -90,16 +90,15 @@ else:
         checkout = self.home / "fresh checkout"
         (checkout / "bin").mkdir(parents=True)
         launcher = checkout / "bin/zellij-helper"
-        shutil.copy2(HELPER.with_name("zellij-helper"), launcher)
+        shutil.copy2(HELPER.with_name("zellij-helper"), launcher, follow_symlinks=False)
         (checkout / "bin/zellij-status").symlink_to("zellij-helper")
         cargo = self.home / "cargo"
-        cargo.write_text('#!/bin/sh\nexit 99\n')
+        cargo.write_text('#!/bin/sh\n: > "$TEST_LOG"\nexit 99\n')
         cargo.chmod(0o755)
-        result = subprocess.run([str(checkout / "bin/zellij-status"), "view"],
-                                env=self.env, capture_output=True, text=True, timeout=5)
-        self.assertEqual(result.returncode, 1)
-        self.assertEqual(result.stdout, "")
-        self.assertIn("make zellij-helpers", result.stderr)
+        with self.assertRaises(FileNotFoundError):
+            subprocess.run([str(checkout / "bin/zellij-status"), "view"],
+                           env=self.env, capture_output=True, text=True, timeout=5)
+        self.assertFalse(self.log.exists(), "An unbuilt command invoked a tool")
         self.assertFalse((checkout / "zellij/target").exists())
 
     def test_missing_defaults_and_view_compatibility(self):

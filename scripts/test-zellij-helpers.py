@@ -70,6 +70,24 @@ print(reply if isinstance(reply, str) else json.dumps(reply), end="")''',
         path = self.home / "calls"
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
+    def test_popup_alias_and_dispatcher_preserve_prompt_environment(self):
+        layouts = self.home / ".config/zellij/layouts"
+        layouts.mkdir(parents=True)
+        (layouts / "tmux.kdl").write_text("layout { pane; }\n")
+        (self.bin / "zellij").write_text(f"#!{sys.executable}\n" + '''
+import json, os, sys
+from pathlib import Path
+assert sys.argv[1] == "--layout-string", sys.argv
+Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.environ)))
+''')
+        self.env.update(PS1="inherited-prompt> ", ZELLIJ="1", SSH_CONNECTION="")
+        for command in (("zellij-popup",), ("zellij-helper", "popup")):
+            self.run_helper(*command)
+            forwarded = json.loads((self.home / "popup-env").read_text())
+            self.assertEqual(forwarded.get("PS1"), "inherited-prompt> ")
+            self.assertTrue(all(key not in forwarded for key in
+                                ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID")))
+
     def test_clipboard_preserves_literal_sessions_and_rejects_unsafe_paste(self):
         selected = "--name / 'literal'"
         data = "hello\n界\tthere\n".encode()

@@ -21,7 +21,7 @@ Both shortcuts stay in the current session and change only your view. From the s
 
 ## Install the Rust helpers
 
-`make zellij-status zellij` builds the native helper and WASI status plugin, then links configuration. Build only the host helper with `make zellij-helpers`. Configuration-only commands and minimal bootstrap never compile the helper or install Rust implicitly; a missing binary reports the build command.
+`make zellij-status zellij` builds the native helper and WASI status plugin, then links configuration. Build only the host helper with `make zellij-helpers`. Configuration-only commands and minimal bootstrap create links without compiling the helper or installing Rust; build the helper before using those commands.
 
 `zellij-status view`, `config`, and `reload` keep their existing arguments. The same native helper also supplies the other Zellij commands, so rebuild it after updating the checkout. Existing session servers can use the new helper without a restart; changing the runtime or loaded plugins still requires restarting those instances.
 

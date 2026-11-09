@@ -172,7 +172,6 @@ def main():
             terminal.until("prefix remains visible after narrowing the terminal", lambda:
                            prefix_banner(terminal) and top_line(terminal).endswith("…"))
             if os.environ.get("THEME_CAPTURE_DIR"):
-                import json
                 capture = Path(os.environ["THEME_CAPTURE_DIR"])
                 capture.mkdir(parents=True, exist_ok=True)
                 screen = display(terminal)

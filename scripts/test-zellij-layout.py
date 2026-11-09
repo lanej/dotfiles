@@ -65,6 +65,10 @@ sys.exit(result.returncode)
             for count in (2, 3):
                 terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", "/bin/sh")
                 terminal.until("explicit-command columns", lambda: len(terminal.terminals()) == count)
+                rightmost = max(terminal.terminals(), key=lambda pane: pane["pane_x"])["id"]
+                terminal.action("focus-pane-id", f"terminal_{rightmost}")
+                terminal.until("new right-hand pane owns focus", lambda:
+                               any(p["id"] == rightmost and p["is_focused"] for p in terminal.terminals()))
             panes = terminal.terminals()
             ids = {p["id"] for p in panes}
             source_tab = panes[0]["tab_id"]
@@ -106,7 +110,7 @@ sys.exit(result.returncode)
                 terminal.until("original PID", lambda: (home / f"pid-{pid}").exists())
                 pids[pid] = (home / f"pid-{pid}").read_text().strip()
             assert len(set(pids.values())) == 3
-            assert widths() == [60, 30, 30]
+            assert widths() == [60, 30, 30], widths()
             invoke(b"=")
             assert widths() == [42, 36, 42], widths()
             invoke(b"g")

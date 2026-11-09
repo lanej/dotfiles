@@ -20,9 +20,9 @@ Restart existing session servers after changing the runtime or loaded plugins. R
 
 ## Native host helpers
 
-All Zellij runtime helpers live in the [native Rust CLI](../zellij/cli/src/main.rs). Existing `bin/zellij-*` commands and Claude/Codex title hooks are compatibility symlinks to one shell launcher; it resolves the checkout and executes `zellij/target/release/lane-zellij`. It never builds on invocation. `zssh` delegates to `zellij-helper ssh`, and Zsh retains only hook/widget registration and shell-local editor state.
+All Zellij runtime helpers live in the [native Rust CLI](../zellij/cli/src/main.rs). Existing `bin/zellij-*` commands and Claude/Codex title hooks link directly to `zellij/target/release/lane-zellij`, which selects the command from its invocation name. This preserves the caller's environment without starting a shell. `zssh` delegates to `zellij-helper ssh`, and Zsh retains only hook/widget registration and shell-local editor state.
 
-Build with `make zellij-helpers`; run `make zellij-helpers zellij` after pulling an update. Full installation builds the helper for every selected runtime, including the legacy release. Configuration-only commands and minimal bootstrap do not build it. A missing executable reports the explicit build command. The tool installers, configuration provisioning, test harnesses, and Neovim/Zsh integration glue retain their host languages; interactive operations need no Python interpreter or `jq`.
+Build with `make zellij-helpers`; run `make zellij-helpers zellij` after pulling an update. Full installation builds the helper for every selected runtime, including the legacy release. Configuration-only commands and minimal bootstrap only create links; the commands become available after the explicit build. The tool installers, configuration provisioning, test harnesses, and Neovim/Zsh integration glue retain their host languages; interactive operations need no Python interpreter or `jq`.
 
 | Rust module | Responsibility |
 | --- | --- |

@@ -15,7 +15,6 @@ shellcheck -x \
     "$dotfiles/scripts/install-zellij" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
-    "$dotfiles/bin/zellij-helper" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/git-ssh" \
     "$dotfiles/bin/dotfiles-fzf" \
