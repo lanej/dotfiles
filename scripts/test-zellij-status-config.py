@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import shutil
 import unittest
 
 
@@ -36,9 +37,16 @@ if "list-panes" in args:
         sys.exit("session does not exist")
     rows = [{"id": 7, "is_plugin": True, "is_suppressed": True,
              "plugin_url": "file:" + os.environ["HOME"] + "/.config/zellij/plugins/lane-status.wasm"}]
+    if mode == "wrong-url":
+        rows[0]["plugin_url"] += ".old"
+    if mode == "multiple-plugins":
+        rows *= 2
     print(json.dumps([] if mode == "no-plugin" else rows))
 elif "list-tabs" in args:
-    print(json.dumps([{"other_focused_clients": [1, 2]}]))
+    clients = [] if mode == "no-clients" else [1, 2]
+    if mode == "new-client" and "pipe" in open(os.environ["TEST_LOG"]).read():
+        clients.append(3)
+    print(json.dumps([{"other_focused_clients": clients}]))
 elif "pipe" in args:
     payload = json.loads(args[-1])
     if mode == "timeout":
@@ -64,6 +72,34 @@ else:
 
     def calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def test_native_command_and_installed_compatibility_link(self):
+        canonical = subprocess.run([str(HELPER.with_name("zellij-helper")), "status", "config"],
+                                   env=self.env, capture_output=True, text=True, timeout=5)
+        self.assertEqual(canonical.returncode, 0, canonical.stderr)
+        self.assertEqual(json.loads(canonical.stdout), DEFAULT)
+        installed = self.home / "linked bin/zellij-status"
+        installed.parent.mkdir()
+        installed.symlink_to(HELPER)
+        result = subprocess.run([str(installed), "config"], env=self.env,
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), DEFAULT)
+
+    def test_missing_binary_does_not_compile_or_fall_back_to_python(self):
+        checkout = self.home / "fresh checkout"
+        (checkout / "bin").mkdir(parents=True)
+        launcher = checkout / "bin/zellij-helper"
+        shutil.copy2(HELPER.with_name("zellij-helper"), launcher, follow_symlinks=False)
+        (checkout / "bin/zellij-status").symlink_to("zellij-helper")
+        cargo = self.home / "cargo"
+        cargo.write_text('#!/bin/sh\n: > "$TEST_LOG"\nexit 99\n')
+        cargo.chmod(0o755)
+        with self.assertRaises(FileNotFoundError):
+            subprocess.run([str(checkout / "bin/zellij-status"), "view"],
+                           env=self.env, capture_output=True, text=True, timeout=5)
+        self.assertFalse(self.log.exists(), "An unbuilt command invoked a tool")
+        self.assertFalse((checkout / "zellij/target").exists())
 
     def test_missing_defaults_and_view_compatibility(self):
         result = self.run_helper("config")
@@ -131,7 +167,7 @@ else:
                 self.assertTrue(payload["request"])
 
     def test_reload_requires_existing_session_and_receiver(self):
-        for mode in ("no-plugin", "missing-session"):
+        for mode in ("no-plugin", "missing-session", "wrong-url", "multiple-plugins", "no-clients"):
             with self.subTest(mode=mode):
                 self.env["TEST_MODE"] = mode
                 self.log.unlink(missing_ok=True)
@@ -144,7 +180,7 @@ else:
         self.assertEqual(self.calls(), [])
 
     def test_reload_requires_complete_matching_acknowledgements(self):
-        for mode in ("no-ack", "partial", "wrong-request", "wrong-plugin", "rejected", "timeout"):
+        for mode in ("no-ack", "partial", "wrong-request", "wrong-plugin", "rejected", "timeout", "new-client"):
             with self.subTest(mode=mode):
                 self.env["TEST_MODE"] = mode
                 result = self.run_helper("reload")

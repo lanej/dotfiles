@@ -522,6 +522,7 @@ install_zellij_runtime() {
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
 	esac || return 1
+	make -C "$dotfiles_root" zellij-helpers || return 1
 	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
 	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
 		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1

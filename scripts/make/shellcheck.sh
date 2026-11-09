@@ -16,9 +16,6 @@ shellcheck -x \
     "$dotfiles/scripts/install-treehouse" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
-    "$dotfiles/bin/zellij-attach" \
-    "$dotfiles/bin/zellij-agent" \
-    "$dotfiles/bin/zellij-balance" \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/fzf-path-preview" \
     "$dotfiles/bin/git-ssh" \

@@ -34,9 +34,15 @@ import os
 from pathlib import Path
 import sys
 import time
+import stat
 
 args = sys.argv[1:]
-if args[:1] == ["--session"]:
+if args[:1] == ["--session"] or (args and args[0].startswith("--session=")):
+    if os.environ.get("DELAYED_SERVER") and Path(os.environ["DELAYED_SERVER"]).exists():
+        assert stat.S_IMODE(Path(args[-1]).stat().st_mode) == 0o700
+        Path(os.environ["REFRESHED"]).write_text(args[-2])
+        (Path(args[-1]) / "success").write_text("acknowledged\\n")
+        raise SystemExit(0)
     raise SystemExit(17)
 assert args[:2] == ["attach", "--create"], args
 if os.environ.get("DELAYED_SERVER"):
@@ -136,15 +142,13 @@ print(sys.argv[2] + "=" + values[sys.argv[2]])
             assert shell(SSH_CONNECTION="", SSH_AUTH_SOCK=str(local), TMUX="fixture",
                          TMUX_SESSION_SOCKET=other) == str(local), "local tmux changed its agent"
             ready, refreshed = home / "server-ready", home / "refreshed"
-            helper = bindir / "zellij-agent"
-            helper.write_text('''#!/bin/sh
-[ -e "$DELAYED_SERVER" ] || exit 17
-printf '%s' "$SSH_AUTH_SOCK" > "$REFRESHED"
-''')
-            helper.chmod(0o755)
             delayed = attach("restored", SSH_AUTH_SOCK=first,
                              DELAYED_SERVER=str(ready), REFRESHED=str(refreshed))
             assert delayed["args"] == ["attach", "--create", "restored"]
+            deadline = time.monotonic() + 5
+            while not refreshed.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert refreshed.exists(), "Delayed server startup exhausted agent retries"
             assert refreshed.read_text() == first, "Delayed server startup exhausted agent retries"
             print("PASS: local agents and tmux selection are preserved; failed recovery never blocks attachment.")
             print("PASS: stopped-session attachment retries agent refresh after delayed server startup.")

@@ -2,10 +2,10 @@ name: SSH agent reconnect
 
 on:
   pull_request:
-    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
   push:
     branches: [master]
-    paths: ['bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
 
 permissions:
   contents: read
@@ -75,6 +75,7 @@ jobs:
         with:
           path: ~/.local/bin/zellij
           key: ${{ steps.executable_cache.outputs.cache-primary-key }}
+      - run: make zellij-helpers
       - name: Verify native SSH agent reconnects
         run: python3 scripts/test-zellij-agent-update.py
       - name: Preserve failed reconnect diagnostics

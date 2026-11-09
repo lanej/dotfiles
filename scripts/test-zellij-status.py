@@ -22,6 +22,7 @@ import struct
 import tempfile
 import termios
 import time
+import uuid
 
 import pyte
 
@@ -389,6 +390,33 @@ def main():
                 return next(tab["tab_id"] for tab in untouched.tabs()
                             if client_id in tab["other_focused_clients"])
 
+            # The visible bar and suppressed receiver initialize separately.
+            # Probe this clone without mutating its policy, then press exactly
+            # once; a reload, repeated key, or sleep would hide startup defects.
+            receiver_url = "file:" + str(home / ".config/zellij/plugins/lane-status.wasm")
+            receivers = [pane for pane in json.loads(startup.action("list-panes", "--all", "--json"))
+                         if pane.get("is_plugin") and pane.get("is_suppressed")
+                         and pane.get("plugin_url") == receiver_url]
+            assert len(receivers) == 1, receivers
+            request = {"request": uuid.uuid4().hex, "plugin_id": receivers[0]["id"]}
+            readiness = []
+
+            def receiver_ready():
+                response = subprocess.run([binary, "--session=" + second, "pipe", "--name",
+                    "lane-attention-ready", "--", json.dumps(request)], env=env,
+                    capture_output=True, text=True, timeout=5, check=True)
+                readiness[:] = [json.loads(line) for line in response.stdout.splitlines() if line.strip()]
+                return any(reply.get("request") == request["request"]
+                           and reply.get("plugin_id") == request["plugin_id"]
+                           and reply.get("client_id") == new_client_id
+                           and all(reply.get(field) is True for field in
+                                   ("config_ready", "attention_ready", "bindings_installed"))
+                           for reply in readiness)
+
+            try:
+                startup.until("new attachment's attention receiver is ready", receiver_ready)
+            except AssertionError as error:
+                raise AssertionError(f"{error}\nReceiver readiness: {readiness}") from error
             startup.prefix(b"a")
             startup.until("new attachment reads configured priority without reload", lambda:
                           client_tab(new_client_id) == second_working_tab)

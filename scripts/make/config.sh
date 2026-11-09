@@ -146,7 +146,7 @@ case "$target" in
             ln -fs "$dotfiles/zellij/layouts/tmux-native.kdl" "$setup_home/.config/zellij/layouts/tmux.kdl"
         fi
         for source in "$dotfiles"/bin/zellij-*; do
-            if [ -f "$source" ] && [ -x "$source" ]; then
+            if [ -L "$source" ] || { [ -f "$source" ] && [ -x "$source" ]; }; then
                 ln -fs "$source" "$setup_home/.local/bin/"
             fi
         done

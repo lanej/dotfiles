@@ -313,7 +313,7 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
                         (home / "nested-socket").exists()
                         and (home / "nested-socket").read_text().strip() == str(stable1))
             assert stable1.resolve() == Path(raw2).resolve(), "old pane republished its stale socket"
-            print("PASS: native /bin/sh helper has the owning server parent; attached update preserves layout and focus.", flush=True)
+            print("PASS: native helper identifies the owning server parent; attached update preserves layout and focus.", flush=True)
 
             detach(first)
             first = attach("probe-original", raw3)

@@ -50,8 +50,6 @@ def main():
 import json, os, subprocess, sys
 from pathlib import Path
 env = dict(os.environ)
-if (Path.home() / 'without-jq').exists():
-    env['PATH'] = str(Path.home() / 'no-jq-bin')
 result = subprocess.run([{str(ROOT / 'bin/zellij-balance')!r}, *sys.argv[1:]], env=env, capture_output=True, text=True)
 with (Path.home() / 'balance-results').open('a') as log:
     log.write(json.dumps(dict(origin=os.environ.get('ZELLIJ_ORIGIN_PANE_ID'), code=result.returncode, error=result.stderr)) + '\\n')
@@ -105,16 +103,6 @@ sys.exit(result.returncode)
 
             def content():
                 return next(p["pane_content_columns"] for p in current() if p["id"] == left)
-
-            no_jq = home / "no-jq-bin"
-            no_jq.mkdir()
-            for command in ("bash", "mktemp", "rm", "sleep", "zellij"):
-                (no_jq / command).symlink_to(shutil.which(command))
-            (home / "without-jq").touch()
-            before = geometry(current())
-            invoke(b"=", failure="jq is required")
-            assert geometry(current()) == before
-            (home / "without-jq").unlink()
 
             pids = {}
             for pid in ids:
@@ -205,9 +193,12 @@ sys.exit(result.returncode)
             terminal.until("stacked preset applied", lambda:
                            next(t for t in terminal.tabs() if t["tab_id"] == source_tab)["active_swap_layout_name"] == "stacked"
                            and sum(p["is_suppressed"] for p in current()) == len(ids) - 1)
-            settled = geometry(current())
-            invoke(b"=", failure="stacked")
-            assert geometry(current()) == settled
+            before_rejection = current()
+            rejected = invoke(b"=", failure="stacked")
+            after_rejection = current()
+            assert geometry(after_rejection) == geometry(before_rejection), json.dumps({
+                "before": before_rejection, "after": after_rejection, "helper": rejected,
+            }, indent=2)
             for _ in range(5):
                 terminal.prefix(b" ")
                 if json.loads(terminal.action("current-tab-info", "--json"))["active_swap_layout_name"] == "equalize":

@@ -15,7 +15,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
-Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
+Terminal = workflow["Terminal"]
 POPUP = "dotfiles-popup"
 # Leave room for full popup tab titles alongside long CI runner hostnames.
 SESSION_COLUMNS = 240
@@ -516,12 +517,14 @@ def main():
                "XDG_DATA_HOME": str(temporary / "data"), "XDG_RUNTIME_DIR": str(runtime),
                "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
+        workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
-        subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,
-                       check=True, capture_output=True, text=True)
+        configured = subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"],
+                                    cwd=ROOT, env=env, capture_output=True, text=True)
+        assert configured.returncode == 0, configured.stdout + configured.stderr
         subprocess.run([binary, "setup", "--check"], env=env, check=True,
                        capture_output=True, text=True)
         names = ["first-" + temporary.name, "second-" + temporary.name]
