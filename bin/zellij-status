@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Supply host metadata for the native Zellij attention bar."""
 
+import argparse
 import json
+import os
 from pathlib import Path
 import re
 import runpy
 import socket
 import subprocess
+import stat
 import sys
 import time
+import tomllib
+import uuid
 
 
 def battery():
@@ -28,10 +33,139 @@ def battery():
     return ""
 
 
+DEFAULT_PRIORITY = [["marked", "needs_you", "failed"], ["working", "new_output", "bell"]]
+ATTENTION_CLASSES = {"marked", "needs_you", "failed", "working", "new_output", "bell", "done", "quiet"}
+MAX_CONFIG_BYTES = 16 * 1024
+
+
+def attention_config():
+    base = Path(os.environ.get("XDG_CONFIG_HOME", ""))
+    if not base.is_absolute():
+        base = Path.home() / ".config"
+    path = base / "zellij/lane-status.toml"
+    try:
+        # Nonblocking open also prevents an accidental FIFO from hanging reload.
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return {"priority": DEFAULT_PRIORITY}
+        with os.fdopen(fd, "rb") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                raise ValueError("expected a regular file")
+            raw = source.read(MAX_CONFIG_BYTES + 1)
+        if len(raw) > MAX_CONFIG_BYTES:
+            raise ValueError("configuration exceeds 16 KiB")
+        data = tomllib.loads(raw.decode("utf-8"))
+        if set(data) != {"attention"} or not isinstance(data["attention"], dict):
+            raise ValueError("expected only an [attention] table")
+        attention = data["attention"]
+        if set(attention) != {"priority"}:
+            raise ValueError("[attention] must contain only priority")
+        groups = attention["priority"]
+        if not isinstance(groups, list) or not groups:
+            raise ValueError("priority must be a nonempty list of nonempty lists")
+        seen = set()
+        for group in groups:
+            if not isinstance(group, list) or not group:
+                raise ValueError("priority must be a nonempty list of nonempty lists")
+            for name in group:
+                if not isinstance(name, str) or name not in ATTENTION_CLASSES:
+                    raise ValueError(f"unknown attention class: {name!r}")
+                if name in seen:
+                    raise ValueError(f"duplicate attention class: {name}")
+                seen.add(name)
+        return {"priority": groups}
+    except (OSError, ValueError, UnicodeError) as error:
+        raise RuntimeError(f"{path}: {error}") from error
+
+
+def reload_attention(session, config):
+    if not session:
+        raise RuntimeError("Run inside Zellij or specify --session")
+    deadline = time.monotonic() + 5
+
+    def cli(*args):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("reload deadline exceeded")
+        result = subprocess.run(["zellij", "--session=" + session, *args],
+                                stdin=subprocess.DEVNULL, capture_output=True,
+                                text=True, timeout=remaining)
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip() or "Zellij command failed")
+        return result.stdout
+
+    def snapshot(kind):
+        options = ["--all"] if kind == "panes" else []
+        rows = json.loads(cli("action", "list-" + kind, *options, "--json"))
+        if not isinstance(rows, list):
+            raise RuntimeError(f"Zellij did not return a {kind} list")
+        return rows
+
+    def attached_clients():
+        return {str(client) for tab in snapshot("tabs") for client in tab["other_focused_clients"]}
+
+    # Actions query an existing session only. Never attach or start a session.
+    panes = snapshot("panes")
+    # Native pane metadata expands ~, but does not resolve symlinks.
+    receiver_url = "file:" + str(Path.home() / ".config/zellij/plugins/lane-status.wasm")
+    receivers = [pane for pane in panes if pane.get("is_plugin")
+                 and pane.get("is_suppressed") and pane.get("plugin_url") == receiver_url]
+    if len(receivers) != 1:
+        raise RuntimeError("Expected one existing suppressed lane-status receiver; no reload sent")
+    plugin_id = receivers[0]["id"]
+    before = attached_clients()
+    if not before:
+        raise RuntimeError("No attached clients; no reload sent")
+    request = uuid.uuid4().hex
+    payload = {"request": request, "plugin_id": plugin_id, **config}
+    try:
+        # URL-directed pipes can launch a replacement if the receiver exits
+        # after discovery. Broadcast only visits existing instances; the
+        # receiver validates plugin_id before applying, in each client clone.
+        output = cli("pipe", "--name", "lane-attention-reload", "--", json.dumps(payload))
+        replies = [json.loads(line) for line in output.splitlines() if line.strip()]
+        confirmed = set()
+        for reply in replies:
+            if reply.get("request") != request or reply.get("plugin_id") != plugin_id:
+                raise RuntimeError("Unexpected reload acknowledgement identity")
+            if reply.get("error"):
+                raise RuntimeError(str(reply["error"]))
+            if reply.get("ok") is not True or "client_id" not in reply:
+                raise RuntimeError("Invalid reload acknowledgement")
+            confirmed.add(str(reply["client_id"]))
+        expected = before | attached_clients()
+        if not confirmed or not expected <= confirmed:
+            missing = ", ".join(sorted(expected - confirmed))
+            raise RuntimeError(f"Missing reload acknowledgements for clients: {missing}")
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, AttributeError, RuntimeError) as error:
+        raise RuntimeError(f"Reload outcome may be partial: {error}") from error
+    print(f"Reloaded attention priority for {len(expected)} attached client(s) in {session}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    view = commands.add_parser("view", help="print host metadata")
+    view.add_argument("session", nargs="?")
+    commands.add_parser("config", help="validate and print attention configuration")
+    reload = commands.add_parser("reload", help="reload attention priority in one existing session")
+    reload.add_argument("--session", default=os.environ.get("ZELLIJ_SESSION_NAME"))
+    args = parser.parse_args()
+    if args.command == "config":
+        print(json.dumps(attention_config()))
+    elif args.command == "reload":
+        reload_attention(args.session, attention_config())
+    else:
+        ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
+        titles = ownership["owned_titles"](args.session) if args.session is not None else {}
+        print(json.dumps({"session": args.session, "auto_titles": titles, "host": socket.gethostname().split(".")[0],
+                          "clock": time.strftime("%H:%M"), "battery": battery()}))
+
+
 if __name__ == "__main__":
-    if len(sys.argv) not in (2, 3) or sys.argv[1] != "view":
-        sys.exit("Usage: zellij-status view [session]")
-    ownership = runpy.run_path(str(Path(__file__).resolve().with_name("zellij-title-state")))
-    titles = ownership["owned_titles"](sys.argv[2]) if len(sys.argv) == 3 else {}
-    print(json.dumps({"session": sys.argv[2] if len(sys.argv) == 3 else None, "auto_titles": titles, "host": socket.gethostname().split(".")[0],
-                      "clock": time.strftime("%H:%M"), "battery": battery()}))
+    try:
+        main()
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, AttributeError, RuntimeError) as error:
+        print(f"zellij-status: {error}", file=sys.stderr)
+        sys.exit(1)

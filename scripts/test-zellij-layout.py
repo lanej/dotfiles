@@ -67,6 +67,11 @@ sys.exit(result.returncode)
             for count in (2, 3):
                 terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", "/bin/sh")
                 terminal.until("explicit-command columns", lambda: len(terminal.terminals()) == count)
+                rightmost = max(terminal.terminals(), key=lambda pane: pane["pane_x"])["id"]
+                for _ in range(count - 1):
+                    terminal.prefix(b"l")
+                terminal.until("new right-hand pane owns focus", lambda:
+                               any(p["id"] == rightmost and p["is_focused"] for p in terminal.terminals()))
             panes = terminal.terminals()
             ids = {p["id"] for p in panes}
             source_tab = panes[0]["tab_id"]
@@ -118,7 +123,7 @@ sys.exit(result.returncode)
                 terminal.until("original PID", lambda: (home / f"pid-{pid}").exists())
                 pids[pid] = (home / f"pid-{pid}").read_text().strip()
             assert len(set(pids.values())) == 3
-            assert widths() == [60, 30, 30]
+            assert widths() == [60, 30, 30], widths()
             invoke(b"=")
             assert widths() == [42, 36, 42], widths()
             invoke(b"g")
@@ -195,6 +200,11 @@ sys.exit(result.returncode)
             terminal.until("unzoomed", lambda: not any(p["is_fullscreen"] for p in current()))
             # Native layout cycling remains a separate, explicitly rearranging control.
             terminal.action("apply-tiled-swap-layout", "stacked")
+            # The pinned runtime converts stacks into lists with suppressed
+            # inactive members; classic one-row geometry is only transitional.
+            terminal.until("stacked preset applied", lambda:
+                           next(t for t in terminal.tabs() if t["tab_id"] == source_tab)["active_swap_layout_name"] == "stacked"
+                           and sum(p["is_suppressed"] for p in current()) == len(ids) - 1)
             settled = geometry(current())
             invoke(b"=", failure="stacked")
             assert geometry(current()) == settled
@@ -204,7 +214,9 @@ sys.exit(result.returncode)
                     break
             else:
                 raise AssertionError("Native layout cycle did not offer equalize")
-            terminal.until("preset restored", lambda: len({p["pane_y"] for p in current()}) == 2)
+            terminal.until("preset restored", lambda:
+                           not any(p["is_suppressed"] for p in current())
+                           and len({p["pane_y"] for p in current()}) == 2)
             fcntl.ioctl(terminal.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
             terminal.until("native preset fits a smaller terminal", lambda:
                            sorted(geometry(current()).values()) ==

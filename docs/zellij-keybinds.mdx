@@ -21,7 +21,7 @@ Most commands return immediately to your application. **Esc**, **Enter**, or **C
 | [Open or hide the shared popup](zellij/shared-popup.mdx) | **Ctrl-f P** |
 | [Copy text from scrollback](zellij/copy-paste.mdx) | **Ctrl-f e** |
 | Paste the session's last Neovim yank | **Ctrl-f p** |
-| [Visit a tab needing attention](zellij/attention.mdx) | **Ctrl-f Ctrl-a** |
+| [Jump to the highest-ranked activity tab](zellij/attention.mdx) | **Ctrl-f a** |
 | [Open notification history](zellij/notifications.mdx) | **Ctrl-f B** |
 | Detach, leaving programs running | **Ctrl-f d** |
 
@@ -107,10 +107,11 @@ The popup uses the same keys as a regular session. Inside it, **Ctrl-f P** hides
 | `p` | Paste the session's last Neovim yank |
 | `[` | Enter Scroll mode |
 | `/` | Enter a scrollback search query |
-| `Ctrl-a` | [Visit another local tab needing you, otherwise activity/bell](zellij/attention.mdx) |
+| `a` | [Jump to the highest-ranked local activity tab](zellij/attention.mdx) |
+| `Ctrl-a` | [Cycle through other local tabs needing you, otherwise activity/bell](zellij/attention.mdx) |
 | `b` | Open or close the inbox/session card |
 | `B` | [Search recorded notifications with source-pane previews](zellij/notifications.mdx) |
-| `a` | Toggle watching the focused pane |
+| `A` | Toggle watching the focused pane |
 | `U` | Toggle muting the focused pane |
 | `f` | Send a literal Ctrl-f to the application |
 | `Esc` / `Enter` / `Ctrl-c` | Cancel the prefix |
@@ -197,8 +198,8 @@ If your installed keys differ, you may be using the older configuration. Modern-
 | Tab positions | Start at 0 | Start at 1; `0` and `1` both choose the first tab |
 | Session creation / rename: `C` / `w` | Direct actions | Open the session manager |
 | Balance / golden ratio: `=` / `g` / `G` | Available | Unbound |
-| Local attention: `Ctrl-a` | Available | Unbound |
-| Inbox / history / watch / mute: `b` / `B` / `a` / `U` | Available | Unbound |
+| Local attention: `a` / `Ctrl-a` | Direct jump / cycle | Unbound |
+| Inbox / history / watch / mute: `b` / `B` / `A` / `U` | Available | Unbound |
 | Session card: `I` | Available | Unbound |
 | Client chooser: `D` | Available | Unbound |
 | Session paste: `p` | Available | Unbound |
