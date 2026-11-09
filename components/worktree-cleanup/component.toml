@@ -1,0 +1,13 @@
+version = 1
+dependencies = []
+legacy_inputs = []
+platforms = ["linux", "darwin"]
+tools = ["bash", "git", "lsof", "sqlite3", "uv"]
+
+[install]
+"bin/git-worktree-cleanup" = ".local/bin/git-worktree-cleanup"
+
+[suites]
+cleanup = ["python3", "tests/test-git-worktree-cleanup.py"]
+size-cache = ["python3", "tests/test-git-worktree-size-cache.py"]
+wip-push = ["python3", "tests/test-git-worktree-wip-push.py"]

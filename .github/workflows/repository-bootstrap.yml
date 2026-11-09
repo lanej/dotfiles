@@ -18,7 +18,8 @@ on:
       - 'docs/diagrams-and-charts.md'
       - '.github/workflows/repository-bootstrap.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'bin/repo-bootstrap'
       - 'scripts/test-repo-bootstrap.py'
@@ -42,7 +43,9 @@ jobs:
   repository-bootstrap:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:

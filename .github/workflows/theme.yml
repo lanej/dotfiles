@@ -22,7 +22,8 @@ on:
       - 'bat/**'
       - '.github/workflows/theme.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths: *theme-paths
 permissions:
   contents: read
@@ -31,7 +32,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

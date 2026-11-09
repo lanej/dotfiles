@@ -14,7 +14,8 @@ on:
       - 'bootstrap.sh'
       - '.github/workflows/pi-resources.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'bin/sync-pi-resources'
       - 'bin/sync-codex-skills'
@@ -35,7 +36,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:

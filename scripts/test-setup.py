@@ -78,6 +78,14 @@ def main():
         assert minimal.returncode == 0, minimal.stdout + minimal.stderr
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+        for component, commands in {
+            "worktree-cleanup": ["git-worktree-cleanup"],
+            "agent-launchers": ["agent-treehouse", "codex-wrapper", "claude-wrapper", "codex-cleanup", "codex-worktree-exit-hook"],
+        }.items():
+            for name in commands:
+                installed = minimal_home / ".local/bin" / name
+                assert installed.resolve() == repo / "components" / component / "bin" / name
+                assert os.access(installed, os.X_OK), f"not executable after shell setup: {name}"
 
         dry_run = subprocess.run([*command, "-n", "base"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)

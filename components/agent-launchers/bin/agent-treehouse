@@ -1,0 +1,765 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["websockets==15.0.1", "psutil==7.2.2"]
+# ///
+"""Launch agents with owned Treehouse leases; return only verified unused leases."""
+
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import plistlib
+import re
+import runpy
+import shlex
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+
+SOURCE = Path(__file__).resolve()
+SESSION_ENV = "AGENT_TREEHOUSE_SESSION"
+ALLOCATION_EVENTS = ("WorktreeCreate", "WorktreeRemove")
+
+
+def run(args, cwd=None, timeout=15):
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
+                          timeout=timeout, env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"})
+
+
+def git(cwd, *args):
+    result = run(["git", "-C", str(cwd), *args])
+    if result.returncode:
+        raise ValueError(result.stderr.strip() or "Git inspection failed")
+    return result.stdout.rstrip("\n")
+
+
+def checkout(cwd):
+    root = Path(git(cwd, "rev-parse", "--show-toplevel")).resolve()
+    entries = git(root, "worktree", "list", "--porcelain", "-z").split("\0")
+    paths = [Path(entry[9:]).resolve() for entry in entries if entry.startswith("worktree ")]
+    if not paths or root not in paths:
+        raise ValueError("Git checkout registration unavailable")
+    return root, paths[0]
+
+
+def executable(client):
+    for directory in os.get_exec_path():
+        path = Path(directory or ".") / client
+        if path.is_file() and os.access(path, os.X_OK):
+            if path.resolve() not in (SOURCE, SOURCE.with_name(client + "-wrapper")):
+                return str(path.absolute())
+    raise ValueError(f"{client} executable unavailable in PATH")
+
+
+def native(client, real, args):
+    for name in ("SIGPIPE", "SIGXFZ", "SIGXFSZ"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), signal.SIG_DFL)
+    os.execv(real, [client, *args])
+
+
+def state_directory():
+    base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")).expanduser()
+    directory = base / "agent-treehouse"
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    info = directory.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise ValueError(f"state directory must be private and owned: {directory}")
+    return directory.resolve()
+
+
+def session_path(token):
+    if not re.fullmatch(r"[0-9a-f]{32}", token or ""):
+        raise ValueError("integration session identity unavailable")
+    return state_directory() / (token + ".json")
+
+
+def read_json(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise ValueError(f"record is not private and owned: {path}")
+        with os.fdopen(descriptor, closefd=False) as source:
+            return json.load(source)
+    finally:
+        os.close(descriptor)
+
+
+def write_json(path, data):
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        output.write((json.dumps(data) + "\n").encode())
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def state_lock():
+    descriptor = os.open(state_directory(), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def process_start(pid):
+    result = run(["ps", "-p", str(pid), "-o", "lstart="])
+    if result.returncode == 1 and not result.stdout:
+        return None
+    if result.returncode or not result.stdout.strip():
+        raise ValueError("process identity inspection unavailable")
+    return result.stdout.strip()
+
+
+def new_session(client, primary, treehouse, real):
+    token = uuid.uuid4().hex
+    if state_directory().is_relative_to(primary):
+        raise ValueError("integration state must be outside the repository")
+    record = {"client": client, "primary": str(primary), "treehouse": treehouse, "executable": real,
+              "pid": os.getpid(), "started": process_start(os.getpid()), "ended": False,
+              "sessions": {}, "leases": [], "pending": []}
+    with state_lock():
+        write_json(session_path(token), record)
+    return token
+
+
+def acquire(token, cwd, name):
+    root, primary = checkout(cwd)
+    path = session_path(token)
+    record = read_json(path)
+    if root != primary:
+        parent = next((lease for lease in record["leases"]
+                       if Path(lease["path"]).resolve() == root), None)
+        if parent is None:
+            return root
+        listing = run([record["treehouse"], "status", "--json"], primary)
+        if listing.returncode:
+            raise ValueError("parent lease ownership inspection unavailable")
+        rows = [row for row in json.loads(listing.stdout) if Path(row["path"]).resolve() == root]
+        if len(rows) != 1 or any(rows[0].get(key) != parent[key] for key in ("lease_id", "lease_holder")):
+            raise ValueError("parent lease ownership changed")
+    active = any(not item["ended"] for item in record["sessions"].values())
+    awaiting_start = record["client"] == "claude" and not record["sessions"]
+    if (process_start(record["pid"]) != record["started"] and not active and not awaiting_start):
+        raise ValueError("containing launcher session has ended")
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip(".-")[:48] or "task"
+    branch = f"feature/{record['client']}-{slug}-{uuid.uuid4().hex[:12]}"
+    holder = f"agent-treehouse:{record['client']}:{token}"
+    with state_lock():
+        record = read_json(path)
+        record["pending"].append(branch)
+        write_json(path, record)
+    lease = None
+    try:
+        result = run([record["treehouse"], "get", "--lease", "--json",
+                      "--lease-holder", holder, "--branch", branch], primary, timeout=180)
+        if result.returncode:
+            raise ValueError("Treehouse allocation failed: " + result.stderr.strip())
+        lease = json.loads(result.stdout)
+        # WARN: An uncertain acquisition is left leased; never guess an identity for return.
+        for key in ("path", "lease_id", "lease_holder", "leased_at", "base_branch"):
+            if not isinstance(lease.get(key), str) or not lease[key]:
+                raise ValueError(f"Treehouse allocation returned no {key}; inspect treehouse status")
+        if lease["lease_holder"] != holder or not Path(lease["path"]).is_absolute():
+            raise ValueError("Treehouse allocation ownership mismatch; inspect treehouse status")
+        lease.update(branch=branch, primary=str(primary))
+        with state_lock():
+            record = read_json(path)
+            record["leases"].append(lease)
+            write_json(path, record)
+        allocated, registered_primary = checkout(lease["path"])
+        if allocated == primary or registered_primary != primary:
+            raise ValueError("Treehouse returned an unexpected checkout; lease retained")
+        if git(allocated, "symbolic-ref", "-q", "HEAD") != "refs/heads/" + branch:
+            raise ValueError("Treehouse returned an unexpected branch; lease retained")
+        return allocated
+    finally:
+        with state_lock():
+            record = read_json(path)
+            record["pending"].remove(branch)
+            write_json(path, record)
+
+
+def codex_request(args):
+    """Recognize fresh local interactive/exec requests without parsing prompt text."""
+    value_flags = {"-c", "--config", "--enable", "--disable", "--remote",
+                   "--remote-auth-token-env", "-i", "--image", "-m", "--model",
+                   "--local-provider", "-p", "--profile", "-s", "--sandbox",
+                   "-a", "--ask-for-approval", "--add-dir", "--thread-source",
+                   "--cyber-access-program", "--output-schema", "--color",
+                   "-o", "--output-last-message"}
+    commands = {"agents", "exec", "e", "review", "login", "logout", "mcp", "plugin",
+                "app-server", "remote-control", "app", "completion", "update", "doctor",
+                "sandbox", "debug", "apply", "a", "resume", "queue", "archive", "delete",
+                "migrate-rollouts", "migrate-nfs-db", "unarchive", "fork", "cloud",
+                "exec-server", "features", "help"}
+    cleaned, target, requested, mode, positional = [], Path.cwd(), False, "interactive", False
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--":
+            cleaned.extend(args[index:])
+            break
+        if arg in ("--help", "-h", "--version", "-V") or arg.startswith("--remote"):
+            return None
+        if arg == "--worktree":
+            requested = True
+        elif arg in ("--cd", "-C"):
+            index += 1
+            if index == len(args):
+                return None
+            target = Path(args[index]).expanduser().absolute()
+        elif arg.startswith("--cd=") or (arg.startswith("-C") and len(arg) > 2):
+            target = Path(arg.partition("=")[2] if arg.startswith("--") else arg[2:]).expanduser().absolute()
+        elif arg.partition("=")[0] in value_flags and "=" not in arg:
+            cleaned.append(arg)
+            index += 1
+            if index == len(args):
+                return None
+            cleaned.append(args[index])
+        elif not arg.startswith("-"):
+            if arg in ("exec", "e") and mode == "interactive" and not positional:
+                mode = "exec"
+                cleaned.append(arg)
+            elif not positional and arg in (commands if mode == "interactive" else {"resume", "fork", "review", "help"}):
+                return None
+            else:
+                positional = True
+                cleaned.append(arg)
+        else:
+            cleaned.append(arg)
+        index += 1
+    return (cleaned, target.resolve()) if requested else None
+
+
+def settings_value(args, flag):
+    value, indices = None, []
+    for index, arg in enumerate(args):
+        if arg == "--":
+            break
+        if arg == flag:
+            if index + 1 >= len(args):
+                raise ValueError(f"{flag} requires a value")
+            value = args[index + 1]
+            indices.append((index, 2))
+        elif arg.startswith(flag + "="):
+            value = arg[len(flag) + 1:]
+            indices.append((index, 1))
+    return value, indices
+
+
+def load_settings(value):
+    if value is None:
+        return {}
+    data = json.loads(value) if value.lstrip().startswith("{") else json.loads(Path(value).expanduser().read_text())
+    if not isinstance(data, dict):
+        raise ValueError("Claude settings must be a JSON object")
+    return data
+
+
+def claude_settings(args, cwd):
+    value, indices = settings_value(args, "--settings")
+    extra = load_settings(value)
+    sources, _ = settings_value(args, "--setting-sources")
+    sources = set((sources if sources is not None else "user,project,local").split(","))
+    if "--restricted" in args:
+        sources = set()
+    home = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")).expanduser()
+    paths = []
+    if "user" in sources:
+        paths.append(home / "settings.json")
+    if "project" in sources:
+        paths.append(cwd / ".claude/settings.json")
+    if "local" in sources:
+        paths.append(cwd / ".claude/settings.local.json")
+    documents = [load_settings(str(path)) for path in paths if path.exists()]
+    # NOTE: Managed policy outranks CLI; CLI scalar values outrank ordinary settings.
+    documents.append(extra)
+    managed_root = Path("/Library/Application Support/ClaudeCode") if sys.platform == "darwin" else Path("/etc/claude-code")
+    managed_paths = [managed_root / "managed-settings.json",
+                     *sorted((managed_root / "managed-settings.d").glob("*.json")),
+                     home / "remote-settings.json"]
+    documents.extend(load_settings(str(path)) for path in managed_paths if path.exists())
+    managed, _ = settings_value(args, "--managed-settings")
+    if managed:
+        documents.append(load_settings(managed))
+    if sys.platform == "darwin":
+        for path in (Path("/Library/Managed Preferences/com.anthropic.claudecode.plist"),
+                     Path("/Library/Managed Preferences") / Path.home().name / "com.anthropic.claudecode.plist"):
+            if path.exists():
+                with path.open("rb") as source:
+                    policy = plistlib.load(source)
+                payload = policy.get("ClaudeCode", policy)
+                documents.append(load_settings(payload) if isinstance(payload, str) else payload)
+    effective = {}
+    for document in documents:
+        effective.update({key: document[key] for key in ("disableAllHooks", "allowManagedHooksOnly") if key in document})
+    if effective.get("disableAllHooks") is True or effective.get("allowManagedHooksOnly") is True:
+        return None
+    for document in documents:
+        allocation_conflict(document)
+        if document.get("policyHelper") or document.get("policyHelpers"):
+            raise ValueError("dynamic Claude policy cannot be inspected for allocation hook conflicts")
+    inspect_plugins(args, home, cwd, documents)
+    return extra, indices, home, documents
+
+
+def allocation_conflict(document):
+    hooks = document.get("hooks", {})
+    if any(hooks.get(event) for event in ALLOCATION_EVENTS):
+        raise ValueError("conflicting Claude worktree allocation hooks; use command claude for native behavior")
+
+
+def inspect_plugin(path):
+    path = Path(path).expanduser()
+    if not path.is_dir():
+        raise ValueError(f"Claude plugin hooks cannot be inspected: {path}")
+    manifest = path / ".claude-plugin/plugin.json"
+    documents = []
+    default = path / "hooks/hooks.json"
+    if default.exists():
+        documents.append(load_settings(str(default)))
+    if manifest.exists():
+        extra = load_settings(str(manifest)).get("hooks", [])
+        if not isinstance(extra, list):
+            extra = [extra]
+        for item in extra:
+            if isinstance(item, str):
+                documents.append(load_settings(str(path / item)))
+            elif isinstance(item, dict):
+                documents.append(item)
+            else:
+                raise ValueError(f"Claude plugin hooks cannot be inspected: {path}")
+    elif not default.exists():
+        children = [child for child in path.iterdir()
+                    if child.is_dir() and (child / ".claude-plugin/plugin.json").exists()]
+        if not children:
+            raise ValueError(f"Claude plugin manifest unavailable: {path}")
+        for child in children:
+            inspect_plugin(child)
+    for document in documents:
+        allocation_conflict(document)
+
+
+def inspect_plugins(args, home, cwd, documents):
+    if any(arg == "--plugin-url" or arg.startswith("--plugin-url=") for arg in args):
+        raise ValueError("remote Claude plugin hooks cannot be inspected before allocation")
+    for index, arg in enumerate(args):
+        if arg == "--plugin-dir" and index + 1 < len(args):
+            inspect_plugin(args[index + 1])
+        elif arg.startswith("--plugin-dir="):
+            inspect_plugin(arg.partition("=")[2])
+    enabled = {}
+    for document in documents:
+        enabled.update(document.get("enabledPlugins", {}))
+    registry = home / "plugins/installed_plugins.json"
+    installed = load_settings(str(registry)).get("plugins", {}) if registry.exists() else {}
+    for name, active in enabled.items():
+        if not active:
+            continue
+        entries = [entry for entry in installed.get(name, [])
+                   if entry.get("scope") == "user" or (
+                       isinstance(entry.get("projectPath"), str)
+                       and Path(entry["projectPath"]).resolve() == cwd)]
+        if not entries:
+            raise ValueError(f"enabled Claude plugin hooks unavailable: {name}")
+        for entry in entries:
+            inspect_plugin(entry["installPath"])
+
+
+def claude_args(args, token, extra, indices):
+    hooks = extra.setdefault("hooks", {})
+    command = shlex.join([sys.executable, str(SOURCE), "hook", token])
+    for event in (*ALLOCATION_EVENTS, "SessionStart", "SessionEnd"):
+        hooks.setdefault(event, []).append({"hooks": [
+            {"type": "command", "command": command, "timeout": 180 if event == "WorktreeCreate" else 5}
+        ]})
+    # WHY: Claude uses only the last --settings; appending hooks alone loses caller settings.
+    merged_path = session_path(token).with_suffix(".settings")
+    write_json(merged_path, extra)
+    merged = str(merged_path)
+    if indices:
+        index, length = indices[-1]
+        return [*args[:index], "--settings", merged, *args[index + length:]]
+    boundary = args.index("--") if "--" in args else len(args)
+    return [*args[:boundary], "--settings", merged, *args[boundary:]]
+
+
+def hook(token):
+    event = json.load(sys.stdin)
+    path = session_path(token)
+    name = event.get("hook_event_name")
+    if name == "WorktreeCreate":
+        if not isinstance(event.get("session_id"), str) or not event["session_id"]:
+            raise ValueError("Claude allocation identity unavailable")
+        # WHY: Tmux allocation uses a temporary identity; only session lifecycle hooks own it.
+        cwd = event.get("cwd")
+        if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+            raise ValueError("worktree request working directory unavailable")
+        root = acquire(token, cwd, str(event.get("name") or "task"))
+        print(root)
+    elif event.get("hook_event_name") in ("SessionStart", "SessionEnd"):
+        with state_lock():
+            record = read_json(path)
+            session_id = event.get("session_id")
+            if not isinstance(session_id, str) or not session_id:
+                raise ValueError("Claude session identity unavailable")
+            record["sessions"][session_id] = {
+                "cwd": event.get("cwd"), "ended": event["hook_event_name"] == "SessionEnd"}
+            write_json(path, record)
+        if event["hook_event_name"] == "SessionEnd":
+            schedule(token)
+    elif event.get("hook_event_name") == "WorktreeRemove":
+        root = Path(event.get("worktree_path") or "").resolve()
+        record = read_json(path)
+        if any(Path(lease["path"]).resolve() == root for lease in record["leases"]):
+            # WHY: Return can terminate processes; the containing session must finish first.
+            print(f"agent-treehouse: retained {root}; return deferred until session exit", file=sys.stderr)
+            return 1
+        print(f"agent-treehouse: retained {root}; checkout is not owned by this integration", file=sys.stderr)
+        return 1
+    return 0
+
+
+def codex_end(event):
+    """Let the existing SessionEnd hook identify an owned lease without claiming others."""
+    cwd = event.get("cwd")
+    if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+        return False
+    base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")).expanduser()
+    if not (base / "agent-treehouse").exists():
+        return False
+    try:
+        root, _primary = checkout(cwd)
+    except ValueError:
+        return False
+    tokens = []
+    with state_lock():
+        for path in state_directory().glob("*.json"):
+            record = read_json(path)
+            if record["client"] == "codex" and any(
+                    Path(lease["path"]).resolve() == root for lease in record["leases"]):
+                record["sessions"][event["session_id"]] = {"cwd": str(root), "ended": True}
+                write_json(path, record)
+                tokens.append(path.stem)
+    for token in tokens:
+        schedule(token)
+    return bool(tokens)
+
+
+def schedule(token, command="reap"):
+    uv = shutil.which("uv")
+    if not uv:
+        print("agent-treehouse: leases retained; uv unavailable for deferred inspection", file=sys.stderr)
+        return
+    log = state_directory() / "worker.log"
+    descriptor = os.open(log, os.O_APPEND | os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    try:
+        subprocess.Popen([uv, "run", "--script", str(SOURCE), command, token], cwd="/",
+                         stdin=subprocess.DEVNULL, stdout=descriptor, stderr=descriptor,
+                         start_new_session=True)
+    finally:
+        os.close(descriptor)
+
+
+def launch_owned(client, real, args, cwd, token):
+    # WHY: Exec preserves native terminal signals; forwarding can duplicate group delivery.
+    schedule(token, "watch")
+    os.environ[SESSION_ENV] = token
+    os.chdir(cwd)
+    native(client, real, args)
+
+
+def watch(token):
+    path = session_path(token)
+    record = read_json(path)
+    while process_start(record["pid"]) == record["started"]:
+        time.sleep(0.5)
+    with state_lock():
+        record = read_json(path)
+        record["ended"] = True
+        write_json(path, record)
+    return reap(token)
+
+
+def git_reason(lease):
+    root, primary = checkout(lease["path"])
+    if root == primary or str(primary) != lease["primary"]:
+        return "checkout registration changed"
+    if git(root, "status", "--porcelain", "--untracked-files=all"):
+        return "dirty checkout"
+    if any(entry and (entry[0].islower() or entry[0] == "S")
+           for entry in git(root, "ls-files", "-v", "-z").split("\0")):
+        return "hidden index flags"
+    ignored = git(root, "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+    if ignored:
+        config = root / ".codex/config.toml"
+        expected = "[desktop]\ngit-worktree-root = " + json.dumps(str(primary / ".worktrees"), ensure_ascii=False) + "\n"
+        generated = (ignored == ".codex/config.toml\0" and not config.parent.is_symlink()
+                     and not config.is_symlink() and config.is_file()
+                     and config.stat().st_uid == os.getuid() and config.read_text() == expected)
+        if not generated:
+            return "ignored artifacts"
+    for marker in ("locked", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "BISECT_START",
+                   "rebase-merge", "rebase-apply", "sequencer", "index.lock"):
+        if os.path.lexists(git(root, "rev-parse", "--path-format=absolute", "--git-path", marker)):
+            return "Git operation or lock in progress"
+    head = git(root, "rev-parse", "--verify", "HEAD")
+    ref = git(root, "symbolic-ref", "-q", "HEAD")
+    if ref != "refs/heads/" + lease["branch"] or git(primary, "rev-parse", "--verify", ref) != head:
+        return "branch no longer retains checkout HEAD"
+    return None
+
+
+def activity_reason(root):
+    result = run(["lsof", "-nP", "-u", str(os.getuid()), "-Fn"], timeout=20)
+    if result.returncode:
+        raise ValueError("process inspection unavailable")
+    for line in result.stdout.splitlines():
+        if line.startswith("n/") and Path(line[1:].removesuffix(" (deleted)")).resolve().is_relative_to(root):
+            return "active process references checkout"
+    return None
+
+
+def session_reason(root, record):
+    for path in state_directory().glob("*.json"):
+        other = read_json(path)
+        if not other["ended"] and process_start(other["pid"]) == other["started"]:
+            paths = [lease["path"] for lease in other["leases"]]
+            paths.extend(item["cwd"] for item in other["sessions"].values())
+            if any(Path(cwd).resolve().is_relative_to(root) for cwd in paths if isinstance(cwd, str)):
+                return "another integration session references checkout"
+    if record["client"] == "claude":
+        if not record["sessions"]:
+            return "Claude session startup not observed"
+        if any(not item["ended"] for item in record["sessions"].values()):
+            return "Claude session has not ended"
+    claude = record["executable"] if record["client"] == "claude" else executable("claude")
+    result = run([claude, "agents", "--json"])
+    if result.returncode:
+        raise ValueError("Claude session inventory unavailable")
+    agents = json.loads(result.stdout)
+    if not isinstance(agents, list):
+        raise ValueError("Claude session inventory unavailable")
+    for agent in agents:
+        cwd = agent.get("cwd")
+        if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+            raise ValueError("Claude session directory unavailable")
+        if Path(cwd).resolve().is_relative_to(root):
+            ended = record["client"] == "claude" and record["sessions"].get(
+                agent.get("sessionId"), {}).get("ended") is True
+            if ended and agent.get("state") in ("done", "failed", "stopped"):
+                continue
+            return "Claude session references checkout"
+    control = runpy.run_path(str(SOURCE.with_name("codex-cleanup")))
+    socket = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "app-server-control/app-server-control.sock"
+    if socket.exists():
+        with control["unix_connect"](str(socket), uri="ws://localhost", open_timeout=3,
+                                     close_timeout=1, ping_interval=None) as connection:
+            daemon = control["Daemon"](connection)
+            daemon.request("initialize", {"clientInfo": {"name": "agent_treehouse", "version": "1"},
+                                         "capabilities": {"experimentalApi": True}})
+            connection.send(json.dumps({"method": "initialized"}))
+            for thread in control["snapshot"](daemon).values():
+                cwd = thread.get("cwd")
+                if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+                    raise ValueError("Codex session directory unavailable")
+                if Path(cwd).resolve().is_relative_to(root):
+                    ending = record["sessions"].get(thread["id"], {}).get("ended") is True
+                    if not ending or control["status"](thread) != "idle" or daemon.busy(thread["id"]):
+                        return "Codex session references checkout"
+    elif record["client"] == "codex":
+        # WHY: A missing shared inventory cannot prove that another session is absent.
+        raise ValueError("Codex session inventory unavailable")
+    paseo = shutil.which("paseo")
+    if paseo:
+        result = run([paseo, "ls", "--global", "--json", "--home",
+                      os.environ.get("PASEO_HOME", str(Path.home() / ".paseo"))])
+        if result.returncode:
+            raise ValueError("Paseo session inspection unavailable")
+        agents = json.loads(result.stdout)
+        if not isinstance(agents, list):
+            raise ValueError("Paseo session inventory unavailable")
+        for agent in agents:
+            cwd = agent.get("cwd")
+            if not isinstance(cwd, str) or not Path(cwd).expanduser().is_absolute():
+                raise ValueError("Paseo session directory unavailable")
+            if Path(cwd).expanduser().resolve().is_relative_to(root):
+                return "Paseo session references checkout"
+    return None
+
+
+def owned_lease(record, lease):
+    result = run([record["treehouse"], "status", "--json"], lease["primary"])
+    if result.returncode:
+        raise ValueError("Treehouse ownership inspection unavailable")
+    rows = [row for row in json.loads(result.stdout)
+            if Path(row["path"]).resolve() == Path(lease["path"]).resolve()]
+    if len(rows) != 1 or any(rows[0].get(key) != lease[key] for key in ("lease_id", "lease_holder")):
+        return "lease ownership changed"
+    if rows[0]["status"] in ("unverified", "damaged", "recovered"):
+        return "Treehouse checkout inspection unavailable"
+    if rows[0].get("processes"):
+        return "active process in checkout"
+    return None
+
+
+def report(token, lease, action, reason):
+    record = {"time": time.time(), "session": token, "path": lease["path"],
+              "lease_id": lease["lease_id"], "action": action, "reason": reason}
+    descriptor = os.open(state_directory() / "returns.jsonl",
+                         os.O_APPEND | os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    try:
+        os.write(descriptor, (json.dumps(record) + "\n").encode())
+    finally:
+        os.close(descriptor)
+    if action != "returned":
+        print(f"agent-treehouse: {action} {lease['path']}; {reason}", file=sys.stderr)
+
+
+def reap_locked(token):
+    path = session_path(token)
+    record = read_json(path)
+    deadline = time.monotonic() + 30
+    while process_start(record["pid"]) == record["started"] and time.monotonic() < deadline:
+        time.sleep(0.1)
+    record = read_json(path)
+    if not record["ended"] or process_start(record["pid"]) == record["started"] or record["pending"]:
+        return 0
+    for lease in list(record["leases"]):
+        reason, action, attempted = None, "retained", False
+        try:
+            root = Path(lease["path"]).resolve()
+            reason = (owned_lease(record, lease) or git_reason(lease) or
+                      session_reason(root, record) or activity_reason(root))
+            if not reason:
+                # WARN: Recheck after process/session inspection; only native guarded return mutates.
+                current = read_json(path)
+                if current != record:
+                    raise ValueError("ownership record changed during inspection")
+                reason = (session_reason(root, record) or activity_reason(root) or
+                          git_reason(lease) or owned_lease(record, lease))
+                if not reason:
+                    if read_json(path) != record:
+                        raise ValueError("ownership record changed before return")
+                    retained_head = git(root, "rev-parse", "--verify", "HEAD")
+                    attempted = True
+                    result = run([record["treehouse"], "return", str(root),
+                                  "--if-lease-id", lease["lease_id"],
+                                  "--if-lease-holder", lease["lease_holder"]],
+                                 lease["primary"], timeout=30)
+                    if result.returncode:
+                        raise ValueError("Treehouse return failed: " + result.stderr.strip())
+                    listing = run([record["treehouse"], "status", "--json"], lease["primary"])
+                    if listing.returncode:
+                        raise ValueError("Treehouse return confirmation unavailable")
+                    rows = [row for row in json.loads(listing.stdout) if Path(row["path"]).resolve() == root]
+                    if len(rows) != 1 or rows[0].get("lease_id"):
+                        raise ValueError("Treehouse return unconfirmed")
+                    if git(lease["primary"], "rev-parse", "--verify", "refs/heads/" + lease["branch"]) != retained_head:
+                        raise ValueError("branch preservation unconfirmed after Treehouse return")
+                    action, reason = "returned", "lease returned; branch preserved"
+                    with state_lock():
+                        record = read_json(path)
+                        record["leases"].remove(lease)
+                        write_json(path, record)
+        except Exception as error:
+            reason = str(error)
+            action = "unconfirmed" if attempted else "retained"
+        report(token, lease, action, reason)
+    if (not record["leases"] and record["sessions"]
+            and all(item["ended"] for item in record["sessions"].values())):
+        path.with_suffix(".settings").unlink(missing_ok=True)
+    return 0
+
+
+def reap(token):
+    lock = session_path(token).with_suffix(".reap-lock")
+    descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        # WHY: Each end callback must run after an earlier scan; skipping can lose cleanup.
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        return reap_locked(token)
+    finally:
+        os.close(descriptor)
+
+
+def launch(client, args):
+    real = executable(client)
+    treehouse = shutil.which("treehouse")
+    if not treehouse:
+        native(client, real, args)
+    if client == "codex":
+        request = codex_request(args)
+        if request is None:
+            native(client, real, args)
+        cleaned, target = request
+        root, primary = checkout(target)
+        if root != primary:
+            native(client, real, ["--cd", str(target), *cleaned])
+        token = new_session(client, primary, treehouse, real)
+        try:
+            allocated = acquire(token, target, primary.name)
+        except Exception:
+            with state_lock():
+                path = session_path(token)
+                record = read_json(path)
+                record["ended"] = True
+                write_json(path, record)
+            schedule(token)
+            raise
+        destination = allocated / target.relative_to(root)
+        return launch_owned(client, real, ["--cd", str(destination), *cleaned], primary, token)
+    if (any(arg.partition("=")[0] in ("--bare", "--safe-mode", "--help", "-h", "--version", "-v", "--desktop",
+                                    "--cloud", "--environment") for arg in args)
+            or os.environ.get("CLAUDE_CODE_SIMPLE") == "1"
+            or os.environ.get("CLAUDE_CODE_SAFE_MODE") == "1"):
+        native(client, real, args)
+    if args and args[0] in {"agents", "attach", "auth", "auto-mode", "doctor", "gateway",
+                           "import", "install", "logs", "mcp", "plugin", "plugins", "purge",
+                           "respawn", "rm", "setup-token", "stop", "kill", "ultrareview", "update", "upgrade"}:
+        native(client, real, args)
+    try:
+        root, primary = checkout(Path.cwd())
+    except ValueError:
+        native(client, real, args)
+    settings = claude_settings(args, root)
+    if settings is None:
+        native(client, real, args)
+    extra, indices, _home, _documents = settings
+    token = new_session(client, primary, treehouse, real)
+    return launch_owned(client, real, claude_args(args, token, extra, indices), Path.cwd(), token)
+
+
+def main():
+    if len(sys.argv) < 2:
+        raise ValueError("expected codex, claude, hook, reap, or watch")
+    if sys.argv[1] in ("codex", "claude"):
+        return launch(sys.argv[1], sys.argv[2:])
+    if sys.argv[1] == "hook" and len(sys.argv) == 3:
+        return hook(sys.argv[2])
+    if sys.argv[1] == "reap" and len(sys.argv) == 3:
+        return reap(sys.argv[2])
+    if sys.argv[1] == "watch" and len(sys.argv) == 3:
+        return watch(sys.argv[2])
+    raise ValueError("expected codex, claude, hook, reap, or watch SESSION")
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+        print(f"agent-treehouse: {error}", file=sys.stderr)
+        sys.exit(1)

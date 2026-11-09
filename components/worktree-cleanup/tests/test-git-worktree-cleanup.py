@@ -16,7 +16,7 @@ import threading
 
 def main():
     tool = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else (
-        Path(__file__).resolve().parents[1] / "bin/git-worktree-cleanup"
+        Path(os.environ["COMPONENT_INSTALL_HOME"]) / ".local/bin/git-worktree-cleanup"
     )
     env = {
         **os.environ,

@@ -12,7 +12,8 @@ on:
       - 'claude/evals/socrates-dialogue/**'
       - '.github/workflows/socrates-dialogue.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'claude/commands/socrates.md'
       - 'claude/commands/socrates/**'

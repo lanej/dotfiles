@@ -22,7 +22,8 @@ import time
 from websockets.sync.server import unix_serve
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ["COMPONENT_SOURCE_ROOT"])
+INSTALL_BIN = Path(os.environ["COMPONENT_INSTALL_HOME"]) / ".local/bin"
 
 
 def wait_for(predicate):
@@ -36,7 +37,7 @@ def wait_for(predicate):
 def fixture(client):
     treehouse = shutil.which("treehouse")
     assert treehouse, "install Treehouse before running this detector"
-    with tempfile.TemporaryDirectory(prefix="agent-treehouse-", dir="/tmp") as name:
+    with tempfile.TemporaryDirectory(prefix="agent-", dir=os.environ["TMPDIR"]) as name:
         folder = Path(name).resolve()
         home, bins, project = folder / "home", folder / "bin", folder / "project"
         for path in (home, bins, project):
@@ -217,7 +218,7 @@ def retry(env):
     for path in state.glob("*.json"):
         if not json.loads(path.read_text())["leases"]:
             continue
-        subprocess.run([sys.executable, str(ROOT / "bin/agent-treehouse"), "reap", path.stem],
+        subprocess.run([sys.executable, str(INSTALL_BIN / "agent-treehouse"), "reap", path.stem],
                        env=env, cwd="/", check=True, timeout=45)
 
 
@@ -266,7 +267,7 @@ def codex_workflow():
 
         env["AGENT_TEST_MODE"] = "signal"
         previous = (folder / "agent.json").read_text()
-        process = subprocess.Popen([str(ROOT / "bin/codex-wrapper"), "--worktree", "signal probe"],
+        process = subprocess.Popen([str(INSTALL_BIN / "codex-wrapper"), "--worktree", "signal probe"],
                                    cwd=project, env=env, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, text=True)
         try:

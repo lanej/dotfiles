@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - 'components/agent-launchers/bin/codex-worktree-exit-hook'
       - 'bin/claude-autoname-hook*'
       - 'bin/claude-json-prune*'
       - 'bin/claude-session-resolve*'
@@ -39,8 +40,10 @@ on:
       - 'scripts/make/require.sh'
       - '.github/workflows/claude-features.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
+      - 'components/agent-launchers/bin/codex-worktree-exit-hook'
       - 'bin/claude-autoname-hook*'
       - 'bin/claude-json-prune*'
       - 'bin/claude-session-resolve*'
@@ -87,7 +90,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
