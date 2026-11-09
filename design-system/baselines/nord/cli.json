@@ -1,0 +1,184 @@
+[
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "Native CLI atoms",
+      "fg": "d8dee9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "OK       Complete",
+      "fg": "a3be8c",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                           ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "WARN     Check result",
+      "fg": "ebcb8b",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                       ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "ERROR    Failed",
+      "fg": "bf616a",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                             ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "!        Needs input",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                        ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "WORKING  In progress",
+      "fg": "88c0d0",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                        ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "UNKNOWN  No observation",
+      "fg": "81a1c1",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                     ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "Enter accept \u00b7 Esc cancel",
+      "fg": "88c0d0",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                   ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ]
+]

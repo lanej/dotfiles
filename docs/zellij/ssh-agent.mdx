@@ -18,6 +18,8 @@ The first command opens a tab for `myhost` and attaches to or creates its `main`
 
 Enable forwarding only for a host you trust, using your usual SSH configuration or an SSH connection with `-A`. Connect or reconnect with **`zj SESSION`** or **`zssh HOST SESSION`** so existing panes can use the newly forwarded agent.
 
+Restoring a stopped session also refreshes its agent. If the server is not ready before attach, the launcher retries after startup rather than retaining the previous connection's socket.
+
 Sessions have separate agent selections. Multiple viewers of one session share its latest forwarded connection; if that connection closes, reconnect to that session with forwarding enabled. A login without forwarding does not borrow another session's agent.
 
 The shared popup follows the session from which you opened it. Reopening the same popup from another session changes which session's agent it uses.

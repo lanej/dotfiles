@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub fn attach(args: &[String]) -> Result<()> {
@@ -17,8 +17,19 @@ pub fn attach(args: &[String]) -> Result<()> {
     }
     let defaults = vec!["main".to_owned()];
     let args = if args.is_empty() { &defaults } else { args };
-    if !args[0].starts_with('-') {
-        let _ = crate::agent::refresh(&args[0], false);
+    if !args[0].starts_with('-')
+        && crate::agent::refresh(&args[0], false).is_err()
+        && crate::agent::can_refresh()
+    {
+        // A restored server only starts during attach. Retry in a separate,
+        // bounded process while this process becomes the interactive client.
+        if let Ok(exe) = env::current_exe() {
+            let _ = Command::new(exe)
+                .args(["agent", "refresh-after-attach", &args[0]])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .spawn();
+        }
     }
     Err(Command::new("zellij")
         .args(["attach", "--create"])

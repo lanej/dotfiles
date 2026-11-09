@@ -1,0 +1,8 @@
+{
+  "message-style": "bg=#2E3440,fg=#88C0D0",
+  "pane-active-border-style": "bg=default,fg=#88C0D0,bold",
+  "pane-border-style": "bg=default,fg=#4C566A",
+  "status-style": "bg=#2E3440,fg=#D8DEE9",
+  "window-status-current-style": "bg=#434C5E,fg=#88C0D0",
+  "window-style": "bg=#2E3440"
+}

@@ -726,23 +726,6 @@ install_treehouse_tools() {
 	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
 }
 
-install_firstmate_tools() {
-	install_package_version no-mistakes 1.84.0 || return 1
-	local tool version tool_version firstmate_checkout
-	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
-	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
-		tool=${tool_version%:*}
-		version=${tool_version#*:}
-		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
-			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
-		fi
-	done
-	if [ ! -e "$firstmate_checkout" ]; then
-		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
-		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
-	fi
-	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
-}
 
 claude-code_current_semver() {
 	current_heuristic_semver claude
@@ -1157,7 +1140,6 @@ install_dependencies() {
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
 			treehouse) install_treehouse_tools || return 1 ;;
-			firstmate) install_firstmate_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
 			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
 		esac

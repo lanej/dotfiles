@@ -105,6 +105,10 @@ pub fn enabled() -> bool {
     env::var("SSH_CONNECTION").is_ok_and(|s| !s.is_empty())
         && env::var("SSH_AUTH_SOCK").is_ok_and(|s| !s.is_empty())
 }
+pub fn can_refresh() -> bool {
+    enabled()
+        && env::var_os("SSH_AUTH_SOCK").is_some_and(|path| raw_socket(Path::new(&path)).is_ok())
+}
 pub fn publish(operation: &str, raw: &Path, request: Option<&Path>) -> Result<PathBuf> {
     if let Some(request) = request {
         if !request.is_absolute() {
@@ -164,6 +168,9 @@ pub fn publish(operation: &str, raw: &Path, request: Option<&Path>) -> Result<Pa
     Ok(link)
 }
 pub fn refresh(session: &str, follow: bool) -> Result<()> {
+    refresh_until(session, follow, Instant::now() + Duration::from_secs(2))
+}
+fn refresh_until(session: &str, follow: bool, deadline: Instant) -> Result<()> {
     if !enabled() {
         return Ok(());
     }
@@ -193,7 +200,7 @@ pub fn refresh(session: &str, follow: bool) -> Result<()> {
             &raw.to_string_lossy(),
             &request.path().to_string_lossy(),
         ],
-        Instant::now() + Duration::from_secs(2),
+        deadline,
     );
     let info = fs::symlink_metadata(request.path().join("success"))
         .context("Agent update was not acknowledged")?;
@@ -202,10 +209,27 @@ pub fn refresh(session: &str, follow: bool) -> Result<()> {
     }
     Ok(())
 }
+fn refresh_after_attach(session: &str) -> Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(200));
+        if refresh_until(
+            session,
+            false,
+            deadline.min(Instant::now() + Duration::from_secs(2)),
+        )
+        .is_ok()
+        {
+            return Ok(());
+        }
+    }
+    bail!("forwarded SSH agent refresh failed; reconnect with agent forwarding enabled.")
+}
 pub fn main(args: &[String]) -> Result<()> {
     match args {
         [op] if op=="init"=>{if enabled(){println!("{}",publish("init",Path::new(&env::var("SSH_AUTH_SOCK")?),None)?.display());}},
         [op,session] if op=="refresh"=>refresh(session,false)?,
+        [op,session] if op=="refresh-after-attach"=>refresh_after_attach(session)?,
         [op] if op=="follow-popup"=>refresh("dotfiles-popup",true)?,
         [op,raw,request] if matches!(op.as_str(),"publish"|"publish-popup")=>println!("{}",publish(op,Path::new(raw),Some(Path::new(request)))?.display()),
         _=>bail!("Usage: zellij-agent init | refresh SESSION | follow-popup | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY"),

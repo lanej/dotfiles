@@ -40,6 +40,7 @@ class Helpers(unittest.TestCase):
         for name, body in {
             "ps": 'print(os.environ["PARENT_PID"] + " 1 zellij")',
             "fzf": '''(root / "choices").write_text(sys.stdin.read())
+(root / "fzf-args").write_text(json.dumps(sys.argv[1:]))
 print((root / "selection").read_text())''',
             "zellij": '''args = sys.argv[1:]
 with (root / "calls").open("a") as log:
@@ -123,6 +124,10 @@ print(reply if isinstance(reply, str) else json.dumps(reply), end="")''',
         self.assertFalse(any("resize" in call for call in self.calls()))
 
     def test_tab_picker_rejects_closed_target_and_keeps_names_as_data(self):
+        theme = self.home / "theme"
+        theme.mkdir()
+        (theme / "fzf.txt").write_text("--color=dark,header:#123456\n")
+        self.env["DOTFILES_THEME_DIR"] = str(theme)
         title = "manual; $(touch should-not-exist)\nname"
         tabs = [{"tab_id": 4, "position": 1, "name": title}, {"tab_id": 8, "position": 2, "name": "other"}]
         (self.home / "selection").write_text("8")
@@ -131,6 +136,7 @@ print(reply if isinstance(reply, str) else json.dumps(reply), end="")''',
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any("go-to-tab-by-id" in call for call in self.calls()))
         self.assertIn("manual; $(touch should-not-exist) name", (self.home / "choices").read_text())
+        self.assertIn("--color=dark,header:#123456", json.loads((self.home / "fzf-args").read_text()))
         self.plan([tabs, [pane(7)], tabs, ""])
         self.run_helper("zellij-picker", "tabs")
         self.assertEqual(self.calls()[-1][-3:], ["action", "go-to-tab-by-id", "8"])

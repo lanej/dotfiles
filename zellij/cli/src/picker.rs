@@ -4,6 +4,7 @@ use base64::{engine::general_purpose::URL_SAFE, Engine};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
+use std::{env, fs, path::PathBuf};
 
 pub fn display_tab(
     tab: &Value,
@@ -60,6 +61,11 @@ fn session_names() -> Result<Vec<String>> {
     Ok(names)
 }
 fn choose(rows: Vec<String>, heading: &str, preview: Option<&str>) -> Result<Option<String>> {
+    let theme = env::var_os("DOTFILES_THEME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or(root()?.join("design-system/generated"));
+    let colors = fs::read_to_string(theme.join("fzf.txt"))
+        .context("Cannot read picker theme; run make theme-generate")?;
     let mut args = vec![
         "--height=100%".into(),
         "--reverse".into(),
@@ -67,7 +73,7 @@ fn choose(rows: Vec<String>, heading: &str, preview: Option<&str>) -> Result<Opt
         "--delimiter=\t".into(),
         "--with-nth=2..".into(),
         format!("--header={heading}"),
-        "--color=dark,pointer:#d787d7,header:#d787d7,hl+:#ffafaf".into(),
+        colors.trim().into(),
     ];
     if let Some(preview) = preview {
         args.push(format!(

@@ -17,8 +17,9 @@ local server_filetypes = {
 function M:init(options)
 	M.super.init(self, options)
 	self.language_highlights = {}
-	self.boot_highlight = self:create_hl({ fg = "#ebcb8b" }, "boot")
-	self.error_highlight = self:create_hl({ fg = "#bf616a" }, "error")
+	local colors = require("dotfiles-theme").colors()
+	self.boot_highlight = self:create_hl({ fg = colors["status.warning"] }, "boot")
+	self.error_highlight = self:create_hl({ fg = colors["status.error"] }, "error")
 end
 
 function M:update_status()
