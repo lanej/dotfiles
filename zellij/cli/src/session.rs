@@ -23,7 +23,7 @@ pub fn attach(args: &[String]) -> Result<()> {
     {
         // A restored server only starts during attach. Retry in a separate,
         // bounded process while this process becomes the interactive client.
-        if let Ok(exe) = env::current_exe() {
+        if let Ok(exe) = executable() {
             let _ = Command::new(exe)
                 .args(["agent", "refresh-after-attach", &args[0]])
                 .stdin(Stdio::null())
@@ -95,7 +95,7 @@ pub fn popup() -> Result<()> {
             if let Ok(selected) = crate::agent::publish("init", Path::new(&raw), None) {
                 command.env("SSH_AUTH_SOCK", &selected);
                 // A subprocess gets the guest environment without mutating this process's environment.
-                let exe = env::current_exe()?;
+                let exe = executable()?;
                 let _ = Command::new(exe)
                     .args(["agent", "follow-popup"])
                     .env("SSH_AUTH_SOCK", &selected)

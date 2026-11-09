@@ -76,9 +76,14 @@ pub fn label(value: &str) -> String {
 pub fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
+pub fn executable() -> Result<PathBuf> {
+    // macOS may report the invocation symlink. Re-execution must use the real
+    // binary name so an explicit subcommand is not prefixed a second time.
+    Ok(env::current_exe()?.canonicalize()?)
+}
 pub fn root() -> Result<PathBuf> {
     // Release and debug binaries both live in <repo>/zellij/target/<profile>.
-    let exe = env::current_exe()?;
+    let exe = executable()?;
     exe.ancestors()
         .nth(4)
         .map(Path::to_path_buf)
@@ -87,7 +92,7 @@ pub fn root() -> Result<PathBuf> {
 pub fn helper_command(subcommand: &str) -> Result<String> {
     Ok(format!(
         "{} {}",
-        quote(&env::current_exe()?.to_string_lossy()),
+        quote(&executable()?.to_string_lossy()),
         quote(subcommand)
     ))
 }

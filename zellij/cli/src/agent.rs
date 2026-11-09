@@ -185,7 +185,7 @@ fn refresh_until(session: &str, follow: bool, deadline: Instant) -> Result<()> {
         .prefix("zellij-agent-update.")
         .permissions(fs::Permissions::from_mode(0o700))
         .tempdir()?;
-    let exe = env::current_exe()?;
+    let exe = executable()?;
     // The request directory expires on every return path. Late publications are rejected.
     let _ = zellij(
         session,

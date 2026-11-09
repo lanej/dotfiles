@@ -159,6 +159,12 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.run_helper("zellij-picker", "tabs")
         self.assertEqual(self.calls()[-1][-3:], ["action", "go-to-tab-by-id", "8"])
         self.assertFalse((self.home / "should-not-exist").exists())
+        preview = next(arg.removeprefix("--preview=") for arg in
+                       json.loads((self.home / "fzf-args").read_text()) if arg.startswith("--preview="))
+        self.plan([[]])
+        rendered = subprocess.run(["/bin/sh", "-c", preview.replace("{1}", "8")],
+                                  env=self.env, capture_output=True, text=True, check=True, timeout=5)
+        self.assertIn("No other terminal pane", rendered.stdout)
 
     def test_claude_title_preserves_manual_name_and_rejects_delayed_events(self):
         identity = "019a1234-abcd-7000-aaaa-bbbbbbbbbbbb"
