@@ -378,7 +378,7 @@ def validate_catalog(source):
                 raise ValueError(f"invalid atomic dependency: {key} -> {child}")
             visit(child)
         for path in item.get("sources", []):
-            if not (ROOT / path).is_file():
+            if not (ROOT / path).is_file() and not (ROOT / path).is_symlink():
                 raise ValueError(f"missing catalog source: {path}")
         visiting.remove(key)
         complete.add(key)
@@ -387,7 +387,7 @@ def validate_catalog(source):
         visit(key)
     for integration in read(source / "integrations.json"):
         for path in integration["sources"]:
-            if not (ROOT / path).is_file():
+            if not (ROOT / path).is_file() and not (ROOT / path).is_symlink():
                 raise ValueError(f"missing integration source: {path}")
 
 
