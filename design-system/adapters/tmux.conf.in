@@ -14,14 +14,14 @@ set  -g display-panes-active-colour "{{surface}}"
 set  -g display-panes-colour "{{surface}}"
 set  -g message-command-style bg={{surface}},fg={{accent}}
 set  -g message-style bg={{surface}},fg={{accent}}
-set  -g pane-active-border-style bg=default,fg={{accent}},bold
+set  -g pane-active-border-style bg=default,fg={{focus}},bold
 set  -g pane-border-indicators both
 set  -g pane-border-style bg=default,fg={{border}}
 set  -g pane-border-lines heavy
 set  -g pane-border-status off
 # Keep Codex's native thread identity for hook routing, but show a compact label.
 set -g @codex-pane-label '#{s/^([● ]*\[[ !.]+\] Action Required [|] )?[!● ]*codex [|] [0-9a-f-]+([.][.][.]|…)? [|] ([^|]+ [|] )?(.*)$/ #{?#{@claude-glyph},#{@claude-glyph},○} · \4/:pane_title}'
-set  -g pane-border-format "#{?pane_active,#[bg={{accent}}]#[fg={{surface}}],#[bg={{border}}]#[fg={{text.strong}}]} #I #{?#{!=:#{pane_title},},#{E:@codex-pane-label},#{pane_current_command}} #[bg=default]"
+set  -g pane-border-format "#{?pane_active,#[bg={{focus}}]#[fg={{surface}}],#[bg={{border}}]#[fg={{text.strong}}]} #I #{?#{!=:#{pane_title},},#{E:@codex-pane-label},#{pane_current_command}} #[bg=default]"
 set  -g status "on"
 set  -g status-justify left
 set  -g status-left-length 30
