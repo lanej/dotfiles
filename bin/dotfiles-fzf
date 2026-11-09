@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Apply the shared theme without changing fzf's selection or preview behavior.
+set -euo pipefail
+theme_dir=${DOTFILES_THEME_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme}
+IFS= read -r theme_option < "$theme_dir/fzf.txt"
+exec fzf "$theme_option" "$@"

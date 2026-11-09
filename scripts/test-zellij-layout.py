@@ -195,6 +195,8 @@ sys.exit(result.returncode)
             terminal.until("unzoomed", lambda: not any(p["is_fullscreen"] for p in current()))
             # Native layout cycling remains a separate, explicitly rearranging control.
             terminal.action("apply-tiled-swap-layout", "stacked")
+            terminal.until("stacked preset applied", lambda:
+                           all(p["index_in_pane_group"] for p in current()))
             settled = geometry(current())
             invoke(b"=", failure="stacked")
             assert geometry(current()) == settled

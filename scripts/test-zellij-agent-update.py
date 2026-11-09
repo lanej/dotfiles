@@ -37,19 +37,19 @@ def main():
         bindir.mkdir(parents=True)
         for name in ("zellij-agent", "fix-ssh", "zellij-attach", "zellij-popup"):
             (bindir / name).symlink_to(ROOT / "bin" / name)
-        shell = home / "pane-shell"
-        shell.write_text('''#!/bin/sh
+        startup = home / "pane-startup"
+        startup.write_text('''
 . "$HOME/.local/bin/fix-ssh" || exit
 parent=$(ps -ww -p "$PPID" -o command=) || exit
 case "$parent" in *' --server '*) ;; *) exit 72 ;; esac
 server=${parent#* --server }
 server=${server% --debug}
 printf '%s\\n%s\\n%s\\n' "$parent" "$server" "$SSH_AUTH_SOCK" > "$HOME/.parent-identity-$$"
+cp "$HOME/.parent-identity-$$" "$HOME/.session-identity-$$"
+mv -f "$HOME/.session-identity-$$" "$HOME/parent-identity-$ZELLIJ_SESSION_NAME"
 mv -f "$HOME/.parent-identity-$$" "$HOME/parent-identity"
 export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
-exec /bin/sh -i
 ''')
-        shell.chmod(0o700)
         config = home / ".config/zellij"
         (config / "layouts").mkdir(parents=True)
         (config / "layouts/probe.kdl").write_text(
@@ -62,10 +62,11 @@ exec /bin/sh -i
         )
         (config / "layouts/tmux.kdl").write_text('layout { pane; }\n')
         (config / "config.kdl").write_text(
-            f'default_shell {json.dumps(str(shell))}\n'
+            'default_shell "/bin/sh"\n'
             'default_layout "probe"\n'
             'show_startup_tips false\n'
             'show_release_notes false\n'
+            'session_serialization true\n'
             'nested_session_handling "descend"\n'
             'keybinds clear-defaults=true {\n'
             '    normal {\n'
@@ -80,9 +81,10 @@ exec /bin/sh -i
             "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(temp_files),
             "SSH_CONNECTION": "127.0.0.1 2222 127.0.0.1 22",
             "PATH": str(bindir) + os.pathsep + os.environ["PATH"],
+            "ENV": str(startup),
         }
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "BASH_ENV"):
             env.pop(key, None)
         # Match managed installations: otherwise Linux's first-run wizard can
         # own the focused screen even after the underlying shell is ready.
@@ -211,8 +213,9 @@ exec /bin/sh -i
                 assert time.monotonic() < deadline, "Client remained connected after closing its PTY"
                 time.sleep(0.02)
 
-        def identity():
-            parent, server, stable = (home / "parent-identity").read_text().splitlines()
+        def identity(name=None):
+            record = home / (f"parent-identity-{name}" if name else "parent-identity")
+            parent, server, stable = record.read_text().splitlines()
             assert " --server " in parent and Path(server).is_socket(), parent
             return server, Path(stable)
 
@@ -358,6 +361,33 @@ exec /bin/sh -i
             print("PASS: the same popup shell follows host agent updates and detached reconnects; "
                   "opening from another host switches only the popup's source; an unmanaged link is rejected.", flush=True)
             print("PASS: rename keeps the owning identity; reuse of its old name gets an isolated agent link.", flush=True)
+
+            stopped = attach("probe-restored", raw2)
+            _, restored_stable = identity(stopped.name)
+            cache = (home / "Library/Caches/org.Zellij-Contributors.Zellij"
+                     if sys.platform == "darwin" else Path(env["XDG_CACHE_HOME"]) / "zellij")
+            restored_key = restored_stable.stem.removeprefix("zellij-")
+            action(stopped.name, "save-session")
+            stopped.until("session layout is saved for resurrection", lambda:
+                          any(path.parent.name == restored_key
+                              for path in cache.rglob("session-layout.kdl")))
+            command([binary, "kill-session", "--", stopped.name])
+            stopped.close()
+            clients.remove(stopped)
+            agents[1].terminate()
+            agents[1].wait(timeout=5)
+            assert not restored_stable.exists(), "Stopped session's old agent is still live"
+            record = home / "parent-identity-probe-restored"
+            record.unlink()
+            restored = attach("probe-restored", raw3)
+            restored.until("restored shells record their agent", lambda:
+                           record.exists())
+            _, selected = identity(restored.name)
+            assert selected == restored_stable, "Resurrection changed the persistent agent identity"
+            restored.until("resurrection selects the new forwarded agent", lambda:
+                           selected.resolve() == Path(raw3).resolve())
+            prove_agent(selected)
+            print("PASS: resurrecting a stopped session selects the new forwarded agent.", flush=True)
 
             before_failure = snapshot(first.name)
             missing_socket = str(home / "missing-agent.sock")

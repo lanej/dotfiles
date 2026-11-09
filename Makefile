@@ -4,7 +4,6 @@ MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 # Bootstrap installs its managed runtime here even before shell setup exists.
 export PATH := $(HOME)/.local/bin:$(PATH)
 GO ?= go
-FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 include $(MAKE_SCRIPTS)/../../config/targets.mk
@@ -92,7 +91,22 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size
+lint: shellcheck audit-skills instruction-size theme-check
+
+.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native test-theme-presentation
+theme-generate:
+	@python3 "$(DOTFILES)/scripts/theme.py"
+theme-check:
+	@python3 "$(DOTFILES)/scripts/theme.py" --check
+theme-cache:
+	$(call require-command,bat)
+	@bat cache --build
+test-theme:
+	@python3 "$(DOTFILES)/scripts/test-theme.py"
+test-theme-presentation:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
+test-theme-native:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -101,26 +115,14 @@ shellcheck:
 treehouse-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-config: treehouse-config zellij-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+.PHONY: pi-config
 pi-config: pi-resources
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-mobile-config: firstmate-config pi-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-test-firstmate-github:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
 
-.PHONY: test-firstmate-peers
-test-firstmate-peers:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
 
-.PHONY: test-firstmate-primary
-test-firstmate-primary:
-	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
 
 .PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
 test-paseo-tasks:
@@ -382,7 +384,7 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij  test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
@@ -415,8 +417,6 @@ test-zellij-shell-titles:
 test-zellij-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
-test-firstmate:
-	@python3 "$(DOTFILES)/scripts/test-firstmate.py"
 
 test-zellij-layout:
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
@@ -428,7 +428,7 @@ test-zellij-clipboard:
 test-zellij-status:
 	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" attention_policy
-	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
 test-zellij-auto-title:
 	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"
@@ -502,3 +502,6 @@ pi-resources: codex-skills
 	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
+
+firstmate-retire:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

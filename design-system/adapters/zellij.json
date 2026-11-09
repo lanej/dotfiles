@@ -1,0 +1,114 @@
+{
+  "text_unselected": {
+    "base": "text",
+    "background": "surface",
+    "emphasis_0": "status.warning",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "text_selected": {
+    "base": "text",
+    "background": "surface.selected",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "ribbon_unselected": {
+    "base": "text.muted",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "ribbon_selected": {
+    "base": "accent",
+    "background": "surface.selected",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "table_title": {
+    "base": "accent",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "table_cell_unselected": {
+    "base": "text",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "table_cell_selected": {
+    "base": "text",
+    "background": "surface.selected",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "list_unselected": {
+    "base": "text",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "list_selected": {
+    "base": "text",
+    "background": "surface.selected",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "frame_unselected": {
+    "base": "text",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "frame_selected": {
+    "base": "accent",
+    "background": "surface.selected",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "frame_highlight": {
+    "base": "accent",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "exit_code_success": {
+    "base": "status.success",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  },
+  "exit_code_error": {
+    "base": "status.error",
+    "background": "surface",
+    "emphasis_0": "status.attention",
+    "emphasis_1": "accent",
+    "emphasis_2": "status.success",
+    "emphasis_3": "syntax.number"
+  }
+}

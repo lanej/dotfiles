@@ -2,6 +2,8 @@
 
 My Zellij setup uses **Ctrl-f** as the prefix, Vim-style navigation, and one top tab bar. Start with the [keybinding map](zellij-keybinds.mdx), or choose a feature below.
 
+The built-in [Nord preset](design-system/nord.mdx) documents the palette and current native theme examples.
+
 ## Start a session
 
 Enable Zellij in your [machine settings](../README.md#configuration-sets), then install the selected tools with `make install`. The guides below describe the managed modern configuration.
@@ -49,7 +51,7 @@ The [keybinding map](zellij-keybinds.mdx) lists shortcuts, aliases, and keys ins
 | Feature | Use it to… |
 | --- | --- |
 | [Shared popup](zellij/shared-popup.mdx) | Keep a scratch shell across tabs and sessions |
-| [Command prompt](zellij/command-prompt.mdx) | Run a Zellij action without a shell command |
+| [Command palette](zellij/command-prompt.mdx) | Complete and run actions, or find a live pane, tab, or session |
 | [Create and rename sessions](zellij/sessions.mdx) | Open or name a workspace |
 | [Detach one client](zellij/detach-client.mdx) | Disconnect a selected view while leaving programs running |
 | [Shut down a session](zellij/shutdown.mdx) | Deliberately end one session with confirmation |
