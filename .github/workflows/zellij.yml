@@ -27,6 +27,7 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
+      - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
       - 'nvim/lua/pane-navigation.lua'
@@ -66,6 +67,7 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
+      - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
       - 'nvim/lua/pane-navigation.lua'
@@ -157,11 +159,14 @@ jobs:
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
-      - name: Install Treehouse 3.1.6
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Install pinned Treehouse fork
         shell: bash
         run: |
-          source ./bootstrap.sh
-          install_treehouse_from_release 3.1.6
+          bash scripts/install-treehouse
       - name: Install shell tools on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fzf jq zsh tmux
