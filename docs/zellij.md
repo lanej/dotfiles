@@ -78,7 +78,7 @@ Detaching preserves running programs. After a session exits, the session manager
 
 Scrollback keeps up to 100,000 live lines per pane and up to 10,000 lines for recovery. A crash can lose recent output. The shared popup does not restore its running work after a server exit or reboot.
 
-The patched runtime shows the pane's `SCROLL` counter only while scrolled back. Returning to live output hides it, without changing scroll keys or floating-pane pin controls. After updating, run `make zellij-runtime` and restart existing session servers to use this display change; the release and main runtime choices keep their upstream display.
+The patched runtime supports `hide_scroll_indicator_when_idle`, which defaults to `false` to preserve upstream behavior. This configuration sets it to `true`, hiding the `SCROLL` counter on active and inactive panes at live output. Scrolling back shows the position; returning to the bottom hides it again. Floating-pane pin controls are unchanged. After updating, run `make zellij-runtime` and restart existing session servers to load the new runtime. The option can then be changed by reloading configuration. Release and main runtime choices keep their upstream display.
 
 ## Differences that remain
 
