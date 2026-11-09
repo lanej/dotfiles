@@ -86,11 +86,16 @@ def floating_screen(terminal):
     return terminal.action("dump-screen", "--pane-id", str(pane["id"])) if pane else ""
 
 
+def name_host_tab(terminal, name):
+    terminal.action("rename-tab", name)
+    terminal.until("distinct host tab name", lambda:
+                   any(tab["active"] and tab["name"] == name for tab in terminal.tabs()))
+
+
 def open_popup(terminal):
-    # The bar's zero-based position is stable across shell/default-name display
-    # policies; list-tabs returns the raw native name, not that presentation.
+    # Fixture host names differ from guest names; both bars can share index 0.
     tab = next(tab for tab in terminal.tabs() if tab["active"])
-    host_tab = f" {tab['position']}:"
+    host_tab = tab["name"]
     rendered = len(terminal.output)
     log = Path(terminal.env["TMPDIR"]) / f"zellij-{os.getuid()}" / "zellij-log" / "zellij.log"
     offset = log.stat().st_size if log.exists() else 0
@@ -394,9 +399,11 @@ def popup_workflow(first, second, home):
 
     first.prefix(b"c")
     first.until("second outer tab", lambda: len(first.tabs()) == 2)
+    name_host_tab(first, "popup-other-host-tab")
     open_popup(first)
     prove_popup(first, home, expected, "popup-other-tab")
     hide_popup(first)
+    name_host_tab(second, "popup-other-host-session")
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")
     assert {p["id"] for p in popup_panes(second)} == popup_ids
@@ -445,6 +452,7 @@ def shutdown_workflow(clients, names, home, popup_expected):
     replacement.until("replacement session starts", lambda: b"zellij-ready> " in replacement.output)
     # Recreate the same visible workspace and command IDs. The old tuple-only
     # guard matched this new server and killed it after a stale confirmation.
+    name_host_tab(replacement, "popup-replacement-host")
     open_popup(replacement)
     hide_popup(replacement)
     confirmation(replacement)
