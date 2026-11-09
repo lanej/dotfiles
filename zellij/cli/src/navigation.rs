@@ -50,12 +50,6 @@ impl Navigation {
         if clients.len() > 1 {
             bail!("Pane navigation needs one attached client; use Ctrl-f h/j/k/l");
         }
-        let Some(client) = clients.first() else {
-            return Ok(None);
-        };
-        if client.1 != format!("terminal_{}", self.pane) {
-            return Ok(None);
-        }
         let tabs = self.json("list-tabs")?;
         let mut attached = BTreeSet::new();
         for tab in tabs.as_array().context("Invalid tabs")? {
@@ -66,10 +60,46 @@ impl Navigation {
                 attached.insert(id.as_u64().context("Invalid client ID")?);
             }
         }
-        if attached != BTreeSet::from([client.0]) {
+        if attached.len() != 1 {
             bail!("Pane navigation needs one attached client; use Ctrl-f h/j/k/l");
         }
-        Ok(Some(client.clone()))
+        let client_id = *attached.first().context("Missing attached client")?;
+        if let Some(client) = clients.first() {
+            if client.0 != client_id {
+                bail!("Cannot establish the active Zellij client");
+            }
+            return Ok((client.1 == format!("terminal_{}", self.pane)).then(|| client.clone()));
+        }
+        // In-place scrollback editors are omitted from list-clients. Require
+        // exactly one attached client and a visible, focused pane in its active
+        // tab before treating the editor as the owner of a client-relative action.
+        let active_tabs: BTreeSet<_> = tabs
+            .as_array()
+            .context("Invalid tabs")?
+            .iter()
+            .filter(|tab| {
+                tab["other_focused_clients"]
+                    .as_array()
+                    .is_some_and(|ids| ids.iter().any(|id| id.as_u64() == Some(client_id)))
+            })
+            .map(|tab| tab["tab_id"].as_u64().context("Invalid tab ID"))
+            .collect::<Result<_>>()?;
+        let panes = self.json("list-panes")?;
+        let source = panes
+            .as_array()
+            .context("Invalid panes")?
+            .iter()
+            .find(|pane| !flag(pane, "is_plugin") && pane["id"] == self.pane);
+        let Some(source) = source else {
+            return Ok(None);
+        };
+        if !flag(source, "is_focused")
+            || flag(source, "is_suppressed")
+            || !active_tabs.contains(&source["tab_id"].as_u64().context("Invalid pane tab")?)
+        {
+            return Ok(None);
+        }
+        Ok(Some((client_id, format!("terminal_{}", self.pane))))
     }
 }
 pub fn main(args: &[String]) -> Result<()> {

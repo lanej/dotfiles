@@ -118,12 +118,34 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.plan([client, tabs, [pane(7)], current, client, tabs, ""])
         self.run_helper("zellij-navigate", "left")
         self.assertEqual(self.calls()[-1], ["--session=--session's literal name", "action", "move-focus", "left"])
-        self.plan([client, tabs, [pane(7)], current, client.replace("terminal_7", "terminal_8")])
+        self.plan([client, tabs, [pane(7)], current, client.replace("terminal_7", "terminal_8"), tabs])
         self.run_helper("zellij-navigate", "left")
         self.assertFalse(any("move-focus" in call for call in self.calls()))
         self.plan([client, [{"other_focused_clients": [1, 2]}]])
         result = self.run_helper("zellij-navigate", "left", check=False)
         self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any("move-focus" in call for call in self.calls()))
+
+    def test_scrollback_navigation_requires_visible_single_client_ownership(self):
+        client = "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND\n"
+        tabs = [{"tab_id": 4, "other_focused_clients": [1]}]
+        current = {"tab_id": 4, "is_fullscreen_active": False}
+        self.plan([client, tabs, [pane(7)], [pane(7)], current,
+                   client, tabs, [pane(7)], ""])
+        self.run_helper("zellij-navigate", "right")
+        self.assertEqual(self.calls()[-1][-2:], ["move-focus", "right"])
+        for changes in ({"is_suppressed": True}, {"is_focused": False}, {"tab_id": 9}):
+            self.plan([client, tabs, [pane(7, **changes)]])
+            self.run_helper("zellij-navigate", "right")
+            self.assertFalse(any("move-focus" in call for call in self.calls()))
+        self.plan([client, [{"tab_id": 4, "other_focused_clients": [1, 2]}]])
+        result = self.run_helper("zellij-navigate", "right", check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any("move-focus" in call for call in self.calls()))
+        # The editor can lose ownership after its first snapshot.
+        self.plan([client, tabs, [pane(7)], [pane(7)], current,
+                   client, tabs, [pane(7, is_suppressed=True)]])
+        self.run_helper("zellij-navigate", "right")
         self.assertFalse(any("move-focus" in call for call in self.calls()))
 
     def test_balancing_verifies_each_boundary_and_stops_after_lost_reply(self):

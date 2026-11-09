@@ -35,7 +35,7 @@ function M.setup()
 	end
 	require("Navigator").setup(options)
 	for key, direction in pairs({ h = "Left", j = "Down", k = "Up", l = "Right" }) do
-		vim.keymap.set({ "i", "n" }, "<C-" .. key .. ">", "<Cmd>Navigator" .. direction .. "<cr>", {
+		vim.keymap.set({ "i", "n", "x" }, "<C-" .. key .. ">", "<Cmd>Navigator" .. direction .. "<cr>", {
 			noremap = true,
 			silent = true,
 		})

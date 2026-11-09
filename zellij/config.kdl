@@ -259,6 +259,12 @@ keybinds clear-defaults=true {
         bind "Enter" { SwitchToMode "Locked"; }
         bind "Esc" "Ctrl c" { UndoRenameTab; SwitchToMode "Locked"; }
     }
+    shared_among "scroll" "search" {
+        bind "Ctrl h" { MoveFocus "Left"; SwitchToMode "Locked"; }
+        bind "Ctrl j" { MoveFocus "Down"; SwitchToMode "Locked"; }
+        bind "Ctrl k" { MoveFocus "Up"; SwitchToMode "Locked"; }
+        bind "Ctrl l" { MoveFocus "Right"; SwitchToMode "Locked"; }
+    }
     scroll {
         bind "j" "Down" { ScrollDown; }
         bind "k" "Up" { ScrollUp; }
