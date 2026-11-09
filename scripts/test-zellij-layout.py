@@ -66,7 +66,8 @@ sys.exit(result.returncode)
                 terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", "/bin/sh")
                 terminal.until("explicit-command columns", lambda: len(terminal.terminals()) == count)
                 rightmost = max(terminal.terminals(), key=lambda pane: pane["pane_x"])["id"]
-                terminal.action("focus-pane-id", f"terminal_{rightmost}")
+                for _ in range(count - 1):
+                    terminal.prefix(b"l")
                 terminal.until("new right-hand pane owns focus", lambda:
                                any(p["id"] == rightmost and p["is_focused"] for p in terminal.terminals()))
             panes = terminal.terminals()
