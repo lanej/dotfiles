@@ -40,11 +40,13 @@ GitHub reads use the existing `gh` login. If authentication fails, use the suppo
 
 ![Pi dashboard showing the completed live conflict and queued GitHub summary](docs/images/dashboard.png)
 
-The screenshot shows a live Bun run using existing Codex and GitHub authentication. See the [acceptance record](docs/live-acceptance.md) for the observed merge and job results.
+The screenshot shows a live Bun run using existing Codex and GitHub authentication. See the [acceptance record](docs/live-acceptance.md) for the observed merge and job results, a [PR summary view](docs/images/dashboard-pr.png), and a [narrow-terminal view](docs/images/dashboard-narrow.png).
 
 ## Dashboard and commands
 
-The dashboard shows the queue, the selected job, and its transitions and progress. Use arrows or `j/k` to select, `Enter` to expand details, `p` to pause/resume dispatch, `c` to cancel, `r` to retry failed/interrupted work, `[` and `]` to scroll, and `q` to shut down gracefully. Narrow terminals stack the panes.
+The dashboard shows the queue, the selected job, and its transitions and progress. Use arrows or `j/k` to select a job, `Enter` to expand its result, and `Tab` to switch between result and activity. `[` moves up through the result or back through activity; `]` moves down or toward the latest activity. Each pane keeps its own bounded scroll position. Use `p` to pause/resume dispatch, `c` to cancel, `r` to retry failed/interrupted work, and `q` to shut down gracefully. Narrow terminals stack the panes; very small terminals retain a compact result and quit hint.
+
+Results use Pi’s native Markdown renderer for headings, emphasis, links, lists, tables, and code blocks. JSON blocks are indented for readability. The merge result separates the worker’s explanation from the coordinator’s independently verified policy and commit. The compact activity pane shows transitions and tool calls; streamed worker text appears in the result pane instead of filling the event timeline. The CLI continues to expose the recorded result and full paginated events.
 
 ```text
 pi-github submit summarize-pr --url https://github.com/OWNER/REPO/pull/NUMBER --request-id ID
