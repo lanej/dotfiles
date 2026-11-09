@@ -1,15 +1,64 @@
 use crate::util::*;
 use anyhow::{bail, Context, Result};
+use base64::{engine::general_purpose::STANDARD, Engine};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde_json::Value;
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::os::unix::process::CommandExt;
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicI32, Ordering};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+const CLEAR_REMOTE_TITLE: &[u8] = b"\x1b]1337;SetUserVar=dotfiles_zellij\x07";
+static REMOTE_TITLE_SIGNAL: AtomicI32 = AtomicI32::new(0);
+
+extern "C" fn request_remote_title_exit(signal: libc::c_int) {
+    // Forward and reap in the waiting thread, not inside the signal handler.
+    REMOTE_TITLE_SIGNAL.store(signal, Ordering::SeqCst);
+}
+
+struct RemoteTitle {
+    handlers: Vec<(libc::c_int, libc::sighandler_t)>,
+}
+
+impl RemoteTitle {
+    fn announce() -> Result<Self> {
+        let host = run("hostname", &["-s"], Instant::now() + Duration::from_secs(5))?;
+        let nonce = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        let marker = STANDARD.encode(format!("{}/{}/{nonce}", host.trim(), std::process::id()));
+        let mut title = Self { handlers: vec![] };
+        for signal in [libc::SIGHUP, libc::SIGINT, libc::SIGTERM] {
+            let previous = unsafe {
+                libc::signal(
+                    signal,
+                    request_remote_title_exit as *const () as libc::sighandler_t,
+                )
+            };
+            if previous == libc::SIG_ERR {
+                return Err(io::Error::last_os_error().into());
+            }
+            title.handlers.push((signal, previous));
+        }
+        // Announce outside the mux, which consumes pane OSC messages.
+        print!("\x1b]1337;SetUserVar=dotfiles_zellij={marker}\x07");
+        io::stdout().flush()?;
+        Ok(title)
+    }
+}
+
+impl Drop for RemoteTitle {
+    fn drop(&mut self) {
+        let _ = io::stdout().write_all(CLEAR_REMOTE_TITLE);
+        let _ = io::stdout().flush();
+        for &(signal, previous) in &self.handlers {
+            unsafe { libc::signal(signal, previous) };
+        }
+    }
+}
 
 pub fn attach(args: &[String]) -> Result<()> {
     if env::var("ZELLIJ").is_ok_and(|s| !s.is_empty()) {
@@ -31,11 +80,36 @@ pub fn attach(args: &[String]) -> Result<()> {
                 .spawn();
         }
     }
-    Err(Command::new("zellij")
-        .args(["attach", "--create"])
-        .args(args)
-        .exec()
-        .into())
+    let mut command = Command::new("zellij");
+    command.args(["attach", "--create"]).args(args);
+    if env::var("SSH_CONNECTION").is_ok_and(|s| !s.is_empty())
+        && env::var("TMUX").map_or(true, |s| s.is_empty())
+        && io::stdout().is_terminal()
+    {
+        let title = RemoteTitle::announce()?;
+        let mut child = command.spawn()?;
+        let mut forwarded = 0;
+        let status = loop {
+            if let Some(status) = child.try_wait()? {
+                break status;
+            }
+            let signal = REMOTE_TITLE_SIGNAL.load(Ordering::SeqCst);
+            if signal != 0 && signal != forwarded {
+                // This child has not been reaped, so its PID cannot be reused.
+                unsafe { libc::kill(child.id() as libc::pid_t, signal) };
+                forwarded = signal;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        let signal = REMOTE_TITLE_SIGNAL.load(Ordering::SeqCst);
+        drop(title);
+        std::process::exit(if signal != 0 {
+            128 + signal
+        } else {
+            status.code().unwrap_or(128 + status.signal().unwrap_or(1))
+        });
+    }
+    Err(command.exec().into())
 }
 pub fn ssh(args: &[String]) -> Result<()> {
     if args.is_empty() || args.len() > 2 || args[0].is_empty() || args[0].starts_with('-') {
