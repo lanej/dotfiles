@@ -2,6 +2,7 @@
 """Reconcile Git worktrees and apply an opt-in linked-worktree limit."""
 
 import argparse
+from functools import cache
 import hashlib
 import json
 import os
@@ -18,9 +19,20 @@ HOOKS = ("pre-worktree", "post-worktree", "post-checkout")
 MARKER = "# git-worktree-policy dispatcher v1"
 
 
+@cache
+def explicit_repository_env():
+    # WHY: This flag lists variable names without resolving a repository, even in hook environments.
+    result = subprocess.run(["git", "rev-parse", "--local-env-vars"], check=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    local = set(result.stdout.splitlines()) | {"GIT_NAMESPACE"}
+    return {key: value for key, value in os.environ.items()
+            if key not in local and not re.fullmatch(r"GIT_CONFIG_(KEY|VALUE)_\d+", key)}
+
+
 def git(*args, optional=False, directory=None):
     prefix = [f"--git-dir={directory}"] if directory is not None else []
-    result = subprocess.run(["git", *prefix, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(["git", *prefix, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env=explicit_repository_env() if directory is not None else None)
     if result.returncode and not (optional and result.returncode == 1):
         raise RuntimeError(os.fsdecode(result.stderr).strip() or f"git exited {result.returncode}")
     return os.fsdecode(result.stdout).removesuffix("\n")
@@ -46,7 +58,8 @@ def limit(directory=None):
 def inventory(directory=None):
     prefix = [f"--git-dir={directory}"] if directory is not None else []
     raw = subprocess.run(["git", *prefix, "worktree", "list", "--porcelain", "-z"], check=True,
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         env=explicit_repository_env() if directory is not None else None).stdout
     records = []
     current = {}
     for field in raw.split(b"\0"):
@@ -224,7 +237,8 @@ def check_capacity(state, block):
 def require_default_hooks(directory=None):
     prefix = [f"--git-dir={directory}"] if directory is not None else []
     configured = subprocess.run(["git", *prefix, "config", "--get", "core.hooksPath"],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                env=explicit_repository_env() if directory is not None else None)
     if configured.returncode not in (0, 1):
         raise RuntimeError(os.fsdecode(configured.stderr).strip())
     if configured.returncode == 0:

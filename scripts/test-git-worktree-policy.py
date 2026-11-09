@@ -25,8 +25,8 @@ def main():
             if key.startswith("GIT_") and key not in ("GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_GLOBAL", "GIT_TERMINAL_PROMPT"):
                 del env[key]
 
-        def run(*args, cwd=repo, check=True):
-            result = subprocess.run([str(arg) for arg in args], cwd=cwd, env=env,
+        def run(*args, cwd=repo, check=True, extra_env=None):
+            result = subprocess.run([str(arg) for arg in args], cwd=cwd, env={**env, **(extra_env or {})},
                                     capture_output=True, text=True, timeout=30)
             if check and result.returncode:
                 raise AssertionError(f"{args}: {result.returncode}\n{result.stdout}\n{result.stderr}")
@@ -212,6 +212,55 @@ def main():
         assert rejected.returncode == 1 and "core.hooksPath" in rejected.stderr
         assert {path: path.read_bytes() for path in config_files} == before
         assert {path: path.read_bytes() for path in (other / ".git/hooks").iterdir() if path.is_file()} == installed_hooks
+        env_repo = root / "environment invoking repo"
+        env_other = root / "environment other repo"
+        for directory in (env_repo, env_other):
+            git("init", "--initial-branch=main", directory)
+            git("config", "user.name", "Policy Test", cwd=directory)
+            git("config", "user.email", "policy@example.invalid", cwd=directory)
+            git("commit", "--allow-empty", "-m", "initial", cwd=directory)
+        env_a = root / "environment invoking linked"
+        env_b = root / "environment other linked one"
+        env_c = root / "environment other linked two"
+        git("worktree", "add", "--no-checkout", "-b", "a", env_a, cwd=env_repo)
+        for branch, directory in (("b", env_b), ("c", env_c)):
+            git("worktree", "add", "--no-checkout", "-b", branch, directory, cwd=env_other)
+        (env_a / "build").write_bytes(os.urandom(32768))
+        (env_b / "build").write_bytes(os.urandom(131072))
+        (env_c / "build").write_bytes(os.urandom(65536))
+        run(POLICY, "install", cwd=env_repo)
+        run(POLICY, "refresh", cwd=env_other)
+        clean = json.loads(run(POLICY, "status", "--all", cwd=env_repo).stdout)
+        hook_env = {"GIT_COMMON_DIR": str(env_repo / ".git"),
+                    "GIT_DIR": str(env_repo / ".git"), "GIT_WORK_TREE": str(env_repo),
+                    "GIT_INDEX_FILE": str(env_repo / ".git/nondefault-index")}
+        contaminated = json.loads(run(POLICY, "status", "--all", cwd=env_repo, extra_env=hook_env).stdout)
+        assert contaminated["totals"] == clean["totals"]
+        by_directory = {record["common_gitdir"]: record for record in contaminated["repositories"]}
+        assert by_directory[str(env_repo / ".git")]["inventory"]["linked_count"] == 1
+        assert by_directory[str(env_other / ".git")]["inventory"]["linked_count"] == 2
+        assert by_directory[str(env_other / ".git")]["disk_bytes"] > by_directory[str(env_repo / ".git")]["disk_bytes"]
+        cached = json.loads((env_other / ".git/worktree-policy/inventory.json").read_text())
+        assert cached["linked_count"] == 2
+        assert {row["worktree"] for row in cached["worktrees"][1:]} == {str(env_b), str(env_c)}
+        run(POLICY, "configure", "--global", "--max-worktrees", str(clean["totals"]["linked_count"]))
+        denied = run(POLICY, "preflight", cwd=env_repo, extra_env=hook_env, check=False)
+        assert denied.returncode == 1 and "global linked worktrees" in denied.stderr
+        denied = run(POLICY, "hook", "pre-worktree", "add", "", "", str(root / "environment blocked"),
+                     cwd=env_repo, extra_env=hook_env, check=False)
+        assert denied.returncode == 1 and "global linked worktrees" in denied.stderr
+        run(POLICY, "configure", "--global", "--max-worktrees", "off", "--max-bytes", str(clean["totals"]["disk_bytes"]))
+        denied = run(POLICY, "preflight", cwd=env_repo, extra_env=hook_env, check=False)
+        assert denied.returncode == 1 and "global allocated bytes" in denied.stderr
+        git("config", "extensions.worktreeConfig", "true", cwd=env_repo)
+        global_policy = root / "deliberate global git policy"
+        included_policy = root / "conditional hook policy"
+        git("config", "--file", included_policy, "core.hooksPath", str(custom))
+        linked_gitdir = git("rev-parse", "--absolute-git-dir", cwd=env_a).stdout.strip()
+        git("config", "--file", global_policy, f"includeIf.gitdir:{linked_gitdir}.path", included_policy)
+        rejected = run(POLICY, "install", cwd=env_repo,
+                       extra_env={**hook_env, "GIT_CONFIG_GLOBAL": str(global_policy)}, check=False)
+        assert rejected.returncode == 1 and "core.hooksPath" in rejected.stderr and linked_gitdir in rejected.stderr
         print("git-worktree-policy: real stock-Git fallback, forwarding, inventory, and admission checks passed")
 
 
