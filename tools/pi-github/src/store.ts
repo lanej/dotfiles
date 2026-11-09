@@ -17,7 +17,8 @@ export class Store {
     privateDirectory(directory);
     this.ownership = new DatabaseSync(join(directory, "coordinator-lock.sqlite"));
     try {
-      this.ownership.exec("PRAGMA busy_timeout=0; BEGIN EXCLUSIVE");
+      // WHY: Simultaneous first opens can briefly hold shared locks; allow one contender to finish before rejecting ownership.
+      this.ownership.exec("PRAGMA busy_timeout=250; BEGIN EXCLUSIVE");
     } catch {
       this.ownership.close();
       throw new Error("Another coordinator owns this state directory");
