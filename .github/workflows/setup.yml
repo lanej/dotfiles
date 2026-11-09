@@ -2,6 +2,7 @@ name: Dotfiles setup
 on:
   pull_request:
     paths:
+      - 'components/*/bin/**'
       - '.taplo.toml'
       - 'nvim/init.lua'
       - 'nvim/lua/lspconfig-spec.lua'
@@ -52,6 +53,7 @@ on:
     branches:
       - master
     paths:
+      - 'components/*/bin/**'
       - '.taplo.toml'
       - 'nvim/init.lua'
       - 'nvim/lua/lspconfig-spec.lua'
