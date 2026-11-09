@@ -242,8 +242,8 @@ return {
 ["bg"] = "#88C0D0",
 },
 ["StatusLine"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["StatusLineNC"] = {
@@ -255,8 +255,8 @@ return {
 ["bg"] = "#2E3440",
 },
 ["TabLineSel"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["TabLineFill"] = {
@@ -1042,6 +1042,7 @@ return {
 ["text.inverse"] = "#2E3440",
 ["accent"] = "#88C0D0",
 ["accent.secondary"] = "#8FBCBB",
+["focus"] = "#B48EAD",
 ["status.success"] = "#A3BE8C",
 ["status.warning"] = "#EBCB8B",
 ["status.error"] = "#BF616A",
@@ -1070,10 +1071,9 @@ return {
 ["diff.delete.dim"] = "#7E4D57",
 ["selection.bg"] = "#434C5E",
 ["selection.fg"] = "#ECEFF4",
-["focus"] = "#88C0D0",
 ["match"] = "#A3BE8C",
-["tab.active.bg"] = "#434C5E",
-["tab.active.fg"] = "#88C0D0",
+["tab.active.bg"] = "#B48EAD",
+["tab.active.fg"] = "#2E3440",
 ["tab.inactive.bg"] = "#2E3440",
 ["tab.inactive.fg"] = "#81A1C1",
 ["keyhint"] = "#88C0D0",
@@ -1198,8 +1198,8 @@ return {
 ["bold"] = true,
 },
 ["tab.active"] = {
-["fg"] = "#88C0D0",
-["bg"] = "#434C5E",
+["fg"] = "#2E3440",
+["bg"] = "#B48EAD",
 ["bold"] = true,
 },
 ["tab.inactive"] = {
