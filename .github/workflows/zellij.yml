@@ -31,6 +31,7 @@ on:
       - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
+      - 'scripts/install-zellij-which-key.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/init.lua'
       - 'nvim/lazy-lock.json'
@@ -154,6 +155,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install pane navigation
         run: python3 scripts/install-zellij-navigation.py
+      - name: Build WhichKey WASM plugin
+        run: make zellij-which-key
       - name: Save native Zellij build
         uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
