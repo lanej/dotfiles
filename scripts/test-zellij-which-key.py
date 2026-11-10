@@ -3,6 +3,7 @@
 import html
 import importlib
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -59,6 +60,10 @@ def main():
         (config / "layouts/test.kdl").write_text(
             'layout { tab { pane; } new_tab_template { pane; } }\n'
         )
+        production = (ROOT / "zellij/config.kdl").read_text()
+        native_keys = palette.block(palette.block(production, r"keybinds\\b"), r"\\btmux\\s*\\{")
+        selected = "\\n".join(palette.block(native_keys, rf'bind "{re.escape(key)}"')
+                             for key in ("?", "c"))
         config.joinpath("config.kdl").write_text("""
 default_mode "locked"
 default_shell "/bin/sh"
@@ -77,8 +82,7 @@ keybinds clear-defaults=true {
     normal { bind "Ctrl f" { SwitchToMode "Tmux"; } }
     tmux {
         bind "Esc" { SwitchToMode "Locked"; }
-        bind "c" { NewTab; SwitchToMode "Locked"; }
-        bind "?" { MessagePlugin "which-key" { name "which-key-toggle"; } SwitchToMode "Locked"; }
+""" + selected + """
     }
 }
 """)
