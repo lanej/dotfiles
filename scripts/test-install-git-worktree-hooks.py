@@ -46,10 +46,12 @@ def checksum(archive):
     archive.with_name(archive.name + ".sha256").write_text(f"{digest}  {archive.name}\n")
 
 
-def fixture_archive(path, *, traversal=False):
+def fixture_archive(path, *, traversal=False, loader_failure=False):
     with tarfile.open(path, "w:gz") as stream:
         member = tarfile.TarInfo("../escape" if traversal else "bin/git")
         payload = b"#!/bin/sh\nprintf 'git version wrong-version\\n'\n"
+        if loader_failure:
+            payload = b"#!/bin/sh\necho \"fixture loader: GLIBC_2.34 not found\" >&2\nexit 1\n"
         member.size = len(payload)
         member.mode = 0o755
         stream.addfile(member, io.BytesIO(payload))
@@ -71,6 +73,36 @@ def main():
         spec = importlib.util.spec_from_file_location("git_runtime_installer", INSTALLER)
         installer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(installer)
+        for system, machine, release, package_platform in (
+            ("Linux", "x86_64", {"ID": "rocky", "ID_LIKE": "rhel centos", "VERSION_ID": "8.6"}, "linux-el8"),
+            ("Linux", "aarch64", {"ID": "almalinux", "ID_LIKE": "rhel centos fedora", "VERSION_ID": "8.10"}, "linux-el8"),
+            ("Linux", "x86_64", {"ID": "rhel", "VERSION_ID": "8"}, "linux-el8"),
+            ("Linux", "x86_64", {"ID": "ubuntu", "VERSION_ID": "22.04"}, "linux"),
+            ("Linux", "x86_64", {"ID": "rocky", "ID_LIKE": "rhel", "VERSION_ID": "9.6"}, "linux"),
+            ("Darwin", "arm64", {}, "darwin"),
+        ):
+            selected = scratch / f"git-{recipe['version']}-worktree-hooks-{package_platform}-{machine}.tar.gz"
+            fixture_archive(selected)
+            requests = []
+            def selected_download(url, timeout):
+                requests.append(url)
+                assert timeout == 60
+                assert url in {f"{recipe['release_url']}/{selected.name}", f"{recipe['release_url']}/{selected.name}.sha256"}, url
+                return selected.with_name(url.rsplit("/", 1)[1]).open("rb")
+            with patch.object(installer.platform, "system", return_value=system), \
+                 patch.object(installer.platform, "machine", return_value=machine), \
+                 patch.object(installer.platform, "freedesktop_os_release", return_value=release), \
+                 patch.object(installer.urllib.request, "urlopen", side_effect=selected_download):
+                try:
+                    installer.install(None, home)
+                except ValueError as error:
+                    assert "runtime version" in str(error), str(error)
+                else:
+                    raise AssertionError("Wrong-version package unexpectedly activated")
+            assert len(requests) == 2
+            assert not active.exists()
+        print("PASS fresh downloads select Enterprise Linux 8, standard Linux and macOS packages")
+
         with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("fixture download failed")):
             try:
                 installer.install(None, home)
@@ -146,6 +178,12 @@ def main():
         checked_install(fixture, home, success=False, reason="checksum mismatch")
         assert (active.readlink() if active.is_symlink() else None) == before
         print("PASS invalid version/archive and checksum leave activation unchanged")
+
+        fixture_archive(fixture, loader_failure=True)
+        incompatible_home = scratch / "loader-failure-home"
+        checked_install(fixture, incompatible_home, success=False, reason="fixture loader: GLIBC_2.34 not found")
+        assert not (incompatible_home / ".local/bin/git").exists()
+        print("PASS runtime loader diagnostics preserved without activation")
 
         fixture_archive(fixture, traversal=True)
         unsafe_home = scratch / "unsafe-home"

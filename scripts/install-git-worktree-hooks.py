@@ -24,10 +24,29 @@ def catalog():
         return tomllib.load(stream)["tools"]["git-worktree-hooks"]
 
 
+def archive_name(recipe, *, generic=False):
+    system = platform.system()
+    os_name = {"Darwin": "darwin", "Linux": "linux"}.get(system)
+    if not os_name:
+        raise ValueError("Unsupported platform")
+    if system == "Linux" and not generic:
+        try:
+            release = platform.freedesktop_os_release()
+        except OSError:
+            release = {}
+        families = {release.get("ID", ""), *release.get("ID_LIKE", "").split()}
+        if families & {"rhel", "centos", "rocky", "almalinux", "ol"} and release.get("VERSION_ID", "").split(".")[0] == "8":
+            os_name = "linux-el8"
+    return f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
+
+
 def run_git(runtime, *arguments, home):
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     env.update(HOME=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
-    return subprocess.check_output([str(runtime / "bin/git"), *arguments], env=env, text=True, stderr=subprocess.STDOUT).strip()
+    try:
+        return subprocess.check_output([str(runtime / "bin/git"), *arguments], env=env, text=True, stderr=subprocess.STDOUT).strip()
+    except subprocess.CalledProcessError as error:
+        raise ValueError(f"Git runtime command failed (exit {error.returncode}): {error.output.strip()}") from error
 
 
 def validate(runtime, expected, home):
@@ -79,10 +98,7 @@ def install(archive, home):
         raise ValueError(f"Runtime directory must not be a symlink: {installs}")
     destination = installs / expected
     if archive is None and not os.path.lexists(destination):
-        os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
-        if not os_name:
-            raise ValueError("Unsupported platform")
-        basename = f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
+        basename = archive_name(recipe)
         with tempfile.TemporaryDirectory(prefix="git-runtime-download-") as temporary:
             archive = Path(temporary) / basename
             for name in (basename + ".sha256", basename):
@@ -93,11 +109,8 @@ def install(archive, home):
             return install(archive, home)
     digest = None
     if archive is not None:
-        os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
-        if not os_name:
-            raise ValueError("Unsupported platform")
-        basename = f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
-        if archive.name != basename:
+        basename = archive_name(recipe)
+        if archive.name not in {basename, archive_name(recipe, generic=True)}:
             raise ValueError(f"Expected platform archive {basename}")
         lines = archive.with_name(archive.name + ".sha256").read_text().splitlines()
         matching = [line.split() for line in lines if len(line.split()) == 2 and line.split()[1].lstrip("*") == archive.name]
@@ -160,8 +173,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of downloading the pinned package")
     parser.add_argument("--home", default=Path.home(), type=Path)
+    parser.add_argument("--archive-name", action="store_true", help="Print this machine's package filename without installing")
     options = parser.parse_args()
     try:
+        if options.archive_name:
+            print(archive_name(catalog()))
+            return
         install(options.archive.resolve() if options.archive else None, options.home.resolve())
     except (OSError, ValueError, tarfile.TarError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Git runtime install failed: {error}\n")

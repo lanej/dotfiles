@@ -47,7 +47,8 @@ case $(uname -s) in
     *) printf 'Unsupported build platform\n' >&2; exit 2 ;;
 esac
 architecture=$(uname -m)
-package="git-$version-worktree-hooks-$platform-$architecture"
+archive_name=$(python3 "$repo_root/scripts/install-git-worktree-hooks.py" --archive-name)
+package=${archive_name%.tar.gz}
 mkdir -p "$1"
 output=$(cd "$1" && pwd)
 if [[ -e $output/$package.tar.gz || -e $output/$package.tar.gz.sha256 ]]; then

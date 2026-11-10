@@ -76,3 +76,27 @@ jobs:
           name: git-worktree-hooks-${{ runner.os }}-${{ runner.arch }}
           path: ${{ runner.temp }}/git-artifacts/*
           if-no-files-found: error
+
+  el8-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.os }}
+    container: rockylinux:8
+    timeout-minutes: 25
+    steps:
+      - name: Install Enterprise Linux 8 build dependencies
+        run: |
+          dnf install -y gcc make git curl tar xz perl python3.12 libcurl-devel expat-devel zlib-devel
+          ln -s /usr/bin/python3.12 /usr/local/bin/python3
+      - uses: actions/checkout@v4
+      - name: Build, test and package Enterprise Linux 8 runtime
+        run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-el8-artifacts"
+      - name: Check Enterprise Linux 8 runtime installer
+        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-el8-artifacts/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: git-worktree-hooks-EL8-${{ runner.arch }}
+          path: ${{ runner.temp }}/git-el8-artifacts/*
+          if-no-files-found: error
