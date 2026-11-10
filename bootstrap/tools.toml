@@ -232,7 +232,7 @@ version = "2.1.295"
 
 [tools.codex]
 requires = ["node", "jq", "claude-code"]
-setup = ["codex-config", "codex-mcp", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
+setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
 version = "0.164.0"
 
 [tools.treehouse]
