@@ -107,6 +107,26 @@ def main():
             checked_install(None, home, success=True)
             assert active.readlink() == first_target
             print("PASS real archive activation, runtime relocation and rerun/reactivation without archive")
+            incompatible = scratch / "incompatible" / real.name
+            incompatible.parent.mkdir()
+            replaced_helper = False
+            with tarfile.open(real, "r:gz") as source, tarfile.open(incompatible, "w:gz") as target:
+                for member in source.getmembers():
+                    if member.name.removeprefix("./") == "libexec/git-core/git-remote-http":
+                        replaced_helper = True
+                        member.type = tarfile.REGTYPE
+                        member.linkname = ""
+                        payload = b"#!/bin/sh\necho 'fixture loader failure' >&2\nexit 127\n"
+                        member.size = len(payload)
+                        target.addfile(member, io.BytesIO(payload))
+                    else:
+                        target.addfile(member, source.extractfile(member) if member.isfile() else None)
+            assert replaced_helper, "Real archive did not contain the exercised helper"
+            checksum(incompatible)
+            incompatible_home = scratch / "incompatible-home"
+            checked_install(incompatible, incompatible_home, success=False, reason="HTTPS helper cannot run")
+            assert not (incompatible_home / ".local/bin/git").exists()
+            print("PASS incompatible HTTPS helper cannot activate Git")
         else:
             print("SKIP real runtime activation (pass --archive to exercise it)")
 

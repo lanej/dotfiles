@@ -37,6 +37,12 @@ def validate(runtime, expected, home):
         raise ValueError("Git helpers did not relocate with the runtime")
     if not os.access(runtime / "libexec/git-core/git-remote-http", os.X_OK):
         raise ValueError("Archive is missing the HTTPS helper")
+    helper_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    helper_env.update(HOME=str(home), LC_ALL="C", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    helper = subprocess.run([str(runtime / "libexec/git-core/git-remote-http")],
+                            env=helper_env, text=True, capture_output=True)
+    if helper.returncode != 1 or "usage: git remote-curl" not in helper.stderr:
+        raise ValueError(f"HTTPS helper cannot run on this machine: {helper.stderr.strip()}")
     with tempfile.TemporaryDirectory(prefix="git-install-smoke-") as smoke:
         run_git(runtime, "init", smoke, home=home)
         if not (Path(smoke) / ".git/hooks/pre-commit.sample").is_file():
