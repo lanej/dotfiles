@@ -38,6 +38,10 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
+        (checkout / "scripts/install-git-worktree-hooks.py").write_text(
+            "from pathlib import Path\nimport os\n"
+            "home = Path(os.environ['HOME'])\n"
+            "(home / 'patched-git-installed').touch()\n")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
@@ -421,6 +425,7 @@ else:
         assert (home / ".gitconfig").resolve() == (checkout / "git/gitconfig").resolve()
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
+        assert not (home / "patched-git-installed").exists()
         assert not (home / ".nvm").exists()
         assert not (home / ".cargo").exists()
         assert not (home / ".local/bin/codex").exists()
@@ -435,6 +440,7 @@ else:
         )
         assert plan.returncode == 0, plan.stdout + plan.stderr
         assert "codex" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
+        assert "git-worktree-hooks" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
         preview = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "-n", "configure"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -595,6 +601,7 @@ else:
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
+        assert (home / "patched-git-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 

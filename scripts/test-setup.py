@@ -113,7 +113,7 @@ def main():
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
         assert (home / ".gitconfig").resolve() == repo / "git/gitconfig"
-        assert not (home / ".bashrc").exists()
+        assert (home / ".bashrc").is_symlink()
         assert not (home / ".config/nvim").exists()
 
         # NOTE: Minimal setup preserves selected sets for the configuration stage.
@@ -134,11 +134,12 @@ def main():
         completion_cache.write_text("stale completion cache")
         # NOTE: Plain make must apply the chosen bundles to that same baseline.
         configure = command
+        before_preview = snapshot(home)
         selected_preview = subprocess.run([*configure, "-n"], cwd=repo, env=env,
                                           capture_output=True, text=True, timeout=30)
         assert selected_preview.returncode == 0, selected_preview.stdout + selected_preview.stderr
         assert machine_config.read_bytes() == local_config
-        assert not (home / ".bashrc").exists(), "make -n applied selected configuration"
+        assert snapshot(home) == before_preview, "make -n applied selected configuration"
         selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr

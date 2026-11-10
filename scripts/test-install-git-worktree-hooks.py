@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import io
+import importlib.util
 import os
 from pathlib import Path
 import platform
@@ -12,6 +13,7 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "scripts/install-git-worktree-hooks.py"
@@ -66,10 +68,32 @@ def main():
         home = scratch / "home"
         home.mkdir()
         active = home / ".local/bin/git"
-        checked_install(None, home, success=False, reason="DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
+        spec = importlib.util.spec_from_file_location("git_runtime_installer", INSTALLER)
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("fixture download failed")):
+            try:
+                installer.install(None, home)
+            except OSError as error:
+                assert "fixture download failed" in str(error)
+            else:
+                raise AssertionError("Missing download unexpectedly installed Git")
         assert not active.exists()
         if options.archive:
             real = options.archive.resolve()
+            downloaded_home = scratch / "downloaded-home"
+            requests = []
+            def download(url, timeout):
+                requests.append(url)
+                assert timeout == 60
+                assert url.startswith(recipe["release_url"] + "/")
+                return real.with_name(url.rsplit("/", 1)[1]).open("rb")
+            with patch.object(installer.urllib.request, "urlopen", side_effect=download):
+                installer.install(None, downloaded_home)
+                assert len(requests) == 2
+                installer.install(None, downloaded_home)
+                assert len(requests) == 2, "Rerun downloaded the installed runtime again"
+            assert (downloaded_home / ".local/bin/git").resolve().name == "git"
             bootstrap_install(real, home)
             first_target = active.readlink()
             expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git"

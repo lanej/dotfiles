@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install an explicitly supplied patched Git runtime without modifying system Git."""
+"""Install the pinned patched Git package without modifying system Git."""
 
 import argparse
 import hashlib
@@ -13,6 +13,7 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,6 +64,26 @@ def install(archive, home):
     expected = recipe["runtime_version"]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", expected):
         raise ValueError("Invalid runtime version in catalog")
+    installs = home / ".local/opt/git-worktree-hooks"
+    active = home / ".local/bin/git"
+    if not managed_link(active, installs):
+        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
+    if installs.is_symlink():
+        raise ValueError(f"Runtime directory must not be a symlink: {installs}")
+    destination = installs / expected
+    if archive is None and not os.path.lexists(destination):
+        os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
+        if not os_name:
+            raise ValueError("Unsupported platform")
+        basename = f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
+        with tempfile.TemporaryDirectory(prefix="git-runtime-download-") as temporary:
+            archive = Path(temporary) / basename
+            for name in (basename + ".sha256", basename):
+                url = f"{recipe['release_url']}/{name}"
+                print(f"Downloading {url}", flush=True)
+                with urllib.request.urlopen(url, timeout=60) as source, (Path(temporary) / name).open("wb") as target:
+                    shutil.copyfileobj(source, target)
+            return install(archive, home)
     digest = None
     if archive is not None:
         os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
@@ -79,13 +100,6 @@ def install(archive, home):
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != matching[0][0].lower():
             raise ValueError("Archive checksum mismatch")
-    installs = home / ".local/opt/git-worktree-hooks"
-    active = home / ".local/bin/git"
-    if not managed_link(active, installs):
-        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
-    if installs.is_symlink():
-        raise ValueError(f"Runtime directory must not be a symlink: {installs}")
-    destination = installs / expected
     if os.path.lexists(destination):
         if destination.is_symlink() or not destination.is_dir():
             raise ValueError(f"Existing runtime is not managed: {destination}")
@@ -128,7 +142,7 @@ def install(archive, home):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--archive", type=Path, help="Platform archive and adjacent .sha256; optional when the catalog runtime is already installed")
+    parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of downloading the pinned package")
     parser.add_argument("--home", default=Path.home(), type=Path)
     options = parser.parse_args()
     try:

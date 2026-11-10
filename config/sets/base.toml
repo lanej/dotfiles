@@ -8,3 +8,4 @@ source = "patched"
 
 [tools]
 git = true
+git-worktree-hooks = true

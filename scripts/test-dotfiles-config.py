@@ -34,22 +34,24 @@ def main():
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
-        native_tools = {"git"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
+        native_tools = {"git", "git-worktree-hooks"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
         assert {"git", "zsh", "fzf", "tmux", "zellij", "kitty", "wezterm"} <= {tool["name"] for tool in baseline["tools"]}
         assert "treehouse" not in {tool["name"] for tool in baseline["tools"]}
-        assert "git-worktree-hooks" not in {tool["name"] for tool in baseline["tools"]}
+        assert "git-worktree-hooks" in {tool["name"] for tool in baseline["tools"]}
         assert baseline["settings"]["codex.github_enabled"] is False
         assert baseline["settings"]["codex.easypost"] is False
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
-        config.write_text("[tools]\ntmux = false\n")
+        config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\n")
         reduced = json.loads(run(*command, "--format", "json").stdout)
         assert "tmux" not in {tool["name"] for tool in reduced["tools"]}
         assert "tmux-config" not in reduced["setup"]
+        assert "git-worktree-hooks" not in {tool["name"] for tool in reduced["tools"]}
+        assert "git" in {tool["name"] for tool in reduced["tools"]}
         for host in ("macos", "linux"):
             fresh = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
             assert {"git", "zsh", "zellij"} <= {tool["name"] for tool in fresh["tools"]}
