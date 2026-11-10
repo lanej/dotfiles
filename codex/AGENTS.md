@@ -6,6 +6,8 @@ For software design, implementation, modification, debugging and review, use the
 
 # Shared practices
 
+Software plans must explain how the proposed work changes the data structure. Establish the behavior or problem motivating the change, then show the relevant current and proposed types, schemas or representative values, making additions, removals and changed relationships explicit. Explain consequential changes to ownership, valid states and invariants; connect implementation steps to these structural changes, including compatibility or migration when relevant. Review unresolved modeling choices with Josh before building on them. Keep detail proportional, reuse existing types and use pseudocode when the language is undecided; if no structural change is needed, say so briefly. Carry this focus into delegated planning and review briefs. For substantial data model changes, read `~/.agents/skills/dotfiles/data-change-planning/SKILL.md`.
+
 Keep Markdown paragraphs on one source line. For source-comment decisions, use the `code-comments` skill's compact guidance; load its full specification only when its conditional triggers apply. Honor repository conventions and leave unrelated comments alone.
 
 Follow ESR's Unix rules in software design: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, representation of knowledge as data, least surprise, silence without useful output, early clear failure/repair, programmer economy, generation, working behavior before optimization, diversity and extensibility.
