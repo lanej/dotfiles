@@ -19,6 +19,7 @@ pub struct Suggestion {
     pub value: String,
     pub label: String,
     pub detail: String,
+    pub icon: Option<&'static str>,
 }
 
 impl Suggestion {
@@ -31,6 +32,7 @@ impl Suggestion {
             value: value.into(),
             label: label.into(),
             detail: detail.into(),
+            icon: None,
         }
     }
 }

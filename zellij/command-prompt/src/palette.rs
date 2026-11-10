@@ -657,7 +657,6 @@ impl Palette {
                 .clamp(12, (width / 2).max(12))
                 .min(width)
         };
-        let detail_width = width.saturating_sub(label_width + 2);
         let cell = |column, row, available, value| {
             print_text_with_coordinates(value, column, row, Some(available), Some(1))
         };
@@ -679,10 +678,30 @@ impl Palette {
                 )
                 .unwrap_or_default();
                 let detail_start = label.chars().count() + 1;
+                let icon_width = if item.icon.is_some() { width.min(2) } else { 0 };
+                let name_width = if detail.is_empty() {
+                    width.saturating_sub(icon_width)
+                } else {
+                    label_width.min(width.saturating_sub(icon_width))
+                };
+                let detail_width = width.saturating_sub(icon_width + name_width + 2);
+                if let Some(icon) = item.icon {
+                    let icon = Text::from(icon);
+                    cell(
+                        2,
+                        row,
+                        icon_width,
+                        if i == self.selected {
+                            icon.selected()
+                        } else {
+                            icon
+                        },
+                    );
+                }
                 for (column, available, value, offset) in [
-                    (2, label_width, Text::from(&label), 0),
+                    (2 + icon_width, name_width, Text::from(&label), 0),
                     (
-                        label_width + 4,
+                        icon_width + name_width + 4,
                         detail_width,
                         Text::from(&detail).dim_range(..),
                         detail_start,

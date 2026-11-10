@@ -40,16 +40,15 @@ impl Query {
                     return None;
                 }
                 let value = format!("{}{name}{}", self.parent, if directory { "/" } else { "" });
-                value.starts_with(&self.prefix).then(|| {
-                    Suggestion::new(
-                        value,
-                        name,
-                        if directory {
-                            glyphs::DIRECTORY
-                        } else {
-                            glyphs::REGULAR
-                        },
-                    )
+                value.starts_with(&self.prefix).then(|| Suggestion {
+                    value,
+                    label: name.into(),
+                    detail: String::new(),
+                    icon: Some(if directory {
+                        glyphs::DIRECTORY
+                    } else {
+                        glyphs::REGULAR
+                    }),
                 })
             })
             .take(512)

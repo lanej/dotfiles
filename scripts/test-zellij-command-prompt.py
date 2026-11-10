@@ -550,10 +550,23 @@ def exercise_files(first, second, home):
                     'notes one.txt' in prompt_text(first) and 'notes two.txt' in prompt_text(first))
         assert 'notes one.txt' not in prompt_text(second), 'File candidates leaked to the other client'
         assert_match_underlines(first, 'notes one.txt', set(range(5)))
-        capture(first, 'file-completion')
         first.send(b'\t')
         first.until('Tab inserts a quoted file argument', lambda: 'notes ' in command_line(first))
         first.send(b'\x1b')
+    changed = home / 'completion-cwd-ready'
+    first.until('file prompt closes before changing cwd', lambda: prompt_frame(first) is None)
+    first.send(('cd ' + shlex.quote(str(fixture)) + ' && touch ' + shlex.quote(str(changed)) + '\r').encode())
+    first.until('focused shell enters completion directory', changed.exists)
+    open_prompt(first)
+    first.send(b'edit notes\t')
+    first.until('relative filename candidates arrive', lambda: 'notes one.txt' in prompt_text(first))
+    assert ': edit notes' in command_line(first), 'Example hides the command or query'
+    assert_match_underlines(first, 'notes one.txt', set(range(5)))
+    for name, icon in [('notes one.txt', '\uf15b'), ('notes folder', '\uf07b')]:
+        line = next(line for line in screen(first) if name in line)
+        assert line.index(icon) < line.index(name), 'Type icon must precede the filename'
+    capture(first, 'file-completion')
+    first.send(b'\x1b')
     open_prompt(first)
     first.send(('edit ' + shlex.quote(str(fixture / 'notes café')) + '\t').encode())
     first.until('Unicode filenames arrive intact', lambda: 'notes café.txt' in prompt_text(first))
