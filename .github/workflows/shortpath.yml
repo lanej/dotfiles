@@ -1,0 +1,31 @@
+name: Shortpath
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['tools/shortpath/**', '.github/workflows/shortpath.yml']
+  push:
+    branches: [master]
+    paths: ['tools/shortpath/**', '.github/workflows/shortpath.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: tools/shortpath
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.93.1 --profile minimal --component rustfmt --component clippy
+      - run: cargo +1.93.1 test --locked --offline
+      - run: cargo +1.93.1 check --locked --offline
+      - run: cargo +1.93.1 clippy --locked --offline --all-targets -- -D warnings
+      - run: cargo +1.93.1 fmt --check
