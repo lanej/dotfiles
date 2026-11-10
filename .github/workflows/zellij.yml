@@ -89,6 +89,17 @@ permissions:
   contents: read
 
 jobs:
+  which-key-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned WASM toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --target wasm32-wasip1
+      - name: Compile and unit-test WhichKey
+        run: |
+          rustup run 1.95.0 cargo test --manifest-path zellij/which-key/Cargo.toml
+          rustup run 1.95.0 cargo check --target wasm32-wasip1 --manifest-path zellij/which-key/Cargo.toml
+          rustup run 1.95.0 cargo fmt --check --manifest-path zellij/which-key/Cargo.toml
   shell-titles:
     strategy:
       fail-fast: false
