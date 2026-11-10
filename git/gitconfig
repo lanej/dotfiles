@@ -178,10 +178,10 @@
 	helper = /usr/local/bin/git-credential-cloudsmith easypost/easypost-rust
 [credential "https://github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = "!f() { PATH=\"$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\" gh auth git-credential \"$@\"; }; f"
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = "!f() { PATH=\"$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\" gh auth git-credential \"$@\"; }; f"
 
 [include]
 	path = ~/.config/dotfiles/theme/delta.gitconfig
