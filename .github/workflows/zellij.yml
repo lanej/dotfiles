@@ -157,6 +157,18 @@ jobs:
         run: python3 scripts/install-zellij-navigation.py
       - name: Build WhichKey WASM plugin
         run: make zellij-which-key
+      - name: Exercise WhichKey passive overlay
+        env:
+          ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+        run: make test-zellij-which-key
+      - name: Preserve actual WhichKey terminal captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: which-key-${{ matrix.os }}
+          path: .zellij-diagnostics/which-key/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save native Zellij build
         uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}
