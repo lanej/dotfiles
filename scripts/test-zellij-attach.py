@@ -79,6 +79,19 @@ _, status = os.waitpid(pid, 0)
 raise SystemExit(os.waitstatus_to_exitcode(status))
 ''')
         ssh.chmod(0o755)
+        kitten = work / "kitten"
+        kitten.write_text(
+            '#!/bin/sh\n'
+            'if [ -n "${ZELLIJ:-}" ]; then\n'
+            '  echo "Kitty SSH bootstrap cannot run through this multiplexer." >&2\n'
+            '  exit 99\n'
+            'fi\n'
+            '[ "$1" = ssh ] || exit 98\n'
+            'printf used > "$KITTY_USED"\n'
+            'shift\n'
+            'exec ssh "$@"\n'
+        )
+        kitten.chmod(0o755)
         home = work / "home"
         home.mkdir()
         remote_home = work / "remote-home"
@@ -88,6 +101,8 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         (remote_home / ".files").symlink_to(ROOT)
         remote_bin = remote_home / ".local/bin"
         remote_bin.mkdir(parents=True)
+        # Bash startup prepends this directory ahead of macOS Homebrew binaries.
+        (remote_bin / "zellij").symlink_to(proxy)
         (remote_bin / "zellij-attach").symlink_to(ROOT / "bin/zellij-attach")
         (remote_bin / "zellij-agent").symlink_to(ROOT / "bin/zellij-agent")
         # Isolate runner-wide startup (including Ubuntu's interactive compinit)
@@ -117,6 +132,7 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
             "ATTACHED": str(attached),
             "ATTACHED_ENV": str(observed),
             "TAB": str(tab),
+            "KITTY_USED": str(work / "kitty-used"),
         }
         for name in ("ZELLIJ", "TMUX", "KITTY_WINDOW_ID", "SSH_CONNECTION", "SSH_AUTH_SOCK"):
             env.pop(name, None)
@@ -154,8 +170,17 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         subprocess.run([zsh, "-dfc", *remote[2:], session], env=env, check=True,
                        timeout=15)
         assert json.loads(attached.read_text()) == ["attach", "--create", session]
-        subprocess.run(remote, env={**env, "ZELLIJ": "1", "REMOTE_SHELL": shutil.which("bash")}, check=True,
+        subprocess.run(remote, env={**env, "KITTY_WINDOW_ID": "fixture"},
+                       check=True, timeout=15)
+        assert (work / "kitty-used").read_text() == "used"
+        assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
+        assert not tab.exists(), "Kitty SSH outside Zellij must use the current terminal"
+        (work / "kitty-used").unlink()
+        subprocess.run([zsh, "-dfc", *remote[2:]],
+                       env={**env, "ZELLIJ": "1", "KITTY_WINDOW_ID": "fixture",
+                            "REMOTE_SHELL": shutil.which("bash")}, check=True,
                        timeout=15)
+        assert not (work / "kitty-used").exists(), "Zellij must bypass Kitty's SSH bootstrap"
         assert json.loads(tab.read_text()) == ["action", "new-tab", "--name", "fixture-host"]
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
         assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket}
