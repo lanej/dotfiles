@@ -305,6 +305,7 @@ codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 # Retain a clear failure for old callers instead of silently restoring servers.
+.PHONY: codex-mcp
 codex-mcp:
 	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
 quarto:
