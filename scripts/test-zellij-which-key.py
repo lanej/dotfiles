@@ -61,8 +61,8 @@ def main():
             'layout { tab { pane; } new_tab_template { pane; } }\n'
         )
         production = (ROOT / "zellij/config.kdl").read_text()
-        native_keys = palette.block(palette.block(production, r"keybinds\\b"), r"\\btmux\\s*\\{")
-        selected = "\\n".join(palette.block(native_keys, rf'bind "{re.escape(key)}"')
+        native_keys = palette.block(palette.block(production, r"keybinds\b"), r"\btmux\s*\{")
+        selected = "\n".join(palette.block(native_keys, rf'bind "{re.escape(key)}"')
                              for key in ("?", "c"))
         config.joinpath("config.kdl").write_text("""
 default_mode "locked"
