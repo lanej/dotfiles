@@ -12,6 +12,8 @@ git-worktree-policy refresh
 git-worktree-policy status --all
 ```
 
+With [patched Git](git-worktree-hooks.md#install-through-dotfiles) active, these hooks refuse the next worktree creation once a configured budget is full. With stock Git, installation enables inventory refresh and budget warnings; use the explicit preflight command below for cooperating allocation tools. Existing Treehouse slots can still be reused at capacity.
+
 All limits are optional and disabled by default. Local `worktree.limit` sets a nonnegative linked-worktree count, and local `worktree.maxBytes` sets a disk budget. Global Git configuration does not set these repository limits. Zero permits no additions; unset either local key to disable that limit. Byte budgets accept integers or integer sizes such as `500MB` and `8GiB`, with decimal KB/MB/GB/TB and binary KiB/MiB/GiB/TiB units. Global budgets cover all registered repositories:
 
 ```sh

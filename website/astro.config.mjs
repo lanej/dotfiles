@@ -38,6 +38,11 @@ export default defineConfig({
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },
         { label: 'tmux sessions', slug: 'reference/tmux' },
+        { label: 'Worktrees', items: [
+          { label: 'Treehouse agent worktrees', slug: 'reference/treehouse' },
+          { label: 'Tracking and budgets', slug: 'reference/worktree-policy' },
+          { label: 'Patched Git installation', slug: 'reference/worktree-hooks' },
+        ] },
       ] },
       { label: 'Zellij', items: [
         { label: 'Overview', slug: 'reference/zellij' },

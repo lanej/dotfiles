@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import io
+import importlib.util
 import os
 from pathlib import Path
 import platform
@@ -12,6 +13,7 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "scripts/install-git-worktree-hooks.py"
@@ -66,23 +68,71 @@ def main():
         home = scratch / "home"
         home.mkdir()
         active = home / ".local/bin/git"
-        checked_install(None, home, success=False, reason="DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
+        spec = importlib.util.spec_from_file_location("git_runtime_installer", INSTALLER)
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("fixture download failed")):
+            try:
+                installer.install(None, home)
+            except OSError as error:
+                assert "fixture download failed" in str(error)
+            else:
+                raise AssertionError("Missing download unexpectedly installed Git")
         assert not active.exists()
         if options.archive:
             real = options.archive.resolve()
+            downloaded_home = scratch / "downloaded home with 'quotes"
+            requests = []
+            def download(url, timeout):
+                requests.append(url)
+                assert timeout == 60
+                assert url.startswith(recipe["release_url"] + "/")
+                return real.with_name(url.rsplit("/", 1)[1]).open("rb")
+            with patch.object(installer.urllib.request, "urlopen", side_effect=download):
+                installer.install(None, downloaded_home)
+                assert len(requests) == 2
+                installer.install(None, downloaded_home)
+                assert len(requests) == 2, "Rerun downloaded the installed runtime again"
+            assert (downloaded_home / ".local/bin/git").resolve().name == "git-launcher"
             bootstrap_install(real, home)
             first_target = active.readlink()
-            expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git"
+            expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git-launcher"
             assert active.resolve() == expected_target, active
+            exec_path = subprocess.check_output([str(active), "--exec-path"], text=True).strip()
+            assert Path(exec_path).resolve() == expected_target.parent.parent / "libexec/git-core"
             assert subprocess.check_output([str(active), "--version"], text=True).strip() == f"git version {recipe['runtime_version']}"
             checked_install(real, home, success=True)
             assert active.readlink() == first_target
+            active.unlink()
+            active.symlink_to(expected_target.with_name("git"))
+            checked_install(None, home, success=True)
+            assert active.readlink() == first_target, "Legacy direct-binary link was not migrated"
             bootstrap_install(None, home)
             assert active.readlink() == first_target
             active.unlink()
             checked_install(None, home, success=True)
             assert active.readlink() == first_target
             print("PASS real archive activation, runtime relocation and rerun/reactivation without archive")
+            incompatible = scratch / "incompatible" / real.name
+            incompatible.parent.mkdir()
+            replaced_helper = False
+            with tarfile.open(real, "r:gz") as source, tarfile.open(incompatible, "w:gz") as target:
+                for member in source.getmembers():
+                    if member.name.removeprefix("./") == "libexec/git-core/git-remote-http":
+                        replaced_helper = True
+                        member.type = tarfile.REGTYPE
+                        member.linkname = ""
+                        payload = b"#!/bin/sh\necho 'fixture loader failure' >&2\nexit 127\n"
+                        member.size = len(payload)
+                        target.addfile(member, io.BytesIO(payload))
+                    else:
+                        target.addfile(member, source.extractfile(member) if member.isfile() else None)
+            assert replaced_helper, "Real archive did not contain the exercised helper"
+            checksum(incompatible)
+            incompatible_home = scratch / "incompatible-home"
+            checked_install(incompatible, incompatible_home, success=False, reason="HTTPS helper cannot run")
+            assert not (incompatible_home / ".local/bin/git").exists()
+            print("PASS incompatible HTTPS helper cannot activate Git")
         else:
             print("SKIP real runtime activation (pass --archive to exercise it)")
 

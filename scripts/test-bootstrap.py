@@ -29,6 +29,8 @@ def main():
         installed.chmod(0o755)
         checkout = home / ".files"
         checkout.mkdir()
+        (checkout / ".git/hooks").mkdir(parents=True)
+        shutil.copytree(root / "git", checkout / "git")
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
@@ -36,6 +38,10 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
+        (checkout / "scripts/install-git-worktree-hooks.py").write_text(
+            "from pathlib import Path\nimport os\n"
+            "home = Path(os.environ['HOME'])\n"
+            "(home / 'patched-git-installed').touch()\n")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
@@ -84,7 +90,9 @@ def record(event):
 if name == "uname":
     print("Linux" if args == ["-s"] else "aarch64")
 elif name == "git":
-    if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
+    if args[:1] == ["-C"] and Path(args[1]).resolve() == (home / ".files").resolve() and args[2:] == ["rev-parse", "--path-format=absolute", "--git-common-dir"]:
+        print((home / ".files/.git").resolve())
+    elif args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
     if args == ["dnf", "install", "-y", "ImageMagick"]:
@@ -414,8 +422,10 @@ else:
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
         assert (home / ".xinitrc").is_symlink()
+        assert (home / ".gitconfig").resolve() == (checkout / "git/gitconfig").resolve()
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
+        assert not (home / "patched-git-installed").exists()
         assert not (home / ".nvm").exists()
         assert not (home / ".cargo").exists()
         assert not (home / ".local/bin/codex").exists()
@@ -430,6 +440,7 @@ else:
         )
         assert plan.returncode == 0, plan.stdout + plan.stderr
         assert "codex" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
+        assert "git-worktree-hooks" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
         preview = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "-n", "configure"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -590,6 +601,7 @@ else:
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
+        assert (home / "patched-git-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 

@@ -195,8 +195,10 @@ case "$target" in
         ln -fs "${dotfiles}/git/gitignore" "${setup_home}/.gitignore"
         ln -fs "${dotfiles}/git/gitcommit" "${setup_home}/.gitcommit"
         ln -fs "${dotfiles}/git/gitattributes" "${setup_home}/.gitattributes"
-        ln -fs "${dotfiles}/git/hooks/pre-commit" "${dotfiles}/.git/hooks/pre-commit"
-        ln -fs "${dotfiles}/git/hooks/commit-msg" "${dotfiles}/.git/hooks/commit-msg"
+        common_gitdir=$(git -C "$dotfiles" rev-parse --path-format=absolute --git-common-dir)
+        hooks_dir="$common_gitdir/hooks"
+        ln -fs "${dotfiles}/git/hooks/pre-commit" "$hooks_dir/pre-commit"
+        ln -fs "${dotfiles}/git/hooks/commit-msg" "$hooks_dir/commit-msg"
         ;;
     gpg)
         mkdir -p "${setup_home}/.gnupg"

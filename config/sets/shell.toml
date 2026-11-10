@@ -1,5 +1,4 @@
 [tools]
-git = true
 zsh = true
 fzf = true
 starship = true

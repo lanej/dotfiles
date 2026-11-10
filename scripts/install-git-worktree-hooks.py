@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install an explicitly supplied patched Git runtime without modifying system Git."""
+"""Install the pinned patched Git package without modifying system Git."""
 
 import argparse
 import hashlib
@@ -8,11 +8,13 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tarfile
 import tempfile
 import tomllib
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,6 +38,12 @@ def validate(runtime, expected, home):
         raise ValueError("Git helpers did not relocate with the runtime")
     if not os.access(runtime / "libexec/git-core/git-remote-http", os.X_OK):
         raise ValueError("Archive is missing the HTTPS helper")
+    helper_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    helper_env.update(HOME=str(home), LC_ALL="C", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    helper = subprocess.run([str(runtime / "libexec/git-core/git-remote-http")],
+                            env=helper_env, text=True, capture_output=True)
+    if helper.returncode != 1 or "usage: git remote-curl" not in helper.stderr:
+        raise ValueError(f"HTTPS helper cannot run on this machine: {helper.stderr.strip()}")
     with tempfile.TemporaryDirectory(prefix="git-install-smoke-") as smoke:
         run_git(runtime, "init", smoke, home=home)
         if not (Path(smoke) / ".git/hooks/pre-commit.sample").is_file():
@@ -51,7 +59,7 @@ def managed_link(link, installs):
         target = link.resolve()
     except (OSError, RuntimeError):
         return False
-    return (target.parent.name == "bin" and target.name == "git"
+    return (target.parent.name == "bin" and target.name in {"git", "git-launcher"}
             and target.parent.parent.parent == installs.resolve()
             and (target.parent.parent / ".archive-sha256").is_file())
 
@@ -63,6 +71,26 @@ def install(archive, home):
     expected = recipe["runtime_version"]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", expected):
         raise ValueError("Invalid runtime version in catalog")
+    installs = home / ".local/opt/git-worktree-hooks"
+    active = home / ".local/bin/git"
+    if not managed_link(active, installs):
+        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
+    if installs.is_symlink():
+        raise ValueError(f"Runtime directory must not be a symlink: {installs}")
+    destination = installs / expected
+    if archive is None and not os.path.lexists(destination):
+        os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
+        if not os_name:
+            raise ValueError("Unsupported platform")
+        basename = f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
+        with tempfile.TemporaryDirectory(prefix="git-runtime-download-") as temporary:
+            archive = Path(temporary) / basename
+            for name in (basename + ".sha256", basename):
+                url = f"{recipe['release_url']}/{name}"
+                print(f"Downloading {url}", flush=True)
+                with urllib.request.urlopen(url, timeout=60) as source, (Path(temporary) / name).open("wb") as target:
+                    shutil.copyfileobj(source, target)
+            return install(archive, home)
     digest = None
     if archive is not None:
         os_name = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
@@ -79,13 +107,6 @@ def install(archive, home):
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != matching[0][0].lower():
             raise ValueError("Archive checksum mismatch")
-    installs = home / ".local/opt/git-worktree-hooks"
-    active = home / ".local/bin/git"
-    if not managed_link(active, installs):
-        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
-    if installs.is_symlink():
-        raise ValueError(f"Runtime directory must not be a symlink: {installs}")
-    destination = installs / expected
     if os.path.lexists(destination):
         if destination.is_symlink() or not destination.is_dir():
             raise ValueError(f"Existing runtime is not managed: {destination}")
@@ -116,19 +137,28 @@ def install(archive, home):
         except Exception:
             shutil.rmtree(destination)
             raise
+    with tempfile.TemporaryDirectory(prefix=".git-launcher-", dir=destination / "bin") as temporary:
+        staged_launcher = Path(temporary) / "git-launcher"
+        staged_launcher.write_text(f'#!/bin/sh\nexec {shlex.quote(str(destination / "bin/git"))} "$@"\n')
+        staged_launcher.chmod(0o755)
+        os.replace(staged_launcher, destination / "bin/git-launcher")
     active.parent.mkdir(parents=True, exist_ok=True)
     if not managed_link(active, installs):
         raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
     with tempfile.TemporaryDirectory(prefix=".git-link-", dir=active.parent) as temporary:
         staged_link = Path(temporary) / "git"
-        staged_link.symlink_to(destination / "bin/git")
+        staged_link.symlink_to(destination / "bin/git-launcher")
+        env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        actual_exec = subprocess.check_output([str(staged_link), "--exec-path"], env=env, text=True).strip()
+        if Path(actual_exec).resolve() != (destination / "libexec/git-core").resolve():
+            raise ValueError("Installed Git entrypoint cannot locate its runtime helpers")
         os.replace(staged_link, active)
-    print(f"Activated {active} -> {destination / 'bin/git'}")
+    print(f"Activated {active} -> {destination / 'bin/git-launcher'}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--archive", type=Path, help="Platform archive and adjacent .sha256; optional when the catalog runtime is already installed")
+    parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of downloading the pinned package")
     parser.add_argument("--home", default=Path.home(), type=Path)
     options = parser.parse_args()
     try:
