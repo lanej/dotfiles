@@ -50,6 +50,8 @@ Never let a secret value reach tool output (no bare `env | grep`, `cat .envrc`, 
 
 ## Code Changes
 
+Software plans must show how data structures and interfaces change: how data is represented and exchanged. Explain the problem before showing current and proposed types, schemas and contracts. Bound complexity within capabilities; state what remains internal and what crosses each boundary, preserving meaningful outcomes and errors. Connect implementation steps to these changes, including ownership, invariants and compatibility or migration when relevant. Review unresolved choices with Josh before building on them. Keep detail proportional, reuse existing contracts and explain when they suffice. Carry this focus into delegated planning and review briefs. For substantial model or interface changes, read `~/.agents/skills/dotfiles/data-change-planning/SKILL.md`.
+
 For Go work, read the `go` skill. New Go repositories adopt its portable correctness profile with `repo-bootstrap --go`; preserve and reconcile existing project checks, and run the same committed checks locally and in CI.
 
 **Proportional Verification.** Run the affected feature's check after a software change; use diff review and applicable syntax checks for routine prose/configuration edits. Broaden checks for concrete interactions or failures and rerun affected checks after fixes. The acceptance definition, harness sensitivity procedure, and evidence labels live in `~/.files/docs/verification.md`.

@@ -6,6 +6,8 @@ For software design, implementation, modification, debugging and review, use the
 
 # Shared practices
 
+Software plans must show how data structures and interfaces change: how data is represented and exchanged. Explain the problem before showing current and proposed types, schemas and contracts. Bound complexity within capabilities; state what remains internal and what crosses each boundary, preserving meaningful outcomes and errors. Connect implementation steps to these changes, including ownership, invariants and compatibility or migration when relevant. Review unresolved choices with Josh before building on them. Keep detail proportional, reuse existing contracts and explain when they suffice. Carry this focus into delegated planning and review briefs. For substantial model or interface changes, read `~/.agents/skills/dotfiles/data-change-planning/SKILL.md`.
+
 Keep Markdown paragraphs on one source line. For source-comment decisions, use the `code-comments` skill's compact guidance; load its full specification only when its conditional triggers apply. Honor repository conventions and leave unrelated comments alone.
 
 Follow ESR's Unix rules in software design: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, representation of knowledge as data, least surprise, silence without useful output, early clear failure/repair, programmer economy, generation, working behavior before optimization, diversity and extensibility.
