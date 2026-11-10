@@ -54,6 +54,7 @@ pub struct Palette {
     scroll: usize,
     allowed: bool,
     popup_size: Option<(usize, usize)>,
+    files: crate::files::Lookup,
 }
 
 impl Palette {
@@ -74,6 +75,7 @@ impl Palette {
             scroll: 0,
             allowed: false,
             popup_size: None,
+            files: crate::files::Lookup::default(),
         }
     }
 
@@ -84,7 +86,65 @@ impl Palette {
                     return false;
                 }
                 self.allowed = true;
+                self.context.cwd = get_pane_cwd(self.open.origin.1).unwrap_or_else(|_| "/".into());
                 self.refresh();
+                if !self
+                    .context
+                    .tabs
+                    .iter()
+                    .any(|tab| tab.tab_id == self.open.origin.0)
+                {
+                    if let Some(tab) = get_tab_info(self.open.origin.0) {
+                        self.context.tabs.push(tab);
+                    }
+                }
+                if let Some(pane) = get_pane_info(self.open.origin.1) {
+                    if !self
+                        .context
+                        .panes
+                        .iter()
+                        .any(|(_, p)| p.id == pane.id && p.is_plugin == pane.is_plugin)
+                    {
+                        let position = self
+                            .context
+                            .tabs
+                            .iter()
+                            .find(|tab| tab.tab_id == self.open.origin.0)
+                            .map_or(0, |tab| tab.position);
+                        self.context.panes.push((position, pane));
+                    }
+                }
+                self.update_names();
+                true
+            }
+            Event::PermissionRequestResult(PermissionStatus::Denied) => {
+                close_self();
+                false
+            }
+            Event::HostFolderChanged(_) if self.allowed => {
+                scan_host_folder(&"/host");
+                false
+            }
+            Event::FailedToChangeHostFolder(error) if self.allowed => {
+                self.files.failed();
+                self.error = error.unwrap_or_else(|| "Cannot read that directory.".into());
+                true
+            }
+            Event::FileSystemUpdate(paths) if self.allowed => {
+                if let Some(choices) =
+                    self.files
+                        .finish(paths, self.input.get_text(), self.input.cursor_position())
+                {
+                    self.context.files = Some(choices);
+                    self.selected = 0;
+                    self.error.clear();
+                    true
+                } else {
+                    false
+                }
+            }
+            Event::Timer(_) if self.allowed && self.files.timeout() => {
+                self.error = "File lookup timed out; reopen the palette to retry.".into();
                 true
             }
             Event::Key(key) if self.allowed => self.key(key),
@@ -100,10 +160,27 @@ impl Palette {
                 self.error.clear();
                 true
             }
-            Event::PaneUpdate(_) | Event::TabUpdate(_) | Event::SessionUpdate(..)
-                if self.allowed =>
-            {
-                self.refresh();
+            Event::PaneUpdate(manifest) if self.allowed => {
+                self.context.panes = manifest
+                    .panes
+                    .into_iter()
+                    .flat_map(|(tab, panes)| panes.into_iter().map(move |p| (tab, p)))
+                    .collect();
+                self.update_names();
+                true
+            }
+            Event::TabUpdate(tabs) if self.allowed => {
+                self.context.tabs = tabs;
+                self.update_names();
+                true
+            }
+            Event::SessionUpdate(sessions, _) if self.allowed => {
+                if let Some(session) = sessions.iter().find(|s| s.is_current_session) {
+                    self.context.session_name = session.name.clone();
+                }
+                self.context.sessions = sessions;
+                self.context.sessions.sort_by(|a, b| a.name.cmp(&b.name));
+                self.update_names();
                 true
             }
             _ => false,
@@ -136,6 +213,31 @@ impl Palette {
             self.context.sessions = snapshot.live_sessions;
             self.context.sessions.sort_by(|a, b| a.name.cmp(&b.name));
         }
+        self.selected = self.selected.min(self.items().len().saturating_sub(1));
+    }
+
+    fn update_names(&mut self) {
+        self.context.tabs.sort_by_key(|tab| tab.position);
+        self.context
+            .panes
+            .sort_by_key(|(tab, pane)| (*tab, pane.id));
+        self.context.tab_name = self
+            .context
+            .tabs
+            .iter()
+            .find(|tab| tab.tab_id == self.open.origin.0)
+            .map(|tab| tab.name.clone())
+            .unwrap_or_default();
+        self.context.pane_name = self
+            .context
+            .panes
+            .iter()
+            .find(|(_, pane)| match self.open.origin.1 {
+                PaneId::Plugin(id) => pane.is_plugin && pane.id == id,
+                PaneId::Terminal(id) => !pane.is_plugin && pane.id == id,
+            })
+            .map(|(_, pane)| pane.title.clone())
+            .unwrap_or_default();
         self.selected = self.selected.min(self.items().len().saturating_sub(1));
     }
 
@@ -217,6 +319,31 @@ impl Palette {
         if matches!(self.view, View::Panes | View::Tabs | View::Sessions) {
             self.select(1);
             return;
+        }
+        if self.view == View::Command {
+            let completed = completion::complete(
+                self.input.get_text(),
+                self.input.cursor_position(),
+                &self.context,
+                &self.open.history,
+            );
+            if let Some(query) = completed.path {
+                if !self
+                    .context
+                    .files
+                    .as_ref()
+                    .is_some_and(|files| files.query == query)
+                {
+                    self.error.clear();
+                    if let Err(error) =
+                        self.files
+                            .start(query, self.input.get_text(), self.input.cursor_position())
+                    {
+                        self.error = error.into();
+                    }
+                    return;
+                }
+            }
         }
         let items = self.items();
         let Some(item) = items.get(self.selected) else {
@@ -426,7 +553,13 @@ impl Palette {
         if !self.allowed || rows < 3 || columns < 12 {
             return;
         }
-        let tab = get_tab_info(self.open.origin.0).unwrap_or_default();
+        let tab = self
+            .context
+            .tabs
+            .iter()
+            .find(|tab| tab.tab_id == self.open.origin.0)
+            .cloned()
+            .unwrap_or_default();
         let (desired_width, max_height, _, _) = geometry(&tab);
         let width = desired_width.saturating_sub(4);
         let items = self.items();

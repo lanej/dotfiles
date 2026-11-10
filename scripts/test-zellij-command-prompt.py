@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
+import time
 import subprocess
 import sys
 import tempfile
@@ -177,8 +179,14 @@ def open_prompt(terminal):
     terminal.until("previous command dialog closes", lambda: prompt_frame(terminal) is None)
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
-    terminal.until("Ctrl-f : renders compact command input", lambda:
-                   command_ready(terminal))
+    terminal.until("Ctrl-f : opens input or first-use file browsing consent", lambda:
+                   command_ready(terminal) or '(y/n)' in text(terminal).lower())
+    if '(y/n)' in text(terminal).lower():
+        terminal.send(b'y')
+    terminal.until("Ctrl-f : renders compact command input", lambda: command_ready(terminal))
+    terminal.until("command popup settles after permission/resize updates", lambda:
+                   prompt_frame(terminal) is not None
+                   and abs(prompt_frame(terminal)[1] * 2 + prompt_frame(terminal)[2] - 120) <= 2)
     top, left, width, height = prompt_frame(terminal)
     assert width <= 64 and 3 <= height <= 8, f'Command popup is oversized: {width}x{height}'
     assert abs(left * 2 + width - 120) <= 2, 'Command popup is not horizontally centered'
@@ -501,6 +509,70 @@ def exercise(first, second, home):
           'cancel/error/reopen/help/history, and hidden floats with two attached clients.')
 
 
+def exercise_files(first, second, home):
+    """Exercise file lookups and ordinary editing through the native prefix binding."""
+    second.until('file-test bystander is attached', lambda: PROMPT.decode().strip() in text(second))
+    if '(y/n)' in text(second).lower():
+        second.send(b'y')
+    before = {tab['tab_id'] for tab in first.tabs()}
+    second.prefix(b'c')
+    other_tab = first.until('file-test bystander has a separate tab', lambda:
+                            {tab['tab_id'] for tab in first.tabs()} - before).pop()
+    fixture = home / 'completion dir'
+    fixture.mkdir()
+    for name in ('notes one.txt', 'notes two.txt', 'notes café.txt'):
+        (fixture / name).write_text('completion fixture')
+    (fixture / 'notes folder').mkdir()
+    link = home / 'completion-link'
+    link.symlink_to(fixture, target_is_directory=True)
+    for directory in (fixture, link, fixture / '..' / 'completion dir'):
+        open_prompt(first)
+        first.send(('edit --floating ' + shlex.quote(str(directory / 'notes')) + '\t').encode())
+        first.until('file candidates preserve spaces, flags and directory aliases', lambda:
+                    'notes one.txt' in prompt_text(first) and 'notes two.txt' in prompt_text(first))
+        assert 'notes one.txt' not in prompt_text(second), 'File candidates leaked to the other client'
+        capture(first, 'file-completion')
+        first.send(b'\t')
+        first.until('Tab inserts a quoted file argument', lambda: 'notes ' in command_line(first))
+        first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('edit ' + shlex.quote(str(fixture / 'notes café')) + '\t').encode())
+    first.until('Unicode filenames arrive intact', lambda: 'notes café.txt' in prompt_text(first))
+    first.send(b'\t')
+    first.until('Unicode filename completion is quoted in editable input', lambda:
+                "notes café.txt'" in command_line(first))
+    first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('new-pane --cwd ' + shlex.quote(str(fixture / 'notes')) + '\t').encode())
+    first.until('cwd candidates contain directories only', lambda: 'notes folder' in prompt_text(first))
+    assert 'notes one.txt' not in prompt_text(first)
+    first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('edit ' + shlex.quote(str(fixture / 'notes')) + '\tX').encode())
+    first.until('typing continues while lookup is pending', lambda: "notes'X" in command_line(first))
+    first.drain(0.4)
+    assert "notes'X" in command_line(first), 'A stale lookup replaced newer input'
+    first.send(b'\x1b')
+    open_prompt(first)
+    expected = 'rename-tab "'
+    first.send(expected.encode())
+    latencies = []
+    for index, character in enumerate('paced-typing-under-live-updates'):
+        if index % 5 == 0:
+            second.action('rename-tab', '--tab-id', str(other_tab), 'live-' + str(index))
+        expected += character
+        started = time.monotonic()
+        os.write(first.fd, character.encode())
+        first.until('paced typing remains responsive during live state updates', lambda:
+                    expected in command_line(first))
+        latencies.append(time.monotonic() - started)
+    first.send(b'\x7f\x1b[D!')
+    first.until('cursor editing retains the draft', lambda: 'live-updat!e' in command_line(first))
+    assert max(latencies) < 1, f'Paced typing stalled: {max(latencies):.2f}s'
+    first.send(b'\x1b')
+    print(f'PASS: native file/directory completion, Unicode filenames, flags, spaces, symlinks, parent paths, stale results, client isolation, and paced editing under live updates (max {max(latencies):.2f}s).')
+
+
 def sessions(client):
     result = subprocess.run([client.binary, 'list-sessions', '--short', '--no-formatting'],
                             env=client.env, capture_output=True, text=True, timeout=5)
@@ -658,6 +730,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--session-keys', action='store_true',
                         help='exercise direct new-session and native rename keys independently')
+    parser.add_argument('--files-only', action='store_true', help='exercise file completion and editing independently')
     args = parser.parse_args()
     check_decoder()
     binary = shutil.which('zellij')
@@ -729,8 +802,11 @@ def main():
             clients.append(second)
             if args.session_keys:
                 exercise_session_keys(first, second, home, clients)
+            elif args.files_only:
+                exercise_files(first, second, home)
             else:
                 exercise(first, second, home)
+                exercise_files(first, second, home)
         except Exception:
             for index, client in enumerate(clients):
                 capture(client, 'failure-client-' + str(index))

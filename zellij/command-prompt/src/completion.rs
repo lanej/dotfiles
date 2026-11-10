@@ -43,6 +43,8 @@ pub struct Context {
     pub pane_name: String,
     pub tab_name: String,
     pub session_name: String,
+    pub cwd: std::path::PathBuf,
+    pub files: Option<crate::files::Choices>,
 }
 
 #[derive(Debug)]
@@ -50,6 +52,7 @@ pub struct Completions {
     pub replace: Range<usize>,
     pub items: Vec<Suggestion>,
     pub command: bool,
+    pub path: Option<crate::files::Query>,
 }
 
 pub fn quote(value: &str) -> String {
@@ -136,6 +139,7 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
         replace: current,
         items: vec![],
         command: before.is_empty(),
+        path: None,
     };
     let metadata = commands::metadata();
     if before.is_empty() {
@@ -225,6 +229,18 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
                     .cloned()
             });
             if let Some(arg) = arg {
+                if (name == "edit" && arg.get_id() == "file")
+                    || matches!(arg.get_id().as_str(), "cwd" | "dir")
+                {
+                    let query =
+                        crate::files::Query::new(&prefix, &context.cwd, arg.get_id() != "file");
+                    if let Some(files) = context.files.as_ref().filter(|files| files.query == query)
+                    {
+                        result.items = files.items.clone();
+                    }
+                    result.path = Some(query);
+                    return result;
+                }
                 result.items = match (name, arg.get_id().as_str()) {
                     ("go-to-tab-name", "name") => context
                         .tabs
@@ -438,5 +454,39 @@ mod tests {
                 i.value.as_str(),
                 "--no-focus" | "--in-place" | "--stacked" | "--plugin"
             )));
+    }
+
+    #[test]
+    fn file_completion_replaces_the_unicode_token_and_preserves_options() {
+        let query = crate::files::Query::new("dir/né", std::path::Path::new("/work"), false);
+        let context = Context {
+            cwd: "/work".into(),
+            files: Some(crate::files::Choices {
+                query,
+                items: vec![Suggestion::new(
+                    "dir/néw notes.txt",
+                    "néw notes.txt",
+                    "file",
+                )],
+            }),
+            ..Default::default()
+        };
+        let line = "edit 'dir/né' --floating";
+        let cursor = "edit 'dir/né".chars().count();
+        let completed = complete(line, cursor, &context, &[]);
+        assert_eq!(completed.items.len(), 1);
+        let edited = format!(
+            "{}{}{}",
+            &line[..completed.replace.start],
+            quote(&completed.items[0].value),
+            &line[completed.replace.end..]
+        );
+        assert_eq!(
+            shlex::split(&edited).unwrap(),
+            ["edit", "dir/néw notes.txt", "--floating"]
+        );
+        assert!(complete("new-pane -- echo file", 25, &context, &[])
+            .path
+            .is_none());
     }
 }

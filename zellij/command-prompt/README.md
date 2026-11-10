@@ -11,10 +11,12 @@
 | `go-to-tab-name ` | Live tab names, including names containing spaces |
 | `focus-pane-id ` | Live pane IDs, titles, and tabs |
 | `switch-session ` | Running session names and client counts |
+| `edit notes` + Tab | Files and directories matching the path, quoted when needed |
+| `new-pane --cwd ` + Tab | Directories relative to the focused pane |
 
 Arrow keys select suggestions. Ctrl-u clears before the cursor, Ctrl-k clears after it, and Ctrl-w deletes the previous word. Up from an empty command recalls history; Ctrl-p/Ctrl-n recall older/newer commands and restore the unsubmitted draft. Ctrl-r or `history` opens searchable history. It retains the last 32 distinct submitted commands in memory for each attached client, until the plugin/session restarts. Recent actions rank ahead of other equally matching commands.
 
-`help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and show a compact inline error. Ctrl-d opens the full error in a scrollable view; Esc returns to editing. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program.
+`help` opens the command list. An action's `--help` displays its native documentation; Enter or Esc returns to the editable command. Parse errors retain the command and show a compact inline error. Ctrl-d opens the full error in a scrollable view; Esc returns to editing. The completion engine uses metadata from the pinned Zellij CLI parser; unsupported variants are excluded from flag suggestions. Program arguments after `--` are left to that program. For `edit` filenames and `--cwd`/`--dir`, the first Tab requests directory choices; Tab then inserts the selected path. Lookups run asynchronously and never start while typing. A lookup shows up to 512 matching names; narrow the prefix for larger directories. If a lookup times out, editing remains available; reopen the palette to retry.
 
 ## Search and jump
 
@@ -46,11 +48,13 @@ Install the matching runtime with `bash scripts/install-zellij`, then run `make 
 
 The background dispatcher opens the same WASM as a client-local native popup. The popup edits and renders suggestions; the dispatcher retains history, checks the original pane/tab, and applies accepted commands for that client. Opening the palette leaves hidden floating panes and the persistent `Ctrl-f P` popup hidden.
 
-The plugin requests application-state reads, native popups and actions, client-specific runtime binding updates, target/session changes, and private messages between its popup and dispatcher. Existing installations may need to accept the expanded permissions. It requests no filesystem, environment, network or host-command access. An explicit `new-pane -- PROGRAM` action can still start a program.
+The plugin requests application-state reads, native popups and actions, client-specific runtime binding updates, target/session changes, and private messages between its popup and dispatcher. Existing installations may need to accept the expanded permissions. The popup also requests filesystem access to browse directories for path completion. It requests no environment, network or host-command access. An explicit `new-pane -- PROGRAM` action can still start a program.
 
 ## Verification
 
 `make test-zellij-command-prompt` installs into a temporary home and exercises the production prefix binding with two real attached clients. It checks completion, editable errors, target queries, live updates, private history, hidden floats, reloads and origin lifecycle. It requires the pinned runtime, Python with pyte 0.8.2, and the Rust 1.95.0 WASM toolchain. Sessions, grants and sockets are isolated from existing sessions. CI retains decoded terminal grids for visual review.
+
+`python3 scripts/test-zellij-command-prompt.py --files-only` independently checks path completion and paced editing while another client changes live tab state. The palette renders and updates its live context from cached native events, without synchronous state queries on each keystroke or render. The originally reported intermittent typing freeze has not been reproduced in isolation.
 
 For focused native model checks, run `RUST_MIN_STACK=16777216 cargo test --locked --manifest-path zellij/command-prompt/Cargo.toml`. The generated upstream CLI parser requires a larger stack in unoptimized Rust test threads.
 
