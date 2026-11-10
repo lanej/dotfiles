@@ -7,6 +7,14 @@ vim.api.nvim_create_autocmd("User", {
 	pattern = "TSUpdate",
 	callback = function()
 		local parsers = require("nvim-treesitter.parsers")
+		parsers.bnf = {
+			install_info = {
+				path = vim.fn.stdpath("config") .. "/grammars/bnf",
+				generate = true,
+				generate_from_json = false,
+				queries = "queries",
+			},
+		}
 		parsers.mdx = {
 			install_info = {
 				url = "https://github.com/srazzak/tree-sitter-mdx",
@@ -25,6 +33,7 @@ vim.api.nvim_create_autocmd("User", {
 })
 
 require("bigquery").setup()
+vim.filetype.add({ extension = { bnf = "bnf" } })
 
 -- Install parsers that aren't already present
 if not vim.env.DOTFILES_NVIM_BOOTSTRAP then
@@ -54,6 +63,8 @@ local function ensure_parser(lang)
 		vim.notify("treesitter: failed to install parser for " .. lang, vim.log.levels.WARN)
 		return false
 	end
+	-- Installation may create a runtime directory Neovim previously skipped.
+	vim.o.runtimepath = vim.o.runtimepath
 	return vim.treesitter.language.add(lang) == true
 end
 
@@ -65,8 +76,8 @@ vim.api.nvim_create_autocmd("FileType", {
 			return
 		end
 		pcall(vim.treesitter.start, args.buf, lang)
-		-- The BigQuery grammar ships highlights only; retain the SQL ftplugin's indent.
-		if lang ~= "sql_bigquery" and pcall(require, "nvim-treesitter.indent") then
+		-- BigQuery and BNF ship highlights only; retain their filetype indentation.
+		if lang ~= "sql_bigquery" and lang ~= "bnf" and pcall(require, "nvim-treesitter.indent") then
 			vim.bo.indentexpr = "v:lua.require('nvim-treesitter').indentexpr()"
 		end
 	end,
