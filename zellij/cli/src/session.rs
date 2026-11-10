@@ -125,14 +125,16 @@ pub fn ssh(args: &[String]) -> Result<()> {
         "exec \"$SHELL\" -lic 'exec \"$HOME/.local/bin/zellij-attach\" \"$1\"' zssh {}",
         quote(session)
     );
-    let kitty = env::var("KITTY_WINDOW_ID").is_ok_and(|s| !s.is_empty()) && exists("kitten");
+    let nested = env::var("ZELLIJ").is_ok_and(|s| !s.is_empty());
+    let kitty =
+        !nested && env::var("KITTY_WINDOW_ID").is_ok_and(|s| !s.is_empty()) && exists("kitten");
     let mut ssh = if kitty {
         vec!["kitten", "ssh"]
     } else {
         vec!["ssh"]
     };
     ssh.extend(["-t", host, &remote]);
-    let mut command = if env::var("ZELLIJ").is_ok_and(|s| !s.is_empty()) {
+    let mut command = if nested {
         let mut c = Command::new("zellij");
         c.args(["action", "new-tab", "--name", host, "--"])
             .args(ssh);

@@ -12,6 +12,8 @@ zssh myhost work
 
 The first command opens a tab for `myhost` and attaches to or creates its `main` session. The second chooses `work`. Both hosts need the managed dotfiles setup, including Zellij and the remote attach helper. Outside Zellij, `zssh` connects in the current terminal.
 
+Inside Zellij, `zssh` uses ordinary SSH to avoid Kitty's terminal bootstrap. Outside Zellij, it uses Kitty's SSH kitten when available, otherwise ordinary SSH.
+
 **Ctrl-f u** returns keyboard control to the containing local session. **Ctrl-f i** enters the remote one again. Disconnecting leaves the remote programs running.
 
 ## Forward an SSH agent
