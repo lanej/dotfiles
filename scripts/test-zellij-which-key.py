@@ -57,7 +57,7 @@ def main():
         config = home / ".config/zellij"
         (config / "layouts").mkdir(parents=True)
         (config / "layouts/test.kdl").write_text(
-            'layout { tab { pane; } new_tab_template { tab { pane; } } }\n'
+            'layout { tab { pane; } new_tab_template { pane; } }\n'
         )
         config.joinpath("config.kdl").write_text("""
 default_mode "locked"
