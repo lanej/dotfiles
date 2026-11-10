@@ -18,7 +18,7 @@ The checkout is the source of configuration. Machine TOML selects what applies; 
 
 ## Composition order
 
-Shared `base` defaults → native OS set → explicitly selected sets → machine properties.
+Shared `base` defaults and Git → native OS set → default `shell` and `terminal` sets → explicitly selected sets → machine properties.
 
 Dependencies apply before the including set. Each named set applies once; later values override earlier ones. Private sets under `~/.config/dotfiles/sets/` can replace repository sets except `base`. Work context is explicit and is never inferred from the hostname.
 
@@ -26,7 +26,7 @@ Dependencies apply before the including set. Each named set applies once; later 
 
 ## Two configuration paths
 
-`make base` works before Python is installed. It initializes a missing machine file and uses the built-in native target list. It does not resolve private sets or machine overrides.
+`make base` works before Python is installed. It initializes a missing machine file and links Git and uses the built-in native target list. It does not resolve private sets or machine overrides.
 
 Default `make` resolves the full selection and requires Python 3.11+. `make configure`, `make setup`, and `make all` are aliases. This distinction follows the current Makefile and README; the older default-command wording in the [setup requirements](https://github.com/lanej/dotfiles/blob/master/docs/setup-requirements.md) has not yet caught up.
 

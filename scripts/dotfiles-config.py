@@ -173,7 +173,11 @@ def resolve(path, environment, explicit=False, host="linux"):
     apply(host)
     baseline_sets = applied.copy()
     baseline_keys = {key for key in specified if key.startswith("tools.")}
-    # A missing conventional file uses the baseline. An explicitly selected
+    # rationale: Shell and terminal tools are installation defaults; the Python-free
+    # baseline remains usable before optional binaries and plugins are installed.
+    apply("shell")
+    apply("terminal")
+    # A missing conventional file uses the defaults. An explicitly selected
     # DOTFILES_CONFIG must exist, so a typo cannot silently change policy.
     document = {}
     if path is not None and (path.exists() or explicit or "DOTFILES_CONFIG" in environment):
@@ -185,7 +189,7 @@ def resolve(path, environment, explicit=False, host="linux"):
     missing = SETTINGS.keys() - values.keys()
     if missing:
         raise ValueError("missing settings: " + ", ".join(sorted(missing)))
-    # Keep a native-only plan for inspection, with the machine's overrides.
+    # Keep the Git/native baseline separate from default shell and terminal tools.
     # The Python-free Make baseline is generated separately from built-in sets.
     baseline_values = {key: value if not key.startswith("tools.") or key in baseline_keys else False
                        for key, value in values.items()}
@@ -262,7 +266,7 @@ def main():
         for host, uname in (("macos", "Darwin"), ("linux", "Linux")):
             native = resolve(None, {}, host=host)
             print(f"DOTFILES_NATIVE_SET_{uname} := {host}")
-            print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['setup'])}")
+            print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['baseline']['setup'])}")
         print(f".PHONY: {' '.join(native['all_setup'])}")
         return
     directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))

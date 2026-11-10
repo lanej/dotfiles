@@ -79,6 +79,25 @@ def main():
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
 
+        linked = temporary / "linked-dotfiles"
+        git_command = [shutil.which("git"), "-C", str(repo)]
+        subprocess.run([*git_command, "-c", "core.hooksPath=/dev/null", "-c", "user.name=Setup fixture",
+                        "-c", "user.email=setup@example.invalid", "commit", "--allow-empty", "-qm", "fixture"],
+                       check=True, capture_output=True)
+        subprocess.run([*git_command, "worktree", "add", "--detach", str(linked)],
+                       check=True, capture_output=True)
+        shutil.copytree(repo, linked, symlinks=True, dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", "target"))
+        linked_home = temporary / "linked-home"
+        linked_home.mkdir()
+        linked_base = subprocess.run([*command, "base"], cwd=linked,
+                                     env={**env, "HOME": str(linked_home)},
+                                     capture_output=True, text=True, timeout=30)
+        assert linked_base.returncode == 0, linked_base.stdout + linked_base.stderr
+        assert (linked / ".git").is_file()
+        assert (linked_home / ".gitconfig").resolve() == linked / "git/gitconfig"
+        assert (repo / ".git/hooks/pre-commit").resolve() == linked / "git/hooks/pre-commit"
+
         dry_run = subprocess.run([*command, "-n", "base"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
         assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
@@ -93,6 +112,7 @@ def main():
         assert machine_config.is_file(), "make base must initialize the machine TOML."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
+        assert (home / ".gitconfig").resolve() == repo / "git/gitconfig"
         assert not (home / ".bashrc").exists()
         assert not (home / ".config/nvim").exists()
 
@@ -125,11 +145,11 @@ def main():
         assert "Installed fd completion" in (home / ".zsh/completions/_fd").read_text()
         assert not completion_cache.exists(), "default setup left a stale completion cache"
         assert not (home / ".config/nvim").exists()
-        assert not (home / ".tmux.conf").exists()
+        assert (home / ".tmux.conf").resolve() == repo / "rc/tmux.conf"
         assert not (home / "broker-installed").exists()
         machine_config.write_text('sets = ["workstation"]\n')
 
-        # The opt-in multiplexer can be configured before its binary is
+        # The default multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
         bare_env = {**env, "ZELLIJ_STATUS_WASM": str(temporary / "not-built.wasm")}
         bare = subprocess.run([*command, "zellij"], cwd=repo, env=bare_env,

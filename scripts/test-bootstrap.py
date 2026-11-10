@@ -29,6 +29,8 @@ def main():
         installed.chmod(0o755)
         checkout = home / ".files"
         checkout.mkdir()
+        (checkout / ".git/hooks").mkdir(parents=True)
+        shutil.copytree(root / "git", checkout / "git")
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
@@ -84,7 +86,9 @@ def record(event):
 if name == "uname":
     print("Linux" if args == ["-s"] else "aarch64")
 elif name == "git":
-    if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
+    if args[:1] == ["-C"] and Path(args[1]).resolve() == (home / ".files").resolve() and args[2:] == ["rev-parse", "--path-format=absolute", "--git-common-dir"]:
+        print((home / ".files/.git").resolve())
+    elif args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
     if args == ["dnf", "install", "-y", "ImageMagick"]:
@@ -414,6 +418,7 @@ else:
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
         assert (home / ".xinitrc").is_symlink()
+        assert (home / ".gitconfig").resolve() == (checkout / "git/gitconfig").resolve()
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
         assert not (home / ".nvm").exists()

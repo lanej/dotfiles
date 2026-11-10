@@ -1,7 +1,10 @@
-# Shared property defaults, followed automatically by the native OS set.
+# Shared property defaults and Git, followed automatically by the native OS set.
 [codex]
 github_enabled = false
 easypost = false
 
 [zellij]
 source = "patched"
+
+[tools]
+git = true
