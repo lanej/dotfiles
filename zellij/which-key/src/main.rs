@@ -10,7 +10,6 @@ struct WhichKey {
     allowed: bool,
     bindings: Vec<(String, String)>,
     scroll: usize,
-    current_size: Option<(usize, usize)>,
 }
 
 register_plugin!(WhichKey);
@@ -78,7 +77,7 @@ impl ZellijPlugin for WhichKey {
         self.scroll = self.scroll.min(self.bindings.len().saturating_sub(visible));
         print!("\x1b[2J\x1b[H");
         print_text_with_coordinates(
-            Text::new(" Ctrl-f  ·  keybindings").color_range(1, ..),
+            Text::from(" Ctrl-f  ·  keybindings").color_range(1, ..),
             0, 0, Some(columns), Some(1),
         );
         for (i, (key, description)) in self.bindings.iter()
@@ -87,10 +86,10 @@ impl ZellijPlugin for WhichKey {
             let available = columns.saturating_sub(20);
             let short: String = description.chars().take(available).collect();
             let line = format!(" {:<17} {}", key, short);
-            print_text_with_coordinates(Text::new(line), 0, i + 1, Some(columns), Some(1));
+            print_text_with_coordinates(Text::from(line), 0, i + 1, Some(columns), Some(1));
         }
         let footer = format!(" {}/{}  ↑↓/jk scroll · Esc close", self.scroll + usize::from(!self.bindings.is_empty()), self.bindings.len());
-        print_text_with_coordinates(Text::new(footer), 0, rows - 1, Some(columns), Some(1));
+        print_text_with_coordinates(Text::from(footer), 0, rows - 1, Some(columns), Some(1));
     }
 }
 
