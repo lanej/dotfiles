@@ -2,7 +2,7 @@
 //!
 //! Unlike a static reference sheet, the source is InitialKeybinds from the
 //! running server. In particular we do not intercept/forward application input.
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::{Duration, Instant}};
 use zellij_tile::prelude::*;
 
 #[derive(Default)]
@@ -12,8 +12,7 @@ struct WhichKey {
     scroll: usize,
     prefix_mode: bool,
     pinned: bool,
-    epoch: u64,
-    pending_epoch: Option<u64>,
+    pending_deadline: Option<Instant>,
     visible: bool,
 }
 
@@ -49,11 +48,10 @@ impl ZellijPlugin for WhichKey {
                 let prefix = mode.mode == InputMode::Tmux;
                 if prefix && !self.prefix_mode && !self.pinned {
                     // Zellij continues to own subsequent keys.
-                    self.epoch = self.epoch.wrapping_add(1);
-                    self.pending_epoch = Some(self.epoch);
+                    self.pending_deadline = Some(Instant::now() + Duration::from_millis(350));
                     set_timeout(0.35);
                 } else if !prefix && self.prefix_mode && !self.pinned {
-                    self.pending_epoch = None;
+                    self.pending_deadline = None;
                     if self.visible {
                         hide_self();
                         self.visible = false;
@@ -63,15 +61,26 @@ impl ZellijPlugin for WhichKey {
                 false
             }
             Event::Timer(_) if self.allowed => {
-                if self.prefix_mode && !self.pinned
-                    && self.pending_epoch.take() == Some(self.epoch)
-                {
-                    // Never focus the overlay: native Tmux bindings keep input.
-                    show_pane_with_id(PaneId::Plugin(get_plugin_ids().plugin_id), true, false);
-                    self.visible = true;
-                    true
-                } else {
-                    false
+                if !self.prefix_mode || self.pinned {
+                    return false;
+                }
+                match self.pending_deadline {
+                    Some(deadline) if Instant::now() >= deadline => {
+                        self.pending_deadline = None;
+                        // Do not focus: the original Tmux bindings keep input.
+                        show_pane_with_id(
+                            PaneId::Plugin(get_plugin_ids().plugin_id), true, false
+                        );
+                        self.visible = true;
+                        true
+                    }
+                    Some(deadline) => {
+                        // An older timer from a cancelled prefix may fire
+                        // after reentry. Never show the new overlay early.
+                        set_timeout(deadline.saturating_duration_since(Instant::now()).as_secs_f64());
+                        false
+                    }
+                    None => false,
                 }
             }
             Event::InitialKeybinds(all) => {
@@ -120,7 +129,7 @@ impl ZellijPlugin for WhichKey {
             return false;
         }
         self.pinned = !self.pinned;
-        self.pending_epoch = None;
+        self.pending_deadline = None;
         if self.pinned {
             show_self(true);
             self.visible = true;
