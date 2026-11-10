@@ -54,6 +54,7 @@ pub struct Palette {
     scroll: usize,
     allowed: bool,
     popup_size: Option<(usize, usize)>,
+    files: crate::files::Lookup,
 }
 
 impl Palette {
@@ -74,6 +75,7 @@ impl Palette {
             scroll: 0,
             allowed: false,
             popup_size: None,
+            files: crate::files::Lookup::default(),
         }
     }
 
@@ -84,7 +86,65 @@ impl Palette {
                     return false;
                 }
                 self.allowed = true;
+                self.context.cwd = get_pane_cwd(self.open.origin.1).unwrap_or_else(|_| "/".into());
                 self.refresh();
+                if !self
+                    .context
+                    .tabs
+                    .iter()
+                    .any(|tab| tab.tab_id == self.open.origin.0)
+                {
+                    if let Some(tab) = get_tab_info(self.open.origin.0) {
+                        self.context.tabs.push(tab);
+                    }
+                }
+                if let Some(pane) = get_pane_info(self.open.origin.1) {
+                    if !self
+                        .context
+                        .panes
+                        .iter()
+                        .any(|(_, p)| p.id == pane.id && p.is_plugin == pane.is_plugin)
+                    {
+                        let position = self
+                            .context
+                            .tabs
+                            .iter()
+                            .find(|tab| tab.tab_id == self.open.origin.0)
+                            .map_or(0, |tab| tab.position);
+                        self.context.panes.push((position, pane));
+                    }
+                }
+                self.update_names();
+                true
+            }
+            Event::PermissionRequestResult(PermissionStatus::Denied) => {
+                close_self();
+                false
+            }
+            Event::HostFolderChanged(_) if self.allowed => {
+                scan_host_folder(&"/host");
+                false
+            }
+            Event::FailedToChangeHostFolder(error) if self.allowed => {
+                self.files.failed();
+                self.error = error.unwrap_or_else(|| "Cannot read that directory.".into());
+                true
+            }
+            Event::FileSystemUpdate(paths) if self.allowed => {
+                if let Some(choices) =
+                    self.files
+                        .finish(paths, self.input.get_text(), self.input.cursor_position())
+                {
+                    self.context.files = Some(choices);
+                    self.selected = 0;
+                    self.error.clear();
+                    true
+                } else {
+                    false
+                }
+            }
+            Event::Timer(_) if self.allowed && self.files.timeout() => {
+                self.error = "File lookup timed out; reopen the palette to retry.".into();
                 true
             }
             Event::Key(key) if self.allowed => self.key(key),
@@ -100,10 +160,27 @@ impl Palette {
                 self.error.clear();
                 true
             }
-            Event::PaneUpdate(_) | Event::TabUpdate(_) | Event::SessionUpdate(..)
-                if self.allowed =>
-            {
-                self.refresh();
+            Event::PaneUpdate(manifest) if self.allowed => {
+                self.context.panes = manifest
+                    .panes
+                    .into_iter()
+                    .flat_map(|(tab, panes)| panes.into_iter().map(move |p| (tab, p)))
+                    .collect();
+                self.update_names();
+                true
+            }
+            Event::TabUpdate(tabs) if self.allowed => {
+                self.context.tabs = tabs;
+                self.update_names();
+                true
+            }
+            Event::SessionUpdate(sessions, _) if self.allowed => {
+                if let Some(session) = sessions.iter().find(|s| s.is_current_session) {
+                    self.context.session_name = session.name.clone();
+                }
+                self.context.sessions = sessions;
+                self.context.sessions.sort_by(|a, b| a.name.cmp(&b.name));
+                self.update_names();
                 true
             }
             _ => false,
@@ -139,15 +216,44 @@ impl Palette {
         self.selected = self.selected.min(self.items().len().saturating_sub(1));
     }
 
+    fn update_names(&mut self) {
+        self.context.tabs.sort_by_key(|tab| tab.position);
+        self.context
+            .panes
+            .sort_by_key(|(tab, pane)| (*tab, pane.id));
+        self.context.tab_name = self
+            .context
+            .tabs
+            .iter()
+            .find(|tab| tab.tab_id == self.open.origin.0)
+            .map(|tab| tab.name.clone())
+            .unwrap_or_default();
+        self.context.pane_name = self
+            .context
+            .panes
+            .iter()
+            .find(|(_, pane)| match self.open.origin.1 {
+                PaneId::Plugin(id) => pane.is_plugin && pane.id == id,
+                PaneId::Terminal(id) => !pane.is_plugin && pane.id == id,
+            })
+            .map(|(_, pane)| pane.title.clone())
+            .unwrap_or_default();
+        self.selected = self.selected.min(self.items().len().saturating_sub(1));
+    }
+
     fn items(&self) -> Vec<Suggestion> {
+        self.suggestions().1
+    }
+
+    fn suggestions(&self) -> (String, Vec<Suggestion>) {
         if self.view == View::Command {
-            return completion::complete(
+            let completions = completion::complete(
                 self.input.get_text(),
                 self.input.cursor_position(),
                 &self.context,
                 &self.open.history,
-            )
-            .items;
+            );
+            return (completions.query, completions.items);
         }
         let items = match self.view {
             View::Help => completion::complete("", 0, &self.context, &self.open.history).items,
@@ -162,7 +268,7 @@ impl Palette {
             View::Sessions => completion::session_targets(&self.context),
             _ => vec![],
         };
-        items
+        let items = items
             .into_iter()
             .filter(|item| {
                 completion::matches(
@@ -170,7 +276,8 @@ impl Palette {
                     &format!("{} {}", item.label, item.detail),
                 )
             })
-            .collect()
+            .collect();
+        (self.input.get_text().into(), items)
     }
 
     fn select(&mut self, delta: isize) {
@@ -217,6 +324,31 @@ impl Palette {
         if matches!(self.view, View::Panes | View::Tabs | View::Sessions) {
             self.select(1);
             return;
+        }
+        if self.view == View::Command {
+            let completed = completion::complete(
+                self.input.get_text(),
+                self.input.cursor_position(),
+                &self.context,
+                &self.open.history,
+            );
+            if let Some(query) = completed.path {
+                if !self
+                    .context
+                    .files
+                    .as_ref()
+                    .is_some_and(|files| files.query == query)
+                {
+                    self.error.clear();
+                    if let Err(error) =
+                        self.files
+                            .start(query, self.input.get_text(), self.input.cursor_position())
+                    {
+                        self.error = error.into();
+                    }
+                    return;
+                }
+            }
         }
         let items = self.items();
         let Some(item) = items.get(self.selected) else {
@@ -426,10 +558,16 @@ impl Palette {
         if !self.allowed || rows < 3 || columns < 12 {
             return;
         }
-        let tab = get_tab_info(self.open.origin.0).unwrap_or_default();
+        let tab = self
+            .context
+            .tabs
+            .iter()
+            .find(|tab| tab.tab_id == self.open.origin.0)
+            .cloned()
+            .unwrap_or_default();
         let (desired_width, max_height, _, _) = geometry(&tab);
         let width = desired_width.saturating_sub(4);
-        let items = self.items();
+        let (query, items) = self.suggestions();
         let compact = self.view == View::Command;
         let message = if !self.error.is_empty() {
             Text::from(&self.error)
@@ -519,7 +657,6 @@ impl Palette {
                 .clamp(12, (width / 2).max(12))
                 .min(width)
         };
-        let detail_width = width.saturating_sub(label_width + 2);
         let cell = |column, row, available, value| {
             print_text_with_coordinates(value, column, row, Some(available), Some(1))
         };
@@ -533,21 +670,47 @@ impl Palette {
                 if i == self.selected {
                     put(row, Text::from(" ".repeat(width)).selected());
                 }
-                for (column, available, value) in [
-                    (
+                let label = sanitize_display_text(&item.label);
+                let detail = sanitize_display_text(&item.detail);
+                let matched = zellij_tile::ui_components::fuzzy_match_indices(
+                    &query,
+                    &format!("{label} {detail}"),
+                )
+                .unwrap_or_default();
+                let detail_start = label.chars().count() + 1;
+                let icon_width = if item.icon.is_some() { width.min(2) } else { 0 };
+                let name_width = if detail.is_empty() {
+                    width.saturating_sub(icon_width)
+                } else {
+                    label_width.min(width.saturating_sub(icon_width))
+                };
+                let detail_width = width.saturating_sub(icon_width + name_width + 2);
+                if let Some(icon) = item.icon {
+                    let icon = Text::from(icon);
+                    cell(
                         2,
-                        label_width,
-                        Text::from(sanitize_display_text(&item.label)),
-                    ),
+                        row,
+                        icon_width,
+                        if i == self.selected {
+                            icon.selected()
+                        } else {
+                            icon
+                        },
+                    );
+                }
+                for (column, available, value, offset) in [
+                    (2 + icon_width, name_width, Text::from(&label), 0),
                     (
-                        label_width + 4,
+                        icon_width + name_width + 4,
                         detail_width,
-                        Text::from(sanitize_display_text(&item.detail)).dim_range(..),
+                        Text::from(&detail).dim_range(..),
+                        detail_start,
                     ),
                 ] {
                     if available == 0 {
                         continue;
                     }
+                    let content = value.content().to_owned();
                     cell(
                         column,
                         row,
@@ -558,12 +721,43 @@ impl Palette {
                             value
                         },
                     );
+                    underline_matches(column, row, available, &content, offset, &matched);
                 }
             }
             if items.is_empty() && !compact {
                 put(table_row, Text::from("No matches").dim_range(..));
             }
         }
+    }
+}
+
+// The SDK's Text component has no underline style. Overlay only matched clusters
+// after native text rendering, retaining its theme colors and selection background.
+fn underline_matches(
+    column: usize,
+    row: usize,
+    width: usize,
+    text: &str,
+    offset: usize,
+    matched: &[usize],
+) {
+    let mut x = 0;
+    let mut index = offset;
+    for (cluster, cluster_width) in graphemes::clusters(text) {
+        if x + cluster_width > width {
+            break;
+        }
+        let end = index + cluster.chars().count();
+        if matched.iter().any(|i| (index..end).contains(i)) {
+            print!(
+                "\x1b[{};{}H\x1b[4m{}\x1b[24m",
+                row + 1,
+                column + x + 1,
+                cluster
+            );
+        }
+        x += cluster_width;
+        index = end;
     }
 }
 

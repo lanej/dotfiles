@@ -23,12 +23,13 @@ installer = "system"
 setup = ["git"]
 
 [tools.git-worktree-hooks]
-description = "Opt in to the prebuilt Git runtime with worktree lifecycle hooks."
+description = "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
 installer = "git-worktree-hooks"
 requires = ["git"]
 setup = ["shell"]
 version = "2.56.0"
 runtime_version = "2.56.0.worktree-hooks.1"
+release_url = "https://github.com/lanej/dotfiles/releases/download/git-worktree-hooks-2.56.0.1"
 source_sha256 = "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
 
 [tools.zsh]

@@ -138,6 +138,12 @@ Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE
 
 `make configure` with the AI bundle (or `make claude`) also removes user-scope Claude Code plugins listed in [`claude/blocked-plugins.json`](claude/blocked-plugins.json) when the Claude CLI is available. Add a marketplace-qualified ID there to retire a plugin; Superpowers is the initial entry. Already-absent plugins are a no-op. Invalid configuration, inspection, or uninstall failures mark that step incomplete.
 
+### Worktree tracking and resource limits
+
+[Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
+
+The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. For automatic creation blocking, install hooks in each repository. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Installing Treehouse alone does not enable tracking, hooks, or budgets.
+
 ## Configuration sets
 
 The full install and configuration stages read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect.
@@ -167,24 +173,25 @@ source = "release"
 
 | Set | Groups |
 |---|---|
-| `shell` | Zsh, Git, history, search, navigation, and command-line tools |
-| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring |
+| `base` | Patched Git with worktree hooks and shared settings; always applied |
+| `shell` | Zsh, history, search, navigation, and command-line tools; selected by default |
+| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring; selected by default |
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
-| `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
+| `workstation` | Adds editor, development, and AI tools, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
 | `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
-The native platform baseline applies first, then the selected bundles extend it. A headless host can select `shell`, `development`, and `ai` and disable desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
+Git and the native platform baseline apply first, followed by the default `shell` and `terminal` bundles, then additional selected sets. Treehouse remains in the optional `ai` bundle. Set `tools.git-worktree-hooks = false` to keep standard Git. A headless host can disable terminal and desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
 
-The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies shared property defaults, followed by the native OS set. An unconfigured machine applies only that baseline.
+The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies Git and shared property defaults, followed by the native OS set and the default `shell` and `terminal` sets. An unconfigured `make install` selects those tools; machine properties can disable individual tools.
 
 Each `[tools]` property enables or disables one catalog recipe. Shared tool dependencies are added once and installed first. Explicitly disabling a required dependency, selecting an unsupported platform tool, or naming an unknown property fails before the tool plan runs. `false` skips that recipe; it does not uninstall an existing application or change that application's own package/plugin management. GUI, mail, and Ruby entries retain the existing configuration-only behavior; those applications are installed separately.
 
-[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping `make base` independent of Python. This first-stage baseline does not read machine settings or private sets. Default `make`, `make install`, and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
+[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping `make base` independent of Python. This first-stage baseline links Git, shell helpers, and native OS configuration without installing software, and does not read machine settings or private sets. Default `make`, `make install`, and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
 
 Use `make install DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh install` for an alternate configuration. The full stage rejects a missing explicitly selected file. Every catalog tool has a boolean `tools.<name>` property; `codex.github_enabled` controls Codex GitHub access and `zellij.source` selects `"patched"`, `"release"`, or `"main"`.
 

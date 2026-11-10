@@ -1,5 +1,6 @@
 mod commands;
 mod completion;
+mod files;
 mod palette;
 
 use std::{
@@ -93,19 +94,27 @@ impl ZellijPlugin for CommandPrompt {
                 EventType::TabUpdate,
                 EventType::SessionUpdate,
                 EventType::PastedText,
+                EventType::FileSystemUpdate,
+                EventType::HostFolderChanged,
+                EventType::FailedToChangeHostFolder,
+                EventType::Timer,
             ]);
         } else {
             subscribe(&[EventType::InitialKeybinds, EventType::ActionComplete]);
         }
         subscribe(&[EventType::PermissionRequestResult]);
-        request_permission(&[
+        let mut permissions = vec![
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
             PermissionType::OpenTerminalsOrPlugins,
             PermissionType::RunActionsAsUser,
             PermissionType::Reconfigure,
             PermissionType::MessageAndLaunchOtherPlugins,
-        ]);
+        ];
+        if self.palette.is_some() {
+            permissions.push(PermissionType::FullHdAccess);
+        }
+        request_permission(&permissions);
     }
 
     fn update(&mut self, event: Event) -> bool {
