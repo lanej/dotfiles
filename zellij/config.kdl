@@ -62,6 +62,7 @@ keybinds clear-defaults=true {
     }
     tmux {
         bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+        // which-key: Keybinding guide
         bind "?" {
             LaunchOrFocusPlugin "file:~/.local/share/zellij/plugins/which-key.wasm" {
                 floating true
@@ -69,6 +70,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked";
         }
+        // which-key: Command palette
         bind ":" {
             // Consent replaces this marker with this client's private plugin ID.
             MessagePlugin "command-prompt" { name "command-prompt"; }
@@ -76,7 +78,9 @@ keybinds clear-defaults=true {
         }
         // tmux.conf's later picker overrides its earlier Ctrl-f send-prefix.
         // Ctrl-f f still sends a literal Ctrl-f to the application.
+        // which-key: Send Ctrl-f
         bind "f" { Write 6; SwitchToMode "Locked"; }
+        // which-key: Tab picker
         bind "Ctrl f" {
             Run "zellij-picker" "tabs" {
                 floating true
@@ -86,6 +90,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Session picker
         bind "Ctrl w" {
             Run "zellij-picker" "sessions" {
                 floating true
@@ -93,6 +98,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Next attention
         bind "Ctrl a" {
             // The consented background receiver installs a client-private target.
             MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
@@ -100,7 +106,9 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Inbox
         bind "b" { SwitchToMode "Locked"; ToggleSessionCard; }
+        // which-key: Notification history
         bind "B" {
             Run "zellij-notify" "history" {
                 floating true
@@ -111,6 +119,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Watch pane
         bind "a" {
             MessagePlugin "file:~/.config/zellij/plugins/lane-status.wasm" {
                 name "attention-highest-tab"
@@ -118,41 +127,73 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "A" { WatchPane; SwitchToMode "Locked"; }
+        // which-key: Mute pane
         bind "U" { MutePane; SwitchToMode "Locked"; }
 
+        // which-key: Focus left
+
         bind "h" "Left" { MoveFocus "Left"; SwitchToMode "Locked"; }
+        // which-key: Focus down
         bind "j" "Down" { MoveFocus "Down"; SwitchToMode "Locked"; }
+        // which-key: Focus up
         bind "k" "Up" { MoveFocus "Up"; SwitchToMode "Locked"; }
+        // which-key: Focus right
         bind "l" "Right" { MoveFocus "Right"; SwitchToMode "Locked"; }
+        // which-key: Next pane
         bind "Tab" "o" { FocusNextPane; SwitchToMode "Locked"; }
+        // which-key: Last pane
         bind ";" { FocusLastPane; SwitchToMode "Locked"; }
+        // which-key: Equalize panes
         bind "=" { Run "zellij-balance" "equalize" { background true; }; SwitchToMode "Locked"; }
+        // which-key: Golden ratio
         bind "g" { Run "zellij-balance" "golden" { background true; }; SwitchToMode "Locked"; }
+        // which-key: Force golden ratio
         bind "G" { Run "zellij-balance" "golden-force" { background true; }; SwitchToMode "Locked"; }
+        // which-key: Split below
         bind "s" "\"" { NewPane "Down"; SwitchToMode "Locked"; }
+        // which-key: Split right
         bind "v" "%" { NewPane "Right"; SwitchToMode "Locked"; }
+        // which-key: New tab
         bind "c" { NewTab; SwitchToMode "Locked"; }
+        // which-key: Next tab
         bind "Ctrl n" "n" { GoToNextTab; SwitchToMode "Locked"; }
+        // which-key: Previous tab
         bind "Ctrl p" { ToggleTab; SwitchToMode "Locked"; }
+        // which-key: Rename tab
         bind "r" "," { SwitchToMode "RenameTab"; TabNameInput 0; }
+        // which-key: Detach
         bind "d" { SwitchToMode "Locked"; Detach; }
+        // which-key: Detach client
         bind "D" {
             Run "zellij-picker" "clients" { floating true; close_on_exit true; }
             SwitchToMode "Locked"
         }
+        // which-key: Close pane
         bind "x" { CloseFocus; SwitchToMode "Locked"; }
+        // which-key: Zoom pane
         bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
+        // which-key: Zoom without UI
         bind "Z" { ToggleFocusNoUiFullscreen; SwitchToMode "Locked"; }
+        // which-key: Move pane down
         bind "J" { MovePane "Down"; SwitchToMode "Locked"; }
+        // which-key: Move pane up
         bind "K" { MovePane "Up"; SwitchToMode "Locked"; }
+        // which-key: Grow left
         bind "<" { Resize "Increase Left"; SwitchToMode "Locked"; }
+        // which-key: Grow right
         bind ">" { Resize "Increase Right"; SwitchToMode "Locked"; }
+        // which-key: Grow up
         bind "+" { Resize "Increase Up"; SwitchToMode "Locked"; }
+        // which-key: Grow down
         bind "-" { Resize "Increase Down"; SwitchToMode "Locked"; }
         // Zellij has no timed tmux repeat table; Ctrl-r enables explicit repeats.
+        // which-key: Resize mode
         bind "Ctrl r" { SwitchToMode "Resize"; }
+        // which-key: Next layout
         bind "Space" { NextSwapLayout; SwitchToMode "Locked"; }
+        // which-key: Previous layout
         bind "Ctrl o" { PreviousSwapLayout; SwitchToMode "Locked"; }
+        // which-key: Shared popup
         bind "P" {
             Run "zellij-popup" {
                 floating true
@@ -163,16 +204,23 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Floating panes
         bind "F" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        // which-key: Host session
         bind "u" { SwitchToMode "Locked"; FocusHostSession; }
+        // which-key: Guest session
         bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
         // Native F9's inbox action, without stealing a bare application key.
+        // which-key: Session card
         bind "I" { SwitchToMode "Locked"; ToggleSessionCard; }
+        // which-key: Shutdown session
         bind "Ctrl q" {
             Run "zellij-shutdown" { floating true; close_on_exit true; }
             SwitchToMode "Locked"
         }
+        // which-key: Break pane
         bind "!" { BreakPane; SwitchToMode "Locked"; }
+        // which-key: Move pane to tab
         bind "m" {
             Run "zellij-picker" "move-pane" {
                 floating true
@@ -182,6 +230,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Gather panes
         bind "M" {
             Run "zellij-picker" "move-all-panes" {
                 floating true
@@ -191,6 +240,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Swap tabs
         bind "W" {
             Run "zellij-picker" "swap-tab" {
                 floating true
@@ -201,12 +251,17 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
 
+        // which-key: New session
+
         bind "C" {
             MessagePlugin "command-prompt" { name "new-session"; }
             SwitchToMode "Locked"
         }
+        // which-key: Rename session
         bind "w" { SwitchToMode "RenameSession"; SessionNameInput 0; }
+        // which-key: Edit scrollback
         bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
+        // which-key: Paste session yank
         bind "p" {
             // After visible-bar consent, the background clipboard receiver
             // replaces this marker with a client-specific MessagePluginId.
@@ -215,18 +270,30 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
+        // which-key: Scroll mode
         bind "[" { SwitchToMode "Scroll"; }
+        // which-key: Search scrollback
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
         // Display zero-based indices; Zellij's GoToTab API is one-based.
+        // which-key: Tab 0
         bind "0" { GoToTab 1; SwitchToMode "Locked"; }
+        // which-key: Tab 1
         bind "1" { GoToTab 2; SwitchToMode "Locked"; }
+        // which-key: Tab 2
         bind "2" { GoToTab 3; SwitchToMode "Locked"; }
+        // which-key: Tab 3
         bind "3" { GoToTab 4; SwitchToMode "Locked"; }
+        // which-key: Tab 4
         bind "4" { GoToTab 5; SwitchToMode "Locked"; }
+        // which-key: Tab 5
         bind "5" { GoToTab 6; SwitchToMode "Locked"; }
+        // which-key: Tab 6
         bind "6" { GoToTab 7; SwitchToMode "Locked"; }
+        // which-key: Tab 7
         bind "7" { GoToTab 8; SwitchToMode "Locked"; }
+        // which-key: Tab 8
         bind "8" { GoToTab 9; SwitchToMode "Locked"; }
+        // which-key: Tab 9
         bind "9" { GoToTab 10; SwitchToMode "Locked"; }
     }
     resize {
