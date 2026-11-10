@@ -1,4 +1,4 @@
-//! A live, read-only keybinding guide for the user's Zellij configuration.
+//! A passive, mode-aware keybinding guide for the user's Zellij configuration.
 //!
 //! Unlike a static reference sheet, the source is InitialKeybinds from the
 //! running server. In particular we do not intercept/forward application input.
@@ -10,6 +10,11 @@ struct WhichKey {
     allowed: bool,
     bindings: Vec<(String, String)>,
     scroll: usize,
+    prefix_mode: bool,
+    pinned: bool,
+    epoch: u64,
+    pending_epoch: Option<u64>,
+    visible: bool,
 }
 
 register_plugin!(WhichKey);
@@ -20,19 +25,54 @@ impl ZellijPlugin for WhichKey {
             EventType::PermissionRequestResult,
             EventType::InitialKeybinds,
             EventType::Key,
+            EventType::ModeUpdate,
+            EventType::Timer,
         ]);
-        request_permission(&[PermissionType::ReadApplicationState]);
+        request_permission(&[
+            PermissionType::ReadApplicationState,
+            PermissionType::ChangeApplicationState,
+        ]);
     }
 
     fn update(&mut self, event: Event) -> bool {
         match event {
             Event::PermissionRequestResult(PermissionStatus::Granted) => {
                 self.allowed = true;
+                hide_self();
                 true
             }
             Event::PermissionRequestResult(PermissionStatus::Denied) => {
                 close_self();
                 false
+            }
+            Event::ModeUpdate(mode) if self.allowed => {
+                let prefix = mode.mode == InputMode::Tmux;
+                if prefix && !self.prefix_mode && !self.pinned {
+                    // Zellij continues to own subsequent keys.
+                    self.epoch = self.epoch.wrapping_add(1);
+                    self.pending_epoch = Some(self.epoch);
+                    set_timeout(0.35);
+                } else if !prefix && self.prefix_mode && !self.pinned {
+                    self.pending_epoch = None;
+                    if self.visible {
+                        hide_self();
+                        self.visible = false;
+                    }
+                }
+                self.prefix_mode = prefix;
+                false
+            }
+            Event::Timer(_) if self.allowed => {
+                if self.prefix_mode && !self.pinned
+                    && self.pending_epoch.take() == Some(self.epoch)
+                {
+                    // Never focus the overlay: native Tmux bindings keep input.
+                    show_pane_with_id(PaneId::Plugin(get_plugin_ids().plugin_id), true, false);
+                    self.visible = true;
+                    true
+                } else {
+                    false
+                }
             }
             Event::InitialKeybinds(all) => {
                 let descriptions = binding_descriptions(include_str!("../../config.kdl"));
@@ -55,7 +95,9 @@ impl ZellijPlugin for WhichKey {
             }
             Event::Key(key) => {
                 if key.bare_key == BareKey::Esc || key.bare_key == BareKey::Enter {
-                    close_self();
+                    self.pinned = false;
+                    hide_self();
+                    self.visible = false;
                 } else if key.bare_key == BareKey::Down
                     || (key.bare_key == BareKey::Char('j') && key.has_no_modifiers())
                 {
@@ -69,6 +111,24 @@ impl ZellijPlugin for WhichKey {
             }
             _ => false,
         }
+    }
+
+    fn pipe(&mut self, message: PipeMessage) -> bool {
+        if !self.allowed || message.source != PipeSource::Keybind
+            || message.name != "which-key-toggle"
+        {
+            return false;
+        }
+        self.pinned = !self.pinned;
+        self.pending_epoch = None;
+        if self.pinned {
+            show_self(true);
+            self.visible = true;
+        } else {
+            hide_self();
+            self.visible = false;
+        }
+        true
     }
 
     fn render(&mut self, rows: usize, columns: usize) {
