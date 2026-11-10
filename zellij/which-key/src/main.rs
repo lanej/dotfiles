@@ -35,13 +35,17 @@ impl ZellijPlugin for WhichKey {
                 false
             }
             Event::InitialKeybinds(all) => {
+                let descriptions = binding_descriptions(include_str!("../../config.kdl"));
                 self.bindings = all.into_iter()
                     .filter(|(mode, _)| *mode == InputMode::Tmux)
                     .flat_map(|(_, entries)| entries)
                     .map(|(key, actions)| {
                         let raw = format!("{key:?}");
                         let key = normalize_key(&raw);
-                        let description = describe(&key, &actions);
+                        let description = descriptions.get(&key).cloned().unwrap_or_else(|| {
+                            actions.first().map(|action| format!("{action:?}"))
+                                .unwrap_or_else(|| "Unassigned".into())
+                        });
                         (key, description)
                     })
                     .collect();
@@ -93,31 +97,31 @@ impl ZellijPlugin for WhichKey {
     }
 }
 
-// Display is deliberately descriptive, not executable. The server's Action
-// Debug representation is a fallback for uncommon/custom actions.
-fn describe(key: &str, actions: &[zellij_tile::prelude::actions::Action]) -> String {
-    let alias = match key {
-        "s" => Some("Split below"), "v" => Some("Split right"),
-        "h" => Some("Focus left"), "j" => Some("Focus down"),
-        "k" => Some("Focus up"), "l" => Some("Focus right"),
-        "c" => Some("New tab"), "z" => Some("Zoom pane"),
-        "m" => Some("Move pane"), "M" => Some("Gather panes"),
-        "b" => Some("Inbox"), "B" => Some("Notification history"),
-        "a" => Some("Watch pane"), "U" => Some("Mute pane"),
-        "g" => Some("Golden ratio"), "G" => Some("Force golden ratio"),
-        "d" => Some("Detach"), "x" => Some("Close pane"),
-        "r" => Some("Rename tab"), ":" => Some("Command palette"),
-        "?" => Some("Show keybindings"), "[" => Some("Scroll mode"),
-        "/" => Some("Search scrollback"), "e" => Some("Edit scrollback"),
-        "P" => Some("Shared popup"), "p" => Some("Paste session yank"),
-        "Ctrl a" => Some("Next attention"), "Ctrl r" => Some("Resize mode"),
-        "Ctrl f" => Some("Tab picker"), "Ctrl w" => Some("Session picker"),
-        "Ctrl q" => Some("Shutdown session"), _ => None,
+// The human-readable label lives immediately above the binding in config.kdl.
+// The runtime event remains authoritative for which bindings actually exist.
+fn binding_descriptions(config: &str) -> BTreeMap<String, String> {
+    let mut labels = BTreeMap::new();
+    let Some(tmux) = config.split_once("    tmux {").map(|(_, rest)| rest) else {
+        return labels;
     };
-    alias.map(str::to_owned).unwrap_or_else(|| {
-        actions.first().map(|action| format!("{action:?}"))
-            .unwrap_or_else(|| "Unassigned".into())
-    })
+    let block = tmux.split_once("    resize {").map_or(tmux, |(block, _)| block);
+    let mut pending: Option<&str> = None;
+    for line in block.lines() {
+        let line = line.trim();
+        if let Some(description) = line.strip_prefix("// which-key: ") {
+            pending = Some(description);
+        } else if let Some(bindings) = line.strip_prefix("bind ") {
+            if let Some(description) = pending.take() {
+                let keys = bindings.split('{').next().unwrap_or("");
+                for part in keys.split('"').skip(1).step_by(2) {
+                    labels.insert(part.to_owned(), description.to_owned());
+                }
+            }
+        } else if !line.is_empty() && !line.starts_with("//") {
+            pending = None;
+        }
+    }
+    labels
 }
 
 // Zellij's key Debug spelling is an implementation detail. Avoid losing
@@ -142,8 +146,9 @@ mod tests {
     use super::*;
     #[test]
     fn aliases_cover_the_public_entrypoint() {
-        assert_eq!(describe("?", &[]), "Show keybindings");
-        assert_eq!(describe("Ctrl a", &[]), "Next attention");
+        let descriptions = binding_descriptions(include_str!("../../config.kdl"));
+        assert_eq!(descriptions.get("?").map(String::as_str), Some("Keybinding guide"));
+        assert_eq!(descriptions.get("Ctrl a").map(String::as_str), Some("Next attention"));
     }
     #[test]
     fn unknown_keys_are_not_discarded() {
