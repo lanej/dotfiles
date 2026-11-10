@@ -62,6 +62,13 @@ keybinds clear-defaults=true {
     }
     tmux {
         bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
+        bind "?" {
+            LaunchOrFocusPlugin "file:~/.local/share/zellij/plugins/which-key.wasm" {
+                floating true
+                move_to_focused_tab true
+            }
+            SwitchToMode "Locked";
+        }
         bind ":" {
             // Consent replaces this marker with this client's private plugin ID.
             MessagePlugin "command-prompt" { name "command-prompt"; }
