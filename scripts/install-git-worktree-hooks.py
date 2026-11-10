@@ -8,6 +8,7 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tarfile
@@ -58,7 +59,7 @@ def managed_link(link, installs):
         target = link.resolve()
     except (OSError, RuntimeError):
         return False
-    return (target.parent.name == "bin" and target.name == "git"
+    return (target.parent.name == "bin" and target.name in {"git", "git-launcher"}
             and target.parent.parent.parent == installs.resolve()
             and (target.parent.parent / ".archive-sha256").is_file())
 
@@ -136,14 +137,23 @@ def install(archive, home):
         except Exception:
             shutil.rmtree(destination)
             raise
+    with tempfile.TemporaryDirectory(prefix=".git-launcher-", dir=destination / "bin") as temporary:
+        staged_launcher = Path(temporary) / "git-launcher"
+        staged_launcher.write_text(f'#!/bin/sh\nexec {shlex.quote(str(destination / "bin/git"))} "$@"\n')
+        staged_launcher.chmod(0o755)
+        os.replace(staged_launcher, destination / "bin/git-launcher")
     active.parent.mkdir(parents=True, exist_ok=True)
     if not managed_link(active, installs):
         raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
     with tempfile.TemporaryDirectory(prefix=".git-link-", dir=active.parent) as temporary:
         staged_link = Path(temporary) / "git"
-        staged_link.symlink_to(destination / "bin/git")
+        staged_link.symlink_to(destination / "bin/git-launcher")
+        env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        actual_exec = subprocess.check_output([str(staged_link), "--exec-path"], env=env, text=True).strip()
+        if Path(actual_exec).resolve() != (destination / "libexec/git-core").resolve():
+            raise ValueError("Installed Git entrypoint cannot locate its runtime helpers")
         os.replace(staged_link, active)
-    print(f"Activated {active} -> {destination / 'bin/git'}")
+    print(f"Activated {active} -> {destination / 'bin/git-launcher'}")
 
 
 def main():

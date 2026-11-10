@@ -81,7 +81,7 @@ def main():
         assert not active.exists()
         if options.archive:
             real = options.archive.resolve()
-            downloaded_home = scratch / "downloaded-home"
+            downloaded_home = scratch / "downloaded home with 'quotes"
             requests = []
             def download(url, timeout):
                 requests.append(url)
@@ -93,14 +93,20 @@ def main():
                 assert len(requests) == 2
                 installer.install(None, downloaded_home)
                 assert len(requests) == 2, "Rerun downloaded the installed runtime again"
-            assert (downloaded_home / ".local/bin/git").resolve().name == "git"
+            assert (downloaded_home / ".local/bin/git").resolve().name == "git-launcher"
             bootstrap_install(real, home)
             first_target = active.readlink()
-            expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git"
+            expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git-launcher"
             assert active.resolve() == expected_target, active
+            exec_path = subprocess.check_output([str(active), "--exec-path"], text=True).strip()
+            assert Path(exec_path).resolve() == expected_target.parent.parent / "libexec/git-core"
             assert subprocess.check_output([str(active), "--version"], text=True).strip() == f"git version {recipe['runtime_version']}"
             checked_install(real, home, success=True)
             assert active.readlink() == first_target
+            active.unlink()
+            active.symlink_to(expected_target.with_name("git"))
+            checked_install(None, home, success=True)
+            assert active.readlink() == first_target, "Legacy direct-binary link was not migrated"
             bootstrap_install(None, home)
             assert active.readlink() == first_target
             active.unlink()
