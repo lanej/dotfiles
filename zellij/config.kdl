@@ -28,6 +28,7 @@ live_view_release_key "Alt Enter"
 load_plugins {
     pane-navigation
     command-prompt
+    which-key
     "zellij:link"
     "file:~/.config/zellij/plugins/lane-status.wasm" {
         role "clipboard-receiver"
@@ -51,6 +52,7 @@ attention {
 
 plugins {
     command-prompt location="file:~/.local/share/zellij/plugins/command-prompt.wasm"
+    which-key location="file:~/.local/share/zellij/plugins/which-key.wasm"
     pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
 }
 keybinds clear-defaults=true {
@@ -64,10 +66,7 @@ keybinds clear-defaults=true {
         bind "Esc" "Enter" "Ctrl c" { SwitchToMode "Locked"; }
         // which-key: Keybinding guide
         bind "?" {
-            LaunchOrFocusPlugin "file:~/.local/share/zellij/plugins/which-key.wasm" {
-                floating true
-                move_to_focused_tab true
-            }
+            MessagePlugin "which-key" { name "which-key-toggle"; }
             SwitchToMode "Locked";
         }
         // which-key: Command palette
