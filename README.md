@@ -138,6 +138,12 @@ Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE
 
 `make configure` with the AI bundle (or `make claude`) also removes user-scope Claude Code plugins listed in [`claude/blocked-plugins.json`](claude/blocked-plugins.json) when the Claude CLI is available. Add a marketplace-qualified ID there to retire a plugin; Superpowers is the initial entry. Already-absent plugins are a no-op. Invalid configuration, inspection, or uninstall failures mark that step incomplete.
 
+### Worktree tracking and resource limits
+
+[Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
+
+For automatic creation blocking, opt into the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles), download a compatible package and checksum, then install hooks in each repository. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Installing Treehouse alone does not enable tracking, hooks, or budgets.
+
 ## Configuration sets
 
 The full install and configuration stages read the same TOML configuration at `~/.config/dotfiles/config.toml` (or `$XDG_CONFIG_HOME/dotfiles/config.toml`). OS detection selects the `macos` or `linux` baseline; additional tools and work context are explicit, and the hostname has no effect.

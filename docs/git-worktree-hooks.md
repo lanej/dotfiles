@@ -13,7 +13,9 @@ The optional `git-worktree-hooks` tool installs a prebuilt package and links its
 git-worktree-hooks = true
 ```
 
-Download the archive and its adjacent `.sha256` file for this machine from the build workflow, or copy a package built on a compatible machine. Then run from the normal dotfiles checkout:
+Open the [Git worktree hooks workflow](https://github.com/lanej/dotfiles/actions/workflows/git-worktree-hooks.yml), choose a successful run for the version you want, and download its platform artifact. Choose `git-worktree-hooks-macOS-ARM64` for Apple Silicon or `git-worktree-hooks-Linux-X64` for Linux x86_64. Extract the downloaded artifact ZIP to obtain the `.tar.gz` archive and its adjacent `.tar.gz.sha256` file; keep both together. Other platforms require a compatible package built with the script below.
+
+Then run from the normal dotfiles checkout, substituting your extracted archive path:
 
 ```sh
 make plan
