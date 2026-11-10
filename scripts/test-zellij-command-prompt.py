@@ -144,8 +144,10 @@ def capture(terminal, name):
 def assert_match_underlines(terminal, label, matched):
     lines = screen(terminal)
     display = terminal.command_display.display
-    y = next(y for y, line in enumerate(lines) if label in line)
-    x = lines[y].index(label)
+    top, left, width, height = prompt_frame(terminal)
+    y = next(y for y in range(top + 2, top + height - 1)
+             if label in lines[y][left + 1:left + width - 1])
+    x = lines[y].index(label, left + 1)
     for i in range(len(label)):
         cell = display.buffer[y][x + i]
         assert cell.underscore == (i in matched), f'Unexpected underline at {label!r}[{i}]'
