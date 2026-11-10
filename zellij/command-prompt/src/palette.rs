@@ -242,14 +242,18 @@ impl Palette {
     }
 
     fn items(&self) -> Vec<Suggestion> {
+        self.suggestions().1
+    }
+
+    fn suggestions(&self) -> (String, Vec<Suggestion>) {
         if self.view == View::Command {
-            return completion::complete(
+            let completions = completion::complete(
                 self.input.get_text(),
                 self.input.cursor_position(),
                 &self.context,
                 &self.open.history,
-            )
-            .items;
+            );
+            return (completions.query, completions.items);
         }
         let items = match self.view {
             View::Help => completion::complete("", 0, &self.context, &self.open.history).items,
@@ -264,7 +268,7 @@ impl Palette {
             View::Sessions => completion::session_targets(&self.context),
             _ => vec![],
         };
-        items
+        let items = items
             .into_iter()
             .filter(|item| {
                 completion::matches(
@@ -272,7 +276,8 @@ impl Palette {
                     &format!("{} {}", item.label, item.detail),
                 )
             })
-            .collect()
+            .collect();
+        (self.input.get_text().into(), items)
     }
 
     fn select(&mut self, delta: isize) {
@@ -562,7 +567,7 @@ impl Palette {
             .unwrap_or_default();
         let (desired_width, max_height, _, _) = geometry(&tab);
         let width = desired_width.saturating_sub(4);
-        let items = self.items();
+        let (query, items) = self.suggestions();
         let compact = self.view == View::Command;
         let message = if !self.error.is_empty() {
             Text::from(&self.error)
@@ -666,21 +671,27 @@ impl Palette {
                 if i == self.selected {
                     put(row, Text::from(" ".repeat(width)).selected());
                 }
-                for (column, available, value) in [
-                    (
-                        2,
-                        label_width,
-                        Text::from(sanitize_display_text(&item.label)),
-                    ),
+                let label = sanitize_display_text(&item.label);
+                let detail = sanitize_display_text(&item.detail);
+                let matched = zellij_tile::ui_components::fuzzy_match_indices(
+                    &query,
+                    &format!("{label} {detail}"),
+                )
+                .unwrap_or_default();
+                let detail_start = label.chars().count() + 1;
+                for (column, available, value, offset) in [
+                    (2, label_width, Text::from(&label), 0),
                     (
                         label_width + 4,
                         detail_width,
-                        Text::from(sanitize_display_text(&item.detail)).dim_range(..),
+                        Text::from(&detail).dim_range(..),
+                        detail_start,
                     ),
                 ] {
                     if available == 0 {
                         continue;
                     }
+                    let content = value.content().to_owned();
                     cell(
                         column,
                         row,
@@ -691,12 +702,43 @@ impl Palette {
                             value
                         },
                     );
+                    underline_matches(column, row, available, &content, offset, &matched);
                 }
             }
             if items.is_empty() && !compact {
                 put(table_row, Text::from("No matches").dim_range(..));
             }
         }
+    }
+}
+
+// The SDK's Text component has no underline style. Overlay only matched clusters
+// after native text rendering, retaining its theme colors and selection background.
+fn underline_matches(
+    column: usize,
+    row: usize,
+    width: usize,
+    text: &str,
+    offset: usize,
+    matched: &[usize],
+) {
+    let mut x = 0;
+    let mut index = offset;
+    for (cluster, cluster_width) in graphemes::clusters(text) {
+        if x + cluster_width > width {
+            break;
+        }
+        let end = index + cluster.chars().count();
+        if matched.iter().any(|i| (index..end).contains(i)) {
+            print!(
+                "\x1b[{};{}H\x1b[4m{}\x1b[24m",
+                row + 1,
+                column + x + 1,
+                cluster
+            );
+        }
+        x += cluster_width;
+        index = end;
     }
 }
 

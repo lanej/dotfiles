@@ -50,6 +50,7 @@ pub struct Context {
 #[derive(Debug)]
 pub struct Completions {
     pub replace: Range<usize>,
+    pub query: String,
     pub items: Vec<Suggestion>,
     pub command: bool,
     pub path: Option<crate::files::Query>,
@@ -137,12 +138,14 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
     let prefix = unquote_prefix(&line[current.start..cursor]);
     let mut result = Completions {
         replace: current,
+        query: prefix.clone(),
         items: vec![],
         command: before.is_empty(),
         path: None,
     };
     let metadata = commands::metadata();
     if before.is_empty() {
+        result.query = prefix.trim_start_matches(':').into();
         result.items = metadata
             .iter()
             .map(|command| {
@@ -238,6 +241,7 @@ pub fn complete(line: &str, cursor: usize, context: &Context, history: &[String]
                     {
                         result.items = files.items.clone();
                     }
+                    result.query = prefix.rsplit('/').next().unwrap_or_default().into();
                     result.path = Some(query);
                     return result;
                 }

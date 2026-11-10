@@ -133,11 +133,23 @@ def capture(terminal, name):
     screen(terminal)
     display = terminal.command_display.display
     cells = [[{'text': display.buffer[y][x].data, 'fg': display.buffer[y][x].fg,
-               'bg': display.buffer[y][x].bg, 'bold': display.buffer[y][x].bold}
+               'bg': display.buffer[y][x].bg, 'bold': display.buffer[y][x].bold,
+               'underscore': display.buffer[y][x].underscore}
               for x in range(display.columns)] for y in range(display.lines)]
     directory = Path(destination) / 'command-palette'
     directory.mkdir(parents=True, exist_ok=True)
     (directory / (name + '.json')).write_text(json.dumps(cells, ensure_ascii=False))
+
+
+def assert_match_underlines(terminal, label, matched):
+    lines = screen(terminal)
+    display = terminal.command_display.display
+    y = next(y for y, line in enumerate(lines) if label in line)
+    x = lines[y].index(label)
+    for i in range(len(label)):
+        cell = display.buffer[y][x + i]
+        assert cell.underscore == (i in matched), f'Unexpected underline at {label!r}[{i}]'
+        assert cell.bg == display.buffer[y][x].bg, 'Match changed the row background'
 
 
 def prompt_frame(terminal):
@@ -518,6 +530,12 @@ def exercise_files(first, second, home):
     second.prefix(b'c')
     other_tab = first.until('file-test bystander has a separate tab', lambda:
                             {tab['tab_id'] for tab in first.tabs()} - before).pop()
+    open_prompt(first)
+    first.send(b'move-focus rt')
+    first.until('fuzzy argument matches arrive', lambda: 'right' in prompt_text(first))
+    assert_match_underlines(first, 'right', {0, 4})
+    capture(first, 'fuzzy-command')
+    first.send(b'\x1b')
     fixture = home / 'completion dir'
     fixture.mkdir()
     for name in ('notes one.txt', 'notes two.txt', 'notes café.txt'):
@@ -531,6 +549,7 @@ def exercise_files(first, second, home):
         first.until('file candidates preserve spaces, flags and directory aliases', lambda:
                     'notes one.txt' in prompt_text(first) and 'notes two.txt' in prompt_text(first))
         assert 'notes one.txt' not in prompt_text(second), 'File candidates leaked to the other client'
+        assert_match_underlines(first, 'notes one.txt', set(range(5)))
         capture(first, 'file-completion')
         first.send(b'\t')
         first.until('Tab inserts a quoted file argument', lambda: 'notes ' in command_line(first))
@@ -538,6 +557,7 @@ def exercise_files(first, second, home):
     open_prompt(first)
     first.send(('edit ' + shlex.quote(str(fixture / 'notes café')) + '\t').encode())
     first.until('Unicode filenames arrive intact', lambda: 'notes café.txt' in prompt_text(first))
+    assert_match_underlines(first, 'notes café.txt', set(range(5)) | set(range(6, 10)))
     first.send(b'\t')
     first.until('Unicode filename completion is quoted in editable input', lambda:
                 "notes café.txt'" in command_line(first))
