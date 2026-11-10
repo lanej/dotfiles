@@ -89,8 +89,7 @@ impl ZellijPlugin for WhichKey {
                     .filter(|(mode, _)| *mode == InputMode::Tmux)
                     .flat_map(|(_, entries)| entries)
                     .map(|(key, actions)| {
-                        let raw = format!("{key:?}");
-                        let key = normalize_key(&raw);
+                        let key = normalize_key(&key);
                         let description = descriptions.get(&key).cloned().unwrap_or_else(|| {
                             actions.first().map(|action| format!("{action:?}"))
                                 .unwrap_or_else(|| "Unassigned".into())
@@ -193,21 +192,37 @@ fn binding_descriptions(config: &str) -> BTreeMap<String, String> {
     labels
 }
 
-// Zellij's key Debug spelling is an implementation detail. Avoid losing
-// an unfamiliar shortcut: show the raw representation in that case.
-fn normalize_key(raw: &str) -> String {
-    let basic = raw.strip_prefix("KeyWithModifier { bare_key: ");
-    if let Some(value) = basic {
-        if let Some(character) = value.strip_prefix("Char('") {
-            if let Some(end) = character.find("')") {
-                let name = &character[..end];
-                if raw.contains("Ctrl") { return format!("Ctrl {name}"); }
-                if raw.contains("Alt") { return format!("Alt {name}"); }
-                return name.into();
-            }
-        }
+// Normalize the protocol's typed keys to the same syntax as config.kdl.
+// Do not parse Debug output: it is neither stable nor a useful UI label.
+fn normalize_key(key: &KeyWithModifier) -> String {
+    let bare = match key.bare_key {
+        BareKey::Char(c) => c.to_string(),
+        BareKey::Left => "Left".into(),
+        BareKey::Right => "Right".into(),
+        BareKey::Up => "Up".into(),
+        BareKey::Down => "Down".into(),
+        BareKey::Tab => "Tab".into(),
+        BareKey::Esc => "Esc".into(),
+        BareKey::Enter => "Enter".into(),
+        other => format!("{other}"),
+    };
+    let mut modifiers = String::new();
+    if key.key_modifiers.contains(&KeyModifier::Ctrl) {
+        modifiers.push_str("Ctrl ");
     }
-    raw.into()
+    if key.key_modifiers.contains(&KeyModifier::Alt) {
+        modifiers.push_str("Alt ");
+    }
+    if key.key_modifiers.contains(&KeyModifier::Super) {
+        modifiers.push_str("Super ");
+    }
+    if key.key_modifiers.contains(&KeyModifier::Shift)
+        && !matches!(key.bare_key, BareKey::Char(c) if c.is_ascii_uppercase())
+    {
+        modifiers.push_str("Shift ");
+    }
+    modifiers.push_str(&bare);
+    modifiers
 }
 
 #[cfg(test)]
@@ -221,6 +236,7 @@ mod tests {
     }
     #[test]
     fn unknown_keys_are_not_discarded() {
-        assert_eq!(normalize_key("unfamiliar-key"), "unfamiliar-key");
+        let key = KeyWithModifier::new(BareKey::Char('s')).with_ctrl_modifier();
+        assert_eq!(normalize_key(&key), "Ctrl s");
     }
 }
