@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Install Enterprise Linux 8 build dependencies
         run: |
-          dnf install -y gcc make git curl tar xz perl python3.12 libcurl-devel expat-devel zlib-devel
+          dnf install -y gcc make git curl tar xz perl python3.12 diffutils findutils libcurl-devel expat-devel zlib-devel
           ln -s /usr/bin/python3.12 /usr/local/bin/python3
       - uses: actions/checkout@v4
       - name: Build, test and package Enterprise Linux 8 runtime
