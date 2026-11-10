@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'zellij/**'
+      - 'design-system/generated/zellij-symbols.rs'
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'
@@ -45,6 +46,7 @@ on:
     branches: [master]
     paths:
       - 'zellij/**'
+      - 'design-system/generated/zellij-symbols.rs'
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'
