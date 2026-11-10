@@ -2,6 +2,10 @@ use crate::completion::Suggestion;
 use std::{path::PathBuf, time::Instant};
 use zellij_tile::prelude::*;
 
+mod glyphs {
+    include!("../../../design-system/generated/zellij-symbols.rs");
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Query {
     pub directory: PathBuf,
@@ -37,7 +41,15 @@ impl Query {
                 }
                 let value = format!("{}{name}{}", self.parent, if directory { "/" } else { "" });
                 value.starts_with(&self.prefix).then(|| {
-                    Suggestion::new(value, name, if directory { "directory" } else { "file" })
+                    Suggestion::new(
+                        value,
+                        name,
+                        if directory {
+                            glyphs::DIRECTORY
+                        } else {
+                            glyphs::REGULAR
+                        },
+                    )
                 })
             })
             .take(512)
