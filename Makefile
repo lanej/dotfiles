@@ -253,6 +253,13 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
+.PHONY: test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
+test-git-worktree-policy:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
+test-treehouse-worktree-policy:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+test-install-git-worktree-hooks:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"

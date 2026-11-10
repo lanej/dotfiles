@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+"""Reconcile Git worktrees and apply an opt-in linked-worktree limit."""
+
+import argparse
+from functools import cache
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import stat
+import subprocess
+import sys
+import tempfile
+
+
+HOOKS = ("pre-worktree", "post-worktree", "post-checkout")
+MARKER = "# git-worktree-policy dispatcher v1"
+
+
+@cache
+def explicit_repository_env():
+    # WHY: This flag lists variable names without resolving a repository, even in hook environments.
+    result = subprocess.run(["git", "rev-parse", "--local-env-vars"], check=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    local = set(result.stdout.splitlines()) | {"GIT_NAMESPACE"}
+    return {key: value for key, value in os.environ.items()
+            if key not in local and not re.fullmatch(r"GIT_CONFIG_(KEY|VALUE)_\d+", key)}
+
+
+def git(*args, optional=False, directory=None):
+    prefix = [f"--git-dir={directory}"] if directory is not None else []
+    result = subprocess.run(["git", *prefix, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env=explicit_repository_env() if directory is not None else None)
+    if result.returncode and not (optional and result.returncode == 1):
+        raise RuntimeError(os.fsdecode(result.stderr).strip() or f"git exited {result.returncode}")
+    return os.fsdecode(result.stdout).removesuffix("\n")
+
+
+def common_dir():
+    return Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+
+
+def limit(directory=None):
+    value = git("config", "--local", "--get", "worktree.limit", optional=True, directory=directory)
+    if not value:
+        return None
+    try:
+        number = int(value)
+    except ValueError as error:
+        raise RuntimeError("worktree.limit must be a nonnegative integer") from error
+    if number < 0:
+        raise RuntimeError("worktree.limit must be a nonnegative integer")
+    return number
+
+
+def inventory(directory=None):
+    prefix = [f"--git-dir={directory}"] if directory is not None else []
+    raw = subprocess.run(["git", *prefix, "worktree", "list", "--porcelain", "-z"], check=True,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         env=explicit_repository_env() if directory is not None else None).stdout
+    records = []
+    current = {}
+    for field in raw.split(b"\0"):
+        if not field:
+            if current:
+                records.append(current)
+                current = {}
+            continue
+        key, _, value = field.partition(b" ")
+        current[os.fsdecode(key)] = os.fsdecode(value) if value else True
+    if current:
+        records.append(current)
+    # NOTE: Git lists the main worktree (or bare repository) first.
+    return {"linked_count": max(0, len(records) - 1), "worktrees": records}
+
+
+def atomic_json(target, value):
+    directory = target.parent
+    directory.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as output:
+            temporary = Path(output.name)
+            json.dump(value, output, ensure_ascii=True, indent=2)
+            output.write("\n")
+        os.replace(temporary, target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def registry_dir():
+    root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    return root / "git-worktree-policy/repositories"
+
+
+def registry_path(common):
+    key = hashlib.sha256(os.fsencode(common)).hexdigest()
+    return registry_dir() / f"{key}.json"
+
+
+def forget(directory):
+    # WHY: Historical registration paths must not follow replacement symlinks to another repository.
+    common = Path(os.path.abspath(directory))
+    record = registry_path(common)
+    if not record.exists():
+        raise RuntimeError(f"repository is not registered: {common}; expected record: {record}")
+    record.unlink()
+    print(json.dumps({"forgotten_common_gitdir": str(common), "removed_registry_record": str(record)}, indent=2))
+
+
+def size(value):
+    match = re.fullmatch(r"\s*(\d+)\s*(B|[KMGT]I?B)?\s*", str(value), re.IGNORECASE)
+    if not match:
+        raise RuntimeError(f"invalid byte size: {value!r}; use bytes or a size such as 2GiB")
+    unit = (match[2] or "B").upper()
+    power = "KMGT".find(unit[0]) + 1 if unit != "B" else 0
+    return int(match[1]) * ((1024 if "I" in unit else 1000) ** power)
+
+
+def local_max_bytes(directory=None):
+    value = git("config", "--local", "--get", "worktree.maxBytes", optional=True, directory=directory)
+    return size(value) if value else None
+
+
+def global_config():
+    path = registry_dir().parent / "config.json"
+    if not path.exists():
+        return {}
+    config = json.loads(path.read_text())
+    if not isinstance(config, dict) or any(key not in ("max_bytes", "max_worktrees") for key in config):
+        raise RuntimeError(f"invalid global configuration: {path}")
+    for value in config.values():
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise RuntimeError(f"global limits must be nonnegative integers: {path}")
+    return config
+
+
+def allocated_bytes(paths):
+    seen = set()
+
+    def visit(path):
+        info = path.lstat()
+        identity = (info.st_dev, info.st_ino)
+        if identity in seen or stat.S_ISLNK(info.st_mode):
+            return 0
+        seen.add(identity)
+        total = info.st_blocks * 512
+        if stat.S_ISDIR(info.st_mode):
+            for child in path.iterdir():
+                total += visit(child)
+        return total
+
+    return sum(visit(Path(path)) for path in paths)
+
+
+def linked_paths(state):
+    return [row["worktree"] for row in state["worktrees"][1:]]
+
+
+def reconcile(directory=None):
+    common = Path(directory).resolve() if directory is not None else common_dir().resolve()
+    state = inventory(common)
+    atomic_json(common / "worktree-policy/inventory.json", state)
+    record = {"common_gitdir": str(common), "inventory": state}
+    atomic_json(registry_path(common), record)
+    return state
+
+
+def registered_records():
+    records = []
+    for path in sorted(registry_dir().glob("*.json")):
+        record = {"registry_record": str(path)}
+        try:
+            record.update(json.loads(path.read_text()))
+            directory = record["common_gitdir"]
+            if Path(directory).resolve() != Path(directory):
+                raise RuntimeError("registered path now resolves elsewhere; register the new location and forget this historical path")
+            record["inventory"] = reconcile(directory)
+            record["available"] = True
+        except (OSError, RuntimeError, ValueError, KeyError, subprocess.CalledProcessError) as error:
+            record.update(available=False, error=str(error))
+        records.append(record)
+    return records
+
+
+def status_all():
+    records = registered_records()
+    for record in records:
+        if not record["available"]:
+            continue
+        try:
+            directory = record["common_gitdir"]
+            record["limit"] = limit(directory)
+            record["max_bytes"] = local_max_bytes(directory)
+            record["disk_bytes"] = allocated_bytes(linked_paths(record["inventory"]))
+        except (OSError, RuntimeError, ValueError) as error:
+            record.update(available=False, error=str(error))
+    complete = all(row["available"] for row in records)
+    totals = {"linked_count": sum(row["inventory"]["linked_count"] for row in records if row["available"])}
+    if complete:
+        totals["disk_bytes"] = allocated_bytes([path for row in records for path in linked_paths(row["inventory"])])
+    print(json.dumps({"repositories": records, "global_limits": global_config(),
+                      "totals": totals, "complete": complete}, ensure_ascii=True, indent=2))
+    return 0 if complete else 1
+
+
+def check_capacity(state, block):
+    checks = []
+    maximum = limit()
+    if maximum is not None:
+        checks.append(("repository linked worktrees", state["linked_count"], maximum))
+    maximum_bytes = local_max_bytes()
+    if maximum_bytes is not None:
+        checks.append(("repository allocated bytes", allocated_bytes(linked_paths(state)), maximum_bytes))
+    global_limits = global_config()
+    if global_limits:
+        records = registered_records()
+        for row in records:
+            if not row["available"]:
+                raise RuntimeError(f"cannot evaluate global budget: {row.get('common_gitdir', row['registry_record'])}: {row['error']}")
+        if "max_worktrees" in global_limits:
+            checks.append(("global linked worktrees", sum(row["inventory"]["linked_count"] for row in records), global_limits["max_worktrees"]))
+        if "max_bytes" in global_limits:
+            checks.append(("global allocated bytes", allocated_bytes([path for row in records for path in linked_paths(row["inventory"])]), global_limits["max_bytes"]))
+    exceeded = False
+    for description, actual, maximum in checks:
+        if actual >= maximum:
+            exceeded = True
+            print(f"git-worktree-policy: {actual} {description}; limit is {maximum}"
+                  + ("; refusing add" if block else "; next cooperating allocation will be refused"), file=sys.stderr)
+    return 1 if block and exceeded else 0
+
+
+def require_default_hooks(directory=None):
+    prefix = [f"--git-dir={directory}"] if directory is not None else []
+    configured = subprocess.run(["git", *prefix, "config", "--get", "core.hooksPath"],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                env=explicit_repository_env() if directory is not None else None)
+    if configured.returncode not in (0, 1):
+        raise RuntimeError(os.fsdecode(configured.stderr).strip())
+    if configured.returncode == 0:
+        context = f" in {directory}" if directory is not None else ""
+        raise RuntimeError(f"installation does not support configured core.hooksPath{context}; invoke the hook command from your existing hook manager")
+
+
+def install():
+    require_default_hooks()
+    common = common_dir()
+    if git("config", "--bool", "--get", "extensions.worktreeConfig", optional=True) == "true":
+        require_default_hooks(common)
+        worktrees = common / "worktrees"
+        if worktrees.exists():
+            for directory in worktrees.iterdir():
+                if directory.is_dir():
+                    require_default_hooks(directory)
+    if git("rev-parse", "--is-bare-repository") == "true":
+        raise RuntimeError("install from a non-bare repository worktree")
+    hooks = common / "hooks"
+    if hooks.is_symlink():
+        raise RuntimeError("installation does not support a symlinked hooks directory; use your existing hook manager")
+    hooks.mkdir(exist_ok=True)
+    script = Path(__file__).resolve()
+    plans = []
+    for name in HOOKS:
+        target = hooks / name
+        backup = hooks / (name + ".worktree-policy-original")
+        if target.is_file() and not target.is_symlink() and MARKER in target.read_text(errors="replace"):
+            continue
+        if backup.exists() or backup.is_symlink():
+            raise RuntimeError(f"refusing to overwrite existing backup: {backup}")
+        if target.is_dir():
+            raise RuntimeError(f"hook is a directory: {target}")
+        plans.append((name, target, backup))
+    for name, target, backup in plans:
+        if target.exists() or target.is_symlink():
+            target.rename(backup)
+        target.write_text(f"#!/bin/sh\n{MARKER}\nexec {shlex.quote(str(script))} hook {name} \"$@\"\n")
+        target.chmod(0o755)
+    reconcile()
+    print("Installed repository hooks; configure a cap with git config --local worktree.limit 4")
+
+
+def hook(name, arguments):
+    original = common_dir() / "hooks" / (name + ".worktree-policy-original")
+    existing_status = 0
+    if original.is_file() and os.access(original, os.X_OK):
+        existing_status = subprocess.run([str(original), *arguments]).returncode
+    if name in ("pre-worktree", "post-worktree") and len(arguments) != 4:
+        raise RuntimeError(f"{name} expects event, id, old path, new path")
+    block = name == "pre-worktree" and arguments[0] == "add"
+    if name == "pre-worktree" and (existing_status or not block):
+        return existing_status
+    try:
+        status = check_capacity(reconcile(), block)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"git-worktree-policy: {error}", file=sys.stderr)
+        status = 1 if block else 0
+    return existing_status or status
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("install", help="opt in using the repository's default hooks directory")
+    sub.add_parser("refresh", help="reconcile and print the actual inventory")
+    sub.add_parser("preflight", help="refuse an add when the actual linked count reaches worktree.limit")
+    status_parser = sub.add_parser("status", help="reconcile all registered repositories")
+    status_parser.add_argument("--all", action="store_true", required=True)
+    forget_parser = sub.add_parser("forget", help="remove only a repository's central registration")
+    forget_parser.add_argument("common_gitdir", help="common_gitdir path from status --all")
+    configure = sub.add_parser("configure", help="set optional budgets for registered repositories")
+    configure.add_argument("--global", action="store_true", required=True, dest="global_scope")
+    configure.add_argument("--max-bytes", help="bytes or size such as 2GiB; 'off' disables")
+    configure.add_argument("--max-worktrees", help="nonnegative count; 'off' disables")
+    hook_parser = sub.add_parser("hook", help="dispatch an existing hook and apply policy")
+    hook_parser.add_argument("name", choices=HOOKS)
+    hook_parser.add_argument("arguments", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    try:
+        if args.command == "status":
+            return status_all()
+        if args.command == "forget":
+            forget(args.common_gitdir)
+            return 0
+        if args.command == "configure":
+            config = global_config()
+            for key, value in (("max_bytes", args.max_bytes), ("max_worktrees", args.max_worktrees)):
+                if value == "off":
+                    config.pop(key, None)
+                elif value is not None:
+                    number = size(value) if key == "max_bytes" else int(value)
+                    if number < 0:
+                        raise RuntimeError("limits must be nonnegative")
+                    config[key] = number
+            atomic_json(registry_dir().parent / "config.json", config)
+            print(json.dumps(config, indent=2))
+            return 0
+        if args.command == "install":
+            install()
+            return 0
+        if args.command == "hook":
+            return hook(args.name, args.arguments)
+        state = reconcile()
+        if args.command == "refresh":
+            print(json.dumps(state, ensure_ascii=True, indent=2))
+            return 0
+        return check_capacity(state, True)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"git-worktree-policy: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
