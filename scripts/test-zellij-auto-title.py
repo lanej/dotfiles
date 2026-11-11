@@ -197,20 +197,10 @@ def ownership_lifecycle():
         state = work / "native.json"
         state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
         fake = executables / "zellij"
-        fake.write_text('''#!/usr/bin/env python3
-import json, os, pathlib, sys
-state = pathlib.Path(os.environ["NATIVE_STATE"])
-args = sys.argv[1:]
-if args == ["setup", "--check"]:
-    print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["FIXTURE_ZELLIJ_CACHE"])
-else:
-    raise SystemExit("Title updates must use protobuf IPC")
-''')
+        fake.write_text("#!/bin/sh\nexit 99\n")
         fake.chmod(0o755)
         ps = executables / "ps"
-        # The controlled ancestry boundary identifies this test process as the
-        # nearest server; real ancestry is exercised by the native workflow.
-        ps.write_text(f'#!/bin/sh\nprintf "%s 1 zellij\\n" {os.getpid()}\n')
+        ps.write_text("#!/bin/sh\nexit 99\n")
         ps.chmod(0o755)
         env = {**os.environ, "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ_SESSION_NAME": "fixture", "ZELLIJ_PANE_ID": "7",
