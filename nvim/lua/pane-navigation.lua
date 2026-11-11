@@ -112,7 +112,7 @@ end
 function M.setup()
 	local options = { auto_save = "current", disable_on_zoom = false }
 	if vim.env.ZELLIJ and vim.env.ZELLIJ_PANE_ID then
-		local client, error = require("zellij").connect()
+		local client, error = require("zellij-session").connect()
 		if client then
 			options.mux = M.new(client, tonumber(vim.env.ZELLIJ_PANE_ID), function(message)
 				vim.notify(message, vim.log.levels.WARN)

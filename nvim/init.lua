@@ -1341,6 +1341,7 @@ require("lazy").setup({
 	},
 	{
 		"numToStr/Navigator.nvim",
+		dependencies = { "lanej/zellij-client.nvim" },
 		config = function()
 			require("pane-navigation").setup()
 		end,
