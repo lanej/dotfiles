@@ -28,6 +28,7 @@ live_view_release_key "Alt Enter"
 load_plugins {
     pane-navigation
     command-prompt
+    copy-hop
     "zellij:link"
     "file:~/.config/zellij/plugins/lane-status.wasm" {
         role "clipboard-receiver"
@@ -50,6 +51,7 @@ attention {
 }
 
 plugins {
+    copy-hop location="file:~/.local/share/zellij/plugins/copy-hop.wasm"
     command-prompt location="file:~/.local/share/zellij/plugins/command-prompt.wasm"
     pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
 }
@@ -266,6 +268,11 @@ keybinds clear-defaults=true {
         bind "Ctrl l" { MoveFocus "Right"; SwitchToMode "Locked"; }
     }
     copy {
+        bind "s" {
+            MessagePlugin "copy-hop" {
+                name "hop"
+            }
+        }
         bind "Esc" { CopyModeInput "ESC"; }
     }
     scroll {

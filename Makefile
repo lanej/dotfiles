@@ -181,6 +181,13 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
+.PHONY: zellij-copy-hop test-zellij-copy-hop
+zellij-copy-hop:
+	@python3 "$(DOTFILES)/scripts/install-zellij-copy-hop.py"
+test-zellij-copy-hop:
+	@cargo fmt --manifest-path "$(DOTFILES)/zellij/copy-hop/Cargo.toml" --check
+	@cargo clippy --locked --all-targets --manifest-path "$(DOTFILES)/zellij/copy-hop/Cargo.toml" -- -D warnings
+	@$(UV) run --script "$(DOTFILES)/scripts/test-zellij-copy-hop.py"
 .PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"

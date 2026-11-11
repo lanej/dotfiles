@@ -45,7 +45,7 @@ description = "Install the selected Zellij runtime; patched uses the lanej/zelli
 installer = "zellij"
 requires = ["rust", "jq"]
 setup = ["zellij-config"]
-post = ["zellij-status"]
+post = ["zellij-status", "zellij-copy-hop"]
 
 [tools.nerd-font]
 installer = "font"

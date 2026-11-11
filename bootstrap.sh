@@ -1190,6 +1190,11 @@ run_configured_hooks() {
 					make -C "$configuration_root" zellij-config || return 1
 				fi
 				;;
+			zellij-copy-hop)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" = patched ]; then
+					make -C "$configuration_root" zellij-copy-hop || return 1
+				fi
+				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
 			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
 		esac
