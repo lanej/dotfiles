@@ -1,0 +1,74 @@
+---
+interface Entry { name: string; anchor: string }
+interface Ring { name: string; entries: Entry[] }
+interface Props { rings: Ring[] }
+const { rings } = Astro.props;
+let ordinal = 0;
+const plotted = rings.map((ring, index) => ({
+  ...ring,
+  key: ring.name.toLowerCase(),
+  radius: 62 + index * 65,
+  entries: ring.entries.map((entry, i) => {
+    const angle = (ring.entries.length === 1 ? 90 : -25 + (i * 230) / (ring.entries.length - 1)) * Math.PI / 180;
+    const radius = 36 + index * 65;
+    return { ...entry, number: ++ordinal, x: 300 + Math.cos(angle) * radius, y: 300 + Math.sin(angle) * radius };
+  }),
+}));
+---
+<figure class="tech-radar" aria-label="Technology decisions by ring">
+  <div class="radar-topline"><span>My working environment</span><span>{ordinal} decisions · 4 rings</span></div>
+  <svg viewBox="0 0 600 600" width="600" height="600" aria-labelledby="radar-title radar-description">
+    <title id="radar-title">Tech radar</title>
+    <desc id="radar-description">From the center outward: Adopt, Trial, Assess, Hold. Each numbered point links to its decision. Position within a ring has no additional meaning.</desc>
+    {plotted.toReversed().map((ring) => <circle class={`band ${ring.key}`} cx="300" cy="300" r={ring.radius} />)}
+    {plotted.map((ring) => <text class="ring-label" x="300" y={300 - ring.radius + 23} text-anchor="middle">{ring.name}</text>)}
+    {plotted.map((ring) => ring.entries.map((entry) => (
+      <a href={`#${entry.anchor}`} aria-label={`${entry.number}. ${entry.name} — ${ring.name}`} class={`blip ${ring.key}`}>
+        <title>{entry.name} — {ring.name}</title>
+        <circle class="target" cx={entry.x} cy={entry.y} r="23" />
+        <circle class="point" cx={entry.x} cy={entry.y} r="17" />
+        <text x={entry.x} y={entry.y} text-anchor="middle" dominant-baseline="central">{entry.number}</text>
+      </a>
+    )))}
+  </svg>
+  <figcaption>Select a point or a tool to read the decision. Rings show adoption status; placement within each ring is for readability.</figcaption>
+  <div class="radar-key">
+    {plotted.map((ring) => (
+      <section class={ring.key} aria-label={`${ring.name} decisions`}>
+        <div class="key-heading"><strong>{ring.name}</strong><span>{ring.entries.length}</span></div>
+        {ring.entries.length ? <ul>{ring.entries.map((entry) => <li><a href={`#${entry.anchor}`}><span class="badge">{entry.number}</span><span>{entry.name}</span></a></li>)}</ul> : <p>No tools here yet.</p>}
+      </section>
+    ))}
+  </div>
+</figure>
+<style>
+  .tech-radar { margin: 2rem 0; --adopt: #acc8b7; --trial: #a3c1d9; --assess: #c9bf99; --hold: #bbaec7; }
+  :global([data-theme='light']) .tech-radar { --adopt: #365c47; --trial: #345c7b; --assess: #685a2e; --hold: #695279; }
+  .radar-topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; border-block: 1px solid var(--sl-color-gray-5); padding: .7rem 0; font-size: .875rem; color: var(--sl-color-gray-2); }
+  svg { display: block; width: 100%; max-width: 38rem; height: auto; margin: .5rem auto; overflow: visible; }
+  .adopt { --ring-color: var(--adopt); }
+  .trial { --ring-color: var(--trial); }
+  .assess { --ring-color: var(--assess); }
+  .hold { --ring-color: var(--hold); }
+  .band { fill: color-mix(in srgb, var(--ring-color) 5%, var(--sl-color-bg)); stroke: var(--sl-color-gray-4); stroke-width: 1; }
+  .band.assess { stroke-dasharray: 4 5; }
+  .ring-label { fill: var(--sl-color-gray-2); font: 24px var(--sl-font); }
+  .blip { color: var(--ring-color); }
+  .target { fill: transparent; }
+  .point { fill: var(--sl-color-bg); stroke: currentColor; stroke-width: 2; }
+  .blip text { fill: currentColor; font: 600 25px var(--sl-font); pointer-events: none; }
+  .blip:hover .point, .blip:focus-visible .point { fill: var(--ring-color); stroke-width: 4; }
+  .blip:hover text, .blip:focus-visible text { fill: var(--sl-color-bg); }
+  figcaption { font-size: .875rem; color: var(--sl-color-gray-2); line-height: 1.6; }
+  .radar-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 2rem; margin-top: 1.5rem; }
+  .radar-key > section { margin: 0; }
+  .key-heading { display: flex; align-items: center; justify-content: space-between; border-top: 2px solid var(--ring-color); padding-top: .65rem; color: var(--ring-color); }
+  .key-heading span { font-variant-numeric: tabular-nums; }
+  .radar-key ul { list-style: none; padding: 0; margin: .5rem 0 0; }
+  .radar-key li { margin: 0; }
+  .radar-key a { display: flex; align-items: baseline; gap: .65rem; padding: .35rem 0; text-decoration: none; line-height: 1.5; }
+  .radar-key a:hover { text-decoration: underline; }
+  .badge { color: var(--ring-color); min-width: 1.5rem; font-size: .875rem; font-variant-numeric: tabular-nums; }
+  .radar-key p { margin-top: .85rem; color: var(--sl-color-gray-2); font-size: .875rem; }
+  @media (max-width: 30rem) { .radar-key { grid-template-columns: 1fr; gap: 1rem; } }
+</style>

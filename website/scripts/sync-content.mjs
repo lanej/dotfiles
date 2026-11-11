@@ -8,6 +8,8 @@ import remarkMdx from 'remark-mdx';
 import remarkStringify from 'remark-stringify';
 import { parse, stringify } from 'yaml';
 import { visit } from 'unist-util-visit';
+import GithubSlugger from 'github-slugger';
+import { toString } from 'mdast-util-to-string';
 import { base } from '../site.config.mjs';
 import { zellijPages } from '../zellij.config.mjs';
 
@@ -22,6 +24,7 @@ const pages = [
   { file: 'docs/design-system.mdx', slug: 'design-system' },
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
+  { file: 'docs/radar.md', slug: 'reference/radar', title: 'Tech Radar', radar: true },
   { file: 'docs/builder.mdx', slug: 'reference/builder' },
   { file: 'docs/documentation-site.mdx', slug: 'maintaining' },
   { file: 'docs/conventional-code-comments.md', slug: 'contributing/code-comments', title: 'Conventional code comments' },
@@ -53,7 +56,7 @@ await mkdir(resolve(imageOutput, 'docs/brand'), { recursive: true });
 await cp(resolve(repo, 'docs/brand/dotfiles-logo.png'), resolve(imageOutput, 'docs/brand/dotfiles-logo.png'));
 for (const page of pages) {
   const mdx = page.file.endsWith('.mdx');
-  const destination = resolve(output, `${page.slug || 'index'}.${mdx ? 'mdx' : 'md'}`);
+  const destination = resolve(output, `${page.slug || 'index'}.${mdx || page.radar ? 'mdx' : 'md'}`);
   const processor = unified().use(remarkParse).use(remarkGfm).use(remarkStringify);
   if (mdx) processor.use(remarkMdx);
   let source = await readFile(resolve(repo, page.file), 'utf8');
@@ -105,8 +108,30 @@ for (const page of pages) {
     await mkdir(dirname(dest), { recursive: true });
     await cp(resolve(repo, image), dest);
   }
+  let presentation = '';
+  if (page.radar) {
+    tree.children = tree.children.filter((node) => node.type !== 'html' || !node.value.startsWith('<!--'));
+    const slugger = new GithubSlugger();
+    const rings = ['Adopt', 'Trial', 'Assess', 'Hold'].map((name) => ({ name, entries: [] }));
+    let current;
+    for (const node of tree.children) {
+      if (node.type !== 'heading') continue;
+      const name = toString(node);
+      const anchor = slugger.slug(name);
+      if (node.depth === 2) {
+        current = rings.find((ring) => ring.name === name);
+        if (!current) throw new Error(`Unknown radar ring: ${name}`);
+      }
+      if (node.depth === 3) {
+        if (!current) throw new Error(`Radar entry outside a ring: ${name}`);
+        current.entries.push({ name, anchor });
+      }
+    }
+    presentation = `import TechRadar from '../../../components/TechRadar.astro';\n\n<TechRadar rings={${JSON.stringify(rings)}} />\n\n`;
+  }
+  const content = page.radar ? processor().use(remarkMdx).stringify(tree) : processor.stringify(tree);
   metadata.editUrl = `${github}/edit/master/${page.file}`;
   await mkdir(dirname(destination), { recursive: true });
-  await writeFile(destination, `---\n${stringify(metadata)}---\n\n${processor.stringify(tree)}`);
+  await writeFile(destination, `---\n${stringify(metadata)}---\n\n${presentation}${content}`);
 }
 console.log(`Prepared ${pages.length} pages from shared repository Markdown and MDX.`);
