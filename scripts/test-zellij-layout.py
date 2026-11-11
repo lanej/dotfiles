@@ -49,7 +49,7 @@ def main():
         zellij_guard = guard / "zellij"
         zellij_guard.write_text(f'''#!/bin/sh
 case "$1 $2" in
-  'setup --check'|'prompt notify') exec {shlex.quote(binary)} "$@" ;;
+  'prompt notify') exec {shlex.quote(binary)} "$@" ;;
 esac
 case "$1" in
   --session=*)

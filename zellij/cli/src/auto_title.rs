@@ -77,7 +77,6 @@ fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64
 pub fn context() -> Result<String> {
     Ok(serde_json::to_string(&crate::context::Session::resolve(
         &session()?,
-        Instant::now() + Duration::from_secs(1),
     )?)?)
 }
 
@@ -117,7 +116,7 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(2);
     let context = match env::var("ZELLIJ_TITLE_CONTEXT") {
         Ok(value) => serde_json::from_str::<crate::context::Session>(&value)?,
-        Err(_) => crate::context::Session::resolve(session, deadline)?,
+        Err(_) => crate::context::Session::resolve(session)?,
     };
     context.validate(session)?;
     let identity = context.identity.clone();

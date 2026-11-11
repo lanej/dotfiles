@@ -289,10 +289,7 @@ impl Balance {
 fn execute(mode: &str) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(20);
     let mut b = Balance {
-        session: Session::resolve(
-            &session()?,
-            deadline.min(Instant::now() + Duration::from_secs(3)),
-        )?,
+        session: Session::resolve(&session()?)?,
         origin: origin_id()?.try_into()?,
         tab: None,
         deadline,
