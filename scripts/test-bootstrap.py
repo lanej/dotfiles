@@ -440,7 +440,7 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nmergiraf = true\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,

@@ -149,6 +149,8 @@ def main():
         assert machine_config.read_bytes() == local_config
 
         (executables / "python3").symlink_to(sys.executable)
+        merger.write_text("#!/bin/sh\nprintf '%s\\n' '*.toml merge=mergiraf'\n")
+        merger.chmod(0o755)
         # Plain make must also configure completions for installed tools.
         fd = executables / "fd"
         fd.write_text('#!/bin/sh\n[ "$*" = "--gen-completions zsh" ] || exit 7\n'

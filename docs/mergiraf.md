@@ -1,10 +1,10 @@
 # Mergiraf trial
 
-[Mergiraf](https://mergiraf.org/) adds syntax-aware merging to Git. Selecting the tool installs it and activates the driver globally for the installed version's supported file types. Machines that do not select it keep ordinary Git merging.
+[Mergiraf](https://mergiraf.org/) adds syntax-aware merging to Git. The `shell` set selects it by default; installation activates the driver globally for the installed version's supported file types. The minimal `base` set does not select it, and machines can opt out with `tools.mergiraf = false`.
 
 ## Install and activate
 
-Add `mergiraf = true` under the existing `[tools]` table in your machine TOML (`~/.config/dotfiles/config.toml`, or the configured alternative), then run `make plan` and `make install`. The catalog requires Mergiraf 0.20.0 or newer and supplies a locked Cargo install of 0.20.0 when the package manager cannot provide a suitable version. Its dependencies are Git and Rust. No default set selects it.
+Run `make plan` and `make install` to install and activate the shell default. Machines outside the `shell` set can select it with `mergiraf = true` under the existing `[tools]` table in their machine TOML (`~/.config/dotfiles/config.toml`, or the configured alternative). The catalog requires Mergiraf 0.20.0 or newer and supplies a locked Cargo install of 0.20.0 when the package manager cannot provide a suitable version. Its dependencies are Git and Rust.
 
 Configuration runs `mergiraf languages --gitattributes` and combines those rules with the existing diff attributes in `~/.config/dotfiles/mergiraf/attributes`. Git reads the result through the managed `~/.gitattributes` link. No per-repository setup is needed. The installed 0.20.0 binary advertises Markdown as well as TOML, JSON, Lua, and other languages; Zsh is not included. The generated rules follow the installed binary rather than a separately maintained extension list.
 
