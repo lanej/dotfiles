@@ -2613,7 +2613,7 @@ dependencies = [
 [[package]]
 name = "zellij-tile"
 version = "0.46.0"
-source = "git+https://github.com/lanej/zellij?rev=64fd2d3769e00aee8c5c3862bae7bd28088a3065#64fd2d3769e00aee8c5c3862bae7bd28088a3065"
+source = "git+https://github.com/lanej/zellij?rev=1fb8a39f473849e9aa2268cef7386465e45d0b3c#1fb8a39f473849e9aa2268cef7386465e45d0b3c"
 dependencies = [
  "prost",
  "serde",
@@ -2627,7 +2627,7 @@ dependencies = [
 [[package]]
 name = "zellij-utils"
 version = "0.46.0"
-source = "git+https://github.com/lanej/zellij?rev=64fd2d3769e00aee8c5c3862bae7bd28088a3065#64fd2d3769e00aee8c5c3862bae7bd28088a3065"
+source = "git+https://github.com/lanej/zellij?rev=1fb8a39f473849e9aa2268cef7386465e45d0b3c#1fb8a39f473849e9aa2268cef7386465e45d0b3c"
 dependencies = [
  "anyhow",
  "backtrace",

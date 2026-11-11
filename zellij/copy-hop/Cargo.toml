@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-zellij-tile = { git = "https://github.com/lanej/zellij", rev = "64fd2d3769e00aee8c5c3862bae7bd28088a3065" }
+zellij-tile = { git = "https://github.com/lanej/zellij", rev = "1fb8a39f473849e9aa2268cef7386465e45d0b3c" }
 
 [profile.release]
 strip = true
