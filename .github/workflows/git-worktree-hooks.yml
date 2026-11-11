@@ -11,6 +11,8 @@ on:
       - 'scripts/test-install-git-worktree-hooks.py'
       - 'bin/git-worktree-policy'
       - 'bin/git-worktree-policy-hook'
+      - 'tools/worktree-policy/**'
+      - 'scripts/build-worktree-policy.sh'
       - 'git/gitconfig'
       - 'scripts/test-git-worktree-policy.py'
       - 'scripts/test-treehouse-worktree-policy.py'
@@ -28,6 +30,8 @@ on:
       - 'scripts/test-install-git-worktree-hooks.py'
       - 'bin/git-worktree-policy'
       - 'bin/git-worktree-policy-hook'
+      - 'tools/worktree-policy/**'
+      - 'scripts/build-worktree-policy.sh'
       - 'git/gitconfig'
       - 'scripts/test-git-worktree-policy.py'
       - 'scripts/test-treehouse-worktree-policy.py'
@@ -55,6 +59,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/worktree-policy/go.mod
+          cache: false
+      - name: Build native policy
+        run: |
+          scripts/build-worktree-policy.sh "$RUNNER_TEMP/native-policy"
+          echo "GIT_WORKTREE_POLICY_BINARY=$RUNNER_TEMP/native-policy/git-worktree-policy" >> "$GITHUB_ENV"
       - name: Check stock Git policy fallback
         run: python3 scripts/test-git-worktree-policy.py
       - name: Build, test and package runtime
@@ -65,10 +77,6 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/git-runtime"
           tar -xzf "$RUNNER_TEMP"/git-artifacts/*.tar.gz -C "$RUNNER_TEMP/git-runtime"
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.26.x'
-          cache: false
       - name: Install pinned Treehouse fork for integration
         run: |
           bash scripts/install-treehouse

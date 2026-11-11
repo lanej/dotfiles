@@ -11,7 +11,7 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = ROOT / "bin/git-worktree-policy"
+POLICY = Path(os.environ.get("GIT_WORKTREE_POLICY_BINARY", ROOT / "bin/git-worktree-policy"))
 
 
 def main():

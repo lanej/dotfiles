@@ -4,16 +4,16 @@
 
 ## Global tracking
 
-`make git` (also selected by base configuration) links the policy commands and adds three named hooks to the shared Git configuration. On patched Git, `pre-worktree` and `post-worktree` observe creation, moves, removals, and pruning. `post-checkout` also registers repositories reached through ordinary checkouts. No per-repository installation is required, and `core.hooksPath` and existing hook files remain under their existing owners. Git runs those hooks independently; the global observer does not invoke them.
+`make install` installs a prebuilt native policy executable and applies the shared Git configuration, both selected by the base set. The installed policy requires Git, with no Python or Go runtime. `make git` links the commands and adds three named hooks to the shared Git configuration, but does not download the executable. On patched Git, `pre-worktree` and `post-worktree` observe creation, moves, removals, and pruning. `post-checkout` also registers repositories reached through ordinary checkouts. No per-repository installation is required, and `core.hooksPath` and existing hook files remain under their existing owners. Git runs those hooks independently; the global observer does not invoke them.
 
 Tracking is machine-local and covers repositories encountered by these hooks or explicit reconciliation. It does not scan the home directory, synchronize between machines, or discover an untouched existing repository automatically. To register an existing repository immediately, run `git-worktree-policy refresh` inside it. Use `git-worktree-policy status --all` from any directory to refresh the inventory of all known repositories.
 
 ```sh
-make git
+make install
 git-worktree-policy status --all
 ```
 
-Git 2.54+ supports configured hooks. Stock Git with that support can register checkout events, but only patched Git supplies worktree lifecycle events and automatic admission checks. Older Git retains the per-repository dispatcher option described below. Missing Python or observation failures warn without rejecting ordinary checkout; an unavailable admission check refuses new worktree creation. Run `make bootstrap` to provision Python.
+Git 2.54+ supports configured hooks. Stock Git with that support can register checkout events, but only patched Git supplies worktree lifecycle events and automatic admission checks. Older Git retains the per-repository dispatcher option described below. A missing policy executable or observation failure warns without rejecting ordinary checkout; an unavailable admission check refuses new worktree creation. Run `make install` to restore the executable. The policy package is independent of Treehouse and patched Git, so it also supports the stock-Git fallback.
 
 To disable tracking in one repository, set the named hooks' `enabled` keys locally:
 
@@ -65,3 +65,11 @@ Patched Git invokes `pre-worktree EVENT ID OLD_PATH NEW_PATH` before operations 
 Checks and additions are separate operations, so simultaneous creators can overshoot. Stock Git callers that omit preflight can also overshoot. Byte budgets gate on current usage and do not predict the size of a new checkout or restrict subsequent build growth. The next preflight or patched pre-add sees actual usage and refuses further allocation. A configured budget that cannot be evaluated visibly rejects admission; an unavailable registered repository blocks a configured global budget. Notification hooks report evaluation failures and preserve ordinary Git operations. Original hooks retain their own failure behavior.
 
 Verify the stock fallback with `make test-git-worktree-policy`. It uses disposable real stock-Git repositories, real allocated files, and direct calls to the native hook interface. Run `make test-treehouse-worktree-policy GIT_WORKTREE_HOOKS_GIT=/path/to/patched/bin/git` with native Treehouse installed to exercise actual veto delivery, repository and global disk gates, and reuse of an idle pool slot at capacity. These checks create and return only their disposable leases; native return requires process-inspection permission.
+
+## Native package
+
+The base set selects `worktree-policy` independently of `git-worktree-hooks`. The installer downloads a versioned macOS or Linux ARM64/x86_64 executable and its SHA256 checksum from the [native policy release](https://github.com/lanej/dotfiles/releases/tag/git-worktree-policy-v0.1.0), validates both the digest and executable version, and installs it at `~/.local/libexec/git-worktree-policy`. Subsequent installs reuse a verified binary without downloading it. Installer receipts never authorize replacing a modified or user-managed executable.
+
+The shell launcher at `~/.local/bin/git-worktree-policy` preserves the command interface. Existing Python-created registrations, inventory files, limits, and hook dispatchers remain compatible; no migration is needed. Dotfiles configuration and development checks retain their existing Python requirement, while hook execution and policy commands do not use Python or Go.
+
+For offline installation, provide a native executable with its adjacent `.sha256` file through `DOTFILES_WORKTREE_POLICY_BINARY=/absolute/path/to/git-worktree-policy-PLATFORM-ARCH make install`. See the [native tool source](../tools/worktree-policy/README.md) for build and release instructions.

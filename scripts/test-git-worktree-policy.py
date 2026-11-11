@@ -2,15 +2,17 @@
 """Exercise the policy through real Git hooks in isolated repositories."""
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = ROOT / "bin/git-worktree-policy"
+POLICY = Path(os.environ.get("GIT_WORKTREE_POLICY_BINARY", ROOT / "bin/git-worktree-policy"))
 
 
 def main():
@@ -27,7 +29,7 @@ def main():
 
         def run(*args, cwd=repo, check=True, extra_env=None):
             result = subprocess.run([str(arg) for arg in args], cwd=cwd, env={**env, **(extra_env or {})},
-                                    capture_output=True, text=True, timeout=30)
+                                    capture_output=True, text=True, errors="surrogateescape", timeout=30)
             if check and result.returncode:
                 raise AssertionError(f"{args}: {result.returncode}\n{result.stdout}\n{result.stderr}")
             return result
@@ -113,10 +115,10 @@ def main():
         moved_budget = root / "temporarily moved tree"
         budget_tree.rename(moved_budget)
         denied = run(POLICY, "preflight", check=False)
-        assert denied.returncode == 1 and "No such file" in denied.stderr
+        assert denied.returncode == 1 and "no such file" in denied.stderr.lower()
         original.chmod(0o644)
         checkout = git("checkout", "main")
-        assert "No such file" in checkout.stderr
+        assert "no such file" in checkout.stderr.lower()
         original.chmod(0o755)
         moved_budget.rename(budget_tree)
         other = root / "other repo"
@@ -261,16 +263,40 @@ def main():
         rejected = run(POLICY, "install", cwd=env_repo,
                        extra_env={**hook_env, "GIT_CONFIG_GLOBAL": str(global_policy)}, check=False)
         assert rejected.returncode == 1 and "core.hooksPath" in rejected.stderr and linked_gitdir in rejected.stderr
+        # rationale: macOS filesystems can reject raw-byte names; native codec tests also cover surrogate escapes.
+        legacy_repo = root / ("legacy-☃" if sys.platform == "darwin" else os.fsdecode(b"legacy-\xff"))
+        git("init", "-q", "--initial-branch=main", legacy_repo)
+        legacy_common = str(legacy_repo / ".git")
+        legacy_root = root / "legacy-state"
+        legacy_registry = legacy_root / "git-worktree-policy/repositories"
+        legacy_registry.mkdir(parents=True)
+        legacy_record = legacy_registry / (hashlib.sha256(os.fsencode(legacy_common)).hexdigest() + ".json")
+        legacy_record.write_text(json.dumps({"common_gitdir": legacy_common, "inventory": {"linked_count": 9876, "worktrees": []}}))
+        migrated = json.loads(run(POLICY, "status", "--all", cwd=root, extra_env={"XDG_STATE_HOME": str(legacy_root)}).stdout)
+        assert migrated["complete"] and len(migrated["repositories"]) == 1
+        assert migrated["repositories"][0]["common_gitdir"] == legacy_common
+        assert migrated["totals"]["linked_count"] == 0
+        assert len(list(legacy_registry.iterdir())) == 1
         env["GIT_CONFIG_GLOBAL"] = str(ROOT / "git/gitconfig")
         env["XDG_STATE_HOME"] = str(root / "global-state")
         (root / ".local/bin").mkdir(parents=True)
         (root / ".local/bin/git-worktree-policy").symlink_to(POLICY)
         (root / ".local/bin/git-worktree-policy-hook").symlink_to(ROOT / "bin/git-worktree-policy-hook")
-        without_python = {"PATH": str(root / "no-python")}
-        warning = run(ROOT / "bin/git-worktree-policy-hook", "post-checkout", "old", "new", "1", extra_env=without_python)
-        assert "Python 3 is unavailable" in warning.stderr
-        blocked = run(ROOT / "bin/git-worktree-policy-hook", "pre-worktree", "add", "", "", "new", check=False, extra_env=without_python)
-        assert blocked.returncode == 1 and "Python 3 is unavailable" in blocked.stderr
+        native_path = root / "native-only-path"
+        native_path.mkdir()
+        (native_path / "git").symlink_to(shutil.which("git"))
+        only_git = {"PATH": str(native_path), "XDG_STATE_HOME": str(root / "native-only-state")}
+        assert run(ROOT / "bin/git-worktree-policy-hook", "post-checkout", "old", "new", "1", extra_env=only_git).returncode == 0
+        assert run(ROOT / "bin/git-worktree-policy-hook", "pre-worktree", "add", "", "", "new", extra_env=only_git).returncode == 0
+        installed_policy = root / ".local/bin/git-worktree-policy"
+        installed_policy.unlink()
+        installed_policy.symlink_to(ROOT / "bin/git-worktree-policy")
+        warning = run(ROOT / "bin/git-worktree-policy-hook", "post-checkout", "old", "new", "1", extra_env=only_git)
+        assert "native policy is unavailable" in warning.stderr
+        blocked = run(ROOT / "bin/git-worktree-policy-hook", "pre-worktree", "add", "", "", "new", check=False, extra_env=only_git)
+        assert blocked.returncode == 1 and "native policy is unavailable" in blocked.stderr
+        installed_policy.unlink()
+        installed_policy.symlink_to(POLICY)
         observed = root / "globally observed repo"
         git("init", "--initial-branch=main", observed)
         supported = git("hook", "list", "post-checkout", cwd=observed, check=False)

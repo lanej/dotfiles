@@ -14,6 +14,9 @@ shellcheck -x \
     "$dotfiles/scripts/install-agent-status-broker" \
     "$dotfiles/scripts/install-zellij" \
     "$dotfiles/scripts/install-treehouse" \
+    "$dotfiles/scripts/install-worktree-policy" \
+    "$dotfiles/scripts/build-worktree-policy.sh" \
+    "$dotfiles/tools/worktree-policy/scripts/check-go.sh" \
     "$dotfiles/scripts/build-git-worktree-hooks.sh" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
