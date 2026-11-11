@@ -89,9 +89,9 @@ cd {shlex.quote(str(plain))}
 cd {shlex.quote(str(unsafe))}
 '''
         observed = run(script)
-        assert observed == (b"\x1b]2;project with spaces [topic]\x07"
-                               b"\x1b]2;project with spaces [other]\x07"
-                               b"\x1b]2;plain\x07\x1b]2;bad   name\x07"), repr(observed)
+        assert observed == ("\x1b]2;project with spaces  topic\x07"
+                               "\x1b]2;project with spaces  other\x07"
+                               "\x1b]2;plain\x07\x1b]2;bad   name\x07").encode(), repr(observed)
         assert not (work / "tmux.log").exists(), "inner Zellij renamed outer tmux"
         cd = f"cd {shlex.quote(str(plain))}\n"
         assert run(cd, terminal=False) == b""
@@ -172,18 +172,18 @@ else:
             assert rename() == "project"
             assert owned() == {"4": "project"}
             env["PWD"] = str(work / "next")
-            assert rename() == "next"
-            assert owned() == {"4": "next"}
+            assert rename() == "project"
+            assert owned() == {"4": "project"}
             state.write_text(json.dumps({"tab_id": 4, "name": "manual"}))
             assert rename() == "manual", "explicit title was overwritten"
             # A resurrected session may reuse its ID and the exact old title.
             # Its new socket must prevent old ownership transferring to it.
             address.unlink()
             replacement.bind(str(address))
-            state.write_text(json.dumps({"tab_id": 4, "name": "next"}))
+            state.write_text(json.dumps({"tab_id": 4, "name": "project"}))
             env["PWD"] = str(work / "new-session")
             assert owned() == {}, "stale ownership survived socket replacement"
-            assert rename() == "next", "new session's explicit title was overwritten"
+            assert rename() == "project", "new session's explicit title was overwritten"
             state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
             assert rename() == "new-session", "generated title did not resume ownership"
             assert owned() == {"4": "new-session"}

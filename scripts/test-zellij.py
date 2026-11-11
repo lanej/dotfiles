@@ -93,7 +93,7 @@ class Terminal:
         # grant. Further sessions in this private HOME share the saved grant.
         self.until("status permission request or remembered grant", lambda:
                    b"(y/n)" in self.output.lower()
-                   or re.search(rb"!\d+ \xe2\x97\x8f\d+", self.output))
+                   or re.search(rb" \d+:[^\s\x1b]", self.output))
         if b"(y/n)" in self.output.lower():
             self.prefix(b"k")
             self.send(b"y")

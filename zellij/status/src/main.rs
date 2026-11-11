@@ -1,6 +1,6 @@
 mod theme;
-use theme::{foreground, background, mark};
-use serde_json::{json, Value};
+mod bar;
+use theme::{foreground, background};
 use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,
     StatusView, MAX_CONFIG_BYTES, READINESS};
 use std::collections::BTreeMap;
@@ -11,16 +11,18 @@ mod attention;
 mod attention_policy;
 mod clients;
 mod notifications;
+mod modules;
 
 #[derive(Default)]
 struct State {
     mode: ModeInfo,
     tabs: Vec<TabInfo>,
     panes: PaneManifest,
-    view: Value,
+    view: StatusView,
     allowed: bool,
     visible: bool,
     busy: bool,
+    title_refresh: bool,
     attention: GlobalAttention,
     attention_ready: bool,
     attention_config: attention_policy::Config,
@@ -46,32 +48,23 @@ fn plain(value: &str) -> String {
     value.chars().filter(|c| !c.is_control()).collect()
 }
 
-fn tab_name(tab: &TabInfo, panes: &PaneManifest, own_pane: Option<&PaneInfo>, owned: &Value) -> String {
-    // Native defaults use a stable ID + 1, not the tab's current position.
-    // Render a shell/application title without renaming the actual tab, so a
-    // manual tab name and explicit pane titles retain native ownership.
-    if tab.name != format!("Tab #{}", tab.tab_id + 1)
-        && owned[tab.tab_id.to_string()].as_str() != Some(tab.name.as_str()) {
+// Focus, output and attention changes do not change title ownership.
+fn title_sources(panes: &PaneManifest) -> BTreeMap<(usize, u32), (&str, bool)> {
+    panes.panes.iter().flat_map(|(position, panes)| panes.iter()
+        .filter(|p| !p.is_plugin && !p.exited)
+        .map(move |p| ((*position, p.id), (p.title.as_str(), !p.is_floating && !p.is_suppressed)))).collect()
+}
+
+fn tab_name(tab: &TabInfo, panes: &PaneManifest) -> String {
+    if !tab.name.is_empty() && tab.name != format!("Tab #{}", tab.tab_id + 1) {
         return plain(&tab.name);
     }
-    // PaneUpdate focus is aggregated and cached. The client snapshot supplies
-    // its fresh native PaneInfo; tab-wide views require unambiguous focus.
-    let eligible = |pane: &PaneInfo| !pane.is_plugin && !pane.is_floating
-        && !pane.is_suppressed && !pane.exited;
-    let mut focused = panes.panes.get(&tab.position).into_iter().flatten()
-        .filter(|pane| eligible(pane) && pane.is_focused);
-    let pane = match own_pane {
-        Some(pane) => Some(pane).filter(|pane| eligible(pane)),
-        None => focused.next().filter(|_| focused.next().is_none()),
-    };
-    if let Some(pane) = pane {
-        let title = plain(&pane.title);
-        let generated = title.strip_prefix("Pane #")
-            .map(|number| !number.is_empty() && number.bytes().all(|b| b.is_ascii_digit()))
-            .unwrap_or(false);
-        if !title.is_empty() && !generated { return title; }
-    }
-    format!("Tab #{}", tab.position)
+    // Before the host commits a new automatic name, every client uses the same oldest pane.
+    panes.panes.get(&tab.position).into_iter().flatten()
+        .filter(|p| !p.is_plugin && !p.exited && !p.is_floating && !p.is_suppressed)
+        .filter_map(|p| lane_zellij_protocol::titles::pane_label(&p.title).map(|title| (p.id, title)))
+        .min_by_key(|(id, _)| *id).map(|(_, title)| title)
+        .unwrap_or_else(|| format!("Tab #{}", tab.position))
 }
 
 fn clipped(value: &str, budget: usize) -> String {
@@ -87,32 +80,17 @@ fn clipped(value: &str, budget: usize) -> String {
     text
 }
 
-fn notification_right(notice: &str, counts: &str, cols: usize) -> String {
-    // WHY: Transient messages must leave room to identify and switch the active tab.
-    let tabs = (cols / 3).clamp(20, 48).min(cols);
-    let budget = cols.saturating_sub(tabs + counts.width() + 5).min(64);
-    if budget < 8 {
-        format!(" {} ", clipped(counts, cols.saturating_sub(2)))
-    } else {
-        format!(" {} │ {} ", clipped(notice, budget), counts)
-    }
-}
-
-fn bar_heading(mode: &str, host: &str, available: usize, reserve_tab: bool) -> String {
-    let budget = if reserve_tab { available.saturating_sub(12) } else { available };
-    clipped(&format!("{}{} │", mode, host), budget)
-}
-
-
 impl State {
     fn poll(&mut self) {
         if self.clipboard_receiver || !self.allowed || self.busy || !self.visible { return; }
-        // In rename mode ModeInfo holds a draft, not a queryable session name.
-        if self.mode.mode == InputMode::RenameSession { return; }
+        // Rename modes expose editable names. Keep pending title updates until
+        // the client commits or cancels its edit.
+        if matches!(self.mode.mode, InputMode::RenameSession | InputMode::RenameTab) { return; }
         // Native Zellij owns attention, including detached sessions. The
         // helper supplies host metadata and lifecycle-checked title ownership.
         let Some(session) = self.mode.session_name.as_deref() else { return };
-        run_command(&["zellij-status", "view", session], BTreeMap::new());
+        let command = if std::mem::take(&mut self.title_refresh) { "refresh-view" } else { "view" };
+        run_command(&["zellij-status", command, session], BTreeMap::from([("view".into(), command.into())]));
         self.busy = true;
     }
 }
@@ -167,7 +145,7 @@ impl ZellijPlugin for State {
                 // Session metadata contains the committed name; ModeUpdate
                 // owns this client's editable draft until rename mode exits.
                 if self.mode.mode != InputMode::RenameSession {
-                    if self.mode.session_name != session { self.view = json!({}); }
+                    if self.mode.session_name != session { self.view = StatusView::default(); }
                     self.mode.session_name = session;
                 }
                 if !self.allowed {
@@ -179,7 +157,7 @@ impl ZellijPlugin for State {
             Event::ListClients(_) if self.allowed && !self.clipboard_receiver => self.clients.finish(),
             Event::ModeUpdate(mut mode) => {
                 if mode.session_name.is_none() { mode.session_name = self.mode.session_name.clone(); }
-                if self.mode.session_name != mode.session_name { self.view = json!({}); }
+                if self.mode.session_name != mode.session_name { self.view = StatusView::default(); }
                 self.mode = mode; self.poll();
             }
             Event::TabUpdate(tabs) => { self.tabs = tabs; }
@@ -194,7 +172,11 @@ impl ZellijPlugin for State {
                 self.attention = attention;
                 self.attention_ready = true;
             }
-            Event::PaneUpdate(panes) => { self.panes = panes; }
+            Event::PaneUpdate(panes) => {
+                self.title_refresh |= title_sources(&panes) != title_sources(&self.panes);
+                self.panes = panes;
+                if self.title_refresh { self.poll(); }
+            }
             Event::Visible(visible) => { self.visible = visible; if visible { self.poll(); } }
             Event::Timer(_) => { self.clipboard.tick(); self.poll(); set_timeout(1.0); }
             Event::RunCommandResult(code, _out, error, context)
@@ -218,16 +200,18 @@ impl ZellijPlugin for State {
                     self.clipboard.finish(code, out, error);
                 }
             }
-            Event::RunCommandResult(code, out, error, _) => {
+            Event::RunCommandResult(code, out, error, context) => {
                 self.busy = false;
+                if context.get("view").map(String::as_str) == Some("refresh-view") && code != Some(0) {
+                    self.title_refresh = true;
+                    return false;
+                }
                 self.view = if code == Some(0) {
-                    let view: Value = serde_json::from_slice::<StatusView>(&out).ok()
-                        .and_then(|view| serde_json::to_value(view).ok()).unwrap_or(json!({}));
-                    if view["session"].as_str() == self.mode.session_name.as_deref() { view }
-                    else { json!({}) }
+                    serde_json::from_slice::<StatusView>(&out).ok()
+                        .filter(|v| v.session == self.mode.session_name).unwrap_or_default()
                 } else {
                     eprintln!("lane-status helper failed: {}", String::from_utf8_lossy(&error));
-                    json!({"available": false})
+                    StatusView::default()
                 };
             }
             Event::Mouse(Mouse::LeftClick(_, col)) if self.allowed => {
@@ -359,106 +343,6 @@ impl ZellijPlugin for State {
                 background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
             return;
         }
-        let attention = self.attention.counts.needs_you + self.attention.counts.failed;
-        let working = self.attention.counts.working;
-        let clock = plain(self.view["clock"].as_str().unwrap_or(""));
-        let battery = plain(self.view["battery"].as_str().unwrap_or(""));
-        let counts = if self.attention_ready {
-            format!("!{} ●{} ✓{}", attention, working, self.attention.counts.done)
-        } else { "!? ●? ✓?".into() };
-        let right = if let Some(notice) = self.clipboard.notice() {
-            format!(" {} ", clipped(&plain(notice), cols.saturating_sub(2)))
-        } else if let Some((_, notice)) = self.notifications.notice() {
-            notification_right(notice, &counts, cols)
-        } else { format!(" {} {} {} ", counts, battery, clock) };
-        let right_width = right.width().min(cols);
-        let available = cols.saturating_sub(right_width);
-        let host = plain(self.view["host"].as_str().unwrap_or(""));
-        let mode = match self.mode.mode {
-            InputMode::Locked | InputMode::Normal => " ",
-            InputMode::Tmux => " PREFIX ",
-            InputMode::Resize => " RESIZE ",
-            InputMode::Move => " MOVE ",
-            InputMode::Tab => " TAB ",
-            InputMode::RenameTab => " RENAME TAB ",
-            InputMode::Scroll => " SCROLL ",
-            InputMode::EnterSearch | InputMode::Search => " SEARCH ",
-            _ => " MODE ",
-        };
-        let mut used = 0;
-        print!("\x1b[{}m", if dimmed { 3 } else { 23 });
-        print!("\x1b[{};{}m", background(colors.text_unselected.background), foreground(colors.text_unselected.emphasis_1));
-        let heading = bar_heading(mode, &host, available,
-            self.notifications.notice().is_some() && !self.tabs.is_empty());
-        for c in heading.chars() {
-            let width = c.width().unwrap_or(0);
-            if used + width > available { break; }
-            print!("{}", c); used += width;
-        }
-        let tab_space = available.saturating_sub(used);
-        let visible = (tab_space / 12).max(1).min(self.tabs.len());
-        let active = self.tabs.iter().position(|t| t.active).unwrap_or(0);
-        let end = (active.saturating_sub(visible / 2) + visible).min(self.tabs.len());
-        let start = end.saturating_sub(visible);
-        let budget = if visible > 0 { (tab_space / visible).min(32) } else { 0 };
-        for tab in &self.tabs[start..end] {
-            let question = self.panes.panes.get(&tab.position).into_iter().flatten()
-                .any(|pane| pane.attention.effective_status() == AttentionStatus::NeedsYou
-                    && pane.attention.detail.kind == Some(BlockedKind::Question));
-            let (glyph, color) = if tab.attention.status == AttentionStatus::Idle && tab.has_bell_notification {
-                ("!", colors.text_unselected.emphasis_0)
-            } else { mark(tab.attention.status, question, &colors) };
-            let zoom = if tab.is_fullscreen_active { " Z" } else { "" };
-            let name_budget = budget.saturating_sub(tab.position.to_string().len() + 5 + zoom.len());
-            let name = clipped(&tab_name(tab, &self.panes, None, &self.view["auto_titles"]), name_budget);
-            let label = format!(" {}:{} {}{} ", tab.position, name, glyph, zoom);
-            let start = used;
-            let tab_style = if tab.active { colors.ribbon_selected } else { colors.ribbon_unselected };
-            print!("\x1b[{};{}m", background(tab_style.background), foreground(if glyph.is_empty() { tab_style.base } else { color }));
-            for c in label.chars() {
-                let width = c.width().unwrap_or(0);
-                if used + width > available { break; }
-                print!("{}", c); used += width;
-            }
-            if used > start { self.clicks.push((start, used, tab.position as u32 + 1)); }
-            if used >= available { break; }
-        }
-        let notice_color = match self.notifications.notice().map(|(level, _)| level) {
-            Some("error") => colors.exit_code_error.base,
-            Some("warn") => colors.text_unselected.emphasis_0,
-            Some("success") => colors.exit_code_success.base,
-            _ => colors.ribbon_unselected.base,
-        };
-        print!("\x1b[{}m{}\x1b[{}m", background(colors.text_unselected.background), " ".repeat(available.saturating_sub(used)), foreground(notice_color));
-        let mut right_used = 0;
-        for c in right.chars() {
-            let width = c.width().unwrap_or(0);
-            if right_used + width > right_width { break; }
-            print!("{}", c); right_used += width;
-        }
-        print!("\x1b[0m");
-    }
-}
-
-#[cfg(test)]
-mod notification_layout_tests {
-    use super::*;
-
-    #[test]
-    fn notices_leave_tab_context_at_small_widths() {
-        for cols in [40, 80, 120] {
-            let right = notification_right(&"界".repeat(100), "!1 ●0 ✓2", cols);
-            assert!(right.width() <= cols - 20, "{cols}: {right}");
-            assert!(right.contains("!1 ●0 ✓2"));
-        }
-        for mode in [" ", " RENAME TAB "] {
-            let right = notification_right(&"Long notice ".repeat(10), "!1 ●0 ✓2", 45);
-            let available = 45 - right.width();
-            let heading = bar_heading(mode, "development-laptop", available, true);
-            assert!(available - heading.width() >= 12);
-        }
-        for cols in 2..20 {
-            assert!(notification_right("Failed", "!1 ●0 ✓2", cols).width() <= cols);
-        }
+        self.render_bar(cols, dimmed);
     }
 }

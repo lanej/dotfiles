@@ -1076,6 +1076,7 @@ return {
 ["tab.active.fg"] = "#2E3440",
 ["tab.inactive.bg"] = "#2E3440",
 ["tab.inactive.fg"] = "#81A1C1",
+["frame.inactive.fg"] = "#979DA9",
 ["keyhint"] = "#88C0D0",
 ["heading"] = "#88C0D0",
 ["link"] = "#88C0D0",

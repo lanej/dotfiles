@@ -1,5 +1,7 @@
 //! Host/plugin contracts. Keep this crate free of native I/O so the same
 //! validation and wire types compile for the native CLI and WASI plugins.
+pub mod titles;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -127,6 +129,22 @@ pub struct ReadinessReply {
     pub bindings_installed: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PowerState {
+    Charging,
+    Discharging,
+    Idle,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BatteryReading {
+    pub percent: u8,
+    pub state: PowerState,
+    pub remaining_minutes: Option<u32>,
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StatusView {
     pub session: Option<String>,
@@ -134,6 +152,8 @@ pub struct StatusView {
     pub host: String,
     pub clock: String,
     pub battery: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub power: Option<BatteryReading>,
 }
 
 #[cfg(test)]

@@ -211,7 +211,15 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.run_helper("codex-zellij-title-hook", "--timestamp", "100", data=json.dumps(event).encode())
         rename = self.calls()[-1]
         self.assertEqual(rename[:6], ["--session", "actual-session", "action", "rename-pane", "--pane-id", "terminal_42"])
-        self.assertIn("019a1234", rename[-1])
+        self.assertEqual(rename[-1], "󰚩 project")
+        event.update(hook_event_name="PreToolUse", cwd="/tmp/tool-worktree")
+        self.plan([[pane(42, title=rename[-1])]])
+        self.run_helper("codex-zellij-title-hook", "--timestamp", "110", data=json.dumps(event).encode())
+        self.assertFalse(any("rename-pane" in call for call in self.calls()))
+        outside = {**event, "session_id": "019a1234-abcd-7000-aaaa-cccccccccccc"}
+        self.plan(["actual-session\n", [pane(42, title=rename[-1])]])
+        self.run_helper("codex-zellij-title-hook", "--timestamp", "120", data=json.dumps(outside).encode())
+        self.assertFalse(any("rename-pane" in call for call in self.calls()))
         self.plan([])
         self.run_helper("codex-zellij-title-hook", "--timestamp", "90", data=json.dumps(event).encode())
         self.assertEqual(self.calls(), [])
