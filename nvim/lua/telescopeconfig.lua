@@ -56,8 +56,8 @@ telescope.setup({
 						no_ignore = not no_ignore,
 						hidden = true,
 						prompt_title = not no_ignore and "Find Files (all)" or "Find Files",
-						attach_mappings = function(prompt_bufnr, map)
-							local picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+						attach_mappings = function(next_prompt, _map)
+							local picker = require("telescope.actions.state").get_current_picker(next_prompt)
 							picker.no_ignore_state = not no_ignore
 							return true
 						end,
@@ -81,8 +81,8 @@ telescope.setup({
 						no_ignore = not no_ignore,
 						hidden = true,
 						prompt_title = not no_ignore and "Find Files (all)" or "Find Files",
-						attach_mappings = function(prompt_bufnr, map)
-							local picker = require("telescope.actions.state").get_current_picker(prompt_bufnr)
+						attach_mappings = function(next_prompt, _map)
+							local picker = require("telescope.actions.state").get_current_picker(next_prompt)
 							picker.no_ignore_state = not no_ignore
 							return true
 						end,
@@ -219,7 +219,7 @@ vim.keymap.set("n", "<leader>cf", function()
 			}),
 			sorter = require("telescope.config").values.generic_sorter({}),
 			previewer = require("telescope.previewers").vim_buffer_cat.new({}),
-			attach_mappings = function(prompt_bufnr, map)
+			attach_mappings = function(prompt_bufnr, _map)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = require("telescope.actions.state").get_selected_entry()
@@ -240,7 +240,7 @@ vim.keymap.set("n", "<leader>bc", builtin.git_bcommits, { noremap = true, silent
 vim.keymap.set("n", "<leader>bp", function()
 	builtin.git_branches({
 		prompt_title = "Git Branches (checkout)",
-		attach_mappings = function(prompt_bufnr, map)
+		attach_mappings = function(prompt_bufnr, _map)
 			actions.select_default:replace(function()
 				actions.close(prompt_bufnr)
 				local selection = require("telescope.actions.state").get_selected_entry()
@@ -291,8 +291,11 @@ vim.keymap.set("n", "<leader>sr", function()
 
 	-- Get different types of changed files
 	local modified = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " ls-files -m -- " .. search_path)
-	local staged = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " diff --name-only --cached -- " .. search_path)
-	local untracked = vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " ls-files -o --exclude-standard -- " .. search_path)
+	local staged =
+		vim.fn.systemlist("git -C " .. vim.fn.shellescape(git_root) .. " diff --name-only --cached -- " .. search_path)
+	local untracked = vim.fn.systemlist(
+		"git -C " .. vim.fn.shellescape(git_root) .. " ls-files -o --exclude-standard -- " .. search_path
+	)
 
 	-- Combine and deduplicate
 	local files = {}
@@ -328,7 +331,6 @@ vim.keymap.set("n", "<leader>sr", function()
 	local conf = require("telescope.config").values
 	local pickers = require("telescope.pickers")
 	local finders = require("telescope.finders")
-	local make_entry = require("telescope.make_entry")
 
 	pickers
 		.new({}, {

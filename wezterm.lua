@@ -125,7 +125,7 @@ local SOLID_LEFT_ARROW = wezterm.nerdfonts.pl_right_hard_divider
 local SOLID_RIGHT_ARROW = wezterm.nerdfonts.pl_left_hard_divider
 
 -- Format tab titles (tmux style: index* title)
-wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
+wezterm.on("format-tab-title", function(tab, tabs, _panes, _config, _hover, _max_width)
 	local background = "#4C566A"
 	local foreground = "#88C0D0"
 
@@ -170,7 +170,7 @@ end)
 -- DYNAMIC PANE TITLES (show command or directory)
 -- =============================================================================
 
-wezterm.on("update-status", function(window, pane)
+wezterm.on("update-status", function(_window, pane)
 	-- Update pane title
 	local process_name = pane:get_foreground_process_name()
 	local cwd = pane:get_current_working_dir()
@@ -199,7 +199,7 @@ end)
 config.status_update_interval = 10000 -- 10 seconds
 
 -- Left status: Workspace name (like tmux session)
-wezterm.on("update-status", function(window, pane)
+wezterm.on("update-status", function(window, _pane)
 	local workspace = window:active_workspace()
 
 	window:set_left_status(wezterm.format({
@@ -214,7 +214,7 @@ wezterm.on("update-status", function(window, pane)
 end)
 
 -- Right status: SSH + Battery + DateTime + Hostname
-wezterm.on("update-right-status", function(window, pane)
+wezterm.on("update-right-status", function(window, _pane)
 	-- Build segments array with background colors for interlocking
 	local segment_data = {}
 
@@ -477,7 +477,7 @@ table.insert(config.keys, {
 	mods = "LEADER",
 	action = act.PromptInputLine({
 		description = "Enter new name for tab",
-		action = wezterm.action_callback(function(window, pane, line)
+		action = wezterm.action_callback(function(window, _pane, line)
 			if line then
 				window:active_tab():set_title(line)
 			end
@@ -491,7 +491,7 @@ table.insert(config.keys, {
 	mods = "CMD",
 	action = act.PromptInputLine({
 		description = "Enter new name for tab",
-		action = wezterm.action_callback(function(window, pane, line)
+		action = wezterm.action_callback(function(window, _pane, line)
 			if line then
 				window:active_tab():set_title(line)
 			end
@@ -537,7 +537,7 @@ table.insert(config.keys, {
 	mods = "LEADER",
 	action = act.PromptInputLine({
 		description = "Enter new name for workspace",
-		action = wezterm.action_callback(function(window, pane, line)
+		action = wezterm.action_callback(function(_window, _pane, line)
 			if line then
 				wezterm.mux.rename_workspace(wezterm.mux.get_active_workspace(), line)
 			end
@@ -587,7 +587,7 @@ table.insert(config.keys, {
 
 		window:perform_action(
 			act.InputSelector({
-				action = wezterm.action_callback(function(inner_window, inner_pane, id, label)
+				action = wezterm.action_callback(function(inner_window, inner_pane, id, _label)
 					if id then
 						inner_window:perform_action(act.ActivateTab(tonumber(id) - 1), inner_pane)
 					end
@@ -619,7 +619,7 @@ table.insert(config.keys, {
 
 		window:perform_action(
 			act.InputSelector({
-				action = wezterm.action_callback(function(inner_window, inner_pane, id, label)
+				action = wezterm.action_callback(function(inner_window, inner_pane, id, _label)
 					if id then
 						inner_window:perform_action(act.SwitchToWorkspace({ name = id }), inner_pane)
 					end
@@ -670,7 +670,7 @@ table.insert(config.keys, {
 -- GOLDEN RATIO LAYOUT (38% / 62%)
 -- =============================================================================
 
-local function golden_ratio(window, pane, force)
+local function golden_ratio(window, _pane, force)
 	local tab = window:active_tab()
 	if not tab then
 		return

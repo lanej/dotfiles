@@ -27,7 +27,10 @@ local function themed_picker()
 	local opts = require("fzf-lua.config").normalize_opts({}, "lsp.document_symbols")
 	local colors = require("fzf-lua.core").create_fzf_colors(opts):lower()
 	local roles = require("dotfiles-theme").colors()
-	assert(colors:find("hl:" .. roles.match:lower(), 1, true), "Picker matches must use the theme match role: " .. colors)
+	assert(
+		colors:find("hl:" .. roles.match:lower(), 1, true),
+		"Picker matches must use the theme match role: " .. colors
+	)
 	assert(colors:find("hl+:" .. roles.match:lower(), 1, true), "Selected matches must use the theme match role")
 	assert(colors:find("pointer:" .. roles.accent:lower(), 1, true), "Picker pointer must use the theme accent")
 end

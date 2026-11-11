@@ -5,7 +5,7 @@
 -- Start Phabricator LSP server for relevant file types
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "markdown", "gitcommit", "text" },
-	callback = function(args)
+	callback = function(_args)
 		-- Only start LSP if .arcrc exists (indicates Phabricator environment)
 		if vim.fn.filereadable(vim.fn.expand("~/.arcrc")) == 0 then
 			return
@@ -16,7 +16,7 @@ vim.api.nvim_create_autocmd("FileType", {
 			cmd = { "phab", "lsp", "stdio" },
 			root_dir = vim.fn.getcwd(),
 			settings = {},
-			on_attach = function(client, bufnr)
+			on_attach = function(_client, bufnr)
 				-- Optional: Add buffer-specific keymaps here
 				vim.notify(string.format("Phabricator LSP attached to buffer %d", bufnr), vim.log.levels.DEBUG)
 			end,

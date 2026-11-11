@@ -1,0 +1,40 @@
+name: Lua quality
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &lua-paths
+      - '**/*.lua'
+      - '.luacheckrc'
+      - '.stylua.toml'
+      - 'scripts/lua-quality.py'
+      - 'scripts/test-lua-quality.py'
+      - 'bootstrap/tools.toml'
+      - 'Makefile'
+      - '.github/workflows/lua.yml'
+  push:
+    branches: [master]
+    paths: *lua-paths
+
+permissions:
+  contents: read
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install formatter and analyzer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua-check
+          python3 -c 'import subprocess, tomllib; version = tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["stylua"]["version"]; subprocess.run(["npm", "install", "--global", "@johnnymorganz/stylua-bin@" + version], check=True)'
+      - run: make lua-check
+      - run: python3 scripts/test-lua-quality.py

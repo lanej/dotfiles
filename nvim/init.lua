@@ -389,7 +389,7 @@ vim.g.jedi_auto_initialization = 0
 -- Source environment on directory change
 function _G.SourceEnvOnDirChange()
 	if vim.tbl_contains(vim.tbl_keys(vim.v.event), "cwd") then
-		local sources = SourceEnv()
+		local sources = _G.SourceEnv()
 		if sources then
 			print("reloaded env")
 		end
@@ -401,8 +401,7 @@ vim.g.dotenv_files = { ".env", ".env-build", ".env-runtime", ".env-override", ".
 -- Load all vim.g.dotenv_files in the current directory if present
 -- @param files table
 -- @return table
-function _G.SourceEnv(files)
-	files = files or vim.g.dotenv_files
+function _G.SourceEnv(_files)
 	local loaded = {}
 	for _, file in ipairs(vim.g.dotenv_files) do
 		if vim.fn.filereadable(file) == 1 then
@@ -443,7 +442,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
 vim.api.nvim_create_autocmd("DirChanged", {
 	pattern = "*",
 	callback = function()
-		SourceEnvOnDirChange()
+		_G.SourceEnvOnDirChange()
 	end,
 })
 
@@ -451,7 +450,7 @@ vim.api.nvim_create_autocmd("DirChanged", {
 vim.api.nvim_create_autocmd("VimEnter", {
 	pattern = "*",
 	callback = function()
-		SourceEnv()
+		_G.SourceEnv()
 	end,
 })
 

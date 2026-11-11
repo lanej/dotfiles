@@ -1,8 +1,6 @@
 local fzf_lua = require("fzf-lua")
 local actions = require("fzf-lua.actions")
 
-local skim_present = vim.fn.executable("sk") == 1
-
 require("fzf-lua").setup({
 	-- NOTE: Forcing fzf instead of sk to avoid NVIM_LISTEN_ADDRESS issue (ibhagwan/fzf-lua#1812)
 	fzf_bin = "fzf",
@@ -180,7 +178,7 @@ vim.keymap.set("n", "<leader>ff", function()
 			prompt = no_ignore and "All Files❯ " or "Files❯ ",
 			query = query or "",
 			actions = {
-				["ctrl-g"] = function(selected, opts)
+				["ctrl-g"] = function(_selected, opts)
 					no_ignore = not no_ignore
 					local current_query = (opts and opts.last_query) or ""
 					vim.schedule(function()
@@ -241,7 +239,8 @@ vim.keymap.set("n", "<leader>sf", function()
 	local cwd_dir = vim.fn.getcwd()
 
 	-- Find git root
-	local git_root_cmd = vim.fn.systemlist("git -C " .. vim.fn.shellescape(cwd_dir) .. " rev-parse --show-toplevel 2>/dev/null")
+	local git_root_cmd =
+		vim.fn.systemlist("git -C " .. vim.fn.shellescape(cwd_dir) .. " rev-parse --show-toplevel 2>/dev/null")
 	local git_root = vim.v.shell_error == 0 and git_root_cmd[1] or cwd_dir
 
 	-- Calculate relative path from git root for filtering
@@ -281,7 +280,7 @@ vim.keymap.set("n", "<leader>sf", function()
 			color_icons = true,
 			actions = {
 				["default"] = actions.file_edit,
-				["ctrl-g"] = function(selected, opts)
+				["ctrl-g"] = function(_selected, opts)
 					-- Toggle mode and preserve query
 					is_project_root = not is_project_root
 
@@ -446,35 +445,35 @@ end, { noremap = true, silent = true })
 -- Keymap to list changed files (diff from merge-base, including untracked, staged, and unstaged)
 vim.keymap.set({ "n" }, "<leader>cf", function()
 	-- Get git root to ensure we're in a git repo
-	local git_root = vim.fn.systemlist('git rev-parse --show-toplevel 2>/dev/null')[1]
-	if vim.v.shell_error ~= 0 or not git_root or git_root == '' then
-		vim.notify('Not in a git repository', vim.log.levels.ERROR)
+	local git_root = vim.fn.systemlist("git rev-parse --show-toplevel 2>/dev/null")[1]
+	if vim.v.shell_error ~= 0 or not git_root or git_root == "" then
+		vim.notify("Not in a git repository", vim.log.levels.ERROR)
 		return
 	end
 
 	-- Try to get origin HEAD, fall back to origin/master or origin/main
-	local origin_head = vim.fn.systemlist('git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null')[1]
+	local origin_head = vim.fn.systemlist("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")[1]
 	local default_branch
 	local merge_base
 
-	if origin_head and origin_head ~= '' then
-		default_branch = origin_head:match('refs/remotes/(.*)')
+	if origin_head and origin_head ~= "" then
+		default_branch = origin_head:match("refs/remotes/(.*)")
 	else
 		-- Fallback: check if origin/main or origin/master exists
-		local has_main = vim.fn.systemlist('git rev-parse --verify origin/main 2>/dev/null')[1]
-		local has_master = vim.fn.systemlist('git rev-parse --verify origin/master 2>/dev/null')[1]
+		local has_main = vim.fn.systemlist("git rev-parse --verify origin/main 2>/dev/null")[1]
+		local has_master = vim.fn.systemlist("git rev-parse --verify origin/master 2>/dev/null")[1]
 
-		if vim.v.shell_error == 0 and has_main and has_main ~= '' then
-			default_branch = 'origin/main'
-		elseif has_master and has_master ~= '' then
-			default_branch = 'origin/master'
+		if vim.v.shell_error == 0 and has_main and has_main ~= "" then
+			default_branch = "origin/main"
+		elseif has_master and has_master ~= "" then
+			default_branch = "origin/master"
 		end
 	end
 
 	-- Try to get merge-base if we found a default branch
 	if default_branch then
-		merge_base = vim.fn.systemlist(string.format('git merge-base HEAD %s 2>/dev/null', default_branch))[1]
-		if vim.v.shell_error ~= 0 or not merge_base or merge_base == '' then
+		merge_base = vim.fn.systemlist(string.format("git merge-base HEAD %s 2>/dev/null", default_branch))[1]
+		if vim.v.shell_error ~= 0 or not merge_base or merge_base == "" then
 			merge_base = nil -- Clear it if merge-base failed
 		end
 	end
@@ -489,96 +488,108 @@ vim.keymap.set({ "n" }, "<leader>cf", function()
 		)
 	else
 		-- No merge-base: just show staged + unstaged + untracked
-		cmd = "bash -c '( git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'"
+		cmd =
+			"bash -c '( git diff --name-only --cached 2>/dev/null; git diff --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null ) | sort -u'"
 	end
 
 	-- Execute command to get file list
 	local files = vim.fn.systemlist(cmd)
 	if vim.v.shell_error ~= 0 then
-		vim.notify(string.format('Command failed with error %d: %s', vim.v.shell_error, table.concat(files, '\n')), vim.log.levels.ERROR)
+		vim.notify(
+			string.format("Command failed with error %d: %s", vim.v.shell_error, table.concat(files, "\n")),
+			vim.log.levels.ERROR
+		)
 		return
 	end
 	if #files == 0 then
-		vim.notify('No changed files found', vim.log.levels.INFO)
+		vim.notify("No changed files found", vim.log.levels.INFO)
 		return
 	end
 
 	-- Use fzf_exec with git_status() to get proper git icons
-	require("fzf-lua").fzf_exec(
-		function(fzf_cb)
-			-- Get git status for icons
-			local git_status_output = vim.fn.systemlist('git status --porcelain')
-			local status_map = {}
-			for _, line in ipairs(git_status_output) do
-				local status = line:sub(1, 2)
-				local file = line:sub(4)
-				status_map[file] = status
-			end
-
-			-- Format each file with make_entry
-			for _, file in ipairs(files) do
-				local entry = require("fzf-lua").make_entry.file(file, { file_icons = true, color_icons = true })
-				fzf_cb(entry)
-			end
-			fzf_cb()
-		end,
-		{
-			prompt = "ChangedFiles❯ ",
-			previewer = {
-				_ctor = function()
-					local previewer = require("fzf-lua.previewer.builtin").buffer_or_file:extend()
-					function previewer:parse_entry(entry_str)
-						local entry = self:entry_to_file(entry_str)
-						vim.fn.system({
-							"git", "-C", git_root, "diff", "--quiet", "--no-ext-diff", merge_base or "HEAD", "--", entry.path,
-						})
-						if vim.v.shell_error == 1 then
-							return {
-								path = entry.path,
-								cmd = {
-									"git", "-C", git_root, "diff", "--no-ext-diff", "--color=always", merge_base or "HEAD", "--", entry.path,
-								},
-								do_not_cache = true,
-							}
-						end
-						return self.super.parse_entry(self, entry_str)
+	require("fzf-lua").fzf_exec(function(fzf_cb)
+		-- Format each file with make_entry
+		for _, file in ipairs(files) do
+			local entry = require("fzf-lua").make_entry.file(file, { file_icons = true, color_icons = true })
+			fzf_cb(entry)
+		end
+		fzf_cb()
+	end, {
+		prompt = "ChangedFiles❯ ",
+		previewer = {
+			_ctor = function()
+				local previewer = require("fzf-lua.previewer.builtin").buffer_or_file:extend()
+				function previewer:parse_entry(entry_str)
+					local entry = self:entry_to_file(entry_str)
+					vim.fn.system({
+						"git",
+						"-C",
+						git_root,
+						"diff",
+						"--quiet",
+						"--no-ext-diff",
+						merge_base or "HEAD",
+						"--",
+						entry.path,
+					})
+					if vim.v.shell_error == 1 then
+						return {
+							path = entry.path,
+							cmd = {
+								"git",
+								"-C",
+								git_root,
+								"diff",
+								"--no-ext-diff",
+								"--color=always",
+								merge_base or "HEAD",
+								"--",
+								entry.path,
+							},
+							do_not_cache = true,
+						}
 					end
-					return previewer
-				end,
+					return self.super.parse_entry(self, entry_str)
+				end
+				return previewer
+			end,
+		},
+		winopts = {
+			preview = {
+				vertical = "down:60%",
+				horizontal = "right:60%",
 			},
-			winopts = {
-				preview = {
-					vertical = "down:60%",
-					horizontal = "right:60%",
-				},
-			},
-			actions = {
-				["default"] = function(selected, opts)
-					if not selected or #selected == 0 then
-						return
+		},
+		actions = {
+			["default"] = function(selected, opts)
+				if not selected or #selected == 0 then
+					return
+				end
+
+				-- Use fzf-lua's path extraction to get the actual file path
+				local file = require("fzf-lua").path.entry_to_file(selected[1], opts).path
+
+				vim.cmd("edit " .. vim.fn.fnameescape(file))
+
+				-- Get the first changed line from git diff
+				local diff_base = merge_base or "HEAD"
+				local diff_cmd = string.format(
+					"git diff %s --unified=0 -- %s | grep -E '^@@' | head -1",
+					diff_base,
+					vim.fn.shellescape(file)
+				)
+				local hunk_header = vim.fn.system(diff_cmd)
+
+				if vim.v.shell_error == 0 and hunk_header ~= "" then
+					local new_start = hunk_header:match("%+(%d+)")
+					if new_start then
+						vim.cmd("normal! " .. new_start .. "G")
+						vim.cmd("normal! zz")
 					end
-
-					-- Use fzf-lua's path extraction to get the actual file path
-					local file = require("fzf-lua").path.entry_to_file(selected[1], opts).path
-
-					vim.cmd("edit " .. vim.fn.fnameescape(file))
-
-					-- Get the first changed line from git diff
-					local diff_base = merge_base or "HEAD"
-					local diff_cmd = string.format("git diff %s --unified=0 -- %s | grep -E '^@@' | head -1", diff_base, vim.fn.shellescape(file))
-					local hunk_header = vim.fn.system(diff_cmd)
-
-					if vim.v.shell_error == 0 and hunk_header ~= "" then
-						local new_start = hunk_header:match("%+(%d+)")
-						if new_start then
-							vim.cmd("normal! " .. new_start .. "G")
-							vim.cmd("normal! zz")
-						end
-					end
-				end,
-			},
-		}
-	)
+				end
+			end,
+		},
+	})
 end, {
 	noremap = true,
 	silent = true,

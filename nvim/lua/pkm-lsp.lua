@@ -30,8 +30,8 @@ vim.api.nvim_create_autocmd("FileType", {
 				cmd = { "pkm", "lsp" },
 				root_dir = root_dir,
 				settings = {},
-				on_attach = function(client, bufnr)
-					vim.notify("PKM LSP attached to buffer " .. bufnr, vim.log.levels.DEBUG)
+				on_attach = function(_client, attached_buf)
+					vim.notify("PKM LSP attached to buffer " .. attached_buf, vim.log.levels.DEBUG)
 				end,
 			})
 
@@ -46,8 +46,8 @@ vim.api.nvim_create_autocmd("FileType", {
 				root_dir = root_dir,
 				filetypes = { "markdown" },
 				settings = {},
-				on_attach = function(client, bufnr)
-					vim.notify("Marksman LSP attached to buffer " .. bufnr, vim.log.levels.DEBUG)
+				on_attach = function(_client, attached_buf)
+					vim.notify("Marksman LSP attached to buffer " .. attached_buf, vim.log.levels.DEBUG)
 				end,
 			})
 
