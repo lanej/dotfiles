@@ -1,6 +1,6 @@
 # Keybinding registry
 
-The registry owns selected shortcuts and checks them against existing native bindings. It starts with explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
+The registry owns the Kitty reload/last-link shortcuts and all 26 active skhd window shortcuts, and checks them against remaining native bindings. It starts with explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
 
 ```sh
 make keybindings
@@ -15,6 +15,15 @@ Every report states coverage. Includes, application defaults, macOS system short
 
 ## Own a binding
 
+To backfill from existing native configuration, extract unmanaged bindings as TOML records:
+
+```sh
+uv run --no-project scripts/keybindings.py extract skhd > /tmp/skhd-bindings.toml
+uv run --no-project scripts/keybindings.py extract kitty > /tmp/kitty-bindings.toml
+```
+
+Extraction reads only the selected native source file and works before a registry or generated markers exist. It prints registry table fragments, with original source locations as comments, but does not modify files. Review the suggested chord-based IDs and placeholder descriptions, give them descriptive names, and append the records to `config/keybindings.toml` under its existing version header. Remove the corresponding native mappings and add the generated marker pair before generation. Duplicate chords or unsupported syntax fail without partial TOML output. Bindings already in a generated section are excluded, so extraction after a complete backfill produces no records. Commented-out examples are not imported.
+
 Edit [the registry](../config/keybindings.toml) for an owned shortcut:
 
 ```toml
@@ -27,6 +36,8 @@ description = "Open the last web link."
 ```
 
 IDs must be unique. `app` is `kitty` or `skhd`; actions remain native configuration strings, owned by their application. Chords accept letters, digits, F1–F20, Enter, Tab, Space, Backspace, Escape, Delete, Home, End, Page Up/Down, Insert, and arrow keys with explicit Ctrl/Alt/Shift/Cmd modifiers. Kitty also supports Equal and Minus. Unknown names, skhd punctuation, hardware keycodes, side-specific modifiers, and layout-dependent shifted-symbol equivalence are outside this adapter. Supported names follow [Kitty's key aliases](https://github.com/kovidgoyal/kitty/blob/master/kitty/key_names.py) and [skhd's literal names](https://github.com/koekeishiya/skhd/blob/master/src/tokenize.h); generation translates canonical Enter and Page Up/Down back to the application's spelling. A record has exactly one chord and one action. Give multiple shortcuts separate IDs. Registry records describe intended configuration; native parsers remain authoritative for action validity.
+
+Actions preserve native backslash-newline continuations and tabs, including indentation inside quoted shell arguments. The TOML export encodes them with string escapes; generation restores them without flattening commands. Other fields remain single-line strings, and bare action newlines or other control characters are rejected.
 
 Run `make generate-keybindings`, inspect the diff, then run `make test-keybindings` and the affected application's native check. For link shortcuts, run `make test-kitty-last-url`. Commit the registry and its generated output together. The CI check rejects conflicts and stale generated content.
 

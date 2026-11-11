@@ -52,6 +52,11 @@ class Invalid(ValueError):
     pass
 
 
+def continues(value, app):
+    trailing = len(value) - len(value.rstrip("\\"))
+    return bool(trailing % 2) if app == "skhd" else bool(trailing)
+
+
 def chord(value):
     """Normalize supported physical key names; never infer layout-dependent shifts."""
     parts = [part.strip().lower() for part in value.split("+")]
@@ -76,15 +81,20 @@ def registry(text):
     for record, line in zip(data["binding"], locations, strict=True):
         if set(record) != {"id", "app", "chord", "action", "description"}:
             raise Invalid(f"registry:{line}: expected id, app, chord, action, description")
-        if any(not isinstance(value, str) or not value.strip() or any(ord(c) < 32 for c in value)
-               for value in record.values()):
-            raise Invalid(f"registry:{line}: fields must be nonempty single-line strings")
+        for field, value in record.items():
+            if not isinstance(value, str) or not value.strip():
+                raise Invalid(f"registry:{line}: fields must be nonempty strings")
+            for i, character in enumerate(value):
+                if ord(character) < 32:
+                    continued = character == "\n" and continues(value[:i], record["app"])
+                    if field != "action" or not (character == "\t" or continued):
+                        raise Invalid(f"registry:{line}: only actions allow tabs and backslash-newline continuations")
         if record["app"] not in SOURCES or record["id"] in ids:
             raise Invalid(f"registry:{line}: unsupported app or duplicate id")
         normalized = chord(record["chord"])
         if record["app"] == "skhd" and normalized.split("+")[-1] in {"=", "-"}:
             raise Invalid(f"registry:{line}: punctuation keys are outside the skhd adapter")
-        if record["action"].endswith("\\"):
+        if continues(record["action"], record["app"]):
             raise Invalid(f"registry:{line}: actions cannot continue onto another generated line")
         ids.add(record["id"])
         bindings.append(Binding(**{**record, "chord": normalized},
@@ -133,28 +143,29 @@ def native(text, app):
     for number, raw in enumerate(lines, 1):
         if span and span[0] <= number - 1 <= span[1]:
             continue
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
+        body = raw.rstrip("\r\n")
         if not pending:
+            if not body.strip() or body.lstrip().startswith("#"):
+                continue
             start = number
-        pending += stripped.removesuffix("\\").rstrip() if stripped.endswith("\\") else stripped
-        if stripped.endswith("\\"):
-            pending += " "
+            body = body.lstrip()
+        pending += body
+        if continues(body, app):
+            pending += "\n"
             continue
         entry, pending = pending, ""
         try:
             if app == "kitty":
                 if not re.match(r"(?:map|clear_all_shortcuts|action_alias|kitten_alias)\b", entry):
                     continue
-                match = re.fullmatch(r"map\s+(\S+)\s+(.+)", entry)
+                match = re.fullmatch(r"map\s+(\S+)\s+(.+)", entry, flags=re.DOTALL)
                 if not match:
                     raise Invalid("unsupported Kitty binding directive")
                 key, action = match.groups()
                 if key.startswith("--") or ">" in key:
                     raise Invalid("Kitty modes/options/sequences require a new adapter")
             else:
-                match = re.fullmatch(r"([^:;<>\[\]]+)\s*:\s*(.+)", entry)
+                match = re.fullmatch(r"([^\n:;<>\[\]]+)\s*:\s*(.+)", entry, flags=re.DOTALL)
                 if not match:
                     raise Invalid("skhd modes, process maps, includes and forwarding require a new adapter")
                 key, action = match.groups()
@@ -175,6 +186,26 @@ def conflicts(bindings):
     return [{"chord": a.chord, "kind": "duplicate" if a.app == b.app else "global-overlap",
              "bindings": [asdict(a), asdict(b)]}
             for a, b in itertools.combinations(bindings, 2) if a.chord == b.chord]
+
+
+def extract(text, app):
+    """Return reviewable TOML records for unmanaged native bindings, without writing."""
+    bindings = native(text, app)
+    if conflicts(bindings):
+        raise Invalid("resolve duplicate native chords before extracting registry records")
+    records = []
+    for binding in bindings:
+        slug = "-".join({"=": "equal", "-": "minus"}.get(part, part)
+                        for part in binding.chord.split("+"))
+        record = {"id": f"{app}.{slug}", "app": app, "chord": binding.chord,
+                  "action": binding.action, "description": f"Imported shortcut: {binding.chord}."}
+        records.append(f"# Extracted from {binding.source}:{binding.line}\n[[binding]]\n" +
+                       "\n".join(f"{key} = {json.dumps(value, ensure_ascii=False)}"
+                                 for key, value in record.items()) + "\n")
+    result = "\n".join(records)
+    if result:
+        registry("version = 1\n" + result)
+    return result
 
 
 def inspect(root):
@@ -199,8 +230,13 @@ def main(argv=None):
     check.add_argument("--json", action="store_true")
     generate = commands.add_parser("generate", help="update only marked owned sections; no runtime reload")
     generate.add_argument("--check", action="store_true", help="fail on drift without writing")
+    extraction = commands.add_parser("extract", help="print unmanaged bindings as TOML records for review")
+    extraction.add_argument("app", choices=SOURCES)
     args = parser.parse_args(argv)
     try:
+        if args.command == "extract":
+            print(extract((args.root / SOURCES[args.app]).read_text(), args.app), end="")
+            return 0
         bindings, outputs, drift = inspect(args.root)
         overlaps = conflicts(bindings)
         if args.command == "generate":

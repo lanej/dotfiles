@@ -13,3 +13,185 @@ app = "kitty"
 chord = "cmd+shift+o"
 action = "kitten open_last_url.py"
 description = "Open the last web link, including Codex's padded output."
+
+[[binding]]
+id = "skhd.focus-kitty"
+app = "skhd"
+chord = "cmd+enter"
+action = "sh ~/.local/bin/yabai-focus-or-launch \"kitty\" \"/Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~\""
+description = "Focus or launch Kitty."
+
+[[binding]]
+id = "skhd.focus-west"
+app = "skhd"
+chord = "alt+h"
+action = "yabai -m window --focus west || yabai-focus-float left"
+description = "Focus the window west, including floating windows."
+
+[[binding]]
+id = "skhd.focus-south"
+app = "skhd"
+chord = "alt+j"
+action = "yabai -m window --focus south || yabai-focus-float down"
+description = "Focus the window south, including floating windows."
+
+[[binding]]
+id = "skhd.focus-north"
+app = "skhd"
+chord = "alt+k"
+action = "yabai -m window --focus north || yabai-focus-float up"
+description = "Focus the window north, including floating windows."
+
+[[binding]]
+id = "skhd.focus-east"
+app = "skhd"
+chord = "alt+l"
+action = "yabai -m window --focus east || yabai-focus-float right"
+description = "Focus the window east, including floating windows."
+
+[[binding]]
+id = "skhd.focus-previous"
+app = "skhd"
+chord = "alt+p"
+action = "yabai -m window --focus prev"
+description = "Focus the previous window."
+
+[[binding]]
+id = "skhd.focus-next"
+app = "skhd"
+chord = "alt+n"
+action = "yabai -m window --focus next"
+description = "Focus the next window."
+
+[[binding]]
+id = "skhd.toggle-float"
+app = "skhd"
+chord = "alt+shift+z"
+action = "yabai -m window --toggle float"
+description = "Toggle floating window layout."
+
+[[binding]]
+id = "skhd.toggle-zoom"
+app = "skhd"
+chord = "alt+shift+f"
+action = "yabai -m window --toggle zoom-fullscreen"
+description = "Toggle fullscreen zoom within the space."
+
+[[binding]]
+id = "skhd.swap-west"
+app = "skhd"
+chord = "alt+shift+h"
+action = "yabai -m window --swap west"
+description = "Swap with the window west."
+
+[[binding]]
+id = "skhd.swap-south"
+app = "skhd"
+chord = "alt+shift+j"
+action = "yabai -m window --swap south"
+description = "Swap with the window south."
+
+[[binding]]
+id = "skhd.swap-north"
+app = "skhd"
+chord = "alt+shift+k"
+action = "yabai -m window --swap north"
+description = "Swap with the window north."
+
+[[binding]]
+id = "skhd.swap-east"
+app = "skhd"
+chord = "alt+shift+l"
+action = "yabai -m window --swap east"
+description = "Swap with the window east."
+
+[[binding]]
+id = "skhd.rotate-clockwise"
+app = "skhd"
+chord = "alt+r"
+action = "yabai -m space --rotate 90"
+description = "Rotate the space layout clockwise."
+
+[[binding]]
+id = "skhd.rotate-counterclockwise"
+app = "skhd"
+chord = "alt+shift+r"
+action = "yabai -m space --rotate 270"
+description = "Rotate the space layout counterclockwise."
+
+[[binding]]
+id = "skhd.warp-north"
+app = "skhd"
+chord = "shift+cmd+k"
+action = "yabai -m window --warp north"
+description = "Move the window north in the layout."
+
+[[binding]]
+id = "skhd.warp-south"
+app = "skhd"
+chord = "shift+cmd+j"
+action = "yabai -m window --warp south"
+description = "Move the window south in the layout."
+
+[[binding]]
+id = "skhd.warp-west"
+app = "skhd"
+chord = "shift+cmd+h"
+action = "yabai -m window --warp west"
+description = "Move the window west in the layout."
+
+[[binding]]
+id = "skhd.warp-east"
+app = "skhd"
+chord = "shift+cmd+l"
+action = "yabai -m window --warp east"
+description = "Move the window east in the layout."
+
+[[binding]]
+id = "skhd.next-space"
+app = "skhd"
+chord = "ctrl+shift+cmd+l"
+action = "yabai -m window --space next"
+description = "Move the window to the next space."
+
+[[binding]]
+id = "skhd.previous-space"
+app = "skhd"
+chord = "ctrl+shift+cmd+h"
+action = "yabai -m window --space prev"
+description = "Move the window to the previous space."
+
+[[binding]]
+id = "skhd.balance-space"
+app = "skhd"
+chord = "alt+shift+space"
+action = "yabai -m space --balance"
+description = "Balance window sizes in the space."
+
+[[binding]]
+id = "skhd.toggle-split"
+app = "skhd"
+chord = "alt+s"
+action = "yabai -m window --toggle split"
+description = "Toggle the window split direction."
+
+[[binding]]
+id = "skhd.float-centered"
+app = "skhd"
+chord = "alt+shift+c"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 8:8:1:1:6:6"
+description = "Toggle floating and center the window."
+
+[[binding]]
+id = "skhd.float-top-half"
+app = "skhd"
+chord = "alt+shift+v"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 12:12:0:0:12:6"
+description = "Toggle floating and fill the top half."
+
+[[binding]]
+id = "skhd.float-bottom-half"
+app = "skhd"
+chord = "alt+shift+n"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 12:12:0:6:12:6"
+description = "Toggle floating and fill the bottom half."

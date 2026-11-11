@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 SCRIPT = Path(__file__).with_name("keybindings.py")
@@ -59,7 +60,7 @@ class KeybindingsTest(unittest.TestCase):
         report = json.loads(self.run_cli("check", "--json").stdout)
         self.assertEqual(report["conflicts"], [])
         self.assertEqual(len(report["bindings"]), 3)
-        self.assertEqual(report["bindings"][-1]["action"], "focus west; echo done")
+        self.assertEqual(report["bindings"][-1]["action"], "focus west;\\\n  echo done")
         self.write("kitty/kittyconf", generated.replace("hints --type hyperlink", "hints --type url"))
         self.run_cli("check", status=1)
         self.run_cli("generate", "--check", status=1)
@@ -135,6 +136,69 @@ description = "Focus west."
         self.write("config/keybindings.toml", REGISTRY)
         self.write("kitty/kittyconf", self.kitty.replace(END, ""))
         self.assertIn("markers", self.run_cli("generate", status=2).stderr)
+
+    def test_extract_backfills_without_an_existing_registry_and_roundtrips(self):
+        original = '# navigation\nalt - h : focus west;\\\n  echo done\ncmd - return : printf "%s" "quoted value"\n'
+        self.write("yabai/skhdrc", original)
+        (self.root / "config/keybindings.toml").unlink()
+        extracted = self.run_cli("extract", "skhd").stdout
+        records = tomllib.loads(extracted)["binding"]
+        self.assertEqual([(r["chord"], r["action"]) for r in records],
+                         [("alt+h", "focus west;\\\n  echo done"),
+                          ("cmd+enter", 'printf "%s" "quoted value"')])
+        self.assertEqual(records[0]["id"], "skhd.alt-h")
+        self.assertIn("yabai/skhdrc:2", extracted)
+        self.assertEqual((self.root / "yabai/skhdrc").read_text(), original)
+        self.assertFalse((self.root / "config/keybindings.toml").exists())
+        self.write("config/keybindings.toml", REGISTRY + "\n" + extracted)
+        self.write("yabai/skhdrc", f"# navigation\n{BEGIN}\n{END}\n")
+        self.run_cli("generate")
+        self.run_cli("check")
+        generated = (self.root / "yabai/skhdrc").read_text()
+        self.assertIn('cmd - return : printf "%s" "quoted value"\n', generated)
+        self.assertIn("alt - h : focus west;\\\n  echo done\n", generated)
+        self.assertEqual(self.run_cli("extract", "skhd").stdout, "")
+
+    def test_extract_fails_without_partial_output(self):
+        for tail in ["alt - h : conflicting action\n", "resize < alt - k : move north\n",
+                     'alt - j : printf "embedded\x01control"\n']:
+            with self.subTest(tail=tail):
+                original = "alt - h : focus west\n" + tail
+                self.write("yabai/skhdrc", original)
+                self.assertEqual(self.run_cli("extract", "skhd", status=2).stdout, "")
+                self.assertEqual((self.root / "yabai/skhdrc").read_text(), original)
+
+    def test_extract_preserves_shell_continuation_arguments(self):
+        action = "printf '%s\\n' foo\\\nbar"
+        self.write("yabai/skhdrc", "alt - h : " + action + "\n")
+        extracted = self.run_cli("extract", "skhd").stdout
+        record, = tomllib.loads(extracted)["binding"]
+        self.assertEqual(record["action"], action)
+        self.write("config/keybindings.toml", REGISTRY + "\n" + extracted)
+        self.write("yabai/skhdrc", f"{BEGIN}\n{END}\n")
+        self.run_cli("generate")
+        generated = (self.root / "yabai/skhdrc").read_text()
+        self.assertIn("alt - h : " + action + "\n", generated)
+        self.assertEqual(subprocess.run(["/bin/sh", "-c", record["action"]], check=True,
+                                       capture_output=True, text=True).stdout, "foobar\n")
+        self.run_cli("check")
+
+    def test_escaped_backslash_does_not_swallow_the_next_binding(self):
+        action = "printf '%s\\n' foo" + "\\" * 2
+        self.write("yabai/skhdrc", "alt - h : " + action + "\nalt - j : echo next\n")
+        extracted = self.run_cli("extract", "skhd").stdout
+        records = tomllib.loads(extracted)["binding"]
+        self.assertEqual([(r["chord"], r["action"]) for r in records],
+                         [("alt+h", action), ("alt+j", "echo next")])
+        self.write("config/keybindings.toml", REGISTRY + "\n" + extracted)
+        self.write("yabai/skhdrc", f"{BEGIN}\n{END}\n")
+        self.run_cli("generate")
+        self.run_cli("check")
+        self.assertIn("alt - h : " + action + "\n", (self.root / "yabai/skhdrc").read_text())
+        records[0]["action"] = action + "\necho hidden"
+        invalid = '\n[[binding]]\n' + '\n'.join(f'{k} = {json.dumps(v)}' for k, v in records[0].items())
+        self.write("config/keybindings.toml", REGISTRY + invalid)
+        self.run_cli("check", status=2)
 
 
 if __name__ == "__main__":
