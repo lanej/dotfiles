@@ -43,6 +43,80 @@ impl Client<'_> {
         action: contract::action::ActionType,
         query: bool,
     ) -> Result<ServerToClientMsg> {
+        self.exchange(action, |response| {
+            let complete = matches!(
+                &response.message,
+                Some(
+                    server_to_client_msg::Message::Log(_)
+                        | server_to_client_msg::Message::LogError(_)
+                        | server_to_client_msg::Message::Exit(_)
+                )
+            ) || (!query
+                && matches!(
+                    &response.message,
+                    Some(server_to_client_msg::Message::UnblockInputThread(_))
+                ));
+            Ok(complete.then_some(response))
+        })
+    }
+
+    /// Send one explicit pipe payload, collecting matching output until its release acknowledgement.
+    /// An empty pipe_id gets a per-invocation routing ID; no stdin stream or replay is attempted.
+    pub fn pipe(&self, mut action: contract::CliPipeAction) -> Result<PipeResponse> {
+        if action.pipe_id.is_empty() {
+            static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            action.pipe_id = format!(
+                "{}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos(),
+                NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            );
+        }
+        let pipe_id = action.pipe_id.clone();
+        let mut output = String::new();
+        self.exchange(contract::action::ActionType::CliPipe(action), |response| {
+            let complete = match &response.message {
+                Some(server_to_client_msg::Message::CliPipeOutput(chunk))
+                    if chunk.pipe_name == pipe_id =>
+                {
+                    if output.len().saturating_add(chunk.output.len()) > MAX_FRAME {
+                        bail!("Zellij pipe output exceeds limit; outcome may be unknown");
+                    }
+                    output.push_str(&chunk.output);
+                    false
+                }
+                Some(server_to_client_msg::Message::UnblockCliPipeInput(release)) => {
+                    release.pipe_name == pipe_id
+                }
+                Some(server_to_client_msg::Message::Log(log)) => {
+                    let text = log.lines.join("\n");
+                    if output.len().saturating_add(text.len()) > MAX_FRAME {
+                        bail!("Zellij pipe output exceeds limit; outcome may be unknown");
+                    }
+                    output.push_str(&text);
+                    true
+                }
+                Some(
+                    server_to_client_msg::Message::LogError(_)
+                    | server_to_client_msg::Message::Exit(_),
+                ) => true,
+                _ => false,
+            };
+            Ok(complete.then(|| PipeResponse {
+                output: std::mem::take(&mut output),
+                completion: response,
+            }))
+        })
+    }
+
+    fn exchange<T>(
+        &self,
+        action: contract::action::ActionType,
+        mut receive: impl FnMut(ServerToClientMsg) -> Result<Option<T>>,
+    ) -> Result<T> {
         let message = ClientToServerMsg {
             message: Some(client_to_server_msg::Message::Action(ActionMsg {
                 action: Some(Action {
@@ -99,19 +173,10 @@ impl Client<'_> {
             self.read(&mut stream, &mut bytes)?;
             let response =
                 ServerToClientMsg::decode(bytes.as_slice()).context("Invalid Zellij response")?;
-            match &response.message {
-                Some(
-                    server_to_client_msg::Message::Log(_)
-                    | server_to_client_msg::Message::LogError(_)
-                    | server_to_client_msg::Message::Exit(_),
-                ) => return Ok(response),
-                Some(server_to_client_msg::Message::UnblockInputThread(_)) if !query => {
-                    return Ok(response)
-                }
-                _ => {
-                    remaining(self.deadline)?;
-                }
+            if let Some(result) = receive(response)? {
+                return Ok(result);
             }
+            remaining(self.deadline)?;
         }
     }
 
@@ -159,6 +224,40 @@ impl Client<'_> {
                     return Err(error).context("Zellij poll failed; outcome may be unknown");
                 }
             }
+        }
+    }
+}
+
+/// Pipe output plus the original release/error message, including an optional exit code.
+pub struct PipeResponse {
+    pub output: String,
+    pub completion: ServerToClientMsg,
+}
+
+impl PipeResponse {
+    pub fn into_output(self) -> Result<String> {
+        match self.completion.message {
+            Some(server_to_client_msg::Message::UnblockCliPipeInput(release)) => {
+                if release.exit_code.is_some_and(|code| code != 0) {
+                    bail!(
+                        "Zellij pipe exit {}: {}",
+                        release.exit_code.unwrap(),
+                        self.output
+                    );
+                }
+                Ok(self.output)
+            }
+            Some(server_to_client_msg::Message::Log(_)) => Ok(self.output),
+            Some(server_to_client_msg::Message::LogError(error)) => {
+                bail!("{}\n{}", error.lines.join("\n"), self.output)
+            }
+            Some(server_to_client_msg::Message::Exit(exit)) => bail!(
+                "Zellij pipe exit {}: {}\n{}",
+                exit.exit_reason,
+                exit.payload.unwrap_or_default(),
+                self.output
+            ),
+            _ => bail!("Missing Zellij pipe completion"),
         }
     }
 }

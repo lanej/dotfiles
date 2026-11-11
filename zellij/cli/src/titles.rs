@@ -2,76 +2,17 @@
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub(crate) type Location = (PathBuf, PathBuf);
 
-fn server_directory(processes: &str, mut pid: u32) -> Option<PathBuf> {
-    let processes: HashMap<u32, (u32, &str)> = processes
-        .lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            let (pid, rest) = line.split_once(char::is_whitespace)?;
-            let (parent, command) = rest.trim_start().split_once(char::is_whitespace)?;
-            Some((
-                pid.parse().ok()?,
-                (parent.parse().ok()?, command.trim_start()),
-            ))
-        })
-        .collect();
-    let mut visited = HashSet::new();
-    while pid > 1 && visited.len() < 64 && visited.insert(pid) {
-        let (parent, command) = processes.get(&pid)?;
-        if let Some((executable, address)) = command.split_once(" --server ") {
-            if Path::new(executable)
-                .file_name()
-                .is_some_and(|name| name == "zellij")
-                && Path::new(address).is_absolute()
-            {
-                return Path::new(address).parent().map(Path::to_path_buf);
-            }
-        }
-        pid = *parent;
-    }
-    None
-}
-
 fn session_location() -> Result<Location, String> {
-    location_before(Instant::now() + Duration::from_secs(2))
-}
-
-pub(crate) fn location_before(deadline: Instant) -> Result<Location, String> {
-    let directory = env::var_os("ZELLIJ_SOCKET_DIR")
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .map(|path| path.join("contract_version_1"));
-    let directory = match directory {
-        Some(directory) => directory,
-        None => server_directory(
-            &crate::command::output("ps", &["-ww", "-axo", "pid=,ppid=,command="], deadline)?,
-            // SAFETY: getppid has no preconditions.
-            unsafe { libc::getppid() } as u32,
-        )
-        .ok_or("Cannot identify the owning Zellij server")?,
-    };
-    let check = crate::command::output("zellij", &["setup", "--check"], deadline)?;
-    if !check.lines().any(|line| line == "[Version]: \"0.46.0\"") {
-        return Err("Automatic title ownership requires the pinned runtime".into());
-    }
-    let cache = check
-        .lines()
-        .find_map(|line| line.strip_prefix("[CACHE DIR]: "))
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .ok_or("Cannot identify the session index")?;
-    let namespace = directory.file_name().ok_or("Invalid socket namespace")?;
-    let index = cache.join(namespace).join("session_index.sqlite");
-    Ok((directory, index))
+    crate::context::location().map_err(|error| error.to_string())
 }
 
 pub(crate) fn session_identity(session: &str, location: &Location) -> Result<Value, String> {
@@ -314,15 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn server_discovery_walks_ancestors_and_stops_on_cycles() {
-        assert_eq!(
-            server_directory(
-                "22 21 shell\n21 20 /opt/bin/zellij --server /tmp/zellij/contract_version_1/id\n",
-                22
-            ),
-            Some(PathBuf::from("/tmp/zellij/contract_version_1"))
-        );
-        assert_eq!(server_directory("22 21 shell\n21 22 shell", 22), None);
+    fn session_hash_retains_record_names() {
         assert_eq!(
             session_key("work"),
             "00e13ed7af55b27622f1d6eab5bec0147e68efe28dc2b12461117afa1a5ed40e"

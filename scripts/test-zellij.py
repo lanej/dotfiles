@@ -632,56 +632,124 @@ def check_move_all_picker(terminal, home, clients, source_id):
         raise AssertionError(
             f"Gather fixture focus precondition failed: requester {requester_id} must own terminal_{source_id}; "
             f"one bystander must own terminal_{bystander}.\nClients:\n{before_clients}\n{diagnostics}")
-    # Lose the mutation CLI reply after the real native transfer completes.
-    # The actual picker must retain its anchor, reconcile rather than replay,
-    # and only then exit. This wrapper changes transport timing, not Zellij.
-    wrapper = home / ".local/bin/zellij"
-    assert not wrapper.exists()
-    wrapper.write_text("#!/usr/bin/env python3\n" +
-        "import json, os, subprocess, sys, time\n" +
-        "from pathlib import Path\n" +
-        f"binary = {terminal.binary!r}\n" +
-        f"log = Path({str(home / 'gather-transport')!r})\n" +
-        "args = sys.argv[1:]\n" +
-        "if 'lane-move-pane' in args or 'lane-move-status' in args:\n" +
-        "    with log.open('a') as stream: stream.write(('move' if 'lane-move-pane' in args else 'status') + '\\n')\n" +
-        "if 'lane-move-pane' in args:\n" +
-        "    request = json.loads(args[-1])\n" +
-        "    origin = {key: request[key] for key in ('source', 'source_tab', 'picker', 'destination')}\n" +
-        "    origin['client_id'] = request['token']['client_id']\n" +
-        "    log.with_name('gather-request.json').write_text(json.dumps(origin))\n" +
-        "    result = subprocess.run([binary, *args], capture_output=True)\n" +
-        "    time.sleep(6)\n" +
-        "    sys.stdout.buffer.write(result.stdout); sys.stderr.buffer.write(result.stderr)\n" +
-        "    sys.exit(result.returncode)\n" +
-        "os.execv(binary, [binary, *args])\n")
-    wrapper.chmod(0o755)
-    open_picker()
-    terminal.send(b"destination")
-    terminal.until("M destination filtered", lambda: "1/" in screen())
-    terminal.send(b"\r")
-    last_transfer_state = {}
+    # Lose the native mutation reply after the real transfer completes, then
+    # verify that the picker reconciles its status instead of replaying it.
+    import shlex
+    import socket
+    import threading
+    from zellij_ipc_fixture import fields
 
-    def transferred():
-        panes, tabs = all_terminals(), terminal.tabs()
-        last_transfer_state.update(
-            expected_ids=sorted(all_ids), working_ids=sorted(working_ids),
-            source_tab=source_tab, destination_tab=target["tab_id"],
-            panes=[{key: p[key] for key in ("id", "tab_id", "is_suppressed", "is_floating", "exited")}
-                   for p in panes],
-            tabs=[{key: t[key] for key in ("tab_id", "position", "name")} for t in tabs])
-        return (all(p["tab_id"] == target["tab_id"] and not p["exited"]
-                    for p in panes if p["id"] in working_ids)
-                and {p["id"] for p in panes} == all_ids
-                and all(t["tab_id"] != source_tab for t in tabs))
+    context = subprocess.run([str(ROOT / "bin/zellij-context"), "socket"],
+                             env={**terminal.env, "ZELLIJ_SESSION_NAME": terminal.name},
+                             check=True, capture_output=True, text=True)
+    native_socket = Path(json.loads(context.stdout)[0])
+    proxy_files = tempfile.TemporaryDirectory(prefix="zj-pipe-", dir="/tmp")
+    proxy_root = Path(proxy_files.name)
+    proxy_socket = proxy_root / "contract_version_1" / native_socket.name
+    proxy_socket.parent.mkdir()
+    listener = socket.socket(socket.AF_UNIX)
+    listener.bind(str(proxy_socket))
+    listener.listen()
+    listener.settimeout(0.05)
+    stopped, errors, transport, connections = threading.Event(), [], [], []
 
-    try:
-        terminal.until("M transfers every live source pane and closes helper", transferred)
-    except AssertionError as error:
-        raise AssertionError(f"{error}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}") from error
+    def relay(connection):
+        def frame(stream):
+            def receive(length):
+                data = b""
+                while len(data) < length:
+                    chunk = stream.recv(length - len(data))
+                    if not chunk:
+                        raise EOFError("Native picker proxy received an incomplete frame")
+                    data += chunk
+                return data
+            header = receive(4)
+            size = struct.unpack("<I", header)[0]
+            assert size <= 4 * 1024 * 1024
+            return header, receive(size)
+
+        try:
+            with connection, socket.socket(socket.AF_UNIX) as upstream:
+                connection.settimeout(6)
+                upstream.settimeout(6)
+                header, request = frame(connection)
+                action = fields(fields(fields(request)[9])[1])
+                pipe = fields(action[84]) if 84 in action else {}
+                name = pipe.get(2, b"").decode()
+                lose_reply = name == "lane-move-pane"
+                if name in ("lane-move-pane", "lane-move-status"):
+                    transport.append("move" if lose_reply else "status")
+                if lose_reply:
+                    payload = json.loads(pipe[3])
+                    origin = {key: payload[key] for key in ("source", "source_tab", "picker", "destination")}
+                    origin["client_id"] = payload["token"]["client_id"]
+                    (home / "gather-request.json").write_text(json.dumps(origin))
+                upstream.connect(str(native_socket))
+                upstream.sendall(header + request)
+                while True:
+                    header, response = frame(upstream)
+                    tags = fields(response)
+                    if not lose_reply:
+                        connection.sendall(header + response)
+                    if (set(tags) & {3, 5, 6}) or (8 in tags if pipe else 2 in tags):
+                        return
+        except Exception as error:
+            errors.append(error)
+
+    def accept():
+        while not stopped.is_set():
+            try:
+                connection, _ = listener.accept()
+            except socket.timeout:
+                continue
+            worker = threading.Thread(target=relay, args=(connection,))
+            connections.append(worker)
+            worker.start()
+
+    server = threading.Thread(target=accept)
+    server.start()
+    wrapper = home / ".local/bin/zellij-picker"
+    original_helper = wrapper.readlink()
     wrapper.unlink()
-    transport = (home / "gather-transport").read_text().splitlines()
-    assert transport.count("move") == 1 and "status" in transport
+    wrapper.write_text("#!/bin/sh\nexec env " + shlex.quote("ZELLIJ_SOCKET_DIR=" + str(proxy_root)) +
+                       " " + shlex.quote(str(ROOT / "bin/zellij-helper")) + ' picker "$@"\n')
+    wrapper.chmod(0o755)
+    try:
+        open_picker()
+        terminal.send(b"destination")
+        terminal.until("M destination filtered", lambda: "1/" in screen())
+        terminal.send(b"\r")
+        last_transfer_state = {}
+
+        def transferred():
+            panes, tabs = all_terminals(), terminal.tabs()
+            last_transfer_state.update(
+                expected_ids=sorted(all_ids), working_ids=sorted(working_ids),
+                source_tab=source_tab, destination_tab=target["tab_id"],
+                panes=[{key: p[key] for key in ("id", "tab_id", "is_suppressed", "is_floating", "exited")}
+                       for p in panes],
+                tabs=[{key: t[key] for key in ("tab_id", "position", "name")} for t in tabs])
+            return (all(p["tab_id"] == target["tab_id"] and not p["exited"]
+                        for p in panes if p["id"] in working_ids)
+                    and {p["id"] for p in panes} == all_ids
+                    and all(t["tab_id"] != source_tab for t in tabs))
+
+        try:
+            terminal.until("M transfers every live source pane and closes helper", transferred)
+        except AssertionError as error:
+            raise AssertionError(f"{error}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}") from error
+    finally:
+        wrapper.unlink()
+        wrapper.symlink_to(original_helper)
+        stopped.set()
+        server.join(timeout=2)
+        listener.close()
+        for connection in connections:
+            connection.join(timeout=7)
+        proxy_files.cleanup()
+    assert not server.is_alive() and all(not thread.is_alive() for thread in connections)
+    assert not errors, errors
+    assert transport.count("move") == 1 and "status" in transport, transport
     after_clients = terminal.action("list-clients")
     focused = {row.split()[0]: row.split()[1] for row in after_clients.splitlines()[1:]}
     expected_focus = {f"terminal_{source_id}", f"terminal_{bystander}"}

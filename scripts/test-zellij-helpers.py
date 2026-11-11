@@ -242,6 +242,19 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
         self.assertFalse(any("action" in c or "setup" in c for c in self.calls()))
 
     def test_tab_picker_rejects_closed_target_and_keeps_names_as_data(self):
+        sockets = tempfile.TemporaryDirectory(prefix="zj-picker-", dir="/tmp")
+        self.addCleanup(sockets.cleanup)
+        namespace = Path(sockets.name) / "contract_version_1"
+        namespace.mkdir(parents=True)
+        self.env["ZELLIJ_SOCKET_DIR"] = str(namespace.parent)
+        cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                 else self.home / "cache/zellij")
+        index = cache / "contract_version_1/session_index.sqlite"
+        index.parent.mkdir(parents=True)
+        with sqlite3.connect(index) as connection:
+            connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
+            connection.execute("INSERT INTO sessions VALUES (?, ?)",
+                               (self.env["ZELLIJ_SESSION_NAME"], "picker"))
         theme = self.home / "theme"
         theme.mkdir()
         (theme / "fzf.txt").write_text("--color=dark,header:#123456\n")
@@ -249,22 +262,59 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
         title = "manual; $(touch should-not-exist)\nname"
         tabs = [{"tab_id": 4, "position": 1, "name": title}, {"tab_id": 8, "position": 2, "name": "other"}]
         (self.home / "selection").write_text("8")
-        self.plan([tabs, [pane(7)], [tabs[0]]])
-        result = self.run_helper("zellij-picker", "tabs", check=False)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse(any("go-to-tab-by-id" in call for call in self.calls()))
-        self.assertIn("manual; $(touch should-not-exist) name", (self.home / "choices").read_text())
-        self.assertIn("--color=dark,header:#123456", json.loads((self.home / "fzf-args").read_text()))
-        self.plan([tabs, [pane(7)], tabs, ""])
-        self.run_helper("zellij-picker", "tabs")
-        self.assertEqual(self.calls()[-1][-3:], ["action", "go-to-tab-by-id", "8"])
-        self.assertFalse((self.home / "should-not-exist").exists())
-        preview = next(arg.removeprefix("--preview=") for arg in
-                       json.loads((self.home / "fzf-args").read_text()) if arg.startswith("--preview="))
-        self.plan([[]])
-        rendered = subprocess.run(["/bin/sh", "-c", preview.replace("{1}", "8")],
-                                  env=self.env, capture_output=True, text=True, check=True, timeout=5)
-        self.assertIn("No other terminal pane", rendered.stdout)
+        self.plan([])
+        actions, plan = [], []
+
+        def reply(request):
+            self.assertEqual(request[2], 7)
+            self.assertEqual(request[4], 1)
+            action = fields(request[1])
+            actions.append(action)
+            response = plan.pop(0)
+            if 104 in action or 98 in action:
+                self.assertEqual(fields(next(iter(action.values())))[6], 1)
+                return message(5, message(1, json.dumps(response).encode()))
+            if 92 in action:
+                self.assertEqual(fields(action[92])[1].decode(), target)
+                return response
+            self.assertEqual(set(action), {101})
+            self.assertEqual(fields(action[101]), {1: 8})
+            return message(2, b"")
+
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(namespace / "picker"))
+            with action_server(listener, reply):
+                plan[:] = [tabs, [pane(7)], [tabs[0]]]
+                result = self.run_helper("zellij-picker", "tabs", check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any(101 in action for action in actions))
+                self.assertIn("manual; $(touch should-not-exist) name", (self.home / "choices").read_text())
+                self.assertIn("--color=dark,header:#123456", json.loads((self.home / "fzf-args").read_text()))
+                plan[:] = [tabs, [pane(7)], tabs, ""]
+                self.run_helper("zellij-picker", "tabs")
+                self.assertEqual(sum(101 in action for action in actions), 1)
+                self.assertFalse((self.home / "should-not-exist").exists())
+                preview = next(arg.removeprefix("--preview=") for arg in
+                               json.loads((self.home / "fzf-args").read_text()) if arg.startswith("--preview="))
+                plan[:] = [[]]
+                rendered = subprocess.run(["/bin/sh", "-c", preview.replace("{1}", "8")],
+                                          env=self.env, capture_output=True, text=True, check=True, timeout=5)
+                self.assertIn("No other terminal pane", rendered.stdout)
+                self.assertFalse(plan)
+                self.assertFalse(self.calls())
+                target = "literal; $(touch should-not-exist)"
+                import base64
+                (self.home / "selection").write_text(base64.urlsafe_b64encode(target.encode()).decode())
+                listing = target + " [Created 1s ago] \n"
+                for completion, succeeds in ((message(3, bytes([8, 5])), True),
+                                             (message(6, message(1, b"rejected")), False)):
+                    self.plan([listing, listing])
+                    plan[:] = [completion]
+                    result = self.run_helper("zellij-picker", "sessions", check=False)
+                    self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                    self.assertFalse(plan)
+                    self.assertTrue(all(call == ["list-sessions", "--no-formatting"] for call in self.calls()))
+                self.assertFalse((self.home / "should-not-exist").exists())
 
     def test_claude_title_preserves_manual_name_and_rejects_delayed_events(self):
         identity = "019a1234-abcd-7000-aaaa-bbbbbbbbbbbb"

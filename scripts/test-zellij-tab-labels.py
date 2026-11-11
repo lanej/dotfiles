@@ -132,11 +132,17 @@ def main():
             terminal.until("prompt restores the directory pane title", lambda:
                            "9:project  topic" in top_line())
             ownership_probe = home / "ownership.json"
-            terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
+            terminal.send(('zellij-status view "$ZELLIJ_SESSION_NAME" > '
                            + shlex.quote(str(ownership_probe)) + "\r").encode())
-            terminal.until("server ancestry identifies ownership without a socket override", lambda:
+            terminal.until("session socket override identifies title ownership", lambda:
                            ownership_probe.exists() and json.loads(ownership_probe.read_text())
                            ["auto_titles"].get(str(eleventh)) == "project  topic")
+            missing_override_probe = home / "ownership-without-override.json"
+            terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
+                           + shlex.quote(str(missing_override_probe)) + "\r").encode())
+            terminal.until("missing custom socket override grants no ownership", lambda:
+                           missing_override_probe.exists()
+                           and json.loads(missing_override_probe.read_text())["auto_titles"] == {})
             token = base64.urlsafe_b64encode(name.encode()).decode()
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
