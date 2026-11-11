@@ -11,6 +11,8 @@ for (const width of [1440, 390]) {
     await expect(radar.getByRole('region', { name: 'Trial decisions' })).toContainText('Viewrule');
     await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Kitty');
     await expect(radar.getByRole('region', { name: 'Hold decisions' })).toContainText('Ghostty');
+    await expect(radar.getByRole('region', { name: 'Hold decisions' })).toContainText('Firstmate');
+    await expect(radar.getByRole('region', { name: 'Trial decisions' })).not.toContainText('Firstmate');
     const points = radar.locator('svg a');
     const headings = await page.locator('main h3').allTextContents();
     expect(await points.count()).toBe(headings.length);
