@@ -115,6 +115,11 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     let key = titles::session_key(session);
     let _lock = Lock::acquire(&dir.join(format!("{key}.lock")), deadline)?;
     for (id, tab) in snapshot(session, offer, deadline)? {
+        // New tabs start as "Tab #N". An empty native name is the editable
+        // field cleared by Ctrl-f r, which another client may be typing into.
+        if tab.name.is_empty() {
+            continue;
+        }
         let path = dir.join(format!("{key}-{id}.json"));
         let previous = match std::fs::read(&path) {
             Ok(bytes) => serde_json::from_slice::<Record>(&bytes)
@@ -127,7 +132,7 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
         let fallback = format!("Tab #{}", id + 1);
         let managed =
             tab.name == previous.title || previous.pending_from.as_ref() == Some(&tab.name);
-        if !managed && !tab.name.is_empty() && tab.name != fallback {
+        if !managed && tab.name != fallback {
             continue;
         }
         let empty = Record::default();

@@ -202,6 +202,10 @@ def main():
             terminal.until("last provider exits and oldest pane supplies the title", lambda:
                            active()["name"] == "oldest survivor" and "9:oldest survivor" in top_line())
             terminal.prefix(b"r")
+            terminal.until("rename field is empty", lambda: active()["name"] == "" and "9: " in top_line())
+            subprocess.run([str(home / ".local/bin/zellij-status"), "refresh-view", name],
+                           env=env, check=True, capture_output=True, timeout=10)
+            assert active()["name"] == "", "A background refresh filled in the manual rename field"
             terminal.send(b"manual work\r")
             terminal.send(("cd " + shlex.quote(str(project)) + "\r").encode())
             terminal.until("directory change preserves explicit tab title", lambda:

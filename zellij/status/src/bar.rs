@@ -174,7 +174,11 @@ impl State {
         };
         Tab {
             position: tab.position,
-            name: tab_name(tab, &self.panes),
+            name: if tab.active && self.mode.mode == InputMode::RenameTab {
+                plain(&tab.name)
+            } else {
+                tab_name(tab, &self.panes)
+            },
             mark,
             zoom: if !tab.is_fullscreen_active {
                 ""

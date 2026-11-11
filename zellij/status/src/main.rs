@@ -83,8 +83,9 @@ fn clipped(value: &str, budget: usize) -> String {
 impl State {
     fn poll(&mut self) {
         if self.clipboard_receiver || !self.allowed || self.busy || !self.visible { return; }
-        // In rename mode ModeInfo holds a draft, not a queryable session name.
-        if self.mode.mode == InputMode::RenameSession { return; }
+        // Rename modes expose editable names. Keep pending title updates until
+        // the client commits or cancels its edit.
+        if matches!(self.mode.mode, InputMode::RenameSession | InputMode::RenameTab) { return; }
         // Native Zellij owns attention, including detached sessions. The
         // helper supplies host metadata and lifecycle-checked title ownership.
         let Some(session) = self.mode.session_name.as_deref() else { return };
