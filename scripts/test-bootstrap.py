@@ -38,6 +38,7 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
+        (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         (checkout / "scripts/install-git-worktree-hooks.py").write_text(
             "from pathlib import Path\nimport os\n"
             "home = Path(os.environ['HOME'])\n"
@@ -612,6 +613,7 @@ else:
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
         assert (home / "patched-git-installed").is_file()
+        assert (home / "native-policy-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 

@@ -68,6 +68,7 @@ test-dotfiles-config-editor:
 base: config-init
 base: SELECTED_TARGETS = $(BASE_TARGETS)
 configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+configure: export DOTFILES_WORKTREE_POLICY_ENABLED = $(if $(filter worktree-policy,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
 base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)
@@ -266,11 +267,14 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-.PHONY: test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
-test-git-worktree-policy:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
-test-treehouse-worktree-policy:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+.PHONY: worktree-policy-native test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
+worktree-policy-native:
+	@sh "$(DOTFILES)/scripts/build-worktree-policy.sh" "$(DOTFILES)/tools/worktree-policy/target"
+
+test-git-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
+test-treehouse-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
 test-install-git-worktree-hooks:
 	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:

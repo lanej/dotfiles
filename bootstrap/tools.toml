@@ -22,6 +22,13 @@ version = "1.26.2"
 installer = "system"
 setup = ["git"]
 
+[tools.worktree-policy]
+description = "Native global worktree inventory and optional admission budgets."
+installer = "worktree-policy"
+requires = ["git"]
+setup = ["git"]
+version = "0.1.1"
+
 [tools.git-worktree-hooks]
 description = "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
 installer = "git-worktree-hooks"

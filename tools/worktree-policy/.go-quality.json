@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "rollout": "strict",
+  "config": ".golangci.yml",
+  "legacy": null
+}
