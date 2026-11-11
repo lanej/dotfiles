@@ -23,6 +23,17 @@ Use relative repository links in Markdown, MDX link components, and hero actions
 
 `npm run dev`, `npm run check`, and `npm run build` refresh the generated pages. After editing a source during a development session, run `npm run content`; Astro picks up the generated changes. Only the source file needs maintaining.
 
+## Maintain the tech radar
+
+Edit [radar.yaml](./radar.yaml) to change tool names, ring placement, icons, or Markdown rationale. It is the source of truth for both the [readable radar](./radar.md) and the website diagram. Entries have a unique lowercase slug `id`, a one-line `name`, a `ring` (`adopt`, `trial`, `assess`, or `hold`), an optional local `icon` filename, and a `rationale` containing Markdown paragraphs, lists, or code. Keep entry IDs stable; display-name changes affect heading URLs, as they do in ordinary Markdown. Entry order determines display order within each ring. Rings expand when needed to keep icon targets apart; the text legend stays available on narrow screens.
+
+```sh
+npm run radar       # Regenerate docs/radar.md after editing the registry.
+npm run radar:check # Check that the committed Markdown matches the registry.
+```
+
+Run these commands from `website/` after `npm ci`. Content generation also refreshes the radar automatically. Commit the registry and regenerated Markdown together. The website's **Edit page** link opens the registry. The generator rejects duplicate IDs, unknown fields or rings, and missing icon files before writing output. Omit `icon` to use the generic tool symbol; explicit icons must be PNG or SVG files under `website/public/radar/`. Put upstream attribution and licenses beside new assets. Rationale cannot contain headings or raw HTML because each tool owns one generated section.
+
 ## Verify the result
 
 ```sh

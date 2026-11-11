@@ -1,0 +1,98 @@
+# Source of truth for the tech radar. Run: npm --prefix website run radar
+version: 1
+entries:
+  - id: kitty
+    name: Kitty
+    ring: adopt
+    icon: kitty.png
+    rationale: |-
+      Terminal emulator. Implements tabs entirely within a single OS window — yabai sees exactly one window per Kitty instance, so tiling and focus work correctly.
+  - id: yabai
+    name: yabai
+    ring: adopt
+    icon: yabai.png
+    rationale: |-
+      Tiling window manager via the macOS Accessibility API. Manages all windows at the OS level.
+  - id: mergiraf
+    name: Mergiraf
+    ring: trial
+    icon: mergiraf.svg
+    rationale: |-
+      [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
+  - id: pi
+    name: Pi
+    ring: trial
+    icon: pi.svg
+    rationale: |-
+      [Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.
+  - id: zellij
+    name: Zellij
+    ring: trial
+    icon: zellij.png
+    rationale: |-
+      [Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+
+      Revisit adoption after validating long-running sessions, scrollback-heavy workloads, and the documented integration gaps.
+  - id: viewrule
+    name: Viewrule
+    ring: trial
+    icon: viewrule.png
+    rationale: |-
+      [Viewrule](ui-review.md): my tool for rendered UI checks, screenshot references, and a feedback-to-rule workflow. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
+  - id: aerospace
+    name: AeroSpace
+    ring: assess
+    icon: aerospace.png
+    rationale: |-
+      [AeroSpace](https://github.com/nikitabobko/AeroSpace) is a tiling WM that operates at the app level rather than hooking into the macOS window server. It may handle Ghostty's native `NSWindowTabGroup` tab grouping without the window-jumping issue that currently blocks a Ghostty migration (see **Hold: Ghostty**).
+  - id: firstmate-through-paseo-and-github
+    name: Firstmate through Paseo and GitHub
+    ring: hold
+    icon: firstmate.svg
+    rationale: |-
+      [Firstmate mobile workflow](firstmate-mobile.md): former mobile coordination workflow through Paseo, Pi, and GitHub. Retired from my workflow; no longer being evaluated.
+  - id: superpowers
+    name: Superpowers
+    ring: hold
+    icon: superpowers.svg
+    rationale: |-
+      Claude Code workflow plugin. Removed from the shared settings at the owner's
+      request in favor of the remaining official plugins and custom skills. Skill
+      maintenance uses the official Anthropic skill-creator workflow.
+  - id: opencode
+    name: OpenCode
+    ring: hold
+    icon: opencode.png
+    rationale: |-
+      AI coding assistant with a TUI interface. Put on hold due to memory leaks during long sessions and persistent lag in supporting new model releases — discovered while working around a Vertex AI 1M context window bug that required a [upstream PR](https://github.com/anomalyco/opencode/pull/14055) to fix.
+
+      Revisit if memory stability improves and model support keeps pace with provider releases.
+  - id: ghostty
+    name: Ghostty
+    ring: hold
+    icon: ghostty.png
+    rationale: |-
+      Ghostty implements tabs as native macOS `NSWindowTabGroup` windows — `tabbingMode` is set to `.preferred`/`.automatic` in the source regardless of `macos-titlebar-style`. Yabai sees each tab as a separate managed window, causing the active window to jump and resize on every tab switch. There is no config option to set `tabbingMode = .disallowed`.
+
+      A workaround was attempted using Yabai signals to force BSP layout on each Ghostty window event, but it did not resolve the jumping behaviour:
+
+      ```sh
+      yabai -m signal --add app='^Ghostty$' event=window_created action='yabai -m space --layout bsp'
+      yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m space --layout bsp'
+      ```
+
+      Revisit if AeroSpace (see **Assess**) proves able to handle native tab groups transparently.
+  - id: andrej-karpathy-skills
+    name: andrej-karpathy-skills
+    ring: hold
+    icon: andrej-karpathy-skills.svg
+    rationale: |-
+      A Claude Code plugin packaging four behavioral principles (think before coding, simplicity, surgical edits, goal-driven execution) attributed to Karpathy's coding agent guidelines. Evaluated and skipped — the global CLAUDE.md already covers all four principles, often more precisely and with harder edges. No executable tooling, MCP servers, or commands; purely policy text.
+  - id: sccache
+    name: sccache
+    ring: hold
+    icon: sccache.svg
+    rationale: |-
+      Rust compiler cache. Grows unboundedly on disk — even with `max_cache_size` set, the cache frequently bloats to tens of gigabytes across multiple projects and toolchain versions. The disk pressure outweighs the incremental build-time savings for typical dotfiles/personal project usage.
+
+      Revisit if Mozilla ships more aggressive eviction or if a per-project cache isolation story emerges.

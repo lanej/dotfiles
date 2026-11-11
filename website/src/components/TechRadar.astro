@@ -1,42 +1,26 @@
 ---
 import { base } from '../../site.config.mjs';
+import { layoutRadar } from './radar-layout.mjs';
+import type { RadarRing } from './radar-layout.mjs';
 
-interface Entry { name: string; anchor: string }
-interface Ring { name: string; entries: Entry[] }
-interface Props { rings: Ring[] }
+interface Props { rings: RadarRing[] }
 const { rings } = Astro.props;
-const icons: Record<string, string> = {
-  kitty: 'kitty.png', yabai: 'yabai.png', mergiraf: 'mergiraf.svg', pi: 'pi.svg',
-  'firstmate-through-paseo-and-github': 'firstmate.svg', zellij: 'zellij.png',
-  viewrule: 'viewrule.png', aerospace: 'aerospace.png', superpowers: 'superpowers.svg',
-  opencode: 'opencode.png', ghostty: 'ghostty.png',
-  'andrej-karpathy-skills': 'andrej-karpathy-skills.svg', sccache: 'sccache.svg',
-};
 const count = rings.reduce((total, ring) => total + ring.entries.length, 0);
-const plotted = rings.map((ring, index) => ({
-  ...ring,
-  key: ring.name.toLowerCase(),
-  radius: 62 + index * 65,
-  entries: ring.entries.map((entry, i) => {
-    const angle = (ring.entries.length === 1 ? 90 : -25 + (i * 230) / (ring.entries.length - 1)) * Math.PI / 180;
-    const radius = 36 + index * 65;
-    return { ...entry, icon: `${base}/radar/${icons[entry.anchor] ?? 'tool.svg'}`, x: 300 + Math.cos(angle) * radius, y: 300 + Math.sin(angle) * radius };
-  }),
-}));
+const { rings: plotted, center, size } = layoutRadar(rings);
 ---
 <figure class="tech-radar" aria-label="Technology decisions by ring">
   <div class="radar-topline"><span>My working environment</span><span>{count} decisions · 4 rings</span></div>
-  <svg viewBox="0 0 600 600" width="600" height="600" aria-labelledby="radar-title radar-description">
+  <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-labelledby="radar-title radar-description">
     <title id="radar-title">Tech radar</title>
     <desc id="radar-description">From the center outward: Adopt, Trial, Assess, Hold. Each tool icon links to its decision. Position within a ring has no additional meaning.</desc>
-    {plotted.toReversed().map((ring) => <circle class={`band ${ring.key}`} cx="300" cy="300" r={ring.radius} />)}
-    {plotted.map((ring) => <text class="ring-label" x="300" y={300 - ring.radius + 23} text-anchor="middle">{ring.name}</text>)}
+    {plotted.toReversed().map((ring) => <circle class={`band ${ring.key}`} cx={center} cy={center} r={ring.radius} />)}
+    {plotted.map((ring) => <text class="ring-label" x={center} y={center - ring.radius + 23} text-anchor="middle">{ring.name}</text>)}
     {plotted.map((ring) => ring.entries.map((entry) => (
-      <a href={`#${entry.anchor}`} aria-label={`${entry.name} — ${ring.name}`} class={`blip ${ring.key}`}>
+      <a href={`#${entry.anchor}`} aria-label={`${entry.name} — ${ring.name}`} class={`blip ${ring.key}`} data-tool-id={entry.id}>
         <title>{entry.name} — {ring.name}</title>
         <circle class="target" cx={entry.x} cy={entry.y} r="29" />
         <circle class="point" cx={entry.x} cy={entry.y} r="25" />
-        <image href={entry.icon} x={entry.x - 18} y={entry.y - 18} width="36" height="36" aria-hidden="true" />
+        <image href={`${base}/radar/${entry.icon}`} x={entry.x - 18} y={entry.y - 18} width="36" height="36" aria-hidden="true" />
       </a>
     )))}
   </svg>
@@ -45,7 +29,7 @@ const plotted = rings.map((ring, index) => ({
     {plotted.map((ring) => (
       <section class={ring.key} aria-label={`${ring.name} decisions`}>
         <div class="key-heading"><strong>{ring.name}</strong><span>{ring.entries.length}</span></div>
-        {ring.entries.length ? <ul>{ring.entries.map((entry) => <li><a href={`#${entry.anchor}`}><img src={entry.icon} width="24" height="24" alt="" aria-hidden="true" /><span>{entry.name}</span></a></li>)}</ul> : <p>No tools here yet.</p>}
+        {ring.entries.length ? <ul>{ring.entries.map((entry) => <li><a href={`#${entry.anchor}`}><img src={`${base}/radar/${entry.icon}`} width="24" height="24" alt="" aria-hidden="true" /><span>{entry.name}</span></a></li>)}</ul> : <p>No tools here yet.</p>}
       </section>
     ))}
   </div>

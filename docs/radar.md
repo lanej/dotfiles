@@ -1,19 +1,17 @@
 # Tech Radar
 
+<!-- Generated from radar.yaml. Edit the registry, then run: npm --prefix website run radar -->
+
 Tool and technology decisions, organized by ring.
 
-| Ring | Meaning |
-|---|---|
-| **Adopt** | In active use; recommended |
-| **Trial** | Being evaluated; promising enough to run in real workflows |
-| **Assess** | Worth watching; not yet trialed |
-| **Hold** | Not adopted; rationale documented |
+| Ring       | Meaning                                                    |
+| ---------- | ---------------------------------------------------------- |
+| **Adopt**  | In active use; recommended                                 |
+| **Trial**  | Being evaluated; promising enough to run in real workflows |
+| **Assess** | Worth watching; not yet trialed                            |
+| **Hold**   | Not adopted; rationale documented                          |
 
-<!-- Entry conventions: use a ### heading under the current ring, explain the tool and
-placement briefly, link related entries where useful, and state any revisit condition.
-Update only the requested decisions; preserve unrelated entries. -->
-
----
+***
 
 ## Adopt
 
@@ -25,7 +23,7 @@ Terminal emulator. Implements tabs entirely within a single OS window — yabai 
 
 Tiling window manager via the macOS Accessibility API. Manages all windows at the OS level.
 
----
+***
 
 ## Trial
 
@@ -36,6 +34,7 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 ### Pi
 
 [Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.
+
 ### Zellij
 
 [Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
@@ -46,8 +45,7 @@ Revisit adoption after validating long-running sessions, scrollback-heavy worklo
 
 [Viewrule](ui-review.md): my tool for rendered UI checks, screenshot references, and a feedback-to-rule workflow. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
 
-
----
+***
 
 ## Assess
 
@@ -55,7 +53,7 @@ Revisit adoption after validating long-running sessions, scrollback-heavy worklo
 
 [AeroSpace](https://github.com/nikitabobko/AeroSpace) is a tiling WM that operates at the app level rather than hooking into the macOS window server. It may handle Ghostty's native `NSWindowTabGroup` tab grouping without the window-jumping issue that currently blocks a Ghostty migration (see **Hold: Ghostty**).
 
----
+***
 
 ## Hold
 
@@ -65,9 +63,7 @@ Revisit adoption after validating long-running sessions, scrollback-heavy worklo
 
 ### Superpowers
 
-Claude Code workflow plugin. Removed from the shared settings at the owner's
-request in favor of the remaining official plugins and custom skills. Skill
-maintenance uses the official Anthropic skill-creator workflow.
+Claude Code workflow plugin. Removed from the shared settings at the owner's request in favor of the remaining official plugins and custom skills. Skill maintenance uses the official Anthropic skill-creator workflow.
 
 ### OpenCode
 

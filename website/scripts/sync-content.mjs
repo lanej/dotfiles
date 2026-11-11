@@ -8,8 +8,7 @@ import remarkMdx from 'remark-mdx';
 import remarkStringify from 'remark-stringify';
 import { parse, stringify } from 'yaml';
 import { visit } from 'unist-util-visit';
-import GithubSlugger from 'github-slugger';
-import { toString } from 'mdast-util-to-string';
+import { generateRadar } from './generate-radar.mjs';
 import { base } from '../site.config.mjs';
 import { zellijPages } from '../zellij.config.mjs';
 
@@ -46,6 +45,7 @@ const pages = [
   { file: 'docs/repository-bootstrap.md', slug: 'reference/repository-bootstrap', title: 'Repository bootstrap' },
 ];
 const headingId = (text) => text.toLowerCase().replaceAll(' ', '-');
+const radar = await generateRadar();
 const output = resolve(site, 'src/content/docs');
 const imageOutput = resolve(site, 'public/source');
 await rm(output, { recursive: true, force: true });
@@ -111,26 +111,10 @@ for (const page of pages) {
   let presentation = '';
   if (page.radar) {
     tree.children = tree.children.filter((node) => node.type !== 'html' || !node.value.startsWith('<!--'));
-    const slugger = new GithubSlugger();
-    const rings = ['Adopt', 'Trial', 'Assess', 'Hold'].map((name) => ({ name, entries: [] }));
-    let current;
-    for (const node of tree.children) {
-      if (node.type !== 'heading') continue;
-      const name = toString(node);
-      const anchor = slugger.slug(name);
-      if (node.depth === 2) {
-        current = rings.find((ring) => ring.name === name);
-        if (!current) throw new Error(`Unknown radar ring: ${name}`);
-      }
-      if (node.depth === 3) {
-        if (!current) throw new Error(`Radar entry outside a ring: ${name}`);
-        current.entries.push({ name, anchor });
-      }
-    }
-    presentation = `import TechRadar from '../../../components/TechRadar.astro';\n\n<TechRadar rings={${JSON.stringify(rings)}} />\n\n`;
+    presentation = `import TechRadar from '../../../components/TechRadar.astro';\n\n<TechRadar rings={${JSON.stringify(radar.rings)}} />\n\n`;
   }
   const content = page.radar ? processor().use(remarkMdx).stringify(tree) : processor.stringify(tree);
-  metadata.editUrl = `${github}/edit/master/${page.file}`;
+  metadata.editUrl = `${github}/edit/master/${page.radar ? 'docs/radar.yaml' : page.file}`;
   await mkdir(dirname(destination), { recursive: true });
   await writeFile(destination, `---\n${stringify(metadata)}---\n\n${presentation}${content}`);
 }
