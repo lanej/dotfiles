@@ -22,13 +22,6 @@ ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 def main():
     for name in ("zellij", "nvim", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing pane navigation"
-    for detector in ("zellij-protobuf.lua", "zellij-client.lua"):
-        result = subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-l",
-                                 str(ROOT / "nvim/tests" / detector)],
-                                env={**os.environ, "DOTFILES_TEST_ROOT": str(ROOT)},
-                                capture_output=True, text=True, timeout=10)
-        if result.returncode:
-            raise AssertionError(result.stdout + result.stderr)
     with tempfile.TemporaryDirectory(prefix="zj-nav-", dir="/tmp") as directory:
         work = Path(directory).resolve()
         home, runtime, temporary = work / "home", work / "run", work / "tmp"
@@ -74,6 +67,18 @@ def main():
                         "https://github.com/numToStr/Navigator.nvim.git", revision], check=True, env=env)
         subprocess.run(["git", "-C", str(plugin), "checkout", "-q", "--detach", "FETCH_HEAD"], check=True, env=env)
         env["NAVIGATOR_RUNTIME"] = str(plugin)
+        client = Path(os.environ["ZELLIJ_CLIENT_RUNTIME"]) if os.environ.get("ZELLIJ_CLIENT_RUNTIME") else work / "zellij-client.nvim"
+        if not os.environ.get("ZELLIJ_CLIENT_RUNTIME"):
+            client_revision = json.loads((ROOT / "nvim/lazy-lock.json").read_text())["zellij-client.nvim"]["commit"]
+            subprocess.run(["git", "init", "-q", str(client)], check=True, env=env)
+            subprocess.run(["git", "-C", str(client), "fetch", "-q", "--depth=1",
+                            "https://github.com/lanej/zellij-client.nvim.git", client_revision], check=True, env=env)
+            subprocess.run(["git", "-C", str(client), "checkout", "-q", "--detach", "FETCH_HEAD"], check=True, env=env)
+        source = json.loads((client / "protocol/source.json").read_text())
+        runtime_revision = next(line.split("=", 1)[1] for line in (ROOT / "scripts/install-zellij").read_text().splitlines()
+                                if line.startswith("zellij_revision="))
+        assert source["revision"] == runtime_revision, "Lua client and installed Zellij runtime pins differ"
+        env["ZELLIJ_CLIENT_RUNTIME"] = str(client)
         editing = work / "editing.txt"
         editing.write_text("Navigation fixture\n")
         env["NAVIGATION_FILE"] = str(editing)
@@ -81,6 +86,7 @@ def main():
         init.write_text('''
 vim.opt.runtimepath:prepend(vim.env.HOME .. "/.config/nvim")
 vim.opt.runtimepath:append(vim.env.NAVIGATOR_RUNTIME)
+vim.opt.runtimepath:append(vim.env.ZELLIJ_CLIENT_RUNTIME)
 vim.opt.swapfile = false
 local module = require("pane-navigation")
 local original_new = module.new
@@ -129,6 +135,7 @@ vim.cmd("wincmd h")
         (scrollback_config / "init.lua").write_text(
             'vim.opt.runtimepath:prepend(vim.env.HOME .. "/.config/nvim")\n'
             'vim.opt.runtimepath:append(vim.env.NAVIGATOR_RUNTIME)\n'
+            'vim.opt.runtimepath:append(vim.env.ZELLIJ_CLIENT_RUNTIME)\n'
             'vim.opt.swapfile = false\nrequire("pane-navigation").setup()\n')
         outside = subprocess.run(["zsh", "-d", "-i", "-c", "bindkey -M viins '^H'"],
                                  env=env, text=True, capture_output=True, check=True, timeout=5)

@@ -448,7 +448,7 @@ test-zellij-shell-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation: zellij-helpers
-	@$(UV) run --script "$(DOTFILES)/scripts/generate-zellij-lua.py" --check
+	@python3 "$(DOTFILES)/scripts/sync-zellij-contract.py" --check
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
 

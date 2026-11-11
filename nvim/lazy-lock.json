@@ -71,5 +71,6 @@
   "vim-repeat": { "branch": "master", "commit": "65846025c15494983dafe5e3b46c8f88ab2e9635" },
   "vim-rhubarb": { "branch": "master", "commit": "5496d7c94581c4c9ad7430357449bb57fc59f501" },
   "vim-test": { "branch": "master", "commit": "3afb1cf5cd3013e8822e6eecf612fc36c974a98f" },
-  "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" }
+  "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" },
+  "zellij-client.nvim": { "branch": "main", "commit": "8a5b18bc401acafd6be2cfff8ac0806ad9fab6d1" }
 }
