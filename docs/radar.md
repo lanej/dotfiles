@@ -29,6 +29,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ## Trial
 
+### Mergiraf
+
+[Mergiraf](mergiraf.md): opt-in syntax-aware Git merging with per-repository activation. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit adoption after reviewing resolutions during normal branch integration; Markdown and Zsh remain outside the advertised language coverage.
+
 ### Pi
 
 [Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.

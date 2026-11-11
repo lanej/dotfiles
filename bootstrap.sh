@@ -617,6 +617,10 @@ install_git-delta_from_release() {
 	cargo install git-delta -q --locked --version "$1"
 }
 
+install_mergiraf_from_release() {
+	cargo install mergiraf -q --locked --version "$1"
+}
+
 install_bat_from_release() {
 	cargo install bat -q --locked --version "$1"
 }
