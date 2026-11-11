@@ -7,7 +7,7 @@ background_opacity 1
 # Open the last web link, including links wrapped inside Codex's padded output.
 map cmd+shift+o kitten open_last_url.py
 # Select labeled OSC 8 links, including compact Charmed PR and commit references.
-map cmd+shift+e kitten hints --type hyperlink
+map cmd+shift+l kitten hints --type hyperlink
 map cmd+n new_tab
 map cmd+t new_tab_with_cwd
 map cmd+p previous_tab
