@@ -240,6 +240,7 @@ function M.decode(name, bytes, existing)
 		local tag, wire = math.floor(key / 8), key % 8
 		local field = meta.by_tag[tag]
 		if not field then
+			local _
 			if wire == 0 then
 				_, position = read_varint(bytes, position)
 			elseif wire == 2 then

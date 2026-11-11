@@ -33,13 +33,16 @@ local function workflow()
 	vim.cmd.edit(vim.fn.fnameescape(assert(vim.uv.fs_realpath(machine))))
 	local buffer = vim.api.nvim_get_current_buf()
 	assert(vim.bo[buffer].filetype == "toml", "Machine configuration did not receive TOML filetype")
-	assert(vim.wait(15000, function()
-		local clients = vim.lsp.get_clients({ bufnr = buffer, name = "taplo" })
-		if #clients == 1 and clients[1].initialized then
-			client_id = clients[1].id
-			return true
-		end
-	end), "Configured Taplo did not attach to the machine configuration outside the checkout")
+	assert(
+		vim.wait(15000, function()
+			local clients = vim.lsp.get_clients({ bufnr = buffer, name = "taplo" })
+			if #clients == 1 and clients[1].initialized then
+				client_id = clients[1].id
+				return true
+			end
+		end),
+		"Configured Taplo did not attach to the machine configuration outside the checkout"
+	)
 
 	local function error_lines()
 		local lines = {}
@@ -84,9 +87,12 @@ local function workflow()
 		"[zellij]",
 		'source = "main"',
 	})
-	assert(vim.wait(10000, function()
-		return next(error_lines()) == nil
-	end), "Inline diagnostics did not clear after repairing the configuration")
+	assert(
+		vim.wait(10000, function()
+			return next(error_lines()) == nil
+		end),
+		"Inline diagnostics did not clear after repairing the configuration"
+	)
 	vim.cmd("silent write")
 	local runtime = vim.system({
 		"python3",
@@ -113,6 +119,8 @@ if not ok then
 	io.stderr:write(error .. "\n")
 	vim.cmd.cquit(1)
 else
-	print("PASS: TOML editing supplies inline diagnostics, source completion, documentation, and runtime-valid repairs.")
+	print(
+		"PASS: TOML editing supplies inline diagnostics, source completion, documentation, and runtime-valid repairs."
+	)
 	vim.cmd("qa!")
 end

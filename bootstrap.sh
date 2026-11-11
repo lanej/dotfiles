@@ -732,6 +732,19 @@ install_stylua_from_release() {
 	npm install -g "@johnnymorganz/stylua-bin@$1"
 }
 
+install_luacheck_package() {
+	if command -v brew >/dev/null; then
+		brew install luacheck
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y lua-check
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm luacheck
+	else
+		printf 'Install Luacheck with LuaRocks, then rerun make install; automatic installation supports Homebrew, APT, and Pacman.\n' >&2
+		return 1
+	fi
+}
+
 install_bash-language-server_from_release() {
 	install_package_version node 24
 	npm install -g "bash-language-server@$1"

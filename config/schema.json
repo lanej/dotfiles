@@ -178,6 +178,10 @@
           "type": "boolean",
           "description": "Enable the stylua bootstrap recipe."
         },
+        "luacheck": {
+          "type": "boolean",
+          "description": "Enable the luacheck bootstrap recipe."
+        },
         "shfmt": {
           "type": "boolean",
           "description": "Enable the shfmt bootstrap recipe."

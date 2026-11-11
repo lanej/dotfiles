@@ -120,7 +120,7 @@ function M.check_status(checks, complete)
 		if not exempt then
 			count = count + 1
 			local state = check.state or (check.status == "COMPLETED" and check.conclusion or check.status)
-			if state == "SUCCESS" or state == "SKIPPED" or state == "NEUTRAL" then
+			if state == "SUCCESS" or state == "SKIPPED" or state == "NEUTRAL" then -- luacheck: ignore 542
 				-- Accepted terminal results.
 			elseif
 				state == "PENDING"

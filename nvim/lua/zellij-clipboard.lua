@@ -1,8 +1,11 @@
 local M = {}
 
 function M.setup()
-	if (vim.env.ZELLIJ or "") == "" or (vim.env.ZELLIJ_SESSION_NAME or "") == ""
-		or vim.fn.executable("zellij-context") == 0 then
+	if
+		(vim.env.ZELLIJ or "") == ""
+		or (vim.env.ZELLIJ_SESSION_NAME or "") == ""
+		or vim.fn.executable("zellij-context") == 0
+	then
 		return false
 	end
 	local context = vim.system({ "zellij-context", "provider" }, { text = true }):wait(1000)

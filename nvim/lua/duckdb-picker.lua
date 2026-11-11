@@ -75,7 +75,12 @@ function M.pick()
 	})
 end
 
-vim.keymap.set("n", "<leader>dd", M.pick, { noremap = true, silent = true, desc = "Pick a .duckdb file and connect via dadbod-grip" })
+vim.keymap.set(
+	"n",
+	"<leader>dd",
+	M.pick,
+	{ noremap = true, silent = true, desc = "Pick a .duckdb file and connect via dadbod-grip" }
+)
 
 -- Opening a *.duckdb file directly (`nvim some.duckdb`, `:e some.duckdb`)
 -- should land in dadbod-grip's connection UI instead of slurping the binary

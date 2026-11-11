@@ -22,10 +22,15 @@ for id, node in query:iter_captures(root, 0) do
 end
 assert(captures["type.definition"]["<expression>"], "Production names must be highlighted as definitions")
 assert(captures.type["<number>"], "Nonterminals must be highlighted")
-assert(captures.string and captures.string['"+"'] and captures.string['""'], "Quoted and empty terminals must be highlighted")
+assert(
+	captures.string and captures.string['"+"'] and captures.string['""'],
+	"Quoted and empty terminals must be highlighted"
+)
 assert(captures.comment["# continuation"], "Comments must be highlighted")
 assert(captures.operator["::="] and captures.operator["|"], "Definitions and alternatives must be highlighted")
 
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { '<broken> ::= "unterminated' })
 assert(parser:parse(true)[1]:root():has_error(), "Malformed BNF must remain visible as a parse error")
-print("PASS: opening BNF installs its parser, recognizes the filetype, parses grammar and escaped terminals, and highlights definitions, terminals, comments and operators.")
+print(
+	"PASS: opening BNF installs its parser, recognizes the filetype, parses grammar and escaped terminals, and highlights definitions, terminals, comments and operators."
+)
