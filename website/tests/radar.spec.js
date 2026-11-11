@@ -15,6 +15,10 @@ for (const width of [1440, 390]) {
     for (const link of await points.all()) {
       const target = await link.getAttribute('href');
       await expect(page.locator(target)).toHaveCount(1);
+      const icon = link.locator('image');
+      const legendIcon = radar.locator(`.radar-key a[href="${target}"] img`);
+      await expect(legendIcon).toHaveAttribute('src', await icon.getAttribute('href'));
+      await expect.poll(() => legendIcon.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
       const name = await page.locator(target).textContent();
       expect(await link.getAttribute('aria-label')).toContain(name.trim());
     }
