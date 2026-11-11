@@ -32,19 +32,25 @@ impl PickerSession {
     }
 
     pub(crate) fn action(&self, action: ActionType, query: bool) -> Result<String> {
-        ipc::output(
-            self.client(Instant::now() + Duration::from_secs(5))?
-                .request(action, query)?,
-        )
+        self.action_until(action, query, Instant::now() + Duration::from_secs(5))
+    }
+
+    fn action_until(&self, action: ActionType, query: bool, deadline: Instant) -> Result<String> {
+        ipc::output(self.client(deadline)?.request(action, query)?)
     }
 
     pub(crate) fn tabs(&self) -> Result<Vec<Value>> {
-        Ok(serde_json::from_str(&self.action(
+        self.tabs_until(Instant::now() + Duration::from_secs(5))
+    }
+
+    fn tabs_until(&self, deadline: Instant) -> Result<Vec<Value>> {
+        Ok(serde_json::from_str(&self.action_until(
             ActionType::ListTabs(ListTabsAction {
                 output_json: true,
                 ..Default::default()
             }),
             true,
+            deadline,
         )?)?)
     }
 
@@ -195,7 +201,7 @@ pub fn client_choices(session: &str) -> Result<BTreeMap<u64, Value>> {
                 &json!({"auto_titles":titles::owned_titles(session)}),
                 deadline,
             )?)?;
-            let tabs = connection.tabs()?;
+            let tabs = connection.tabs_until(deadline)?;
             let mut attached = BTreeSet::new();
             for tab in tabs {
                 for id in tab["other_focused_clients"]
