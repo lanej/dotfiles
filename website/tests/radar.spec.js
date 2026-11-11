@@ -6,7 +6,9 @@ for (const width of [1440, 390]) {
     await page.goto('./reference/radar/');
     const radar = page.getByRole('figure', { name: 'Technology decisions by ring' });
     await expect(radar).toBeVisible();
-    await expect(radar.getByRole('region', { name: 'Assess decisions' })).toContainText('No tools here yet.');
+    await expect(radar.getByRole('region', { name: 'Assess decisions' })).toContainText('AeroSpace');
+    await expect(radar.getByRole('region', { name: 'Trial decisions' })).not.toContainText('AeroSpace');
+    await expect(radar.getByRole('region', { name: 'Trial decisions' })).toContainText('Viewrule');
     await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Kitty');
     await expect(radar.getByRole('region', { name: 'Hold decisions' })).toContainText('Ghostty');
     const points = radar.locator('svg a');

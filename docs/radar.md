@@ -46,19 +46,18 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 Revisit adoption after validating long-running sessions, scrollback-heavy workloads, and the documented integration gaps.
 
-### UI review
+### Viewrule
 
-[UI review](ui-review.md): local Playwright layout checks, screenshot references, and a feedback-to-rule workflow for Claude Code. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
+[Viewrule](ui-review.md): my tool for rendered UI checks, screenshot references, and a feedback-to-rule workflow. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
 
-### AeroSpace
-
-[AeroSpace](https://github.com/nikitabobko/AeroSpace) is a tiling WM that operates at the app level rather than hooking into the macOS window server. It may handle Ghostty's native `NSWindowTabGroup` tab grouping without the window-jumping issue that currently blocks a Ghostty migration (see **Hold: Ghostty**).
 
 ---
 
 ## Assess
 
-_Nothing here yet._
+### AeroSpace
+
+[AeroSpace](https://github.com/nikitabobko/AeroSpace) is a tiling WM that operates at the app level rather than hooking into the macOS window server. It may handle Ghostty's native `NSWindowTabGroup` tab grouping without the window-jumping issue that currently blocks a Ghostty migration (see **Hold: Ghostty**).
 
 ---
 
@@ -87,7 +86,7 @@ yabai -m signal --add app='^Ghostty$' event=window_created action='yabai -m spac
 yabai -m signal --add app='^Ghostty$' event=window_destroyed action='yabai -m space --layout bsp'
 ```
 
-Revisit if AeroSpace (see **Trial**) proves able to handle native tab groups transparently.
+Revisit if AeroSpace (see **Assess**) proves able to handle native tab groups transparently.
 
 ### andrej-karpathy-skills
 
