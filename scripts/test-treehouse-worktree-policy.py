@@ -36,6 +36,9 @@ def main():
                    GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(ROOT / "git/gitconfig"),
                    GIT_TERMINAL_PROMPT="0", TREEHOUSE_NO_UPDATE_CHECK="1")
 
+        activation = home / ".config/dotfiles/worktree-policy.gitconfig"
+        activation.parent.mkdir(parents=True)
+        activation.write_text("".join(f'[hook "worktree-policy-{event}"]\n enabled = true\n' for event in ("pre", "post", "checkout")))
         (home / ".local/bin").mkdir(parents=True)
         (home / ".local/bin/git-worktree-policy").symlink_to(POLICY)
         (home / ".local/bin/git-worktree-policy-hook").symlink_to(ROOT / "bin/git-worktree-policy-hook")
@@ -123,6 +126,26 @@ def main():
                 "--if-lease-holder", lease["lease_holder"])
         assert (external / "ignored-build.bin").stat().st_size == 65536
         assert (repo / "tracked.txt").read_text() == "preserved checkout data\n"
+        fixture = root / "dotfiles"
+        fixture.mkdir()
+        for name in ("Makefile", "scripts", "config", "bootstrap", "git", "bin", "design-system"):
+            (fixture / name).symlink_to(ROOT / name)
+        git("init", "-q", fixture)
+        machine = home / "machine.toml"
+        machine.write_text('[tools]\nworktree-policy = false\n')
+        env["DOTFILES_CONFIG"] = str(machine)
+        run("make", "--no-print-directory", "configure", "SELECTED_TARGETS=git", cwd=fixture)
+        assert git("config", "--file", activation, "--get", "hook.worktree-policy-pre.enabled").stdout.strip() == "false"
+        installed = home / ".local/bin/git-worktree-policy"
+        assert installed.resolve() == ROOT / "bin/git-worktree-policy"
+        assert not (home / ".local/libexec/git-worktree-policy").exists()
+        disabled_repo = root / "disabled policy repo"
+        git("init", "-q", disabled_repo)
+        git("worktree", "add", "--orphan", root / "disabled-policy-linked", cwd=disabled_repo)
+        machine.write_text('[tools]\nworktree-policy = true\n')
+        run("make", "--no-print-directory", "configure", "SELECTED_TARGETS=git", cwd=fixture)
+        missing = git("worktree", "add", "--orphan", root / "missing-policy-linked", cwd=disabled_repo, check=False)
+        assert missing.returncode != 0 and "native policy is unavailable" in missing.stderr
     print("Native Treehouse allocation, full-pool reuse, and optional disk gates passed")
 
 

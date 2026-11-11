@@ -277,6 +277,28 @@ def main():
         assert migrated["repositories"][0]["common_gitdir"] == legacy_common
         assert migrated["totals"]["linked_count"] == 0
         assert len(list(legacy_registry.iterdir())) == 1
+        literal_state = root / "state[1]"
+        isolated = {"XDG_STATE_HOME": str(literal_state)}
+        run(POLICY, "refresh", cwd=env_repo, extra_env=isolated)
+        run(POLICY, "configure", "--global", "--max-worktrees", "1", extra_env=isolated)
+        literal_report = json.loads(run(POLICY, "status", "--all", extra_env=isolated).stdout)
+        assert literal_report["complete"] and literal_report["totals"]["linked_count"] == 1
+        assert run(POLICY, "preflight", cwd=env_repo, extra_env=isolated, check=False).returncode == 1
+        registry = literal_state / "git-worktree-policy/repositories"
+        if os.geteuid() != 0:
+            registry.chmod(0o300)
+            try:
+                unreadable = run(POLICY, "status", "--all", extra_env=isolated, check=False)
+                assert unreadable.returncode != 0 and "permission denied" in unreadable.stderr.lower()
+                denied = run(POLICY, "preflight", cwd=env_repo, extra_env=isolated, check=False)
+                assert denied.returncode != 0 and "permission denied" in denied.stderr.lower()
+                notification = run(POLICY, "observe", "post-checkout", "old", "new", "1", cwd=env_repo, extra_env=isolated)
+                assert "permission denied" in notification.stderr.lower()
+            finally:
+                registry.chmod(0o750)
+        activation = root / ".config/dotfiles/worktree-policy.gitconfig"
+        activation.parent.mkdir(parents=True)
+        activation.write_text("".join(f'[hook "worktree-policy-{event}"]\n enabled = true\n' for event in ("pre", "post", "checkout")))
         env["GIT_CONFIG_GLOBAL"] = str(ROOT / "git/gitconfig")
         env["XDG_STATE_HOME"] = str(root / "global-state")
         (root / ".local/bin").mkdir(parents=True)

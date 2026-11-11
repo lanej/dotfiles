@@ -68,6 +68,7 @@ test-dotfiles-config-editor:
 base: config-init
 base: SELECTED_TARGETS = $(BASE_TARGETS)
 configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+configure: export DOTFILES_WORKTREE_POLICY_ENABLED = $(if $(filter worktree-policy,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
 base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)

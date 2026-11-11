@@ -38,7 +38,7 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
-        (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.0 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
+        (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         (checkout / "scripts/install-git-worktree-hooks.py").write_text(
             "from pathlib import Path\nimport os\n"
             "home = Path(os.environ['HOME'])\n"

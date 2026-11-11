@@ -450,9 +450,21 @@ func (p *policy) records() ([]map[string]any, error) {
 		return nil, err
 	}
 
-	files, err := filepath.Glob(filepath.Join(root, "*.json"))
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return []map[string]any{}, nil
+	}
+
 	if err != nil {
 		return nil, err
+	}
+
+	files := []string{}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".json") {
+			files = append(files, filepath.Join(root, entry.Name()))
+		}
 	}
 
 	sort.Strings(files)
