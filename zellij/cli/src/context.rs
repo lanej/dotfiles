@@ -5,13 +5,16 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 pub fn socket() -> Result<String> {
-    let check = run(
-        "zellij",
-        &["setup", "--check"],
-        Instant::now() + Duration::from_secs(1),
-    )?;
+    let location = location(Instant::now() + Duration::from_secs(1))?;
+    Ok(crate::titles::session_identity(&session()?, &location)
+        .map_err(anyhow::Error::msg)?
+        .to_string())
+}
+
+pub(crate) fn location(deadline: Instant) -> Result<crate::titles::Location> {
+    let check = run("zellij", &["setup", "--check"], deadline)?;
     if !check.lines().any(|line| line == "[Version]: \"0.46.0\"") {
-        bail!("Direct Neovim navigation requires the pinned Zellij 0.46.0 runtime");
+        bail!("Direct IPC requires the pinned Zellij 0.46.0 runtime");
     }
     let cache = check
         .lines()
@@ -36,13 +39,10 @@ pub fn socket() -> Result<String> {
     if !directory.is_absolute() {
         bail!("Zellij socket directory must be absolute");
     }
-    let location = (
+    Ok((
         directory,
         cache.join("contract_version_1/session_index.sqlite"),
-    );
-    Ok(crate::titles::session_identity(&session()?, &location)
-        .map_err(anyhow::Error::msg)?
-        .to_string())
+    ))
 }
 
 pub fn provider() -> Result<&'static str> {

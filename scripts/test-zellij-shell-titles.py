@@ -90,6 +90,23 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
                            PROMPT in terminal.output and terminal.tabs()[0]["name"] == "home")
             tab_id = terminal.tabs()[0]["tab_id"]
 
+            forbidden = home / "prompt-subprocesses"
+            for executable in ("ps", "zellij"):
+                stub = tools / executable
+                stub.write_text(f"#!/bin/sh\nprintf '%s\\n' {executable} >> {shlex.quote(str(forbidden))}\nexit 99\n")
+                stub.chmod(0o755)
+            timings = home / "title-timings"
+            terminal.send(("zmodload zsh/datetime; repeat 15 { started=$EPOCHREALTIME; "
+                           "_zellij_auto_tab_title; print $(( (EPOCHREALTIME-started)*1000 )) >> "
+                           + shlex.quote(str(timings)) + "; }\r").encode())
+            terminal.until("prompt title measurements finish", lambda:
+                           timings.exists() and len(timings.read_text().splitlines()) == 15)
+            samples = sorted(float(line) for line in timings.read_text().splitlines())
+            print(f"Prompt title hook: median {samples[7]:.2f} ms, max {samples[-1]:.2f} ms (15 warm runs)")
+            assert not forbidden.exists(), "Prompt titles launched ps or the Zellij CLI"
+            for executable in ("ps", "zellij"):
+                (tools / executable).unlink()
+
             def title():
                 return next(tab["name"] for tab in terminal.tabs() if tab["tab_id"] == tab_id)
 

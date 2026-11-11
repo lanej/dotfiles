@@ -6,6 +6,7 @@ mod clipboard;
 mod command;
 mod config;
 mod context;
+mod ipc;
 mod navigation;
 mod notify;
 mod picker;
@@ -41,11 +42,12 @@ fn run(args: &[String]) -> Result<()> {
                 let _ = auto_title::shell_title();
             }
             "auto-title" => {
-                let _ = auto_title::main();
+                let _ = auto_title::main(rest);
             }
             "clipboard" => clipboard::main(rest)?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
             "context" if rest == ["socket"] => println!("{}", context::socket()?),
+            "context" if rest == ["title-context"] => println!("{}", auto_title::context()?),
             "navigate" => navigation::main(rest)?,
             "popup" if rest.is_empty() => session::popup()?,
             "shutdown" if rest.is_empty() => session::shutdown()?,
