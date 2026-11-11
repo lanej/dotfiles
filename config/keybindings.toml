@@ -1,0 +1,15 @@
+version = 1
+
+[[binding]]
+id = "kitty.reload-config"
+app = "kitty"
+chord = "cmd+shift+r"
+action = "load_config_file ~/.config/kitty/kitty.conf"
+description = "Reload Kitty configuration."
+
+[[binding]]
+id = "kitty.open-last-web-link"
+app = "kitty"
+chord = "cmd+shift+o"
+action = "kitten open_last_url.py"
+description = "Open the last web link, including Codex's padded output."

@@ -2,10 +2,13 @@ font_family Hack Nerd Font Mono
 font_size 13
 disable_ligatures never
 hide_window_decorations yes
-map cmd+shift+r load_config_file ~/.config/kitty/kitty.conf
 background_opacity 1
-# Open the last web link, including links wrapped inside Codex's padded output.
-map cmd+shift+o kitten open_last_url.py
+# BEGIN generated keybindings (scripts/keybindings.py)
+# kitty.reload-config: Reload Kitty configuration.
+map shift+super+r load_config_file ~/.config/kitty/kitty.conf
+# kitty.open-last-web-link: Open the last web link, including Codex's padded output.
+map shift+super+o kitten open_last_url.py
+# END generated keybindings
 map cmd+n new_tab
 map cmd+t new_tab_with_cwd
 map cmd+p previous_tab
