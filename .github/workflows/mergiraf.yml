@@ -1,0 +1,40 @@
+name: Mergiraf examples
+
+on:
+  pull_request:
+    paths: ['git/gitconfig', 'bootstrap/tools.toml', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
+  push:
+    branches: [master]
+    paths: ['git/gitconfig', 'bootstrap/tools.toml', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Download the catalog's Mergiraf release
+        shell: bash
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["mergiraf"]["version"])')
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) platform=x86_64-unknown-linux-musl ;;
+            Darwin-arm64) platform=aarch64-apple-darwin ;;
+            Darwin-x86_64) platform=x86_64-apple-darwin ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/mergiraf"
+          curl --fail --location --retry 3 "https://codeberg.org/mergiraf/mergiraf/releases/download/v$version/mergiraf_$platform.tar.gz" -o "$RUNNER_TEMP/mergiraf/release.tar.gz"
+          tar -xzf "$RUNNER_TEMP/mergiraf/release.tar.gz" -C "$RUNNER_TEMP/mergiraf"
+          echo "$RUNNER_TEMP/mergiraf" >> "$GITHUB_PATH"
+      - run: python3 scripts/test-mergiraf.py

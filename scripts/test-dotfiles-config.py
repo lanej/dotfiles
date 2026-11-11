@@ -66,6 +66,7 @@ def main():
         assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
         names = [tool["name"] for tool in selected["tools"]]
+        assert "mergiraf" not in names
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
         assert selected["sources"]["tools.mermaid"] == str(config.resolve())
         preview = tomllib.loads(run("make", "--no-print-directory", "config").stdout)
@@ -171,6 +172,15 @@ else:
             config.write_text(f'[tools]\nzellij = true\n{dependency} = false\n')
             blocked = run("make", "--no-print-directory", "zellij-runtime", check=False)
             assert blocked.returncode != 0 and f"requires tools.{dependency}" in blocked.stderr
+        config.write_text('[tools]\nmergiraf = true\n')
+        merge_plan = json.loads(run(*command, "--format", "json").stdout)
+        merge_names = [tool["name"] for tool in merge_plan["tools"]]
+        assert merge_names.index("rust") < merge_names.index("mergiraf")
+        assert merge_names.index("git") < merge_names.index("mergiraf")
+        assert "git" in merge_plan["setup"]
+        config.write_text('[tools]\nmergiraf = true\nrust = false\n')
+        blocked = run(*command, check=False)
+        assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

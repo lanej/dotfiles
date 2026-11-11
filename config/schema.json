@@ -134,6 +134,10 @@
           "type": "boolean",
           "description": "Enable the git-delta bootstrap recipe."
         },
+        "mergiraf": {
+          "type": "boolean",
+          "description": "Install syntax-aware merging; enable the driver per repository."
+        },
         "glow": {
           "type": "boolean",
           "description": "Enable the glow bootstrap recipe."

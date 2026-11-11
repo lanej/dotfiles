@@ -332,6 +332,13 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     output.chmod(0o755)
     (home / "zellij-owned").write_text(revision)
     record("zellij")
+elif name == "cargo" and args[:2] == ["install", "mergiraf"]:
+    assert args == ["install", "mergiraf", "-q", "--locked", "--version", "0.20.0"], args
+    (home / ".cargo/bin/mergiraf").symlink_to(fixture / "driver")
+    record("mergiraf")
+elif name == "mergiraf":
+    assert args == ["--version"], args
+    print("mergiraf 0.20.0")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
@@ -433,7 +440,7 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nmergiraf = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -459,6 +466,8 @@ else:
             raise AssertionError(result.stdout + result.stderr)
         assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
+        assert "mergiraf" in events
+        assert (home / ".cargo/bin/mergiraf").is_file()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude", "pi")
         )
@@ -598,6 +607,7 @@ else:
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
         assert "pi" not in new_events
+        assert "mergiraf" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()

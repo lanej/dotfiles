@@ -167,6 +167,9 @@
 [mergetool]
 	prompt = false
 	keepBackup = false
+[merge "mergiraf"]
+	name = syntax-aware merging with Mergiraf
+	driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L
 [mergetool "fugitive"]
 	cmd = nvim -f -c \"Gvdiffsplit!\" \"$MERGED\"
 [advice]
