@@ -4,6 +4,47 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+pub fn socket() -> Result<String> {
+    let check = run(
+        "zellij",
+        &["setup", "--check"],
+        Instant::now() + Duration::from_secs(1),
+    )?;
+    if !check.lines().any(|line| line == "[Version]: \"0.46.0\"") {
+        bail!("Direct Neovim navigation requires the pinned Zellij 0.46.0 runtime");
+    }
+    let cache = check
+        .lines()
+        .find_map(|line| line.strip_prefix("[CACHE DIR]: "))
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or_else(|| anyhow::anyhow!("Cannot identify the session index"))?;
+    let directory = std::env::var_os("ZELLIJ_SOCKET_DIR")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            if cfg!(target_os = "linux") {
+                std::env::var_os("XDG_RUNTIME_DIR")
+                    .map(|path| std::path::PathBuf::from(path).join("zellij"))
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| {
+            std::env::temp_dir().join(format!("zellij-{}", unsafe { libc::getuid() }))
+        })
+        .join("contract_version_1");
+    if !directory.is_absolute() {
+        bail!("Zellij socket directory must be absolute");
+    }
+    let location = (
+        directory,
+        cache.join("contract_version_1/session_index.sqlite"),
+    );
+    Ok(crate::titles::session_identity(&session()?, &location)
+        .map_err(anyhow::Error::msg)?
+        .to_string())
+}
+
 pub fn provider() -> Result<&'static str> {
     let column = if cfg!(target_os = "macos") {
         "ucomm"

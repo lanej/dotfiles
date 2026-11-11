@@ -16,7 +16,7 @@ In Neovim, the keys move through editor splits first. At an editor edge, they co
 
 Navigation stays in the current tab. A zoomed pane keeps focus inside it; press **Ctrl-f z** to restore the surrounding panes before crossing its boundary.
 
-Inside nested tmux or Zellij sessions, navigation belongs to the inner session. Use **Ctrl-f u** to return control to the containing Zellij session and **Ctrl-f i** to enter the nested one again.
+Inside nested Zellij sessions, navigation belongs to the inner session. Use **Ctrl-f u** to return control to the containing Zellij session and **Ctrl-f i** to enter the nested one again. Neovim identifies Zellij from its environment; running Neovim inside tmux nested in Zellij is outside this integration's supported setup.
 
 If bare navigation does not move the intended pane, use **Ctrl-f h/j/k/l** for explicit Zellij navigation. Those prefixed keys always target terminal panes rather than editor splits.
 

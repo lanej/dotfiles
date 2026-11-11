@@ -45,6 +45,7 @@ fn run(args: &[String]) -> Result<()> {
             }
             "clipboard" => clipboard::main(rest)?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
+            "context" if rest == ["socket"] => println!("{}", context::socket()?),
             "navigate" => navigation::main(rest)?,
             "popup" if rest.is_empty() => session::popup()?,
             "shutdown" if rest.is_empty() => session::shutdown()?,
