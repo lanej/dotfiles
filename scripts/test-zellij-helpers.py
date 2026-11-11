@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from zellij_ipc_fixture import action_server, fields, message
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -118,7 +119,8 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
             work = Path(directory)
             namespace = work / "run/contract_version_1"
             namespace.mkdir(parents=True)
-            cache = work / "cache"
+            cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                     else self.home / "cache/zellij")
             index = cache / "contract_version_1/session_index.sqlite"
             index.parent.mkdir(parents=True)
             with sqlite3.connect(index) as connection:
@@ -127,13 +129,13 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
                                    (self.env["ZELLIJ_SESSION_NAME"], "native-id"))
             self.env["ZELLIJ_SOCKET_DIR"] = str(work / "run")
             (self.bin / "ps").write_text("#!/bin/sh\nexit 99\n")
-            self.plan([f'[Version]: "0.46.0"\n[CACHE DIR]: {cache}\n'])
+            self.plan([])
             with socket.socket(socket.AF_UNIX) as listener:
                 listener.bind(str(namespace / "native-id"))
                 identity = json.loads(self.run_helper("zellij-context", "socket").stdout)
                 self.assertEqual(Path(identity[0]).resolve(), (namespace / "native-id").resolve())
                 self.assertEqual(identity[2], (namespace / "native-id").stat().st_ino)
-            self.assertEqual(self.calls(), [["setup", "--check"]])
+            self.assertEqual(self.calls(), [])
 
     def test_navigation_rechecks_client_and_refuses_ambiguous_focus(self):
         client = "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND\n1 terminal_7 shell\n"
@@ -177,23 +179,67 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.assertFalse(any("move-focus" in call for call in self.calls()))
 
     def test_balancing_verifies_each_boundary_and_stops_after_lost_reply(self):
+        sockets = tempfile.TemporaryDirectory(prefix="zj-balance-", dir="/tmp")
+        self.addCleanup(sockets.cleanup)
+        namespace = Path(sockets.name) / "contract_version_1"
+        namespace.mkdir(parents=True)
+        self.env["ZELLIJ_SOCKET_DIR"] = str(namespace.parent)
+        cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                 else self.home / "cache/zellij")
+        index = cache / "contract_version_1/session_index.sqlite"
+        index.parent.mkdir(parents=True)
+        with sqlite3.connect(index) as connection:
+            connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
+            connection.execute("INSERT INTO sessions VALUES (?, ?)",
+                               (self.env["ZELLIJ_SESSION_NAME"], "balance"))
         before = [pane(1), pane(2, x=60, width=40)]
         after = [pane(1, width=50), pane(2, x=50, width=50)]
-        self.plan([before, before, before, "", after])
-        self.run_helper("zellij-balance", "equalize")
-        mutations = [call for call in self.calls() if "resize" in call]
-        self.assertEqual(mutations, [["--session=--session's literal name", "action", "resize", "decrease", "right", "--pane-id", "terminal_1"]])
-        self.plan([before, before, before, {"error": "lost acknowledgement"}, ""])
-        result = self.run_helper("zellij-balance", "equalize", check=False)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(len([c for c in self.calls() if "resize" in c]), 1)
-        self.plan([[pane(1, is_fullscreen=True)], ""])
-        self.assertNotEqual(self.run_helper("zellij-balance", "equalize", check=False).returncode, 0)
-        self.assertFalse(any("resize" in call for call in self.calls()))
-        stacked = [pane(1, pane_rows=1), pane(2, pane_y=2, pane_rows=19)]
-        self.plan([stacked, stacked, stacked, "", {"error": "stack layout changed"}])
-        self.assertNotEqual(self.run_helper("zellij-balance", "equalize", check=False).returncode, 0)
-        self.assertFalse(any("resize" in call for call in self.calls()), "Stack headers must be rejected before resizing")
+        (self.bin / "zellij").write_text(f"#!{sys.executable}\n" + '''
+import json, os, sys
+from pathlib import Path
+assert sys.argv[2:4] == ["prompt", "notify"], sys.argv
+with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+''')
+        actions, plan = [], []
+
+        def reply(request):
+            self.assertEqual(request[2], 1)
+            self.assertEqual(request[4], 1)
+            action = fields(request[1])
+            actions.append(action)
+            response = plan.pop(0)
+            if response is None:
+                return None
+            if 98 in action:
+                self.assertEqual(fields(action[98])[6], 1)
+                return message(5, message(1, json.dumps(response).encode()))
+            self.assertEqual(set(action), {118})
+            resize = fields(action[118])
+            self.assertEqual(fields(resize[1]), {1: 1})
+            self.assertEqual(fields(resize[2]), {1: 2, 2: 2})
+            return message(2, b"")
+
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(namespace / "balance"))
+            with action_server(listener, reply):
+                plan[:] = [before, before, before, "", after]
+                self.run_helper("zellij-balance", "equalize")
+                self.assertFalse(plan)
+                self.assertEqual(sum(118 in a for a in actions), 1)
+                actions.clear()
+                # The mutation's reply is lost; it must never be replayed.
+                plan[:] = [before, before, before, None]
+                result = self.run_helper("zellij-balance", "equalize", check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(sum(118 in a for a in actions), 1)
+                actions.clear()
+                for unsupported in ([pane(1, is_fullscreen=True)],
+                                    [pane(1, pane_rows=1), pane(2, pane_y=2, pane_rows=19)]):
+                    plan[:] = [unsupported]
+                    self.assertNotEqual(self.run_helper("zellij-balance", "equalize", check=False).returncode, 0)
+                    self.assertFalse(any(118 in a for a in actions))
+        self.assertFalse(any("action" in c or "setup" in c for c in self.calls()))
 
     def test_tab_picker_rejects_closed_target_and_keeps_names_as_data(self):
         theme = self.home / "theme"

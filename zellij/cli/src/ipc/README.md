@@ -4,4 +4,6 @@
 
 Socket discovery and capability policy belong to callers. Automatic titles resolve `zellij-context title-context` once when installing the shell hooks, then pass the resulting JSON in `ZELLIJ_TITLE_CONTEXT`. The helper checks the session index and socket incarnation before reading panes and before renaming. A replaced server invalidates the cached context; start a new shell or source the title hook again. Existing automatic-title records retain their identity and title format.
 
+Session discovery uses the pinned runtime's `directories` 6 platform paths and `contract_version_1` namespace directly. It launches no runtime subprocess; each operation still resolves the session name through the read-only index and checks the owned Unix socket's identity.
+
 `contract.rs` is the complete, unmodified prost-generated contract from the runtime revision in `scripts/install-zellij`: [upstream source](https://github.com/lanej/zellij/tree/744c99f5a3a51682553897411d1a891dac04d886/zellij-utils/assets/prost_ipc). It uses the runtime's prost 0.12 series. Refresh or verify it alongside the Lua bindings with `uv run scripts/generate-zellij-lua.py` or its `--check` option; compilation needs no protobuf compiler or runtime source checkout.

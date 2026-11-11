@@ -1,37 +1,63 @@
-use crate::util::*;
-use anyhow::{bail, Result};
+use crate::{titles, util::*};
+use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-pub fn socket() -> Result<String> {
-    let location = location(Instant::now() + Duration::from_secs(1))?;
-    Ok(crate::titles::session_identity(&session()?, &location)
-        .map_err(anyhow::Error::msg)?
-        .to_string())
+#[derive(Serialize, Deserialize)]
+pub(crate) struct Session {
+    pub session: String,
+    location: titles::Location,
+    pub identity: Value,
 }
 
-pub(crate) fn location(deadline: Instant) -> Result<crate::titles::Location> {
-    let check = run("zellij", &["setup", "--check"], deadline)?;
-    if !check.lines().any(|line| line == "[Version]: \"0.46.0\"") {
-        bail!("Direct IPC requires the pinned Zellij 0.46.0 runtime");
+impl Session {
+    pub fn socket(&self) -> Result<&Path> {
+        Ok(Path::new(
+            self.identity[0]
+                .as_str()
+                .context("Missing session socket")?,
+        ))
     }
-    let cache = check
-        .lines()
-        .find_map(|line| line.strip_prefix("[CACHE DIR]: "))
-        .map(std::path::PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .ok_or_else(|| anyhow::anyhow!("Cannot identify the session index"))?;
+
+    pub fn resolve(session: &str) -> Result<Self> {
+        let location = location()?;
+        let identity = titles::session_identity(session, &location).map_err(anyhow::Error::msg)?;
+        Ok(Self {
+            session: session.to_owned(),
+            location,
+            identity,
+        })
+    }
+
+    pub fn validate(&self, session: &str) -> Result<()> {
+        anyhow::ensure!(
+            self.session == session,
+            "Session context belongs to another session"
+        );
+        anyhow::ensure!(
+            titles::session_identity(session, &self.location).map_err(anyhow::Error::msg)?
+                == self.identity,
+            "Session context belongs to a previous server"
+        );
+        Ok(())
+    }
+}
+
+pub fn socket() -> Result<String> {
+    Ok(Session::resolve(&session()?)?.identity.to_string())
+}
+
+pub(crate) fn location() -> Result<crate::titles::Location> {
+    // rationale: Use the pinned runtime's ProjectDirs tuple and contract namespace directly.
+    // Running `zellij setup --check` here costs far more than the actual IPC requests.
+    let project = directories::ProjectDirs::from("org", "Zellij Contributors", "Zellij")
+        .context("Cannot identify the Zellij directories")?;
     let directory = std::env::var_os("ZELLIJ_SOCKET_DIR")
         .map(std::path::PathBuf::from)
-        .or_else(|| {
-            if cfg!(target_os = "linux") {
-                std::env::var_os("XDG_RUNTIME_DIR")
-                    .map(|path| std::path::PathBuf::from(path).join("zellij"))
-            } else {
-                None
-            }
-        })
+        .or_else(|| project.runtime_dir().map(Path::to_path_buf))
         .unwrap_or_else(|| {
             std::env::temp_dir().join(format!("zellij-{}", unsafe { libc::getuid() }))
         })
@@ -41,7 +67,9 @@ pub(crate) fn location(deadline: Instant) -> Result<crate::titles::Location> {
     }
     Ok((
         directory,
-        cache.join("contract_version_1/session_index.sqlite"),
+        project
+            .cache_dir()
+            .join("contract_version_1/session_index.sqlite"),
     ))
 }
 

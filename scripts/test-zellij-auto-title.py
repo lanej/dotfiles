@@ -8,6 +8,8 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import sys
+from zellij_ipc_fixture import fields, message
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -121,42 +123,6 @@ def ownership_lifecycle():
 
     # Independent wire fixture for Action(9), ListPanes(98), RenameTabById(103)
     # and Log(5)/UnblockInputThread(2) from the pinned protobuf contract.
-    def varint(value):
-        result = bytearray()
-        while value > 127:
-            result.append((value & 127) | 128)
-            value >>= 7
-        return bytes(result + bytes([value]))
-
-    def message(tag, value):
-        return varint(tag * 8 + 2) + varint(len(value)) + value
-
-    def fields(data):
-        position = 0
-
-        def integer():
-            nonlocal position
-            result, shift = 0, 0
-            while True:
-                byte = data[position]
-                position += 1
-                result |= (byte & 127) << shift
-                if byte < 128:
-                    return result
-                shift += 7
-
-        result = {}
-        while position < len(data):
-            key = integer()
-            if key % 8 == 0:
-                result[key >> 3] = integer()
-            else:
-                assert key % 8 == 2, key
-                length = integer()
-                result[key >> 3] = data[position:position + length]
-                position += length
-        return result
-
     @contextmanager
     def server(listener, state):
         stopped, errors = threading.Event(), []
@@ -221,7 +187,9 @@ def ownership_lifecycle():
         executables.mkdir()
         sockets = work / "run" / "contract_version_1"
         sockets.mkdir(parents=True)
-        cache = work / "cache" / "contract_version_1"
+        cache_root = (work / "home/Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                      else work / "cache/zellij")
+        cache = cache_root / "contract_version_1"
         cache.mkdir(parents=True)
         with sqlite3.connect(cache / "session_index.sqlite") as db:
             db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT)")
@@ -234,7 +202,7 @@ import json, os, pathlib, sys
 state = pathlib.Path(os.environ["NATIVE_STATE"])
 args = sys.argv[1:]
 if args == ["setup", "--check"]:
-    print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["XDG_CACHE_HOME"])
+    print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["FIXTURE_ZELLIJ_CACHE"])
 else:
     raise SystemExit("Title updates must use protobuf IPC")
 ''')
@@ -247,6 +215,7 @@ else:
         env = {**os.environ, "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ_SESSION_NAME": "fixture", "ZELLIJ_PANE_ID": "7",
                "ZELLIJ_SOCKET_DIR": str(work / "run"), "NATIVE_STATE": str(state),
+               "HOME": str(work / "home"), "FIXTURE_ZELLIJ_CACHE": str(cache_root),
                "XDG_CACHE_HOME": str(work / "cache"), "XDG_STATE_HOME": str(work / "state"),
                "PWD": str(work / "project")}
 
