@@ -186,6 +186,14 @@ else:
         config.write_text('[tools]\nmergiraf = true\nrust = false\n')
         blocked = run(*command, check=False)
         assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
+        tools = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        config.write_text("[tools]\n" + "".join(
+            f"{name} = {'true' if name in ('stylua', 'node') else 'false'}\n" for name in tools
+        ))
+        macos = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        assert {tool["name"] for tool in macos["tools"]} == {"node", "stylua"}
+        blocked = run(*command, "--platform", "linux", check=False)
+        assert blocked.returncode != 0 and "tools.stylua requires tools.rust" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

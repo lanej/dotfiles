@@ -82,7 +82,7 @@ def tool_plan(values, origins, specified, host):
             if any(hook not in HOOKS for hook in recipe.get(phase, [])):
                 raise ValueError(f"{TOOL_FILE}: unknown {phase} hook for {name}")
         visiting.append(name)
-        dependencies = recipe.get("requires", [])
+        dependencies = [*recipe.get("requires", []), *recipe.get(f"requires_{host}", [])]
         if name == "zellij" and values["zellij.source"] == "release":
             dependencies = []
         for dependency in dependencies:

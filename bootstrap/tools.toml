@@ -1,5 +1,6 @@
 # Installation recipes and version pins. Machine files select tools; sets group them.
 # installer = "config" delegates configuration/integration to Make and hooks.
+# requires_linux and requires_macos add prerequisites only on the named platform.
 
 [tools.build]
 installer = "build"
@@ -118,6 +119,7 @@ version = "14.1.0"
 
 [tools.stylua]
 requires = ["node"]
+requires_linux = ["rust"]
 version = "2.6.0"
 
 [tools.luacheck]
