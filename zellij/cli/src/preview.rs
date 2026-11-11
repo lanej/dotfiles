@@ -168,20 +168,26 @@ fn pane_title(pane: &Value) -> Result<String> {
         .collect::<Vec<_>>()
         .join(" | "))
 }
-fn pane_screen(session: &str, pane: &Value) -> Result<String> {
-    Ok(native(
-        session,
-        &[
-            "action",
-            "dump-screen",
-            "--ansi",
-            "--pane-id",
-            &format!("terminal_{}", number(pane, "id")?),
-        ],
-    )
-    .unwrap_or_else(|e| format!("Preview unavailable: {}", label(&e.to_string())))
-    .trim_end()
-    .to_owned())
+fn pane_screen(connection: &crate::picker::PickerSession, pane: &Value) -> Result<String> {
+    Ok(connection
+        .action(
+            crate::ipc::contract::action::ActionType::DumpScreen(
+                crate::ipc::contract::DumpScreenAction {
+                    pane_id: Some(crate::ipc::contract::PaneId {
+                        pane_type: Some(crate::ipc::contract::pane_id::PaneType::Terminal(
+                            number(pane, "id")?.try_into()?,
+                        )),
+                    }),
+                    dump_to_stdout: true,
+                    ansi: true,
+                    ..Default::default()
+                },
+            ),
+            true,
+        )
+        .unwrap_or_else(|e| format!("Preview unavailable: {}", label(&e.to_string())))
+        .trim_end()
+        .to_owned())
 }
 fn dimension(name: &str, default: usize) -> usize {
     env::var(name)
@@ -191,12 +197,14 @@ fn dimension(name: &str, default: usize) -> usize {
         .clamp(1, 4096)
 }
 pub fn tab(session: &str, tab_id: u64) -> Result<()> {
+    let connection = crate::picker::PickerSession::resolve(session)?;
     let own = if env::var("ZELLIJ_SESSION_NAME").as_deref() == Ok(session) {
         pane_id().ok()
     } else {
         None
     };
-    let mut panes: Vec<_> = snapshot(session, "panes")?
+    let mut panes: Vec<_> = connection
+        .panes(false)?
         .into_iter()
         .filter(|p| {
             p["tab_id"] == tab_id
@@ -209,7 +217,7 @@ pub fn tab(session: &str, tab_id: u64) -> Result<()> {
         println!("No other terminal pane in this tab.");
         return Ok(());
     }
-    let tabs = snapshot(session, "tabs")?;
+    let tabs = connection.tabs()?;
     let Some(tab) = tabs.iter().find(|t| t["tab_id"] == tab_id) else {
         println!("Tab closed while loading preview.");
         return Ok(());
@@ -283,7 +291,7 @@ pub fn tab(session: &str, tab_id: u64) -> Result<()> {
                 .remove(0),
             );
             if per_pane > 1 {
-                let lines = screen_rows(&pane_screen(session, p)?, width, true)?;
+                let lines = screen_rows(&pane_screen(&connection, p)?, width, true)?;
                 rows.extend_from_slice(&lines[lines.len().saturating_sub(per_pane - 1)..]);
             }
         }
@@ -334,7 +342,7 @@ pub fn tab(session: &str, tab_id: u64) -> Result<()> {
             .to_string_lossy();
         canvas[y + 1][x + 1..right - 1]
             .clone_from_slice(&screen_rows(&format!("{command} | {cwd}"), inner, false)?[0]);
-        let mut rows = screen_rows(&pane_screen(session, p)?, inner, true)?;
+        let mut rows = screen_rows(&pane_screen(&connection, p)?, inner, true)?;
         let available = bottom - y - 3;
         if rows.len() > available {
             let tail = if available > 1 {

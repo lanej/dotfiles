@@ -1,10 +1,85 @@
-use crate::{titles, util::*};
+use crate::{context::Session, ipc, titles, util::*};
 use anyhow::{bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE, Engine};
+use ipc::contract::{
+    action::ActionType, Direction, GoToTabByIdAction, ListPanesAction, ListTabsAction,
+    MoveTabByTabIdAction, SwitchSessionAction,
+};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 use std::{env, fs, path::PathBuf};
+
+pub(crate) struct PickerSession(Session);
+
+impl PickerSession {
+    pub(crate) fn resolve(session: &str) -> Result<Self> {
+        Ok(Self(Session::resolve(session)?))
+    }
+
+    fn client(&self, deadline: Instant) -> Result<ipc::Client<'_>> {
+        self.0.validate(&self.0.session)?;
+        let terminal_id = if env::var("ZELLIJ_SESSION_NAME").as_deref() == Ok(&self.0.session) {
+            pane_id().ok().map(u32::try_from).transpose()?
+        } else {
+            None
+        };
+        Ok(ipc::Client {
+            socket: self.0.socket()?,
+            terminal_id,
+            deadline,
+        })
+    }
+
+    pub(crate) fn action(&self, action: ActionType, query: bool) -> Result<String> {
+        ipc::output(
+            self.client(Instant::now() + Duration::from_secs(5))?
+                .request(action, query)?,
+        )
+    }
+
+    pub(crate) fn tabs(&self) -> Result<Vec<Value>> {
+        Ok(serde_json::from_str(&self.action(
+            ActionType::ListTabs(ListTabsAction {
+                output_json: true,
+                ..Default::default()
+            }),
+            true,
+        )?)?)
+    }
+
+    pub(crate) fn panes(&self, all: bool) -> Result<Vec<Value>> {
+        Ok(serde_json::from_str(&self.action(
+            ActionType::ListPanes(ListPanesAction {
+                output_json: true,
+                show_all: all,
+                ..Default::default()
+            }),
+            true,
+        )?)?)
+    }
+}
+
+fn pipe(session: &str, name: &str, payload: &Value, deadline: Instant) -> Result<String> {
+    PickerSession::resolve(session)?
+        .client(deadline)?
+        .pipe(ipc::contract::CliPipeAction {
+            name: Some(name.to_owned()),
+            payload: Some(payload.to_string()),
+            plugin: Some(PLUGIN.to_owned()),
+            ..Default::default()
+        })?
+        .into_output()
+}
+
+fn status_pipe(session: &str, name: &str, payload: &Value) -> Result<String> {
+    pipe(
+        session,
+        name,
+        payload,
+        Instant::now() + Duration::from_secs(5),
+    )
+}
 
 pub fn display_tab(tab: &Value, panes: &[Value]) -> Result<String> {
     let id = number(tab, "tab_id")?;
@@ -110,6 +185,7 @@ fn replies(output: &str) -> Result<Vec<Value>> {
     Ok(rows)
 }
 pub fn client_choices(session: &str) -> Result<BTreeMap<u64, Value>> {
+    let connection = PickerSession::resolve(session)?;
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
         let attempt = (|| -> Result<Option<BTreeMap<u64, Value>>> {
@@ -119,11 +195,7 @@ pub fn client_choices(session: &str) -> Result<BTreeMap<u64, Value>> {
                 &json!({"auto_titles":titles::owned_titles(session)}),
                 deadline,
             )?)?;
-            let tabs: Vec<Value> = serde_json::from_str(&zellij(
-                session,
-                &["action", "list-tabs", "--json"],
-                deadline,
-            )?)?;
+            let tabs = connection.tabs()?;
             let mut attached = BTreeSet::new();
             for tab in tabs {
                 for id in tab["other_focused_clients"]
@@ -188,8 +260,9 @@ fn pick_client(session: &str) -> Result<()> {
     Ok(())
 }
 fn pick_tab(session: &str) -> Result<()> {
-    let mut tabs = snapshot(session, "tabs")?;
-    let panes = snapshot(session, "panes")?;
+    let connection = PickerSession::resolve(session)?;
+    let mut tabs = connection.tabs()?;
+    let panes = connection.panes(false)?;
     let own = pane_id().ok();
     let source = panes
         .iter()
@@ -229,11 +302,11 @@ fn pick_tab(session: &str) -> Result<()> {
     if let Some(token) = choose(rows, "Tabs (attention first)", Some("--preview-tab"))? {
         let id: u64 = token.parse()?;
         if !tabs.iter().any(|t| t["tab_id"] == id)
-            || !snapshot(session, "tabs")?.iter().any(|t| t["tab_id"] == id)
+            || !connection.tabs()?.iter().any(|t| t["tab_id"] == id)
         {
             bail!("The selected tab no longer exists");
         }
-        native(session, &["action", "go-to-tab-by-id", &token])?;
+        connection.action(ActionType::GoToTabById(GoToTabByIdAction { id }), false)?;
     }
     Ok(())
 }
@@ -256,6 +329,7 @@ struct Swap<'a> {
     tab: u64,
     picker: u64,
     token: Value,
+    connection: PickerSession,
 }
 impl Swap<'_> {
     fn check(&self, order: &[u64]) -> Result<()> {
@@ -270,7 +344,7 @@ impl Swap<'_> {
         if rows[0]["pane_id"] != format!("terminal_{}", self.picker) {
             bail!("Picker lost its requesting client");
         }
-        let panes = snapshot(self.session, "panes")?;
+        let panes = self.connection.panes(false)?;
         for id in [self.source, self.picker] {
             if !panes.iter().any(|p| {
                 !flag(p, "is_plugin")
@@ -281,7 +355,7 @@ impl Swap<'_> {
                 bail!("The original pane or picker changed tabs or closed");
             }
         }
-        if swap_order(snapshot(self.session, "tabs")?)? != order {
+        if swap_order(self.connection.tabs()?)? != order {
             bail!("Tab order or membership changed");
         }
         Ok(())
@@ -301,9 +375,10 @@ fn swap_tab(session: &str) -> Result<()> {
     if legacy() {
         bail!("Tab swap needs the status plugin and pinned runtime; run make zellij-status zellij and restart this session");
     }
+    let connection = PickerSession::resolve(session)?;
     let source = origin_id()?;
     let picker = pane_id()?;
-    let panes = snapshot(session, "panes")?;
+    let panes = connection.panes(false)?;
     let pane = panes
         .iter()
         .find(|p| !flag(p, "is_plugin") && p["id"] == source)
@@ -314,8 +389,9 @@ fn swap_tab(session: &str) -> Result<()> {
         tab: number(pane, "tab_id")?,
         picker,
         token: owner_token(session, picker)?,
+        connection,
     };
-    let mut tabs = snapshot(session, "tabs")?;
+    let mut tabs = swap.connection.tabs()?;
     let mut order = swap_order(tabs.clone())?;
     swap.check(&order)?;
     tabs.sort_by_key(|t| t["position"].as_u64());
@@ -374,15 +450,16 @@ fn swap_tab(session: &str) -> Result<()> {
                 let mut expected = order.clone();
                 expected.swap(index, neighbor);
                 attempted = true;
-                let command = native(
-                    session,
-                    &[
-                        "action",
-                        "move-tab",
-                        if delta > 0 { "right" } else { "left" },
-                        "--tab-id",
-                        &id.to_string(),
-                    ],
+                let command = swap.connection.action(
+                    ActionType::MoveTabByTabId(MoveTabByTabIdAction {
+                        id,
+                        direction: if delta > 0 {
+                            Direction::Right
+                        } else {
+                            Direction::Left
+                        } as i32,
+                    }),
+                    false,
                 );
                 let inspection = swap.check(&expected);
                 if let Err(error) = command {
@@ -444,9 +521,10 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
     if legacy() {
         bail!("The move picker needs the status plugin and pinned runtime; run make zellij-status zellij and restart this session");
     }
+    let connection = PickerSession::resolve(session)?;
     let source = origin_id()?;
     let picker = pane_id()?;
-    let panes = snapshot(session, "panes")?;
+    let panes = connection.panes(false)?;
     let source_pane = panes
         .iter()
         .find(|p| !flag(p, "is_plugin") && p["id"] == source)
@@ -459,7 +537,7 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
         bail!("The original pane changed; reopen the move picker");
     }
     let token = owner_token(session, picker)?;
-    let mut tabs = snapshot(session, "tabs")?;
+    let mut tabs = connection.tabs()?;
     tabs.sort_by_key(|t| t["position"].as_u64());
     let mut rows = if all {
         vec![]
@@ -497,16 +575,12 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
     };
     if let Some(id) = destination {
         if !tabs.iter().any(|t| t["tab_id"] == id)
-            || !snapshot(session, "tabs")?.iter().any(|t| t["tab_id"] == id)
+            || !connection.tabs()?.iter().any(|t| t["tab_id"] == id)
         {
             bail!("The destination tab closed; reopen the move picker");
         }
     }
-    let mut command = vec!["action", "list-panes", "--json"];
-    if all {
-        command.push("--all");
-    }
-    let current: Vec<Value> = serde_json::from_str(&native(session, &command)?)?;
+    let current = connection.panes(all)?;
     if !current.iter().any(|p| {
         !flag(p, "is_plugin")
             && p["id"] == source
@@ -593,14 +667,31 @@ fn pick_session(session: &str) -> Result<()> {
             bail!("The selected session is no longer running");
         }
         if target != session {
-            native(session, &["action", "switch-session", "--", target])?;
+            let connection = PickerSession::resolve(session)?;
+            let response = connection
+                .client(Instant::now() + Duration::from_secs(5))?
+                .request(
+                    ActionType::SwitchSession(SwitchSessionAction {
+                        name: target.to_owned(),
+                        ..Default::default()
+                    }),
+                    false,
+                )?;
+            // rationale: The pinned runtime disconnects this CLI connection when switching sessions.
+            // Keep other exit reasons visible instead of treating an arbitrary disconnect as success.
+            if !matches!(&response.message, Some(ipc::contract::server_to_client_msg::Message::Exit(exit))
+                if exit.exit_reason == ipc::contract::ExitReason::Disconnect as i32)
+            {
+                ipc::output(response)?;
+            }
         }
     }
     Ok(())
 }
 pub fn preview_session(session: &str) -> Result<()> {
-    let mut tabs = snapshot(session, "tabs")?;
-    let panes = snapshot(session, "panes")?;
+    let connection = PickerSession::resolve(session)?;
+    let mut tabs = connection.tabs()?;
+    let panes = connection.panes(false)?;
     tabs.sort_by_key(|t| t["position"].as_u64());
     for tab in tabs {
         println!(
