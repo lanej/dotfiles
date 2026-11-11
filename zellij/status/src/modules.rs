@@ -107,7 +107,7 @@ pub(crate) fn right_side(
             .as_deref()
             .is_some_and(|loc| loc.starts_with("from a terminal, over SSH"));
         let ascii = mode.capabilities.arrow_fonts;
-        let host = plain(&view.host);
+        let host = clipped(&plain(&view.host), 20);
         let host = if remote && !host.is_empty() {
             format!("{} {host}", if ascii { "SSH" } else { "" })
         } else {
@@ -138,7 +138,8 @@ pub(crate) fn right_side(
         let choices = [
             ([full.as_str(), clock.as_str(), host.as_str()], generous),
             ([short.as_str(), clock.as_str(), host.as_str()], generous),
-            ([short.as_str(), "", host.as_str()], compact),
+            ([short.as_str(), "", host.as_str()], generous),
+            ([short.as_str(), "", host_only], compact),
             (["", "", host_only], compact),
             ([short.as_str(), "", ""], compact),
         ];
@@ -228,5 +229,17 @@ mod tests {
                     .all(|(s, _, _)| !s.chars().any(char::is_control)));
             }
         }
+    }
+
+    #[test]
+    fn a_long_local_hostname_leaves_room_for_the_other_tabs() {
+        let mode = ModeInfo::default();
+        let view = StatusView {
+            host: "iad20-fj923-6e82d2dd-e876-49ef-9c4d-8400bb225283".into(),
+            clock: "12:34".into(),
+            ..Default::default()
+        };
+        let bar = right_side(&view, &mode, "!2 ●2", None, 120, 97, 39);
+        assert_eq!(bar.spans.into_iter().map(|s| s.0).collect::<String>(), " !2 ●2 ");
     }
 }

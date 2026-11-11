@@ -57,6 +57,7 @@ def main():
         shell_config.unlink()
         shell_config.write_text(configured + "\nPS1=" + shlex.quote(PROMPT.decode()) + "\n"
                                 '_title_test_prompt_done() {\n'
+                                '  print -r -- "$PWD" >| "$HOME/prompt-$ZELLIJ_PANE_ID"\n'
                                 '  [[ -z "$TITLE_PROOF" ]] || touch "$TITLE_PROOF"\n'
                                 '}\nadd-zsh-hook precmd _title_test_prompt_done\n')
         # Only picker selection is simulated. The installed key binding, zz,
@@ -92,21 +93,32 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             def title():
                 return next(tab["name"] for tab in terminal.tabs() if tab["tab_id"] == tab_id)
 
+            def prompt_in(pane, directory):
+                marker = home / f"prompt-{pane}"
+                return marker.exists() and marker.read_text().rstrip("\n") == str(directory)
+
             terminal.send(("cd " + shlex.quote(str(selection.parent)) + "\r").encode())
             terminal.until("cd adds the directory and branch", lambda: terminal.terminals()[0]["title"] == "project  main" and title() == "home")
             terminal.send(b"git switch -c topic\r")
             terminal.until("the prompt notices branch changes", lambda: terminal.terminals()[0]["title"] == "project  topic" and title() == "home")
+            original = terminal.terminals()[0]["id"]
             terminal.send(b"\x02")
             terminal.until("Ctrl-B updates the pane after selecting a directory", lambda:
-                           terminal.terminals()[0]["title"] == "child  topic" and title() == "home")
-            original = terminal.terminals()[0]["id"]
+                           prompt_in(original, selection) and terminal.terminals()[0]["title"] == "child  topic"
+                           and title() == "home")
+            # Arm the command at the original prompt. Its cd runs only after the
+            # new split has focus, independently of ZLE startup and resize timing.
+            terminal.send(b'touch "$HOME/waiting"; read -r go; cd "$TITLE_SELECTION/.."; '
+                          b'TITLE_PROOF="$HOME/inactive-done"\r')
+            terminal.until("the original shell is waiting", (home / "waiting").exists)
             terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", shell)
             terminal.until("a new active shell keeps the shared automatic title", lambda:
-                           len(terminal.terminals()) == 2 and title() == "home")
+                           any(p["id"] != original and p["is_focused"] and prompt_in(p["id"], home)
+                               for p in terminal.terminals()) and title() == "home")
             proof = home / "inactive-done"
-            terminal.action("write-chars", "--pane-id", str(original),
-                            "cd " + shlex.quote(str(selection.parent)) + "; TITLE_PROOF=" + shlex.quote(str(proof)) + "\r")
+            terminal.action("write", "--pane-id", f"terminal_{original}", "13")
             terminal.until("the inactive shell finishes its directory change", proof.exists)
+            assert prompt_in(original, selection.parent)
             assert title() == "home", "An inactive split stole the tab title"
             terminal.action("rename-tab", "--tab-id", str(tab_id), "Review")
             terminal.send(("cd " + shlex.quote(str(selection)) + "; TITLE_PROOF=" + shlex.quote(str(home / "manual-done")) + "\r").encode())
