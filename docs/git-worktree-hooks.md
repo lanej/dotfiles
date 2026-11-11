@@ -28,7 +28,7 @@ git-worktree-hooks = false
 
 Disabling the tool stops future installation and does not uninstall an active runtime. To return to system Git, remove `~/.local/bin/git` only after confirming it is the installer-owned symlink into `~/.local/opt/git-worktree-hooks/`, then refresh the shell's command cache.
 
-`make base` links configuration without installing or downloading Git. `make install` performs the runtime installation. Register each repository explicitly with `git-worktree-policy install`; see [policy configuration](git-worktree-policy.md) for optional repository and global budgets. Installing the runtime does not install repository hooks or choose limits.
+`make base` links configuration without installing or downloading Git. `make install` performs the runtime installation. Shared Git configuration enables [global worktree tracking](git-worktree-policy.md#global-tracking) through named hooks; no repository hook installation is needed. Existing untouched repositories require an explicit `git-worktree-policy refresh` to seed the registry. Limits remain optional and disabled by default.
 
 For an offline or custom package, keep the `.tar.gz` archive and adjacent `.tar.gz.sha256` file together and supply the archive explicitly:
 

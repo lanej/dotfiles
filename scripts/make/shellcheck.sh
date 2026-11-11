@@ -20,5 +20,6 @@ shellcheck -x \
     "$dotfiles/bin/fix-ssh" \
     "$dotfiles/bin/fzf-path-preview" \
     "$dotfiles/bin/git-ssh" \
+    "$dotfiles/bin/git-worktree-policy-hook" \
     "$dotfiles/bin/dotfiles-fzf" \
     "$dotfiles/bin/sync-codex-mcp-servers"

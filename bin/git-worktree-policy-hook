@@ -1,0 +1,12 @@
+#!/bin/sh
+if command -v python3 >/dev/null 2>&1; then
+    python3 "$HOME/.local/bin/git-worktree-policy" observe "$@"
+    status=$?
+else
+    printf '%s\n' 'git-worktree-policy: Python 3 is unavailable; run make bootstrap to enable tracking' >&2
+    status=1
+fi
+case "$1:$2" in
+    pre-worktree:add) exit "$status" ;;
+    *) exit 0 ;;
+esac

@@ -283,21 +283,27 @@ def install():
     print("Installed repository hooks; configure a cap with git config --local worktree.limit 4")
 
 
+def observe(name, arguments):
+    if name in ("pre-worktree", "post-worktree") and len(arguments) != 4:
+        raise RuntimeError(f"{name} expects event, id, old path, new path")
+    block = name == "pre-worktree" and arguments[0] == "add"
+    if name == "pre-worktree" and not block:
+        return 0
+    try:
+        return check_capacity(reconcile(), block)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"git-worktree-policy: {error}", file=sys.stderr)
+        return 1 if block else 0
+
+
 def hook(name, arguments):
     original = common_dir() / "hooks" / (name + ".worktree-policy-original")
     existing_status = 0
     if original.is_file() and os.access(original, os.X_OK):
         existing_status = subprocess.run([str(original), *arguments]).returncode
-    if name in ("pre-worktree", "post-worktree") and len(arguments) != 4:
-        raise RuntimeError(f"{name} expects event, id, old path, new path")
-    block = name == "pre-worktree" and arguments[0] == "add"
-    if name == "pre-worktree" and (existing_status or not block):
+    if name == "pre-worktree" and existing_status:
         return existing_status
-    try:
-        status = check_capacity(reconcile(), block)
-    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
-        print(f"git-worktree-policy: {error}", file=sys.stderr)
-        status = 1 if block else 0
+    status = observe(name, arguments)
     return existing_status or status
 
 
@@ -315,9 +321,11 @@ def main():
     configure.add_argument("--global", action="store_true", required=True, dest="global_scope")
     configure.add_argument("--max-bytes", help="bytes or size such as 2GiB; 'off' disables")
     configure.add_argument("--max-worktrees", help="nonnegative count; 'off' disables")
-    hook_parser = sub.add_parser("hook", help="dispatch an existing hook and apply policy")
-    hook_parser.add_argument("name", choices=HOOKS)
-    hook_parser.add_argument("arguments", nargs=argparse.REMAINDER)
+    for command, description in (("hook", "dispatch an existing hook and apply policy"),
+                                 ("observe", "handle a configured Git hook without chaining repository hooks")):
+        hook_parser = sub.add_parser(command, help=description)
+        hook_parser.add_argument("name", choices=HOOKS)
+        hook_parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         if args.command == "status":
@@ -343,6 +351,8 @@ def main():
             return 0
         if args.command == "hook":
             return hook(args.name, args.arguments)
+        if args.command == "observe":
+            return observe(args.name, args.arguments)
         state = reconcile()
         if args.command == "refresh":
             print(json.dumps(state, ensure_ascii=True, indent=2))

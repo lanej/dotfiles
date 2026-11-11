@@ -185,3 +185,13 @@
 
 [include]
 	path = ~/.config/dotfiles/theme/delta.gitconfig
+
+[hook "worktree-policy-pre"]
+	event = pre-worktree
+	command = ~/.local/bin/git-worktree-policy-hook pre-worktree
+[hook "worktree-policy-post"]
+	event = post-worktree
+	command = ~/.local/bin/git-worktree-policy-hook post-worktree
+[hook "worktree-policy-checkout"]
+	event = post-checkout
+	command = ~/.local/bin/git-worktree-policy-hook post-checkout

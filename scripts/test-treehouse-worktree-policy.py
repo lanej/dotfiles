@@ -33,8 +33,12 @@ def main():
         env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"),
                    XDG_STATE_HOME=str(home / ".local/state"),
                    PATH=str(git_binary.parent) + os.pathsep + os.environ["PATH"],
-                   GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
+                   GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(ROOT / "git/gitconfig"),
                    GIT_TERMINAL_PROMPT="0", TREEHOUSE_NO_UPDATE_CHECK="1")
+
+        (home / ".local/bin").mkdir(parents=True)
+        (home / ".local/bin/git-worktree-policy").symlink_to(POLICY)
+        (home / ".local/bin/git-worktree-policy-hook").symlink_to(ROOT / "bin/git-worktree-policy-hook")
 
         def run(*argv, cwd=repo, check=True):
             result = subprocess.run([str(arg) for arg in argv], cwd=cwd, env=env,
@@ -61,12 +65,27 @@ def main():
         (repo / "tracked.txt").write_text("preserved checkout data\n")
         git("add", ".gitignore", "tracked.txt")
         git("commit", "-m", "initial")
-        run(POLICY, "install")
+        custom_hooks = root / "existing hooks"
+        custom_hooks.mkdir()
+        hook_log = root / "existing-hook-events"
+        hook = custom_hooks / "post-checkout"
+        hook.write_text(f'#!/bin/sh\nprintf "checkout\\n" >> "{hook_log}"\n')
+        hook.chmod(0o755)
+        git("config", "core.hooksPath", str(custom_hooks))
+        before_hooks = hook.read_bytes()
+        git("checkout", "main")
+        assert hook_log.read_text().splitlines() == ["checkout"]
         git("config", "worktree.limit", "2")
         first = json.loads(get("feature/first").stdout)
         first_path = Path(first["path"])
         external = root / "external checkout"
+        previous_events = len(hook_log.read_text().splitlines())
         git("worktree", "add", "--detach", external)
+        inventory_file = repo / ".git/worktree-policy/inventory.json"
+        assert json.loads(inventory_file.read_text())["linked_count"] == 2
+        assert len(hook_log.read_text().splitlines()) == previous_events + 1
+        assert hook.read_bytes() == before_hooks
+        assert not (repo / ".git/hooks/post-checkout").exists()
         assert status()["linked_count"] == 2
         denied = get("feature/blocked", check=False)
         assert denied.returncode != 0 and "refusing add" in denied.stderr, denied
