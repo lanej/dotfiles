@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
+import argparse
 import json
 import os
 import shutil
@@ -9,8 +10,139 @@ import sys
 import tempfile
 
 
+def test_compatibility(root):
+    with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-compatibility-") as temporary:
+        home = Path(temporary)
+        env = {**os.environ, "HOME": str(home)}
+        for key in ("SSL_CERT_FILE", "SSL_CERT_DIR"):
+            env.pop(key, None)
+
+        def run(script, *, extra=None, success=True):
+            result = subprocess.run(
+                ["/bin/bash", "-c", 'source "$1"\n' + script, "bootstrap-test", str(root / "bootstrap.sh")],
+                env={**env, **(extra or {})}, capture_output=True, text=True, timeout=30,
+            )
+            assert (result.returncode == 0) == success, result.stdout + result.stderr
+            return result
+
+        python = home / "python3"
+        python.write_text(f"#!{sys.executable}\n" + '''
+import os
+from pathlib import Path
+import ssl
+import sys
+defaults = ssl.get_default_verify_paths()
+ssl.get_default_verify_paths = lambda: defaults._replace(cafile=os.environ.get("TEST_DEFAULT_CA"))
+Path.is_file = lambda self: str(self) == os.environ.get("TEST_SYSTEM_CA")
+exec(sys.stdin.read())
+''')
+        python.chmod(0o755)
+        trust = '''
+os=linux
+configure_python_ca_trust || exit
+printf '%s\\n' "${SSL_CERT_FILE-unset}" "${SSL_CERT_DIR-unset}"
+'''
+        for bundle in ("/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/certs/ca-certificates.crt"):
+            result = run(trust, extra={"PATH": f"{home}:{env['PATH']}", "TEST_SYSTEM_CA": bundle})
+            assert result.stdout.splitlines() == [bundle, "unset"], result.stdout
+        result = run(trust, extra={"PATH": f"{home}:{env['PATH']}", "TEST_DEFAULT_CA": "/existing/ca.pem"})
+        assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
+        for setting, value in (("SSL_CERT_FILE", "/custom/ca.pem"), ("SSL_CERT_DIR", "/custom/certs")):
+            result = run(trust, extra={setting: value})
+            assert result.stdout.splitlines() == [
+                value if setting == "SSL_CERT_FILE" else "unset",
+                value if setting == "SSL_CERT_DIR" else "unset",
+            ], result.stdout
+        result = run(trust, extra={"PATH": f"{home}:{env['PATH']}"})
+        assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
+        print("PASS Linux CA discovery preserves existing and explicit trust stores")
+
+        npm_bin = home / "npm-bin"
+        cargo_bin = home / ".cargo/bin"
+        npm_bin.mkdir()
+        cargo_bin.mkdir(parents=True)
+        wrapper = npm_bin / "stylua"
+        wrapper.write_text("#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n")
+        wrapper.chmod(0o755)
+        installer_fixtures = '''
+os=linux
+package_semver() { return 1; }
+npm() {
+    printf 'npm %s\\n' "$*" >> "$HOME/events"
+    case "$*" in
+        "list -g --depth=0 @johnnymorganz/stylua-bin") test -f "$HOME/npm-bin/stylua" ;;
+        "uninstall -g @johnnymorganz/stylua-bin") rm "$HOME/npm-bin/stylua" ;;
+        *) return 1 ;;
+    esac
+}
+cargo() {
+    printf 'cargo %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_CARGO_FAIL:-0}" != 1 ] || return 1
+    printf '#!/bin/sh\\necho "stylua 2.6.0"\\n' > "$HOME/.cargo/bin/stylua"
+    chmod +x "$HOME/.cargo/bin/stylua"
+}
+'''
+        path = {"PATH": f"{npm_bin}:{cargo_bin}:{env['PATH']}"}
+        run(installer_fixtures + "\ninstall_package_version stylua 2.6.0", extra={**path, "TEST_CARGO_FAIL": "1"}, success=False)
+        assert wrapper.exists(), "Failed source build removed the existing wrapper"
+        result = run(installer_fixtures + "\ninstall_package_version stylua 2.6.0\nstylua --version", extra=path)
+        assert result.stdout.strip().endswith("stylua 2.6.0"), result.stdout
+        assert not wrapper.exists()
+        events = (home / "events").read_text()
+        assert "cargo install stylua --locked --version 2.6.0 --features lua54,luajit,luau" in events
+        previous = events
+        run(installer_fixtures + "\ninstall_package_version stylua 2.6.0", extra=path)
+        assert (home / "events").read_text() == previous, "Rerun reinstalled working StyLua"
+        result = run('''
+os=macos
+install_package_version() { test "$*" = "node 24"; }
+npm() { printf '%s\\n' "$*"; }
+install_stylua_from_release 2.6.0
+''')
+        assert result.stdout.strip() == "install -g @johnnymorganz/stylua-bin@2.6.0"
+        print("PASS source-built Linux StyLua replaces the incompatible npm wrapper; macOS retains npm")
+
+        luacheck_fixtures = '''
+command() {
+    case "$*" in
+        "-v brew"|"-v apt-get"|"-v pacman") return 1 ;;
+        "-v dnf") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+sudo() {
+    printf '%s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_DNF_FAIL:-0}" != 1 ]
+}
+luarocks() {
+    printf 'luarocks %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_LUAROCKS_FAIL:-0}" != 1 ] || return 1
+    mkdir -p "$HOME/.local/bin"
+    printf '#!/bin/sh\\necho "Luacheck: 1.2.0"\\n' > "$HOME/.local/bin/luacheck"
+    chmod +x "$HOME/.local/bin/luacheck"
+}
+install_luacheck_package
+'''
+        run(luacheck_fixtures, extra={"TEST_DNF_FAIL": "1"}, success=False)
+        assert not (home / ".local/bin/luacheck").exists()
+        run(luacheck_fixtures, extra={"TEST_LUAROCKS_FAIL": "1"}, success=False)
+        assert not (home / ".local/bin/luacheck").exists()
+        result = run(luacheck_fixtures)
+        assert result.stdout.strip() == "Luacheck: 1.2.0"
+        events = (home / "events").read_text()
+        assert "dnf install -y luarocks lua-devel" in events
+        assert f"luarocks install --tree {home}/.local luacheck" in events
+        print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
+
+
 def main():
     root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--compatibility-only", action="store_true")
+    options = parser.parse_args()
+    test_compatibility(root)
+    if options.compatibility_only:
+        return
     with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-") as temporary:
         home = Path(temporary)
         router_binary = home / ".codex/bedrock-router/bedrock-router"
