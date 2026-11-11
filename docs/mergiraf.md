@@ -1,20 +1,20 @@
 # Mergiraf trial
 
-[Mergiraf](https://mergiraf.org/) adds syntax-aware merging to Git. This trial installs it only when selected and registers a driver without activating it globally. Activate selected file types per repository; ordinary Git merging remains the default elsewhere.
+[Mergiraf](https://mergiraf.org/) adds syntax-aware merging to Git. The `shell` set selects it by default; installation activates the driver globally for the installed version's supported file types. The minimal `base` set does not select it, and machines can opt out with `tools.mergiraf = false`.
 
 ## Install and activate
 
-Add `mergiraf = true` under the existing `[tools]` table in your machine TOML (`~/.config/dotfiles/config.toml`, or the configured alternative), then run `make plan` and `make install`. The catalog requires Mergiraf 0.20.0 or newer and supplies a locked Cargo install of 0.20.0 when the package manager cannot provide a suitable version. Its dependencies are Git and Rust. No default set selects it.
+Run `make plan` and `make install` to install and activate the shell default. Machines outside the `shell` set can select it with `mergiraf = true` under the existing `[tools]` table in their machine TOML (`~/.config/dotfiles/config.toml`, or the configured alternative). The catalog requires Mergiraf 0.20.0 or newer and supplies a locked Cargo install of 0.20.0 when the package manager cannot provide a suitable version. Its dependencies are Git and Rust.
 
-The managed Git config registers `merge.mergiraf.driver`; registration alone does not invoke the executable. After installation, add selected patterns to the repository's `.git/info/attributes` (use `git rev-parse --git-path info/attributes` to locate it in a worktree):
+Configuration runs `mergiraf languages --gitattributes` and combines those rules with the existing diff attributes in `~/.config/dotfiles/mergiraf/attributes`. Git reads the result through the managed `~/.gitattributes` link. No per-repository setup is needed. The installed 0.20.0 binary advertises Markdown as well as TOML, JSON, Lua, and other languages; Zsh is not included. The generated rules follow the installed binary rather than a separately maintained extension list.
+
+Repository `.gitattributes` and `.git/info/attributes` retain precedence over these global defaults. To use ordinary text merging for one pattern in a repository, add:
 
 ```gitattributes
-*.toml merge=mergiraf
-*.json merge=mergiraf
-*.lua merge=mergiraf
+*.toml merge=text
 ```
 
-Preserve existing attribute rules. This local activation is shared by worktrees of the repository and does not change collaborators' configuration. A tracked `.gitattributes` rule would require collaborators to install and configure the driver too, so keep activation local during the trial. Start with these formats; Markdown and Zsh are not listed as supported languages.
+Use `git rev-parse --git-path info/attributes` to locate the local attributes file in a worktree, and preserve existing rules. Global activation does not change collaborators' configuration.
 
 Use `diff3` for trial merges and rebases:
 
@@ -34,7 +34,7 @@ git merge --abort
 mergiraf=0 git merge other-branch
 ```
 
-For a rebase, use `git rebase --abort` and `mergiraf=0 git rebase ...`. Remove only the trial's attribute rules to stop using the driver permanently; disabling installation does not remove existing rules or uninstall the binary.
+For a rebase, use `git rebase --abort` and `mergiraf=0 git rebase ...`. To disable activation permanently, set `mergiraf = false` under `[tools]` and run `make configure`; Git setup restores the base attributes link. This does not uninstall the binary. Configuration never installs software: selecting Mergiraf before installing its executable produces a missing-dependency error; run `make install` to install and activate it together.
 
 ## Concrete examples
 
@@ -44,7 +44,7 @@ These are synthetic examples shaped like this repository's tool configuration an
 python3 scripts/test-mergiraf.py
 ```
 
-The script creates disposable repositories, reads the driver from `git/gitconfig`, and prints ordinary Git and Mergiraf results. It checks the expected combinations and retained disagreements. CI runs the same comparison on macOS and Linux.
+The script creates disposable repositories and a temporary home, runs the real `make mergiraf-config` target, reads the driver and attributes location from `git/gitconfig`, and prints ordinary Git and Mergiraf results. It checks the expected combinations, retained disagreements, rerun stability, repository overrides, and the escape hatch. CI runs the same comparison on macOS and Linux.
 
 | Concurrent change | Ordinary Git | Mergiraf |
 | --- | --- | --- |
