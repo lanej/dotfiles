@@ -95,6 +95,22 @@ mod macos {
     // These values borrow the power-source snapshot, which outlives every lookup.
     struct Description(Ref);
     impl Description {
+        fn reading(&self) -> Option<BatteryReading> {
+            if self.string(c"Type").as_deref() != Some("InternalBattery")
+                || self.boolean(c"Is Present") != Some(true)
+            {
+                return None;
+            }
+            reading(
+                self.number(c"Current Capacity")?,
+                self.number(c"Max Capacity")?,
+                self.boolean(c"Is Charging"),
+                self.string(c"Power Source State").as_deref(),
+                self.number(c"Time to Empty"),
+                self.number(c"Time to Full Charge"),
+            )
+        }
+
         fn value(&self, key: &CStr) -> Option<Ref> {
             // SAFETY: key is NUL terminated UTF-8; the dictionary is owned by the snapshot.
             unsafe {
@@ -160,19 +176,7 @@ mod macos {
                     return None;
                 }
                 let description = Description(description);
-                if description.string(c"Type").as_deref() != Some("InternalBattery")
-                    || description.boolean(c"Is Present") != Some(true)
-                {
-                    return None;
-                }
-                reading(
-                    description.number(c"Current Capacity")?,
-                    description.number(c"Max Capacity")?,
-                    description.boolean(c"Is Charging"),
-                    description.string(c"Power Source State").as_deref(),
-                    description.number(c"Time to Empty"),
-                    description.number(c"Time to Full Charge"),
-                )
+                description.reading()
             })
         }
     }
@@ -211,6 +215,97 @@ mod macos {
     #[cfg(test)]
     mod tests {
         use super::*;
+        #[test]
+        fn reads_typed_native_dictionary_and_rejects_non_battery_or_invalid_data() {
+            extern "C" {
+                fn CFNumberCreate(allocator: Ref, kind: isize, value: *const i64) -> Ref;
+                fn CFDictionaryCreate(
+                    allocator: Ref,
+                    keys: *const Ref,
+                    values: *const Ref,
+                    count: isize,
+                    key_callbacks: *const c_void,
+                    value_callbacks: *const c_void,
+                ) -> Ref;
+                static kCFTypeDictionaryKeyCallBacks: c_void;
+                static kCFBooleanTrue: Ref;
+                static kCFBooleanFalse: Ref;
+            }
+            // SAFETY: Create results remain owned until after every dictionary lookup;
+            // CF type key callbacks retain/compare keys, and value storage outlives the dictionary.
+            unsafe {
+                let string = |text: &CStr| {
+                    Owned::new(CFStringCreateWithCString(
+                        ptr::null(),
+                        text.as_ptr(),
+                        0x08000100,
+                    ))
+                    .unwrap()
+                };
+                let number =
+                    |value: i64| Owned::new(CFNumberCreate(ptr::null(), 4, &value)).unwrap();
+                let internal = string(c"InternalBattery");
+                let peripheral = string(c"UPS");
+                let ac = string(c"AC Power");
+                let current = number(87);
+                let maximum = number(100);
+                let minutes = number(31);
+                let keys = [
+                    c"Type",
+                    c"Is Present",
+                    c"Current Capacity",
+                    c"Max Capacity",
+                    c"Is Charging",
+                    c"Power Source State",
+                    c"Time to Full Charge",
+                ]
+                .map(string);
+                let key_refs = keys.each_ref().map(|key| key.0);
+                let valid = [
+                    internal.0,
+                    kCFBooleanTrue,
+                    current.0,
+                    maximum.0,
+                    kCFBooleanTrue,
+                    ac.0,
+                    minutes.0,
+                ];
+                let read = |values: &[Ref]| {
+                    let dictionary = Owned::new(CFDictionaryCreate(
+                        ptr::null(),
+                        key_refs.as_ptr(),
+                        values.as_ptr(),
+                        values.len() as isize,
+                        &kCFTypeDictionaryKeyCallBacks,
+                        ptr::null(),
+                    ))
+                    .unwrap();
+                    Description(dictionary.0).reading()
+                };
+                assert_eq!(
+                    read(&valid),
+                    Some(BatteryReading {
+                        percent: 87,
+                        state: PowerState::Charging,
+                        remaining_minutes: Some(31),
+                    })
+                );
+                assert_eq!(read(&valid[..2]), None);
+                for (index, invalid) in [
+                    (0, peripheral.0),
+                    (0, current.0),
+                    (1, kCFBooleanFalse),
+                    (1, current.0),
+                    (2, internal.0),
+                    (3, kCFBooleanTrue),
+                ] {
+                    let mut values = valid;
+                    values[index] = invalid;
+                    assert_eq!(read(&values), None);
+                }
+            }
+        }
+
         #[test]
         fn reads_capacity_charge_transitions_and_unknown_estimates() {
             for (charging, source, state, minutes) in [
