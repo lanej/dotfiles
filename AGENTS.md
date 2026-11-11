@@ -87,4 +87,4 @@ New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by d
 
 ## Tech Radar
 
-Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Edit the radar directly using the entry conventions documented there.
+Tool/tech decisions are maintained in [`docs/radar.yaml`](docs/radar.yaml) (four-ring model: Adopt/Trial/Assess/Hold). Run `npm --prefix website run radar` after changing the registry and commit the generated `docs/radar.md` with it. The website consumes the same registry; do not edit generated radar Markdown or add icon assignments to the component.

@@ -47,6 +47,11 @@
       "name": "nord-preset",
       "path": "/dotfiles/design-system/nord/",
       "ready": "main h1"
+    },
+    {
+      "name": "radar",
+      "path": "/dotfiles/reference/radar/",
+      "ready": ".tech-radar"
     }
   ],
   "viewports": [
