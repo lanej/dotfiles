@@ -93,15 +93,15 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
                 return next(tab["name"] for tab in terminal.tabs() if tab["tab_id"] == tab_id)
 
             terminal.send(("cd " + shlex.quote(str(selection.parent)) + "\r").encode())
-            terminal.until("cd adds the directory and branch", lambda: title() == "project [main]")
+            terminal.until("cd adds the directory and branch", lambda: terminal.terminals()[0]["title"] == "project  main" and title() == "home")
             terminal.send(b"git switch -c topic\r")
-            terminal.until("the prompt notices branch changes", lambda: title() == "project [topic]")
+            terminal.until("the prompt notices branch changes", lambda: terminal.terminals()[0]["title"] == "project  topic" and title() == "home")
             terminal.send(b"\x02")
-            terminal.until("Ctrl-B renames the tab after selecting a directory", lambda:
-                           title() == "child [topic]")
+            terminal.until("Ctrl-B updates the pane after selecting a directory", lambda:
+                           terminal.terminals()[0]["title"] == "child  topic" and title() == "home")
             original = terminal.terminals()[0]["id"]
             terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", shell)
-            terminal.until("a new active shell takes over the shared automatic title", lambda:
+            terminal.until("a new active shell keeps the shared automatic title", lambda:
                            len(terminal.terminals()) == 2 and title() == "home")
             proof = home / "inactive-done"
             terminal.action("write-chars", "--pane-id", str(original),
@@ -112,8 +112,8 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             terminal.send(("cd " + shlex.quote(str(selection)) + "; TITLE_PROOF=" + shlex.quote(str(home / "manual-done")) + "\r").encode())
             terminal.until("the explicitly named tab's shell finishes cd", (home / "manual-done").exists)
             assert title() == "Review", "An automatic title replaced the explicit name"
-            print("PASS: installed cd/Ctrl-B hooks name tabs for directory and branch; "
-                  "active splits share ownership and preserve explicit names.")
+            print("PASS: installed cd/Ctrl-B hooks update pane directory and branch; "
+                  "tabs retain ownership and preserve explicit names.")
         finally:
             subprocess.run([binary, "kill-session", name], env=env,
                            capture_output=True, timeout=5)

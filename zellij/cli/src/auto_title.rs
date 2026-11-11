@@ -1,120 +1,234 @@
 use crate::{titles, util::*};
 use anyhow::{Context, Result};
+use lane_zellij_protocol::titles::{glyphs::BRANCH, pane_label};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-fn snapshot(session: &str, pane: u64, deadline: Instant) -> Result<Option<(u64, String)>> {
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct Tab {
+    name: String,
+    // Zellij allocates terminal IDs monotonically. Include hidden live providers,
+    // but only an eligible tiled pane can offer a new name.
+    panes: BTreeMap<u64, Option<String>>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct Record {
+    identity: Value,
+    title: String,
+    #[serde(default)]
+    providers: BTreeSet<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pending_from: Option<String>,
+}
+
+fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64>) {
+    // Records from the bracket-style shell hook contain a title but no provider IDs.
+    // Only a proven automatic record may migrate a literal bracket suffix.
+    if previous.providers.is_empty() {
+        if let Some((project, branch)) = previous
+            .title
+            .strip_suffix(']')
+            .and_then(|s| s.rsplit_once(" ["))
+        {
+            let title = format!("{project} {BRANCH} {branch}");
+            let providers: BTreeSet<_> = tab
+                .panes
+                .iter()
+                .filter_map(|(id, name)| {
+                    let name = name.as_deref()?;
+                    (name == previous.title || name == title).then_some(*id)
+                })
+                .collect();
+            if !providers.is_empty() {
+                return (title, providers);
+            }
+        }
+    }
+    let still_owned = !previous.title.is_empty()
+        && tab.panes.iter().any(|(id, name)| {
+            previous.providers.contains(id) || name.as_deref() == Some(previous.title.as_str())
+        });
+    let title = if still_owned {
+        previous.title.as_str()
+    } else {
+        tab.panes
+            .values()
+            .find_map(Option::as_deref)
+            .unwrap_or(fallback)
+    };
+    let providers = tab
+        .panes
+        .iter()
+        .filter_map(|(id, name)| {
+            (name.as_deref() == Some(title) || (still_owned && previous.providers.contains(id)))
+                .then_some(*id)
+        })
+        .collect();
+    (title.to_owned(), providers)
+}
+
+fn snapshot(
+    session: &str,
+    offer: Option<(u64, &str)>,
+    deadline: Instant,
+) -> Result<BTreeMap<u64, Tab>> {
     let panes: Vec<Value> = serde_json::from_str(&zellij(
         session,
         &["action", "list-panes", "--json"],
         deadline,
     )?)?;
-    panes
-        .iter()
-        .find(|p| {
-            p["id"] == pane
-                && !flag(p, "is_plugin")
-                && flag(p, "is_focused")
-                && !flag(p, "is_suppressed")
-                && !flag(p, "exited")
-        })
-        .map(|p| Ok((number(p, "tab_id")?, text(p, "tab_name")?.to_owned())))
-        .transpose()
-}
-pub fn main() -> Result<()> {
-    let session = session()?;
-    let pane = pane_id()?;
-    let mut deadline = Instant::now() + Duration::from_millis(800);
-    if crate::context::provider()? != "zellij" {
-        return Ok(());
-    }
-    let location = titles::location_before(deadline).map_err(anyhow::Error::msg)?;
-    let identity = titles::session_identity(&session, &location).map_err(anyhow::Error::msg)?;
-    let directory = state("zellij-auto-titles")?;
-    private_dir(&directory)?;
-    let key = hash(&session);
-    let _lock = Lock::acquire(&directory.join(format!("{key}.lock")), Instant::now())?;
-    let Some((id, name)) = snapshot(&session, pane, deadline)? else {
-        return Ok(());
-    };
-    let path = directory.join(format!("{key}-{id}.json"));
-    let previous = titles::record_title(&path, &identity);
-    let default = name.is_empty()
-        || name
-            .strip_prefix("Tab #")
-            .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
-    if !default && Some(name.as_str()) != previous.as_deref() {
-        return Ok(());
-    }
-    let cwd = env::var_os("PWD")
-        .map(PathBuf::from)
-        .unwrap_or(env::current_dir()?);
-    let mut title = cwd
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or("/".into());
-    if let Ok(branch) = run("git", &["rev-parse", "--abbrev-ref", "HEAD"], deadline) {
-        if !branch.trim().is_empty() {
-            title += &format!(" [{}]", branch.trim());
+    let mut tabs = BTreeMap::new();
+    for p in panes {
+        let tab = tabs.entry(number(&p, "tab_id")?).or_insert_with(|| Tab {
+            name: p["tab_name"].as_str().unwrap_or_default().to_owned(),
+            ..Tab::default()
+        });
+        if flag(&p, "is_plugin") || flag(&p, "exited") {
+            continue;
         }
+        let id = number(&p, "id")?;
+        let name = if flag(&p, "is_floating") || flag(&p, "is_suppressed") {
+            None
+        } else {
+            pane_label(p["title"].as_str().unwrap_or_default()).or_else(|| {
+                offer
+                    .filter(|(owner, _)| *owner == id && flag(&p, "is_focused"))
+                    .map(|(_, title)| title.to_owned())
+            })
+        };
+        tab.panes.insert(id, name);
     }
-    title = clean(&title, usize::MAX);
-    if title == name {
-        return Ok(());
-    }
-    if snapshot(&session, pane, deadline)? != Some((id, name)) {
-        return Ok(());
-    }
-    if titles::session_identity(&session, &location).map_err(anyhow::Error::msg)? != identity {
-        return Ok(());
-    }
-    if Instant::now() >= deadline {
-        return Ok(());
-    }
-    deadline = deadline.max(Instant::now() + Duration::from_millis(500));
-    zellij(
-        &session,
-        &[
-            "action",
-            "rename-tab",
-            "--tab-id",
-            &id.to_string(),
-            "--",
-            &title,
-        ],
-        deadline,
-    )?;
-    save_json(&path, &json!({"identity":identity,"title":title}))
-        .context("Cannot retain automatic title ownership")
+    Ok(tabs)
 }
 
-/// OSC emission is native; the shell only decides when its hooks should run.
-pub fn shell_title() -> Result<()> {
-    use std::io::{IsTerminal, Write};
-    if !std::io::stdout().is_terminal() {
-        return Ok(());
+pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let location = titles::location_before(deadline).map_err(anyhow::Error::msg)?;
+    let identity = titles::session_identity(session, &location).map_err(anyhow::Error::msg)?;
+    let dir = state("zellij-auto-titles")?;
+    private_dir(&dir)?;
+    let key = titles::session_key(session);
+    let _lock = Lock::acquire(&dir.join(format!("{key}.lock")), deadline)?;
+    for (id, tab) in snapshot(session, offer, deadline)? {
+        let path = dir.join(format!("{key}-{id}.json"));
+        let previous = match std::fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice::<Record>(&bytes)
+                .ok()
+                .filter(|r| r.identity == identity),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+            Err(err) => return Err(err.into()),
+        }
+        .unwrap_or_default();
+        let fallback = format!("Tab #{}", id + 1);
+        let managed =
+            tab.name == previous.title || previous.pending_from.as_ref() == Some(&tab.name);
+        if !managed && !tab.name.is_empty() && tab.name != fallback {
+            continue;
+        }
+        let empty = Record::default();
+        let (title, providers) = choose(&tab, if managed { &previous } else { &empty }, &fallback);
+        let mut record = Record {
+            identity: identity.clone(),
+            title,
+            providers,
+            pending_from: None,
+        };
+        if (record == previous && tab.name == record.title)
+            || (record.providers.is_empty() && tab.name == fallback && !path.exists())
+        {
+            continue;
+        }
+        // A manual rename, pane move or server replacement wins over a stale observation.
+        if snapshot(session, offer, deadline)?.get(&id) != Some(&tab)
+            || titles::session_identity(session, &location).map_err(anyhow::Error::msg)? != identity
+        {
+            anyhow::bail!("Tab changed while updating its automatic title");
+        }
+        if tab.name != record.title {
+            record.pending_from = Some(tab.name);
+            save_json(&path, &json!(record))?;
+            zellij(
+                session,
+                &[
+                    "action",
+                    "rename-tab",
+                    "--tab-id",
+                    &id.to_string(),
+                    "--",
+                    &record.title,
+                ],
+                deadline,
+            )?;
+            record.pending_from = None;
+        }
+        save_json(&path, &json!(record)).context("Cannot retain automatic title ownership")?;
     }
+    Ok(())
+}
+
+fn directory_title() -> Result<String> {
     let cwd = env::var_os("PWD")
         .map(PathBuf::from)
         .unwrap_or(env::current_dir()?);
-    let mut title = cwd
+    let name = cwd
         .file_name()
-        .map(|s| s.to_string_lossy().into_owned())
+        .map(|s| s.to_string_lossy())
         .unwrap_or("/".into());
+    let mut title = label(&name);
     if let Ok(branch) = run(
         "git",
         &["rev-parse", "--abbrev-ref", "HEAD"],
         Instant::now() + Duration::from_millis(500),
     ) {
         if !branch.trim().is_empty() {
-            title += &format!(" [{}]", branch.trim());
+            title.push_str(&format!(" {BRANCH} {}", label(branch.trim())));
         }
     }
-    title = title
-        .chars()
-        .map(|c| if c.is_control() { ' ' } else { c })
-        .collect();
-    write!(std::io::stdout(), "\x1b]2;{title}\x07")?;
+    Ok(title)
+}
+
+pub fn main() -> Result<()> {
+    if crate::context::provider()? == "zellij" {
+        refresh(&session()?, Some((pane_id()?, &directory_title()?)))?;
+    }
     Ok(())
+}
+
+pub fn shell_title() -> Result<()> {
+    use std::io::{IsTerminal, Write};
+    if std::io::stdout().is_terminal() {
+        write!(std::io::stdout(), "\x1b]2;{}\x07", directory_title()?)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn name_follows_its_last_provider_then_the_oldest_survivor() {
+        let mut tab = Tab::default();
+        let mut prev = Record::default();
+        for (panes, expect) in [
+            (vec![(7, "api")], "api"),
+            (vec![(2, "logs"), (7, "api"), (9, "api")], "api"),
+            (vec![(2, "logs"), (7, "editor"), (9, "api")], "api"),
+            (vec![(2, "logs"), (9, "editor")], "api"),
+            (vec![(11, "recent"), (2, "logs")], "logs"),
+            (vec![], "Tab #1"),
+        ] {
+            tab.panes = panes
+                .into_iter()
+                .map(|(id, n)| (id, Some(n.into())))
+                .collect();
+            (prev.title, prev.providers) = choose(&tab, &prev, "Tab #1");
+            assert_eq!(prev.title, expect);
+        }
+    }
 }

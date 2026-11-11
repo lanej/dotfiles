@@ -625,7 +625,7 @@ def exercise_session_keys(first, second, home, clients):
     def grant_bar(client):
         # A switching PTY still contains its earlier command-plugin consent.
         # Inspect the current screen rather than that stale output history.
-        ready = lambda: re.search(r'!\d+ ●\d+', text(client))
+        ready = lambda: re.search(r' \d+:[^\s]', text(client).split('\n', 1)[0])
         client.until('current session status consent or live bar', lambda:
                      '(y/n)' in text(client).lower() or ready())
         if '(y/n)' in text(client).lower():

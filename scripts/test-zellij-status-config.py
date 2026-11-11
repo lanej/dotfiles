@@ -109,7 +109,9 @@ else:
         result = self.run_helper("view")
         self.assertEqual(result.returncode, 0, result.stderr)
         view = json.loads(result.stdout)
-        self.assertEqual(set(view), {"session", "auto_titles", "host", "clock", "battery"})
+        self.assertEqual(set(view) - {"power"}, {"session", "auto_titles", "host", "clock", "battery"})
+        if "power" in view:
+            self.assertEqual(view["battery"], f'{view["power"]["percent"]}%')
         self.assertIsNone(view["session"])
         self.assertEqual(view["auto_titles"], {})
 

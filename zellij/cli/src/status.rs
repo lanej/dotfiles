@@ -16,6 +16,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 "{}",
                 serde_json::to_string(&view::view(Some(session))).map_err(|e| e.to_string())?
             ),
+            [command, session] if command == "refresh-view" => {
+                crate::auto_title::refresh(session, None).map_err(|e| e.to_string())?;
+                println!(
+                    "{}",
+                    serde_json::to_string(&view::view(Some(session))).map_err(|e| e.to_string())?
+                );
+            }
             [command] if command == "config" => println!(
                 "{}",
                 serde_json::to_string(&config::load()?).map_err(|e| e.to_string())?

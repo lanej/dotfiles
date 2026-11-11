@@ -449,7 +449,7 @@ test-zellij-clipboard: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
 test-zellij-status: test-zellij-helpers
-	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" attention_policy
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml"
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
 test-zellij-auto-title: zellij-helpers

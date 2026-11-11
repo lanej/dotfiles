@@ -94,15 +94,17 @@ impl Hook {
             Ok(json!({}))
         }
     }
-    fn title(&self, status: &str) -> Result<String> {
-        let format = text(&self.options, "format")?;
-        let glyph = text(&self.options["states"], status)?;
+    fn project(&self) -> Result<String> {
         let project = std::path::Path::new(text(&self.event, "cwd")?)
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
-        let project = clean(&project, usize::MAX);
-        format_title(format, &self.identity, glyph, &project)
+        Ok(clean(&project, usize::MAX))
+    }
+    fn title(&self, status: &str, project: &str) -> Result<String> {
+        let format = text(&self.options, "format")?;
+        let glyph = text(&self.options["states"], status)?;
+        format_title(format, &self.identity, glyph, project)
     }
 }
 fn truthy(v: &Value) -> bool {
@@ -295,7 +297,7 @@ pub fn claude(args: &[String]) -> Result<()> {
     } else {
         "working"
     };
-    let title = h.title(status)?;
+    let title = h.title(status, &h.project()?)?;
     h.rename(&session, pane, &title)?;
     state["title"] = json!(title);
     h.save(state)
@@ -363,6 +365,45 @@ fn reveal(
     }
     Ok(native)
 }
+fn codex_title(h: &Hook, state: &mut Value) -> Result<String> {
+    if h.kind == "SessionStart" {
+        state["ended"] = json!(false);
+        state["question"] = json!(false);
+    }
+    if h.kind == "UserPromptSubmit" {
+        state["question"] = json!(false);
+    }
+    let tool = h.event["tool_name"]
+        .as_str()
+        .unwrap_or("")
+        .rsplit('.')
+        .next()
+        .unwrap_or("");
+    if h.kind == "PreToolUse" && matches!(tool, "request_user_input" | "request_user_input_async") {
+        state["question"] = json!(true);
+    }
+    if h.kind == "PostToolUse" && matches!(tool, "request_user_input" | "request_user_input_async")
+    {
+        state["question"] = json!(false);
+    }
+    let status = if h.kind == "PermissionRequest" || flag(state, "question") {
+        "attention"
+    } else if h.kind == "Interrupt" {
+        "idle"
+    } else if h.kind == "Stop" || (h.kind == "SessionStart" && h.event["source"] != "compact") {
+        "ready"
+    } else {
+        "working"
+    };
+    // A tool may run in another checkout. Keep the project from the thread's start or resume.
+    if state["project"].as_str().is_none()
+        || (h.kind == "SessionStart" && h.event["source"] != "compact")
+    {
+        state["project"] = json!(h.project()?);
+    }
+    h.title(status, text(state, "project")?)
+}
+
 pub fn codex(args: &[String]) -> Result<()> {
     let h = Hook::load("codex", args)?;
     let _lock = Lock::acquire(&h.directory.join(".lock"), h.deadline)?;
@@ -372,20 +413,33 @@ pub fn codex(args: &[String]) -> Result<()> {
     {
         return Ok(());
     }
+    let ending = h.kind == "SessionEnd";
+    let title = if ending {
+        None
+    } else {
+        Some(codex_title(&h, &mut state)?)
+    };
     let mut target = None;
     if let Some(session) = state["session"].as_str() {
-        let attempt = (|| -> Result<Option<Value>> {
-            let candidate = h
-                .panes(session)?
-                .into_iter()
-                .find(|p| p["id"] == state["pane"]);
-            let candidate = match candidate {
-                Some(p) => reveal(&h, session, &p, &state, &h.identity)?,
-                None => None,
-            };
-            Ok(candidate.filter(|p| p["title"].as_str().is_some_and(|t| owns(t, &h.identity))))
-        })();
-        target = attempt.unwrap_or(None);
+        let candidate = h
+            .panes(session)
+            .ok()
+            .and_then(|panes| panes.into_iter().find(|p| p["id"] == state["pane"]));
+        if let Some(pane) = candidate {
+            // The saved title is sufficient to do nothing, never to authorize a rename.
+            // Clearing the override just to inspect the OSC title flashes the UUID in the frame.
+            if !ending
+                && (h.kind != "SessionStart" || h.event["source"] == "compact")
+                && state["title"].as_str() == title.as_deref()
+                && pane["title"] == state["title"]
+            {
+                return h.save(state);
+            }
+            target = reveal(&h, session, &pane, &state, &h.identity)
+                .ok()
+                .flatten()
+                .filter(|p| p["title"].as_str().is_some_and(|t| owns(t, &h.identity)));
+        }
     }
     if h.kind == "SessionEnd" {
         state["ended"] = json!(true);
@@ -405,7 +459,9 @@ pub fn codex(args: &[String]) -> Result<()> {
             }
             snapshots.insert(session.to_owned(), panes);
         }
-        if matches.is_empty() {
+        // Only a starting or resuming thread may be hidden beneath an older overlay.
+        // A tool event from outside Zellij must never flash the titles of unrelated panes.
+        if matches.is_empty() && h.kind == "SessionStart" {
             let mut revealed = std::collections::BTreeSet::new();
             for (owner, record) in records(&h)? {
                 let Some(session) = record["session"].as_str() else {
@@ -438,38 +494,11 @@ pub fn codex(args: &[String]) -> Result<()> {
             return Ok(());
         }
         let (session, pane) = matches.remove(0);
-        state = json!({"session":session,"pane":pane["id"]});
+        state["session"] = json!(session);
+        state["pane"] = pane["id"].clone();
         target = Some(pane);
     }
-    if h.kind == "SessionStart" {
-        state["ended"] = json!(false);
-        state["question"] = json!(false);
-    }
-    if h.kind == "UserPromptSubmit" {
-        state["question"] = json!(false);
-    }
-    let tool = h.event["tool_name"]
-        .as_str()
-        .unwrap_or("")
-        .rsplit('.')
-        .next()
-        .unwrap_or("");
-    if h.kind == "PreToolUse" && matches!(tool, "request_user_input" | "request_user_input_async") {
-        state["question"] = json!(true);
-    }
-    if h.kind == "PostToolUse" && tool == "request_user_input" {
-        state["question"] = json!(false);
-    }
-    let status = if h.kind == "PermissionRequest" || flag(&state, "question") {
-        "attention"
-    } else if h.kind == "Interrupt" {
-        "idle"
-    } else if h.kind == "Stop" || (h.kind == "SessionStart" && h.event["source"] != "compact") {
-        "ready"
-    } else {
-        "working"
-    };
-    let title = h.title(status)?;
+    let title = title.context("Missing Codex pane title")?;
     h.rename(
         text(&state, "session")?,
         number(&target.context("Missing target")?, "id")?,

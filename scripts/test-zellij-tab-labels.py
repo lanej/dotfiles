@@ -43,7 +43,8 @@ def main():
         workflow.preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV",
-                    "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND"):
+                    "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND",
+                    "SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
@@ -119,45 +120,66 @@ def main():
             terminal.until("split has two tiled terminals", lambda:
                            len([pane for pane in terminal.terminals() if pane["tab_id"] == eleventh]) == 2)
             hook = home / ".local/share/zsh/zellij-auto-title.zsh"
-            terminal.send(("zsh -f\rsource " + shlex.quote(str(hook)) + "\rcd "
-                           + shlex.quote(str(project)) + "\r").encode())
+            terminal.send(("cd " + shlex.quote(str(project)) + "; exec zsh -f\rsource "
+                           + shlex.quote(str(hook)) + "\r").encode())
             terminal.until("directory/git hook titles the generated split tab", lambda:
-                           active()["name"] == "project [topic]" and "9:project [topic]" in top_line())
+                           active()["name"] == "project  topic" and "9:project  topic" in top_line())
             terminal.send(b"printf '\\033]2;application work\\007'; read application_done\r")
-            terminal.until("application title overlays the managed native directory name", lambda:
-                           active()["name"] == "project [topic]" and "9:application work" in top_line())
+            terminal.until("application title appears in its pane while the tab keeps the project", lambda:
+                           any(p["title"] == "application work" for p in terminal.terminals())
+                           and active()["name"] == "project  topic" and "9:project  topic" in top_line())
             terminal.send(b"done\r")
             terminal.until("prompt restores the directory pane title", lambda:
-                           "9:project [topic]" in top_line())
+                           "9:project  topic" in top_line())
             ownership_probe = home / "ownership.json"
             terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
                            + shlex.quote(str(ownership_probe)) + "\r").encode())
             terminal.until("server ancestry identifies ownership without a socket override", lambda:
                            ownership_probe.exists() and json.loads(ownership_probe.read_text())
-                           ["auto_titles"].get(str(eleventh)) == "project [topic]")
+                           ["auto_titles"].get(str(eleventh)) == "project  topic")
             token = base64.urlsafe_b64encode(name.encode()).decode()
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
                                      capture_output=True, text=True, timeout=10)
-            assert "9: project [topic]" in preview.stdout, preview.stdout
+            assert "9: project  topic" in preview.stdout, preview.stdout
             source = next(pane for pane in terminal.terminals()
                           if pane["tab_id"] == eleventh and pane["is_focused"])
             terminal.action("rename-pane", "agent work", "--pane-id", f"terminal_{source['id']}")
             terminal.send(b"cd ..\r")
-            terminal.until("shell hook preserves explicit pane title", lambda: "9:agent work" in top_line())
-            other = Terminal(binary, env, name)
+            terminal.until("shell hook preserves explicit pane title", lambda: any(p["title"] == "agent work" for p in terminal.terminals()) and "9:project  topic" in top_line())
+
+            def frame_title_color():
+                top_line()  # Feed the latest terminal output into the screen.
+                row, left = source["pane_y"], source["pane_x"]
+                column = screen.display[row].find("agent work", left, left + source["pane_columns"])
+                return screen.buffer[row][column].fg if column >= 0 else None
+
+            terminal.until("focused pane title is purple", lambda: frame_title_color() == "b48ead")
+            terminal.prefix(b"h")
+            terminal.until("unfocused pane title stays readable in gray", lambda: frame_title_color() == "979da9")
+            terminal.prefix(b"l")
+            terminal.until("returning to the pane restores purple", lambda: frame_title_color() == "b48ead")
+            terminal.prefix(b"z")
+            terminal.until("zoom uses the expand glyph on a gold tab", lambda:
+                           "󰊓 9:" in top_line() and "FULLSCREEN" not in top_line()
+                           and screen.buffer[0][top_line().index("󰊓")].bg == "ebcb8b")
+            terminal.prefix(b"z")
+            terminal.until("restoring the split clears the zoom glyph", lambda: "󰊓" not in top_line())
+            other = Terminal(binary, {**env, "SSH_CONNECTION": "192.0.2.2 4000 192.0.2.1 22"}, name)
             other.grant_status_permissions()
+            other.until("remote client sees the SSH lock", lambda: "".encode() in other.output)
+            assert "" not in top_line(), "Remote attachment marked the local client as SSH"
             other.prefix(b"9")
             other.until("second attachment is ready", lambda: b"agent work" in other.output)
             other.prefix(b"h")
-            terminal.until("disagreeing client focus uses an unambiguous fallback", lambda:
+            terminal.until("both clients retain the same automatic tab title", lambda:
                            len([pane for pane in terminal.terminals()
                                 if pane["tab_id"] == eleventh and pane["is_focused"]]) == 2
-                           and "9:Tab #9" in top_line())
+                           and "9:project  topic" in top_line())
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
                                      capture_output=True, text=True, timeout=10)
-            assert "9: Tab #9" in preview.stdout, preview.stdout
+            assert "9: project  topic" in preview.stdout, preview.stdout
             # Use the real chooser's complete-snapshot read, including its
             # lifecycle ownership payload and attachment-readiness handling.
             # Caller stdin must not become a second, ownership-free request.
@@ -166,8 +188,19 @@ def main():
                                      input="\n", capture_output=True, text=True, timeout=10)
             assert clients.returncode == 0, f"Client snapshot read failed:\n{clients.stderr}\n{clients.stdout}"
             rows = list(json.loads(clients.stdout).values())
-            assert {row.get("tab") for row in rows} == {"9: agent work", "9: Tab #9"}, rows
+            assert {row.get("tab") for row in rows} == {"9: project  topic"}, rows
             other.prefix(b"d")
+            peer = next(p for p in terminal.terminals() if p["tab_id"] == eleventh and p["id"] != source["id"])
+            terminal.action("rename-pane", "--pane-id", f"terminal_{peer['id']}", "oldest survivor")
+            terminal.action("new-pane", "--direction", "right", "--name", "project  topic", "--", "/bin/sh")
+            duplicate = terminal.until("second project pane opens", lambda: next(
+                (p for p in terminal.terminals() if p["tab_id"] == eleventh and p["title"] == "project  topic"), None))
+            terminal.action("close-pane", "--pane-id", f"terminal_{source['id']}")
+            terminal.until("remaining project pane keeps the label", lambda:
+                           all(p["id"] != source["id"] for p in terminal.terminals()) and active()["name"] == "project  topic")
+            terminal.action("close-pane", "--pane-id", f"terminal_{duplicate['id']}")
+            terminal.until("last provider exits and oldest pane supplies the title", lambda:
+                           active()["name"] == "oldest survivor" and "9:oldest survivor" in top_line())
             terminal.prefix(b"r")
             terminal.send(b"manual work\r")
             terminal.send(("cd " + shlex.quote(str(project)) + "\r").encode())

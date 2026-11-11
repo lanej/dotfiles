@@ -83,25 +83,28 @@ def main():
                         terminal.drain()
 
             emit("SessionStart", source="startup")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
+            offset = len(terminal.output)
             emit("UserPromptSubmit")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
+            emit("PreToolUse", cwd=str(home / "another-worktree"), tool_name="functions.exec_command")
             emit("PermissionRequest")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
             emit("PostToolUse", tool_name="functions.exec_command")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
             emit("Stop")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
+            assert identity[:29].encode() not in terminal.output[offset:], "Tool events exposed the raw thread title"
             assert sibling[:29] in title(right["id"])
             terminal.until("the configured title is rendered", lambda:
-                           "󰚩 01a19d8f  | project".encode() in terminal.output)
+                           "󰚩 project".encode() in terminal.output)
             resumed = "01a19d8f-d3f3-7490-a292-603901234567"
             native = f"codex | {resumed[:29]}... | Ready | project"
             terminal.action("write-chars", "--pane-id", str(left["id"]),
                             "printf '\\033]0;%s\\007' " + shlex.quote(native) + "\r")
             terminal.drain()
             emit("SessionStart", session_id=resumed, source="resume")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
             emit("PostToolUse", tool_name="functions.exec_command")
             current = "01a19d8f-d3f4-7490-a292-603901234567"
             native = f"codex | {current[:29]}... | Ready | project"
@@ -109,10 +112,10 @@ def main():
                             "printf '\\033]0;%s\\007' " + shlex.quote(native) + "\r")
             terminal.drain()
             emit("SessionStart", session_id=current, source="resume")
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
             emit("SessionEnd")
             emit("SessionEnd", session_id=resumed)
-            assert title(left["id"]) == "󰚩 01a19d8f  | project"
+            assert title(left["id"]) == "󰚩 project"
             emit("SessionEnd", session_id=current)
             assert title(left["id"]) == native
             emit("PostToolUse", session_id=current, tool_name="functions.exec_command")
@@ -121,7 +124,7 @@ def main():
                             "printf '\\033]0;shell | project\\007'\r")
             terminal.until("the original shell title returns", lambda:
                            title(left["id"]) == "shell | project")
-            print("PASS: configured title and status glyphs render in the owning pane; "
+            print("PASS: the project title stays stable across Codex events; "
                   "thread switches and delayed events preserve ownership; shell titles return.")
         finally:
             subprocess.run([binary, "kill-session", name], env=env,

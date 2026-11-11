@@ -2,6 +2,7 @@ use crate::completion::Suggestion;
 use std::{path::PathBuf, time::Instant};
 use zellij_tile::prelude::*;
 
+#[allow(dead_code)] // The shared file also contains the shell title’s branch glyph.
 mod glyphs {
     include!("../../../design-system/generated/zellij-symbols.rs");
 }

@@ -6,37 +6,41 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 use std::{env, fs, path::PathBuf};
 
-pub fn display_tab(
-    tab: &Value,
-    panes: &[Value],
-    owned: &BTreeMap<String, String>,
-) -> Result<String> {
+pub fn display_tab(tab: &Value, panes: &[Value]) -> Result<String> {
     let id = number(tab, "tab_id")?;
     let name = text(tab, "name")?;
-    if legacy()
-        || (name != format!("Tab #{}", id + 1)
-            && owned.get(&id.to_string()).map(String::as_str) != Some(name))
-    {
-        return Ok(label(name));
-    }
-    let focused: Vec<_> = panes
-        .iter()
-        .filter(|p| {
-            p["tab_id"] == id
-                && flag(p, "is_focused")
-                && !flag(p, "is_plugin")
-                && !flag(p, "is_floating")
-                && !flag(p, "is_suppressed")
-                && !flag(p, "exited")
+    let name = if legacy() || (!name.is_empty() && name != format!("Tab #{}", id + 1)) {
+        name.to_owned()
+    } else {
+        panes
+            .iter()
+            .filter(|p| {
+                p["tab_id"] == id
+                    && !flag(p, "is_plugin")
+                    && !flag(p, "is_floating")
+                    && !flag(p, "is_suppressed")
+                    && !flag(p, "exited")
+            })
+            .filter_map(|p| {
+                Some((
+                    p["id"].as_u64()?,
+                    lane_zellij_protocol::titles::pane_label(p["title"].as_str()?)?,
+                ))
+            })
+            .min_by_key(|(pane, _)| *pane)
+            .map(|(_, name)| name)
+            .unwrap_or(format!("Tab #{}", number(tab, "position")?))
+    };
+    Ok(name
+        .chars()
+        .map(|c| {
+            if printable(c) || matches!(c, '' | '󰚩') {
+                c
+            } else {
+                ' '
+            }
         })
-        .collect();
-    if focused.len() == 1 {
-        let title = label(focused[0]["title"].as_str().unwrap_or(""));
-        if !title.is_empty() && !regex::Regex::new(r"^Pane #[0-9]+$")?.is_match(&title) {
-            return Ok(title);
-        }
-    }
-    Ok(format!("Tab #{}", number(tab, "position")?))
+        .collect())
 }
 fn session_names() -> Result<Vec<String>> {
     let output = run(
@@ -184,7 +188,6 @@ fn pick_client(session: &str) -> Result<()> {
     Ok(())
 }
 fn pick_tab(session: &str) -> Result<()> {
-    let owned = titles::owned_titles(session);
     let mut tabs = snapshot(session, "tabs")?;
     let panes = snapshot(session, "panes")?;
     let own = pane_id().ok();
@@ -209,7 +212,7 @@ fn pick_tab(session: &str) -> Result<()> {
                 "{}\t{}: {}{}{}",
                 number(tab, "tab_id")?,
                 number(tab, "position")? + u64::from(legacy()),
-                display_tab(tab, &panes, &owned)?,
+                display_tab(tab, &panes)?,
                 if Some(&tab["tab_id"]) == source.as_ref() {
                     " [current]"
                 } else {
@@ -316,7 +319,6 @@ fn swap_tab(session: &str) -> Result<()> {
     let mut order = swap_order(tabs.clone())?;
     swap.check(&order)?;
     tabs.sort_by_key(|t| t["position"].as_u64());
-    let owned = titles::owned_titles(session);
     let rows = tabs
         .iter()
         .map(|t| {
@@ -324,7 +326,7 @@ fn swap_tab(session: &str) -> Result<()> {
                 "{}\t{}: {}{}",
                 number(t, "tab_id")?,
                 number(t, "position")?,
-                display_tab(t, &panes, &owned)?,
+                display_tab(t, &panes)?,
                 if t["tab_id"] == swap.tab {
                     " [current]"
                 } else {
@@ -457,7 +459,6 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
         bail!("The original pane changed; reopen the move picker");
     }
     let token = owner_token(session, picker)?;
-    let owned = titles::owned_titles(session);
     let mut tabs = snapshot(session, "tabs")?;
     tabs.sort_by_key(|t| t["position"].as_u64());
     let mut rows = if all {
@@ -470,7 +471,7 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
             "{}\t{}: {}{}",
             number(t, "tab_id")?,
             number(t, "position")?,
-            display_tab(t, &panes, &owned)?,
+            display_tab(t, &panes)?,
             if t["tab_id"] == tab { " [current]" } else { "" }
         ));
     }
@@ -598,7 +599,6 @@ fn pick_session(session: &str) -> Result<()> {
     Ok(())
 }
 pub fn preview_session(session: &str) -> Result<()> {
-    let owned = titles::owned_titles(session);
     let mut tabs = snapshot(session, "tabs")?;
     let panes = snapshot(session, "panes")?;
     tabs.sort_by_key(|t| t["position"].as_u64());
@@ -607,7 +607,7 @@ pub fn preview_session(session: &str) -> Result<()> {
             "{} {}: {}",
             if flag(&tab, "active") { "*" } else { " " },
             number(&tab, "position")? + u64::from(legacy()),
-            display_tab(&tab, &panes, &owned)?
+            display_tab(&tab, &panes)?
         );
     }
     Ok(())

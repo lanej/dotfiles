@@ -162,7 +162,12 @@ def main():
             terminal.grant_status_permissions()
             terminal.until("first shell is ready", lambda:
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
-            terminal.until("normal status bar is ready", lambda: "!0 ●0" in top_line(terminal))
+            terminal.until("session badge and zero-based active tab are visible", lambda:
+                           first[:18] in top_line(terminal) and "0:Tab #0" in top_line(terminal)
+                           and "!?" not in top_line(terminal))
+            assert "!0" not in top_line(terminal) and "●0" not in top_line(terminal)
+            active_cell = display(terminal).buffer[0][top_line(terminal).index("0:Tab #0")]
+            assert (active_cell.fg, active_cell.bg, active_cell.bold) == ("2e3440", "b48ead", True)
             terminal.send(b"\x06")
             terminal.until("prefix waiting paints the whole bar with bold high-contrast text", lambda:
                            prefix_banner(terminal) and "waiting for next key" in top_line(terminal)
@@ -180,18 +185,18 @@ def main():
             terminal.send(b"\x1b")
             terminal.until("Escape restores the normal bar", lambda:
                            "PREFIX" not in top_line(terminal)
-                           and display(terminal).buffer[0][0].bg == "2e3440"
-                           and not display(terminal).buffer[0][0].bold)
+                           and "0:Tab #0" in top_line(terminal)
+                           and display(terminal).buffer[0][0].bg == "88c0d0")
             resize(terminal, 120)
             terminal.send(b"\x06")
             terminal.until("prefix waiting can be entered again", lambda: prefix_banner(terminal))
             terminal.send(b"\x12")
             terminal.until("a command consumes the prefix and labels the resulting mode", lambda:
                            "RESIZE" in top_line(terminal) and "PREFIX" not in top_line(terminal)
-                           and display(terminal).buffer[0][0].bg == "2e3440")
+                           and display(terminal).buffer[0][0].bg == "88c0d0")
             terminal.send(b"\r")
             terminal.until("leaving resize restores the ordinary bar", lambda:
-                           "RESIZE" not in top_line(terminal) and "!0 ●0" in top_line(terminal))
+                           "RESIZE" not in top_line(terminal) and "0:Tab #0" in top_line(terminal))
             first_pane = terminal.terminals()[0]["id"]
             first_pid = home / "first-agent-pid"
             terminal.send((shlex.join(["python3", str(program), str(first_pid)]) + "\r").encode())
