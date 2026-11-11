@@ -1,8 +1,50 @@
-use crate::util::*;
-use anyhow::{bail, Result};
+use crate::{titles, util::*};
+use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::{Duration, Instant};
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct Session {
+    pub session: String,
+    location: titles::Location,
+    pub identity: Value,
+}
+
+impl Session {
+    pub fn socket(&self) -> Result<&Path> {
+        Ok(Path::new(
+            self.identity[0]
+                .as_str()
+                .context("Missing session socket")?,
+        ))
+    }
+
+    pub fn resolve(session: &str, deadline: Instant) -> Result<Self> {
+        let location = location(deadline)?;
+        let identity = titles::session_identity(session, &location).map_err(anyhow::Error::msg)?;
+        Ok(Self {
+            session: session.to_owned(),
+            location,
+            identity,
+        })
+    }
+
+    pub fn validate(&self, session: &str) -> Result<()> {
+        anyhow::ensure!(
+            self.session == session,
+            "Session context belongs to another session"
+        );
+        anyhow::ensure!(
+            titles::session_identity(session, &self.location).map_err(anyhow::Error::msg)?
+                == self.identity,
+            "Session context belongs to a previous server"
+        );
+        Ok(())
+    }
+}
 
 pub fn socket() -> Result<String> {
     let location = location(Instant::now() + Duration::from_secs(1))?;

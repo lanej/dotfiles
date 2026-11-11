@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shlex
 import shutil
 import struct
 import subprocess
@@ -43,16 +44,34 @@ def main():
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
         subprocess.run([binary, "setup", "--check"], env=env, check=True, capture_output=True)
-        # Observe completion of the real installed background entrypoint. No CLI is mocked.
+        guard = home / "balance-transport"
+        guard.mkdir()
+        zellij_guard = guard / "zellij"
+        zellij_guard.write_text(f'''#!/bin/sh
+case "$1 $2" in
+  'setup --check'|'prompt notify') exec {shlex.quote(binary)} "$@" ;;
+esac
+case "$1" in
+  --session=*)
+    if [ "$2 $3" = 'prompt notify' ]; then exec {shlex.quote(binary)} "$@"; fi ;;
+esac
+printf '%s\\n' "$*" >> {shlex.quote(str(home / "balance-cli-actions"))}
+exit 99
+''')
+        zellij_guard.chmod(0o755)
+        # Observe the installed background entrypoint with listing and resize CLI calls blocked.
         helper = home / ".local/bin/zellij-balance"
         helper.unlink()
         helper.write_text(f'''#!{sys.executable}
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 from pathlib import Path
 env = dict(os.environ)
+env['PATH'] = {str(guard)!r} + os.pathsep + env['PATH']
+started = time.monotonic()
 result = subprocess.run([{str(ROOT / 'bin/zellij-balance')!r}, *sys.argv[1:]], env=env, capture_output=True, text=True)
 with (Path.home() / 'balance-results').open('a') as log:
-    log.write(json.dumps(dict(origin=os.environ.get('ZELLIJ_ORIGIN_PANE_ID'), code=result.returncode, error=result.stderr)) + '\\n')
+    log.write(json.dumps(dict(origin=os.environ.get('ZELLIJ_ORIGIN_PANE_ID'), code=result.returncode, error=result.stderr,
+                             mode=sys.argv[1], elapsed_ms=(time.monotonic()-started)*1000)) + '\\n')
 sys.exit(result.returncode)
 ''')
         helper.chmod(0o755)
@@ -238,6 +257,9 @@ sys.exit(result.returncode)
             settled = geometry(current())
             invoke(b"=")
             assert geometry(current()) == settled, current()
+            attempts = home / "balance-cli-actions"
+            assert not attempts.exists(), f"Balancing launched a CLI action: {attempts.read_text()}"
+            print("BALANCE_TIMINGS", json.dumps(rows()))
             print("PASS: balancing keys preserve topology, IDs, PIDs, memory, history and focus; "
                   "golden skip/cap, nearest steps, nested groups and concurrent origins verified.")
         finally:

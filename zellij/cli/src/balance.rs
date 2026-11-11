@@ -1,6 +1,10 @@
 //! Bounded, single-shot boundary moves. Concurrent or ambiguous layouts stop the operation.
-use crate::util::*;
+use crate::{context::Session, ipc, util::*};
 use anyhow::{bail, Context, Result};
+use ipc::contract::{
+    action::ActionType, pane_id::PaneType, Direction, ListPanesAction, PaneId, ResizeAction,
+    ResizeByPaneIdAction, ResizeType,
+};
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashSet};
 use std::env;
@@ -64,7 +68,7 @@ fn neighboring(p: &Pane, q: &Pane, axis: usize) -> bool {
         && (b[1 - axis] + b[3 - axis]).min(a[1 - axis] + a[3 - axis]) > b[1 - axis].max(a[1 - axis])
 }
 struct Balance {
-    session: String,
+    session: Session,
     origin: i64,
     tab: Option<i64>,
     deadline: Instant,
@@ -73,18 +77,24 @@ struct Balance {
     panes: Vec<Pane>,
 }
 impl Balance {
-    fn action(&self, args: &[&str]) -> Result<String> {
-        let mut command = vec!["action"];
-        command.extend_from_slice(args);
-        zellij(
-            &self.session,
-            &command,
-            self.deadline.min(Instant::now() + Duration::from_secs(3)),
-        )
-        .context("Native command failed or timed out; stopped without retry")
+    fn action(&self, action: ActionType, query: bool) -> Result<String> {
+        self.session.validate(&self.session.session)?;
+        let client = ipc::Client {
+            socket: self.session.socket()?,
+            terminal_id: Some(self.origin.try_into()?),
+            deadline: self.deadline.min(Instant::now() + Duration::from_secs(3)),
+        };
+        ipc::output(client.request(action, query)?)
+            .context("Native request failed or timed out; stopped without retry")
     }
     fn snapshot(&mut self) -> Result<()> {
-        let all: Vec<Pane> = serde_json::from_str(&self.action(&["list-panes", "--json"])?)?;
+        let all: Vec<Pane> = serde_json::from_str(&self.action(
+            ActionType::ListPanes(ListPanesAction {
+                output_json: true,
+                ..Default::default()
+            }),
+            true,
+        )?)?;
         if all.iter().any(|p| !p.valid()) {
             bail!("Unsupported layout or invalid pane metadata; skipped");
         }
@@ -192,19 +202,24 @@ impl Balance {
             id
         };
         let direction = match (axis, increase) {
-            (0, false) => "right",
-            (0, true) => "left",
-            (_, false) => "down",
-            (_, true) => "up",
+            (0, false) => Direction::Right,
+            (0, true) => Direction::Left,
+            (_, false) => Direction::Down,
+            (_, true) => Direction::Up,
         };
         self.calls += 1;
-        self.action(&[
-            "resize",
-            "decrease",
-            direction,
-            "--pane-id",
-            &format!("terminal_{native_id}"),
-        ])?;
+        self.action(
+            ActionType::ResizeByPaneId(ResizeByPaneIdAction {
+                pane_id: Some(PaneId {
+                    pane_type: Some(PaneType::Terminal(native_id.try_into()?)),
+                }),
+                resize_action: Some(ResizeAction {
+                    resize: ResizeType::Decrease as i32,
+                    direction: Some(direction as i32),
+                }),
+            }),
+            false,
+        )?;
         self.snapshot()?;
         let old = before
             .iter()
@@ -272,11 +287,15 @@ impl Balance {
     }
 }
 fn execute(mode: &str) -> Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(20);
     let mut b = Balance {
-        session: session()?,
+        session: Session::resolve(
+            &session()?,
+            deadline.min(Instant::now() + Duration::from_secs(3)),
+        )?,
         origin: origin_id()?.try_into()?,
         tab: None,
-        deadline: Instant::now() + Duration::from_secs(20),
+        deadline,
         stop: Instant::now() + Duration::from_secs(17),
         calls: 0,
         panes: vec![],
@@ -287,7 +306,7 @@ fn execute(mode: &str) -> Result<()> {
         .unwrap_or_default();
     let key = hash(&format!(
         "{namespace}\n{}\n{}",
-        b.session,
+        b.session.session,
         b.tab.context("No tab")?
     ));
     let directory = env::var_os("XDG_CACHE_HOME")

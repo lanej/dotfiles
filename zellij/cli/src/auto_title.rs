@@ -73,41 +73,9 @@ fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64
     (title.to_owned(), providers)
 }
 
-#[derive(Serialize, Deserialize)]
-struct TitleContext {
-    session: String,
-    location: titles::Location,
-    identity: Value,
-}
-
-impl TitleContext {
-    fn resolve(session: &str, deadline: Instant) -> Result<Self> {
-        let location = crate::context::location(deadline)?;
-        let identity = titles::session_identity(session, &location).map_err(anyhow::Error::msg)?;
-        Ok(Self {
-            session: session.to_owned(),
-            location,
-            identity,
-        })
-    }
-
-    fn validate(&self, session: &str) -> Result<()> {
-        anyhow::ensure!(
-            self.session == session,
-            "Title context belongs to another session"
-        );
-        anyhow::ensure!(
-            titles::session_identity(session, &self.location).map_err(anyhow::Error::msg)?
-                == self.identity,
-            "Title context belongs to a previous server"
-        );
-        Ok(())
-    }
-}
-
 /// Resolve once when the shell installs its hooks; subsequent prompts reuse this context.
 pub fn context() -> Result<String> {
-    Ok(serde_json::to_string(&TitleContext::resolve(
+    Ok(serde_json::to_string(&crate::context::Session::resolve(
         &session()?,
         Instant::now() + Duration::from_secs(1),
     )?)?)
@@ -148,13 +116,13 @@ fn snapshot(client: &ipc::Client<'_>, offer: Option<(u64, &str)>) -> Result<BTre
 pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(2);
     let context = match env::var("ZELLIJ_TITLE_CONTEXT") {
-        Ok(value) => serde_json::from_str::<TitleContext>(&value)?,
-        Err(_) => TitleContext::resolve(session, deadline)?,
+        Ok(value) => serde_json::from_str::<crate::context::Session>(&value)?,
+        Err(_) => crate::context::Session::resolve(session, deadline)?,
     };
     context.validate(session)?;
     let identity = context.identity.clone();
     let client = ipc::Client {
-        socket: std::path::Path::new(identity[0].as_str().context("Missing session socket")?),
+        socket: context.socket()?,
         terminal_id: offer.map(|(pane, _)| pane.try_into()).transpose()?,
         deadline,
     };
