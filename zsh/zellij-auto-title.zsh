@@ -3,17 +3,12 @@
 
 if [[ -n "$ZELLIJ" && -n "$ZELLIJ_SESSION_NAME" ]] &&
    (( $+commands[zellij-context] )) &&
-   [[ $(command zellij-context provider 2>/dev/null) == zellij ]]; then
-
-	_zellij_auto_title() {
-		command zellij-helper shell-title 2>/dev/null
-	}
+   _zellij_title_context=$(command zellij-context title-context 2>/dev/null); then
 
 	_zellij_auto_tab_title() {
 		# Like tmux, preserve the editor's title when returning to the shell.
 		if [[ "$_zellij_last_cmd" != nvim && "$_zellij_last_cmd" != vim ]]; then
-			_zellij_auto_title
-			command zellij-auto-title >/dev/null 2>&1
+			ZELLIJ_TITLE_CONTEXT="$_zellij_title_context" command zellij-auto-title --shell 2>/dev/null
 		fi
 		return 0
 	}

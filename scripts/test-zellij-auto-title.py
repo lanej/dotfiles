@@ -22,7 +22,15 @@ def main():
         executables = work / "bin"
         executables.mkdir()
         context = executables / "zellij-context"
-        context.write_text('#!/bin/sh\n[ "$PROVIDER" != failure ] || exit 1\nprintf "%s\\n" "$PROVIDER"\n')
+        context.write_text('''#!/bin/sh
+if [ "$1" = title-context ]; then
+  [ "$PROVIDER" = zellij ] || exit 1
+  printf '{}\\n'
+else
+  [ "$PROVIDER" != failure ] || exit 1
+  printf '%s\\n' "$PROVIDER"
+fi
+''')
         context.chmod(0o755)
         tmux = executables / "tmux"
         tmux.write_text('''#!/bin/sh
@@ -107,7 +115,105 @@ def ownership_lifecycle():
     import json
     import socket
     import sqlite3
-    import sys
+    import struct
+    import threading
+    from contextlib import contextmanager, ExitStack
+
+    # Independent wire fixture for Action(9), ListPanes(98), RenameTabById(103)
+    # and Log(5)/UnblockInputThread(2) from the pinned protobuf contract.
+    def varint(value):
+        result = bytearray()
+        while value > 127:
+            result.append((value & 127) | 128)
+            value >>= 7
+        return bytes(result + bytes([value]))
+
+    def message(tag, value):
+        return varint(tag * 8 + 2) + varint(len(value)) + value
+
+    def fields(data):
+        position = 0
+
+        def integer():
+            nonlocal position
+            result, shift = 0, 0
+            while True:
+                byte = data[position]
+                position += 1
+                result |= (byte & 127) << shift
+                if byte < 128:
+                    return result
+                shift += 7
+
+        result = {}
+        while position < len(data):
+            key = integer()
+            if key % 8 == 0:
+                result[key >> 3] = integer()
+            else:
+                assert key % 8 == 2, key
+                length = integer()
+                result[key >> 3] = data[position:position + length]
+                position += length
+        return result
+
+    @contextmanager
+    def server(listener, state):
+        stopped, errors = threading.Event(), []
+        listener.listen()
+        listener.settimeout(0.05)
+
+        def serve():
+            try:
+                while not stopped.is_set():
+                    try:
+                        connection, _ = listener.accept()
+                    except socket.timeout:
+                        continue
+                    with connection:
+                        connection.settimeout(1)
+
+                        def receive(length):
+                            data = b""
+                            while len(data) < length:
+                                part = connection.recv(length - len(data))
+                                assert part, "Client disconnected before completing its request"
+                                data += part
+                            return data
+
+                        length = struct.unpack("<I", receive(4))[0]
+                        request = fields(fields(receive(length))[9])
+                        assert request[2] == 7 and request[4] == 1
+                        action = fields(request[1])
+                        tab = json.loads(state.read_text())
+                        ack = message(2, b"")
+                        if 98 in action:
+                            assert fields(action[98])[6] == 1
+                            panes = [{"id": 7, "tab_id": 4, "tab_name": tab["name"],
+                                      "is_plugin": False, "is_focused": True}]
+                            response = message(5, message(1, json.dumps(panes).encode()))
+                            connection.sendall(struct.pack("<I", len(ack)) + ack)
+                        else:
+                            rename = fields(action[103])
+                            assert rename[1] == 4
+                            tab["name"] = rename[2].decode()
+                            state.write_text(json.dumps(tab))
+                            response = ack
+                        frame = struct.pack("<I", len(response)) + response
+                        connection.sendall(frame[:2])
+                        connection.sendall(frame[2:])
+            except Exception as error:
+                errors.append(error)
+
+        worker = threading.Thread(target=serve)
+        worker.start()
+        try:
+            yield
+        finally:
+            stopped.set()
+            worker.join(timeout=2)
+            assert not worker.is_alive(), "Fixture server failed to stop"
+            assert not errors, errors
 
     with tempfile.TemporaryDirectory(prefix="zj-title-state-", dir="/tmp") as temporary:
         work = Path(temporary)
@@ -129,18 +235,8 @@ state = pathlib.Path(os.environ["NATIVE_STATE"])
 args = sys.argv[1:]
 if args == ["setup", "--check"]:
     print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["XDG_CACHE_HOME"])
-elif "list-panes" in args:
-    print(json.dumps([{"id": 7, "tab_id": 4, "tab_name": json.loads(state.read_text())["name"],
-                       "is_plugin": False, "is_focused": True}]))
-elif "list-tabs" in args:
-    print('[' + state.read_text() + ']')
-elif "rename-tab" in args:
-    assert args[args.index("--tab-id") + 1] == "4"
-    tab = json.loads(state.read_text())
-    tab["name"] = args[-1]
-    state.write_text(json.dumps(tab))
 else:
-    raise SystemExit(1)
+    raise SystemExit("Title updates must use protobuf IPC")
 ''')
         fake.chmod(0o755)
         ps = executables / "ps"
@@ -166,9 +262,12 @@ else:
                                     env=env, check=True, capture_output=True, text=True, timeout=5)
             return json.loads(result.stdout)["auto_titles"]
 
-        with socket.socket(socket.AF_UNIX) as original, socket.socket(socket.AF_UNIX) as replacement:
+        with socket.socket(socket.AF_UNIX) as original, socket.socket(socket.AF_UNIX) as replacement, ExitStack() as servers:
             address = sockets / "abc123"
             original.bind(str(address))
+            servers.enter_context(server(original, state))
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
             assert rename() == "project"
             assert owned() == {"4": "project"}
             env["PWD"] = str(work / "next")
@@ -180,11 +279,15 @@ else:
             # Its new socket must prevent old ownership transferring to it.
             address.unlink()
             replacement.bind(str(address))
+            servers.enter_context(server(replacement, state))
             state.write_text(json.dumps({"tab_id": 4, "name": "project"}))
             env["PWD"] = str(work / "new-session")
             assert owned() == {}, "stale ownership survived socket replacement"
             assert rename() == "project", "new session's explicit title was overwritten"
             state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
+            assert rename() == "Tab #5", "cached context crossed server lifetimes"
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
             assert rename() == "new-session", "generated title did not resume ownership"
             assert owned() == {"4": "new-session"}
             record = next((work / "state/zellij-auto-titles").glob("*.json"))
@@ -192,7 +295,7 @@ else:
             env["PWD"] = str(work / "legacy")
             assert owned() == {}
             assert rename() == "new-session", "legacy record claimed unproven ownership"
-        print("PASS: native title ownership, explicit names, socket recreation, and legacy state (controlled CLI, real sockets/index).")
+        print("PASS: protobuf title ownership, explicit names, socket recreation, and legacy state (real sockets/index).")
 
 
 if __name__ == "__main__":

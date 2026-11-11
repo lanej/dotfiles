@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["grpcio-tools==1.76.0"]
 # ///
-"""Generate the full pinned Zellij protobuf contract and reference messages for Lua."""
+"""Generate Lua bindings and sync the runtime's generated Rust protobuf contract."""
 import argparse
 import json
 from pathlib import Path
@@ -130,6 +130,9 @@ def fixtures(pool, names):
 
 def generate():
     revision = re.search(r"^zellij_revision=([a-f0-9]+)$", (ROOT / "scripts/install-zellij").read_text(), re.M)[1]
+    rust_url = f"https://raw.githubusercontent.com/lanej/zellij/{revision}/zellij-utils/assets/prost_ipc/client_server_contract.rs"
+    with urllib.request.urlopen(rust_url, timeout=30) as response:
+        rust_contract = response.read().decode()
     with tempfile.TemporaryDirectory(prefix="zellij-lua-proto-") as directory:
         work = Path(directory)
         for name in FILES:
@@ -183,7 +186,8 @@ def generate():
     for name, enum in sorted(enums.items()):
         lines.append(f'\t\t[{lua(name)}] = {lua({value.name: value.number for value in enum.value})},')
     lines.extend(["\t},", "}", ""])
-    return {ROOT / "nvim/lua/zellij/schema.lua": "\n".join(lines),
+    return {ROOT / "zellij/cli/src/ipc/contract.rs": rust_contract,
+            ROOT / "nvim/lua/zellij/schema.lua": "\n".join(lines),
             ROOT / "nvim/tests/zellij-protobuf.json": json.dumps(fixtures(pool, messages), ensure_ascii=False, indent=2) + "\n"}
 
 
@@ -194,7 +198,7 @@ def main():
     for destination, generated in generate().items():
         if args.check:
             if destination.read_text() != generated:
-                raise SystemExit("Zellij Lua bindings are stale; run uv run scripts/generate-zellij-lua.py")
+                raise SystemExit("Zellij protobuf bindings are stale; run uv run scripts/generate-zellij-lua.py")
         else:
             destination.write_text(generated)
 
