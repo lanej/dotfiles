@@ -65,13 +65,13 @@ def main():
     keymap = options.keyboard_modes[""].keymap
     actions = {}
     for key, definitions in keymap.items():
-        if key.mods == GLFW_MOD_SUPER | GLFW_MOD_SHIFT and key.key in (ord("o"), ord("l")):
+        if key.mods == GLFW_MOD_SUPER | GLFW_MOD_SHIFT and key.key in (ord("o"), ord("u")):
             actions[chr(key.key)] = options.alias_map.resolve_aliases(definitions[-1].definition)
     if actions["o"][0].func != "kitten" or actions["o"][0].args != ("open_last_url.py",):
         raise AssertionError("Cmd+Shift+O no longer invokes the tested last-link opener")
-    if actions["l"][0].func != "kitten" or actions["l"][0].args != ("hints", "--type", "hyperlink"):
-        raise AssertionError("Cmd+Shift+L does not select OSC 8 hyperlink destinations")
-    print("PASS: Cmd+Shift+O opens exact OSC 8 destinations; Cmd+Shift+L selects labeled hyperlinks.")
+    if actions["u"][0].func != "kitten" or actions["u"][0].args != ("hints", "--type", "hyperlink"):
+        raise AssertionError("Cmd+Shift+U does not select OSC 8 hyperlink destinations")
+    print("PASS: Cmd+Shift+O opens exact OSC 8 destinations; Cmd+Shift+U selects labeled hyperlinks.")
 
 
 if __name__ == "__main__":
