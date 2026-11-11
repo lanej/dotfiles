@@ -31,7 +31,7 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ### Mergiraf
 
-[Mergiraf](mergiraf.md): opt-in syntax-aware Git merging with per-repository activation. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit adoption after reviewing resolutions during normal branch integration; Markdown and Zsh remain outside the advertised language coverage.
+[Mergiraf](mergiraf.md): selecting the optional tool installs and activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit adoption after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
 
 ### Pi
 

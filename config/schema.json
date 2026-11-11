@@ -136,7 +136,7 @@
         },
         "mergiraf": {
           "type": "boolean",
-          "description": "Install syntax-aware merging; enable the driver per repository."
+          "description": "Install and activate syntax-aware merging for supported file types."
         },
         "glow": {
           "type": "boolean",

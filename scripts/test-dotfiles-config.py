@@ -178,6 +178,7 @@ else:
         assert merge_names.index("rust") < merge_names.index("mergiraf")
         assert merge_names.index("git") < merge_names.index("mergiraf")
         assert "git" in merge_plan["setup"]
+        assert merge_plan["setup"].index("git") < merge_plan["setup"].index("mergiraf-config")
         config.write_text('[tools]\nmergiraf = true\nrust = false\n')
         blocked = run(*command, check=False)
         assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr

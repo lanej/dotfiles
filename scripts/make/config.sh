@@ -190,6 +190,18 @@ case "$target" in
         ln -fs "${dotfiles}/ruby/gemrc" "${setup_home}/.gemrc"
         ln -fs "${dotfiles}/ruby/rspec" "${setup_home}/.rspec"
         ;;
+    mergiraf-config)
+        check_command "mergiraf"
+        attributes_dir="$setup_home/.config/dotfiles/mergiraf"
+        mkdir -p "$attributes_dir"
+        attributes_stage=$(mktemp "$attributes_dir/attributes.XXXXXX")
+        trap 'rm -f "$attributes_stage"' EXIT
+        cat "$dotfiles/git/gitattributes" > "$attributes_stage"
+        printf '\n' >> "$attributes_stage"
+        mergiraf languages --gitattributes >> "$attributes_stage"
+        mv "$attributes_stage" "$attributes_dir/attributes"
+        ln -fs "$attributes_dir/attributes" "$setup_home/.gitattributes"
+        ;;
     git)
         ln -fs "${dotfiles}/git/gitconfig" "${setup_home}/.gitconfig"
         ln -fs "${dotfiles}/git/gitignore" "${setup_home}/.gitignore"

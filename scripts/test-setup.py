@@ -78,6 +78,30 @@ def main():
         assert minimal.returncode == 0, minimal.stdout + minimal.stderr
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+        assert (minimal_home / ".gitattributes").resolve() == repo / "git/gitattributes"
+        merger = executables / "mergiraf"
+        merger.write_text("#!/bin/sh\nprintf '%s\\n' '*.toml merge=mergiraf'\n")
+        merger.chmod(0o755)
+        activated = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                   capture_output=True, text=True, timeout=30)
+        assert activated.returncode == 0, activated.stdout + activated.stderr
+        attributes = minimal_home / ".gitattributes"
+        active_contents = attributes.read_text()
+        assert "*.toml merge=mergiraf" in active_contents
+        assert (repo / "git/gitattributes").read_text() in active_contents
+        merger.write_text("#!/bin/sh\nexit 1\n")
+        failed = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                capture_output=True, text=True, timeout=30)
+        assert failed.returncode != 0
+        assert attributes.read_text() == active_contents
+        merger.unlink()
+        missing = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                 capture_output=True, text=True, timeout=30)
+        assert missing.returncode != 0 and "Missing dependency: mergiraf" in missing.stderr
+        disabled = subprocess.run([*command, "git"], cwd=repo, env=minimal_env,
+                                  capture_output=True, text=True, timeout=30)
+        assert disabled.returncode == 0, disabled.stdout + disabled.stderr
+        assert attributes.resolve() == repo / "git/gitattributes"
 
         linked = temporary / "linked-dotfiles"
         git_command = [shutil.which("git"), "-C", str(repo)]

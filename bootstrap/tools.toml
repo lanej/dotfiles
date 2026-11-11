@@ -74,9 +74,9 @@ requires = ["rust"]
 version = "0.18.2"
 
 [tools.mergiraf]
-description = "Install syntax-aware merging; enable the driver per repository."
+description = "Install and activate syntax-aware merging for supported file types."
 requires = ["git", "rust"]
-setup = ["git"]
+setup = ["git", "mergiraf-config"]
 version = "0.20.0"
 
 [tools.glow]
