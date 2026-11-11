@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import shutil
 import unittest
@@ -114,6 +115,17 @@ else:
             self.assertEqual(view["battery"], f'{view["power"]["percent"]}%')
         self.assertIsNone(view["session"])
         self.assertEqual(view["auto_titles"], {})
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS power-source adapter")
+    def test_view_reads_native_power_without_launching_pmset(self):
+        pmset = self.home / "pmset"
+        pmset.write_text('#!/bin/sh\nprintf called > "$TEST_LOG"\nexit 99\n')
+        pmset.chmod(0o755)
+        result = self.run_helper("view")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        view = json.loads(result.stdout)
+        self.assertEqual(view["battery"], f'{view["power"]["percent"]}%' if "power" in view else "")
+        self.assertFalse(self.log.exists(), "Status view launched an external command")
 
     def test_config_and_xdg(self):
         self.config.write_text('[attention]\npriority = [["done"], ["quiet", "marked"]]\n')

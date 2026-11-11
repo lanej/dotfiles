@@ -47,14 +47,212 @@ fn clock() -> String {
 
 #[cfg(target_os = "macos")]
 fn battery() -> Option<BatteryReading> {
-    use std::time::{Duration, Instant};
-    crate::command::output(
-        "pmset",
-        &["-g", "batt"],
-        Instant::now() + Duration::from_secs(2),
-    )
-    .ok()
-    .and_then(|output| mac_battery(&output))
+    macos::battery()
+}
+
+#[cfg(target_os = "macos")]
+mod macos {
+    use super::{BatteryReading, PowerState};
+    use std::ffi::{c_char, c_void, CStr};
+    use std::ptr;
+
+    type Ref = *const c_void;
+    #[link(name = "IOKit", kind = "framework")]
+    extern "C" {
+        fn IOPSCopyPowerSourcesInfo() -> Ref;
+        fn IOPSCopyPowerSourcesList(info: Ref) -> Ref;
+        fn IOPSGetPowerSourceDescription(info: Ref, source: Ref) -> Ref;
+    }
+    #[link(name = "CoreFoundation", kind = "framework")]
+    extern "C" {
+        fn CFRelease(value: Ref);
+        fn CFGetTypeID(value: Ref) -> usize;
+        fn CFArrayGetCount(array: Ref) -> isize;
+        fn CFArrayGetValueAtIndex(array: Ref, index: isize) -> Ref;
+        fn CFDictionaryGetValue(dictionary: Ref, key: Ref) -> Ref;
+        fn CFStringCreateWithCString(allocator: Ref, value: *const c_char, encoding: u32) -> Ref;
+        fn CFStringGetTypeID() -> usize;
+        fn CFStringGetCString(value: Ref, buffer: *mut c_char, size: isize, encoding: u32) -> bool;
+        fn CFNumberGetTypeID() -> usize;
+        fn CFNumberGetValue(value: Ref, kind: isize, output: *mut i64) -> bool;
+        fn CFBooleanGetTypeID() -> usize;
+        fn CFBooleanGetValue(value: Ref) -> bool;
+    }
+
+    struct Owned(Ref);
+    impl Owned {
+        fn new(value: Ref) -> Option<Self> {
+            (!value.is_null()).then_some(Self(value))
+        }
+    }
+    impl Drop for Owned {
+        fn drop(&mut self) {
+            // SAFETY: Owned contains a non-null CoreFoundation Copy/Create result.
+            unsafe { CFRelease(self.0) };
+        }
+    }
+
+    // These values borrow the power-source snapshot, which outlives every lookup.
+    struct Description(Ref);
+    impl Description {
+        fn value(&self, key: &CStr) -> Option<Ref> {
+            // SAFETY: key is NUL terminated UTF-8; the dictionary is owned by the snapshot.
+            unsafe {
+                let key = Owned::new(CFStringCreateWithCString(
+                    ptr::null(),
+                    key.as_ptr(),
+                    0x08000100,
+                ))?;
+                let value = CFDictionaryGetValue(self.0, key.0);
+                (!value.is_null()).then_some(value)
+            }
+        }
+        fn number(&self, key: &CStr) -> Option<i64> {
+            let value = self.value(key)?;
+            // SAFETY: type checking precedes reading a signed 64-bit CFNumber (type 4).
+            unsafe {
+                let mut result = 0;
+                (CFGetTypeID(value) == CFNumberGetTypeID()
+                    && CFNumberGetValue(value, 4, &mut result))
+                .then_some(result)
+            }
+        }
+        fn boolean(&self, key: &CStr) -> Option<bool> {
+            let value = self.value(key)?;
+            // SAFETY: only CFBoolean values are read as booleans.
+            unsafe {
+                (CFGetTypeID(value) == CFBooleanGetTypeID()).then(|| CFBooleanGetValue(value))
+            }
+        }
+        fn string(&self, key: &CStr) -> Option<String> {
+            let value = self.value(key)?;
+            // SAFETY: type checking precedes UTF-8 conversion into a bounded buffer.
+            unsafe {
+                let mut buffer = [0 as c_char; 64];
+                if CFGetTypeID(value) != CFStringGetTypeID()
+                    || !CFStringGetCString(
+                        value,
+                        buffer.as_mut_ptr(),
+                        buffer.len() as isize,
+                        0x08000100,
+                    )
+                {
+                    return None;
+                }
+                Some(
+                    CStr::from_ptr(buffer.as_ptr())
+                        .to_string_lossy()
+                        .into_owned(),
+                )
+            }
+        }
+    }
+
+    pub(super) fn battery() -> Option<BatteryReading> {
+        // SAFETY: IOKit Copy results are released after all borrowed array/dictionary values.
+        unsafe {
+            let info = Owned::new(IOPSCopyPowerSourcesInfo())?;
+            let sources = Owned::new(IOPSCopyPowerSourcesList(info.0))?;
+            (0..CFArrayGetCount(sources.0)).find_map(|index| {
+                let source = CFArrayGetValueAtIndex(sources.0, index);
+                let description = IOPSGetPowerSourceDescription(info.0, source);
+                if description.is_null() {
+                    return None;
+                }
+                let description = Description(description);
+                if description.string(c"Type").as_deref() != Some("InternalBattery")
+                    || description.boolean(c"Is Present") != Some(true)
+                {
+                    return None;
+                }
+                reading(
+                    description.number(c"Current Capacity")?,
+                    description.number(c"Max Capacity")?,
+                    description.boolean(c"Is Charging"),
+                    description.string(c"Power Source State").as_deref(),
+                    description.number(c"Time to Empty"),
+                    description.number(c"Time to Full Charge"),
+                )
+            })
+        }
+    }
+
+    fn reading(
+        current: i64,
+        maximum: i64,
+        charging: Option<bool>,
+        source: Option<&str>,
+        empty: Option<i64>,
+        full: Option<i64>,
+    ) -> Option<BatteryReading> {
+        if maximum <= 0 || current < 0 || current > maximum {
+            return None;
+        }
+        let percent = u8::try_from(current.checked_mul(100)? / maximum).ok()?;
+        let state = match (charging, source) {
+            (Some(true), _) => PowerState::Charging,
+            (Some(false), Some("Battery Power")) => PowerState::Discharging,
+            (Some(false), Some("AC Power")) => PowerState::Idle,
+            _ => PowerState::Unknown,
+        };
+        let remaining_minutes = match state {
+            PowerState::Charging => full,
+            PowerState::Discharging => empty,
+            _ => None,
+        }
+        .and_then(|minutes| u32::try_from(minutes).ok());
+        Some(BatteryReading {
+            percent,
+            state,
+            remaining_minutes,
+        })
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn reads_capacity_charge_transitions_and_unknown_estimates() {
+            for (charging, source, state, minutes) in [
+                (Some(true), Some("AC Power"), PowerState::Charging, Some(31)),
+                (
+                    Some(false),
+                    Some("Battery Power"),
+                    PowerState::Discharging,
+                    Some(285),
+                ),
+                (Some(false), Some("AC Power"), PowerState::Idle, None),
+                (None, None, PowerState::Unknown, None),
+            ] {
+                assert_eq!(
+                    reading(4350, 5000, charging, source, Some(285), Some(31)),
+                    Some(BatteryReading {
+                        percent: 87,
+                        state,
+                        remaining_minutes: minutes
+                    })
+                );
+            }
+            for estimate in [None, Some(-1)] {
+                assert_eq!(
+                    reading(87, 100, Some(false), Some("Battery Power"), estimate, None)
+                        .unwrap()
+                        .remaining_minutes,
+                    None
+                );
+            }
+            assert_eq!(
+                reading(0, 100, Some(false), Some("Battery Power"), Some(0), None)
+                    .unwrap()
+                    .remaining_minutes,
+                Some(0)
+            );
+            for (current, maximum) in [(-1, 100), (101, 100), (0, 0), (0, -1), (i64::MAX, i64::MAX)]
+            {
+                assert!(reading(current, maximum, None, None, None, None).is_none());
+            }
+        }
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -62,10 +260,12 @@ fn battery() -> Option<BatteryReading> {
     linux_battery(Path::new("/sys/class/power_supply"))
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn percent(value: &str) -> Option<u8> {
     value.trim().parse::<u8>().ok().filter(|n| *n <= 100)
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn power_state(value: &str) -> PowerState {
     match value.trim().to_ascii_lowercase().as_str() {
         "discharging" => PowerState::Discharging,
@@ -73,32 +273,6 @@ fn power_state(value: &str) -> PowerState {
         "charged" | "full" | "not charging" | "ac attached" => PowerState::Idle,
         _ => PowerState::Unknown,
     }
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn mac_battery(output: &str) -> Option<BatteryReading> {
-    output
-        .lines()
-        .filter(|line| line.contains("InternalBattery"))
-        .find_map(|line| {
-            let (device, details) = line.split_once('%')?;
-            let percent = percent(device.split_whitespace().next_back()?)?;
-            let state = details
-                .split(';')
-                .map(power_state)
-                .find(|s| *s != PowerState::Unknown)
-                .unwrap_or(PowerState::Unknown);
-            let remaining_minutes = details.split_whitespace().find_map(|word| {
-                let (h, m) = word.split_once(':')?;
-                let minutes = m.parse::<u32>().ok().filter(|n| *n < 60)?;
-                h.parse::<u32>().ok()?.checked_mul(60)?.checked_add(minutes)
-            });
-            Some(BatteryReading {
-                percent,
-                state,
-                remaining_minutes,
-            })
-        })
 }
 
 #[cfg(any(not(target_os = "macos"), test))]
@@ -141,34 +315,6 @@ fn linux_battery(root: &Path) -> Option<BatteryReading> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn reads_pmset_state_and_time_from_the_internal_battery() {
-        for (details, state, minutes) in [
-            (
-                "discharging; 4:45 remaining",
-                PowerState::Discharging,
-                Some(285),
-            ),
-            (
-                "charging; 0:31 until charged",
-                PowerState::Charging,
-                Some(31),
-            ),
-            ("charged; 0:00 remaining", PowerState::Idle, Some(0)),
-            ("not charging; (no estimate)", PowerState::Idle, None),
-        ] {
-            let output = format!("Now drawing from 'AC Power'\n -InternalBattery-0 (id=123) 87%; {details} present: true");
-            assert_eq!(
-                mac_battery(&output),
-                Some(BatteryReading {
-                    percent: 87,
-                    state,
-                    remaining_minutes: minutes
-                })
-            );
-        }
-        assert!(mac_battery("No batteries").is_none());
-    }
     #[test]
     fn reads_system_battery_and_skips_peripherals_and_bad_values() {
         let root = tempfile::tempdir().unwrap();
