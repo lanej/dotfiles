@@ -2,7 +2,8 @@
 -- nvim --headless -u NONE -i NONE -n -l nvim/tests/pr-review-checkout.lua
 local checkout = vim.fn.getcwd()
 local temporary = vim.fn.tempname()
-local repo, remote = temporary .. "/clone with spaces", temporary .. "/remote.git"
+local repo = temporary .. "/clone with spaces"
+local remote
 vim.fn.mkdir(temporary .. "/bin", "p")
 vim.fn.mkdir(repo, "p")
 temporary = assert(vim.uv.fs_realpath(temporary))

@@ -53,6 +53,8 @@ Open a new shell after setup to load the linked shell configuration.
 
 `make configure`, `make setup`, and `make all` are aliases for `make`. `bash bootstrap.sh` and `bash bootstrap.sh install` are the script equivalents of the two installation stages. Neither stage pulls updates or switches branches. Linting and tests run separately with `make lint` and the `test` targets.
 
+`make lua-check` runs StyLua and Luacheck on every tracked or untracked, non-ignored Lua source file, including Neovim, WezTerm, tests, scripts, fixtures, and generated modules. `make lua-format` applies formatting before analysis. The editor tool set installs both tools through Homebrew, APT, or Pacman; other systems need Luacheck installed with LuaRocks first. Generated data tables retain their generator's layout with StyLua directives; parsing and static analysis still cover those files. The Lua quality workflow runs the same check for Lua changes in pull requests and on `master`.
+
 ### Update an existing machine
 
 From the checkout, pull the latest changes and reapply configuration:
@@ -298,7 +300,9 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 | `make` / `make configure` / `make setup` / `make all` | Reapply the selected configuration without installing packages |
 | `make plan` | Preview the baseline, selected tools, and execution phases |
 | `make config` | Show effective properties and their sources |
-| `make lint` | Run skill audits and instruction-size checks |
+| `make lint` | Run shell, Lua, theme, skill, and instruction-size checks |
+| `make lua-check` | Check formatting and statically analyze all repository-owned Lua |
+| `make lua-format` | Apply Lua formatting, then run static analysis |
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
 | `make codex-skills` | Refresh shared dotfiles skills for Codex |

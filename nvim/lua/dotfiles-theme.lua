@@ -52,7 +52,8 @@ function M.apply()
 		require("lualine").setup({ options = M.lualine_options() })
 	end
 	if package.loaded["gitsigns"] then
-		local signs = { signs = M.signs("hunk", theme.components), signs_staged = M.signs("staged_hunk", theme.components) }
+		local signs =
+			{ signs = M.signs("hunk", theme.components), signs_staged = M.signs("staged_hunk", theme.components) }
 		if not vim.deep_equal(signs, applied_signs) then
 			require("gitsigns").setup(signs)
 			require("gitsigns").refresh()

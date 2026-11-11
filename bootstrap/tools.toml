@@ -112,7 +112,10 @@ version = "14.1.0"
 
 [tools.stylua]
 requires = ["node"]
-version = "2.0.2"
+version = "2.6.0"
+
+[tools.luacheck]
+installer = "system"
 
 [tools.shfmt]
 requires = ["go"]

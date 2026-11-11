@@ -91,7 +91,17 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size theme-check
+lint: shellcheck audit-skills instruction-size theme-check lua-check
+
+.PHONY: lua-check lua-format
+lua-check:
+	$(call require-command,stylua)
+	$(call require-command,luacheck)
+	@python3 "$(DOTFILES)/scripts/lua-quality.py"
+lua-format:
+	$(call require-command,stylua)
+	$(call require-command,luacheck)
+	@python3 "$(DOTFILES)/scripts/lua-quality.py" --fix
 
 .PHONY: theme-generate theme-check theme-cache test-theme test-theme-native test-theme-presentation
 theme-generate:
