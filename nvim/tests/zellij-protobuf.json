@@ -1,0 +1,256 @@
+[
+  {
+    "type": "client_server_contract.Action",
+    "value": {
+      "quit": {}
+    },
+    "hex": "0a00"
+  },
+  {
+    "type": "client_server_contract.ActionMsg",
+    "value": {
+      "terminal_id": 4294967295
+    },
+    "hex": "10ffffffff0f"
+  },
+  {
+    "type": "client_server_contract.ActionMsg",
+    "value": {
+      "terminal_id": 0
+    },
+    "hex": "1000"
+  },
+  {
+    "type": "client_server_contract.ActionMsg",
+    "value": {
+      "is_cli_client": true
+    },
+    "hex": "2001"
+  },
+  {
+    "type": "client_server_contract.AppOpenWindowRequest",
+    "value": {
+      "session": "Unicode 界\n"
+    },
+    "hex": "0a0c556e69636f646520e7958c0a"
+  },
+  {
+    "type": "client_server_contract.AppOpenWindowRequest",
+    "value": {
+      "session": ""
+    },
+    "hex": "0a00"
+  },
+  {
+    "type": "client_server_contract.AppOpenWindowRequest",
+    "value": {
+      "command": [
+        "Unicode 界\n",
+        "Unicode 界\n"
+      ]
+    },
+    "hex": "220c556e69636f646520e7958c0a220c556e69636f646520e7958c0a"
+  },
+  {
+    "type": "client_server_contract.AppOpenWindowRequest",
+    "value": {
+      "startup_mode": 4
+    },
+    "hex": "4804"
+  },
+  {
+    "type": "client_server_contract.ApplyFloatingSwapLayoutByTabIdAction",
+    "value": {
+      "id": "18446744073709551615"
+    },
+    "hex": "08ffffffffffffffffff01"
+  },
+  {
+    "type": "client_server_contract.AttentionDetail",
+    "value": {
+      "kind": 0
+    },
+    "hex": "0800"
+  },
+  {
+    "type": "client_server_contract.AttentionDetail",
+    "value": {
+      "exit_code": -2147483648
+    },
+    "hex": "3080808080f8ffffffff01"
+  },
+  {
+    "type": "client_server_contract.AttentionDetail",
+    "value": {
+      "exit_code": 0
+    },
+    "hex": "3000"
+  },
+  {
+    "type": "client_server_contract.AttentionDetail",
+    "value": {
+      "duration_ms": "0"
+    },
+    "hex": "3800"
+  },
+  {
+    "type": "client_server_contract.BorderStyleOverride",
+    "value": {
+      "rounded_corners": false
+    },
+    "hex": "3000"
+  },
+  {
+    "type": "client_server_contract.CliAssets",
+    "value": {
+      "host_terminal_env": {
+        "key": "Unicode 界\n"
+      }
+    },
+    "hex": "62130a036b6579120c556e69636f646520e7958c0a"
+  },
+  {
+    "type": "client_server_contract.ClientPaneMirrorMsg",
+    "value": {
+      "payload": {
+        "$bytes": "00ff6c69746572616c"
+      }
+    },
+    "hex": "0a0900ff6c69746572616c"
+  },
+  {
+    "type": "client_server_contract.DetachSessionMsg",
+    "value": {
+      "client_ids": [
+        4294967295,
+        4294967295
+      ]
+    },
+    "hex": "0a0affffffff0fffffffff0f"
+  },
+  {
+    "type": "client_server_contract.FloatingCoordinate",
+    "value": {
+      "percent": 1.5
+    },
+    "hex": "150000c03f"
+  },
+  {
+    "type": "client_server_contract.FloatingCoordinate",
+    "value": {
+      "percent": 0.0
+    },
+    "hex": "1500000000"
+  },
+  {
+    "type": "client_server_contract.KeyWithModifier",
+    "value": {
+      "key_modifiers": [
+        4,
+        4
+      ]
+    },
+    "hex": "12020404"
+  },
+  {
+    "type": "client_server_contract.MirrorInputMsg",
+    "value": {
+      "bytes": {
+        "$bytes": ""
+      }
+    },
+    "hex": "1200"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "action": {
+        "action": {
+          "move_focus": {
+            "direction": 2
+          }
+        },
+        "terminal_id": 42
+      }
+    },
+    "hex": "4a080a0452020802102a"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "action": {
+        "action": {
+          "move_focus": {
+            "direction": 2
+          }
+        },
+        "terminal_id": 42,
+        "client_id": 7
+      }
+    },
+    "hex": "4a0a0a0452020802102a1807"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "action": {
+        "action": {
+          "list_clients": {}
+        }
+      }
+    },
+    "hex": "4a050a03b20500"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "client_exited": {}
+    },
+    "hex": "5a00"
+  },
+  {
+    "type": "client_server_contract.DetachSessionMsg",
+    "value": {
+      "client_ids": [
+        1,
+        2
+      ]
+    },
+    "hex": "0a020102"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "action": {
+        "action": {
+          "move_focus": {
+            "direction": 2
+          }
+        },
+        "terminal_id": 42,
+        "client_id": 7
+      }
+    },
+    "hex": "4a080a0452020802102a4a021807",
+    "encode_hex": "4a0a0a0452020802102a1807"
+  },
+  {
+    "type": "client_server_contract.ClientToServerMsg",
+    "value": {
+      "client_exited": {}
+    },
+    "hex": "4a080a0452020802102a5a00",
+    "encode_hex": "5a00"
+  },
+  {
+    "type": "client_server_contract.DetachSessionMsg",
+    "value": {
+      "client_ids": [
+        1,
+        2
+      ]
+    },
+    "hex": "08010802",
+    "encode_hex": "0a020102"
+  }
+]

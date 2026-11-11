@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 import stat
+import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -111,6 +113,28 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.run_helper("zellij-clipboard", "clear", "--session", selected)
         self.assertEqual(target.read_text(), "preserve")
 
+    def test_context_resolves_a_native_socket_without_process_inspection(self):
+        with tempfile.TemporaryDirectory(prefix="zj-context-", dir="/tmp") as directory:
+            work = Path(directory)
+            namespace = work / "run/contract_version_1"
+            namespace.mkdir(parents=True)
+            cache = work / "cache"
+            index = cache / "contract_version_1/session_index.sqlite"
+            index.parent.mkdir(parents=True)
+            with sqlite3.connect(index) as connection:
+                connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
+                connection.execute("INSERT INTO sessions VALUES (?, ?)",
+                                   (self.env["ZELLIJ_SESSION_NAME"], "native-id"))
+            self.env["ZELLIJ_SOCKET_DIR"] = str(work / "run")
+            (self.bin / "ps").write_text("#!/bin/sh\nexit 99\n")
+            self.plan([f'[Version]: "0.46.0"\n[CACHE DIR]: {cache}\n'])
+            with socket.socket(socket.AF_UNIX) as listener:
+                listener.bind(str(namespace / "native-id"))
+                identity = json.loads(self.run_helper("zellij-context", "socket").stdout)
+                self.assertEqual(Path(identity[0]).resolve(), (namespace / "native-id").resolve())
+                self.assertEqual(identity[2], (namespace / "native-id").stat().st_ino)
+            self.assertEqual(self.calls(), [["setup", "--check"]])
+
     def test_navigation_rechecks_client_and_refuses_ambiguous_focus(self):
         client = "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND\n1 terminal_7 shell\n"
         tabs = [{"other_focused_clients": [1]}]
@@ -118,6 +142,10 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.plan([client, tabs, [pane(7)], current, client, tabs, ""])
         self.run_helper("zellij-navigate", "left")
         self.assertEqual(self.calls()[-1], ["--session=--session's literal name", "action", "move-focus", "left"])
+        for source in (pane(7, is_fullscreen=True), pane(7, tab_id=9)):
+            self.plan([client, tabs, [source], current])
+            self.run_helper("zellij-navigate", "left")
+            self.assertFalse(any("move-focus" in call for call in self.calls()))
         self.plan([client, tabs, [pane(7)], current, client.replace("terminal_7", "terminal_8"), tabs])
         self.run_helper("zellij-navigate", "left")
         self.assertFalse(any("move-focus" in call for call in self.calls()))
