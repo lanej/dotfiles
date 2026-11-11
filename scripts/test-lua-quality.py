@@ -16,6 +16,11 @@ def main():
         (root / "scripts").mkdir()
         for name in ("scripts/lua-quality.py", ".stylua.toml", ".luacheckrc"):
             shutil.copyfile(ROOT / name, root / name)
+        fixture = root / "design-system/fixtures"
+        fixture.mkdir(parents=True)
+        for name in ("code.lua", ".stylua.toml"):
+            shutil.copyfile(ROOT / "design-system/fixtures" / name, fixture / name)
+        fixture_source = (fixture / "code.lua").read_bytes()
         subprocess.run(["git", "init", "--quiet", str(root)], check=True)
         (root / ".gitignore").write_text("vendor/\n")
         (root / "vendor").mkdir()
@@ -32,6 +37,7 @@ def main():
         assert run().returncode != 0, "unformatted untracked Lua must fail"
         result = run("--fix")
         assert result.returncode == 0, result.stdout + result.stderr
+        assert (fixture / "code.lua").read_bytes() == fixture_source, "formatting changed the visual fixture"
         subprocess.run(["git", "add", "--", source.name], cwd=root, check=True)
         source.write_text("return missing_dotfiles_global\n")
         result = run()
