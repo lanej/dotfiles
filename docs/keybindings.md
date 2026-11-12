@@ -51,3 +51,11 @@ make generate-keybindings
 Generation refuses detected conflicts before writing. It does not reload applications or change installed symlinks. `list` and `check` combine desired registry records with unmanaged source bindings, excluding the generated section to avoid counting owned entries twice. When the generated section differs, `drift` names the affected file; repair it before relying on installed behavior. Owned records point to the TOML declaration, and unmanaged bindings point to their native file and line.
 
 The CLI exits 0 for a successful inventory or clean check, 1 for check conflicts/drift, and 2 for invalid input or I/O errors. `generate --check` exits 1 on drift without writing; generation conflicts exit 2. JSON reports contain `coverage`, `bindings`, `conflicts`, and `drift`. `--root` before the subcommand inspects a different checkout.
+
+## Preview an image from a Zellij pane
+
+Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label beside the image to open it in a split on the right. Press a key to dismiss the preview and return to your work. The same picker opens ordinary hyperlinks with Kitty.
+
+Relative filenames resolve in the source pane's working directory. A wrapped `docs/screenshots/plan-viewer/fixture-running-overview.png` opens from that worktree. Over `zssh`, the remote host reads the file and streams the image to Kitty.
+
+Run `make kitty-config zellij-helpers zellij-config` and reload Kitty with **Cmd+Shift+R**. On the machine running Zellij, use the managed 0.46 runtime, install `kitten`, and reload or restart the session. For a remote session, run `make zellij-helpers zellij-config` on that host too.

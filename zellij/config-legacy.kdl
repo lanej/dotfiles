@@ -35,6 +35,18 @@ load_plugins {
 }
 
 keybinds clear-defaults=true {
+    shared {
+        // Kitty invokes this on the attached client to capture the source pane, also over SSH.
+        bind "Ctrl Alt F12" {
+            Run "zellij-helper" "image-hints" {
+                floating true
+                width "50%"
+                height 5
+                close_on_exit true
+                name "Kitty hints"
+            }
+        }
+    }
     locked {
         bind "Ctrl f" { SwitchToMode "Tmux"; }
     }

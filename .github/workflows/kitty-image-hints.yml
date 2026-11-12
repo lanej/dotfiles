@@ -1,0 +1,43 @@
+name: Kitty image hints
+on:
+  pull_request:
+    paths: &image-hint-paths
+      - 'config/keybindings.toml'
+      - 'kitty/kittyconf'
+      - 'kitty/select_hint.py'
+      - 'scripts/make/config.sh'
+      - 'scripts/test-kitty-image-preview.py'
+      - 'zellij/config*.kdl'
+      - 'zellij/cli/src/image_hints.rs'
+      - 'zellij/cli/src/main.rs'
+      - 'zellij/cli/src/util.rs'
+      - 'zellij/cli/Cargo.toml'
+      - 'zellij/Cargo.lock'
+      - '.github/workflows/kitty-image-hints.yml'
+  push:
+    branches: [master]
+    paths: *image-hint-paths
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install terminal runtimes and virtual display
+        run: |
+          mkdir -p "$RUNNER_TEMP/kitty" "$RUNNER_TEMP/zellij"
+          curl --fail --location --retry 3 https://github.com/kovidgoyal/kitty/releases/download/v0.50.0/kitty-0.50.0-x86_64.txz | tar -xJ -C "$RUNNER_TEMP/kitty"
+          curl --fail --location --retry 3 https://github.com/zellij-org/zellij/releases/download/v0.46.0/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xz -C "$RUNNER_TEMP/zellij"
+          echo "$RUNNER_TEMP/kitty/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/zellij" >> "$GITHUB_PATH"
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri
+          python -m pip install Pillow
+      - run: cargo build --locked --manifest-path zellij/Cargo.toml -p lane-zellij
+      - name: Select a wrapped image in Kitty and inspect its Zellij pane
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 python scripts/test-kitty-image-preview.py

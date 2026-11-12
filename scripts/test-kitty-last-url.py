@@ -24,12 +24,40 @@ def expect_url(opened, expected):
         raise AssertionError(f"Expected {expected!r}; opened {opened!r}")
 
 
+def check_image_hints(root):
+    spec = importlib.util.spec_from_file_location("select_hint", root / "kitty/select_hint.py")
+    picker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(picker)
+    screen = Screen(None, 12, 94, 12)
+    width = 60
+    first = "(docs/screenshots/plan-viewer/fixture-"
+    rows = [
+        first.rjust(width - 2) + "  │ other/worktree.png",
+        "  running-overview.png).",
+        '\x1b]8;;https://example.org/photo.png\x1b\\release notes\x1b]8;;\x1b\\',
+        '\x1b]8;;file:///tmp/space%20here.png\x1b\\thumbnail\x1b]8;;\x1b\\',
+        '測 "screenshots/a b.png"',
+    ]
+    parse_bytes(screen, "\r\n".join(rows).encode())
+    display, choices = picker.picker_input(picker.capture(screen), (0, 0, width, 8), "example")
+    paths = {entry["path"] for entry in choices.values()}
+    expected = {"docs/screenshots/plan-viewer/fixture-running-overview.png",
+                "/tmp/space here.png", "screenshots/a b.png"}
+    if paths != expected or "https://example.org/photo.png" not in display:
+        raise AssertionError(f"Wrong targets in the originating pane: {choices}")
+    rendered = Screen(None, 12, 94, 12)
+    parse_bytes(rendered, display.replace("\n", "\r\n").encode())
+    if rendered.hyperlink_at(2, 2) != "https://example.org/photo.png":
+        raise AssertionError("Web link labels must retain their exact OSC 8 destination")
+
+
 def main():
     root = Path(__file__).resolve().parents[1]
     spec = importlib.util.spec_from_file_location("open_last_url", root / "kitty/open_last_url.py")
     kitten = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(kitten)
     set_options(defaults)
+    check_image_hints(root)
     screen = Screen(None, 20, 90, 100)
     window = SimpleNamespace(screen=screen, cwd_of_child=str(root))
     window.as_text = lambda **kwargs: Window.as_text(window, **kwargs)
@@ -69,9 +97,9 @@ def main():
             actions[chr(key.key)] = options.alias_map.resolve_aliases(definitions[-1].definition)
     if actions["o"][0].func != "kitten" or actions["o"][0].args != ("open_last_url.py",):
         raise AssertionError("Cmd+Shift+O no longer invokes the tested last-link opener")
-    if actions["u"][0].func != "kitten" or actions["u"][0].args != ("hints", "--type", "hyperlink"):
-        raise AssertionError("Cmd+Shift+U does not select OSC 8 hyperlink destinations")
-    print("PASS: Cmd+Shift+O opens exact OSC 8 destinations; Cmd+Shift+U selects labeled hyperlinks.")
+    if actions["u"][0].func != "kitten" or actions["u"][0].args != ("select_hint.py",):
+        raise AssertionError("Cmd+Shift+U does not invoke the link and image picker")
+    print("PASS: Cmd+Shift+O opens exact OSC 8 destinations; Cmd+Shift+U invokes the hint picker.")
 
 
 if __name__ == "__main__":
