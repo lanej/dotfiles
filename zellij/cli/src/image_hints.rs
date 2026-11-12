@@ -228,5 +228,7 @@ fn open(session: &str, origin: u64, pane: &Value, cwd: &Path, reply: &str) -> Re
         "Could not open image pane: {}",
         String::from_utf8_lossy(&result.stderr).trim()
     );
+    let viewer = std::str::from_utf8(&result.stdout)?.trim();
+    native(session, &["action", "focus-pane-id", viewer])?;
     Ok(())
 }

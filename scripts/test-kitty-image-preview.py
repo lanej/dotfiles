@@ -120,8 +120,14 @@ signal.pause()
             xid = command("xdotool", "search", "--onlyvisible", "--class", "kitty").splitlines()[-1]
             command("xdotool", "windowfocus", "--sync", xid)
             hint("screenshots/plan-viewer")
-            until("icat in the originating worktree", lambda: any(
-                str(source / IMAGE) in (p.get("terminal_command") or "") and not p["exited"] for p in panes()))
+            def preview_has_focus():
+                current = panes()
+                original = next((p for p in current if str(fixture) in (p.get("terminal_command") or "")), None)
+                return original and any(
+                    str(source / IMAGE) in (p.get("terminal_command") or "") and p["is_focused"]
+                    and not p["is_floating"] and p["tab_id"] == original["tab_id"]
+                    and p["pane_x"] >= original["pane_x"] + original["pane_columns"] for p in current)
+            until("the focused icat split beside the originating worktree", preview_has_focus)
             def red_pixels():
                 image = ImageGrab.grab().convert("RGB")
                 colors = image.getcolors(image.width * image.height)
