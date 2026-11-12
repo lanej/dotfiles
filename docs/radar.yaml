@@ -1,11 +1,120 @@
 # Source of truth for the tech radar. Run: npm --prefix website run radar
 version: 1
 entries:
+  - id: neovim
+    name: Neovim
+    ring: adopt
+    icon: neovim.png
+    rationale: |-
+      [Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor.
+  - id: git
+    name: Git
+    ring: adopt
+    icon: git.svg
+    rationale: |-
+      Version control for the dotfiles and development work, with shared aliases, diffs, branch workflows, and worktree support.
+  - id: zsh
+    name: Zsh
+    ring: adopt
+    icon: zsh.svg
+    rationale: |-
+      My interactive shell, with shared aliases, completion, autosuggestions, and fuzzy navigation.
+  - id: starship
+    name: Starship
+    ring: adopt
+    icon: starship.svg
+    rationale: |-
+      Shared shell prompt showing directory, repository, runtime, and command context.
+  - id: atuin
+    name: Atuin
+    ring: adopt
+    icon: atuin.svg
+    rationale: |-
+      Searchable shell history integrated with the interactive shell.
+  - id: bat
+    name: bat
+    ring: adopt
+    icon: bat.svg
+    rationale: |-
+      Syntax-highlighted file viewing, manual pages, help output, and picker previews.
+  - id: fd
+    name: fd
+    ring: adopt
+    icon: fd.svg
+    rationale: |-
+      Fast file and directory discovery feeding fuzzy pickers and editor navigation.
+  - id: eza
+    name: eza
+    ring: adopt
+    icon: eza.svg
+    rationale: |-
+      Directory listings with icons, Git information, long views, and tree views.
+  - id: ripgrep
+    name: ripgrep
+    ring: adopt
+    icon: ripgrep.svg
+    rationale: |-
+      Fast text search across repositories, used directly and through editor and shell workflows.
+  - id: direnv
+    name: direnv
+    ring: adopt
+    icon: direnv.svg
+    rationale: |-
+      Directory-scoped environment loading for project-specific development contexts.
+  - id: git-delta
+    name: delta
+    ring: adopt
+    icon: delta.svg
+    rationale: |-
+      Readable Git diffs with syntax highlighting and structured changes in terminal review and previews.
+  - id: github-cli
+    name: GitHub CLI
+    ring: adopt
+    icon: github.svg
+    rationale: |-
+      GitHub pull request, issue, check, and repository operations from the terminal.
+  - id: jq
+    name: jq
+    ring: adopt
+    icon: jq.svg
+    rationale: |-
+      JSON filtering, transformation, and inspection in command-line workflows.
+  - id: yq
+    name: yq
+    ring: adopt
+    icon: yq.svg
+    rationale: |-
+      YAML querying and transformation in command-line workflows.
+  - id: just
+    name: just
+    ring: adopt
+    icon: just.svg
+    rationale: |-
+      Named project commands and repeatable task recipes.
+  - id: tmux
+    name: tmux
+    ring: adopt
+    icon: tmux.svg
+    rationale: |-
+      Retained terminal multiplexer for existing sessions and agent-status integrations alongside Zellij.
+  - id: claude-code
+    name: Claude Code
+    ring: adopt
+    icon: claude.svg
+    rationale: |-
+      Coding agent used with shared skills, role instructions, and repository guidance.
+  - id: codex
+    name: Codex
+    ring: adopt
+    icon: codex.svg
+    rationale: |-
+      Coding agent used with shared skills, role instructions, and repository guidance.
   - id: fzf
     name: fzf
     ring: adopt
+    icon: fzf.svg
     rationale: |-
-      [fzf directory pickers](directory-picker.md): use one responsive interface for directory history and Git worktrees instead of implicitly preferring Skim. Display-only `shortpath` labels retain original selection paths; preview placement responds to available pane width and height.
+      [fzf](directory-picker.md): my fuzzy finder for shell navigation, directory history, Git worktrees, and Neovim through FzfLua. Shell pickers retain original selection paths behind display labels and adapt previews to available pane space.
   - id: kitty
     name: Kitty
     ring: adopt

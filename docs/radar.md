@@ -15,9 +15,81 @@ Tool and technology decisions, organized by ring.
 
 ## Adopt
 
+### Neovim
+
+[Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor.
+
+### Git
+
+Version control for the dotfiles and development work, with shared aliases, diffs, branch workflows, and worktree support.
+
+### Zsh
+
+My interactive shell, with shared aliases, completion, autosuggestions, and fuzzy navigation.
+
+### Starship
+
+Shared shell prompt showing directory, repository, runtime, and command context.
+
+### Atuin
+
+Searchable shell history integrated with the interactive shell.
+
+### bat
+
+Syntax-highlighted file viewing, manual pages, help output, and picker previews.
+
+### fd
+
+Fast file and directory discovery feeding fuzzy pickers and editor navigation.
+
+### eza
+
+Directory listings with icons, Git information, long views, and tree views.
+
+### ripgrep
+
+Fast text search across repositories, used directly and through editor and shell workflows.
+
+### direnv
+
+Directory-scoped environment loading for project-specific development contexts.
+
+### delta
+
+Readable Git diffs with syntax highlighting and structured changes in terminal review and previews.
+
+### GitHub CLI
+
+GitHub pull request, issue, check, and repository operations from the terminal.
+
+### jq
+
+JSON filtering, transformation, and inspection in command-line workflows.
+
+### yq
+
+YAML querying and transformation in command-line workflows.
+
+### just
+
+Named project commands and repeatable task recipes.
+
+### tmux
+
+Retained terminal multiplexer for existing sessions and agent-status integrations alongside Zellij.
+
+### Claude Code
+
+Coding agent used with shared skills, role instructions, and repository guidance.
+
+### Codex
+
+Coding agent used with shared skills, role instructions, and repository guidance.
+
 ### fzf
 
-[fzf directory pickers](directory-picker.md): use one responsive interface for directory history and Git worktrees instead of implicitly preferring Skim. Display-only `shortpath` labels retain original selection paths; preview placement responds to available pane width and height.
+[fzf](directory-picker.md): my fuzzy finder for shell navigation, directory history, Git worktrees, and Neovim through FzfLua. Shell pickers retain original selection paths behind display labels and adapt previews to available pane space.
 
 ### Kitty
 
