@@ -3,7 +3,9 @@ import { test, expect } from '@playwright/test';
 for (const width of [1440, 390]) {
   test(`radar decisions remain reachable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('./reference/radar/');
+    await page.goto('./');
+    await page.locator('main').getByRole('link', { name: 'Tech radar', exact: true }).click();
+    await expect(page).toHaveURL(/\/reference\/radar\/$/);
     const radar = page.getByRole('figure', { name: 'Technology decisions by ring' });
     await expect(radar).toBeVisible();
     await expect(page.getByRole('link', { name: 'Edit page' })).toHaveAttribute('href', 'https://github.com/lanej/dotfiles/edit/master/docs/radar.yaml');
