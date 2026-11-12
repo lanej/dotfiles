@@ -73,6 +73,7 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
         enabled = subprocess.run([*shell, probe + '''
 (( $+widgets[fzf-file-widget-toggle] )) || exit 14
 [[ $(bindkey '^G') == *fzf-completion* ]] || exit 15
+[[ $(bindkey '^[w') == *zworktree* ]] || exit 16
 '''], cwd=home, env=env, capture_output=True, text=True, timeout=15)
         assert enabled.returncode == 0, enabled.stderr
         assert enabled.stdout == "READY\n" and enabled.stderr == "", enabled

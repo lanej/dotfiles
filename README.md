@@ -165,7 +165,9 @@ Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE
 
 [Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
 
-The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. For automatic creation blocking, install hooks in each repository. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Installing Treehouse alone does not enable tracking, hooks, or budgets.
+The optional [worktrees bundle](docs/worktree-manager.md) installs the standalone `worktree` command for fresh task checkouts, explicit finish protection, global tracking, budgets, and safe pruning. Existing Treehouse pools and agent defaults remain available while the replacement is evaluated.
+
+The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. Shared Git configuration enables global tracking and admission hooks without per-repository installation; budgets remain disabled until configured. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Treehouse manages leases independently of this machine-wide inventory.
 
 ## Configuration sets
 
@@ -202,6 +204,7 @@ source = "release"
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
+| `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
 | `workstation` | Adds editor, development, and AI tools, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
@@ -309,6 +312,8 @@ In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
 These shortcuts also work through tmux, so Codex actions such as `F2` and `F4`
 are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
+
+Use **Ctrl-B** (`zz`) for directory history and **Alt-W** (`zw`) for repository worktrees. The [directory picker guide](docs/directory-picker.md) covers responsive previews, path labels, and narrowing.
 
 Use `make keybindings` to inventory owned and existing Kitty/skhd shortcuts, and `make check-keybindings` to detect overlaps and generated drift. The [keybinding registry guide](docs/keybindings.md) explains coverage, chord queries, and how to migrate native bindings into generated sections.
 

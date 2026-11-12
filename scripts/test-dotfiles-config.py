@@ -34,7 +34,7 @@ def main():
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
-        native_tools = {"git", "git-worktree-hooks"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
+        native_tools = {"git", "git-worktree-hooks", "worktree-policy"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
@@ -47,6 +47,12 @@ def main():
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
+        config.write_text('sets = ["worktrees"]\n')
+        worktrees = json.loads(run(*command,"--format","json").stdout)
+        selected = {tool["name"] for tool in worktrees["tools"]}
+        assert {"worktree-manager","git","lsof"} <= selected
+        assert "worktree-policy" not in selected
+        assert "treehouse" not in selected
         config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\nmergiraf = false\n")
         reduced = json.loads(run(*command, "--format", "json").stdout)
         assert "tmux" not in {tool["name"] for tool in reduced["tools"]}

@@ -170,6 +170,8 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
+        (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
+        (checkout / "scripts/install-worktree-manager").write_text('#!/bin/sh\n[ "$1" = 0.1.0 ] || exit 1\ntouch "$HOME/worktree-manager-installed"\n')
         (checkout / "scripts/install-git-worktree-hooks.py").write_text(
             "from pathlib import Path\nimport os\n"
             "home = Path(os.environ['HOME'])\n"
@@ -522,7 +524,7 @@ else:
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
-            "direnv", "just", "loginctl", "zellij",
+            "direnv", "just", "loginctl", "zellij", "lsof",
             "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
@@ -572,7 +574,7 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nworktree-manager = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -744,6 +746,8 @@ else:
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
         assert (home / "patched-git-installed").is_file()
+        assert (home / "native-policy-installed").is_file()
+        assert (home / "worktree-manager-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 

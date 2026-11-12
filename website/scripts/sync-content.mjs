@@ -23,6 +23,7 @@ const pages = [
   { file: 'docs/design-system.mdx', slug: 'design-system' },
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
+  { file: 'docs/directory-picker.md', slug: 'reference/directory-picker', title: 'Directory and worktree jumps' },
   { file: 'docs/radar.md', slug: 'reference/radar', title: 'Tech Radar', radar: true },
   { file: 'docs/builder.mdx', slug: 'reference/builder' },
   { file: 'docs/documentation-site.mdx', slug: 'maintaining' },
@@ -111,6 +112,14 @@ for (const page of pages) {
   let presentation = '';
   if (page.radar) {
     tree.children = tree.children.filter((node) => node.type !== 'html' || !node.value.startsWith('<!--'));
+    const decisions = radar.rings.flatMap((ring) => ring.entries);
+    let decisionIndex = 0;
+    visit(tree, 'heading', (node) => {
+      if (node.depth !== 3) return;
+      const entry = decisions[decisionIndex++];
+      // rationale: Separator text before the title would change its generated anchor.
+      node.children.unshift({ type: 'image', url: `${base}/radar/${entry.icon}`, alt: '' });
+    });
     presentation = `import TechRadar from '../../../components/TechRadar.astro';\n\n<TechRadar rings={${JSON.stringify(radar.rings)}} />\n\n`;
   }
   const content = page.radar ? processor().use(remarkMdx).stringify(tree) : processor.stringify(tree);

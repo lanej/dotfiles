@@ -1180,6 +1180,12 @@ install_dependencies() {
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
+			worktree-manager)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-manager" "$version" || return 1
+				;;
+			worktree-policy)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-policy" "$version" || return 1
+				;;
 			git-worktree-hooks)
 				local git_archive_args=()
 				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then

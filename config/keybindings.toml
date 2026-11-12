@@ -391,3 +391,10 @@ app = "kitty"
 chord = "shift+enter"
 action = "send_text all \\e\\r"
 description = "Send Escape followed by Return to the terminal application."
+
+[[binding]]
+id = "kitty.worktree-picker"
+app = "kitty"
+chord = "alt+w"
+action = "send_text all \\ew"
+description = "Open the shell worktree picker."

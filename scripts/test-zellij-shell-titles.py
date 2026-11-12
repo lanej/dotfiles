@@ -56,25 +56,29 @@ def main():
         configured = shell_config.read_text()
         shell_config.unlink()
         shell_config.write_text(configured + "\nPS1=" + shlex.quote(PROMPT.decode()) + "\n"
+                                "_z() { printf '1 %s\\n' \"$TITLE_SELECTION\"; }\n"
                                 '_title_test_prompt_done() {\n'
                                 '  print -r -- "$PWD" >| "$HOME/prompt-$ZELLIJ_PANE_ID"\n'
                                 '  [[ -z "$TITLE_PROOF" ]] || touch "$TITLE_PROOF"\n'
-                                '}\nadd-zsh-hook precmd _title_test_prompt_done\n')
-        # Only picker selection is simulated. The installed key binding, zz,
+                                '}\nadd-zsh-hook precmd _title_test_prompt_done\n'
+                                '_title_test_buffer() { print -r -- "$BUFFER" >| "$HOME/buffer"; }\n'
+                                'zle -N _title_test_buffer\nbindkey \'^X^T\' _title_test_buffer\n')
+        # Directory history and picker selection are simulated. The installed key binding, zz,
         # shell cd hooks and native tab names are exercised end to end.
         tools = home / ".local/bin"
         fzf = tools / "fzf"
         fzf.write_text('''#!/bin/sh
-[ "$*" = --zsh ] || exit 1
-printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults() { print -r -- "$*"; }'
+if [ "$*" = --zsh ]; then
+    printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults() { print -r -- "$*"; }'
+else
+    [ -z "$TITLE_CANCEL" ] || { touch "$HOME/cancel-seen"; exit 130; }
+    python3 -c 'import sys; rows=sys.stdin.buffer.read(); sys.stdout.buffer.write(b"enter\\0" + rows)'
+fi
 ''')
         fzf.chmod(0o755)
         fd = tools / "fd"
         fd.write_text("#!/bin/sh\nexit 0\n")
         fd.chmod(0o755)
-        picker = tools / "sk"
-        picker.write_text('#!/bin/sh\ncat >/dev/null\nprintf "%s\\n" "$TITLE_SELECTION"\n')
-        picker.chmod(0o755)
         config = work / "config.kdl"
         config.write_text('default_mode "locked"\nshow_startup_tips false\n'
                           'show_release_notes false\nsession_serialization false\n')
@@ -123,6 +127,30 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             terminal.until("Ctrl-B updates the pane after selecting a directory", lambda:
                            prompt_in(original, selection) and terminal.terminals()[0]["title"] == "child  topic"
                            and title() == "home")
+            marker = home / "must-not-run"
+            buffer = home / "buffer"
+            pending = 'touch "$HOME/must-not-run"'
+            proof = home / "buffer-prompt"
+            terminal.send(("TITLE_PROOF=" + shlex.quote(str(proof)) + "\r").encode())
+            terminal.until("buffer fixture reaches the prompt", proof.exists)
+            proof.unlink()
+            terminal.send(pending.encode() + b"\x02")
+            terminal.until("Ctrl-B refreshes the prompt", proof.exists)
+            terminal.send(b"\x18\x14")
+            terminal.until("Ctrl-B retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
+            assert not marker.exists(), "Ctrl-B executed unfinished input"
+            proof.unlink()
+            terminal.send(b"\x01\x0bexport TITLE_CANCEL=1\r")
+            terminal.until("cancellation fixture reaches the prompt", proof.exists)
+            buffer.unlink()
+            terminal.send(pending.encode() + b"\x02")
+            terminal.until("picker cancellation completes", (home / "cancel-seen").exists)
+            terminal.send(b"\x18\x14")
+            terminal.until("cancel retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
+            assert not marker.exists(), "Cancellation executed unfinished input"
+            proof.unlink()
+            terminal.send(b"\x01\x0bunset TITLE_CANCEL\r")
+            terminal.until("cancellation fixture is cleared", proof.exists)
             # Arm the command at the original prompt. Its cd runs only after the
             # new split has focus, independently of ZLE startup and resize timing.
             terminal.send(b'touch "$HOME/waiting"; read -r go; cd "$TITLE_SELECTION/.."; '
@@ -142,7 +170,7 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             terminal.until("the explicitly named tab's shell finishes cd", (home / "manual-done").exists)
             assert title() == "Review", "An automatic title replaced the explicit name"
             print("PASS: installed cd/Ctrl-B hooks update pane directory and branch; "
-                  "tabs retain ownership and preserve explicit names.")
+                  "unfinished input survives selection and cancel; tabs retain ownership and preserve explicit names.")
         finally:
             subprocess.run([binary, "kill-session", name], env=env,
                            capture_output=True, timeout=5)
