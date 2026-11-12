@@ -204,6 +204,7 @@ source = "release"
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
+| `octo-manager` | Opt-in macOS Octo service with Codex tracking and receipt hooks |
 | `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
 | `workstation` | Adds editor, development, and AI tools, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
@@ -232,7 +233,7 @@ python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools. For local PR monitoring, see [the opt-in Octo Manager setup](docs/octo-manager.md).
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.

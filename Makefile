@@ -577,3 +577,7 @@ codex-octo-hook:
 
 test-codex-octo-hook: FORCE
 	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
+
+.PHONY: test-octo-manager-install
+test-octo-manager-install:
+	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"
