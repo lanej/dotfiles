@@ -27,6 +27,10 @@ Terminal emulator. Implements tabs entirely within a single OS window — yabai 
 
 Tiling window manager via the macOS Accessibility API. Manages all windows at the OS level.
 
+### Zellij
+
+[Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+
 ***
 
 ## Trial
@@ -35,15 +39,9 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
 
-### Pi
+### Paseo
 
-[Pi](pi.md): an opt-in composable agent runtime that reuses the existing shared skills, Builder guidance, and role instructions. Start with bounded workflows and keep the established coding clients available. Revisit adoption after exercising supervision, review results, and status reporting in normal work.
-
-### Zellij
-
-[Zellij](zellij.md): an opt-in terminal multiplexer trial with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
-
-Revisit adoption after validating long-running sessions, scrollback-heavy workloads, and the documented integration gaps.
+[Paseo](paseo-tasks.md): a workspace and conversation interface I’m trialing for working with coding agents. This trial is separate from the retired Firstmate workflow.
 
 ### Viewrule
 
@@ -52,6 +50,10 @@ Revisit adoption after validating long-running sessions, scrollback-heavy worklo
 ***
 
 ## Assess
+
+### Pi
+
+[Pi](pi.md): a composable agent runtime under assessment. It can reuse the existing shared skills, Builder guidance, and role instructions. Assess supervision, review results, and status reporting before starting a trial.
 
 ### AeroSpace
 

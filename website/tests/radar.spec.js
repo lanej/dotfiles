@@ -17,6 +17,10 @@ for (const width of [1440, 390]) {
     await expect(radar.getByRole('region', { name: 'Hold decisions' })).toContainText('Ghostty');
     await expect(radar.getByRole('region', { name: 'Hold decisions' })).toContainText('Firstmate');
     await expect(radar.getByRole('region', { name: 'Trial decisions' })).not.toContainText('Firstmate');
+    await expect(radar.getByRole('region', { name: 'Trial decisions' })).toContainText('Paseo');
+    await expect(radar.getByRole('region', { name: 'Assess decisions' })).toContainText('Pi');
+    await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Zellij');
+    await expect(radar.getByRole('region', { name: 'Trial decisions' }).getByRole('link', { name: /^(Pi|Zellij)$/ })).toHaveCount(0);
     const points = radar.locator('svg a');
     const headings = await page.locator('main h3').allTextContents();
     expect(await points.count()).toBe(headings.length);

@@ -11,6 +11,7 @@ Upstream icons are stored locally so the radar works without third-party image r
 | aerospace.png | [nikitabobko/AeroSpace](https://github.com/nikitabobko/AeroSpace/blob/0d498debee6c5bf4571124fe9851dbfaee427137/docs/assets/icon.png) | [MIT](LICENSE-aerospace.txt) |
 | opencode.png | [anomalyco/opencode](https://github.com/anomalyco/opencode/blob/92265ca63733cdbc6b0a8c9c560005e6f983c474/packages/app/public/favicon-96x96.png) | [MIT](LICENSE-opencode.txt) |
 | viewrule.png | [lanej/viewrule](https://github.com/lanej/viewrule/blob/15d95d32ad345290d0508cb20fa7f8aa07b70e9a/docs/brand/viewrule-logo.png) | [MIT](LICENSE-viewrule.txt) |
+| paseo.png | [getpaseo/paseo](https://github.com/getpaseo/paseo/blob/4df5307eaab6b22d06fe54a45c68211b3413f45c/packages/app/assets/images/favicon.png) | [Apache-2.0](LICENSE-paseo.txt) |
 | pi.svg | [earendil-works/pi](https://github.com/earendil-works/pi/blob/b22e525b325ff1934b4110f7fc60426fd6f0a8f3/apps/p2/public/icons/favicon.svg) | [MIT](LICENSE-pi.txt) |
 
 The remaining SVGs are original symbolic illustrations for Mergiraf (merge branches), Firstmate (anchor), Superpowers (bolt), andrej-karpathy-skills (book), and sccache (cache). The generic tool icon is used when a new radar entry has no assigned icon. These symbols are not upstream logos. Icon selection, ring placement, and decision text are maintained together in `docs/radar.yaml`. The generator produces `docs/radar.md` and the website diagram data.
