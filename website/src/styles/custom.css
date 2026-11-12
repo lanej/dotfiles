@@ -70,3 +70,12 @@ h1, h2, h3 { letter-spacing: -.025em; font-weight: 550; }
 
 /* Make copying setup commands discoverable without requiring a hover. */
 .expressive-code .copy button { opacity: .85; }
+
+.sl-markdown-content h3 img[src*='/radar/'] {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  vertical-align: -.2em;
+  margin: 0 .4rem 0 0;
+}
