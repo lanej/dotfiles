@@ -1,6 +1,6 @@
 ---
 name: zellij
-description: Use when working inside a Zellij session where shared panes can help the user and agent collaborate, or when asked to inspect, capture, open, or manage Zellij panes. Notice terminal context proactively, read relevant pane contents, and create useful shared views.
+description: Use when working in or collaborating through Zellij, including over SSH; when a contextual "show me" request calls for a shared command, file, log, terminal UI, or image view; or when asked to inspect, capture, open, or manage Zellij panes. Recognize shared terminal context proactively, verify targets, and use the collaboration helpers.
 ---
 
 # Zellij collaboration
