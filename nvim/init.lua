@@ -1670,7 +1670,7 @@ require("lazy").setup({
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
-					go = { "gofmt", "goimports", "gci" },
+					go = { "gofmt", "goimports", "gci", "golangci-lint" },
 					-- Conform will run the first available formatter
 					ruby = {
 						"prettierd",
