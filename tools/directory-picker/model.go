@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/junegunn/fzf/src/util"
 	"github.com/lanej/charmed/input"
 	"github.com/lanej/charmed/theme"
 )
@@ -20,17 +21,17 @@ type picker struct {
 	scope, matches     []int
 	pos, width, height int
 	spacing            int
+	slab               *util.Slab
 	ready              bool
 	refreshPending     bool
 	detailsUnavailable bool
-	previewMode        int // 0 automatic, 1 explicitly open, -1 explicitly closed
+	previewHidden      bool
 	requested          previewKey
 	stopPreview        context.CancelFunc
 	preview            previewResult
 	scroll             int
 	finished           bool
 	chosen             string
-	err                error
 }
 
 type refreshMatches struct{}
@@ -40,7 +41,7 @@ func newPicker(ctx context.Context, c config) *picker {
 	query := input.NewText(input.TextOptions{Value: c.Query, Width: 40, Theme: palette})
 	query.Prompt = c.Title + " > "
 	query.CursorEnd()
-	return &picker{ctx: ctx, config: c, palette: palette, query: query, byToken: make(map[string]int), requested: previewKey{id: -1}}
+	return &picker{ctx: ctx, config: c, palette: palette, query: query, slab: util.MakeSlab(100*1024, 2048), byToken: make(map[string]int), requested: previewKey{id: -1}}
 }
 
 func (m *picker) Init() tea.Cmd { return m.query.Focus() }
@@ -53,10 +54,7 @@ func (m *picker) selected() int {
 }
 
 func (m *picker) applyFilter() tea.Cmd {
-	if err := m.filter(); err != nil {
-		m.err = err
-		return tea.Quit
-	}
+	m.filter()
 	return m.requestPreview()
 }
 
@@ -73,6 +71,7 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if id, ok := m.byToken[msg.Token]; ok {
 			m.entries[id].observation = msg
+			m.entries[id].matched = nil
 			m.entries[id].measure()
 			if m.query.Value() == "" {
 				return m, m.requestPreview()
@@ -142,15 +141,11 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "ctrl+/", "ctrl+_":
-			if g.previewWidth > 0 {
-				m.previewMode = -1
-			} else {
-				m.previewMode = 1
-			}
+			m.previewHidden = !m.previewHidden
 			return m, m.requestPreview()
 		case "ctrl+j", "ctrl+k":
 			if msg.String() == "ctrl+j" {
-				m.scroll = min(max(0, len(m.preview.lines)-g.previewHeight), m.scroll+1)
+				m.scroll = min(max(0, m.preview.length()-g.previewHeight), m.scroll+1)
 			} else {
 				m.scroll = max(0, m.scroll-1)
 			}

@@ -25,6 +25,7 @@ type config struct {
 type entry struct {
 	token, label, detail string
 	size                 cellSize
+	matched              []int
 	observation
 }
 
@@ -86,9 +87,7 @@ func run() (int, error) {
 		m.entries = append(m.entries, e)
 		m.scope = append(m.scope, id)
 	}
-	if err := m.filter(); err != nil {
-		return 2, err
-	}
+	m.filter()
 	program := tea.NewProgram(m, tea.WithInput(tty), tea.WithOutput(tty))
 	done := make(chan struct{})
 	go func() {
@@ -100,9 +99,6 @@ func run() (int, error) {
 	<-done
 	if err != nil {
 		return 2, err
-	}
-	if m.err != nil {
-		return 2, m.err
 	}
 	if m.chosen == "" {
 		return 130, nil

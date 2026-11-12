@@ -24,8 +24,6 @@ import tempfile
 import termios
 import time
 
-import pyte
-
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("native", ROOT / "scripts/test-theme-native.py")
 native = importlib.util.module_from_spec(spec)
@@ -93,7 +91,10 @@ def main():
             path.mkdir(exist_ok=True)
         billing = home / "src/billing-api"
         (billing / "invoices").mkdir()
-        (billing / "README.md").write_text("# Billing API\n")
+        (billing / "reconciliation").mkdir()
+        (billing / "invoices/ledger.py").touch()
+        (billing / "pyproject.toml").write_text('[project]\nname = "billing-api"\n')
+        (billing / "README.md").write_text("# Billing API\n\nIssue invoices and reconcile payments against the ledger.\n\n## Development\n\nRun the invoice checks before closing a billing period.\n")
         (home / "history").write_text("".join(f"{len(paths)-i} {path}\n" for i, path in enumerate(paths)))
         # fd gates the shell's fzf bindings. The directory-history and worktree sources never invoke it.
         if not shutil.which("fd"):
@@ -108,10 +109,10 @@ def main():
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(repo)
-            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 36, 140, 0, 0))
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 38, 176, 0, 0))
             os.execvpe("zsh", ["zsh", "-d", "-i"], env)
-        screen = native.NativeScreen(140, 36)
-        stream, decoder = pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace")
+        screen = native.NativeScreen(176, 38)
+        stream, decoder = native.NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace")
         def until(predicate):
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
@@ -136,6 +137,12 @@ def main():
         def header(title):
             rows = panel(title)
             return rows[0] if rows else ""
+        def underlines(label):
+            for y, row in enumerate(screen.display):
+                x = row.find(label)
+                if x >= 0 and any(screen.buffer[y][x+i].underscore for i in range(len(label))):
+                    return "".join(c for i, c in enumerate(label) if screen.buffer[y][x+i].underscore)
+            return ""
         def capture(name, just_panel=False):
             # rationale: Drain asynchronous repaint output before recording terminal cells.
             quiet = time.monotonic() + .15
@@ -146,7 +153,7 @@ def main():
             colors = {"default": "#D8DEE9", "black": "#3B4252", "red": "#BF616A", "green": "#A3BE8C", "brown": "#EBCB8B", "blue": "#81A1C1", "magenta": "#B48EAD", "cyan": "#88C0D0", "white": "#E5E9F0"}
             def color(value, fallback):
                 return colors.get(value, "#" + value if len(value) == 6 else fallback)
-            top = next(i for i, line in enumerate(screen.display) if "Directories >" in line) if just_panel else 0
+            top = next(i for i, line in enumerate(screen.display) if line.lstrip().startswith(("Directories >", "Worktrees >"))) if just_panel else 0
             bottom = max(i for i, line in enumerate(screen.display) if line.strip()) + 1
             svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{screen.columns*9+24}" height="{(bottom-top)*20+24}">',
                    '<rect width="100%" height="100%" fill="#2E3440"/>',
@@ -161,6 +168,8 @@ def main():
                     x, y = column*9+12, (row-top)*20+12
                     if bg != "#2E3440":
                         svg.append(f'<rect x="{x}" y="{y}" width="9" height="20" fill="{bg}"/>')
+                    if cell.underscore:
+                        svg.append(f'<path d="M{x} {y+17}h9" stroke="{fg}"/>')
                     if cell.data.strip():
                         weight = "bold" if cell.bold else "normal"
                         svg.append(f'<text x="{x}" y="{y+15}" fill="{fg}" font-weight="{weight}">{html.escape(cell.data)}</text>')
@@ -180,10 +189,17 @@ def main():
             assert "## main" in text(), "The picker took over the shell screen"
             os.write(fd, b"'Codex dirty")
             until(lambda: "1/2" in header("Worktrees") and "Working tree  3 files" in text())
+            assert underlines("dirty 3") == "dirty" and underlines("Codex") == "Codex"
             os.write(fd, b"\x15")
             until(lambda: "2/2" in header("Worktrees"))
-            os.write(fd, b"payment-retries")
-            until(lambda: "1/2" in header("Worktrees") and "return attempts" in text())
+            os.write(fd, b"/pmt")
+            until(lambda: "/pmt" in header("Worktrees") and "2/2" in header("Worktrees") and "return attempts" in text()
+                  and "Codex" in text() and underlines("~/worktrees/payment-retries") == "/pmt")
+            # The selection and the other result both show the actual fuzzy characters.
+            assert underlines("~/worktrees/payment-retries") == "/pmt"
+            assert underlines("~/src/payments") == "/pmt"
+            panes = next(row for row in panel("Worktrees") if "README.md" in row and "payment-retries" in row and " │ " in row)
+            assert panes.index(" │ ") < panes.index("README.md") < panes.rindex(" │ ") < panes.rindex("payment-retries"), panes
             for phrase in ("1 staged", "1 unstaged", "1 untracked", "src/main.py", "Recent commits",
                            "Retry failed payments", "src/retry.py", "NOTES.md"):
                 assert phrase in text(), phrase
@@ -197,7 +213,11 @@ def main():
             for attribute, value in (("bg", "a3be8c"), ("fg", "88c0d0"), ("bg", "434c5e"), ("fg", "ebcb8b")):
                 assert any(getattr(cell, attribute) == value for row in screen.buffer.values() for cell in row.values()), value
             assert "ctrl-" not in text()
-            capture("wide")
+            capture("wide", just_panel=True)
+            os.write(fd, b"\x15")
+            until(lambda: "pmt" not in header("Worktrees"))
+            os.write(fd, b"payment-retries")
+            until(lambda: "1/2" in header("Worktrees") and "return attempts" in text())
             os.write(fd, b"\x00")
             until(lambda: "1/1" in header("Worktrees"))
             resize(80, 40)
@@ -226,20 +246,23 @@ def main():
             until(lambda: "81/81" in header("Directories") and "return attempts" in text() and "attached" in text())
             rows = panel("Directories")
             assert all(any(label in row for row in rows) for label in labels)
-            assert max(row.partition(" │ ")[0].count("~/") for row in rows) >= 4, rows[1]
+            assert max(row.partition(" │ ")[0].count("~/") for row in rows) >= 3, rows[1]
+            assert any("README.md" in row.partition(" │ ")[2].partition(" │ ")[0]
+                       and "payment-retries" in row.rpartition(" │ ")[2] for row in rows), rows[1]
             assert "## retry-payments" in text()
             capture("history")
             os.write(fd, b"b")
             until(lambda: re.search(r"Directories > b\s+\d+/81", header("Directories")))
             os.write(fd, b"illing-")
-            until(lambda: "6/81" in header("Directories") and "invoices" in text() and "README.md" in text())
+            until(lambda: "6/81" in header("Directories") and "invoices/" in text() and "against the ledger" in text())
             capture("files", just_panel=True)
-            assert panel("Directories")[1].count("billing-") == 6
+            assert underlines("~/src/billing-api") == "billing-"
+            assert underlines("~/src/billing-worker") == "billing-"
             os.write(fd, b"\x0e")  # Ctrl-N picks billing-cli, an empty directory.
-            until(lambda: "› ~/src/billing-cli" in text() and "invoices" not in text())
+            until(lambda: "› ~/src/billing-cli" in text() and "Empty directory" in text() and "invoices/" not in text())
             rows = panel("Directories")
-            assert rows[1].count("billing-") == 6, rows[1]
-            assert not any(row.strip() for row in rows[2:]), rows[2:]
+            assert rows[1].partition(" │ ")[0].count("billing-") == 6, rows[1]
+            assert sum(bool(row.strip()) for row in rows) == 3, rows[:5]
             capture("filtered", just_panel=True)
             os.write(fd, b"\x15")
             until(lambda: "81/81" in header("Directories") and "› ~/src/billing-cli" in text())
@@ -250,7 +273,7 @@ def main():
             os.write(fd, b"\x1b[C")
             until(lambda: "› " + destination_label in text())
             resize(72, 18)
-            until(lambda: "› " + destination_label in text() and "81/81" in header("Directories"))
+            until(lambda: "› " + destination_label in text() and "81/81" in header("Directories") and "Empty directory" in text())
             os.write(fd, b"\r")
             target = str(paths[labels.index(destination_label)])
             until(lambda: result.exists() and result.read_text().strip() == target)

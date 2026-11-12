@@ -8,8 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"slices"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -74,52 +72,24 @@ func readObservations(ctx context.Context, c config, send func(tea.Msg)) {
 	}
 }
 
-func (m *picker) filter() error {
-	focused := m.selected()
-	query := m.query.Value()
-	if query == "" {
-		m.matches = slices.Clone(m.scope)
-	} else {
-		var data strings.Builder
-		for _, id := range m.scope {
-			e := m.entries[id]
-			fmt.Fprintf(&data, "%d\t%s\x00", id, strings.Join(append([]string{e.label}, e.fields()...), " "))
-		}
-		cmd := exec.CommandContext(m.ctx, "fzf", "--no-sort", "--read0", "--print0", "--delimiter=\t", "--nth=2..", "--filter="+query)
-		cmd.Env = append(os.Environ(), "FZF_DEFAULT_OPTS=", "FZF_DEFAULT_OPTS_FILE=")
-		cmd.Stdin = strings.NewReader(data.String())
-		out, err := cmd.Output()
-		var exit *exec.ExitError
-		if err != nil && !(errors.As(err, &exit) && exit.ExitCode() == 1) {
-			return fmt.Errorf("fzf filter: %w", err)
-		}
-		m.matches = nil
-		for record := range strings.SplitSeq(strings.TrimSuffix(string(out), "\x00"), "\x00") {
-			if record == "" {
-				continue
-			}
-			field, _, _ := strings.Cut(record, "\t")
-			id, err := strconv.Atoi(field)
-			if err != nil || id < 0 || id >= len(m.entries) {
-				return fmt.Errorf("invalid fzf result %q", field)
-			}
-			m.matches = append(m.matches, id)
-		}
-	}
-	m.pos = max(0, slices.Index(m.matches, focused))
-	m.measureSpacing()
-	return nil
-}
-
 type previewKey struct {
 	id, width, height int
 	observed          bool
 }
 type previewResult struct {
-	width  int
-	key    previewKey
-	lines  []string
-	useful bool
+	key              previewKey
+	context, details []string
+	width, split     int
+}
+
+func (p previewResult) length() int {
+	if p.split > 0 {
+		return max(len(p.context), len(p.details))
+	}
+	if len(p.context) == 0 {
+		return len(p.details)
+	}
+	return len(p.context) + 1 + len(p.details)
 }
 
 func (m *picker) requestPreview() tea.Cmd {
@@ -153,26 +123,27 @@ func (m *picker) requestPreview() tea.Cmd {
 			return nil
 		case <-time.After(35 * time.Millisecond):
 		}
-		cmd := helper(ctx, script, "--preview", selected.token, snapshot, "--inline")
+		cmd := helper(ctx, script, "--preview-json", selected.token, snapshot)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("FZF_PREVIEW_COLUMNS=%d", key.width), fmt.Sprintf("FZF_PREVIEW_LINES=%d", key.height))
 		raw, err := cmd.Output()
 		if ctx.Err() != nil {
 			return nil
 		}
-		if err != nil {
-			raw = append(raw, []byte("\nPreview unavailable")...)
+		var data struct {
+			Context, Details []string
+			Split            int
 		}
-		content := strings.TrimRight(cleanPreview(string(raw)), "\n ")
-		useful := content != ""
-		if !useful {
-			content = selected.label + "  (empty directory)"
+		if err != nil || json.Unmarshal(raw, &data) != nil || len(data.Details) == 0 {
+			data.Details = []string{selected.label, "Preview unavailable"}
 		}
-		lines := strings.Split(content, "\n")
-		width := 0
-		for _, line := range lines {
-			width = max(width, ansi.StringWidth(strings.TrimRight(line, " ")))
+		result := previewResult{key: key, context: data.Context, details: data.Details, split: data.Split}
+		for _, pane := range [][]string{result.context, result.details} {
+			for i, line := range pane {
+				pane[i] = cleanPreview(line)
+				result.width = max(result.width, ansi.StringWidth(strings.TrimRight(pane[i], " ")))
+			}
 		}
-		return previewResult{key: key, width: width, lines: lines, useful: useful}
+		return result
 	}
 }
 

@@ -117,40 +117,51 @@ func (g geometry) vertical(pos, delta int) int {
 
 func (m *picker) arrange() geometry {
 	w, h := max(1, m.width), max(1, m.height-1)
-	if m.previewMode < 0 || len(m.matches) == 0 {
+	if m.previewHidden || len(m.matches) == 0 || h < 2 {
 		return m.grid(w, h)
 	}
-	stack := m.grid(w, max(1, h/2))
-	const readablePreview = 64 // A commit subject and its file and line counts.
-	if listWidth := w - readablePreview - 3; listWidth >= 20 {
-		side := m.grid(listWidth, h)
-		if len(side.visible()) > 3 && side.count() >= stack.count() {
-			side.previewWidth, side.previewHeight = w-side.width-3, h
-			return side
+	// Leave two readable preview columns when the matches can fit beside them.
+	const previewPair = 42*2 + 3
+	const divider = 3
+	if w >= max(24, min(40, m.spacing))+divider+previewPair {
+		budget := min(max(w/3, m.spacing-gap), w-previewPair-divider)
+		if len(m.matches) <= 3 {
+			for _, id := range m.matches {
+				budget = max(budget, min(w-previewPair-divider, m.entries[id].size.width))
+			}
 		}
+		side := m.grid(budget, h)
+		// In a long history, spare width can surface more matches while keeping
+		// enough room for a commit subject and its diff statistics.
+		if wider := w - 2*52 - 2*divider; len(side.rows) > h/2 && wider > budget {
+			side = m.grid(wider, h)
+		}
+		side.previewWidth, side.previewHeight = w-side.width-divider, h
+		return side
 	}
-	remaining := h - len(stack.visible()) - 1
-	if remaining > 0 && (m.previewMode > 0 || remaining >= 4 && (h >= 20 || stack.count() == len(m.matches))) {
-		stack.below = true
-		stack.previewWidth, stack.previewHeight = w, remaining
-		return stack
+	stack := m.grid(w, max(1, h/2))
+	if w >= 84 && len(stack.rows) > 3 {
+		side := m.grid(w-48-divider, h)
+		side.previewWidth, side.previewHeight = w-side.width-divider, h
+		return side
 	}
-	return m.grid(w, h)
+	stack.below = true
+	stack.previewWidth = w
+	stack.previewHeight = h - len(stack.visible())
+	if stack.previewHeight > 1 {
+		stack.previewHeight-- // separator above the preview
+	}
+	return stack
 }
 
 func (m *picker) displayGeometry() geometry {
 	g := m.arrange()
-	if g.previewWidth == 0 {
+	if g.previewWidth == 0 || g.below || len(m.preview.details) == 0 || len(m.preview.context) > 0 {
 		return g
 	}
-	if len(m.preview.lines) == 0 || m.previewMode == 0 && !m.preview.useful {
-		return m.grid(m.width, m.height-1)
-	}
-	if !g.below {
-		// A directory listing can be much narrower than a formatted Git preview.
-		pw := min(g.previewWidth, max(1, m.preview.width))
-		g = m.grid(m.width-pw-3, m.height-1)
-		g.previewWidth, g.previewHeight = pw, max(1, m.height-1)
-	}
+	// A short filesystem listing can give the rest of its width back to matches.
+	width := min(g.previewWidth, max(1, m.preview.width))
+	g = m.grid(m.width-width-3, max(1, m.height-1))
+	g.previewWidth, g.previewHeight = width, max(1, m.height-1)
 	return g
 }

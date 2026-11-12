@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import unittest
 import io
+import json
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
@@ -66,23 +67,33 @@ class PickerTests(unittest.TestCase):
         for row, (path, _) in zip(picker.rows(choices), choices):
             self.assertEqual(os.fsdecode(base64.urlsafe_b64decode(row.split('\t')[0])), path)
 
-    def test_directory_preview_recovers_if_eza_fails(self):
+    def test_directory_preview_reads_local_readme_lists_files_and_identifies_empty_dirs(self):
         target = self.work / "ordinary"
         target.mkdir()
         (target / "invoices").mkdir()
         (target / "README.md").write_text("Invoices")
-        eza = self.work / "eza"
-        eza.write_text("#!/bin/sh\nexit 2\n")
-        eza.chmod(0o755)
-        env = {**os.environ, "PATH": str(self.work) + os.pathsep + os.environ["PATH"]}
-        token = base64.urlsafe_b64encode(os.fsencode(target)).decode()
-        command = [ROOT / "bin/directory-picker", "--preview", token, "", "--inline"]
-        preview_text = subprocess.check_output(command, env=env, text=True)
-        self.assertIn("invoices/", preview_text)
-        self.assertIn("README.md", preview_text)
-        (target / "invoices").rmdir()
-        (target / "README.md").unlink()
-        self.assertEqual(subprocess.check_output(command, env=env), b"")
+        env = {**os.environ, "FZF_PREVIEW_COLUMNS": "126", "NO_COLOR": "1"}
+        def panes(path):
+            token = base64.urlsafe_b64encode(os.fsencode(path)).decode()
+            result = subprocess.check_output([ROOT / "bin/directory-picker", "--preview-json", token, ""], env=env)
+            return json.loads(result)
+        first = panes(target)
+        self.assertGreater(first['split'], 0)
+        self.assertIn("Invoices", "\n".join(first['context']))
+        self.assertIn("invoices/", first['details'])
+        self.assertIn("1 directory", "\n".join(first['details']))
+        self.assertIn("Empty directory", panes(target / "invoices")['details'])
+        repo = self.repository("mixed")
+        (repo / "README.md").write_text("Root instructions")
+        nested = repo / "jobs"
+        nested.mkdir()
+        (nested / "README.md").write_text("Run the billing worker.")
+        (nested / "worker.py").touch()
+        selected = panes(nested)
+        self.assertIn("Run the billing worker.", "\n".join(selected['context']))
+        self.assertNotIn("Root instructions", "\n".join(selected['context']))
+        self.assertIn("worker.py", selected['context'])
+        self.assertIn("Working tree", "\n".join(selected['details']))
 
     def test_shell_jump_uses_full_path_and_cancel_stays_put(self):
         target = self.work / "a quote' and spaces"
@@ -260,10 +271,10 @@ printf '%s\\n%s\\n' "$result" "$PWD"
         self.assertIn('[+0]', rendered)
         self.assertIn('[-0]', rendered)
 
-    def test_layout_preserves_short_list_space(self):
+    def test_fallback_keeps_preview_visible(self):
         self.assertTrue(picker.layout(140, 20).startswith("right"))
         self.assertTrue(picker.layout(80, 40).startswith("down"))
-        self.assertTrue(picker.layout(80, 20).endswith(",hidden"))
+        self.assertTrue(picker.layout(80, 20).endswith(",nohidden"))
 
 
 if __name__ == "__main__":

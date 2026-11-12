@@ -21,13 +21,12 @@ func TestInlineGridFitsContentAndReleasesShellRows(t *testing.T) {
 		m.entries = append(m.entries, e)
 		m.scope = append(m.scope, i)
 	}
-	if err := m.filter(); err != nil {
-		t.Fatal(err)
-	}
+	m.filter()
+	m.preview = previewResult{details: []string{"~/src/project-00", "Empty directory"}, width: 16}
 	screen := m.View()
 	body := ansi.Strip(screen.Content)
-	if screen.AltScreen || strings.Count(body, "\n") > 12 {
-		t.Fatalf("81 results claimed more than 12 inline rows:\n%s", body)
+	if screen.AltScreen || strings.Count(body, "\n") > 16 || !strings.Contains(body, "Empty directory") {
+		t.Fatalf("81 results did not share the inline terminal with their preview:\n%s", body)
 	}
 	for _, e := range m.entries {
 		if !strings.Contains(body, e.label) {
@@ -42,9 +41,10 @@ func TestInlineGridFitsContentAndReleasesShellRows(t *testing.T) {
 	m.matches = m.matches[1:7]
 	m.pos = 0
 	m.measureSpacing()
+	m.preview = previewResult{details: []string{"~/src/project-01", "Empty directory"}, width: 16}
 	body = ansi.Strip(m.View().Content)
-	if strings.Count(body, "\n") != 1 {
-		t.Fatalf("six short results should fit below the query in one row:\n%s", body)
+	if strings.Count(body, "\n") != 2 || !strings.Contains(body, "Empty directory") {
+		t.Fatalf("six short results should share a row alongside their preview:\n%s", body)
 	}
 	m.pos = 3
 	m.width = 19
@@ -70,5 +70,17 @@ func TestLongPathOnlyWidensItsOwnRow(t *testing.T) {
 	}
 	if g.vertical(m.pos, -g.pageHeight) != 2 {
 		t.Fatal("Page Up from a partial final page should return to the corresponding column")
+	}
+}
+
+func TestWidePreviewScrollsLongReadmeAndKeepsGitVisible(t *testing.T) {
+	m := newPicker(context.Background(), config{})
+	m.preview = previewResult{context: []string{"README.md", "First", "Second", "Last"}, details: []string{"main", "Working tree clean"}, split: 45}
+	m.scroll = 2
+	body, height, total := m.previewWindow(geometry{previewWidth: 94, previewHeight: 2})
+	lines := strings.Split(ansi.Strip(body), "\n")
+	if height != 2 || total != 4 || !strings.Contains(lines[0], "Second") || !strings.Contains(lines[0], "main") ||
+		!strings.Contains(lines[1], "Last") || !strings.Contains(lines[1], "Working tree clean") {
+		t.Fatalf("Git moved out of view while scrolling the README:\n%s", body)
 	}
 }

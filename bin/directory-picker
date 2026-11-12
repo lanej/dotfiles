@@ -99,9 +99,7 @@ def rows(choices):
 def layout(columns, lines):
     if columns >= 110:
         return "right,48%,border-left,nowrap,nohidden"
-    if lines >= 32:
-        return "down,40%,border-top,nowrap,nohidden"
-    return "down,40%,border-top,nowrap,hidden"
+    return "down,40%,border-top,nowrap,nohidden"
 
 
 def summaries(snapshot):
@@ -165,7 +163,7 @@ def select_fzf(candidates, mode, query, snapshot):
     command = shlex.join([sys.executable, str(Path(__file__).resolve())])
     resize = f"transform:{command} --layout"
     args = ["fzf", "--read0", "--print0", "--delimiter=\t", "--with-nth=2,3",
-            "--ansi", "--height=100%", "--layout=reverse", "--border=none", "--margin=0", "--padding=0",
+            "--ansi", "--color=hl:underline,hl+:underline", "--height=100%", "--layout=reverse", "--border=none", "--margin=0", "--padding=0",
             "--info=inline", "--no-separator", "--multi", "--no-sort",
             "--bind=ctrl-space:clear-selection+select-all+print(ctrl-space)+accept",
             "--bind=enter:clear-selection+print(enter)+accept",
@@ -209,7 +207,7 @@ def main():
     if mode == "--layout":
         print(f"change-preview-window({layout(int(os.environ['FZF_COLUMNS']), int(os.environ['FZF_LINES']))})")
         return 0
-    if mode == "--preview":
+    if mode in ("--preview", "--preview-json"):
         path = os.fsdecode(base64.urlsafe_b64decode(sys.argv[2]))
         snapshot = {"agents": [], "sources": [], "pending": not sys.argv[3]}
         if sys.argv[3]:
@@ -217,14 +215,8 @@ def main():
                 snapshot = json.loads(Path(sys.argv[3]).read_text())
             except FileNotFoundError:
                 pass
-        if directory_preview.render(path, snapshot):
-            return 0
-        with os.scandir(path) as children:
-            if next(children, None) is None:
-                if "--inline" not in sys.argv[4:]:
-                    print(visible(path))
-                return 0
-        return subprocess.call([str(ROOT / "bin/fzf-path-preview"), path])
+        directory_preview.render(path, snapshot, structured=mode == "--preview-json")
+        return 0
     if mode not in ("--history", "--worktrees"):
         raise RuntimeError(f"Unknown picker mode: {mode}")
     choices = worktrees(Path.cwd()) if mode == '--worktrees' else history(sys.stdin)
