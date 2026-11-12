@@ -190,7 +190,7 @@ test-zellij-command-prompt: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
 test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-status
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-pane test-zellij-status
 zellij-helpers:
 	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
 test-zellij-helpers: zellij-helpers
@@ -199,6 +199,8 @@ test-zellij-helpers: zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
 	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
+test-zellij-pane: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"

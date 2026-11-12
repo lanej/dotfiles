@@ -233,6 +233,8 @@ jobs:
           retention-days: 7
       - run: make test-zellij
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+      - run: make test-zellij-pane
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-tab-labels
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-session-keys
