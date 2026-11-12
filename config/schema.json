@@ -131,6 +131,10 @@
           "type": "boolean",
           "description": "Enable the fzf bootstrap recipe."
         },
+        "directory-picker": {
+          "type": "boolean",
+          "description": "Build the Charmed directory and worktree picker for zz and zw."
+        },
         "starship": {
           "type": "boolean",
           "description": "Enable the starship bootstrap recipe."

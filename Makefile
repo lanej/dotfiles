@@ -500,6 +500,11 @@ test-zellij-tab-labels: zellij-helpers
 test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
+.PHONY: directory-picker
+directory-picker:
+	@mkdir -p "$(HOME)/.local/libexec/dotfiles"
+	@$(GO) -C "$(DOTFILES)/tools/directory-picker" build -mod=readonly -trimpath -o "$(HOME)/.local/libexec/dotfiles/directory-picker-ui" .
+
 .PHONY: test-directory-picker
 test-directory-picker:
 	@python3 "$(DOTFILES)/scripts/test-directory-picker.py"

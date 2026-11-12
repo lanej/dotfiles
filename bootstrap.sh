@@ -1224,6 +1224,7 @@ run_configured_hooks() {
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
+			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;

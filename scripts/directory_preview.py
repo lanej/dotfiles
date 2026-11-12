@@ -14,10 +14,10 @@ import unicodedata
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def command(args, cwd=None, timeout=1, data=None):
+def command(args, cwd=None, timeout=1, data=None, env=None):
     try:
         result = subprocess.run(args, cwd=cwd, capture_output=True, timeout=timeout, input=data,
-                                env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0'})
+                                env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0', **(env or {})})
         return result.stdout if result.returncode == 0 else None
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -209,8 +209,10 @@ def readme_lines(root, width, available):
         style = theme_directory() / 'glow.json'
         if not style.is_file():
             style = ROOT / 'design-system/generated/glow.json'
-        highlighted = command(['glow', '--style', 'notty' if os.environ.get('NO_COLOR') else str(style),
-                               '--width', str(width), '-'], data=data)
+        color = not os.environ.get('NO_COLOR')
+        # Glow writes into a pipe even when the picker is displaying a true-color terminal.
+        highlighted = command(['glow', '--style', str(style) if color else 'notty',
+                               '--width', str(width), '-'], data=data, env={'CLICOLOR_FORCE': '1' if color else '0'})
     if highlighted is None and shutil.which('bat'):
         args = ['bat', '--color=' + ('never' if os.environ.get('NO_COLOR') else 'always'),
                 '--paging=never', '--style=plain', '--wrap=character', '--terminal-width=' + str(width),

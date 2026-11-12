@@ -42,8 +42,10 @@ def main():
         (repo / "README.md").write_text("Payments repository\n")
         (repo / "src").mkdir()
         (repo / "src/main.py").write_text("print('hello')\n")
+        commit_date = "2026-01-01T00:00:00Z"
+        git_env = {**os.environ, "GIT_AUTHOR_DATE": commit_date, "GIT_COMMITTER_DATE": commit_date}
         def git(*args):
-            subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo), *args], env=git_env, check=True, capture_output=True)
         git("init", "-b", "main")
         git("add", ".")
         git("-c", "user.name=Fixture", "-c", "user.email=test@example.invalid", "commit", "-m", "fixture")
@@ -66,8 +68,14 @@ def main():
         tmux.write_text("#!/bin/sh\nprintf '%s\\n' " + shlex.quote(str(topic) + "\tcodex\t%1") + "\n")
         tmux.chmod(0o755)
         (home / ".files").symlink_to(ROOT)
+        binary_path = Path(".local/libexec/dotfiles/directory-picker-ui")
+        installed = Path.home() / binary_path
+        if not installed.is_file():
+            raise SystemExit("Build the native picker with make directory-picker before this check.")
+        (home / binary_path).parent.mkdir(parents=True)
+        (home / binary_path).symlink_to(installed)
         result = home / "result"
-        env = {**os.environ, "HOME": str(home), "TERM": "xterm-256color", "FZF_DEFAULT_OPTS": "", "FZF_DEFAULT_OPTS_FILE": "", "DOTFILES_THEME_DIR": str(ROOT / "design-system/generated"), "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
+        env = {**os.environ, "HOME": str(home), "TERM": "xterm-256color", "COLORTERM": "truecolor", "FZF_DEFAULT_OPTS": "", "FZF_DEFAULT_OPTS_FILE": "", "DOTFILES_THEME_DIR": str(ROOT / "design-system/generated"), "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
         for key in ("NO_COLOR", "TMUX", "TMUX_PANE", "ZELLIJ", "ZELLIJ_SESSION_NAME"):
             env.pop(key, None)
         if shutil.which('bat'):
@@ -76,12 +84,29 @@ def main():
             shutil.copyfile(ROOT / 'design-system/generated/Dotfiles.tmTheme', themes / 'Dotfiles.tmTheme')
             env.update(BAT_CONFIG_DIR=str(themes.parent), BAT_CACHE_PATH=str(home / '.cache/bat'))
             subprocess.run(['bat', 'cache', '--build'], env=env, check=True, capture_output=True)
-        command = f'source {shlex.quote(str(ROOT / "sh/alias"))}; zw; print -r -- "$PWD" > {shlex.quote(str(result))}'
+        domains = ("address", "billing", "carrier", "claims", "delivery", "events", "fraud",
+                   "insurance", "parcel", "rates", "routing", "tracking", "webhooks")
+        paths = [home / "src" / f"{name}-{suffix}" for name in domains
+                 for suffix in ("api", "cli", "dashboard", "docs", "jobs", "worker")]
+        paths.extend((home / "release notes", repo, topic))
+        for path in paths:
+            path.mkdir(exist_ok=True)
+        (home / "history").write_text("".join(f"{len(paths)-i} {path}\n" for i, path in enumerate(paths)))
+        # fd gates the shell's fzf bindings. The directory-history and worktree sources never invoke it.
+        if not shutil.which("fd"):
+            (tools / "fd").symlink_to(shutil.which("true"))
+        (home / ".zsh/cache").mkdir(parents=True)
+        env.update(ZDOTDIR=str(home), SHELL=shutil.which("zsh"))
+        (home / ".zshrc").write_text(
+            'source "$HOME/.files/zsh/zshrc"\nsource "$HOME/.files/sh/alias"\n'
+            '_z() { cat "$HOME/history"; }\n'
+            'record_directory() { print -r -- "$PWD" > "$HOME/result"; }\n'
+            'chpwd_functions+=(record_directory)\nPS1="picker-ready> "\n')
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(repo)
             fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 36, 140, 0, 0))
-            os.execvpe("zsh", ["zsh", "-f", "-c", command], env)
+            os.execvpe("zsh", ["zsh", "-d", "-i"], env)
         screen = native.NativeScreen(140, 36)
         stream, decoder = pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace")
         def until(predicate):
@@ -91,6 +116,8 @@ def main():
                     try:
                         chunk = os.read(fd, 65536)
                     except OSError:
+                        if predicate():
+                            return
                         break
                     stream.feed(decoder.decode(chunk))
                 if predicate():
@@ -130,8 +157,19 @@ def main():
             fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", lines, columns, 0, 0))
             os.killpg(pid, signal.SIGWINCH)
         try:
+            until(lambda: "picker-ready>" in text())
+            os.write(fd, b"\x1bw")
             until(lambda: "Worktrees >" in text() and "clean" in text())
-            # The real fzf must search path labels, then retain exactly the filtered set.
+            # Compare both worktrees, then narrow the real picker and inspect the selected one.
+            until(lambda: "Working tree" in text())
+            until(lambda: "dirty 3" in screen.display[2] and "Codex" in screen.display[2])
+            capture("worktrees")
+            assert "payments · main" in screen.display[1] and "clean" in screen.display[1]
+            assert "payments · retry-payments" in screen.display[2] and "Codex" in screen.display[2]
+            os.write(fd, b"'Codex dirty")
+            until(lambda: "1/2" in text() and "Working tree  3 files" in text())
+            os.write(fd, b"\x15")
+            until(lambda: "2/2" in text())
             os.write(fd, b"payment-retries")
             until(lambda: "1/2" in text() and "Working tree  3 files" in text())
             until(lambda: 'return attempts' in text() and 'Bound retry attempts' in text())
@@ -162,7 +200,40 @@ def main():
             os.write(fd, b"\r")
             until(result.exists)
             assert result.read_text().strip() == str(topic)
-            print("PASS: native fzf searches, narrows, resizes, toggles preview, and jumps to the selected worktree.")
+            until(lambda: "picker-ready>" in text())
+            result.unlink()
+            resize(172, 44)
+            os.write(fd, b"\x02")
+            until(lambda: "81/81" in text() and "payment-retries" in text())
+            labels = ["~/" + str(path.relative_to(home)) for path in paths]
+            assert labels[0] in screen.display[1] and labels[41] in screen.display[1], screen.display[1]
+            capture("history")
+            os.write(fd, b"billing-")
+            until(lambda: "6/81" in text())
+            for row, label in enumerate(labels[6:12], 1):
+                assert label in screen.display[row], screen.display[row]
+            os.write(fd, b"\x15")  # clear the query
+            until(lambda: "81/81" in text())
+            os.write(fd, b"\x1b[C")  # same row in the next result column
+            until(lambda: "› " + labels[47] in text())
+            resize(72, 18)
+            until(lambda: "› " + labels[47] in text())
+            os.write(fd, b"\r")
+            until(lambda: result.exists() and result.read_text().strip() == str(paths[47]))
+            until(lambda: "picker-ready>" in text())
+            os.write(fd, b'print -r -- "$PWD" > "$HOME/preserved"')
+            os.write(fd, b"\x02")
+            until(lambda: "81/81" in screen.display[0] and "› " + labels[0] in text())
+            os.write(fd, b"webhooks-jobs")
+            until(lambda: "1/81" in screen.display[0] and "webhooks-jobs" in screen.display[0])
+            os.write(fd, b"\x1b")
+            until(lambda: "picker-ready>" in text() and "preserved" in text())
+            assert not (home / "preserved").exists(), "Cancelled picker executed unfinished input"
+            os.write(fd, b"\r")
+            until(lambda: (home / "preserved").exists())
+            assert (home / "preserved").read_text().strip() == str(paths[47])
+            os.write(fd, b"exit\r")
+            print("PASS: Ctrl-B and Alt-W reflow, filter, preserve selection and unfinished input, and jump.")
         finally:
             os.close(fd)
             if os.waitpid(pid, os.WNOHANG)[0] == 0:

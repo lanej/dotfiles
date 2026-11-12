@@ -1,6 +1,7 @@
 [tools]
 zsh = true
 fzf = true
+directory-picker = true
 starship = true
 atuin = true
 skim = true

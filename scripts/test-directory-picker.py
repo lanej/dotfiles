@@ -61,8 +61,8 @@ class PickerTests(unittest.TestCase):
         first, second = self.work / "a", self.work / "two words"
         first.mkdir()
         second.mkdir()
-        choices = picker.history([f"1.5 {second}\n", f"  9 {first}\n", f"2 {first}\n", "bad diagnostic\n", "/missing\n"])
-        self.assertEqual(choices, [(str(first), ""), (str(second), "")])
+        choices = picker.history([f"12.5 {second}\n", f"  9 {first}\n", f"2 {second}\n", "bad diagnostic\n", "/missing\n"])
+        self.assertEqual(choices, [(str(second), ""), (str(first), "")])
         for row, (path, _) in zip(picker.rows(choices), choices):
             self.assertEqual(os.fsdecode(base64.urlsafe_b64decode(row.split('\t')[0])), path)
 
