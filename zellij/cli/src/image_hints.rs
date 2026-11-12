@@ -1,5 +1,5 @@
 //! The Kitty picker uses the original client's terminal connection, including across SSH.
-use crate::util::{flag, nonce, number, origin_id, pane_id, session, snapshot, text};
+use crate::util::{flag, native, nonce, number, origin_id, pane_id, session, snapshot, text};
 use anyhow::{ensure, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::Deserialize;
@@ -86,6 +86,24 @@ pub fn run() -> Result<()> {
     let origin = origin_id()?;
     let panes = snapshot(&session, "panes")?;
     let pane = terminal(&panes, origin)?;
+    // zssh started inside Zellij creates a tab running this SSH command. Forward
+    // the shortcut through its PTY so the remote session resolves its own files.
+    if pane["terminal_command"]
+        .as_str()
+        .is_some_and(|cmd| cmd.starts_with("ssh -t ") && cmd.contains(crate::session::ZSSH_ATTACH))
+    {
+        native(
+            &session,
+            &[
+                "action",
+                "write-chars",
+                "--pane-id",
+                &origin.to_string(),
+                "\x1b[24;7~",
+            ],
+        )?;
+        return Ok(());
+    }
     let receiver = terminal(&panes, pane_id()?)?;
     let cwd = Path::new(text(pane, "pane_cwd")?);
     ensure!(

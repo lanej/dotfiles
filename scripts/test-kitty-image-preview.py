@@ -111,7 +111,7 @@ signal.pause()
                                 "-o", "open_url_with=" + str(opener), "-o", "initial_window_width=100c",
                                 "-o", "initial_window_height=32c", "-o", "remember_window_size=no",
                                 "--directory", str(repo), "zellij", "--config", str(config),
-                                "--session", session, "--layout", str(layout)],
+                                "--session", session, "--new-session-with-layout", str(layout)],
                                env=env, stdout=output, stderr=output)
         try:
             until("the source pane", lambda: any(p.get("pane_cwd") == str(source) for p in panes()))
@@ -136,6 +136,9 @@ signal.pause()
             print(log.read_text()[-3200:], file=sys.stderr)
             try:
                 print("Zellij panes:", panes(), file=sys.stderr)
+            except subprocess.SubprocessError:
+                pass
+            try:
                 for os_window in json.loads(remote("ls")):
                     for tab in os_window["tabs"]:
                         for window in tab["windows"]:

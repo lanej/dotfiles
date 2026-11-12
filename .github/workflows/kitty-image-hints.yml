@@ -10,6 +10,7 @@ on:
       - 'zellij/config*.kdl'
       - 'zellij/cli/src/image_hints.rs'
       - 'zellij/cli/src/main.rs'
+      - 'zellij/cli/src/session.rs'
       - 'zellij/cli/src/util.rs'
       - 'zellij/cli/Cargo.toml'
       - 'zellij/Cargo.lock'

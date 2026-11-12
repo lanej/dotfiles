@@ -14,6 +14,8 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const CLEAR_REMOTE_TITLE: &[u8] = b"\x1b]1337;SetUserVar=dotfiles_zellij\x07";
+pub(crate) const ZSSH_ATTACH: &str =
+    r#"exec "$SHELL" -lic 'exec "$HOME/.local/bin/zellij-attach" "$1"' zssh"#;
 static REMOTE_TITLE_SIGNAL: AtomicI32 = AtomicI32::new(0);
 
 extern "C" fn request_remote_title_exit(signal: libc::c_int) {
@@ -121,10 +123,7 @@ pub fn ssh(args: &[String]) -> Result<()> {
         .filter(|s| !s.is_empty())
         .map(String::as_str)
         .unwrap_or("main");
-    let remote = format!(
-        "exec \"$SHELL\" -lic 'exec \"$HOME/.local/bin/zellij-attach\" \"$1\"' zssh {}",
-        quote(session)
-    );
+    let remote = format!("{ZSSH_ATTACH} {}", quote(session));
     let nested = env::var("ZELLIJ").is_ok_and(|s| !s.is_empty());
     let kitty =
         !nested && env::var("KITTY_WINDOW_ID").is_ok_and(|s| !s.is_empty()) && exists("kitten");
