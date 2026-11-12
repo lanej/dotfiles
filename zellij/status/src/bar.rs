@@ -31,6 +31,7 @@ impl Ribbon {
 struct Tab {
     position: usize,
     name: String,
+    lock: &'static str,
     mark: &'static str,
     zoom: &'static str,
     style: Ribbon,
@@ -42,6 +43,7 @@ impl Tab {
         self.name.width()
             + self.position.to_string().len()
             + 4
+            + self.lock.width()
             + self.mark.width()
             + self.zoom.width()
     }
@@ -67,7 +69,10 @@ impl Tab {
             return 1 + position.width();
         }
         let name = clipped(&self.name, budget - fixed);
-        let label = format!(" {}{}{}:{} ", self.mark, self.zoom, self.position, name);
+        let label = format!(
+            " {}{}{}{}:{} ",
+            self.lock, self.mark, self.zoom, self.position, name
+        );
         self.style.paint(&label);
         label.width() + 1
     }
@@ -118,6 +123,15 @@ fn counts(counts: &AttentionCounts) -> String {
 }
 
 impl State {
+    fn title_is_fixed(&self, tab: &TabInfo) -> bool {
+        self.view.session == self.mode.session_name
+            && self.view.session.is_some()
+            && !tab.name.is_empty()
+            && tab.name != format!("Tab #{}", tab.tab_id + 1)
+            && self.view.auto_titles.get(&tab.tab_id.to_string()) != Some(&tab.name)
+            && !(tab.active && self.mode.mode == InputMode::RenameTab)
+    }
+
     fn bar_tab(&self, tab: &TabInfo) -> Tab {
         use AttentionStatus::*;
         let colors = self.mode.style.colors;
@@ -178,6 +192,15 @@ impl State {
                 plain(&tab.name)
             } else {
                 tab_name(tab, &self.panes)
+            },
+            lock: if self.title_is_fixed(tab) {
+                if self.mode.capabilities.arrow_fonts {
+                    "L "
+                } else {
+                    " "
+                }
+            } else {
+                ""
             },
             mark,
             zoom: if !tab.is_fullscreen_active {
@@ -322,5 +345,37 @@ mod tests {
         tab.active = true;
         assert_eq!(foreground(state.bar_tab(&tab).style.fg), "38;5;17");
         assert_eq!(state.bar_tab(&tab).mark.trim(), "×");
+    }
+
+    #[test]
+    fn fixed_title_lock_requires_current_ownership_and_a_committed_name() {
+        let mut state = State::default();
+        state.mode.session_name = Some("work".into());
+        state.view.session = Some("work".into());
+        state.mode.capabilities.arrow_fonts = false;
+        let mut tab = TabInfo {
+            tab_id: 4,
+            name: "review".into(),
+            ..Default::default()
+        };
+        assert_eq!(state.bar_tab(&tab).lock, " ");
+        state.mode.capabilities.arrow_fonts = true;
+        assert_eq!(state.bar_tab(&tab).lock, "L ");
+        state.mode.capabilities.arrow_fonts = false;
+        state.view.auto_titles.insert("4".into(), "review".into());
+        assert_eq!(state.bar_tab(&tab).lock, "");
+        tab.name = "manual".into();
+        assert_eq!(state.bar_tab(&tab).lock, " ");
+        state.mode.mode = InputMode::RenameTab;
+        tab.active = true;
+        assert_eq!(state.bar_tab(&tab).lock, "");
+        tab.active = false;
+        tab.name = "Tab #5".into();
+        assert_eq!(state.bar_tab(&tab).lock, "");
+        tab.name.clear();
+        assert_eq!(state.bar_tab(&tab).lock, "");
+        tab.name = "manual".into();
+        state.view.session = None;
+        assert_eq!(state.bar_tab(&tab).lock, "");
     }
 }
