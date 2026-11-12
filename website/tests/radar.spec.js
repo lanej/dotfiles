@@ -34,8 +34,9 @@ for (const width of [1440, 390]) {
       const name = await page.locator(target).textContent();
       expect(await link.getAttribute('aria-label')).toContain(name.trim());
     }
-    await points.first().focus();
-    await expect(points.first()).toBeFocused();
+    const kitty = radar.locator('svg a[href="#kitty"]');
+    await kitty.focus();
+    await expect(kitty).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/#kitty$/);
     await page.goto('./reference/macos/');
