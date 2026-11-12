@@ -21,7 +21,7 @@ spec.loader.exec_module(installer)
 
 
 class Installation(unittest.TestCase):
-    def fixture(self, temporary):
+    def fixture(self, temporary, system="Darwin",machine="arm64",libc="glibc"):
         root = Path(temporary)
         home, repository, catalog = root / "home", root / "repo", root / "catalog"
         repository.mkdir()
@@ -35,7 +35,8 @@ class Installation(unittest.TestCase):
         git("add", ".")
         git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "Fixture")
         revision = git("rev-parse", "HEAD")
-        cache = home / ".cache/dotfiles/octo-manager"
+        artifact_name,target=installer.runtime_target(system,machine,libc)
+        cache = home / ".cache/dotfiles/octo-manager" / target
         cache.mkdir(parents=True)
         source = cache / revision
         repository.rename(source)
@@ -52,13 +53,13 @@ else:
 '''
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
-            archive.writestr("bun-darwin-aarch64/bun", binary)
+            archive.writestr(artifact_name+"/bun", binary)
         artifact = buffer.getvalue()
         downloads = []
         def download(url, destination):
             downloads.append(url)
             if url.endswith("SHASUMS256.txt"):
-                destination.write_text(hashlib.sha256(artifact).hexdigest()+"  bun-darwin-aarch64.zip\n")
+                destination.write_text(hashlib.sha256(artifact).hexdigest()+"  "+artifact_name+".zip\n")
             else:
                 destination.write_bytes(artifact)
         return home, source, catalog, log, download, downloads
@@ -86,14 +87,14 @@ else:
                 with self.assertRaisesRegex(ValueError, "Checksum mismatch"):
                     installer.install(catalog, home)
             self.assertFalse(log.exists())
-            self.assertFalse((home / ".local/share/octo-manager/runtime/bun-1.4.4/bun").exists())
+            self.assertFalse((home / ".local/share/octo-manager/runtime/darwin-arm64/bun-1.4.4/bun").exists())
             self.assertFalse((source.parent / ".install-lock").exists())
 
     def test_modified_cache_and_unsupported_platform_fail_before_installation(self):
         with tempfile.TemporaryDirectory() as temporary:
             home, source, catalog, log, download, downloads = self.fixture(temporary)
-            with patch.object(installer.platform, "system", return_value="Linux"):
-                with self.assertRaisesRegex(ValueError, "requires macOS"):
+            with patch.object(installer.platform, "system", return_value="Windows"):
+                with self.assertRaisesRegex(ValueError, "Unsupported Octo platform"):
                     installer.install(catalog, home)
             (source / ".bun-version").write_text("modified\n")
             with patch.dict(os.environ, {"XDG_CACHE_HOME":str(home / ".cache")}), patch.object(installer.platform, "system", return_value="Darwin"), patch.object(installer, "download", side_effect=download):
@@ -101,6 +102,17 @@ else:
                     installer.install(catalog, home)
             self.assertFalse(downloads)
             self.assertFalse(log.exists())
+
+    def test_linux_artifact_selection_and_hook_delegation(self):
+        cases=[("arm64","glibc","bun-linux-aarch64"),("x86_64","glibc","bun-linux-x64-baseline"),("arm64","musl","bun-linux-aarch64-musl"),("x86_64","musl","bun-linux-x64-musl-baseline")]
+        for machine,libc,expected in cases:
+            with self.subTest(machine=machine,libc=libc), tempfile.TemporaryDirectory() as temporary:
+                home,source,catalog,log,download,downloads=self.fixture(temporary,"Linux",machine,libc)
+                with patch.dict(os.environ,{"XDG_CACHE_HOME":str(home/".cache"),"TEST_OCTO_LOG":str(log)}), patch.object(installer.platform,"system",return_value="Linux"),patch.object(installer.platform,"machine",return_value=machine),patch.object(installer.platform,"libc_ver",return_value=(libc,"")),patch.object(installer,"download",side_effect=download),contextlib.redirect_stdout(io.StringIO()):
+                    installer.install(catalog,home)
+                self.assertTrue(downloads[-1].endswith(expected+".zip"))
+                calls=[json.loads(line) for line in log.read_text().splitlines()]
+                self.assertEqual(calls[-1]["args"],["scripts/install-local.ts","--home",str(home),"--codex"])
 
     def test_real_bootstrap_dispatch_stops_on_installer_failure(self):
         with tempfile.TemporaryDirectory() as temporary:

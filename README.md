@@ -204,7 +204,7 @@ source = "release"
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
-| `octo-manager` | Opt-in macOS Octo service with Codex tracking and receipt hooks |
+| `octo-manager` | Opt-in Octo service with Codex tracking and receipt hooks |
 | `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
 | `workstation` | Adds editor, development, and AI tools, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |

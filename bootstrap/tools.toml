@@ -271,11 +271,10 @@ setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-ho
 version = "0.164.0"
 
 [tools.octo-manager]
-description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks (macOS)."
+description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
 installer = "octo-manager"
-platform = "macos"
 requires = ["git", "gh", "go"]
-revision = "3a276020594cbe1a75bc1bf6658d24bcfa0cef8f"
+revision = "038b9c7eb59681973afea5bea14b5df7e31d91b0"
 
 [tools.treehouse]
 installer = "treehouse"
