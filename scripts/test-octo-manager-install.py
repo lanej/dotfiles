@@ -97,7 +97,7 @@ else:
                 with self.assertRaisesRegex(ValueError, "Unsupported Octo platform"):
                     installer.install(catalog, home)
             (source / ".bun-version").write_text("modified\n")
-            with patch.dict(os.environ, {"XDG_CACHE_HOME":str(home / ".cache")}), patch.object(installer.platform, "system", return_value="Darwin"), patch.object(installer, "download", side_effect=download):
+            with patch.dict(os.environ, {"XDG_CACHE_HOME":str(home / ".cache")}), patch.object(installer.platform, "system", return_value="Darwin"), patch.object(installer.platform, "machine", return_value="arm64"), patch.object(installer, "download", side_effect=download):
                 with self.assertRaisesRegex(ValueError, "modified or unrecognized"):
                     installer.install(catalog, home)
             self.assertFalse(downloads)
