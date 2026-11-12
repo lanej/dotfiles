@@ -78,7 +78,14 @@ def translate(event):
         return None
     lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()\n")
     lexer.whitespace_split = True
-    tokens = list(lexer)
+    tokens = []
+    try:
+        for token in lexer:
+            tokens.append(token)
+    except ValueError:
+        if publication(tokens) is None:
+            return None
+        raise
     found = publication(tokens)
     if found is None:
         return None

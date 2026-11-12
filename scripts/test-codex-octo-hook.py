@@ -47,6 +47,11 @@ def main():
             event["tool_input"]["command"] = command
             text = run([],event)
             return json.loads(text)["hookSpecificOutput"] if text else None
+        heredoc = "cat <<'TEXT'\nit's fine\nTEXT\n"
+        assert response(heredoc) is None
+        actual = subprocess.run(["bash", "-c", heredoc], capture_output=True, text=True, check=True)
+        assert actual.stdout == "it's fine\n"
+        assert response("gh pr create --body 'unterminated")["permissionDecision"] == "deny"
         assert response("git status --short") is None
         assert response("echo gh pr create") is None
         assert response("gh-pr-create-from --check description.md") is None
