@@ -15,6 +15,26 @@ pub(crate) struct Session {
 }
 
 impl Session {
+    pub fn persistent_identity(&self) -> Result<Value> {
+        self.validate(&self.session)?;
+        let connection = rusqlite::Connection::open_with_flags(
+            &self.location.1,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )?;
+        connection.busy_timeout(Duration::from_millis(100))?;
+        let (id, created): (String, i64) = connection.query_row(
+            "SELECT COALESCE(id, name), created_at FROM sessions WHERE name = ?",
+            [&self.session],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        anyhow::ensure!(
+            self.socket()?.file_name().and_then(|name| name.to_str()) == Some(id.as_str()),
+            "Session changed while reading its persistent identity"
+        );
+        self.validate(&self.session)?;
+        Ok(serde_json::json!([self.location.1, id, created]))
+    }
+
     pub fn socket(&self) -> Result<&Path> {
         Ok(Path::new(
             self.identity[0]
