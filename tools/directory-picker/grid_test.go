@@ -53,3 +53,22 @@ func TestInlineGridFitsContentAndReleasesShellRows(t *testing.T) {
 		t.Fatal("vertical navigation lost its position after reflow")
 	}
 }
+
+func TestLongPathOnlyWidensItsOwnRow(t *testing.T) {
+	m := newPicker(context.Background(), config{})
+	for i, label := range []string{"a", "b", "c", strings.Repeat("界", 30), "d", "e", "f"} {
+		e := entry{label: label}
+		e.measure()
+		m.entries = append(m.entries, e)
+		m.matches = append(m.matches, i)
+	}
+	m.measureSpacing()
+	m.pos = 6
+	g := m.grid(20, 2)
+	if len(g.rows) != 3 || len(g.rows[0].slots) != 3 || len(g.rows[2].slots) != 3 {
+		t.Fatalf("short paths did not pack on either side of the wide path: %+v", g.rows)
+	}
+	if g.vertical(m.pos, -g.pageHeight) != 2 {
+		t.Fatal("Page Up from a partial final page should return to the corresponding column")
+	}
+}

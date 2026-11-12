@@ -33,6 +33,14 @@ GENERATED = Path(os.environ.get("DOTFILES_THEME_DIR", ROOT / "design-system/gene
 
 
 class NativeScreen(pyte.Screen):
+    def resize(self, lines=None, columns=None):
+        old_width = self.columns
+        super().resize(lines=lines, columns=columns)
+        # pyte keeps its initial stops forever. xterm extends the eight-column
+        # tab grid on growth and cannot move the cursor past a shrunken edge.
+        self.tabstops.intersection_update(range(self.columns))
+        self.tabstops.update(range(max(8, (old_width + 7) // 8 * 8), self.columns, 8))
+
     def report_device_status(self, mode, **kwargs):
         if not kwargs.get("private"):
             super().report_device_status(mode)

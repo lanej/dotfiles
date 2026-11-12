@@ -229,7 +229,9 @@ def main():
             assert max(row.partition(" │ ")[0].count("~/") for row in rows) >= 4, rows[1]
             assert "## retry-payments" in text()
             capture("history")
-            os.write(fd, b"billing-")
+            os.write(fd, b"b")
+            until(lambda: re.search(r"Directories > b\s+\d+/81", header("Directories")))
+            os.write(fd, b"illing-")
             until(lambda: "6/81" in header("Directories") and "invoices" in text() and "README.md" in text())
             capture("files", just_panel=True)
             assert panel("Directories")[1].count("billing-") == 6

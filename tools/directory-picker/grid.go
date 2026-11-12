@@ -30,7 +30,7 @@ func (m *picker) measureSpacing() {
 		widths[i] = m.entries[id].size.label + 2 + gap
 	}
 	slices.Sort(widths)
-	m.spacing = widths[len(widths)-1-len(widths)/10]
+	m.spacing = widths[(len(widths)-1)*9/10]
 }
 
 type slot struct{ x, width int }
@@ -39,10 +39,10 @@ type resultRow struct {
 	slots []slot
 }
 type geometry struct {
-	rows                        []resultRow
-	top, bottom, active, width  int
-	previewWidth, previewHeight int
-	below                       bool
+	rows                                   []resultRow
+	top, bottom, active, width, pageHeight int
+	previewWidth, previewHeight            int
+	below                                  bool
 }
 
 func (g geometry) visible() []resultRow { return g.rows[g.top:g.bottom] }
@@ -56,7 +56,7 @@ func (g geometry) count() int {
 
 func (m *picker) grid(width, height int) geometry {
 	width, height = max(1, width), max(1, height)
-	g := geometry{}
+	g := geometry{pageHeight: height}
 	if len(m.matches) == 0 {
 		return g
 	}

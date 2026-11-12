@@ -63,9 +63,7 @@ func (m *picker) applyFilter() tea.Cmd {
 func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// A printed character in the final terminal cell can autowrap and move
-		// the origin of the next inline repaint down one row.
-		m.width, m.height = max(1, msg.Width-1), msg.Height
+		m.width, m.height = msg.Width, msg.Height
 		m.query.Resize(max(1, m.width-12))
 		return m, m.requestPreview()
 	case observation:
@@ -117,7 +115,7 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "down", "pgup", "pgdown":
 			delta := 1
 			if msg.String() == "pgup" || msg.String() == "pgdown" {
-				delta = max(1, g.bottom-g.top)
+				delta = g.pageHeight
 			}
 			if msg.String() == "up" || msg.String() == "pgup" {
 				delta = -delta
