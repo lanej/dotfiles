@@ -21,6 +21,18 @@ for (const width of [1440, 390]) {
     await expect(radar.getByRole('region', { name: 'Assess decisions' })).toContainText('Pi');
     await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Zellij');
     await expect(radar.getByRole('region', { name: 'Trial decisions' }).getByRole('link', { name: /^(Pi|Zellij)$/ })).toHaveCount(0);
+    await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Neovim');
+    await expect(radar.getByRole('region', { name: 'Adopt decisions' })).toContainText('Codex');
+    const zoom = radar.getByRole('checkbox', { name: 'Full-size diagram' });
+    await zoom.check();
+    const viewport = radar.getByRole('region', { name: 'Radar diagram' });
+    expect(await viewport.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    await expect.poll(() => viewport.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await viewport.focus();
+    const initialPan = await viewport.evaluate((element) => element.scrollLeft);
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(() => viewport.evaluate((element) => element.scrollLeft)).toBeLessThan(initialPan);
+    await zoom.uncheck();
     const points = radar.locator('svg a');
     const headings = await page.locator('main h3').allTextContents();
     expect(await points.count()).toBe(headings.length);
