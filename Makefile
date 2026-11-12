@@ -403,6 +403,20 @@ test-yabai-browser-focus:
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
+.PHONY: keybindings check-keybindings generate-keybindings test-keybindings
+keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" list
+
+check-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
+generate-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" generate
+
+test-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-keybindings.py"
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
 .PHONY: test-kitty-tab-titles
 test-kitty-tab-titles: zellij-helpers
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-tab-titles.py', run_name='__main__')"

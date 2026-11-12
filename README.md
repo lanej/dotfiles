@@ -310,6 +310,8 @@ and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
 These shortcuts also work through tmux, so Codex actions such as `F2` and `F4`
 are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
+Use `make keybindings` to inventory owned and existing Kitty/skhd shortcuts, and `make check-keybindings` to detect overlaps and generated drift. The [keybinding registry guide](docs/keybindings.md) explains coverage, chord queries, and how to migrate native bindings into generated sections.
+
 ## Key Makefile Targets
 
 | Target | Description |
