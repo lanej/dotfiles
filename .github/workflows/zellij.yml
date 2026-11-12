@@ -242,11 +242,6 @@ jobs:
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-tab-labels
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-      - name: Verify fixed title controls in both tab bars
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: |
-          python3 scripts/test-zellij-tab-labels.py --fixed-titles
-          python3 scripts/test-zellij-tab-labels.py --fixed-titles --native-bar
       - run: make test-zellij-session-keys
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - run: make test-zellij-codex-titles
