@@ -25,7 +25,8 @@
               "personal",
               "shell",
               "terminal",
-              "workstation"
+              "workstation",
+              "worktrees"
             ]
           },
           {
@@ -89,6 +90,14 @@
         "git": {
           "type": "boolean",
           "description": "Enable the git bootstrap recipe."
+        },
+        "worktree-manager": {
+          "type": "boolean",
+          "description": "Opt-in standalone worktree CLI with task protection, global tracking and safe pruning."
+        },
+        "lsof": {
+          "type": "boolean",
+          "description": "Enable the lsof bootstrap recipe."
         },
         "worktree-policy": {
           "type": "boolean",

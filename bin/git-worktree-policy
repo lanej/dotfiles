@@ -1,4 +1,13 @@
 #!/bin/sh
+provider=$(git config --file "$HOME/.config/dotfiles/worktree-policy.gitconfig" --get worktree.policyProvider 2>/dev/null) || provider=legacy
+if [ "$provider" = worktree-manager ]; then
+    binary="$HOME/.local/bin/worktree"
+    if [ ! -x "$binary" ]; then
+        printf '%s\n' 'git-worktree-policy: selected worktree manager is unavailable; run make install' >&2
+        exit 1
+    fi
+    exec "$binary" policy "$@"
+fi
 binary="$HOME/.local/libexec/git-worktree-policy"
 if [ ! -x "$binary" ]; then
     printf '%s\n' 'git-worktree-policy: native policy is unavailable; run make install' >&2

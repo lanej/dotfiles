@@ -47,6 +47,12 @@ def main():
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
+        config.write_text('sets = ["worktrees"]\n')
+        worktrees = json.loads(run(*command,"--format","json").stdout)
+        selected = {tool["name"] for tool in worktrees["tools"]}
+        assert {"worktree-manager","git","lsof"} <= selected
+        assert "worktree-policy" not in selected
+        assert "treehouse" not in selected
         config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\nmergiraf = false\n")
         reduced = json.loads(run(*command, "--format", "json").stdout)
         assert "tmux" not in {tool["name"] for tool in reduced["tools"]}

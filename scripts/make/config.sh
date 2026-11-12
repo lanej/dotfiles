@@ -203,11 +203,25 @@ case "$target" in
         ln -fs "$attributes_dir/attributes" "$setup_home/.gitattributes"
         ;;
     git)
-        if [[ -n ${DOTFILES_WORKTREE_POLICY_ENABLED:-} ]]; then
-            case "$DOTFILES_WORKTREE_POLICY_ENABLED" in true|false) ;; *) exit 1 ;; esac
+        if [[ -n ${DOTFILES_WORKTREE_POLICY_ENABLED:-} || -n ${DOTFILES_WORKTREE_MANAGER_ENABLED:-} ]]; then
+            for selection in "${DOTFILES_WORKTREE_POLICY_ENABLED:-false}" "${DOTFILES_WORKTREE_MANAGER_ENABLED:-false}"; do
+                case "$selection" in true|false) ;; *) exit 1 ;; esac
+            done
+            policy_enabled=false policy_provider=legacy
+            if [[ ${DOTFILES_WORKTREE_MANAGER_ENABLED:-false} == true ]]; then
+                policy_enabled=true policy_provider=worktree-manager
+                manager_config="${XDG_CONFIG_HOME:-$setup_home/.config}/worktree-manager/config.json"
+                if [[ ! -e "$manager_config" && ! -L "$manager_config" ]]; then
+                    mkdir -p "${manager_config%/*}"
+                    cp "$dotfiles/worktree-manager/config.json" "$manager_config"
+                fi
+            elif [[ ${DOTFILES_WORKTREE_POLICY_ENABLED:-false} == true ]]; then
+                policy_enabled=true
+            fi
             policy_config="$setup_home/.config/dotfiles/worktree-policy.gitconfig"
+            git config --file "$policy_config" worktree.policyProvider "$policy_provider"
             for event in pre post checkout; do
-                git config --file "$policy_config" "hook.worktree-policy-$event.enabled" "$DOTFILES_WORKTREE_POLICY_ENABLED"
+                git config --file "$policy_config" "hook.worktree-policy-$event.enabled" "$policy_enabled"
             done
         fi
         mkdir -p "${setup_home}/.local/bin"
