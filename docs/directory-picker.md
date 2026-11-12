@@ -4,7 +4,11 @@ Press **Ctrl-B** or run `zz` to search directory history. Press **Alt-W** (**Opt
 
 Inside a repository, `zw` lists that repository’s worktrees. Outside a repository, it finds repositories immediately under the current directory and lists their worktrees, including worktrees stored elsewhere. Rows show the repository and branch, identify detached heads and locked worktrees, and omit missing directories. Discovery is read-only.
 
-The list uses the full pane with no outer border or padding. A preview appears on the right at widths of at least 110 columns, below the list in narrower panes with at least 32 rows, and starts hidden in smaller panes. Resizing updates that arrangement. The picker uses the installed shared fzf theme and has no instruction header. Branch and agent pills, semantic change-count chips, and compact glyph headings follow the shared palette, with labeled ASCII fallbacks. In a repository, the preview shows its branch, observed terminal agents, staged/unstaged/untracked status, and committed changes since the merge base, with file counts and added/deleted line totals. Up to five recent commit subjects include only commits after that merge base. Each row shows its own changed-path count and added/deleted line totals against its first parent; binary changes are marked separately. Long subjects shorten to keep the row compact. A rendered README fills the remaining preview height when there is room. `glow` uses the shared theme to format Markdown and highlight fenced code in its declared language; `bat` source highlighting and plain text remain fallbacks when a renderer is unavailable. Outside a repository it retains the shallow file tree; file previews retain the existing `bat` or plain-text fallback.
+The Charmed picker opens inline in the shell. Matches run left to right in rank order. Column spacing comes from the paths on screen, and a long or annotated entry spans extra columns in its own row. A handful of short matches can fit on a single line. As you filter or resize, the picker releases unused rows and keeps the highlighted path selected while it still matches. Repository roots show the branch, working-tree status and attached terminal agents. Type `Codex dirty` to search those details as they arrive. Underlines mark the characters that matched in each path, branch, status, or agent name. The background marks the current selection.
+
+A wide terminal puts the matches, the selected folder’s README, and Git activity in three columns. The Git column includes staged, unstaged, and untracked files, changes since the merge base, and up to five recent branch commits with file and line counts. Filtering to a single worktree keeps both preview columns visible. In narrower terminals the sections share a scrollable preview beside or below the results. Ctrl-J and Ctrl-K scroll the preview. When two columns are visible, a short column stays in view as you scroll the longer one.
+
+Outside Git, the preview shows directories, files, and symlinks immediately inside the selected folder, alongside its README when present. Inside a repository, selecting a subdirectory shows its own files and README alongside the repository’s Git activity. A genuinely empty folder shows its path and `Empty directory`. Ctrl-/ toggles the preview. Markdown uses the shared Glow theme, with bat and plain text as fallbacks. README input is limited to 64 KiB.
 
 The comparison base uses the local `origin/HEAD` reference when available, otherwise local `main` or `master`; no fetch is performed. The preview names the actual reference and merge-base commit. Uncommitted changes and committed branch changes remain separate; untracked contents are not included in line totals. If a base or statistic cannot be read, it is shown as unavailable.
 
@@ -12,19 +16,31 @@ Agent presence is a snapshot of live tmux/Zellij panes taken when the picker ope
 
 | Key | Action |
 | --- | --- |
+| Up / Down | Move to the nearest column in the row above or below |
+| Left / Right | Move between matches on the current row |
+| Ctrl-P / Ctrl-N | Move to the previous or next match in rank order |
+| Page Up / Page Down | Move a page of rows |
 | Enter | Jump to the highlighted directory |
 | Ctrl-Space | Keep only the current matches and start a fresh search |
 | Ctrl-/ | Show or hide the preview |
 | Ctrl-J / Ctrl-K | Scroll the preview |
 | Escape / Ctrl-C | Cancel |
 
-Run `zz search terms` or `zw search terms` to start with a query. Matching uses the displayed path and worktree details. If `shortpath` is available, labels shorten parent components while keeping the last two components readable; otherwise they use full paths with `~` for the home directory. Abbreviations are display labels only: selection always retains the original path. History keeps shortest paths first; worktree rows retain Git’s ordering within each repository.
+Run `zz search terms` or `zw search terms` to start with a query. Filtering uses fzf query syntax over the path label and available row details. If `shortpath` is available, labels shorten parent components while keeping the last two components readable; otherwise they use full paths with `~` for the home directory. Abbreviations are display labels only: selection always retains the original path. History is ordered by the score from `_z -l`, with shorter paths first on ties. Worktrees retain Git’s ordering within each repository.
 
-These commands require Python 3 and fzf; `zz` also uses the existing `_z` history function and `zw` uses Git. Skim is no longer selected implicitly. No installation or relinking is required for the helper because the shell calls it from the dotfiles checkout.
+The shell set builds the native UI during `make install`. To build or update just the picker in an existing checkout, run `make directory-picker` with Go available. Both commands use Python 3. The native picker uses the fzf matching algorithms directly. A checkout without the native binary uses the previous interactive fzf picker.
 
-Run `make test-directory-picker` for shell-jump and Git-discovery checks. Run `uv run --script scripts/test-directory-picker-native.py` for real themed fzf filtering, narrowing, resize, preview toggling, and selection checks against a Git fixture with committed and uncommitted changes; this captures terminal SVGs in `docs/images/directory-picker/`.
+Run `make test-directory-picker` for shell-jump and Git-discovery checks. After building the UI, run `uv run --script scripts/test-directory-picker-native.py` to exercise the actual Ctrl-B and Alt-W bindings and capture the following terminal views.
 
-![Wide worktree picker](images/directory-picker/wide.svg)
+![81 ranked paths, the selected README, and Git activity in three columns](images/directory-picker/history.svg)
+
+![Billing matches with the selected folder’s README and contents](images/directory-picker/files.svg)
+
+![Six filtered paths alongside the selected directory’s explicit empty state](images/directory-picker/filtered.svg)
+
+![Worktree branch, status and agent names beside each path](images/directory-picker/worktrees.svg)
+
+![Fuzzy matches underlined alongside the formatted README and Git changes](images/directory-picker/wide.svg)
 
 ![Tall worktree picker](images/directory-picker/tall.svg)
 

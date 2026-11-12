@@ -89,7 +89,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### fzf
 
-[fzf](directory-picker.md): my fuzzy finder for shell navigation, directory history, Git worktrees, and Neovim through FzfLua. Shell pickers retain original selection paths behind display labels and adapt previews to available pane space.
+I use fzf for shell navigation and Neovim through FzfLua. The [directory and worktree picker](directory-picker.md) uses its query matcher inside a Charmed terminal UI.
 
 ### Kitty
 

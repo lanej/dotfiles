@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+from itertools import zip_longest
 import os
 from pathlib import Path
 import shlex
@@ -14,10 +15,10 @@ import unicodedata
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def command(args, cwd=None, timeout=1, data=None):
+def command(args, cwd=None, timeout=1, data=None, env=None):
     try:
         result = subprocess.run(args, cwd=cwd, capture_output=True, timeout=timeout, input=data,
-                                env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0'})
+                                env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0', **(env or {})})
         return result.stdout if result.returncode == 0 else None
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -190,10 +191,11 @@ def theme():
         return json.loads((ROOT / 'design-system/generated/colors.json').read_text())
 
 
-def readme_lines(root, width, available):
-    if available < 3:
+def readme_lines(root, width, available=None):
+    if available is not None and available < 3:
         return None
-    readme = next((root / name for name in ('README.md', 'README.markdown', 'README.rst', 'README.txt', 'README', 'readme.md', 'Readme.md') if (root / name).is_file()), None)
+    names = ('README.md', 'README.markdown', 'README.rst', 'README.txt', 'README', 'readme.md', 'Readme.md')
+    readme = next((root / name for name in names if (root / name).is_file()), None)
     if readme is None:
         return None
     try:
@@ -209,13 +211,17 @@ def readme_lines(root, width, available):
         style = theme_directory() / 'glow.json'
         if not style.is_file():
             style = ROOT / 'design-system/generated/glow.json'
-        highlighted = command(['glow', '--style', 'notty' if os.environ.get('NO_COLOR') else str(style),
-                               '--width', str(width), '-'], data=data)
+        color = not os.environ.get('NO_COLOR')
+        # Glow writes into a pipe even when the picker is displaying a true-color terminal.
+        highlighted = command(['glow', '--style', str(style) if color else 'notty',
+                               '--width', str(width), '-'], data=data, env={'CLICOLOR_FORCE': '1' if color else '0'})
     if highlighted is None and shutil.which('bat'):
         args = ['bat', '--color=' + ('never' if os.environ.get('NO_COLOR') else 'always'),
                 '--paging=never', '--style=plain', '--wrap=character', '--terminal-width=' + str(width),
-                '--line-range=:' + str(available), '--theme=' + os.environ.get('BAT_THEME', 'Dotfiles'),
+                '--theme=' + os.environ.get('BAT_THEME', 'Dotfiles'),
                 '--file-name=' + readme.name]
+        if available is not None:
+            args.append('--line-range=:' + str(available))
         if markdown:
             args.append('--language=Markdown')
         highlighted = command(args, data=data)
@@ -233,16 +239,23 @@ def readme_lines(root, width, available):
     return readme.name, lines[:available]
 
 
-def render(path, snapshot):
+def render(path, snapshot, structured=False):
+    path = Path(path)
     repo = repository(path)
-    if repo is None:
-        return False
     preset = theme()
     colors = preset['roles']
     ascii_mode = preset.get('symbols') == 'ascii'
-    width = max(20, int(os.environ.get('FZF_PREVIEW_COLUMNS', '80')))
-    height = max(1, int(os.environ.get('FZF_PREVIEW_LINES', '24')))
-    used_lines = 0
+    available_width = max(1, int(os.environ.get('FZF_PREVIEW_COLUMNS', '80')))
+    is_root = repo is not None and path.resolve() == repo['root'].resolve()
+    # A worktree without a README can show its files alongside its Git activity.
+    gap = 3
+    paired = available_width >= 2 * 42 + gap
+    width = (available_width - gap) // 2 if paired else available_width
+    context_width = available_width - gap - width if paired else width
+    readme = readme_lines(path, context_width)
+    if readme is None and repo is None:
+        width, paired = available_width, False
+    blocks = [[]]
 
     def glyph(unicode, fallback):
         return fallback if ascii_mode else unicode
@@ -267,26 +280,22 @@ def render(path, snapshot):
         return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ('W', 'F') else 1 for c in value)
 
     def row(*parts):
-        nonlocal used_lines
         chunks, occupied = [], 0
         for value, role, bold, background in parts:
             if chunks and occupied + cell_width(value) > width and cell_width(value) <= width:
-                print(''.join(chunks))
-                used_lines += 1
+                blocks[-1].append(''.join(chunks))
                 chunks, occupied = [], 0
             fragment = ''
             for char in value:
                 size = cell_width(char)
                 if occupied + size > width:
                     chunks.append(styled(fragment, role, bold, background))
-                    print(''.join(chunks))
-                    used_lines += 1
+                    blocks[-1].append(''.join(chunks))
                     chunks, occupied, fragment = [], 0, ''
                 fragment += char
                 occupied += size
             chunks.append(styled(fragment, role, bold, background))
-        print(''.join(chunks))
-        used_lines += 1
+        blocks[-1].append(''.join(chunks))
 
     def line(value='', role='text', bold=False):
         row(span(value, role, bold))
@@ -311,90 +320,148 @@ def render(path, snapshot):
         if any(a is None for a, _, _ in rows):
             line('binary changes', 'text.muted')
 
-    branch = glyph(preset.get('components', {}).get('git.file.branch', {}).get('symbol', ''), '@')
-    row(span(f'{glyph("", "dir")} {repo["root"].name}', 'text.strong', True), span('  '),
-        pill(f'{branch} {repo["branch"]}', 'accent'))
-    agents = matching_agents(repo['root'], snapshot)
-    if agents:
-        for agent in agents:
-            row(pill(f'{glyph("󰚩", "agent")} {agent["name"]}', 'accent'), span('  '), span(agent['state'].replace('·', separator), 'text.muted'))
-    else:
-        line('Agents  none observed' if snapshot['sources'] else 'Agents  unavailable', 'text.muted')
-    line()
-    status = repo['status']
-    if status is None:
-        line('Working tree  unavailable', 'status.warning')
-    elif status:
-        staged = sum(code[0] not in (' ', '?') for code, _ in status)
-        unstaged = sum(code[1] not in (' ', '?') for code, _ in status)
-        untracked = sum(code == '??' for code, _ in status)
-        section(f'Working tree  {len(status)} files', glyph('', '~'))
-        row(pill(f'{staged} staged', 'text.inverse', 'git.file.staged'), span('  '),
-            pill(f'{unstaged} unstaged', 'diff.change', 'diff.change.bg'), span('  '),
-            pill(f'{untracked} untracked', 'git.file.untracked'))
-        if repo['local'] is None:
-            line('Tracked diff  unavailable', 'text.muted')
-        elif repo['local']:
-            added = sum(a or 0 for a, _, _ in repo['local'])
-            removed = sum(d or 0 for _, d, _ in repo['local'])
-            row(span(f'{len(repo["local"])} tracked files  ', 'text.muted'), span(f'+{added}', 'diff.add'),
-                span('  '), span(f'{minus}{removed}', 'diff.delete'))
-        for code, name in status:
-            role = 'git.file.untracked' if code == '??' else ('git.file.staged' if code[0] != ' ' else 'git.file.modified')
-            row(span(code, role, True), span('  '), span(name))
-    else:
-        row(span('Working tree  ', 'heading', True), pill(f'{glyph("", "ok")} clean', 'status.success'))
-    line()
-    if repo['base'] is None:
-        line('Branch changes  base unavailable', 'text.muted')
-    elif repo['committed'] is None:
-        line('Branch changes  unavailable', 'status.warning')
-    else:
-        ref, commit = repo['base']
-        section(f'Since {ref} {separator} {commit}', branch)
-        totals(repo['committed'])
-        for added, removed, name in repo['committed']:
-            if added is None:
-                row(span('binary  ', 'text.muted'), span(name))
-            else:
-                row(span(f'+{added:>3}', 'diff.add'), span('  '), span(f'{minus}{removed:<3}', 'diff.delete'), span('  '), span(name))
-        if repo['recent']:
-            line()
-            section('Recent commits', glyph('', 'o'))
-            for recent in repo['recent']:
-                stats = recent['stats']
-                if stats is None:
-                    summary = [span('stats unavailable', 'text.muted')]
+    def directory_contents():
+        try:
+            with os.scandir(path) as children:
+                entries = sorted(((item.is_dir(follow_symlinks=False), item.is_symlink(), item.name)
+                                  for item in children if item.name != '.git'),
+                                 key=lambda item: (item[2].startswith('.'), not item[0], item[2].casefold(), item[2]))
+        except OSError as error:
+            line(f'Cannot list directory: {error.strerror}', 'status.warning')
+            return
+        if not entries:
+            line('No entries besides .git' if (path / '.git').exists() else 'Empty directory', 'text.muted')
+            return
+        directories = sum(is_dir for is_dir, _, _ in entries)
+        links = sum(is_link for _, is_link, _ in entries)
+        files = len(entries) - directories - links
+        summary = [f'{directories} ' + ('directory' if directories == 1 else 'directories')] if directories else []
+        if files:
+            summary.append(count(files, 'file'))
+        if links:
+            summary.append(count(links, 'link'))
+        line(f'Contents  {f" {separator} ".join(summary)}', 'heading', True)
+        for is_dir, is_link, name in entries:
+            label = safe(name) + ('/' if is_dir else '@' if is_link else '')
+            line(label, 'accent' if is_dir else 'text')
+
+    try:
+        relative = path.relative_to(Path.home())
+        label = '~' if not relative.parts else '~/' + str(relative)
+    except ValueError:
+        label = str(path)
+
+    def folder_header():
+        row(span(f'{glyph("", "dir")} {label}', 'text.strong', True))
+
+    def git_details():
+        branch = glyph(preset.get('components', {}).get('git.file.branch', {}).get('symbol', ''), '@')
+        row(span(f'{glyph("", "dir")} {repo["root"].name}', 'text.strong', True), span('  '),
+            pill(f'{branch} {repo["branch"]}', 'accent'))
+        agents = matching_agents(repo['root'], snapshot)
+        if agents:
+            for agent in agents:
+                row(pill(f'{glyph("󰚩", "agent")} {agent["name"]}', 'accent'), span('  '), span(agent['state'].replace('·', separator), 'text.muted'))
+        elif snapshot.get('pending'):
+            line('Agents  checking', 'text.muted')
+        else:
+            line('Agents  none observed' if snapshot['sources'] else 'Agents  unavailable', 'text.muted')
+        line()
+        status = repo['status']
+        if status is None:
+            line('Working tree  unavailable', 'status.warning')
+        elif status:
+            staged = sum(code[0] not in (' ', '?') for code, _ in status)
+            unstaged = sum(code[1] not in (' ', '?') for code, _ in status)
+            untracked = sum(code == '??' for code, _ in status)
+            section(f'Working tree  {len(status)} files', glyph('', '~'))
+            row(pill(f'{staged} staged', 'text.inverse', 'git.file.staged'), span('  '),
+                pill(f'{unstaged} unstaged', 'diff.change', 'diff.change.bg'), span('  '),
+                pill(f'{untracked} untracked', 'git.file.untracked'))
+            if repo['local'] is None:
+                line('Tracked diff  unavailable', 'text.muted')
+            elif repo['local']:
+                added = sum(a or 0 for a, _, _ in repo['local'])
+                removed = sum(d or 0 for _, d, _ in repo['local'])
+                row(span(f'{len(repo["local"])} tracked files  ', 'text.muted'), span(f'+{added}', 'diff.add'),
+                    span('  '), span(f'{minus}{removed}', 'diff.delete'))
+            for code, name in status:
+                role = 'git.file.untracked' if code == '??' else ('git.file.staged' if code[0] != ' ' else 'git.file.modified')
+                row(span(code, role, True), span('  '), span(name))
+        else:
+            row(span('Working tree  ', 'heading', True), pill(f'{glyph("", "ok")} clean', 'status.success'))
+        blocks.append([])
+        if repo['base'] is None:
+            line('Branch changes  base unavailable', 'text.muted')
+        elif repo['committed'] is None:
+            line('Branch changes  unavailable', 'status.warning')
+        else:
+            ref, commit = repo['base']
+            section(f'Since {ref} {separator} {commit}', branch)
+            totals(repo['committed'])
+            for added, removed, name in repo['committed']:
+                if added is None:
+                    row(span('binary  ', 'text.muted'), span(name))
                 else:
-                    added = sum(a or 0 for a, _, _ in stats)
-                    removed = sum(d or 0 for _, d, _ in stats)
-                    files = count(len(stats), 'file') if width >= 45 else f'{len(stats)}f'
-                    summary = [span(files, 'text.muted'), span(' '), span(f'+{added}', 'diff.add'),
-                               span(' '), span(f'{minus}{removed}', 'diff.delete')]
-                    binary = sum(a is None for a, _, _ in stats)
-                    if binary:
-                        summary.append(span(f' {binary}bin', 'text.muted'))
-                stats_width = sum(cell_width(part[0]) for part in summary)
-                room = max(0, width - cell_width(recent['hash']) - stats_width - 4)
-                subject = safe(recent['subject'])
-                if cell_width(subject) > room:
-                    ending = glyph('…', '.') if room else ''
-                    clipped = ''
-                    for char in subject:
-                        if cell_width(clipped + char + ending) > room:
-                            break
-                        clipped += char
-                    subject = clipped + ending
-                padding = max(2, width - cell_width(recent['hash']) - cell_width(subject) - stats_width - 2)
-                row(span(recent['hash'], 'accent.secondary'), span('  '), span(subject),
-                    span(' ' * padding), *summary)
-        elif repo['recent'] is None:
-            line('Recent commits  unavailable', 'text.muted')
-    readme = readme_lines(repo['root'], width, height - used_lines - 2)
+                    row(span(f'+{added:>3}', 'diff.add'), span('  '), span(f'{minus}{removed:<3}', 'diff.delete'), span('  '), span(name))
+            if repo['recent']:
+                blocks.append([])
+                section('Recent commits', glyph('', 'o'))
+                subject_width = max(cell_width(safe(commit['subject'])) for commit in repo['recent'])
+                for recent in repo['recent']:
+                    stats = recent['stats']
+                    if stats is None:
+                        summary = [span('stats unavailable', 'text.muted')]
+                    else:
+                        added = sum(a or 0 for a, _, _ in stats)
+                        removed = sum(d or 0 for _, d, _ in stats)
+                        files = count(len(stats), 'file') if width >= 45 else f'{len(stats)}f'
+                        summary = [span(files, 'text.muted'), span(' '), span(f'+{added}', 'diff.add'),
+                                   span(' '), span(f'{minus}{removed}', 'diff.delete')]
+                        binary = sum(a is None for a, _, _ in stats)
+                        if binary:
+                            summary.append(span(f' {binary}bin', 'text.muted'))
+                    stats_width = sum(cell_width(part[0]) for part in summary)
+                    room = max(0, width - cell_width(recent['hash']) - stats_width - 4)
+                    subject = safe(recent['subject'])
+                    if cell_width(subject) > room:
+                        ending = glyph('…', '.') if room else ''
+                        clipped = ''
+                        for char in subject:
+                            if cell_width(clipped + char + ending) > room:
+                                break
+                            clipped += char
+                        subject = clipped + ending
+                    padding = max(2, min(room, subject_width) - cell_width(subject) + 2)
+                    row(span(recent['hash'], 'accent.secondary'), span('  '), span(subject),
+                        span(' ' * padding), *summary)
+            elif repo['recent'] is None:
+                line('Recent commits  unavailable', 'text.muted')
+    if repo is not None:
+        git_details()
+    else:
+        folder_header()
+        directory_contents()
+    details = '\n\n'.join('\n'.join(block) for block in blocks).splitlines()
+    blocks = [[]]
+    width = context_width
     if readme is not None:
         name, content = readme
-        line()
         section(name, glyph('', 'file'))
-        for part in content:
-            print(part)
+        blocks[-1].extend(content)
+    if repo is not None and (readme is None or not is_root):
+        if readme is not None:
+            blocks.append([])
+        folder_header()
+        directory_contents()
+    context = '\n\n'.join('\n'.join(block) for block in blocks).splitlines()
+    split = context_width if context and paired else 0
+    if structured:
+        print(json.dumps({'context': context, 'details': details, 'split': split}, ensure_ascii=True))
+    elif split:
+        for left, right in zip_longest(context, details, fillvalue=''):
+            visible = re.sub(r'\x1b\[[0-9;:]*m', '', left)
+            print(left + ' ' * max(gap, split - cell_width(visible) + gap) + right if right else left)
+    else:
+        print('\n\n'.join('\n'.join(pane) for pane in (details, context) if pane))
     return True

@@ -375,6 +375,9 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # These integrations configure their already-installed tools before the
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
+elif name == "make" and args[-1:] == ["directory-picker"]:
+    assert shutil.which("fzf") and shutil.which("go")
+    record("directory-picker build")
 elif name == "make" and args[-1:] == ["pi-config"]:
     assert subprocess.check_output(["pi", "--version"], text=True).strip() == "1.4.0"
     record("pi config")
@@ -609,6 +612,7 @@ else:
         assert "neovim build" in events
         assert "eza package" in events
         assert "treehouse build" in events
+        assert "directory-picker build" in events
         treehouse_command = ["/bin/bash", str(checkout / "scripts/install-treehouse")]
         for replaced in (False, True):
             if replaced:

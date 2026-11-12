@@ -75,6 +75,12 @@ version = "1.4.7"
 [tools.fzf]
 version = "0.59.0"
 
+[tools.directory-picker]
+description = "Build the Charmed directory and worktree picker for zz and zw."
+installer = "config"
+requires = ["go", "fzf"]
+post = ["directory-picker"]
+
 [tools.starship]
 requires = ["rust"]
 version = "1.25.0"
