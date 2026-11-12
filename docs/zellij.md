@@ -13,7 +13,7 @@ zj
 zj work
 ```
 
-After pulling helper updates, run `make zellij-helpers zellij` to rebuild the commands and refresh their links. Full `make install` includes this step.
+After pulling helper or status plugin updates, run `make zellij-status zellij` to rebuild the commands and status plugin and refresh their links. Full `make install` includes this step for the patched and main runtimes.
 
 `zj` attaches to or creates `main`; `zj work` chooses a session named `work`. **Ctrl-f d** detaches and keeps programs running. Run the same command to return.
 

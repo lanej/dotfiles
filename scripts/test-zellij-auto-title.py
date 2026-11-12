@@ -154,15 +154,26 @@ def ownership_lifecycle():
                         action = fields(request[1])
                         tab = json.loads(state.read_text())
                         ack = message(2, b"")
-                        if 98 in action:
+                        if 104 in action:
+                            tabs = [{"tab_id": tab["tab_id"], "name": tab["name"]}]
+                            if "other_name" in tab:
+                                tabs.append({"tab_id": 2, "name": tab["other_name"]})
+                            if "loading_name" in tab:
+                                tabs.append({"tab_id": 5, "name": tab["loading_name"]})
+                            response = message(5, message(1, json.dumps(tabs).encode()))
+                            connection.sendall(struct.pack("<I", len(ack)) + ack)
+                        elif 98 in action:
                             assert fields(action[98])[6] == 1
-                            panes = [{"id": 7, "tab_id": 4, "tab_name": tab["name"],
+                            panes = [{"id": 7, "tab_id": tab["tab_id"], "tab_name": tab["name"],
                                       "is_plugin": False, "is_focused": True}]
+                            if "other_name" in tab:
+                                panes.append({"id": 8, "tab_id": 2, "tab_name": tab["other_name"],
+                                              "is_plugin": False, "is_focused": False})
                             response = message(5, message(1, json.dumps(panes).encode()))
                             connection.sendall(struct.pack("<I", len(ack)) + ack)
                         else:
                             rename = fields(action[103])
-                            assert rename[1] == 4
+                            assert rename.get(1, 0) == tab["tab_id"]
                             tab["name"] = rename[2].decode()
                             state.write_text(json.dumps(tab))
                             response = ack
@@ -194,8 +205,8 @@ def ownership_lifecycle():
         cache.mkdir(parents=True)
         index_name = "session_index-" + hashlib.sha256(os.fsencode(sockets)).hexdigest()[:12] + ".sqlite"
         with sqlite3.connect(cache / index_name) as db:
-            db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT)")
-            db.execute("INSERT INTO sessions VALUES ('fixture', 'abc123')")
+            db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT, created_at INTEGER)")
+            db.execute("INSERT INTO sessions VALUES ('fixture', 'abc123', 123)")
         state = work / "native.json"
         state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
         fake = executables / "zellij"
@@ -236,26 +247,47 @@ def ownership_lifecycle():
             assert owned() == {"4": "project"}
             state.write_text(json.dumps({"tab_id": 4, "name": "manual"}))
             assert rename() == "manual", "explicit title was overwritten"
-            # A resurrected session may reuse its ID and the exact old title.
-            # Its new socket must prevent old ownership transferring to it.
+            # Restore a recorded automatic name after replacing the server.
             address.unlink()
             replacement.bind(str(address))
             servers.enter_context(server(replacement, state))
-            state.write_text(json.dumps({"tab_id": 4, "name": "project"}))
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
             env["PWD"] = str(work / "new-session")
             assert owned() == {}, "stale ownership survived socket replacement"
             assert rename() == "project", "new session's explicit title was overwritten"
-            state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
-            assert rename() == "Tab #5", "cached context crossed server lifetimes"
+            state.write_text(json.dumps({"tab_id": 0, "name": "Tab #1"}))
+            assert rename() == "Tab #1", "cached context crossed server lifetimes"
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
             env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
                 [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
-            assert rename() == "new-session", "generated title did not resume ownership"
-            assert owned() == {"4": "new-session"}
-            record = next((work / "state/zellij-auto-titles").glob("*.json"))
+            state.write_text(json.dumps({"tab_id": 0, "name": "project", "loading_name": "pending"}))
+            assert rename() == "project", "partial resurrection reconciled title records"
+            assert next((work / "state/zellij-auto-titles").glob("*-4.json")).exists()
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
+            assert rename() == "new-session", "restored automatic title did not resume ownership"
+            assert owned() == {"0": "new-session"}
+            state.write_text(json.dumps({"tab_id": 3, "name": "project"}))
+            assert rename() == "project", "obsolete title record took over a fresh manual tab"
+            state.write_text(json.dumps({"tab_id": 0, "name": "manual"}))
+            assert rename() == "manual", "restored manual name was overwritten"
+            state.write_text(json.dumps({"tab_id": 0, "name": "new-session"}))
+            record = next((work / "state/zellij-auto-titles").glob("*-0.json"))
             record.write_text(json.dumps("new-session"))
             env["PWD"] = str(work / "legacy")
             assert owned() == {}
             assert rename() == "new-session", "legacy record claimed unproven ownership"
+            state.write_text(json.dumps({"tab_id": 0, "name": "Tab #1"}))
+            assert rename() == "legacy"
+            third = servers.enter_context(socket.socket(socket.AF_UNIX))
+            address.unlink()
+            third.bind(str(address))
+            servers.enter_context(server(third, state))
+            state.write_text(json.dumps({"tab_id": 0, "name": "legacy", "other_name": "legacy"}))
+            env["PWD"] = str(work / "ambiguous")
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
+            assert rename() == "legacy", "ambiguous restored name claimed ownership"
+            assert owned() == {}
         print("PASS: protobuf title ownership, explicit names, socket recreation, and legacy state (real sockets/index).")
 
 

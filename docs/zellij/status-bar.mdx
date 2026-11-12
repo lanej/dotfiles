@@ -13,6 +13,8 @@ An unnamed tab adopts the oldest tiled terminal pane with a meaningful title. If
 
 To give a tab a lasting name, press **Ctrl-f r**, type a name such as `review`, and press **Enter**. That name stays when you switch programs. **Esc** or **Ctrl-c** cancels the rename.
 
+After restoring a session, a tab whose saved name uniquely matches a recorded automatic title resumes naming from its live panes. Other names stay manual. Older title records cannot prove that ownership; to restore automatic naming for such a tab, find its `TAB_ID` with `zellij action list-tabs`, then rename it to `Tab #N`, where N is that ID plus one.
+
 The focused pane has a purple title and border. Other visible panes keep their titles and borders in gray when you switch focus. Codex pane titles show the agent icon and project, such as `󰚩 epservicesctl-15`. Its activity marker can change while the name stays in place. In the tab bar, older Codex and Claude titles also collapse to the icon and project.
 
 ![Numbered Zellij tabs with interlocking chevrons, local battery, SSH lock, and a gold zoomed tab](../images/zellij-status.png)

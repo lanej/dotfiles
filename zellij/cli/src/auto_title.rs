@@ -1,6 +1,6 @@
 use crate::{ipc, titles, util::*};
 use anyhow::{Context, Result};
-use ipc::contract::{action::ActionType, ListPanesAction, RenameTabByIdAction};
+use ipc::contract::{action::ActionType, ListPanesAction, ListTabsAction, RenameTabByIdAction};
 use lane_zellij_protocol::titles::{glyphs::BRANCH, pane_label};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -17,14 +17,37 @@ struct Tab {
     panes: BTreeMap<u64, Option<String>>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct Record {
     identity: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    persistent_identity: Option<Value>,
     title: String,
     #[serde(default)]
     providers: BTreeSet<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pending_from: Option<String>,
+}
+
+fn previous_record(
+    record: Record,
+    identity: &Value,
+    persistent_identity: &Value,
+    name: &str,
+) -> Record {
+    if record.identity == *identity {
+        return record;
+    }
+    if record.persistent_identity.as_ref() == Some(persistent_identity) && record.title == name {
+        // rationale: Restored pane IDs cannot retain a previous server's title providers.
+        return Record {
+            identity: identity.clone(),
+            persistent_identity: Some(persistent_identity.clone()),
+            title: name.to_owned(),
+            ..Record::default()
+        };
+    }
+    Record::default()
 }
 
 fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64>) {
@@ -81,6 +104,13 @@ pub fn context() -> Result<String> {
 }
 
 fn snapshot(client: &ipc::Client<'_>, offer: Option<(u64, &str)>) -> Result<BTreeMap<u64, Tab>> {
+    let native_tabs: Vec<Value> = serde_json::from_str(&ipc::output(client.request(
+        ActionType::ListTabs(ListTabsAction {
+            output_json: true,
+            ..Default::default()
+        }),
+        true,
+    )?)?)?;
     let panes: Vec<Value> = serde_json::from_str(&ipc::output(client.request(
         ActionType::ListPanes(ListPanesAction {
             output_json: true,
@@ -109,6 +139,16 @@ fn snapshot(client: &ipc::Client<'_>, offer: Option<(u64, &str)>) -> Result<BTre
         };
         tab.panes.insert(id, name);
     }
+    anyhow::ensure!(
+        native_tabs.len() == tabs.len()
+            && native_tabs.iter().all(|tab| {
+                tab["tab_id"]
+                    .as_u64()
+                    .and_then(|id| tabs.get(&id))
+                    .is_some_and(|panes| tab["name"].as_str() == Some(panes.name.as_str()))
+            }),
+        "Tabs are still loading or changed while reading their panes"
+    );
     Ok(tabs)
 }
 
@@ -120,6 +160,7 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     };
     context.validate(session)?;
     let identity = context.identity.clone();
+    let persistent_identity = context.persistent_identity()?;
     let client = ipc::Client {
         socket: context.socket()?,
         terminal_id: offer.map(|(pane, _)| pane.try_into()).transpose()?,
@@ -129,7 +170,36 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     private_dir(&dir)?;
     let key = titles::session_key(session);
     let _lock = Lock::acquire(&dir.join(format!("{key}.lock")), deadline)?;
-    for (id, tab) in snapshot(&client, offer)? {
+    let tabs = snapshot(&client, offer)?;
+    let mut restored = BTreeMap::<String, Record>::new();
+    let mut obsolete = Vec::new();
+    for entry in std::fs::read_dir(&dir)? {
+        let entry = entry?;
+        let filename = entry.file_name();
+        let Some(tab_id) = filename
+            .to_str()
+            .and_then(|name| name.strip_prefix(&format!("{key}-")))
+            .and_then(|name| name.strip_suffix(".json"))
+        else {
+            continue;
+        };
+        if tab_id.is_empty() || !tab_id.bytes().all(|byte| byte.is_ascii_digit()) {
+            continue;
+        }
+        if let Ok(record) = serde_json::from_slice::<Record>(&std::fs::read(entry.path())?) {
+            if record.identity != identity
+                && record.persistent_identity.as_ref() == Some(&persistent_identity)
+            {
+                obsolete.push(entry.path());
+                restored.insert(record.title.clone(), record);
+            }
+        }
+    }
+    let mut names = BTreeMap::<String, usize>::new();
+    for tab in tabs.values() {
+        *names.entry(tab.name.clone()).or_default() += 1;
+    }
+    for (id, tab) in tabs {
         // New tabs start as "Tab #N". An empty native name is the editable
         // field cleared by Ctrl-f r, which another client may be typing into.
         if tab.name.is_empty() {
@@ -139,10 +209,16 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
         let previous = match std::fs::read(&path) {
             Ok(bytes) => serde_json::from_slice::<Record>(&bytes)
                 .ok()
-                .filter(|r| r.identity == identity),
+                .filter(|record| record.identity == identity),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
             Err(err) => return Err(err.into()),
         }
+        .or_else(|| {
+            (names.get(&tab.name) == Some(&1))
+                .then(|| restored.get(&tab.name).cloned())
+                .flatten()
+                .map(|record| previous_record(record, &identity, &persistent_identity, &tab.name))
+        })
         .unwrap_or_default();
         let fallback = format!("Tab #{}", id + 1);
         let managed =
@@ -154,6 +230,7 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
         let (title, providers) = choose(&tab, if managed { &previous } else { &empty }, &fallback);
         let mut record = Record {
             identity: identity.clone(),
+            persistent_identity: Some(persistent_identity.clone()),
             title,
             providers,
             pending_from: None,
@@ -180,6 +257,13 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
             record.pending_from = None;
         }
         save_json(&path, &json!(record)).context("Cannot retain automatic title ownership")?;
+    }
+    context.validate(session)?;
+    for path in obsolete {
+        let record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
+        if record.identity != identity {
+            std::fs::remove_file(path)?;
+        }
     }
     Ok(())
 }
@@ -233,6 +317,55 @@ pub fn shell_title() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restored_titles_require_persistent_session_and_matching_name() {
+        let current = json!(["new socket"]);
+        let persistent = json!(["index", "session id", 123]);
+        for (record_identity, record_persistent, name, expected) in [
+            (
+                json!(["old socket"]),
+                Some(persistent.clone()),
+                "api",
+                "api",
+            ),
+            (
+                json!(["old socket"]),
+                Some(persistent.clone()),
+                "manual",
+                "",
+            ),
+            (
+                json!(["old socket"]),
+                Some(json!(["index", "other", 123])),
+                "api",
+                "",
+            ),
+            (
+                json!(["old socket"]),
+                Some(json!(["index", "session id", 456])),
+                "api",
+                "",
+            ),
+            (json!(["old socket"]), None, "api", ""),
+        ] {
+            let record = previous_record(
+                Record {
+                    identity: record_identity,
+                    persistent_identity: record_persistent,
+                    title: "api".into(),
+                    providers: BTreeSet::from([7]),
+                    pending_from: Some("manual".into()),
+                },
+                &current,
+                &persistent,
+                name,
+            );
+            assert_eq!(record.title, expected);
+            assert!(record.providers.is_empty());
+            assert!(record.pending_from.is_none());
+        }
+    }
 
     #[test]
     fn name_follows_its_last_provider_then_the_oldest_survivor() {
