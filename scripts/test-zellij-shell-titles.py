@@ -7,6 +7,8 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
+import time
 import tempfile
 
 
@@ -14,10 +16,58 @@ workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
+
+def wait_for_exit(pids, timeout=5):
+    """Wait for owned writers to stop; zombies can no longer touch the fixture."""
+    pending = set(pids)
+    deadline = time.monotonic() + timeout
+    while pending:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"Session processes still running before fixture cleanup: {sorted(pending)}")
+        try:
+            result = subprocess.run(["ps", "-o", "pid=,stat=", "-p", ",".join(map(str, sorted(pending)))],
+                                    capture_output=True, text=True, timeout=min(1, remaining))
+        except subprocess.TimeoutExpired as error:
+            raise TimeoutError(f"Could not confirm shutdown of session processes: {sorted(pending)}") from error
+        if result.returncode not in (0, 1) or (result.returncode == 1 and result.stderr.strip()):
+            raise RuntimeError(f"Could not verify session shutdown: {result.stderr}")
+        rows = [line.split() for line in result.stdout.splitlines() if line.strip()]
+        pending = {int(pid) for pid, state in rows if not state.startswith("Z")}
+        if pending:
+            time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+
+
+def stop_session(terminal):
+    """Stop only this fixture's named session and wait for its process tree."""
+    try:
+        result = subprocess.run(["ps", "-axo", "pid=,ppid=,command="],
+                                capture_output=True, text=True, check=True, timeout=5)
+        rows = [line.split(None, 2) for line in result.stdout.splitlines()]
+        rows = [row for row in rows if len(row) == 3]
+        socket_prefix = " --server " + terminal.env["ZELLIJ_SOCKET_DIR"] + "/"
+        owned = {terminal.pid} | {int(pid) for pid, _, command in rows if socket_prefix in command}
+        while True:
+            children = {int(pid) for pid, parent, _ in rows if int(parent) in owned}
+            if children <= owned:
+                break
+            owned |= children
+    finally:
+        try:
+            subprocess.run([terminal.binary, "kill-session", "--", terminal.name], env=terminal.env,
+                           capture_output=True, timeout=5)
+        finally:
+            terminal.close()
+    # rationale: kill-session replies before pane shells finish their exit-time history writes.
+    wait_for_exit(owned)
+
+
 def main():
     binary, shell = shutil.which("zellij"), shutil.which("zsh")
     assert binary and shell, "Install Zellij and Zsh before testing shell tab titles"
-    with tempfile.TemporaryDirectory(prefix="zj-shell-titles-", dir="/tmp") as directory:
+    directory = tempfile.mkdtemp(prefix="zj-shell-titles-", dir="/tmp")
+    completed = stopped = False
+    try:
         work = Path(directory).resolve()
         home, runtime, selection = work / "home", work / "run", work / "project" / "child"
         home.mkdir()
@@ -169,12 +219,23 @@ fi
             terminal.send(("cd " + shlex.quote(str(selection)) + "; TITLE_PROOF=" + shlex.quote(str(home / "manual-done")) + "\r").encode())
             terminal.until("the explicitly named tab's shell finishes cd", (home / "manual-done").exists)
             assert title() == "Review", "An automatic title replaced the explicit name"
+            completed = True
             print("PASS: installed cd/Ctrl-B hooks update pane directory and branch; "
                   "unfinished input survives selection and cancel; tabs retain ownership and preserve explicit names.")
         finally:
-            subprocess.run([binary, "kill-session", name], env=env,
-                           capture_output=True, timeout=5)
-            terminal.close()
+            original = sys.exception()
+            try:
+                stop_session(terminal)
+                stopped = True
+            except Exception as error:
+                if original is None:
+                    raise
+                original.add_note(f"Session teardown also failed: {error}")
+    finally:
+        if completed and stopped:
+            shutil.rmtree(directory)
+        else:
+            print(f"Retained failed shell-title fixture: {directory}", file=sys.stderr)
 
 
 if __name__ == "__main__":

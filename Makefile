@@ -473,6 +473,7 @@ test-zellij-claude-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-shell-titles
 test-zellij-shell-titles: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation: zellij-helpers
