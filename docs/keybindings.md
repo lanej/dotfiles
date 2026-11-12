@@ -54,7 +54,7 @@ The CLI exits 0 for a successful inventory or clean check, 1 for check conflicts
 
 ## Preview an image from a Zellij pane
 
-Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label beside the image to open it in a split on the right. From a floating pane, the preview opens in another floating pane. Press a key to dismiss the preview. The same picker opens ordinary hyperlinks with Kitty.
+Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label beside the image to open it in a split on the right. From a floating pane, the preview opens in another floating pane. Press **Enter** to close the preview. The same picker opens ordinary hyperlinks with Kitty.
 
 Relative filenames resolve in the source pane's working directory. A wrapped `docs/screenshots/plan-viewer/fixture-running-overview.png` opens from that worktree. Over `zssh`, the remote host reads the file and streams the image to Kitty.
 
