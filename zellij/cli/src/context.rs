@@ -2,6 +2,7 @@ use crate::{titles, util::*};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -55,7 +56,9 @@ pub(crate) fn location() -> Result<crate::titles::Location> {
     // Running `zellij setup --check` here costs far more than the actual IPC requests.
     let project = directories::ProjectDirs::from("org", "Zellij Contributors", "Zellij")
         .context("Cannot identify the Zellij directories")?;
-    let directory = std::env::var_os("ZELLIJ_SOCKET_DIR")
+    let socket_override = std::env::var("ZELLIJ_SOCKET_DIR").ok();
+    let directory = socket_override
+        .as_ref()
         .map(std::path::PathBuf::from)
         .or_else(|| project.runtime_dir().map(Path::to_path_buf))
         .unwrap_or_else(|| {
@@ -65,11 +68,23 @@ pub(crate) fn location() -> Result<crate::titles::Location> {
     if !directory.is_absolute() {
         bail!("Zellij socket directory must be absolute");
     }
+    // rationale: The runtime isolates indexes for overridden socket directories.
+    let index_name = if socket_override.is_some() {
+        let hash: String = Sha256::digest(directory.as_os_str().as_encoded_bytes())
+            .iter()
+            .take(6)
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        format!("session_index-{hash}.sqlite")
+    } else {
+        "session_index.sqlite".to_owned()
+    };
     Ok((
         directory,
         project
             .cache_dir()
-            .join("contract_version_1/session_index.sqlite"),
+            .join("contract_version_1")
+            .join(index_name),
     ))
 }
 

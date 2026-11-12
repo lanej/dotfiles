@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise installed directory-title shell hooks; Zellij rendering is separate."""
 
+import hashlib
 import os
 from pathlib import Path
 import pty
@@ -191,7 +192,8 @@ def ownership_lifecycle():
                       else work / "cache/zellij")
         cache = cache_root / "contract_version_1"
         cache.mkdir(parents=True)
-        with sqlite3.connect(cache / "session_index.sqlite") as db:
+        index_name = "session_index-" + hashlib.sha256(os.fsencode(sockets)).hexdigest()[:12] + ".sqlite"
+        with sqlite3.connect(cache / index_name) as db:
             db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT)")
             db.execute("INSERT INTO sessions VALUES ('fixture', 'abc123')")
         state = work / "native.json"
