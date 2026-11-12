@@ -38,7 +38,7 @@ SETTINGS = {
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
 TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
-INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm"}
+INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
 HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status"}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {

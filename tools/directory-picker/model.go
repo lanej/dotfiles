@@ -19,6 +19,7 @@ type picker struct {
 	byToken            map[string]int
 	scope, matches     []int
 	pos, width, height int
+	spacing            int
 	ready              bool
 	refreshPending     bool
 	detailsUnavailable bool
@@ -27,6 +28,7 @@ type picker struct {
 	stopPreview        context.CancelFunc
 	preview            previewResult
 	scroll             int
+	finished           bool
 	chosen             string
 	err                error
 }
@@ -61,7 +63,9 @@ func (m *picker) applyFilter() tea.Cmd {
 func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
+		// A printed character in the final terminal cell can autowrap and move
+		// the origin of the next inline repaint down one row.
+		m.width, m.height = max(1, msg.Width-1), msg.Height
 		m.query.Resize(max(1, m.width-12))
 		return m, m.requestPreview()
 	case observation:
@@ -71,6 +75,7 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if id, ok := m.byToken[msg.Token]; ok {
 			m.entries[id].observation = msg
+			m.entries[id].measure()
 			if m.query.Value() == "" {
 				return m, m.requestPreview()
 			}
@@ -86,6 +91,7 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.applyFilter()
 	case observationError:
 		m.detailsUnavailable = true
+		return m, m.requestPreview()
 	case previewResult:
 		if msg.key == m.requested {
 			m.preview = msg
@@ -97,24 +103,37 @@ func (m *picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if id := m.selected(); id >= 0 {
 				m.chosen = m.entries[id].token
+				m.finished = true
 				return m, tea.Quit
 			}
 			return m, nil
 		case "esc", "ctrl+c":
+			m.finished = true
 			return m, tea.Quit
-		case "up", "ctrl+p":
+		case "ctrl+p":
 			step = -1
-		case "down", "ctrl+n":
+		case "ctrl+n":
 			step = 1
-		case "pgup":
-			step = -g.rows * g.cols
-		case "pgdown":
-			step = g.rows * g.cols
+		case "up", "down", "pgup", "pgdown":
+			delta := 1
+			if msg.String() == "pgup" || msg.String() == "pgdown" {
+				delta = max(1, g.bottom-g.top)
+			}
+			if msg.String() == "up" || msg.String() == "pgup" {
+				delta = -delta
+			}
+			m.pos = g.vertical(m.pos, delta)
+			return m, m.requestPreview()
 		case "left", "right":
-			if g.cols > 1 {
-				step = g.rows
-				if msg.String() == "left" {
-					step = -step
+			if len(g.rows) > 0 {
+				row := g.rows[g.active]
+				if len(row.slots) > 1 {
+					if msg.String() == "left" {
+						m.pos = max(row.start, m.pos-1)
+					} else {
+						m.pos = min(row.start+len(row.slots)-1, m.pos+1)
+					}
+					return m, m.requestPreview()
 				}
 			}
 		case "ctrl+space", "ctrl+@":

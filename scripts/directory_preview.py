@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 import json
+from itertools import zip_longest
 import os
 from pathlib import Path
 import shlex
@@ -190,8 +191,8 @@ def theme():
         return json.loads((ROOT / 'design-system/generated/colors.json').read_text())
 
 
-def readme_lines(root, width, available):
-    if available < 3:
+def readme_lines(root, width, available=None):
+    if available is not None and available < 3:
         return None
     readme = next((root / name for name in ('README.md', 'README.markdown', 'README.rst', 'README.txt', 'README', 'readme.md', 'Readme.md') if (root / name).is_file()), None)
     if readme is None:
@@ -216,8 +217,10 @@ def readme_lines(root, width, available):
     if highlighted is None and shutil.which('bat'):
         args = ['bat', '--color=' + ('never' if os.environ.get('NO_COLOR') else 'always'),
                 '--paging=never', '--style=plain', '--wrap=character', '--terminal-width=' + str(width),
-                '--line-range=:' + str(available), '--theme=' + os.environ.get('BAT_THEME', 'Dotfiles'),
+                '--theme=' + os.environ.get('BAT_THEME', 'Dotfiles'),
                 '--file-name=' + readme.name]
+        if available is not None:
+            args.append('--line-range=:' + str(available))
         if markdown:
             args.append('--language=Markdown')
         highlighted = command(args, data=data)
@@ -242,9 +245,11 @@ def render(path, snapshot):
     preset = theme()
     colors = preset['roles']
     ascii_mode = preset.get('symbols') == 'ascii'
-    width = max(20, int(os.environ.get('FZF_PREVIEW_COLUMNS', '80')))
-    height = max(1, int(os.environ.get('FZF_PREVIEW_LINES', '24')))
-    used_lines = 0
+    available_width = max(1, int(os.environ.get('FZF_PREVIEW_COLUMNS', '80')))
+    # Each side needs room for a readable commit subject and its statistics.
+    paired = available_width >= 2 * 55 + 3
+    width = (available_width - 3) // 2 if paired else available_width
+    blocks = [[]]
 
     def glyph(unicode, fallback):
         return fallback if ascii_mode else unicode
@@ -269,26 +274,22 @@ def render(path, snapshot):
         return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ('W', 'F') else 1 for c in value)
 
     def row(*parts):
-        nonlocal used_lines
         chunks, occupied = [], 0
         for value, role, bold, background in parts:
             if chunks and occupied + cell_width(value) > width and cell_width(value) <= width:
-                print(''.join(chunks))
-                used_lines += 1
+                blocks[-1].append(''.join(chunks))
                 chunks, occupied = [], 0
             fragment = ''
             for char in value:
                 size = cell_width(char)
                 if occupied + size > width:
                     chunks.append(styled(fragment, role, bold, background))
-                    print(''.join(chunks))
-                    used_lines += 1
+                    blocks[-1].append(''.join(chunks))
                     chunks, occupied, fragment = [], 0, ''
                 fragment += char
                 occupied += size
             chunks.append(styled(fragment, role, bold, background))
-        print(''.join(chunks))
-        used_lines += 1
+        blocks[-1].append(''.join(chunks))
 
     def line(value='', role='text', bold=False):
         row(span(value, role, bold))
@@ -320,6 +321,8 @@ def render(path, snapshot):
     if agents:
         for agent in agents:
             row(pill(f'{glyph("󰚩", "agent")} {agent["name"]}', 'accent'), span('  '), span(agent['state'].replace('·', separator), 'text.muted'))
+    elif snapshot.get('pending'):
+        line('Agents  checking', 'text.muted')
     else:
         line('Agents  none observed' if snapshot['sources'] else 'Agents  unavailable', 'text.muted')
     line()
@@ -346,7 +349,7 @@ def render(path, snapshot):
             row(span(code, role, True), span('  '), span(name))
     else:
         row(span('Working tree  ', 'heading', True), pill(f'{glyph("", "ok")} clean', 'status.success'))
-    line()
+    blocks.append([])
     if repo['base'] is None:
         line('Branch changes  base unavailable', 'text.muted')
     elif repo['committed'] is None:
@@ -361,8 +364,9 @@ def render(path, snapshot):
             else:
                 row(span(f'+{added:>3}', 'diff.add'), span('  '), span(f'{minus}{removed:<3}', 'diff.delete'), span('  '), span(name))
         if repo['recent']:
-            line()
+            blocks.append([])
             section('Recent commits', glyph('', 'o'))
+            subject_width = max(cell_width(safe(commit['subject'])) for commit in repo['recent'])
             for recent in repo['recent']:
                 stats = recent['stats']
                 if stats is None:
@@ -387,16 +391,32 @@ def render(path, snapshot):
                             break
                         clipped += char
                     subject = clipped + ending
-                padding = max(2, width - cell_width(recent['hash']) - cell_width(subject) - stats_width - 2)
+                padding = max(2, min(room, subject_width) - cell_width(subject) + 2)
                 row(span(recent['hash'], 'accent.secondary'), span('  '), span(subject),
                     span(' ' * padding), *summary)
         elif repo['recent'] is None:
             line('Recent commits  unavailable', 'text.muted')
-    readme = readme_lines(repo['root'], width, height - used_lines - 2)
+    readme = readme_lines(repo['root'], width)
     if readme is not None:
         name, content = readme
-        line()
+        blocks.append([])
         section(name, glyph('', 'file'))
-        for part in content:
-            print(part)
+        blocks[-1].extend(content)
+
+    def join(parts):
+        return '\n\n'.join('\n'.join(lines) for lines in parts)
+
+    if paired:
+        # Keep whole sections together. Read down the first column, then the second.
+        def height(parts):
+            return sum(map(len, parts)) + len(parts) - 1
+        split = min(range(1, len(blocks)), key=lambda i: max(height(blocks[:i]), height(blocks[i:])))
+        for left, right in zip_longest(join(blocks[:split]).split('\n'), join(blocks[split:]).split('\n'), fillvalue=''):
+            if right:
+                visible = re.sub(r'\x1b\[[0-9;:]*m', '', left)
+                print(left + ' ' * max(3, width - cell_width(visible) + 3) + right)
+            else:
+                print(left)
+    else:
+        print(join(blocks))
     return True

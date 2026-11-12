@@ -24,6 +24,7 @@ type config struct {
 
 type entry struct {
 	token, label, detail string
+	size                 cellSize
 	observation
 }
 
@@ -80,7 +81,9 @@ func run() (int, error) {
 		}
 		id := len(m.entries)
 		m.byToken[fields[0]] = id
-		m.entries = append(m.entries, entry{token: fields[0], label: fields[1], detail: fields[2]})
+		e := entry{token: fields[0], label: fields[1], detail: fields[2]}
+		e.measure()
+		m.entries = append(m.entries, e)
 		m.scope = append(m.scope, id)
 	}
 	if err := m.filter(); err != nil {

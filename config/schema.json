@@ -22,6 +22,7 @@
               "firstmate-mobile",
               "linux",
               "macos",
+              "octo-manager",
               "personal",
               "shell",
               "terminal",
@@ -310,6 +311,10 @@
         "codex": {
           "type": "boolean",
           "description": "Enable the codex bootstrap recipe."
+        },
+        "octo-manager": {
+          "type": "boolean",
+          "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks (macOS)."
         },
         "treehouse": {
           "type": "boolean",

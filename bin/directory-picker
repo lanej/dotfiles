@@ -211,12 +211,18 @@ def main():
         return 0
     if mode == "--preview":
         path = os.fsdecode(base64.urlsafe_b64decode(sys.argv[2]))
-        snapshot = json.loads(Path(sys.argv[3]).read_text())
+        snapshot = {"agents": [], "sources": [], "pending": not sys.argv[3]}
+        if sys.argv[3]:
+            try:
+                snapshot = json.loads(Path(sys.argv[3]).read_text())
+            except FileNotFoundError:
+                pass
         if directory_preview.render(path, snapshot):
             return 0
         with os.scandir(path) as children:
             if next(children, None) is None:
-                print(visible(path))
+                if "--inline" not in sys.argv[4:]:
+                    print(visible(path))
                 return 0
         return subprocess.call([str(ROOT / "bin/fzf-path-preview"), path])
     if mode not in ("--history", "--worktrees"):

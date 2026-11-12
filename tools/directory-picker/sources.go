@@ -107,10 +107,14 @@ func (m *picker) filter() error {
 		}
 	}
 	m.pos = max(0, slices.Index(m.matches, focused))
+	m.measureSpacing()
 	return nil
 }
 
-type previewKey struct{ id, width, height int }
+type previewKey struct {
+	id, width, height int
+	observed          bool
+}
 type previewResult struct {
 	width  int
 	key    previewKey
@@ -120,22 +124,28 @@ type previewResult struct {
 
 func (m *picker) requestPreview() tea.Cmd {
 	g := m.arrange()
-	key := previewKey{id: m.selected(), width: g.previewWidth, height: g.previewHeight}
-	if !m.ready || key == m.requested {
+	key := previewKey{id: m.selected(), width: g.previewWidth, height: g.previewHeight, observed: m.ready || m.detailsUnavailable}
+	if m.width == 0 || key == m.requested {
 		return nil
 	}
 	if m.stopPreview != nil {
 		m.stopPreview()
 	}
+	if m.requested.id != key.id {
+		m.preview = previewResult{}
+		m.scroll = 0
+	}
 	m.requested = key
-	m.preview = previewResult{useful: m.preview.useful, width: m.preview.width}
-	m.scroll = 0
 	if key.id < 0 || key.width == 0 || key.height == 0 {
 		return nil
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.stopPreview = cancel
-	token, script, snapshot := m.entries[key.id].token, m.config.Helper, m.config.Snapshot
+	selected, script := m.entries[key.id], m.config.Helper
+	snapshot := ""
+	if key.observed {
+		snapshot = m.config.Snapshot
+	}
 	return func() tea.Msg {
 		// Avoid launching Git while a user is moving quickly through the list.
 		select {
@@ -143,23 +153,26 @@ func (m *picker) requestPreview() tea.Cmd {
 			return nil
 		case <-time.After(35 * time.Millisecond):
 		}
-		cmd := helper(ctx, script, "--preview", token, snapshot)
+		cmd := helper(ctx, script, "--preview", selected.token, snapshot, "--inline")
 		cmd.Env = append(os.Environ(), fmt.Sprintf("FZF_PREVIEW_COLUMNS=%d", key.width), fmt.Sprintf("FZF_PREVIEW_LINES=%d", key.height))
 		raw, err := cmd.Output()
 		if ctx.Err() != nil {
 			return nil
 		}
-		if err != nil && len(raw) == 0 {
-			raw = []byte("Preview unavailable")
+		if err != nil {
+			raw = append(raw, []byte("\nPreview unavailable")...)
 		}
-		content := cleanPreview(string(raw))
-		lines := strings.Split(strings.TrimRight(content, "\n "), "\n")
-		// Plain directory previews start with the path. A path alone adds no information.
+		content := strings.TrimRight(cleanPreview(string(raw)), "\n ")
+		useful := content != ""
+		if !useful {
+			content = selected.label + "  (empty directory)"
+		}
+		lines := strings.Split(content, "\n")
 		width := 0
 		for _, line := range lines {
 			width = max(width, ansi.StringWidth(strings.TrimRight(line, " ")))
 		}
-		return previewResult{key: key, width: width, lines: lines, useful: len(lines) > 1 || err != nil}
+		return previewResult{key: key, width: width, lines: lines, useful: useful}
 	}
 }
 

@@ -66,6 +66,24 @@ class PickerTests(unittest.TestCase):
         for row, (path, _) in zip(picker.rows(choices), choices):
             self.assertEqual(os.fsdecode(base64.urlsafe_b64decode(row.split('\t')[0])), path)
 
+    def test_directory_preview_recovers_if_eza_fails(self):
+        target = self.work / "ordinary"
+        target.mkdir()
+        (target / "invoices").mkdir()
+        (target / "README.md").write_text("Invoices")
+        eza = self.work / "eza"
+        eza.write_text("#!/bin/sh\nexit 2\n")
+        eza.chmod(0o755)
+        env = {**os.environ, "PATH": str(self.work) + os.pathsep + os.environ["PATH"]}
+        token = base64.urlsafe_b64encode(os.fsencode(target)).decode()
+        command = [ROOT / "bin/directory-picker", "--preview", token, "", "--inline"]
+        preview_text = subprocess.check_output(command, env=env, text=True)
+        self.assertIn("invoices/", preview_text)
+        self.assertIn("README.md", preview_text)
+        (target / "invoices").rmdir()
+        (target / "README.md").unlink()
+        self.assertEqual(subprocess.check_output(command, env=env), b"")
+
     def test_shell_jump_uses_full_path_and_cancel_stays_put(self):
         target = self.work / "a quote' and spaces"
         target.mkdir()
