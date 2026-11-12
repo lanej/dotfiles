@@ -12,6 +12,7 @@ import importlib.util
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import shlex
 import shutil
@@ -134,6 +135,10 @@ def main():
             os.write(fd, b"payment-retries")
             until(lambda: "1/2" in text() and "Working tree  3 files" in text())
             until(lambda: 'return attempts' in text() and 'Bound retry attempts' in text())
+            recent = next(line for line in screen.display if 'Bound retry attempts' in line)
+            assert re.search(r'1 file\s+\+1\s+−1', recent), recent
+            first = next(line for line in screen.display if 'Retry payments' in line)
+            assert re.search(r'2 files\s+\+3\s+−1', first), first
             if shutil.which('glow'):
                 assert '```' not in text(), 'README contains raw code fences'
                 assert '# Payments' not in text(), 'README heading was not rendered'

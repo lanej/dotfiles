@@ -170,9 +170,34 @@ printf '%s\\n%s\\n' "$result" "$PWD"
             self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid',
                      'commit', '--allow-empty', '-m', f'Change {number}')
         recent = preview.repository(repo)['recent']
-        self.assertEqual([subject for _, subject in recent], [f'Change {n}' for n in range(5, 0, -1)])
+        self.assertEqual([commit['subject'] for commit in recent], [f'Change {n}' for n in range(5, 0, -1)])
         self.git(repo, 'switch', 'main')
         self.assertEqual(preview.repository(repo)['recent'], [])
+
+    def test_recent_commit_statistics_are_per_commit_and_first_parent(self):
+        repo = self.repository('commit-statistics')
+        (repo / 'main.txt').write_text('first\nsecond\n')
+        self.git(repo, 'add', '.')
+        self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'base')
+        self.git(repo, 'switch', '-c', 'topic')
+        (repo / 'main.txt').write_text('first\nsecond\nthird\n')
+        self.git(repo, 'add', '.')
+        self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'add line')
+        (repo / 'binary.dat').write_bytes(b'\0binary')
+        self.git(repo, 'add', '.')
+        self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'add binary')
+        recent = preview.repository(repo)['recent']
+        self.assertEqual(recent[0]['stats'], [(None, None, 'binary.dat')])
+        self.assertEqual(recent[1]['stats'], [(1, 0, 'main.txt')])
+        self.git(repo, 'switch', '-c', 'side', 'main')
+        (repo / 'side.txt').write_text('side\n')
+        self.git(repo, 'add', '.')
+        self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'side change')
+        self.git(repo, 'switch', 'topic')
+        self.git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'merge', '--no-ff', 'side', '-m', 'merge side')
+        recent = preview.repository(repo)['recent']
+        self.assertEqual(recent[0]['subject'], 'merge side')
+        self.assertEqual(recent[0]['stats'], [(1, 0, 'side.txt')])
 
     def test_readme_uses_remaining_rows_without_pushing_out_git_summary(self):
         readme = self.work / 'README.md'

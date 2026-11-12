@@ -166,7 +166,13 @@ def repository(path):
         recent = None
         if log is not None:
             fields = log.split(b'\0')
-            recent = [(text(fields[i]), text(fields[i+1])) for i in range(0, len(fields)-1, 2)]
+            recent = []
+            for i in range(0, len(fields)-1, 2):
+                commit, subject = text(fields[i]), text(fields[i+1])
+                stats = git(root, 'show', '--format=', '--no-ext-diff', '--numstat', '-z',
+                            '--no-renames', '--diff-merges=first-parent', commit, '--')
+                recent.append({'hash': commit, 'subject': subject,
+                               'stats': None if stats is None else diff_rows(stats)})
         result.update(recent=recent, base=(ref.removeprefix('refs/heads/').removeprefix('refs/remotes/'), base[:8]),
                       committed=None if committed is None else diff_rows(committed))
         break
@@ -355,8 +361,33 @@ def render(path, snapshot):
         if repo['recent']:
             line()
             section('Recent commits', glyph('', 'o'))
-            for commit, subject in repo['recent']:
-                row(span(commit, 'accent.secondary'), span('  '), span(subject))
+            for recent in repo['recent']:
+                stats = recent['stats']
+                if stats is None:
+                    summary = [span('stats unavailable', 'text.muted')]
+                else:
+                    added = sum(a or 0 for a, _, _ in stats)
+                    removed = sum(d or 0 for _, d, _ in stats)
+                    files = count(len(stats), 'file') if width >= 45 else f'{len(stats)}f'
+                    summary = [span(files, 'text.muted'), span(' '), span(f'+{added}', 'diff.add'),
+                               span(' '), span(f'{minus}{removed}', 'diff.delete')]
+                    binary = sum(a is None for a, _, _ in stats)
+                    if binary:
+                        summary.append(span(f' {binary}bin', 'text.muted'))
+                stats_width = sum(cell_width(part[0]) for part in summary)
+                room = max(0, width - cell_width(recent['hash']) - stats_width - 4)
+                subject = safe(recent['subject'])
+                if cell_width(subject) > room:
+                    ending = glyph('…', '.') if room else ''
+                    clipped = ''
+                    for char in subject:
+                        if cell_width(clipped + char + ending) > room:
+                            break
+                        clipped += char
+                    subject = clipped + ending
+                padding = max(2, width - cell_width(recent['hash']) - cell_width(subject) - stats_width - 2)
+                row(span(recent['hash'], 'accent.secondary'), span('  '), span(subject),
+                    span(' ' * padding), *summary)
         elif repo['recent'] is None:
             line('Recent commits  unavailable', 'text.muted')
     readme = readme_lines(repo['root'], width, height - used_lines - 2)
