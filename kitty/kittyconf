@@ -8,30 +8,61 @@ background_opacity 1
 map shift+super+r load_config_file ~/.config/kitty/kitty.conf
 # kitty.open-last-web-link: Open the last web link, including Codex's padded output.
 map shift+super+o kitten open_last_url.py
-# END generated keybindings
-map cmd+n new_tab
-map cmd+t new_tab_with_cwd
-map cmd+p previous_tab
-map cmd+1 goto_tab 1
-map cmd+2 goto_tab 2
-map cmd+3 goto_tab 3
-map cmd+4 goto_tab 4
-map cmd+5 goto_tab 5
-map cmd+r set_tab_title
-# Access function-key actions in Codex and other terminal apps without Fn keys.
-# Kitty handles Option as Alt for these mappings on macOS, including through tmux.
+# kitty.new-tab: Open a new tab.
+map super+n new_tab
+# kitty.new-tab-cwd: Open a new tab in the current working directory.
+map super+t new_tab_with_cwd
+# kitty.previous-tab: Select the previous tab.
+map super+p previous_tab
+# kitty.tab-1: Select tab 1.
+map super+1 goto_tab 1
+# kitty.tab-2: Select tab 2.
+map super+2 goto_tab 2
+# kitty.tab-3: Select tab 3.
+map super+3 goto_tab 3
+# kitty.tab-4: Select tab 4.
+map super+4 goto_tab 4
+# kitty.tab-5: Select tab 5.
+map super+5 goto_tab 5
+# kitty.name-tab: Set the tab title.
+map super+r set_tab_title
+# kitty.function-1: Send F1 without an Fn key; Option is Alt on macOS.
 map alt+1 send_key F1
+# kitty.function-2: Send F2 without an Fn key; Option is Alt on macOS.
 map alt+2 send_key F2
+# kitty.function-3: Send F3 without an Fn key; Option is Alt on macOS.
 map alt+3 send_key F3
+# kitty.function-4: Send F4 without an Fn key; Option is Alt on macOS.
 map alt+4 send_key F4
+# kitty.function-5: Send F5 without an Fn key; Option is Alt on macOS.
 map alt+5 send_key F5
+# kitty.function-6: Send F6 without an Fn key; Option is Alt on macOS.
 map alt+6 send_key F6
+# kitty.function-7: Send F7 without an Fn key; Option is Alt on macOS.
 map alt+7 send_key F7
+# kitty.function-8: Send F8 without an Fn key; Option is Alt on macOS.
 map alt+8 send_key F8
+# kitty.function-9: Send F9 without an Fn key; Option is Alt on macOS.
 map alt+9 send_key F9
+# kitty.function-10: Send F10 without an Fn key; Option is Alt on macOS.
 map alt+0 send_key F10
+# kitty.function-11: Send F11 without an Fn key; Option is Alt on macOS.
 map alt+minus send_key F11
+# kitty.function-12: Send F12 without an Fn key; Option is Alt on macOS.
 map alt+equal send_key F12
+# kitty.secure-keyboard-entry: Toggle macOS secure keyboard entry.
+map alt+super+s toggle_macos_secure_keyboard_entry 🍎
+# kitty.close-window: Close the window with confirmation.
+map super+q close_window_with_confirmation
+# kitty.close-window-alternate: Close the window with confirmation using the alternate shortcut.
+map shift+super+d close_window_with_confirmation
+# kitty.close-window-control: Close the window with confirmation using Ctrl and Shift.
+map ctrl+shift+w close_window_with_confirmation
+# kitty.close-tab: Close the current tab.
+map super+w close_tab
+# kitty.shift-enter: Send Escape followed by Return to the terminal application.
+map shift+enter send_text all \e\r
+# END generated keybindings
 modify_font cell_width 95%
 enable_audio_bell no
 visual_bell_duration 0.0
@@ -48,11 +79,6 @@ tab_title_template "{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symb
 active_tab_font_style   bold
 inactive_tab_font_style normal
 # tab_separator " ┇"
-map opt+cmd+s toggle_macos_secure_keyboard_entry 🍎
-map cmd+q close_window_with_confirmation
-map cmd+shift+d close_window_with_confirmation
-map ctrl+shift+w close_window_with_confirmation
-map cmd+w close_tab
 cursor_shape block
 cursor_blink_interval      0.5
 cursor_stop_blinking_after 5.0
@@ -67,4 +93,3 @@ shell_integration enabled
 
 # SEE: Shared palette and UI colors; opacity remains a host preference.
 include ../dotfiles/theme/kitty.conf
-map shift+enter send_text all \e\r
