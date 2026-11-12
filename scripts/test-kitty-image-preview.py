@@ -33,7 +33,7 @@ def until(label, predicate, seconds=15):
             value = predicate()
             if value:
                 return value
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        except (subprocess.SubprocessError, FileNotFoundError, json.JSONDecodeError):
             pass
         time.sleep(0.1)
     raise AssertionError(f"Timed out waiting for {label}")
@@ -135,7 +135,7 @@ signal.pause()
         except Exception:
             print(log.read_text()[-3200:], file=sys.stderr)
             try:
-                print("Zellij panes:", panes(), file=sys.stderr)
+                print("Zellij panes:", command("zellij", "--session", session, "action", "list-panes", "--json"), file=sys.stderr)
             except subprocess.SubprocessError:
                 pass
             try:
@@ -144,7 +144,7 @@ signal.pause()
                         for window in tab["windows"]:
                             print("Kitty window:", window["title"], file=sys.stderr)
                             print(repr(remote("get-text", "--ansi", "--match", f'id:{window["id"]}'))[-5000:], file=sys.stderr)
-            except subprocess.SubprocessError:
+            except (subprocess.SubprocessError, ValueError):
                 pass
             raise
         finally:
