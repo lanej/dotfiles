@@ -215,6 +215,11 @@ jobs:
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
+      - name: Exercise fixed tab title controls
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
+        run: |
+          python3 scripts/test-zellij-tab-labels.py --fixed-titles
+          python3 scripts/test-zellij-tab-labels.py --fixed-titles --native-bar
       - run: |
           mkdir -p .zellij-notification-screens
           make test-zellij-notifications-ui 2>&1 | tee .zellij-notification-screens/check.log
