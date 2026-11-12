@@ -1234,7 +1234,11 @@ require("lazy").setup({
 			})
 			require("markdown-tables").setup_hover()
 		end,
-		dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify", "neovim/nvim-lspconfig" },
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+			{ "rcarriga/nvim-notify", opts = { background_colour = "#000000" } },
+			"neovim/nvim-lspconfig",
+		},
 	},
 	{
 		"glepnir/lspsaga.nvim",
