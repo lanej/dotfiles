@@ -15,6 +15,10 @@ Tool and technology decisions, organized by ring.
 
 ## Adopt
 
+### fzf
+
+[fzf directory pickers](directory-picker.md): use one responsive interface for directory history and Git worktrees instead of implicitly preferring Skim. Display-only `shortpath` labels retain original selection paths; preview placement responds to available pane width and height.
+
 ### Kitty
 
 Terminal emulator. Implements tabs entirely within a single OS window — yabai sees exactly one window per Kitty instance, so tiling and focus work correctly.

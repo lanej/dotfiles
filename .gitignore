@@ -11,6 +11,7 @@ bin/*
 !bin/dotfiles-theme
 !bin/dotfiles-fzf
 !bin/fzf-path-preview
+!bin/directory-picker
 !bin/firstmate
 !bin/paseo-pi
 !bin/ep-direnv

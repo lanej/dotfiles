@@ -1,6 +1,11 @@
 # Source of truth for the tech radar. Run: npm --prefix website run radar
 version: 1
 entries:
+  - id: fzf
+    name: fzf
+    ring: adopt
+    rationale: |-
+      [fzf directory pickers](directory-picker.md): use one responsive interface for directory history and Git worktrees instead of implicitly preferring Skim. Display-only `shortpath` labels retain original selection paths; preview placement responds to available pane width and height.
   - id: kitty
     name: Kitty
     ring: adopt

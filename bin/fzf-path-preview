@@ -6,13 +6,26 @@ target=${1:-}
 [ -n "$target" ] || exit 0
 
 if [ -d "$target" ]; then
+    printf '%s\n' "$target"
+    if command -v git >/dev/null 2>&1; then
+        branch=$(git -C "$target" symbolic-ref --quiet --short HEAD 2>/dev/null ||
+            git -C "$target" rev-parse --short HEAD 2>/dev/null || :)
+        [ -z "$branch" ] || printf 'Git: %s\n' "$branch"
+    fi
+    printf '\n'
+    depth=2
+    case ${FZF_PREVIEW_LINES:-24} in
+        ''|*[!0-9]*) ;;
+        *) [ "${FZF_PREVIEW_LINES:-24}" -ge 20 ] || depth=1 ;;
+    esac
     if command -v eza >/dev/null 2>&1; then
-        # PERF: Bound recursion while retaining a compact Git status column.
+        # rationale: Shallow previews keep short panes useful without wrapping long rows.
+        cd -- "$target"
         exec env -u LS_COLORS -u EZA_COLORS \
             EZA_CONFIG_DIR="${EZA_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/eza}" \
             eza --tree --long --git --no-permissions --no-filesize --no-user --no-time \
-            --level=2 --all --ignore-glob=.git \
-            --group-directories-first --icons=always --color=always -- "$target"
+            --level="$depth" --width="${FZF_PREVIEW_COLUMNS:-80}" --all --ignore-glob=.git \
+            --group-directories-first --icons=always --color=always -- .
     fi
     exec ls -Ap -- "$target"
 elif [ -f "$target" ]; then

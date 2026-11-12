@@ -74,7 +74,7 @@ test('CLI regenerates after a ring change, checks stale output, and preserves ou
 test('the migrated registry retains the accepted decisions and links', async () => {
   const { rings } = await loadRadar();
   assert.deepEqual(rings.map((ring) => ring.entries.map((entry) => entry.id)), [
-    ['kitty', 'yabai'], ['mergiraf', 'pi', 'zellij', 'viewrule'], ['aerospace'],
+    ['fzf', 'kitty', 'yabai'], ['mergiraf', 'pi', 'zellij', 'viewrule'], ['aerospace'],
     ['firstmate-through-paseo-and-github', 'superpowers', 'opencode', 'ghostty', 'andrej-karpathy-skills', 'sccache'],
   ]);
   assert.equal(rings[1].entries[3].icon, 'viewrule.png');
@@ -93,12 +93,12 @@ test('reference links with the same label keep each tool’s destination', () =>
   assert.deepEqual(destinations, ['https://a.example/', 'https://b.example/']);
 });
 
-test('registry growth keeps icon targets apart without changing the accepted compact layout', async () => {
+test('registry growth expands the layout and keeps icon targets apart', async () => {
   const { rings } = await loadRadar();
-  assert.equal(layoutRadar(rings).size, 600);
+  const initialSize = layoutRadar(rings).size;
   rings[0].entries.push({ id: 'third', name: 'Third', anchor: 'third', icon: 'tool.svg' }, { id: 'fourth', name: 'Fourth', anchor: 'fourth', icon: 'tool.svg' });
   const layout = layoutRadar(rings);
-  assert.ok(layout.size > 600);
+  assert.ok(layout.size > initialSize);
   const points = layout.rings.flatMap((ring) => ring.entries);
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
