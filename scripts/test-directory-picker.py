@@ -185,6 +185,25 @@ printf '%s\\n%s\\n' "$result" "$PWD"
         self.assertEqual(len(lines), 5)
         self.assertTrue(all(len(line) <= 40 for line in lines))
 
+    def test_markdown_renderer_replaces_fences_with_highlighted_python(self):
+        if not shutil.which('glow'):
+            self.skipTest('Optional glow renderer is not installed')
+        (self.work / 'README.md').write_text('# Payments\n\n```python\ndef retry(attempts=5):\n    return attempts\n```\n')
+        with patch.dict(os.environ, {'NO_COLOR': ''}):
+            _, lines = preview.readme_lines(self.work, 60, 20)
+        rendered = '\n'.join(lines)
+        self.assertIn('Payments', rendered)
+        self.assertNotIn('```', rendered)
+        self.assertNotIn('# Payments', rendered)
+        self.assertIn('\x1b[', rendered)
+        self.assertRegex(rendered, r'\x1b\[[0-9;]*mdef')
+        plain = __import__('re').sub(r'\x1b\[[0-9;]*m', '', rendered)
+        self.assertIn('def retry(attempts=5):', plain)
+        self.assertIn('return attempts', plain)
+        with patch.dict(os.environ, {'NO_COLOR': '1'}):
+            _, lines = preview.readme_lines(self.work, 60, 20)
+        self.assertNotIn('\x1b', '\n'.join(lines))
+
     def test_ascii_preview_preserves_labels_without_color_or_nerd_glyphs(self):
         repo = self.repository('ascii')
         (repo / 'new').write_text('untracked\n')

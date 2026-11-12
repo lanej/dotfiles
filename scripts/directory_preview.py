@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import re
 import shutil
 import subprocess
 import textwrap
@@ -197,16 +198,29 @@ def readme_lines(root, width, available):
     if not data.strip():
         return None
     highlighted = None
-    if shutil.which('bat'):
+    markdown = readme.suffix.lower() in ('.md', '.markdown', '')
+    if markdown and shutil.which('glow'):
+        style = theme_directory() / 'glow.json'
+        if not style.is_file():
+            style = ROOT / 'design-system/generated/glow.json'
+        highlighted = command(['glow', '--style', 'notty' if os.environ.get('NO_COLOR') else str(style),
+                               '--width', str(width), '-'], data=data)
+    if highlighted is None and shutil.which('bat'):
         args = ['bat', '--color=' + ('never' if os.environ.get('NO_COLOR') else 'always'),
                 '--paging=never', '--style=plain', '--wrap=character', '--terminal-width=' + str(width),
                 '--line-range=:' + str(available), '--theme=' + os.environ.get('BAT_THEME', 'Dotfiles'),
                 '--file-name=' + readme.name]
-        if readme.suffix.lower() in ('.md', '.markdown', ''):
+        if markdown:
             args.append('--language=Markdown')
         highlighted = command(args, data=data)
     if highlighted is not None:
         lines = highlighted.decode(errors='replace').splitlines()
+        def blank(value):
+            return not re.sub(r'\x1b\[[0-9;]*m', '', value).strip()
+        while lines and blank(lines[0]):
+            lines.pop(0)
+        while lines and blank(lines[-1]):
+            lines.pop()
     else:
         lines = [part for line in data.decode(errors='replace').splitlines()
                  for part in textwrap.wrap(safe(line), width=width, replace_whitespace=False) or ['']]

@@ -55,7 +55,7 @@ def main():
             (topic / 'src/retry.py').write_text(f'RETRIES = {limit}\n')
             git('-C', str(topic), 'add', '.')
             git('-C', str(topic), '-c', 'user.name=Fixture', '-c', 'user.email=test@example.invalid', 'commit', '-m', subject)
-        (topic / "README.md").write_text("# Payments\n\nRetry failed payments with bounded backoff.\n\n```python\nretry_payment(attempts=5)\n```\n")
+        (topic / "README.md").write_text("# Payments\n\nRetry failed payments with bounded backoff.\n\n```python\ndef retry_payment(attempts=5):\n    return attempts\n```\n")
         (topic / "src/retry.py").write_text("RETRIES = 5\n")
         git("-C", str(topic), "add", "src/retry.py")
         (topic / "NOTES.md").write_text("Investigate backoff\n")
@@ -79,9 +79,9 @@ def main():
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(repo)
-            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 140, 0, 0))
+            fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 36, 140, 0, 0))
             os.execvpe("zsh", ["zsh", "-f", "-c", command], env)
-        screen = native.NativeScreen(140, 32)
+        screen = native.NativeScreen(140, 36)
         stream, decoder = pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace")
         def until(predicate):
             deadline = time.monotonic() + 10
@@ -133,7 +133,10 @@ def main():
             # The real fzf must search path labels, then retain exactly the filtered set.
             os.write(fd, b"payment-retries")
             until(lambda: "1/2" in text() and "Working tree  3 files" in text())
-            until(lambda: '# Payments' in text() and 'Bound retry attempts' in text())
+            until(lambda: 'return attempts' in text() and 'Bound retry attempts' in text())
+            if shutil.which('glow'):
+                assert '```' not in text(), 'README contains raw code fences'
+                assert '# Payments' not in text(), 'README heading was not rendered'
             assert '\uf418' in text() and r'\uf418' not in text(), 'Branch glyph was escaped'
             assert any(screen.buffer[r][c].bg == 'a3be8c' for r in range(screen.lines) for c in range(screen.columns//2, screen.columns)), 'Staged pill fill missing'
             assert 'ctrl-' not in text(), 'Picker includes instruction text'
