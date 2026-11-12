@@ -47,6 +47,7 @@ fn run(args: &[String]) -> Result<()> {
             }
             "clipboard" => clipboard::main(rest)?,
             "image-hints" if rest.is_empty() => image_hints::run()?,
+            "image-view" if rest.len() == 1 => image_hints::view(&rest[0])?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
             "context" if rest == ["socket"] => println!("{}", context::socket()?),
             "context" if rest == ["title-context"] => println!("{}", auto_title::context()?),

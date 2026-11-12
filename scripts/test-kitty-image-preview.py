@@ -133,8 +133,9 @@ signal.pause()
                 colors = image.getcolors(image.width * image.height)
                 return any(color == (245, 35, 40) and count >= 200 for count, color in colors)
             until("the source worktree's red image pixels", red_pixels)
+            until("the viewer to accept Enter", lambda: "Press Enter to close." in remote("get-text"))
             key("Return")
-            until("the preview pane to close", lambda: not any("icat" in (p.get("terminal_command") or "") for p in panes()))
+            until("the preview pane to close", lambda: not any("image-view" in (p.get("terminal_command") or "") for p in panes()))
             hint("lease notes")
             until("the exact hyperlink at the desktop opener", lambda: (home / "opened-url").read_text() == URL)
             print("PASS: Cmd+Shift+U selected the wrapped PNG, displayed the correct worktree's pixels, and opened the native web link.")
@@ -149,7 +150,7 @@ signal.pause()
                     for tab in os_window["tabs"]:
                         for window in tab["windows"]:
                             print("Kitty window:", window["title"], file=sys.stderr)
-                            print(repr(remote("get-text", "--ansi", "--match", f'id:{window["id"]}'))[-5000:], file=sys.stderr)
+                            print(remote("get-text", "--match", f'id:{window["id"]}'), file=sys.stderr)
             except (subprocess.SubprocessError, ValueError):
                 pass
             raise

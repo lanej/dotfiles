@@ -212,15 +212,9 @@ fn open(session: &str, origin: u64, pane: &Value, cwd: &Path, reply: &str) -> Re
     let result = command
         .args(["--close-on-exit", "--cwd"])
         .arg(cwd)
-        .args([
-            "--",
-            "kitten",
-            "icat",
-            "--hold",
-            "--fit=both",
-            "--transfer-mode=stream",
-            "--",
-        ])
+        .arg("--name")
+        .arg(path.file_name().context("Missing image filename")?)
+        .args(["--", "zellij-helper", "image-view"])
         .arg(&path)
         .output()?;
     ensure!(
@@ -230,5 +224,19 @@ fn open(session: &str, origin: u64, pane: &Value, cwd: &Path, reply: &str) -> Re
     );
     let viewer = std::str::from_utf8(&result.stdout)?.trim();
     native(session, &["action", "focus-pane-id", viewer])?;
+    Ok(())
+}
+
+pub fn view(path: &str) -> Result<()> {
+    // Keep the pane's normal line discipline. Enter works even when the mux
+    // and icat negotiate different extended-keyboard modes for the hold prompt.
+    let result = Command::new("kitten")
+        .args(["icat", "--fit=both", "--transfer-mode=stream", "--", path])
+        .status()?;
+    if !result.success() {
+        eprintln!("icat exited with {result}");
+    }
+    println!("Press Enter to close.");
+    io::stdin().read_line(&mut String::new())?;
     Ok(())
 }
