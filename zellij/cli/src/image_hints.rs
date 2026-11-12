@@ -165,6 +165,11 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
     if let Err(error) = open(&session, origin, pane, cwd, reply) {
+        // A failed tiled split may have hidden this receiver. Bring its message back.
+        let _ = native(
+            &session,
+            &["action", "focus-pane-id", &pane_id()?.to_string()],
+        );
         eprintln!("Image preview: {error:#}\nPress Enter to close.");
         let _ = input.read_line(&mut String::new());
     }
@@ -184,18 +189,28 @@ fn open(session: &str, origin: u64, pane: &Value, cwd: &Path, reply: &str) -> Re
         crate::util::exists("kitten"),
         "Install kitten on the host running this Zellij session"
     );
-    let result = Command::new("zellij")
+    let mut command = Command::new("zellij");
+    command
         .env("ZELLIJ_PANE_ID", origin.to_string())
         .arg(format!("--session={session}"))
-        .args([
-            "action",
-            "new-pane",
-            "--near-current-pane",
-            "--direction",
-            "right",
-            "--close-on-exit",
-            "--cwd",
-        ])
+        .args(["action", "new-pane", "--near-current-pane"]);
+    if flag(pane, "is_floating") {
+        command.arg("--floating");
+    } else {
+        // Zellij rejects a directed split while the floating receiver is visible.
+        native(
+            session,
+            &[
+                "action",
+                "hide-floating-panes",
+                "--tab-id",
+                &number(pane, "tab_id")?.to_string(),
+            ],
+        )?;
+        command.args(["--direction", "right"]);
+    }
+    let result = command
+        .args(["--close-on-exit", "--cwd"])
         .arg(cwd)
         .args([
             "--",

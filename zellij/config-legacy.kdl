@@ -41,7 +41,7 @@ keybinds clear-defaults=true {
             Run "zellij-helper" "image-hints" {
                 floating true
                 width "50%"
-                height 5
+                height "5"
                 close_on_exit true
                 name "Kitty hints"
             }
