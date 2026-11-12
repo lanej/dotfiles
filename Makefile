@@ -307,7 +307,12 @@ codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 # The codex aggregate runs this after its other hook installers finish.
-codex codex-worktree-hook:
+codex:
+	$(call require-command,$(UV))
+	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
+	@python3 "$(DOTFILES)/bin/codex-octo-submit" --install
+
+codex-worktree-hook:
 	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
 
@@ -566,3 +571,10 @@ test-pi-resources:
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: codex-octo-hook test-codex-octo-hook
+codex-octo-hook:
+	@python3 "$(DOTFILES)/bin/codex-octo-submit" --install
+
+test-codex-octo-hook: FORCE
+	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
