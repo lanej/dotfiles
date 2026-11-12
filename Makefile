@@ -310,7 +310,6 @@ codex-tmux codex-tmux-config: codex-permissions
 codex:
 	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
-	@python3 "$(DOTFILES)/bin/codex-octo-submit" --install
 
 codex-worktree-hook:
 	$(call require-command,$(UV))

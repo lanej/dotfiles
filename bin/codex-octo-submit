@@ -12,7 +12,7 @@ HOOK_COMMAND = '"$HOME/.files/bin/codex-octo-submit"'
 GROUP = {"matcher": "Bash", "hooks": [{"type": "command", "command": HOOK_COMMAND, "timeout": 10}]}
 
 
-def install():
+def install(enabled=True):
     directory = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
     directory.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -25,9 +25,22 @@ def install():
         original = path.read_bytes() if path.exists() else None
         document = json.loads(original) if original is not None else {}
         groups = document.setdefault("hooks", {}).setdefault("PreToolUse", [])
-        if any(handler.get("command") == HOOK_COMMAND for group in groups for handler in group.get("hooks", [])):
-            return
-        groups.append(GROUP)
+        if enabled:
+            if any(handler.get("command") == HOOK_COMMAND for group in groups for handler in group.get("hooks", [])):
+                return
+            groups.append(GROUP)
+        else:
+            preserved = []
+            for group in groups:
+                handlers = group.get("hooks", [])
+                remaining = [handler for handler in handlers if handler.get("command") != HOOK_COMMAND]
+                if remaining == handlers:
+                    preserved.append(group)
+                elif remaining:
+                    preserved.append({**group, "hooks": remaining})
+            if preserved == groups:
+                return
+            document["hooks"]["PreToolUse"] = preserved
         with tempfile.NamedTemporaryFile(dir=directory, delete=False) as output:
             temporary = Path(output.name)
             output.write((json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode())
@@ -39,7 +52,7 @@ def install():
         if temporary is not None:
             temporary.unlink(missing_ok=True)
         os.close(descriptor)
-    print("Codex Octo submission hook installed; review it in Codex Hooks.")
+    print("Codex Octo submission hook installed; review it in Codex Hooks." if enabled else "Codex Octo submission hook removed; explicit Octo commands remain available.")
 
 
 def publication(tokens):
@@ -124,8 +137,8 @@ def translate(event):
 
 
 def main():
-    if sys.argv[1:] == ["--install"]:
-        install()
+    if sys.argv[1:] in (["--install"], ["--uninstall"]):
+        install(enabled=sys.argv[1] == "--install")
         return
     event = json.load(sys.stdin)
     try:

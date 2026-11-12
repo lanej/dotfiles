@@ -57,6 +57,13 @@ def main():
         description = home / "description.md"
         description.write_text("fix: example\n\nThis changes the example.")
         assert response("gh-pr-create-from description.md --base main")["permissionDecision"] == "allow"
+        run(["--uninstall"])
+        removed = hooks.read_bytes()
+        run(["--uninstall"])
+        assert hooks.read_bytes() == removed
+        document = json.loads(removed)
+        assert document["hooks"]["PreToolUse"] == [existing]
+        assert document["custom"] == {"preserve": True}
         binary.unlink()
         assert response("gh pr create --title a --body b")["permissionDecision"] == "deny"
     print("Codex Octo submission hook: passed")
