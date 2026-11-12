@@ -23,6 +23,16 @@ version = "1.26.2"
 installer = "system"
 setup = ["git"]
 
+[tools.worktree-manager]
+description = "Opt-in standalone worktree CLI with task protection, global tracking and safe pruning."
+installer = "worktree-manager"
+requires = ["git", "lsof"]
+setup = ["git"]
+version = "0.1.0"
+
+[tools.lsof]
+installer = "system"
+
 [tools.worktree-policy]
 description = "Native global worktree inventory and optional admission budgets."
 installer = "worktree-policy"
