@@ -50,6 +50,12 @@ fn previous_record(
     Record::default()
 }
 
+enum Update {
+    Automatic,
+    ClearPane(u64),
+    ClearAll,
+}
+
 fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64>) {
     // Records from the bracket-style shell hook contain a title but no provider IDs.
     // Only a proven automatic record may migrate a literal bracket suffix.
@@ -153,17 +159,24 @@ fn snapshot(client: &ipc::Client<'_>, offer: Option<(u64, &str)>) -> Result<BTre
 }
 
 pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
+    update(session, offer, Update::Automatic)
+}
+
+fn update(session: &str, offer: Option<(u64, &str)>, update: Update) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(2);
-    let context = match env::var("ZELLIJ_TITLE_CONTEXT") {
-        Ok(value) => serde_json::from_str::<crate::context::Session>(&value)?,
-        Err(_) => crate::context::Session::resolve(session)?,
+    let context = match (&update, env::var("ZELLIJ_TITLE_CONTEXT")) {
+        (Update::Automatic, Ok(value)) => serde_json::from_str::<crate::context::Session>(&value)?,
+        _ => crate::context::Session::resolve(session)?,
     };
     context.validate(session)?;
     let identity = context.identity.clone();
     let persistent_identity = context.persistent_identity()?;
     let client = ipc::Client {
         socket: context.socket()?,
-        terminal_id: offer.map(|(pane, _)| pane.try_into()).transpose()?,
+        terminal_id: match update {
+            Update::ClearPane(pane) => Some(pane.try_into()?),
+            _ => offer.map(|(pane, _)| pane.try_into()).transpose()?,
+        },
         deadline,
     };
     let dir = state("zellij-auto-titles")?;
@@ -171,6 +184,17 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
     let key = titles::session_key(session);
     let _lock = Lock::acquire(&dir.join(format!("{key}.lock")), deadline)?;
     let tabs = snapshot(&client, offer)?;
+    let clear_tab = if let Update::ClearPane(pane) = update {
+        Some(
+            *tabs
+                .iter()
+                .find(|(_, tab)| tab.panes.contains_key(&pane))
+                .context("Cannot find the caller's pane in this session")?
+                .0,
+        )
+    } else {
+        None
+    };
     let mut restored = BTreeMap::<String, Record>::new();
     let mut obsolete = Vec::new();
     for entry in std::fs::read_dir(&dir)? {
@@ -223,7 +247,8 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
         let fallback = format!("Tab #{}", id + 1);
         let managed =
             tab.name == previous.title || previous.pending_from.as_ref() == Some(&tab.name);
-        if !managed && tab.name != fallback {
+        let clear = matches!(update, Update::ClearAll) || clear_tab == Some(id);
+        if !managed && !clear && tab.name != fallback {
             continue;
         }
         let empty = Record::default();
@@ -290,10 +315,25 @@ fn directory_title() -> Result<String> {
 }
 
 pub fn main(args: &[String]) -> Result<()> {
-    anyhow::ensure!(
-        args.is_empty() || args == ["--shell"],
-        "Usage: zellij-auto-title [--shell]"
-    );
+    const HELP: &str = "Usage: zellij-auto-title [--shell | --clear [--all]]\n\n--clear returns the current pane's tab to automatic naming.\n--clear --all returns every fixed tab name in the current session to automatic naming.";
+    match args {
+        [flag] if matches!(flag.as_str(), "--help" | "-h") => {
+            println!("{HELP}");
+            return Ok(());
+        }
+        [flag] if flag == "--clear" => {
+            return update(&session()?, None, Update::ClearPane(pane_id()?));
+        }
+        [first, second]
+            if (first == "--clear" && second == "--all")
+                || (first == "--all" && second == "--clear") =>
+        {
+            return update(&session()?, None, Update::ClearAll);
+        }
+        [] => {}
+        [flag] if flag == "--shell" => {}
+        _ => anyhow::bail!("{HELP}"),
+    }
     let title = directory_title()?;
     if args == ["--shell"] {
         emit_shell_title(&title)?;
