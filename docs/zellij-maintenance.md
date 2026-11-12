@@ -27,7 +27,7 @@ Build with `make zellij-helpers`; run `make zellij-helpers zellij` after pulling
 | Rust module | Responsibility |
 | --- | --- |
 | [session](../zellij/cli/src/session.rs), [agent](../zellij/cli/src/agent.rs) | Attach, SSH, shared popup, shutdown confirmation, forwarded-agent recovery |
-| [context](../zellij/cli/src/context.rs), [navigation](../zellij/cli/src/navigation.rs) | Nearest multiplexer and client-aware pane navigation |
+| [context](../zellij/cli/src/context.rs), [panes](../zellij/cli/src/panes.rs), [navigation](../zellij/cli/src/navigation.rs) | Session inspection, shared pane views and captures, nearest multiplexer, and client-aware pane navigation |
 | [titles](../zellij/cli/src/titles.rs), [auto_title](../zellij/cli/src/auto_title.rs), [agent_titles](../zellij/cli/src/agent_titles.rs) | Shared ownership records, shell titles, Claude/Codex lifecycle titles |
 | [picker](../zellij/cli/src/picker.rs), [preview](../zellij/cli/src/preview.rs) | Tab/session/client choices, pane moves, swaps, safe viewport previews |
 | [balance](../zellij/cli/src/balance.rs) | Bounded native boundary resizing and layout revalidation |
@@ -35,6 +35,8 @@ Build with `make zellij-helpers`; run `make zellij-helpers zellij` after pulling
 | [status](../zellij/cli/src/status.rs), [protocol](../zellij/protocol/src/lib.rs) | Status/config/reload commands and shared host/plugin contracts |
 
 Notification and title files retain their existing formats. Automatic title ownership still includes the live socket incarnation. Notification writes, title updates and pane balancing use file locks released by the OS when a process exits; replacing a helper does not transfer ownership to a new server lifetime. Pane transfers and resizes remain single-shot, with inspection after mutations and no retry on uncertain results.
+
+`zellij-context inspect` reports panes, tabs, clients, and verified caller context; `--json` preserves the native metadata with `available`, `selection_required`, or `unavailable` status. It never selects a session automatically from the session list. `zellij-pane open`, `image`, and `capture` accept explicit session and target IDs, validate the current server identity, and preserve focus. Open/image return a verified pane ID and keep an interactive shell after completion so the installed navigation plugin can leave the view. Image uses an installed `kitten` or `kitty` with streaming transfer and does not install a viewer. Capture preserves raw terminal text and optional ANSI/scrollback; it does not capture pixels. Queries and mutations are sequential observations, not an atomic session snapshot.
 
 ## Feature ownership
 
@@ -61,6 +63,7 @@ Choose checks for the affected feature, following [the verification guide](verif
 ```sh
 zellij setup --check
 make test-zellij-helpers
+make test-zellij-pane
 make test-zellij
 make test-zellij-notifications
 make test-zellij-notifications-ui
