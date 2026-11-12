@@ -165,7 +165,7 @@ Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE
 
 [Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
 
-The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. For automatic creation blocking, install hooks in each repository. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Installing Treehouse alone does not enable tracking, hooks, or budgets.
+The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. Shared Git configuration enables global tracking and admission hooks without per-repository installation; budgets remain disabled until configured. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Treehouse manages leases independently of this machine-wide inventory.
 
 ## Configuration sets
 

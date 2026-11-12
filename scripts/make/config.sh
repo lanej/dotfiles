@@ -203,6 +203,16 @@ case "$target" in
         ln -fs "$attributes_dir/attributes" "$setup_home/.gitattributes"
         ;;
     git)
+        if [[ -n ${DOTFILES_WORKTREE_POLICY_ENABLED:-} ]]; then
+            case "$DOTFILES_WORKTREE_POLICY_ENABLED" in true|false) ;; *) exit 1 ;; esac
+            policy_config="$setup_home/.config/dotfiles/worktree-policy.gitconfig"
+            for event in pre post checkout; do
+                git config --file "$policy_config" "hook.worktree-policy-$event.enabled" "$DOTFILES_WORKTREE_POLICY_ENABLED"
+            done
+        fi
+        mkdir -p "${setup_home}/.local/bin"
+        ln -fs "${dotfiles}/bin/git-worktree-policy" "${setup_home}/.local/bin/git-worktree-policy"
+        ln -fs "${dotfiles}/bin/git-worktree-policy-hook" "${setup_home}/.local/bin/git-worktree-policy-hook"
         ln -fs "${dotfiles}/git/gitconfig" "${setup_home}/.gitconfig"
         ln -fs "${dotfiles}/git/gitignore" "${setup_home}/.gitignore"
         ln -fs "${dotfiles}/git/gitcommit" "${setup_home}/.gitcommit"
