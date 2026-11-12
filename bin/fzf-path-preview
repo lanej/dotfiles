@@ -6,10 +6,11 @@ target=${1:-}
 [ -n "$target" ] || exit 0
 
 if [ -d "$target" ]; then
+    label=$target
     case "$target" in
-        "$HOME"/*) printf '~/%s\n' "${target#"$HOME"/}" ;;
-        *) printf '%s\n' "$target" ;;
+        "$HOME"|"$HOME"/*) label="~${target#"$HOME"}" ;;
     esac
+    printf '%s\n' "$label"
     if command -v git >/dev/null 2>&1; then
         branch=$(git -C "$target" symbolic-ref --quiet --short HEAD 2>/dev/null ||
             git -C "$target" rev-parse --short HEAD 2>/dev/null || :)
