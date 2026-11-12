@@ -8,4 +8,6 @@ Socket discovery and capability policy belong to callers. Automatic titles resol
 
 Session discovery uses the pinned runtime's `directories` 6 platform paths and `contract_version_1` namespace directly. It launches no runtime subprocess; each operation still resolves the session name through the read-only index and checks the owned Unix socket's identity.
 
-`contract.rs` is the complete, unmodified prost-generated contract from the runtime revision in `scripts/install-zellij`: [upstream source](https://github.com/lanej/zellij/tree/744c99f5a3a51682553897411d1a891dac04d886/zellij-utils/assets/prost_ipc). It uses the runtime's prost 0.12 series. Refresh or verify it alongside the Lua bindings with `uv run scripts/generate-zellij-lua.py` or its `--check` option; compilation needs no protobuf compiler or runtime source checkout.
+`contract.rs` is the complete, unmodified prost-generated contract from the runtime revision in `scripts/install-zellij`: [upstream source](https://github.com/lanej/zellij/tree/744c99f5a3a51682553897411d1a891dac04d886/zellij-utils/assets/prost_ipc). It uses the runtime's prost 0.12 series. Refresh or verify it with `python3 scripts/sync-zellij-contract.py` or its `--check` option; compilation needs no protobuf compiler or runtime source checkout.
+
+The Lua codec and contract generation live in [zellij-client.nvim](https://github.com/lanej/zellij-client.nvim). Neovim consumes a pinned library revision; this repository retains session discovery and navigation policy.

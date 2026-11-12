@@ -1,6 +1,6 @@
 # Keybinding registry
 
-The registry owns all 29 configured Kitty shortcuts and all 26 active skhd window shortcuts, and checks them against any new native bindings. Both configurations generate their owned shortcuts from `config/keybindings.toml`. Initial coverage is explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
+The registry owns all 30 configured Kitty shortcuts and all 26 active skhd window shortcuts, and checks them against any new native bindings. Both configurations generate their owned shortcuts from `config/keybindings.toml`. Initial coverage is explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
 
 ```sh
 make keybindings

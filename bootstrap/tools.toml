@@ -1,5 +1,6 @@
 # Installation recipes and version pins. Machine files select tools; sets group them.
 # installer = "config" delegates configuration/integration to Make and hooks.
+# requires_linux and requires_macos add prerequisites only on the named platform.
 
 [tools.build]
 installer = "build"
@@ -74,9 +75,9 @@ requires = ["rust"]
 version = "0.18.2"
 
 [tools.mergiraf]
-description = "Install syntax-aware merging; enable the driver per repository."
+description = "Install and activate syntax-aware merging for supported file types."
 requires = ["git", "rust"]
-setup = ["git"]
+setup = ["git", "mergiraf-config"]
 version = "0.20.0"
 
 [tools.glow]
@@ -118,6 +119,7 @@ version = "14.1.0"
 
 [tools.stylua]
 requires = ["node"]
+requires_linux = ["rust"]
 version = "2.6.0"
 
 [tools.luacheck]

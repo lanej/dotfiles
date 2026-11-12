@@ -220,6 +220,8 @@ ruby:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 git:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+mergiraf-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 gpg:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 yabai:
@@ -462,7 +464,7 @@ test-zellij-shell-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation: zellij-helpers
-	@$(UV) run --script "$(DOTFILES)/scripts/generate-zellij-lua.py" --check
+	@python3 "$(DOTFILES)/scripts/sync-zellij-contract.py" --check
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
 

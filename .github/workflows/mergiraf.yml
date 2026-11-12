@@ -2,10 +2,10 @@ name: Mergiraf examples
 
 on:
   pull_request:
-    paths: ['git/gitconfig', 'bootstrap/tools.toml', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
+    paths: ['git/gitconfig', 'git/gitattributes', 'bootstrap/tools.toml', 'Makefile', 'config/targets.mk', 'scripts/make/config.sh', 'scripts/make/require.sh', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
   push:
     branches: [master]
-    paths: ['git/gitconfig', 'bootstrap/tools.toml', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
+    paths: ['git/gitconfig', 'git/gitattributes', 'bootstrap/tools.toml', 'Makefile', 'config/targets.mk', 'scripts/make/config.sh', 'scripts/make/require.sh', 'scripts/test-mergiraf.py', '.github/workflows/mergiraf.yml']
   workflow_dispatch:
 
 permissions:

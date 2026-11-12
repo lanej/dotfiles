@@ -9,6 +9,126 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def check_registration(home, executables, env, make):
+    """Register through the real Zsh helper, then reuse that choice from Make."""
+    registry = Path(env["XDG_CONFIG_HOME"]) / "dotfiles/completions"
+    completions = home / ".zsh/completions"
+    registry.write_text("# Keep private entries outside the checkout.\nfd local-fd *\n")
+
+    def tool(name, body):
+        path = executables / name
+        path.write_text("#!/bin/sh\n" + body)
+        path.chmod(0o755)
+
+    def zsh(probe, *, success=True):
+        result = subprocess.run([shutil.which("zsh"), "-d", "-i", "-c", probe],
+                                cwd=home, env=env, capture_output=True, text=True, timeout=30)
+        assert (result.returncode == 0) == success, result.stdout + result.stderr
+        return result
+
+    tool("epf", '''case "$*" in
+"completions zsh") printf '#compdef epf\\nprint -r -- private-v1\\n' ;;
+"completion zsh") printf '#compdef epf\\nprint -r -- private-v2\\n' ;;
+*) printf 'not a completion\\n' ;;
+esac
+''')
+    added = zsh('''recomp add epf || exit 20
+[[ $_comps[epf] == _epf && $(_epf) == private-v1 ]] || exit 21
+''')
+    assert added.stderr == "", added.stderr
+    assert registry.read_text() == ("# Keep private entries outside the checkout.\n"
+                                    "fd local-fd *\nepf epf completions zsh\n")
+    stamp = registry.stat().st_mtime_ns
+    zsh("recomp add epf")
+    assert registry.stat().st_mtime_ns == stamp, "repeat registration must be a no-op"
+
+    # A successful exit with invalid Zsh is not a working generator. Try the
+    # singular convention, without leaking the unsuccessful probe's diagnostics.
+    tool("simple", '''case "$*" in
+"completions zsh") printf '#compdef simple\\n(\\n' ;;
+"completion zsh") printf '#compdef simple\\nprint -r -- simple-loaded\\n' ;;
+*) exit 7 ;;
+esac
+''')
+    fallback = zsh('''recomp add simple || exit 22
+[[ $_comps[simple] == _simple && $(_simple) == simple-loaded ]] || exit 23
+''')
+    assert fallback.stderr == "", fallback.stderr
+    assert "simple simple completion zsh\n" in registry.read_text()
+
+    # Failed additions leave the registry, working completion, and cache intact.
+    prior = registry.read_bytes(), (completions / "_epf").read_bytes(), (home / ".zcompdump").read_bytes()
+    for request in ["recomp add epf epf invalid", "recomp add missing-tool",
+                    "recomp add ../../escape", "recomp add epf epf 'completion zsh'",
+                    "recomp unknown"]:
+        zsh(request, success=False)
+        assert prior == (registry.read_bytes(), (completions / "_epf").read_bytes(),
+                         (home / ".zcompdump").read_bytes()), request
+    tool("invalid", "printf 'not a completion\\n'\n")
+    zsh("recomp add invalid", success=False)
+    assert not (completions / "_invalid").exists()
+    assert registry.read_bytes() == prior[0]
+
+    # An explicit replacement removes old duplicates but retains other entries
+    # and comments. Loading it in this same shell must evict the old function.
+    with registry.open("a") as output:
+        output.write("epf epf completions zsh\n# Preserve this comment.\n")
+    zsh('''autoload -Uz _epf
+[[ $(_epf) == private-v1 ]] || exit 24
+recomp add epf epf completion zsh || exit 25
+[[ $(_epf) == private-v2 ]] || exit 26
+''')
+    assert sum(line.startswith("epf ") for line in registry.read_text().splitlines()) == 1
+    assert "epf epf completion zsh\n" in registry.read_text()
+    assert "# Preserve this comment.\n" in registry.read_text()
+
+    tool("cargo", "echo 'the target itself must not be probed' >&2\nexit 7\n")
+    tool("rustup", '''case "$*" in
+"completions zsh cargo") printf '#compdef cargo\\nprint -r -- cargo-loaded\\n' ;;
+"completions zsh") printf '#compdef rustup\\n' ;;
+*) exit 7 ;;
+esac
+''')
+    zsh('''recomp add cargo || exit 27
+[[ $_comps[cargo] == _cargo && $(_cargo) == cargo-loaded ]] || exit 28
+''')
+    assert not any(line.startswith("cargo ") for line in registry.read_text().splitlines())
+    zsh("recomp add cargo rustup completions zsh cargo")
+    assert "cargo rustup completions zsh cargo\n" in registry.read_text()
+
+    # Registry serialization and later Make refreshes must preserve literal args.
+    tool("literal", '''[ "$#" = 2 ] && [ "$1" = '*' ] && [ "$2" = '$(touch${IFS}SENTINEL)' ] || exit 7
+printf '#compdef literal\\nprint -r -- literal-loaded\\n'
+''')
+    zsh("recomp add literal literal '*' '$(touch${IFS}SENTINEL)'")
+    before = registry.read_bytes()
+    make()
+    assert registry.read_bytes() == before and not (home / "SENTINEL").exists()
+    zsh('''[[ $(_epf) == private-v2 && $(_cargo) == cargo-loaded && $(_literal) == literal-loaded ]] || exit 29
+''')
+
+    # Registration cannot overwrite a hand-written completion or detach a
+    # user-managed registry symlink. Contending writers fail visibly.
+    personal = completions / "_epf"
+    personal.write_text("#compdef epf\nprint -r -- personal\n")
+    zsh('''recomp add epf || exit 30
+[[ $(_epf) == personal ]] || exit 31
+''')
+    assert personal.read_text() == "#compdef epf\nprint -r -- personal\n"
+    lock = registry.with_name("completions.lock")
+    lock.mkdir()
+    locked = zsh("recomp add epf", success=False)
+    assert "registry is locked" in locked.stderr
+    lock.rmdir()
+    linked = registry.with_name("completions-linked")
+    registry.rename(linked)
+    registry.symlink_to(linked.name)
+    zsh("recomp add epf", success=False)
+    assert registry.is_symlink() and linked.read_bytes() == before
+    assert not list(completions.glob(".add.*")), "registration must clean staging files"
+    print("PASS: recomp add validates, saves, reloads, and safely reuses local generators.")
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="dotfiles-completions-") as temporary:
         temporary = Path(temporary).resolve()
@@ -21,7 +141,7 @@ def main():
         # visible. In particular, setup cannot depend on Python or Zsh itself.
         for name in ("awk", "bash", "cat", "chmod", "cmp", "dirname", "grep",
                      "head", "ln", "mkdir", "mktemp", "mv", "pwd", "readlink", "rm", "sed",
-                     "sort", "touch", "tr", "uname"):
+                     "rmdir", "sort", "touch", "tr", "uname"):
             (executables / name).symlink_to(shutil.which(name))
         env = {"HOME": str(home), "ZDOTDIR": str(home), "PATH": str(executables),
                "TERM": "dumb", "LC_ALL": "C", "TMPDIR": str(temporary)}
@@ -210,6 +330,7 @@ print -r -- READY
         assert not (home / ".local/share/fzf-tab").exists(), "recomp must not install plugins"
         assert not (home / ".ssh/agent-env").exists(), "setup must not start shell services"
         print("PASS: installed completions refresh safely and recomp reloads the active shell.")
+        check_registration(home, executables, env, make)
 
 
 if __name__ == "__main__":

@@ -87,4 +87,4 @@ New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by d
 
 ## Tech Radar
 
-Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Edit the radar directly using the entry conventions documented there.
+Keep the [tech radar registry](docs/radar.yaml) current when tool or technology decisions change.

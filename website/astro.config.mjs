@@ -34,6 +34,7 @@ export default defineConfig({
         { label: 'Install & set up', slug: 'reference/install' },
         { label: 'Configuration composition', slug: 'reference/configuration' },
         { label: 'Architecture', slug: 'architecture' },
+        { label: 'Tech radar', slug: 'reference/radar' },
       ] },
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },

@@ -4,7 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 import importlib.util
 
-from kitty.fast_data_types import Screen, set_options
+from kitty.fast_data_types import Screen, set_options, GLFW_MOD_SUPER, GLFW_MOD_SHIFT
+from kitty.config import load_config
 from kitty.options.types import defaults
 from kitty.window import Window
 
@@ -51,7 +52,26 @@ def main():
     parse_bytes(screen, b"\x1b]8;;https://example.org/exact?q=yes!\x1b\\  https://example.org/short\x1b]8;;\x1b\\\r\n")
     kitten.handle_result([], None, 7, boss)
     expect_url(opened, "https://example.org/exact?q=yes!")
-    print("PASS: the shortcut opens the complete last padded URL and honors terminal hyperlink targets.")
+    parse_bytes(screen,
+        (
+            "\x1b]8;;https://github.com/owner/repo/pull/42\x1b\\\x1b[4mowner/repo#42\x1b[0m\x1b]8;;\x1b\\  "
+            "\x1b]8;;https://github.com/owner/repo/commit/" + "a" * 40 +
+            "\x1b\\\x1b[4mHead: aaaaaaaa\x1b[0m\x1b]8;;\x1b\\\r\n"
+        ).encode(),
+    )
+    kitten.handle_result([], None, 7, boss)
+    expect_url(opened, "https://github.com/owner/repo/commit/" + "a" * 40)
+    options = load_config(str(root / "kitty/kittyconf"))
+    keymap = options.keyboard_modes[""].keymap
+    actions = {}
+    for key, definitions in keymap.items():
+        if key.mods == GLFW_MOD_SUPER | GLFW_MOD_SHIFT and key.key in (ord("o"), ord("u")):
+            actions[chr(key.key)] = options.alias_map.resolve_aliases(definitions[-1].definition)
+    if actions["o"][0].func != "kitten" or actions["o"][0].args != ("open_last_url.py",):
+        raise AssertionError("Cmd+Shift+O no longer invokes the tested last-link opener")
+    if actions["u"][0].func != "kitten" or actions["u"][0].args != ("hints", "--type", "hyperlink"):
+        raise AssertionError("Cmd+Shift+U does not select OSC 8 hyperlink destinations")
+    print("PASS: Cmd+Shift+O opens exact OSC 8 destinations; Cmd+Shift+U selects labeled hyperlinks.")
 
 
 if __name__ == "__main__":
