@@ -266,20 +266,10 @@ pub fn shutdown() -> Result<()> {
         path = path.parent().context("Invalid socket")?.join(&session);
         None
     } else {
-        let cache = check
-            .lines()
-            .find_map(|l| l.strip_prefix("[CACHE DIR]: "))
-            .context("Cannot locate Zellij's session index")?;
-        if !Path::new(cache).is_absolute() {
-            bail!("Cannot locate Zellij's session index");
+        let (directory, index) = crate::context::location()?;
+        if path.parent() != Some(directory.as_path()) {
+            bail!("The server socket does not belong to the configured socket directory");
         }
-        let index = Path::new(cache)
-            .join(
-                path.parent()
-                    .and_then(Path::file_name)
-                    .context("Invalid socket")?,
-            )
-            .join("session_index.sqlite");
         require_owner(&session, &path, &index)?;
         Some(index)
     };

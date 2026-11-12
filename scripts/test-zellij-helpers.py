@@ -121,7 +121,8 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
             namespace.mkdir(parents=True)
             cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
                      else self.home / "cache/zellij")
-            index = cache / "contract_version_1/session_index.sqlite"
+            index_name = "session_index-" + hashlib.sha256(os.fsencode(namespace)).hexdigest()[:12] + ".sqlite"
+            index = cache / "contract_version_1" / index_name
             index.parent.mkdir(parents=True)
             with sqlite3.connect(index) as connection:
                 connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
@@ -186,7 +187,8 @@ Path(os.environ["FIXTURE"]).joinpath("popup-env").write_text(json.dumps(dict(os.
         self.env["ZELLIJ_SOCKET_DIR"] = str(namespace.parent)
         cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
                  else self.home / "cache/zellij")
-        index = cache / "contract_version_1/session_index.sqlite"
+        index_name = "session_index-" + hashlib.sha256(os.fsencode(namespace)).hexdigest()[:12] + ".sqlite"
+        index = cache / "contract_version_1" / index_name
         index.parent.mkdir(parents=True)
         with sqlite3.connect(index) as connection:
             connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
@@ -249,7 +251,8 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
         self.env["ZELLIJ_SOCKET_DIR"] = str(namespace.parent)
         cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
                  else self.home / "cache/zellij")
-        index = cache / "contract_version_1/session_index.sqlite"
+        index_name = "session_index-" + hashlib.sha256(os.fsencode(namespace)).hexdigest()[:12] + ".sqlite"
+        index = cache / "contract_version_1" / index_name
         index.parent.mkdir(parents=True)
         with sqlite3.connect(index) as connection:
             connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
