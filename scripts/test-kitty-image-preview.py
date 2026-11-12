@@ -133,10 +133,16 @@ signal.pause()
             until("the exact hyperlink at the desktop opener", lambda: (home / "opened-url").read_text() == URL)
             print("PASS: Cmd+Shift+U selected the wrapped PNG, displayed the correct worktree's pixels, and opened the native web link.")
         except Exception:
-            print(log.read_text()[-2400:], file=sys.stderr)
-            for args in [("ls",), ("get-text", "--ansi")]:
-                try: print(remote(*args)[-3200:], file=sys.stderr)
-                except subprocess.SubprocessError: pass
+            print(log.read_text()[-3200:], file=sys.stderr)
+            try:
+                print("Zellij panes:", panes(), file=sys.stderr)
+                for os_window in json.loads(remote("ls")):
+                    for tab in os_window["tabs"]:
+                        for window in tab["windows"]:
+                            print("Kitty window:", window["title"], file=sys.stderr)
+                            print(repr(remote("get-text", "--ansi", "--match", f'id:{window["id"]}'))[-5000:], file=sys.stderr)
+            except subprocess.SubprocessError:
+                pass
             raise
         finally:
             subprocess.run(["zellij", "delete-session", session, "--force"], env=env, capture_output=True)

@@ -36,7 +36,7 @@ jobs:
           echo "$RUNNER_TEMP/kitty/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP/zellij" >> "$GITHUB_PATH"
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri
+          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1
           python -m pip install Pillow
       - run: cargo build --locked --manifest-path zellij/Cargo.toml -p lane-zellij
       - name: Select a wrapped image in Kitty and inspect its Zellij pane
