@@ -496,6 +496,10 @@ test-zellij-tab-labels: zellij-helpers
 test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
+.PHONY: test-directory-picker
+test-directory-picker:
+	@python3 "$(DOTFILES)/scripts/test-directory-picker.py"
+
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
 

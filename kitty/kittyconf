@@ -64,6 +64,8 @@ map ctrl+shift+w close_window_with_confirmation
 map super+w close_tab
 # kitty.shift-enter: Send Escape followed by Return to the terminal application.
 map shift+enter send_text all \e\r
+# kitty.worktree-picker: Open the shell worktree picker.
+map alt+w send_text all \ew
 # END generated keybindings
 modify_font cell_width 95%
 enable_audio_bell no
