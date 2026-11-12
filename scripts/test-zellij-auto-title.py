@@ -279,7 +279,41 @@ def ownership_lifecycle():
             env["PWD"] = str(work / "legacy")
             assert owned() == {}
             assert rename() == "new-session", "legacy record claimed unproven ownership"
-                            assert target in (tab["tab_id"], 2)
+            state.write_text(json.dumps({"tab_id": 0, "name": "Tab #1"}))
+            assert rename() == "legacy"
+            third = servers.enter_context(socket.socket(socket.AF_UNIX))
+            address.unlink()
+            third.bind(str(address))
+            servers.enter_context(server(third, state))
+            state.write_text(json.dumps({"tab_id": 0, "name": "legacy", "other_name": "legacy"}))
+            env["PWD"] = str(work / "ambiguous")
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
+            assert rename() == "legacy", "ambiguous restored name claimed ownership"
+            assert owned() == {}
+            state.write_text(json.dumps({"tab_id": 4, "name": "review", "title": "current project",
+                                         "other_name": "logs", "other_title": "log project"}))
+            env["ZELLIJ_TITLE_CONTEXT"] = '{"session":"obsolete"}'
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project"
+            assert json.loads(state.read_text())["other_name"] == "logs", "clear renamed another tab"
+            assert owned() == {"4": "current project"}
+            failed = subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                                    env={**env, "ZELLIJ_PANE_ID": "999"},
+                                    capture_output=True, text=True, timeout=5)
+            assert failed.returncode != 0 and "Cannot find" in failed.stderr, failed
+            assert json.loads(state.read_text())["other_name"] == "logs"
+            state.write_text(json.dumps({"tab_id": 4, "name": "current project", "title": "changed program",
+                                         "other_name": "logs", "other_title": "log project"}))
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project", "clear lost an automatic provider"
+            assert json.loads(state.read_text())["other_name"] == "log project"
+            assert owned() == {"2": "log project", "4": "current project"}
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert owned() == {"2": "log project", "4": "current project"}, "clear was not idempotent"
         print("PASS: protobuf title ownership, explicit names, socket recreation, and legacy state (real sockets/index).")
 
 
