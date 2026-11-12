@@ -38,7 +38,9 @@ Default local pages and UI validation to headless Playwright MCP. Headless brows
 
 # Automatic PR writing and code review
 
-For every GitHub pull request, invoke the `github-pr-writer` custom agent as a separate subagent to draft or revise its title and description before opening the PR or completing an update to it. Give it the final diff against the base branch, the motivation, repository PR requirements, and relevant validation evidence. Wait for its draft, resolve any blockers, and use its title and description. This applies to simple and documentation-only PRs too. Run it for each proposed PR revision, rather than every commit.
+Octo PR submission is an optional experiment. Use the [Octo submission contract](octo-pr-submission.md) only when explicitly chosen for the task; it must not block ordinary PR creation or require automatic command interception. Octo's separately recorded dedicated writer satisfies the writer requirement for that submission. Tracking checks and reviews can be used independently of publication.
+
+For every GitHub pull request created or revised outside Octo, invoke the `github-pr-writer` custom agent as a separate subagent to draft or revise its title and description before opening the PR or completing an update to it. Give it the final diff against the base branch, the motivation, repository PR requirements, and relevant validation evidence. Wait for its draft, resolve any blockers, and use its title and description. This applies to simple and documentation-only PRs too. Run it for each proposed PR revision, rather than every commit.
 
 Use `pull-request-writer` for other review platforms; it supplies the shared writing guidance inherited by the GitHub specialist.
 
