@@ -1,25 +1,69 @@
-name: Socrates dialogue contract
+name: Shared agent workflows
 
 on:
   pull_request:
     paths:
+      - 'ai/skills/socrates/**'
+      - 'ai/skills/reflection/**'
+      - 'ai/skills/specify/**'
+      - 'ai/skills/critique/**'
+      - 'ai/skills/verify/**'
+      - 'ai/skills/shape/**'
+      - 'ai/skills/compose/**'
+      - 'ai/skills/eureka/**'
+      - 'ai/skills/stahp/**'
+      - 'ai/skills/handoff/**'
+      - 'ai/skills/skill-authoring/**'
+      - 'ai/skills/distill/**'
+      - 'ai/skills/portable-workflows.json'
+      - 'ai/agents/reflection.md'
+      - 'bin/sync-codex-skills'
+      - 'bin/codex-skills-sync_test.py'
+      - 'bin/shared-workflows_test.py'
       - 'claude/commands/socrates.md'
       - 'claude/commands/socrates/**'
       - 'claude/commands/specify.md'
       - 'claude/commands/shape.md'
       - 'claude/commands/critique.md'
       - 'claude/commands/verify.md'
+      - 'claude/commands/compose.md'
+      - 'claude/commands/eureka.md'
+      - 'claude/commands/stahp.md'
+      - 'claude/commands/handoff.md'
+      - 'claude/commands/reflection.md'
       - 'claude/evals/socrates-dialogue/**'
       - '.github/workflows/socrates-dialogue.yml'
   push:
     branches: [master]
     paths:
+      - 'ai/skills/socrates/**'
+      - 'ai/skills/reflection/**'
+      - 'ai/skills/specify/**'
+      - 'ai/skills/critique/**'
+      - 'ai/skills/verify/**'
+      - 'ai/skills/shape/**'
+      - 'ai/skills/compose/**'
+      - 'ai/skills/eureka/**'
+      - 'ai/skills/stahp/**'
+      - 'ai/skills/handoff/**'
+      - 'ai/skills/skill-authoring/**'
+      - 'ai/skills/distill/**'
+      - 'ai/skills/portable-workflows.json'
+      - 'ai/agents/reflection.md'
+      - 'bin/sync-codex-skills'
+      - 'bin/codex-skills-sync_test.py'
+      - 'bin/shared-workflows_test.py'
       - 'claude/commands/socrates.md'
       - 'claude/commands/socrates/**'
       - 'claude/commands/specify.md'
       - 'claude/commands/shape.md'
       - 'claude/commands/critique.md'
       - 'claude/commands/verify.md'
+      - 'claude/commands/compose.md'
+      - 'claude/commands/eureka.md'
+      - 'claude/commands/stahp.md'
+      - 'claude/commands/handoff.md'
+      - 'claude/commands/reflection.md'
       - 'claude/evals/socrates-dialogue/**'
       - '.github/workflows/socrates-dialogue.yml'
 
@@ -35,6 +79,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - run: python -m pip install pytest PyYAML
+      - uses: astral-sh/setup-uv@v6
       - name: Contract and evaluation harness tests (no model calls)
-        run: python -m pytest -q claude/evals/socrates-dialogue/socrates_dialogue_test.py
+        run: uv run --no-project --with pytest --with pyyaml python -m pytest -q bin/codex-skills-sync_test.py bin/shared-workflows_test.py claude/evals/socrates-dialogue/socrates_dialogue_test.py

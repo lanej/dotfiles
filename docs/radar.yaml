@@ -102,13 +102,13 @@ entries:
     ring: adopt
     icon: claude.svg
     rationale: |-
-      Coding agent used with shared skills, role instructions, and repository guidance.
+      Coding agent used with shared skills, role instructions, and repository guidance. The repository-owned [skill-authoring workflow](skill-maintenance.md) maintains cross-host instructions without an external authoring plugin.
   - id: codex
     name: Codex
     ring: adopt
     icon: codex.svg
     rationale: |-
-      Coding agent used with shared skills, role instructions, and repository guidance.
+      Coding agent used with shared skills, role instructions, and repository guidance. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
   - id: fzf
     name: fzf
     ring: adopt
@@ -175,8 +175,7 @@ entries:
     icon: superpowers.svg
     rationale: |-
       Claude Code workflow plugin. Removed from the shared settings at the owner's
-      request in favor of the remaining official plugins and custom skills. Skill
-      maintenance uses the official Anthropic skill-creator workflow.
+      request in favor of the remaining official plugins and custom skills. Skill maintenance now uses the repository-owned [skill-authoring workflow](skill-maintenance.md), without an external authoring-plugin prerequisite.
   - id: opencode
     name: OpenCode
     ring: hold
@@ -214,3 +213,8 @@ entries:
       Rust compiler cache. Grows unboundedly on disk — even with `max_cache_size` set, the cache frequently bloats to tens of gigabytes across multiple projects and toolchain versions. The disk pressure outweighs the incremental build-time savings for typical dotfiles/personal project usage.
 
       Revisit if Mozilla ships more aggressive eviction or if a per-project cache isolation story emerges.
+  - id: biome
+    name: Biome
+    ring: adopt
+    rationale: |-
+      Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.

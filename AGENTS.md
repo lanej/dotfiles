@@ -62,10 +62,7 @@ automated results.
 
 ## Maintaining agent instructions
 
-Before changing skills, commands, agents, or their supporting resources, read
-[the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
-through the installed Anthropic skill-creator workflow and defines
-this repository's focused regression checks and entrypoint size budget.
+Before changing skills, commands, agents, or their supporting resources, read [the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring through the repository-owned skill-authoring workflow and defines this repository's focused regression checks and entrypoint size budget.
 
 ## Bug reports
 

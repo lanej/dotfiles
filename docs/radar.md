@@ -81,11 +81,11 @@ Retained terminal multiplexer for existing sessions and agent-status integration
 
 ### Claude Code
 
-Coding agent used with shared skills, role instructions, and repository guidance.
+Coding agent used with shared skills, role instructions, and repository guidance. The repository-owned [skill-authoring workflow](skill-maintenance.md) maintains cross-host instructions without an external authoring plugin.
 
 ### Codex
 
-Coding agent used with shared skills, role instructions, and repository guidance.
+Coding agent used with shared skills, role instructions, and repository guidance. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
 
 ### fzf
 
@@ -102,6 +102,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 ### Zellij
 
 [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+
+### Biome
+
+Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
 
 ***
 
@@ -141,7 +145,7 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ### Superpowers
 
-Claude Code workflow plugin. Removed from the shared settings at the owner's request in favor of the remaining official plugins and custom skills. Skill maintenance uses the official Anthropic skill-creator workflow.
+Claude Code workflow plugin. Removed from the shared settings at the owner's request in favor of the remaining official plugins and custom skills. Skill maintenance now uses the repository-owned [skill-authoring workflow](skill-maintenance.md), without an external authoring-plugin prerequisite.
 
 ### OpenCode
 

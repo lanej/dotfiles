@@ -182,6 +182,14 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		"$1"
 		local ret=$?
 		if (( ret == 0 )); then
+			if (( $+functions[_zellij_auto_tab_title] )); then
+				_zellij_last_cmd=""
+				_zellij_auto_tab_title --directory-jump
+			fi
+			if (( $+functions[_tmux_auto_window_title] )); then
+				_tmux_last_cmd=""
+				_tmux_auto_window_title
+			fi
 			# rationale: Refresh prompt hooks on an empty line, retaining unfinished input.
 			zle push-line
 			zle accept-line

@@ -27,6 +27,7 @@ GO_FILES = {
 TS_FILES = {
     "scripts/check-typescript.mjs": "check-typescript.mjs",
     ".typescript-quality/eslint.config.mjs": "eslint.config.mjs",
+    ".typescript-quality/biome.json": "biome.json",
     ".typescript-quality/tsconfig.strict.json": "tsconfig.strict.json",
     ".typescript-quality/package.json": "package.json",
     ".typescript-quality/.gitignore": "gitignore",

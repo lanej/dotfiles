@@ -95,7 +95,7 @@ see `references/pdf.md` for the full diagnosis.
 - **`references/pdf.md`** — PDF rendering: title suppression, figure sizing root causes,
   `\needspace` sizing, caption numbering, LaTeX max-runs.
 - **`references/authoring.md`** — document content: visual expression, narrative structure,
-  `/think` document shape, data provenance and caching, the prose/code boundary, and the
+  structured analysis document shape, data provenance and caching, the prose/code boundary, and the
   Google Docs handoff via this repo's `gdocs.css`.
 
 Full authoring reference: `~/src/analysis-doc/docs/AGENTS.md`.

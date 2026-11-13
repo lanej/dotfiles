@@ -72,5 +72,5 @@
   "vim-rhubarb": { "branch": "master", "commit": "5496d7c94581c4c9ad7430357449bb57fc59f501" },
   "vim-test": { "branch": "master", "commit": "b2166d3934889747ef903ebc7b5079acf8e20c47" },
   "which-key.nvim": { "branch": "main", "commit": "3aab2147e74890957785941f0c1ad87d0a44c15a" },
-  "zellij-client.nvim": { "branch": "main", "commit": "71596be3499e028cf5e92d0220908ca10cb5cfab" }
+  "zellij-client.nvim": { "branch": "main", "commit": "86a001165c227a9417f2baa69633c3f8ea9f942d" }
 }

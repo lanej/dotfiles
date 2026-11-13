@@ -25,7 +25,60 @@ Display = importlib.import_module("test-zellij-status").Display
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
-def main():
+def fixed_title_controls(terminal, env, name, home, top_line, native_bar=False):
+    def label(position, title):
+        return title if native_bar else f"{position}:{title}"
+
+    first = next(tab for tab in terminal.tabs() if tab["active"])["tab_id"]
+    terminal.send(b"printf '\\033]2;first project\\007'; read title_done\r")
+    terminal.until("first pane supplies an automatic title", lambda:
+                   label(0, "first project") in top_line() and " " not in top_line())
+    terminal.prefix(b"r")
+    terminal.until("rename field remains unlocked", lambda:
+                   next(tab for tab in terminal.tabs() if tab["tab_id"] == first)["name"] == ""
+                   and " " not in top_line())
+    terminal.send(b"review\r")
+    terminal.until("fixed title shows its lock", lambda: " " + label(0, "review") in top_line())
+    first_pane = next(p for p in terminal.terminals() if p["tab_id"] == first)["id"]
+    terminal.send(b"done\rprintf '\\033]2;review\\007'; read title_done\r")
+    terminal.until("manual title already matches its pane title", lambda:
+                   next(p for p in terminal.terminals() if p["id"] == first_pane)["title"] == "review"
+                   and " " + label(0, "review") in top_line())
+
+    def clear(pane, *args):
+        result = subprocess.run([str(home / ".local/bin/zellij-auto-title"), "--clear", *args],
+                                env={**env, "ZELLIJ_SESSION_NAME": name, "ZELLIJ_PANE_ID": str(pane)},
+                                capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0, f"Clear failed: {result.stderr}"
+
+    clear(first_pane)
+    terminal.until("clearing removes the lock even when the name stays the same", lambda:
+                   label(0, "review") in top_line() and " " not in top_line()
+                   and next(tab for tab in terminal.tabs() if tab["tab_id"] == first)["name"] == "review")
+    terminal.prefix(b"c")
+    terminal.until("second tab is ready", lambda: len(terminal.tabs()) == 2)
+    second = next(tab for tab in terminal.tabs() if tab["active"])["tab_id"]
+    terminal.send(b"printf '\\033]2;second project\\007'; read title_done\r")
+    terminal.until("second pane supplies its title", lambda: label(1, "second project") in top_line())
+    terminal.action("rename-tab-by-id", str(first), "first review")
+    terminal.action("rename-tab-by-id", str(second), "second review")
+    terminal.until("both fixed titles are locked", lambda:
+                   " " + label(0, "first review") in top_line()
+                   and " " + label(1, "second review") in top_line())
+    second_pane = next(p for p in terminal.terminals() if p["tab_id"] == second)["id"]
+    clear(second_pane)
+    terminal.until("current clear preserves another fixed title", lambda:
+                   " " + label(0, "first review") in top_line()
+                   and label(1, "second project") in top_line()
+                   and " " + label(1, "second project") not in top_line())
+    clear(second_pane, "--all")
+    terminal.until("session clear restores both automatic names", lambda:
+                   label(0, "review") in top_line() and label(1, "second project") in top_line()
+                   and " " not in top_line())
+    print("PASS: real terminal shows fixed-title locks; current and session clearing restore names without taking another tab's title.")
+
+
+def main(fixed_titles=False, native_bar=False):
     for name in ("zellij", "cargo", "fzf", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing tab labels"
     scratch = tempfile.TemporaryDirectory(prefix="zj-labels-", dir="/tmp")
@@ -46,8 +99,14 @@ def main():
                     "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND",
                     "SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"):
             env.pop(key, None)
+        if fixed_titles:
+            env.pop("ZELLIJ_SOCKET_DIR", None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
+        if native_bar:
+            layout = home / ".config/zellij/layouts/tmux.kdl"
+            layout.unlink()
+            layout.symlink_to(ROOT / "zellij/layouts/tmux-native.kdl")
         project = home / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", "-b", "topic", str(project)], check=True)
@@ -75,9 +134,14 @@ def main():
             return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
 
         try:
-            terminal.grant_status_permissions()
-            terminal.until("first tab starts at zero", lambda:
-                           PROMPT in terminal.output and "0:Tab #0" in top_line())
+            if not native_bar:
+                terminal.grant_status_permissions()
+            terminal.until("first tab is ready", lambda:
+                           PROMPT in terminal.output and
+                           ("Tab #1" if native_bar else "0:Tab #0") in top_line())
+            if fixed_titles:
+                fixed_title_controls(terminal, env, name, home, top_line, native_bar)
+                return
             # Resize after startup (Terminal sets its initial PTY size in the
             # child), keeping all eleven full labels visible for this workflow.
             fcntl.ioctl(terminal.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 480, 0, 0))
@@ -225,8 +289,16 @@ def main():
             terminal.send(b"manual work\r")
             terminal.send(("cd " + shlex.quote(str(project)) + "\r").encode())
             terminal.until("directory change preserves explicit tab title", lambda:
-                           active()["name"] == "manual work" and "9:manual work" in top_line())
-            print("PASS: tab positions, direct keys, picker, reorder, directory/git titles, and explicit names agree.")
+                           active()["name"] == "manual work" and " 9:manual work" in top_line())
+            target = next(p for p in terminal.terminals()
+                          if p["tab_id"] == eleventh and not p["is_floating"])
+            subprocess.run([str(home / ".local/bin/zellij-auto-title"), "--clear"],
+                           env={**env, "ZELLIJ_SESSION_NAME": name, "ZELLIJ_PANE_ID": str(target["id"])},
+                           check=True, capture_output=True, timeout=10)
+            terminal.until("clear restores the pane title and removes its lock", lambda:
+                           active()["name"] == "oldest survivor" and "9:oldest survivor" in top_line()
+                           and " 9:" not in top_line())
+            print("PASS: tab positions, direct keys, picker, reorder, directory/git titles, fixed-title locks, and clearing agree.")
         finally:
             subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
             if other is not None:
@@ -247,4 +319,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    assert sys.argv[1:] in ([], ["--fixed-titles"], ["--fixed-titles", "--native-bar"]), (
+        "Usage: test-zellij-tab-labels.py [--fixed-titles [--native-bar]]")
+    main(fixed_titles="--fixed-titles" in sys.argv, native_bar="--native-bar" in sys.argv)
