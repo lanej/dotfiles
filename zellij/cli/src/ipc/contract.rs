@@ -2800,6 +2800,8 @@ pub struct AttentionItem {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SessionAttention {
+    #[prost(string, optional, tag="6")]
+    pub server_instance_id: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(enumeration="AttentionStatus", tag="1")]
     pub status: i32,
     #[prost(message, optional, tag="2")]
@@ -2869,6 +2871,10 @@ pub mod session_arrival {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SwitchContext {
+    #[prost(string, optional, tag="6")]
+    pub expected_server_instance_id: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag="7")]
+    pub source_cleanup_token: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(message, optional, tag="1")]
     pub history: ::core::option::Option<SessionHistory>,
     #[prost(message, optional, tag="2")]
@@ -4254,7 +4260,7 @@ impl AppStartupMode {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ClientToServerMsg {
-    #[prost(oneof="client_to_server_msg::Message", tags="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37")]
+    #[prost(oneof="client_to_server_msg::Message", tags="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38")]
     pub message: ::core::option::Option<client_to_server_msg::Message>,
 }
 /// Nested message and enum types in `ClientToServerMsg`.
@@ -4336,7 +4342,15 @@ pub mod client_to_server_msg {
         AdoptSessionHistory(super::AdoptSessionHistoryMsg),
         #[prost(message, tag="37")]
         ClipboardPasteSupport(super::ClipboardPasteSupportMsg),
+        #[prost(message, tag="38")]
+        SessionSwitchAttached(super::SessionSwitchAttachedMsg),
     }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SessionSwitchAttachedMsg {
+    #[prost(string, tag="1")]
+    pub source_cleanup_token: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

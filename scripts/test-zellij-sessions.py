@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import signal
 import socket
 import subprocess
 import tempfile
@@ -499,12 +500,202 @@ def shutdown_workflow(clients, names, home, popup_expected):
           "valid confirmation ends only its original target while other sessions and the popup survive.")
 
 
+def ancestor_navigation_workflow(binary):
+    """Selecting an outer attention item must preserve the nested attachment."""
+    with tempfile.TemporaryDirectory(prefix="zj-ancestor-", dir="/tmp") as directory:
+        base = Path(directory).resolve()
+        home = base / "home"
+        home.mkdir()
+        desktop = home / "Library/Application Support/org.Zellij-Contributors.Zellij"
+        desktop.mkdir(parents=True)
+        (desktop / "desktop_integration.json").write_text('{"flags":["SetupNeverShow"]}\n')
+        runtime = base / "run"
+        runtime.mkdir(mode=0o700)
+        temp = base / "tmp"
+        temp.mkdir()
+        config = base / "config.kdl"
+        config.write_text(
+            'default_shell "/bin/sh"\ndefault_mode "locked"\n'
+            'nested_session_handling "descend"\nsession_serialization false\n'
+            'show_startup_tips false\nshow_release_notes false\n'
+            'attention { idle_rule "watched"; }\n'
+            'keybinds clear-defaults=true {\n'
+            '  locked {\n    bind "Ctrl f" { SwitchToMode "Tmux"; }\n  }\n'
+            '  tmux {\n'
+            '    bind "Esc" { SwitchToMode "Locked"; }\n'
+            '    bind "b" { SwitchToMode "Locked"; ToggleSessionCard; }\n'
+            '    bind "Q" { SwitchToMode "Locked"; SwitchSession name="fixture-host" close_current=true; }\n'
+            '    bind "U" { SwitchToMode "Locked"; SwitchSession name="fixture-other"; }\n'
+            '  }\n}\n'
+        )
+        env = {
+            **os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": "fixture-ready> ",
+            "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(base / "config"),
+            "XDG_CACHE_HOME": str(base / "cache"), "XDG_DATA_HOME": str(base / "data"),
+            "XDG_STATE_HOME": str(base / "state"), "ZELLIJ_SOCKET_DIR": str(runtime),
+            "TMPDIR": str(temp), "ZELLIJ_PEER_SCAN_INTERVAL_MS": "50",
+        }
+        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_NESTED_ATTACH",
+                    "ZELLIJ_CONFIG_DIR", "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE",
+                    "SSH_CONNECTION", "SSH_TTY", "ENV", "BASH_ENV"):
+            env.pop(key, None)
+        names = ("fixture-host", "fixture-guest", "fixture-other", "fixture-cleanup",
+                 "fixture-stale", "fixture-replacement")
+        clients = []
+        wrapper = None
+        log = temp / f"zellij-{os.getuid()}" / "zellij-log/zellij.log"
+
+        def attach(name, attachment_env=None):
+            client = Terminal(
+                binary, attachment_env or env, name,
+                command=[binary, "--config", str(config), "--layout-string", "layout { pane; }",
+                         "attach", "--create", name],
+                install_navigation=False,
+            )
+            clients.append(client)
+            client.until("fixture shell is ready", lambda: b"fixture-ready> " in client.output)
+            return client
+
+        def nested_name(host):
+            return next((p.get("nested_session_name") for p in host.panes()
+                         if p["id"] == int(wrapper.removeprefix("terminal_"))
+                         and not p["is_plugin"]), None)
+
+        try:
+            host = attach(names[0])
+            host.send(b"printf '\\033]7501;state=blocked:kind=question:app=fixture:msg=cGFyZW50LW5lZWRzLXlvdQ==\\007'\r")
+            host.until("host needs attention", lambda: any(
+                p.get("attention", {}).get("status") == "NeedsYou" for p in host.panes()))
+            wrapper = host.action(
+                "new-pane", "--floating", "--", "/usr/bin/env",
+                "-u", "ZELLIJ", "-u", "ZELLIJ_SESSION_NAME", "-u", "ZELLIJ_PANE_ID",
+                binary, "--config", str(config), "--layout-string", "layout { pane; }",
+                "attach", "--create", names[1],
+            ).strip().split()[-1]
+            host.until("nested guest is acknowledged", lambda:
+                       nested_name(host) == names[1]
+                       and log.exists()
+                       and 'ancestry ["fixture-host"]' in log.read_text(errors="replace"))
+            host.send(b"navigation_token=preserved; printf '%s|%s\\n' \"$$\" \"$navigation_token\" > \"$HOME/before\"\r")
+            host.until("guest shell state is captured", lambda: (home / "before").exists())
+            expected = (home / "before").read_text()
+            original_clients = host.action("list-clients", session=names[1])
+            original_panes = {p["id"] for p in host.panes(session=names[1]) if not p["is_plugin"]}
+            host.drain(3.2)
+            rendered = len(host.output)
+            host.prefix(b"b")
+            host.until("attention menu lists the host item", lambda:
+                       b"parent-nee" in host.output[rendered:]
+                       and b"go" in host.output[rendered:])
+            host.send(b"\r")
+            host.until("menu rejects the ancestor or exposes the old defect", lambda:
+                       b"containing session" in host.output[rendered:]
+                       or nested_name(host) == names[0])
+            assert nested_name(host) == names[1], "attention menu attached the host inside itself"
+            assert host.action("list-clients", session=names[1]) == original_clients
+            host.send(b"\r")
+            host.send(b"printf '%s|%s\\n' \"$$\" \"$navigation_token\" > \"$HOME/after\"\r")
+            host.until("same shell survives rejected navigation", lambda:
+                       (home / "after").exists() and (home / "after").read_text() == expected)
+            assert {p["id"] for p in host.panes(session=names[1]) if not p["is_plugin"]} == original_panes
+            offset = log.stat().st_size
+            host.prefix(b"Q")
+            host.until("close-current also rejects the ancestor", lambda:
+                       "containing session" in log.read_text(errors="replace")[offset:])
+            host.until("guest remains registered after close-current rejection", lambda: nested_name(host) == names[1])
+            assert host.action("list-clients", session=names[1]) == original_clients
+            host.send(b"\r")
+
+            ordinary = attach(names[1])
+            ordinary.drain(3.2)
+            ordinary.prefix(b"Q")
+            ordinary.until("independent client switches to the host", lambda:
+                           len(host.action("list-clients", session=names[1]).splitlines()) == 2
+                           and len(host.action("list-clients").splitlines()) == 3)
+            assert nested_name(host) == names[1]
+            other = attach(names[2])
+            host.drain(3.2)
+            host.prefix(b"U")
+            host.until("nested client can switch to an unrelated session", lambda:
+                       nested_name(host) == names[2])
+            assert {p["id"] for p in host.panes(session=names[1]) if not p["is_plugin"]} == original_panes
+            assert (home / "before").read_text() == expected
+
+            cleanup = attach(names[3])
+            cleanup.drain(3.2)
+            cleanup.prefix(b"Q")
+            cleanup.until("confirmed handoff closes only the untouched source", lambda:
+                          names[3] not in subprocess.run(
+                              [binary, "list-sessions", "--no-formatting", "--short"],
+                              env=env, capture_output=True, text=True, timeout=5).stdout.splitlines())
+            assert len(host.action("list-clients").splitlines()) == 4
+
+            initial_shell = base / "source-init.sh"
+            initial_shell.write_text(
+                'navigation_token=preserved; printf "%s|%s\n" "$$" "$navigation_token" > "$HOME/source-before"\n')
+            source = attach(names[4], {**env, "ENV": str(initial_shell)})
+            source.until("untouched source shell has initial state", lambda: (home / "source-before").exists())
+            source_state = (home / "source-before").read_text()
+            original_source_panes = {p["id"] for p in source.panes() if not p["is_plugin"]}
+            target = attach(names[5])
+            source.drain(3.2)
+            source.prefix(b"\x1b")
+            source.drain(0.1)
+            # Pause only this fixture's client so the validated target can be replaced before it reconnects.
+            os.kill(source.pid, signal.SIGSTOP)
+            try:
+                source.action("switch-session", names[5], "--close-current")
+                subprocess.run([binary, "kill-session", "--", names[5]], env=env,
+                               capture_output=True, timeout=5, check=True)
+                replacement = attach(names[5])
+                replacement.send(b'replacement_token=alive; printf "%s|%s\\n" "$$" "$replacement_token" > "$HOME/replacement-before"\r')
+                replacement.until("replacement shell is captured", lambda: (home / "replacement-before").exists())
+                replacement_state = (home / "replacement-before").read_text()
+            finally:
+                os.kill(source.pid, signal.SIGCONT)
+            source.until("changed target is rejected", lambda: b"destination session changed" in source.output)
+            assert {p["id"] for p in source.panes() if not p["is_plugin"]} == original_source_panes
+            replacement.send(b'printf "%s|%s\\n" "$$" "$replacement_token" > "$HOME/replacement-after"\r')
+            replacement.until("replacement shell survives the stale handoff", lambda:
+                              (home / "replacement-after").exists()
+                              and (home / "replacement-after").read_text() == replacement_state)
+            recovered = attach(names[4])
+            recovered.send(b'printf "%s|%s\\n" "$$" "$navigation_token" > "$HOME/source-after"\r')
+            recovered.until("failed handoff preserves the source shell", lambda:
+                            (home / "source-after").exists()
+                            and (home / "source-after").read_text() == source_state)
+            print("PASS: ancestor-menu and close-current rejection preserve the client, pane and shell; independent/unrelated navigation and confirmed cleanup work; target replacement preserves both sessions' shells.")
+        except subprocess.CalledProcessError as error:
+            raise AssertionError(f"{error}\n{error.stdout}\n{error.stderr}") from error
+        finally:
+            if clients and wrapper:
+                try:
+                    clients[0].action("close-pane", "--pane-id", wrapper)
+                except Exception:
+                    pass
+            for name in names:
+                subprocess.run([binary, "kill-session", "--", name], env=env,
+                               capture_output=True, timeout=5)
+            for client in clients:
+                client.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--popup-only", action="store_true",
                         help="exercise the shared popup without unrelated client/shutdown checks")
+    parser.add_argument("--ancestor-navigation-only", action="store_true",
+                        help="check native nested attention navigation without helper plugins")
+    parser.add_argument("--binary", help="candidate Zellij runtime to exercise")
     args = parser.parse_args()
-    binary = shutil.which("zellij")
+    binary = args.binary or shutil.which("zellij")
+    if args.ancestor_navigation_only:
+        assert binary, "Install Zellij or pass --binary"
+        ancestor_navigation_workflow(binary)
+        return
+    if not args.popup_only:
+        assert binary, "Install Zellij or pass --binary"
+        ancestor_navigation_workflow(binary)
     assert binary and shutil.which("fzf") and shutil.which("nvim"), \
         "Install the pinned Zellij runtime, fzf and Neovim before make test-zellij-sessions"
     with tempfile.TemporaryDirectory(prefix="zj-session-", dir="/tmp") as directory:
@@ -530,7 +721,8 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow["preserve_rust_homes"](env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "SSH_CONNECTION", "SSH_TTY",
+                    "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         configured = subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"],

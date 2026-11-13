@@ -2,6 +2,8 @@
 
 The implementation lives in [paseo-tasks](../paseo-tasks/). It uses official Paseo 0.15.1 and its plugin interface. The task manager is an ordinary Pi conversation; each task's primary worker is an independent Pi conversation. The Tasks screen and workspace context panel open those conversations directly using both their host and agent identity.
 
+Codex and Claude use their native agent tools for delegation and communication. Their configuration targets run `make paseo-agent-cleanup`, which disables Paseo terminal hooks, selects no bundled orchestration skills, disables the Codex and Claude providers and their Paseo tools, and removes Paseo skills from their discovery directories. Removed skill directories are retained outside discovery under `~/.local/share/dotfiles/retired-paseo-skills`. Pi's provider, extensions, and Paseo tools are preserved. Existing sessions can retain previously loaded skills and tools; start a new Codex or Claude session outside Paseo to load the cleaned configuration.
+
 ## Task contract
 
 Each execution host owns `<PASEO_HOME>/tasks/tasks.sqlite`. The durable task ID is a UUID, qualified by Paseo's authenticated `serverId`. A task records its desired outcome, success criteria, constraints, current approach, progress, evidence, blocker, next action, group, priority, worker address, checkout, optional GitHub links, and observations. The separate activity field never establishes task completion.
@@ -35,7 +37,7 @@ make paseo-tasks-config
 
 The configuration target adds the shared question and router identity extensions plus the separate Sonnet router registry idempotently. It preserves the selected global Pi provider, model, thinking level, other extensions and AWS configuration. It neither enables plugins nor starts services. Run the same preparation on every execution host from that host's checkout.
 
-Inspect the target daemon's `pluginsEnabled` value before installing. A false or absent value requires the user's explicit permission under the [Paseo plugin skill](../ai/skills/paseo-plugin/SKILL.md). Plugins are trusted, unsandboxed code. After permission, preserve the daemon configuration, enable the root switch, enable the native Pi provider if necessary, set its command to the host's absolute `.files/bin/paseo-pi` wrapper, and enable `daemon.mcp.injectIntoAgents` for session-scoped task tools. Reload the configuration and install the reviewed source:
+Inspect the target daemon's `pluginsEnabled` value before installing. A false or absent value requires the user's explicit permission: plugins are trusted, unsandboxed code that can access the daemon machine's files, processes, credentials, and network services, and client contributions run inside the Paseo app. After permission, preserve the daemon configuration, enable the root switch, enable the native Pi provider if necessary, set its command to the host's absolute `.files/bin/paseo-pi` wrapper, and enable `daemon.mcp.injectIntoAgents` for session-scoped task tools. Reload the configuration and install the reviewed source:
 
 ```sh
 paseo reload --json

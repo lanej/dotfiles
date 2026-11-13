@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Let the broker own cosmetic activity delivery instead of direct Paseo calls."""
+"""Remove Paseo's Codex and Claude integration while retaining Pi."""
+import argparse
 import json
 from pathlib import Path
+import re
+import shutil
 import subprocess
+import sys
 import tempfile
 import os
 
@@ -13,7 +17,7 @@ def write_atomic(path, data):
     with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
         temporary = Path(output.name)
         try:
-            output.write(json.dumps(data, indent=2) + "\n")
+            output.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
             output.flush()
             os.fchmod(output.fileno(), mode)
             temporary.replace(path)
@@ -21,46 +25,94 @@ def write_atomic(path, data):
             temporary.unlink(missing_ok=True)
 
 
-def main():
-    home = Path.home()
-    paseo_home = Path(os.environ.get("PASEO_HOME", str(home / ".paseo"))).expanduser()
+def configure_paseo(paseo_home):
     config = paseo_home / "config.json"
-    if config.exists():
-        data = json.loads(config.read_text())
-        daemon = data.get("daemon", {})
-        if daemon.get("enableTerminalAgentHooks") is True:
-            daemon["enableTerminalAgentHooks"] = False
-            write_atomic(config, data)
-            try:
-                environment = {key: value for key, value in os.environ.items() if key != "PASEO_HOST"}
-                subprocess.run(["paseo", "reload", "--home", str(paseo_home), "--json"],
-                               env=environment, check=True, timeout=5,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except (OSError, subprocess.SubprocessError):
-                # The persisted switch also prevents reinstall on the next boot.
-                pass
+    if not config.exists():
+        return
+    data = json.loads(config.read_text())
+    original = json.dumps(data, sort_keys=True)
+    data.setdefault("daemon", {})["enableTerminalAgentHooks"] = False
+    agents = data.setdefault("agents", {})
+    agents.setdefault("skills", {})["selection"] = {"mode": "custom", "skills": []}
+    providers = agents.setdefault("providers", {})
+    for provider in ("codex", "claude"):
+        settings = providers.setdefault(provider, {})
+        settings["enabled"] = False
+        settings.setdefault("paseoTools", {})["enabled"] = False
+    if json.dumps(data, sort_keys=True) != original:
+        write_atomic(config, data)
+    try:
+        environment = {key: value for key, value in os.environ.items() if key != "PASEO_HOST"}
+        subprocess.run(["paseo", "reload", "--home", str(paseo_home), "--json"],
+                       env=environment, check=True, timeout=5,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"sync-agent-status-hooks: settings saved; live Paseo reload failed "
+              f"({type(error).__name__}). They apply on its next start.", file=sys.stderr)
+
+
+def remove_hooks(config, provider):
+    if not config.exists():
+        return
+    data = json.loads(config.read_text())
+    changed = False
+    for event, groups in data.get("hooks", {}).items():
+        for group in groups:
+            original = group.get("hooks", [])
+            kept = [hook for hook in original if not re.search(
+                rf"\bhooks\s+{provider}\s+\S+", hook.get("command", "")
+            ) or not (
+                "PASEO_HOOK_CLI" in hook.get("command", "")
+                or re.search(r"(?:^|[\s/\"'])paseo(?:[\s\"']|$)", hook.get("command", ""))
+            )]
+            if kept != original:
+                group["hooks"] = kept
+                changed = True
+    if changed:
+        for event, groups in data["hooks"].items():
+            data["hooks"][event] = [group for group in groups if group.get("hooks")]
+        write_atomic(config, data)
+
+
+def remove_skills(home, roots):
+    for label, root in roots:
+        if root.is_symlink():
+            print(f"sync-agent-status-hooks: preserving linked skill tree {root}; "
+                  "migrate it to individual skill links before cleanup.", file=sys.stderr)
+            continue
+        if not root.is_dir():
+            continue
+        for skill in sorted(root.iterdir()):
+            if skill.name != "paseo" and not skill.name.startswith("paseo-"):
+                continue
+            if skill.is_symlink():
+                skill.unlink()
+            elif skill.is_dir():
+                archive = home / ".local/share/dotfiles/retired-paseo-skills" / label
+                archive.mkdir(parents=True, exist_ok=True)
+                destination = Path(tempfile.mkdtemp(prefix=f"{skill.name}-", dir=archive))
+                shutil.move(str(skill), str(destination / skill.name))
+                print(f"sync-agent-status-hooks: removed {skill}; retained files in {destination}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--home", type=Path, default=Path.home())
+    args = parser.parse_args()
+    home = args.home.expanduser().absolute()
+    paseo_home = Path(os.environ.get("PASEO_HOME", str(home / ".paseo"))).expanduser()
+    configure_paseo(paseo_home)
     codex_home = Path(os.environ.get("CODEX_HOME", str(home / ".codex"))).expanduser()
     claude_home = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(home / ".claude"))).expanduser()
     for provider, config in (("codex", codex_home / "hooks.json"),
                              ("claude", claude_home / "settings.json")):
-        if not config.exists():
-            continue
-        data = json.loads(config.read_text())
-        changed = False
-        for event, groups in data.get("hooks", {}).items():
-            for group in groups:
-                original = group.get("hooks", [])
-                kept = [hook for hook in original if not (
-                    "PASEO_TERMINAL_ID" in hook.get("command", "")
-                    and "PASEO_HOOK_CLI" in hook.get("command", "")
-                    and f"hooks {provider} {event}" in hook.get("command", ""))]
-                if kept != original:
-                    group["hooks"] = kept
-                    changed = True
-        if changed:
-            for event, groups in data["hooks"].items():
-                data["hooks"][event] = [group for group in groups if group.get("hooks")]
-            write_atomic(config, data)
+        remove_hooks(config, provider)
+    remove_skills(home, (
+        ("agents", home / ".agents/skills"),
+        ("codex", codex_home / "skills"),
+        ("codex-dotfiles", codex_home / "dotfiles-skills"),
+        ("claude", claude_home / "skills"),
+    ))
 
 
 if __name__ == "__main__":
