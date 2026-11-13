@@ -80,9 +80,14 @@ def exercise(work):
     fixture.write_text('''import os, signal, time
 time.sleep(.4)
 width = os.get_terminal_size().columns
-print("Synthetic preview (docs/screenshots/plan-viewer/fixture-".rjust(width - 2))
+print("Kitty hint selection")
+print()
+print("Choose a link with asdfghjkl. Escape returns to the terminal.")
+print()
+print("Preview (docs/screenshots/plan-viewer/fixture-".rjust(width - 2))
 print("  running-overview.png).")
 print("\\033]8;;''' + URL + '''\\033\\\\release notes\\033]8;;\\033\\\\", flush=True)
+print("\\033]8;;https://sw.kovidgoyal.net/kitty/\\033\\\\Kitty documentation\\033]8;;\\033\\\\", flush=True)
 signal.pause()
 ''')
     layout = work / "layout.kdl"
@@ -100,7 +105,7 @@ signal.pause()
         return json.loads(command("zellij", "--session", session, "action", "list-panes", "--json"))
     def key(name):
         command("xdotool", "key", "--clearmodifiers", name)
-    def hint(fragment):
+    def hint(fragment, label):
         def find():
             for os_window in json.loads(remote("ls")):
                 for tab in os_window["tabs"]:
@@ -111,10 +116,26 @@ signal.pause()
                                 if fragment in line:
                                     marks = re.findall(r"\x1b\]8;[^;]*;mark:(\d+)", line.split(fragment)[0])
                                     if marks:
-                                        return marks[-1]
+                                        return window["id"]
             return None
         key("super+shift+u")
-        key(until("a native Kitty hint for " + fragment, find))
+        overlay_id = until("a native Kitty hint for " + fragment, find)
+        colors = remote("get-colors", "--match", f"id:{overlay_id}")
+        if not re.search(r"foreground\s+#4c566a", colors, re.I):
+            raise AssertionError("Non-link text must use the dim Nord foreground")
+        artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
+        if artifacts and fragment == "screenshots/plan-viewer":
+            image = ImageGrab.grab().convert("RGB")
+            colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
+            for color in ((236, 239, 244), (180, 142, 173), (76, 86, 106)):
+                if colors.get(color, 0) < 5:
+                    raise AssertionError(f"Missing rendered hint color {color}")
+            destination = Path(artifacts)
+            destination.mkdir(parents=True, exist_ok=True)
+            geometry = dict(line.split("=", 1) for line in command("xdotool", "getwindowgeometry", "--shell", xid).splitlines())
+            x, y, width, height = (int(geometry[key]) for key in ("X", "Y", "WIDTH", "HEIGHT"))
+            image.crop((x, y, x + width, y + height)).save(destination / "hints.png")
+        key(label)
 
     log = work / "kitty.log"
     with log.open("w") as output:
@@ -131,7 +152,8 @@ signal.pause()
             # Xvfb has no window manager to assign keyboard focus.
             xid = command("xdotool", "search", "--onlyvisible", "--class", "kitty").splitlines()[-1]
             command("xdotool", "windowfocus", "--sync", xid)
-            hint("screenshots/plan-viewer")
+            source_colors = remote("get-colors")
+            hint("screenshots/plan-viewer", "a")
             def preview_has_focus():
                 current = panes()
                 original = next((p for p in current if str(fixture) in (p.get("terminal_command") or "")), None)
@@ -148,7 +170,13 @@ signal.pause()
             until("the viewer to accept Enter", lambda: "Press Enter to close." in remote("get-text"))
             key("Return")
             until("the preview pane to close", lambda: not any("image-view" in (p.get("terminal_command") or "") for p in panes()))
-            hint("lease notes")
+            hint("lease notes", "Escape")
+            until("hint cancellation restores the source window", lambda:
+                  all(window["title"] != "Choose text" for os_window in json.loads(remote("ls"))
+                      for tab in os_window["tabs"] for window in tab["windows"]))
+            if remote("get-colors") != source_colors:
+                raise AssertionError("Cancelling hints changed the source pane colors")
+            hint("lease notes", "s")
             until("the exact hyperlink at the desktop opener", lambda: (home / "opened-url").read_text() == URL)
             print("PASS: Cmd+Shift+U selected the wrapped PNG, displayed the correct worktree's pixels, and opened the native web link.")
         except Exception:

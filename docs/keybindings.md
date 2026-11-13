@@ -1,6 +1,6 @@
 # Keybinding registry
 
-The registry owns all 31 configured Kitty shortcuts and all 26 active skhd window shortcuts, and checks them against any new native bindings. Both configurations generate their owned shortcuts from `config/keybindings.toml`. Initial coverage is explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
+The registry owns all 32 configured Kitty shortcuts and all 26 active skhd window shortcuts, and checks them against any new native bindings. Both configurations generate their owned shortcuts from `config/keybindings.toml`. Initial coverage is explicit root-mode mappings in `kitty/kittyconf` and default-mode hotkeys in `yabai/skhdrc`. A shortcut free in Kitty can still be consumed globally by skhd: Cmd+Shift+L, for example, is bound there to move a window east.
 
 ```sh
 make keybindings
@@ -59,3 +59,7 @@ Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label
 Relative filenames resolve in the source pane's working directory. A wrapped `docs/screenshots/plan-viewer/fixture-running-overview.png` opens from that worktree. Over `zssh`, the remote host reads the file and streams the image to Kitty.
 
 Run `make kitty-config zellij-helpers zellij-config` and reload Kitty with **Cmd+Shift+R**. On the machine running Zellij, use the managed 0.46 runtime, install `kitten`, and reload or restart the session. For a remote session, run `make zellij-helpers zellij-config` on that host too.
+
+## Kitty hint selection
+
+Cmd+Shift+U selects hyperlinks and image previews; Ctrl+Shift+E selects visible URLs. Both use `asdfghjkl` labels ordered from top to bottom. Unmatched text dims to Nord gray, link text turns Nord white, and labels use Nord purple with dark lettering. Escape cancels and restores the original pane colors.

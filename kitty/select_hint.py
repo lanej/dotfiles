@@ -141,6 +141,16 @@ def picker_input(rows, rect, ticket):
     return "\n".join(lines), choices
 
 
+def show_hints(boss, window, hint_type="hyperlink", **kwargs):
+    overlay = boss.run_kitten_with_metadata(
+        "hints", ["--type", hint_type, "--alphabet", "asdfghjkl", "--hints-offset", "0",
+                  "--ascending", "--prefix-free", "--hints-foreground-color", "#2E3440",
+                  "--hints-background-color", "#B48EAD", "--hints-text-color", "#ECEFF4"],
+        window=window, **kwargs)
+    if overlay is not None:
+        overlay.set_dynamic_color(10, "#4C566A")
+
+
 def at_cursor(window):
     cursor = window.screen.cursor
     return window.screen.hyperlink_at(cursor.x, cursor.y) or ""
@@ -155,13 +165,16 @@ def handle_result(args, answer, target_window_id, boss):
     window = boss.window_id_map.get(target_window_id)
     if window is None:
         return
-    if not in_zellij(window):
-        boss.run_kitten_with_metadata("hints", ["--type", "hyperlink"], window=window)
+    hint_type = args[1] if len(args) > 1 else "hyperlink"
+    if hint_type not in ("hyperlink", "url"):
+        raise ValueError("Expected hyperlink or url hint selection")
+    if hint_type == "url" or not in_zellij(window):
+        show_hints(boss, window, hint_type)
         return
 
     original = window.as_text(as_ansi=True, add_wrap_markers=True)
     if not POSSIBLE_IMAGE.search(original):
-        boss.run_kitten_with_metadata("hints", ["--type", "hyperlink"], window=window)
+        show_hints(boss, window)
         return
     rows = capture(window.screen)
     previous_marker = at_cursor(window)
@@ -179,7 +192,7 @@ def handle_result(args, answer, target_window_id, boss):
         remove_timer(timer)
         if not ready:
             # Older or unmanaged remote sessions still get Kitty's ordinary hyperlink picker.
-            boss.run_kitten_with_metadata("hints", ["--type", "hyperlink"], input_data=original, window=window)
+            show_hints(boss, window, input_data=original)
             return
         ticket = ready[1]
         left, top, width, height, receiver_x, receiver_y = map(int, ready.groups()[1:])
@@ -202,7 +215,6 @@ def handle_result(args, answer, target_window_id, boss):
             if target and image is None:
                 open_native_hint([], data, window_id, current_boss)
 
-        boss.run_kitten_with_metadata("hints", ["--type", "hyperlink"], window=window,
-                                      input_data=display, custom_callback=selected, default_data={})
+        show_hints(boss, window, input_data=display, custom_callback=selected, default_data={})
 
     add_timer(wait, 0.05, True)
