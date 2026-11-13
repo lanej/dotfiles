@@ -41,4 +41,11 @@ jobs:
           python -m pip install Pillow
       - run: cargo build --locked --manifest-path zellij/Cargo.toml -p lane-zellij
       - name: Select a wrapped image in Kitty and inspect its Zellij pane
-        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 python scripts/test-kitty-image-preview.py
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-image-preview.py
+      - name: Preserve rendered hint preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kitty-hint-preview
+          path: ${{ runner.temp }}/kitty-hint-artifacts
+          if-no-files-found: ignore
