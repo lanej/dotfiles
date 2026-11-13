@@ -293,6 +293,10 @@ software-standard:
 
 claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
+claude-config claude-shared codex-skills agent-status-broker: paseo-agent-cleanup
+.PHONY: paseo-agent-cleanup
+paseo-agent-cleanup:
+	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
 claude-config: software-standard
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -300,7 +304,6 @@ codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" --no-start $(AGENT_STATUS_INSTALL_FLAGS)
-	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
 # The aggregate waits for hook migration before installing Codex hooks. The
 # standalone config target remains usable without the broker.
 codex-tmux: agent-status-broker

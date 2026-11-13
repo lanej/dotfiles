@@ -21,7 +21,7 @@ For source-comment decisions, use the `code-comments` skill's compact guidance; 
 
 ## Execution & Delegation
 
-Delegate self-contained work when context isolation, independent judgment, or parallelism offers a concrete benefit. Keep bounded lookups and routine edits inline; file and tool-call counts alone do not require delegation. Stay within the requested task and follow session-specific delegation constraints. Announce foreground delegations briefly.
+Delegate self-contained work when isolation, independent judgment, or parallelism helps. Keep bounded lookups and routine edits inline; file and tool counts don't require delegation. Honor task scope and session constraints; announce delegations. Use native agent tools; never use Paseo for Claude or Codex coordination. Paseo is for Pi.
 Bug or small feature needed in one of Josh's `easypost-sandbox` tool/MCP-server repos, and not your job right now: use the `report-tool-work` skill; don't work around it silently.
 Infra change needed in `platform-infra` (github.com/easypost/platform-infra) — Josh's current, actively-chosen primary repo for this category, per his 2026-09-24 decision to migrate off the legacy repos below (migration in progress, not yet complete) — or in the legacy `easypost-enterprise-platform-infra` / `enterprise-platform-bootstrap` (secondary during the transition) (GCP resource, IAM, DNS, GitHub org/repo setting, Jira config): use the `report-infra-work` skill and message the `infra-dispatcher` session; never mutate any of the three directly.
 `Workflow` tool: explicit user opt-in only. For ad hoc fan-out, write a bespoke `Workflow` script; for independent tasks from a written plan, dispatch each via `Agent` per the `/delegate` routing table.

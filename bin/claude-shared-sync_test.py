@@ -44,6 +44,7 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     (agents / "local.md").write_text("Other agent.\n")
     (repo / "bin").mkdir()
     (repo / "bin/sync-claude-shared").symlink_to(ROOT / "bin/sync-claude-shared")
+    (repo / "bin/sync-agent-status-hooks").symlink_to(ROOT / "bin/sync-agent-status-hooks")
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)

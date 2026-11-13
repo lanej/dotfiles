@@ -69,6 +69,7 @@ class SharedResourceWorkflow(unittest.TestCase):
             home = Path(temporary).resolve()
             checkout = home / "checkout"
             for relative in ("bin/sync-codex-skills", "bin/sync-pi-resources",
+                             "bin/sync-agent-status-hooks",
                              "scripts/install-software-standard.py",
                              "ai/agents/code-reviewer.md", "ai/agents/reflection.md",
                              "ai/agents/github-pr-writer.md"):

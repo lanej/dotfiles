@@ -86,6 +86,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (repo / "bin").mkdir()
     (repo / "bin/sync-codex-skills").symlink_to(ROOT / "bin/sync-codex-skills")
     (repo / "bin/sync-claude-shared").symlink_to(ROOT / "bin/sync-claude-shared")
+    (repo / "bin/sync-agent-status-hooks").symlink_to(ROOT / "bin/sync-agent-status-hooks")
     local = home / ".agents/skills/local-workflow/SKILL.md"
     local.parent.mkdir(parents=True)
     local.write_text("Local instructions.\n")

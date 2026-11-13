@@ -150,7 +150,7 @@ entries:
     ring: trial
     icon: paseo.png
     rationale: |-
-      [Paseo](paseo-tasks.md): a workspace and conversation interface I’m trialing for working with coding agents. This trial is separate from the retired Firstmate workflow.
+      [Paseo](paseo-tasks.md): a workspace and conversation interface I’m trialing with Pi. Codex and Claude use their native agent tools; their Paseo providers, hooks, tools, and orchestration skills are disabled. This trial is separate from the retired Firstmate workflow.
   - id: viewrule
     name: Viewrule
     ring: trial
