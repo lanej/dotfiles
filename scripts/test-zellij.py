@@ -119,9 +119,11 @@ class Terminal:
                 except subprocess.TimeoutExpired:
                     continue
             if command.returncode:
-                raise subprocess.CalledProcessError(
+                error = subprocess.CalledProcessError(
                     command.returncode, command.args, stdout, stderr
                 )
+                error.add_note(f"Zellij stdout: {stdout}\nZellij stderr: {stderr}")
+                raise error
             return stdout
 
     def panes(self, session=None):

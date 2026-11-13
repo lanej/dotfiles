@@ -75,7 +75,8 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow.preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "SSH_CONNECTION", "SSH_TTY",
+                    "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
@@ -216,6 +217,9 @@ def main():
             clients.append(other)
             other.until("second shell is ready", lambda:
                         PROMPT in other.output and len(other.terminals()) == 1)
+            # Cross-session navigation requires the native three-second
+            # attachment discovery period to establish an ordinary client.
+            other.drain(3.2)
             second_pane = other.terminals()[0]["id"]
             other.remember_sole_client()
             second_working_tab = other.focused_tab()

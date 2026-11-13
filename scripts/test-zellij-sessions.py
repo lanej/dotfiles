@@ -11,6 +11,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -506,7 +507,8 @@ def ancestor_navigation_workflow(binary):
         base = Path(directory).resolve()
         home = base / "home"
         home.mkdir()
-        desktop = home / "Library/Application Support/org.Zellij-Contributors.Zellij"
+        desktop = (home / "Library/Application Support/org.Zellij-Contributors.Zellij"
+                   if sys.platform == "darwin" else base / "data/zellij")
         desktop.mkdir(parents=True)
         (desktop / "desktop_integration.json").write_text('{"flags":["SetupNeverShow"]}\n')
         runtime = base / "run"
