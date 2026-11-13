@@ -214,3 +214,8 @@ entries:
       Rust compiler cache. Grows unboundedly on disk — even with `max_cache_size` set, the cache frequently bloats to tens of gigabytes across multiple projects and toolchain versions. The disk pressure outweighs the incremental build-time savings for typical dotfiles/personal project usage.
 
       Revisit if Mozilla ships more aggressive eviction or if a per-project cache isolation story emerges.
+  - id: biome
+    name: Biome
+    ring: adopt
+    rationale: |-
+      Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
