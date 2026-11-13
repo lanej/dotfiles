@@ -5,6 +5,10 @@ local generations = {}
 local baselines = {}
 local enabled = true
 
+function M.set_preview_base(buf, base)
+	vim.b[buf].dotfiles_branch_base = base
+end
+
 function M.refresh(buf)
 	generations[buf] = (generations[buf] or 0) + 1
 	local generation = generations[buf]
@@ -20,7 +24,8 @@ function M.refresh(buf)
 		return
 	end
 	local root = status.root
-	local file = vim.api.nvim_buf_get_name(buf)
+	local cache = require("gitsigns.cache").cache[buf]
+	local file = cache and cache.file or vim.api.nvim_buf_get_name(buf)
 	local relative = file:sub(#root + 2)
 	local function git(args, callback)
 		vim.system(
@@ -37,20 +42,16 @@ function M.refresh(buf)
 		if not current() then
 			return
 		end
-		git({ "merge-base", "HEAD", "origin/HEAD" }, function(base)
-			if base.code ~= 0 then
-				vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-				return -- No default-branch ref: retain normal unstaged/staged signs.
-			end
-			local key = root .. ":" .. vim.trim(base.stdout) .. ":" .. relative
+		local function render_base(base)
+			local key = root .. ":" .. base .. ":" .. relative
 			if baselines[buf] and baselines[buf].key == key then
 				M.render(buf, baselines[buf].text)
 				return
 			end
-			git({ "show", vim.trim(base.stdout) .. ":" .. relative }, function(result)
+			git({ "show", base .. ":" .. relative }, function(result)
 				-- A newly added branch file has no contents at the merge base.
 				if result.code ~= 0 then
-					git({ "ls-tree", vim.trim(base.stdout), "--", relative }, function(tree)
+					git({ "ls-tree", base, "--", relative }, function(tree)
 						if tree.code == 0 and tree.stdout == "" then
 							baselines[buf] = { key = key, text = "" }
 							M.render(buf, "")
@@ -63,7 +64,19 @@ function M.refresh(buf)
 					M.render(buf, result.stdout)
 				end
 			end)
-		end)
+		end
+		local preview_base = vim.b[buf].dotfiles_branch_base
+		if preview_base then
+			render_base(preview_base)
+		else
+			git({ "merge-base", "HEAD", "origin/HEAD" }, function(base)
+				if base.code ~= 0 then
+					vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+					return -- No default-branch ref: retain normal unstaged/staged signs.
+				end
+				render_base(vim.trim(base.stdout))
+			end)
+		end
 	end, 100)
 end
 
