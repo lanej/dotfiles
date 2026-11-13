@@ -462,10 +462,11 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
 
 def live_panes():
     Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+    stop_session = runpy.run_path(str(ROOT / "scripts/test-zellij-shell-titles.py"))["stop_session"]
     binary = shutil.which("zellij")
     assert binary, "Install the pinned Zellij runtime first"
     with tempfile.TemporaryDirectory(prefix="zj-pane-", dir="/tmp") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         home, runtime = root / "home", root / "run"
         config = home / ".config/zellij"
         (config / "layouts").mkdir(parents=True)
@@ -477,9 +478,9 @@ def live_panes():
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(root / "cache"), "XDG_DATA_HOME": str(root / "data"),
                "XDG_STATE_HOME": str(root / "state"), "XDG_RUNTIME_DIR": str(runtime),
-               "TMPDIR": str(root)}
+               "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(root)}
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_SOCKET_DIR", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
         data = (home / "Library/Application Support/org.Zellij-Contributors.Zellij"
                 if sys.platform == "darwin" else root / "data/zellij")
@@ -547,9 +548,12 @@ def live_panes():
                 for line in helper("pane", "capture", "--session", name, "--pane", waiting).splitlines()))
             print("PASS: real discovery/capture, literal argv, focus preserved for two viewers, shell after exit and Ctrl-c")
         finally:
-            for terminal in reversed(terminals):
-                terminal.close()
-            subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
+            try:
+                for terminal in reversed(terminals[1:]):
+                    terminal.close()
+            finally:
+                if terminals:
+                    stop_session(terminals[0])
 
 
 if __name__ == "__main__":
