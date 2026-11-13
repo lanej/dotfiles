@@ -92,12 +92,15 @@ Layout cycling offers columns, rows, stacked, and equalize. The [equalize layout
 | `Ctrl-q` | [Confirm shutdown of this session](zellij/shutdown.mdx) |
 | `P` | [Open or hide the shared popup](zellij/shared-popup.mdx) |
 | `F` | Show or hide other floating panes |
+| `E` (Shift-e) | Move the focused pane between floating and tiled in the same tab |
 | `u` | Focus the containing Zellij session |
 | `i` | Focus the nested Zellij session in this pane |
 | `I` | Open or close the session manager/card |
 | `:` | [Open the command prompt](zellij/command-prompt.mdx) |
 
 The popup uses the same keys as a regular session. Inside it, **Ctrl-f P** hides the view. See [shared popup keys](#shared-popup-keys) and [remote sessions](zellij/ssh-agent.mdx).
+
+To tile the shared popup's outer pane, first press **Ctrl-f u** to focus the containing session, then **Ctrl-f Shift-e**.
 
 ## Text and attention
 
@@ -187,7 +190,7 @@ Move and Tab modes have no direct prefix shortcut. To enter them deliberately, r
 
 ## Shared popup keys
 
-The [shared popup](zellij/shared-popup.mdx) uses the same keymap, including navigation, splits, tabs, copying, and search. Its one difference is **Ctrl-f P**: inside the popup, that key hides the view. **Ctrl-f d** also detaches the view without stopping its shells.
+The [shared popup](zellij/shared-popup.mdx) uses the same keymap, including navigation, splits, tabs, copying, and search. Inside the popup, **Ctrl-f P**, **Ctrl-f d**, and **Ctrl-f D** hide the view without stopping its shells.
 
 ## Legacy configuration
 

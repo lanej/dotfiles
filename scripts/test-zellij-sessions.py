@@ -17,7 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 workflow = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))
 Terminal = workflow["Terminal"]
-POPUP = "dotfiles-popup"
+POPUP = "pop-up"
 # Leave room for full popup tab titles alongside long CI runner hostnames.
 SESSION_COLUMNS = 240
 
@@ -146,10 +146,13 @@ def open_popup(terminal):
     terminal.until("popup registers its containing session", nested_ready)
     terminal.until("host tab shows keyboard focus in the popup", lambda:
                    tab_is_dimmed(terminal, host_tab, rendered) is True)
+    pane = next(p for p in terminal.terminals() if p["is_floating"])
+    assert pane["pane_x"] == pane["pane_content_x"] and pane["pane_y"] == pane["pane_content_y"], \
+        "The shared popup must have no outer frame or title row"
 
 
-def hide_popup(terminal):
-    terminal.prefix(b"P")
+def hide_popup(terminal, key=b"P"):
+    terminal.prefix(key)
     terminal.until("popup client closes while its shell stays alive", lambda:
                    not any(p["is_floating"] for p in terminal.terminals())
                    and not terminal.action("list-clients", session=POPUP).strip().splitlines()[1:])
@@ -395,14 +398,14 @@ def popup_workflow(first, second, home):
     first.until("host tab shows returned guest focus", lambda:
                 tab_is_dimmed(first, "host-controls", rendered) is True)
     prove_popup(first, home, expected, "popup-after-focus-return")
-    hide_popup(first)
+    hide_popup(first, b"D")
 
     first.prefix(b"c")
     first.until("second outer tab", lambda: len(first.tabs()) == 2)
     name_host_tab(first, "popup-other-host-tab")
     open_popup(first)
     prove_popup(first, home, expected, "popup-other-tab")
-    hide_popup(first)
+    hide_popup(first, b"d")
     name_host_tab(second, "popup-other-host-session")
     open_popup(second)
     prove_popup(second, home, expected, "popup-other-session")

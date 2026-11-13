@@ -733,7 +733,7 @@ def exercise_session_keys(first, second, home, clients):
     # directly, without adding a second nested terminal decoder. Its layout
     # overlay is exactly the one used when Ctrl-f P launches it in a float.
     popup_env = {**first.env, 'ZELLIJ_SESSION_NAME': renamed}
-    popup = Terminal(first.binary, popup_env, 'dotfiles-popup',
+    popup = Terminal(first.binary, popup_env, 'pop-up',
                      [str(ROOT / 'bin/zellij-popup')], install_navigation=False)
     clients.append(popup)
     popup.until('popup shell starts', lambda: PROMPT.decode().strip() in text(popup))
@@ -743,11 +743,11 @@ def exercise_session_keys(first, second, home, clients):
     popup.prefix(b'j')
     _, popup_pid, _ = shell_probe(popup, 'popup-shell')
     popup_name, regular_pid, _ = create(popup, second, 'created-from-popup')
-    assert client_count('dotfiles-popup') == 0
+    assert client_count('pop-up') == 0
     os.kill(popup_pid, 0)
     popup.prefix(b'P')
     popup.until('new session uses regular P launcher, not popup detach override', lambda:
-                any(p['is_floating'] for p in popup.terminals()) and client_count('dotfiles-popup') == 1)
+                any(p['is_floating'] for p in popup.terminals()) and client_count('pop-up') == 1)
     # Native list-clients lists visible-pane focus, not every attachment: a
     # descended host can have no rows. Check the actual requesting PTY and its
     # original regular shell instead of treating guest focus as a detach.
