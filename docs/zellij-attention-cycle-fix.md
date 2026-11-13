@@ -1,6 +1,6 @@
 # Prevent attention-menu navigation from nesting a session inside itself
 
-Status: recovered, implemented, independently reviewed, and installed on November 13, 2026. Running session servers retain their old code until restarted; they were preserved to keep their programs alive.
+Status: recovered, implemented, independently reviewed, installed, and activated in the restarted `main` and `pop-up` servers on November 13, 2026.
 
 ## What happened
 
@@ -17,6 +17,8 @@ An isolated reproduction with the previous Zellij runtime, revision `e9491658c1b
 Closed only `main/terminal_35`, the recursive attachment view. The attached client count fell from two to one. All nine other terminal panes in `main` survived, and all three terminal panes in `dotfiles-popup` survived. Follow-up inspection found no nested panes in `main`. Removing the attachment also reaches the runtime's existing client cleanup, which clears ancestry when its nesting client disconnects. Neither session server was restarted.
 
 Private before/after pane snapshots and the bounded reproduction are retained in `/private/tmp/zellij-main-recovery-20261113/`.
+
+Josh subsequently authorized a restart. Saved layouts restored all ten Codex conversations by their exact IDs, the shell views and the Octo dashboard. The shared Codex daemon retained its original PID, and the restored conversations remained loaded. The popup now uses the current helper's `pop-up` name. The original Kitty window closed with its old attachment; a new window reconnects to `main`. Layouts, captures, resume mappings and restart verification are retained in `/private/tmp/zellij-main-restart-20261113/`.
 
 ## Cause and ownership
 
@@ -68,4 +70,4 @@ Close-current retains its existing eligibility rule: no command submitted and no
 
 Focused native tests cover the guard, existing nesting behavior, identity encoding, environment propagation, cleanup-message encoding and screen-query timeout identity. The release build and formatting checks pass, and independent code review approved the material changes. Dotfiles helper checks pass with the generated contract. The installed runtime also passes the ancestor-navigation detector, the shared-popup shell-preservation journey and real Neovim pane navigation with the matching client.
 
-SSH, browser and mixed-version transport behavior received source review and compilation rather than equivalent real transport acceptance. An arbitrary legacy host that removes every nesting marker cannot provide a complete cycle-prevention guarantee. Identity-less nested attachments deliberately have restricted cross-session navigation. The installed binary and dependency pins do not upgrade already running servers; restarting them would terminate their terminal processes, so this recovery left them running.
+SSH, browser and mixed-version transport behavior received source review and compilation rather than equivalent real transport acceptance. An arbitrary legacy host that removes every nesting marker cannot provide a complete cycle-prevention guarantee. Identity-less nested attachments deliberately have restricted cross-session navigation. After the authorized restart, both live servers returned distinct UUID v4 identities through the new native attention-response field, confirming that the installed runtime is active.
