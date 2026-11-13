@@ -314,7 +314,7 @@
         },
         "octo-manager": {
           "type": "boolean",
-          "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks (macOS)."
+          "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
         },
         "treehouse": {
           "type": "boolean",

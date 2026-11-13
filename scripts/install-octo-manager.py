@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the selected Octo release and its native Codex hooks on macOS."""
+"""Install the selected Octo release and its native Codex hooks on macOS and Linux."""
 import hashlib
 import os
 from pathlib import Path
@@ -42,15 +42,31 @@ def source_checkout(cache, revision):
     return source
 
 
+
+def runtime_target(system, machine, libc=""):
+    system_name = {"Darwin": "darwin", "Linux": "linux"}.get(system)
+    architecture = {"arm64": "aarch64", "aarch64": "aarch64", "x86_64": "x64", "amd64": "x64"}.get(machine.lower())
+    if system_name is None or architecture is None:
+        raise ValueError(f"Unsupported Octo platform: {system}/{machine}")
+    native_arch = "arm64" if architecture == "aarch64" else "x64"
+    suffix = "-musl" if system_name == "linux" and libc == "musl" else ""
+    baseline = "-baseline" if architecture == "x64" else ""
+    return f"bun-{system_name}-{architecture}{suffix}{baseline}", f"{system_name}-{native_arch}"
+
+
+def host_target():
+    libc = platform.libc_ver()[0]
+    if platform.system() == "Linux" and not libc:
+        libc = "musl" if list(Path("/lib").glob("ld-musl-*.so.1")) else "glibc"
+    return runtime_target(platform.system(), platform.machine(), libc)
+
+
 def runtime(home, source):
     version = (source / ".bun-version").read_text().strip()
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("Invalid pinned Bun version")
-    machine = platform.machine()
-    architecture = {"arm64": "aarch64", "aarch64": "aarch64", "x86_64": "x64-baseline"}.get(machine)
-    if architecture is None:
-        raise ValueError(f"Unsupported architecture: {machine}")
-    directory = home / ".local/share/octo-manager/runtime" / f"bun-{version}"
+    name, target = host_target()
+    directory = home / ".local/share/octo-manager/runtime" / target / f"bun-{version}"
     if directory.is_symlink():
         raise ValueError(f"Preserve symlinked runtime: {directory}")
     binary = directory / "bun"
@@ -61,7 +77,6 @@ def runtime(home, source):
             raise ValueError(f"Installed private Bun version does not match {version}")
         return binary
     directory.mkdir(parents=True, mode=0o700, exist_ok=True)
-    name = f"bun-darwin-{architecture}"
     asset = name + ".zip"
     base = f"https://github.com/oven-sh/bun/releases/download/bun-v{version}"
     with tempfile.TemporaryDirectory(prefix=".download-", dir=directory) as temporary:
@@ -85,14 +100,13 @@ def runtime(home, source):
 
 
 def install(root=ROOT, home=None):
-    if platform.system() != "Darwin":
-        raise ValueError("Octo Manager managed service installation currently requires macOS")
+    _, target = host_target()
     home = home or Path.home()
     recipe = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["octo-manager"]
     revision = recipe["revision"]
     if not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise ValueError("Octo Manager requires a full pinned source revision")
-    cache = Path(os.environ.get("XDG_CACHE_HOME", home / ".cache")) / "dotfiles/octo-manager"
+    cache = Path(os.environ.get("XDG_CACHE_HOME", home / ".cache")) / "dotfiles/octo-manager" / target
     if cache.is_symlink():
         raise ValueError(f"Preserve symlinked install cache: {cache}")
     cache.mkdir(parents=True, mode=0o700, exist_ok=True)
