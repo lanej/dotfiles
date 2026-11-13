@@ -43,7 +43,11 @@ fn run(args: &[String]) -> Result<()> {
                 let _ = auto_title::shell_title();
             }
             "auto-title" => {
-                let _ = auto_title::main(rest);
+                if rest.is_empty() || rest == ["--shell"] {
+                    let _ = auto_title::main(rest);
+                } else {
+                    auto_title::main(rest)?;
+                }
             }
             "clipboard" => clipboard::main(rest)?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),

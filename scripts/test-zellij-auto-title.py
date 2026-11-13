@@ -150,7 +150,7 @@ def ownership_lifecycle():
 
                         length = struct.unpack("<I", receive(4))[0]
                         request = fields(fields(receive(length))[9])
-                        assert request[2] == 7 and request[4] == 1
+                        assert request.get(2) in (None, 7, 999) and request[4] == 1
                         action = fields(request[1])
                         tab = json.loads(state.read_text())
                         ack = message(2, b"")
@@ -165,16 +165,19 @@ def ownership_lifecycle():
                         elif 98 in action:
                             assert fields(action[98])[6] == 1
                             panes = [{"id": 7, "tab_id": tab["tab_id"], "tab_name": tab["name"],
+                                      "title": tab.get("title", ""),
                                       "is_plugin": False, "is_focused": True}]
                             if "other_name" in tab:
                                 panes.append({"id": 8, "tab_id": 2, "tab_name": tab["other_name"],
+                                              "title": tab.get("other_title", ""),
                                               "is_plugin": False, "is_focused": False})
                             response = message(5, message(1, json.dumps(panes).encode()))
                             connection.sendall(struct.pack("<I", len(ack)) + ack)
                         else:
                             rename = fields(action[103])
-                            assert rename.get(1, 0) == tab["tab_id"]
-                            tab["name"] = rename[2].decode()
+                            target = rename.get(1, 0)
+                            assert target in (tab["tab_id"], 2)
+                            tab["name" if target == tab["tab_id"] else "other_name"] = rename[2].decode()
                             state.write_text(json.dumps(tab))
                             response = ack
                         frame = struct.pack("<I", len(response)) + response
@@ -288,6 +291,29 @@ def ownership_lifecycle():
                 [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
             assert rename() == "legacy", "ambiguous restored name claimed ownership"
             assert owned() == {}
+            state.write_text(json.dumps({"tab_id": 0, "name": "review", "title": "current project",
+                                         "other_name": "logs", "other_title": "log project"}))
+            env["ZELLIJ_TITLE_CONTEXT"] = '{"session":"obsolete"}'
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project"
+            assert json.loads(state.read_text())["other_name"] == "logs", "clear renamed another tab"
+            assert owned() == {"0": "current project"}
+            failed = subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                                    env={**env, "ZELLIJ_PANE_ID": "999"},
+                                    capture_output=True, text=True, timeout=5)
+            assert failed.returncode != 0 and "Cannot find" in failed.stderr, failed
+            assert json.loads(state.read_text())["other_name"] == "logs"
+            state.write_text(json.dumps({"tab_id": 0, "name": "current project", "title": "changed program",
+                                         "other_name": "logs", "other_title": "log project"}))
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project", "clear lost an automatic provider"
+            assert json.loads(state.read_text())["other_name"] == "log project"
+            assert owned() == {"0": "current project", "2": "log project"}
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert owned() == {"0": "current project", "2": "log project"}, "clear was not idempotent"
         print("PASS: protobuf title ownership, explicit names, socket recreation, and legacy state (real sockets/index).")
 
 
