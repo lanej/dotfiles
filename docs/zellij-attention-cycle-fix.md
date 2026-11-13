@@ -20,6 +20,10 @@ Private before/after pane snapshots and the bounded reproduction are retained in
 
 Josh subsequently authorized a restart. Saved layouts restored all ten Codex conversations by their exact IDs, the shell views and the Octo dashboard. The shared Codex daemon retained its original PID, and the restored conversations remained loaded. The popup now uses the current helper's `pop-up` name. The original Kitty window closed with its old attachment; a new window reconnects to `main`. Layouts, captures, resume mappings and restart verification are retained in `/private/tmp/zellij-main-restart-20261113/`.
 
+That restart introduced a display regression: its temporary scripts copied Codex's command-runner environment into both servers, including `NO_COLOR=1` and `GIT_PAGER=cat`. The collaborating repair agent reported disposable-pane probes in both sessions: the inherited environment selected `cat` and produced no automatic ripgrep color; removing those two overrides selected `delta` and restored color. This establishes the environment cause; the probes did not restart or repair the existing servers.
+
+For the next server restore, derive the launch environment from a verified user terminal and remove those runner overrides when they are absent from that baseline. `NO_COLOR` must be absent, rather than an empty string, to restore Codex's color detection. Preserve intentional user terminal settings and avoid global shell unsets. Verify the resulting live server environment and rendered Codex and delta behavior after restoration.
+
 ## Cause and ownership
 
 The native menu's `Inbox::go_to_selected` sends `FocusSessionPane { session_name, pane_id }` and closes the menu. The server dispatches that request through `Screen::session_pane_command` to `Screen::go_to_session_pane`. Local targets receive a pane-focus operation; every other session receives `ServerInstruction::SwitchSession` for the invoking client.
