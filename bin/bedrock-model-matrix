@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
-# Print an Amazon Bedrock provider/model x region availability matrix for the
-# current credentials, combining three independent views per region:
-#   catalog   bedrock ListFoundationModels (inference types, lifecycle)
-#   profiles  bedrock ListInferenceProfiles (system-defined us./global./eu. ...)
-#   mantle    bedrock-mantle /v1/models (OpenAI/Anthropic-compatible endpoint)
+# Print Amazon Bedrock provider/model x region availability matrices for the
+# current credentials. Bedrock has two independent serving surfaces, each with
+# its own model list, so each gets its own matrix:
+#   runtime  bedrock-runtime (InvokeModel/Converse; e.g. Claude Code), from
+#            ListFoundationModels plus system-defined ListInferenceProfiles
+#   mantle   bedrock-mantle /v1/models (OpenAI/Anthropic-compatible APIs;
+#            e.g. Codex)
 #
-# Usage: bedrock-model-matrix [-p PROFILE] [-r REGIONS] [-f matrix|tsv|json] [-m REGEX]
+# Usage: bedrock-model-matrix [-p PROFILE] [-r REGIONS] [-s runtime|mantle|both]
+#                             [-f matrix|tsv|json] [-m REGEX]
 #   -p  AWS CLI profile to sign requests with (SigV4) instead of the API key
 #   -r  comma-separated regions (default: all commercial Bedrock regions)
+#   -s  matrix surface(s) to print (default: both); tsv/json carry both
 #   -f  output format (default: matrix)
 #   -m  extended regex filter on the model id, e.g. 'sol|sonnet-5'
 #
-# Matrix cell: <runtime>|<mantle>
-#   runtime  od = in-region on-demand; us/global/eu/... = system inference
-#            profiles callable from that region; - = not invocable via runtime
-#   mantle   M = served by bedrock-mantle; m = listed but unavailable; - = absent
-#   .        model not in any view for that region
+# Runtime cell: od = in-region on-demand; us/global/eu/... = system inference
+#   profiles callable from that region; - = in catalog but not invocable
+# Mantle cell:  yes = served; listed = listed but status unavailable
+# Either:       . = not listed for that region
+#
+# A listing is not an entitlement: IAM, model access, and account data-retention
+# settings can still reject a call (OpenAI models reject retention mode "none").
 #
 # Dated catalog IDs (anthropic.claude-haiku-4-5-20251001-v1) and undated Mantle
 # IDs (anthropic.claude-haiku-4-5) are not merged; they appear as separate rows.
@@ -32,13 +38,15 @@ regions="$all_regions"
 format=matrix
 filter=""
 profile=""
+surface=both
 
-usage() { sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
+usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
 
-while getopts "p:r:f:m:h" opt; do
+while getopts "p:r:s:f:m:h" opt; do
 	case "$opt" in
 	p) profile="$OPTARG" ;;
 	r) regions="${OPTARG//,/ }" ;;
+	s) surface="$OPTARG" ;;
 	f) format="$OPTARG" ;;
 	m) filter="$OPTARG" ;;
 	h) usage 0 ;;
@@ -47,6 +55,7 @@ while getopts "p:r:f:m:h" opt; do
 done
 
 case "$format" in matrix | tsv | json) ;; *) usage ;; esac
+case "$surface" in runtime | mantle | both) ;; *) usage ;; esac
 
 for cmd in curl jq column; do
 	command -v "$cmd" >/dev/null || {
@@ -186,6 +195,25 @@ rows=$(for r in $ok_regions; do cat "$work/$r"/*.jsonl 2>/dev/null; done |
 		})
 		| sort_by(.provider, .model)')
 
+# matrix SURFACE -> one model x region table for that serving surface
+matrix() {
+	# shellcheck disable=SC2086 # region list is space-separated by construction
+	jq -r --arg s "$1" --args '
+		def listed: if $s == "mantle" then .mantle != null
+			else .lifecycle != null or (.profiles | length) > 0 end;
+		def cell: if (listed | not) then "."
+			elif $s == "mantle" then (if .mantle == "available" then "yes" else "listed" end)
+			else ([if (.catalog | index("ON_DEMAND")) then "od" else empty end] + .profiles)
+				| if length > 0 then join("+") else "-" end
+			end;
+		$ARGS.positional as $rs
+		| (["provider", "model"] + $rs | @tsv),
+		  (map(select(listed)) | group_by(.model) | sort_by(.[0].provider, .[0].model)[]
+			| (map({key: .region, value: cell}) | from_entries) as $c
+			| [.[0].provider, .[0].model] + [$rs[] | $c[.] // "."] | @tsv)
+	' $ok_regions <<<"$rows" | column -t -s "$(printf '\t')"
+}
+
 case "$format" in
 json)
 	jq . <<<"$rows"
@@ -196,16 +224,14 @@ tsv)
 			(.profiles | join(",")), (.mantle // ""), ((.retention // []) | sort | join(","))] | @tsv)' <<<"$rows"
 	;;
 matrix)
-	# shellcheck disable=SC2086 # region list is space-separated by construction
-	jq -r --args '
-		def cell: (([if (.catalog | index("ON_DEMAND")) then "od" else empty end] + .profiles)
-			| if length > 0 then join("+") else "-" end)
-			+ "|" + (if .mantle == "available" then "M" elif .mantle then "m" else "-" end);
-		$ARGS.positional as $rs
-		| (["provider", "model"] + $rs | @tsv),
-		  (group_by(.model) | sort_by(.[0].provider, .[0].model)[]
-			| (map({key: .region, value: cell}) | from_entries) as $c
-			| [.[0].provider, .[0].model] + [$rs[] | $c[.] // "."] | @tsv)
-	' $ok_regions <<<"$rows" | column -t -s "$(printf '\t')"
+	if [ "$surface" = both ]; then
+		echo "# bedrock-runtime"
+		matrix runtime
+		echo
+		echo "# bedrock-mantle"
+		matrix mantle
+	else
+		matrix "$surface"
+	fi
 	;;
 esac
