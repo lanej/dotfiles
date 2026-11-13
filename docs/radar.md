@@ -103,6 +103,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
 
+### Biome
+
+Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
+
 ***
 
 ## Trial
