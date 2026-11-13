@@ -56,6 +56,7 @@ def configuration(session_keys=False):
         'default_layout "test"', 'show_startup_tips false',
         'show_release_notes false', 'session_serialization false',
         'pane_frames true', 'mouse_mode false',
+        'nested_session_handling "descend"' if session_keys else '',
         'plugins { ' + alias + '\n}', 'load_plugins { ' + load + '\n}',
         'keybinds clear-defaults=true {', block(bindings, r'\blocked\s*\{'),
         'tmux {', *keys, 'bind "Esc" { SwitchToMode "Locked"; }', '}',
@@ -652,13 +653,15 @@ def exercise_session_keys(first, second, home, clients):
     assert old_cwd == str(focused)
     original_panes = {p['id'] for p in first.terminals()}
 
-    def create(client, bystander, label):
+    def create(client, bystander, label, *, ordinary=True):
+        if ordinary:
+            client.settle_ordinary_navigation()
         before = sessions(client)
         # Keep the other client active around the asynchronous private dispatch.
         bystander.send(b'\x15')
         os.write(client.fd, b'\x06C')
         bystander.send(b'\x15')
-        created = client.until('Ctrl-f C immediately creates an unnamed session',
+        created = client.until('Ctrl-f C creates an unnamed session',
                                lambda: sessions(client) - before)
         assert len(created) == 1, created
         name = created.pop()
@@ -729,20 +732,23 @@ def exercise_session_keys(first, second, home, clients):
     assert client_count(original) == 1 and client_count(renamed) == 2
     os.kill(old_pid, 0)
 
-    # Start the actual popup launcher on its own PTY to inspect its client
-    # directly, without adding a second nested terminal decoder. Its layout
-    # overlay is exactly the one used when Ctrl-f P launches it in a float.
-    popup_env = {**first.env, 'ZELLIJ_SESSION_NAME': renamed}
-    popup = Terminal(first.binary, popup_env, 'pop-up',
-                     [str(ROOT / 'bin/zellij-popup')], install_navigation=False)
-    clients.append(popup)
+    # The popup needs a real containing client to complete nesting discovery.
+    popup = first
+    popup.prefix(b'P')
+    popup.until('popup attaches inside its host', lambda: client_count('pop-up') == 1)
+    popup.name = 'pop-up'
+    log = Path(first.env['TMPDIR']) / f'zellij-{os.getuid()}/zellij-log/zellij.log'
+    popup.until('popup nesting handshake completes', lambda:
+                f'nested session handshake complete: this session is nested inside ancestry {json.dumps([renamed])}'
+                in log.read_text())
     popup.until('popup shell starts', lambda: PROMPT.decode().strip() in text(popup))
     if '(y/n)' in text(popup).lower():
         popup.send(b'y')
     grant_bar(popup)
     popup.prefix(b'j')
-    _, popup_pid, _ = shell_probe(popup, 'popup-shell')
-    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup')
+    actual, popup_pid, _ = shell_probe(popup, 'popup-shell')
+    assert actual == 'pop-up', 'Popup keys reached the containing shell'
+    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup', ordinary=False)
     assert client_count('pop-up') == 0
     os.kill(popup_pid, 0)
     popup.prefix(b'P')
@@ -781,7 +787,7 @@ def main():
                'XDG_STATE_HOME': str(work / 'state'), 'XDG_RUNTIME_DIR': str(runtime),
                'ZELLIJ_SOCKET_DIR': str(runtime), 'TMPDIR': str(temporary)}
         workflow.preserve_rust_homes(env)
-        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_CONFIG_DIR',
+        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_NESTED_ATTACH', 'ZELLIJ_CONFIG_DIR',
                     'ZELLIJ_CONFIG_FILE', 'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
             env.pop(key, None)
         build_cache = os.environ.get('ZELLIJ_TEST_BUILD_CACHE')

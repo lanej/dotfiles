@@ -74,7 +74,7 @@ def main():
                "ZELLIJ_PEER_SCAN_INTERVAL_MS": "50",
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow.preserve_rust_homes(env)
-        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
+        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_NESTED_ATTACH", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
@@ -241,6 +241,7 @@ def main():
             other.until("attention key completes without leaving the current session", lambda:
                         "PREFIX" not in top_line(other)
                         and bool(other.action("list-clients", session=second).strip().splitlines()[1:]))
+            other.settle_ordinary_navigation()
             other.action("go-to-next-attention")
             other.until("native triage enters the detached session", lambda:
                         any(f"terminal_{first_pane}" in row for row in
