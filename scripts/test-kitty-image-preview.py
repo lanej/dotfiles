@@ -39,6 +39,16 @@ def until(label, predicate, seconds=15):
     raise AssertionError(f"Timed out waiting for {label}")
 
 
+def configuration():
+    source = (ROOT / "zellij/config.kdl").read_text()
+    binding = re.search(r'(?ms)^        bind "Ctrl Alt F12" \{.*?^        \}', source)
+    if binding is None:
+        raise AssertionError("The production image-hint binding is missing")
+    return ('default_mode "locked"\nshow_startup_tips false\nshow_release_notes false\n'
+            'pane_frame_style "full"\nkeybinds clear-defaults=true {\n shared {\n'
+            + binding.group() + '\n }\n}\n')
+
+
 def exercise(work):
     home = work / "home"
     home.mkdir()
@@ -60,10 +70,12 @@ def exercise(work):
     (work / "bin/zellij-helper").symlink_to(Path(helper).resolve(strict=True))
     subprocess.run(["make", "-s", "kitty-config", "zellij-config"], cwd=ROOT, env=env, check=True)
     config = work / "config.kdl"
-    # Exercise the repository's actual keybindings without needing unrelated status-bar plugins.
-    bindings = (ROOT / "zellij/config.kdl").read_text().split("keybinds clear-defaults=true", 1)[1]
-    config.write_text('default_mode "locked"\nshow_startup_tips false\nshow_release_notes false\n'
-                      'pane_frame_style "full"\nkeybinds clear-defaults=true' + bindings)
+    # Keep the real image-hint binding independent of unrelated runtime/plugin modes.
+    config.write_text(configuration())
+    checked = subprocess.run(["zellij", "--config", str(config), "setup", "--check"],
+                             env=env, capture_output=True, text=True)
+    if checked.returncode:
+        raise AssertionError("Invalid preview configuration:\n" + checked.stdout + checked.stderr)
     fixture = work / "source.py"
     fixture.write_text('''import os, signal, time
 time.sleep(.4)
