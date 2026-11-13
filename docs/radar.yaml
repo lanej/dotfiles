@@ -102,13 +102,13 @@ entries:
     ring: adopt
     icon: claude.svg
     rationale: |-
-      Coding agent used with shared skills, role instructions, and repository guidance.
+      Coding agent used with shared skills, role instructions, and repository guidance. The repository-owned [skill-authoring workflow](skill-maintenance.md) maintains cross-host instructions without an external authoring plugin.
   - id: codex
     name: Codex
     ring: adopt
     icon: codex.svg
     rationale: |-
-      Coding agent used with shared skills, role instructions, and repository guidance.
+      Coding agent used with shared skills, role instructions, and repository guidance. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
   - id: fzf
     name: fzf
     ring: adopt
@@ -175,8 +175,7 @@ entries:
     icon: superpowers.svg
     rationale: |-
       Claude Code workflow plugin. Removed from the shared settings at the owner's
-      request in favor of the remaining official plugins and custom skills. Skill
-      maintenance uses the official Anthropic skill-creator workflow.
+      request in favor of the remaining official plugins and custom skills. Skill maintenance now uses the repository-owned [skill-authoring workflow](skill-maintenance.md), without an external authoring-plugin prerequisite.
   - id: opencode
     name: OpenCode
     ring: hold

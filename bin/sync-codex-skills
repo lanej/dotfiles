@@ -2,10 +2,12 @@
 """Expose dotfiles skills to Codex, including symlinked and lowercase entrypoints."""
 
 import argparse
+import json
 import platform
 from pathlib import Path
 import shutil
 import sys
+import tempfile
 
 
 def remove(path):
@@ -22,7 +24,31 @@ def link(source, destination):
     destination.symlink_to(source, target_is_directory=source.is_dir())
 
 
-def sync(source, home):
+def portable_names(source):
+    manifest = source / "portable-workflows.json"
+    if not manifest.is_file():
+        return set()
+    names = json.loads(manifest.read_text())
+    if (not isinstance(names, list) or not all(isinstance(name, str) for name in names)
+            or len(set(names)) != len(names)):
+        raise ValueError(f"{manifest}: expected a unique list of skill directory names")
+    for name in names:
+        if not name or name in {".", ".."} or Path(name).name != name or not (source / name / "SKILL.md").is_file():
+            raise ValueError(f"{manifest}: missing or invalid portable skill {name!r}")
+    return set(names)
+
+
+def copy_package(source, destination):
+    """Materialize portable resources before replacing a managed installation."""
+    with tempfile.TemporaryDirectory(prefix="workflow-install-", dir=destination.parent.parent) as scratch:
+        staged = Path(scratch) / destination.name
+        shutil.copytree(source, staged, symlinks=False,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        remove(destination)
+        staged.rename(destination)
+
+
+def sync(source, home, only=None):
     cache = home / ".codex/dotfiles-skills"
     destination = home / ".agents/skills/dotfiles"
     if destination.is_symlink():
@@ -34,9 +60,19 @@ def sync(source, home):
         print(f"sync-codex-skills: no skill tree at {source}, skipping", file=sys.stderr)
         return
 
+    portable = portable_names(source)
+    if only is not None:
+        for name in only:
+            if Path(name).name != name or not (source / name / "SKILL.md").is_file():
+                raise ValueError(f"unknown selected skill {name!r}")
+        # Portable workflows share relative resources and install as one group.
+        if only & portable:
+            only = only | portable
     cache.mkdir(parents=True, exist_ok=True)
     shared = set()
     for folder in sorted(source.iterdir()):
+        if only is not None and folder.name not in only:
+            continue
         if folder.is_symlink() and not folder.exists():
             print(f"sync-codex-skills: unavailable source {folder}, skipping", file=sys.stderr)
             continue
@@ -58,7 +94,9 @@ def sync(source, home):
             continue
         entrypoint = entrypoints[0]
         installed = cache / folder.name
-        if entrypoint.name == "SKILL.md" and not entrypoint.is_symlink():
+        if folder.name in portable:
+            copy_package(folder, installed)
+        elif entrypoint.name == "SKILL.md" and not entrypoint.is_symlink():
             link(folder, installed)
         else:
             # Codex follows directory links, but skips file links and requires
@@ -80,7 +118,7 @@ def sync(source, home):
         shared.add(folder.name)
 
     for child in cache.iterdir():
-        if child.name not in shared:
+        if only is None and child.name not in shared:
             remove(child)
     destination.parent.mkdir(parents=True, exist_ok=True)
     link(cache, destination)
@@ -91,10 +129,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "ai/skills")
     parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--only", nargs="+", help="refresh named skills without pruning others; portable workflows refresh together")
     args = parser.parse_args()
     try:
-        sync(args.source.expanduser().absolute(), args.home.expanduser().absolute())
-    except (OSError, ValueError) as error:
+        sync(args.source.expanduser().absolute(), args.home.expanduser().absolute(),
+             set(args.only) if args.only else None)
+    except (OSError, ValueError, shutil.Error) as error:
         parser.exit(1, f"sync-codex-skills: {error}\n")
 
 
