@@ -14,6 +14,8 @@ Maximize understanding per reader effort. Support observed scanning, not a liter
 - Keep consequential caveats beside their claims.
 - Link supporting evidence descriptively.
 
+For decision-maker PDFs, read the [conditional PDF profile](f-pattern-scanning.md#decision-maker-pdf-profile) for main-body budgets, recorded local exceptions, and rendered page review. Other document types retain the general guidance above.
+
 Read [Diagrams and charts](diagrams-and-charts.md) only when creating or including them.
 
 Preview at desktop and mobile widths. Scan the opening, headings, labels, and first words for outcome and action. Check caveats, then read fully.
