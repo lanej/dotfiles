@@ -189,6 +189,9 @@ def main():
         shutil.copyfile(root / "scripts/install-zellij-command-prompt.py", checkout / "scripts/install-zellij-command-prompt.py")
         shutil.copytree(root / "zellij/command-prompt", checkout / "zellij/command-prompt",
                         ignore=shutil.ignore_patterns("target"))
+        shutil.copyfile(root / "scripts/install-zellij-which-key.py", checkout / "scripts/install-zellij-which-key.py")
+        shutil.copytree(root / "zellij/which-key", checkout / "zellij/which-key",
+                        ignore=shutil.ignore_patterns("target"))
         shutil.copyfile(
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",

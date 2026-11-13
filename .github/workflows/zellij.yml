@@ -32,6 +32,7 @@ on:
       - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
+      - 'scripts/install-zellij-which-key.py'
       - 'nvim/lua/pane-navigation.lua'
       - 'nvim/lua/zellij-session.lua'
       - 'scripts/sync-zellij-contract.py'
@@ -94,6 +95,16 @@ permissions:
   contents: read
 
 jobs:
+  which-key-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned WASM toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --target wasm32-wasip1
+      - name: Compile and unit-test WhichKey
+        run: |
+          rustup run 1.95.0 cargo test --manifest-path zellij/which-key/Cargo.toml
+          rustup run 1.95.0 cargo check --target wasm32-wasip1 --manifest-path zellij/which-key/Cargo.toml
   shell-titles:
     strategy:
       fail-fast: false
@@ -160,6 +171,20 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install pane navigation
         run: python3 scripts/install-zellij-navigation.py
+      - name: Build WhichKey WASM plugin
+        run: make zellij-which-key
+      - name: Exercise WhichKey passive overlay
+        env:
+          ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+        run: make test-zellij-which-key
+      - name: Preserve actual WhichKey terminal captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: which-key-${{ matrix.os }}
+          path: .zellij-diagnostics/which-key/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save native Zellij build
         uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.zellij_cache.outputs.cache-hit != 'true' }}

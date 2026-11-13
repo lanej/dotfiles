@@ -1,6 +1,6 @@
 [workspace]
 members = ["cli", "protocol"]
-exclude = ["status", "navigation", "command-prompt"]
+exclude = ["status", "navigation", "command-prompt", "which-key"]
 resolver = "2"
 
 [profile.release]

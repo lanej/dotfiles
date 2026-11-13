@@ -526,6 +526,7 @@ install_zellij_runtime() {
 	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
 	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
 		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1
+		python3 "$dotfiles_root/scripts/install-zellij-which-key.py" || return 1
 	fi
 }
 

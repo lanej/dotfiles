@@ -1,0 +1,13 @@
+[package]
+name = "dotfiles-which-key"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zellij-tile = { git = "https://github.com/lanej/zellij", rev = "7d738ed500f973a45df0f19cc6f5b1fe478bd1f0" }
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true

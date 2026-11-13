@@ -183,7 +183,12 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
-.PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
+.PHONY: zellij-command-prompt zellij-which-key test-zellij-command-prompt test-zellij-session-keys
+zellij-which-key:
+	@python3 "$(DOTFILES)/scripts/install-zellij-which-key.py"
+.PHONY: test-zellij-which-key
+test-zellij-which-key:
+	@python3 "$(DOTFILES)/scripts/test-zellij-which-key.py"
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"
 test-zellij-command-prompt: zellij-helpers
