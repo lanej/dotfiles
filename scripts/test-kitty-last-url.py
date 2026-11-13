@@ -45,7 +45,7 @@ def check_image_hints(root):
         name, options, extra, kwargs = calls[-1]
         if (name != "hints" or options.type != kind or options.alphabet != "asdfghjkl"
                 or options.hints_offset != 0 or not options.ascending or not options.prefix_free or extra
-                or options.hints_text_color != "#A3BE8C"
+                or options.hints_text_color != "#ECEFF4"
                 or options.hints_background_color != "#B48EAD"
                 or options.hints_foreground_color != "#2E3440" or kwargs["window"] is not source):
             raise AssertionError("Native hints did not receive the home-row and Nord style")

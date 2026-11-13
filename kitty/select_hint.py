@@ -145,7 +145,7 @@ def show_hints(boss, window, hint_type="hyperlink", **kwargs):
     overlay = boss.run_kitten_with_metadata(
         "hints", ["--type", hint_type, "--alphabet", "asdfghjkl", "--hints-offset", "0",
                   "--ascending", "--prefix-free", "--hints-foreground-color", "#2E3440",
-                  "--hints-background-color", "#B48EAD", "--hints-text-color", "#A3BE8C"],
+                  "--hints-background-color", "#B48EAD", "--hints-text-color", "#ECEFF4"],
         window=window, **kwargs)
     if overlay is not None:
         overlay.set_dynamic_color(10, "#4C566A")

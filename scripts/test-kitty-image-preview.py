@@ -127,7 +127,7 @@ signal.pause()
         if artifacts and fragment == "screenshots/plan-viewer":
             image = ImageGrab.grab().convert("RGB")
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-            for color in ((163, 190, 140), (180, 142, 173), (76, 86, 106)):
+            for color in ((236, 239, 244), (180, 142, 173), (76, 86, 106)):
                 if colors.get(color, 0) < 5:
                     raise AssertionError(f"Missing rendered hint color {color}")
             destination = Path(artifacts)

@@ -62,4 +62,4 @@ Run `make kitty-config zellij-helpers zellij-config` and reload Kitty with **Cmd
 
 ## Kitty hint selection
 
-Cmd+Shift+U selects hyperlinks and image previews; Ctrl+Shift+E selects visible URLs. Both use `asdfghjkl` labels ordered from top to bottom. Unmatched text dims to Nord gray, link text turns Nord green, and labels use Nord purple with dark lettering. Escape cancels and restores the original pane colors.
+Cmd+Shift+U selects hyperlinks and image previews; Ctrl+Shift+E selects visible URLs. Both use `asdfghjkl` labels ordered from top to bottom. Unmatched text dims to Nord gray, link text turns Nord white, and labels use Nord purple with dark lettering. Escape cancels and restores the original pane colors.
