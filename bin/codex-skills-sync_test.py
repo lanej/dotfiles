@@ -11,7 +11,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_shared_workflows_survive_checkout_removal_and_preserve_local_skills(tmp_path):
+def test_selective_workflow_install_survives_checkout_removal_and_preserves_local_skills(tmp_path):
     source = tmp_path / "checkout/ai/skills"
     source.mkdir(parents=True)
     names = json.loads((ROOT / "ai/skills/portable-workflows.json").read_text())
@@ -33,7 +33,7 @@ def test_shared_workflows_survive_checkout_removal_and_preserve_local_skills(tmp
         "reflection": {"reflection.md": ROOT / "ai/agents/reflection.md"},
     }
     for _ in range(2):
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        subprocess.run(command + ["--only", "shape"], check=True, capture_output=True, text=True)
         for name in names:
             installed = home / ".agents/skills/dotfiles" / name
             assert installed.is_dir() and not installed.is_symlink()

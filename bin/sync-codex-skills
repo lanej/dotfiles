@@ -65,6 +65,9 @@ def sync(source, home, only=None):
         for name in only:
             if Path(name).name != name or not (source / name / "SKILL.md").is_file():
                 raise ValueError(f"unknown selected skill {name!r}")
+        # Portable workflows share relative resources and install as one group.
+        if only & portable:
+            only = only | portable
     cache.mkdir(parents=True, exist_ok=True)
     shared = set()
     for folder in sorted(source.iterdir()):
@@ -126,7 +129,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "ai/skills")
     parser.add_argument("--home", type=Path, default=Path.home())
-    parser.add_argument("--only", nargs="+", help="refresh only named skills without pruning other installed entries")
+    parser.add_argument("--only", nargs="+", help="refresh named skills without pruning others; portable workflows refresh together")
     args = parser.parse_args()
     try:
         sync(args.source.expanduser().absolute(), args.home.expanduser().absolute(),
