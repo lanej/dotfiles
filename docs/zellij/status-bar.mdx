@@ -9,7 +9,7 @@ The session name is at the left of the top bar. The selected tab is bold on purp
 
 Tab positions start at **0**. **Ctrl-f 0** selects the first tab, **Ctrl-f 1** the second, and so on through **Ctrl-f 9**. Use these positions even when a program's title contains another number.
 
-An unnamed tab adopts the oldest tiled terminal pane with a meaningful title. If another pane uses the same title, either pane can keep it alive. Switching focus, running a command, or changing directory leaves the tab name in place. When the last pane that supplied the name closes or leaves the tab, the oldest remaining titled pane supplies the next name. Shell pane titles continue to show the current directory and branch, such as `dotfiles  main`.
+An unnamed tab adopts the oldest tiled terminal pane with a meaningful title. If another pane uses the same title, either pane can keep it alive. Switching focus, running a command, or changing directory leaves the tab name in place. A successful **Ctrl+B** directory jump or **Alt+W** worktree jump updates an automatic tab name to the selected directory and branch. When the last pane that supplied the name closes or leaves the tab, the oldest remaining titled pane supplies the next name. Shell pane titles continue to show the current directory and branch, such as `dotfiles  main`.
 
 To give a tab a lasting name, press **Ctrl-f r**, type a name such as `review`, and press **Enter**. That name stays when you switch programs. **Esc** or **Ctrl-c** cancels the rename.
 

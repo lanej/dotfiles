@@ -176,7 +176,7 @@ fi
             terminal.send(b"\x02")
             terminal.until("Ctrl-B updates the pane after selecting a directory", lambda:
                            prompt_in(original, selection) and terminal.terminals()[0]["title"] == "child  topic"
-                           and title() == "home")
+                           and title() == "child  topic")
             marker = home / "must-not-run"
             buffer = home / "buffer"
             pending = 'touch "$HOME/must-not-run"'
@@ -209,18 +209,25 @@ fi
             terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", shell)
             terminal.until("a new active shell keeps the shared automatic title", lambda:
                            any(p["id"] != original and p["is_focused"] and prompt_in(p["id"], home)
-                               for p in terminal.terminals()) and title() == "home")
+                               for p in terminal.terminals()) and title() == "child  topic")
             proof = home / "inactive-done"
             terminal.action("write", "--pane-id", f"terminal_{original}", "13")
             terminal.until("the inactive shell finishes its directory change", proof.exists)
             assert prompt_in(original, selection.parent)
-            assert title() == "home", "An inactive split stole the tab title"
+            assert title() == "child  topic", "An inactive split stole the tab title"
             terminal.action("rename-tab", "--tab-id", str(tab_id), "Review")
             terminal.send(("cd " + shlex.quote(str(selection)) + "; TITLE_PROOF=" + shlex.quote(str(home / "manual-done")) + "\r").encode())
             terminal.until("the explicitly named tab's shell finishes cd", (home / "manual-done").exists)
             assert title() == "Review", "An automatic title replaced the explicit name"
+            proof = home / "manual-jump-done"
+            terminal.send(("TITLE_PROOF=" + shlex.quote(str(proof)) + "\r").encode())
+            terminal.until("manual-name fixture reaches the prompt", proof.exists)
+            proof.unlink()
+            terminal.send(b"\x02")
+            terminal.until("Ctrl-B preserves the explicitly named tab", proof.exists)
+            assert title() == "Review", "A directory jump replaced the explicit name"
             completed = True
-            print("PASS: installed cd/Ctrl-B hooks update pane directory and branch; "
+            print("PASS: installed Ctrl-B updates automatic tab titles and cd updates pane directory and branch; "
                   "unfinished input survives selection and cancel; tabs retain ownership and preserve explicit names.")
         finally:
             original = sys.exception()
