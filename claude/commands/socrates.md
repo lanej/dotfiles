@@ -21,36 +21,6 @@ tags:
   - dialogue
 ---
 
-# /socrates — Dialogue to an Execution-Ready Plan
+# /socrates
 
-Read `$HOME/.claude/commands/socrates/dialogue.txt` before initializing or resuming.
-It is the canonical procedure for session resolution, evidence and decisions,
-question selection, critique reconciliation, readiness, and legacy sessions.
-Follow it with this command's endpoint below; do not recreate a competing procedure.
-
-## Invocation and endpoint
-
-- A task title in `$ARGUMENTS` initializes a session.
-- Empty `$ARGUMENTS` continues the session selected by the shared resolution procedure.
-- Preserve the existing `.socrates/YYYYMMDD-HHMMSS/` artifacts and per-session pointers.
-
-When the shared readiness gate passes, read `$HOME/.claude/commands/socrates/phases-2-3.txt` and proceed directly into planning. This applies equally to a new specification, a reopened specification, and a migrated legacy session: `Validated` is an intermediate state for this command, not its endpoint. Call `EnterPlanMode` in this turn; do not finish with "ready to plan whenever you want" or ask permission just to draft. Approval of the resulting plan remains separate.
-
-On continuation of a `Planned`, `Executing`, or `Verified` session, retain that state
-unless new evidence requires reopening. Do not repeatedly plan or execute because
-the command was resumed. Follow the user's current request against the saved state.
-
-## Companion files
-
-The shared procedure and `spec-scaffold.tpl` live under
-`$HOME/.claude/commands/socrates/`, linked by `make claude` from the dotfiles repo.
-The planning companion is `phases-2-3.txt` in that same directory.
-If a required companion cannot be read, explain which file is missing and that
-`make claude` restores the link; do not reconstruct its contents from memory.
-
-## Usage
-
-```text
-/socrates "Task title"   # initialize
-/socrates                # continue the bound session, or resolve via the picker
-```
+Read `$HOME/.claude/skills/socrates/SKILL.md` and apply that shared workflow to `$ARGUMENTS` and the current request. Use the resources it routes to; do not recreate the procedure here. If the skill is missing, report the missing path and restore it with `make claude-shared`.

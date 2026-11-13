@@ -1,6 +1,7 @@
 """One detector for exposing shared skills and migrating the Builder package."""
 
 from pathlib import Path
+import json
 import re
 import shutil
 import subprocess
@@ -8,6 +9,58 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_shared_workflows_survive_checkout_removal_and_preserve_local_skills(tmp_path):
+    source = tmp_path / "checkout/ai/skills"
+    source.mkdir(parents=True)
+    names = json.loads((ROOT / "ai/skills/portable-workflows.json").read_text())
+    shutil.copyfile(ROOT / "ai/skills/portable-workflows.json", source / "portable-workflows.json")
+    for name in names:
+        shutil.copytree(ROOT / "ai/skills" / name, source / name)
+    home = tmp_path / "user"
+    local = home / ".agents/skills/personal/SKILL.md"
+    local.parent.mkdir(parents=True)
+    local.write_text("Personal workflow.\n")
+    command = [sys.executable, str(ROOT / "bin/sync-codex-skills"),
+               "--source", str(source), "--home", str(home)]
+    resources = {
+        "socrates": {
+            "dialogue.txt": ROOT / "claude/commands/socrates/dialogue.txt",
+            "spec-scaffold.tpl": ROOT / "claude/commands/socrates/spec-scaffold.tpl",
+            "phases-2-3.txt": ROOT / "claude/commands/socrates/phases-2-3.txt",
+        },
+        "reflection": {"reflection.md": ROOT / "ai/agents/reflection.md"},
+    }
+    for _ in range(2):
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        for name in names:
+            installed = home / ".agents/skills/dotfiles" / name
+            assert installed.is_dir() and not installed.is_symlink()
+            assert (installed / "SKILL.md").read_bytes() == (source / name / "SKILL.md").read_bytes()
+        for name, references in resources.items():
+            installed = home / ".agents/skills/dotfiles" / name
+            entrypoint = installed / "SKILL.md"
+            assert entrypoint.is_file() and not entrypoint.is_symlink()
+            assert entrypoint.read_bytes() == (ROOT / "ai/skills" / name / "SKILL.md").read_bytes()
+            for filename, resource in references.items():
+                assert (installed / "references" / filename).read_bytes() == resource.read_bytes()
+        assert local.read_text() == "Personal workflow.\n"
+    unrelated = home / ".codex/dotfiles-skills/unrelated/SKILL.md"
+    unrelated.parent.mkdir()
+    unrelated.write_text("Keep this installed entry.\n")
+    subprocess.run(command + ["--only", *names], check=True, capture_output=True, text=True)
+    assert unrelated.read_text() == "Keep this installed entry.\n"
+    shutil.rmtree(source.parent.parent)
+    for name in names:
+        installed = home / ".agents/skills/dotfiles" / name
+        for document in installed.rglob("*"):
+            assert not document.is_symlink(), document
+        for target in re.findall(r"\]\(([^)]+)\)", (installed / "SKILL.md").read_text()):
+            if "://" not in target and not target.startswith("#"):
+                assert (installed / target).is_file(), target
+    helper = home / ".agents/skills/dotfiles/handoff/scripts/transcript.py"
+    subprocess.run([sys.executable, str(helper), "--help"], check=True, capture_output=True)
 
 
 def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(tmp_path):
