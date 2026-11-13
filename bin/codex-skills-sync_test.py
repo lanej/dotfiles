@@ -76,6 +76,9 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     source.mkdir(parents=True)
     (source / "SKILL.md").symlink_to(instruction)
     (source / "references").symlink_to(external / "references")
+    obsolete = repo / "ai/skills/paseo-plugin"
+    obsolete.mkdir()
+    (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     builder = repo / "ai/skills/builder"
     shutil.copytree(ROOT / "ai/skills/builder", builder)
     construction = builder / "references/construction.md"
@@ -167,6 +170,9 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert (builder_installed / "scripts/operations.py").read_bytes() == (builder / "scripts/operations.py").read_bytes()
     assert re.search(r"^name: builder$", (builder_installed / "SKILL.md").read_text(), re.M)
     assert local.read_text() == "Local instructions.\n"
+    assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
+    assert not (home / ".claude/skills/paseo-plugin").exists()
+    assert (obsolete / "SKILL.md").read_text() == "Retired instructions.\n"
     package = (home / ".local/share/software-standards/builder").resolve()
     assert builder_installed.resolve() == package
     assert (home / ".claude/skills/builder").resolve() == package
@@ -195,6 +201,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert local.read_text() == "Local instructions.\n"
+    assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
+    assert not (home / ".claude/skills/paseo-plugin").exists()
 
     assert (alias / "references/construction.md").read_text() == construction_text
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()

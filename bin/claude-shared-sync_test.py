@@ -16,6 +16,9 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     skill.mkdir(parents=True)
     instruction = skill / "SKILL.md"
     instruction.write_text("Shared instructions.\n")
+    obsolete = repo / "ai/skills/paseo-plugin"
+    obsolete.mkdir()
+    (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
@@ -61,6 +64,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert not retired.is_symlink()
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
+    assert not (installed_skills / "paseo-plugin").exists()
+    assert (obsolete / "SKILL.md").read_text() == "Retired instructions.\n"
 
     instruction.write_text("Updated shared instructions.\n")
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
@@ -68,3 +73,4 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert alias.readlink() == skill
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
+    assert not (installed_skills / "paseo-plugin").exists()

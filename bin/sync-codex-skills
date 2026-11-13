@@ -71,6 +71,8 @@ def sync(source, home, only=None):
     cache.mkdir(parents=True, exist_ok=True)
     shared = set()
     for folder in sorted(source.iterdir()):
+        if folder.name == "paseo" or folder.name.startswith("paseo-"):
+            continue
         if only is not None and folder.name not in only:
             continue
         if folder.is_symlink() and not folder.exists():

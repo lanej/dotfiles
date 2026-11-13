@@ -35,8 +35,11 @@ def sync(source, home):
         entries = {
             entry.name: entry for entry in root.iterdir()
             if entry.exists() and not (
-                group == "skills" and platform.system() != "Darwin"
-                and entry.name == "problem-definition-contract"
+                group == "skills" and (
+                    entry.name == "paseo" or entry.name.startswith("paseo-")
+                    or platform.system() != "Darwin"
+                    and entry.name == "problem-definition-contract"
+                )
             )
         }
         for installed in destination.iterdir():
