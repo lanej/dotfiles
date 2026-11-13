@@ -5,7 +5,8 @@
 #   profiles  bedrock ListInferenceProfiles (system-defined us./global./eu. ...)
 #   mantle    bedrock-mantle /v1/models (OpenAI/Anthropic-compatible endpoint)
 #
-# Usage: bedrock-model-matrix [-r REGIONS] [-f matrix|tsv|json] [-m REGEX]
+# Usage: bedrock-model-matrix [-p PROFILE] [-r REGIONS] [-f matrix|tsv|json] [-m REGEX]
+#   -p  AWS CLI profile to sign requests with (SigV4) instead of the API key
 #   -r  comma-separated regions (default: all commercial Bedrock regions)
 #   -f  output format (default: matrix)
 #   -m  extended regex filter on the model id, e.g. 'sol|sonnet-5'
@@ -19,7 +20,9 @@
 # Dated catalog IDs (anthropic.claude-haiku-4-5-20251001-v1) and undated Mantle
 # IDs (anthropic.claude-haiku-4-5) are not merged; they appear as separate rows.
 #
-# Auth: AWS_BEARER_TOKEN_BEDROCK (sourced from ~/.config/bedrock/env if unset).
+# Auth: -p PROFILE uses that profile's credentials (log in first, e.g.
+# aws sso login --profile PROFILE); otherwise AWS_BEARER_TOKEN_BEDROCK, sourced
+# from ~/.config/bedrock/env if unset. The two may belong to different accounts.
 # Regions that deny or fail are reported on stderr and omitted from the output.
 
 set -euo pipefail
@@ -28,11 +31,13 @@ all_regions="us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1 ca-west-1 sa-e
 regions="$all_regions"
 format=matrix
 filter=""
+profile=""
 
-usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
+usage() { sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
 
-while getopts "r:f:m:h" opt; do
+while getopts "p:r:f:m:h" opt; do
 	case "$opt" in
+	p) profile="$OPTARG" ;;
 	r) regions="${OPTARG//,/ }" ;;
 	f) format="$OPTARG" ;;
 	m) filter="$OPTARG" ;;
@@ -43,15 +48,6 @@ done
 
 case "$format" in matrix | tsv | json) ;; *) usage ;; esac
 
-if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && [ -f ~/.config/bedrock/env ]; then
-	# shellcheck source=/dev/null
-	. ~/.config/bedrock/env
-fi
-if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ]; then
-	echo "bedrock-model-matrix: AWS_BEARER_TOKEN_BEDROCK not set" >&2
-	exit 1
-fi
-
 for cmd in curl jq column; do
 	command -v "$cmd" >/dev/null || {
 		echo "bedrock-model-matrix: $cmd not found" >&2
@@ -59,13 +55,48 @@ for cmd in curl jq column; do
 	}
 done
 
+if [ -n "$profile" ]; then
+	command -v aws >/dev/null || {
+		echo "bedrock-model-matrix: aws not found (needed for -p)" >&2
+		exit 1
+	}
+	if ! creds=$(aws configure export-credentials --profile "$profile" --format env 2>&1); then
+		echo "bedrock-model-matrix: $profile: ${creds##*$'\n'}" >&2
+		exit 1
+	fi
+	eval "$creds"
+	unset creds
+else
+	if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && [ -f ~/.config/bedrock/env ]; then
+		# shellcheck source=/dev/null
+		. ~/.config/bedrock/env
+	fi
+	if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ]; then
+		echo "bedrock-model-matrix: AWS_BEARER_TOKEN_BEDROCK not set (or pass -p PROFILE)" >&2
+		exit 1
+	fi
+fi
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# get URL OUTFILE -> prints HTTP status (000 on transport failure)
+# auth_config REGION SERVICE -> curl config lines on stdout, so credentials
+# stay out of the process argument list
+auth_config() {
+	if [ -n "$profile" ]; then
+		printf 'aws-sigv4 = "aws:amz:%s:%s"\n' "$1" "$2"
+		printf 'user = "%s:%s"\n' "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+		[ -n "${AWS_SESSION_TOKEN:-}" ] && printf 'header = "x-amz-security-token: %s"\n' "$AWS_SESSION_TOKEN"
+	else
+		printf 'header = "Authorization: Bearer %s"\n' "$AWS_BEARER_TOKEN_BEDROCK"
+	fi
+	return 0
+}
+
+# get URL OUTFILE REGION SERVICE -> prints HTTP status (000 on transport failure)
 get() {
-	curl -sS --connect-timeout 5 --max-time 30 -o "$2" -w '%{http_code}' \
-		-H "Authorization: Bearer $AWS_BEARER_TOKEN_BEDROCK" "$1" 2>/dev/null || true
+	auth_config "$3" "$4" | curl -sS --connect-timeout 5 --max-time 30 -o "$2" -w '%{http_code}' \
+		-K - "$1" 2>/dev/null || true
 }
 
 # fetch_region REGION -> writes $work/REGION.{catalog,profiles,mantle}.jsonl and REGION.status
@@ -73,7 +104,7 @@ fetch_region() {
 	local r=$1 d="$work/$1" code tok q
 	mkdir -p "$d"
 
-	code=$(get "https://bedrock.$r.amazonaws.com/foundation-models" "$d/fm.json")
+	code=$(get "https://bedrock.$r.amazonaws.com/foundation-models" "$d/fm.json" "$r" bedrock)
 	if [ "$code" != 200 ]; then
 		echo "$code $(jq -r '.Message // .message // empty' "$d/fm.json" 2>/dev/null | tr '\n' ' ')" >"$d/status"
 		return 0
@@ -86,7 +117,7 @@ fetch_region() {
 	while :; do
 		q="maxResults=1000"
 		[ -n "$tok" ] && q="$q&nextToken=$(jq -rn --arg t "$tok" '$t | @uri')"
-		code=$(get "https://bedrock.$r.amazonaws.com/inference-profiles?$q" "$d/ip.json")
+		code=$(get "https://bedrock.$r.amazonaws.com/inference-profiles?$q" "$d/ip.json" "$r" bedrock)
 		[ "$code" = 200 ] || break
 		jq -c --arg r "$r" '.inferenceProfileSummaries[] | select(.type == "SYSTEM_DEFINED" and .status == "ACTIVE")
 			| .inferenceProfileId | capture("^(?<p>[a-z-]+)\\.(?<m>.+)$")
@@ -95,7 +126,7 @@ fetch_region() {
 		[ -n "$tok" ] || break
 	done
 
-	code=$(get "https://bedrock-mantle.$r.api.aws/v1/models" "$d/mantle.json")
+	code=$(get "https://bedrock-mantle.$r.api.aws/v1/models" "$d/mantle.json" "$r" bedrock-mantle)
 	if [ "$code" = 200 ]; then
 		jq -c --arg r "$r" '.data[] | {region: $r, model: .id, mantle: .status,
 			retention: .data_retention.allowed_modes}' "$d/mantle.json" >"$d/mantle.jsonl"
