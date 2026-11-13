@@ -55,19 +55,33 @@ def main():
     print(subprocess.check_output(["mergiraf", "--version"], text=True).strip())
     with tempfile.TemporaryDirectory(prefix="dotfiles-mergiraf-") as temporary:
         scratch = Path(temporary)
+        home = scratch / "home"
+        home.mkdir()
         env = {key: value for key, value in os.environ.items()
                if not key.startswith("GIT_") and key != "mergiraf"}
-        env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
+        env.update(HOME=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
                    XDG_CACHE_HOME=str(scratch / "cache"))
+        setup = ["make", "--no-print-directory", "mergiraf-config", f"HOME={home}"]
+        subprocess.run(setup, cwd=ROOT, env=env, check=True, capture_output=True, timeout=30)
+        attributes = home / ".gitattributes"
+        installed = attributes.read_text()
+        subprocess.run(setup, cwd=ROOT, env=env, check=True, capture_output=True, timeout=30)
+        assert attributes.read_text() == installed
+        assert (ROOT / "git/gitattributes").read_text() in installed
+        configured_attributes = subprocess.check_output(
+            ["git", "config", "--file", str(ROOT / "git/gitconfig"),
+             "--get", "core.attributesfile"], text=True,
+        ).strip()
         for index, (title, name, base, ours, theirs, expected, plain_status,
                     structured_status) in enumerate(CASES):
             repo = scratch / str(index)
             repo.mkdir()
+            attributes_file = os.devnull
 
             def git(*args, status=0):
                 result = subprocess.run(
                     ["git", "-c", "core.hooksPath=" + os.devnull,
-                     "-c", "core.attributesFile=" + os.devnull,
+                     "-c", "core.attributesFile=" + attributes_file,
                      "-c", "commit.gpgsign=false", *args],
                     cwd=repo, env=env, capture_output=True, text=True, timeout=30,
                 )
@@ -94,7 +108,8 @@ def main():
             git("merge", "--no-commit", "--no-ff", "theirs", status=plain_status)
             plain = path.read_text()
             git("merge", "--abort")
-            (repo / ".git/info/attributes").write_text(f"{name} merge=mergiraf\n")
+            attributes_file = configured_attributes
+            assert git("check-attr", "merge", "--", name).stdout.strip().endswith(": mergiraf")
             git("merge", "--no-commit", "--no-ff", "theirs", status=structured_status)
             structured = path.read_text()
             if expected is not None:
@@ -113,6 +128,14 @@ def main():
             git("merge", "--no-commit", "--no-ff", "theirs", status=plain_status)
             assert path.read_text() == plain, f"{title}: escape hatch changed Git's result"
             env.pop("mergiraf")
+            git("merge", "--abort")
+            (repo / ".git/info/attributes").write_text(f"{name} merge=text\n")
+            assert git("check-attr", "merge", "--", name).stdout.strip().endswith(": text")
+            git("merge", "--no-commit", "--no-ff", "theirs", status=plain_status)
+            assert path.read_text() == plain, f"{title}: repository override changed Git's result"
+
+        assert git("check-attr", "merge", "--", "notes.md").stdout.strip().endswith(": mergiraf")
+        assert git("check-attr", "merge", "--", "config.zsh").stdout.strip().endswith(": unspecified")
 
 
 if __name__ == "__main__":

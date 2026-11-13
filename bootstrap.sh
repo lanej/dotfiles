@@ -732,8 +732,18 @@ install_pi_from_release() {
 }
 
 install_stylua_from_release() {
-	install_package_version node 24
-	npm install -g "@johnnymorganz/stylua-bin@$1"
+	if [ "$os" = linux ]; then
+		# Release binaries require newer glibc than some supported development VMs.
+		cargo install stylua --locked --version "$1" --features lua54,luajit,luau || return 1
+		# An older npm wrapper on NVM's PATH can shadow the source-built executable.
+		if npm list -g --depth=0 @johnnymorganz/stylua-bin >/dev/null 2>&1; then
+			npm uninstall -g @johnnymorganz/stylua-bin || return 1
+		fi
+		hash -r
+	else
+		install_package_version node 24 || return 1
+		npm install -g "@johnnymorganz/stylua-bin@$1"
+	fi
 }
 
 install_luacheck_package() {
@@ -743,8 +753,12 @@ install_luacheck_package() {
 		sudo apt-get install -y lua-check
 	elif command -v pacman >/dev/null; then
 		sudo pacman -S --noconfirm luacheck
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y luarocks lua-devel || return 1
+		luarocks install --tree "$HOME/.local" luacheck || return 1
+		"$HOME/.local/bin/luacheck" --version
 	else
-		printf 'Install Luacheck with LuaRocks, then rerun make install; automatic installation supports Homebrew, APT, and Pacman.\n' >&2
+		printf 'Install Luacheck with LuaRocks, then rerun make install; automatic installation supports Homebrew, APT, Pacman, and DNF.\n' >&2
 		return 1
 	fi
 }
@@ -1087,11 +1101,37 @@ setup_neovim() (
 		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
 )
 
+configure_python_ca_trust() {
+	[ "$os" = linux ] || return 0
+	# Preserve explicitly selected trust stores, including directory-only setups.
+	[ "${SSL_CERT_FILE+x}" != x ] && [ "${SSL_CERT_DIR+x}" != x ] || return 0
+	local certificate_file
+	certificate_file=$(python3 - <<'PY'
+from pathlib import Path
+import ssl
+
+if ssl.get_default_verify_paths().cafile is None:
+    for candidate in (
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/ssl/ca-bundle.pem",
+    ):
+        if Path(candidate).is_file():
+            print(candidate)
+            break
+PY
+	) || return 1
+	if [ -n "$certificate_file" ]; then
+		export SSL_CERT_FILE="$certificate_file"
+	fi
+}
+
 install_config_runtime() {
 	# The configuration parser needs Python 3.11+ even on older system images.
 	install_package_version uv 0.12.11 || return 1
 	uv python install 3.12 --default || return 1
 	hash -r
+	configure_python_ca_trust
 }
 
 install_rust_runtime() {
@@ -1140,12 +1180,21 @@ install_dependencies() {
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
+			worktree-manager)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-manager" "$version" || return 1
+				;;
+			worktree-policy)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-policy" "$version" || return 1
+				;;
 			git-worktree-hooks)
 				local git_archive_args=()
 				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
 					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
 				fi
 				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				;;
+			octo-manager)
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
 				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
@@ -1178,6 +1227,7 @@ run_configured_hooks() {
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
+			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;

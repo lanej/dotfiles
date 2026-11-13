@@ -16,8 +16,8 @@ def main():
         executables = temporary / "bin"
         home.mkdir()
         executables.mkdir()
-        for name in ("awk", "cat", "chmod", "date", "grep", "head", "mkdir",
-                     "mktemp", "mv", "pwd", "rm", "sed", "sort", "uname"):
+        for name in ("awk", "basename", "cat", "chmod", "date", "grep", "head", "mkdir",
+                     "mktemp", "mv", "pwd", "rm", "rmdir", "sed", "sort", "uname"):
             (executables / name).symlink_to(shutil.which(name))
         for name in ("zshrc", "zshenv", "zlogin", "zlogout"):
             (home / ("." + name)).symlink_to(ROOT / "zsh" / name)
@@ -64,7 +64,7 @@ print -r -- READY
         fzf = executables / "fzf"
         fzf.write_text('''#!/bin/sh
 [ "$*" = --zsh ] || exit 1
-printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults() { print -r -- "$*"; }'
+printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' 'fzf-cd-widget() { :; }' 'zle -N fzf-cd-widget' '__fzf_defaults() { print -r -- "$*"; }'
 ''')
         fzf.chmod(0o755)
         fd = executables / "fd"
@@ -73,11 +73,43 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
         enabled = subprocess.run([*shell, probe + '''
 (( $+widgets[fzf-file-widget-toggle] )) || exit 14
 [[ $(bindkey '^G') == *fzf-completion* ]] || exit 15
+[[ $(bindkey '^[w') == *zworktree* ]] || exit 16
+[[ $(bindkey '^B') == *zzz* ]] || exit 17
+TMUX=fixture
+source "$HOME/.local/share/zsh/tmux-auto-title.zsh"
+mkdir -p "$HOME/selected/next"
+_fixture_title=zsh
+_fixture_auto=""
+tmux() {
+    case "$*" in
+        *'#{window_index}'*) print 0 ;;
+        *'#{pane_active}'*) print 1 ;;
+        *'#{window_name}'*) print -r -- "$_fixture_title" ;;
+        *'@auto_titled_name') print -r -- "$_fixture_auto" ;;
+        rename-window*) _fixture_title="$4" ;;
+        set-option*) _fixture_auto="$4" ;;
+    esac
+}
+zle() { :; }
+zz() { builtin cd -- "$HOME/selected"; }
+_tmux_last_cmd=vim
+zzz || exit 18
+[[ $_fixture_title == selected ]] || exit 19
+_fixture_title=review
+zz() { builtin cd -- "$HOME/selected/next"; }
+zzz || exit 20
+[[ $_fixture_title == review ]] || exit 21
+_tmux_last_cmd=vim
+zz() { return 130; }
+zzz
+[[ $? == 130 && $_tmux_last_cmd == vim && $_fixture_title == review ]] || exit 22
 '''], cwd=home, env=env, capture_output=True, text=True, timeout=15)
         assert enabled.returncode == 0, enabled.stderr
         assert enabled.stdout == "READY\n" and enabled.stderr == "", enabled
         assert (home / ".zsh/cache/fzf-init.zsh").is_file()
-        print("PASS: partial zsh setup starts silently with a working prompt and native history; installed fzf activates its widgets.")
+        print("PASS: partial zsh setup starts silently; installed fzf activates its widgets; "
+              "Ctrl-B updates automatic tmux titles after Vim and preserves manual names and cancellation "
+              "(controlled tmux and ZLE boundaries).")
 
 
 if __name__ == "__main__":

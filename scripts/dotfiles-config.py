@@ -38,8 +38,8 @@ SETTINGS = {
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
 TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
-INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "treehouse", "firstmate", "macos-window-tool", "npm"}
-HOOKS = {"github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
+INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
+HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {
         "type": bool,
@@ -82,7 +82,7 @@ def tool_plan(values, origins, specified, host):
             if any(hook not in HOOKS for hook in recipe.get(phase, [])):
                 raise ValueError(f"{TOOL_FILE}: unknown {phase} hook for {name}")
         visiting.append(name)
-        dependencies = recipe.get("requires", [])
+        dependencies = [*recipe.get("requires", []), *recipe.get(f"requires_{host}", [])]
         if name == "zellij" and values["zellij.source"] == "release":
             dependencies = []
         for dependency in dependencies:

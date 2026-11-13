@@ -190,53 +190,15 @@ i() {
 }
 
 zz() {
-    # Prefer skim (sk) if available; fall back to fzf
-    if command -v sk >/dev/null 2>&1; then
-        # Use skim with preview, sorted by path length (shortest first)
-        cd "$(_z -l 2>&1 \
-            | sed 's/^[0-9,.]* *//' \
-            | awk '{ print length($0), $0 }' \
-            | sort -n \
-            | cut -d' ' -f2- \
-            | sk --ansi --reverse \
-                 --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                 --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
-                 --preview-window "$(fzf_preview_window)")" || return
-    else
-        # Use fzf with length-based sorting and progressive filtering
-        # Ctrl-Space: Narrow down - select all visible items and search within them
-        # shellcheck disable=SC2154
-        cd "$(_z -l 2>&1 \
-            | sed 's/^[0-9,.]* *//' \
-            | awk '{ print length($0), $0 }' \
-            | sort -n \
-            | cut -d' ' -f2- \
-            | fzf --reverse --multi \
-                  --tiebreak=length,begin \
-                  --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                  --bind 'ctrl-space:select-all+accept' \
-                  --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
-                  --preview-window "$(fzf_preview_window)" \
-                  --header='Ctrl-Space: narrow to filtered results' \
-                  -q "${_last_z_args}" \
-            | {
-                # Read all selected items into array
-                mapfile -t items
-                if [ ${#items[@]} -eq 1 ]; then
-                    # Only one item - use it directly
-                    echo "${items[0]}"
-                elif [ ${#items[@]} -gt 1 ]; then
-                    # Multiple items - run fzf again on narrowed results
-                    printf '%s\n' "${items[@]}" | fzf --reverse \
-                        --tiebreak=length,begin \
-                        --bind 'ctrl-j:preview-down,ctrl-k:preview-up' \
-                        --bind 'ctrl-space:select-all+accept' \
-                        --preview '"$HOME/.files/bin/fzf-path-preview" {}' \
-                        --preview-window "$(fzf_preview_window)" \
-                        --header='Ctrl-Space: narrow again | Enter: select'
-                fi
-            })" || return
-    fi
+    local selected
+    selected=$(_z -l 2>&1 | "$HOME/.files/bin/directory-picker" --history "$@") || return
+    [ -n "$selected" ] && builtin cd -- "$selected"
+}
+
+zw() {
+    local selected
+    selected=$("$HOME/.files/bin/directory-picker" --worktrees "$@") || return
+    [ -n "$selected" ] && builtin cd -- "$selected"
 }
 
 gem_releases() {

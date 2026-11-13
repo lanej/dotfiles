@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Accept navigation and annotations through real Neovim and locked plugins.
+"""Accept Neovim navigation, annotations, and changed-file previews with locked plugins.
 
 Run: uv run --no-project scripts/test-nvim-navigation.py
+Run one feature: uv run --no-project scripts/test-nvim-navigation.py --check changed-files
 Requires Neovim 0.12+, Universal Ctags, git, cc, fzf 0.59+, rg, pgrep, and network
-access to public GitHub repositories. LSP replies are fixtures; cloud tools,
+access to public GitHub repositories. Changed files needs only Neovim, git, fzf,
+and pgrep. LSP replies are fixtures; cloud tools,
 credentials, user Neovim configuration, and installed plugins are not used.
 """
 
+import argparse
 from contextlib import contextmanager
 import json
 import os
@@ -55,7 +58,15 @@ def navigation_workspace():
 
 
 def main():
-    for executable in ("nvim", "git", "cc", "fzf", "rg", "pgrep"):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", choices=("navigation", "annotations", "changed-files"),
+                        help="Run only this feature's acceptance check")
+    args = parser.parse_args()
+    checks = (args.check,) if args.check else ("navigation", "annotations", "changed-files")
+    only_changed_files = checks == ("changed-files",)
+    executables = ("nvim", "git", "fzf", "pgrep") if only_changed_files else (
+        "nvim", "git", "cc", "fzf", "rg", "pgrep")
+    for executable in executables:
         if not shutil.which(executable):
             raise SystemExit(f"Install {executable} and add it to PATH before running acceptance.")
     lock = json.loads((ROOT / "nvim/lazy-lock.json").read_text())
@@ -78,33 +89,39 @@ def main():
         env["NVIM_TEST_PLUGIN_ROOT"] = str(plugins)
         env["NVIM_TEST_SITE"] = str(site)
         env.pop("GUTENTAGS_RUNTIME", None)
-        for name, repository in (
-            ("fzf-lua", "ibhagwan/fzf-lua"),
-            ("nvim-treesitter", "nvim-treesitter/nvim-treesitter"),
-            ("vim-gutentags", "ludovicchabant/vim-gutentags"),
-            ("todo-comments.nvim", "folke/todo-comments.nvim"),
-            ("plenary.nvim", "nvim-lua/plenary.nvim"),
-        ):
+        dependencies = [("fzf-lua", "ibhagwan/fzf-lua")]
+        if "changed-files" in checks:
+            dependencies.append(("gitsigns.nvim", "lewis6991/gitsigns.nvim"))
+        if not only_changed_files:
+            dependencies.extend((
+                ("nvim-treesitter", "nvim-treesitter/nvim-treesitter"),
+                ("vim-gutentags", "ludovicchabant/vim-gutentags"),
+                ("todo-comments.nvim", "folke/todo-comments.nvim"),
+                ("plenary.nvim", "nvim-lua/plenary.nvim"),
+            ))
+        for name, repository in dependencies:
             checkout(f"https://github.com/{repository}.git", lock[name]["commit"], plugins / name, env)
-        # Use the grammar revision selected by the locked Tree-sitter plugin.
-        info = run([
-            "nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n",
-            "+lua local parsers = dofile(vim.env.NVIM_TEST_PLUGIN_ROOT .. '/nvim-treesitter/lua/nvim-treesitter/parsers.lua'); io.write(vim.json.encode(parsers.lua.install_info))",
-            "+qa!",
-        ], env=env, capture_output=True, text=True)
-        grammar = json.loads(info.stdout)
-        source = work / "lua-grammar"
-        checkout(grammar["url"], grammar["revision"], source, env)
-        parser = site / "parser/lua.so"
-        parser.parent.mkdir(parents=True)
-        sources = [source / "src/parser.c"]
-        if (source / "src/scanner.c").exists():
-            sources.append(source / "src/scanner.c")
-        run(["cc", "-shared", "-fPIC", "-O2", "-I", str(source / "src"),
-             *map(str, sources), "-o", str(parser)])
-        print("Running isolated navigation and annotations acceptance with locked plugins", flush=True)
-        run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/navigation.lua"], env=env)
-        run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/annotations.lua"], env=env)
+        if not only_changed_files:
+            # Use the grammar revision selected by the locked Tree-sitter plugin.
+            info = run([
+                "nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n",
+                "+lua local parsers = dofile(vim.env.NVIM_TEST_PLUGIN_ROOT .. '/nvim-treesitter/lua/nvim-treesitter/parsers.lua'); io.write(vim.json.encode(parsers.lua.install_info))",
+                "+qa!",
+            ], env=env, capture_output=True, text=True)
+            grammar = json.loads(info.stdout)
+            source = work / "lua-grammar"
+            checkout(grammar["url"], grammar["revision"], source, env)
+            grammar_parser = site / "parser/lua.so"
+            grammar_parser.parent.mkdir(parents=True)
+            sources = [source / "src/parser.c"]
+            if (source / "src/scanner.c").exists():
+                sources.append(source / "src/scanner.c")
+            run(["cc", "-shared", "-fPIC", "-O2", "-I", str(source / "src"),
+                 *map(str, sources), "-o", str(grammar_parser)])
+        for check in checks:
+            print(f"Running isolated {check} acceptance with locked plugins", flush=True)
+            run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l",
+                 f"nvim/tests/{check}.lua"], env=env)
 
 
 if __name__ == "__main__":

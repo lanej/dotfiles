@@ -6,7 +6,7 @@ if [ "$#" -ne 0 ]; then
     exit 2
 fi
 
-zellij_revision=1fb8a39f473849e9aa2268cef7386465e45d0b3c
+zellij_revision=835362e1bbae3510a78115cba321710318d48e1f
 zellij_toolchain=1.95.0
 
 rustup toolchain install "$zellij_toolchain" --profile minimal

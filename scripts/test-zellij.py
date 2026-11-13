@@ -633,8 +633,10 @@ def check_move_all_picker(terminal, home, clients, source_id):
             f"one bystander must own terminal_{bystander}.\nClients:\n{before_clients}\n{diagnostics}")
     # Lose the native mutation reply after the real transfer completes, then
     # verify that the picker reconciles its status instead of replaying it.
+    import hashlib
     import shlex
     import socket
+    import sqlite3
     import threading
     from zellij_ipc_fixture import fields
 
@@ -646,6 +648,18 @@ def check_move_all_picker(terminal, home, clients, source_id):
     proxy_root = Path(proxy_files.name)
     proxy_socket = proxy_root / "contract_version_1" / native_socket.name
     proxy_socket.parent.mkdir()
+    # The proxy has its own socket namespace, so discovery needs its matching index.
+    check = subprocess.run([terminal.binary, "setup", "--check"], env=terminal.env,
+                           check=True, capture_output=True, text=True)
+    cache = Path(next(line.removeprefix("[CACHE DIR]: ")
+                      for line in check.stdout.splitlines() if line.startswith("[CACHE DIR]: "))) / "contract_version_1"
+    def index_for(namespace):
+        digest = hashlib.sha256(os.fsencode(namespace)).hexdigest()[:12]
+        return cache / f"session_index-{digest}.sqlite"
+    proxy_index = index_for(proxy_socket.parent)
+    with sqlite3.connect(f"file:{index_for(native_socket.parent)}?mode=ro", uri=True) as source:
+        with sqlite3.connect(proxy_index) as destination:
+            source.backup(destination)
     listener = socket.socket(socket.AF_UNIX)
     listener.bind(str(proxy_socket))
     listener.listen()
@@ -746,6 +760,7 @@ def check_move_all_picker(terminal, home, clients, source_id):
         for connection in connections:
             connection.join(timeout=7)
         proxy_files.cleanup()
+        proxy_index.unlink()
     assert not server.is_alive() and all(not thread.is_alive() for thread in connections)
     assert not errors, errors
     assert transport.count("move") == 1 and "status" in transport, transport

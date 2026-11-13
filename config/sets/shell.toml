@@ -1,10 +1,12 @@
 [tools]
 zsh = true
 fzf = true
+directory-picker = true
 starship = true
 atuin = true
 skim = true
 git-delta = true
+mergiraf = true
 glow = true
 bat = true
 fd = true

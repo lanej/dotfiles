@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 lane-zellij-protocol = { path = "../protocol" }
-zellij-tile = { git = "https://github.com/zellij-org/zellij", rev = "bf517077c848d91f75091f66d1996cfeb84f4732" }
+zellij-tile = { git = "https://github.com/lanej/zellij", rev = "6647ab291f68c5154dfc4bcceab07b659a2d0efd" }
 serde_json = "1"
 unicode-width = "0.2"
 

@@ -68,6 +68,8 @@ test-dotfiles-config-editor:
 base: config-init
 base: SELECTED_TARGETS = $(BASE_TARGETS)
 configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+configure: export DOTFILES_WORKTREE_POLICY_ENABLED = $(if $(filter worktree-policy,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
+configure: export DOTFILES_WORKTREE_MANAGER_ENABLED = $(if $(filter worktree-manager,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
 base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)
@@ -195,7 +197,7 @@ test-zellij-command-prompt: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
 test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-status
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-pane test-zellij-status
 zellij-helpers:
 	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
 test-zellij-helpers: zellij-helpers
@@ -204,6 +206,8 @@ test-zellij-helpers: zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
 	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
+test-zellij-pane: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
@@ -226,6 +230,8 @@ X:
 ruby:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 git:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+mergiraf-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 gpg:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -273,11 +279,17 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
-.PHONY: test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
-test-git-worktree-policy:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
-test-treehouse-worktree-policy:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+.PHONY: worktree-policy-native test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
+worktree-policy-native:
+	@sh "$(DOTFILES)/scripts/build-worktree-policy.sh" "$(DOTFILES)/tools/worktree-policy/target"
+
+test-git-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
+test-treehouse-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+.PHONY: test-worktree-manager
+test-worktree-manager:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-worktree-manager.py" --binary "$(WORKTREE_MANAGER_BINARY)" --git "$(GIT_WORKTREE_HOOKS_GIT)"
 test-install-git-worktree-hooks:
 	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
@@ -304,7 +316,11 @@ codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 # The codex aggregate runs this after its other hook installers finish.
-codex codex-worktree-hook:
+codex:
+	$(call require-command,$(UV))
+	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
+
+codex-worktree-hook:
 	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
 
@@ -408,6 +424,20 @@ test-yabai-browser-focus:
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
+.PHONY: keybindings check-keybindings generate-keybindings test-keybindings
+keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" list
+
+check-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
+generate-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" generate
+
+test-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-keybindings.py"
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
 .PHONY: test-kitty-tab-titles
 test-kitty-tab-titles: zellij-helpers
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-tab-titles.py', run_name='__main__')"
@@ -452,6 +482,7 @@ test-zellij-claude-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-shell-titles
 test-zellij-shell-titles: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation: zellij-helpers
@@ -478,6 +509,15 @@ test-zellij-tab-labels: zellij-helpers
 
 test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
+
+.PHONY: directory-picker
+directory-picker:
+	@mkdir -p "$(HOME)/.local/libexec/dotfiles"
+	@$(GO) -C "$(DOTFILES)/tools/directory-picker" build -mod=readonly -trimpath -o "$(HOME)/.local/libexec/dotfiles/directory-picker-ui" .
+
+.PHONY: test-directory-picker
+test-directory-picker:
+	@python3 "$(DOTFILES)/scripts/test-directory-picker.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
@@ -545,3 +585,20 @@ test-pi-resources:
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: codex-octo-hook test-codex-octo-hook
+codex-octo-hook:
+	@python3 "$(DOTFILES)/bin/codex-octo-submit" --install
+
+test-codex-octo-hook: FORCE
+	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
+
+.PHONY: test-octo-manager-install
+test-octo-manager-install:
+	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"
+
+.PHONY: octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-pull octo-manager-start octo-manager-restart
+octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-start octo-manager-restart:
+	@python3 "$(DOTFILES)/scripts/install-octo-manager.py" "$(patsubst octo-manager-%,%,$@)" --home "$(HOME)"
+
+octo-manager-pull: octo-manager-pull-latest

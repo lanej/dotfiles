@@ -22,10 +22,12 @@
               "firstmate-mobile",
               "linux",
               "macos",
+              "octo-manager",
               "personal",
               "shell",
               "terminal",
-              "workstation"
+              "workstation",
+              "worktrees"
             ]
           },
           {
@@ -90,6 +92,18 @@
           "type": "boolean",
           "description": "Enable the git bootstrap recipe."
         },
+        "worktree-manager": {
+          "type": "boolean",
+          "description": "Opt-in standalone worktree CLI with task protection, global tracking and safe pruning."
+        },
+        "lsof": {
+          "type": "boolean",
+          "description": "Enable the lsof bootstrap recipe."
+        },
+        "worktree-policy": {
+          "type": "boolean",
+          "description": "Native global worktree inventory and optional admission budgets."
+        },
         "git-worktree-hooks": {
           "type": "boolean",
           "description": "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
@@ -118,6 +132,10 @@
           "type": "boolean",
           "description": "Enable the fzf bootstrap recipe."
         },
+        "directory-picker": {
+          "type": "boolean",
+          "description": "Build the Charmed directory and worktree picker for zz and zw."
+        },
         "starship": {
           "type": "boolean",
           "description": "Enable the starship bootstrap recipe."
@@ -136,7 +154,7 @@
         },
         "mergiraf": {
           "type": "boolean",
-          "description": "Install syntax-aware merging; enable the driver per repository."
+          "description": "Install and activate syntax-aware merging for supported file types."
         },
         "glow": {
           "type": "boolean",
@@ -293,6 +311,10 @@
         "codex": {
           "type": "boolean",
           "description": "Enable the codex bootstrap recipe."
+        },
+        "octo-manager": {
+          "type": "boolean",
+          "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
         },
         "treehouse": {
           "type": "boolean",

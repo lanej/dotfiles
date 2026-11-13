@@ -190,7 +190,43 @@ case "$target" in
         ln -fs "${dotfiles}/ruby/gemrc" "${setup_home}/.gemrc"
         ln -fs "${dotfiles}/ruby/rspec" "${setup_home}/.rspec"
         ;;
+    mergiraf-config)
+        check_command "mergiraf"
+        attributes_dir="$setup_home/.config/dotfiles/mergiraf"
+        mkdir -p "$attributes_dir"
+        attributes_stage=$(mktemp "$attributes_dir/attributes.XXXXXX")
+        trap 'rm -f "$attributes_stage"' EXIT
+        cat "$dotfiles/git/gitattributes" > "$attributes_stage"
+        printf '\n' >> "$attributes_stage"
+        mergiraf languages --gitattributes >> "$attributes_stage"
+        mv "$attributes_stage" "$attributes_dir/attributes"
+        ln -fs "$attributes_dir/attributes" "$setup_home/.gitattributes"
+        ;;
     git)
+        if [[ -n ${DOTFILES_WORKTREE_POLICY_ENABLED:-} || -n ${DOTFILES_WORKTREE_MANAGER_ENABLED:-} ]]; then
+            for selection in "${DOTFILES_WORKTREE_POLICY_ENABLED:-false}" "${DOTFILES_WORKTREE_MANAGER_ENABLED:-false}"; do
+                case "$selection" in true|false) ;; *) exit 1 ;; esac
+            done
+            policy_enabled=false policy_provider=legacy
+            if [[ ${DOTFILES_WORKTREE_MANAGER_ENABLED:-false} == true ]]; then
+                policy_enabled=true policy_provider=worktree-manager
+                manager_config="${XDG_CONFIG_HOME:-$setup_home/.config}/worktree-manager/config.json"
+                if [[ ! -e "$manager_config" && ! -L "$manager_config" ]]; then
+                    mkdir -p "${manager_config%/*}"
+                    cp "$dotfiles/worktree-manager/config.json" "$manager_config"
+                fi
+            elif [[ ${DOTFILES_WORKTREE_POLICY_ENABLED:-false} == true ]]; then
+                policy_enabled=true
+            fi
+            policy_config="$setup_home/.config/dotfiles/worktree-policy.gitconfig"
+            git config --file "$policy_config" worktree.policyProvider "$policy_provider"
+            for event in pre post checkout; do
+                git config --file "$policy_config" "hook.worktree-policy-$event.enabled" "$policy_enabled"
+            done
+        fi
+        mkdir -p "${setup_home}/.local/bin"
+        ln -fs "${dotfiles}/bin/git-worktree-policy" "${setup_home}/.local/bin/git-worktree-policy"
+        ln -fs "${dotfiles}/bin/git-worktree-policy-hook" "${setup_home}/.local/bin/git-worktree-policy-hook"
         ln -fs "${dotfiles}/git/gitconfig" "${setup_home}/.gitconfig"
         ln -fs "${dotfiles}/git/gitignore" "${setup_home}/.gitignore"
         ln -fs "${dotfiles}/git/gitcommit" "${setup_home}/.gitcommit"

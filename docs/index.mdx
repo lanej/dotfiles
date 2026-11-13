@@ -15,7 +15,8 @@ hero:
       link: ../README.md#configuration-sets
       variant: secondary
 ---
-import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { CardGrid } from '@astrojs/starlight/components';
+import NavigationCard from '../../components/NavigationCard.astro';
 
 <p className="eyebrow">Make + symlinks · macOS + Linux</p>
 
@@ -38,11 +39,13 @@ make plan && make install
 ## Find your next step
 
 <CardGrid>
-  <LinkCard title="Compose your setup" description="Git, shell, and terminal tools are defaults. Add optional bundles and private sets, then override what this machine needs." href="../README.md#configuration-sets" />
-  <LinkCard title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="./terminal-workflows.mdx" />
-  <LinkCard title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="./architecture.mdx" />
-  <LinkCard title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="./components.mdx" />
+  <NavigationCard icon="setup" title="Compose your setup" description="Git, shell, and terminal tools are defaults. Add optional bundles and private sets, then override what this machine needs." href="../README.md#configuration-sets" />
+  <NavigationCard icon="terminal" title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="./terminal-workflows.mdx" />
+  <NavigationCard icon="files" title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="./architecture.mdx" />
+  <NavigationCard icon="stack" title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="./components.mdx" />
 </CardGrid>
+
+<NavigationCard icon="radar" title="Tech radar" description="My tool decisions at a glance: what I use, what I’m exploring, and what I’ve set aside." href="./radar.md" />
 
 ## Configure first. Install deliberately.
 

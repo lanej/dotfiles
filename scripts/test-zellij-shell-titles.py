@@ -7,6 +7,8 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
+import time
 import tempfile
 
 
@@ -14,10 +16,58 @@ workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
+
+def wait_for_exit(pids, timeout=5):
+    """Wait for owned writers to stop; zombies can no longer touch the fixture."""
+    pending = set(pids)
+    deadline = time.monotonic() + timeout
+    while pending:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"Session processes still running before fixture cleanup: {sorted(pending)}")
+        try:
+            result = subprocess.run(["ps", "-o", "pid=,stat=", "-p", ",".join(map(str, sorted(pending)))],
+                                    capture_output=True, text=True, timeout=min(1, remaining))
+        except subprocess.TimeoutExpired as error:
+            raise TimeoutError(f"Could not confirm shutdown of session processes: {sorted(pending)}") from error
+        if result.returncode not in (0, 1) or (result.returncode == 1 and result.stderr.strip()):
+            raise RuntimeError(f"Could not verify session shutdown: {result.stderr}")
+        rows = [line.split() for line in result.stdout.splitlines() if line.strip()]
+        pending = {int(pid) for pid, state in rows if not state.startswith("Z")}
+        if pending:
+            time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+
+
+def stop_session(terminal):
+    """Stop only this fixture's named session and wait for its process tree."""
+    try:
+        result = subprocess.run(["ps", "-axo", "pid=,ppid=,command="],
+                                capture_output=True, text=True, check=True, timeout=5)
+        rows = [line.split(None, 2) for line in result.stdout.splitlines()]
+        rows = [row for row in rows if len(row) == 3]
+        socket_prefix = " --server " + terminal.env["ZELLIJ_SOCKET_DIR"] + "/"
+        owned = {terminal.pid} | {int(pid) for pid, _, command in rows if socket_prefix in command}
+        while True:
+            children = {int(pid) for pid, parent, _ in rows if int(parent) in owned}
+            if children <= owned:
+                break
+            owned |= children
+    finally:
+        try:
+            subprocess.run([terminal.binary, "kill-session", "--", terminal.name], env=terminal.env,
+                           capture_output=True, timeout=5)
+        finally:
+            terminal.close()
+    # rationale: kill-session replies before pane shells finish their exit-time history writes.
+    wait_for_exit(owned)
+
+
 def main():
     binary, shell = shutil.which("zellij"), shutil.which("zsh")
     assert binary and shell, "Install Zellij and Zsh before testing shell tab titles"
-    with tempfile.TemporaryDirectory(prefix="zj-shell-titles-", dir="/tmp") as directory:
+    directory = tempfile.mkdtemp(prefix="zj-shell-titles-", dir="/tmp")
+    completed = stopped = False
+    try:
         work = Path(directory).resolve()
         home, runtime, selection = work / "home", work / "run", work / "project" / "child"
         home.mkdir()
@@ -56,25 +106,29 @@ def main():
         configured = shell_config.read_text()
         shell_config.unlink()
         shell_config.write_text(configured + "\nPS1=" + shlex.quote(PROMPT.decode()) + "\n"
+                                "_z() { printf '1 %s\\n' \"$TITLE_SELECTION\"; }\n"
                                 '_title_test_prompt_done() {\n'
                                 '  print -r -- "$PWD" >| "$HOME/prompt-$ZELLIJ_PANE_ID"\n'
                                 '  [[ -z "$TITLE_PROOF" ]] || touch "$TITLE_PROOF"\n'
-                                '}\nadd-zsh-hook precmd _title_test_prompt_done\n')
-        # Only picker selection is simulated. The installed key binding, zz,
+                                '}\nadd-zsh-hook precmd _title_test_prompt_done\n'
+                                '_title_test_buffer() { print -r -- "$BUFFER" >| "$HOME/buffer"; }\n'
+                                'zle -N _title_test_buffer\nbindkey \'^X^T\' _title_test_buffer\n')
+        # Directory history and picker selection are simulated. The installed key binding, zz,
         # shell cd hooks and native tab names are exercised end to end.
         tools = home / ".local/bin"
         fzf = tools / "fzf"
         fzf.write_text('''#!/bin/sh
-[ "$*" = --zsh ] || exit 1
-printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults() { print -r -- "$*"; }'
+if [ "$*" = --zsh ]; then
+    printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults() { print -r -- "$*"; }'
+else
+    [ -z "$TITLE_CANCEL" ] || { touch "$HOME/cancel-seen"; exit 130; }
+    python3 -c 'import sys; rows=sys.stdin.buffer.read(); sys.stdout.buffer.write(b"enter\\0" + rows)'
+fi
 ''')
         fzf.chmod(0o755)
         fd = tools / "fd"
         fd.write_text("#!/bin/sh\nexit 0\n")
         fd.chmod(0o755)
-        picker = tools / "sk"
-        picker.write_text('#!/bin/sh\ncat >/dev/null\nprintf "%s\\n" "$TITLE_SELECTION"\n')
-        picker.chmod(0o755)
         config = work / "config.kdl"
         config.write_text('default_mode "locked"\nshow_startup_tips false\n'
                           'show_release_notes false\nsession_serialization false\n')
@@ -122,7 +176,31 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             terminal.send(b"\x02")
             terminal.until("Ctrl-B updates the pane after selecting a directory", lambda:
                            prompt_in(original, selection) and terminal.terminals()[0]["title"] == "child  topic"
-                           and title() == "home")
+                           and title() == "child  topic")
+            marker = home / "must-not-run"
+            buffer = home / "buffer"
+            pending = 'touch "$HOME/must-not-run"'
+            proof = home / "buffer-prompt"
+            terminal.send(("TITLE_PROOF=" + shlex.quote(str(proof)) + "\r").encode())
+            terminal.until("buffer fixture reaches the prompt", proof.exists)
+            proof.unlink()
+            terminal.send(pending.encode() + b"\x02")
+            terminal.until("Ctrl-B refreshes the prompt", proof.exists)
+            terminal.send(b"\x18\x14")
+            terminal.until("Ctrl-B retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
+            assert not marker.exists(), "Ctrl-B executed unfinished input"
+            proof.unlink()
+            terminal.send(b"\x01\x0bexport TITLE_CANCEL=1\r")
+            terminal.until("cancellation fixture reaches the prompt", proof.exists)
+            buffer.unlink()
+            terminal.send(pending.encode() + b"\x02")
+            terminal.until("picker cancellation completes", (home / "cancel-seen").exists)
+            terminal.send(b"\x18\x14")
+            terminal.until("cancel retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
+            assert not marker.exists(), "Cancellation executed unfinished input"
+            proof.unlink()
+            terminal.send(b"\x01\x0bunset TITLE_CANCEL\r")
+            terminal.until("cancellation fixture is cleared", proof.exists)
             # Arm the command at the original prompt. Its cd runs only after the
             # new split has focus, independently of ZLE startup and resize timing.
             terminal.send(b'touch "$HOME/waiting"; read -r go; cd "$TITLE_SELECTION/.."; '
@@ -131,22 +209,40 @@ printf '%s\n' 'fzf-completion() { :; }' 'zle -N fzf-completion' '__fzf_defaults(
             terminal.action("new-pane", "--direction", "right", "--cwd", str(home), "--", shell)
             terminal.until("a new active shell keeps the shared automatic title", lambda:
                            any(p["id"] != original and p["is_focused"] and prompt_in(p["id"], home)
-                               for p in terminal.terminals()) and title() == "home")
+                               for p in terminal.terminals()) and title() == "child  topic")
             proof = home / "inactive-done"
             terminal.action("write", "--pane-id", f"terminal_{original}", "13")
             terminal.until("the inactive shell finishes its directory change", proof.exists)
             assert prompt_in(original, selection.parent)
-            assert title() == "home", "An inactive split stole the tab title"
+            assert title() == "child  topic", "An inactive split stole the tab title"
             terminal.action("rename-tab", "--tab-id", str(tab_id), "Review")
             terminal.send(("cd " + shlex.quote(str(selection)) + "; TITLE_PROOF=" + shlex.quote(str(home / "manual-done")) + "\r").encode())
             terminal.until("the explicitly named tab's shell finishes cd", (home / "manual-done").exists)
             assert title() == "Review", "An automatic title replaced the explicit name"
-            print("PASS: installed cd/Ctrl-B hooks update pane directory and branch; "
-                  "tabs retain ownership and preserve explicit names.")
+            proof = home / "manual-jump-done"
+            terminal.send(("TITLE_PROOF=" + shlex.quote(str(proof)) + "\r").encode())
+            terminal.until("manual-name fixture reaches the prompt", proof.exists)
+            proof.unlink()
+            terminal.send(b"\x02")
+            terminal.until("Ctrl-B preserves the explicitly named tab", proof.exists)
+            assert title() == "Review", "A directory jump replaced the explicit name"
+            completed = True
+            print("PASS: installed Ctrl-B updates automatic tab titles and cd updates pane directory and branch; "
+                  "unfinished input survives selection and cancel; tabs retain ownership and preserve explicit names.")
         finally:
-            subprocess.run([binary, "kill-session", name], env=env,
-                           capture_output=True, timeout=5)
-            terminal.close()
+            original = sys.exception()
+            try:
+                stop_session(terminal)
+                stopped = True
+            except Exception as error:
+                if original is None:
+                    raise
+                original.add_note(f"Session teardown also failed: {error}")
+    finally:
+        if completed and stopped:
+            shutil.rmtree(directory)
+        else:
+            print(f"Retained failed shell-title fixture: {directory}", file=sys.stderr)
 
 
 if __name__ == "__main__":

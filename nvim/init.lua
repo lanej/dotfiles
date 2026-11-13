@@ -1234,7 +1234,11 @@ require("lazy").setup({
 			})
 			require("markdown-tables").setup_hover()
 		end,
-		dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify", "neovim/nvim-lspconfig" },
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+			{ "rcarriga/nvim-notify", opts = { background_colour = "#000000" } },
+			"neovim/nvim-lspconfig",
+		},
 	},
 	{
 		"glepnir/lspsaga.nvim",
@@ -1666,7 +1670,7 @@ require("lazy").setup({
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
-					go = { "gofmt", "goimports", "gci" },
+					go = { "gofmt", "goimports", "gci", "golangci-lint" },
 					-- Conform will run the first available formatter
 					ruby = {
 						"prettierd",

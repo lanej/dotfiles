@@ -11,7 +11,7 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = ROOT / "bin/git-worktree-policy"
+POLICY = Path(os.environ.get("GIT_WORKTREE_POLICY_BINARY", ROOT / "bin/git-worktree-policy"))
 
 
 def main():
@@ -33,8 +33,15 @@ def main():
         env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"),
                    XDG_STATE_HOME=str(home / ".local/state"),
                    PATH=str(git_binary.parent) + os.pathsep + os.environ["PATH"],
-                   GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
+                   GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(ROOT / "git/gitconfig"),
                    GIT_TERMINAL_PROMPT="0", TREEHOUSE_NO_UPDATE_CHECK="1")
+
+        activation = home / ".config/dotfiles/worktree-policy.gitconfig"
+        activation.parent.mkdir(parents=True)
+        activation.write_text("".join(f'[hook "worktree-policy-{event}"]\n enabled = true\n' for event in ("pre", "post", "checkout")))
+        (home / ".local/bin").mkdir(parents=True)
+        (home / ".local/bin/git-worktree-policy").symlink_to(POLICY)
+        (home / ".local/bin/git-worktree-policy-hook").symlink_to(ROOT / "bin/git-worktree-policy-hook")
 
         def run(*argv, cwd=repo, check=True):
             result = subprocess.run([str(arg) for arg in argv], cwd=cwd, env=env,
@@ -61,12 +68,27 @@ def main():
         (repo / "tracked.txt").write_text("preserved checkout data\n")
         git("add", ".gitignore", "tracked.txt")
         git("commit", "-m", "initial")
-        run(POLICY, "install")
+        custom_hooks = root / "existing hooks"
+        custom_hooks.mkdir()
+        hook_log = root / "existing-hook-events"
+        hook = custom_hooks / "post-checkout"
+        hook.write_text(f'#!/bin/sh\nprintf "checkout\\n" >> "{hook_log}"\n')
+        hook.chmod(0o755)
+        git("config", "core.hooksPath", str(custom_hooks))
+        before_hooks = hook.read_bytes()
+        git("checkout", "main")
+        assert hook_log.read_text().splitlines() == ["checkout"]
         git("config", "worktree.limit", "2")
         first = json.loads(get("feature/first").stdout)
         first_path = Path(first["path"])
         external = root / "external checkout"
+        previous_events = len(hook_log.read_text().splitlines())
         git("worktree", "add", "--detach", external)
+        inventory_file = repo / ".git/worktree-policy/inventory.json"
+        assert json.loads(inventory_file.read_text())["linked_count"] == 2
+        assert len(hook_log.read_text().splitlines()) == previous_events + 1
+        assert hook.read_bytes() == before_hooks
+        assert not (repo / ".git/hooks/post-checkout").exists()
         assert status()["linked_count"] == 2
         denied = get("feature/blocked", check=False)
         assert denied.returncode != 0 and "refusing add" in denied.stderr, denied
@@ -104,6 +126,26 @@ def main():
                 "--if-lease-holder", lease["lease_holder"])
         assert (external / "ignored-build.bin").stat().st_size == 65536
         assert (repo / "tracked.txt").read_text() == "preserved checkout data\n"
+        fixture = root / "dotfiles"
+        fixture.mkdir()
+        for name in ("Makefile", "scripts", "config", "bootstrap", "git", "bin", "design-system"):
+            (fixture / name).symlink_to(ROOT / name)
+        git("init", "-q", fixture)
+        machine = home / "machine.toml"
+        machine.write_text('[tools]\nworktree-policy = false\n')
+        env["DOTFILES_CONFIG"] = str(machine)
+        run("make", "--no-print-directory", "configure", "SELECTED_TARGETS=git", cwd=fixture)
+        assert git("config", "--file", activation, "--get", "hook.worktree-policy-pre.enabled").stdout.strip() == "false"
+        installed = home / ".local/bin/git-worktree-policy"
+        assert installed.resolve() == ROOT / "bin/git-worktree-policy"
+        assert not (home / ".local/libexec/git-worktree-policy").exists()
+        disabled_repo = root / "disabled policy repo"
+        git("init", "-q", disabled_repo)
+        git("worktree", "add", "--orphan", root / "disabled-policy-linked", cwd=disabled_repo)
+        machine.write_text('[tools]\nworktree-policy = true\n')
+        run("make", "--no-print-directory", "configure", "SELECTED_TARGETS=git", cwd=fixture)
+        missing = git("worktree", "add", "--orphan", root / "missing-policy-linked", cwd=disabled_repo, check=False)
+        assert missing.returncode != 0 and "native policy is unavailable" in missing.stderr
     print("Native Treehouse allocation, full-pool reuse, and optional disk gates passed")
 
 

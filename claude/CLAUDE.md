@@ -75,6 +75,7 @@ Do not nest worktrees or claim their leases.
 
 ## Tool Preferences
 
+**Zellij.** Read the `zellij` skill for shared context and “show me”.
 **Web search/research.** Kagi (`mcp__kagi__kagi_search_fetch`, `mcp__kagi__kagi_extract`); WebSearch/WebFetch are blocked by GCP org policy. Codex (`mcp__codex__codex`) is the fallback for multi-step research Kagi can't cover. Only `gspace`/Drive tools reach internal documents. (`operating-lessons`, `technical.md`; detail: memory "reference_websearch_org_policy_blocked", "feedback_internal_doc_search_tool_capability")
 **Google Workspace (gspace).** Use the `gspace` CLI via Bash, never `mcp__gspace__*` MCP tool functions — MCP coverage can gap silently (confirmed for Gmail: no `gmail_*` MCP functions despite valid `gmail.modify` scope) with no error signal, so an incomplete MCP tool list is not itself proof an operation is unavailable. (detail: memory "reference_gspace_cli_over_mcp")
 **PR descriptions.** Write GitHub pull request titles and descriptions with the `github-pr-writer` agent, including when you run `gh pr create` yourself; it replaces Claude Code's PR body format. Use `pull-request-writer` for other review platforms. Brief the writer with facts only (base branch, issue link, what verification ran and its result, where screenshots are) and let its definition own the format and content rules. Open GitHub PRs with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.

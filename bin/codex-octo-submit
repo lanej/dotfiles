@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Route standalone Codex PR publication through Octo's durable submission service."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import shlex
+import sys
+import tempfile
+
+HOOK_COMMAND = '"$HOME/.files/bin/codex-octo-submit"'
+GROUP = {"matcher": "Bash", "hooks": [{"type": "command", "command": HOOK_COMMAND, "timeout": 10}]}
+
+
+def install(enabled=True):
+    directory = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temporary = None
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        path = directory / "hooks.json"
+        if path.is_symlink():
+            raise ValueError("refusing to replace symlinked hooks.json")
+        original = path.read_bytes() if path.exists() else None
+        document = json.loads(original) if original is not None else {}
+        groups = document.setdefault("hooks", {}).setdefault("PreToolUse", [])
+        if enabled:
+            if any(handler.get("command") == HOOK_COMMAND for group in groups for handler in group.get("hooks", [])):
+                return
+            groups.append(GROUP)
+        else:
+            preserved = []
+            for group in groups:
+                handlers = group.get("hooks", [])
+                remaining = [handler for handler in handlers if handler.get("command") != HOOK_COMMAND]
+                if remaining == handlers:
+                    preserved.append(group)
+                elif remaining:
+                    preserved.append({**group, "hooks": remaining})
+            if preserved == groups:
+                return
+            document["hooks"]["PreToolUse"] = preserved
+        with tempfile.NamedTemporaryFile(dir=directory, delete=False) as output:
+            temporary = Path(output.name)
+            output.write((json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode())
+        temporary.chmod(path.stat().st_mode & 0o777 if original is not None else 0o600)
+        if (path.read_bytes() if path.exists() else None) != original:
+            raise ValueError("hooks changed during installation; retry")
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        os.close(descriptor)
+    print("Codex Octo submission hook installed; review it in Codex Hooks." if enabled else "Codex Octo submission hook removed; explicit Octo commands remain available.")
+
+
+def publication(tokens):
+    for index, token in enumerate(tokens):
+        name = Path(token).name
+        if index > 0 and tokens[index - 1] not in {";", "&&", "||", "|", "(", ")"} and tokens[0] not in {"env", "command", "exec"}:
+            continue
+        if name == "gh-pr-create-from" and tokens[index + 1:index + 2] != ["--check"]:
+            return index, "file"
+        if name == "gh" and tokens[index + 1:index + 3] == ["pr", "create"]:
+            return index, "gh"
+        if name == "octo-manager" and tokens[index + 1:index + 2] == ["submit-pr"]:
+            return index, "octo"
+    return None
+
+
+def translate(event):
+    if event.get("hook_event_name") != "PreToolUse":
+        return None
+    tool = event.get("tool_input", {})
+    command = tool.get("command")
+    if not isinstance(command, str):
+        return None
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()\n")
+    lexer.whitespace_split = True
+    tokens = []
+    try:
+        for token in lexer:
+            tokens.append(token)
+    except ValueError:
+        if publication(tokens) is None:
+            return None
+        raise
+    found = publication(tokens)
+    if found is None:
+        return None
+    index, kind = found
+    if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
+        raise ValueError("Run PR submission as a standalone octo-manager submit-pr command; shell composition and expansion are not translated.")
+    session, cwd = event.get("session_id"), event.get("cwd")
+    if not isinstance(session, str) or not session or not isinstance(cwd, str) or not Path(cwd).is_absolute():
+        raise ValueError("Octo requires the calling session ID and absolute working directory.")
+    args = tokens[2:] if kind == "octo" else tokens[3:] if kind == "gh" else tokens[1:]
+    converted = []
+    if kind == "file":
+        if not args or args[0].startswith("-"):
+            raise ValueError("Supply the writer description file, or use octo-manager submit-pr --intent-file FILE.")
+        content = (Path(cwd) / args[0]).read_text()
+        if len(content.encode()) > 10000:
+            raise ValueError("Writer context exceeds 10000 bytes; supply a bounded intent file.")
+        converted += ["--purpose", content]
+        args = args[1:]
+    if kind == "octo":
+        # rationale: Caller identity comes from the hook event, never stale command flags.
+        index = 0
+        while index < len(args):
+            key = args[index].split("=", 1)[0]
+            if key in {"--thread-id", "--cwd", "--label", "--endpoint"}:
+                index += 1 if "=" in args[index] else 2
+            else:
+                converted.append(args[index])
+                index += 1
+    else:
+        names = {"--title": "--title", "-t": "--title", "--body": "--body", "-b": "--body", "--body-file": "--body-file", "-F": "--body-file", "--base": "--base", "-B": "--base", "--head": "--head", "-H": "--head", "--repo": "--repo", "-R": "--repo"}
+        index = 0
+        while index < len(args):
+            flag, separator, value = args[index].partition("=")
+            if flag in {"--draft", "-d"} and not separator:
+                converted.append("--draft")
+            elif flag in names:
+                if not separator:
+                    index += 1
+                    if index >= len(args):
+                        raise ValueError(f"Missing value for {flag}")
+                    value = args[index]
+                converted += [names[flag], value]
+            else:
+                raise ValueError(f"Unsupported publication option {flag}; use octo-manager submit-pr --intent-file FILE.")
+            index += 1
+    converted += ["--thread-id", session, "--cwd", cwd, "--endpoint", "local"]
+    if "--request-id" not in converted and not any(arg.startswith("--request-id=") for arg in converted):
+        tool_id = event.get("tool_use_id")
+        if isinstance(tool_id, str) and tool_id:
+            converted += ["--request-id", f"{session}:{tool_id}"]
+    executable = str(Path.home() / ".local/bin/octo-manager")
+    if not Path(executable).is_file():
+        raise ValueError("Install Octo Manager before submitting; the PR has not been published.")
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {**tool, "command": shlex.join([executable, "submit-pr", *converted])}}}
+
+
+def main():
+    if sys.argv[1:] in (["--install"], ["--uninstall"]):
+        install(enabled=sys.argv[1] == "--install")
+        return
+    event = json.load(sys.stdin)
+    try:
+        result = translate(event)
+    except (OSError, ValueError, TypeError, AttributeError) as error:
+        result = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": str(error)}}
+    if result is not None:
+        print(json.dumps(result))
+
+
+if __name__ == "__main__":
+    main()

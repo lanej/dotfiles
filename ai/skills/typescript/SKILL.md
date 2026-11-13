@@ -18,7 +18,7 @@ Read [the correctness guide](references/correctness.md) before adopting or chang
 
 ## Verification
 
-Run `node scripts/check-typescript.mjs lint` during implementation and the full command before handoff. `typecheck`, `test`, and `audit` isolate checks. `fmt` requires explicit TypeScript file paths and is the only source-writing mode.
+Require Biome lint alongside typed ESLint and the existing formatter. Run `node scripts/check-typescript.mjs lint` during implementation and the full command before handoff. `typecheck`, `test`, and `audit` isolate checks. `fmt` requires explicit TypeScript file paths and is the only source-writing mode.
 
 Treat missing tools, parser errors, uncovered source, failing project checks, and suppression-policy violations as failures. Never add a baseline allowance to unblock a feature. After repairing old findings, run `ratchet` and commit the reduced baseline with the fix. Review suppression explanations, exclusions, baseline changes, and tool upgrades as policy changes.
 

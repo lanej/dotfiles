@@ -177,15 +177,29 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		return $ret
 	}
 
-	zzz() {
-		# Ensure ZLE hands control cleanly to the TUI picker
+	__directory_jump_widget() {
 		zle -I
-		zz
-		let ret=$?
+		"$1"
+		local ret=$?
+		if (( ret == 0 )); then
+			if (( $+functions[_zellij_auto_tab_title] )); then
+				_zellij_last_cmd=""
+				_zellij_auto_tab_title --directory-jump
+			fi
+			if (( $+functions[_tmux_auto_window_title] )); then
+				_tmux_last_cmd=""
+				_tmux_auto_window_title
+			fi
+			# rationale: Refresh prompt hooks on an empty line, retaining unfinished input.
+			zle push-line
+			zle accept-line
+		fi
 		zle reset-prompt
-		zle accept-line
 		return $ret
 	}
+
+	zzz() { __directory_jump_widget zz; }
+	zworktree() { __directory_jump_widget zw; }
 
 	# Bind the function to a key combination, e.g., Ctrl+U
 	zle -N fzf-directory-widget
@@ -239,6 +253,8 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		bindkey '^O' fzf-file-widget-toggle
 		zle -N zzz
 		bindkey '^B' zzz
+		zle -N zworktree
+		bindkey '^[w' zworktree
 
 	if [[ -r "${HOME}/.local/share/fzf-tab/fzf-tab.plugin.zsh" ]]; then
 		# `source <(fzf --zsh)` above already rebound ^I to its own
@@ -464,7 +480,12 @@ fi
 unalias recomp 2>/dev/null
 function recomp {
 	local completion result=0
-	ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	if (( $# )); then
+		ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" "$@" || return
+		[[ $1 == add ]] || return 0
+	else
+		ZDOTDIR="${ZDOTDIR:-$HOME}" bash "$HOME/.files/scripts/make/completions.sh" "$HOME" --refresh || result=$?
+	fi
 	# A completion already used in this shell must be autoloaded again.
 	for completion in "$HOME"/.zsh/completions/_*(N-.); do
 		unfunction "${completion:t}" 2>/dev/null

@@ -1,0 +1,400 @@
+version = 1
+
+[[binding]]
+id = "kitty.reload-config"
+app = "kitty"
+chord = "cmd+shift+r"
+action = "load_config_file ~/.config/kitty/kitty.conf"
+description = "Reload Kitty configuration."
+
+[[binding]]
+id = "kitty.open-last-web-link"
+app = "kitty"
+chord = "cmd+shift+o"
+action = "kitten open_last_url.py"
+description = "Open the last web link, including Codex's padded output."
+
+[[binding]]
+id = "kitty.select-hyperlink"
+app = "kitty"
+chord = "cmd+shift+u"
+action = "kitten hints --type hyperlink"
+description = "Select a labeled OSC 8 hyperlink with native hints."
+
+[[binding]]
+id = "skhd.focus-kitty"
+app = "skhd"
+chord = "cmd+enter"
+action = "sh ~/.local/bin/yabai-focus-or-launch \"kitty\" \"/Applications/kitty.app/Contents/MacOS/kitty --single-instance -d ~\""
+description = "Focus or launch Kitty."
+
+[[binding]]
+id = "skhd.focus-west"
+app = "skhd"
+chord = "alt+h"
+action = "yabai -m window --focus west || yabai-focus-float left"
+description = "Focus the window west, including floating windows."
+
+[[binding]]
+id = "skhd.focus-south"
+app = "skhd"
+chord = "alt+j"
+action = "yabai -m window --focus south || yabai-focus-float down"
+description = "Focus the window south, including floating windows."
+
+[[binding]]
+id = "skhd.focus-north"
+app = "skhd"
+chord = "alt+k"
+action = "yabai -m window --focus north || yabai-focus-float up"
+description = "Focus the window north, including floating windows."
+
+[[binding]]
+id = "skhd.focus-east"
+app = "skhd"
+chord = "alt+l"
+action = "yabai -m window --focus east || yabai-focus-float right"
+description = "Focus the window east, including floating windows."
+
+[[binding]]
+id = "skhd.focus-previous"
+app = "skhd"
+chord = "alt+p"
+action = "yabai -m window --focus prev"
+description = "Focus the previous window."
+
+[[binding]]
+id = "skhd.focus-next"
+app = "skhd"
+chord = "alt+n"
+action = "yabai -m window --focus next"
+description = "Focus the next window."
+
+[[binding]]
+id = "skhd.toggle-float"
+app = "skhd"
+chord = "alt+shift+z"
+action = "yabai -m window --toggle float"
+description = "Toggle floating window layout."
+
+[[binding]]
+id = "skhd.toggle-zoom"
+app = "skhd"
+chord = "alt+shift+f"
+action = "yabai -m window --toggle zoom-fullscreen"
+description = "Toggle fullscreen zoom within the space."
+
+[[binding]]
+id = "skhd.swap-west"
+app = "skhd"
+chord = "alt+shift+h"
+action = "yabai -m window --swap west"
+description = "Swap with the window west."
+
+[[binding]]
+id = "skhd.swap-south"
+app = "skhd"
+chord = "alt+shift+j"
+action = "yabai -m window --swap south"
+description = "Swap with the window south."
+
+[[binding]]
+id = "skhd.swap-north"
+app = "skhd"
+chord = "alt+shift+k"
+action = "yabai -m window --swap north"
+description = "Swap with the window north."
+
+[[binding]]
+id = "skhd.swap-east"
+app = "skhd"
+chord = "alt+shift+l"
+action = "yabai -m window --swap east"
+description = "Swap with the window east."
+
+[[binding]]
+id = "skhd.rotate-clockwise"
+app = "skhd"
+chord = "alt+r"
+action = "yabai -m space --rotate 90"
+description = "Rotate the space layout clockwise."
+
+[[binding]]
+id = "skhd.rotate-counterclockwise"
+app = "skhd"
+chord = "alt+shift+r"
+action = "yabai -m space --rotate 270"
+description = "Rotate the space layout counterclockwise."
+
+[[binding]]
+id = "skhd.warp-north"
+app = "skhd"
+chord = "shift+cmd+k"
+action = "yabai -m window --warp north"
+description = "Move the window north in the layout."
+
+[[binding]]
+id = "skhd.warp-south"
+app = "skhd"
+chord = "shift+cmd+j"
+action = "yabai -m window --warp south"
+description = "Move the window south in the layout."
+
+[[binding]]
+id = "skhd.warp-west"
+app = "skhd"
+chord = "shift+cmd+h"
+action = "yabai -m window --warp west"
+description = "Move the window west in the layout."
+
+[[binding]]
+id = "skhd.warp-east"
+app = "skhd"
+chord = "shift+cmd+l"
+action = "yabai -m window --warp east"
+description = "Move the window east in the layout."
+
+[[binding]]
+id = "skhd.next-space"
+app = "skhd"
+chord = "ctrl+shift+cmd+l"
+action = "yabai -m window --space next"
+description = "Move the window to the next space."
+
+[[binding]]
+id = "skhd.previous-space"
+app = "skhd"
+chord = "ctrl+shift+cmd+h"
+action = "yabai -m window --space prev"
+description = "Move the window to the previous space."
+
+[[binding]]
+id = "skhd.balance-space"
+app = "skhd"
+chord = "alt+shift+space"
+action = "yabai -m space --balance"
+description = "Balance window sizes in the space."
+
+[[binding]]
+id = "skhd.toggle-split"
+app = "skhd"
+chord = "alt+s"
+action = "yabai -m window --toggle split"
+description = "Toggle the window split direction."
+
+[[binding]]
+id = "skhd.float-centered"
+app = "skhd"
+chord = "alt+shift+c"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 8:8:1:1:6:6"
+description = "Toggle floating and center the window."
+
+[[binding]]
+id = "skhd.float-top-half"
+app = "skhd"
+chord = "alt+shift+v"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 12:12:0:0:12:6"
+description = "Toggle floating and fill the top half."
+
+[[binding]]
+id = "skhd.float-bottom-half"
+app = "skhd"
+chord = "alt+shift+n"
+action = "yabai -m window --toggle float;\\\n\t yabai -m window --grid 12:12:0:6:12:6"
+description = "Toggle floating and fill the bottom half."
+
+[[binding]]
+id = "kitty.new-tab"
+app = "kitty"
+chord = "cmd+n"
+action = "new_tab"
+description = "Open a new tab."
+
+[[binding]]
+id = "kitty.new-tab-cwd"
+app = "kitty"
+chord = "cmd+t"
+action = "new_tab_with_cwd"
+description = "Open a new tab in the current working directory."
+
+[[binding]]
+id = "kitty.previous-tab"
+app = "kitty"
+chord = "cmd+p"
+action = "previous_tab"
+description = "Select the previous tab."
+
+[[binding]]
+id = "kitty.tab-1"
+app = "kitty"
+chord = "cmd+1"
+action = "goto_tab 1"
+description = "Select tab 1."
+
+[[binding]]
+id = "kitty.tab-2"
+app = "kitty"
+chord = "cmd+2"
+action = "goto_tab 2"
+description = "Select tab 2."
+
+[[binding]]
+id = "kitty.tab-3"
+app = "kitty"
+chord = "cmd+3"
+action = "goto_tab 3"
+description = "Select tab 3."
+
+[[binding]]
+id = "kitty.tab-4"
+app = "kitty"
+chord = "cmd+4"
+action = "goto_tab 4"
+description = "Select tab 4."
+
+[[binding]]
+id = "kitty.tab-5"
+app = "kitty"
+chord = "cmd+5"
+action = "goto_tab 5"
+description = "Select tab 5."
+
+[[binding]]
+id = "kitty.name-tab"
+app = "kitty"
+chord = "cmd+r"
+action = "set_tab_title"
+description = "Set the tab title."
+
+[[binding]]
+id = "kitty.function-1"
+app = "kitty"
+chord = "alt+1"
+action = "send_key F1"
+description = "Send F1 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-2"
+app = "kitty"
+chord = "alt+2"
+action = "send_key F2"
+description = "Send F2 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-3"
+app = "kitty"
+chord = "alt+3"
+action = "send_key F3"
+description = "Send F3 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-4"
+app = "kitty"
+chord = "alt+4"
+action = "send_key F4"
+description = "Send F4 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-5"
+app = "kitty"
+chord = "alt+5"
+action = "send_key F5"
+description = "Send F5 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-6"
+app = "kitty"
+chord = "alt+6"
+action = "send_key F6"
+description = "Send F6 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-7"
+app = "kitty"
+chord = "alt+7"
+action = "send_key F7"
+description = "Send F7 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-8"
+app = "kitty"
+chord = "alt+8"
+action = "send_key F8"
+description = "Send F8 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-9"
+app = "kitty"
+chord = "alt+9"
+action = "send_key F9"
+description = "Send F9 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-10"
+app = "kitty"
+chord = "alt+0"
+action = "send_key F10"
+description = "Send F10 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-11"
+app = "kitty"
+chord = "alt+-"
+action = "send_key F11"
+description = "Send F11 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.function-12"
+app = "kitty"
+chord = "alt+="
+action = "send_key F12"
+description = "Send F12 without an Fn key; Option is Alt on macOS."
+
+[[binding]]
+id = "kitty.secure-keyboard-entry"
+app = "kitty"
+chord = "alt+cmd+s"
+action = "toggle_macos_secure_keyboard_entry 🍎"
+description = "Toggle macOS secure keyboard entry."
+
+[[binding]]
+id = "kitty.close-window"
+app = "kitty"
+chord = "cmd+q"
+action = "close_window_with_confirmation"
+description = "Close the window with confirmation."
+
+[[binding]]
+id = "kitty.close-window-alternate"
+app = "kitty"
+chord = "shift+cmd+d"
+action = "close_window_with_confirmation"
+description = "Close the window with confirmation using the alternate shortcut."
+
+[[binding]]
+id = "kitty.close-window-control"
+app = "kitty"
+chord = "ctrl+shift+w"
+action = "close_window_with_confirmation"
+description = "Close the window with confirmation using Ctrl and Shift."
+
+[[binding]]
+id = "kitty.close-tab"
+app = "kitty"
+chord = "cmd+w"
+action = "close_tab"
+description = "Close the current tab."
+
+[[binding]]
+id = "kitty.shift-enter"
+app = "kitty"
+chord = "shift+enter"
+action = "send_text all \\e\\r"
+description = "Send Escape followed by Return to the terminal application."
+
+[[binding]]
+id = "kitty.worktree-picker"
+app = "kitty"
+chord = "alt+w"
+action = "send_text all \\ew"
+description = "Open the shell worktree picker."

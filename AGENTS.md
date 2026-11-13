@@ -62,10 +62,7 @@ automated results.
 
 ## Maintaining agent instructions
 
-Before changing skills, commands, agents, or their supporting resources, read
-[the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
-through the installed Anthropic skill-creator workflow and defines
-this repository's focused regression checks and entrypoint size budget.
+Before changing skills, commands, agents, or their supporting resources, read [the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring through the repository-owned skill-authoring workflow and defines this repository's focused regression checks and entrypoint size budget.
 
 ## Bug reports
 
@@ -87,4 +84,4 @@ New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by d
 
 ## Tech Radar
 
-Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Edit the radar directly using the entry conventions documented there.
+Keep the [tech radar registry](docs/radar.yaml) current when tool or technology decisions change.

@@ -34,29 +34,51 @@ def main():
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
-        native_tools = {"git", "git-worktree-hooks"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
+        native_tools = {"git", "git-worktree-hooks", "worktree-policy"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
+        assert "mergiraf" in {tool["name"] for tool in baseline["tools"]}
         assert {"git", "zsh", "fzf", "tmux", "zellij", "kitty", "wezterm"} <= {tool["name"] for tool in baseline["tools"]}
         assert "treehouse" not in {tool["name"] for tool in baseline["tools"]}
         assert "git-worktree-hooks" in {tool["name"] for tool in baseline["tools"]}
         assert baseline["settings"]["codex.github_enabled"] is False
         assert baseline["settings"]["codex.easypost"] is False
+        assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
-        config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\n")
+        config.write_text('sets = ["octo-manager"]\n')
+        octo = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        octo_names = [tool["name"] for tool in octo["tools"]]
+        assert "octo-manager" in octo_names
+        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go"))
+        assert not any("octo" in target for target in octo["setup"]), "Configuration must not install or start the service"
+        linux_octo=json.loads(run(*command,"--platform","linux","--format","json").stdout)
+        assert "octo-manager" in {tool["name"] for tool in linux_octo["tools"]}
+        config.write_text('sets = ["octo-manager"]\n[tools]\nocto-manager = false\n')
+        disabled = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        assert "octo-manager" not in {tool["name"] for tool in disabled["tools"]}
+        config.write_text('sets = ["worktrees"]\n')
+        worktrees = json.loads(run(*command,"--format","json").stdout)
+        selected = {tool["name"] for tool in worktrees["tools"]}
+        assert {"worktree-manager","git","lsof"} <= selected
+        assert "worktree-policy" not in selected
+        assert "treehouse" not in selected
+        config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\nmergiraf = false\n")
         reduced = json.loads(run(*command, "--format", "json").stdout)
         assert "tmux" not in {tool["name"] for tool in reduced["tools"]}
         assert "tmux-config" not in reduced["setup"]
         assert "git-worktree-hooks" not in {tool["name"] for tool in reduced["tools"]}
         assert "git" in {tool["name"] for tool in reduced["tools"]}
+        assert "mergiraf" not in {tool["name"] for tool in reduced["tools"]}
+        assert "mergiraf-config" not in reduced["setup"]
         for host in ("macos", "linux"):
             fresh = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
             assert {"git", "zsh", "zellij"} <= {tool["name"] for tool in fresh["tools"]}
             assert "git" in fresh["baseline"]["setup"]
             assert "tmux" not in {tool["name"] for tool in fresh["tools"]}
+            assert "mergiraf-config" not in fresh["setup"]
         (sets / "my-workstation.toml").write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = true\n')
         config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n' + disabled_native + ' = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
@@ -66,7 +88,7 @@ def main():
         assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
         names = [tool["name"] for tool in selected["tools"]]
-        assert "mergiraf" not in names
+        assert "mergiraf" in names
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
         assert selected["sources"]["tools.mermaid"] == str(config.resolve())
         preview = tomllib.loads(run("make", "--no-print-directory", "config").stdout)
@@ -178,9 +200,18 @@ else:
         assert merge_names.index("rust") < merge_names.index("mergiraf")
         assert merge_names.index("git") < merge_names.index("mergiraf")
         assert "git" in merge_plan["setup"]
+        assert merge_plan["setup"].index("git") < merge_plan["setup"].index("mergiraf-config")
         config.write_text('[tools]\nmergiraf = true\nrust = false\n')
         blocked = run(*command, check=False)
         assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
+        tools = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        config.write_text("[tools]\n" + "".join(
+            f"{name} = {'true' if name in ('stylua', 'node') else 'false'}\n" for name in tools
+        ))
+        macos = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        assert {tool["name"] for tool in macos["tools"]} == {"node", "stylua"}
+        blocked = run(*command, "--platform", "linux", check=False)
+        assert blocked.returncode != 0 and "tools.stylua requires tools.rust" in blocked.stderr
         config.write_text('sets = ["typo"]\n')
         before = installed.read_bytes()
         rejected = run("make", "--no-print-directory", "zellij-runtime", check=False)

@@ -11,3 +11,5 @@ New projects use strict enforcement. Retrofits require committed source and a on
 Use `lint` during implementation and the full command before handoff. `typecheck`, `test`, and `audit` isolate checks; `fmt` requires explicit file paths. Preserve stronger application-specific architecture, import, lifecycle, build, and security checks. Inspect policy commands and adapt the npm-oriented CI installation step for other package managers. These checks do not infer business rules or validate runtime data.
 
 Read the [published TypeScript guide](https://lanej.github.io/dotfiles/reference/typescript-style/) for examples, deployment constraints, and adoption tradeoffs. The source guide is `docs/typescript-style.md` in lanej/dotfiles.
+
+Biome 2.6.7 is a required, pinned correctness gate in `lint` and full validation, including CI. Its findings cannot enter the retrofit baseline. The focused rules catch debugger statements, duplicate cases, class members and object keys, sparse arrays, unreachable code and unsafe finally blocks. Typed ESLint and Prettier remain responsible for the existing broader analysis and formatting contracts.

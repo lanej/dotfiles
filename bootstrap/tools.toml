@@ -1,5 +1,6 @@
 # Installation recipes and version pins. Machine files select tools; sets group them.
 # installer = "config" delegates configuration/integration to Make and hooks.
+# requires_linux and requires_macos add prerequisites only on the named platform.
 
 [tools.build]
 installer = "build"
@@ -21,6 +22,23 @@ version = "1.26.2"
 [tools.git]
 installer = "system"
 setup = ["git"]
+
+[tools.worktree-manager]
+description = "Opt-in standalone worktree CLI with task protection, global tracking and safe pruning."
+installer = "worktree-manager"
+requires = ["git", "lsof"]
+setup = ["git"]
+version = "0.1.0"
+
+[tools.lsof]
+installer = "system"
+
+[tools.worktree-policy]
+description = "Native global worktree inventory and optional admission budgets."
+installer = "worktree-policy"
+requires = ["git"]
+setup = ["git"]
+version = "0.1.1"
 
 [tools.git-worktree-hooks]
 description = "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
@@ -57,6 +75,12 @@ version = "1.4.7"
 [tools.fzf]
 version = "0.59.0"
 
+[tools.directory-picker]
+description = "Build the Charmed directory and worktree picker for zz and zw."
+installer = "config"
+requires = ["go", "fzf"]
+post = ["directory-picker"]
+
 [tools.starship]
 requires = ["rust"]
 version = "1.25.0"
@@ -74,9 +98,9 @@ requires = ["rust"]
 version = "0.18.2"
 
 [tools.mergiraf]
-description = "Install syntax-aware merging; enable the driver per repository."
+description = "Install and activate syntax-aware merging for supported file types."
 requires = ["git", "rust"]
-setup = ["git"]
+setup = ["git", "mergiraf-config"]
 version = "0.20.0"
 
 [tools.glow]
@@ -118,6 +142,7 @@ version = "14.1.0"
 
 [tools.stylua]
 requires = ["node"]
+requires_linux = ["rust"]
 version = "2.6.0"
 
 [tools.luacheck]
@@ -244,6 +269,12 @@ version = "2.1.295"
 requires = ["node", "jq", "claude-code"]
 setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
 version = "0.164.0"
+
+[tools.octo-manager]
+description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
+installer = "octo-manager"
+requires = ["git", "gh", "go"]
+revision = "423c1e8df7b18beef8c83d217bd7ba2ab1ad69d5"
 
 [tools.treehouse]
 installer = "treehouse"

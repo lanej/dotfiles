@@ -80,6 +80,7 @@ It regenerates completions for supported tools on `PATH`, clears stale completio
 | Command | Effect |
 | --- | --- |
 | `recomp` | Generate completions and reload the current Zsh session. |
+| `recomp add <tool>` | Find a generator, register it locally, and load its completion now. |
 | `make zsh-completions` | Generate completion files only; open a new shell afterward. |
 | `make` / `make configure` | Generate completions as part of configuration when the shell set is selected. |
 
@@ -87,17 +88,37 @@ It regenerates completions for supported tools on `PATH`, clears stale completio
 
 #### Register a local tool
 
-`recomp` refreshes registered tools; registration is still manual. Add work-only or other local tools to `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`), outside the checkout. Each non-comment line contains a completion name, a generator command, and its arguments, separated by spaces or tabs.
+Use `recomp add` for a work-only or other locally installed CLI:
 
-For example, add this line for `epf`:
+```sh
+recomp add epf
+```
+
+For a new tool, it tries `epf completions zsh`, then `epf completion zsh`. It validates the output before saving the working command and loads the completion in the current shell. Existing local registrations and built-in generators are reused first. Both the target and generator must already be installed.
+
+For a different command or an override, supply the generator explicitly:
+
+```sh
+recomp add cargo \
+  rustup completions zsh cargo
+```
+
+Registrations stay outside the checkout in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Future `make` and `recomp` runs reuse the saved command. Repeating the same registration leaves the file unchanged; an explicit replacement updates that tool's entry without duplicating it. Built-in generators need no extra local entry unless you override them.
+
+Failed validation leaves the registry and last working completion intact. Hand-written completion files and symlinks are preserved. If the registry itself is a symlink, edit it directly so its managed destination stays intact.
+
+<details>
+<summary>Edit the local registry manually</summary>
+
+Each non-comment line contains a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
 
 ```text
 epf epf completions zsh
 ```
 
-Then run `recomp` to generate and load it. Local entries override built-ins, and the first entry for a name wins. Both the target binary and generator must be on `PATH`; listing a tool here does not install it.
+Local entries override built-ins, and the first entry for a name wins. Run `recomp` after editing. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. `recomp add` rejects arguments containing whitespace; put complex commands in an executable wrapper on `PATH` and register that command instead. Missing targets are skipped during normal refresh; registration does not install software.
 
-Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. Put a more involved generator in an executable wrapper on `PATH` and register that command instead.
+</details>
 
 <details>
 <summary>Completion files, preservation, and older fd versions</summary>
@@ -144,7 +165,9 @@ Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE
 
 [Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
 
-The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. For automatic creation blocking, install hooks in each repository. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Installing Treehouse alone does not enable tracking, hooks, or budgets.
+The optional [worktrees bundle](docs/worktree-manager.md) installs the standalone `worktree` command for fresh task checkouts, explicit finish protection, global tracking, budgets, and safe pruning. Existing Treehouse pools and agent defaults remain available while the replacement is evaluated.
+
+The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. Shared Git configuration enables global tracking and admission hooks without per-repository installation; budgets remain disabled until configured. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Treehouse manages leases independently of this machine-wide inventory.
 
 ## Configuration sets
 
@@ -181,6 +204,8 @@ source = "release"
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
 | `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
+| `octo-manager` | Opt-in Octo service with Codex tracking and receipt hooks |
+| `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
 | `workstation` | Adds editor, development, and AI tools, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
@@ -208,7 +233,7 @@ python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools. For local PR monitoring, see [the opt-in Octo Manager setup](docs/octo-manager.md).
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
@@ -288,6 +313,10 @@ In Kitty, `Alt+1` through `Alt+9` send `F1` through `F9`, `Alt+0` sends `F10`,
 and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
 These shortcuts also work through tmux, so Codex actions such as `F2` and `F4`
 are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
+
+Use **Ctrl-B** (`zz`) for directory history and **Alt-W** (`zw`) for repository worktrees. The [directory picker guide](docs/directory-picker.md) covers responsive previews, path labels, and narrowing.
+
+Use `make keybindings` to inventory owned and existing Kitty/skhd shortcuts, and `make check-keybindings` to detect overlaps and generated drift. The [keybinding registry guide](docs/keybindings.md) explains coverage, chord queries, and how to migrate native bindings into generated sections.
 
 ## Key Makefile Targets
 

@@ -53,7 +53,15 @@ def bundle(ref, entry):
         paths.append("claude/commands/socrates/phases-2-3.txt")
     shared = "claude/commands/socrates/dialogue.txt"
     tracked = set(git("ls-tree", "-r", "--name-only", ref).splitlines())
-    if shared in tracked:
+    if "ai/skills/socrates/SKILL.md" in tracked:
+        paths = [f"claude/commands/{entry}.md"]
+        paths.extend(sorted(p for p in tracked if p in {
+            f"ai/skills/{entry}/SKILL.md", "ai/skills/socrates/SKILL.md",
+            "ai/skills/socrates/references/dialogue.txt",
+            "ai/skills/socrates/references/spec-scaffold.tpl",
+            *(["ai/skills/socrates/references/phases-2-3.txt"] if entry == "socrates" else []),
+        }))
+    elif shared in tracked:
         paths.append(shared)
     content = "\n\n".join(f"<file path='{p}'>\n{git('show', f'{ref}:{p}')}\n</file>" for p in paths)
     return DRIVER + "\n\n" + content

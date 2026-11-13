@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Select directory history or registered worktrees; stdout is the full path."""
+
+import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import json
+import tempfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import directory_preview
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def git(directory, *args):
+    result = subprocess.run(["git", "-C", str(directory), *args], capture_output=True)
+    if result.returncode:
+        raise RuntimeError(result.stderr.decode(errors="replace").strip())
+    return result.stdout
+
+
+def worktrees(directory):
+    """Use the enclosing repo, otherwise immediate child repos, once per Git database."""
+    try:
+        git(directory, "rev-parse", "--git-common-dir")
+        repositories = [directory]
+    except RuntimeError:
+        repositories = [child for child in sorted(directory.iterdir())
+                        if child.is_dir() and (child / ".git").exists()]
+    seen = set()
+    choices = {}
+    for repository in repositories:
+        common = git(repository, "rev-parse", "--path-format=absolute", "--git-common-dir").rstrip(b"\n")
+        if common in seen:
+            continue
+        seen.add(common)
+        git_dir = Path(os.fsdecode(common))
+        repository_name = git_dir.parent.name if git_dir.name == ".git" else git_dir.name
+        records = git(repository, "worktree", "list", "--porcelain", "-z").split(b"\0\0")
+        for record in records:
+            fields = record.split(b"\0")
+            values = dict(field.partition(b" ")[::2] for field in fields if field)
+            if b"worktree" not in values or b"bare" in values:
+                continue
+            path = os.fsdecode(values[b"worktree"])
+            if not Path(path).is_dir():
+                continue
+            branch = os.fsdecode(values.get(b"branch", b"")).removeprefix("refs/heads/")
+            branch = branch or "detached " + os.fsdecode(values.get(b"HEAD", b""))[:8]
+            flags = " · locked" if b"locked" in values else ""
+            choices[path] = f"{repository_name} · {branch}{flags}"
+    return list(choices.items())
+
+
+def history(lines):
+    scores = {}
+    for line in lines:
+        line = line.rstrip("\n")
+        match = re.match(r"^\s*(\d+(?:[.,]\d+)?)\s+(/.*)$", line)
+        path = match[2] if match else line
+        if os.path.isabs(path) and Path(path).is_dir():
+            score = float(match[1].replace(",", ".")) if match else 0
+            scores[path] = max(score, scores.get(path, 0))
+    return [(path, "") for path in sorted(scores, key=lambda path: (-scores[path], len(path), path))]
+
+
+def visible(value):
+    return "".join(char if char.isprintable() else repr(char)[1:-1] for char in value)
+
+
+def rows(choices):
+    paths = [path for path, _ in choices]
+    home = str(Path.home())
+    inputs = [os.path.relpath(path, home) if path.startswith(home + "/") else path for path in paths]
+    labels = paths
+    if paths and shutil.which("shortpath"):
+        result = subprocess.run(["shortpath", "--null", "--min-length", "2", "--keep", "2"],
+                                input=os.fsencode("\0".join(inputs) + "\0"), capture_output=True, cwd=home)
+        shortened = os.fsdecode(result.stdout).split("\0")[:-1]
+        if result.returncode == 0 and len(shortened) == len(paths):
+            labels = ["~/" + label if path.startswith(home + "/") else label
+                      for path, label in zip(paths, shortened)]
+    output = []
+    for (path, detail), label in zip(choices, labels):
+        if label.startswith(home + "/"):
+            label = "~" + label[len(home):]
+        token = base64.urlsafe_b64encode(os.fsencode(path)).decode()
+        output.append("\t".join((token, visible(label), visible(detail))))
+    return output
+
+
+def layout(columns, lines):
+    if columns >= 110:
+        return "right,48%,border-left,nowrap,nohidden"
+    return "down,40%,border-top,nowrap,nohidden"
+
+
+def summaries(snapshot):
+    """Stream observations for repository roots without delaying keyboard input."""
+    observed = directory_preview.agent_snapshot()
+    snapshot.write_text(json.dumps(observed))
+    print(json.dumps({"ready": True}), flush=True)
+
+    def inspect(token):
+        path = Path(os.fsdecode(base64.urlsafe_b64decode(token)))
+        if not (path / ".git").exists():
+            return None
+        raw = directory_preview.git(path, "status", "--porcelain=v1", "-z", "--branch", "--untracked-files=normal")
+        branch, status = "", "status unavailable"
+        if raw is not None:
+            header, _, changes = raw.partition(b"\0")
+            branch = os.fsdecode(header.removeprefix(b"## ")).split("...")[0]
+            for prefix in ("No commits yet on ", "Initial commit on "):
+                branch = branch.removeprefix(prefix)
+            if "no branch" in branch:
+                branch = "detached"
+            changed = directory_preview.status_rows(changes)
+            status = f"dirty {len(changed)}" if changed else "clean"
+        names = sorted({agent["name"] for agent in directory_preview.matching_agents(path, observed)})
+        return {"token": token, "branch": visible(branch), "status": status, "agents": ", ".join(names)}
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        tasks = [pool.submit(inspect, line.rstrip("\n")) for line in sys.stdin]
+        for task in as_completed(tasks):
+            result = task.result()
+            if result:
+                print(json.dumps(result), flush=True)
+
+
+def select(choices, mode, query):
+    candidates = rows(choices)
+    if not candidates:
+        print("No matching directories.", file=sys.stderr)
+        return 1
+    with tempfile.TemporaryDirectory(prefix="directory-agents-") as temporary:
+        snapshot = Path(temporary) / "agents.json"
+        ui = Path.home() / ".local/libexec/dotfiles/directory-picker-ui"
+        if ui.is_file() and os.access(ui, os.X_OK):
+            config = {"title": "Worktrees" if mode == "--worktrees" else "Directories",
+                      "query": query, "rows": candidates, "helper": str(Path(__file__).resolve()),
+                      "snapshot": str(snapshot), "theme": directory_preview.theme()}
+            result = subprocess.run([ui], input=json.dumps(config).encode(), stdout=subprocess.PIPE)
+            if result.returncode == 0:
+                write_selection(result.stdout.strip())
+            return result.returncode
+        snapshot.write_text(json.dumps(directory_preview.agent_snapshot()))
+        return select_fzf(candidates, mode, query, snapshot)
+
+
+def write_selection(token):
+    # A trailing slash preserves newline-ending directory names in shell substitution.
+    sys.stdout.buffer.write(base64.urlsafe_b64decode(token) + b"/\n")
+
+
+def select_fzf(candidates, mode, query, snapshot):
+    command = shlex.join([sys.executable, str(Path(__file__).resolve())])
+    resize = f"transform:{command} --layout"
+    args = ["fzf", "--read0", "--print0", "--delimiter=\t", "--with-nth=2,3",
+            "--ansi", "--color=hl:underline,hl+:underline", "--height=100%", "--layout=reverse", "--border=none", "--margin=0", "--padding=0",
+            "--info=inline", "--no-separator", "--multi", "--no-sort",
+            "--bind=ctrl-space:clear-selection+select-all+print(ctrl-space)+accept",
+            "--bind=enter:clear-selection+print(enter)+accept",
+            "--bind=ctrl-j:preview-down,ctrl-k:preview-up,ctrl-/:toggle-preview",
+            f"--bind=start:{resize}", f"--bind=resize:{resize}",
+            "--preview-window=right,48%,border-left,nowrap",
+            f"--prompt={'Worktrees' if mode == '--worktrees' else 'Directories'} > ",
+            f"--query={query}"]
+    theme_file = directory_preview.theme_directory() / 'fzf.txt'
+    if not theme_file.is_file():
+        theme_file = ROOT / 'design-system/generated/fzf.txt'
+    args[1:1] = shlex.split(theme_file.read_text())
+    args.append(f'--preview={shlex.join([sys.executable, str(Path(__file__).resolve())])} --preview {{1}} {shlex.quote(str(snapshot))}')
+    while candidates:
+        result = subprocess.run(args, input=("\0".join(candidates) + "\0").encode(), capture_output=True)
+        if result.returncode:
+            if result.returncode not in (1, 130):
+                sys.stderr.buffer.write(result.stderr)
+            return result.returncode
+        fields = result.stdout.decode().rstrip("\0").split("\0")
+        key, *selected = fields
+        if not selected:
+            return 1
+        if key == "ctrl-space":
+            candidates = selected
+            args = [arg for arg in args if not arg.startswith("--query=")]
+            args.append("--query=")
+            continue
+        token = selected[0].split("\t", 1)[0]
+        write_selection(token)
+        return 0
+    print("No matching directories.", file=sys.stderr)
+    return 1
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "--history"
+    if mode == "--summaries":
+        summaries(Path(sys.argv[2]))
+        return 0
+    if mode == "--layout":
+        print(f"change-preview-window({layout(int(os.environ['FZF_COLUMNS']), int(os.environ['FZF_LINES']))})")
+        return 0
+    if mode in ("--preview", "--preview-json"):
+        path = os.fsdecode(base64.urlsafe_b64decode(sys.argv[2]))
+        snapshot = {"agents": [], "sources": [], "pending": not sys.argv[3]}
+        if sys.argv[3]:
+            try:
+                snapshot = json.loads(Path(sys.argv[3]).read_text())
+            except FileNotFoundError:
+                pass
+        directory_preview.render(path, snapshot, structured=mode == "--preview-json")
+        return 0
+    if mode not in ("--history", "--worktrees"):
+        raise RuntimeError(f"Unknown picker mode: {mode}")
+    choices = worktrees(Path.cwd()) if mode == '--worktrees' else history(sys.stdin)
+    return select(choices, mode, " ".join(sys.argv[2:]))
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, RuntimeError) as error:
+        print(f"directory-picker: {error}", file=sys.stderr)
+        sys.exit(2)

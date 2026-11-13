@@ -30,7 +30,7 @@ keybinds clear-defaults=true {
         bind ";" { FocusLastPane; SwitchToMode "Locked"; }
         bind "x" { CloseFocus; SwitchToMode "Locked"; }
         bind "z" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
-        bind "P" "d" { SwitchToMode "Locked"; Detach; }
+        bind "P" "d" "D" { SwitchToMode "Locked"; Detach; }
         bind "f" { Write 6; SwitchToMode "Locked"; }
         bind "u" { SwitchToMode "Locked"; FocusHostSession; }
         bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
