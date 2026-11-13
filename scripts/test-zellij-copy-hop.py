@@ -34,7 +34,7 @@ def configuration():
         'plugins { ' + alias + '\n}',
         'load_plugins { ' + autoload + '\n}',
         'keybinds clear-defaults=true {', ui.block(bindings, r'\blocked\s*\{'),
-        'tmux {', ui.block(prefix, r'bind "\["'), '}',
+        'tmux {', ui.block(prefix, r'bind "\["'), ui.block(prefix, r'bind "c"'), '}',
         ui.block(bindings, r'\bcopy\s*\{'), '}',
     ]) + '\n'
 
@@ -109,6 +109,47 @@ def exercise(terminal):
     print('PASS: Hop labels, rapid input, Unicode, paging, cancellation and native OSC52 copy without an editor.')
 
 
+def exercise_clients(first, second):
+    second.prefix(b'c')
+    second.until('second client owns a separate tab', lambda:
+                 len(second.tabs()) == 2 and workflow.PROMPT.decode().strip() in ui.text(second))
+    fixture(first, 'alpha beta gamma')
+    first.send(b'kk0wv')
+    fixture(second, 'bravo delta bravo')
+    second.send(b'kk0wv')
+    begin(second, b'a')
+    second.until('second client labels its own text', lambda: 'bravo delts brdvo' in ui.text(second))
+    first.drain()
+    assert 'JUMP' not in ui.text(first), 'Starting a jump must not capture the other client'
+    begin(first, b'a')
+    first.until('first client labels its own text', lambda: 'etd gfmmg' in ui.text(first))
+    second.until('first jump preserves second client labels', lambda: 'bravo delts brdvo' in ui.text(second))
+    first_offset = len(first.output)
+    copied(second, b'sy', 'delta')
+    first.drain()
+    assert b'\x1b]52;c;' not in first.output[first_offset:], 'Copy must stay on its originating client'
+    first.until('second copy preserves first jump', lambda: 'etd gfmmg' in ui.text(first))
+    copied(first, b'dy', 'beta')
+
+    config = Path(first.env['HOME']) / '.config/zellij/config.kdl'
+    config.write_text(configuration().replace('tmux {',
+                      'tmux {\n bind "n" { NewTab; SwitchToMode "Locked"; }\n'))
+
+    def reloaded_tab():
+        if len(first.tabs()) < 3:
+            first.prefix(b'n')
+        return len(first.tabs()) >= 3
+
+    first.until('configuration watcher installs the new tab shortcut', reloaded_tab)
+    first.until('reconfigured tab shell ready', lambda: workflow.PROMPT.decode().strip() in ui.text(first))
+    fixture(first, 'alpha beta gamma')
+    first.send(b'kk0wv')
+    begin(first, b'a')
+    first.until('private binding recovers after reconfiguration', lambda: 'etd gfmmg' in ui.text(first))
+    copied(first, b'dy', 'beta')
+    print('PASS: two clients keep independent labels, keyboard capture and clipboard; reconfiguration restores routing.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', default=os.environ.get('ZELLIJ_TEST_ZELLIJ_BIN', shutil.which('zellij')))
@@ -141,16 +182,26 @@ def main():
         terminal = workflow.Terminal(args.binary, env, name,
                                      [args.binary, 'attach', '--create', name, '--', '/bin/sh'],
                                      install_navigation=False)
+        second = None
         try:
             terminal.until('plugin requests consent', lambda: '(y/n)' in ui.text(terminal).lower())
             terminal.send(b'y')
             terminal.until('shell ready', lambda: workflow.PROMPT.decode().strip() in ui.text(terminal) and '(y/n)' not in ui.text(terminal).lower())
             exercise(terminal)
+            second = workflow.Terminal(args.binary, env, name,
+                                       [args.binary, 'attach', name, '--', '/bin/sh'],
+                                       install_navigation=False)
+            second.until('second client ready', lambda: workflow.PROMPT.decode().strip() in ui.text(second))
+            exercise_clients(terminal, second)
         except Exception:
             print("Terminal grid at failure:\n" + ui.text(terminal), flush=True)
+            if second is not None:
+                print("Second client grid at failure:\n" + ui.text(second), flush=True)
             raise
         finally:
             subprocess.run([args.binary, 'kill-session', name], env=env, capture_output=True, timeout=5)
+            if second is not None:
+                second.close()
             terminal.close()
 
 
