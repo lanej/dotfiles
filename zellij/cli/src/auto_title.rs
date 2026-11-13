@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Default, PartialEq, Eq)]
 struct Tab {
     name: String,
+    focused_pane: Option<u64>,
     // Zellij allocates terminal IDs monotonically. Include hidden live providers,
     // but only an eligible tiled pane can offer a new name.
     panes: BTreeMap<u64, Option<String>>,
@@ -52,11 +53,26 @@ fn previous_record(
 
 enum Update {
     Automatic,
+    DirectoryJump,
     ClearPane(u64),
     ClearAll,
 }
 
-fn choose(tab: &Tab, previous: &Record, fallback: &str) -> (String, BTreeSet<u64>) {
+fn choose(
+    tab: &Tab,
+    previous: &Record,
+    fallback: &str,
+    directory_jump: Option<(u64, &str)>,
+) -> (String, BTreeSet<u64>) {
+    if let Some((pane, title)) = directory_jump.filter(|(pane, _)| tab.focused_pane == Some(*pane))
+    {
+        let providers = tab
+            .panes
+            .iter()
+            .filter_map(|(id, name)| (*id == pane || name.as_deref() == Some(title)).then_some(*id))
+            .collect();
+        return (title.to_owned(), providers);
+    }
     // Records from the bracket-style shell hook contain a title but no provider IDs.
     // Only a proven automatic record may migrate a literal bracket suffix.
     if previous.providers.is_empty() {
@@ -137,6 +153,9 @@ fn snapshot(client: &ipc::Client<'_>, offer: Option<(u64, &str)>) -> Result<BTre
         let name = if flag(&p, "is_floating") || flag(&p, "is_suppressed") {
             None
         } else {
+            if flag(&p, "is_focused") {
+                tab.focused_pane = Some(id);
+            }
             pane_label(p["title"].as_str().unwrap_or_default()).or_else(|| {
                 offer
                     .filter(|(owner, _)| *owner == id && flag(&p, "is_focused"))
@@ -165,7 +184,9 @@ pub fn refresh(session: &str, offer: Option<(u64, &str)>) -> Result<()> {
 fn update(session: &str, offer: Option<(u64, &str)>, update: Update) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(2);
     let context = match (&update, env::var("ZELLIJ_TITLE_CONTEXT")) {
-        (Update::Automatic, Ok(value)) => serde_json::from_str::<crate::context::Session>(&value)?,
+        (Update::Automatic | Update::DirectoryJump, Ok(value)) => {
+            serde_json::from_str::<crate::context::Session>(&value)?
+        }
         _ => crate::context::Session::resolve(session)?,
     };
     context.validate(session)?;
@@ -252,7 +273,14 @@ fn update(session: &str, offer: Option<(u64, &str)>, update: Update) -> Result<(
             continue;
         }
         let empty = Record::default();
-        let (title, providers) = choose(&tab, if managed { &previous } else { &empty }, &fallback);
+        let (title, providers) = choose(
+            &tab,
+            if managed { &previous } else { &empty },
+            &fallback,
+            matches!(update, Update::DirectoryJump)
+                .then_some(offer)
+                .flatten(),
+        );
         let mut record = Record {
             identity: identity.clone(),
             persistent_identity: Some(persistent_identity.clone()),
@@ -315,7 +343,7 @@ fn directory_title() -> Result<String> {
 }
 
 pub fn main(args: &[String]) -> Result<()> {
-    const HELP: &str = "Usage: zellij-auto-title [--shell | --clear [--all]]\n\n--clear returns the current pane's tab to automatic naming.\n--clear --all returns every fixed tab name in the current session to automatic naming.";
+    const HELP: &str = "Usage: zellij-auto-title [--shell [--directory-jump] | --clear [--all]]\n\n--directory-jump updates an automatic tab name from the focused shell's selected directory.\n--clear returns the current pane's tab to automatic naming.\n--clear --all returns every fixed tab name in the current session to automatic naming.";
     match args {
         [flag] if matches!(flag.as_str(), "--help" | "-h") => {
             println!("{HELP}");
@@ -332,13 +360,22 @@ pub fn main(args: &[String]) -> Result<()> {
         }
         [] => {}
         [flag] if flag == "--shell" => {}
+        [first, second] if first == "--shell" && second == "--directory-jump" => {}
         _ => anyhow::bail!("{HELP}"),
     }
     let title = directory_title()?;
-    if args == ["--shell"] {
+    if args.first().is_some_and(|flag| flag == "--shell") {
         emit_shell_title(&title)?;
     }
-    refresh(&session()?, Some((pane_id()?, &title)))
+    update(
+        &session()?,
+        Some((pane_id()?, &title)),
+        if args.iter().any(|flag| flag == "--directory-jump") {
+            Update::DirectoryJump
+        } else {
+            Update::Automatic
+        },
+    )
 }
 
 fn emit_shell_title(title: &str) -> Result<()> {
@@ -423,8 +460,31 @@ mod tests {
                 .into_iter()
                 .map(|(id, n)| (id, Some(n.into())))
                 .collect();
-            (prev.title, prev.providers) = choose(&tab, &prev, "Tab #1");
+            (prev.title, prev.providers) = choose(&tab, &prev, "Tab #1", None);
             assert_eq!(prev.title, expect);
         }
+    }
+
+    #[test]
+    fn directory_jump_uses_the_focused_pane_and_replaces_old_providers() {
+        let mut tab = Tab {
+            focused_pane: Some(7),
+            panes: BTreeMap::from([(2, Some("logs".into())), (7, Some("home".into()))]),
+            ..Tab::default()
+        };
+        let previous = Record {
+            title: "home".into(),
+            providers: BTreeSet::from([7]),
+            ..Record::default()
+        };
+        assert_eq!(
+            choose(&tab, &previous, "Tab #1", Some((7, "project"))),
+            ("project".into(), BTreeSet::from([7]))
+        );
+        tab.focused_pane = Some(2);
+        assert_eq!(
+            choose(&tab, &previous, "Tab #1", Some((7, "project"))).0,
+            "home"
+        );
     }
 }
