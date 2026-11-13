@@ -308,7 +308,10 @@ async function main() {
   const built = programs(settings, inventory(settings), ts);
   if (mode === 'baseline') cleanBaselineSource(built.files);
   const findings = mode === 'lint' ? [] : built.findings;
-  if (mode !== 'typecheck') findings.push(...await lint(built.files, built.programs), ...await formatting(built.files));
+  if (mode !== 'typecheck') {
+    if (built.files.length) run([process.execPath, require.resolve('@biomejs/biome/bin/biome'), 'lint', '--config-path', path.join(tools, 'biome.json'), '--error-on-warnings', ...built.files]);
+    findings.push(...await lint(built.files, built.programs), ...await formatting(built.files));
+  }
   enforce(findings, settings);
   if (mode === 'all') {
     run(settings.commands.test);

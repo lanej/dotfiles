@@ -138,3 +138,14 @@ test('original gates, test and audit failures remain blocking; formatting is sco
   assert.equal(readFileSync(path.join(f.root, 'src/main.ts'), 'utf8'), clean);
   assert.equal(readFileSync(path.join(f.root, 'src/other.ts'), 'utf8'), 'export const other=2;\n');
 });
+
+
+test('Biome is required and cannot be hidden by a retrofit baseline', (t) => {
+  const f = fixture(t, 'export const value = 1;\n', 'ratchet');
+  f.commit();
+  f.check('baseline');
+  f.put('src/main.ts', 'debugger;\nexport const value = 1;\n');
+  assert.match(f.check('lint', 1), /noDebugger/);
+  f.commit();
+  assert.match(f.check('ratchet', 1), /noDebugger/);
+});
