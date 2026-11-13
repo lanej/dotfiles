@@ -161,14 +161,15 @@ keybinds clear-defaults=true {
         bind "P" {
             Run "zellij-popup" {
                 floating true
+                borderless true
                 close_on_exit true
-                name "Shared popup — Ctrl-f P hides"
                 width "90%"
                 height "90%"
             }
             SwitchToMode "Locked"
         }
         bind "F" { ToggleFloatingPanes; SwitchToMode "Locked"; }
+        bind "E" { TogglePaneEmbedOrFloating; SwitchToMode "Locked"; }
         bind "u" { SwitchToMode "Locked"; FocusHostSession; }
         bind "i" { SwitchToMode "Locked"; FocusGuestSession; }
         // Native F9's inbox action, without stealing a bare application key.

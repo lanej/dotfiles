@@ -146,7 +146,7 @@ pub fn ssh(args: &[String]) -> Result<()> {
     Err(command.exec().into())
 }
 pub fn popup() -> Result<()> {
-    if session()? == "dotfiles-popup" {
+    if session()? == "pop-up" {
         bail!("The popup is already open; Ctrl-f d detaches this view");
     }
     let default = home()?.join(".config/zellij");
@@ -163,7 +163,7 @@ pub fn popup() -> Result<()> {
         .unwrap_or(default);
     let layout = fs::read_to_string(config.join("layouts/tmux.kdl"))
         .context("The installed tmux layout is missing; run make zellij")?;
-    let layout=layout+"\n// Scratch processes survive detaching, but are never resurrected after exit.\nsession_serialization false\nkeybinds {\n    tmux {\n        bind \"P\" { SwitchToMode \"Locked\"; Detach; }\n    }\n}\n";
+    let layout=layout+"\n// Scratch processes survive detaching, but are never resurrected after exit.\nsession_serialization false\nkeybinds {\n    tmux {\n        bind \"P\" \"d\" \"D\" { SwitchToMode \"Locked\"; Detach; }\n    }\n}\n";
     let mut command = Command::new("zellij");
     if crate::agent::enabled() {
         if let Ok(raw) = env::var("SSH_AUTH_SOCK") {
@@ -184,13 +184,7 @@ pub fn popup() -> Result<()> {
         }
     }
     Err(command
-        .args([
-            "--layout-string",
-            &layout,
-            "attach",
-            "--create",
-            "dotfiles-popup",
-        ])
+        .args(["--layout-string", &layout, "attach", "--create", "pop-up"])
         .env_remove("ZELLIJ")
         .env_remove("ZELLIJ_SESSION_NAME")
         .env_remove("ZELLIJ_PANE_ID")
@@ -277,7 +271,7 @@ pub fn shutdown() -> Result<()> {
     println!("Shut down Zellij session {}\n\nCloses every pane in this session and disconnects all its clients.",serde_json::to_string(&session)?);
     println!(
         "{}",
-        if session == "dotfiles-popup" {
+        if session == "pop-up" {
             "Other sessions keep running."
         } else {
             "Other sessions, including the shared popup, keep running."

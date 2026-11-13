@@ -4,8 +4,11 @@
 Live sockets, rendering and multi-client races remain in the native Zellij suites.
 """
 import hashlib
+from contextlib import contextmanager
 import json
 import os
+import runpy
+import shutil
 from pathlib import Path
 import stat
 import socket
@@ -13,6 +16,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from zellij_ipc_fixture import action_server, fields, message
 
@@ -72,6 +76,110 @@ print(reply if isinstance(reply, str) else json.dumps(reply), end="")''',
     def calls(self):
         path = self.home / "calls"
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    @contextmanager
+    def collaboration_session(self):
+        runtime = self.home / "run"
+        namespace = runtime / "contract_version_1"
+        namespace.mkdir(parents=True)
+        cache = (self.home / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                 else self.home / "cache/zellij") / "contract_version_1"
+        index = cache / f"session_index-{hashlib.sha256(str(namespace).encode()).hexdigest()[:12]}.sqlite"
+        index.parent.mkdir(parents=True)
+        with sqlite3.connect(index) as connection:
+            connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
+            connection.execute("INSERT INTO sessions VALUES (?, ?)",
+                               (self.env["ZELLIJ_SESSION_NAME"], "collaboration"))
+        self.env["ZELLIJ_SOCKET_DIR"] = str(runtime)
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(namespace / "collaboration"))
+            yield
+
+    def test_context_inspect_preserves_raw_metadata_and_requires_session_selection(self):
+        name = self.env["ZELLIJ_SESSION_NAME"]
+        with self.collaboration_session():
+            panes, tabs = [pane(7, pane_command="shell")], [{"tab_id": 4, "other_focused_clients": [1]}]
+            clients = "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND\n1 terminal_7 shell\n"
+            self.plan([panes, tabs, clients])
+            result = json.loads(self.run_helper("zellij-context", "inspect", "--json").stdout)
+            self.assertEqual(result["status"], "available")
+            self.assertEqual((result["session"], result["caller_pane"], result["caller_tab"]),
+                             (name, "terminal_7", 4))
+            self.assertEqual((result["panes"], result["tabs"], result["clients_text"]),
+                             (panes, tabs, clients))
+            self.env.pop("ZELLIJ_SESSION_NAME")
+            self.plan(["main [Created yesterday]\n"])
+            result = json.loads(self.run_helper("zellij-context", "inspect", "--json").stdout)
+            self.assertEqual(result["status"], "selection_required")
+            self.assertEqual(self.calls(), [["list-sessions", "--no-formatting"]])
+            self.plan([])
+            result = self.run_helper("zellij-context", "inspect", "--session", "missing", "--json", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(json.loads(result.stdout)["status"], "unavailable")
+            self.assertIn(b"does not prove the session exited", result.stderr)
+
+    def test_pane_open_preserves_literal_argv_and_refuses_unverified_targets(self):
+        with self.collaboration_session():
+            command = ["printf", "$(touch never)", "--literal", "a 'quoted' argument"]
+            self.plan([[pane(7)], [{"tab_id": 4}], "terminal_12\n", [pane(7), pane(12)]])
+            result = self.run_helper("zellij-pane", "open", "--name", "Review diff",
+                                     "--cwd", str(self.home), "--", *command)
+            self.assertEqual(result.stdout, b"terminal_12\n")
+            creation = self.calls()[2]
+            self.assertIn("--no-focus", creation)
+            self.assertEqual(creation[creation.index("--tab-id") + 1], "4")
+            self.assertEqual(creation[creation.index("_run") + 1:], ["--", *command])
+            self.assertFalse((self.home / "never").exists())
+            self.env.pop("ZELLIJ_PANE_ID")
+            self.plan([[pane(7)]])
+            result = self.run_helper("zellij-pane", "open", "--", "true", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"Pass --tab", result.stderr)
+            self.assertFalse(any("new-pane" in call for call in self.calls()))
+            self.plan([[pane(7)], [{"tab_id": 4}]])
+            result = self.run_helper("zellij-pane", "open", "--tab", "99", "--", "true", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(any("new-pane" in call for call in self.calls()))
+            self.plan([[pane(7)], [{"tab_id": 4}], {"error": "lost reply"}])
+            result = self.run_helper("zellij-pane", "open", "--tab", "4", "--", "true", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"not confirmed", result.stderr)
+            self.assertEqual(sum("new-pane" in call for call in self.calls()), 1)
+
+    def test_pane_capture_preserves_styling_and_withholds_changed_context(self):
+        with self.collaboration_session():
+            content = "\x1b[31mred text\x1b[0m\n"
+            self.plan([[pane(7)], content, [pane(7)]])
+            result = self.run_helper("zellij-pane", "capture", "--pane", "terminal_7", "--ansi", "--full")
+            self.assertEqual(result.stdout, content.encode())
+            self.assertEqual(self.calls()[1][1:],
+                             ["action", "dump-screen", "--pane-id", "terminal_7", "--ansi", "--full"])
+            self.plan([[pane(7)], content, [pane(7, tab_id=9)]])
+            result = self.run_helper("zellij-pane", "capture", "--pane", "7", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+            self.assertIn(b"changed during capture", result.stderr)
+
+    def test_pane_image_uses_installed_viewer_and_reports_its_absence_before_creation(self):
+        image = self.home / "image 'quoted'.png"
+        image.write_bytes(b"fixture")
+        self.env["PATH"] = str(self.bin)
+        self.plan([])
+        result = self.run_helper("zellij-pane", "image", str(image), check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"Image viewer unavailable", result.stderr)
+        self.assertEqual(self.calls(), [])
+        kitten = self.bin / "kitten"
+        kitten.write_text("#!/bin/sh\nexit 0\n")
+        kitten.chmod(0o755)
+        with self.collaboration_session():
+            self.plan([[pane(7)], [{"tab_id": 4}], "terminal_12", [pane(12)]])
+            self.run_helper("zellij-pane", "image", str(image))
+            creation = self.calls()[2]
+            argv = creation[creation.index("_run") + 2:]
+            self.assertEqual(argv[:2], [str(kitten.resolve()), "icat"])
+            self.assertIn("--transfer-mode=stream", argv)
+            self.assertEqual(argv[-1], str(image.resolve()))
 
     def test_popup_alias_and_dispatcher_preserve_prompt_environment(self):
         layouts = self.home / ".config/zellij/layouts"
@@ -352,5 +460,100 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
         self.assertEqual(self.calls(), [])
 
 
+def live_panes():
+    Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+    binary = shutil.which("zellij")
+    assert binary, "Install the pinned Zellij runtime first"
+    with tempfile.TemporaryDirectory(prefix="zj-pane-", dir="/tmp") as directory:
+        root = Path(directory)
+        home, runtime = root / "home", root / "run"
+        config = home / ".config/zellij"
+        (config / "layouts").mkdir(parents=True)
+        runtime.mkdir(mode=0o700)
+        (config / "layouts/bare.kdl").write_text('layout { pane command="/bin/sh"; }\n')
+        (config / "config.kdl").write_text('default_shell "/bin/sh"\nsession_serialization false\n'
+                                         'default_layout "bare"\nshow_startup_tips false\nshow_release_notes false\n')
+        env = {**os.environ, "HOME": str(home), "SHELL": "/bin/sh", "PS1": "pane-ready> ",
+               "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
+               "XDG_CACHE_HOME": str(root / "cache"), "XDG_DATA_HOME": str(root / "data"),
+               "XDG_STATE_HOME": str(root / "state"), "XDG_RUNTIME_DIR": str(runtime),
+               "TMPDIR": str(root)}
+        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_SOCKET_DIR", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+            env.pop(key, None)
+        data = (home / "Library/Application Support/org.Zellij-Contributors.Zellij"
+                if sys.platform == "darwin" else root / "data/zellij")
+        data.mkdir(parents=True)
+        (data / "desktop_integration.json").write_text('{"flags":["SetupNeverShow"]}\n')
+        name = "pane-helper-check"
+        terminals = []
+
+        def helper(*args):
+            with subprocess.Popen([str(ROOT / "bin/zellij-helper"), *args], env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
+                deadline = time.monotonic() + 10
+                while True:
+                    for terminal in terminals:
+                        terminal.drain(0.01)
+                    try:
+                        output, error = process.communicate(timeout=0.05)
+                        assert process.returncode == 0, error
+                        return output
+                    except subprocess.TimeoutExpired:
+                        if time.monotonic() >= deadline:
+                            process.kill()
+                            process.communicate()
+                            raise AssertionError("Pane helper timed out")
+
+        try:
+            first = Terminal(binary, env, name, install_navigation=False)
+            terminals.append(first)
+            first.until("shell starts", lambda: b"pane-ready>" in first.output)
+            second = Terminal(binary, env, name, install_navigation=False)
+            terminals.append(second)
+            second.until("second viewer attaches", lambda: b"pane-ready>" in second.output)
+            context = json.loads(helper("context", "inspect", "--session", name, "--json"))
+            assert context["status"] == "available" and context["caller_pane"] is None
+            tab = str(context["tabs"][0]["tab_id"])
+
+            def focus():
+                return [(row.split()[0], row.split()[1])
+                        for row in first.action("list-clients").splitlines()[1:] if row.strip()]
+
+            original_focus = focus()
+            literal = "$(touch should-not-exist); 'quoted'"
+            pane_id = helper("pane", "open", "--session", name, "--tab", tab, "--name", "Shared result",
+                             "--cwd", str(home), "--", "printf", "%s\\n", "shared-live-ok", literal).strip()
+            first.until("view prints its result", lambda: "Command exit status: 0" in
+                        helper("pane", "capture", "--session", name, "--pane", pane_id))
+            content = helper("pane", "capture", "--session", name, "--pane", pane_id, "--ansi", "--full")
+            assert "shared-live-ok" in content and literal in content
+            assert not (home / "should-not-exist").exists()
+            assert focus() == original_focus, "Opening a pane changed a viewer's focus"
+            first.action("write-chars", "--pane-id", pane_id, "printf 'responsive-after-exit\\n'\n")
+            first.until("view shell remains responsive", lambda: any(
+                line.strip() == "responsive-after-exit"
+                for line in helper("pane", "capture", "--session", name, "--pane", pane_id).splitlines()))
+            waiting = helper("pane", "open", "--session", name, "--tab", tab, "--", "/bin/sleep", "30").strip()
+            first.until("command started", lambda: "sleep" in next(
+                pane["pane_command"] for pane in json.loads(first.action("list-panes", "--all", "--json"))
+                if f"terminal_{pane['id']}" == waiting and not pane["is_plugin"]))
+            first.action("write", "--pane-id", waiting, "3")
+            first.until("interrupt leaves a prompt", lambda: "Command exit status: 130" in
+                        helper("pane", "capture", "--session", name, "--pane", waiting))
+            first.action("write-chars", "--pane-id", waiting, "printf 'responsive-after-interrupt\\n'\n")
+            first.until("view shell survives Ctrl-c", lambda: any(
+                line.strip() == "responsive-after-interrupt"
+                for line in helper("pane", "capture", "--session", name, "--pane", waiting).splitlines()))
+            print("PASS: real discovery/capture, literal argv, focus preserved for two viewers, shell after exit and Ctrl-c")
+        finally:
+            for terminal in reversed(terminals):
+                terminal.close()
+            subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
+
+
 if __name__ == "__main__":
-    unittest.main()
+    if sys.argv[1:] == ["--live-panes"]:
+        live_panes()
+    else:
+        unittest.main()

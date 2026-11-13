@@ -32,7 +32,35 @@ ROOT = Path(__file__).resolve().parents[1]
 GENERATED = Path(os.environ.get("DOTFILES_THEME_DIR", ROOT / "design-system/generated"))
 
 
+class NativeStream(pyte.Stream):
+    # Inline terminal redraws can move left by several tab stops with CSI Z.
+    csi = {**pyte.Stream.csi, "Z": "back_tab"}
+    pending = ""
+
+    def feed(self, data):
+        # pyte treats xterm's CSI >4;2m keyboard mode as SGR underline.
+        # A PTY read can split the escape sequence at any byte.
+        data = self.pending + data
+        tail = re.search(r"\x1b(?:\[(?:>[0-9;]*)?)?\Z", data)
+        self.pending = tail[0] if tail else ""
+        complete = data[:tail.start()] if tail else data
+        super().feed(re.sub(r"\x1b\[>[0-9;]*m", "", complete))
+
+
 class NativeScreen(pyte.Screen):
+    def back_tab(self, count=1):
+        stops = sorted((stop for stop in self.tabstops if stop < self.cursor.x), reverse=True)
+        n = max(1, count)
+        self.cursor.x = stops[n - 1] if len(stops) >= n else 0
+
+    def resize(self, lines=None, columns=None):
+        old_width = self.columns
+        super().resize(lines=lines, columns=columns)
+        # pyte keeps its initial stops forever. xterm extends the eight-column
+        # tab grid on growth and cannot move the cursor past a shrunken edge.
+        self.tabstops.intersection_update(range(self.columns))
+        self.tabstops.update(range(max(8, (old_width + 7) // 8 * 8), self.columns, 8))
+
     def report_device_status(self, mode, **kwargs):
         if not kwargs.get("private"):
             super().report_device_status(mode)
@@ -44,7 +72,7 @@ def cells(screen, lines):
 
 def ansi_cells(text, columns=76, lines=10):
     screen = NativeScreen(columns, lines)
-    pyte.Stream(screen).feed(text.replace("\n", "\r\n"))
+    NativeStream(screen).feed(text.replace("\n", "\r\n"))
     return cells(screen, lines)
 
 
@@ -69,7 +97,7 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10):
         os.chdir(env["HOME"])
         os.execvpe(command[0], command, env)
     screen = NativeScreen(columns, lines)
-    stream, decoder = pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace")
+    stream, decoder = NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace")
     raw = bytearray()
     deadline = time.monotonic() + 15
     try:
@@ -219,7 +247,7 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         name = "theme-" + work.name
         client = workflow.Terminal(shutil.which("zellij"), native_env, name, install_navigation=False, columns=76)
         screen = NativeScreen(76, 32)
-        stream, decoder, offset = pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0
+        stream, decoder, offset = NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0
         def ready():
             nonlocal offset
             stream.feed(decoder.decode(bytes(client.output[offset:])))

@@ -75,6 +75,12 @@ version = "1.4.7"
 [tools.fzf]
 version = "0.59.0"
 
+[tools.directory-picker]
+description = "Build the Charmed directory and worktree picker for zz and zw."
+installer = "config"
+requires = ["go", "fzf"]
+post = ["directory-picker"]
+
 [tools.starship]
 requires = ["rust"]
 version = "1.25.0"
@@ -263,6 +269,12 @@ version = "2.1.295"
 requires = ["node", "jq", "claude-code"]
 setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
 version = "0.164.0"
+
+[tools.octo-manager]
+description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
+installer = "octo-manager"
+requires = ["git", "gh", "go"]
+revision = "423c1e8df7b18beef8c83d217bd7ba2ab1ad69d5"
 
 [tools.treehouse]
 installer = "treehouse"

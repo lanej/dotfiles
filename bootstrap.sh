@@ -1193,6 +1193,9 @@ install_dependencies() {
 				fi
 				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
 				;;
+			octo-manager)
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
+				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
 			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
@@ -1224,6 +1227,7 @@ run_configured_hooks() {
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
+			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;

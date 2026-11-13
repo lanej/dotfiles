@@ -190,7 +190,7 @@ test-zellij-command-prompt: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
 test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-status
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-pane test-zellij-status
 zellij-helpers:
 	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
 test-zellij-helpers: zellij-helpers
@@ -199,6 +199,8 @@ test-zellij-helpers: zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
 	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
+test-zellij-pane: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
@@ -473,6 +475,7 @@ test-zellij-claude-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-shell-titles
 test-zellij-shell-titles: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
 test-zellij-navigation: zellij-helpers
@@ -499,6 +502,11 @@ test-zellij-tab-labels: zellij-helpers
 
 test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
+
+.PHONY: directory-picker
+directory-picker:
+	@mkdir -p "$(HOME)/.local/libexec/dotfiles"
+	@$(GO) -C "$(DOTFILES)/tools/directory-picker" build -mod=readonly -trimpath -o "$(HOME)/.local/libexec/dotfiles/directory-picker-ui" .
 
 .PHONY: test-directory-picker
 test-directory-picker:
@@ -577,3 +585,13 @@ codex-octo-hook:
 
 test-codex-octo-hook: FORCE
 	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
+
+.PHONY: test-octo-manager-install
+test-octo-manager-install:
+	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"
+
+.PHONY: octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-pull octo-manager-start octo-manager-restart
+octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-start octo-manager-restart:
+	@python3 "$(DOTFILES)/scripts/install-octo-manager.py" "$(patsubst octo-manager-%,%,$@)" --home "$(HOME)"
+
+octo-manager-pull: octo-manager-pull-latest

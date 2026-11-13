@@ -44,9 +44,21 @@ def main():
         assert "git-worktree-hooks" in {tool["name"] for tool in baseline["tools"]}
         assert baseline["settings"]["codex.github_enabled"] is False
         assert baseline["settings"]["codex.easypost"] is False
+        assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
+        config.write_text('sets = ["octo-manager"]\n')
+        octo = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        octo_names = [tool["name"] for tool in octo["tools"]]
+        assert "octo-manager" in octo_names
+        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go"))
+        assert not any("octo" in target for target in octo["setup"]), "Configuration must not install or start the service"
+        linux_octo=json.loads(run(*command,"--platform","linux","--format","json").stdout)
+        assert "octo-manager" in {tool["name"] for tool in linux_octo["tools"]}
+        config.write_text('sets = ["octo-manager"]\n[tools]\nocto-manager = false\n')
+        disabled = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
+        assert "octo-manager" not in {tool["name"] for tool in disabled["tools"]}
         config.write_text('sets = ["worktrees"]\n')
         worktrees = json.loads(run(*command,"--format","json").stdout)
         selected = {tool["name"] for tool in worktrees["tools"]}

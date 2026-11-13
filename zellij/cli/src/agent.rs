@@ -116,7 +116,7 @@ pub fn publish(operation: &str, raw: &Path, request: Option<&Path>) -> Result<Pa
         }
         directory(request, false, true)?;
     }
-    if operation == "publish-popup" && session()? != "dotfiles-popup" {
+    if operation == "publish-popup" && session()? != "pop-up" {
         bail!("Not the shared popup server");
     }
     let id = owning_key()?;
@@ -138,7 +138,7 @@ pub fn publish(operation: &str, raw: &Path, request: Option<&Path>) -> Result<Pa
     if operation == "publish-popup"
         || (operation == "init" && fs::symlink_metadata(raw).is_ok_and(|i| i.is_symlink()))
     {
-        if session()? != "dotfiles-popup" || raw == link {
+        if session()? != "pop-up" || raw == link {
             bail!("Only the shared popup may follow another managed agent");
         }
         managed_source(raw)?;
@@ -232,7 +232,7 @@ pub fn main(args: &[String]) -> Result<()> {
         [op] if op=="init"=>{if enabled(){println!("{}",publish("init",Path::new(&env::var("SSH_AUTH_SOCK")?),None)?.display());}},
         [op,session] if op=="refresh"=>refresh(session,false)?,
         [op,session] if op=="refresh-after-attach"=>refresh_after_attach(session)?,
-        [op] if op=="follow-popup"=>refresh("dotfiles-popup",true)?,
+        [op] if op=="follow-popup"=>refresh("pop-up",true)?,
         [op,raw,request] if matches!(op.as_str(),"publish"|"publish-popup")=>println!("{}",publish(op,Path::new(raw),Some(Path::new(request)))?.display()),
         _=>bail!("Usage: zellij-agent init | refresh SESSION | follow-popup | publish RAW_SOCKET PRIVATE_REQUEST_DIRECTORY"),
     }

@@ -2,6 +2,7 @@
 """Select directory history or registered worktrees; stdout is the full path."""
 
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from pathlib import Path
 import re
@@ -59,12 +60,15 @@ def worktrees(directory):
 
 
 def history(lines):
-    paths = set()
+    scores = {}
     for line in lines:
-        path = re.sub(r"^\s*[0-9.,]+\s+", "", line.rstrip("\n"))
+        line = line.rstrip("\n")
+        match = re.match(r"^\s*(\d+(?:[.,]\d+)?)\s+(/.*)$", line)
+        path = match[2] if match else line
         if os.path.isabs(path) and Path(path).is_dir():
-            paths.add(path)
-    return [(path, "") for path in sorted(paths, key=lambda path: (len(path), path))]
+            score = float(match[1].replace(",", ".")) if match else 0
+            scores[path] = max(score, scores.get(path, 0))
+    return [(path, "") for path in sorted(scores, key=lambda path: (-scores[path], len(path), path))]
 
 
 def visible(value):
@@ -95,20 +99,71 @@ def rows(choices):
 def layout(columns, lines):
     if columns >= 110:
         return "right,48%,border-left,nowrap,nohidden"
-    if lines >= 32:
-        return "down,40%,border-top,nowrap,nohidden"
-    return "down,40%,border-top,nowrap,hidden"
+    return "down,40%,border-top,nowrap,nohidden"
+
+
+def summaries(snapshot):
+    """Stream observations for repository roots without delaying keyboard input."""
+    observed = directory_preview.agent_snapshot()
+    snapshot.write_text(json.dumps(observed))
+    print(json.dumps({"ready": True}), flush=True)
+
+    def inspect(token):
+        path = Path(os.fsdecode(base64.urlsafe_b64decode(token)))
+        if not (path / ".git").exists():
+            return None
+        raw = directory_preview.git(path, "status", "--porcelain=v1", "-z", "--branch", "--untracked-files=normal")
+        branch, status = "", "status unavailable"
+        if raw is not None:
+            header, _, changes = raw.partition(b"\0")
+            branch = os.fsdecode(header.removeprefix(b"## ")).split("...")[0]
+            for prefix in ("No commits yet on ", "Initial commit on "):
+                branch = branch.removeprefix(prefix)
+            if "no branch" in branch:
+                branch = "detached"
+            changed = directory_preview.status_rows(changes)
+            status = f"dirty {len(changed)}" if changed else "clean"
+        names = sorted({agent["name"] for agent in directory_preview.matching_agents(path, observed)})
+        return {"token": token, "branch": visible(branch), "status": status, "agents": ", ".join(names)}
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        tasks = [pool.submit(inspect, line.rstrip("\n")) for line in sys.stdin]
+        for task in as_completed(tasks):
+            result = task.result()
+            if result:
+                print(json.dumps(result), flush=True)
 
 
 def select(choices, mode, query):
     candidates = rows(choices)
     if not candidates:
-        print('No matching directories.', file=sys.stderr)
+        print("No matching directories.", file=sys.stderr)
         return 1
+    with tempfile.TemporaryDirectory(prefix="directory-agents-") as temporary:
+        snapshot = Path(temporary) / "agents.json"
+        ui = Path.home() / ".local/libexec/dotfiles/directory-picker-ui"
+        if ui.is_file() and os.access(ui, os.X_OK):
+            config = {"title": "Worktrees" if mode == "--worktrees" else "Directories",
+                      "query": query, "rows": candidates, "helper": str(Path(__file__).resolve()),
+                      "snapshot": str(snapshot), "theme": directory_preview.theme()}
+            result = subprocess.run([ui], input=json.dumps(config).encode(), stdout=subprocess.PIPE)
+            if result.returncode == 0:
+                write_selection(result.stdout.strip())
+            return result.returncode
+        snapshot.write_text(json.dumps(directory_preview.agent_snapshot()))
+        return select_fzf(candidates, mode, query, snapshot)
+
+
+def write_selection(token):
+    # A trailing slash preserves newline-ending directory names in shell substitution.
+    sys.stdout.buffer.write(base64.urlsafe_b64decode(token) + b"/\n")
+
+
+def select_fzf(candidates, mode, query, snapshot):
     command = shlex.join([sys.executable, str(Path(__file__).resolve())])
     resize = f"transform:{command} --layout"
     args = ["fzf", "--read0", "--print0", "--delimiter=\t", "--with-nth=2,3",
-            "--ansi", "--height=100%", "--layout=reverse", "--border=none", "--margin=0", "--padding=0",
+            "--ansi", "--color=hl:underline,hl+:underline", "--height=100%", "--layout=reverse", "--border=none", "--margin=0", "--padding=0",
             "--info=inline", "--no-separator", "--multi", "--no-sort",
             "--bind=ctrl-space:clear-selection+select-all+print(ctrl-space)+accept",
             "--bind=enter:clear-selection+print(enter)+accept",
@@ -121,13 +176,6 @@ def select(choices, mode, query):
     if not theme_file.is_file():
         theme_file = ROOT / 'design-system/generated/fzf.txt'
     args[1:1] = shlex.split(theme_file.read_text())
-    with tempfile.TemporaryDirectory(prefix='directory-agents-') as temporary:
-        snapshot = Path(temporary) / 'agents.json'
-        snapshot.write_text(json.dumps(directory_preview.agent_snapshot()))
-        return select_rows(candidates, args, snapshot)
-
-
-def select_rows(candidates, args, snapshot):
     args.append(f'--preview={shlex.join([sys.executable, str(Path(__file__).resolve())])} --preview {{1}} {shlex.quote(str(snapshot))}')
     while candidates:
         result = subprocess.run(args, input=("\0".join(candidates) + "\0").encode(), capture_output=True)
@@ -145,8 +193,7 @@ def select_rows(candidates, args, snapshot):
             args.append("--query=")
             continue
         token = selected[0].split("\t", 1)[0]
-        # rationale: A trailing slash preserves newline-ending directory names in shell substitution.
-        sys.stdout.buffer.write(base64.urlsafe_b64decode(token) + b"/\n")
+        write_selection(token)
         return 0
     print("No matching directories.", file=sys.stderr)
     return 1
@@ -154,15 +201,22 @@ def select_rows(candidates, args, snapshot):
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "--history"
+    if mode == "--summaries":
+        summaries(Path(sys.argv[2]))
+        return 0
     if mode == "--layout":
         print(f"change-preview-window({layout(int(os.environ['FZF_COLUMNS']), int(os.environ['FZF_LINES']))})")
         return 0
-    if mode == "--preview":
+    if mode in ("--preview", "--preview-json"):
         path = os.fsdecode(base64.urlsafe_b64decode(sys.argv[2]))
-        snapshot = json.loads(Path(sys.argv[3]).read_text())
-        if directory_preview.render(path, snapshot):
-            return 0
-        return subprocess.call([str(ROOT / "bin/fzf-path-preview"), path])
+        snapshot = {"agents": [], "sources": [], "pending": not sys.argv[3]}
+        if sys.argv[3]:
+            try:
+                snapshot = json.loads(Path(sys.argv[3]).read_text())
+            except FileNotFoundError:
+                pass
+        directory_preview.render(path, snapshot, structured=mode == "--preview-json")
+        return 0
     if mode not in ("--history", "--worktrees"):
         raise RuntimeError(f"Unknown picker mode: {mode}")
     choices = worktrees(Path.cwd()) if mode == '--worktrees' else history(sys.stdin)

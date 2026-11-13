@@ -7,7 +7,7 @@ data provenance, and the prose/code boundary. Read when writing or reviewing doc
 
 - [Visual Expression Philosophy](#visual-expression-philosophy) — charts over dumps, `Markdown()` over `print()`
 - [Narrative Structure](#narrative-structure) — document flow, base facts, synthesis, PDF page-break control
-- [LLM Self-Reasoning with Quarto](#llm-self-reasoning-with-quarto) — graduated-detail structure for `/think` documents
+- [LLM Self-Reasoning with Quarto](#llm-self-reasoning-with-quarto) — graduated-detail structure for analysis documents
 - [Data Provenance and Portability](#data-provenance-and-portability) — embedded extraction, caching, freeze, heavy dependencies
 - [Document & Report Writing Principles](#document--report-writing-principles) — the prose/code boundary
 - [Google Docs Handoff](#google-docs-handoff-html-copy-paste) — `gdocs.css`, when to use it over PDF
@@ -206,7 +206,7 @@ format:
 
 ## LLM Self-Reasoning with Quarto
 
-Use `/think` command for structured analysis with graduated detail.
+For structured analysis, use graduated detail so readers can stop after the summary or inspect the supporting evidence.
 
 ### Document Structure
 
@@ -247,12 +247,12 @@ Include diagram, chart, or table for most findings:
 ### Example Invocation
 
 ```
-/think Why is the login endpoint returning 500 errors intermittently?
+Analyze why the login endpoint intermittently returns 500 errors.
 ```
 
 Creates analysis document with abstract-first structure, key findings with confidence levels, and visual reasoning chains.
 
-See `/think` command for full template.
+Use the structure above and the data-provenance guidance below.
 
 ## Data Provenance and Portability
 

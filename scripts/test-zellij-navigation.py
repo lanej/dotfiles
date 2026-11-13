@@ -13,10 +13,27 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import urllib.request
 
 
 workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
+
+
+def check_client_contract(client, runtime_revision):
+    source = json.loads((client / "protocol/source.json").read_text())
+    if source["revision"] == runtime_revision:
+        return
+    files = ("common_types.proto", "client_to_server.proto", "server_to_client.proto",
+             "app_control.proto", "pane_mirror.proto")
+    for name in files:
+        url = (f"https://raw.githubusercontent.com/lanej/zellij/{runtime_revision}/"
+               f"zellij-utils/src/client_server_contract/{name}")
+        with urllib.request.urlopen(url, timeout=30) as response:
+            runtime_contract = response.read()
+        assert (client / "protocol" / name).read_bytes() == runtime_contract, (
+            f"Lua client protobuf contract differs from the pinned runtime: {name}; "
+            "update the pinned client dependency")
 
 
 def main():
@@ -74,10 +91,9 @@ def main():
             subprocess.run(["git", "-C", str(client), "fetch", "-q", "--depth=1",
                             "https://github.com/lanej/zellij-client.nvim.git", client_revision], check=True, env=env)
             subprocess.run(["git", "-C", str(client), "checkout", "-q", "--detach", "FETCH_HEAD"], check=True, env=env)
-        source = json.loads((client / "protocol/source.json").read_text())
         runtime_revision = next(line.split("=", 1)[1] for line in (ROOT / "scripts/install-zellij").read_text().splitlines()
                                 if line.startswith("zellij_revision="))
-        assert source["revision"] == runtime_revision, "Lua client and installed Zellij runtime pins differ"
+        check_client_contract(client, runtime_revision)
         env["ZELLIJ_CLIENT_RUNTIME"] = str(client)
         editing = work / "editing.txt"
         editing.write_text("Navigation fixture\n")

@@ -10,6 +10,7 @@ mod image_hints;
 mod ipc;
 mod navigation;
 mod notify;
+mod panes;
 mod picker;
 mod preview;
 mod reload;
@@ -20,7 +21,7 @@ mod util;
 mod view;
 use anyhow::{bail, Result};
 use std::io::{IsTerminal, Write};
-const HELP:&str="Usage: zellij-helper <status|agent|attach|ssh|auto-title|shell-title|clipboard|context|image-hints|navigate|popup|shutdown|balance|notify|picker|claude-title|codex-title> [arguments]";
+const HELP:&str="Usage: zellij-helper <status|agent|attach|ssh|auto-title|shell-title|clipboard|context|pane|image-hints|navigate|popup|shutdown|balance|notify|picker|claude-title|codex-title> [arguments]";
 fn run(args: &[String]) -> Result<()> {
     match args {
         [] => println!("{HELP}"),
@@ -43,7 +44,11 @@ fn run(args: &[String]) -> Result<()> {
                 let _ = auto_title::shell_title();
             }
             "auto-title" => {
-                let _ = auto_title::main(rest);
+                if rest.is_empty() || rest == ["--shell"] {
+                    let _ = auto_title::main(rest);
+                } else {
+                    auto_title::main(rest)?;
+                }
             }
             "clipboard" => clipboard::main(rest)?,
             "image-hints" if rest.is_empty() => image_hints::run()?,
@@ -51,6 +56,10 @@ fn run(args: &[String]) -> Result<()> {
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
             "context" if rest == ["socket"] => println!("{}", context::socket()?),
             "context" if rest == ["title-context"] => println!("{}", auto_title::context()?),
+            "context" if rest.first().is_some_and(|arg| arg == "inspect") => {
+                panes::inspect(&rest[1..])?
+            }
+            "pane" => panes::main(rest)?,
             "navigate" => navigation::main(rest)?,
             "popup" if rest.is_empty() => session::popup()?,
             "shutdown" if rest.is_empty() => session::shutdown()?,

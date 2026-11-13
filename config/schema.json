@@ -22,6 +22,7 @@
               "firstmate-mobile",
               "linux",
               "macos",
+              "octo-manager",
               "personal",
               "shell",
               "terminal",
@@ -130,6 +131,10 @@
         "fzf": {
           "type": "boolean",
           "description": "Enable the fzf bootstrap recipe."
+        },
+        "directory-picker": {
+          "type": "boolean",
+          "description": "Build the Charmed directory and worktree picker for zz and zw."
         },
         "starship": {
           "type": "boolean",
@@ -306,6 +311,10 @@
         "codex": {
           "type": "boolean",
           "description": "Enable the codex bootstrap recipe."
+        },
+        "octo-manager": {
+          "type": "boolean",
+          "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
         },
         "treehouse": {
           "type": "boolean",

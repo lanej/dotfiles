@@ -3,8 +3,6 @@ description: Review the current session for repeated corrections and propose foc
 allowed-tools: Bash, Agent
 ---
 
-Locate the current session JSONL under `~/.claude/projects/` using
-`CLAUDE_CODE_SESSION_ID`, then invoke the `reflection` agent with the exact transcript path.
-Ask for evidence-backed findings and proposed corrections inline. Do not authorize file,
-memory, commit, messaging, or implementation changes through this command. Treat a legacy
-`auto` argument as a request to return findings without interactive questions.
+# /reflection
+
+Read `$HOME/.claude/skills/reflection/SKILL.md` and apply that shared workflow to `$ARGUMENTS` and the current request. Use the resources it routes to; do not recreate the procedure here. If the skill is missing, report the missing path and restore it with `make claude-shared`.
