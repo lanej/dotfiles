@@ -241,9 +241,9 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             state = home / "popup-agent-state"
             state.unlink(missing_ok=True)
             popup_pane = next(pane["id"] for pane in
-                              json.loads(action("dotfiles-popup", "list-panes", "--json"))
+                              json.loads(action("pop-up", "list-panes", "--json"))
                               if not pane["is_plugin"])
-            action("dotfiles-popup", "write-chars", "--pane-id", str(popup_pane),
+            action("pop-up", "write-chars", "--pane-id", str(popup_pane),
                    'ssh-add -l > "$HOME/popup-agent-output" 2>&1; '
                    'printf "%s|%s|%s\\n" "$$" "$popup_agent_token" "$SSH_AUTH_SOCK" '
                    '> "$HOME/popup-agent-state"\n')
@@ -256,18 +256,18 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             return observed
 
         def open_popup(host):
-            if "dotfiles-popup" not in names:
-                names.append("dotfiles-popup")
+            if "pop-up" not in names:
+                names.append("pop-up")
             rendered = len(host.output)
             command([binary, "--session", host.name, "run", "--floating", "--close-on-exit",
                      "--", str(bindir / "zellij-popup")])
             # Do not query a guest still registering its first client. A unique
             # prompt also prevents a redraw of the outer shell passing readiness.
             host.until("popup renders its ready shell", lambda:
-                       b"dotfiles-popup:agent-probe-ready> " in host.output[rendered:])
+                       b"pop-up:agent-probe-ready> " in host.output[rendered:])
             host.until("real popup launcher attaches its shell", lambda:
-                       "agent-probe-ready>" in action("dotfiles-popup", "dump-screen")
-                       and any(pane["nested_session_name"] == "dotfiles-popup"
+                       "agent-probe-ready>" in action("pop-up", "dump-screen")
+                       and any(pane["nested_session_name"] == "pop-up"
                                for pane in host.terminals()))
 
         def hide_popup(host):
@@ -294,7 +294,7 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             assert (home / "retained-socket").read_text().strip() == str(stable1)
             original_view = snapshot(first.name)
             open_popup(first)
-            action("dotfiles-popup", "write-chars", "popup_agent_token=survived\n")
+            action("pop-up", "write-chars", "popup_agent_token=survived\n")
             popup_expected = popup_proof()
             popup_stable = Path(popup_expected.split("|")[2])
             assert popup_stable != stable1, "Popup did not initialize its own stable socket"
