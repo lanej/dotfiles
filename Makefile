@@ -503,6 +503,10 @@ test-zellij-auto-title: zellij-helpers
 test-zellij-tab-labels: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-tab-labels.py"
 
+.PHONY: test-zellij-ancestor-navigation
+test-zellij-ancestor-navigation:
+	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py" --ancestor-navigation-only
+
 test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
