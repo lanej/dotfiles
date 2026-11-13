@@ -188,7 +188,7 @@ vim.cmd("wincmd h")
             for mode_keys in (b"[", b"/Navigation\r"):
                 terminal.prefix(mode_keys)
                 terminal.send(b"\x08")
-                terminal.until("native scroll/search navigation reaches the left pane", lambda: focused() == left)
+                terminal.until("native copy/search navigation reaches the left pane", lambda: focused() == left)
                 terminal.send(b"\x0c")
                 terminal.until("native navigation returns to application mode", lambda: focused() == right)
 
@@ -309,7 +309,7 @@ vim.cmd("wincmd h")
             terminal.prefix(b"l")
             terminal.until("select the shell for scrollback", lambda: focused() == right)
             known_panes = {p["id"] for p in terminal.terminals()}
-            terminal.prefix(b"e")
+            terminal.action("edit-scrollback", "--ansi", "--pane-id", str(right))
             terminal.until("single-client scrollback opens", lambda:
                            any(p["id"] not in known_panes for p in terminal.terminals()))
             scrollback = next(p["id"] for p in terminal.terminals() if p["id"] not in known_panes)
@@ -352,7 +352,7 @@ vim.cmd("wincmd h")
                 assert {row[0]: row[1] for row in listed_clients()} == client_focus, \
                     "Bare navigation changed another attached client's focus"
                 known_panes = {p["id"] for p in terminal.terminals()}
-                second_client.prefix(b"e")
+                second_client.action("edit-scrollback", "--ansi", "--pane-id", str(right))
                 terminal.until("scrollback editor hides its client from the pane listing", lambda:
                                len(listed_clients()) == 1 and
                                any(p["id"] not in known_panes for p in terminal.terminals()))
