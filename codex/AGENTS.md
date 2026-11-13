@@ -12,6 +12,10 @@ Keep Markdown paragraphs on one source line. For source-comment decisions, use t
 
 Follow ESR's Unix rules in software design: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, representation of knowledge as data, least surprise, silence without useful output, early clear failure/repair, programmer economy, generation, working behavior before optimization, diversity and extensibility.
 
+# Agent coordination
+
+Use Codex's native agent tools to delegate and communicate with other Codex agents. Paseo is used with Pi; do not use Paseo to create, delegate to, or message Codex agents.
+
 # Conditional workflows
 
 Read the relevant section of `~/.files/docs/agent-operating-procedures.md` when performing a workflow below; the safeguards and exceptions there remain binding.
