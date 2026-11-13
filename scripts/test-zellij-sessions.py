@@ -11,6 +11,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -506,9 +507,6 @@ def ancestor_navigation_workflow(binary):
         base = Path(directory).resolve()
         home = base / "home"
         home.mkdir()
-        desktop = home / "Library/Application Support/org.Zellij-Contributors.Zellij"
-        desktop.mkdir(parents=True)
-        (desktop / "desktop_integration.json").write_text('{"flags":["SetupNeverShow"]}\n')
         runtime = base / "run"
         runtime.mkdir(mode=0o700)
         temp = base / "tmp"
@@ -541,6 +539,8 @@ def ancestor_navigation_workflow(binary):
             env.pop(key, None)
         names = ("fixture-host", "fixture-guest", "fixture-other", "fixture-cleanup",
                  "fixture-stale", "fixture-replacement")
+        subprocess.run([sys.executable, str(ROOT / "scripts/make/zellij-config.py"),
+                        str(home)], env=env, check=True)
         clients = []
         wrapper = None
         log = temp / f"zellij-{os.getuid()}" / "zellij-log/zellij.log"

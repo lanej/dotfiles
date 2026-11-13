@@ -83,6 +83,10 @@ class Terminal:
         os.write(self.fd, value)
         self.drain()
 
+    def settle_ordinary_navigation(self):
+        """Allow the three-second discovery grace for a known ordinary attachment."""
+        self.drain(3.1)
+
     def prefix(self, key):
         self.send(b"\x06" + key)
 
