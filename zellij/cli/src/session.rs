@@ -123,8 +123,12 @@ pub fn ssh(args: &[String]) -> Result<()> {
         .filter(|s| !s.is_empty())
         .map(String::as_str)
         .unwrap_or("main");
-    let remote = format!("{ZSSH_ATTACH} {}", quote(session));
     let nested = env::var("ZELLIJ").is_ok_and(|s| !s.is_empty());
+    let remote = format!(
+        "ZELLIJ_NESTED_ATTACH={} {ZSSH_ATTACH} {}",
+        if nested { "1" } else { "0" },
+        quote(session)
+    );
     let kitty =
         !nested && env::var("KITTY_WINDOW_ID").is_ok_and(|s| !s.is_empty()) && exists("kitten");
     let mut ssh = if kitty {
@@ -185,6 +189,7 @@ pub fn popup() -> Result<()> {
     }
     Err(command
         .args(["--layout-string", &layout, "attach", "--create", "pop-up"])
+        .env("ZELLIJ_NESTED_ATTACH", "1")
         .env_remove("ZELLIJ")
         .env_remove("ZELLIJ_SESSION_NAME")
         .env_remove("ZELLIJ_PANE_ID")
