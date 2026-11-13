@@ -589,3 +589,9 @@ test-codex-octo-hook: FORCE
 .PHONY: test-octo-manager-install
 test-octo-manager-install:
 	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"
+
+.PHONY: octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-pull octo-manager-start octo-manager-restart
+octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-start octo-manager-restart:
+	@python3 "$(DOTFILES)/scripts/install-octo-manager.py" "$(patsubst octo-manager-%,%,$@)" --home "$(HOME)"
+
+octo-manager-pull: octo-manager-pull-latest

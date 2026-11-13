@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Install the selected Octo release and its native Codex hooks on macOS and Linux."""
+"""Install Octo releases and control their native macOS and Linux services."""
+import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -99,13 +101,60 @@ def runtime(home, source):
     return binary
 
 
-def install(root=ROOT, home=None):
+def latest_revision():
+    fields = run(["git", "ls-remote", "--exit-code", REPOSITORY, "refs/heads/main"]).split()
+    if len(fields) != 2 or fields[1] != "refs/heads/main" or not re.fullmatch(r"[a-f0-9]{40}", fields[0]):
+        raise ValueError("Could not identify the exact Octo main revision")
+    return fields[0]
+
+
+def installed_revision(home):
+    metadata = home / ".local/share/octo-manager/current/release.json"
+    if not metadata.is_file():
+        raise ValueError("Octo is not installed; run make octo-manager-install")
+    release = json.loads(metadata.read_text())
+    revision = release.get("revision") if isinstance(release, dict) else None
+    if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ValueError(f"Installed Octo revision is invalid: {metadata}")
+    return revision
+
+
+def manage_service(action, home):
+    system = platform.system()
+    if system == "Darwin":
+        label = "com.lanej.octo-manager"
+        definition = home / "Library/LaunchAgents" / f"{label}.plist"
+    elif system == "Linux":
+        label = "octo-manager.service"
+        config = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
+        definition = config / "systemd/user" / label
+    else:
+        raise ValueError(f"Unsupported Octo service platform: {system}")
+    if not definition.is_file():
+        raise ValueError(f"Missing Octo service definition: {definition}; run make octo-manager-install")
+    if system == "Darwin":
+        domain = f"gui/{os.getuid()}"
+        target = f"{domain}/{label}"
+        run(["launchctl", "enable", target])
+        loaded = subprocess.run(["launchctl", "print", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        if not loaded:
+            run(["launchctl", "bootstrap", domain, str(definition)])
+        run(["launchctl", "kickstart", *(["-k"] if action == "restart" and loaded else []), target])
+    else:
+        run(["systemctl", "--user", "daemon-reload"])
+        run(["systemctl", "--user", "enable", str(definition.resolve())])
+        run(["systemctl", "--user", action, label])
+    print(f"Octo service {action} requested: {label}")
+
+
+def install(root=ROOT, home=None, revision=None):
     _, target = host_target()
     home = home or Path.home()
-    recipe = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["octo-manager"]
-    revision = recipe["revision"]
-    if not re.fullmatch(r"[a-f0-9]{40}", revision):
-        raise ValueError("Octo Manager requires a full pinned source revision")
+    if revision is None:
+        recipe = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["octo-manager"]
+        revision = recipe["revision"]
+    if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ValueError("Octo Manager requires a full source revision")
     cache = Path(os.environ.get("XDG_CACHE_HOME", home / ".cache")) / "dotfiles/octo-manager" / target
     if cache.is_symlink():
         raise ValueError(f"Preserve symlinked install cache: {cache}")
@@ -127,8 +176,24 @@ def install(root=ROOT, home=None):
         lock.rmdir()
 
 
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", nargs="?", default="install", choices=("install", "reinstall", "pull-latest", "start", "restart"))
+    parser.add_argument("--home", type=Path, default=Path.home())
+    args = parser.parse_args(argv)
+    if args.action in ("start", "restart"):
+        manage_service(args.action, args.home)
+    else:
+        revision = None
+        if args.action == "pull-latest":
+            revision = latest_revision()
+        elif args.action == "reinstall":
+            revision = installed_revision(args.home)
+        install(ROOT, args.home, revision)
+
+
 if __name__ == "__main__":
     try:
-        install()
+        main()
     except (ValueError, OSError, subprocess.CalledProcessError, zipfile.BadZipFile) as error:
         sys.exit(f"install-octo-manager: {error}")
