@@ -6,6 +6,9 @@ const ALPHABET: &[u8] = b"asdfghjklqwertyuiopzxcvbnm";
 
 #[derive(Default)]
 struct Hop {
+    permitted: bool,
+    plugin_id: u32,
+    client_id: ClientId,
     snapshot: Option<Snapshot>,
     started: Option<std::time::Instant>,
     matches: Vec<copy_mode::Cell>,
@@ -22,6 +25,17 @@ fn request(operation: Operation) -> Result<Option<Snapshot>, String> {
 }
 
 impl Hop {
+    fn bind(&self) {
+        // rationale: KDL retains the pipe target and client payload omitted by RebindKeys.
+        reconfigure(
+            format!(
+                "keybinds {{\n copy {{\n bind \"s\" {{\n MessagePluginId {} {{ name \"hop\"; payload \"{}\"; }}\n }}\n }}\n }}",
+                self.plugin_id, self.client_id
+            ),
+            false,
+        );
+    }
+
     fn cancel(&mut self) {
         if let Some(snapshot) = self.snapshot.take() {
             let _ = request(Operation::ClearLabels(snapshot.session_id));
@@ -121,13 +135,19 @@ impl Hop {
 
 impl ZellijPlugin for Hop {
     fn load(&mut self, _: BTreeMap<String, String>) {
+        let ids = get_plugin_ids();
+        self.plugin_id = ids.plugin_id;
+        self.client_id = ids.client_id;
         subscribe(&[
+            EventType::PermissionRequestResult,
+            EventType::InitialKeybinds,
             EventType::CustomMessage,
             EventType::InterceptedKeyPress,
             EventType::ModeUpdate,
             EventType::Timer,
         ]);
         request_permission(&[
+            PermissionType::Reconfigure,
             PermissionType::ReadPaneContents,
             PermissionType::ChangeApplicationState,
             PermissionType::InterceptInput,
@@ -136,7 +156,12 @@ impl ZellijPlugin for Hop {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
-        if message.name == "hop" {
+        if self.permitted
+            && message.is_private
+            && message.source == PipeSource::Keybind
+            && message.name == "hop"
+            && message.payload.as_deref() == Some(self.client_id.to_string().as_str())
+        {
             self.begin();
         }
         false
@@ -144,6 +169,15 @@ impl ZellijPlugin for Hop {
 
     fn update(&mut self, event: Event) -> bool {
         match event {
+            Event::PermissionRequestResult(status) => {
+                self.permitted = status == PermissionStatus::Granted;
+                if self.permitted {
+                    self.bind();
+                } else {
+                    self.cancel();
+                }
+            }
+            Event::InitialKeybinds(_) if self.permitted => self.bind(),
             Event::CustomMessage(name, payload) if name == "copy_mode_key" => {
                 if let Some((token, key)) = payload.split_once(':') {
                     if let Ok(token) = token.parse::<u64>() {
