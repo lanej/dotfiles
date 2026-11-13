@@ -55,14 +55,85 @@ impl PickerSession {
     }
 
     pub(crate) fn panes(&self, all: bool) -> Result<Vec<Value>> {
-        Ok(serde_json::from_str(&self.action(
+        self.panes_until(all, Instant::now() + Duration::from_secs(5))
+    }
+
+    fn panes_until(&self, all: bool, deadline: Instant) -> Result<Vec<Value>> {
+        Ok(serde_json::from_str(&self.action_until(
             ActionType::ListPanes(ListPanesAction {
                 output_json: true,
                 show_all: all,
                 ..Default::default()
             }),
             true,
+            deadline,
         )?)?)
+    }
+
+    fn picker_context(&self, source: u64, picker: u64) -> Result<(Vec<Value>, u64)> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut original_tab = None;
+        let mut panes = self.panes_until(false, deadline)?;
+        loop {
+            let observed = || {
+                format!(
+                    "source terminal_{source}, picker terminal_{picker}; observed {}",
+                    panes
+                        .iter()
+                        .map(|p| format!(
+                            "{}:{}@{}",
+                            if flag(p, "is_plugin") {
+                                "plugin"
+                            } else {
+                                "terminal"
+                            },
+                            p["id"],
+                            p["tab_id"]
+                        ))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            };
+            let source_pane = panes
+                .iter()
+                .find(|p| !flag(p, "is_plugin") && p["id"] == source)
+                .with_context(|| {
+                    format!(
+                        "The original source pane closed; reopen the picker ({})",
+                        observed()
+                    )
+                })?;
+            let tab = number(source_pane, "tab_id")?;
+            if *original_tab.get_or_insert(tab) != tab {
+                bail!(
+                    "The original pane changed tabs; reopen the picker ({})",
+                    observed()
+                );
+            }
+            if let Some(pane) = panes
+                .iter()
+                .find(|p| !flag(p, "is_plugin") && p["id"] == picker)
+            {
+                if pane["tab_id"] != tab {
+                    bail!(
+                        "The picker and source are in different tabs; reopen the picker ({})",
+                        observed()
+                    );
+                }
+                return Ok((panes, tab));
+            }
+            // The runtime starts the command before registering its pane with the screen.
+            std::thread::sleep(Duration::from_millis(10));
+            if Instant::now() >= deadline {
+                bail!(
+                    "The picker pane did not register in time; reopen the picker ({})",
+                    observed()
+                );
+            }
+            panes = self
+                .panes_until(false, deadline)
+                .with_context(|| format!("Waiting for picker registration ({})", observed()))?;
+        }
     }
 }
 
@@ -384,15 +455,11 @@ fn swap_tab(session: &str) -> Result<()> {
     let connection = PickerSession::resolve(session)?;
     let source = origin_id()?;
     let picker = pane_id()?;
-    let panes = connection.panes(false)?;
-    let pane = panes
-        .iter()
-        .find(|p| !flag(p, "is_plugin") && p["id"] == source)
-        .context("The original pane closed; reopen the swap picker")?;
+    let (panes, tab) = connection.picker_context(source, picker)?;
     let swap = Swap {
         session,
         source,
-        tab: number(pane, "tab_id")?,
+        tab,
         picker,
         token: owner_token(session, picker)?,
         connection,
@@ -530,18 +597,7 @@ fn move_pane(session: &str, all: bool) -> Result<()> {
     let connection = PickerSession::resolve(session)?;
     let source = origin_id()?;
     let picker = pane_id()?;
-    let panes = connection.panes(false)?;
-    let source_pane = panes
-        .iter()
-        .find(|p| !flag(p, "is_plugin") && p["id"] == source)
-        .context("The original pane changed; reopen the move picker")?;
-    let tab = number(source_pane, "tab_id")?;
-    if !panes
-        .iter()
-        .any(|p| !flag(p, "is_plugin") && p["id"] == picker && p["tab_id"] == tab)
-    {
-        bail!("The original pane changed; reopen the move picker");
-    }
+    let (panes, tab) = connection.picker_context(source, picker)?;
     let token = owner_token(session, picker)?;
     let mut tabs = connection.tabs()?;
     tabs.sort_by_key(|t| t["position"].as_u64());
