@@ -3,7 +3,7 @@
   "policy_version": "1.0.0",
   "skills": {
     "architecture": "1.0.0",
-    "builder": "1.0.0",
+    "builder": "1.0.1",
     "code-comments": "1.0.0",
     "data-change-planning": "1.0.0",
     "gh-pr-stack": "1.0.0",
