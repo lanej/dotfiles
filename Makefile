@@ -609,3 +609,14 @@ octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manage
 	@python3 "$(DOTFILES)/scripts/install-octo-manager.py" "$(patsubst octo-manager-%,%,$@)" --home "$(HOME)"
 
 octo-manager-pull: octo-manager-pull-latest
+
+# Explicit SSH integration configures an installed Keylease; it does not install
+# software or start services during ordinary shell/default configuration.
+KEYLEASE_BINARY ?= $(HOME)/.local/bin/keylease
+.PHONY: keylease-ssh keylease-ssh-remove test-keylease-ssh
+keylease-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-keylease-ssh.py" --keylease "$(KEYLEASE_BINARY)"
+keylease-ssh-remove:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-keylease-ssh.py" --remove
+test-keylease-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-keylease-ssh.py"
