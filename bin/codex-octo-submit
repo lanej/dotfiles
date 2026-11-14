@@ -60,7 +60,7 @@ def publication(tokens):
         name = Path(token).name
         if index > 0 and tokens[index - 1] not in {";", "&&", "||", "|", "(", ")"} and tokens[0] not in {"env", "command", "exec"}:
             continue
-        if name == "gh-pr-create-from" and tokens[index + 1:index + 2] != ["--check"]:
+        if name == "gh-pr-create-from":
             return index, "retired"
         if name == "gh" and tokens[index + 1:index + 3] == ["pr", "create"]:
             return index, "gh"
@@ -91,7 +91,7 @@ def translate(event):
         return None
     index, kind = found
     if kind == "retired":
-        raise ValueError("In Codex, gh-pr-create-from has been replaced by octo-manager submit-pr. Supply purpose and validation facts; Octo owns the dedicated writer, publication checks, and tracking. Claude retains its existing publisher.")
+        raise ValueError("gh-pr-create-from has been replaced by octo-manager submit-pr. Supply purpose and validation facts; Octo owns the dedicated writer, publication checks, and tracking.")
     if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
         raise ValueError("Run PR submission as a standalone octo-manager submit-pr command; shell composition and expansion are not translated.")
     session, cwd = event.get("session_id"), event.get("cwd")

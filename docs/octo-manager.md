@@ -1,6 +1,6 @@
 # Opt-in Octo Manager
 
-Octo publishes GitHub PRs through a recorded writer and publication checks, monitors enrolled PRs, and returns actionable checks and review feedback to the owning Codex session. Install it explicitly before using [the required Codex PR publication command](octo-pr-submission.md). Claude retains its existing publisher. Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
+Octo publishes GitHub PRs through a recorded writer and publication checks, monitors enrolled PRs, and returns actionable checks and review feedback to the owning Codex session. Install it explicitly before using [the required PR publication command](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
 
 ## Enable
 

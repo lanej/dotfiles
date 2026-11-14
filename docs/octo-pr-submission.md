@@ -1,6 +1,6 @@
-# Codex PR publication through Octo
+# PR publication through Octo
 
-In Codex, use `octo-manager submit-pr` to create GitHub PRs. It replaces Codex's use of `gh-pr-create-from`: callers supply purpose and validation facts, and Octo owns the dedicated writer, publication checks, creation, and tracking. Do not fall back to direct publication when Octo is unavailable or a requirement is unmet; report the limitation and preserve the submission for recovery. Tracking an existing PR remains independently available and does not establish publication compliance. Claude retains its separate `github-pr-writer` and `gh-pr-create-from <file>` publication path.
+Use `octo-manager submit-pr` to create GitHub PRs. It replaces `gh-pr-create-from`: callers supply purpose and validation facts, and Octo owns the dedicated writer, publication checks, creation, and tracking. Do not fall back to direct publication when Octo is unavailable or a requirement is unmet; report the limitation and preserve the submission for recovery. Tracking an existing PR remains independently available and does not establish publication compliance.
 
 Commit and push the change, then hand Octo facts about its purpose and validation. Octo reads the frozen GitHub diff and contribution guidance, runs a dedicated PR writer, publishes, and enrolls the PR to the calling session. Agents can continue working while Octo watches checks and actionable reviews. Public and private repositories require no allowlists.
 
@@ -24,7 +24,7 @@ Use `octo-manager submit-pr --intent-file FILE --thread-id SESSION --cwd DIRECTO
 }
 ```
 
-Alternatively, use `octo-manager submit-pr --purpose 'Problem and intended outcome' --thread-id SESSION --cwd DIRECTORY` from the pushed branch. This derives the repository, base branch, and head revision. Use an intent file when supplying validation or precise branch facts. Title/body arguments are drafting context for Octo's writer, not approved publication artifacts. The Codex hook rejects publication through `gh-pr-create-from` with migration guidance; read-only `--check` remains available, and Claude retains the publisher.
+Alternatively, use `octo-manager submit-pr --purpose 'Problem and intended outcome' --thread-id SESSION --cwd DIRECTORY` from the pushed branch. This derives the repository, base branch, and head revision. Use an intent file when supplying validation or precise branch facts. Title/body arguments are drafting context for Octo's writer, not approved publication artifacts. The retired `gh-pr-create-from` command, including its former `--check` mode, is rejected by the hooks with migration guidance.
 
 The current Octo submission schema supports `owner.harness = "codex"` only. Use the actual calling session identity; do not submit from Claude or another harness using an invented Codex owner. Do not treat this command as an update operation: existing PR title/body revisions still require a separate `github-pr-writer`, resolution of its blockers, and verification of the saved revision; they do not acquire Octo publication provenance retroactively.
 

@@ -54,7 +54,7 @@ def main():
         assert response("gh pr create --body 'unterminated")["permissionDecision"] == "deny"
         assert response("git status --short") is None
         assert response("echo gh pr create") is None
-        assert response("gh-pr-create-from --check description.md") is None
+        assert response("gh-pr-create-from --check description.md")["permissionDecision"] == "deny"
         assert response("gh pr create --fill")["permissionDecision"] == "deny"
         assert response("cd repo && gh pr create --title a --body b")["permissionDecision"] == "deny"
         assert response("gh pr create --title '$TITLE' --body body")["permissionDecision"] == "deny"
