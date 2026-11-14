@@ -18,12 +18,24 @@ Inside Zellij, `zssh` uses ordinary SSH to avoid Kitty's terminal bootstrap. Out
 
 ## Forward an SSH agent
 
-Enable forwarding only for a host you trust, using your usual SSH configuration or an SSH connection with `-A`. Connect or reconnect with **`zj SESSION`** or **`zssh HOST SESSION`** so existing panes can use the newly forwarded agent.
+Enable forwarding for your remote host in your local SSH configuration, or connect with `ssh -A HOST`. On the remote host, install the managed shell configuration and native helper with `make zsh-config zellij-helpers`. Reconnect after installation. Setup preserves an existing custom `~/.ssh/rc`; if it reports one, add `"$HOME/.local/bin/zellij-agent" publish-login` to that hook. Automatic publication requires SSH user rc hooks to be enabled by the server and your authorized key.
 
-Restoring a stopped session also refreshes its agent. If the server is not ready before attach, the launcher retries after startup rather than retaining the previous connection's socket.
+Remote shells export `SSH_AUTH_SOCK=$HOME/.ssh/dotfiles-agent/forwarded.sock`. The managed `~/.ssh/rc` hook atomically updates that link to the incoming socket on each forwarded SSH login; shells and command wrappers only select it. Zellij and tmux sessions, the shared popup, and long-running programs all use the same path. A login without forwarding uses the existing selection without replacing it. Local agents, including 1Password, keep their configured paths.
 
-Sessions have separate agent selections. Multiple viewers of one session share its latest forwarded connection; if that connection closes, reconnect to that session with forwarding enabled. A login without forwarding does not borrow another session's agent.
+The latest forwarded login selects the agent for every session on that host. If that connection closes, reconnect with forwarding enabled; there is no automatic fallback to another connection. Nested mux shells cannot republish their inherited, stale socket. Missing or invalid incoming sockets produce an error and leave the selected agent unchanged.
 
-The shared popup follows the session from which you opened it. Reopening the same popup from another session changes which session's agent it uses.
+## Adopt the stable path in existing programs
 
-If an older pane still cannot authenticate after reconnecting, run `fixssh` in that pane. The same workflow can forward the 1Password SSH agent; approve requests locally as usual. Private keys do not need to be copied to the remote host.
+Programs started before this change need to inherit the new path once. In an existing remote pane, run:
+
+```sh
+fixssh
+printf '%s\n' "$SSH_AUTH_SOCK"
+# /home/you/.ssh/dotfiles-agent/forwarded.sock
+```
+
+Then restart Codex or any other program still holding a raw or session-scoped socket. A child shell cannot change its parent's environment. New programs inherit the stable path, so subsequent reconnects require no environment changes. Existing Zellij servers can still supply an old environment to direct command panes; restart those servers when convenient to normalize their inherited environment too.
+
+The managed Git SSH wrapper also selects the stable path for commands launched by older callers. Old `zellij-*.sock` links are left intact for migration; they are no longer refreshed, and can be removed after their consumers have restarted.
+
+The same workflow forwards the 1Password SSH agent; approve requests locally as usual. Private keys do not need to be copied to the remote host.

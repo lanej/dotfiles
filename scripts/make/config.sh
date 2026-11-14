@@ -53,6 +53,13 @@ case "$target" in
                 *) ln -fs "$source" "${setup_home}/.local/bin/" ;;
             esac
         done
+        # Preserve existing login hooks; they may own required host setup.
+        if [ ! -e "$setup_home/.ssh/rc" ] && [ ! -L "$setup_home/.ssh/rc" ]; then
+            (umask 077; mkdir -p "$setup_home/.ssh")
+            ln -s "$dotfiles/sh/ssh-rc" "$setup_home/.ssh/rc"
+        elif [ "$(readlink "$setup_home/.ssh/rc" || true)" != "$dotfiles/sh/ssh-rc" ]; then
+            printf 'Existing ~/.ssh/rc preserved; add "%s/.local/bin/zellij-agent" publish-login to enable stable forwarded agents.\n' "$setup_home" >&2
+        fi
         ln -fs "${dotfiles}/sh/alias" "${setup_home}/.alias"
         ln -fs "${dotfiles}/sh/profile" "${setup_home}/.profile"
         mkdir -p "${setup_home}/.config/htop"

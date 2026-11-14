@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,7 @@ Path(os.environ["ATTACHED_ENV"]).write_text(json.dumps({
 import errno
 import os
 import pty
+import subprocess
 import sys
 
 assert sys.argv[1:3] == ["-t", "fixture-host"], sys.argv
@@ -64,6 +66,7 @@ env["PATH"] = os.defpath
 # -t supplies the controlling terminal needed by an interactive login shell.
 pid, terminal = pty.fork()
 if pid == 0:
+    subprocess.run([env["SHELL"], "-c", '/bin/sh "$HOME/.ssh/rc"'], env=env, check=True)
     os.execve(env["SHELL"], [env["SHELL"], "-c", sys.argv[3]], env)
 while True:
     try:
@@ -106,6 +109,9 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         (remote_bin / "zellij").symlink_to(proxy)
         (remote_bin / "zellij-attach").symlink_to(ROOT / "bin/zellij-attach")
         (remote_bin / "zellij-agent").symlink_to(ROOT / "bin/zellij-agent")
+        (remote_bin / "fix-ssh").symlink_to(ROOT / "bin/fix-ssh")
+        (remote_home / ".ssh").mkdir(mode=0o700)
+        (remote_home / ".ssh/rc").symlink_to(ROOT / "sh/ssh-rc")
         # Isolate runner-wide startup (including Ubuntu's interactive compinit)
         # while still exercising the repository's real user startup files.
         (remote_home / ".zshenv").write_text(
@@ -121,6 +127,10 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         (remote_home / ".env").write_text('export PATH="$HOME/custom tools/bin:$PATH"\n')
         attached, observed, tab = work / "attached", work / "environment", work / "tab"
         forwarded_socket = str(work / "forwarded.sock")
+        agent_socket = socket.socket(socket.AF_UNIX)
+        agent_socket.bind(forwarded_socket)
+        agent_socket.close()
+        stable_socket = str(remote_home / ".ssh/dotfiles-agent/forwarded.sock")
         env = {
             **os.environ,
             "HOME": str(home),
@@ -165,7 +175,7 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         ]
         subprocess.run(remote, env=env, check=True, timeout=15)
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
-        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket, "nested": "0"}
+        assert json.loads(observed.read_text()) == {"tty": True, "socket": stable_socket, "nested": "0"}
         assert not tab.exists(), "Outside Zellij, SSH must use the current terminal"
         session = "chosen 'session; $(printf injected) $HOME"
         subprocess.run([zsh, "-dfc", *remote[2:], session], env=env, check=True,
@@ -184,7 +194,7 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         assert not (work / "kitty-used").exists(), "Zellij must bypass Kitty's SSH bootstrap"
         assert json.loads(tab.read_text()) == ["action", "new-tab", "--name", "fixture-host"]
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
-        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket, "nested": "1"}
+        assert json.loads(observed.read_text()) == {"tty": True, "socket": stable_socket, "nested": "1"}
         print("PASS: zj and zssh preserve sessions; remote login shells supply PATH, TTY, and forwarded agents.")
 
 

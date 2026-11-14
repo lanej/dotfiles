@@ -1,5 +1,7 @@
 #!/bin/sh
-if [ -r "$HOME/.local/bin/fix-ssh" ] && { [ -n "$SSH_CONNECTION" ] || [ -n "$TMUX" ]; } && [ ! -S "$SSH_AUTH_SOCK" ]; then
+# A disconnected agent can leave a socket behind. Select the session's agent
+# for this child even when the caller retains an old, socket-shaped path.
+if [ -r "$HOME/.local/bin/fix-ssh" ] && { [ -n "$SSH_CONNECTION" ] || [ -n "$TMUX" ]; }; then
 	# shellcheck disable=SC1091
 	. "$HOME/.local/bin/fix-ssh"
 fi

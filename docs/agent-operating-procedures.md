@@ -38,9 +38,9 @@ Default local pages and UI validation to headless Playwright MCP. Headless brows
 
 # Automatic PR writing and code review
 
-Octo PR submission is an optional experiment. Use the [Octo submission contract](octo-pr-submission.md) only when explicitly chosen for the task; it must not block ordinary PR creation or require automatic command interception. Octo's separately recorded dedicated writer satisfies the writer requirement for that submission. Tracking checks and reviews can be used independently of publication.
+Create GitHub PRs through the [Octo submission contract](octo-pr-submission.md) using `octo-manager submit-pr`; it replaces `gh-pr-create-from`. Octo owns the separately recorded writer, publication checks, and enrollment. Supply facts rather than a purportedly approved description. If Octo is unavailable, report the limitation rather than bypassing publication checks. Use the actual calling session identity. Tracking checks and reviews can be used independently of publication. Unsupported harnesses must report the limitation rather than inventing a Codex identity.
 
-For every GitHub pull request created or revised outside Octo, invoke the `github-pr-writer` custom agent as a separate subagent to draft or revise its title and description before opening the PR or completing an update to it. Give it the final diff against the base branch, the motivation, repository PR requirements, and relevant validation evidence. Wait for its draft, resolve any blockers, and use its title and description. This applies to simple and documentation-only PRs too. Run it for each proposed PR revision, rather than every commit.
+For every existing GitHub pull request title/body revision, invoke the `github-pr-writer` custom agent as a separate subagent before publication. Give it the final diff against the base branch, the motivation, repository PR requirements, and relevant validation evidence. Wait for its draft, resolve any blockers, and use its title and description. This applies to simple and documentation-only PRs too. Run it for each proposed PR revision, rather than every commit. `submit-pr` creates PRs; it does not enforce the existing PR revision workflow.
 
 Use `pull-request-writer` for other review platforms; it supplies the shared writing guidance inherited by the GitHub specialist.
 

@@ -12,9 +12,7 @@ the failure modes on this machine that have actually cost time.
 
 - Write commit messages directly from the staged diff and relevant context.
   `/git:commit [context]` provides the commit workflow.
-- **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
-  `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
-  visual changes. When available, open it with `gh-pr-create-from <file>`; otherwise publish the dedicated writer’s draft through `gh pr create --body-file`.
+- Create GitHub PRs with `octo-manager submit-pr`, following [the submission contract](../../../docs/octo-pr-submission.md). Octo owns the recorded writer, publication checks, and tracking; report unavailable submission rather than bypassing it. Existing PR title/body revisions require a separate `github-pr-writer` and resolution of its blockers.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.

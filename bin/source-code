@@ -395,6 +395,7 @@ def package(skills, agents, template, go_profile=False, typescript_profile=False
             replacements = []
             if skill == "git":
                 replacements = [("../../../docs/verification.md", "references/verification.md"),
+                                ("../../../docs/octo-pr-submission.md", "references/octo-pr-submission.md"),
                                 ("../../../docs/pull-requests.md", "../pr-writer/references/docs/pull-requests.md")]
             if skill == "builder" and str(relative) == "references/instructions.md":
                 replacements = [("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
@@ -411,6 +412,7 @@ def package(skills, agents, template, go_profile=False, typescript_profile=False
                     [("../ai/agents/", "../")])
         if skill == "git":
             add(".agents/skills/git/references/verification.md", SOURCE / "docs/verification.md")
+            add(".agents/skills/git/references/octo-pr-submission.md", SOURCE / "docs/octo-pr-submission.md")
         if "claude" in agents:
             files[f".claude/skills/{skill}"] = {
                 "kind": "link", "target": f"../../.agents/skills/{skill}"}

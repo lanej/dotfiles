@@ -7,7 +7,7 @@
 # This path is documented by 1Password and matches the IdentityAgent config in ~/.ssh/config
 ONEPASSWORD_SSH_AGENT="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# WHY: Refresh mux panes without replacing a local 1Password agent.
+# Fresh remote logins publish their agent; every remote child selects its stable path.
 if [ -n "$SSH_CONNECTION" ]; then
     if [ -r "$HOME/.local/bin/fix-ssh" ]; then
         # shellcheck disable=SC1091

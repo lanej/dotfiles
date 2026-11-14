@@ -22,6 +22,7 @@ shellcheck -x \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
     "$dotfiles/bin/fix-ssh" \
+    "$dotfiles/sh/ssh-rc" \
     "$dotfiles/bin/fzf-path-preview" \
     "$dotfiles/bin/git-ssh" \
     "$dotfiles/bin/git-worktree-policy-hook" \
