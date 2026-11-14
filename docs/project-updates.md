@@ -7,6 +7,8 @@ project-update status --all --fetch
 project-update update --all
 project-update pull octo-manager
 project-update build octo-manager
+project-update build intent
+project-update build keylease
 project-update restart octo-manager
 project-update update zellij --dry-run
 ```
@@ -24,10 +26,14 @@ project-update update zellij --dry-run
 | `octo-manager` | `~/src/octo-manager`; frozen dependencies and the existing revision-specific installer with `--no-start`. Uses Octo's platform-specific private Bun when installed, otherwise Bun from PATH. | Requires the checkout revision to be installed, then uses Octo's existing installer/service controls. No service manager returns restart-required with its foreground command. Existing hooks and state are preserved. |
 | `bedrock-router` | `~/src/bedrock-router`; Go build into a revision-specific cache, then its native installer with `--no-start --keep-env --preserve-mcp`. | Verifies that the staged and installed binary match, then uses the native installer to reload the service and check health. |
 | `zellij` | Dotfiles' default branch; existing runtime, helper, plugin and configuration targets. The curated runtime policy and compatible pins remain authoritative. | Inspects existing sessions. Active sessions return restart-required and stay running. Exited/resurrectable sessions need no restart. New sessions load the installed version. |
+| `intent` | `~/src/intent`; native `make install` builds and installs the CLI with its embedded Mac helper into `~/.local`. | Reports restart-required: reconnect SSH sessions. Existing connections remain active. |
+| `keylease` | `~/src/1password-agent`; native `make install` preserves its immutable releases and atomically updates the installed CLI link. | Reports restart-required: start new Keylease sessions. Existing brokers, leases and credential state remain active. |
 
 Zellij's upstream default branch is a clean mirror and does not contain the curated fork features. Updating this installation therefore pulls the dotfiles default branch and installs its selected runtime; it does not replace the runtime with upstream main. The `zellij` entry includes its runtime and plugins in one update, following the existing installation conditions: configuration for every runtime, status compilation for non-release runtimes, and copy-hop for the patched runtime. Build includes installation but does not intentionally stop a running process. Zellij configuration also affects newly opened sessions.
 
-The project scope is Zellij (including its plugins), Bedrock Router and OctoManager. `--all` means these three registered entries. A missing checkout is reported as a failure rather than skipped. Bedrock Router uses the standalone [lanej/bedrock-router](https://github.com/lanej/bedrock-router) source checkout, not the old dotfiles implementation. Its installer preserves environment and MCP choices and honors `CODEX_HOME`; credentials and session state remain in their existing locations. After staging, the adapter records the installed source revision and binary hash beside the binary. Status checks that hash, so the installed revision stays visible when the checkout advances and becomes unknown if the binary is replaced outside this command.
+The project scope is Zellij (including its plugins), Bedrock Router, OctoManager, Intent and Keylease. `--all` means these five registered entries. A missing checkout is reported as a failure rather than skipped. Bedrock Router uses the standalone [lanej/bedrock-router](https://github.com/lanej/bedrock-router) source checkout, not the old dotfiles implementation. Its installer preserves environment and MCP choices and honors `CODEX_HOME`; credentials and session state remain in their existing locations. After staging, the adapter records the installed source revision and binary hash beside the binary. Status checks that hash, so the installed revision stays visible when the checkout advances and becomes unknown if the binary is replaced outside this command.
+
+Intent and Keylease are installed independently; extracting approval transport into Intent does not remove Keylease installation. Their adapters require clean source checkouts, verify the installed binary against the native build, and record the source revision with its binary hash. Status retains the recorded revision when source advances and reports it unknown if the installed binary changes. Installation does not enable SSH approval, reconfigure SSH, or start a broker. Restart returns 3 because active sessions cannot be safely enumerated and renewed through the current CLI controls.
 
 ## Add a project
 
