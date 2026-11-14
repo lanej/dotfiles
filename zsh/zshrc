@@ -287,6 +287,10 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 		# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
 		zstyle ':completion:*' menu no
+
+		# To make fzf-tab follow FZF_DEFAULT_OPTS.
+		# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
+		zstyle ':fzf-tab:*' use-fzf-default-opts yes
 		# press / on a candidate to accept it AND immediately reopen completion
 		# for the next argument, without leaving the popup — lets you drill
 		# through subcommand levels (e.g. `jira components<Tab>` -> select
@@ -297,9 +301,6 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 			[[ -n $realpath ]] && "$HOME/.files/bin/fzf-path-preview" "$realpath"'
 		# WHY: Completion keeps its native keys while sharing the generated palette.
 		zstyle ':fzf-tab:*' fzf-flags --bind=tab:accept -i --preview-window="$(__fzf_dynamic_preview_window)"
-		# To make fzf-tab follow FZF_DEFAULT_OPTS.
-		# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
-		zstyle ':fzf-tab:*' use-fzf-default-opts yes
 		# switch group using `<` and `>`
 		zstyle ':fzf-tab:*' switch-group '<' '>'
 	fi
