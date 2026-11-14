@@ -63,6 +63,8 @@ The baseline counts file/linter/message/source-excerpt signatures rather than li
 
 Existing custom rules and build context are merged with the added defaults. The added layer owns its checker settings and defaults, strict reporting, and exclusions; the original gate remains unchanged and runs with fixing disabled. If its config changes, rerun bootstrap to refresh the merged copy. Local mode hides copied files and the baseline; shared CI requires tracked files. Existing workflows remain subject to normal conflict protection.
 
+Every runner entrypoint selects the `go` directive from `go.mod` as its exact check toolchain, overriding an inherited `GOTOOLCHAIN`. A directive without a patch component selects `.0`; prerelease directives retain their version. This applies to direct script calls as well as Make and lifecycle wrappers.
+
 The runner pins golangci-lint 2.13.2 and govulncheck v1.9.0, verifies the official linter release SHA-256, and builds govulncheck separately from application dependencies. Tools are cached under `${XDG_CACHE_HOME:-$HOME/.cache}/go-quality`. Review upgrades rather than switching to `latest`; the vulnerability database remains live. Initial setup and scans need network access.
 
 Go and Python 3.9+ are required by the portable runner. Config merging uses PyYAML; bootstrap can use the workstation's uv to cache PyYAML 6.0.3 when absent. The default runner covers one root module on macOS or Linux, amd64 or arm64. It sets `GOWORK=off` to avoid hidden parent-workspace replacements. Add explicit module/workspace, build-tag, platform, and integration coverage as required. Race tests need cgo and a C compiler even when production binaries are static.
