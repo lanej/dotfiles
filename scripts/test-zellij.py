@@ -83,6 +83,10 @@ class Terminal:
         os.write(self.fd, value)
         self.drain()
 
+    def settle_ordinary_navigation(self):
+        """Allow the three-second discovery grace for a known ordinary attachment."""
+        self.drain(3.1)
+
     def prefix(self, key):
         self.send(b"\x06" + key)
 
@@ -370,6 +374,9 @@ def check_move_picker(terminal, home, clients):
     for pane in terminal.terminals():
         if pane["tab_id"] == source_tab and pane["id"] != source_id:
             terminal.action("close-pane", "--pane-id", f"terminal_{pane['id']}")
+    terminal.until("only the source working pane remains and has focus", lambda:
+                   [p["id"] for p in terminal.terminals() if p["tab_id"] == source_tab] == [source_id]
+                   and source_pane()["is_focused"])
     open_picker()
     terminal.send(b"\r")
     terminal.until("single working pane moves to New Tab", lambda:
@@ -819,7 +826,7 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,

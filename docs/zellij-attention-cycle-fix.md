@@ -30,7 +30,7 @@ The native menu's `Inbox::go_to_selected` sends `FocusSessionPane { session_name
 
 That client can be the attachment running inside the shared popup. Reconnecting it to its host preserves its containing terminal, making the host a child of itself. The nested handshake accepts the resulting self-reference; ancestry propagation and the nested status summaries then feed back through the same session. The menu's navigation is the initiating defect; the repeating tracker text is a consequence.
 
-The fix is in the `lanej/zellij` runtime fork at `256a247936750a5490e337f40ea74cb35e094ed3`, branch `fix/attention-ancestor-navigation`. Dotfiles pins that revision and Neovim client revision `5c33972d36e8ceea011d4bc240e8cbb5a298ab0e` with matching generated protobuf definitions.
+The fix is in the `lanej/zellij` runtime fork at `256a247936750a5490e337f40ea74cb35e094ed3`, branch `fix/attention-ancestor-navigation`. The recovery installed that runtime with Neovim client revision `5c33972d36e8ceea011d4bc240e8cbb5a298ab0e` with matching generated protobuf definitions. The currently selected runtime is defined in [the installer](../scripts/install-zellij).
 
 ## Implemented behavior
 

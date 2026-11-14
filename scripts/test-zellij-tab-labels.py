@@ -224,11 +224,21 @@ def main(fixed_titles=False, native_bar=False):
                 column = screen.display[row].find("agent work", left, left + source["pane_columns"])
                 return screen.buffer[row][column].fg if column >= 0 else None
 
-            terminal.until("focused pane title is purple", lambda: frame_title_color() == "b48ead")
+            def frame_border_colors():
+                top_line()
+                row, left = source["pane_y"], source["pane_x"]
+                return {screen.buffer[row][column].fg
+                        for column in range(left, left + source["pane_columns"])
+                        if screen.buffer[row][column].data in "─┌┐╭╮"}
+
+            terminal.until("focused pane title and full border are purple", lambda:
+                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
             terminal.prefix(b"h")
-            terminal.until("unfocused pane title stays readable in gray", lambda: frame_title_color() == "979da9")
+            terminal.until("unfocused pane title stays readable with a background-colored border", lambda:
+                           frame_title_color() == "d8dee9" and frame_border_colors() == {"2e3440"})
             terminal.prefix(b"l")
-            terminal.until("returning to the pane restores purple", lambda: frame_title_color() == "b48ead")
+            terminal.until("returning to the pane restores the purple title and full border", lambda:
+                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
             terminal.prefix(b"z")
             terminal.until("zoom uses the expand glyph on a gold tab", lambda:
                            "󰊓 9:" in top_line() and "FULLSCREEN" not in top_line()

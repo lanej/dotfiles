@@ -93,7 +93,7 @@ print(reply if isinstance(reply, str) else json.dumps(reply), end="")''',
         self.env["ZELLIJ_SOCKET_DIR"] = str(runtime)
         with socket.socket(socket.AF_UNIX) as listener:
             listener.bind(str(namespace / "collaboration"))
-            yield
+            yield listener
 
     def test_context_inspect_preserves_raw_metadata_and_requires_session_selection(self):
         name = self.env["ZELLIJ_SESSION_NAME"]
@@ -351,6 +351,54 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
                     self.assertFalse(any(118 in a for a in actions))
         self.assertFalse(any("action" in c or "setup" in c for c in self.calls()))
 
+    def test_move_picker_waits_for_registration_without_accepting_changed_sources(self):
+        theme = self.home / "theme"
+        theme.mkdir()
+        (theme / "fzf.txt").write_text("--color=dark\n")
+        self.env["DOTFILES_THEME_DIR"] = str(theme)
+        (self.home / "selection").write_text("4")
+        tabs = [{"tab_id": 4, "position": 0, "name": "work", "other_focused_clients": [3]}]
+        snapshots = []
+        fallback = None
+
+        def reply(request):
+            action = fields(request[1])
+            if 98 in action:
+                response = snapshots.pop(0) if snapshots else fallback
+                self.assertIsNotNone(response, "Unexpected pane query")
+            elif 84 in action:
+                response = {"pane_id": "terminal_7", "token": {"client_id": 3}}
+            else:
+                self.assertEqual(set(action), {104})
+                response = tabs
+            return message(5, message(1, json.dumps(response).encode()))
+
+        with self.collaboration_session() as listener, action_server(listener, reply):
+            snapshots[:] = [[pane(1)], [pane(1), pane(7)]]
+            result = self.run_helper("zellij-picker", "move-pane", check=False)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertFalse(snapshots)
+            self.assertIn("New Tab", (self.home / "choices").read_text())
+            for snapshots_before, reason in (
+                ([[pane(7)]], "source"),
+                ([[pane(1), pane(7, tab_id=8)]], "tab"),
+                ([[pane(1)], [pane(1, tab_id=8), pane(7, tab_id=8)]], "tab"),
+            ):
+                with self.subTest(reason=reason, snapshots=snapshots_before):
+                    (self.home / "choices").unlink(missing_ok=True)
+                    snapshots[:] = snapshots_before
+                    result = self.run_helper("zellij-picker", "move-pane", check=False)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(reason, result.stderr.decode())
+                    self.assertFalse((self.home / "choices").exists())
+            (self.home / "choices").unlink(missing_ok=True)
+            fallback = [pane(1)]
+            result = self.run_helper("zellij-picker", "move-pane", check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"source terminal_1, picker terminal_7", result.stderr)
+            self.assertIn(b"terminal:1@4", result.stderr)
+            self.assertFalse((self.home / "choices").exists())
+
     def test_tab_picker_rejects_closed_target_and_keeps_names_as_data(self):
         sockets = tempfile.TemporaryDirectory(prefix="zj-picker-", dir="/tmp")
         self.addCleanup(sockets.cleanup)
@@ -462,10 +510,11 @@ with Path(os.environ["FIXTURE"]).joinpath("calls").open("a") as log:
 
 def live_panes():
     Terminal = runpy.run_path(str(ROOT / "scripts/test-zellij.py"))["Terminal"]
+    stop_session = runpy.run_path(str(ROOT / "scripts/test-zellij-shell-titles.py"))["stop_session"]
     binary = shutil.which("zellij")
     assert binary, "Install the pinned Zellij runtime first"
     with tempfile.TemporaryDirectory(prefix="zj-pane-", dir="/tmp") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         home, runtime = root / "home", root / "run"
         config = home / ".config/zellij"
         (config / "layouts").mkdir(parents=True)
@@ -477,9 +526,9 @@ def live_panes():
                "TERM": "xterm-256color", "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(root / "cache"), "XDG_DATA_HOME": str(root / "data"),
                "XDG_STATE_HOME": str(root / "state"), "XDG_RUNTIME_DIR": str(runtime),
-               "TMPDIR": str(root)}
+               "ZELLIJ_SOCKET_DIR": str(runtime), "TMPDIR": str(root)}
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_SOCKET_DIR", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
         data = (home / "Library/Application Support/org.Zellij-Contributors.Zellij"
                 if sys.platform == "darwin" else root / "data/zellij")
@@ -547,9 +596,12 @@ def live_panes():
                 for line in helper("pane", "capture", "--session", name, "--pane", waiting).splitlines()))
             print("PASS: real discovery/capture, literal argv, focus preserved for two viewers, shell after exit and Ctrl-c")
         finally:
-            for terminal in reversed(terminals):
-                terminal.close()
-            subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
+            try:
+                for terminal in reversed(terminals[1:]):
+                    terminal.close()
+            finally:
+                if terminals:
+                    stop_session(terminals[0])
 
 
 if __name__ == "__main__":
