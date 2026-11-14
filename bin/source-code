@@ -23,6 +23,7 @@ DEFAULT_SKILLS = ("builder", "architecture", "pr-writer")
 CORE_SKILLS = ("builder", "architecture", "data-change-planning", "git", "testing", "source-code-lifecycle", "code-comments")
 SKILLS = DEFAULT_SKILLS + ("go", "typescript", "code-comments", "library-code-comments", "testing", "source-code-lifecycle", "data-change-planning", "git", "gh-pr-stack", "github-actions", "javascript", "just", "python", "rust")
 STAGES = ("research", "alpha", "beta", "production")
+KINDS = ("service", "library", "tool")
 POLICY = ".source-code.json"
 LIFECYCLE_RUNNER = "scripts/check-source-code.py"
 VERSIONS = ".agents/source-code-versions.json"
@@ -117,6 +118,8 @@ def read_state(root):
     state = json.loads((root / STATE).read_text())
     if not isinstance(state, dict) or type(state.get("version")) is not int or state["version"] != 1 or not isinstance(state.get("files"), dict):
         raise ValueError(f"unrecognized manifest: {root / STATE}")
+    if "kind" in state and state["kind"] not in KINDS:
+        raise ValueError("invalid manifest project kind")
     if "stage" in state and state["stage"] not in STAGES:
         raise ValueError("invalid manifest lifecycle stage")
     if "policy_version" in state and (not isinstance(state["policy_version"], str) or not VERSION_RE.fullmatch(state["policy_version"])):
@@ -167,13 +170,13 @@ def load_configuration(args):
         return
     with path.open("rb") as stream:
         data = tomllib.load(stream)
-    allowed = {"schema_version", "stage", "mode", "skills", "agents", "pr_template", "detect_languages", "policy_version", "checks"}
+    allowed = {"schema_version", "stage", "kind", "mode", "skills", "agents", "pr_template", "detect_languages", "policy_version", "checks"}
     unknown = set(data) - allowed
     if unknown:
         raise ValueError("unknown configuration keys: " + ", ".join(sorted(unknown)))
     if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         raise ValueError("configuration requires schema_version = 1")
-    choices = {"stage": STAGES, "mode": ("tracked", "shadow", "local"), "agents": ("codex", "both"), "pr_template": ("none", "local", "github")}
+    choices = {"stage": STAGES, "kind": KINDS, "mode": ("tracked", "shadow", "local"), "agents": ("codex", "both"), "pr_template": ("none", "local", "github")}
     values = {}
     for key, options in choices.items():
         if key in data:
@@ -256,7 +259,7 @@ def configuration_drift(args, state, root):
     mapping = {"go": "go_profile", "typescript": "typescript_profile"}
     for key, desired in args.config_values.items():
         if key == "skills":
-            expected = complete_skills(set(desired.split(",")), bool(args.config_values.get("stage")))
+            expected = complete_skills(set(desired.split(",")), bool(args.config_values.get("stage")), args.config_values.get("kind", state.get("kind")))
             if not expected <= set(state.get("skills", [])):
                 warnings.append("configuration skills are not installed; run setup or upgrade")
             continue
@@ -297,9 +300,12 @@ def project_guidance(policy):
     lifecycle = "Read the installed `.agents/skills/source-code-lifecycle/SKILL.md` first, then " if "source-code-lifecycle" in policy["skills"] else "Then "
     gates = ", ".join(f"`python3 scripts/check-source-code.py {name}`" for name in policy["languages"])
     gate_guidance = f"Run the installed generated gates: {gates}." if gates else "No generated language gate is installed; follow existing repository commands and the selected language skills."
+    kind = policy.get("kind")
+    kind_guidance = (f"Project kind: **{kind}**. Read the installed `.agents/skills/source-code-lifecycle/references/kinds.md` for kind-specific obligations, scaled by the selected lifecycle stage. Kind selects usage guidance, not architecture or additional generated test commands.\n\n" if kind else "")
     return ("<!-- Managed by source-code setup; edit policy through setup or upgrade. -->\n"
             "# Source-code project guidance\n\n"
             f"Policy version: **{policy['policy_version']}**. Schema version: **{policy['schema_version']}**. Lifecycle stage: **{policy['stage']}**.\n\n"
+            + kind_guidance +
             "Before applying this policy, read the repository's `AGENTS.md` if it exists. Preserve its requirements and all more-specific repository instructions. This override adds project policy; it does not waive existing gates.\n\n"
             "The authoritative pins and stage are in `.source-code.json`; this file is their generated summary.\n\n"
             "| Skill | Version |\n| --- | --- |\n" + rows + "\n\n"
@@ -308,15 +314,17 @@ def project_guidance(policy):
             "This file is the generated Codex project entrypoint. Other hosts should load it explicitly when their native instruction discovery does not read AGENTS.override.md.\n")
 
 
-def complete_skills(skills, explicit_stage=False):
+def complete_skills(skills, explicit_stage=False, kind=None):
     skills = set(skills)
+    if kind == "library":
+        skills.add("library-code-comments")
     if "typescript" in skills:
         skills.add("javascript")
     if skills & {"go", "typescript", "javascript", "python", "rust"}:
         skills.add("library-code-comments")
     if "library-code-comments" in skills:
         skills.add("code-comments")
-    if skills & set(CORE_SKILLS) or explicit_stage:
+    if skills & set(CORE_SKILLS) or explicit_stage or kind is not None:
         skills.update(CORE_SKILLS)
     if "git" in skills:
         skills.add("pr-writer")
@@ -692,7 +700,8 @@ def install(args):
         bool(args.typescript_rollout or args.typescript_project) or state.get("typescript_profile", False))
     if typescript_profile:
         skills.add("typescript")
-    skills = complete_skills(skills, bool(args.stage))
+    kind = args.kind or state.get("kind")
+    skills = complete_skills(skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None)
     if not skills <= set(SKILLS):
         raise ValueError("language detection selected unsupported skills")
     stage = args.stage or state.get("stage", "beta")
@@ -740,9 +749,16 @@ def install(args):
             raise ValueError("retained skills have no version pins; use source-code upgrade to version the complete installation")
         pins = {name: versions["skills"][name] if name in skills else old_pins[name]
                 for name in sorted(skills | retained_skills)}
+        required_kind_skills = {"source-code-lifecycle"} if kind is not None else set()
+        if kind == "library":
+            required_kind_skills.add("library-code-comments")
+        if not required_kind_skills <= pins.keys():
+            raise ValueError("project kind requires missing guidance; include the lifecycle and kind skills or run a complete upgrade")
         installed_versions = {**versions, "skills": pins}
         policy = {"schema_version": 1, "policy_version": versions["policy_version"], "stage": stage, "languages": languages, "skills": pins,
                   "detection": {"enabled": detect_enabled, **detection}}
+        if kind is not None:
+            policy["kind"] = kind
         resources = [
             (POLICY, (json.dumps(policy, indent=2) + "\n").encode()),
             (VERSIONS, (json.dumps(installed_versions, indent=2) + "\n").encode()),
@@ -844,6 +860,8 @@ def install(args):
                  "go_profile": go_profile, "files": managed}
     if skills:
         new_state.update(stage=stage, policy_version=versions["policy_version"], skills=sorted(pins), skill_versions=pins, agents=agent_selection, pr_template=template)
+        if kind is not None:
+            new_state["kind"] = kind
         new_state["detect_languages"] = detect_enabled
     elif "stage" in state:
         new_state.update(stage=state["stage"], policy_version=state["policy_version"])
@@ -869,10 +887,14 @@ def install(args):
         if typescript_profile:
             effective["checks"]["typescript"].update(rollout=ts_rollout,
                 projects=json.loads(payloads[".typescript-quality.json"])["projects"])
+        if kind is not None:
+            effective["kind"] = kind
         print("  Effective configuration: " + json.dumps(effective, sort_keys=True))
     if skills:
         previous = state.get("stage", "beta (legacy full checks)")
         print(f"  Lifecycle: {previous} -> {stage}; policy {versions['policy_version']}")
+        if kind is not None:
+            print(f"  Kind: {state.get('kind', 'unspecified')} -> {kind}")
         for name, version in pins.items():
             print(f"  Skill {name}: {old_pins.get(name, 'unversioned')} -> {version}")
         plans = json.loads((SOURCE / "ai/skills/source-code-lifecycle/references/stages.json").read_text())["stages"]
@@ -977,7 +999,8 @@ def prepare_upgrade(args):
         skills.add("go")
     if args.typescript:
         skills.add("typescript")
-    skills = complete_skills(skills, bool(args.stage))
+    kind = args.kind or state.get("kind")
+    skills = complete_skills(skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None)
     if not skills <= set(SKILLS):
         raise ValueError("upgrade selected an unknown skill")
     available = read_versions(SOURCE / "ai/skills/source-code-versions.json")
@@ -1064,6 +1087,14 @@ def validate_project(args):
                 versions = read_versions(root / VERSIONS)
                 if not isinstance(policy, dict) or type(policy.get("schema_version")) is not int or policy["schema_version"] != 1 or policy.get("stage") not in STAGES:
                     raise ValueError("invalid lifecycle policy schema or stage")
+                if "kind" in policy and policy["kind"] not in KINDS:
+                    raise ValueError("invalid installed project kind")
+                if policy.get("kind") != state.get("kind"):
+                    raise ValueError("policy kind and install manifest disagree")
+                if policy.get("kind") is not None and "source-code-lifecycle" not in policy.get("skills", {}):
+                    raise ValueError("project kind requires installed lifecycle guidance")
+                if policy.get("kind") == "library" and "library-code-comments" not in policy.get("skills", {}):
+                    raise ValueError("library kind requires caller documentation guidance")
                 if policy.get("policy_version") != versions["policy_version"]:
                     raise ValueError("policy pin and installed version registry disagree")
                 supported = read_versions(SOURCE / "ai/skills/source-code-versions.json")["policy_version"]
@@ -1169,6 +1200,7 @@ def add_install_arguments(parser):
     parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
     parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")
     parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
+    parser.add_argument("--kind", choices=KINDS, help="software usage kind (default: saved kind, else unspecified; never inferred)")
     parser.add_argument("--stage", choices=STAGES, help="lifecycle assurance level (default: previous stage, else beta/full checks)")
     parser.add_argument("--policy-version", help="require the policy version shipped by this installed source; no implicit version fetching")
     parser.add_argument("--detect-languages", action=argparse.BooleanOptionalAction, default=None, help="select matching language guidance (default: saved choice, else enabled); check profiles remain explicit")

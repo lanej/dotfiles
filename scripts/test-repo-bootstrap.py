@@ -173,6 +173,44 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "upgrade", "--repo", str(config_clone)])
     assert (config_clone / "source-code.toml").read_text() == tracked_config.read_text()
 
+    # Kind selects usage guidance independently from lifecycle and language gates.
+    for kind in ("service", "library", "tool"):
+        target = workspace / ("kind-" + kind)
+        install(target, "--init", "--kind", kind, "--stage", "research", "--no-detect-languages",
+                "--no-go", "--no-typescript", "--pr-template", "none")
+        policy = json.loads((target / ".source-code.json").read_text())
+        assert policy["kind"] == kind and policy["stage"] == "research" and policy["languages"] == []
+        assert ("library-code-comments" in policy["skills"]) == (kind == "library")
+        assert f"Project kind: **{kind}**" in (target / "AGENTS.override.md").read_text()
+        assert (target / ".agents/skills/source-code-lifecycle/references/kinds.md").is_file()
+        run([str(cli), "validate", "--repo", str(target), "--strict"])
+        run([str(cli), "upgrade", "--repo", str(target)])
+        assert json.loads((target / ".source-code.json").read_text())["kind"] == kind
+
+    kind_target = workspace / "kind-config"
+    git(kind_target.parent, "init", "-q", str(kind_target))
+    kind_config = kind_target / "source-code.toml"
+    kind_text = ('schema_version = 1\nstage = "alpha"\nkind = "library"\n'
+                 'detect_languages = false\npr_template = "none"\n'
+                 '[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
+    kind_config.write_text(kind_text)
+    install(kind_target)
+    assert kind_config.read_text() == kind_text
+    install(kind_target, "--kind", "tool")
+    assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "tool"
+    assert "configuration kind differs" in run([str(cli), "validate", "--repo", str(kind_target), "--strict"], expected=1)
+    run([str(cli), "upgrade", "--repo", str(kind_target)])
+    assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "library"
+    kind_config.write_text(kind_text.replace('kind = "library"\n', ''))
+    run([str(cli), "upgrade", "--repo", str(kind_target)])
+    assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "library"
+    for bad in ('true', '"application"'):
+        kind_config.write_text(kind_text.replace('kind = "library"', 'kind = ' + bad))
+        before = tree(kind_target)
+        install(kind_target, expected=1)
+        run([str(cli), "validate", "--repo", str(kind_target)], expected=1)
+        assert tree(kind_target) == before, "invalid kind changed installation"
+
     install(project, "--init", "--dry-run")
     assert not project.exists(), "preview initialized the target"
     run([str(source / "bin/repo-bootstrap"), "--repo", str(project), "--init", "--mode", "tracked"])
@@ -484,12 +522,16 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     runner_asset = source / "ai/skills/source-code-lifecycle/assets/check-source-code.py"
     runner_bytes = runner_asset.read_bytes()
     runner_asset.write_bytes(runner_bytes + b"\n# New lifecycle runtime release.\n")
-    installed_runner = (shared / "scripts/check-source-code.py").read_bytes()
-    run([str(cli), "upgrade", "--repo", str(shared), "--skills", "pr-writer"])
-    pins = json.loads((shared / ".source-code.json").read_text())["skills"]
-    assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == "1.0.0"
-    assert (shared / "scripts/check-source-code.py").read_bytes() == installed_runner
-    run([str(cli), "validate", "--repo", str(shared), "--strict"])
+    for target in (shared, *(workspace / ("kind-" + name) for name in ("service", "library", "tool"))):
+        if target != shared:
+            saved_kind = json.loads((target / ".source-code.json").read_text())["kind"]
+            (target / "source-code.toml").write_text('schema_version = 1\nstage = "research"\nkind = "' + saved_kind + '"\n')
+        installed_runner = (target / "scripts/check-source-code.py").read_bytes()
+        run([str(cli), "upgrade", "--repo", str(target), "--skills", "pr-writer"])
+        pins = json.loads((target / ".source-code.json").read_text())["skills"]
+        assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == "1.0.0"
+        assert (target / "scripts/check-source-code.py").read_bytes() == installed_runner
+        run([str(cli), "validate", "--repo", str(target), "--strict"])
     runner_asset.write_bytes(runner_bytes)
     registry.write_bytes(registry_bytes)
 

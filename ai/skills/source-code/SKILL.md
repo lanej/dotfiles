@@ -17,7 +17,9 @@ Run `source-code detect --repo PATH --json` to inspect language evidence without
 
 ## Set up or change a profile
 
-Use authored TOML for reviewable project configuration. It requires `schema_version = 1`; top-level stage, mode, skills, agents, pr_template, detect_languages, and policy_version map to the CLI selections. Nested `[checks.go]` and `[checks.typescript]` tables select enabled/rollout, with projects for TypeScript. Read subcommand help and the owning setup guide for the full contract. Explicit CLI values override TOML, then saved selections and defaults apply. `--config PATH` selects an alternate file relative to the invocation directory; supply that explicit path again on later commands. Ordinary setup and upgrades never rewrite the authored file.
+Use authored TOML for reviewable project configuration. It requires `schema_version = 1`; top-level stage, kind, mode, skills, agents, pr_template, detect_languages, and policy_version map to the CLI selections. Nested `[checks.go]` and `[checks.typescript]` tables select enabled/rollout, with projects for TypeScript. Read subcommand help and the owning setup guide for the full contract. Explicit CLI values override TOML, then saved selections and defaults apply. `--config PATH` selects an alternate file relative to the invocation directory; supply that explicit path again on later commands. Ordinary setup and upgrades never rewrite the authored file.
+
+Use `kind = "service"`, `"library"`, or `"tool"` in TOML, or `--kind KIND`, to select usage-specific obligations. Kind is optional, never inferred, and saved independently of lifecycle stage. Omission retains an installed kind; library kind selects caller documentation guidance.
 
 Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
 

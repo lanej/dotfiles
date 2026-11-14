@@ -5,7 +5,9 @@ description: Use when working in a project installed by source-code setup, selec
 
 # Source-code lifecycle
 
-Read the project's `.source-code.json` before selecting engineering effort. It records `schema_version`, `policy_version`, `stage`, installed `languages`, pinned skill versions, and language-detection evidence. Detection selects guidance; `languages` separately identifies installed generated check profiles. Read `AGENTS.override.md` for the generated project routing and version summary, preserving the existing `AGENTS.md`. Read [the lifecycle contract](references/lifecycle.md) for stage expectations, transitions, and limits. If the project has no policy, preserve existing requirements; do not infer a lower stage from apparent immaturity.
+Read the project's `.source-code.json` before selecting engineering effort. It records `schema_version`, `policy_version`, `stage`, installed `languages`, pinned skill versions, optional project `kind`, and language-detection evidence. Detection selects guidance; `languages` separately identifies installed generated check profiles. Read `AGENTS.override.md` for the generated project routing and version summary, preserving the existing `AGENTS.md`. Read [the lifecycle contract](references/lifecycle.md) for stage expectations, transitions, and limits. If the project has no policy, preserve existing requirements; do not infer a lower stage from apparent immaturity.
+
+When the policy selects a `kind`, read [project kind guidance](references/kinds.md) for service, library, or tool obligations. Kind is explicit and independent of stage; do not infer it or use it to prescribe architecture.
 
 Apply the selected stage consistently across [Builder](../builder/SKILL.md), [testing](../testing/SKILL.md), [comments](../code-comments/SKILL.md), and installed language guidance. Run `python3 scripts/check-source-code.py LANGUAGE` locally and in CI for the selected stage's generated language gate. Explicit project gates remain binding at every stage.
 

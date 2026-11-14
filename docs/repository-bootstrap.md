@@ -77,6 +77,7 @@ Author `source-code.toml` at the target repository root to make desired policy r
 ```toml
 schema_version = 1
 stage = "alpha"
+kind = "library"
 mode = "shadow"
 skills = ["builder", "architecture", "pr-writer"]
 agents = "both"
@@ -95,7 +96,9 @@ enabled = false
 # projects = ["tsconfig.json"]
 ```
 
-The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
+The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `kind`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
+
+Optional `kind = "service" | "library" | "tool"` selects how the software is consumed. It is independent of lifecycle stage and language, never inferred, and retained when omitted on subsequent runs. `--kind KIND` overrides TOML. Service guidance focuses on integrations and operations, library guidance on public caller contracts and compatibility, and tool guidance on invocation, diagnostics, exit outcomes, and installation. Library kind also selects the library comment skill. Kind appears in generated policy and agent guidance; it does not change generated test commands or prescribe architecture. Repeating an unchanged kind or stage does not broaden a requested skill-subset upgrade or refresh retained package pins. Directory-specific kinds remain future work.
 
 Explicit CLI options override TOML values, which override saved installation selections, which override defaults. A CLI `--no-go` or `--no-typescript` suppresses lower-priority rollout/projects settings from TOML for that invocation. Setup and upgrade print the configuration source, supplied intent, and resolved configuration before applying changes; `--dry-run` prints the same plan without writes. Ordinary setup and upgrade leave authored TOML, comments, and formatting byte-for-byte intact.
 
