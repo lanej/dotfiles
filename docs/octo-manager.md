@@ -1,4 +1,4 @@
-# Opt-in Octo Manager
+# Octo Manager
 
 Octo publishes GitHub PRs through a recorded writer and publication checks, monitors enrolled PRs, and returns actionable checks and review feedback to the owning Codex session. Install it explicitly before using [the required PR publication command](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
 
@@ -46,7 +46,7 @@ Use a Codex host exposing its app-server control socket and authenticate GitHub 
 | `UserPromptSubmit` | Record exact incoming message/digest receipts and recover unread messages. |
 | `PostToolUse` | Enroll successfully attached GitHub PR artifacts for background monitoring. |
 
-If Codex requests trust approval, review the three Octo definitions in its `/hooks` flow. Installing JSON is distinct from the host accepting and executing hooks; dotfiles does not bypass that trust decision. Unrelated hook commands, custom settings and curated MCP configuration are preserved. No PR-submission interception hook is installed; ordinary `gh pr create` and the repository's existing PR writer remain available. Private and public tracking use existing GitHub permissions, without repository allowlists.
+If Codex requests trust approval, review the three Octo definitions in its `/hooks` flow. Installing JSON is distinct from the host accepting and executing hooks; dotfiles does not bypass that trust decision. Unrelated hook commands, custom settings and curated MCP configuration are preserved. Create PRs through [the required Octo submission command](octo-pr-submission.md); the separate interception hook is installed only through `make codex-octo-hook` and still requires native host trust. Private and public tracking use existing GitHub permissions, without repository allowlists.
 
 macOS uses launchd; Linux uses `octo-manager.service` under the selected configuration home’s `systemd/user` directory. If a user manager is unavailable, installation still provides the launcher and hooks, reports `started: false`, and prints a foreground command with the same installation environment. A detected manager’s configuration or startup failure is an error.
 
