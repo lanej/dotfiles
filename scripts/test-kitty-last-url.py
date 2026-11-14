@@ -79,6 +79,55 @@ def check_image_hints(root):
     if rendered.hyperlink_at(2, 2) != "https://example.org/photo.png":
         raise AssertionError("Web link labels must retain their exact OSC 8 destination")
 
+    source.child = SimpleNamespace(foreground_processes=[{"cmdline": ["zellij"]}])
+    source.user_vars = {}
+    source.as_text = lambda **kwargs: "Preview ./fixture.png"
+    sent, timers, removed = [], [], []
+    source.write_to_child = sent.append
+    picker.add_timer = lambda callback, interval, repeat: timers.append(callback)
+    picker.remove_timer = removed.append
+    now = [0.0]
+    picker.time = SimpleNamespace(monotonic=lambda: now[0])
+    parse_bytes(source.screen, b"\x1b[?1049h\r\nPreview ./fixture.png")
+
+    def marker(value):
+        parse_bytes(source.screen, ("\x1b[H\x1b]8;;" + value +
+                                   "\x1b\\Updating helper\x1b]8;;\x1b\\\r").encode())
+
+    for phase in ("building", "failed", "unmanaged"):
+        now[0] = 0
+        marker("")
+        calls.clear()
+        sent.clear()
+        removed.clear()
+        picker.handle_result(["select_hint.py"], None, 7, boss)
+        if sent != [picker.REQUEST]:
+            raise AssertionError("Image hints did not request their Zellij receiver")
+        callback = timers[-1]
+        now[0] = 6
+        if phase == "building":
+            marker(picker.BUILDING)
+            callback(17)
+            if calls or removed:
+                raise AssertionError("A helper build fell back after the ordinary startup timeout")
+            ticket = "a" * 32
+            marker(f"dotfiles-hints://{ticket}/0/0/60/4/0/0")
+            callback(17)
+            if sent[-1] != b"!" or removed != [17]:
+                raise AssertionError("The rebuilt receiver was not acknowledged")
+            calls[-1][3]["custom_callback"]({}, 7, boss)
+            if sent[-1] != ticket.encode() + b".":
+                raise AssertionError("Cancelling after a build did not release the receiver")
+        elif phase == "failed":
+            marker(picker.FAILED)
+            callback(17)
+            if calls or removed != [17]:
+                raise AssertionError("A build error must remain visible without a hint overlay")
+        else:
+            callback(17)
+            if removed != [17] or calls[-1][3]["input_data"] != "Preview ./fixture.png":
+                raise AssertionError("Unmanaged sessions lost the original five-second fallback")
+
 
 def main():
     root = Path(__file__).resolve().parents[1]

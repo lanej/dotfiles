@@ -66,8 +66,8 @@ def exercise(work):
            "PATH": str(work / "bin") + os.pathsep + os.environ["PATH"]}
     (work / "run").mkdir(mode=0o700)
     (work / "bin").mkdir()
-    helper = os.environ.get("IMAGE_HINTS_HELPER", str(ROOT / "zellij/target/debug/lane-zellij"))
-    (work / "bin/zellij-helper").symlink_to(Path(helper).resolve(strict=True))
+    (work / "bin/zellij-image-hints").symlink_to(ROOT / "bin/zellij-image-hints")
+    (work / "bin/zellij-helper").symlink_to(ROOT / "bin/zellij-helper")
     subprocess.run(["make", "-s", "kitty-config", "zellij-config"], cwd=ROOT, env=env, check=True)
     config = work / "config.kdl"
     # Keep the real image-hint binding independent of unrelated runtime/plugin modes.

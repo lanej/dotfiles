@@ -7,7 +7,10 @@ import hashlib
 from contextlib import contextmanager
 import json
 import os
+import pty
+import re
 import runpy
+import select
 import shutil
 from pathlib import Path
 import stat
@@ -30,6 +33,177 @@ def pane(identifier, x=0, width=60, **changes):
             "index_in_pane_group": {}, "pane_x": x, "pane_y": 1,
             "pane_columns": width, "pane_rows": 20, "pane_content_columns": width - 2,
             "title": "shell", "tab_name": "Tab #5", **changes}
+
+
+class Launcher(unittest.TestCase):
+    def setUp(self):
+        self.work = tempfile.TemporaryDirectory(prefix="zellij-launcher-")
+        self.addCleanup(self.work.cleanup)
+        self.work_path = Path(self.work.name).resolve()
+        self.repo = self.work_path / "checkout with spaces"
+        self.bin = self.work_path / "bin"
+        self.bin.mkdir()
+        for folder in ("bin", "scripts", "zellij/cli/src",
+                       "zellij/protocol/src", "zellij/target/release"):
+            (self.repo / folder).mkdir(parents=True)
+        shutil.copy2(ROOT / "bin/zellij-image-hints", self.repo / "bin/zellij-image-hints")
+        shutil.copy2(ROOT / "scripts/build-zellij-helpers.sh", self.repo / "scripts/build-zellij-helpers.sh")
+        for filename in ("zellij/Cargo.toml", "zellij/Cargo.lock",
+                         "zellij/cli/Cargo.toml", "zellij/protocol/Cargo.toml",
+                         "zellij/cli/src/main.rs", "zellij/protocol/src/lib.rs"):
+            (self.repo / filename).write_text("fixture input\n")
+        self.binary = self.repo / "zellij/target/release/lane-zellij"
+        self.candidate = self.work_path / "candidate"
+        self.candidate.write_text(f"#!{sys.executable}\n" + '''
+import json, os, sys
+from pathlib import Path
+Path(os.environ["FIXTURE"]).joinpath("native-ran").touch()
+print(json.dumps({"args": sys.argv[1:], "stdin": sys.stdin.read(),
+                  "setting": os.environ["USER_SETTING"]}))
+''')
+        self.candidate.chmod(0o755)
+        self.cargo = self.bin / "cargo"
+        self.cargo.write_text(f"#!{sys.executable}\n" + '''
+import json, os, shutil, sys, time
+from pathlib import Path
+work = Path(os.environ["FIXTURE"])
+with (work / "builds").open("a") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+print("fixture build output")
+time.sleep(float(os.environ.get("BUILD_DELAY", "0")))
+if os.environ.get("FAIL_BUILD"):
+    sys.exit(19)
+target = Path(sys.argv[sys.argv.index("--target-dir") + 1]) / "release/lane-zellij"
+if not os.environ.get("KEEP_BINARY"):
+    shutil.copyfile(work / "candidate", target)
+target.chmod(0o755)
+''')
+        self.cargo.chmod(0o755)
+        self.env = {**os.environ, "PATH": str(self.bin) + os.pathsep + os.defpath,
+                    "FIXTURE": str(self.work_path), "USER_SETTING": "preserved"}
+        self.alias = self.work_path / "installed/zellij-image-hints"
+        self.alias.parent.mkdir()
+        self.alias.symlink_to(self.repo / "bin/zellij-image-hints")
+
+    def run_launcher(self, *args, data="", check=True):
+        return subprocess.run([str(self.alias), *args], env=self.env, input=data,
+                              capture_output=True, text=True, check=check, timeout=10)
+
+    def build_calls(self):
+        return [json.loads(line) for line in (self.work_path / "builds").read_text().splitlines()]
+
+    def test_stale_helper_rebuilds_once_and_preserves_arguments_environment_and_input(self):
+        shutil.copyfile(self.candidate, self.binary)
+        self.binary.chmod(0o755)
+        os.utime(self.binary, (1, 1))
+        args = ["--literal", "$(touch never)", "a 'quoted' argument"]
+        result = self.run_launcher(*args, data="terminal input\n")
+        self.assertEqual(json.loads(result.stdout),
+                         {"args": ["image-hints", *args], "stdin": "terminal input\n", "setting": "preserved"})
+        self.assertIn("fixture build output", result.stderr)
+        self.assertEqual(self.build_calls(), [[
+            "build", "--locked", "--release", "--manifest-path", str(self.repo / "zellij/Cargo.toml"),
+            "--target-dir", str(self.repo / "zellij/target"), "-p", "lane-zellij"]])
+        self.run_launcher("--help")
+        self.assertEqual(len(self.build_calls()), 1)
+        self.assertFalse((self.work_path / "never").exists())
+
+    def test_missing_helper_and_changed_protocol_rebuild(self):
+        self.run_launcher("--help")
+        (self.repo / "zellij/protocol/src/lib.rs").write_text("changed protocol\n")
+        self.run_launcher("--help")
+        self.assertEqual(len(self.build_calls()), 2)
+
+    def test_source_deletion_with_unchanged_cargo_artifact_is_checked_once(self):
+        unused = self.repo / "zellij/cli/src/unused.txt"
+        unused.touch()
+        self.run_launcher()
+        original = self.binary.stat().st_mtime_ns
+        self.env["KEEP_BINARY"] = "1"
+        unused.unlink()
+        self.run_launcher()
+        self.run_launcher()
+        self.assertEqual(self.binary.stat().st_mtime_ns, original)
+        self.assertEqual(len(self.build_calls()), 2)
+
+    def test_failed_build_or_missing_cargo_never_runs_the_previous_helper(self):
+        shutil.copyfile(self.candidate, self.binary)
+        self.binary.chmod(0o755)
+        os.utime(self.binary, (1, 1))
+        self.env["FAIL_BUILD"] = "1"
+        result = self.run_launcher(check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("fixture build output", result.stderr)
+        self.assertIn("previous binary was not run", result.stderr)
+        self.assertFalse((self.work_path / "native-ran").exists())
+        self.cargo.unlink()
+        result = self.run_launcher(check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Cargo is required", result.stderr)
+        self.assertFalse((self.work_path / "native-ran").exists())
+
+    @contextmanager
+    def terminal_launcher(self):
+        master, slave = pty.openpty()
+        process = subprocess.Popen([str(self.alias)], env=self.env,
+                                   stdin=slave, stdout=slave, stderr=slave)
+        os.close(slave)
+        output = bytearray()
+
+        def receive(pattern, timeout=5):
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                found = re.search(pattern, output)
+                if found:
+                    return found
+                if select.select([master], [], [], min(.1, deadline - time.monotonic()))[0]:
+                    output.extend(os.read(master, 65536))
+            self.fail(f"Terminal output did not match {pattern!r}: {bytes(output)!r}")
+
+        try:
+            yield process, master, output, receive
+        finally:
+            if process.poll() is None:
+                process.terminate()
+            process.wait(timeout=5)
+            os.close(master)
+
+    def test_terminal_progress_hands_off_to_native_receiver_and_failure_waits_for_enter(self):
+        shutil.copyfile(ROOT / "zellij/target/release/lane-zellij", self.candidate)
+        self.env.update(BUILD_DELAY=".3", ZELLIJ_SESSION_NAME="fixture",
+                        ZELLIJ_ORIGIN_PANE_ID="terminal_1", ZELLIJ_PANE_ID="2")
+        fixture_panes = [pane(1, pane_cwd=str(self.work_path), pane_content_x=0,
+                              pane_content_y=1, pane_content_rows=20),
+                         pane(2, pane_content_x=12, pane_content_y=4)]
+        zellij = self.bin / "zellij"
+        zellij.write_text(f"#!{sys.executable}\nimport json, sys\n"
+                          'assert sys.argv[1:] == ["--session=fixture", "action", "list-panes", "--json"]\n'
+                          f"print({json.dumps(fixture_panes)!r})\n")
+        zellij.chmod(0o755)
+        with self.terminal_launcher() as (process, master, output, receive):
+            receive(rb"\x1b\[H\x1b\]8;;dotfiles-hints-building\x1b\\")
+            self.assertNotIn(b"fixture build output", output)
+            ready = receive(rb"dotfiles-hints://([0-9a-f]{32})/0/1/58/20/12/4")
+            self.assertNotIn(b"fixture build output", output)
+            os.write(master, b"!" + ready[1] + b".")
+            self.assertEqual(process.wait(timeout=5), 0)
+        (self.repo / "zellij/cli/src/main.rs").touch()
+        self.env["FAIL_BUILD"] = "1"
+        with self.terminal_launcher() as (process, master, output, receive):
+            receive(rb"dotfiles-hints-error\x1b\\.*Press Enter to close")
+            self.assertIn(b"fixture build output", output)
+            self.assertIsNone(process.poll())
+            os.write(master, b"\n")
+            self.assertNotEqual(process.wait(timeout=5), 0)
+        self.env.pop("FAIL_BUILD")
+        self.env["TMPDIR"] = str(self.work_path / "missing")
+        with self.terminal_launcher() as (process, master, output, receive):
+            receive(rb"dotfiles-hints-error\x1b\\.*Press Enter to close")
+            self.assertIn(b"Cannot create a temporary build log", output)
+            self.assertIsNone(process.poll())
+            os.write(master, b"\n")
+            self.assertNotEqual(process.wait(timeout=5), 0)
 
 
 class Helpers(unittest.TestCase):

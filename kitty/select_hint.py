@@ -20,6 +20,8 @@ PATH = re.compile(
     rf"""|\((?P<parenthesized>[^()\n]+?{EXT})\)"""
     rf"""|(?P<bare>{TOKEN}?{EXT})(?=\.(?!\w)|$|[\s,;:!?'"`)\]}}>│┃])""", re.I)
 READY = re.compile(r"dotfiles-hints://([0-9a-f]{32})" + r"/(\d+)" * 6)
+BUILDING = "dotfiles-hints-building"
+FAILED = "dotfiles-hints-error"
 REQUEST = b"\x1b[24;7~"  # Ctrl+Alt+F12, a single Zellij action on this connection
 OSC8 = "\x1b]8;;"
 ST = "\x1b\\"
@@ -179,13 +181,20 @@ def handle_result(args, answer, target_window_id, boss):
     rows = capture(window.screen)
     previous_marker = at_cursor(window)
     window.write_to_child(REQUEST)
-    deadline = time.monotonic() + 5
+    started = time.monotonic()
+    deadline = started + 5
 
     def wait(timer):
+        nonlocal deadline
         if boss.window_id_map.get(target_window_id) is not window:
             remove_timer(timer)
             return
         marker = at_cursor(window)
+        if marker == FAILED:
+            remove_timer(timer)
+            return
+        if marker == BUILDING:
+            deadline = started + 300
         ready = READY.fullmatch(marker) if marker != previous_marker else None
         if not ready and time.monotonic() < deadline:
             return

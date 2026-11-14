@@ -18,6 +18,7 @@ bin/*
 !bin/epenv
 !bin/epenv_test.py
 !bin/git-worktree-policy
+!bin/zellij-image-hints
 vim/spell
 vim/plugged
 vim/session
