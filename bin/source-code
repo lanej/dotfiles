@@ -15,10 +15,11 @@ import sys
 import tempfile
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
-from typing import NotRequired, Required, TypedDict, cast
+from typing import TypedDict, cast
 
 try:
     import tomllib
+    from typing import NotRequired, Required
 except ImportError:
     raise SystemExit(
         "source-code requires Python 3.11 or newer; use the workstation Python installed by dotfiles bootstrap"
