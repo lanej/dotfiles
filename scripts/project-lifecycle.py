@@ -83,7 +83,8 @@ def approval_cli(project, action):
         installed_revision = record["revision"]
     activation = ("Start new Keylease sessions; existing brokers and leases are preserved"
                   if project == "keylease" else
-                  "Reconnect SSH sessions to use the installed Intent; existing connections are preserved")
+                  "Configure SSH to invoke Intent; let existing SSH masters exit naturally, "
+                  "then establish a new underlying connection. Do not terminate active shared sessions")
     if action == "status":
         print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
                           "installed_revision": installed_revision, "running_revision": None,
