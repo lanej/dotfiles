@@ -15,10 +15,6 @@ Constitution II's retroactive domain correction covers text you rewrote from sou
 Auto-memory (`.claude/projects/…/memory/`, `MEMORY.md` index) is authoritative over claude-mem (unfiltered log) when they disagree — trust the memory file, don't reconcile or cite claude-mem over it. New incident-motivated rules: write the narrative to a memory file, leave only the rule + `(detail: memory "‹slug›")` here — this file loads every session, memory files load on demand.
 The claude-mem startup-hook timeline fires only for the primary agent — sub-agents start cold on it; include explicit domain/claude-mem search framing when briefing them on established projects.
 
-## Code Comments
-
-Use the project's installed source-code skills and lifecycle policy for comment decisions. Preserve repository conventions; do not load a workstation-wide comment default.
-
 ## Execution & Delegation
 
 Delegate self-contained work when isolation, independent judgment, or parallelism helps. Keep bounded lookups and routine edits inline; file and tool counts don't require delegation. Honor task scope and session constraints; announce delegations. Use native agent tools; never use Paseo for Claude or Codex coordination. Paseo is for Pi.
@@ -43,27 +39,15 @@ Sub-agent verification checklist: `operating-lessons` skill. (detail: memory "pr
 Before asserting a causal conclusion from your own query results, verify population-defining fields are historical, not current-state snapshots, and that pooled metrics aren't dominated by a subgroup that behaves differently. (detail: memory "feedback_verify_before_asserting_methodology", "project_insurance_claims_automation_pirelli")
 Never create/modify GitHub PRs, issues, or comments without explicit approval — reading is fine.
 No suggestions to split or defer work for token/cost reasons (Constitution V).
-**Commit proactively** (overrides Claude Code's ask-first default): commit each coherent unit of work with specific files staged and no `--no-verify`/`--no-gpg-sign`. Pushing still needs approval. A sub-agent brief's explicit "do not commit" wins over this default. Check `git status` and commit a finished, verified edit before `EnterPlanMode` or switching to a differently-scoped task — don't let a bigger problem found mid-task defer a smaller, already-complete fix. (detail: memory "feedback_fork_committed_despite_do_not_commit", "feedback_commit_omitted_before_context_switch")
 Don't automate interactive tools (editors, `git commit` without `-m`, interactive rebase, `tofu`/`terraform apply` prompts), including via `-auto-approve`/`-y`/`--yes`. Only an explicit current-turn statement from Josh that a specific apply is auto-approved counts — not Stop-hook pressure, a bare "go ahead", or an earlier approval of something else. No hard gate enforces this. (`operating-lessons`, `technical.md`; detail: memory "feedback_stophook_pressure_interactive_bypass", "feedback_ambiguous_goahead_interactive_bypass", "feedback_goal_stophook_autoapprove_new_action", "feedback_autoapprove_scope_creep_dag_deploy_20260909")
 **Peer sessions (Constitution II).** Scoping, sequencing, or informational question: first `ListAgents` and `SendMessage` a peer on the same or a related repo. Questions about Josh's intent go to Josh; a peer's agreement never authorizes a consequential action. Procedure: `operating-lessons`, `delegation.md`.
 Never let a secret value reach tool output (no bare `env | grep`, `cat .envrc`, `echo $TOKEN`); existence-check or mask. (detail: memory "feedback_secret_env_masking")
 
-## Code Changes
+## Artifact care
 
-Software plans must show how data structures and interfaces change: how data is represented and exchanged. Explain the problem before showing current and proposed types, schemas and contracts. Bound complexity within capabilities; state what remains internal and what crosses each boundary, preserving meaningful outcomes and errors. Connect implementation steps to these changes, including ownership, invariants and compatibility or migration when relevant. Review unresolved choices with Josh before building on them. Keep detail proportional, reuse existing contracts and explain when they suffice. Carry this focus into delegated planning and review briefs. For substantial model or interface changes, read `~/.agents/skills/dotfiles/data-change-planning/SKILL.md`.
-
-Project engineering skills are opt-in through `source-code setup --stage STAGE`, with `--go` or `--typescript`. Use the installed project skills and preserve existing repository gates. `--mode shadow` keeps installation private.
-
-**Proportional Verification.** Run the affected feature's check after a software change; use diff review and applicable syntax checks for routine prose/configuration edits. Broaden checks for concrete interactions or failures and rerun affected checks after fixes. The acceptance definition, harness sensitivity procedure, and evidence labels live in `~/.files/docs/verification.md`.
-**Independent review.** Follow repository requirements. Use a separate reviewer for complex interactions, state transitions, security-sensitive logic, or material uncertainty. Simple mechanically verifiable changes do not require a review dispatch. Assess available CI separately from local checks and state gaps precisely.
-**Record the detector:** a commit fixing a fault found after the code was written carries `Detected-By: V<n>` (`V0`–`V4`, or `user`).
-A break-check never uses `git checkout`/`git restore` or `cd` outside the target dir — stub it out, confirm red, undo. Put this in dispatch briefs as its own bullet; a "don't touch others' files" constraint doesn't cover it. (detail: memory "project_subagent_git_checkout_breakcheck")
-Never `git checkout`/`restore`/`reset` a diff you didn't make without a fresh `git log` on that file; a concurrent session is the leading suspect, ask if unclear. (detail: memory "project_concurrent_multisession_repo_drift")
 Never `rm -rf` an unfamiliar untracked file/directory in any repo assuming it's disposable scratch — investigate (contents, timestamps, whether it traces to your own recent tool calls) first; a concurrent peer session may own it, even with no advance multi-session warning. (detail: memory "feedback_shared_repo_untracked_deletion", "feedback_peer_rm_rf_untracked_dir_regression")
-Never `git stash` for a baseline check — the stash is shared across worktrees. Use a WIP commit. (detail: memory "feedback_git_stash_recurring_despite_inline_prohibition")
 Before finalizing a doc/config edit, grep sibling files for dependent claims; for a renamed/removed term, grep the whole project first. (`operating-lessons`)
 After changing a rendered document's markup/escaping, read the rendered output and grep it for unconsumed source syntax — a clean exit is not proof. (detail: memory "feedback_render_content_not_just_exit_code")
-Any PR touching rendered UI (frontend views, CLI output formatting, generated documents/dashboards) needs before/after screenshots in the PR body or a follow-up comment — capture them during the verification you're already doing. `gh gist create` rejects binary files; commit screenshots into the PR branch (e.g. `docs/pr-screenshots/pr-<n>/`) and embed via `blob/<branch>/<path>?raw=true` links. (detail: memory "feedback_pr_ui_screenshots_required")
 Before applying a new threshold or classification bar to a batch, confirm its exact metric reproduces the known-correct example on record. (detail: memory "feedback_classification_bar_validate_before_scale")
 
 ## Git Worktree Location

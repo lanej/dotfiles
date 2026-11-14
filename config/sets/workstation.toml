@@ -1,5 +1,6 @@
 sets = ["editor", "development", "ai"]
 
 [tools]
+source-code = true
 mail = true
 quarto = true

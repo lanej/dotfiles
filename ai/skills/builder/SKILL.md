@@ -20,6 +20,8 @@ Specify what could contradict a claim before treating evidence as confirmation. 
 
 ## Default architecture: Pragmatic Hexagonal Architecture
 
+Follow ESR's Unix rules: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, knowledge represented as data, least surprise, useful silence, early clear failure and repair, programmer economy, generation, working behavior before optimization, diversity, and extensibility.
+
 Use [Pragmatic Hexagonal Architecture](references/standard.md) to guide code layout and dependency boundaries. Organize around capabilities with identifiable decisions and effects; choose the minimum structure that supports them.
 
 - **PHA-A01 — Functional core:** Domain meaning, policy and decisions SHOULD be independent of effectful infrastructure, with external facts supplied explicitly. Atomic database constraints MAY enforce authoritative invariants; retain an inspectable contract and evidence of actual enforcement.

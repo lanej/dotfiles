@@ -56,6 +56,9 @@ test-dotfiles-config:
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
 
+source-code-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
 .PHONY: test-go-quality
 test-go-quality:
 	@python3 "$(DOTFILES)/scripts/test-go-quality.py"

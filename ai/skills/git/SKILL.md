@@ -14,7 +14,7 @@ the failure modes on this machine that have actually cost time.
   `/git:commit [context]` provides the commit workflow.
 - **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
   `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
-  visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
+  visual changes. When available, open it with `gh-pr-create-from <file>`; otherwise publish the dedicated writer’s draft through `gh pr create --body-file`.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
@@ -35,6 +35,8 @@ Use `--body-file` for multiline descriptions and verify the rendered result.
 `feature/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `test/` + a descriptive slug.
 
 ## Safety rules
+
+Commit coherent, finished, verified project changes unless the task forbids it; preserve the user’s publication authority for pushes and PRs. Review the complete staged snapshot and avoid path-based commits that sweep in unrelated unstaged content. Never restore or reset someone else’s diff; inspect current history and ownership first. Use a task-owned WIP commit for a baseline check rather than the stash shared by worktrees.
 
 1. Never force-push to `main`/`master` — warn instead.
 2. Never `--no-verify` unless explicitly requested.

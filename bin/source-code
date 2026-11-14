@@ -16,8 +16,8 @@ import tempfile
 
 SOURCE = Path(__file__).resolve().parents[1]
 DEFAULT_SKILLS = ("builder", "architecture", "pr-writer")
-CORE_SKILLS = ("builder", "architecture", "testing", "source-code-lifecycle", "code-comments")
-SKILLS = DEFAULT_SKILLS + ("go", "typescript", "code-comments", "library-code-comments", "testing", "source-code-lifecycle")
+CORE_SKILLS = ("builder", "architecture", "data-change-planning", "git", "testing", "source-code-lifecycle", "code-comments")
+SKILLS = DEFAULT_SKILLS + ("go", "typescript", "code-comments", "library-code-comments", "testing", "source-code-lifecycle", "data-change-planning", "git", "gh-pr-stack", "github-actions", "javascript", "just", "python", "rust")
 STAGES = ("research", "alpha", "beta", "production")
 POLICY = ".source-code.json"
 LIFECYCLE_RUNNER = "scripts/check-source-code.py"
@@ -127,6 +127,8 @@ def read_state(root):
         raise ValueError("invalid manifest agent selection")
     if "pr_template" in state and state["pr_template"] not in ("none", "local", "github"):
         raise ValueError("invalid manifest template selection")
+    if "detect_languages" in state and not isinstance(state["detect_languages"], bool):
+        raise ValueError("invalid manifest language detection setting")
     for path, entry in state["files"].items():
         if not allowed_path(path) or not isinstance(entry, dict):
             raise ValueError(f"invalid managed path in manifest: {path}")
@@ -166,6 +168,8 @@ def version_key(version):
 def project_guidance(policy):
     rows = "\n".join(f"| {name} | {version} |" for name, version in sorted(policy["skills"].items()))
     lifecycle = "Read the installed `.agents/skills/source-code-lifecycle/SKILL.md` first, then " if "source-code-lifecycle" in policy["skills"] else "Then "
+    gates = ", ".join(f"`python3 scripts/check-source-code.py {name}`" for name in policy["languages"])
+    gate_guidance = f"Run the installed generated gates: {gates}." if gates else "No generated language gate is installed; follow existing repository commands and the selected language skills."
     return ("<!-- Managed by source-code setup; edit policy through setup or upgrade. -->\n"
             "# Source-code project guidance\n\n"
             f"Policy version: **{policy['policy_version']}**. Schema version: **{policy['schema_version']}**. Lifecycle stage: **{policy['stage']}**.\n\n"
@@ -173,19 +177,31 @@ def project_guidance(policy):
             "The authoritative pins and stage are in `.source-code.json`; this file is their generated summary.\n\n"
             "| Skill | Version |\n| --- | --- |\n" + rows + "\n\n"
             + lifecycle + "load the installed skills relevant to the task. Preserve existing repository instructions and required gates. A stage or version pin does not establish readiness.\n\n"
-            "Use `source-code validate` to check packages and pins. Use `source-code upgrade --dry-run` to review available updates before applying them. Run `python3 scripts/check-source-code.py LANGUAGE` for the selected lifecycle gate.\n\n"
+            "Use `source-code validate` to check packages and pins. Use `source-code upgrade --dry-run` to review available updates before applying them. " + gate_guidance + "\n\n"
             "This file is the generated Codex project entrypoint. Other hosts should load it explicitly when their native instruction discovery does not read AGENTS.override.md.\n")
 
 
 def complete_skills(skills, explicit_stage=False):
     skills = set(skills)
-    if skills & {"go", "typescript"}:
+    if "typescript" in skills:
+        skills.add("javascript")
+    if skills & {"go", "typescript", "javascript", "python", "rust"}:
         skills.add("library-code-comments")
     if "library-code-comments" in skills:
         skills.add("code-comments")
     if skills & set(CORE_SKILLS) or explicit_stage:
         skills.update(CORE_SKILLS)
+    if "git" in skills:
+        skills.add("pr-writer")
     return skills
+
+
+def detect_languages(root, state=None):
+    spec = importlib.util.spec_from_file_location("source_code_languages", SOURCE / "scripts/source_code_languages.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    state = read_state(root)[0] if state is None else state
+    return module.detect(root, SOURCE / "ai/skills/source-code-lifecycle/references/languages.json", set(state["files"]))
 
 
 def artifact_owner(path):
@@ -242,6 +258,9 @@ def package(skills, agents, template, go_profile=False, typescript_profile=False
             if not source.is_file():
                 continue
             replacements = []
+            if skill == "git":
+                replacements = [("../../../docs/verification.md", "references/verification.md"),
+                                ("../../../docs/pull-requests.md", "../pr-writer/references/docs/pull-requests.md")]
             if skill == "builder" and str(relative) == "references/instructions.md":
                 replacements = [("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
                                 ("~/.local/share/software-standards/builder/references/", "")]
@@ -255,6 +274,8 @@ def package(skills, agents, template, go_profile=False, typescript_profile=False
             for name in PR_DOCS:
                 add(f".agents/skills/pr-writer/references/docs/{name}", SOURCE / "docs" / name,
                     [("../ai/agents/", "../")])
+        if skill == "git":
+            add(".agents/skills/git/references/verification.md", SOURCE / "docs/verification.md")
         if "claude" in agents:
             files[f".claude/skills/{skill}"] = {
                 "kind": "link", "target": f"../../.agents/skills/{skill}"}
@@ -533,6 +554,9 @@ def install(args):
     unknown = skills - set(SKILLS)
     if unknown:
         raise ValueError("unknown skills: " + ", ".join(sorted(unknown)))
+    detect_enabled = args.detect_languages if args.detect_languages is not None else state.get("detect_languages", True)
+    detection = detect_languages(root, state) if detect_enabled else {"languages": [], "skills": [], "evidence": {}}
+    skills.update(detection["skills"])
     go_profile = args.go if args.go is not None else (
         bool(args.go_rollout) or state.get("go_profile", False) or (root / "go.mod").is_file())
     if go_profile:
@@ -542,6 +566,8 @@ def install(args):
     if typescript_profile:
         skills.add("typescript")
     skills = complete_skills(skills, bool(args.stage))
+    if not skills <= set(SKILLS):
+        raise ValueError("language detection selected unsupported skills")
     stage = args.stage or state.get("stage", "beta")
     if stage not in STAGES:
         raise ValueError(f"invalid lifecycle stage: {stage}")
@@ -588,7 +614,8 @@ def install(args):
         pins = {name: versions["skills"][name] if name in skills else old_pins[name]
                 for name in sorted(skills | retained_skills)}
         installed_versions = {**versions, "skills": pins}
-        policy = {"schema_version": 1, "policy_version": versions["policy_version"], "stage": stage, "languages": languages, "skills": pins}
+        policy = {"schema_version": 1, "policy_version": versions["policy_version"], "stage": stage, "languages": languages, "skills": pins,
+                  "detection": {"enabled": detect_enabled, **detection}}
         resources = [
             (POLICY, (json.dumps(policy, indent=2) + "\n").encode()),
             (VERSIONS, (json.dumps(installed_versions, indent=2) + "\n").encode()),
@@ -682,6 +709,7 @@ def install(args):
                  "go_profile": go_profile, "files": managed}
     if skills:
         new_state.update(stage=stage, policy_version=versions["policy_version"], skills=sorted(pins), skill_versions=pins, agents=agent_selection, pr_template=template)
+        new_state["detect_languages"] = detect_enabled
     elif "stage" in state:
         new_state.update(stage=state["stage"], policy_version=state["policy_version"])
     if go_profile:
@@ -696,6 +724,7 @@ def install(args):
     state_changed = state_before != file_entry(state_data)
 
     print(f"source-code setup: {root} ({mode})")
+    print("  Detected language guidance: " + (", ".join(detection["languages"]) or "none"))
     if skills:
         previous = state.get("stage", "beta (legacy full checks)")
         print(f"  Lifecycle: {previous} -> {stage}; policy {versions['policy_version']}")
@@ -796,6 +825,9 @@ def prepare_upgrade(args):
     if args.typescript is None:
         args.typescript = state.get("typescript_profile", False)
     skills = set(args.skills.split(","))
+    detect_enabled = args.detect_languages if args.detect_languages is not None else state.get("detect_languages", True)
+    if detect_enabled:
+        skills.update(detect_languages(root, state)["skills"])
     if args.go:
         skills.add("go")
     if args.typescript:
@@ -923,6 +955,9 @@ def main():
     validation_parser.add_argument("--repo", type=Path, default=Path.cwd())
     validation_parser.add_argument("--skills-dir", type=Path, help="check a skill or skill tree without requiring an installation")
     validation_parser.add_argument("--strict", action="store_true", help="treat best-practice and customization warnings as failures")
+    detection_parser = subcommands.add_parser("detect", help="inspect language evidence without installing guidance or checks")
+    detection_parser.add_argument("--repo", type=Path, default=Path.cwd())
+    detection_parser.add_argument("--json", action="store_true")
     add_install_arguments(parser)
     add_install_arguments(upgrade_parser)
     upgrade_parser.add_argument("--strict", action="store_true", help="reject best-practice warnings in the upgrade source")
@@ -930,11 +965,26 @@ def main():
     try:
         if args.command == "validate":
             command.exit(validate_project(args))
+        if args.command == "detect":
+            requested = args.repo.expanduser().resolve()
+            found = git(requested, "rev-parse", "--show-toplevel", check=False)
+            root = Path(found.stdout.strip()) if found.returncode == 0 else requested
+            if not root.is_dir():
+                raise ValueError(f"project directory does not exist: {root}")
+            detection = detect_languages(root)
+            if args.json:
+                print(json.dumps(detection, indent=2))
+            else:
+                for language, paths in detection["evidence"].items():
+                    print(f"{language}: {', '.join(json.dumps(path, ensure_ascii=False) for path in paths)}")
+                if not detection["languages"]:
+                    print("No supported language evidence found")
+            command.exit(0)
         if args.command == "upgrade":
             prepare_upgrade(args)
         install(args)
     except (OSError, ValueError) as error:
-        suffix = "" if args.command == "validate" else "No existing conflicts were overwritten without explicit replacement. If an I/O error interrupted installation, inspect the reported paths before retrying.\n"
+        suffix = "" if args.command in {"validate", "detect"} else "No existing conflicts were overwritten without explicit replacement. If an I/O error interrupted installation, inspect the reported paths before retrying.\n"
         command.exit(1, f"source-code {args.command}: {error}\n{suffix}")
 
 
@@ -963,6 +1013,7 @@ def add_install_arguments(parser):
     parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
     parser.add_argument("--stage", choices=STAGES, help="lifecycle assurance level (default: previous stage, else beta/full checks)")
     parser.add_argument("--policy-version", help="require the policy version shipped by this installed source; no implicit version fetching")
+    parser.add_argument("--detect-languages", action=argparse.BooleanOptionalAction, default=None, help="select matching language guidance (default: saved choice, else enabled); check profiles remain explicit")
 
 
 if __name__ == "__main__":

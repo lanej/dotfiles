@@ -5,7 +5,7 @@ description: Use when creating, modifying, testing, or reviewing Go code. Apply 
 
 # Go
 
-Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md), then run `python3 scripts/check-source-code.py go` for its generated gate. Full profile commands below remain available for extra evidence; they are required at beta and production. Research and alpha use the selected stage’s checks while preserving existing repository gates.
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md). When `go` is listed in the project policy’s `languages`, run `python3 scripts/check-source-code.py go` for its generated gate. Otherwise follow existing repository checks; detected language guidance alone does not install a check profile. Full profile commands below remain available when that profile is installed. Research and alpha use the selected stage’s checks while preserving existing repository gates.
 
 For comment decisions, read the [shared comment guidance](../code-comments/SKILL.md). For public library APIs, also read the [library comment guidance](../library-code-comments/SKILL.md). Bootstrap bundles both with this skill in tracked or local mode; apply the library perspective only to library work and preserve project requirements.
 

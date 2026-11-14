@@ -191,7 +191,7 @@ npm test -- --watch
 
 5. **Make tests maintainable**:
    - Use descriptive names
-   - Use the `code-comments` skill's compact guidance: explain reasoning or behavior when it materially helps readers; omit narration of obvious operations.
+   - Use the project's installed comment policy when present; preserve repository conventions and avoid a workstation-wide fallback.
    - Keep tests simple and readable
 
 ## Interactive Flow

@@ -5,6 +5,8 @@ description: Node.js and JavaScript development patterns, gotchas, and library c
 
 # JavaScript / Node.js Skill
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
 ## Project Setup Basics
 
 - Always check `package.json` first to understand available scripts before running anything

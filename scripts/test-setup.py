@@ -79,6 +79,14 @@ def main():
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
         assert (minimal_home / ".gitattributes").resolve() == repo / "git/gitattributes"
+        assert not (minimal_home / ".local/bin/source-code").exists()
+        assert not (minimal_home / ".local/bin/repo-bootstrap").exists()
+        source_setup = subprocess.run([*command, "source-code-config"], cwd=repo, env=minimal_env,
+                                      capture_output=True, text=True, timeout=30)
+        assert source_setup.returncode == 0, source_setup.stdout + source_setup.stderr
+        assert (minimal_home / ".local/bin/source-code").resolve() == repo / "bin/source-code"
+        assert (minimal_home / ".local/bin/repo-bootstrap").resolve() == repo / "bin/repo-bootstrap"
+        assert not (minimal_home / ".agents").exists(), "Workstation command setup must not select a project policy"
         merger = executables / "mergiraf"
         merger.write_text("#!/bin/sh\nprintf '%s\\n' '*.toml merge=mergiraf'\n")
         merger.chmod(0o755)

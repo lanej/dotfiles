@@ -5,6 +5,7 @@ on:
     paths:
       - 'bin/repo-bootstrap'
       - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
       - 'ai/skills/source-code-versions.json'
       - 'ai/skills/source-code-lifecycle/**'
       - 'ai/skills/testing/**'
@@ -20,6 +21,7 @@ on:
     paths:
       - 'bin/repo-bootstrap'
       - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
       - 'ai/skills/source-code-versions.json'
       - 'ai/skills/source-code-lifecycle/**'
       - 'ai/skills/testing/**'

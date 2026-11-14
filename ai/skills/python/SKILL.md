@@ -5,6 +5,8 @@ description: Use uv for fast Python project management, script execution, depend
 
 # Python / uv
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
 `uv` replaces pip, virtualenv, poetry, and pyenv. Standard `uv` subcommands work as documented;
 this file covers only the defaults to hold to and the traps that have actually cost time.
 

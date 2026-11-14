@@ -34,7 +34,7 @@ def tree(root):
 
 with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as temporary:
     run(["python3", str(VALIDATOR), *[str(SOURCE / "ai/skills" / name)
-        for name in ("builder", "testing", "source-code-lifecycle", "code-comments", "library-code-comments", "go", "typescript")]])
+        for name in json.loads((SOURCE / "ai/skills/source-code-versions.json").read_text())["skills"]]])
     # macOS commonly exposes its temporary directory through /var -> /private/var.
     workspace = Path(temporary).resolve()
     # A private source copy lets the workflow exercise a real subsequent update.
@@ -42,6 +42,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (source / "bin").mkdir(parents=True)
     shutil.copy2(SOURCE / "bin/repo-bootstrap", source / "bin/repo-bootstrap")
     shutil.copy2(SOURCE / "bin/source-code", source / "bin/source-code")
+    (source / "scripts").mkdir()
+    shutil.copy2(SOURCE / "scripts/source_code_languages.py", source / "scripts/source_code_languages.py")
     shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
@@ -134,6 +136,49 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert tree(library) == before, "conflicting override partially upgraded the project"
     override.write_bytes(saved_override)
     registry.write_bytes(registry_bytes)
+
+    detected = workspace / "detected project"
+    detected.mkdir()
+    (detected / "app.py").write_text("print('project')\n")
+    (detected / "vendor").mkdir()
+    (detected / "vendor/fake.rs").write_text("// Third-party fixture.\n")
+    (detected / "node_modules").mkdir()
+    (detected / "node_modules/fake.ts").write_text("export {};\n")
+    before = tree(detected)
+    found = json.loads(run([str(cli), "detect", "--repo", str(detected), "--json"]))
+    assert found["languages"] == ["python"] and found["evidence"]["python"] == ["app.py"]
+    assert tree(detected) == before and not (detected / ".git").exists()
+    git(detected, "init", "--quiet")
+    git(detected, "add", "vendor/fake.rs")
+    (detected / ".gitignore").write_text("/Cargo.toml\n/package.json\n/pyproject.toml\n")
+    (detected / "Cargo.toml").write_text('[package]\nname="scratch"\n')
+    (detected / "package.json").write_text('{"devDependencies":{"typescript":"5.9.3"}}\n')
+    (detected / "pyproject.toml").write_text("[project]\nname='scratch'\n")
+    assert json.loads(run([str(cli), "detect", "--repo", str(detected), "--json"]))["languages"] == ["python"]
+    install(detected, "--skills", "builder", "--no-go", "--no-typescript", "--mode", "shadow", "--pr-template", "none")
+    policy = json.loads((detected / ".source-code.json").read_text())
+    assert "python" in policy["skills"] and policy["languages"] == []
+    assert policy["detection"]["languages"] == ["python"]
+    assert "already current" in install(detected, "--no-go", "--no-typescript")
+    assert json.loads(run([str(cli), "detect", "--repo", str(detected), "--json"]))["languages"] == ["python"]
+    for name, contents in {"backend/go.mod": "module example.invalid/detected\n", "web/package.json": '{"devDependencies":{"typescript":"5.9.3"}}\n',
+                           "native/Cargo.toml": '[package]\nname="detected"\nversion="0.1.0"\n'}.items():
+        path = detected / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(contents)
+    found = json.loads(run([str(cli), "detect", "--repo", str(detected), "--json"]))
+    assert found["languages"] == ["go", "javascript", "python", "rust", "typescript"]
+    install(detected, "--no-go", "--no-typescript")
+    policy = json.loads((detected / ".source-code.json").read_text())
+    assert set(found["skills"]) <= set(policy["skills"]) and policy["languages"] == []
+    assert not (detected / "scripts/check-go.sh").exists() and not (detected / "scripts/check-typescript.mjs").exists()
+    run([str(cli), "validate", "--repo", str(detected), "--strict"])
+    opted_out = workspace / "manual language selection"
+    opted_out.mkdir()
+    (opted_out / "main.py").write_text("pass\n")
+    install(opted_out, "--init", "--skills", "builder", "--no-detect-languages", "--pr-template", "none")
+    assert "python" not in json.loads((opted_out / ".source-code.json").read_text())["skills"]
+    assert "already current" in run([str(cli), "upgrade", "--repo", str(opted_out)])
     before = tree(library)
     assert "downgrade" in run([str(cli), "upgrade", "--repo", str(library)], expected=1)
     assert tree(library) == before
@@ -233,6 +278,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert (go_project / ".agents/skills/code-comments/references/standard.md").is_file()
     # Remember explicit adoption even before a new project has its module file.
     (go_project / "go.mod").unlink()
+    install(go_project, "--skills", "go")
+    assert json.loads((go_project / ".source-code.json").read_text())["languages"] == ["go"]
     assert "already current" in install(go_project, "--skills", "go")
     explicit_go = workspace / "future Go module"
     install(explicit_go, "--init", "--go", "--skills", "go", "--pr-template", "none")

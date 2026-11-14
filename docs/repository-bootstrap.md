@@ -2,7 +2,7 @@
 
 Use `source-code setup` to bring the shared Builder, architecture, and PR-writing guidance into a new or existing Git repository. It copies portable files rather than linking to a particular machine's dotfiles checkout. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
 
-The command needs Python 3.9+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make shell` has linked the dotfiles commands into `~/.local/bin`.
+The command needs Python 3.9+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
 
 `repo-bootstrap` remains a compatibility alias for `source-code setup`, accepting its existing flags. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
 
@@ -68,7 +68,21 @@ source-code setup --repo ~/src/app --mode tracked --pr-template none
 source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts `builder`, `architecture`, `pr-writer`, `go`, `typescript`, `code-comments`, `library-code-comments`, `testing`, and `source-code-lifecycle`, comma-separated. Builder, architecture, testing, lifecycle, and shared comments install together as one consistent project policy. Language profiles add their guidance and library comments. PR writer can be installed separately. These are curated portable packages, not an automatic copy of every workstation-specific skill. The default selects the core and PR writer, with Go added for detected Go modules.
+`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, and Rust; `gh-pr-stack`, `github-actions`, and `just` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+
+## Workstation installation and language detection
+
+The `workstation` set selects `tools.source-code`, whose setup target links `source-code` and the `repo-bootstrap` compatibility command. Basic shell/terminal setup does not install those commands. Select `[tools] source-code = true` independently or use `false` to opt out. This installs commands only; project policies are still selected explicitly.
+
+```sh
+source-code detect --repo ~/src/project --json
+source-code setup --repo ~/src/project --stage alpha --mode shadow
+source-code setup --repo ~/src/project --no-detect-languages
+```
+
+Basic detection uses manifests and source-file extensions for Go, TypeScript, JavaScript, Python, and Rust, including nested projects. Git supplies tracked and unignored files; pre-Git directories use a pruned directory walk that skips dependency/build directories. Installed managed files do not classify their own implementation language as application code. Results include a small set of evidence paths and are read-only. Detection is heuristic, not an exhaustive language census; select additional skills explicitly when needed.
+
+Detection chooses language skills and records evidence in the policy's `detection` field. It does not introduce TypeScript checks, Python/Rust tooling, or CI; those remain explicit project choices. `languages` separately records installed generated Go/TypeScript check profiles. The detection opt-out persists across upgrades. Removing a language file can update detection evidence without uninstalling existing skills or checks.
 
 ## Lifecycle stages
 
@@ -96,7 +110,7 @@ The stage selects both agent guidance and the generated CI gate. It does not wai
 
 ## Comment policies
 
-The workstation's shared comment policy remains the default. Select `code-comments` to install it in a project, or `library-code-comments` to include both the shared policy and the library caller perspective. Selecting the Go or TypeScript skill also bundles both comment skills, including through `--go` and `--typescript`, in strict and ratchet modes. The library perspective applies to public library APIs; services retain the shared default. Existing project instructions remain authoritative.
+The shared comment policy is the default inside a selected project profile. Select `code-comments` to install it in a project, or `library-code-comments` to include both the shared policy and the library caller perspective. Selecting the Go or TypeScript skill also bundles both comment skills, including through `--go` and `--typescript`, in strict and ratchet modes. The library perspective applies to public library APIs; services retain the shared default. Existing project instructions remain authoritative.
 
 ```sh
 # Use library guidance privately in another repository, without a PR template.
