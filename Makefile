@@ -620,3 +620,7 @@ keylease-ssh-remove:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-keylease-ssh.py" --remove
 test-keylease-ssh:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-keylease-ssh.py"
+
+.PHONY: test-project-update
+test-project-update:
+	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/test-project-update.py"
