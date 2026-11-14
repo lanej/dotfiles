@@ -8,11 +8,12 @@
 #            e.g. Codex)
 #
 # Usage: bedrock-model-matrix [-p PROFILE] [-r REGIONS] [-s runtime|mantle|both]
-#                             [-f matrix|tsv|json] [-m REGEX]
+#                             [-f matrix|md|tsv|json] [-m REGEX]
 #   -p  AWS CLI profile to sign requests with (SigV4) instead of the API key
 #   -r  comma-separated regions (default: all commercial Bedrock regions)
 #   -s  matrix surface(s) to print (default: both); tsv/json carry both
-#   -f  output format (default: matrix)
+#   -f  output format (default: matrix); md renders a Markdown document,
+#       e.g. bedrock-model-matrix -f md > ~/.bedrock-model-matrix.md
 #   -m  extended regex filter on the model id, e.g. 'sol|sonnet-5'
 #
 # Runtime cell: od = in-region on-demand; us/global/eu/... = system inference
@@ -40,7 +41,7 @@ filter=""
 profile=""
 surface=both
 
-usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
+usage() { sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
 
 while getopts "p:r:s:f:m:h" opt; do
 	case "$opt" in
@@ -54,7 +55,7 @@ while getopts "p:r:s:f:m:h" opt; do
 	esac
 done
 
-case "$format" in matrix | tsv | json) ;; *) usage ;; esac
+case "$format" in matrix | md | tsv | json) ;; *) usage ;; esac
 case "$surface" in runtime | mantle | both) ;; *) usage ;; esac
 
 for cmd in curl jq column; do
@@ -165,12 +166,14 @@ for r in $regions; do
 	failures="$failures$r	$why"$'\n'
 done
 
-# One stderr line per distinct failure reason, listing its regions.
+# One line per distinct failure reason: "REASON<TAB>REGION REGION ...".
+failure_summary=""
 if [ -n "$failures" ]; then
-	printf '%s' "$failures" | awk -F'\t' '
+	failure_summary=$(printf '%s' "$failures" | awk -F'\t' '
 		!($2 in seen) { seen[$2] = ++n; reason[n] = $2 }
 		{ rs[seen[$2]] = rs[seen[$2]] (rs[seen[$2]] ? " " : "") $1 }
-		END { for (i = 1; i <= n; i++) printf "bedrock-model-matrix: %s: %s\n", reason[i], rs[i] }' >&2
+		END { for (i = 1; i <= n; i++) printf "%s\t%s\n", reason[i], rs[i] }')
+	printf '%s\n' "$failure_summary" | sed 's/^\([^\t]*\)\t/bedrock-model-matrix: \1: /' >&2
 fi
 
 if [ -z "$ok_regions" ]; then
@@ -195,8 +198,8 @@ rows=$(for r in $ok_regions; do cat "$work/$r"/*.jsonl 2>/dev/null; done |
 		})
 		| sort_by(.provider, .model)')
 
-# matrix SURFACE -> one model x region table for that serving surface
-matrix() {
+# matrix_tsv SURFACE -> one model x region TSV table for that serving surface
+matrix_tsv() {
 	# shellcheck disable=SC2086 # region list is space-separated by construction
 	jq -r --arg s "$1" --args '
 		def listed: if $s == "mantle" then .mantle != null
@@ -211,7 +214,60 @@ matrix() {
 		  (map(select(listed)) | group_by(.model) | sort_by(.[0].provider, .[0].model)[]
 			| (map({key: .region, value: cell}) | from_entries) as $c
 			| [.[0].provider, .[0].model] + [$rs[] | $c[.] // "."] | @tsv)
-	' $ok_regions <<<"$rows" | column -t -s "$(printf '\t')"
+	' $ok_regions <<<"$rows"
+}
+
+matrix() { matrix_tsv "$1" | column -t -s "$(printf '\t')"; }
+
+# md_table SURFACE -> the same table as Markdown, model ids in code spans
+md_table() {
+	matrix_tsv "$1" | awk -F'\t' '
+		NR == 1 { row = "|"; sep = "|"; for (i = 1; i <= NF; i++) { row = row " " $i " |"; sep = sep (i > 2 ? " :-: |" : " --- |") }
+			print row; print sep; next }
+		{ row = "|"; for (i = 1; i <= NF; i++) row = row " " (i == 2 ? "`" $i "`" : $i) " |"; print row }'
+}
+
+# shellcheck disable=SC2016 # backticks are literal Markdown code spans
+credential_label() {
+	local acct
+	if [ -n "$profile" ]; then
+		acct=$(aws sts get-caller-identity --profile "$profile" --query Account --output text 2>/dev/null || true)
+		printf 'AWS profile `%s`%s' "$profile" "${acct:+ (account $acct)}"
+	else
+		printf 'Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`)'
+	fi
+}
+
+# shellcheck disable=SC2016,SC2086 # literal Markdown backticks; region list word-splits by design
+render_md() {
+	local s table
+	printf '## %s\n\n' "$(credential_label)"
+	printf 'Generated %s by `bedrock-model-matrix`.' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	[ -n "$filter" ] && printf ' Models matching `%s`.' "$filter"
+	printf ' Regions with data:%s.\n\n' "$(printf ' `%s`' $ok_regions | sed 's/` `/`, `/g')"
+	printf 'A listing is not an entitlement: IAM, model access, and data-retention settings can still reject a call. OpenAI models reject retention mode `none`.\n\n'
+	for s in runtime mantle; do
+		[ "$surface" = both ] || [ "$surface" = "$s" ] || continue
+		case "$s" in
+		runtime)
+			printf '### bedrock-runtime\n\nInvokeModel/Converse, used by Claude Code. `od` = in-region on-demand; `us`, `global`, `eu`, ... = system inference profiles callable from that region; `-` = in catalog but not invocable; `.` = not listed.\n\n'
+			;;
+		mantle)
+			printf '### bedrock-mantle\n\nOpenAI/Anthropic-compatible APIs, used by Codex. `yes` = served; `listed` = listed but unavailable; `.` = not listed.\n\n'
+			;;
+		esac
+		table=$(md_table "$s")
+		if [ "$(printf '%s\n' "$table" | wc -l)" -le 2 ]; then
+			printf 'None listed.\n\n'
+		else
+			printf '%s\n\n' "$table"
+		fi
+	done
+	if [ -n "$failure_summary" ]; then
+		printf '### Regions without data\n\n| Reason | Regions |\n| --- | --- |\n'
+		printf '%s\n' "$failure_summary" | awk -F'\t' '{ print "| " $1 " | " $2 " |" }'
+		printf '\n'
+	fi
 }
 
 case "$format" in
@@ -222,6 +278,9 @@ tsv)
 	jq -r '(["region", "provider", "model", "catalog", "lifecycle", "profiles", "mantle", "retention_modes"] | @tsv),
 		(.[] | [.region, .provider, .model, (.catalog | join(",")), (.lifecycle // ""),
 			(.profiles | join(",")), (.mantle // ""), ((.retention // []) | sort | join(","))] | @tsv)' <<<"$rows"
+	;;
+md)
+	render_md
 	;;
 matrix)
 	if [ "$surface" = both ]; then
