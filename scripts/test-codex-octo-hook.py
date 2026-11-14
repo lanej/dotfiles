@@ -54,14 +54,16 @@ def main():
         assert response("gh pr create --body 'unterminated")["permissionDecision"] == "deny"
         assert response("git status --short") is None
         assert response("echo gh pr create") is None
-        assert response("gh-pr-create-from --check description.md") is None
+        assert response("gh-pr-create-from --check description.md")["permissionDecision"] == "deny"
         assert response("gh pr create --fill")["permissionDecision"] == "deny"
         assert response("cd repo && gh pr create --title a --body b")["permissionDecision"] == "deny"
         assert response("gh pr create --title '$TITLE' --body body")["permissionDecision"] == "deny"
         assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
-        description = home / "description.md"
-        description.write_text("fix: example\n\nThis changes the example.")
-        assert response("gh-pr-create-from description.md --base main")["permissionDecision"] == "allow"
+        retired = response("gh-pr-create-from description.md --base main")
+        assert retired["permissionDecision"] == "deny"
+        assert "octo-manager submit-pr" in retired["permissionDecisionReason"]
+        assert response("/old/bin/gh-pr-create-from description.md")["permissionDecision"] == "deny"
+        assert response("echo gh-pr-create-from") is None
         run(["--uninstall"])
         removed = hooks.read_bytes()
         run(["--uninstall"])

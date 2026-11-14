@@ -85,7 +85,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### Codex
 
-Coding agent used with shared skills, role instructions, and repository guidance. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
+Coding agent used with shared skills, role instructions, and repository guidance. GitHub PR publication goes through [Octo's recorded writer and publication checks](octo-pr-submission.md). Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
 
 ### fzf
 

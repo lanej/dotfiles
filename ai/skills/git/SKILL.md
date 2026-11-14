@@ -12,9 +12,7 @@ the failure modes on this machine that have actually cost time.
 
 - Write commit messages directly from the staged diff and relevant context.
   `/git:commit [context]` provides the commit workflow.
-- **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
-  `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
-  visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
+- Create GitHub PRs with `octo-manager submit-pr`, following [the submission contract](../../../docs/octo-pr-submission.md). Octo owns the recorded writer, publication checks, and tracking; report unavailable submission rather than bypassing it. Existing PR title/body revisions require a separate `github-pr-writer` and resolution of its blockers.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
@@ -23,12 +21,7 @@ the failure modes on this machine that have actually cost time.
 
 ## Pull requests
 
-Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
-updating a PR. Use `github-pr-writer` for GitHub titles and bodies, and
-`pull-request-writer` for other review platforms. Lead with the
-outcome and why, include screenshots when useful, and add context only when
-the diff and checks do not supply it. Do not reproduce automated test results.
-Use `--body-file` for multiline descriptions and verify the rendered result.
+Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or updating a PR. Use Octo's recorded writer for GitHub creation, a separate `github-pr-writer` for title/body revisions, and `pull-request-writer` for other review platforms. Lead with the outcome and why, include screenshots when useful, and add context only when the diff and checks do not supply it. Do not reproduce automated test results. Use `--body-file` for multiline updates and verify the rendered result.
 
 ## Branch naming
 
